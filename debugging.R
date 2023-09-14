@@ -1,16 +1,7 @@
+source("R/haz_functions.R")
+
 country_choice<-"Burundi"
 timeframe_choice<-"annual"
-
-if(!dir.exists(country_dir)){
-  dir.create(country_dir)
-  unzip(zipfile=country_zips[Country==country_choice & timeframe==timeframe_choice,filepath],exdir=country_dir,junkpaths=T)
-}
-
-SaveDir<- paste0(country_dir,"/Analysis")
-
-if(!dir.exists(SaveDir)){
-  dir.create(SaveDir)
-}
 
 country_zips<-data.table(filepath=list.files("./Data/country_data_zips",".zip",full.names = T))
 country_zips[,iso3c:=unlist(tstrsplit(tail(tstrsplit(filepath,"/"),1),"-",keep=1)),by=filepath
@@ -22,8 +13,19 @@ country_zips[,Country:=countrycode::countrycode(iso3c, origin = 'iso3c', destina
 country_dir<-paste0("./Data/country_data/", country_zips[Country==country_choice & timeframe==timeframe_choice,folder])
 ocha_dir<-paste0("Data/ocha_boundaries/", country_zips[Country==country_choice & timeframe==timeframe_choice,iso3c])
 
+if(!dir.exists(country_dir)){
+  dir.create(country_dir)
+  unzip(zipfile=country_zips[Country==country_choice & timeframe==timeframe_choice,filepath],exdir=country_dir,junkpaths=T)
+}
 
-hazards<-c("NDD","NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT")
+
+SaveDir<- paste0(country_dir,"/Analysis")
+
+if(!dir.exists(SaveDir)){
+  dir.create(SaveDir)
+}
+
+hazards<-c("NDD","NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG")
 haz_meta<-data.table::fread("./Data/metadata/haz_metadata.csv")
 haz_class<-fread("./Data/metadata/haz_classes.csv")
 haz_classes<-unique(haz_class$description)
@@ -38,30 +40,38 @@ scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios
 haz_names<-data.table(Variable=hazards,
                       Renamed=hazards)
 
-Thresholds<-haz_class[description!="No significant stress",list(index_name,description,lower_lim,upper_lim,direction)]
+crop_choice<-"generic"
+Thresholds<-haz_class[description!="No significant stress" & crop_choice=="generic",list(index_name,description,direction,threshold)]
 setnames(Thresholds,c("index_name","description","direction"),c("Variable","Severity_class","Direction"))
 
 Thresholds<-merge(Thresholds,haz_names,by="Variable",all.x=T)
 
-Thresholds<-haz_class[description!="No significant stress",list(index_name,description,lower_lim,upper_lim,direction)]
+Thresholds<-haz_class[description!="No significant stress",list(index_name,description,direction,threshold)]
 setnames(Thresholds,c("index_name","description","direction"),c("Variable","Severity_class","Direction"))
 Thresholds$Renamed<-Thresholds$Variable
-  
+
+Thresholds[,Code:=paste0(Direction,threshold)
+           ][,Code:=gsub("<","L",Code)
+             ][,Code:=gsub(">","G",Code)
+               ][,Code:=paste0(Variable,"_",Code)]
+    
 hazard_dir<-country_dir
 PropThreshold<-0.5
 PropTDir=">"
 
 
 Hazards<-HazardWrapper(Thresholds,
-              SaveDir,
-              PropThreshold,
-              PropTDir,
+              SaveDir=SaveDir,
+              PropThreshold=PropThreshold,
+              PropTDir=PropTDir,
               hazard_dir = country_dir,
-              Scenarios,
+              Scenarios=Scenarios,
               verbose=F)
 
-A<-nchar(unlist(tstrsplit(names(Hazards[[i]]),paste0(hazards,collapse="|"),keep=2)))
-B<-substr(names(Hazards[[i]]),1,nchar(names(Hazards[[i]]))-A)
+# Add severity classes to hazards
+Thresholds_unique<-unique(Thresholds[,list(Variable,Renamed,Severity_class)])
+A<-nchar(unlist(tstrsplit(names(Hazards[[1]]),paste0(hazards,collapse="|"),keep=2)))
+B<-substr(names(Hazards[[1]]),1,nchar(names(Hazards[[1]]))-A)
 
 for(i in 1:length(Hazards)){
   names(Hazards[[i]])<-paste0(names(Hazards[[i]]),"_",rep(Thresholds_unique$Severity_class,rep(rle(B)$lengths,each=3)/3))
@@ -107,8 +117,6 @@ Palette<-"turbo"
 borderwidth<-1
 
 Analysis_Vars<-haz_names[c(3,5,9),Renamed]
-FileName2<- Thresholds[Renamed %in% Analysis_Vars,paste(unique(Code),collapse = "")]
-
 
 SubGeog<-if(AdminLevel=="Admin2"){
   Geographies$admin2[Geographies$admin2$admin_name %in% Admin2,]
@@ -121,52 +129,19 @@ PlotHazards<-terra::mask(terra::crop(Hazards[["historic-historic"]],SubGeog),Sub
 PlotHazards_future<-terra::mask(terra::crop(Hazards[[Future]],SubGeog),SubGeog)
 PlotHazards_diff<-PlotHazards_future- PlotHazards
 
-# Hazard Index
-scenario_names<-paste0(Scenarios$Scenario,"-",Scenarios$Time)
-data<-Hazards[[scenario_names[[1]]]]
+# Hazard Index = severity x recurrence
+haz_index<-hazard_index(Hazards,verbose = T,SaveDir=SaveDir,crop_choice = crop_choice)
 
-# Index = severity x recurrence
-data
+# Combine hazard indice for selected variables
+haz_comb<-lapply(1:length(haz_index),FUN=function(i){
+  terra::app(haz_index[[i]][[paste0(Analysis_Vars,"_hazard_index")]],sum,na.rm=T)
+})
+names(haz_comb)<-names(haz_index)
 
-recurrence<-data[[grep("_prop_",names(data),value=T)]]
-
-# Subtract severe and extreme from moderate, and severe from extreme
-for(i in 1:length(hazards)){
-  N<-paste0(hazards[i],"_prop_",severity_classes$class)
-  N1<-which(names(recurrence)==N[1])
-  N2<-which(names(recurrence)==N[2])
-  X<-recurrence[[N[1]]]-recurrence[[N[2]]]-recurrence[[N[3]]]
-  X[][X[]<0 & !is.na(X[])]<-0
-  recurrence[[N1]]<-X
-  Y<-recurrence[[N2]]-recurrence[[N[3]]]
-  Y[][Y[]<0 & !is.na(Y[])]<-0
-  recurrence[[N2]]<-Y
-}
+# Combined classified severity by hazard
 
 
-severity<-data[[grep("_propclass",names(data),value=T)]]
-
-severity_classes<-data.table(class=c("Moderate","Severe","Extreme"),value=c(1,2,3))
-
-for(i in 1:nrow(severity_classes)){
-  N<-which(grepl(severity_classes$class[i],names(severity)))
-  severity[[N]]<-severity[[N]]*severity_classes$value[i]
-}
-
-haz_index<-recurrence*severity
-
-haz_index<-terra::rast(lapply(1:length(hazards),FUN=function(i){
-  N<-paste0(hazards[i],"_prop_",severity_classes$class)
-  X<-terra::app(haz_index[[N]],sum,na.rm=T)
-  names(X)<-paste0(hazards[i],"_hazard_index")
-  X
-}))
-
-
-haz_comb<-terra::app(haz_index[[paste0(Analysis_Vars,"_hazard_index")]],sum,na.rm=T)
-
-
-# Combined Hazards
+# Combined Hazards - This section needs updating to show the most severe hazard(s) for a pixel
 HazComb<-HazCombWrapper(Hazards=Hazards,
                  SaveDir=SaveDir,
                  Scenarios=Scenarios,

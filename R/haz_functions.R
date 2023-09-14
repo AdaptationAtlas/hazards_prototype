@@ -282,12 +282,9 @@ HazardWrapper<-function(Thresholds,FileName,SaveDir,PropThreshold,PropTDir,hazar
       }
       
       Threshold_focal<-Thresholds[Variable==Thresholds_unique$Variable[i] & Severity_class==Thresholds_unique$Severity_class[i]]
-      Threshold_focal[Direction=="<",Threshold:=upper_lim
-      ][Direction==">",Threshold:=lower_lim
-      ][,c("lower_lim","upper_lim"):=NULL
-      ][,Code:=paste0(Direction,Threshold)
-      ][,Code:=gsub("<","L",Code)
-      ][,Code:=gsub(">","G",Code)]
+      Threshold_focal[,Code:=paste0(Direction,threshold)
+                      ][,Code:=gsub("<","L",Code)
+                        ][,Code:=gsub(">","G",Code)]
       TCode<-Threshold_focal[,paste(Code,collapse="_")]
       
       
@@ -300,7 +297,7 @@ HazardWrapper<-function(Thresholds,FileName,SaveDir,PropThreshold,PropTDir,hazar
         
         X<-ClassifyFun(Data=Data,
                        VAR=Thresholds_unique[i,Variable],
-                       Threshold=Threshold_focal$Threshold,
+                       Threshold=Threshold_focal$threshold,
                        Direction=Threshold_focal$Direction,
                        PropThreshold=PropThreshold,
                        PropTDir=PropTDir)
@@ -888,4 +885,86 @@ PrepTable<-function(Data,Method,Scenario,AdminLevel,A1,A2,Table){
   setnames(Data,"Region","Admin")
   
   Data
+}
+
+#' Hazard Index Calculation
+#'
+#' Calculates the hazard index for a set of hazards and scenarios.
+#'
+#' @param Hazards A list of hazard datasets.
+#' @param verbose A logical value indicating whether to display progress information. Default is \code{TRUE}.
+#' @param SaveDir The directory for saving the hazard index files.
+#' @param crop_choice The crop choice for which the hazard index is calculated.
+#'
+#' @return A list of hazard index datasets.
+#'
+#' @export
+hazard_index<-function(Hazards,verbose=T,SaveDir,crop_choice){
+  scenario_names<-names(Hazards)
+  severity_classes<-data.table(class=c("Moderate","Severe","Extreme"),value=c(1,2,3))
+  
+  haz_index<-lapply(1:length(scenario_names),FUN = function(j){
+    
+    haz_index_filename<-paste0(SaveDir,"/hi_",crop_choice,"_",scenario_names[j],".tif")
+    
+    if(!file.exists(haz_index_filename)){
+      
+      data<-Hazards[[scenario_names[[j]]]]
+      
+      # recurrence 
+      recurrence<-data[[grep("_prop_",names(data),value=T)]]
+      
+      # Subtract severe and extreme from moderate, and severe from extreme
+      for(i in 1:length(hazards)){
+        
+        if(verbose){
+          # Display progress
+          cat('\r                                                                                                                     ')
+          cat('\r',paste0("Scenario ", scenario_names[j]," | Hazard ",hazards[i]))
+          flush.console()
+        }
+        
+        N<-paste0(hazards[i],"_prop_",severity_classes$class)
+        N1<-which(names(recurrence)==N[1])
+        N2<-which(names(recurrence)==N[2])
+        X<-recurrence[[N[1]]]-recurrence[[N[2]]]-recurrence[[N[3]]]
+        X[][X[]<0 & !is.na(X[])]<-0
+        recurrence[[N1]]<-X
+        Y<-recurrence[[N2]]-recurrence[[N[3]]]
+        Y[][Y[]<0 & !is.na(Y[])]<-0
+        recurrence[[N2]]<-Y
+      }
+      
+      
+      severity<-data[[grep("_propclass",names(data),value=T)]]
+      
+      
+      for(i in 1:nrow(severity_classes)){
+        N<-which(grepl(severity_classes$class[i],names(severity)))
+        severity[[N]]<-severity[[N]]*severity_classes$value[i]
+      }
+      
+      haz_index<-recurrence*severity
+      
+      haz_index<-terra::rast(lapply(1:length(hazards),FUN=function(i){
+        N<-paste0(hazards[i],"_prop_",severity_classes$class)
+        X<-terra::app(haz_index[[N]],sum,na.rm=T)
+        names(X)<-paste0(hazards[i],"_hazard_index")
+        X
+      }))
+      
+      terra::writeRaster(haz_index,file=haz_index_filename)
+      
+      haz_index
+      
+    }else{
+      haz_index<-terra::rast(haz_index_filename)
+    }
+    
+    haz_index
+    
+  })
+  names(haz_index)<-scenario_names
+  
+  return(haz_index)
 }

@@ -713,21 +713,21 @@ textInput(inputId="H12_Name",
 
 Create table of thresholds and filenames:
 ```{r Analysis - Create thresholds table and filenames, echo=F}
+crop_choice<-"generic" # this will need to become dynamic
+
 Thresholds<-reactive({
   haz_names<-data.table(Variable=hazards,
              Renamed=c(input$H1_Name,input$H2_Name,input$H3_Name,input$H4_Name,input$H5_Name,input$H6_Name,input$H7_Name,input$H8_Name,input$H9_Name,input$H10_Name,input$H11_Name,input$H12_Name))
   
-  Thresholds<-haz_class[description!="No significant stress",list(index_name,description,lower_lim,upper_lim,direction)]
+  
+  Thresholds<-haz_class[description!="No significant stress" & crop=crop_choice,list(index_name,description,direction,threshold)]
   setnames(Thresholds,c("index_name","description","direction"),c("Variable","Severity_class","Direction"))
   Thresholds<-merge(Thresholds,haz_names,by="Variable",all.x=T)
   
-  Thresholds[Direction=="<",Threshold:=upper_lim
-           ][Direction==">",Threshold:=lower_lim
-             ][,Code:=paste0(Direction,Threshold)
+  Thresholds[,Code:=paste0(Direction,threshold)
                ][,Code:=gsub("<","L",Code)
                  ][,Code:=gsub(">","G",Code)
-                   ][,Threshold:=NULL
-                     ][,Code:=paste0(Variable,Code)]
+                   ][,Code:=paste0(Variable,Code)]
   Thresholds
   })
 
