@@ -1,6 +1,9 @@
 require(data.table)
 require(terra)
 
+source("https://github.com/AdaptationAtlas/hazards_prototype/raw/main/R/dl_geoboundaries.R")
+source("https://github.com/AdaptationAtlas/hazards_prototype/raw/main/R/try_download.R")
+
 # Load metadata for countries to consider in the atlas - exclude islands for which we do not have climate data
 countries_metadata<-fread("Data/metadata/countries.csv")[excluded_island==FALSE]
 
@@ -17,6 +20,7 @@ dl_geoboundaries(savedir="Data/geoboundaries/gbOpen",
                  release="gbOpen",
                  attempts=3)
 
+# Process data into a single file for the selected countries
 
 # gbHumanitarian
 # unzip data
@@ -69,3 +73,7 @@ files_adm2<-files_both[grepl("ADM2",files_both)]
 admin2<-lapply(files_adm2,FUN=function(file){terra::vect(file)})
 admin2<-do.call("rbind",admin2)
 terra::writeVector(admin2,"Data/geoboundaries/admin2.shp",overwrite=T)
+
+# Delete downloaded data?
+# unlink("Data/geoboundaries/gbHumanitarian",recursive=T)
+# unlink("Data/geoboundaries/gbOpen",recursive=T)
