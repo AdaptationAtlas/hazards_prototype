@@ -139,6 +139,8 @@ Infinite2NA<-function(Data){
 ClassifyFun<-function(Data,VAR,Threshold,Direction,PropThreshold,PropTDir){
   Variable<-terra::app(Data,Infinite2NA)
   VarMean<- terra::app(Variable,mean,na.rm=T)
+  VarMin<- terra::app(Variable,min,na.rm=T)
+  VarMax<- terra::app(Variable,mean,na.rm=T)
   
   VarMClass<-terra::rast(lapply(1:length(Threshold),FUN=function(i){
     VarMClass<-VarMean
@@ -180,6 +182,27 @@ ClassifyFun<-function(Data,VAR,Threshold,Direction,PropThreshold,PropTDir){
   Var<-c(VarMean,VarMClass,VarProp,VarPClass)
   names(Var)<-paste0(VAR,c("_mean","_meanclass","_prop","_propclass"))
   Var<-c(Var,VarExceedMax,VarExceedMean)
+  return(Var)
+}
+
+#' Descriptives Fun
+#'
+#' Return mean,min,max and deviation for variable stacks
+#'
+#' @param Data the input data
+#' @param VAR the variable name
+#' @return a vector containing the mean, min, max and sd of each pixel in the stack
+#' 
+#' @export
+DescriptivesFun<-function(Data,VAR){
+  Variable<-terra::app(Data,Infinite2NA)
+  VarMean<- terra::app(Variable,mean,na.rm=T)
+  VarMin<- terra::app(Variable,min,na.rm=T)
+  VarMax<- terra::app(Variable,mean,na.rm=T)
+  VarSD<- terra::app(Variable,sd,na.rm=T)
+  
+  Var<-c(VarMean,VarMin,VarMax,VarSD)
+  names(Var)<-paste0(VAR,c("_mean","_min","_max","_sd"))
   return(Var)
 }
 
@@ -270,7 +293,7 @@ HazardWrapper<-function(Thresholds,FileName,SaveDir,PropThreshold,PropTDir,hazar
   Files<-list.files(hazard_dir,".tif",full.names = T)
   Files<-Files[grepl("historical|ENSEMBLE",Files) & !grepl("tif.aux.xml",Files)]
   
-  Thresholds_unique<-unique(Thresholds[,list(Variable,Renamed,Severity_class)])
+  Thresholds_unique<-unique(Thresholds[,list(Variable,Severity_class)])
   
   Hazards<-lapply(1:nrow(Scenarios),FUN=function(j){
     for(i in 1:nrow(Thresholds_unique)){
@@ -288,12 +311,11 @@ HazardWrapper<-function(Thresholds,FileName,SaveDir,PropThreshold,PropTDir,hazar
       TCode<-Threshold_focal[,paste(Code,collapse="_")]
       
       
-      save_file<-paste0(SaveDir,"/Haz-",Scenarios$Scenario[j],"-",Scenarios$Time[j],"-",Thresholds_unique[i,Variable],"-",TCode,".tif")
+      save_file<-paste0(SaveDir,"/Haz-",Scenarios$Scenario[j],"-",Scenarios$Time[j],"-",Thresholds_unique[i,Variable],"-",TCode,"-",PropThreshold,".tif")
       
       if(!file.exists(save_file)){
         
         Data<-terra::rast(Files[grepl(Scenarios$Scenario[j],Files) & grepl(Scenarios$Time[j],Files) & grepl(Thresholds_unique$Variable[i],Files)])
-        
         
         X<-ClassifyFun(Data=Data,
                        VAR=Thresholds_unique[i,Variable],
@@ -306,6 +328,8 @@ HazardWrapper<-function(Thresholds,FileName,SaveDir,PropThreshold,PropTDir,hazar
         X<-terra::rast(save_file)
       }
       
+      names(X)[2:terra::nlyr(X)]<-paste0(names(X)[2:terra::nlyr(X)],"_",Thresholds_unique[i,Severity_class])
+      
       if(i==1){
         Hazards<-X
       }else{
@@ -314,21 +338,15 @@ HazardWrapper<-function(Thresholds,FileName,SaveDir,PropThreshold,PropTDir,hazar
     }
     
     Hazards
-  })
-  
-  Thresholds_unique<-unique(Thresholds_unique[,list(Variable,Renamed)])
-  
-  Hazards<-lapply(1:length(Hazards),FUN=function(i){
-    HAZ<-Hazards[[i]]
-    names(HAZ)<-mgsub::mgsub(names(HAZ),Thresholds_unique[,paste0(Variable,"_")],Thresholds_unique[,paste0(Renamed,"_")])
-    HAZ
+    keep<-which(names(Hazards) %in% paste0(Thresholds_unique[,unique(Variable)],"_mean"))
+    Hazards<-Hazards[[-keep[-seq(1,Thresholds_unique[,length(unique(Variable))*3],3)]]]
+    Hazards
   })
   
   names(Hazards)<-paste0(Scenarios$Scenario,"-",Scenarios$Time)
   
   return(Hazards)
 }
-
 #' HazCombWrapper
 #'
 #' Combines hazard data for different scenarios and calculates mean and prop values.
@@ -595,6 +613,8 @@ harmonize_rast_cat_cols<-function(x,Palette){
 #' @param PalName A character string specifying the name of the palette.
 #' @param N An integer specifying the number of colors in the palette.
 #' @param Names A character vector containing names for the colors in the palette.
+#' @param invert 
+#' @param alpha
 #'
 #' @return A character vector representing the color palette.
 #'
@@ -608,7 +628,7 @@ harmonize_rast_cat_cols<-function(x,Palette){
 #' @importFrom MetBrewer MetPalettes
 #' @importFrom viridis viridis
 #' @importFrom colorRampPalette colorRampPalette
-PalFun<-function(PalName,N,Names) {
+PalFun<-function(PalName,N,Names=NA,invert=F,alpha=1) {
   Viridis<-data.table(Source="viridis",Palette=c("magma","inferno","plasma","viridis","cividis","rocket","mako","turbo"))
   Met<-data.table(Source="MetBrewer",Palette=names(MetBrewer::MetPalettes))
   Wes<-data.table(Source="Wes",Palette=names(wesanderson::wes_palettes))
@@ -630,33 +650,21 @@ PalFun<-function(PalName,N,Names) {
       PAL<-wesanderson::wes_palette(name=PalName, n=N, type="continuous")
     }
   }
-  names(PAL)<-Names
+  
+  if(invert){
+    PAL<-rev(PAL)
+  }
+  
+  if(alpha!=1){
+    PAL<-add.alpha(PAL,alpha=alpha)
+  }
+  
+  if(!(is.na(Names)|is.null(Names))){
+    names(PAL)<-Names
+  }
+  
   
   return(PAL)
-}
-
-#' Adjusted USD Function
-#'
-#' This function adjusts a given value in USD currency based on the past and future exchange rates and indices.
-#'
-#' @param value A numeric value representing an amount in USD currency.
-#' @param xrat_past A numeric value representing the past exchange rate.
-#' @param xrat_fut A numeric value representing the future exchange rate.
-#' @param index_past A numeric value representing the past index.
-#' @param index_fut A numeric value representing the future index.
-#' 
-#' @return A numeric value representing the adjusted amount in USD currency.
-#' 
-#' @examples
-#' adj_usd(100, 0.85, 0.90, 200, 220)
-#' 
-#' @export
-adj_usd<-function(value,xrat_past,xrat_fut,index_past,index_fut){
-  X<-value*xrat_past
-  X<-X/index_past
-  X<-X*index_fut
-  X<-X/xrat_fut
-  return(X)
 }
 
 #' Extract Trends Data
@@ -899,22 +907,22 @@ PrepTable<-function(Data,Method,Scenario,AdminLevel,A1,A2,Table){
 #' @return A list of hazard index datasets.
 #'
 #' @export
-hazard_index<-function(Hazards,verbose=T,SaveDir,crop_choice){
+hazard_index<-function(Hazards,verbose=T,SaveDir,crop_choice,severity_classes,PropThreshold){
   scenario_names<-names(Hazards)
-  severity_classes<-data.table(class=c("Moderate","Severe","Extreme"),value=c(1,2,3))
   
   haz_index<-lapply(1:length(scenario_names),FUN = function(j){
     
-    haz_index_filename<-paste0(SaveDir,"/hi_",crop_choice,"_",scenario_names[j],".tif")
+    haz_index_filename<-paste0(SaveDir,"/hi_",crop_choice,"_",scenario_names[j],"-",PropThreshold,".tif")
     
     if(!file.exists(haz_index_filename)){
       
-      data<-Hazards[[scenario_names[[j]]]]
-      
       # recurrence 
-      recurrence<-data[[grep("_prop_",names(data),value=T)]]
+      data<-Hazards[[scenario_names[[j]]]]
+      data<-data[[grep("_prop_",names(data),value=T)]]
       
       # Subtract severe and extreme from moderate, and severe from extreme
+      # Note that this section is not generalization and works with fixed severity_classes table, in future we should improve this to be able
+      # work with tables of different lengths.
       for(i in 1:length(hazards)){
         
         if(verbose){
@@ -925,31 +933,25 @@ hazard_index<-function(Hazards,verbose=T,SaveDir,crop_choice){
         }
         
         N<-paste0(hazards[i],"_prop_",severity_classes$class)
-        N1<-which(names(recurrence)==N[1])
-        N2<-which(names(recurrence)==N[2])
-        X<-recurrence[[N[1]]]-recurrence[[N[2]]]-recurrence[[N[3]]]
+        N1<-which(names(data)==N[1])
+        N2<-which(names(data)==N[2])
+        X<-data[[N[1]]]-data[[N[2]]]-data[[N[3]]]
         X[][X[]<0 & !is.na(X[])]<-0
-        recurrence[[N1]]<-X
-        Y<-recurrence[[N2]]-recurrence[[N[3]]]
+        data[[N1]]<-X
+        Y<-data[[N2]]-data[[N[3]]]
         Y[][Y[]<0 & !is.na(Y[])]<-0
-        recurrence[[N2]]<-Y
+        data[[N2]]<-Y
       }
-      
-      
-      severity<-data[[grep("_propclass",names(data),value=T)]]
-      
       
       for(i in 1:nrow(severity_classes)){
-        N<-which(grepl(severity_classes$class[i],names(severity)))
-        severity[[N]]<-severity[[N]]*severity_classes$value[i]
+        N<-grep(severity_classes$class[i],names(data))
+        data[[N]]<-data[[N]]*severity_classes$value[i]
       }
-      
-      haz_index<-recurrence*severity
       
       haz_index<-terra::rast(lapply(1:length(hazards),FUN=function(i){
         N<-paste0(hazards[i],"_prop_",severity_classes$class)
-        X<-terra::app(haz_index[[N]],sum,na.rm=T)
-        names(X)<-paste0(hazards[i],"_hazard_index")
+        X<-terra::app(data[[N]],sum,na.rm=T)
+        names(X)<-paste0(hazards[i],"_hi")
         X
       }))
       
@@ -967,4 +969,154 @@ hazard_index<-function(Hazards,verbose=T,SaveDir,crop_choice){
   names(haz_index)<-scenario_names
   
   return(haz_index)
+}
+
+#' Add Alpha to Colours
+#'
+#' This function takes a vector of colours and adds an alpha (transparency) value to each colour.
+#' The alpha value ranges from 0 (completely transparent) to 1 (completely opaque). Default alpha value is 1.
+#'
+#' @param col A vector of colours.
+#' @param alpha The alpha value to add to each colour. Must be a numeric value between 0 and 1.
+#'
+#' @return A vector of modified colours with added alpha value.
+#' @export
+#'
+#' @examples
+add.alpha <- function(col, alpha=1){
+  if(missing(col))
+    stop("Please provide a vector of colours.")
+  apply(sapply(col, col2rgb)/255, 2, 
+        function(x) 
+          rgb(x[1], x[2], x[3], alpha=alpha))  
+}
+
+#' Set Hazard Severity
+#'
+#' This function sets the severity of hazards for different scenarios and saves the result in a file. If the file already exists, it loads the data from the file.
+#'
+#' @param Hazards A list of hazard data for different scenarios.
+#' @param verbose If TRUE, it displays progress.
+#' @param SaveDir The directory to save the output files.
+#' @param crop_choice The choice of crop for which hazards are being set.
+#' @param severity_classes A table of severity classes.
+#' @param PropThreshold A threshold for hazard propagation.
+#'
+#' @return A list of hazard severity data for different scenarios.
+#'
+#' @importFrom data.table data.table
+#' @importFrom terra app
+#' @importFrom terra rast
+#' @importFrom terra writeRaster
+#' @importFrom terra values
+#' @importFrom terra levels
+#' @importFrom terra nlyr
+#'
+#' @export
+hazard_severity<-function(Hazards,verbose=T,SaveDir,crop_choice,severity_classes,PropThreshold){
+  
+  severity_classes2<-rbind(data.table(class="None",value=0),severity_classes)
+  
+  scenario_names<-names(Hazards)
+  
+  data<-lapply(1:length(Hazards),FUN = function(j){
+    
+    filename<-paste0(SaveDir,"/hs_",crop_choice,"_",scenario_names[j],"-",PropThreshold,".tif")
+    
+    if(!file.exists(filename)){
+      
+      # Subtract severe and extreme from moderate, and severe from extreme
+      data<-terra::rast(lapply(1:length(hazards),FUN=function(i){
+        
+        if(verbose){
+          # Display progress
+          cat('\r                                                                                                                     ')
+          cat('\r',paste0("Scenario ", scenario_names[j]," | Hazard ",hazards[i]))
+          flush.console()
+        }
+        
+        N<-paste0(hazards[i],"_propclass_",severity_classes$class)
+        sev<-Hazards[[j]][[N]]
+        sev<-terra::rast(lapply(1:nlyr(sev),FUN=function(k){
+          sev[[k]]*severity_classes[k,value]
+        }))
+        sev<-terra::app(sev,max,na.rm=T)
+        
+        sev_vals<-unique(values(sev))
+        sev_vals<-sev_vals[!is.na(sev_vals)]
+        
+        levels(sev)<-severity_classes2[value %in% sev_vals,list(value,class)]
+        names(sev)<-paste(hazards[i],"_propclass_merged")
+        
+        sev
+      }))
+      
+      terra::writeRaster(data,file=filename)
+      
+      data
+      
+    }else{
+      data<-terra::rast(filename)
+    }
+    
+    data
+    
+  })
+  names(data)<-scenario_names
+  
+  return(data)
+}
+
+#' Create Breaks for Data
+#'
+#' This function takes a data object and creates breaks for the values in the data.
+#'
+#' @param data A data object.
+#' 
+#' @return A numeric vector of break points.
+#' 
+#' @examples
+#' break_fun(data.frame(values = c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10))) # Output: c(1, 2, 3, 4, 5, 6, 7, 8, 9, 10)
+#' break_fun(data.frame(values = c(1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5))) # Output: c(1.5, 2.5, 3.5, 4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5)
+#' 
+#' @export
+break_fun<-function(data){
+  vals<-as.vector(values(data))
+  min_val<-min(vals,na.rm=T)
+  max_val<-max(vals,na.rm=T)
+  div<-(max_val-min_val)/10
+  dp<-log10(div)
+  if(dp>0){dp<-ceiling(dp)} 
+  if(dp<0){dp<-floor(dp)}
+  dp<-10^dp
+  max_val<-ceiling(max_val*10)/10
+  min_val<-floor(min_val*10)/10
+  breaks<-seq(min_val,max_val,dp)
+  # breaks<-seq(min_val,max_val,length=n) # alternative approach but gives breaks with many decimal places.
+  return(breaks)
+}
+
+#' Range function
+#'
+#' Calculates the range of a numeric vector, rounded to the nearest decimal place.
+#'
+#' @param data A numeric vector.
+#' @return A vector containing the minimum and maximum values of the input vector.
+#' @export
+#'
+#' @examples
+range_fun<-function(data){
+  vals<-as.vector(values(data))
+  min_val<-min(vals,na.rm=T)
+  max_val<-max(vals,na.rm=T)
+  div<-(max_val-min_val)/10
+  dp<-log10(div)
+  if(dp>0){dp<-ceiling(dp)} 
+  if(dp<0){dp<-floor(dp)}
+  dp<-10^dp
+  max_val<-ceiling(max_val*10)/10
+  min_val<-floor(min_val*10)/10
+  range<-c(min_val,max_val)
+  # breaks<-seq(min_val,max_val,length=n) # alternative approach but gives breaks with many decimal places.
+  return(range)
 }
