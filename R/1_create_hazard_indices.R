@@ -3,6 +3,8 @@ require(data.table)
 require(terra)
 require(doFuture)
 
+# NEED TO FIX NEGATIVE VALUES IN PRECIP
+
 # Load metadata for countries to consider in the atlas - exclude islands for which we do not have climate data
 countries_metadata<-fread("Data/metadata/countries.csv")[excluded_island==FALSE]
 
@@ -26,6 +28,7 @@ Times<-c("2021_2040","2041_2060")
 
 # Create combinations of scenarios and times
 Scenarios<-rbind(data.table(Scenario="historic",Time="historic"),data.table(expand.grid(Scenario=Scenarios,Time=Times)))
+Scenarios[,combined:=paste0(Scenario,"-",Time)]
 
 # Set hazards to include in analysis
 hazards<-c("NDD","NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG")
@@ -224,7 +227,6 @@ if(!dir.exists(save_dir_means)){
   dir.create(save_dir_means,recursive=T)
 }
 
-Scenarios[,combined:=paste0(Scenario,"-",Time)]
 
 data<-lapply(1:length(countries),FUN=function(j){
   country_choice<-countries[j]
@@ -243,8 +245,8 @@ data<-lapply(1:length(countries),FUN=function(j){
     }))
     
     names(means)<-paste0(scenario,"_",names(means))
-    names(means)<-gsub("_mean_mean","-mean_mean",names(means))
-    names(means)<-gsub("_max_mean","-max_mean",names(means))
+    names(means)<-gsub("_mean_mean","mean_mean",names(means))
+    names(means)<-gsub("_max_mean","max_mean",names(means))
     means
    }))
   means
@@ -253,7 +255,19 @@ data<-lapply(1:length(countries),FUN=function(j){
 data<-terra::sprc(data)
 data<-terra::mosaic(data)
 
-terra::writeRaster(data,filename = paste0(save_dir_means,"/haz_means.tif"))
+# Fix negative values in precip
+PTOT<-grep("PTOT",names(data),value=T)
+PTOT_layers<-terra::rast(lapply(1:length(PTOT),FUN=function(i){
+  X<-data[[PTOT[i]]]
+  vals<-values(X) 
+  vals[vals<0 & !is.na(vals)]<-NA
+  X[]<-vals
+  X
+}))
+
+data<-c(data[[!grepl("PTOT",names(data))]],PTOT_layers)
+
+terra::writeRaster(data,filename = paste0(save_dir_means,"/haz_means.tif"),overwrite=T)
 
 # create change stack
 data_hist<-data[[grep("historic-historic",names(data))]]
@@ -264,15 +278,15 @@ change<-terra::rast(lapply(Scenarios[Scenario!="historic",combined],FUN=function
   data_fut
 }))
 
-terra::writeRaster(change,filename = paste0(save_dir_means,"/haz_means_change.tif"))
+terra::writeRaster(change,filename = paste0(save_dir_means,"/haz_means_change.tif"),overwrite=T)
 
 
 # Merge hazard indices across countries ####
 filenames<-list.files(save_dir_all,full.names = T)
+filenames<-filenames[!grepl("combined_",filenames)]
 for(i in 1:length(crop_choices)){
   crop<-crop_choices[i]
   save_name<-paste0(save_dir_all,"/combined_",crop,"_hi.tif")
-  save_name<-paste0(save_dir_all,"/combined_",crop,"_hi_change.tif")
   
   # Display progress
   cat('\r                                                                                                                     ')
@@ -284,6 +298,10 @@ for(i in 1:length(crop_choices)){
     
     data<-terra::sprc(lapply(files,terra::rast))
     data<-terra::mosaic(data)
+    
+    # Remove delimiter in hazard naming (HSH_max->HSHmax)
+    names(data)<-gsub("_max","max",names(data))
+    names(data)<-gsub("_mean","mean",names(data))
     
     terra::writeRaster(data,filename = save_name)
   }
