@@ -20,6 +20,7 @@ dl_geoboundaries(savedir="Data/geoboundaries/gbOpen",
                  release="gbOpen",
                  attempts=3)
 
+
 # Process data into a single file for the selected countries
 
 # gbHumanitarian
@@ -35,7 +36,7 @@ files_hum<-list.files("Data/geoboundaries/gbHumanitarian",".shp",full.names = T)
 # do not use simplified boundaries
 files_hum<-files_hum[!grepl("simplified",files_hum)]
 # subset to atlas countries
-files_hum<-files_hum[grepl(paste0(iso3_required,collapse="|"),files_hum)]
+files_hum<-files_hum[grepl(paste0(countries_metadata$iso3,collapse="|"),files_hum)]
 
 # gbOpen
 # unzip data
@@ -51,7 +52,7 @@ files_open<-list.files("Data/geoboundaries/gbOpen",".shp",full.names = T)
 files_open<-files_open[!grepl("simplified",files_open)]
 
 # which countries are missing in gbHumanitarian?
-missing<-sapply(iso3_required,FUN=function(iso3){any(grepl(iso3,files_hum))})
+missing<-sapply(countries_metadata$iso3,FUN=function(iso3){any(grepl(iso3,files_hum))})
 missing<-names(missing)[!missing]
 
 files_open<-files_open[grepl(paste0(missing,collapse="|"),files_open)]
