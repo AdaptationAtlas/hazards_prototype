@@ -29,7 +29,7 @@ admin2$iso3<-admin2$shapeGroup
 
 # Several Admin0 fields are missing
 admin0$ID<-1:length(admin0)
-admin0_rast<-terra::rasterize(admin0, rast(), field = "ID")
+admin0_rast<-terra::rasterize(admin0, base_rast, field = "ID")
 Mode <- function(x) {
   x<-x$value
   x<-x[!is.na(x)]
