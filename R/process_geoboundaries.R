@@ -43,10 +43,6 @@ X<-sapply(X,Mode)
 admin2$admin0_name<-admin0$admin0_name[match(X,admin0$ID)]
 admin2$iso3<-admin0$iso3[match(X,admin0$ID)]
 
-# Several Admin1 fields are missing
-data.frame(admin1[is.na(admin1$admin_name)])
-
-
 # Add Admin 1 to Admin2
 admin1$ID <- 1:length(admin1)
 admin1_rast<-terra::rasterize(admin1,base_rast,"ID")
@@ -56,6 +52,7 @@ X<-sapply(X,Mode)
 admin2$admin1_name<-admin1$admin1_name[match(X,admin1$ID)]
 admin2$admin2_name<-str_to_title(admin2$shapeName)
 
+
 # There are few instances where the match doesn't work, we will need to address these
 data.frame(admin2[is.na(admin2$admin1_name)])
 missing_a1 <- c("Collines", "Collines", "Banjul", "Banjul", "Banjul",
@@ -64,13 +61,22 @@ admin2$admin1_name[is.na(admin2$admin1_name)] <- missing_a1
 # DOUBLE CHECK @Pete - for me length of list below != length of missing.. but I may be testing a different admin dataset
 # admin2$admin1_name[is.na(admin2$admin1_name)]<-c("Banjul","Banjul","Collines","Elobey Chico","Elobey Grande")
 
+# Add missing iso3 codes to admin2
 data.frame(admin2[is.na(admin2$admin0_name)])
 admin2$iso3[is.na(admin2$admin0_name)]<-admin2$shapeGroup[is.na(admin2$admin0_name)]
+# Update names for missing iso3 codes
 admin2$admin0_name[is.na(admin2$admin0_name)]<-countrycode::countrycode(admin2$shapeGroup[is.na(admin2$admin0_name)], origin = 'iso3c', destination = 'country.name')
 
-data.frame(admin1[is.na(admin1$admin0_name)])
-#admin1$shapeGroup[is.na(admin1$admin0_name)]<-countrycode::countrycode(admin1$shapeGroup[is.na(admin1$admin0_name)], origin = 'iso3c', destination = 'country.name')
+# Some admin 1 names appear to be missing
+admin1[is.na(admin1$admin_name)]
+# NA polygon appears to be a duplicate, remove one of the duplicates
+N<-which(is.na(admin1$admin_name))
+admin1<-admin1[-N[2]]
 
+admin1$admin_name[is.na(admin1$admin_name)]<-"Collines"
+admin1$admin1_name[is.na(admin1$admin1_name)]<-"Collines"
+
+nrow(admin1[is.na(admin1$admin_name)]) == 0
 
 admin0[, c("ID", "shapeName", "shapeISO", "shapeID", "shapeGroup", "shapeType", "agg_n")]<-NULL
 admin1[, c("ID", "shapeName", "shapeISO", "shapeID", "shapeGroup", "shapeType", "agg_n")] <- NULL
@@ -78,10 +84,13 @@ admin2[, c("ID", "shapeName", "shapeISO", "shapeID", "shapeGroup", "shapeType", 
 
 # Merge polygons
 
+
 # Pre-calc the correct unique aggregated rows
+
 a0_check <- nrow(unique(as.data.frame(admin0)))
 a1_check <- nrow(unique(as.data.frame(admin1)))
 a2_check <- nrow(unique(as.data.frame(admin2)))
+
 
 # Aggregate
 admin0 <- terra::aggregate(admin0,
@@ -108,10 +117,6 @@ if (any(!sort(unique(admin0$admin_name)) == sort(unique(admin1$admin0_name)))) {
 if (any(!sort(unique(admin0$admin_name)) == sort(unique(admin2$admin0_name)))) {
   stop("Not all Admin 0 match with Admin 1")
 }
-
-
-
-
 
 # Save processed files
 terra::writeVector(admin0,file="Data/geoboundaries/admin0_processed.shp",overwrite=T)
