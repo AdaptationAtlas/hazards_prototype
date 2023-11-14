@@ -3,7 +3,6 @@ require(data.table)
 require(terra)
 require(doFuture)
 
-# NEED TO FIX NEGATIVE VALUES IN PRECIP
 
 # Set scenarios and time frames to analyse
 Scenarios<-c("ssp245","ssp585")
@@ -16,8 +15,18 @@ Scenarios[,combined:=paste0(Scenario,"-",Time)]
 # Set hazards to include in analysis
 hazards<-c("NDD","NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG")
 haz_meta<-data.table::fread("./Data/metadata/haz_metadata.csv")
-haz_class<-fread("./Data/metadata/haz_classes.csv")[,list(index_name,description,direction,crop,threshold)]
+haz_class<-fread("./Data/metadata/haz_classes.csv")[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
 haz_classes<-unique(haz_class$description)
+
+# duplicate generic non-heat stress variables for livestock
+livestock<-haz_class[crop!="generic",unique(crop)]
+non_heat<-c("NDD","NTx40","NTx35","NDWS","TAI","NDWL0","PTOT")
+
+haz_class<-rbind(haz_class[crop=="generic"],
+  rbindlist(lapply(1:length(livestock),FUN=function(i){
+    rbind(haz_class[crop=="generic" & index_name %in% non_heat][,crop:=livestock[i]],haz_class[crop==livestock[i]])
+  }))
+)
 
 # Pull out severity classes and associate impact scores
 severity_classes<-unique(fread("./Data/metadata/haz_classes.csv")[,list(description,value)])
@@ -103,6 +112,8 @@ ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
 haz_class2<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
   Y<-ec_haz[crop==ms_codes[i,Fullname]]
   X<-haz_class[!index_name %in% ec_haz[,unique(index_name)]]
+  # Remove THI & HSH this is not for crops
+  X<-X[!grepl("THI|HSH",index_name)]
   X$crop<-ms_codes[i,Fullname]
   rbind(Y,X)
 }))
@@ -113,14 +124,14 @@ haz_class<-rbind(haz_class,haz_class2)
 PropThreshold<-0.5
 PropTDir=">"
 
-#  Country loop starts here
 timeframe_choice<-"annual"
+#timeframe_choice<-"jagermeyr"
 
 # Where are climate data stacks saved?
 clim_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
 
 # where to save classified climate hazards?
-haz_class_dir<-paste0("Data/hazards_classified/",timeframe_choice)
+haz_class_dir<-paste0("Data/hazard_classified/",timeframe_choice)
 if(!dir.exists(haz_class_dir)){
   dir.create(haz_class_dir,recursive = T)
 }
@@ -131,7 +142,10 @@ if(!dir.exists(haz_index_dir)){
   dir.create(haz_index_dir,recursive=T)
 }
 
-crop_choices<-c("generic",ms_codes[,sort(Fullname)])
+crop_choices<-c(fread("./Data/metadata/haz_classes.csv")[,unique(crop)],ms_codes[,sort(Fullname)])
+
+# Calculate hazard indices?
+calc_hi<-T
 
 # Create classify data for timeperiod x scenario (for the selected timeframe annual/jagermeyer) ####
 
@@ -139,10 +153,10 @@ registerDoFuture()
 plan("multisession", workers = 10)
 
 #  Crop loop starts here
-  foreach(j = 1:length(crop_choices)) %dopar% { # Can hit error when parallel due to different workers trying to write the same file
+foreach(j = 1:length(crop_choices)) %dopar% { # Can hit error when parallel due to different workers trying to write the same file
     # To solve issue loop over unique threshold x variable combinations rather than crops
     # This will require putting the foreach loop into the hazard wrapper function
-  #for(j in 1:length(crop_choices)){ 
+ #for(j in 1:length(crop_choices)){ 
     
     # Display progress
     print(paste0("Crop ",crop_choices[j]))
@@ -172,9 +186,10 @@ plan("multisession", workers = 10)
                             Scenarios=Scenarios,
                             verbose=T)
       
+      if(calc_hi==T){
         # Hazard Index = severity x recurrence
         haz_index<-hazard_index(Data=Hazards,
-                                hazards=hazards,
+                                hazards=unique(Thresholds$Variable),
                                 verbose = T,
                                 SaveDir=haz_index_dir,
                                 crop_choice = crop_choice,
@@ -190,11 +205,13 @@ plan("multisession", workers = 10)
         
         writeRaster(haz_index,filename=save_name)
       }
+      }
     }
     
 
 # Calculate change for hazard index ####
 
+if(calc_hi){
 files_hi<-paste0("hi_",crop_choices,"-",PropThreshold,".tif")
 
 
@@ -221,7 +238,7 @@ data<-lapply(1:length(crop_choices),FUN=function(j){
   terra::writeRaster(change,filename = paste0(haz_index_dir,"/hi_",crop,"-",PropThreshold,"_change.tif"),overwrite=T)
   
 })
-
+}
 
 # Calculate change for classified values ####
 files<-list.files(haz_class_dir,".tif",full.names = T)
@@ -238,23 +255,278 @@ for(i in 1:length(files_hist)){
     data_fut<-terra::rast(files_fut[j])
     # Display progress
     cat('\r                                                                                                                     ')
-    cat('\r',paste0("Threshold: ",i," | Scenario: ",j))
+    cat('\r',paste0("File: ",i," | Scenario: ",j))
     flush.console()
     
+    save_name_change<-gsub(".tif","_change.tif",files_fut[j])  
+    
+    if(!file.exists(save_name_change)){
     change<-data_fut-data_hist
     names(change)<-paste0(names(change),"_change")
     
-    save_name_change<-gsub(".tif","_change.tif",files_fut[j])  
   
     terra::writeRaster(change,filename = save_name_change,overwrite=T)
+    }
     
   }
  
- }
+}
+
+# Pull out mean values for each timeseries ####
+# where to save mean values
+haz_mean_dir<-paste0("Data/hazard_mean/",timeframe_choice)
+if(!dir.exists(haz_mean_dir)){
+  dir.create(haz_mean_dir,recursive = T)
+}
 
 
-files<-list.files(clim_dir,full.names = T)
-files<-grep("PTOT",files,value=T)
+files<-list.files(haz_class_dir,".tif",full.names = T)
+files<-files[!grepl("_change",files)]
 
-PTOT_hist<-rast(files[1])
-PTOT_fut<-rast(files[2])
+scens<-unique(scenarios_x_hazards$combined)
+
+for(j in 1:length(scens)){
+  filename<-paste0(haz_mean_dir,"/",scens[j],".tif")
+  data<-terra::rast(lapply(1:length(hazards),FUN=function(i){
+      # Display progress
+      cat('\r                                                                                                                     ')
+      cat('\r',paste0("Scenario: ",j," | Hazard: ",i))
+      flush.console()
+    
+      file<-grep(paste0(scens[j],"-",hazards[i]),files,value = T)[1]
+      data<-terra::rast(file)[[1]]
+      names(data)<-paste0(scens[j],"_",names(data))
+      data
+  }))
+  terra::writeRaster(data,file=filename,overwrite=T)
+  
+}
+
+
+# Calculate change mean values ####
+files<-list.files(haz_mean_dir,".tif",full.names = T)
+files<-files[!grepl("change",files)]
+files_hist<-grep("historic",files,value = T)
+files_fut<-files[files!=files_hist]
+
+data_hist<-terra::rast(files_hist[1])
+
+for(j in 1:length(files_fut)){
+  data_fut<-terra::rast(files_fut[j])
+  # Display progress
+  cat('\r                                                                                                                     ')
+  cat('\r',paste0("Scenario: ",j))
+  flush.console()
+  
+  change<-data_fut-data_hist
+  names(change)<-paste0(names(change),"_change")
+  
+  save_name_change<-gsub(".tif","_change.tif",files_fut[j])  
+  
+  terra::writeRaster(change,filename = save_name_change,overwrite=T)
+  
+}
+
+# Create Risk Stacks ####
+haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
+if(!dir.exists(haz_risk_dir)){
+  dir.create(haz_risk_dir,recursive = T)
+}
+
+haz_class[,direction2:="G"
+          ][direction=="<",direction2:="L"]
+# Create stacks of hazard x crop/animal x scenario x timeframe
+haz_class_files<-list.files(haz_class_dir)
+
+# Subset to severe
+severity_classes<-severity_classes[value %in% c(2,3)]
+
+overwrite=F
+
+for(j in 1:nrow(severity_classes)){
+
+  data<-terra::rast(lapply(1:length(crop_choices),FUN=function(i){
+    crop_focus<-crop_choices[i]
+      severity_class<-severity_classes[j,class]
+     haz_class_crop<-haz_class[crop==crop_focus & description == severity_class]
+     grep_vals<-haz_class_crop[,paste0(paste0(index_name,"-",direction2,threshold,"-"),collapse = "|")]
+     haz_class_files2<-haz_class_files[grepl(grep_vals,haz_class_files) & !grepl("change",haz_class_files)]
+   
+     save_name<-paste0(haz_risk_dir,"/",crop_focus,"_",tolower(severity_class),".tif")
+     
+     if(!file.exists(save_name)|overwrite==T){
+     
+     data<-terra::rast(lapply(1:length(haz_class_files2),FUN=function(k){
+       # Display progress
+       cat('\r                                                                                                                     ')
+       cat('\r',paste("Combining layers - crop:",i,crop_focus,"| severity:",j,severity_class,"| file:",k))
+       flush.console()
+       
+       file<-haz_class_files2[k]
+       data<-terra::rast(paste0(haz_class_dir,"/",file))[[3]]
+       if(grepl("TAVG|PTOT",file)){
+         lyr_name<-c(unlist(tstrsplit(file,"-",keep=c(2,3,4,5))),crop_focus,severity_class)
+         lyr_name[4]<-substr(lyr_name[4],1,1)
+         lyr_name[3]<-paste0(lyr_name[3],"_",lyr_name[4])
+         lyr_name<-lyr_name[-4]
+       }else{
+       lyr_name<-c(unlist(tstrsplit(file,"-",keep=c(2,3,4))),crop_focus,severity_class)
+       }
+       lyr_name<-paste0(lyr_name,collapse = "-")
+       names(data)<-lyr_name
+       data
+     }))
+     
+     # Display progress
+     cat('\r                                                                                                                     ')
+     cat('\r',paste("Writing File - crop:",j,crop_focus,"| severity:",j,severity_class))
+     flush.console()
+     terra::writeRaster(data,file=save_name)
+     }
+   
+   }))
+  
+  
+  }
+
+# Interaction of Risks ####
+# Crops  ###
+crop_heat<-c("NTx35","TAVG_G")
+crop_wet<-c("NDWL0","PTOT_G")
+crop_dry<-c("NDD","PTOT_L","NDWS")
+
+combinations<-rbind(
+  expand.grid(heat=crop_heat,wet=crop_wet,dry=crop_dry),
+  expand.grid(heat=crop_heat,wet=crop_wet,dry=NA),
+  expand.grid(heat=crop_heat,wet=NA,dry=crop_dry),
+  expand.grid(heat=NA,wet=crop_wet,dry=crop_dry)
+)
+
+files<-list.files(haz_risk_dir,full.names = T)
+files<-grep(paste(c("generic",crop_choices),collapse = "|"),files,value = T)
+
+registerDoFuture()
+plan("multisession", workers = 10)
+
+#  loop starts here
+foreach(j = 1:length(files)) %dopar% {
+
+#for(j in 1:length(files)){
+  file<-files[j]
+  save_name<-gsub(".tif","_int.tif",file)
+  data<-terra::rast(file)
+  data_names<-names(data)
+  
+  if(!file.exists(save_name)){
+    interactions<-terra::rast(lapply(1:nrow(combinations),FUN=function(i){
+      
+      # Add filename & check to see if it exists    
+      haz<-combinations[i,]
+      haz<-haz[!is.na(haz)]
+      
+      # Display progress
+      cat('\r                                                                                                                                                 ')
+      cat('\r',paste("Multiplying Risks - file:",j,"/",length(files)," - ",file,"| hazard:",i,"/",nrow(combinations)," - ",paste0(haz,collapse = "+")))
+      flush.console()
+      
+      data_comb<-lapply(haz,FUN=function(HAZ){
+        data[[grep(HAZ,data_names,value = T)]]
+      })
+      
+      X<-data_comb[[1]]
+      for(k in 2:length(data_comb)){
+        X<-X*data_comb[[k]]
+      }
+      
+      names(X)<-gsub(haz[i],paste0(haz,collapse = "+"),names(X))
+      X
+    }))
+    terra::writeRaster(interactions,filename = save_name)
+  }
+  
+}
+
+#### Livestock
+animal_heat<-c("THI")
+animal_wet<-c("NDWL0","PTOT_G")
+animal_dry<-c("NDD","PTOT_L","NDWS")
+
+combinations<-rbind(
+  expand.grid(heat=animal_heat,wet=animal_wet,dry=animal_dry),
+  expand.grid(heat=animal_heat,wet=animal_wet,dry=NA),
+  expand.grid(heat=animal_heat,wet=NA,dry=animal_dry),
+  expand.grid(heat=NA,wet=animal_wet,dry=animal_dry)
+)
+
+files<-list.files(haz_risk_dir,full.names = T)
+files<-grep(paste(livestock,collapse = "|"),files,value = T)
+
+#  Crop loop starts here
+foreach(j = 1:length(files)) %dopar% {
+  
+  #for(j in 1:length(files)){
+  file<-files[j]
+  save_name<-gsub(".tif","_int.tif",file)
+  data<-terra::rast(file)
+  data_names<-names(data)
+  
+  if(!file.exists(save_name)){
+    interactions<-terra::rast(lapply(1:nrow(combinations),FUN=function(i){
+      
+      # Add filename & check to see if it exists    
+      haz<-combinations[i,]
+      haz<-haz[!is.na(haz)]
+      
+      # Display progress
+      cat('\r                                                                                                                                                 ')
+      cat('\r',paste("Multiplying Risks - file:",j,"/",length(files)," - ",file,"| hazard:",i,"/",nrow(combinations)," - ",paste0(haz,collapse = "+")))
+      flush.console()
+      
+      data_comb<-lapply(haz,FUN=function(HAZ){
+        data[[grep(HAZ,data_names,value = T)]]
+      })
+      
+      X<-data_comb[[1]]
+      for(k in 2:length(data_comb)){
+        X<-X*data_comb[[k]]
+      }
+      
+      names(X)<-gsub(haz[i],paste0(haz,collapse = "+"),names(X))
+      X
+    }))
+    terra::writeRaster(interactions,filename = save_name)
+  }
+  
+}
+
+# Create Classified Risk Stacks ####
+risk_threshold<-0.5
+haz_risk_dir_class<-paste0("Data/hazard_risk_class/t",risk_threshold,"/",timeframe_choice)
+if(!dir.exists(haz_risk_dir_class)){
+  dir.create(haz_risk_dir_class,recursive = T)
+}
+
+files<-list.files(haz_risk_dir,".tif",full.names = T)
+files<-files[!grepl("change",files)]
+
+for(i in 1:length(files)){
+  # Display progress
+  cat('\r                                                                                                                     ')
+  cat('\r',paste0("File: ",i,"/",length(files)," - ", files[i]))
+  flush.console()
+  
+  save_name<-paste0(haz_risk_dir_class,"/",tail(unlist(tstrsplit(files[i],"/")),1))
+  
+  if(!file.exists(save_name)){
+  data<-terra::rast(files[i])
+  N<-values(data)
+  N[N<risk_threshold & !is.na(N)]<-0
+  N[N>=risk_threshold & !is.na(N)]<-1
+  data[]<-N
+  
+  terra::writeRaster(data,filename = save_name)
+  }
+}
+
+data<-rast(list.files(clim_dir,"NDD",full.names = T)[1])
+
