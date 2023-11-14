@@ -53,25 +53,49 @@ X<-sapply(X,Mode)
 admin2$admin1_name<-admin1$admin1_name[match(X,admin1$ID)]
 admin2$admin2_name<-str_to_title(admin2$shapeName)
 
-# There are few instances where the match doesn't work, we will need to address these3
+# There are few instances where the match doesn't work, we will need to address these manually
+# Add missing admin1 names to admin2
 data.frame(admin2[is.na(admin2$admin1_name)])
-admin2$admin1_name[is.na(admin2$admin1_name)]<-c("Banjul","Banjul","Collines","Elobey Chico","Elobey Grande")
+admin2$admin1_name[is.na(admin2$admin1_name)]<-c("Collines","Banjul","Banjul","Elobey Chico","Elobey Grande")
 
+# Add missing iso3 codes to admin2
 data.frame(admin2[is.na(admin2$admin0_name)])
 admin2$iso3[is.na(admin2$admin0_name)]<-admin2$shapeGroup[is.na(admin2$admin0_name)]
+# Update names for missing iso3 codes
 admin2$admin0_name[is.na(admin2$admin0_name)]<-countrycode::countrycode(admin2$shapeGroup[is.na(admin2$admin0_name)], origin = 'iso3c', destination = 'country.name')
 
-data.frame(admin1[is.na(admin1$admin0_name)])
-#admin1$shapeGroup[is.na(admin1$admin0_name)]<-countrycode::countrycode(admin1$shapeGroup[is.na(admin1$admin0_name)], origin = 'iso3c', destination = 'country.name')
+# Some admin 1 names appear to be missing
+admin1[is.na(admin1$admin_name)]
+# NA polygon appears to be a duplicate, remove one of the duplicates
+N<-which(is.na(admin1$admin_name))
+admin1<-admin1[-N[2]]
 
-admin0[,c("ID","shapeName","shapeISO","shapeID","shapeGroup","shapeType","agg_n")]<-NULL
-admin1[,c("ID","shapeName","shapeISO","shapeID","shapeGroup","shapeType","agg_n")]<-NULL
-admin2[,c("ID","shapeName","shapeISO","shapeID","shapeGroup","shapeType","agg_n")]<-NULL
+admin1$admin_name[is.na(admin1$admin_name)]<-"Collines"
+admin1$admin1_name[is.na(admin1$admin1_name)]<-"Collines"
+
+nrow(admin1[is.na(admin1$admin_name)])
 
 # Merge polygons
-admin0<-terra::aggregate(admin0,by="admin_name")
-admin1<-terra::aggregate(admin1,by="admin_name")
-admin2<-terra::aggregate(admin2,by="admin_name")
+a0_check <- nrow(unique(as.data.frame(admin0)))
+a1_check <- nrow(unique(as.data.frame(admin1)))
+a2_check <- nrow(unique(as.data.frame(admin2)))
+
+admin0 <- terra::aggregate(admin0,
+                           by = "admin_name", count = FALSE, na.rm = FALSE)
+
+if (a0_check != nrow(admin0)) stop("Admin 0 merge error")
+
+admin1 <- terra::aggregate(admin1,
+                           by = c("admin_name", "admin0_name"),
+                           fun = "modal", count = FALSE, na.rm = FALSE)
+
+if (a1_check != nrow(admin1)) stop("Admin 1 merge error")
+
+admin2 <- terra::aggregate(admin2,
+                           by = c("admin_name", "admin0_name", "admin1_name"),
+                           fun = "modal", count = FALSE, na.rm = FALSE)
+
+if (a2_check != nrow(admin2)) stop("Admin 2 merge error")
 
 # Save processed files
 terra::writeVector(admin0,file="Data/geoboundaries/admin0_processed.shp",overwrite=T)
