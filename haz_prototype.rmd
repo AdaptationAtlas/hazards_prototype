@@ -1,0 +1,406 @@
+---
+title: "Africa Atlas - Hazards Prototype"
+author: "Peter Steward, Todd Rosenstock, Julian Ramirez, Shalika Vyas, Zia Mehrabi"
+date: "08/11/2023"
+output: html_document
+runtime: shiny
+---
+  
+<style type="text/css">
+.main-container {
+max-width: 2400px;
+margin-left: auto;
+margin-right: auto;
+}
+</style>
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+options(scipen = 999)
+```
+
+```{r Load packages,echo=F,message=F,warning=F}
+
+if(!require("pacman", character.only = TRUE)){install.packages("pacman",dependencies = T)}
+
+required.packages <- c("terra",
+                       "data.table",
+                       "DT",
+                       "countrycode",
+                       "exactextractr",
+                       "feather")
+
+pacman::p_load(char=required.packages,install = T,character.only = T)
+```
+
+## What’s at Risk? {.tabset .tabset-fade .tabset-pills}
+
+```{r Load Geographies,echo=F,message=F}
+base_rast<-terra::rast(list.files("Data/hazard_classified/annual",".tif",full.names = T))[[1]]
+
+# Load and combine geoboundaries ####
+Geographies<-list(
+  admin2=terra::vect("Data/geoboundaries/admin2_processed.shp"),
+  admin1=terra::vect("Data/geoboundaries/admin1_processed.shp"),
+  admin0=terra::vect("Data/geoboundaries/admin0_processed.shp")
+)
+
+```
+
+```{r Create choices,echo=F,message=F}
+# Severity
+Severity<-"severe"
+
+# Countries
+Countries<-sort(unique(Geographies$admin0$admin0_nam))
+
+# Crops
+ms_codes<-data.table::fread("./Data/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
+ms_codes<-ms_codes[compound=="no"]
+crop_choices<-sort(ms_codes[,sort(Fullname)])
+
+# Livestock
+livestock_choices<-sort(c("all livestock","cattle","goats","sheep","pigs","poultry"))
+
+# Exposure
+exposure_choices<-c("value of production","harvested area","rural pop")
+
+# Hazards
+haz_heat<-sort(c("NTx40","NTx35","HSH_max","THI_max","THI_mean","TAVG_G"))
+haz_dry<-sort(c("NDD","NDWS","TAI","PTOT_L"))
+haz_wet<-sort(c("NDWL0","PTOT_G"))
+
+haz_meta<-data.table::fread("./Data/metadata/haz_metadata.csv")
+
+scenario_choices<-c("ssp245","ssp585")
+timeframe_choices<-c("historic","2021_2040","2041_2060")
+```
+
+
+```{r Choose countries,echo=F}
+checkboxGroupInput(inputId="country_choice", 
+                     label="Choose focal countries",
+                     choices = Countries,
+                     selected = "Tanzania",
+                     inline=T)
+```
+
+:::: {style="display: flex;"}
+:::{}
+```{r Geography -  Choose admin level, echo=F}
+renderUI({
+  selectInput(inputId="AdminLevel", 
+              label="Admin level",
+              choices = if(length(input$country_choice)>1){
+                c("admin0","admin1")
+                }else{
+                  c("admin0","admin1","admin2")},
+              selected = "admin1",
+              multiple = F, 
+              width="140px")
+})
+```
+:::
+:::{}
+```{r Geography - Choose admin1 A, echo=F}
+conditionalPanel(
+  condition = "input.AdminLevel != 'admin0'",
+  selectInput(inputId="adm1_selection", 
+              label="Select admin1",
+              choices = c("All","None",""),
+              selected = "All",
+              multiple = F, 
+              width="140px")
+)
+```
+:::
+:::{}
+```{r Geography - Choose admin1 B, echo=F}
+conditionalPanel(
+ condition = "input.AdminLevel != 'admin0'",
+  renderUI({
+    checkboxGroupInput(inputId="admin1", 
+                       label="",
+                       choices = sort(unique(Geographies$admin1$admin1_nam[Geographies$admin1$admin0_nam %in% input$country_choice])),
+                       selected = if(input$adm1_selection=="All"){
+                         sort(unique(Geographies$admin1$admin1_nam[Geographies$admin1$admin0_nam %in% input$country_choice]))
+                         }else{
+                           if(input$adm1_selection=="None"){
+                             NULL
+                           }
+                         },
+                       inline=T)
+  })
+)
+
+```
+:::
+::::
+
+:::: {style="display: flex;"}
+::: {}
+```{r Geography - Choose admin2 A, echo=F}
+conditionalPanel(
+  condition = "input.AdminLevel == 'admin2'",
+  selectInput(inputId="adm2_selection", 
+              label="Select admin2",
+              choices = c("All","None",""),
+              selected = "All",
+              multiple = F, 
+              width="140px")
+)
+```
+:::
+:::{}
+```{r Geography - Choose admin2 B, echo=F}
+conditionalPanel(
+ condition = "input.AdminLevel == 'admin2'",
+  renderUI({
+    checkboxGroupInput(inputId="admin2", 
+                       label="",
+                       choices = sort(unique(Geographies$admin2$admin2_nam[Geographies$admin2$admin0_nam %in% input$country_choice & Geographies$admin2$admin1_nam %in% input$admin1])),
+                       selected = if(input$adm2_selection=="All"){
+                         sort(unique(Geographies$admin2$admin2_nam[Geographies$admin2$admin0_nam %in% input$country_choice & Geographies$admin2$admin1_nam %in% input$admin1]))
+                         }else{
+                           if(input$adm2_selection=="None"){
+                             NULL
+                           }
+                         },
+                       inline=T)
+  })
+)
+```
+:::
+::::
+
+:::: {style="display: flex;"}
+::: {}
+```{r Choose season,echo=F}
+renderUI({
+selectInput(inputId="season_choice", 
+              label="Climate variables calculated seasonally or annually?",
+              choices = c("annual","jagermeyr"),
+              selected = "annual",
+              multiple = F, 
+              width="360px")
+})
+```
+:::
+:::{}
+```{r Choose Timeframe, echo=F}
+  selectInput(inputId="timeframe", 
+              label="Choose timeframe",
+              choices =  timeframe_choices,
+              selected =  timeframe_choices[1],
+              multiple = F, 
+              width="180px")
+
+```
+:::
+:::{}
+```{r Choose future scenario, echo=F}
+  conditionalPanel(
+    condition = "input.timeframe != 'historic'",
+    selectInput(inputId="future_scenario", 
+                label="Choose future scenario",
+                choices = scenario_choices,
+                selected = scenario_choices[1],
+                multiple = F, 
+                width="180px")
+  )
+
+scenario_choice<-reactive({
+  if(input$timeframe=="historic"){
+    "historic"
+  }else{
+    input$future_scenario
+  }
+})
+```
+:::
+::::
+
+
+:::: {style="display: flex;"}
+::: {}
+```{r Choose Dry Hazards, echo=F}
+  selectInput(inputId="haz_dry", 
+              label="Choose drought hazard",
+              choices =  haz_dry,
+              selected =  haz_dry[3],
+              multiple = F, 
+              width="180px")
+
+```
+:::
+:::{}
+```{r Choose Heat Hazards, echo=F}
+  selectInput(inputId="haz_heat", 
+              label="Choose heat hazard",
+              choices =  haz_heat,
+              selected =  haz_heat[4],
+              multiple = F, 
+              width="180px")
+
+```
+:::
+:::{}
+```{r Choose Wet Hazards, echo=F}
+  selectInput(inputId="haz_wet", 
+              label="Choose wet hazard",
+              choices =  haz_wet,
+              selected =  NULL,
+              multiple = F, 
+              width="180px")
+
+```
+:::
+:::{}
+```{r Choose Exposure, echo=F}
+  selectInput(inputId="exposure", 
+              label="Choose exposure",
+              choices =  exposure_choices,
+              selected =  exposure_choices[1],
+              multiple = F, 
+              width="180px")
+
+```
+:::
+::::
+
+```{r Choose crops, echo=F}
+    checkboxGroupInput(inputId="crops", 
+                       label="Choose crops",
+                       choices = crop_choices,
+                       selected = crop_choices[11],
+                       inline=T)
+```
+
+```{r Choose livestock, echo=F}
+    checkboxGroupInput(inputId="livestock", 
+                       label="Choose livestock",
+                       choices = livestock_choices,
+                       selected = NULL,
+                       inline=T)
+```
+
+
+```{r Load Risk x Exposure datasets, echo=F}
+haz_risk_vop_tab<-reactive({
+  data.table(feather::read_feather(paste0(paste0("Data/hazard_risk_vop/",input$season_choice),"/haz_risk_vop_",Severity,".feather")))
+})
+
+haz_risk_ha_tab<-reactive({
+  data.table(feather::read_feather(paste0(paste0("Data/hazard_risk_ha/",input$season_choice),"/haz_risk_ha_",Severity,".feather")))
+})
+
+haz_risk_tab_join<-reactive({rbind(haz_risk_vop_tab(),haz_risk_ha_tab())})
+```
+
+```{r Consolidate Admin Selection,echo=F}
+admin_choice<-reactive({
+  if(input$AdminLevel=="admin0"){
+    input$country_choice
+    }else{
+  if(input$AdminLevel=="admin1"){
+    input$admin1
+    }else{
+  if(input$AdminLevel=="admin2"){
+    input$admin2
+    }}}
+})
+```
+
+```{r Merge hazards,echo=F}
+haz_choice<-reactive({
+  c(input$haz_wet,input$haz_dry,input$haz_heat)
+})
+```
+
+
+
+** Exposure headline stats**
+```{r Table - Risk Exposure Headline,echo=F}
+  # Total value of crops exposed to hazards
+  haz_risk_tab_join_sum<-reactive({
+    haz_risk_tab_join()[admin_level==input$AdminLevel & 
+                          admin_name %in% admin_choice() & 
+                          crop %in% input$crops & 
+                          hazard %in% haz_choice(),
+                     list(value=sum(value,na.rm = T)),
+                     by=list(exposure,severity,scenario,timeframe,hazard)
+                     ][,admin_level:=NULL
+                       ][,admin_name:=NULL]
+  })
+```
+
+```{r Table - Risk x Exposure Headline,echo=F}
+renderDT({
+  datatable(
+      dplyr::mutate_if(dplyr::mutate_if(
+        dcast(haz_risk_tab_join_sum(),exposure+severity+scenario+timeframe~hazard,value.var = "value"),
+        is.numeric,~round(.,0)),is.character,~as.factor(.)),
+      caption="Headline exposure statistics",
+            extensions = 'Buttons',
+            filter = "top",
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),c(10,25,50,"All")))
+  )
+      
+      
+})
+
+
+      
+```
+
+
+
+
+** Exposure by admin area x crop x hazard **
+```{r Subset Risk x Exposure datasets, echo=F}
+haz_risk_vop_tab2<-reactive({
+  haz_risk_vop_tab()[admin_level==input$AdminLevel & 
+                          admin_name %in% admin_choice() &
+                          crop %in% input$crops &
+                          timeframe==input$timeframe &
+                          scenario==scenario_choice() & 
+                          hazard %in% haz_choice()]
+   
+   
+})
+
+haz_risk_ha_tab2<-reactive({
+  haz_risk_ha_tab()[admin_level==input$AdminLevel & 
+                         admin_name %in% admin_choice() & 
+                         crop %in% input$crops &
+                         timeframe==input$timeframe &
+                         scenario==scenario_choice() & 
+                         hazard %in% haz_choice()]
+})
+
+
+
+```
+
+```{r Table - Risk x Exposure,echo=F}
+renderDT({
+  datatable(
+    if(input$exposure=="value of production"){
+      dcast(haz_risk_vop_tab2(),admin_name+crop~hazard,value.var = "value")
+      }else{if(input$exposure=="harvested area"){
+        dcast(haz_risk_ha_tab2(),admin_name+crop~hazard,value.var = "value")}else{
+          NULL}},
+    caption=if(input$exposure=="rural pop"){"Value of production exposed to hazards"}else{if(input$exposure=="Harvested area"){"Harvested area exposed to hazards"}else{NULL}},
+            extensions = 'Buttons',
+            filter = "top",
+            options = list(dom = 'Blfrtip',
+                           buttons = c('copy', 'csv', 'excel', 'pdf', 'print'),
+                           lengthMenu = list(c(10,25,50,-1),c(10,25,50,"All"))))
+  
+})
+```
+
+
