@@ -75,6 +75,11 @@ admin1$admin1_name[is.na(admin1$admin1_name)]<-"Collines"
 
 nrow(admin1[is.na(admin1$admin_name)])
 
+# Remove unneeded fields
+admin0[, c("ID", "shapeName", "shapeISO", "shapeID", "shapeGroup", "shapeType", "agg_n")]<-NULL
+admin1[, c("ID", "shapeName", "shapeISO", "shapeID", "shapeGroup", "shapeType", "agg_n")] <- NULL
+admin2[, c("ID", "shapeName", "shapeISO", "shapeID", "shapeGroup", "shapeType", "agg_n")] <- NULL
+
 # Merge polygons
 a0_check <- nrow(unique(as.data.frame(admin0)))
 a1_check <- nrow(unique(as.data.frame(admin1)))
