@@ -102,7 +102,7 @@ Exceedance<-function(Data,Threshold,Direction,Function){
 
 #' Replace Infinite Values with NA
 #'
-#' This function replaces infinite values in a vector or matrix with NA.
+#' This function replaces infinite or -9999 values in a vector or matrix with NA.
 #'
 #' @param Data A vector or matrix containing numeric values.
 #' @return The input vector or matrix with all infinite values replaced by NA.
@@ -289,36 +289,34 @@ ClassifyHazards<-function(Data){
 #' @return A list of hazard maps.
 #'
 #' @export
-HazardWrapper<-function(Thresholds,FileName,SaveDir,PropThreshold,PropTDir,hazard_dir,Scenarios,verbose=F){
+HazardWrapper<-function(Thresholds,SaveDir,PropThreshold,PropTDir,hazard_dir,Scenarios,verbose=F){
   Files<-list.files(hazard_dir,".tif",full.names = T)
   Files<-Files[grepl("historical|ENSEMBLE",Files) & !grepl("tif.aux.xml",Files)]
   
-  Thresholds_unique<-unique(Thresholds[,list(Variable,Severity_class)])
-  
   Hazards<-lapply(1:nrow(Scenarios),FUN=function(j){
-    for(i in 1:nrow(Thresholds_unique)){
+    for(i in 1:nrow(Thresholds)){
       if(verbose){
         # Display progress
         cat('\r                                                                                                                     ')
-        cat('\r',paste0("Scenario ", j," | Hazard ",i))
+        cat('\r',paste0("Scenario ", Scenarios$Scenario[j],"-",j," | Hazard ",Thresholds$Variable[i],"-",i))
         flush.console()
       }
       
-      Threshold_focal<-Thresholds[Variable==Thresholds_unique$Variable[i] & Severity_class==Thresholds_unique$Severity_class[i]]
+      Threshold_focal<-Thresholds[i]
       Threshold_focal[,Code:=paste0(Direction,threshold)
                       ][,Code:=gsub("<","L",Code)
                         ][,Code:=gsub(">","G",Code)]
-      TCode<-Threshold_focal[,paste(Code,collapse="_")]
+      TCode<-Threshold_focal[,Code]
       
       
-      save_file<-paste0(SaveDir,"/Haz-",Scenarios$Scenario[j],"-",Scenarios$Time[j],"-",Thresholds_unique[i,Variable],"-",TCode,"-",PropThreshold,".tif")
+      save_file<-paste0(SaveDir,"/Haz-",Scenarios$Scenario[j],"-",Scenarios$Time[j],"-",Threshold_focal$Variable,"-",TCode,"-",PropThreshold,".tif")
       
       if(!file.exists(save_file)){
         
-        Data<-terra::rast(Files[grepl(Scenarios$Scenario[j],Files) & grepl(Scenarios$Time[j],Files) & grepl(Thresholds_unique$Variable[i],Files)])
+        Data<-terra::rast(Files[grepl(Scenarios$Scenario[j],Files) & grepl(Scenarios$Time[j],Files) & grepl(Threshold_focal$Variable,Files)])
         
         X<-ClassifyFun(Data=Data,
-                       VAR=Thresholds_unique[i,Variable],
+                       VAR=Threshold_focal$Variable,
                        Threshold=Threshold_focal$threshold,
                        Direction=Threshold_focal$Direction,
                        PropThreshold=PropThreshold,
@@ -328,7 +326,16 @@ HazardWrapper<-function(Thresholds,FileName,SaveDir,PropThreshold,PropTDir,hazar
         X<-terra::rast(save_file)
       }
       
-      names(X)[2:terra::nlyr(X)]<-paste0(names(X)[2:terra::nlyr(X)],"_",Thresholds_unique[i,Severity_class])
+      names(X)[2:terra::nlyr(X)]<-paste0(names(X)[2:terra::nlyr(X)],"_",Threshold_focal$Severity_class)
+      if(Threshold_focal$Direction=="<"){
+        names(X)[2:terra::nlyr(X)]<-gsub("_<","", names(X)[2:terra::nlyr(X)])
+        names(X)[2:terra::nlyr(X)]<-paste0( names(X)[2:terra::nlyr(X)],"_L")
+      }
+      
+      if(Threshold_focal$Direction==">"){
+        names(X)[2:terra::nlyr(X)]<-gsub("_>","", names(X)[2:terra::nlyr(X)])
+        names(X)[2:terra::nlyr(X)]<-paste0( names(X)[2:terra::nlyr(X)],"_H")
+      }
       
       if(i==1){
         Hazards<-X
@@ -337,9 +344,8 @@ HazardWrapper<-function(Thresholds,FileName,SaveDir,PropThreshold,PropTDir,hazar
       }
     }
     
-    Hazards
-    keep<-which(names(Hazards) %in% paste0(Thresholds_unique[,unique(Variable)],"_mean"))
-    Hazards<-Hazards[[-keep[-seq(1,Thresholds_unique[,length(unique(Variable))*3],3)]]]
+    keep<-which(names(Hazards) %in% paste0(Threshold_focal[,unique(Variable)],"_mean"))
+    Hazards<-Hazards[[-keep[-seq(1,Threshold_focal[,length(unique(Variable))*3],3)]]]
     Hazards
   })
   
@@ -907,8 +913,8 @@ PrepTable<-function(Data,Method,Scenario,AdminLevel,A1,A2,Table){
 #' @return A list of hazard index datasets.
 #'
 #' @export
-hazard_index<-function(Hazards,verbose=T,SaveDir,crop_choice,severity_classes,PropThreshold){
-  scenario_names<-names(Hazards)
+hazard_index<-function(Data,hazards,verbose=T,SaveDir,crop_choice,severity_classes,PropThreshold){
+  scenario_names<-names(Data)
   
   haz_index<-lapply(1:length(scenario_names),FUN = function(j){
     
@@ -917,30 +923,37 @@ hazard_index<-function(Hazards,verbose=T,SaveDir,crop_choice,severity_classes,Pr
     if(!file.exists(haz_index_filename)){
       
       # recurrence 
-      data<-Hazards[[scenario_names[[j]]]]
+      data<-Data[[scenario_names[[j]]]]
       data<-data[[grep("_prop_",names(data),value=T)]]
       
       # Subtract severe and extreme from moderate, and severe from extreme
       # Note that this section is not generalization and works with fixed severity_classes table, in future we should improve this to be able
       # work with tables of different lengths.
       for(i in 1:length(hazards)){
+
         
-        if(verbose){
-          # Display progress
-          cat('\r                                                                                                                     ')
-          cat('\r',paste0("Scenario ", scenario_names[j]," | Hazard ",hazards[i]))
-          flush.console()
+        haz_levels<-grep(hazards[i],names(data),value=T)
+        haz_levels<-unique(substr(haz_levels,nchar(haz_levels),nchar(haz_levels)))
+        
+        for(k in haz_levels){
+          
+          if(verbose){
+            # Display progress
+            cat('\r                                                                                                                     ')
+            cat('\r',paste0("Scenario ", scenario_names[j]," | Hazard ",hazards[i],"-",i," | ",k))
+            flush.console()
+          }
+          
+          N<-paste0(hazards[i],"_prop_",severity_classes$class,"_",k)
+          N1<-which(names(data)==N[1])
+          N2<-which(names(data)==N[2])
+          X<-data[[N[1]]]-data[[N[2]]]-data[[N[3]]]
+          X[][X[]<0 & !is.na(X[])]<-0
+          data[[N1]]<-X
+          Y<-data[[N2]]-data[[N[3]]]
+          Y[][Y[]<0 & !is.na(Y[])]<-0
+          data[[N2]]<-Y
         }
-        
-        N<-paste0(hazards[i],"_prop_",severity_classes$class)
-        N1<-which(names(data)==N[1])
-        N2<-which(names(data)==N[2])
-        X<-data[[N[1]]]-data[[N[2]]]-data[[N[3]]]
-        X[][X[]<0 & !is.na(X[])]<-0
-        data[[N1]]<-X
-        Y<-data[[N2]]-data[[N[3]]]
-        Y[][Y[]<0 & !is.na(Y[])]<-0
-        data[[N2]]<-Y
       }
       
       for(i in 1:nrow(severity_classes)){
@@ -949,10 +962,23 @@ hazard_index<-function(Hazards,verbose=T,SaveDir,crop_choice,severity_classes,Pr
       }
       
       haz_index<-terra::rast(lapply(1:length(hazards),FUN=function(i){
-        N<-paste0(hazards[i],"_prop_",severity_classes$class)
+        haz_levels<-grep(hazards[i],names(data),value=T)
+        haz_levels<-unique(substr(haz_levels,nchar(haz_levels),nchar(haz_levels)))
+        
+        X<-terra::rast(lapply(haz_levels,FUN=function(k){
+          if(verbose){
+            # Display progress
+            cat('\r                                                                                                                     ')
+            cat('\r',paste0("Scenario ", scenario_names[j]," | Hazard ",hazards[i],"-",i," | ",k))
+            flush.console()
+          }
+          
+        N<-paste0(hazards[i],"_prop_",severity_classes$class,"_",k)
         X<-terra::app(data[[N]],sum,na.rm=T)
-        names(X)<-paste0(hazards[i],"_hi")
+        names(X)<-paste0(hazards[i],"_",k,"_hi")
         X
+        }))
+        
       }))
       
       terra::writeRaster(haz_index,file=haz_index_filename)
