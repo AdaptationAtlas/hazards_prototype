@@ -144,19 +144,18 @@ if(!dir.exists(haz_index_dir)){
 
 crop_choices<-c(fread("./Data/metadata/haz_classes.csv")[,unique(crop)],ms_codes[,sort(Fullname)])
 
+# Calculate hazard risk and index for time period x scenario (for the selected timeframe annual/jagermeyer) ####
 # Calculate hazard indices?
-calc_hi<-T
+calc_hi<-F
 
-# Create classify data for timeperiod x scenario (for the selected timeframe annual/jagermeyer) ####
-
-registerDoFuture()
-plan("multisession", workers = 10)
+#registerDoFuture()
+#plan("multisession", workers = 10)
 
 #  Crop loop starts here
-foreach(j = 1:length(crop_choices)) %dopar% { # Can hit error when parallel due to different workers trying to write the same file
+#foreach(j = 1:length(crop_choices)) %dopar% { # Can hit error when parallel due to different workers trying to write the same file
     # To solve issue loop over unique threshold x variable combinations rather than crops
     # This will require putting the foreach loop into the hazard wrapper function
- #for(j in 1:length(crop_choices)){ 
+for(j in 1:length(crop_choices)){ 
     
     # Display progress
     print(paste0("Crop ",crop_choices[j]))
@@ -343,7 +342,13 @@ severity_classes<-severity_classes[value %in% c(2,3)]
 
 overwrite=F
 
-for(j in 1:nrow(severity_classes)){
+registerDoFuture()
+plan("multisession", workers = 10)
+
+# Note there are only 2-3 severity values here it would be better to divide the next step between more workers
+foreach(j = 1:length(severity_classes)) %dopar%{
+
+#for(j in 1:nrow(severity_classes)){
 
   data<-terra::rast(lapply(1:length(crop_choices),FUN=function(i){
     crop_focus<-crop_choices[i]
@@ -403,21 +408,23 @@ combinations<-rbind(
 )
 
 files<-list.files(haz_risk_dir,full.names = T)
-files<-grep(paste(c("generic",crop_choices),collapse = "|"),files,value = T)
+files<-grep(paste(c("generic",ms_codes$Fullname),collapse = "|"),files,value = T)
+files<-files[!grepl("_int",files)]
+
+overwrite<-F
 
 registerDoFuture()
 plan("multisession", workers = 10)
 
 #  loop starts here
 foreach(j = 1:length(files)) %dopar% {
-
 #for(j in 1:length(files)){
   file<-files[j]
   save_name<-gsub(".tif","_int.tif",file)
   data<-terra::rast(file)
   data_names<-names(data)
   
-  if(!file.exists(save_name)){
+  if(!file.exists(save_name)|overwrite==T){
     interactions<-terra::rast(lapply(1:nrow(combinations),FUN=function(i){
       
       # Add filename & check to see if it exists    
@@ -438,15 +445,17 @@ foreach(j = 1:length(files)) %dopar% {
         X<-X*data_comb[[k]]
       }
       
-      names(X)<-gsub(haz[i],paste0(haz,collapse = "+"),names(X))
+      names(X)<-gsub(haz[1],paste0(haz,collapse = "+"),names(X))
       X
     }))
-    terra::writeRaster(interactions,filename = save_name)
+    terra::writeRaster(interactions,filename = save_name,overwrite=T)
   }
   
 }
 
 #### Livestock
+livestock<-fread("./Data/metadata/haz_classes.csv")[crop!="generic",unique(crop)]
+
 animal_heat<-c("THI")
 animal_wet<-c("NDWL0","PTOT_G")
 animal_dry<-c("NDD","PTOT_L","NDWS")
@@ -460,11 +469,16 @@ combinations<-rbind(
 
 files<-list.files(haz_risk_dir,full.names = T)
 files<-grep(paste(livestock,collapse = "|"),files,value = T)
+files<-files[!grepl("_int",files)]
+
+registerDoFuture()
+plan("multisession", workers = 10)
+
 
 #  Crop loop starts here
 foreach(j = 1:length(files)) %dopar% {
   
-  #for(j in 1:length(files)){
+# for(j in 1:length(files)){
   file<-files[j]
   save_name<-gsub(".tif","_int.tif",file)
   data<-terra::rast(file)
@@ -491,7 +505,7 @@ foreach(j = 1:length(files)) %dopar% {
         X<-X*data_comb[[k]]
       }
       
-      names(X)<-gsub(haz[i],paste0(haz,collapse = "+"),names(X))
+      names(X)<-gsub(haz[1],paste0(haz,collapse = "+"),names(X))
       X
     }))
     terra::writeRaster(interactions,filename = save_name)
@@ -508,8 +522,14 @@ if(!dir.exists(haz_risk_dir_class)){
 
 files<-list.files(haz_risk_dir,".tif",full.names = T)
 files<-files[!grepl("change",files)]
+overwrite<-F
 
-for(i in 1:length(files)){
+registerDoFuture()
+plan("multisession", workers = 10)
+
+#  Crop loop starts here
+foreach(i = 1:length(files)) %dopar% {
+#for(i in 1:length(files)){
   # Display progress
   cat('\r                                                                                                                     ')
   cat('\r',paste0("File: ",i,"/",length(files)," - ", files[i]))
@@ -517,16 +537,13 @@ for(i in 1:length(files)){
   
   save_name<-paste0(haz_risk_dir_class,"/",tail(unlist(tstrsplit(files[i],"/")),1))
   
-  if(!file.exists(save_name)){
-  data<-terra::rast(files[i])
-  N<-values(data)
-  N[N<risk_threshold & !is.na(N)]<-0
-  N[N>=risk_threshold & !is.na(N)]<-1
-  data[]<-N
-  
-  terra::writeRaster(data,filename = save_name)
+  if((!file.exists(save_name))|overwrite==T){
+    data<-terra::rast(files[i])
+    N<-values(data)
+    N[N<risk_threshold & !is.na(N)]<-0
+    N[N>=risk_threshold & !is.na(N)]<-1
+    data[]<-N
+    
+    terra::writeRaster(data,filename = save_name,overwrite=T)
   }
 }
-
-data<-rast(list.files(clim_dir,"NDD",full.names = T)[1])
-
