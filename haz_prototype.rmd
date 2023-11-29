@@ -15,6 +15,10 @@ margin-right: auto;
 </style>
 
 
+```{r check working dir,echo=F}
+print(getwd())
+```
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 options(scipen = 999)
@@ -49,9 +53,6 @@ Geographies<-list(
 ```
 
 ```{r Create choices,echo=F,message=F}
-# Severity
-Severity<-"severe"
-
 # Countries
 Countries<-sort(unique(Geographies$admin0$admin0_nam))
 
@@ -66,10 +67,16 @@ livestock_choices<-sort(c("all livestock","cattle","goats","sheep","pigs","poult
 # Exposure
 exposure_choices<-c("value of production","harvested area","rural pop")
 
-# Hazards
-haz_heat<-sort(c("NTx40","NTx35","HSH_max","THI_max","THI_mean","TAVG_G"))
-haz_dry<-sort(c("NDD","NDWS","TAI","PTOT_L"))
+# Hazards crops
+haz_heat<-sort(c("NTx35","TAVG_G"))
+
+# Hazards livestock
+haz_heat_ls<-sort(c("THI"))
+
+# Hazards both
+haz_dry<-sort(c("NDD","NDWS","PTOT_L"))
 haz_wet<-sort(c("NDWL0","PTOT_G"))
+
 
 haz_meta<-data.table::fread("./Data/metadata/haz_metadata.csv")
 
@@ -222,9 +229,27 @@ scenario_choice<-reactive({
 ::::
 
 
+```{r Choose crops, echo=F}
+    checkboxGroupInput(inputId="crops", 
+                       label="Choose crops",
+                       choices = crop_choices,
+                       selected = crop_choices[11],
+                       inline=T)
+```
+
+```{r Choose livestock, echo=F}
+    checkboxGroupInput(inputId="livestock", 
+                       label="Choose livestock",
+                       choices = livestock_choices,
+                       selected = NULL,
+                       inline=T)
+```
+
+Note that the heat hazard is always THI for livestock.
+
 :::: {style="display: flex;"}
 ::: {}
-```{r Choose Dry Hazards, echo=F}
+```{r Crop Dry Hazards, echo=F}
   selectInput(inputId="haz_dry", 
               label="Choose drought hazard",
               choices =  haz_dry,
@@ -235,7 +260,7 @@ scenario_choice<-reactive({
 ```
 :::
 :::{}
-```{r Choose Heat Hazards, echo=F}
+```{r Crop Heat Hazards, echo=F}
   selectInput(inputId="haz_heat", 
               label="Choose heat hazard",
               choices =  haz_heat,
@@ -246,11 +271,22 @@ scenario_choice<-reactive({
 ```
 :::
 :::{}
-```{r Choose Wet Hazards, echo=F}
+```{r Crop Wet Hazards, echo=F}
   selectInput(inputId="haz_wet", 
               label="Choose wet hazard",
               choices =  haz_wet,
               selected =  NULL,
+              multiple = F, 
+              width="180px")
+
+```
+:::
+:::{}
+```{r Choose Severity, echo=F}
+  selectInput(inputId="severity", 
+              label="Choose hazard severity",
+              choices =  c("severe","extreme"),
+              selected =  "severe",
               multiple = F, 
               width="180px")
 
@@ -269,30 +305,15 @@ scenario_choice<-reactive({
 :::
 ::::
 
-```{r Choose crops, echo=F}
-    checkboxGroupInput(inputId="crops", 
-                       label="Choose crops",
-                       choices = crop_choices,
-                       selected = crop_choices[11],
-                       inline=T)
-```
-
-```{r Choose livestock, echo=F}
-    checkboxGroupInput(inputId="livestock", 
-                       label="Choose livestock",
-                       choices = livestock_choices,
-                       selected = NULL,
-                       inline=T)
-```
-
 
 ```{r Load Risk x Exposure datasets, echo=F}
+# RENAME HAZARD FIELDS TO GENERIC GROUPS
 haz_risk_vop_tab<-reactive({
-  data.table(feather::read_feather(paste0(paste0("Data/hazard_risk_vop/",input$season_choice),"/haz_risk_vop_",Severity,".feather")))
+  data.table(feather::read_feather(paste0(paste0("Data/hazard_risk_vop/",input$season_choice),"/haz_risk_vop_",input$severity,".feather")))
 })
 
 haz_risk_ha_tab<-reactive({
-  data.table(feather::read_feather(paste0(paste0("Data/hazard_risk_ha/",input$season_choice),"/haz_risk_ha_",Severity,".feather")))
+  data.table(feather::read_feather(paste0(paste0("Data/hazard_risk_ha/",input$season_choice),"/haz_risk_ha_",input$severity,".feather")))
 })
 
 haz_risk_tab_join<-reactive({rbind(haz_risk_vop_tab(),haz_risk_ha_tab())})
@@ -314,7 +335,21 @@ admin_choice<-reactive({
 
 ```{r Merge hazards,echo=F}
 haz_choice<-reactive({
-  c(input$haz_wet,input$haz_dry,input$haz_heat)
+
+  heat<-input$haz_heat
+  wet<-input$haz_wet
+  dry<-input$haz_dry
+  
+  combinations<-c(heat=heat,
+                  wet=wet,
+                  dry=dry,
+                  heat_wet=paste0(heat,"+",wet),
+                  heat_dry=paste0(heat,"+",dry),
+                  wet_dry=paste0(wet,"+",dry),
+                  heat_wet_dry=paste0(heat,"+",wet,"+",dry))
+
+  combinations
+
 })
 ```
 
@@ -324,14 +359,15 @@ haz_choice<-reactive({
 ```{r Table - Risk Exposure Headline,echo=F}
   # Total value of crops exposed to hazards
   haz_risk_tab_join_sum<-reactive({
-    haz_risk_tab_join()[admin_level==input$AdminLevel & 
+    X<-haz_risk_tab_join()[admin_level==input$AdminLevel & 
                           admin_name %in% admin_choice() & 
                           crop %in% input$crops & 
                           hazard %in% haz_choice(),
                      list(value=sum(value,na.rm = T)),
                      by=list(exposure,severity,scenario,timeframe,hazard)
                      ][,admin_level:=NULL
-                       ][,admin_name:=NULL]
+                       ][,admin_name:=NULL
+                         ][,hazard_rename:=names(haz_choice())[match(hazard,haz_choice())]]
   })
 ```
 
@@ -339,7 +375,7 @@ haz_choice<-reactive({
 renderDT({
   datatable(
       dplyr::mutate_if(dplyr::mutate_if(
-        dcast(haz_risk_tab_join_sum(),exposure+severity+scenario+timeframe~hazard,value.var = "value"),
+        dcast(haz_risk_tab_join_sum(),exposure+severity+scenario+timeframe~hazard_rename,value.var = "value"),
         is.numeric,~round(.,0)),is.character,~as.factor(.)),
       caption="Headline exposure statistics",
             extensions = 'Buttons',
@@ -356,9 +392,6 @@ renderDT({
       
 ```
 
-
-
-
 ** Exposure by admin area x crop x hazard **
 ```{r Subset Risk x Exposure datasets, echo=F}
 haz_risk_vop_tab2<-reactive({
@@ -367,7 +400,8 @@ haz_risk_vop_tab2<-reactive({
                           crop %in% input$crops &
                           timeframe==input$timeframe &
                           scenario==scenario_choice() & 
-                          hazard %in% haz_choice()]
+                          hazard %in% haz_choice()
+                     ][,hazard_rename:=names(haz_choice())[match(hazard,haz_choice())]]
    
    
 })
@@ -378,7 +412,8 @@ haz_risk_ha_tab2<-reactive({
                          crop %in% input$crops &
                          timeframe==input$timeframe &
                          scenario==scenario_choice() & 
-                         hazard %in% haz_choice()]
+                         hazard %in% haz_choice()
+                    ][,hazard_rename:=names(haz_choice())[match(hazard,haz_choice())]]
 })
 
 
@@ -389,10 +424,18 @@ haz_risk_ha_tab2<-reactive({
 renderDT({
   datatable(
     if(input$exposure=="value of production"){
-      dcast(haz_risk_vop_tab2(),admin_name+crop~hazard,value.var = "value")
-      }else{if(input$exposure=="harvested area"){
-        dcast(haz_risk_ha_tab2(),admin_name+crop~hazard,value.var = "value")}else{
-          NULL}},
+      dplyr::mutate_if(dplyr::mutate_if(
+      dcast(haz_risk_vop_tab2(),admin_name+crop~hazard_rename,value.var = "value"),
+              is.numeric,~round(.,0)),is.character,~as.factor(.))
+      }else{
+        if(input$exposure=="harvested area"){
+             dplyr::mutate_if(dplyr::mutate_if(
+               dcast(haz_risk_ha_tab2(),admin_name+crop~hazard_rename,value.var = "value"),
+               is.numeric,~round(.,0)),is.character,~as.factor(.))
+        }else{
+          NULL
+          }
+        },
     caption=if(input$exposure=="rural pop"){"Value of production exposed to hazards"}else{if(input$exposure=="Harvested area"){"Harvested area exposed to hazards"}else{NULL}},
             extensions = 'Buttons',
             filter = "top",
@@ -403,4 +446,38 @@ renderDT({
 })
 ```
 
+```{r Crop x Exposure Maps,echo=F}
+ # Vect
+  # Index back values to geography vector and plot
+  # Sum exposure across crops
+  # 1) % exposure 
+  # 2) total exposure
+  # 3) Most important hazard plot
+```
 
+```{r Crop x Non-crop Exposure Mask,echo=F}
+
+# Grab risk rasters for selection - these should be pre-masked to crop production areas
+
+# Classify risk rasters/Or grab pre-classified data
+
+# Merge risk areas (crops x hazards) by hazard
+
+# Extract and sum exposure per hazard risk area
+
+# Merge all risk areas
+
+# Extract and sum exposure for all risk area
+
+```
+
+```{r Timeseries,echo=T}
+# Load hazard timeseries vectors/table
+
+# Subset to relevant areas
+
+# Plot mean hazard over time with severity classes superimposed
+
+# I do not know how to combine mean hazard across geographies (area weighted?) - (need to add area to geographies)
+
+```
