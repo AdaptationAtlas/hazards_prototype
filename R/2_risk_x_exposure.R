@@ -60,7 +60,7 @@ admin_extract<-function(data,Geographies,FUN="mean",max_cells_in_memory=3*10^7){
   return(output)
 }
 
-#### Load datasets
+#### Load datasets (non hazards)
 # 1) Geographies #####
 # Load and combine geoboundaries
 Geographies<-list(
@@ -248,6 +248,27 @@ for(SEV in tolower(severity_classes$class[2])){
     }
 
 }
+
+# 2) Hazard Mean
+
+save_dir_means<-paste0("Data/hazard_mean/",timeframe_choice)
+files<-list.files(save_dir_means,".tif",full.names = T)
+
+haz_means<-terra::rast(files[!grepl("change",files)])
+haz_means_change<-terra::rast(files[grepl("change",files)])
+
+# extract change in mean hazards
+haz_means_adm<-admin_extract(haz_means,Geographies)
+st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin0), dsn=paste0(save_dir_means,"/haz_means_adm0.parquet"))
+st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin1), dsn=paste0(save_dir_means,"/haz_means_adm1.parquet"))
+st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin2), dsn=paste0(save_dir_means,"/haz_means_adm2.parquet"))
+
+# extract change in mean hazards
+haz_means_change_adm<-admin_extract(haz_means_change,Geographies)
+
+st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin0), dsn=paste0(save_dir_means,"/haz_means_change_adm0.parquet"))
+st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin1), dsn=paste0(save_dir_means,"/haz_means_change_adm1.parquet"))
+st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin2), dsn=paste0(save_dir_means,"/haz_means_change_adm2.parquet"))
 
 # 2) Commodity Specific Hazard Risk x Crop or Livestock VoP & Crop Harvested Area ####
 haz_risk_vop_dir<-paste0("Data/hazard_risk_vop/",timeframe_choice)
@@ -666,7 +687,7 @@ for(SEV in tolower(severity_classes$class[2])){
 
 
 # 3) Generic Risk x Human Population #####
-haz_risk_hpop_dir<-"Data/hazard_risk_hpop"
+haz_risk_hpop_dir<-paste0("Data",timeframe_choice,"/hazard_risk_hpop")
 if(!dir.exists(haz_risk_hpop_dir)){
   dir.create(haz_risk_hpop_dir)
 }
@@ -713,7 +734,7 @@ for(SEV in tolower(severity_classes$class[2])){
 # 3) Generic Risk x Total Harvested Area
 crop_ha_tot_sum<-sum(crop_ha_tot)
 
-haz_risk_croparea_dir<-"Data/hazard_risk_croparea"
+haz_risk_croparea_dir<-paste0("Data/",timeframe_choice,"/hazard_risk_croparea")
 if(!dir.exists(haz_risk_croparea_dir)){
   dir.create(haz_risk_croparea_dir)
 }
