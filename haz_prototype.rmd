@@ -68,14 +68,14 @@ livestock_choices<-sort(c("all livestock","cattle","goats","sheep","pigs","poult
 exposure_choices<-c("value of production","harvested area","rural pop")
 
 # Hazards crops
-haz_heat<-sort(c("NTx35","TAVG_G"))
+haz_heat_choices<-sort(c("NTx35","TAVG_G"))
 
 # Hazards livestock
 haz_heat_ls<-sort(c("THI"))
 
 # Hazards both
-haz_dry<-sort(c("NDD","NDWS","PTOT_L"))
-haz_wet<-sort(c("NDWL0","PTOT_G"))
+haz_dry_choices<-sort(c("NDD","NDWS","PTOT_L"))
+haz_wet_choices<-sort(c("NDWL0","PTOT_G"))
 
 
 haz_meta<-data.table::fread("./Data/metadata/haz_metadata.csv")
@@ -253,7 +253,7 @@ Note that the heat hazard is always THI for livestock.
   selectInput(inputId="haz_dry", 
               label="Choose drought hazard",
               choices =  haz_dry,
-              selected =  haz_dry[3],
+              selected =  haz_dry_choices[3],
               multiple = F, 
               width="180px")
 
@@ -264,7 +264,7 @@ Note that the heat hazard is always THI for livestock.
   selectInput(inputId="haz_heat", 
               label="Choose heat hazard",
               choices =  haz_heat,
-              selected =  haz_heat[4],
+              selected =  haz_heat_choices[2],
               multiple = F, 
               width="180px")
 
@@ -274,8 +274,8 @@ Note that the heat hazard is always THI for livestock.
 ```{r Crop Wet Hazards, echo=F}
   selectInput(inputId="haz_wet", 
               label="Choose wet hazard",
-              choices =  haz_wet,
-              selected =  NULL,
+              choices =  haz_wet_choices,
+              selected =  haz_wet_choices[2],
               multiple = F, 
               width="180px")
 
@@ -355,7 +355,7 @@ haz_choice<-reactive({
 
 
 
-** Exposure headline stats**
+**Exposure headline stats**
 ```{r Table - Risk Exposure Headline,echo=F}
   # Total value of crops exposed to hazards
   haz_risk_tab_join_sum<-reactive({
@@ -365,9 +365,7 @@ haz_choice<-reactive({
                           hazard %in% haz_choice(),
                      list(value=sum(value,na.rm = T)),
                      by=list(exposure,severity,scenario,timeframe,hazard)
-                     ][,admin_level:=NULL
-                       ][,admin_name:=NULL
-                         ][,hazard_rename:=names(haz_choice())[match(hazard,haz_choice())]]
+                     ][,hazard_rename:=names(haz_choice())[match(hazard,haz_choice())]]
   })
 ```
 
@@ -392,7 +390,7 @@ renderDT({
       
 ```
 
-** Exposure by admin area x crop x hazard **
+**Exposure by admin area x crop x hazard**
 ```{r Subset Risk x Exposure datasets, echo=F}
 haz_risk_vop_tab2<-reactive({
   haz_risk_vop_tab()[admin_level==input$AdminLevel & 

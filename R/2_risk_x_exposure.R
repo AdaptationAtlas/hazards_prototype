@@ -120,7 +120,7 @@ if(!dir.exists(exposure_dir)){
     dir.create(commodity_mask_dir)
   }
   
-  # Need pto use mapspam physical area
+  # Need to use mapspam physical area
   pa<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_A_TA.csv"))
   crops<-tolower(ms_codes$Code)
   ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(pa),value=T))
@@ -201,6 +201,23 @@ if(!dir.exists(exposure_dir)){
     
     # Classify requires 0.00001 livestock units per ha to be present
     livestock_mask<-terra::classify(lu_density, data.frame(from=c(0,0.00001),to=c(0.00001,Inf),becomes=c(0,1)))
+    
+    # Next Step -> NEED TO APPLY A HIGHLAND/TROPICAL SPLIT
+    # Load highland mask
+    highlands<-terra::rast("Data/afr_highlands/afr-highlands.asc")
+    highlands<-terra::resample(highlands,base_rast,method="near")
+
+    
+    livestock_mask_high<-livestock_mask*highlands
+    names(livestock_mask_high)<-paste0( names(livestock_mask_high),"_highland")
+    
+    
+    lowlands<-classify(highlands,data.frame(from=c(0,1),to=c(1,0)))
+    livestock_mask_low<-livestock_mask*lowlands
+    names(livestock_mask_low)<-paste0( names(livestock_mask_low),"_tropical")
+    
+    livestock_mask<-c(livestock_mask_high,livestock_mask_low)
+    
     terra::writeRaster(livestock_mask,filename=paste0(commodity_mask_dir,"/livestock_masks.tif"),overwrite=T)
     
 # 2.3) Population ######
@@ -249,7 +266,51 @@ for(SEV in tolower(severity_classes$class[2])){
 
 }
 
-# 2) Hazard Mean
+# 2) Apply Crop Mask to Classified Hazard Risk ####
+
+dirs<-list.dirs("Data/hazard_risk_class",recursive = F)
+
+# join crop and livestock masks
+commodity_masks<-c(crop_mask,livestock_mask)
+
+for(k in 1:length(dirs)){
+  
+  haz_risk_class_dir<-paste0(dirs[k],"/",timeframe_choice)
+
+  haz_risk_mask_dir<-gsub("hazard_risk_class/","hazard_risk_class_mask/",haz_risk_class_dir)
+  if(!dir.exists(haz_risk_mask_dir)){
+    dir.create(haz_risk_mask_dir,recursive = T)
+  }
+  
+  risk_class_rast_files<-list.files(haz_risk_class_dir,".tif",full.names = T)
+  
+  file_crops<-gsub("_severe|_extreme|_int|[.]tif","",unlist(tail(tstrsplit(risk_class_rast_files,"/"),1)))
+  
+  for(i in 1:nlyr(commodity_masks)){
+    crop<-names(commodity_masks)[i]
+    mask<-commodity_masks[[i]]
+    risk_files<-risk_class_rast_files[file_crops==crop]
+    for(j in 1:length(risk_files)){
+      
+      # Display progress
+      cat('\r                                                                                                                                                 ')
+      cat('\r',paste("Crop:",i,"/",nlyr(commodity_masks)," | file:",j,"/",length(risk_files)))
+      flush.console()
+      
+      file<-risk_files[j]
+      
+      save_name<-gsub(haz_risk_class_dir,haz_risk_mask_dir,file)
+      if(!file.exists(save_name)){
+        risk<-terra::rast(file)
+        risk_masked<-risk*mask
+        terra::writeRaster(risk_masked,filename =save_name)
+      }
+    }
+  }
+
+}
+
+  # 3) Hazard Mean ####
 
 save_dir_means<-paste0("Data/hazard_mean/",timeframe_choice)
 files<-list.files(save_dir_means,".tif",full.names = T)
@@ -270,7 +331,7 @@ st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin0), dsn=paste0(save_dir_mea
 st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin1), dsn=paste0(save_dir_means,"/haz_means_change_adm1.parquet"))
 st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin2), dsn=paste0(save_dir_means,"/haz_means_change_adm2.parquet"))
 
-# 2) Commodity Specific Hazard Risk x Crop or Livestock VoP & Crop Harvested Area ####
+# 4) Commodity Specific Hazard Risk x Crop or Livestock VoP & Crop Harvested Area ####
 haz_risk_vop_dir<-paste0("Data/hazard_risk_vop/",timeframe_choice)
 if(!dir.exists(haz_risk_vop_dir)){
   dir.create(haz_risk_vop_dir,recursive = T)
@@ -686,7 +747,7 @@ for(SEV in tolower(severity_classes$class[2])){
 
 
 
-# 3) Generic Risk x Human Population #####
+# 5) Generic Risk x Human Population #####
 haz_risk_hpop_dir<-paste0("Data",timeframe_choice,"/hazard_risk_hpop")
 if(!dir.exists(haz_risk_hpop_dir)){
   dir.create(haz_risk_hpop_dir)
@@ -731,7 +792,7 @@ for(SEV in tolower(severity_classes$class[2])){
     
   }
 
-# 3) Generic Risk x Total Harvested Area
+# 6) Generic Risk x Total Harvested Area ####
 crop_ha_tot_sum<-sum(crop_ha_tot)
 
 haz_risk_croparea_dir<-paste0("Data/",timeframe_choice,"/hazard_risk_croparea")
