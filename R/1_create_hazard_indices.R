@@ -3,7 +3,6 @@ require(data.table)
 require(terra)
 require(doFuture)
 
-
 # Set scenarios and time frames to analyse
 Scenarios<-c("ssp245","ssp585")
 Times<-c("2021_2040","2041_2060")
@@ -152,10 +151,10 @@ calc_hi<-F
 #plan("multisession", workers = 10)
 
 #  Crop loop starts here
-#foreach(j = 1:length(crop_choices)) %dopar% { # Can hit error when parallel due to different workers trying to write the same file
+foreach(j = 1:length(crop_choices)) %dopar% { # Can hit error when parallel due to different workers trying to write the same file
     # To solve issue loop over unique threshold x variable combinations rather than crops
     # This will require putting the foreach loop into the hazard wrapper function
-for(j in 1:length(crop_choices)){ 
+#for(j in 1:length(crop_choices)){ 
     
     # Display progress
     print(paste0("Crop ",crop_choices[j]))
@@ -209,7 +208,7 @@ for(j in 1:length(crop_choices)){
     
 
 # Calculate change for hazard index ####
-
+calc_hi<-F
 if(calc_hi){
 files_hi<-paste0("hi_",crop_choices,"-",PropThreshold,".tif")
 
@@ -350,7 +349,7 @@ foreach(j = 1:length(severity_classes)) %dopar%{
 
 #for(j in 1:nrow(severity_classes)){
 
-  data<-terra::rast(lapply(1:length(crop_choices),FUN=function(i){
+  lapply(1:length(crop_choices),FUN=function(i){
     crop_focus<-crop_choices[i]
       severity_class<-severity_classes[j,class]
      haz_class_crop<-haz_class[crop==crop_focus & description == severity_class]
@@ -358,6 +357,11 @@ foreach(j = 1:length(severity_classes)) %dopar%{
      haz_class_files2<-haz_class_files[grepl(grep_vals,haz_class_files) & !grepl("change",haz_class_files)]
    
      save_name<-paste0(haz_risk_dir,"/",crop_focus,"_",tolower(severity_class),".tif")
+     
+     # Display progress
+     cat('\r                                                                                                                     ')
+     cat('\r',paste("Crop:",i,crop_focus,"| severity:",j,severity_class))
+     flush.console()
      
      if(!file.exists(save_name)|overwrite==T){
      
@@ -375,21 +379,17 @@ foreach(j = 1:length(severity_classes)) %dopar%{
          lyr_name[3]<-paste0(lyr_name[3],"_",lyr_name[4])
          lyr_name<-lyr_name[-4]
        }else{
-       lyr_name<-c(unlist(tstrsplit(file,"-",keep=c(2,3,4))),crop_focus,severity_class)
+        lyr_name<-c(unlist(tstrsplit(file,"-",keep=c(2,3,4))),crop_focus,severity_class)
        }
        lyr_name<-paste0(lyr_name,collapse = "-")
        names(data)<-lyr_name
        data
      }))
      
-     # Display progress
-     cat('\r                                                                                                                     ')
-     cat('\r',paste("Writing File - crop:",j,crop_focus,"| severity:",j,severity_class))
-     flush.console()
-     terra::writeRaster(data,file=save_name)
+     terra::writeRaster(data,file=save_name,overwrite=T)
      }
    
-   }))
+   })
   
   
   }
@@ -417,8 +417,8 @@ registerDoFuture()
 plan("multisession", workers = 10)
 
 #  loop starts here
-foreach(j = 1:length(files)) %dopar% {
-#for(j in 1:length(files)){
+#foreach(j = 1:length(files)) %dopar% {
+for(j in 1:length(files)){
   file<-files[j]
   save_name<-gsub(".tif","_int.tif",file)
   data<-terra::rast(file)
@@ -478,7 +478,7 @@ plan("multisession", workers = 10)
 #  Crop loop starts here
 foreach(j = 1:length(files)) %dopar% {
   
-# for(j in 1:length(files)){
+ #for(j in 1:length(files)){
   file<-files[j]
   save_name<-gsub(".tif","_int.tif",file)
   data<-terra::rast(file)

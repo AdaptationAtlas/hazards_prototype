@@ -67,6 +67,22 @@ haz_wet<-haz_wet_choices[2]
 severity<-"severe"
 exposure<-exposure_choices[1]
 
+# Subset geographies ####
+if(AdminLevel=="admin0"){
+  geographies_selected<-Geographies$admin0[Geographies$admin0$admin0_nam %in% country_choice]
+}
+
+if(AdminLevel=="admin1"){
+  geographies_selected<-Geographies$admin1[Geographies$admin1$admin0_nam %in% country_choice & 
+                                             Geographies$admin1$admin1_nam %in% admin1]
+}
+
+if(AdminLevel=="admin2"){
+  geographies_selected<-Geographies$admin2[Geographies$admin2$admin0_nam %in% country_choice & 
+                                             Geographies$admin2$admin1_nam %in% admin1 & 
+                                             Geographies$admin2$admin2_nam %in% admin2]
+}
+
 # Load Risk x Exposure datasets ####
 # RENAME HAZARD FIELDS TO GENERIC GROUPS
 haz_risk_vop_tab<-data.table(feather::read_feather(paste0(paste0("Data/hazard_risk_vop/",season_choice),"/haz_risk_vop_",severity,".feather")))
@@ -147,18 +163,22 @@ if(exposure=="value of production"){
 }
 
 
-# Crop x Non-crop Exposure Mask ####
+# Combined Risk For Human Pop ####
+
+# TO DO -> RENAME HAZARDS TO HEAT,WET,DRY
 
 risk_threshold<-0.5
 
-
 # Grab risk rasters for selection - these should be pre-masked to crop production areas
-risk_rast_files<-list.files(paste0("Data/hazard_risk_masked/",season_choice),".tif",full.names = T)
+risk_rast_files<-list.files(paste0("Data/hazard_risk_class_mask/t",risk_threshold,"/",season_choice),".tif",full.names = T)
 risk_rast_full<-terra::rast(risk_rast_files)
 
 risk_rast<-risk_rast_full[[grep(severity,names(risk_rast_full),value = T,ignore.case = T)]]
 risk_rast<-risk_rast[[grep(paste0(crops,collapse = "|"),names(risk_rast),value = T,ignore.case = T)]]
 risk_rast<-risk_rast[[unlist(tstrsplit(names(risk_rast),"-",keep=3)) %in% haz_choice]]
+
+# Crop to geography
+risk_rast<-terra::mask(terra::crop(risk_rast,geographies_selected),geographies_selected)
 
 risk_rast_past<-risk_rast[[grep("historic",names(risk_rast),value = T,ignore.case = T)]]
 risk_rast_fut<-risk_rast[[grep(future_scenario,names(risk_rast),value = T,ignore.case = T)]]
@@ -167,18 +187,34 @@ risk_rast_fut<-risk_rast_fut[[grep(future_timeframe,names(risk_rast_fut),value =
 # Very slow - this needs to be pre-baked
 risk_rast_diff<-risk_rast_fut-risk_rast_past
 
-# Grab pre-classified data - on the fly calculations is too slow!
-data<-risk_rast
-N<-values(data)
-N[N<risk_threshold & !is.na(N)]<-0
-N[N>=risk_threshold & !is.na(N)]<-1
-data[]<-N
-
 
 # Merge risk areas (crops x hazards) by hazard
+rr_names<-unique(unlist(tstrsplit(names(risk_rast_past),"-",keep=3)))
+
+risk_rast_past_max<-terra::rast(lapply(rr_names,FUN=function(NAME){
+  NAME<-paste0("-",NAME,"-")
+  Layers<-grep(NAME,names(risk_rast_past),value=T,fixed = T)
+  X<-risk_rast_past[[Layers]]
+  terra::app(X,fun="max",na.rm=T)
+}))
+
+names(risk_rast_past_max)<-rr_names
+
+risk_rast_past_max$ANY<- terra::app(risk_rast_past,fun="max",na.rm=T)
+n_haz<-str_count(names(risk_rast_past_max),"[+]")+1
+risk_rast_past_max$ONE<- terra::app(risk_rast_past[[n_haz==1]],fun="max",na.rm=T)
+risk_rast_past_max$TWO<- terra::app(risk_rast_past[[n_haz==2]],fun="max",na.rm=T)
 
 # Extract and sum exposure per hazard risk area
+# Load human population
+hpop<-terra::rast("Data/exposure/hpop.tif")
 
-# Merge all risk areas
+hpop_crop<-terra::mask(terra::crop(hpop,geographies_selected),geographies_selected)
+
+hpop_risk<-risk_rast_past_max*hpop_crop$rural
+plot(hpop_risk)
+
+hpop_risk_tab<-exactextractr::exact_extract(hpop_risk,sf::st_as_sf(geographies_selected),fun="sum",append_cols=c("admin_name","iso3"))
+hpop_risk_tab_tot<-colSums(hpop_risk_tab[,-(1:2)])
 
 # Extract and sum exposure for all risk area
