@@ -147,6 +147,11 @@ crop_choices<-c(fread("./Data/metadata/haz_classes.csv")[,unique(crop)],ms_codes
 # Calculate hazard indices?
 calc_hi<-F
 
+# TO DO:
+# HAZARD WRAPPER NEEDS AMENDING
+# We need to convert each time series stack to hazard 1/0 per threshold number and save these
+# These stacks can then be combined to look at the intersection of hazards properly
+
 #registerDoFuture()
 #plan("multisession", workers = 10)
 
@@ -456,7 +461,7 @@ for(j in 1:length(files)){
 #### Livestock
 livestock<-fread("./Data/metadata/haz_classes.csv")[crop!="generic",unique(crop)]
 
-animal_heat<-c("THI")
+animal_heat<-c("THI_max") # THI_mean or THI_max can be used here (or both)
 animal_wet<-c("NDWL0","PTOT_G")
 animal_dry<-c("NDD","PTOT_L","NDWS")
 
@@ -475,7 +480,7 @@ registerDoFuture()
 plan("multisession", workers = 10)
 
 
-#  Crop loop starts here
+#  Livestock loop starts here
 foreach(j = 1:length(files)) %dopar% {
   
  #for(j in 1:length(files)){
@@ -487,7 +492,6 @@ foreach(j = 1:length(files)) %dopar% {
   if(!file.exists(save_name)){
     interactions<-terra::rast(lapply(1:nrow(combinations),FUN=function(i){
       
-      # Add filename & check to see if it exists    
       haz<-combinations[i,]
       haz<-haz[!is.na(haz)]
       
