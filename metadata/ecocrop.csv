@@ -1,0 +1,2128 @@
+species,Life.span,temp_opt_min,Temp_Opt_Max,Temp_Abs_Min,Temp_Abs_Max,Rain_Opt_Min,Rain_Opt_Max,Rain_Abs_Min,Rain_Abs_Max,cycle_min,cycle_max
+Abelmoschus esculentus,annual,20,30,12,35,600,1200,300,2500,50,180
+Abelmoschus manihot,"annual, perennial",22,30,16,36,1200,2000,1000,3000,365,365
+Abelmoschus manihot,"annual, perennial",22,30,16,36,1200,2000,1000,3000,365,365
+Abelmoschus moschatus,"annual, biennial, perennial",20,30,10,35,1000,1400,900,1500,,
+Abies amabilis,perennial,12,18,6,22,1500,6000,1000,6650,,
+Abies balsamea,perennial,10,18,4,26,750,1100,400,1500,100,160
+Abies concolor,perennial,10,18,5,22,800,1200,350,1900,150,180
+Abies pindrow,perennial,16,24,2,32,1300,2000,1100,2500,90,180
+Abroma augustum,perennial,26,31,18,36,1500,3000,1300,3500,100,210
+Abutilon theophrasti,annual,14,25,10,30,650,2000,500,3000,75,140
+Acacia abyssinica,perennial,20,30,10,40,450,1200,300,1500,365,365
+Acacia acradenia,perennial,24,34,8,42,400,800,200,1000,90,300
+Acacia acuminata,perennial,17,28,6,38,350,500,300,700,90,180
+Acacia ammobia,perennial,24,36,10,43,200,250,150,300,60,120
+Acacia ampliceps,perennial,14,36,5,46,400,600,200,800,60,180
+Acacia ancistrocarpa,perennial,22,34,10,46,300,500,250,700,90,180
+Acacia aneura,perennial,20,34,8,46,250,450,150,550,60,180
+Acacia angustissima,perennial,25,30,20,35,1000,2500,800,3000,,
+Acacia anticeps,perennial,18,28,8,36,250,450,150,550,60,210
+Acacia argyrodendron,perennial,22,32,10,40,450,550,350,650,150,210
+Acacia ataxacantha,perennial,22,35,10,45,500,1300,300,1500,,
+Acacia aulacocarpa,perennial,18,32,12,43,900,1200,500,1500,180,300
+Acacia auriculiformis,perennial,24,32,10,40,1200,2500,500,5000,180,240
+Acacia bidwillii,perennial,22,32,10,40,550,750,450,850,180,300
+Acacia brachystachya,perennial,20,40,4,58,250,300,150,500,60,180
+Acacia brassii,perennial,22,30,12,38,1200,1600,700,1800,240,330
+Acacia brevispica,perennial,20,30,14,35,450,700,350,900,,
+Acacia burrowii,perennial,18,30,8,40,500,600,350,700,130,230
+Acacia caffra,perennial,15,35,10,40,700,900,400,2000,,
+Acacia calcicola,perennial,22,32,8,42,150,100,125,250,60,120
+Acacia cambagei,perennial,20,30,5,40,200,500,125,600,60,180
+Acacia cana,perennial,14,30,10,35,600,900,500,1000,,
+Acacia catechu,perennial,25,35,7,48,700,2100,500,3800,180,270
+Acacia cincinnata,perennial,22,32,10,39,1500,3000,1000,3500,210,365
+Acacia coriacea,perennial,24,32,10,43,300,500,200,800,90,240
+Acacia cowleana,perennial,24,35,12,45,250,400,200,500,75,150
+Acacia crassicarpa,perennial,24,32,15,39,1500,3000,1000,3500,210,300
+Acacia cyclops,perennial,18,26,5,35,400,800,200,1000,70,210
+Acacia dealbata,perennial,15,26,6,32,600,1000,300,1500,150,240
+Acacia decurrens,perennial,12,25,6,30,900,2600,750,3000,150,300
+Acacia dictyophleba,perennial,22,30,8,38,200,400,100,500,60,230
+Acacia difficilis,perennial,22,35,13,42,650,1100,450,1500,160,300
+Acacia doratoxylon,perennial,22,23,16,38,400,600,375,750,,
+Acacia dudgeoni,perennial,22,32,14,40,400,1000,300,1800,,
+Acacia erioloba,perennial,15,35,10,45,250,700,50,900,,
+Acacia falciformis,perennial,18,32,7,40,600,800,500,900,180,300
+Acacia farnesiana,perennial,20,32,7,42,400,1400,150,4000,60,240
+Acacia fasciculifera,perennial,18,32,10,40,675,800,550,850,180,270
+Acacia flavescens,perennial,22,34,11,38,1000,2200,750,3000,210,330
+Acacia glaucocaesia,perennial,14,30,5,36,300,350,250,400,60,120
+Acacia glaucocarpa,perennial,18,35,8,40,650,800,500,850,180,300
+Acacia haematoxylon,perennial,18,35,10,45,150,200,100,250,365,365
+Acacia harpophylla,perennial,18,28,7,40,450,600,300,700,90,240
+Acacia holosericea,perennial,24,32,12,45,600,1200,250,1600,120,300
+Acacia irrorata,perennial,18,32,10,39,750,1000,600,1100,180,240
+Acacia jennerae,perennial,12,30,5,36,250,300,200,350,60,120
+Acacia jensenii,perennial,12,30,5,36,300,400,200,500,60,180
+Acacia julifera ssp. gilbertensis,perennial,24,35,12,41,800,1000,450,1100,160,300
+Acacia julifera ssp. julifera,perennial,20,32,10,38,800,1100,500,1200,180,240
+Acacia karroo,perennial,19,33,12,40,400,1300,200,1500,,
+Acacia laeta,perennial,24,32,14,45,300,650,230,750,60,180
+Acacia latzii,perennial,22,35,10,44,150,200,100,250,30,120
+Acacia leptocarpa,perennial,22,33,10,39,750,1500,500,1750,180,300
+Acacia leucophloea,perennial,22,32,12,38,900,1700,600,2000,180,300
+Acacia ligulata,perennial,18,33,8,42,125,225,100,250,45,120
+Acacia macdonnelliensis,perennial,24,33,8,42,200,250,150,300,60,120
+Acacia maconochieana,perennial,24,36,10,42,250,350,200,400,180,210
+Acacia maidenii,perennial,17,32,10,38,900,1200,600,1300,180,300
+Acacia mangium,perennial,22,34,12,38,2000,3000,1000,4500,210,270
+Acacia mearnsii,perennial,18,30,5,35,700,1600,300,3000,270,300
+Acacia melanoxylon,perennial,18,22,4,30,800,2200,600,2700,300,365
+Acacia millifera,perennial,22,32,12,40,450,600,380,750,150,240
+Acacia monticola,perennial,20,32,12,42,250,450,200,500,75,180
+Acacia murrayana,perennial,12,34,5,42,200,400,100,500,30,180
+Acacia neriifolia,perennial,22,32,8,39,600,700,400,800,150,210
+Acacia nilotica,perennial,19,34,10,50,400,1200,200,2300,90,180
+Acacia oraria,perennial,22,32,14,38,1500,2000,1000,2150,300,330
+Acacia pachyacra,perennial,12,30,5,38,200,300,150,350,70,150
+Acacia parchcarpa,perennial,25,37,10,45,225,300,150,350,90,120
+Acacia pendula,perennial,20,30,4,34,400,700,250,900,90,210
+Acacia plectocarpa,perennial,22,35,12,44,600,1400,400,1600,150,330
+Acacia podalyriifolia,perennial,18,32,10,40,700,1000,500,1200,180,240
+Acacia polystachya,perennial,24,32,15,38,1200,2000,1000,2200,300,365
+Acacia pruinocarpa,perennial,22,35,8,43,200,250,125,300,60,120
+Acacia pycnantha,perennial,20,28,5,35,1000,1600,600,2300,90,270
+Acacia rothii,perennial,24,34,15,40,1400,1600,1200,1700,300,365
+Acacia salicina,perennial,24,30,6,36,400,600,300,700,120,240
+Acacia saligna,perennial,20,32,5,36,400,700,300,1000,120,240
+Acacia senegal,perennial,24,32,14,48,300,800,200,2300,60,180
+Acacia seyal,perennial,24,32,15,45,1000,1700,350,2300,150,330
+Acacia shirleyi,perennial,18,36,10,43,500,650,400,750,140,300
+Acacia silvestris,perennial,15,25,8,33,800,1000,600,1100,120,180
+Acacia simsii,perennial,22,32,10,40,1000,1600,700,1800,300,365
+Acacia stenophylla,perennial,18,32,5,42,200,600,100,800,60,240
+Acacia synchronicia,perennial,18,28,5,36,300,600,200,700,90,210
+Acacia tephrina,perennial,22,38,10,43,400,500,250,550,100,210
+Acacia tortilis,perennial,28,45,10,50,300,800,100,1000,70,180
+Acacia torulosa,perennial,22,36,12,43,400,700,300,800,120,365
+Acacia trachycarpa,perennial,22,32,8,45,250,350,150,400,60,150
+Acacia tumida,perennial,22,36,12,42,400,1000,200,1500,75,300
+Acacia victoriae,perennial,12,32,5,38,300,800,100,1000,60,270
+Acacia xiphohylla,perennial,24,36,12,45,200,250,150,300,60,120
+Acanthosicyos horridus,perennial,15,30,10,40,125,250,75,450,,
+Acanthosicyos naudinianus,perennial,15,30,12,32,150,500,100,700,,
+Acanthus ilicifolius,perennial,18,26,15,32,1500,2500,1000,3000,365,365
+Acanthus mollis,perennial,15,30,10,38,500,800,400,1000,,
+Acca sellowiana,perennial,18,21,12,28,750,1500,600,2000,,
+Acehmea magdalenae,perennial,24,30,12,36,900,1300,700,1500,210,330
+Acer caesium,perennial,15,21,7,30,1000,1800,660,2150,210,270
+Acer saccharum,perennial,14,24,4,28,700,1300,500,1500,130,240
+Achnatherum splendens,perennial,8,15,3,20,300,400,200,500,75,150
+Acmena smithii,perennial,18,28,8,36,1000,1700,700,2000,150,240
+Acokanthera schimperi,perennial,17,23,15,28,500,700,400,1000,,
+Acorus calamus,perennial,18,26,4,30,7000,2000,430,4200,90,365
+Acrocarpus fraxinifolius,perennial,28,35,12,38,1200,1500,1100,1600,240,365
+Acroceras macrum,perennial,16,26,12,30,800,1500,625,2000,120,365
+Acrocomia aculeata,perennial,25,35,20,45,1000,2000,500,3000,,
+Acrocomia totai,perennial,22,28,18,34,900,1500,750,2500,,
+Actinidia arguta,perennial,12,25,5,30,900,1500,700,2000,150,180
+Actinidia chinensis,perennial,21,30,8,35,900,1300,700,1500,210,330
+Actinidia sp.,NA,16.5,27.5,6.5,32.5,900,1400,700,1750,180,255
+Adansonia digitata,perennial,26,36,14,42,600,1500,250,4200,210,270
+Adansonia grandidieri,perennial,22,30,8,35,1000,1500,800,2000,,
+Adansonia gregorii,perennial,24,34,13,42,600,1500,450,2000,210,270
+Adenanthera pavonina,perennial,22,28,12,36,3000,5000,2000,6000,365,365
+Adesmia bicolor,perennial,10,20,6,25,600,1000,300,2000,,
+Adesmia latifolia,perennial,12,20,8,28,500,700,400,900,,
+Adesmia punctata,perennial,12,22,8,22,800,2000,600,2500,,
+Adesmia securigerifolia,"annual, biennial",10,25,8,28,600,1300,400,1500,,
+Adina cordifolia,perennial,25,35,5,47,1000,2000,800,4500,180,270
+Adonis vernalis,perennial,14,30,10,36,400,750,350,800,,
+Aegiceras corniculatum,perennial,18,26,7,35,1000,2000,800,4000,240,300
+Aegle marmelos,perennial,30,42,5,49,800,2000,500,4000,180,365
+Aeschynomene americana,"annual, perennial",22,30,7,35,1000,1500,600,4000,60,220
+Aeschynomene brasiliana,perennial,20,29,15,34,800,1200,650,2200,,
+Aeschynomene evenia,"annual, perennial",20,28,17,31,600,1600,500,1800,,
+Aeschynomene falcata,perennial,20,25,5,35,1000,1500,700,2500,120,240
+Aeschynomene histrix,perennial,15,28,12,35,800,1500,350,2760,45,305
+Aeschynomene indica,"annual, perennial",18,30,10,35,1000,1200,600,2000,150,220
+Aeschynomene villosa,"annual, perennial",15,27,10,32,900,1500,460,2400,,
+Aeschynomene averaged,,19,28,11,34,871,1429,551,2523,94,246
+Aesculus indica,perennial,23,26,6,30,1000,2000,660,2500,210,270
+Aframomum corrorima,perennial,16,24,7,35,1400,2000,1200,3000,270,365
+Aframomum melegueta,perennial,21,28,10,34,1500,1900,1000,2400,270,365
+Afzelia africana,perennial,20,32,10,40,1200,1800,1000,2500,240,300
+Afzelia quanzensis,perennial,18,28,14,36,700,1400,400,1700,365,365
+Agathis australis,perennial,14,24,5,32,1200,1600,1000,2000,150,240
+Agathis dammara,perennial,28,34,12,38,2500,3500,2000,4000,300,365
+Agathis labillardieri,perennial,24,32,12,40,2500,4000,1500,5000,300,365
+Agathis macrophylla,perennial,22,32,10,40,4000,5000,2000,7000,300,365
+Agathis microstachya,perennial,22,30,10,36,2000,2700,1400,3500,300,365
+Agathis robusta,perennial,18,30,6,38,1500,3000,900,5000,210,300
+Agave cantala,perennial,17,30,10,38,1000,2000,400,2700,150,330
+Agave fourcroydes,perennial,15,30,10,40,900,1250,700,2500,210,330
+Agave lecheguilla,perennial,15,25,10,30,450,600,250,800,70,150
+Agave sisalana,perennial,15,27,10,45,900,1250,500,1800,150,270
+Agave sp.,NA,15.66667,28.33333,10,36,783.3333,1283.333,450,2000,143.3333,270
+Agropyron cristatum,perennial,15,25,5,45,250,400,100,1000,90,240
+Agropyron dasystachyum,perennial,15,25,2,35,400,700,200,2200,80,165
+Agropyron desertorum,perennial,15,20,5,45,250,400,100,1200,90,240
+Agropyron elongatum,perennial,12,20,2,25,350,600,200,1600,120,270
+Agropyron intermedium,perennial,15,20,5,36,400,600,300,1160,90,229
+Agropyron mongolicum,perennial,12,20,3,45,150,300,70,400,30,120
+Agropyron repens,perennial,10,20,4,45,550,750,200,1500,90,176
+Agropyron riparium,perennial,10,18,2,32,500,800,350,1160,120,240
+Agropyron sibiricum,perennial,15,20,5,45,200,600,100,1000,120,240
+Agropyron smithii,perennial,7,20,2,45,400,600,210,1160,80,165
+Agropyron spicatum,perennial,12,20,2,24,250,500,210,1160,90,240
+Agropyron tauri,perennial,15,20,5,25,350,600,300,1000,90,240
+Agropyron trachycaulum,perennial,13,22,3,26,500,700,300,1100,120,240
+Agropyron trichophorum,perennial,15,20,5,25,250,600,300,1000,90,240
+Agrostis canina,perennial,9,20,2,45,500,900,200,1200,120,180
+Agrostis gigantea,perennial,12,21,2,32,500,900,300,1200,120,180
+Agrostis stolonifera,perennial,9,22,4,45,500,800,200,1800,120,180
+Agrostis tenuis,perennial,10,20,3,45,400,800,200,2100,120,270
+Agrostis trinii,perennial,8,15,3,45,200,500,70,600,30,180
+Ailanthus altissima,perennial,14,28,6,40,400,600,350,1500,120,210
+Ailanthus excelsa,perennial,20,40,4,47,600,1900,400,2500,120,300
+Ailanthus grandis,perennial,30,38,4,42,3000,4000,2500,4500,300,365
+Aiphanes aculeata,perennial,22,27,18,32,1500,3000,1000,5000,,
+Albizia adianthifolia,perennial,22,28,15,34,1500,2500,900,4000,,
+Albizia amara,perennial,15,40,10,50,400,1000,250,1200,,
+Albizia basaltica,perennial,22,32,12,35,500,750,400,800,,
+Albizia chevalieri,perennial,24,30,18,35,600,900,500,1000,,
+Albizia chinensis,perennial,22,32,15,45,2500,3500,1000,5000,270,365
+Albizia falcataria,perennial,22,31,17,40,2000,4000,1000,5500,270,365
+Albizia harveyi,perennial,18,28,15,30,900,1800,400,2000,,
+Albizia lebbeck,perennial,26,36,12,48,600,2000,500,2500,180,300
+Albizia lophantha,perennial,18,26,10,32,700,1000,550,1150,180,240
+Albizia lucida,perennial,20,34,6,42,2000,2400,1100,5000,240,330
+Albizia odoratissima,perennial,24,37,5,48,1000,1500,600,3000,210,240
+Albizia procera,perennial,20,33,10,45,1500,2500,780,5100,150,270
+Albizia pullenii,perennial,24,30,20,34,2500,3000,2000,4000,270,365
+Albizia stipulata,perennial,22,34,4,43,2000,2400,1100,5000,210,300
+Albizia toona,perennial,22,32,12,37,1000,1750,800,2000,210,300
+Aleurites fordii,perennial,17,22,10,28,1000,1200,750,1400,240,300
+Aleurites moluccana,perennial,18,28,14,32,1000,1800,600,4300,240,365
+Aleurites montana,perennial,25,30,18,34,1500,2100,1000,2500,240,300
+Alisma plantago-aquatica,perennial,8,18,6,24,500,1500,400,1700,,
+Allium ampeloprasum,"annual, biennial",18,24,6,27,750,1000,350,2800,120,150
+Allium cepa,biennial,12,25,4,30,350,600,300,2800,85,175
+Allium cepa sp.,NA,14.66667,25,6,30,383.3333,600,300,2200,57.5,112.5
+Allium cepa var. aggregatum,annual,20,25,10,30,450,600,300,1000,60,100
+Allium cepa var. cepa,"annual, biennial",12,25,4,30,350,600,300,2800,85,175
+Allium chinense,"annual, biennial",15,26,8,35,1500,2500,650,4100,45,60
+Allium fistulosum,"annual, perennial",12,25,6,30,850,1600,700,2500,60,160
+Allium sativum,biennial,18,30,7,35,750,1600,500,2700,90,120
+Allium schoenoprasum,"annual, perennial",10,20,2,35,450,1600,300,2800,70,100
+Allium sp.,NA,14.11111,24.44444,5.444444,31.88889,700,1366.667,411.1111,2833.333,62.27273,103.6364
+Allium tuberosum,"annual, perennial",10,20,2,35,850,2200,300,4000,70,100
+Alloteropsis semialata,perennial,14,24,10,32,600,1600,400,2000,,
+Alnus acuminata,perennial,15,28,4,34,1500,2500,1000,3500,180,270
+Alnus japonica,perennial,18,32,4,36,1500,2000,1250,2500,180,240
+Alnus maritima,perennial,8,20,13,26,1000,2000,800,4000,365,365
+Alnus nepalensis,perennial,15,28,4,36,1000,2000,500,2500,180,240
+Alnus rubra,perennial,17,32,4,45,1000,2000,600,3000,180,300
+Alocasia macrorrhizos,biennial,20,25,10,32,2500,3500,2000,4200,365,365
+Aloe arborescens,perennial,18,26,9,38,400,1500,300,1700,,
+Aloe barbadensis,perennial,19,27,10,35,1900,3000,700,4000,180,365
+Aloe ferox,perennial,18,26,10,30,500,600,300,800,120,150
+Aloe perryi,perennial,22,27,12,31,400,700,250,1400,120,180
+Aloe sp.,NA,19.25,26.5,10.25,33.5,800,1450,387.5,1975,105,173.75
+Alopecurus arundinaceus,perennial,9,18,2,15,500,800,350,1160,90,180
+Alopecurus geniculatus,"annual, perennial",10,15,6,22,600,1000,500,1140,100,120
+Alopecurus pratensis,perennial,9,22,2,32,600,1000,200,1800,90,180
+Aloysia triphylla,perennial,18,28,14,33,600,1800,500,2000,365,365
+Alphitonia excelsa,perennial,18,36,8,43,560,1250,450,1500,160,300
+Alpinia galanga,perennial,27,32,20,36,2500,3000,2000,3700,90,365
+Alpinia officinarum,perennial,19,27,15,36,1500,3000,1100,4000,90,365
+Alstonia scholaris,perennial,22,28,12,36,1200,3000,1100,3800,300,365
+Altingia excelsa,perennial,20,32,10,40,2000,3000,1200,4000,330,365
+Alysicarpus monilifer,"annual, perennial",17,28,12,34,400,1000,200,1500,60,115
+Alysicarpus rugosus,"annual, perennial",22,30,18,36,900,1400,600,1500,,
+Alysicarpus vaginalis,"annual, perennial",22,30,15,35,1000,2000,700,4300,120,300
+Amaranthus caudatus,annual,21,28,7,40,800,2300,250,4200,30,300
+Amaranthus cruentus,annual,22,28,10,45,2000,2400,500,4000,30,300
+Amaranthus dubius,annual,22,30,12,45,2100,2400,700,4000,30,300
+Amaranthus hybridus,annual,12,30,8,35,400,600,300,700,30,60
+Amaranthus hypochondriacus,annual,19,23,10,32,1000,1600,500,2500,30,300
+Amaranthus lividus,annual,21,27,18,32,1200,1500,200,2700,30,300
+Amaranthus sp.,annual,19,30,7,45,1100,1400,200,4200,30,300
+Amaranthus tricolor,annual,22,30,8,45,1200,1500,300,2700,30,300
+Ambelania acida,perennial,22,30,20,32,1500,2500,1000,3000,,
+Amelanchier pallida,perennial,14,25,10,30,800,1200,650,1800,,
+Ammandra natalia,perennial,21,26,17,30,2500,4500,1600,6300,365,365
+Ammophila arenaria,perennial,9,20,2,25,700,900,500,1200,90,180
+Ammophila breviligulata,perennial,9,18,2,25,800,1000,600,1200,120,150
+Amorphophallus paeoniifolius,perennial,28,35,25,40,1000,1500,900,1800,220,350
+Anacardium occidentale,perennial,15,35,5,46,750,1600,400,4000,190,260
+Ananas comosus,perennial,21,30,10,36,800,2500,550,3500,330,365
+Andrographis paniculata,annual,20,30,14,38,2000,3000,1500,4000,,
+Andropogon gayanus,perennial,22,28,16,32,750,1400,400,3000,150,270
+Andropogon gerardii var. gerardii,perennial,10,20,3,28,700,1200,350,2800,120,300
+Andropogon hallii,perennial,10,20,4,30,700,900,500,1100,180,330
+Anethum graveolens,"annual, biennial",15,18,6,26,800,1200,500,1700,100,180
+Angelica archangelica,"biennial, perennial",5,19,2,22,700,1100,500,1300,120,180
+Angelica atropurpurea,perennial,10,18,6,26,700,1300,500,1500,,
+Angophora costata,perennial,18,28,10,38,800,1000,600,1200,120,240
+Angophora floribunda,perennial,18,30,7,41,650,850,500,1000,120,300
+Anisoptera scaphula,perennial,20,33,15,38,2000,3000,1100,4000,330,365
+Annona atemoya,perennial,24,28,12,32,2000,3000,600,4200,210,270
+Annona cherimola,perennial,17,25,7,32,800,1200,600,2200,240,270
+Annona cherimola x Annona squamosa,perennial,24,28,12,32,2000,3000,600,4200,210,270
+Annona diversifolia,perennial,20,26,16,31,1000,1400,650,2600,240,365
+Annona montana,perennial,16,26,14,32,900,1700,640,4000,240,365
+Annona muricata,perennial,20,30,13,36,1200,2200,800,4200,180,365
+Annona purpurea,perennial,22,30,17,35,1000,3000,700,5000,365,365
+Annona reticulata,perennial,23,27,7,34,1200,1400,600,2200,210,270
+Annona scleroderma,perennial,23,26,8,32,3500,4500,3000,5000,240,365
+Annona senegalensis,perennial,17,30,14,38,700,2500,500,3000,365,365
+Annona squamosa,perennial,23,30,11,41,800,1200,570,4000,210,270
+Anogeissus acuminata,perennial,22,32,10,43,1500,2500,900,3500,270,300
+Anogeissus latifolia,perennial,22,33,7,47,800,1400,600,2300,150,210
+Anogeissus pendula,perennial,25,35,4,48,500,800,420,900,150,210
+Anthemis nobilis,perennial,15,26,3,30,600,1000,400,1400,180,270
+Anthephora pubescens,perennial,16,28,12,36,350,600,175,950,120,150
+Anthocephalus chinensis,perennial,22,35,15,42,1800,2600,1300,5100,270,365
+Anthocephalus macrophyllus,perennial,20,32,15,43,2500,4000,1500,5000,300,365
+Anthocleista nobilis,perennial,22,30,14,35,1100,2000,700,3000,365,365
+Anthriscus cerefolium,annual,7,21,4,25,600,1100,450,1300,60,95
+Anthyllis vulneraria,perennial,14,20,6,25,600,900,450,1100,120,240
+Antidesma bunius,perennial,23,27,17,33,1500,3000,1100,4200,240,365
+Apios americana,perennial,10,20,8,30,1000,1200,700,1500,,
+Apium graveolens,biennial,15,21,5,25,700,1300,500,1500,40,150
+Apium graveolens sp.,NA,16,23.66667,5.333333,26.33333,900,1266.667,500,2000,66.66667,193.3333
+Apium graveolens var. dulce,"annual, biennial",18,25,4,28,1000,1300,300,2800,80,160
+Apium graveolens var. rapaceum,"annual, biennial",15,25,7,26,1000,1200,700,1700,80,270
+Apocynum cannabinum,perennial,12,22,6,30,600,1200,150,1500,,
+Aponogeton distachyos,perennial,12,18,10,24,600,1100,500,1200,,
+Aquilegia canadensis,perennial,14,21,10,24,750,1200,500,1500,,
+Arachis glabrata,perennial,20,28,12,35,1000,2000,600,4000,90,300
+Arachis hypogaea,annual,22,32,10,45,600,1500,400,4000,90,150
+Arachis pintoi,perennial,22,28,12,30,1500,2000,900,3000,180,300
+Arachis sp.,NA,21.33333,29.33333,11.33333,36.66667,1033.333,1833.333,633.3333,3666.667,72,150
+Araucaria angustifolia,perennial,18,23,9,27,1500,2000,1250,2500,300,365
+Araucaria bidwillii,perennial,18,28,7,36,1200,1700,900,2000,210,365
+Araucaria cunninghamii,perennial,18,28,5,34,1000,2000,800,4800,210,300
+Araucaria hunsteinii,perennial,24,32,12,35,2000,3000,1600,4600,300,365
+Archidendron jiringa,perennial,20,30,12,40,2000,3000,1000,4000,365,365
+Archontophoenix cunningham,perennial,20,28,6,36,1100,1400,1000,1550,210,300
+Areca catechu,perennial,16,33,7,39,1500,3000,750,5000,240,365
+Arenga pinnata,perennial,22,28,16,32,3000,3500,2000,4000,365,365
+Argania sideroxylon,perennial,20,30,10,35,200,300,100,400,40,180
+Argyrodendron actinophyllum,perennial,18,28,8,36,1100,1400,1000,1500,180,240
+Argyrodendron actinophyllum ssp. diversifolium,perennial,20,30,10,36,1100,1400,1000,1500,240,300
+Argyrodendron peralatum,perennial,20,30,15,38,2000,3000,1250,3800,240,300
+Aristida adscensionis,annual,18,28,5,35,300,400,200,700,90,150
+Aristida ciliata,"annual, perennial",20,26,5,30,250,400,150,500,60,150
+Aristida lanata,annual,20,26,5,30,250,400,150,500,60,150
+Aristida latifolia,perennial,22,30,10,42,400,500,300,600,150,180
+Aristida obtusa,"annual, perennial",20,26,5,30,200,300,100,400,50,150
+Aristida pennata,perennial,20,26,5,30,250,400,150,500,50,150
+Aristida plumosa,"annual, perennial",20,26,5,30,250,400,150,600,50,150
+Aristida pungens,annual,20,26,5,30,200,400,100,500,50,150
+Aristida raddiana,annual,20,26,5,30,250,400,150,500,60,150
+Aristida averaged,,20,27,6,32,261,400,161,533,69,153
+Armoracia rusticana,"annual, perennial",14,20,6,28,600,900,390,1700,150,210
+Arnica montana,perennial,8,15,5,25,500,800,400,1200,,
+Aronia alnifolia,perennial,15,20,5,25,650,1100,340,1270,,
+Arracacia xanthorrhiza,perennial,14,21,10,28,800,1200,600,1800,120,365
+Arrhenatherum elatius,perennial,14,25,3,30,500,900,300,1600,90,180
+Artemisia abrotanum,perennial,11,22,4,26,500,900,350,1200,150,180
+Artemisia afra,perennial,22,30,12,35,550,750,400,900,120,180
+Artemisia annua,"annual, biennial",13,29,10,35,600,1300,300,1500,170,190
+Artemisia dracunculus,perennial,12,22,4,26,500,1000,250,1400,120,210
+Artocarpus altilis,perennial,21,33,16,40,1500,3000,1000,3500,300,365
+Artocarpus chaplasha,perennial,22,32,10,40,3000,4000,2000,5500,180,300
+Artocarpus heterophyllus,perennial,20,30,16,34,1500,3000,700,4200,210,365
+Artocarpus hirsutus,perennial,22,32,16,38,2500,3500,1700,4500,365,365
+Artocarpus integer,perennial,22,38,16,47,2200,3500,1250,4500,365,365
+Artocarpus lakoocha,perennial,22,32,8,47,1500,3000,1200,5000,180,270
+Arundinaria pusilla,perennial,16,28,6,32,1000,1400,700,4000,180,330
+Arundinella hirta,perennial,17,30,5,45,250,1500,70,2200,60,180
+Asclepias incarnata,perennial,15,25,10,35,350,800,250,1000,,
+Asclepias lanceolata,perennial,12,30,8,35,600,1400,500,1500,,
+Asclepias speciosa,perennial,12,24,8,30,450,800,400,1000,90,120
+Asclepias tuberosa,perennial,14,24,12,30,400,800,300,1000,120,180
+Asimina triloba,perennial,12,22,8,32,400,1200,225,1500,130,210
+Asparagus densiflorus,perennial,21,27,15,32,1000,1400,700,1700,210,270
+Asparagus officinalis,perennial,15,30,6,38,800,1200,500,4000,210,270
+Aster cordifolius var. cordifolius,perennial,12,24,10,32,600,1200,500,1500,,
+Astragalus adsurgens,perennial,20,35,12,40,400,500,300,600,,
+Astragalus cicer,perennial,14,25,7,30,600,800,400,1500,120,180
+Astragalus gummifer,perennial,15,22,7,28,250,450,150,600,240,300
+Astragalus sinicus,"biennial, perennial",15,25,10,28,500,1000,300,2000,,
+Astrebla elymoides,perennial,25,32,15,42,250,550,200,700,120,150
+Astrebla lappacea,perennial,25,32,15,42,250,550,200,700,120,150
+Astrebla pectinata,perennial,23,30,15,35,250,550,200,700,120,150
+Astrebla squarrosa,perennial,25,32,15,42,250,550,200,700,120,150
+Astrocaryum jauari,perennial,24,28,20,32,1800,2300,1500,2600,365,365
+Astrocaryum vulgare,perennial,20,28,18,30,1300,1800,1000,3000,,
+Asystasia gangetica,annual,23,28,8,37,1000,1500,700,2500,42,365
+Atalaya hemiglauca,perennial,18,39,8,44,250,600,200,650,75,240
+Atherosperma moschatum,perennial,14,20,7,24,1300,1700,1000,2000,150,240
+Athrotaxis selaginoides,perennial,15,22,5,28,1500,2500,1200,1750,150,210
+Atriplex canescens,perennial,12,17,5,33,250,450,150,600,90,150
+Atriplex confertifolia,perennial,12,30,5,50,150,250,100,300,60,90
+Atriplex gardneri,perennial,12,17,5,33,150,300,125,600,60,90
+Atriplex glauca,perennial,16,28,5,36,300,450,150,600,60,150
+Atriplex halimus,perennial,16,28,5,36,300,700,100,1200,60,120
+Atriplex hortensis,annual,12,28,3,36,500,800,300,1400,120,150
+Atriplex lentiformis,perennial,12,24,5,35,200,250,100,300,60,120
+Atriplex nummularia,perennial,16,28,3,36,200,600,150,800,90,150
+Atriplex vesicaria,perennial,16,28,6,36,400,600,200,800,90,150
+Attalea cohune,perennial,22,28,15,32,1500,3000,1000,5000,365,365
+Attalea funifera,perennial,22,25,18,30,1800,2000,1500,2400,365,365
+Aucoumea klaineana,perennial,28,36,20,40,2000,2500,1600,3000,300,365
+Avena byzantina,annual,18,24,2,36,600,900,400,1100,110,270
+Avena fatau,"annual, perennial",12,20,2,30,600,1000,290,1600,90,180
+Avena nuda,annual,16,22,8,30,600,1100,400,1500,120,270
+Avena sativa,annual,16,20,5,30,600,1000,250,1500,110,270
+Avena sterilis,annual,12,32,2,36,500,800,290,1200,90,180
+Averrhoa bilimbi,perennial,23,30,10,36,1200,2300,700,4000,140,365
+Averrhoa carambola,perennial,24,30,5,39,1200,2000,600,3000,240,365
+Avicennia germinans,perennial,20,30,10,35,1500,2500,1000,4000,240,365
+Avicennia marina,perennial,20,34,8,39,1500,2500,1000,4000,240,365
+Avicennia officinalis,perennial,25,34,15,38,1000,3000,800,4000,270,365
+Axonopus affinis,perennial,27,32,13,36,1000,1800,750,4100,150,180
+Axonopus compressus,,23,30,16,35,1000,4000,775,5000,150,180
+Axonopus fissifolius,perennial,17,32,13,36,1000,2000,750,4000,,
+Axonopus scoparius,perennial,18,28,5,34,1500,2000,750,2500,120,150
+Azadirachta indica,perennial,26,40,14,46,450,1200,200,2000,150,210
+Azanza garckeana,perennial,15,30,10,38,250,750,200,1000,365,365
+Baccaurea motleyana,perennial,24,28,18,34,1500,3500,1000,4000,365,365
+Baccaurea racemosa,perennial,21,28,14,34,2500,2500,1500,4500,365,365
+Baccaurea ramiflora,perennial,24,28,18,34,1500,3500,1000,4000,365,365
+Bactris gasipaes,perennial,18,28,12,35,2000,4000,1500,6000,365,365
+Baikiaea plurijuga,perennial,25,38,20,43,600,1000,500,1200,365,365
+Balanites aegyptiaca,perennial,20,35,15,41,300,800,200,1700,90,180
+Bambusa arundinacea,perennial,22,30,8,36,1200,2500,700,4500,300,365
+Bambusa balcooa,perennial,22,28,9,35,2300,3000,700,4500,300,365
+Bambusa blumeana,perennial,18,32,8,37,1500,4000,1000,5000,,
+Bambusa longispiculata,perennial,22,28,9,35,2300,3000,700,4500,300,365
+Bambusa nutans,perennial,22,28,9,32,2300,3000,700,4500,240,365
+Bambusa polymorpha,perennial,22,28,9,32,1200,2500,700,4500,300,365
+Bambusa sp.,NA,21.5,28.75,8.75,33.875,1650,2875,737.5,4562.5,255,319.375
+Bambusa tulda,perennial,22,28,9,32,1200,2500,700,4500,300,365
+Bambusa vulgaris,perennial,22,28,9,32,1200,2500,700,4500,300,365
+Banksia integrifolia,perennial,18,32,10,37,850,1600,650,2000,180,240
+Baphia nitida,perennial,24,30,16,32,1500,2400,1300,4500,270,330
+Barringtonia racemosa,perennial,16,28,12,38,500,1500,400,2000,,
+Basella alba,"annual, perennial",23,27,10,35,2000,2500,700,4200,55,180
+Basella rubra,"annual, perennial",23,27,10,35,2000,2500,700,4200,55,180
+Bassia latifolia,perennial,20,30,8,47,1000,1600,750,1900,210,270
+Bauhinia esculenta,perennial,24,30,16,32,800,1200,600,1300,90,180
+Bauhinia racemosa,perennial,24,36,5,47,1000,1800,750,2100,240,300
+Bauhinia rufescens,perennial,30,40,20,46,400,1000,250,1200,,
+Bauhinia variegata,perennial,12,38,5,47,600,2200,400,2500,,
+Beckmannia eruciformis,"annual, perennial",11,20,7,34,500,1300,350,1500,100,180
+Beckmannia syzigachne,"annual, perennial",9,20,2,24,500,800,350,1200,90,120
+Benincasa hispida,annual,24,30,12,37,400,800,300,2800,80,160
+Berchemia discolor,perennial,14,30,10,38,400,1000,200,1400,365,365
+Berrya cordifolia,perennial,26,32,20,34,2700,3300,2500,3500,300,365
+Bertholletia excelsa,perennial,20,36,12,40,2400,2800,1400,3500,365,365
+Beta vulgaris,biennial,15,25,4,35,600,800,500,1000,160,240
+Beta vulgaris sp.,NA,16,26,7.2,33,620,910,430,1460,81,156
+Beta vulgaris var. cicla,biennial,15,25,5,35,800,800,500,1000,50,150
+Beta vulgaris var. crassa,biennial,15,25,5,30,800,1500,500,2500,55,90
+Beta vulgaris var. flavescens,biennial,20,30,15,35,500,750,400,1800,80,160
+Beta vulgaris var. saccharifera,biennial,15,25,7,30,400,700,250,1000,60,140
+Betula pubescens,perennial,10,18,6,26,400,900,200,1100,,
+Bidens pilosa,"annual, perennial",17,32,10,38,800,2500,500,3500,,
+Biserrula pelecinus,annual,18,26,12,30,400,600,325,750,120,260
+Bixa orellana,perennial,20,28,15,36,1500,2000,1250,2500,150,365
+Blighia sapida,perennial,24,27,20,34,2000,4000,700,6000,150,365
+Boehmeria nivea,perennial,17,27,10,34,1500,2500,1000,4000,45,365
+Boesenbergia rotunda,perennial,18,30,12,35,1200,3000,1000,5000,240,300
+Bolusanthus speciosus,perennial,17,27,14,34,500,650,450,700,300,365
+Bombacopsis quinata,perennial,21,32,16,36,1000,1600,800,3000,180,270
+Bombax ceiba,perennial,28,42,5,49,750,4000,500,5000,210,330
+Bombax insigne,perennial,30,35,10,43,1500,2500,1000,3750,270,330
+Borago officinalis,annual,15,22,4,26,500,1000,300,1300,150,180
+Borassus aethiopum,perennial,20,35,15,45,500,1000,400,1200,365,365
+Borassus flabellifer,perennial,24,32,16,36,1000,1500,700,4200,150,365
+Borojoa patinoi,perennial,20,28,15,32,3000,6000,2500,9000,365,365
+Boswellia serrata,perennial,33,42,7,47,1000,1500,500,2000,240,320
+Bothriochloa bladhii,perennial,15,28,5,33,750,1200,600,2000,150,180
+Bothriochloa insculpta,perennial,15,25,7,30,600,1000,450,1500,120,270
+Bothriochloa ischaemum,perennial,15,25,6,30,400,1000,350,1200,120,240
+Bothriochloa pertusa,perennial,14,27,4,31,600,1000,450,2100,120,180
+Bougainvillea glabra,perennial,18,25,10,38,1000,2000,700,3000,,
+Bouteloua curtipendula,perennial,13,22,4,26,600,1000,400,1500,120,180
+Bouteloua gracilis,perennial,12,27,2,32,500,900,300,2800,90,180
+Brachiaria brizantha,perennial,25,35,15,38,750,2500,500,4000,90,300
+Brachiaria decumbens,perennial,25,35,19,38,1500,1800,900,2400,90,270
+Brachiaria dura,perennial,30,35,10,43,875,1000,800,1200,150,180
+Brachiaria humidicola,perennial,32,35,20,45,1500,2000,1000,3000,90,270
+Brachiaria miliiformis,"annual, perennial",24,30,10,35,1700,2000,1200,4000,60,180
+Brachiaria mutica,perennial,21,30,15,46,1200,2000,900,4100,120,150
+Brachiaria radicans,perennial,22,28,5,35,1500,2000,1300,2300,90,150
+Brachiaria ramosa,"annual, perennial",17,26,9,32,500,800,440,900,90,150
+Brachiaria ruziziensis,perennial,25,33,19,40,1000,2000,800,2500,120,210
+Brachiaria average,,25,32,14,39,1169,1789,871,2711,100,207
+Brachychiton acerifolius,perennial,26,32,10,36,1400,1900,1300,2000,120,300
+Brachychiton populneus,perennial,25,32,13,38,450,750,250,1000,90,120
+Brachylaena huillensis,perennial,15,25,10,35,900,1200,700,1400,365,365
+Brachystegia spiciformis,perennial,14,28,10,35,600,1100,500,1200,365,365
+Brassica (Mustard),NA,15.5,27,6.75,35,725,1550,375,3050,62.75,166.25
+Brassica campestris,annual,17,30,5,41,700,1000,400,3500,60,340
+Brassica carinata,annual,10,25,5,35,1000,1500,800,1700,,
+Brassica chinensis,"annual, biennial, perennial",12,22,8,34,800,1600,500,2700,40,90
+Brassica juncea,annual,15,28,7,40,700,2400,500,4200,50,100
+Brassica napus,"annual, biennial",15,25,5,41,500,1000,400,2800,85,340
+Brassica napus var. napobrassica,"annual, biennial",14,24,5,35,700,1000,300,1700,180,180
+Brassica nigra,annual,10,25,5,27,600,1400,300,2500,120,180
+Brassica oleracea & rapa,NA,14.14286,22.57143,6.285714,29.85714,735.7143,1271.429,414.2857,2271.429,61.57143,110
+Brassica oleracea sp.,NA,13.16667,22.16667,5.666667,29.5,708.3333,1250,433.3333,2316.667,68.33333,120.8333
+Brassica oleracea var. acephala,"biennial, perennial",15,22,7,30,450,1000,300,2800,60,85
+Brassica oleracea var. botrytis,biennial,10,25,5,30,600,1100,450,1900,60,120
+Brassica oleracea var. capitata,biennial,15,24,7,32,500,1000,300,2500,60,200
+Brassica oleracea var. gemmifera,"annual, biennial",12,20,7,25,900,1600,500,3000,100,130
+Brassica oleracea var. gongyloides,"annual, biennial",12,18,5,25,900,1300,700,1700,50,70
+Brassica oleracea var. italica,biennial,15,24,3,35,900,1500,350,2000,80,120
+Brassica oleracea vars. botrytis & italica,NA,12.5,24.5,4,32.5,750,1300,400,1950,70,120
+Brassica rapa Gaisin gr.,biennial,20,25,10,30,900,1400,350,2000,40,80
+Brassica rapa Pak Choi,biennial,20,25,10,32,900,1400,300,2000,21,45
+Brassica rapa sp.,NA,16.66667,22.33333,9,30.66667,900,1400,316.6667,2000,33.66667,68.33333
+Brassica rapa var. rapifera,biennial,10,17,7,30,900,1400,300,2000,40,80
+Bridelia micrantha,perennial,18,28,15,38,800,2500,600,3000,365,365
+Bromus carinatus,"annual, biennial, perennial",10,18,2,22,500,900,350,1100,90,180
+Bromus inermis,perennial,12,25,2,45,600,1000,200,1700,120,180
+Bromus marginatus,perennial,10,21,2,26,400,800,210,1200,90,180
+Bromus tomentellus,,12,19,2,23,400,1000,200,1700,90,180
+Bromus unioloides,"annual, perennial",14,24,5,28,600,1000,300,1300,150,210
+Brosimum alicastrum,perennial,18,25,12,35,600,4000,500,5000,,
+Broussonetia papyrifera,perennial,15,28,12,38,800,2500,500,3000,,
+Bruguiera gymnorrhiza,perennial,20,26,15,30,1500,6000,1000,8000,365,365
+Buchanania latifolia,perennial,32,42,5,48,1000,1500,750,2200,300,330
+Buchloe dactyloides,perennial,17,25,3,32,400,800,200,1200,60,180
+Buckinghamia celsissima,perennial,22,32,12,37,1300,1800,900,2200,300,365
+Burkea africana,perennial,14,36,8,44,650,850,600,900,,
+Bursera simaruba,perennial,18,28,8,36,600,2000,400,3000,210,300
+Butea monosperma,perennial,20,38,10,48,1000,3000,600,5000,240,300
+Butomus umbellatus,perennial,15,24,12,35,400,1000,300,1100,,
+Butyrospermum paradoxum ssp. parkii,perennial,29,38,18,43,500,1000,300,1800,180,240
+Caesalpinia coriaria,perennial,18,30,11,36,1000,2000,600,4300,180,365
+Caesalpinia sappan,perennial,22,28,18,34,1300,2300,700,4300,180,365
+Cajanus cajan,perennial,18,38,10,45,600,1500,400,4000,90,365
+Calamagrostis epigeios,perennial,8,27,3,35,500,800,250,1000,90,150
+Calamus caesius,perennial,23,30,16,34,2500,3200,1700,4200,365,365
+Calamus erinaceus,perennial,24,32,20,37,2500,4000,2000,5000,365,365
+Calamus peregrinus,perennial,22,30,17,35,1400,2200,1000,2600,365,365
+Calathea allouia,perennial,22,31,16,35,1000,2000,700,2800,300,365
+Calendula officinalis,"annual, biennial",16,26,8,30,500,800,300,2500,120,180
+Calliandra calothyrsus,perennial,22,30,18,34,2000,4000,700,5000,240,300
+Callitris columellaris,perennial,24,34,8,37,1000,1500,750,1700,180,240
+Callitris endlicheri,perennial,18,32,10,40,550,800,400,900,140,210
+Callitris glauca,perennial,22,30,9,35,350,600,220,800,180,240
+Callitris macleayana,perennial,20,28,5,34,1300,1700,1000,2000,210,365
+Callitris preissii ssp. preissii,perennial,20,28,5,32,650,850,500,1000,150,210
+Callitris preissii var. Murray,perennial,16,33,3,37,350,450,250,550,120,180
+Callitris preissii var. verrucosa,perennial,22,35,3,40,300,350,250,400,120,180
+Calodendrum capense,perennial,20,30,15,45,800,1500,600,2000,365,365
+Calophyllum apetalum,perennial,30,35,12,38,3000,6000,1300,8000,365,365
+Calophyllum brasiliense,perennial,20,30,15,38,1500,6000,1200,7000,365,365
+Calophyllum elatum,perennial,28,33,16,38,4000,6000,2000,8000,365,365
+Calophyllum inophyllum,perennial,28,35,10,42,2000,4000,750,5000,365,365
+Calophyllum peekelii,perennial,20,30,10,38,2500,3000,1800,3500,365,365
+Calopogonium caeruleum,perennial,18,25,10,32,1000,2000,700,3000,365,365
+Calopogonium mucunoides,"annual, perennial",24,32,18,36,1300,2500,900,4300,120,180
+Calotropis procera,perennial,15,30,10,40,300,400,200,500,,
+Caltha palustris,perennial,14,23,2,27,600,900,400,1100,120,180
+Camellia sinensis,perennial,20,30,8,35,1400,2000,1000,5000,240,365
+Camellia sinensis var. assamica,perennial,20,30,12,35,3000,4000,2000,4500,300,365
+Camellia sinensis var. sinensis,perennial,20,30,8,35,1400,2000,1000,4500,240,365
+Camellia sp.,NA,20,30,9.333333,35,1933.333,2666.667,1333.333,4666.667,260,365
+Campanula rapunculus,"annual, biennial, perennial",12,18,5,24,700,900,500,1400,90,120
+Campnosperma brevipetiolata,perennial,28,34,16,38,3000,4000,2000,5000,300,365
+Cananga odorata,perennial,20,30,16,34,1500,2000,700,2800,180,365
+Canarium indicum,perennial,22,28,10,34,2000,4000,1200,6000,240,300
+Canarium ovatum,perennial,22,34,12,40,2000,3000,1000,4000,365,365
+Canavalia brasiliensis,perennial,26,30,18,34,900,1500,500,2000,,
+Canavalia ensiformis,"annual, perennial",20,28,14,36,800,2000,600,4300,80,300
+Canavalia gladiata,perennial,15,30,12,36,800,1800,600,2600,90,300
+Canna edulis,perennial,20,30,9,32,1200,1700,250,4000,180,300
+Canna indica,perennial,12,32,14,24,1000,4500,500,5000,,
+Cannabis sativa ssp. indica,annual,15,28,6,32,600,1200,350,4000,90,170
+Capparis decidua,perennial,30,42,5,48,300,600,150,750,90,180
+Capparis spinosa,perennial,13,27,10,31,500,1000,300,2600,120,270
+Capparis tomentosa,perennial,24,34,16,40,500,1000,300,1250,365,365
+Capsicum annuum,annual,17,30,8,35,600,1250,500,1700,60,180
+Capsicum baccatum var. pendulum,annual,20,26,15,32,600,1250,500,1500,120,150
+Capsicum chinense,annual,20,26,15,32,600,1250,500,1500,120,150
+Capsicum frutescens,perennial,18,30,7,40,600,1500,400,2000,120,180
+Capsicum pubescens,perennial,15,24,7,32,600,1250,500,1500,150,210
+Capsicum sp.,NA,18,27.2,10.4,34.2,600,1300,480,1640,114,174
+Caragana arborescens,perennial,14,28,10,36,350,800,250,900,,
+Caragana intermedia,perennial,15,30,5,55,250,450,100,600,120,200
+Caragana korshinskii,perennial,15,30,5,50,250,450,100,600,120,200
+Caragana microphylla,perennial,15,30,5,55,250,500,70,700,120,200
+Carallia lucida,perennial,22,32,5,43,2000,4000,1250,5500,240,365
+Carapa guianensis,perennial,20,30,15,38,1900,4000,1500,4500,365,365
+Cardwellia sublimis F.Muell,perennial,22,30,10,38,2000,3000,1500,3700,240,300
+Carica papaya,perennial,21,30,12,44,1500,2500,1000,3000,330,365
+Carica pubescens,perennial,17,22,10,28,1000,1700,500,2800,210,270
+Cariniaria pyriformis,perennial,25,30,18,34,2500,3500,2000,4000,300,365
+Carissa carandas,perennial,23,30,16,34,1000,1400,700,2700,210,365
+Carissa edulis,perennial,20,35,10,39,9000,1300,700,4000,270,365
+Carissa macrocarpa,perennial,23,28,10,34,800,1200,600,1800,240,330
+Carludovica palmata,perennial,24,32,12,37,1200,1800,800,2200,300,365
+Carpinus betulus,perennial,10,20,6,35,500,1000,300,1500,365,365
+Carthamus tinctorius,annual,20,32,5,45,600,1000,300,1400,120,245
+Carum carvi,"annual, biennial, perennial",16,20,7,26,700,1000,600,1300,150,180
+Carya illinoensis,perennial,15,35,5,40,600,1200,400,1800,140,210
+Caryocar nuciferum,perennial,21,28,10,35,1600,2000,1200,2400,330,365
+Caryodendron orinocense,perennial,20,29,12,35,1200,3000,800,5000,180,365
+Caryota urens,perennial,24,32,18,38,1400,2400,700,4200,150,365
+Casimiroa edulis,perennial,18,26,14,31,1500,3000,500,4000,210,330
+Cassia alata,perennial,23,29,12,33,1500,2500,640,4290,210,365
+Cassia auriculata,perennial,22,30,8,38,1200,1600,400,4300,210,365
+Cassia brewsteri,perennial,22,35,12,40,1000,1200,650,1350,240,300
+Cassia fistula,perennial,18,30,4,48,1000,2000,500,3500,240,330
+Cassia occidentalis,"annual, perennial",22,28,9,32,1000,1700,640,4300,210,330
+Cassia rotundifolia,annual,20,28,10,36,700,1500,400,3700,90,210
+Cassia senna,perennial,22,28,12,32,750,1300,640,2000,70,200
+Cassia siamea,perennial,23,33,13,48,650,1500,400,2800,180,240
+Cassia tomentosa,perennial,10,20,8,30,700,1500,500,2000,,
+Castanea crenata,perennial,17,28,12,30,1100,1500,900,2300,150,180
+Castanea dentata,perennial,15,19,10,30,1000,1100,500,1500,150,210
+Castanea mollissima,perennial,15,26,10,30,1000,1400,800,1600,150,210
+Castanea pumila,perennial,15,25,12,30,1100,1300,900,1800,150,210
+Castanea sativa,perennial,15,25,7,30,900,1300,500,1600,150,210
+Castanea sp.,NA,12.83333,20.5,8.5,25,850,1100,600,1466.667,125,170
+Castanospermum australe,perennial,20,32,10,41,1600,3200,1000,3800,270,330
+Castilla elastica,perennial,23,30,15,34,2300,2700,2000,3000,330,365
+Casuarina campestris,perennial,18,30,8,36,250,350,150,450,90,150
+Casuarina cristata,perennial,24,34,8,40,500,600,400,700,120,150
+Casuarina cristata ssp. pauper,perennial,27,37,10,42,250,400,175,500,90,120
+Casuarina cunninghamiana,perennial,20,36,8,42,600,1500,450,5000,150,270
+Casuarina decaisneana,perennial,20,35,10,47,200,250,150,300,90,120
+Casuarina dielsiana,perennial,22,32,10,38,400,500,300,600,100,150
+Casuarina equisetifolia,perennial,20,35,10,40,700,3500,200,5000,100,270
+Casuarina fraseriana,perennial,18,28,7,34,750,1000,500,1250,210,240
+Casuarina glauca,perennial,20,30,5,34,700,1300,500,4000,180,270
+Casuarina huegeliana,perennial,22,35,6,40,400,650,300,750,120,180
+Casuarina junghuhniana,perennial,20,28,13,32,1000,1600,700,2000,180,240
+Casuarina littoralis,perennial,18,28,8,36,650,1250,300,3000,150,300
+Casuarina luehmannii,perennial,25,35,10,40,500,650,380,800,150,210
+Casuarina obesa,perennial,20,34,8,41,300,800,200,1500,100,210
+Casuarina oligodon,perennial,22,28,10,32,2200,2600,1900,5000,365,365
+Casuarina stricta,perennial,18,25,8,32,450,700,250,900,150,270
+Casuarina torulosa,perennial,20,30,8,35,1200,2200,900,2500,210,300
+Catha edulis,perennial,18,24,7,32,800,1100,400,1300,120,210
+Catharanthus roseus,"annual, perennial",20,30,10,34,1000,1200,800,1400,180,365
+Cedrela odorata,perennial,22,32,11,39,1000,2500,600,3700,240,300
+Cedrus deodara,perennial,22,32,4,38,1000,1800,800,2000,210,240
+Ceiba pentandra,perennial,17,38,12,40,1500,2500,750,3000,270,330
+Ceipa sp.,NA,22.5,40,8.5,44.5,1125,3250,625,4000,240,330
+Celosia argentea,annual,25,30,20,40,1500,2500,1000,3000,30,120
+Cenchrus biflorus,annual,28,35,11,45,400,500,200,700,120,180
+Cenchrus ciliaris,perennial,22,37,5,42,400,1000,100,3500,120,180
+Cenchrus pennisetiformis,perennial,26,32,10,45,370,560,240,750,120,180
+Cenchrus setigerus,perennial,28,35,15,40,500,1000,200,2500,60,180
+Centropodia glauca,"annual, perennial",20,30,10,45,150,200,100,250,,
+Centrosema acutifolium,perennial,22,28,12,35,1000,2500,800,3000,150,210
+Centrosema acutifolium var. matogrossense,perennial,24,28,18,34,1000,2500,800,3000,,
+Centrosema brasilianum,perennial,22,30,16,36,500,2000,370,2900,,
+Centrosema macrocarpum,perennial,22,28,10,35,1000,2500,800,3000,180,240
+Centrosema pascuorum,annual,22,32,10,40,700,1500,350,2000,90,180
+Centrosema pubescens,perennial,20,30,13,35,1200,2500,750,4100,120,240
+Centrosema rotundifolium,perennial,20,28,16,36,800,1200,700,1300,120,210
+Centrosema virginianum,perennial,22,30,15,35,500,1000,400,1500,90,210
+Cephaelis ipecacuanha,perennial,23,27,19,32,1300,1700,1100,1900,240,300
+Ceratonia siliqua,perennial,20,32,10,39,400,1000,200,2000,210,365
+Ceratopetalum apetalum,perennial,20,28,5,34,1200,1800,1000,2000,210,270
+Ceriops decandra,perennial,22,28,15,32,1500,3500,1000,5000,300,365
+Ceriops tagal,perennial,20,30,10,38,1500,3000,1000,4000,365,365
+Chamaecrista nictitans,"annual, perennial",20,25,15,30,1000,1600,550,2000,180,240
+Chamaecytisus palmensis,perennial,16,24,12,30,400,1400,350,1600,,
+Chamaedorea sp.,perennial,22,32,10,40,1500,3000,700,5000,300,365
+Chamaedorea tepejilote,perennial,20,28,15,32,1000,2500,700,3000,,
+Chamaerops humilis,perennial,18,30,8,36,500,700,450,750,160,300
+Chenopodium album,annual,12,18,3,31,800,1200,300,3200,120,270
+Chenopodium album ssp. album,annual,12,18,3,31,800,1200,300,2800,120,270
+Chenopodium ambrosioides,"annual, perennial",15,22,4,31,800,1500,300,4200,150,210
+Chenopodium pallidicaule,annual,10,16,5,28,500,800,300,1100,90,150
+Chenopodium quinoa,annual,14,18,2,35,500,1000,250,2600,90,240
+Chloris gayana,"annual, perennial",20,37,5,50,600,1500,550,2000,150,210
+Chloris virgata,annual,25,30,10,35,500,750,300,2600,90,120
+Chlorogalum pomeridianum,perennial,14,28,12,32,300,700,260,760,,
+Chlorophora excelsa,perennial,18,33,12,36,1000,1800,700,2500,270,365
+Chlorophytum comosum,perennial,12,24,8,30,700,1500,500,3000,,
+Chloroxylon swietenia,perennial,30,40,10,47,1000,1500,750,1900,270,300
+Chromolaena odorata,perennial,20,35,16,38,2000,4000,1500,5000,,
+Chrysanthemum coccineum,perennial,12,20,3,28,800,1100,600,1300,180,270
+Chrysanthemum coronarium var. coronarium,annual,12,18,7,25,800,1300,600,2500,30,55
+Chrysophyllum albidum,perennial,18,28,12,34,1300,2000,1100,2800,365,365
+Chrysophyllum cainito,perennial,22,28,12,35,1000,1400,800,2200,180,210
+Chrysopogon aciculatus,perennial,22,28,15,35,700,1200,400,2000,42,365
+Chrysopogon plumulosus,perennial,30,35,20,40,300,625,250,700,120,180
+Chrysopogon sp.,NA,26,31.5,17.5,37.5,500,912.5,325,1350,40.5,136.25
+Chukrasia velutina,perennial,25,35,10,42,1800,3000,1200,3800,240,330
+Cicer arietinum,annual,15,29,7,35,600,1000,300,1800,90,180
+Cichorium endivia,"annual, biennial",15,23,5,30,1000,1400,300,2500,70,85
+Cichorium intybus,"biennial, perennial",10,30,6,35,1500,2500,300,4000,90,330
+Cinchona calisaya,perennial,17,24,7,28,2500,3000,1400,3800,365,365
+Cinchona ledgeriana,perennial,17,24,7,28,2500,3000,1400,3800,240,365
+Cinchona officinalis,perennial,14,23,7,27,2500,3500,1400,4000,365,365
+Cinchona pubescens,perennial,17,25,9,28,2500,3500,1400,4000,365,365
+Cinnamomum burmannii,perennial,20,28,11,34,2000,2500,1800,3500,300,330
+Cinnamomum camphora,perennial,18,26,12,30,1200,1500,600,4000,270,300
+Cinnamomum cassia,perennial,15,32,10,38,1100,1500,900,3000,250,325
+Cinnamomum loureirii,perennial,20,30,17,34,2500,3000,1500,3500,330,365
+Cinnamomum sp.,NA,19.4,29.2,13.6,34.4,1760,2220,1200,3400,290,337
+Cinnamomum verum,perennial,24,30,18,36,2000,2600,1200,3000,300,365
+Citrofortunella x microcarpa,perennial,15,28,8,38,1500,2000,1200,2500,300,365
+Citrullus colocynthis,"annual, perennial",23,32,14,40,300,500,250,4300,80,180
+Citrullus lanatus,annual,20,35,15,40,500,700,400,1800,,
+Citrus aurantifolia,perennial,26,32,13,38,2200,2700,700,3700,180,365
+Citrus aurantium,perennial,25,30,12,42,1200,1400,350,2000,140,330
+Citrus aurantium ssp. bergamia,perennial,20,28,12,37,1200,1500,350,3000,140,365
+Citrus deliciosa,perennial,22,26,13,32,1200,1500,750,2300,180,210
+Citrus grandis,perennial,23,32,12,40,1500,2500,700,4000,,
+Citrus grandis.paradisi,NA,20.5,32,12.5,41,1500,2400,500,4000,30,182.5
+Citrus latifolia,perennial,20,28,12,32,1200,1500,750,2300,365,365
+Citrus limon,perennial,15,28,12,36,1000,2300,300,4000,210,365
+Citrus madurensis,perennial,22,28,8,36,1500,2000,1000,2500,210,365
+Citrus medica,perennial,21,27,12,35,1200,1400,800,2000,210,365
+Citrus paradisi,perennial,18,32,13,42,1500,2300,300,4000,60,365
+Citrus reticulata,perennial,23,34,12,38,1200,1800,300,4000,60,365
+Citrus sinensis,perennial,20,30,13,38,1200,2000,450,2700,180,365
+Citrus sp.,perennial,23,30,13,42,1200,1600,450,2700,180,365
+Citrus unshiu,perennial,18,28,12,34,1200,1500,500,2500,210,365
+Clausena lansium,perennial,22,30,12,35,2000,3000,1000,4000,300,365
+Cleistogenes chinensis,perennial,16,27,5,35,450,600,350,750,120,150
+Cleistogenes squarrosa,perennial,9,28,3,38,400,600,200,800,90,280
+Cleistopholis glauca,perennial,28,36,20,39,2000,3500,1600,5000,300,365
+Clinelymus dahuricus,perennial,18,28,8,38,400,500,300,600,120,180
+Clitoria laurifolia,,21,28,17,34,700,1800,530,2800,210,365
+Clitoria ternatea,perennial,19,28,15,32,1200,1800,400,4300,50,365
+Cnicus benedictus,annual,18,26,7,32,600,800,400,1000,70,210
+Cnidoscolus chayamansa,perennial,20,32,12,38,1000,2000,500,2500,365,365
+Coccoloba uvifera,perennial,21,26,10,32,700,1400,400,2500,240,365
+Cochlospermum religiosum,perennial,30,42,5,47,900,1500,500,1900,240,300
+Cocos nucifera,perennial,22,34,14,38,1200,2400,650,4000,270,365
+Coffea arabica,perennial,14,28,10,34,1400,2300,750,4200,210,330
+Coffea canephora,perennial,20,30,12,36,1700,3000,900,4000,270,300
+Coffea excelsa,perennial,13,26,9,32,1500,2400,800,3500,270,365
+Coffea liberica,perennial,24,30,18,36,1600,2400,1100,3500,240,365
+Coffea sp.,NA,17.75,28.5,12.25,34.5,1550,2525,887.5,3800,247.5,340
+Cola acuminata,perennial,23,28,18,32,2000,3000,700,4300,150,365
+Cola nitida,perennial,21,30,10,35,1400,2500,1200,3500,150,365
+Cola sp.,NA,22,29,14,33.5,1700,2750,950,3900,150,365
+Colchicum autumnale,perennial,10,20,6,24,800,1000,500,1400,120,180
+Coleus amboinicus,perennial,22,28,10,36,2000,2600,700,4000,120,330
+Coleus parviflorus,annual,18,28,6,36,1500,1700,1000,2300,120,180
+Colocasia esculenta,perennial,21,28,10,35,1800,2700,1000,4100,180,300
+Colocasia esculenta var. antiquorum,,19,25,5,30,1500,2000,700,3000,120,210
+Colophospermum mopane,perennial,26,36,12,50,250,500,150,900,90,210
+Combretum aculeatum,perennial,20,30,15,45,300,700,250,800,365,365
+Combretum micranthum,perennial,22,35,10,45,500,1300,300,1500,90,210
+Commiphora africana,perennial,23,33,18,40,400,800,250,1000,365,365
+Conocarpus erectus,perennial,20,30,10,38,1500,2500,1000,3000,210,330
+Conocarpus lancifolius,perennial,22,38,15,50,350,500,250,600,100,180
+Copaifera langsdorfii,perennial,20,27,-,-,1000,4000,-,-,,
+Corchorus capsularis,annual,20,37,13,45,1500,3000,900,3600,80,150
+Cordeauxia edulis,perennial,25,30,20,38,200,400,100,600,40,200
+Cordia africana,perennial,25,30,5,34,700,1500,500,2000,120,180
+Cordia alliodora,perennial,24,32,16,36,2000,3000,750,4000,240,365
+Coriandrum sativum,annual,15,25,4,32,500,1400,300,2600,35,140
+Cornus canadensis,perennial,10,18,6,24,800,1250,500,1500,,
+Coronilla varia,perennial,15,28,10,40,600,800,300,1000,180,300
+Corylus avellana,perennial,10,24,5,35,900,1100,600,1400,150,210
+Corylus colurna var. colurna,perennial,16,28,5,37,900,1100,600,1400,150,180
+Corylus maxima,perennial,20,27,5,35,800,1200,600,1400,150,210
+Cotylelobium burckii,perennial,22,34,12,38,2100,2700,1800,3000,365,365
+Cotylelobium lanceolatum,perennial,19,34,8,38,2100,2700,1800,3000,300,365
+Cotylelobium melanoxylon,perennial,22,34,12,38,2100,2700,1800,3000,365,365
+Coula edulis,perennial,25,35,20,40,1000,2000,800,2500,365,365
+Couma utilis,perennial,20,30,15,35,2000,4000,1500,5000,,
+Crambe abyssinica,annual,15,25,10,35,800,1500,700,2500,90,100
+Crambe cordifolia,perennial,15,24,12,36,500,800,400,1000,150,365
+Crambe maritima,perennial,14,24,4,28,600,1000,400,1300,120,180
+Cratylia argentea,perennial,20,30,16,36,1500,3500,1000,4000,,
+Crocus sativus,perennial,7,19,4,23,800,900,400,1100,180,210
+Crotalaria brevides var. brevides,"annual, perennial",16,26,12,30,1400,2000,1100,2700,150,365
+Crotalaria juncea,annual,20,30,4,40,500,1500,200,4300,60,160
+Crotalaria lanceolata,annual,20,28,9,32,1100,1600,850,2800,150,365
+Crotalaria pallida,"annual, perennial",22,30,13,34,1200,1800,850,3600,180,270
+Crotalaria spectabilis,annual,21,28,9,32,1200,1600,900,2800,90,130
+Crotalaria averaged,,20,28,9,34,1080,1700,780,3240,126,258
+Cryptocarya erythroxylon,perennial,18,28,6,34,1200,1500,1000,1700,180,240
+Cryptomeria japonica,perennial,15,23,5,30,2000,2500,1500,3000,300,365
+Cryptotaenia japonica,perennial,15,27,10,30,600,3000,500,3500,,
+Cucumis anguria,annual,21,28,8,32,800,1000,300,1700,40,80
+Cucumis melo,annual,18,30,9,35,1000,1300,900,2500,50,120
+Cucumis sativus,annual,18,32,6,38,1000,1200,400,4300,40,180
+Cucurbita ficifolia,perennial,15,21,6,35,800,1200,300,1700,40,120
+Cucurbita foetidissima,perennial,20,30,5,35,400,600,250,1000,90,120
+Cucurbita maxima,annual,20,30,9,38,600,1000,450,2700,80,140
+Cucurbita maxima & moschata & pepo,NA,19,30,8.333333,39.33333,600,1366.667,350,2766.667,66.66667,126.6667
+Cucurbita mixta,annual,16,28,10,38,1000,1600,400,2800,170,190
+Cucurbita moschata,annual,20,30,10,40,600,1600,300,2800,80,140
+Cucurbita pepo,annual,17,30,6,40,600,1500,300,2800,40,100
+Cullenia rosayroana,perennial,30,35,13,40,3000,4000,2000,5000,365,365
+Cuminum cyminum,annual,17,26,9,30,1200,1800,800,2700,60,110
+Cunninghamia lanceolata,perennial,20,27,5,30,1300,1700,1100,1900,210,270
+Cupressus arizonica,perennial,18,35,4,38,400,600,250,750,150,240
+Cupressus lusitanica,perennial,16,32,6,36,1500,2000,800,4000,180,330
+Cupressus macrocarpa,perennial,20,32,6,36,900,1400,700,1600,240,300
+Cupressus torulosa,perennial,20,32,5,45,800,1600,650,2400,240,270
+Curcuma longa,perennial,20,28,18,32,1000,2000,800,3000,270,300
+Curcuma zedoaria,perennial,22,27,14,32,1100,1500,700,4300,300,300
+Cyamopsis tetragonoloba,annual,25,35,10,45,500,800,400,2700,90,160
+Cybistax donnellsmithii,perennial,22,28,17,34,1500,2500,1000,3000,180,270
+Cydonia oblonga,perennial,10,30,7,35,700,900,500,1100,180,270
+Cymbopogon citratus,perennial,24,30,18,34,1500,3000,700,4200,120,365
+Cymbopogon flexuosus,perennial,22,30,13,34,1500,3000,700,4100,90,270
+Cymbopogon martini var. motia,,24,30,18,34,800,900,700,1200,90,270
+Cymbopogon martini var. sofia,perennial,24,30,20,34,1200,1800,1000,2300,120,365
+Cymbopogon nardus var. lenabatu,perennial,20,30,16,36,1300,2000,750,4100,240,365
+Cymbopogon nardus var. mahapengiri,perennial,22,30,16,36,1500,2200,1000,4100,180,270
+Cynara cardunculus,perennial,14,28,7,38,550,800,450,1000,150,300
+Cynara scolymus,perennial,15,25,5,30,900,1200,300,1500,210,270
+Cynodon dactylon,perennial,17,35,6,40,625,1750,550,4300,150,180
+Cynodon nlemfuensis,perennial,18,24,10,35,800,1200,600,3000,90,180
+Cynodon plectostachyus,perennial,20,27,13,36,500,1500,450,4000,90,180
+Cynometra cauliflora,perennial,22,35,17,40,1500,2000,1200,2500,300,365
+Cyperus esculentus,perennial,14,26,4,30,500,1000,300,1700,90,120
+Cyperus longus,perennial,14,32,10,45,300,900,100,1000,,
+Cyperus rotundus,perennial,24,32,10,45,500,3000,300,4200,120,180
+Cyphomandra betacea,perennial,16,22,10,30,2000,2600,600,4000,270,330
+Cytisus proliferus,perennial,18,23,10,28,500,800,200,1600,120,150
+Dacrydium franklinii,perennial,14,26,10,30,1500,1800,800,2500,150,210
+Dacryodes edulis,perennial,14,35,18,28,1200,3000,1000,5000,365,365
+Dactylis glomerata,perennial,12,26,5,31,500,1000,300,1700,80,180
+Dactylis glomerata ssp. hispanica,perennial,16,25,5,30,400,600,200,1000,80,180
+Dactyloctenium aegyptium,annual,21,28,10,32,400,1500,300,4200,90,150
+Dactyloctenium giganteum,annual,22,30,2,42,450,500,400,700,90,120
+Dalbergia latifolia,perennial,16,35,5,48,1500,2500,750,5000,180,300
+Dalbergia melanoxylon,perennial,20,35,16,40,700,1200,600,1500,,
+Dalbergia sissoo,perennial,26,40,5,50,500,2000,300,4500,120,365
+Daucus carota,biennial,15,24,3,30,600,1200,400,4000,40,150
+Daucus carota & Pastinaca sativa,NA,15,22.5,4,27.5,550,1000,350,2550,60,150
+Delonix regia,perennial,22,35,6,39,1000,1500,700,1800,180,365
+Dendrocalamus asper,perennial,20,27,15,34,1800,3600,1200,4500,240,365
+Dendrocalamus giganteus,perennial,20,27,15,34,1800,3600,1200,4500,240,365
+Dendrocalamus hamiltonii,perennial,20,29,15,34,1800,3600,700,4500,240,365
+Dendrocalamus longispathus,perennial,20,27,15,34,1800,3600,1200,4500,240,365
+Dendrocalamus merrillianus,perennial,22,28,15,34,1500,3000,1000,4000,180,365
+Dendrocalamus strictus,perennial,20,27,16,32,1800,3600,1200,4200,240,365
+Dendrolobium umbellatum,perennial,22,34,13,40,850,1500,600,1750,200,300
+Derris elliptica,perennial,24,30,20,36,1800,3500,1400,5000,270,365
+Derris indica,perennial,22,32,3,50,500,800,300,2500,270,330
+Derris malaccensis,perennial,22,30,20,34,1800,2000,1500,2500,365,365
+Desmanthus bicornutus,perennial,14,28,10,36,500,1300,250,2000,90,210
+Desmanthus glandulosus,perennial,12,25,8,36,300,800,250,900,,
+Desmanthus leptophyllus,perennial,22,28,18,35,800,1800,550,2000,,
+Desmanthus virgatus,"annual, perennial",25,32,15,36,1000,2000,250,3000,100,365
+Desmodium cinereum,"biennial, perennial",22,30,18,32,1500,2500,1000,3000,,
+Desmodium dichotomum,"annual, perennial",24,34,20,38,1000,2000,750,2500,,
+Desmodium gyroides,perennial,18,28,10,34,1700,2700,1400,4000,170,365
+Desmodium heterocarpon sp. heterocarpon,perennial,20,28,16,32,1400,2300,1200,2500,,
+Desmodium heterophyllum,perennial,23,28,12,35,2000,4000,1500,5000,120,180
+Desmodium incanum,perennial,25,32,7,36,1500,3100,1000,4000,90,180
+Desmodium intortum,perennial,25,33,7,36,1000,1500,800,4000,240,300
+Desmodium ovalifolium,perennial,14,24,4,34,2000,3000,1000,4000,150,210
+Desmodium sandwicense,perennial,25,33,5,37,1000,1500,750,3000,60,180
+Desmodium triflorum,"annual, perennial",18,28,14,32,1500,4000,1200,5000,,
+Desmodium uncinatum,perennial,25,32,15,34,1000,1600,750,2400,180,240
+Desmodium velutinum,perennial,20,26,18,32,1500,3500,1000,4000,210,365
+Desmodium averaged,,19,29,10,36,1032,1763,649,2640,174,259
+Deyeuxia angustifolia,perennial,16,26,6,35,450,800,300,950,120,180
+Dialium guineense,perennial,21,25,15,30,900,1800,800,2000,365,365
+Dichanthium annulatum,perennial,22,30,7,40,500,1400,300,2600,90,180
+Dichanthium aristatum,perennial,22,30,5,35,875,1200,600,1800,120,180
+Dichanthium caricosum,perennial,32,35,12,40,1500,2500,1200,3000,180,240
+Dichanthium sericeum,perennial,15,28,10,32,500,700,450,1000,180,300
+Dichrostachys cinerea,,15,40,10,50,300,500,200,600,365,365
+Digitalis lanata,biennial,18,26,7,30,450,650,300,800,100,210
+Digitalis purpurea,biennial,11,17,3,24,700,1100,450,1300,150,180
+Digitaria decumbens,perennial,28,32,6,35,450,650,380,800,80,210
+Digitaria didactyla,perennial,25,35,15,42,800,1100,700,1250,120,180
+Digitaria eriantha ssp. eriantha,perennial,24,35,10,41,450,1000,300,3000,120,210
+Digitaria exilis,annual,22,27,18,31,900,1600,400,2800,90,130
+Digitaria milanjiana,perennial,22,28,8,35,600,800,375,1700,80,210
+Digitaria sp.,NA,24.2,31.4,11.4,36.8,640,1030,431,1910,44.54545,85.45455
+Dillenia aurea,perennial,30,40,7,47,1000,1600,750,1900,210,300
+Dillenia indica,perennial,30,40,7,47,3000,4000,2000,5500,300,330
+Dillenia pentagyna,perennial,30,42,7,47,1000,3000,750,5000,210,300
+Dimocarpus longan var. longan,perennial,18,30,7,36,1300,2000,800,3000,210,365
+Dimocarpus longan var. malesianus,perennial,25,30,18,38,3000,4000,2500,4500,365,365
+Dioscorea alata,perennial,20,32,14,40,1200,4000,700,8000,220,300
+Dioscorea bulbifera,perennial,20,30,12,38,1200,2600,900,4000,90,300
+Dioscorea cayenensis,perennial,20,32,12,40,1200,1900,900,3000,280,365
+Dioscorea composita,perennial,25,30,15,38,1200,1500,1000,2100,270,300
+Dioscorea dumetorum,perennial,25,32,15,40,1000,1700,700,4200,240,300
+Dioscorea esculenta,perennial,28,32,17,45,800,2000,600,8000,200,365
+Dioscorea floribunda,perennial,25,30,15,38,900,1200,600,2300,200,365
+Dioscorea opposita,perennial,21,30,11,36,1200,2600,900,4000,160,180
+Dioscorea rotundata,perennial,25,32,15,38,1000,1500,800,3000,180,300
+Dioscorea sp.,NA,22.7,30.6,13.6,38.9,1090,2160,810,4260,212,310.5
+Dioscorea trifida,perennial,18,26,10,36,1200,2600,1000,4000,280,330
+Diospyros digyna,perennial,20,27,12,34,1200,1600,1000,2400,150,240
+Diospyros kaki,perennial,20,31,8,35,1000,1700,300,3000,150,270
+Diospyros malabarica,perennial,25,35,10,40,1500,2500,1000,3000,180,300
+Diospyros melanoxylon,perennial,25,35,8,48,800,1200,500,1500,240,330
+Diospyros mespiliformis,perennial,16,27,12,34,500,1300,400,1500,365,365
+Diospyros virginiana,perennial,19,25,10,28,1000,1400,700,1700,240,270
+Diplachne fusca,"biennial, perennial",22,28,15,35,450,1000,300,2000,90,240
+Diploglottis cunninghamii,perennial,18,28,8,36,1300,1700,1000,2000,180,240
+Dipterocarpus alatus,perennial,22,32,10,36,3500,4500,3000,5200,300,330
+Dipterocarpus costatus,perennial,21,31,10,38,2800,3500,2500,4500,240,300
+Dipterocarpus gracilis,perennial,24,32,10,40,1500,3000,500,4500,240,300
+Dipterocarpus indicus,perennial,22,30,13,38,4000,6000,2500,9000,240,300
+Dipterocarpus macrocarpus,perennial,22,30,5,38,2500,3500,1550,4550,270,330
+Dipterocarpus turbinatus,perennial,24,32,10,40,2500,3500,1500,5100,240,300
+Dipteryx odorata,perennial,22,30,16,34,2000,2500,1300,4000,240,300
+Dobera glabra,perennial,20,35,15,45,200,600,100,800,365,365
+Dodonaea viscosa,perennial,18,38,7,45,300,1200,125,1600,125,300
+Dodonaea viscosa ssp. angustifolia,perennial,18,38,7,45,250,800,125,1000,125,300
+Donaldsonia stenopetala,perennial,25,35,15,48,500,1500,200,2800,,
+Doryphora sassafras,perennial,18,28,8,34,1200,1800,1000,2000,180,240
+Dovyalis caffra,perennial,20,28,10,35,900,1100,700,1300,120,210
+Dovyalis hebecarpa,perennial,22,28,12,35,1100,1800,800,4000,150,365
+Duboisia myoporoides,perennial,20,30,10,36,1000,2000,600,2500,270,330
+Durio zibethinus,perennial,22,40,12,45,1500,2500,1200,3500,270,365
+Dysoxylum fraseranum,perennial,20,28,8,34,1200,1500,1000,1700,180,240
+Echinacea purpurea,perennial,18,24,10,36,400,800,300,1000,,
+Echinochloa colona,annual,22,30,6,42,500,1200,400,2000,45,180
+Echinochloa crus-galli,annual,17,30,2,40,700,1100,310,2500,120,180
+Echinochloa frumentacea,annual,25,30,10,35,500,750,450,1000,40,120
+Echinochloa polystachya,perennial,22,28,14,32,1900,4000,1500,5000,,
+Echinochloa pyramidalis,perennial,22,28,18,32,1500,2100,1100,2700,120,160
+Echinochloa sp.,NA,21,30,6,37.5,600,925,380,1750,80,150
+Echinochloa turneriana,annual,22,30,15,35,300,375,250,2000,90,120
+Echinochloa utilis,annual,15,25,10,35,500,1000,450,1500,40,100
+Ehrharta calycina,perennial,12,16,8,20,350,450,300,600,120,150
+Eichhornia crassipes,biennial,20,35,10,40,1000,3000,600,4000,30,365
+Ekebergia capensis,perennial,18,26,12,38,900,2000,700,2500,365,365
+Elaeagnus angustifolia,perennial,20,32,5,36,350,500,250,600,120,180
+Elaeis guineensis,perennial,20,35,12,38,1500,3000,1000,8000,300,365
+Elaeis oleifera,perennial,20,30,14,34,1400,2500,700,3500,240,330
+Elaeocarpus grandis,perennial,18,28,8,38,1500,3000,1000,3500,180,330
+Eleocharis dulcis,annual,23,29,15,34,1600,2000,1300,4000,200,240
+Elettaria cardamomum,perennial,22,30,10,35,3000,6000,1500,7000,240,365
+Eleusine africana,annual,18,27,7,35,600,1100,200,4300,55,150
+Eleusine coracana ssp. coracana,annual,18,30,8,35,500,1100,300,4300,75,180
+Eleusine indica,annual,20,26,6,35,500,1200,450,4300,120,150
+Elymus canadensis,perennial,10,22,2,27,500,1000,350,1280,90,180
+Elymus cinereus,perennial,10,18,2,22,400,600,300,1200,90,180
+Elymus condensatus,perennial,18,22,2,18,500,800,350,1200,70,180
+Elymus glaucus,perennial,9,15,2,19,500,700,350,1200,70,150
+Emblica officinalis,perennial,20,29,14,35,1500,2500,700,4200,180,365
+Emilia sonchifolia,annual,20,30,10,40,1000,2000,500,4000,90,365
+Endiandra palmerstonii,perennial,22,28,10,34,1500,3000,1250,3800,300,365
+Ensete ventricosum,perennial,16,24,8,30,1100,1500,900,1700,365,365
+Entada abyssinica,perennial,20,28,15,35,800,1500,500,2000,365,365
+Enterolobium cyclocarpum,perennial,23,28,18,36,750,2500,600,3000,180,365
+Entolasia imbricata,perennial,20,28,8,35,800,1200,700,1300,60,180
+Eragrostis chloromelas,perennial,17,25,6,31,500,750,350,1200,90,240
+Eragrostis cilianensis,annual,22,30,5,40,600,700,250,900,45,90
+Eragrostis curvula,perennial,17,32,7,38,500,1000,300,1200,120,280
+Eragrostis lehmanniana,"annual, perennial",17,25,7,31,300,500,200,1200,120,280
+Eragrostis pilosa,annual,18,30,5,36,500,1300,200,2200,90,240
+Eragrostis superba,perennial,22,28,10,35,500,900,450,1100,90,150
+Eragrostis tef,annual,22,28,2,30,600,1200,300,2500,65,150
+Eragrostis tremula,annual,22,28,3,35,300,600,200,800,65,100
+Eragrostis trichodes,perennial,16,24,7,31,600,1000,350,1300,70,150
+Eremochloa ophiuroides,perennial,20,32,10,36,800,1200,600,1500,120,180
+Eriobotrya japonica,perennial,21,27,9,36,600,1600,400,4000,150,210
+Eriochloa punctata,perennial,22,28,12,33,1500,2000,700,4300,60,150
+Eruca sativa,annual,15,25,8,29,500,900,300,1100,70,150
+Erythrina abyssinica,perennial,16,26,10,30,800,2000,600,2500,365,365
+Erythrina caffra,perennial,16,28,12,35,700,1000,400,1500,365,365
+Erythrina edulis,perennial,15,22,5,25,600,1500,450,1800,365,365
+Erythrina fusca,perennial,16,24,12,32,1200,3000,1000,3500,365,365
+Erythrina poeppigiana,perennial,22,28,16,36,1000,4000,800,4500,365,365
+Erythrina variegata,perennial,17,27,10,34,1500,2500,500,3000,180,365
+Erythrina vespertilio,perennial,20,35,10,45,500,1300,150,1700,60,300
+Erythrophleum chlorostahys,perennial,22,28,13,43,1000,1400,300,1700,180,365
+Erythroxylum coca,perennial,17,23,14,27,1000,2100,700,4000,150,180
+Eucalyptus accedens,perennial,18,28,8,40,600,800,450,1000,150,240
+Eucalyptus agglomerata,perennial,18,28,8,37,800,1000,700,1150,180,240
+Eucalyptus albens,perennial,18,30,8,40,600,1100,500,1200,180,240
+Eucalyptus astringens,perennial,18,28,8,40,450,650,350,750,180,240
+Eucalyptus bosistoana,perennial,17,26,8,35,800,1100,700,1200,150,240
+Eucalyptus botryoides,perennial,22,29,5,35,700,1300,650,1600,210,330
+Eucalyptus brassiana,perennial,22,33,10,38,1500,2500,1000,3000,210,270
+Eucalyptus brevifolia,perennial,24,38,14,45,450,700,250,800,100,300
+Eucalyptus brockwayi,perennial,25,34,4,40,250,300,220,400,120,180
+Eucalyptus calophylla,perennial,18,26,8,36,900,1200,650,1500,180,249
+Eucalyptus camaldulensis,perennial,12,28,7,40,600,1000,250,2500,180,365
+"Eucalyptus camaldulensis, northern provenances",perennial,25,35,10,50,700,1300,250,2500,120,300
+Eucalyptus citriodora,perennial,22,32,12,40,800,1500,600,2500,180,365
+Eucalyptus cladocalyx,perennial,23,32,6,35,450,650,380,800,180,270
+Eucalyptus cloeziana,perennial,22,32,8,37,800,2000,550,2300,210,365
+Eucalyptus consideniana,perennial,15,27,8,33,900,1200,700,1400,150,240
+Eucalyptus cornuta,perennial,17,27,10,35,800,1100,700,1200,180,240
+Eucalyptus crebra,perennial,26,36,9,40,600,2000,500,2400,180,210
+Eucalyptus cypellocarpa,perennial,21,31,14,36,800,1400,600,2200,365,365
+Eucalyptus dalrympleana,perennial,17,28,4,34,800,1900,700,2200,210,300
+Eucalyptus deglupta,perennial,24,32,16,38,2000,4000,1200,7000,240,365
+Eucalyptus delegatensis,perennial,17,25,4,30,900,2500,700,3500,180,365
+Eucalyptus diversicolor,perennial,18,28,8,36,1000,1200,500,1500,180,240
+Eucalyptus dumosa,perennial,18,28,8,39,300,450,250,500,120,180
+Eucalyptus elata,perennial,15,28,8,33,900,1400,650,1700,150,240
+Eucalyptus eugenioides,perennial,18,28,8,38,800,1000,700,1100,180,240
+Eucalyptus exserta,perennial,20,30,10,44,700,1200,400,1500,150,300
+Eucalyptus fastigata,perennial,16,28,3,32,900,1800,750,2200,210,365
+Eucalyptus fraxinoides,perennial,15,28,8,36,900,1000,800,1100,150,240
+Eucalyptus globoidea,perennial,20,31,14,36,700,1300,600,1700,365,365
+Eucalyptus globulus,perennial,18,23,6,30,700,1400,550,1800,150,365
+Eucalyptus globulus ssp. globulus,perennial,14,23,6,30,700,1500,500,1800,150,300
+Eucalyptus globulus ssp. maidenii,perennial,22,30,8,35,900,1500,700,2000,210,300
+Eucalyptus globulus var. bicostata,perennial,25,32,5,38,800,1200,700,1500,150,300
+Eucalyptus globulus var. pseudoglobulus,perennial,24,27,5,30,800,1000,700,1100,150,300
+Eucalyptus gomphocephala,perennial,24,32,7,36,700,1000,400,1200,180,240
+Eucalyptus gongylocarpa,perennial,20,38,8,44,150,250,125,300,50,100
+Eucalyptus grandis,perennial,24,35,7,40,1000,2500,700,4000,150,365
+Eucalyptus guilfoylei,perennial,18,26,10,32,1100,1300,1000,1400,180,240
+Eucalyptus gummifera,perennial,18,32,10,40,1000,1500,700,1800,180,240
+Eucalyptus intermedia,perennial,18,28,8,38,1000,2000,750,2200,180,300
+Eucalyptus intertexta,perennial,28,38,10,42,300,600,150,700,120,180
+Eucalyptus jacksonii,perennial,15,25,8,33,1150,1250,1100,1300,180,240
+Eucalyptus jensenii,perennial,22,34,13,43,550,1300,400,1550,140,300
+Eucalyptus johnstonii,perennial,12,18,5,26,1300,1400,1200,1500,150,210
+Eucalyptus largiflorens,perennial,27,36,8,40,250,380,200,500,120,180
+Eucalyptus leucoxylon,perennial,18,30,8,38,400,800,300,1200,120,240
+Eucalyptus longifolia,perennial,18,26,8,33,900,1200,800,1250,180,240
+Eucalyptus loxophleba,perennial,20,32,8,42,350,650,250,750,120,240
+Eucalyptus maculata,perennial,23,32,4,36,800,1750,700,2220,210,365
+Eucalyptus marginata,perennial,17,27,8,37,800,1100,630,1250,180,240
+Eucalyptus melliodora,perennial,24,33,4,36,650,900,500,1000,180,300
+Eucalyptus microcarpa,perennial,18,30,8,40,500,600,400,700,150,300
+Eucalyptus microcorys,perennial,24,34,9,38,1000,2000,900,2200,180,300
+Eucalyptus microtheca,perennial,24,39,5,45,250,1000,150,1200,120,240
+Eucalyptus moluccana,perennial,18,28,10,38,800,1100,700,1200,180,300
+Eucalyptus muelleriana,perennial,15,25,8,34,800,1100,700,1200,150,240
+Eucalyptus nesophila,perennial,22,32,15,44,1200,1500,1000,1750,270,330
+Eucalyptus nigra,perennial,20,28,12,38,1300,1700,1000,2000,180,300
+Eucalyptus nitens,perennial,14,26,4,30,900,1750,750,2000,180,365
+Eucalyptus obliqua,perennial,18,30,4,34,700,2400,500,3000,210,365
+Eucalyptus occidentalis,perennial,26,36,5,40,400,800,300,1000,150,210
+Eucalyptus ochrophloia,perennial,20,37,10,42,250,600,150,800,90,180
+Eucalyptus odontocarpa,perennial,22,38,12,43,250,500,200,600,75,215
+Eucalyptus oreades,perennial,17,25,8,35,1000,1500,850,1700,180,240
+Eucalyptus oxymitra,perennial,20,33,10,38,150,200,100,250,40,100
+Eucalyptus paniculata,perennial,23,31,5,34,900,1500,750,1800,240,300
+Eucalyptus papuana,perennial,20,28,10,46,500,1000,250,1500,120,300
+Eucalyptus patens,perennial,18,28,8,37,900,1200,800,1300,180,240
+Eucalyptus pauciflora,perennial,15,27,5,32,1000,1600,600,1900,120,210
+Eucalyptus pellita,perennial,24,34,10,38,1100,2500,900,4000,210,300
+Eucalyptus phoenicea,perennial,22,35,13,45,900,1300,700,1500,300,365
+Eucalyptus pilularis,perennial,18,28,8,38,1000,1500,750,1850,180,240
+Eucalyptus piperita,perennial,20,30,16,38,1000,1500,900,2000,365,365
+Eucalyptus planchoniana,perennial,18,28,8,36,1100,1500,1000,1650,180,240
+Eucalyptus polyanthemos,perennial,16,28,7,38,600,700,500,800,150,240
+Eucalyptus polycarpa,perennial,20,29,10,44,500,1500,250,1750,120,300
+Eucalyptus populnea,perennial,20,34,10,43,500,800,250,1000,120,300
+Eucalyptus propinqua,perennial,16,33,7,37,1000,1700,850,2000,210,240
+Eucalyptus pulchella,perennial,15,22,7,30,600,700,500,1000,150,210
+Eucalyptus punctata,perennial,18,28,8,40,900,1100,700,1200,180,240
+Eucalyptus quadrangulata,perennial,17,27,8,36,1100,1500,900,1700,180,240
+Eucalyptus radiata ssp. radiata,perennial,15,28,5,36,800,1000,650,1100,150,240
+Eucalyptus radiata ssp. robusta,perennial,15,25,5,36,1000,1200,800,1400,150,210
+Eucalyptus regnans,perennial,12,25,7,31,1000,1700,750,2000,210,365
+Eucalyptus resinifera,perennial,16,34,6,38,1000,2500,800,3000,240,300
+Eucalyptus robusta,perennial,16,32,5,36,1200,2000,1000,3000,240,330
+Eucalyptus rubida,perennial,12,24,8,32,600,1600,500,2000,365,365
+Eucalyptus rudis,perennial,20,32,8,42,600,800,400,1000,150,240
+Eucalyptus saligna,perennial,15,32,4,36,900,1800,700,2200,180,365
+Eucalyptus salmonophloia,perennial,28,36,8,40,300,500,250,600,120,210
+Eucalyptus salubris,perennial,20,34,8,43,250,350,230,400,120,180
+Eucalyptus sargentii,perennial,29,36,7,40,400,480,330,600,120,180
+Eucalyptus scias,perennial,22,32,18,38,1000,1300,900,2200,365,365
+Eucalyptus sideroxylon,perennial,25,34,8,40,500,1000,420,1200,150,240
+Eucalyptus sieberi,perennial,22,27,8,35,900,1400,700,1600,180,300
+Eucalyptus smithii,perennial,20,28,8,36,900,1500,750,2200,,
+Eucalyptus socialis,perennial,18,36,8,41,150,450,100,500,40,180
+Eucalyptus st.-johnii,perennial,16,27,5,31,1000,1700,750,2000,180,270
+Eucalyptus subcrenulata,perennial,10,15,5,21,1500,2000,1000,2500,120,210
+Eucalyptus tereticornis,perennial,18,38,4,42,800,1500,400,3500,150,240
+Eucalyptus tessellaris,perennial,20,34,10,43,1000,3000,400,3500,120,365
+Eucalyptus tetrodonta,perennial,22,30,12,45,900,1300,700,1500,300,365
+Eucalyptus thozetiana,perennial,22,35,10,43,350,650,250,750,120,300
+Eucalyptus torelliana,perennial,27,38,10,42,1200,2000,900,2500,240,270
+Eucalyptus transcontientalis,perennial,20,30,8,42,300,450,250,500,120,210
+Eucalyptus trivalvis,perennial,22,38,12,45,150,250,100,300,40,120
+Eucalyptus umbra ssp. carnea,perennial,18,26,8,38,900,1500,750,1650,180,240
+Eucalyptus umbra ssp. umbra,perennial,18,28,10,42,900,1200,700,1400,180,300
+Eucalyptus urophylla,perennial,18,28,8,34,1300,2500,800,3500,180,365
+Eucalyptus viminalis,perennial,18,32,4,35,700,1500,500,2500,210,365
+Eucalyptus wandoo,perennial,18,30,8,41,500,600,400,700,120,240
+Euchlaena mexicana,annual,17,28,3,32,800,1250,700,2400,80,120
+Eucryphia lucida,perennial,12,22,5,26,1300,1700,1000,2000,150,210
+Eugenia aromatica,perennial,24,34,20,38,1500,3600,1200,4000,300,365
+Eugenia dombeyi,perennial,21,32,15,38,1200,2500,800,3500,210,365
+Eugenia gustavioides,perennial,28,32,13,38,1400,3800,1200,4000,210,365
+Eugenia jambos,perennial,18,38,5,40,1200,1600,700,4000,210,365
+Eugenia stipitata,perennial,22,30,18,34,2000,3500,1500,4000,365,365
+Eugenia suborbiculare,perennial,24,38,12,44,900,1600,600,1800,215,330
+Eugenia uniflora,perennial,21,27,12,32,1200,2000,700,2700,300,365
+Eugenia uvalha,perennial,20,26,15,30,450,600,300,800,140,210
+Euonymus japonicus,perennial,12,20,4,28,700,1300,500,1500,365,365
+Euphorbia tirucalli,perennial,25,37,12,41,400,800,250,1000,120,210
+Eurycoma longifolia,perennial,20,30,15,35,2000,4000,1500,5000,,
+Eusideroxylon zwageri,perennial,20,30,10,38,2500,4000,2000,4500,365,365
+Euterpe chaunostachys,perennial,23,30,18,34,3000,6000,1500,7100,365,365
+Euterpe edulis,perennial,18,23,14,30,1500,2500,1300,2800,365,365
+Euterpe oleracea,perennial,22,28,16,32,1800,2300,1200,3000,365,365
+Excoecaria agallocha,perennial,20,30,15,37,1000,2000,800,4100,300,365
+Exotheca abyssinica,perennial,17,25,3,30,750,1250,650,1400,90,180
+Fagopyrum emarginatum,annual,15,28,7,37,700,900,500,1100,70,85
+Fagopyrum esculentum,annual,17,27,7,40,700,1000,400,1300,55,85
+Fagopyrum tataricum,annual,15,25,5,30,700,900,400,1100,70,85
+Fagraea fragrans,perennial,20,30,10,36,2000,3000,1000,4000,365,365
+Fagus grandifolia,perennial,13,22,5,28,750,1100,580,1300,95,280
+Fagus sylvatica,perennial,10,20,6,35,500,1000,300,1500,,
+Fagus sylvatica ssp. sylvatica,perennial,10,20,6,35,500,1000,300,1500,150,210
+Faidherbia albida,perennial,18,30,12,13,400,1000,250,1200,,
+Faurea saligna,perennial,20,28,16,35,500,1000,400,1500,365,365
+Feijoa sellowiana,perennial,20,28,12,32,600,1500,300,2000,120,270
+Festuca arundinacea,perennial,15,22,5,30,600,1300,400,1500,150,180
+Festuca idahoensis,perennial,10,18,2,22,500,800,350,1200,140,180
+Festuca longifolia,perennial,14,24,5,28,500,900,350,1200,140,180
+Festuca ovina,perennial,10,22,2,26,500,900,300,1600,120,180
+Festuca pratensis,perennial,11,19,4,24,800,1200,300,2300,120,270
+Festuca rubra var. commutata,perennial,10,18,2,22,500,900,350,1600,140,180
+Festuca rubra var. rubra,perennial,12,18,4,22,500,1000,300,1700,120,180
+Fibraurea tinctoria,perennial,22,32,10,37,700,1000,500,1200,180,365
+Ficus abutilifolia,perennial,18,25,14,30,400,2500,250,3000,,
+Ficus auriculata,perennial,15,25,12,32,1200,1900,900,2400,365,365
+Ficus benghalensis,perennial,26,36,9,40,1000,2500,500,4000,180,365
+Ficus carica,perennial,16,26,4,38,700,1500,300,2700,120,300
+Ficus elastica,perennial,20,30,10,36,600,1000,300,2800,300,365
+Ficus glumosa,perennial,22,36,15,42,500,1200,400,1400,365,365
+Ficus macrophylla,perennial,18,28,10,34,1200,1500,1000,1700,180,240
+Ficus sp.,NA,19.75,29.66667,11.83333,36.33333,895.8333,1783.333,620.8333,2466.667,245.8333,307.9167
+Ficus subcordata,perennial,22,30,15,39,1200,1800,900,2500,300,330
+Ficus sycomorus,perennial,18,36,12,44,700,1800,500,2200,365,365
+Ficus thonningii,perennial,22,28,16,36,750,2000,600,2500,365,365
+Ficus vogelii,perennial,22,30,15,35,1800,2400,1500,2700,270,365
+Flacourtia indica,perennial,22,40,10,48,750,1400,500,2000,270,300
+Flemingia macrophylla,perennial,22,28,12,36,1300,2200,1100,3500,240,365
+Flindersia bourjotiana,perennial,20,30,10,38,1500,3500,1100,3800,240,330
+Flindersia brayleyana,perennial,20,30,10,38,1500,3500,1100,3800,240,330
+Flindersia pimenteliana,perennial,20,30,10,38,1500,3500,1100,3800,240,330
+Foeniculum vulgare,"biennial, perennial",15,25,6,32,700,1500,300,2600,30,110
+Fortunella hindsii,perennial,26,37,12,40,1100,1500,700,4000,210,365
+Fortunella japonica,perennial,26,35,12,40,1100,1500,700,4000,210,365
+Fortunella margarita,perennial,26,37,12,40,1100,1500,700,4000,210,365
+Fragaria chiloensis,perennial,11,18,5,27,900,1300,500,1700,120,270
+Fragaria vesca,perennial,12,20,5,28,700,1500,300,2800,180,270
+Fragaria virginiana,perennial,11,18,5,27,800,1200,400,1700,120,270
+Fragaria x ananassa,perennial,11,24,6,28,600,900,300,1700,180,270
+Frangula alnus,perennial,18,24,7,35,700,900,600,1000,180,365
+Fraxinus excelsior,perennial,8,20,5,33,500,1000,300,1500,,
+Frithia humilis,perennial,15,30,8,40,700,800,600,900,,
+Furcraea gigantea var. willemettiana,perennial,23,30,16,34,1000,2100,700,2500,300,365
+Galega orientalis,perennial,10,16,8,24,500,700,400,800,90,150
+Garcinia dulcis,perennial,22,30,16,38,1500,3000,1100,4000,240,365
+Garcinia mangostana,perennial,20,30,15,40,1600,2000,1100,2800,365,365
+Garcinia multiflora,perennial,21,28,15,36,1500,1800,1100,2500,300,365
+Garcinia xanthochymus,perennial,22,28,16,36,1500,2000,1200,2500,300,365
+Garuga pinnata,perennial,30,42,7,47,1500,2000,1000,2500,210,330
+Geissois benthamiana,perennial,18,28,8,34,1200,1500,1000,1700,180,240
+Gelidiella acerosa,,20,28,12,36,2000,3000,1000,4000,90,365
+Genipa americana,perennial,24,31,12,35,1200,1700,900,2000,270,365
+Genista tinctoria,perennial,14,20,6,26,600,900,520,1100,120,210
+Girardinia diversifolia,"annual, perennial",12,18,8,28,1500,3500,1300,4000,120,240
+Gleditsia triacanthos,perennial,26,38,6,40,700,1500,500,1800,180,300
+Gliricidia sepium,perennial,15,30,12,44,1200,2300,600,3500,180,240
+Gluta travancorica,perennial,26,29,18,34,3000,4000,2000,5000,365,365
+Glyceria fluitans,perennial,14,26,10,32,600,900,500,1000,,
+Glycine max,annual,20,33,10,38,600,1500,450,1800,75,180
+Glycine wightii,perennial,20,30,13,32,800,1800,550,4000,210,365
+Glycyrrhiza glabra,perennial,14,25,5,30,500,1000,300,1200,90,150
+Glycyrrhiza lepidota,perennial,10,17,4,23,450,500,350,550,120,150
+Gmelina arborea,perennial,22,34,16,46,1500,2500,750,5000,240,300
+Gmelina leichhardtii,perennial,26,30,10,36,1200,1800,1000,2000,180,240
+Gossypium arboreum,"annual, perennial",26,36,18,38,750,1250,500,1500,190,210
+Gossypium barbadense,perennial,22,32,15,38,750,1250,500,1500,180,210
+Gossypium herbaceum,"biennial, perennial",26,36,18,38,750,1250,200,1500,190,210
+Gossypium hirsutum,"annual, perennial",22,36,15,42,750,1200,450,1500,150,200
+Gossypium sp.,NA,24,35,16.5,39,750,1237.5,412.5,1500,177.5,207.5
+Gracilaria tenuistipitata,,20,30,5,35,2000,3000,1500,3500,60,90
+Gracilaria verrucosa,perennial,20,25,5,30,2000,3000,1500,3500,45,90
+Grevillea parallella,perennial,22,35,10,46,700,1400,500,1700,180,300
+Grevillea robusta,perennial,15,28,8,34,750,1500,400,2500,150,300
+Grewia asiatica,perennial,23,34,10,44,2300,2900,1250,4000,260,330
+Grewia bicolor,perennial,20,28,15,35,400,900,200,1100,,
+Grewia tiliifolia,perennial,30,42,7,47,1000,2500,750,4000,365,365
+Guaiacum officinale,perennial,22,28,20,34,1000,2000,500,3000,365,365
+Guaiacum sanctum,perennial,22,28,20,34,700,1500,500,2000,365,365
+Guazuma ulmifolia,perennial,22,32,10,36,700,1500,500,1700,150,240
+Guizotia abyssinica,annual,18,26,11,34,1000,1300,500,3000,90,150
+Gunnera tinctoria,perennial,15,25,10,30,800,2000,500,4000,,
+Hagenia abyssinica,perennial,25,32,5,36,1000,1600,400,1800,120,180
+Haloxylon aphyllum,perennial,25,40,8,50,200,300,100,400,60,120
+Hardwickia binata,perennial,16,38,5,46,500,1000,250,1500,240,330
+Harungana madagascariensis,perennial,20,28,12,36,1500,2500,1000,3500,365,365
+Hedysarum carnosum,annual,15,25,5,30,200,500,100,600,40,120
+Hedysarum coronarium,"biennial, perennial",14,28,3,35,600,1000,400,2400,90,270
+Hedysarum flexuosum,annual,15,25,5,30,400,500,300,600,120,200
+Hedysarum pallidum,perennial,15,25,5,30,400,500,300,700,120,200
+Hedysarum spinosissimum,annual,15,25,5,30,200,500,100,600,40,120
+Helianthus annuus,annual,17,34,5,45,600,1000,300,1600,70,200
+Helianthus tuberosus,perennial,15,27,7,30,700,1500,300,2000,80,150
+Hemarthria altissima,perennial,31,35,7,38,1200,1500,900,1700,90,180
+Hemarthria japonica,perennial,17,28,7,38,500,800,400,900,120,180
+Heritiera littoralis,perennial,20,30,10,35,1500,2500,1000,3000,365,365
+Heteropogon contortus,perennial,28,34,20,38,500,1500,450,2000,120,180
+Hevea brasiliensis,perennial,24,33,10,45,2000,4000,1200,6000,365,365
+Hibiscus cannabinus,annual,15,28,10,35,600,2000,450,3000,100,240
+Hibiscus sabdariffa,annual,16,32,10,36,1000,3000,500,3500,,
+Hibiscus sabdariffa var. altissima,annual,16,28,12,36,1500,2000,500,3500,90,240
+Hibiscus sabdariffa var. sabdariffa,annual,24,32,10,36,1000,3000,500,3500,90,120
+Hibiscus sp.,NA,18,30,10.5,36.66667,983.3333,2166.667,491.6667,2833.333,91.66667,160.8333
+Hibiscus syriacus,perennial,15,28,11,41,600,1400,500,1500,,
+Hibiscus tiliaceus,perennial,22,32,10,36,1200,1600,500,2000,270,365
+Hierochloe odorata,perennial,18,26,5,45,250,700,70,900,60,180
+Hieronyma chocoensis,perennial,24,34,20,38,3500,4500,3000,5000,270,365
+Hilaria jamesii,perennial,12,17,3,21,300,400,200,500,75,120
+Hilaria mutica,perennial,19,26,10,30,400,700,200,900,75,180
+Hippophae rhamnoides,perennial,8,20,4,39,300,600,200,800,120,180
+Hippophae salicifolia,perennial,8,18,4,25,300,600,200,800,120,180
+Hopea odorata,perennial,26,36,10,41,3000,4000,2200,5100,300,365
+Hopea parviflora,perennial,26,33,8,27,2500,3500,2000,5000,365,365
+Hopea utilis,perennial,24,33,10,38,2500,3500,1400,4300,365,365
+Hopea wightiana,perennial,27,35,12,40,2500,3500,2000,5000,365,365
+Hordeum brevisubulatum,perennial,17,28,5,38,500,800,300,900,120,180
+Hordeum bulbosum,perennial,13,23,3,35,400,600,300,1200,120,150
+Hordeum vulgare,annual,15,20,2,40,500,1000,200,2000,90,240
+Humulus lupulus,perennial,15,19,8,35,400,700,300,1300,150,210
+Hydnocarpus alpina,perennial,30,35,10,40,3500,6500,2000,8000,365,365
+Hydnocarpus kurzii,perennial,28,34,7,42,3500,6500,2000,8000,365,365
+Hydnocarpus laurifolia,perennial,30,37,13,43,3500,6000,2200,7500,365,365
+Hylocereus undatus,perennial,18,28,12,34,350,3500,450,3000,,
+Hymenachne acutigluma,perennial,20,28,10,35,1500,2500,1000,4000,90,365
+Hymenaea courbaril,perennial,20,30,16,36,1500,3000,1200,3500,240,365
+Hymenodictyon excelsum,perennial,22,33,5,47,1200,2000,875,2300,120,180
+Hyparrhenia hirta,,20,32,10,40,750,1000,500,1200,120,210
+Hyparrhenia rufa,perennial,20,27,11,32,600,1400,500,1600,180,210
+Hyphaene compressa,perennial,20,30,15,35,300,800,200,900,,
+Hyphaene thebaica,perennial,26,36,10,45,300,600,100,1000,240,365
+Hyssopus officinalis,perennial,10,24,7,36,600,1000,400,1500,180,220
+Ilex dipyrena,perennial,20,27,5,31,1500,2300,1000,2800,150,240
+Ilex paraguariensis,perennial,17,26,12,30,1200,2000,700,2500,210,300
+Imperata cylindrica,perennial,25,35,20,40,500,3500,250,6250,90,150
+Indigofera arrecta,perennial,22,30,16,36,1700,2200,400,4300,90,365
+Indigofera hirsuta,"annual, biennial",22,30,13,34,900,1700,750,2700,90,210
+Indigofera schimperi,perennial,17,26,12,32,400,1000,250,1100,120,300
+Indigofera spicata,perennial,22,30,13,36,1500,2000,500,4300,90,210
+Indigofera tinctoria,perennial,22,28,7,32,1300,1700,640,3000,90,210
+Inga edulis,perennial,23,30,18,35,1200,2500,640,4000,365,365
+Inga feuillei,perennial,22,28,18,33,1500,2700,1000,3000,210,365
+Inga vera,perennial,18,28,15,35,1500,3000,1200,4000,365,365
+Intsia bijuga,perennial,22,28,12,34,2000,3000,1500,4000,240,300
+Ipomoea aquatica,perennial,15,35,10,40,2000,2500,700,4200,30,70
+Ipomoea aquatica var. reptans,perennial,15,35,10,40,2000,2500,700,4200,30,70
+Ipomoea batatas,NA,18,28,10,38,750,2000,350,5000,80,170
+Irvingia gabonensis,perennial,25,32,20,38,1500,3000,1200,3300,365,365
+Ischaemum ciliare,perennial,30,35,20,40,1250,5000,500,7000,90,150
+Ischaemum magnum,perennial,29,35,20,45,2500,3500,2000,4000,120,180
+Ischaemum muticum,perennial,22,28,17,35,2000,3000,1500,4000,120,180
+Ischaemum rugosum,"annual, perennial",22,28,10,35,1500,2000,1000,3500,175,210
+Ischaemum timorense,"annual, perennial",22,28,10,35,800,2000,700,3000,180,240
+Iseilema laxum,perennial,24,34,20,40,500,1400,450,1600,120,180
+Iseilema membranaceum,annual,30,40,20,45,400,500,350,700,40,70
+Ixophorus unisetus,perennial,20,24,15,30,1200,1600,1000,2000,120,180
+Jacaranda copaia,perennial,24,38,14,42,1000,1600,600,2000,180,240
+Jacaranda mimosifolia,perennial,20,34,10,38,800,1400,650,1800,180,240
+Jatropha curcas,perennial,11,28,7,36,500,1500,300,2000,365,365
+Jessenia bataua,perennial,21,28,17,32,2000,4000,1500,6300,365,365
+Juglans hindsii,perennial,14,14,8,20,600,900,300,1400,120,180
+Juglans nigra,perennial,13,28,2,36,800,1000,300,1300,150,180
+Juglans regia,perennial,15,30,7,40,800,1700,400,2200,150,180
+Juglans sieboldiana,perennial,15,28,5,36,800,1000,400,1300,150,180
+Juglans sp.,perennial,21,33,11,40,967,1606,643,2237,148,218
+Juniperus procera,perennial,18,30,7,55,600,1000,400,1200,180,330
+Justicia adhatoda,perennial,20,27,12,32,700,1700,500,4200,210,365
+Kerstingiella geocarpa,annual,18,34,12,38,600,1200,450,3000,90,150
+Khaya anthotheca,perennial,18,28,14,36,600,1600,500,1800,365,365
+Khaya senegalensis,perennial,29,38,13,42,800,1300,650,1500,150,210
+Koeleria cristata,perennial,8,15,3,20,400,900,200,1100,75,180
+Lablab purpureus,"annual, perennial",18,32,3,38,600,1000,200,2500,70,300
+Lactuca indica,perennial,22,34,10,40,1500,2500,1000,3000,60,365
+Lactuca sativa var. capitata,"annual, biennial",12,21,5,30,1100,1400,900,4100,35,85
+Lagenaria siceraria,annual,19,27,12,38,1200,1800,700,2800,60,120
+Lagerstroemia flos-reginae,perennial,18,35,6,43,2000,3500,1300,5000,210,270
+Lagerstroemia lanceolata,perennial,18,35,10,45,2000,4000,750,5000,180,270
+Lagerstroemia parviflora,perennial,20,35,4,47,1500,3500,750,4500,180,270
+Lagerstroemia tomentosa,perennial,26,36,10,43,2000,3000,1000,4500,210,270
+Laguncularia racemosa,perennial,20,30,10,38,1500,2500,1000,3000,210,330
+Lamium album,perennial,12,20,7,28,500,800,400,1200,,
+Lannea coromandelica,perennial,32,40,8,47,1200,2000,600,3800,180,300
+Lansium domesticum,perennial,20,35,12,40,1400,2200,1000,3000,240,330
+Larix decidua,perennial,8,22,5,30,450,1100,350,1400,100,180
+Lasiurus hirsutus,perennial,23,30,8,48,200,350,150,600,70,180
+Lathyrus cicera,annual,10,18,4,22,400,600,300,700,150,180
+Lathyrus hirsutus,annual,17,25,4,30,600,1000,320,1290,150,210
+Lathyrus ochrus,annual,10,18,4,22,400,600,300,700,150,180
+Lathyrus sativus,annual,10,28,4,32,500,1300,320,3000,100,190
+Laurus nobilis,perennial,17,25,8,30,600,1000,300,2200,120,180
+Lavandula angustifolia,perennial,15,24,7,28,500,1000,300,1300,180,365
+Lavandula dentata,perennial,15,24,7,28,700,1000,500,1200,180,365
+Lavandula intermedia,perennial,17,26,10,30,600,1000,400,1200,210,365
+Lavandula latifolia,perennial,18,26,14,32,900,1100,700,1300,210,365
+Lawsonia inermis,perennial,19,27,13,33,500,1500,250,4200,100,365
+Leersia hexandra,perennial,27,33,11,36,1000,3000,750,5000,120,150
+Lemna minor,"annual, perennial",7,25,5,30,700,3000,500,5000,,
+Lemuropisum edule,perennial,22,30,14,38,400,500,250,650,100,180
+Lens culinaris,annual,15,29,5,32,600,1000,250,2500,70,240
+Lepidium meyenii,perennial,12,18,3,22,600,800,500,1000,180,270
+Lepidium sativum,annual,14,21,3,28,1000,1800,600,2500,,
+Leptochloa fusca,"biennial, perennial",15,30,9,40,250,1000,100,2900,180,365
+Lespedeza cuneata,perennial,16,26,6,36,1000,1400,650,2350,120,240
+Lespedeza stipulacea,annual,14,24,6,30,1000,1300,500,1700,100,240
+Lespedeza striata,annual,16,26,6,36,900,1200,500,1600,120,300
+Lesquerella fendleri,"annual, perennial",11,18,8,25,300,1100,250,1500,150,240
+Leucaena collinsii,perennial,22,30,16,36,900,2500,700,3000,,
+Leucaena collinsii sp. collinsii,perennial,22,30,16,36,1100,2500,900,3000,,
+Leucaena collinsii sp. zacapana,perennial,22,30,16,36,900,1500,700,2000,,
+Leucaena diversifolia,perennial,18,30,8,36,700,1500,500,4000,180,365
+Leucaena leucocephala,perennial,20,32,10,42,600,3000,250,5000,180,365
+Leucaena pallida,perennial,16,24,12,30,700,1800,500,2000,180,240
+Leucaena salvadorensis,perennial,25,30,20,35,800,2000,600,2400,365,365
+Leucaena trichandra,perennial,17,22,12,28,1000,1800,700,2500,,
+Levisticum officinale,perennial,12,18,6,22,700,1200,500,1500,140,160
+Licuala ramsayi,perennial,22,32,13,36,2400,3600,1600,4400,365,365
+Limnanthes alba,annual,8,16,4,20,800,1000,700,1100,150,180
+Linum usitatissimum,"annual, biennial, perennial",16,24,5,30,500,800,250,1300,80,180
+Liquidambar styraciflua,perennial,20,34,5,38,1000,1500,800,2500,180,210
+Litchi chinensis,perennial,20,35,15,40,1000,1700,700,2800,100,270
+Livistona australis,perennial,20,28,8,34,900,1100,800,1200,210,300
+Lolium multiflorum,"annual, perennial",14,30,2,38,500,900,200,1800,90,270
+Lolium perenne,"annual, biennial, perennial",14,25,4,35,700,1750,500,2300,90,270
+Lolium rigidum,annual,10,25,5,30,400,500,250,900,70,180
+Lolium averaged,,13,27,4,34,533,1050,317,1667,83,240
+Lonchocarpus nicou,perennial,23,32,15,41,2300,2700,2000,3100,365,365
+Lophostemon suaveolens,perennial,22,33,12,38,650,1800,500,2100,180,300
+Lotononis bainesii,perennial,14,32,8,35,750,1600,250,2500,120,180
+Lotus corniculatus,perennial,15,25,3,30,600,1000,350,1900,90,270
+Lotus creticus,perennial,12,30,8,35,400,800,250,1000,90,0
+Lotus edulis,annual,15,24,4,28,500,700,300,900,120,180
+Lotus halophilus,annual,15,24,4,28,250,500,100,700,40,120
+Lotus tenuis,perennial,15,23,4,38,600,800,440,1160,90,210
+Lotus uliginosus,perennial,15,24,3,28,700,900,350,1400,90,210
+Loudetia simplex,perennial,22,28,15,35,750,1000,600,1500,120,180
+Ludwigia adscendens,perennial,15,25,8,30,1500,3000,1000,4000,,
+Luffa acutangula,annual,20,32,15,38,1200,2000,700,3000,40,150
+Luffa cylindrica,annual,23,27,10,38,1200,2000,300,3000,70,120
+Lumnitzera littorea,perennial,22,28,10,32,1000,2500,800,4000,240,365
+Lumnitzera racemosa,perennial,22,28,15,32,800,2000,100,4000,365,365
+Lupinus albus,annual,18,24,6,32,400,1000,360,1800,90,180
+Lupinus angustifolius,annual,12,18,4,26,400,1000,350,1700,100,180
+Lupinus cosentinii,annual,20,28,15,32,400,850,300,1700,150,180
+Lupinus luteus,annual,18,24,6,30,450,1000,350,2100,100,180
+Lupinus mutabilis,annual,18,24,6,30,500,1000,350,1700,150,330
+Lupinus pilosus,annual,12,18,6,26,450,1000,350,2000,100,180
+Lupinus sp.,NA,16.33333,22.66667,7.166667,29.33333,433.3333,975,343.3333,1833.333,98.57143,175.7143
+Lycium chinense,perennial,13,25,8,32,700,1500,300,2200,60,365
+Lycopersicon esculentum,annual,20,27,7,35,600,1300,400,1800,70,150
+Macadamia integrifolia,perennial,10,26,8,35,1000,3000,700,3500,365,365
+Macadamia tetraphylla,perennial,14,28,8,38,1250,2000,850,3000,180,365
+Macaranga tanarius,perennial,20,30,15,35,800,1200,700,1300,365,365
+Macroptilium atropurpureum,"annual, perennial",21,32,13,36,650,1800,200,2800,90,365
+Macroptilium gracile,"biennial, perennial",20,30,16,36,900,1300,700,1500,,
+Macroptilium lathyroides,"annual, perennial",25,30,15,35,800,2000,400,3500,90,180
+Macrotyloma axillare,perennial,20,28,11,36,750,1700,375,3000,140,365
+Macrotyloma daltonii,"annual, perennial",22,28,16,34,600,700,350,775,,
+Macrotyloma uniflorum,annual,20,28,17,35,500,1200,300,4300,40,180
+Maesopsis eminii,perennial,22,28,16,36,1500,2500,1200,3000,300,365
+Majorana hortensis,"annual, perennial",20,26,10,30,800,1000,600,2300,90,180
+Mallotus philippensis,perennial,25,34,7,45,1000,2500,600,5000,180,365
+Malpighia glabra,perennial,24,30,5,34,1300,2000,700,2400,270,365
+Malus domestica,perennial,14,27,8,33,700,2500,500,3200,180,320
+Malus sylvestris,perennial,10,30,6,35,900,1200,400,1800,180,320
+Malva alcea,perennial,14,28,10,32,500,1400,400,1500,,
+Malva moschata,perennial,14,28,10,32,500,1500,400,1800,,
+Mammea americana,perennial,24,30,12,35,1200,1800,800,2600,150,365
+Mangifera indica,perennial,24,30,8,48,600,1500,300,2600,150,365
+Manihot esculenta,perennial,20,29,10,35,1000,1500,500,5000,180,365
+Manilkara achras,perennial,20,34,11,42,1000,1500,400,2000,180,365
+Manilkara zapota,perennial,20,34,11,42,1000,1500,400,2000,180,365
+Maranta arundinacea,perennial,23,29,17,34,1500,2000,700,4000,300,365
+Markhamia lutea,perennial,18,28,14,32,800,2000,600,2400,365,365
+Marrubium vulgare,perennial,17,24,7,30,600,1000,300,1300,180,240
+Marsilea quadrifolia,perennial,20,28,14,32,700,2000,500,3000,,
+Matricaria recutita,annual,19,25,6,30,700,1000,300,1300,270,300
+Mauritia flexuosa,perennial,22,30,18,34,2000,4500,1100,6300,365,365
+Medicago arabica,annual,15,28,4,32,600,900,310,1300,120,210
+Medicago falcata,perennial,15,24,2,37,500,900,310,1360,100,210
+Medicago intertexta,NA,15,20,4,25,350,500,250,600,90,180
+Medicago laciniata,annual,15,20,4,25,350,500,250,600,90,180
+Medicago littoralis,"annual, biennial",15,20,4,35,400,600,300,700,90,300
+Medicago lupulina,"annual, perennial",14,25,3,30,600,1000,310,1700,120,210
+Medicago minima,annual,15,20,4,25,350,500,250,600,90,180
+Medicago orbicularis,annual,14,24,11,28,600,1000,440,1300,120,210
+Medicago polymorpha,annual,15,25,4,30,600,1000,310,1900,120,210
+Medicago rigidula,"annual, biennial",15,20,4,25,350,500,250,600,90,180
+Medicago rugosa,annual,15,20,4,25,350,500,250,600,90,180
+Medicago sativa,perennial,21,27,5,45,600,1200,350,2700,100,210
+Medicago scutellata,"annual, perennial",18,26,9,30,600,900,350,1200,120,210
+Medicago tornata,annual,15,20,4,25,350,500,250,600,90,180
+Medicago truncatula,annual,20,25,8,35,400,800,300,1000,90,300
+Medicago turbinata,annual,15,20,4,25,350,500,250,600,90,180
+Medicago varia,perennial,15,23,2,35,700,1000,500,1450,120,210
+Melaleuca arcana,perennial,22,32,18,38,1600,1900,1200,2000,300,330
+Melaleuca bracteata,perennial,22,34,10,43,400,900,200,1150,100,300
+Melaleuca cajuputi,perennial,22,32,16,38,1250,1600,850,1750,270,330
+Melaleuca dealbata,perennial,31,37,10,40,900,1500,800,1700,180,365
+Melaleuca lanceolata,perennial,18,32,8,43,400,550,300,650,120,270
+Melaleuca leucadendron,perennial,28,37,18,40,800,1400,650,1600,240,365
+Melaleuca nervosa,perennial,22,38,14,43,700,1150,350,1300,100,300
+Melaleuca quinquenervia,perennial,18,30,8,38,1000,3400,700,5000,210,365
+Melaleuca symphyocarpa,perennial,22,37,14,42,850,1200,650,1400,210,330
+Melaleuca viridiflora,perennial,22,38,12,43,400,1600,200,1800,75,300
+Melia azedarach,perennial,16,30,8,35,600,1000,350,2000,210,270
+Melia azedarach var. australasica,perennial,18,32,10,37,600,1000,350,1200,140,300
+Melia compostia,perennial,30,42,7,47,1500,2500,750,3500,240,270
+Melia volkensii,perennial,20,28,16,32,500,800,300,1000,365,365
+Melicoccus bijugatus,perennial,22,30,13,34,800,1600,500,2700,120,365
+Melilotus albus,"annual, biennial",12,28,8,32,600,800,425,1000,,
+Melilotus indica,annual,15,25,4,28,600,900,250,1300,120,210
+Melilotus officinalis,"annual, biennial",12,24,5,28,450,800,300,1600,100,210
+Melilotus suaveolens,"annual, biennial",10,17,5,24,700,900,500,1200,120,180
+Melinis minutiflora,perennial,22,30,8,36,900,1700,700,2700,120,210
+Melissa officinalis,perennial,14,25,6,30,800,1000,500,1300,60,140
+Melocalamus compactiflorus,perennial,20,29,15,34,1000,2000,600,4400,300,365
+Melocanna baccifera,perennial,20,33,15,38,2000,3000,600,4400,300,365
+Mentha arvensis var. piperascens,perennial,10,25,3,30,800,1100,500,4300,120,365
+Mentha piperita,perennial,15,25,4,35,1000,2200,700,4000,40,330
+Mentha pulegium,perennial,13,22,6,27,500,800,300,1100,120,180
+Mentha rotundifolia,perennial,10,25,4,30,1000,1400,700,2500,40,180
+Mentha sp.,NA,12.6,24.4,4.2,31.6,840,1340,560,2820,60,220.8333
+Mentha spicata var. crispa,perennial,15,25,4,36,900,1200,600,2200,40,270
+Mesua ferrea,perennial,30,35,4,45,3000,4000,2000,5100,300,365
+Metroxylon sagu,perennial,25,36,18,40,3000,4500,2100,5800,365,365
+Michelia champaca,perennial,30,37,10,47,3000,4000,2200,5100,365,365
+Michelia doltsopa,perennial,30,37,5,45,3000,4000,2200,5000,240,300
+Microstegium ciliatum,,23,27,10,35,2500,3500,2000,4000,240,365
+Mikania cordata,perennial,22,28,13,38,2000,2500,1500,3500,60,365
+Miliusa velutina,perennial,30,42,7,47,1000,2000,750,2500,270,300
+Mimosa pigra,perennial,15,30,8,38,800,1500,500,2000,365,365
+Mimosa pudica,"annual, perennial",22,28,10,32,1000,2000,900,3000,60,120
+Mimosa scabrella,perennial,16,27,10,34,800,2500,600,3500,365,365
+Mirabilis expansa,"annual, perennial",12,20,5,25,600,800,500,1000,210,270
+Momordica charantia,annual,22,30,15,38,2000,2500,1000,4000,50,70
+Momordica cochinchinensis,perennial,20,30,14,35,1500,2500,1000,3000,60,240
+Momordica sp.,NA,21,30,14.5,36.5,1750,2500,1000,3500,55,155
+Monochoria hastata,perennial,25,35,16,38,1500,2000,1000,4000,90,365
+Monochoria vaginalis,annual,22,35,13,38,1200,2000,700,4000,90,180
+Monstera deliciosa,perennial,28,34,18,38,1300,2000,1000,2500,365,365
+Morinda citrifolia,perennial,24,30,12,36,1500,3000,700,4200,365,365
+Moringa oleifera,perennial,20,35,7,48,700,2200,400,2600,210,330
+Morus alba,perennial,20,28,13,45,700,2500,300,5100,180,330
+Morus nigra,perennial,15,25,10,38,700,1500,300,4000,180,330
+Morus rubra,perennial,19,25,12,32,800,1200,650,1700,240,270
+Mucuna pruriens,annual,20,30,10,34,1000,2000,400,3100,90,270
+Mucuna pruriens sp.,NA,20,30,10,34.5,1100,1750,700,3050,45,135
+Mucuna pruriens var utilis,"annual, perennial",20,30,10,35,1200,1500,1000,3000,,
+Muntingia calabura,perennial,22,32,10,36,1400,2000,1000,2400,180,365
+Murraya koenigii,perennial,27,41,8,47,1400,1800,500,2500,150,300
+Musa acuminata,perennial,23,33,12,42,1200,3600,650,5000,180,365
+Musa acuminata x balbisiana,perennial,25,35,15,40,1400,2400,1000,5000,180,365
+Musa balbisiana,perennial,23,28,16,38,1300,3000,1000,5000,365,365
+Musa halabanensis,perennial,24,30,15,35,1200,3000,700,4000,180,365
+Musa salaccensis,perennial,24,30,15,35,1200,3000,1000,4000,365,365
+Musa sp.,perennial,22,32,13,38,2400,2700,2000,3500,,
+Musa textilis,perennial,20,29,16,33,1800,3000,700,4400,365,365
+Musanga cecropioides,perennial,28,36,20,40,3000,4000,2000,5000,300,365
+Myrciaria cauliflora,perennial,22,28,10,32,900,1500,700,1700,150,300
+Myristica fragrans,perennial,22,34,12,38,1500,3500,1200,4000,365,365
+Myroxylon balsamum,perennial,22,28,16,32,2000,2700,1350,4000,365,365
+Myroxylon balsamum var. perei.,perennial,22,30,16,36,2000,2600,1350,4000,365,365
+Myrsine africana,perennial,22,30,5,35,600,800,450,1000,180,330
+Myrtus communis,perennial,15,24,10,28,500,800,300,1000,120,150
+Nasturtium officinale,perennial,12,17,6,32,1000,2300,300,4200,40,80
+Nasturtium schlechteri,"annual, perennial",15,28,10,35,700,1200,500,5000,30,100
+Nauclea diderrichii,perennial,28,34,22,38,1600,3500,1200,4500,300,365
+Nauclea orientalis,perennial,30,40,15,45,1000,3500,800,3800,300,365
+Nelumbo nucifera,perennial,25,30,10,40,2000,2800,700,4000,120,200
+Neofabricia myrtifolia,perennial,22,34,16,38,1100,1600,600,1800,200,330
+Neoglazovia variegata,perennial,18,30,14,36,500,700,400,800,140,300
+Neohouzeaua dullooa,perennial,20,29,15,34,1000,2000,600,4500,300,365
+Nepeta cataria,perennial,7,19,4,26,600,1000,400,1300,150,210
+Nephelium lappaceum,perennial,21,35,10,42,2000,3000,1400,4000,170,365
+Nephelium mutabile,perennial,26,32,18,38,2000,3000,1350,4100,170,365
+Neptunia prostrata,perennial,25,35,15,38,1500,2000,1000,4000,120,180
+Nicotiana rustica,annual,15,30,10,40,600,700,500,800,90,120
+Nicotiana sp.,NA,15,30,8.5,37.5,550,725,425,1900,80,135
+Nicotiana tabacum,"annual, biennial",15,30,7,35,500,750,350,3000,70,150
+Nigella sativa,annual,14,26,5,30,600,800,400,1000,100,150
+Nothofagus cunninghamii,perennial,16,24,5,32,1100,2500,900,3000,120,365
+Nothofagus moorei,perennial,18,25,8,32,1300,1700,1000,2000,180,240
+Nuphar advena,perennial,14,30,10,36,700,1500,500,1700,,
+Nuphar lutea,perennial,18,28,12,35,400,1400,300,1500,,
+Nypa fruticans,perennial,23,27,20,35,2000,2800,1500,3500,365,365
+Ochroma pyramidale,perennial,18,35,15,38,2500,3000,1500,4000,300,365
+Ocimum americanum,annual,22,30,10,35,700,2000,500,3000,60,140
+Ocimum basilicum,annual,18,27,7,36,1000,1600,600,4300,80,270
+Ocimum tenuiflorum,annual,20,28,15,35,1000,3000,700,7600,40,300
+Ocotea usambarensis,perennial,15,20,8,30,1200,1800,1000,2500,365,365
+Octomeles sumatrana,perennial,29,34,20,38,3000,4000,2000,5000,300,365
+Oenanthe javanica,perennial,10,30,4,32,2000,3000,1500,3500,60,365
+Olea africana,perennial,22,28,15,35,500,1000,300,1500,120,270
+Olea capensis,perennial,14,18,10,30,800,1200,700,1500,365,365
+Olea cuspidata,perennial,24,32,5,45,500,650,375,750,270,365
+Olea europaea,perennial,20,34,5,40,400,700,200,1200,365,365
+Oncosperma tigillarium,perennial,20,30,10,35,1500,3000,1000,3500,365,365
+Onobrychis scrobiculata,perennial,18,27,4,32,400,600,300,800,100,210
+Onobrychis viciifolia,perennial,18,27,4,34,400,800,250,1100,100,210
+Opuntia ficus-indica,perennial,18,26,10,30,700,1300,300,1700,140,270
+Orbignya cohume,perennial,25,30,20,34,1200,2500,700,4000,300,330
+Orbignya oleifera,perennial,25,30,20,34,1200,1700,700,3000,300,330
+Orbignya phalerata,perennial,20,30,15,40,3000,6000,2000,8000,,
+Origanum majorana,"annual, perennial",20,26,10,30,800,1000,600,2300,90,180
+Origanum onites,perennial,15,25,6,32,800,1000,600,1200,90,120
+Origanum vulgare,perennial,17,28,4,32,700,1300,400,2700,180,300
+Ornithopus compressus,annual,15,20,11,24,400,700,325,800,,
+Ornithopus roseus,annual,16,26,4,30,600,800,570,1200,150,270
+Ornithopus sativus,annual,15,20,11,24,600,800,500,900,,
+Oryza glaberrima,annual,26,32,16,38,1000,1500,700,2700,120,270
+Oryza sativa,annual,20,30,10,36,1500,2000,1000,4000,80,180
+Oryza sativa ssp. indica,annual,25,35,16,38,1500,2000,1000,4000,80,200
+Oryza sativa ssp. javanica,annual,23,35,16,38,1500,2000,800,4000,120,240
+Oryzopsis holciformis,perennial,9,16,4,20,400,500,300,600,90,180
+Oryzopsis miliacea,perennial,16,25,8,29,450,650,350,750,90,180
+Oxalis tuberosa,"annual, perennial",12,24,5,28,800,1300,570,2150,180,270
+Oxytenanthera nigrociliata,perennial,20,29,15,34,1000,2000,600,4500,300,365
+Pachyrhizus ahipa,annual,12,22,10,30,800,1100,750,1250,150,180
+Pachyrhizus erosus,"annual, perennial",20,30,15,36,1300,1700,250,7000,,
+Pachyrhizus tuberosus,perennial,25,30,16,34,1500,1900,640,4000,180,240
+Pachystela msolo,perennial,16,31,12,38,640,1750,500,2000,,
+Palaquium gutta,perennial,24,30,17,38,2000,3000,1500,4000,270,330
+Panax ginseng,perennial,12,20,8,27,700,1300,500,1500,,
+Panax quinquefolium,perennial,12,20,8,27,900,1100,700,1300,240,330
+Pandanus julianettii,perennial,13,24,6,30,3000,3500,2500,4000,365,365
+Pangium edule,perennial,22,28,18,32,2000,5000,1000,8000,,
+Panicum antidotale,perennial,18,25,9,31,400,700,130,1700,120,240
+Panicum coloratum,perennial,17,26,8,35,500,1700,400,2600,100,180
+Panicum coloratum var. coloratum,perennial,18,26,14,32,600,1200,500,2000,,
+Panicum coloratum var. makarikariense,perennial,26,32,20,35,500,700,375,1200,120,180
+Panicum maximum,perennial,19,30,6,35,1000,1800,650,4300,70,150
+Panicum maximum var. trichoglume,perennial,25,32,20,38,800,1800,560,2400,120,180
+Panicum miliaceum,annual,20,32,15,45,500,750,200,1000,55,280
+Panicum obtusum,perennial,16,25,10,33,1100,1500,970,1730,270,330
+Panicum repens,perennial,18,26,13,35,800,1800,550,4300,120,180
+Panicum sumatrense,annual,22,27,15,45,350,500,150,1200,75,150
+Panicum trichocladum,perennial,16,28,10,36,1200,2000,900,5000,,
+Panicum turgidum,perennial,25,35,8,40,200,400,100,600,150,300
+Panicum virgatum,perennial,17,32,6,36,500,1100,350,2700,140,365
+Panicum whitei,annual,25,35,20,40,400,500,300,600,90,180
+Papaver bracteatum,perennial,12,20,3,24,600,900,400,1300,150,180
+Papaver somniferum,annual,15,24,3,28,800,1200,300,1700,135,210
+Paraserianthes falcataria,perennial,20,30,15,35,2000,4000,1500,6000,300,365
+Parinari curatellifolia,perennial,14,30,10,36,400,1000,100,2700,365,365
+Parinari nonda,perennial,26,37,14,42,1100,1600,700,1800,300,330
+Parkia biglobosa,perennial,28,40,8,44,400,800,300,1500,180,365
+Parkia speciosa,perennial,20,28,16,36,1000,2000,800,2500,365,365
+Parkinsonia aculeata,perennial,24,32,16,36,300,700,200,1000,120,210
+Parthenium argentatum,perennial,20,34,8,49,400,800,250,2100,90,240
+Paspalum atratum,perennial,22,27,16,33,1300,2000,1100,3000,150,210
+Paspalum dilatatum,perennial,20,30,13,36,900,1300,750,1700,90,180
+Paspalum distichum,perennial,20,30,15,36,600,750,400,1200,90,180
+Paspalum guenoarum,perennial,19,27,12,32,1400,2000,1200,4000,,
+Paspalum nicorae,perennial,16,23,8,30,900,1400,750,1500,,
+Paspalum notatum,perennial,18,30,5,36,900,2100,750,2500,150,270
+Paspalum plicatulum,perennial,10,23,7,45,1000,2500,750,3500,180,240
+Paspalum plicatulum var. glabrum,perennial,19,30,6,40,900,2000,750,2400,180,240
+Paspalum scrobiculatum,"annual, perennial",25,27,5,33,1000,1600,800,4300,120,180
+Paspalum urvillei,perennial,6,23,2,33,1000,1500,900,2100,120,270
+Paspalum wettsteinii,perennial,15,25,12,30,1000,1500,900,1700,60,210
+Passiflora edulis,perennial,20,30,18,34,900,2000,600,2500,,
+Passiflora edulis sp.,NA,21.5,29,16.5,33,950,1750,675,2750,60,165
+Passiflora edulis var. edulis,perennial,23,28,15,32,1000,1500,750,3000,120,330
+Passiflora edulis var. flavicarpa,perennial,25,32,15,36,1600,2000,1000,4000,180,365
+Passiflora laurifolia,perennial,22,30,12,36,2000,3000,1000,4000,180,365
+Passiflora ligularis,perennial,22,26,16,31,1000,1200,650,1800,150,365
+Passiflora mollissima,perennial,15,18,8,30,1300,1700,700,2300,180,365
+Passiflora quadrangularis,perennial,18,30,12,35,1400,1600,700,2200,180,365
+Pastinaca sativa,"annual, biennial",15,21,5,25,500,800,300,1100,80,150
+Paullinia cupana,perennial,24,32,18,38,2000,2500,1100,3000,270,365
+Paulownia tomentosa,perennial,24,30,15,34,700,1600,500,2000,210,300
+Pausinystalia yohimbe,perennial,22,28,18,35,2000,4000,1500,5000,365,365
+Peltandra sagittifolia,perennial,16,24,12,32,1000,1500,750,3000,130,210
+Peltandra virginica,perennial,12,24,8,32,700,1500,500,3000,110,210
+Peltophorum africanum,perennial,20,32,16,38,1000,2500,700,3000,365,365
+Peltophorum pterocarpum,perennial,27,36,10,40,1200,1800,1000,4000,180,240
+Pennisetum clandestinum,perennial,16,26,5,31,900,1600,700,3000,180,270
+Pennisetum glaucum,annual,25,35,12,40,400,900,200,1700,60,120
+Pennisetum pedicellatum,annual,30,35,20,40,500,650,130,1000,80,120
+Pennisetum polystachyon,"annual, perennial",32,35,12,40,1000,2000,750,3000,80,190
+Pennisetum purpureum,perennial,21,40,15,45,1500,2500,850,4000,120,210
+Pentaclethra macrophylla,perennial,24,30,18,34,1800,2200,1000,2700,270,365
+Pericopsis elata,perennial,26,35,20,40,1000,1300,750,1500,240,300
+Pericopsis mooniana,perennial,26,34,20,38,1000,1700,750,2000,240,300
+Perilla frutescens,annual,5,30,-,-,250,600,-,-,80,150
+Persea americana,perennial,14,40,10,45,500,2000,300,2500,,
+Persea americana ssp. guatemalan,perennial,15,24,12,30,1000,1400,660,1800,300,365
+Persea americana ssp. mexican,perennial,14,22,10,28,1000,1400,660,1800,270,365
+Persea americana ssp. west indian,perennial,15,26,12,34,1000,1400,660,1800,365,365
+Persimmons sp.,NA,20.83333,30,10,36.5,1000,1616.667,650,2183.333,220.8333,295.8333
+Persoonia falcata,perennial,22,38,12,41,600,1400,450,1750,160,300
+Petalostigma pubescens,perennial,20,37,12,42,600,1000,400,1200,140,330
+Petasites hybridus,perennial,12,17,5,24,500,1000,400,1200,120,200
+Petroselinum crispum,perennial,11,20,7,28,900,1500,300,2800,70,365
+Phalaris aquatica,perennial,12,18,7,24,500,1000,300,2700,120,240
+Phalaris arundinacea,perennial,17,25,2,38,700,1500,300,2600,120,240
+Phalaris canariensis,"annual, perennial",10,18,6,25,800,1500,300,2200,45,180
+Phalaris coerulescens,perennial,14,19,9,25,500,700,300,1200,120,240
+Phaseolus acutifolius,annual,20,30,8,38,600,1000,300,1700,60,120
+Phaseolus bracteatus,perennial,15,25,10,35,600,1000,400,1600,,
+Phaseolus coccineus,"annual, perennial",12,26,5,30,800,1500,400,2600,80,365
+Phaseolus lunatus,"annual, perennial",16,28,13,34,900,1500,400,4300,60,365
+Phaseolus polyanthus,annual,14,24,10,28,1400,2200,1000,2600,110,365
+Phaseolus vulgaris,annual,16,25,7,32,500,2000,300,4300,50,270
+Phleum pratense,perennial,15,22,2,26,800,1100,300,1800,120,180
+Phoenix dactylifera,perennial,26,45,10,52,200,300,100,400,365,365
+Phoenix reclinata,perennial,20,30,15,35,800,3000,500,5000,365,365
+Phoenix sylvestris,perennial,25,35,20,40,400,700,250,1000,,
+Phormium tenax,perennial,13,25,9,30,750,2000,500,3800,180,365
+Phragmites australis,perennial,30,35,7,40,500,1000,300,2400,150,240
+Phragmites communis,perennial,17,28,5,38,400,600,300,700,120,240
+Phragmites karka,perennial,22,30,10,35,1000,3000,200,5000,90,300
+Phyllocladus aspleniifolius,perennial,17,24,5,30,1500,2500,1000,3000,150,210
+Physalis peruviana,perennial,16,25,10,32,1500,2300,800,4300,80,100
+Physalis philadelphica,annual,15,25,8,31,700,1000,600,1100,80,120
+Phytolacca acinosa,perennial,12,18,5,28,600,900,500,1000,210,240
+Phytolacca dioica,perennial,18,32,12,38,800,1500,600,5000,365,365
+Picea abies,perennial,5,15,3,25,400,700,300,900,,
+Picea morida,perennial,15,25,2,32,1500,2000,1000,2500,180,210
+Pimenta dioica,perennial,15,32,10,35,1500,2500,1000,3500,150,365
+Pimenta racemosa,perennial,22,28,18,32,1400,2000,700,2800,150,365
+Pimpinella anisum,annual,18,26,5,30,900,1300,600,1700,120,150
+Pinus ayacahuite,perennial,17,24,9,28,1500,2000,1200,2500,300,365
+Pinus ayachuite var. Br.,perennial,10,20,5,28,850,950,800,1000,180,240
+Pinus brutia,perennial,20,35,6,39,400,800,250,1000,180,270
+Pinus canariensis,perennial,19,29,9,33,800,1500,600,1750,180,300
+Pinus caribaea,perennial,22,34,16,40,2000,3000,800,3500,365,365
+Pinus caribaea ssp. bahamensis,perennial,26,32,16,37,1200,1500,1000,1800,210,300
+Pinus caribaea ssp. caribaea,perennial,26,34,16,38,1200,1600,1000,1800,240,300
+Pinus caribaea ssp. hondurensis,perennial,27,34,15,37,1000,2400,660,4000,180,365
+Pinus chiapensis,perennial,23,28,14,32,1200,1400,1000,1600,270,300
+Pinus douglasiana,perennial,15,25,8,32,1000,1400,900,1500,180,240
+Pinus durangensis,perennial,12,18,5,28,900,1100,800,1200,150,240
+Pinus elliottii ssp. elliottii,perennial,23,32,8,36,1000,2000,650,2500,240,300
+Pinus excelsa,perennial,18,28,4,39,1000,2000,250,2600,120,210
+Pinus gerardiana,perennial,15,25,4,38,500,650,375,750,120,180
+Pinus greggii,perennial,16,24,8,28,700,750,650,800,210,270
+Pinus halepensis,perennial,18,34,6,38,400,600,250,800,180,210
+Pinus hartwegii,perennial,10,18,5,25,1100,1400,1000,1500,120,180
+Pinus kesiya,perennial,22,30,12,34,900,2000,700,2500,180,300
+Pinus merkusii,perennial,24,32,18,36,1300,2500,1000,2800,210,300
+"Pinus merkusii, island provenances",perennial,23,30,19,34,2300,2800,2000,3500,300,365
+Pinus michoacana,perennial,20,28,9,32,1200,1500,800,2500,180,300
+Pinus michoacana var. cornuta,perennial,17,28,10,36,1300,1700,1000,2000,180,240
+Pinus michoacana var. turmida,perennial,18,28,8,36,900,1100,850,1150,180,210
+Pinus montezumae,perennial,16,24,8,28,1200,1400,900,1600,180,300
+Pinus mugo,perennial,5,18,3,25,500,800,400,1100,,
+Pinus occidentalis,perennial,24,32,13,36,1400,1500,1300,1600,240,300
+Pinus oocarpa,perennial,16,30,10,34,1000,1700,700,3000,150,300
+Pinus oocarpa var. ochoterenai,perennial,15,26,10,32,1200,1500,1000,1750,150,210
+Pinus palustris,perennial,22,31,10,35,1300,1700,1000,2000,270,300
+Pinus patula,perennial,18,29,10,33,1000,2000,750,3000,270,365
+Pinus pinaster,perennial,18,30,6,34,800,1100,625,1300,270,330
+Pinus pinea,perennial,18,32,8,38,500,700,400,800,180,240
+Pinus ponderosa,perennial,15,24,4,28,500,800,250,1750,240,330
+Pinus pseudostrobus,perennial,18,26,9,32,1100,1500,1000,1600,270,365
+Pinus pseudostrobus var. oaxacana,perennial,15,24,10,32,1100,1400,1000,1500,150,240
+Pinus radiata,perennial,18,30,7,34,650,1200,330,1600,240,300
+Pinus roxburghii,NA,20,30,8,35,750,1800,450,2900,210,300
+Pinus rudis,perennial,10,18,5,28,1100,1400,1000,1500,120,180
+Pinus strobus var. chiapensis,perennial,18,30,12,38,1200,1700,1000,2500,150,240
+Pinus sylvestris,perennial,14,23,2,35,600,1000,300,2000,150,210
+Pinus sylvestris var. mongolica,perennial,15,25,5,40,400,600,300,800,150,180
+Pinus tabulaeformis,perennial,15,35,5,45,400,800,300,1100,150,180
+Pinus taeda,perennial,20,25,10,29,1300,1900,900,2200,300,365
+Pinus tenuifolia,perennial,17,28,10,36,1300,2200,1000,2500,180,240
+Pinus teocote,perennial,14,26,8,34,1300,1700,1000,2000,180,240
+Piper betle,perennial,22,27,17,31,3000,3700,2500,4200,270,365
+Piper methysticum,perennial,22,35,14,40,2200,4000,1800,5000,300,365
+Piper nigrum,perennial,22,35,10,40,2500,4000,2000,5500,180,270
+Piper sp.,NA,22,32.33333,13.66667,37,2566.667,3900,2100,4900,187.5,250
+Pistacia lentiscus,perennial,18,24,12,40,400,800,200,2000,,
+Pistacia vera,perennial,25,35,12,40,400,700,250,1100,150,180
+Pisum sativum,annual,10,24,4,30,800,1200,350,2500,60,140
+Pithecellobium dulce,perennial,20,30,12,40,2000,3000,450,4000,120,240
+Pittosporum resiniferum,perennial,18,28,-,-,1500,5000,-,-,,
+Platanus orientalis,perennial,12,30,9,38,500,1400,400,2000,,
+Plectranthus esculentus,perennial,15,28,10,36,700,1100,550,1600,180,200
+Poa annua,"annual, biennial",12,22,2,33,600,1200,300,4300,21,240
+Poa bulbosa,perennial,13,22,3,28,400,600,200,1200,120,240
+Poa compressa,perennial,20,32,5,38,500,1300,300,1700,120,270
+Poa fendleriana,perennial,13,17,9,24,500,800,350,1200,120,210
+Poa pratensis,perennial,15,27,5,37,500,1300,300,1700,120,270
+Poa sinaica,perennial,15,35,5,45,200,400,100,1000,90,160
+Poa trivialis,perennial,10,24,2,28,600,1000,350,1760,120,270
+Podocarpus elatus,perennial,18,30,8,34,1000,1500,800,1700,180,240
+Podocarpus falcatus,perennial,13,20,8,35,1200,1800,800,2200,365,365
+Poeciloneuron indicum,perennial,30,37,13,42,4000,6000,2000,9000,365,365
+Pogostemon cablin,perennial,23,28,16,32,2200,2600,2000,2800,180,365
+Polyalthia fragrans,perennial,30,35,13,42,3000,5000,2000,6000,300,330
+Polymnia sonchifolia,"annual, perennial",12,22,5,30,800,1200,600,1400,180,210
+Polyscias fulva,perennial,20,30,18,36,1500,2000,1200,2500,365,365
+Polyscias verticillata,perennial,22,34,14,38,1200,2000,700,3000,365,365
+Pongamia pinnata,NA,16,40,10,50,500,2000,400,2500,365,365
+Pontederia cordata,perennial,14,24,10,30,800,1200,500,1500,120,180
+Populus ciliata,perennial,12,20,7,33,700,3000,600,3500,365,365
+Populus deltoides,biennial,14,30,8,34,1200,2500,600,3000,240,330
+Populus euphratica,perennial,20,40,10,52,200,300,75,400,120,240
+Populus simonii,perennial,15,25,5,40,400,600,300,700,150,180
+Portulaca oleracea,annual,18,32,7,36,1000,2000,500,4000,21,120
+Portulaca quadrifida L.,annual,22,32,16,36,1500,2000,1000,2500,21,120
+Pouteria campechiana,perennial,20,26,16,30,1200,2000,650,2700,180,365
+Pouteria lucuma,perennial,21,27,11,36,900,1500,300,2300,120,240
+Pouteria sapota,perennial,24,30,15,36,2000,3300,800,4000,365,365
+Prosopis africana,perennial,22,35,18,40,300,500,200,700,365,365
+Prosopis alba,perennial,10,20,7,28,200,500,100,700,365,365
+Prosopis chilensis,perennial,22,30,12,45,300,500,200,600,90,180
+Prosopis cineraria,perennial,28,45,6,50,400,800,100,900,70,210
+Prosopis glandulosa,perennial,18,28,14,40,300,800,200,1000,365,365
+Prosopis juliflora,perennial,22,35,14,45,300,750,150,1200,120,180
+Prosopis pallida,perennial,22,28,19,32,500,1000,250,1250,100,240
+Prosopis spicigera,perennial,25,35,5,50,250,500,100,875,120,210
+Prosopis tamarugo,perennial,18,32,8,36,150,250,100,300,60,120
+Prosopis velutina,perennial,23,28,19,34,500,800,340,1100,150,240
+Protea caffra ssp. caffra,perennial,15,25,10,30,400,900,300,1000,,
+Prunus africana,perennial,14,18,12,26,900,1400,700,2000,365,365
+Prunus amygdalus,perennial,12,35,10,40,600,900,250,1500,150,240
+Prunus armeniaca,perennial,14,35,7,40,900,1300,800,1470,180,240
+Prunus avium,perennial,18,28,6,40,500,900,300,1500,180,240
+Prunus capuli,perennial,10,22,8,30,400,1800,300,2200,,
+Prunus cerasus,perennial,15,25,4,30,800,1600,500,2700,180,240
+Prunus domestica,perennial,18,33,6,36,900,1500,600,1800,180,210
+Prunus mume,perennial,18,34,6,38,800,1000,600,1200,180,210
+Prunus persica,perennial,20,33,7,35,900,1100,750,1600,240,270
+Prunus salicina,perennial,18,34,6,38,750,900,650,1100,180,240
+Prunus sp.,NA,16.5,26.5,5,35,650,1250,400,2100,180,240
+Psathyrostachys juncea,perennial,9,22,2,28,500,900,300,1100,90,150
+Psidium cattleianum,perennial,22,28,9,32,1600,2000,660,4000,150,210
+Psidium friedrichsthalianum,perennial,22,28,16,31,1200,1600,640,2670,150,210
+Psidium guajava,perennial,20,33,10,45,1000,3000,400,5000,150,365
+Psophocarpus tetragonolobus,perennial,18,30,14,40,1000,2500,500,4100,50,270
+Psoralea patens,perennial,20,28,5,35,450,750,400,1000,90,150
+Pterocarpus angolensis,perennial,15,32,12,38,700,1500,500,2000,365,365
+Pterocarpus dalbergioides,perennial,22,32,15,37,3000,3500,2500,4000,270,300
+Pterocarpus erinaceus,perennial,22,32,15,36,800,1600,600,4000,240,270
+Pterocarpus indicus,perennial,24,32,12,37,2000,3000,1500,3500,180,300
+Pterocarpus lucens,perennial,15,32,12,40,400,700,250,900,365,365
+Pterocarpus macrocarpus,perennial,24,34,8,44,1500,2500,875,5000,270,300
+Pterocarpus marsupium,perennial,22,32,4,47,1000,1500,750,2000,270,300
+Pterocarpus santalinus,perennial,26,32,7,46,1000,1900,875,2800,240,270
+Puccinellia tenuiflora,perennial,16,26,6,35,300,500,250,600,120,180
+Pueraria lobata,perennial,18,28,9,32,1200,1400,950,2200,240,270
+Pueraria phaseoloides,perennial,15,30,12,35,1200,3200,850,4300,240,365
+Punica granatum,perennial,23,32,8,40,900,1200,400,4200,180,365
+Pycnanthus angolensis,perennial,20,28,15,34,1300,1800,1000,2200,365,365
+Pyrus communis,perennial,20,35,10,37,600,900,400,2100,180,270
+Pyrus pyrifolia,perennial,17,25,7,40,600,900,400,2100,150,180
+Pyrus sp.,NA,18.5,30,8.5,38.5,600,900,400,2100,165,225
+Quercus agrifolia,perennial,10,30,5,35,500,1000,300,1500,,
+Quercus alba,perennial,12,28,7,32,900,1300,750,2000,150,270
+Quercus bicolor,perennial,15,28,10,40,750,1200,650,1300,120,210
+Quercus chrysolepis,perennial,20,25,10,32,300,1500,150,2800,150,230
+Quercus dilatata,perennial,15,25,2,32,1500,2000,1100,2400,150,240
+Quercus dumosa,perennial,14,28,8,34,600,900,510,1020,150,300
+Quercus ilex,perennial,14,32,4,36,450,700,375,750,120,180
+Quercus incana,perennial,15,25,2,38,1500,2500,1000,3000,160,240
+Quercus lamellosa,perennial,15,25,4,32,3000,4000,2500,4500,150,180
+Quercus lanuginosa,perennial,15,25,2,32,2000,2500,1500,3000,150,180
+Quercus lineata,perennial,15,25,4,32,3000,4000,2500,4500,150,180
+Quercus robur,perennial,10,18,5,41,600,950,350,1000,,
+Quercus semecarpifolia,perennial,12,22,2,30,800,2000,500,2500,120,150
+Quercus suber,perennial,14,32,5,42,600,1000,310,2000,365,365
+Quercus virginiana,perennial,18,32,7,38,1200,1800,900,2400,150,210
+Raphanus caudatus,annual,12,26,10,37,1000,1500,800,2500,90,215
+Raphanus sativus,annual,12,26,10,37,1000,1500,800,2800,50,80
+Raphanus sativus sp.,NA,12,25.33333,6,32.33333,866.6667,1166.667,600,2366.667,47,121.6667
+Raphanus sativus var. oleiferus,annual,12,25,5,30,800,1000,500,1500,70,150
+Raphanus sativus var. radicula,"annual, biennial",12,25,3,30,800,1000,500,2800,21,135
+Raphia hookeri,perennial,24,30,14,36,3000,4000,2000,5000,365,365
+Rauvolfia serpentina,perennial,22,30,4,35,1500,3500,1100,4500,240,365
+Rhamnus prinoides,perennial,14,22,8,32,600,1000,500,1200,365,365
+Rheum rhaponticum,perennial,15,24,5,30,800,1300,400,2000,60,330
+Rhigozum trichotomum,perennial,15,35,10,45,150,300,50,350,,
+Rhizophora mangle,perennial,20,30,10,38,1500,2500,1000,3000,210,330
+Rhizophora mucronata,perennial,20,28,15,32,1500,2500,1000,3000,365,365
+Rhizophora stylosa,perennial,22,34,12,44,1500,3000,650,3500,365,365
+Rhodiola rosea,perennial,10,25,5,38,400,800,250,1500,,
+Rhynchosia minima,perennial,22,34,15,42,550,1000,450,1600,150,180
+Ribes hirtellum,perennial,10,22,5,25,800,1200,400,1700,150,180
+Ribes nigrum,perennial,17,25,5,30,700,900,500,1100,150,180
+Ribes rubrum,perennial,10,22,5,25,800,1200,500,1700,150,180
+Ribes sativum,perennial,13,23,5,27,500,800,300,1100,120,150
+Ribes sp.,NA,10.83333,19.5,3.833333,24.5,616.6667,900,366.6667,1216.667,120,145
+Ribes uva-crispa,perennial,15,25,3,40,900,1300,500,1700,150,180
+Ricinodendron heudelotii,perennial,20,30,14,34,800,4000,500,5000,365,365
+Ricinodendron rautanenii,perennial,18,30,10,40,500,800,400,1000,365,365
+Ricinus communis,perennial,20,30,15,39,600,1000,400,2000,140,210
+Robinia pseudoacacia,perennial,15,32,6,40,450,700,300,1600,120,240
+Roseodendron donnell-smithii,perennial,23,31,17,35,1500,2500,1000,3000,270,300
+Rosmarinus officinalis,perennial,18,30,8,38,600,1400,300,2700,120,270
+Rubus idaeus ssp. idaeus,perennial,17,23,5,28,800,1200,300,1700,120,180
+Rubus occidentalis,perennial,14,20,5,26,700,1100,300,1500,120,150
+Rubus occidentalis x idaeus,perennial,15,20,5,28,700,1100,300,1500,90,120
+Rubus sp.,perennial,14,20,3,28,1400,1800,300,2800,120,365
+Rumex crispus,perennial,14,18,8,28,800,1000,600,1200,150,180
+Rumex obtusifolius,perennial,14,18,6,23,1300,1700,1000,2000,150,180
+Rungia klossii,perennial,12,17,12,29,800,1200,500,2000,90,365
+Ruta graveolens,perennial,17,26,4,30,500,1500,300,2600,150,365
+Ruta graveolens var. bracteosa,perennial,17,26,4,30,500,1500,300,2600,150,365
+Saccharum barberi,perennial,20,32,12,38,1200,1500,1000,5000,270,300
+Saccharum edule,perennial,20,30,12,38,1500,3000,1000,5000,150,365
+Saccharum officinarum,NA,24,37,15,41,1500,2000,1000,5000,210,365
+Saccharum robustum,perennial,24,30,15,38,1400,2500,1100,5000,300,365
+Saccharum sinense,perennial,20,32,12,38,1000,1500,750,5000,90,300
+Saccharum sp.,NA,21.53846154,32,13.07692308,38,1376.923077,2176.923077,1015.384615,4730.769231,213.0769231,335.3846154
+Saccharum spontaneum,perennial,25,35,17,40,2000,3000,1500,5000,300,365
+Sageraea elliptica,perennial,22,30,18,35,3000,3500,2500,4000,300,365
+Sagittaria sagittifolia,perennial,16,24,12,28,900,1200,600,1500,180,270
+Salacca wallichiana,perennial,22,32,18,38,2500,3000,2000,3500,365,365
+Salacca zalacca,perennial,22,30,12,36,1700,3100,1400,3500,365,365
+Salix babylonica var. sacramenta,perennial,21,26,10,30,1000,1300,800,1500,300,330
+Salix flavida,perennial,15,25,5,40,300,600,250,700,120,200
+Salvadora persica,perennial,15,30,12,42,300,700,200,1500,365,365
+Salvia officinalis,perennial,15,26,5,30,500,1000,300,1500,120,240
+Salvia sclarea,"biennial, perennial",17,30,8,35,900,1700,700,2600,150,180
+Samanea saman,perennial,20,35,15,40,800,3000,500,3500,210,300
+Sambucus canadensis,perennial,15,20,5,25,600,1200,300,4000,90,180
+Sambucus cerulea,perennial,15,20,7,26,900,1500,600,4000,90,180
+Sambucus nigra,perennial,12,22,5,30,500,12000,400,2000,,
+Samolus valerandi,perennial,16,24,12,32,500,1300,300,1500,,
+Sanguisorba minor,perennial,13,22,4,26,500,800,300,1300,90,120
+Sansevieria guineensis,perennial,20,30,15,36,700,1400,500,2000,180,365
+Santalum acuminatum,perennial,18,25,5,40,250,400,125,500,60,180
+Santalum album,perennial,22,30,10,38,800,1400,450,3000,150,365
+Santalum spicatum,perennial,32,38,7,45,200,400,150,500,150,365
+Sapindus emarginatus,perennial,32,40,10,47,1000,2000,500,2500,180,240
+Sapium ellipticum,perennial,20,27,16,33,1200,2000,1000,2500,365,365
+Sapium sebiferum,perennial,20,28,10,32,700,1500,500,2500,150,180
+Satureja hortensis,annual,20,26,14,30,500,800,300,1300,100,160
+Satureja montana,perennial,13,30,6,40,1000,1400,700,1700,210,270
+Sauropus androgynus,perennial,26,35,5,38,900,1200,600,4000,270,365
+Schima wallichii,perennial,12,30,5,45,1400,3000,1200,5000,365,365
+Schinus molle,perennial,20,28,5,32,400,500,300,620,120,210
+Schizolobium parahybum,perennial,20,26,9,30,1200,1600,1000,1800,270,365
+Schizomeria ovata,perennial,16,28,5,34,1300,1700,1000,2000,180,330
+Schleichera oleosa,perennial,30,42,10,47,1200,2300,750,2800,270,330
+Scirpus lacustris,perennial,14,22,8,30,550,1200,450,1400,80,180
+Sclerocarya birrea ssp. caffra,perennial,20,40,14,45,400,1200,200,1500,365,365
+Sclerocarya caffra,perennial,25,30,20,35,700,1200,400,2000,180,365
+Secale cereale,annual,15,20,3,31,600,1000,400,2000,110,270
+Secale montanum,perennial,13,19,2,26,350,450,250,550,100,150
+Sechium edule,"annual, perennial",19,30,12,40,800,2000,600,2600,100,180
+Securidaca longependunculata,perennial,20,30,16,36,600,1000,500,1300,365,365
+Sehima nervosum,"annual, perennial",22,28,10,35,500,1000,250,1400,120,180
+Senna spectabilis,perennial,15,25,10,30,800,1000,600,1500,365,365
+Serenoa repens,perennial,15,25,10,35,1000,1200,800,1400,365,365
+Sesamum indicum,annual,20,30,10,40,500,1000,300,1500,40,180
+Sesbania bispinosa,annual,18,30,10,34,700,1200,500,2900,60,170
+Sesbania cannabia,annual,18,26,12,32,800,1200,600,3300,150,240
+Sesbania exaltata,"annual, perennial",18,28,10,32,1100,1400,620,2300,105,120
+Sesbania formosa,perennial,22,38,14,45,250,1100,100,1300,100,300
+Sesbania grandiflora,perennial,24,34,16,40,1000,3000,800,4500,270,365
+Sesbania macrantha var. levis,perennial,22,28,12,32,900,1100,800,2000,150,270
+Sesbania macrantha var. macrantha,"annual, perennial",18,28,8,32,1300,1700,900,2000,150,240
+Sesbania pachycarpa,"annual, perennial",18,26,12,32,800,1200,600,3300,100,150
+Sesbania rostrata,"annual, perennial",15,30,10,35,1500,3500,600,5000,60,90
+Sesbania sesban,perennial,18,28,10,45,800,2000,350,2500,120,365
+Setaria incrassata,perennial,16,30,12,36,700,1200,500,1300,,
+Setaria italica,annual,16,26,5,35,500,700,300,4000,60,120
+Setaria sphacelata cv. Kazungula,perennial,22,28,8,32,1200,1600,900,2400,120,210
+Setaria sphacelata cv. Nandi,perennial,20,25,6,30,1000,1400,700,2000,120,210
+Setaria sphacelata cv. Narok,perennial,20,25,4,30,1200,1600,900,2000,120,210
+Setaria sphacelata var. sericea,perennial,22,30,16,36,1000,1500,650,3000,120,210
+Setaria sphacelata var. splendida,perennial,22,30,16,36,1500,3000,1000,5000,,
+Shorea assamica,perennial,22,28,10,32,2800,3500,2000,4000,180,270
+Shorea javanica,perennial,22,28,18,34,3000,4000,2500,5000,365,365
+Shorea robusta,perennial,28,34,7,47,1500,3500,1000,7300,180,300
+Shorea talura,perennial,27,35,12,45,1000,1500,770,2000,210,300
+Shorea tumbuggaia,perennial,25,35,13,43,800,900,750,1000,180,270
+Silybum marianum,annual,22,35,18,40,400,600,300,700,110,140
+Simarouba glauca,perennial,22,29,18,34,2000,3000,1200,4000,365,365
+Simmondsia chinensis,perennial,21,36,10,50,250,800,100,2000,120,270
+Sinapis alba,annual,10,25,5,30,700,1100,500,1300,110,180
+Sloanea woollsii,perennial,18,28,8,34,1300,1700,1000,2000,210,270
+Solanum aethiopicum,"annual, perennial",20,30,10,40,1200,1600,800,4000,75,125
+Solanum americanum,annual,20,35,15,40,500,1200,400,1500,,
+Solanum ferox,perennial,24,30,10,35,1200,2000,800,4200,150,365
+Solanum hyporhodium,perennial,18,26,10,30,800,1100,700,1200,180,210
+Solanum incanum,"biennial, perennial",20,26,10,30,700,1000,250,2000,90,120
+Solanum macrocarpon,perennial,20,26,10,32,700,1000,500,4000,40,100
+Solanum melongena,annual,20,35,9,40,1200,1600,800,4000,70,120
+Solanum muricatum,"annual, biennial, perennial",15,25,10,30,800,1400,500,2000,150,170
+Solanum nigrum,annual,21,28,8,40,1000,1600,500,2700,80,110
+Solanum oleraceum,annual,18,26,8,38,1000,1600,500,2700,60,120
+Solanum quitoense,perennial,15,25,10,30,1500,3000,700,3750,180,365
+Solanum torvum,perennial,17,29,12,35,1000,2000,700,4200,150,365
+Solanum tuberosum,annual,15,25,7,30,500,800,250,2000,90,160
+Solanum x juzepczukii,annual,6,14,3,18,600,1200,400,1400,150,195
+Solenostemon rotundifolius,annual,17,27,8,36,1800,2600,1200,4000,150,200
+Sonneratia apetala,perennial,20,30,10,35,1650,1800,1500,2000,365,365
+Sonneratia caseolaris,perennial,20,30,10,38,1500,2500,1000,3000,330,365
+Sorbus domestica,perennial,12,25,8,32,700,1500,500,2000,,
+Sorghum bicolor,annual,22,35,8,40,400,600,300,700,90,300
+Sorghum bicolor sp.,NA,24.5,35,8,40,450,800,300,1850,90,300
+Sorghum bicolor var. sweet,annual,27,35,8,40,500,1000,300,3000,90,300
+Sorghum halepense,perennial,24,32,15,36,500,750,450,1500,120,210
+Sorghum X almum,perennial,19,26,15,35,500,800,200,2000,80,120
+Sorghum x drummondii,perennial,21,33,12,38,600,900,500,2500,90,120
+Soymida febrifuga,perennial,32,40,10,47,800,1300,600,1500,270,365
+Sparganium erectum,perennial,12,24,8,28,600,1200,400,1600,180,270
+Spartium junceum,perennial,15,22,5,28,600,900,290,1400,120,210
+Spathodea campanulata,perennial,27,30,23,34,1300,2000,1000,2400,365,365
+Sphenostylis stenocarpa,perennial,23,29,15,35,1000,1200,800,1400,150,240
+Spinacia oleracea,annual,13,20,2,27,800,1200,300,1700,40,120
+Spodiopogon sibiricus,perennial,8,25,3,40,500,700,300,900,120,210
+Spondias cytherea,perennial,22,27,12,35,900,1800,600,2200,120,300
+Spondias mombin,perennial,21,27,13,35,1000,2000,600,2800,120,300
+Spondias purpurea,perennial,22,28,13,35,800,1100,600,1800,120,365
+Sporobolus airoides,perennial,17,25,3,31,700,1100,500,1300,120,180
+Stachys affinis,perennial,17,23,10,27,800,900,700,1100,150,210
+Stenotaphrum secundatum,perennial,18,30,10,34,800,2000,300,3000,150,240
+Stephegyne parvifolia,perennial,20,35,5,47,1500,2500,900,3300,210,270
+Sterculia campanulata,perennial,26,32,17,36,3000,3800,2500,4400,365,365
+Sterculia foetida,perennial,18,32,16,36,1100,1800,900,2000,365,365
+Sterculia urens,perennial,30,42,7,47,750,1250,200,2000,365,365
+Sterculia villosa,perennial,30,42,7,47,1300,1900,750,4000,365,365
+Stereospermum kunthianum,perennial,22,34,18,42,450,900,350,1400,365,365
+Stereospermum suaveolens,perennial,24,32,5,47,1200,2500,750,3800,240,300
+Stevia rebaudiana,perennial,18,30,15,43,1000,1400,500,1800,55,270
+Stipa barbata,perennial,20,25,5,30,300,700,100,1100,60,180
+Stipa lagascae,perennial,20,25,5,30,400,500,200,700,100,180
+Stipa parviflora,perennial,20,25,5,30,400,500,200,700,100,180
+Stipa tenacissima,perennial,15,25,3,35,200,500,100,600,60,120
+Stipagrostis amabilis,perennial,20,40,10,45,150,200,100,250,,
+Stripa baicalensis,perennial,8,27,3,38,400,600,300,700,90,180
+Stripa breviflora,perennial,18,30,5,36,150,300,50,400,30,120
+Stripa capillata,perennial,18,26,5,40,200,400,90,500,30,180
+Stripa glareosa,perennial,12,30,5,36,150,400,50,500,30,180
+Stripa gobica,perennial,12,22,5,30,150,300,50,350,30,120
+Stripa grandis,perennial,17,28,5,38,200,600,100,700,120,180
+Stripa Krylovii,perennial,8,15,3,36,300,400,200,500,90,150
+Strychnos cocculoides,perennial,16,28,12,40,700,1200,400,1400,365,365
+Strychnos innocua,perennial,19,31,15,36,500,900,400,1200,365,365
+Strychnos spinosa,perennial,20,28,15,32,700,1000,600,1500,365,365
+Stylosanthes capitata,"annual, biennial, perennial",22,30,15,35,1000,2500,500,3000,180,270
+Stylosanthes erecta,perennial,23,30,15,36,1600,1900,1100,2800,240,300
+Stylosanthes fruticosa,"annual, perennial",25,30,5,35,400,800,280,2500,50,365
+Stylosanthes guianensis var. guianensis,perennial,18,28,15,34,900,2500,500,5000,150,210
+Stylosanthes guianensis var. intermedia,perennial,15,28,5,43,700,1500,600,2500,150,210
+Stylosanthes hamata,"annual, perennial",22,28,15,35,700,900,350,2000,60,180
+Stylosanthes hamata (diploid),"annual, perennial",22,28,15,35,500,1500,350,2000,60,90
+Stylosanthes hamata (tetraploid),"annual, perennial",22,28,18,33,700,900,500,2000,45,90
+Stylosanthes humilis,annual,25,32,15,36,700,1800,450,3200,90,210
+Stylosanthes macrocephala,perennial,22,30,15,35,1000,2500,500,3000,180,270
+Stylosanthes scabra,perennial,20,30,10,35,700,1600,350,2700,120,210
+Stylosanthes seabrana,perennial,20,30,10,35,700,1200,400,1400,150,300
+Stylosanthes viscosa,perennial,22,30,16,36,1000,1750,230,3200,90,240
+Stylosanthes guianensis averaged,,17,28,10,39,800,2000,550,3750,150,210
+Swietenia macrophylla,perennial,20,30,11,39,2000,4000,1400,6000,240,365
+Swietenia mahogani,perennial,24,32,16,36,1000,2000,800,2500,240,330
+Syncarpia glomulifera,perennial,18,28,8,36,1300,1700,1000,2000,180,240
+Syncarpia hillii,perennial,20,30,10,35,1100,1700,800,2000,210,240
+Syzygium cordatum,perennial,15,25,10,35,750,1200,600,1500,365,365
+Syzygium cumini,perennial,20,32,12,48,1500,6000,800,9900,150,365
+Syzygium guineense,perennial,15,30,10,38,1000,2300,800,3000,365,365
+Syzygium javanicum,perennial,23,28,16,33,1500,2300,1200,3000,270,365
+Syzygium malaccense,perennial,22,28,16,33,1200,1600,1000,2200,120,365
+Tabebuia rosea,perennial,22,30,17,34,1500,2000,1250,2500,270,365
+Tabebuia serratifolia,perennial,24,32,20,36,700,1700,500,2000,365,365
+Talinum triangulare,perennial,22,30,15,36,1000,2000,500,3000,40,180
+Tamarindus indica,perennial,20,35,12,45,800,3000,300,4500,70,210
+Tamarix aphylla,perennial,27,40,8,50,300,400,200,500,120,180
+Tamarix chinensis,perennial,20,38,5,50,400,750,100,850,120,180
+Taraxacum officinale,perennial,14,22,5,26,500,1000,300,2700,90,180
+Tarchonanthus camphoratus,perennial,17,33,8,38,300,600,150,800,90,210
+Taxodium distichum,perennial,20,30,8,34,1200,1400,1000,1600,300,365
+Tecoma stans,perennial,15,25,10,35,500,700,400,800,,
+Tectona grandis,perennial,22,32,14,43,1200,3000,500,4000,180,270
+Telfairia occidentalis,perennial,21,30,19,38,1900,2200,1500,2700,80,270
+Telfairia pedata,perennial,23,28,14,38,1500,2000,1200,2500,240,270
+Tephrosia candida,perennial,20,30,14,34,1400,1800,700,2700,180,365
+Tephrosia vogelii,perennial,20,28,10,32,1300,1500,870,2700,180,365
+Teramnus labialis,perennial,17,27,10,36,750,1500,500,2500,,
+Teramnus uncinatus,"annual, perennial",24,30,18,36,1000,3000,750,3500,120,180
+Terminalia arjuna,perennial,20,33,5,47,1000,1500,750,1800,240,365
+Terminalia arostrata,perennial,22,38,12,45,400,650,250,800,100,230
+Terminalia bellirica,perennial,20,33,5,45,1500,2500,1000,3500,180,240
+Terminalia brassii,perennial,28,34,20,38,3000,4000,2000,5000,300,365
+Terminalia brownii,perennial,14,24,7,32,500,1300,400,1500,365,365
+Terminalia calamansanai,perennial,28,34,18,38,3000,4000,2000,5000,300,365
+Terminalia catappa,perennial,21,32,10,36,1500,3400,700,4200,300,365
+Terminalia chebula,perennial,22,35,5,47,1000,1700,750,3300,150,240
+Terminalia ivorensis,perennial,24,30,20,34,1600,2700,1200,3000,300,365
+Terminalia mantaly,perennial,20,28,15,36,500,1200,300,1500,365,365
+Terminalia myriocarpa,perennial,22,32,7,39,3000,4000,2000,5500,150,270
+Terminalia paniculata,perennial,22,30,13,39,2000,3000,1000,5000,150,300
+Terminalia prunioides,perennial,20,35,15,40,450,900,400,1000,365,365
+Terminalia sericocarpa,perennial,22,38,12,45,850,1900,600,2100,210,330
+Terminalia superba,perennial,22,30,18,36,1200,1800,1000,2000,270,330
+Terminalia tomentosa,perennial,22,35,5,48,1000,2000,750,3800,180,210
+Terminalia volucris,perennial,22,38,12,44,600,850,400,950,140,300
+Tetrachne dregei,perennial,14,20,8,24,350,650,300,700,,
+Tetragonia tetragonioides,"annual, biennial",19,28,10,36,900,1200,700,3000,120,270
+Tetrapleura tetraptera,perennial,25,30,20,35,1700,3000,1200,5000,365,365
+Thaumatococcus daniellii,,21,30,15,35,1700,2300,1300,2700,240,300
+Themeda australis,perennial,15,25,4,35,450,1250,400,1500,120,180
+Themeda quadrivalis,,22,28,15,35,700,1500,500,1750,90,150
+Themeda triandra,perennial,22,28,15,35,500,1100,450,6250,120,210
+Theobroma bicolor,perennial,22,28,10,35,1500,2000,1100,2500,240,300
+Theobroma cacao,perennial,21,32,10,38,1200,3000,900,7600,180,365
+Theobroma grandiflorum,perennial,22,32,10,40,2000,2400,1500,4000,180,365
+Thespesia populnea,perennial,20,30,10,35,1000,3000,800,5000,365,365
+Thymus maroccanus,perennial,16,24,5,30,500,800,400,1000,,
+Thymus serpyllum,perennial,11,22,4,26,700,900,500,1200,120,180
+Thymus vulgaris,perennial,16,25,4,30,700,1500,400,2600,100,200
+Thyrsostachys siamensis,perennial,20,29,15,34,1000,2000,600,4500,300,365
+Tilia cordata,perennial,12,22,5,28,500,700,400,800,,
+Tipuana tipu,perennial,14,28,8,38,700,900,600,1000,365,365
+Tithonia diversifolia,perennial,15,31,12,38,1000,2000,700,2500,,
+Toona australis,perennial,18,28,8,36,1200,3000,800,3800,180,300
+Toona ciliata,perennial,18,34,8,48,1100,3000,750,4500,180,300
+Toona serrata,perennial,30,38,5,45,1200,2500,1000,3000,150,180
+Trachypogon spicatus,perennial,20,26,16,39,600,1300,450,1500,,
+Trachyspermum ammi,annual,16,24,10,30,800,1000,700,1100,150,180
+Tragopogon porrifolius,"annual, biennial",13,19,2,24,600,900,400,1100,120,180
+Trapa natans,annual,15,25,10,35,500,1200,300,1600,,
+Trema orientalis,perennial,15,27,8,34,1500,3000,1000,4000,180,300
+Trewia nudiflora,perennial,25,37,12,42,2000,4000,1000,5100,240,300
+Trichanthera gigantea,perennial,27,33,20,38,1500,3000,1000,5000,,
+Tricholaena capensis,perennial,18,30,7,40,250,400,150,500,,
+Trichosanthes cucumerina,annual,22,35,14,38,2000,2500,700,4200,50,130
+Trifolium africanum,perennial,20,30,15,40,750,1000,650,1100,,
+Trifolium agrarium,perennial,14,18,4,29,600,1000,400,2700,90,150
+Trifolium alexandrinum,annual,16,27,3,35,450,900,300,1700,90,270
+Trifolium ambiguum,perennial,10,17,3,22,800,1000,490,1200,120,180
+Trifolium arvense,"annual, biennial",9,16,4,20,700,900,520,1200,120,180
+Trifolium burchellianum,perennial,14,24,10,32,700,2000,625,2500,,
+Trifolium campestre,annual,12,18,5,25,700,900,570,1200,90,150
+Trifolium cherlei,annual,15,25,3,30,400,600,300,800,120,180
+Trifolium decorum,annual,10,18,7,26,1200,1800,1000,2000,70,120
+Trifolium dubium,annual,12,18,5,25,700,900,570,1200,90,150
+Trifolium fragiferum,perennial,12,22,4,28,600,900,450,1200,120,270
+Trifolium glanduliferum,annual,10,15,5,20,400,550,350,600,100,180
+Trifolium hirtum,annual,15,24,5,30,450,800,250,1400,90,150
+Trifolium hybridum,perennial,12,20,4,27,700,900,300,1800,90,150
+Trifolium incarnatum,annual,13,22,4,28,700,1000,300,1500,100,170
+Trifolium mattirolianum,annual,15,28,7,32,1100,1900,1000,2000,90,140
+Trifolium medium,perennial,8,16,4,20,600,800,500,1000,120,240
+Trifolium michelianum,annual,20,25,10,30,400,700,350,750,100,180
+Trifolium nigrescens,annual,16,22,10,26,1000,1200,620,1330,120,240
+Trifolium pilulare,annual,12,22,4,26,400,600,300,800,120,180
+Trifolium pratense,"annual, biennial, perennial",18,25,4,40,700,1200,300,2100,120,300
+Trifolium quartinianum,annual,16,27,8,31,900,1800,800,1900,65,100
+Trifolium repens,perennial,14,22,4,26,700,1200,300,2100,90,240
+Trifolium resupinatum,"annual, biennial",13,22,3,26,600,900,300,1360,120,180
+Trifolium rueppellianum,annual,12,26,5,30,1000,1900,700,2000,60,130
+Trifolium semipilosum,perennial,16,27,5,32,600,1500,300,2000,120,240
+Trifolium steudneri,annual,14,28,8,32,1000,1800,700,2000,50,90
+Trifolium subterraneum,annual,15,25,3,30,500,1000,250,1630,100,240
+Trifolium tembense,annual,17,26,10,30,1000,1800,700,2000,65,135
+Trifolium tomentosum,annual,12,22,4,26,500,700,300,900,120,180
+Trifolium usambarense,"annual, perennial",15,28,12,32,1000,1500,900,1600,50,90
+Trifolium variegatum,annual,14,19,6,25,800,1000,560,1300,120,180
+Trifolium vesiculosum,annual,15,21,8,26,900,1100,600,1360,110,300
+Trigonella foenum-graecum,annual,13,27,5,32,600,800,380,1550,60,120
+Triplochiton scleroxylon,perennial,24,30,18,36,1600,2400,1000,4000,300,365
+Tripsacum andersonii,perennial,22,30,12,35,1500,2000,1000,3000,45,365
+Tripsacum dactyloides,perennial,10,24,7,30,800,1300,600,1500,140,300
+Tristania conferta,perennial,18,28,10,36,1100,1500,900,1700,180,300
+Triticum aestivum,annual,15,23,5,27,750,900,300,1600,90,250
+Triticum compactum,annual,10,16,4,20,600,900,300,1600,120,180
+Triticum dicoccon,annual,15,20,4,25,500,900,300,1500,120,180
+Triticum durum,annual,17,25,6,30,500,700,400,800,120,180
+Triticum sp.,NA,13.4,20.2,4.6,25.2,610,880,320,1420,114,194
+Triticum spelta,annual,10,17,4,24,700,1000,300,1600,120,180
+Tropaeolum tuberosum,annual,12,20,4,24,1000,1200,700,1600,180,240
+Tylosema esculentum,perennial,22,30,16,50,150,800,300,600,,
+Typha angustifolia,perennial,10,24,7,28,500,1500,300,4000,130,210
+Typha domingensis,perennial,16,28,14,30,400,1400,250,1600,,
+Typha latifolia,perennial,10,25,6,30,500,1500,300,4000,130,210
+Uapaca kirkiana,perennial,18,24,12,32,700,1500,500,2000,180,330
+Ullucus tuberosus,annual,12,20,5,28,1100,1400,800,1800,120,270
+Uncaria gambir,perennial,25,32,20,36,2200,2400,2000,2600,365,365
+Urena lobata,"annual, perennial",21,27,18,32,700,1200,550,4300,105,180
+Urochloa mosambicensis,perennial,15,28,10,35,500,1300,360,1600,70,210
+"Urochloa mosambicensis, mosambicensis type",perennial,17,24,10,32,400,1000,360,1300,70,210
+"Urochloa mosambicensis, pullulans type",perennial,18,24,14,32,800,1500,700,1600,70,210
+"Urochloa mosambicensis, stolonifera type",perennial,15,24,10,30,800,900,500,1000,70,210
+Urochloa oligotricha,perennial,25,32,15,36,700,1500,400,3750,90,150
+Urochloa panicoides,annual,25,40,15,45,700,1000,600,1500,90,150
+Urtica dioica,perennial,12,22,8,28,600,2000,450,2400,,
+Uvaria scheffleri,perennial,20,28,17,30,700,1500,500,2000,,
+Vaccinium angustifolium,perennial,13,20,4,30,600,900,400,1100,100,180
+Vaccinium corymbosum,perennial,18,30,7,42,900,1100,700,1300,160,200
+Vaccinium macrocarpon,perennial,16,24,4,27,600,1000,400,1300,100,180
+Vaccinium myrtillus,perennial,8,17,5,25,500,700,250,1700,,
+Valeriana officinalis,perennial,15,24,5,32,600,800,500,1000,,
+Vangueria infausta,perennial,17,28,12,36,800,1200,700,1500,365,365
+Vangueria madagascariensis,perennial,17,29,12,34,800,1500,600,2500,365,365
+Vanilla planifolia,perennial,21,30,10,33,2000,2500,1500,3000,180,300
+Vateria indica,perennial,24,33,17,38,2500,3000,2000,3500,300,330
+Ventilago viminalis,perennial,22,36,12,44,400,600,250,700,100,270
+Vernonia amygdalina,perennial,20,26,16,35,750,2000,600,2400,365,365
+Vetiveria zizanioides,perennial,22,35,12,45,500,2500,200,5000,150,365
+Vicia benghalensis,annual,18,24,8,30,700,900,310,1660,120,270
+Vicia ervilia,annual,12,22,5,28,500,700,300,1200,90,150
+Vicia faba,annual,18,28,5,32,650,1000,250,2600,100,150
+Vicia monantha,annual,10,18,4,26,500,700,350,1230,90,150
+Vicia narbonensis,annual,10,24,4,32,400,800,300,1000,90,150
+Vicia pannonica,annual,10,17,4,22,500,700,350,1030,90,150
+Vicia sativa ssp. nigra,annual,11,23,4,28,600,800,350,1160,80,170
+Vicia sativa ssp. sativa,annual,14,23,3,28,700,900,350,1600,80,170
+Vicia villosa sp. varia,"annual, biennial",18,24,14,30,600,1400,400,1500,,
+Vicia villosa ssp. dasycarpa,annual,10,24,4,32,500,700,300,1000,90,150
+Vicia villosa ssp. villosa,annual,12,22,2,28,700,900,300,1700,135,255
+Vicia villosa averaged,,13,23,7,30,600,1000,333,1400,113,203
+Vigna aconitifolia,"annual, perennial",24,32,13,45,500,900,400,2500,60,90
+Vigna angularis,annual,15,30,5,36,900,1300,530,1800,60,190
+Vigna hosei,perennial,22,30,15,35,3000,3500,2500,4000,120,180
+Vigna luteola,perennial,20,30,13,35,1200,2500,800,4000,90,180
+Vigna mungo,annual,22,35,8,40,650,900,530,2430,60,130
+Vigna oblongifolia,"annual, perennial",17,23,13,30,500,1000,350,1200,,
+Vigna parkeri,perennial,12,27,8,35,1200,2500,1000,4000,90,180
+Vigna parkeri sp. acutifolia,perennial,23,27,17,32,1500,2000,1000,2500,90,180
+Vigna parkeri sp. maranguensis,perennial,17,21,12,28,1500,2500,1000,3000,90,180
+Vigna radiata,perennial,21,36,8,40,650,900,500,1250,50,120
+Vigna subterranea,annual,19,30,16,38,750,1400,300,3000,90,180
+Vigna trilobata,"annual, perennial",22,31,18,35,700,900,520,1440,30,60
+Vigna umbellata,"annual, perennial",18,30,10,40,700,1500,300,2000,40,130
+Vigna unguiculata,annual,25,35,15,40,500,1500,300,4100,30,240
+Vigna unguiculata sp.,NA,21.25,35,12.25,38,925,1575,512.5,3507.5,25.71429,101.4286
+Vigna unguiculata ssp. biflora,annual,20,35,10,34,1100,1300,700,1730,40,80
+Vigna unguiculata ssp. sesquipedalis,annual,20,35,14,38,1500,2000,650,4100,50,150
+Vigna unguiculata ssp. unguiculata,annual,20,35,10,40,600,1500,400,4100,60,240
+Vigna vexillata,perennial,20,28,15,32,1300,2100,650,4200,180,270
+Vitellaria paradoxa,perennial,24,38,18,43,500,1000,300,1800,180,2400
+Vitex agnus-castus,perennial,12,22,8,35,400,900,250,2500,,
+Vitex doniana,perennial,14,28,10,36,750,2000,600,2500,365,365
+Vitex keniensis,perennial,15,20,12,28,1800,2200,1500,2500,365,365
+Vitex parviflora,perennial,22,28,12,34,700,1500,500,2000,180,240
+Vitis labrusca,perennial,15,25,6,35,900,1100,700,1500,150,270
+Vitis rotundifolia,perennial,18,32,10,40,1400,1600,1100,1800,150,270
+Vitis sp.,NA,17,29,8.666667,37.66667,1000,1183.333,733.3333,1500,115,202.5
+Vitis vinifera,perennial,18,30,10,38,700,850,400,1200,160,270
+Warburgia salutaris,perennial,15,25,10,35,600,1500,400,1750,365,365
+Warburgia ugandensis,perennial,14,28,10,32,1000,1500,700,2000,,
+Withania somnifera,perennial,18,32,12,40,650,750,300,800,150,190
+Wrightia tomentosa,perennial,22,32,5,45,1200,2400,900,3800,180,300
+Xanthosoma brasiliense,perennial,22,30,10,36,1500,3000,1000,5000,60,365
+Xanthosoma sagittifolium,annual,20,28,10,35,1000,2000,750,6000,120,365
+Xanthosoma sp.,NA,21,29,10,35.5,1250,2500,875,5500,90,365
+Ximenia americana,perennial,14,30,10,36,400,1250,300,1500,365,365
+Xylia dolabriformis,perennial,24,36,8,45,1200,3000,750,4000,240,330
+Xylia xylocarpa,perennial,16,35,8,45,1700,4500,1300,5000,270,330
+Xylocarpus granatum,perennial,22,30,10,40,2000,3000,1400,5000,330,365
+Xylocarpus mekongensis,perennial,18,35,7,39,2000,4000,1600,5000,300,365
+Xylocarpus moluccensis,perennial,20,35,7,40,2500,5000,1600,6000,300,365
+Yucca elephantipes,perennial,18,32,6,38,1000,1600,700,4000,270,365
+Zanthoxylum chalybeum,perennial,18,24,12,32,800,1400,750,1500,365,365
+Zea mays,NA,18,33,10,47,600,1200,400,1800,65,365
+Zea mays ssp. mays,annual,18,33,10,47,600,1200,400,1800,65,365
+Zea mays ssp. saccharata,annual,16,24,12,38,800,1500,600,1800,65,100
+Zingiber officinale,"annual, perennial",19,29,13,35,1400,3000,700,4000,270,365
+Zizania latifolia,perennial,22,32,14,35,600,2500,400,3500,150,200
+Ziziphus abyssinica,perennial,18,28,8,45,500,1800,300,2000,365,365
+Ziziphus mauritiana,perennial,25,42,7,50,300,1500,130,4000,,
+Ziziphus mucronata,perennial,12,30,8,36,400,800,300,1000,365,365
+Ziziphus sp.,NA,18.33333,33.33333,7.666667,43.66667,400,1366.667,243.3333,2333.333,243.3333,243.3333
+Zornia glabra,perennial,21,29,18,32,2000,4000,1500,5000,,
+Zornia latifolia,perennial,18,28,13,34,1200,1800,1000,2000,50,180
+Zostera marina,,15,25,10,32,500,1500,200,3000,120,240
+Zoysia matrella,perennial,18,26,12,30,1000,1700,700,2600,150,365
