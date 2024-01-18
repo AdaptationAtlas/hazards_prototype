@@ -1,3 +1,16 @@
+#Sys.setenv(PATH = paste("C:/OSGeo4W/bin", Sys.getenv("PATH"), sep = ";"))
+#Sys.setenv(PROJ_LIB = "C:/OSGeo4W64/share/proj")
+#Sys.setenv(GDAL_DATA = "C:/OSGeo4W/apps/gdal/share")
+
+#install.packages("sf", type = "source")
+#install.packages("terra", type = "source")
+
+#sf::sf_extSoftVersion()["GDAL"]
+#terra::gdal()
+
+#Sys.getenv("GDAL_DATA")
+#Sys.getenv("PATH")
+
 require(terra)
 require(data.table)
 require(exactextractr)
@@ -6,7 +19,9 @@ require(sfarrow)
 require(arrow)
 require(feather)
 require(doFuture)
+require(stringr)
 
+# Set up workspace ####
 # Increase GDAL cache size
 terra::gdalCache(60000)
 
@@ -40,7 +55,10 @@ timeframe_choice<-"annual"
 # Load crop names from mapspam metadata
 ms_codes<-data.table::fread("./Data/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
 ms_codes<-ms_codes[compound=="no"]
-crop_choices<-ms_codes[,sort(Fullname)]
+crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
+
+# Load base raster to resample to 
+base_rast<-terra::rast(list.files("Data/hazard_timeseries_class/annual",".tif",full.names = T))[[1]]
 
 # Create extraction function
 admin_extract<-function(data,Geographies,FUN="mean",max_cells_in_memory=3*10^7){
@@ -216,9 +234,6 @@ if(!dir.exists(exposure_dir)){
     
     # Split mask by highland vs tropical areas
     
-    # Load base raster to resample to 
-    base_rast<-terra::rast(list.files("Data/hazard_classified/annual",".tif",full.names = T))[[1]]
-    
     # Load highland mask
     highlands<-terra::rast("Data/afr_highlands/afr-highlands.asc")
     highlands<-terra::resample(highlands,base_rast,method="near")
@@ -368,8 +383,6 @@ if(!dir.exists(exposure_dir)){
       }
 
   # 2.3) Population ######
-base_rast<-terra::rast(list.files("Data/hazard_classified/annual",".tif",full.names = T))[[1]]
-
 hpop<-terra::rast(list.files("Data/atlas_pop",".tif",full.names=T))
 hpop<-terra::crop(hpop,Geographies)
 
@@ -407,10 +420,16 @@ hpop_tot_adm<-rbindlist(lapply(1:length(levels),FUN=function(i){
 feather::write_feather(hpop_tot_adm,paste0(exposure_dir,"/hpop_adm_sum.feather"))
 
 
+terra::writeVector(hpop_tot_adm$admin0, filename =paste0(exposure_dir,"/hpop_adm_sum_adm0.parquet"),filetype="Parquet")
+
+
+
+
 #### Intersect Risk and Exposure ####
 # 1) Hazard Risk ####
 haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
 haz_risk_files<-list.files(haz_risk_dir,".tif",full.names = T)
+haz_risk_files<-haz_risk_files[!grepl("_any.tif",haz_risk_files)]
 
 overwrite<-F
 
@@ -428,6 +447,7 @@ for(SEV in tolower(severity_classes$class[2])){
         
         haz_risk_adm<-admin_extract(haz_risk,Geographies["admin0"],FUN="mean")
         st_write_parquet(obj=sf::st_as_sf(haz_risk_adm$admin0), dsn=paste0(haz_risk_dir,"/haz_risk_adm0_",SEV,".parquet"))
+        # terra::writeVector(haz_risk_adm$admin0, filename =paste0(haz_risk_dir,"/haz_risk_adm0_",SEV,".parquet"),filetype="Parquet")
         gc()
         
         # Display progress
@@ -437,6 +457,8 @@ for(SEV in tolower(severity_classes$class[2])){
         
         haz_risk_adm<-admin_extract(haz_risk,Geographies["admin1"],FUN="mean")
         st_write_parquet(obj=sf::st_as_sf(haz_risk_adm$admin1), dsn=paste0(haz_risk_dir,"/haz_risk_adm1_",SEV,".parquet"))
+        #terra::writeVector(haz_risk_adm$admin1, filename=paste0(haz_risk_dir,"/haz_risk_adm1_",SEV,".parquet"),filetype="Parquet")
+        
         gc()
         
         # Display progress
@@ -446,21 +468,66 @@ for(SEV in tolower(severity_classes$class[2])){
         
         haz_risk_adm<-admin_extract(haz_risk,Geographies["admin2"],FUN="mean")
         st_write_parquet(obj=sf::st_as_sf(haz_risk_adm$admin2), dsn=paste0(haz_risk_dir,"/haz_risk_adm2_",SEV,".parquet"))
+        #terra::writeVector(haz_risk_adm$admin2, filename=paste0(haz_risk_dir,"/haz_risk_adm2_",SEV,".parquet"),filetype="Parquet")
         gc()
     }
 
 }
 
-# 1.1) Hazard total risk ####
-# ADD IN CODE TO CREATE AN ANY HAZARD RISK FOR EACH CROP X 3 HAZARD COMBINATION
-# List 3-way hazards
-# Grab components and combine as below
-# dry + wet + heat - dry+wet - dry+heat - wet+heat + wet+dry+heat sum(1) - sum(2) - 3+
-# DOES THIS WORK ON A PER PIXEL BASIS? OR ARE PIXELS CLASSIFIED TO ONE HAZARD?
+# 1.1) Hazard Total Risk ####
+
+haz_risk_files_any<-list.files(haz_risk_dir,"_any.tif",full.names = T)
+
+for(SEV in severity_classes$class[2]){
+  haz_risk_files_any2<-grep(paste0("_",SEV,"_"),haz_risk_files_any,value=T,ignore.case = T)
+  data<-terra::rast(haz_risk_files_any2)
+  
+  file0<-paste0(haz_risk_dir,"/haz_risk_adm0_",SEV,"_any.parquet")
+  file1<-paste0(haz_risk_dir,"/haz_risk_adm1_",SEV,"_any.parquet")
+  file2<-paste0(haz_risk_dir,"/haz_risk_adm2_",SEV,"_any.parquet")
+  
+  if(!file.exists(file0)){
+    # Display progress
+    cat('\r                                                                                                                                                 ')
+    cat('\r',paste("Adm0 - Severity Class:",SEV))
+    flush.console()
+    
+    data_ex<-admin_extract(data,Geographies["admin0"],FUN="mean")
+    st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
+    # terra::writeVector(haz_risk_adm$admin0, filename =file0,filetype="Parquet")
+    gc()
+  }
+  
+  if(!file.exists(file1)){
+    # Display progress
+    cat('\r                                                                                                                                                 ')
+    cat('\r',paste("Adm1 - Severity Class:",SEV))
+    flush.console()
+    
+    data_ex<-admin_extract(data,Geographies["admin1"],FUN="mean")
+    st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+    #terra::writeVector(data_ex$admin1, filename=file1,filetype="Parquet")
+    
+    gc()
+  }
+  
+  if(!file.exists(file2)){
+    # Display progress
+    cat('\r                                                                                                                                                 ')
+    cat('\r',paste("Adm2 - Severity Class:",SEV))
+    flush.console()
+    
+    data_ex<-admin_extract(data,Geographies["admin2"],FUN="mean")
+    st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+    #terra::writeVector(data_ex$admin2, filename=file2,filetype="Parquet")
+    gc()
+  }
+  
+}
 
 
 # Check resulting file
-X<-st_read_parquet(paste0(haz_risk_dir,"/haz_risk_adm0_",SEV,".parquet"))
+X<-st_read_parquet(paste0(haz_risk_dir,"/haz_risk_adm0_",SEV,"_any.parquet"))
 grep("THI",names(X),value=T)
 
 # 2) Apply Crop Mask to Classified Hazard Risk ####
@@ -588,20 +655,22 @@ livestock_choices<-list.files(haz_risk_dir,".tif")
 livestock_choices<-grep("highland|tropical",livestock_choices,value = T)
 livestock_choices<-unique(unlist(tstrsplit(livestock_choices,"_extr|_seve",keep=1)))
 
-haz_risk_files<-list.files(haz_risk_dir,".tif",full.names = T)
+# Crop choices only 
+crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
 
-calculate_totals<-F
+# Solo and interactions combined into a single file (not any hazard) ####
+haz_risk_files<-list.files(haz_risk_dir,".tif",full.names = T)
+haz_risk_files<-haz_risk_files[!grepl("_any.tif",haz_risk_files)]
+overwrite<-F
 
 for(SEV in tolower(severity_classes$class[2])){
   
   #### Multiply Hazard Risk by Exposure ####
   
   haz_risk_files2<-haz_risk_files[grepl(SEV,haz_risk_files) & !grepl("_int",haz_risk_files)]
-  
+
   #registerDoFuture()
   #plan("multisession", workers = 10)
-  
-  #  loop starts here
   #foreach(i = 1:length(haz_risk_files2)) %dopar% {
     
     for(i in 1:length(haz_risk_files2)){
@@ -620,7 +689,7 @@ for(SEV in tolower(severity_classes$class[2])){
     files<-c(files,gsub(".tif","_int.tif",files))
     haz_risk<-terra::rast(files)
     
-    if(!file.exists(save_name_vop)){
+    if(!file.exists(save_name_vop)|overwrite==T){
       # vop
       if(crop!="generic"){
         if(crop %in% crop_choices){
@@ -640,7 +709,7 @@ for(SEV in tolower(severity_classes$class[2])){
       if(crop %in% c("generic",crop_choices)){
       save_name_ha<-paste0(haz_risk_ha_dir,"/",crop,"_",SEV,"_ha.tif")
 
-      if(!file.exists(save_name_ha)){
+      if(!file.exists(save_name_ha)|overwrite==T){
         if(crop!="generic"){
          haz_risk_ha<-haz_risk*crop_ha_tot[[crop]]
         }else{
@@ -656,7 +725,7 @@ for(SEV in tolower(severity_classes$class[2])){
       if(crop %in% c("generic",livestock_choices)){
         save_name_n<-paste0(haz_risk_n_dir,"/",crop,"_",SEV,"_n.tif")
         
-        if(!file.exists(save_name_n)){
+        if(!file.exists(save_name_n)|overwrite==T){
           if(crop!="generic"){
             haz_risk_n<-haz_risk*livestock_no[[crop]]
           }else{
@@ -670,222 +739,142 @@ for(SEV in tolower(severity_classes$class[2])){
     
   }
   
-  if(calculate_totals){
-    haz_risk_vop_dir_tot<-paste0(haz_risk_vop_dir,"/tot")
-    if(!dir.exists(haz_risk_vop_dir_tot)){
-      dir.create(haz_risk_vop_dir_tot,recursive = T)
-    }
-    
-    haz_risk_ha_dir_tot<-paste0(haz_risk_ha_dir,"/tot")
-    if(!dir.exists(haz_risk_ha_dir_tot)){
-      dir.create(haz_risk_ha_dir_tot,recursive = T)
-    }
-    
-    haz_risk_n_dir_tot<-paste0(haz_risk_n_dir,"/tot")
-    if(!dir.exists(haz_risk_n_dir_tot)){
-      dir.create(haz_risk_n_dir_tot,recursive = T)
-    }
-    
-    # Combine crops to give total exposure by hazard
-    # vop
-    save_name<-paste0(save_name_vop,"/total_vop.tif")
-    if(!file.exists(save_name)){
-      haz_risk_vop_files<-list.files(haz_risk_vop_dir,SEV,full.names = T)
-      haz_risk_vop_files<-haz_risk_vop_files[grepl(paste0(crop_choices,collapse = "|"),haz_risk_vop_files)]
-      
-      haz_risk_vop<-terra::rast(haz_risk_vop_files)
-      haz_risk_vop_names<-names(haz_risk_vop)
-      hazards<-unique(unlist(tstrsplit(haz_risk_vop_names,"-",keep=3)))
-      
-      haz_risk_vop_tot<-terra::rast(lapply(1:nrow(scenarios_x_hazards),FUN=function(j){
-        names_1<-haz_risk_vop_names[grepl(scenarios_x_hazards[j,combined],haz_risk_vop_names)]
-        x<-terra::rast(lapply(1:length(hazards),FUN=function(k){
-          # Display progress
-          cat('\r                                                                                                                     ')
-          cat('\r',paste("Risk x Exposure (vop)| creating totals:",j,scenarios_x_hazards[j,combined],"| hazard:",hazards[k],k))
-          flush.console()
-          
-          lyr_name<-paste0(scenarios_x_hazards[j,combined],"-",hazards[k],"-total-",SEV,"-vop")
-          file_name<-paste0(haz_risk_vop_dir_tot,"/",lyr_name,".tif")
-          if(!file.exists(file_name)){
-          names_2<-names_1[grepl(hazards[k],names_1)]
-          data<-haz_risk_vop[[names_2]]
-          data<-app(data,sum,na.rm=T)
-          names(data)<-lyr_name
-          write(data,file=file_name)
-          data
-          }else{
-            terra::rast(file_name)
-          }
-        }))
-        x
-      }))
-      
-      writeRaster(haz_risk_vop_tot,file=save_name,overwrite=T)
-      
-    }
-  
-    # harvested area
-    save_name<-paste0(save_name_ha,"/total_ha.tif")
-    if(!file.exists(save_name)){
-      haz_risk_ha_files<-list.files(haz_risk_ha_dir,SEV,full.names = T)
-      haz_risk_ha_files<-haz_risk_ha_files[grepl(paste0(crop_choices,collapse = "|"),haz_risk_ha_files)]
-      
-      haz_risk_ha<-terra::rast(haz_risk_ha_files)
-      haz_risk_ha_names<-names(haz_risk_ha)
-      hazards<-unique(unlist(tstrsplit(haz_risk_ha_names,"-",keep=3)))
-      
-      haz_risk_ha_tot<-terra::rast(lapply(1:nrow(scenarios_x_hazards),FUN=function(j){
-        names_1<-haz_risk_ha_names[grepl(scenarios_x_hazards[j,combined],haz_risk_ha_names)]
-        data<-terra::rast(lapply(1:length(hazards),FUN=function(k){
-          # Display progress
-          cat('\r                                                                                                                     ')
-          cat('\r',paste("Risk x Exposure (ha) | creating totals:",j,scenarios_x_hazards[j,combined],"| hazard:",hazards[k],k))
-          flush.console()
-          
-          lyr_name<-paste0(scenarios_x_hazards[j,combined],"-",hazards[k],"-total-",SEV,"-ha")
-          file_name<-paste0(haz_risk_ha_dir_tot,"/",lyr_name,".tif")
-          if(!file.exists(file_name)){
-            names_2<-names_1[grepl(hazards[k],names_1)]
-            data<-haz_risk_ha[[names_2]]
-            data<-sum(data)
-            names(data)<-lyr_name
-            write(data,file=file_name)
-            data
-          }else{
-            terra::rast(file_name)
-          }
-        }))
-      }))
-      
-      writeRaster(haz_risk_ha_tot,file=save_name,overwrite=T)
-      
-    }
-    
-    # number
-    save_name<-paste0(save_name_n,"/total_n.tif")
-    if(!file.exists(save_name)){
-      haz_risk_n_files<-list.files(haz_risk_n_dir,SEV,full.names = T)
-      haz_risk_n_files<-haz_risk_n_files[grepl(paste0(crop_choices,collapse = "|"),haz_risk_n_files)]
-      
-      haz_risk_n<-terra::rast(haz_risk_n_files)
-      haz_risk_n_names<-names(haz_risk_n)
-      hazards<-unique(unlist(tstrsplit(haz_risk_n_names,"-",keep=3)))
-      
-      haz_risk_n_tot<-terra::rast(lapply(1:nrow(scenarios_x_hazards),FUN=function(j){
-        names_1<-haz_risk_n_names[grepl(scenarios_x_hazards[j,combined],haz_risk_n_names)]
-        data<-terra::rast(lapply(1:length(hazards),FUN=function(k){
-          # Display progress
-          cat('\r                                                                                                                     ')
-          cat('\r',paste("Risk x Exposure (numbers) | creating totals:",j,scenarios_x_hazards[j,combined],"| hazard:",hazards[k],k))
-          flush.console()
-          
-          lyr_name<-paste0(scenarios_x_hazards[j,combined],"-",hazards[k],"-total-",SEV,"-ha")
-          file_name<-paste0(haz_risk_n_dir_tot,"/",lyr_name,".tif")
-          if(!file.exists(file_name)){
-            names_2<-names_1[grepl(hazards[k],names_1)]
-            data<-haz_risk_n[[names_2]]
-            data<-sum(data)
-            names(data)<-lyr_name
-            write(data,file=file_name)
-            data
-          }else{
-            terra::rast(file_name)
-          }
-        }))
-      }))
-      
-      writeRaster(haz_risk_n_tot,file=save_name)
-      
-    
-    }
-  }
+ # plan(sequential)
   
   #### Extract Risk x Exposure by Geography  ####
   
+  # VoP #####
   haz_risk_vop_files<-list.files(haz_risk_vop_dir,".tif",full.names = T)
+  haz_risk_vop_files<-haz_risk_vop_files[!grepl("_any.tif",haz_risk_vop_files)]
   haz_risk_vop_files<-haz_risk_vop_files[grepl(SEV,haz_risk_vop_files)]
-  haz_risk_vop<-terra::rast(haz_risk_vop_files)
+  data<-terra::rast(haz_risk_vop_files)
   
-  if(!file.exists(paste0(haz_risk_vop_dir,"/haz_risk_vop_adm0.parquet"))){
+  file0<-paste0(haz_risk_vop_dir,"/haz_risk_vop_adm0_",SEV,".parquet")
+  file1<-gsub("_adm0_","_adm1_",file0)
+  file2<-gsub("_adm0_","_adm2_",file0)
+  
+  if(!file.exists(file0)|overwrite==T){
     # Display progress
     cat('\r                                                                                                                     ')
     cat('\r',paste("Risk x Exposure - VoP admin extraction - adm0| severity:",SEV))
     flush.console()
     
-  
-    haz_risk_vop_adm<-admin_extract(haz_risk_vop,Geographies["admin0"],FUN="sum")
-    sfarrow::st_write_parquet(obj=sf::st_as_sf(haz_risk_vop_adm$admin0), dsn=paste0(haz_risk_vop_dir,"/haz_risk_vop_adm0.parquet"))
+    data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex), dsn=file0)
+    rm(data,data_ex)
     gc()
   }
-  
-  if(!file.exists(paste0(haz_risk_vop_dir,"/haz_risk_vop_adm1.parquet"))){
+  if(!file.exists(file1)|overwrite==T){
     # Display progress
     cat('\r                                                                                                                     ')
     cat('\r',paste("Risk x Exposure - VoP admin extraction - adm1| severity:",SEV))
     flush.console()
     
-    
-    haz_risk_vop_adm<-admin_extract(haz_risk_vop,Geographies["admin1"],FUN="sum")
-    sfarrow::st_write_parquet(obj=sf::st_as_sf(haz_risk_vop_adm$admin1), dsn=paste0(haz_risk_vop_dir,"/haz_risk_vop_adm1.parquet"))
+    data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+    rm(data,data_ex)
     gc()
-    }
-  
-  if(!file.exists(paste0(haz_risk_vop_dir,"/haz_risk_vop_adm2.parquet"))){
+  }
+  if(!file.exists(file2)|overwrite==T){
     # Display progress
     cat('\r                                                                                                                     ')
     cat('\r',paste("Risk x Exposure - VoP admin extraction - adm2| severity:",SEV))
     flush.console()
     
-      haz_risk_vop_adm<-admin_extract(haz_risk_vop,Geographies["admin2"],FUN="sum")
-      sfarrow::st_write_parquet(obj=sf::st_as_sf(haz_risk_vop_adm$admin2), dsn=paste0(haz_risk_vop_dir,"/haz_risk_vop_adm2.parquet"))
-      gc()
-    }
-  
-  # Display progress
-  cat('\r                                                                                                                     ')
-  cat('\r',paste("Risk x Exposure - Harvested Area admin extraction| severity:",SEV))
-  flush.console()
-  
-  if(!file.exists(paste0(haz_risk_ha_dir,"/haz_risk_ha_adm0.parquet"))){
-    haz_risk_ha_files<-list.files(haz_risk_ha_dir,".tif",full.names = T)
-    haz_risk_ha_files<-haz_risk_ha_files[grepl(SEV,haz_risk_ha_files)]
-    
-    haz_risk_ha<-terra::rast(haz_risk_ha_files)
-    
-    haz_risk_ha_adm<-admin_extract(haz_risk_ha,Geographies["admin0"],FUN="sum")
-    sfarrow::st_write_parquet(obj=sf::st_as_sf(haz_risk_ha_adm$admin0), dsn=paste0(haz_risk_ha_dir,"/haz_risk_ha_adm0.parquet"))
-    gc()
-    haz_risk_ha_adm<-admin_extract(haz_risk_ha,Geographies["admin1"],FUN="sum")
-    sfarrow::st_write_parquet(obj=sf::st_as_sf(haz_risk_ha_adm$admin1), dsn=paste0(haz_risk_ha_dir,"/haz_risk_ha_adm1.parquet"))
-    gc()
-    haz_risk_ha_adm<-admin_extract(haz_risk_ha,Geographies["admin2"],FUN="sum")
-    sfarrow::st_write_parquet(obj=sf::st_as_sf(haz_risk_ha_adm$admin2), dsn=paste0(haz_risk_ha_dir,"/haz_risk_ha_adm2.parquet"))
+    data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+    rm(data,data_ex)
     gc()
   }
   
-  # Display progress
-  cat('\r                                                                                                                     ')
-  cat('\r',paste("Risk x Exposure - Numbers admin extraction| severity:",SEV))
-  flush.console()
+  # Harvested Area #####
+  haz_risk_ha_files<-list.files(haz_risk_ha_dir,".tif",full.names = T)
+  haz_risk_ha_files<-haz_risk_ha_files[!grepl("_any.tif",haz_risk_ha_files)]
+  haz_risk_ha_files<-haz_risk_ha_files[grepl(SEV,haz_risk_ha_files)]
+  data<-terra::rast(haz_risk_ha_files)
   
-  if(!file.exists(paste0(haz_risk_n_dir,"/haz_risk_n_adm0.parquet"))){
-    haz_risk_n_files<-list.files(haz_risk_n_dir,".tif",full.names = T)
-    haz_risk_n_files<-haz_risk_n_files[grepl(SEV,haz_risk_n_files)]
+  file0<-paste0(haz_risk_ha_dir,"/haz_risk_ha_adm0_",SEV,".parquet")
+  file1<-gsub("_adm0_","_adm1_",file0)
+  file2<-gsub("_adm0_","_adm2_",file0)
+  
+  if(!file.exists(file0)|overwrite==T){
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste("Risk x Exposure - HA admin extraction - adm0| severity:",SEV))
+    flush.console()
     
-    haz_risk_n<-terra::rast(haz_risk_n_files)
-  
-    haz_risk_n_adm<-admin_extract(haz_risk_n,Geographies["admin0"],FUN="sum")
-    sfarrow::st_write_parquet(obj=sf::st_as_sf(haz_risk_n_adm$admin0), dsn=paste0(haz_risk_n_dir,"/haz_risk_n_adm0.parquet"))
-    gc()
-    haz_risk_n_adm<-admin_extract(haz_risk_n,Geographies["admin1"],FUN="sum")
-    sfarrow::st_write_parquet(obj=sf::st_as_sf(haz_risk_n_adm$admin1), dsn=paste0(haz_risk_n_dir,"/haz_risk_n_adm1.parquet"))
-    gc()
-    haz_risk_n_adm<-admin_extract(haz_risk_n,Geographies["admin2"],FUN="sum")
-    sfarrow::st_write_parquet(obj=sf::st_as_sf(haz_risk_n_adm$admin2), dsn=paste0(haz_risk_n_dir,"/haz_risk_n_adm2.parquet"))
+    data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex), dsn=file0)
+    rm(data,data_ex)
     gc()
   }
-
+  if(!file.exists(file1)|overwrite==T){
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste("Risk x Exposure - HA admin extraction - adm1| severity:",SEV))
+    flush.console()
+    
+    data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+    rm(data,data_ex)
+    gc()
+  }
+  if(!file.exists(file2)|overwrite==T){
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste("Risk x Exposure - HA admin extraction - adm2| severity:",SEV))
+    flush.console()
+    
+    data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+    rm(data,data_ex)
+    gc()
+  }
+  
+  # Numbers #####
+  haz_risk_n_files<-list.files(haz_risk_n_dir,".tif",full.names = T)
+  haz_risk_n_files<-haz_risk_n_files[!grepl("_any.tif",haz_risk_n_files)]
+  haz_risk_n_files<-haz_risk_n_files[grepl(SEV,haz_risk_n_files)]
+  data<-terra::rast(haz_risk_n_files)
+  
+  file0<-paste0(haz_risk_n_dir,"/haz_risk_n_adm0_",SEV,".parquet")
+  file1<-gsub("_adm0_","_adm1_",file0)
+  file2<-gsub("_adm0_","_adm2_",file0)
+  
+  if(!file.exists(file0)|overwrite==T){
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste("Risk x Exposure - N admin extraction - adm0| severity:",SEV))
+    flush.console()
+    
+    data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex), dsn=file0)
+    rm(data,data_ex)
+    gc()
+  }
+  if(!file.exists(file1)|overwrite==T){
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste("Risk x Exposure - N admin extraction - adm1| severity:",SEV))
+    flush.console()
+    
+    data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+    rm(data,data_ex)
+    gc()
+  }
+  if(!file.exists(file2)|overwrite==T){
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste("Risk x Exposure - N admin extraction - adm2| severity:",SEV))
+    flush.console()
+    
+    data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+    rm(data,data_ex)
+    gc()
+  }
+  
   #### Restructure Extracted Data ####
   
   recode_restructure<-function(data,crop_choices,livestock_choices,Scenarios,exposure,Severity,admin_level){
@@ -940,7 +929,7 @@ for(SEV in tolower(severity_classes$class[2])){
       level<-levels[i]
       print(level)
       # Vop
-      haz_risk_vop_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_vop_dir,"/haz_risk_vop_",levels[i],".parquet"))))
+      haz_risk_vop_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_vop_dir,"/haz_risk_vop_",levels[i],"_",SEV,".parquet"))))
       N<-colnames(haz_risk_vop_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_risk_vop_tab))]
       haz_risk_vop_tab<-haz_risk_vop_tab[,..N]
       haz_risk_vop_tab<-melt(haz_risk_vop_tab,id.vars = c("admin_name","iso3"))
@@ -973,7 +962,7 @@ for(SEV in tolower(severity_classes$class[2])){
     level<-levels[i]
     
     # Harvested area
-    haz_risk_ha_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_ha_dir,"/haz_risk_ha_",levels[i],".parquet"))))
+    haz_risk_ha_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_ha_dir,"/haz_risk_ha_",levels[i],"_",SEV,".parquet"))))
     N<-colnames(haz_risk_ha_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_risk_ha_tab))]
     haz_risk_ha_tab<-haz_risk_ha_tab[,..N]
     haz_risk_ha_tab<-melt(haz_risk_ha_tab,id.vars = c("admin_name","iso3"))
@@ -1003,7 +992,7 @@ for(SEV in tolower(severity_classes$class[2])){
       
       level<-levels[i]
       
-      haz_risk_n_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_n_dir,"/haz_risk_n_",levels[i],".parquet"))))
+      haz_risk_n_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_n_dir,"/haz_risk_n_",levels[i],"_",SEV,".parquet"))))
       N<-colnames(haz_risk_n_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_risk_n_tab))]
       haz_risk_n_tab<-haz_risk_n_tab[,..N]
       haz_risk_n_tab<-melt(haz_risk_n_tab,id.vars = c("admin_name","iso3"))
@@ -1015,6 +1004,323 @@ for(SEV in tolower(severity_classes$class[2])){
                                           exposure="n",
                                           Severity=SEV,
                                           admin_level=names(levels)[i])
+      haz_risk_n_tab
+      
+    }))
+    feather::write_feather(haz_risk_n_tab,filename)
+  }
+  
+}
+
+# Any hazard only ####
+haz_risk_files<-list.files(haz_risk_dir,"_any.tif",full.names = T)
+
+for(SEV in tolower(severity_classes$class[2])){
+  
+  #### Multiply Hazard Risk by Exposure ####
+  
+  haz_risk_files2<-haz_risk_files[grepl(SEV,haz_risk_files)]
+  
+  #registerDoFuture()
+  #plan("multisession", workers = 10)
+  
+  #  loop starts here
+  #foreach(i = 1:length(haz_risk_files2)) %dopar% {
+  
+  for(i in 1:length(haz_risk_files2)){
+    
+    
+    crop<-gsub(paste0("_",SEV,"_any.tif"),"",tail(tstrsplit(haz_risk_files2[i],"/"),1))
+    
+    # Display progress
+    cat('\r                                                                                                                           ')
+    cat('\r',paste("Risk x Exposure | crop:",i,"/",length(haz_risk_files2)," ",crop,"| severity:",SEV))
+    flush.console()
+    
+    save_name_vop<-paste0(haz_risk_vop_dir,"/",crop,"_",SEV,"_vop_any.tif")
+    save_name_ha<-paste0(haz_risk_ha_dir,"/",crop,"_",SEV,"_ha_any.tif")
+    save_name_n<-paste0(haz_risk_n_dir,"/",crop,"_",SEV,"_n_any.tif")
+    
+    
+    files<-haz_risk_files2[i]
+    files<-c(files,gsub(".tif","_int.tif",files))
+    haz_risk<-terra::rast(files)
+    
+    if(!file.exists(save_name_vop)|overwrite==T){
+      # vop
+      if(crop!="generic"){
+        if(crop %in% crop_choices){
+          haz_risk_vop<-haz_risk*crop_vop_tot[[crop]]
+        }else{
+          haz_risk_vop<-haz_risk*livestock_vop[[crop]]
+        }
+      }else{
+        haz_risk_vop<-haz_risk*sum(crop_vop_tot)
+      }
+      
+      names(haz_risk_vop)<-paste0(names(haz_risk_vop),"-vop")
+      writeRaster(haz_risk_vop,file=save_name_vop,overwrite=T)
+    }
+    
+    # ha
+    if(crop %in% c("generic",crop_choices)){
+      
+      if(!file.exists(save_name_ha)|overwrite==T){
+        if(crop!="generic"){
+          haz_risk_ha<-haz_risk*crop_ha_tot[[crop]]
+        }else{
+          haz_risk_ha<-haz_risk*sum(crop_ha_tot)
+        }
+        
+        names(haz_risk_ha)<-paste0(names(haz_risk_ha),"-ha")
+        writeRaster(haz_risk_ha,file=save_name_ha,overwrite=T)
+      }
+    }
+    
+    # numbers
+    if(crop %in% c("generic",livestock_choices)){
+      
+      if(!file.exists(save_name_n)|overwrite==T){
+        if(crop!="generic"){
+          haz_risk_n<-haz_risk*livestock_no[[crop]]
+        }else{
+          haz_risk_n<-haz_risk*sum(livestock_no[[(c("total_tropical","total_highland"))]],na.rm=T)
+        }
+        
+        names(haz_risk_n)<-paste0(names(haz_risk_n),"-n")
+        writeRaster(haz_risk_n,file=save_name_n,overwrite=T)
+      }
+    }
+    
+  }
+  
+  #### Extract Risk x Exposure by Geography  ####
+  
+  # VoP
+  haz_risk_vop_files<-list.files(haz_risk_vop_dir,"_any.tif",full.names = T)
+  haz_risk_vop_files<-haz_risk_vop_files[grepl(SEV,haz_risk_vop_files)]
+  data<-terra::rast(haz_risk_vop_files)
+  
+  file0<-paste0(haz_risk_vop_dir,"/haz_risk_vop_any_adm0_",SEV,".parquet")
+  file1<-gsub("_adm0_","_adm1_",file0)
+  file2<-gsub("_adm0_","_adm2_",file0)
+  
+  if(!file.exists(file0)|overwrite==T){
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste("Risk x Exposure - VoP admin extraction - adm0| severity:",SEV))
+    flush.console()
+    
+    data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
+    rm(data,data_ex)
+    gc()
+  }
+  if(!file.exists(file1)|overwrite==T){
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste("Risk x Exposure - VoP admin extraction - adm1| severity:",SEV))
+    flush.console()
+    
+    data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+    rm(data,data_ex)
+    gc()
+  }
+  if(!file.exists(file2)|overwrite==T){
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste("Risk x Exposure - VoP admin extraction - adm2| severity:",SEV))
+    flush.console()
+    
+    data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+    rm(data,data_ex)
+    gc()
+  }
+  
+  # Harvested Area
+  cat('\r                                                                                                                     ')
+  cat('\r',paste("Risk x Exposure - Harvested Area admin extraction| severity:",SEV))
+  flush.console()
+  
+  # Display progress
+  file0<-paste0(haz_risk_ha_dir,"/haz_risk_ha_any_adm0_",SEV,".parquet")
+  file1<-gsub("_adm0_","_adm1_",file0)
+  file2<-gsub("_adm0_","_adm2_",file0)
+  
+  haz_risk_ha_files<-list.files(haz_risk_ha_dir,".tif",full.names = T)
+  haz_risk_ha_files<-haz_risk_ha_files[grepl(SEV,haz_risk_ha_files)]
+  data<-terra::rast(haz_risk_ha_files)
+  
+  if(!file.exists(file0)|overwrite==T){
+    data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
+
+    data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+
+    data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+    rm(data,data_ex)
+    gc()
+  }
+  
+  # Display progress
+  cat('\r                                                                                                                     ')
+  cat('\r',paste("Risk x Exposure - Numbers admin extraction| severity:",SEV))
+  flush.console()
+  
+  haz_risk_n_files<-list.files(haz_risk_n_dir,".tif",full.names = T)
+  haz_risk_n_files<-haz_risk_n_files[grepl(SEV,haz_risk_n_files)]
+  data<-terra::rast(haz_risk_n_files)
+  
+  file0<-paste0(haz_risk_n_dir,"/haz_risk_n_any_adm0_",SEV,".parquet")
+  file1<-gsub("_adm0_","_adm1_",file0)
+  file2<-gsub("_adm0_","_adm2_",file0)
+  
+  if(!file.exists(file0)|overwrite==T){
+    data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
+    
+    data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+    
+    data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+    rm(data,data_ex)
+    gc()
+  }
+  
+  #### Restructure Extracted Data ####
+  
+  recode_restructure<-function(data,crop_choices,livestock_choices,Scenarios,exposure,Severity,admin_level){
+    
+    # Remove "." in crop names
+    for(crop in crop_choices){
+      data[,variable:=gsub(gsub(" ",".",crop,fixed=T),crop,variable)]
+    }
+    
+    # Remove "." in hazard names
+    variables<-data[,unique(variable)]
+    variables<-gsub("sum.","",variables)
+    variables<-gsub(paste0(Scenarios$Scenario,collapse = "|"),"",variables)
+    variables<-gsub(paste0(Scenarios$Time,collapse = "|"),"",variables)
+    variables<-gsub(paste0(crop_choices,collapse = "|"),"",variables)
+    variables<-gsub(paste0(livestock_choices,collapse = "|"),"",variables)
+    variables<-unique(gsub("Moderate|Severe|Extreme","",variables))
+    # Remove trailing exposure name (as this can be something like "n" it needs a different approach)
+    variables<-sapply(1:length(variables),FUN=function(g){
+      substring(variables[g],1,nchar(variables[g])-nchar(paste0(".",exposure)))
+    })
+    variables<-grep("[.]",unique(gsub("[.][.]|[.][.][.]","",variables)),value=T)
+    variables1<-unique(gsub("[.]","+",variables))
+    
+    for(n in 1:length(variables)){
+      data[,variable:=gsub(variables[n],variables1[n],variable,fixed=T)]
+    }
+    
+    # Split variable string into columns
+    data[,scenario:=unlist(tstrsplit(variable[1],"[.]",keep=2)),by=variable
+    ][,timeframe:=unlist(tstrsplit(variable[1],"[.]",keep=3)),by=variable
+    ][,hazard:=unlist(tstrsplit(variable[1],"[.]",keep=4)),by=variable
+    ][,crop:=unlist(tstrsplit(variable[1],"[.]",keep=5)),by=variable
+    ][,severity:=Severity
+    ][,exposure:=unlist(tstrsplit(variable[1],"[.]",keep=7)),by=variable
+    ][,variable:=NULL
+    ][,admin_level:=admin_level] 
+    
+    return(data)
+  }
+  
+  # Vop
+  filename<-paste0(haz_risk_vop_dir,"/haz_risk_vop_any_",SEV,".feather")
+  
+  if(!file.exists(filename)){
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste("Risk x Exposure - VoP restructuring data| severity:",SEV))
+    flush.console()
+    
+    haz_risk_vop_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
+      level<-levels[i]
+      print(level)
+      # Vop
+      haz_risk_vop_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_vop_dir,"/haz_risk_vop_any_",levels[i],"_",SEV,".parquet"))))
+      N<-colnames(haz_risk_vop_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_risk_vop_tab))]
+      haz_risk_vop_tab<-haz_risk_vop_tab[,..N]
+      haz_risk_vop_tab<-melt(haz_risk_vop_tab,id.vars = c("admin_name","iso3"))
+      
+      haz_risk_vop_tab<-recode_restructure(data=haz_risk_vop_tab,
+                                           crop_choices = c("generic",crop_choices),
+                                           livestock_choices = livestock_choices,
+                                           Scenarios = Scenarios,
+                                           exposure="vop",
+                                           Severity=SEV,
+                                           admin_level=names(levels)[i])
+      
+      
+      haz_risk_vop_tab
+    }))
+    # Save as feather object
+    feather::write_feather(haz_risk_vop_tab,filename)
+  }
+  
+  # Harvested area
+  filename<-paste0(haz_risk_ha_dir,"/haz_risk_ha_any_",SEV,".feather")
+  
+  if(!file.exists(filename)){
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste("Risk x Exposure - Harvested area restructuring data| severity:",SEV))
+    flush.console()
+    
+    haz_risk_ha_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
+      level<-levels[i]
+      
+      # Harvested area
+      haz_risk_ha_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_ha_dir,"/haz_risk_ha_any_",levels[i],"_",SEV,".parquet"))))
+      N<-colnames(haz_risk_ha_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_risk_ha_tab))]
+      haz_risk_ha_tab<-haz_risk_ha_tab[,..N]
+      haz_risk_ha_tab<-melt(haz_risk_ha_tab,id.vars = c("admin_name","iso3"))
+      
+      haz_risk_ha_tab<-recode_restructure(data=haz_risk_ha_tab,
+                                          crop_choices = c("generic",crop_choices),
+                                          livestock_choices = livestock_choices,
+                                          Scenarios = Scenarios,
+                                          exposure="ha",
+                                          Severity=SEV,
+                                          admin_level=names(levels)[i])
+      haz_risk_ha_tab
+      
+    }))
+    feather::write_feather(haz_risk_ha_tab,filename)
+  }
+  
+  # Numbers
+  filename<-paste0(haz_risk_n_dir,"/haz_risk_n_any_",SEV,".feather")
+  
+  if(!file.exists(filename)){
+    haz_risk_n_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
+      # Display progress
+      cat('\r                                                                                                                     ')
+      cat('\r',paste("Risk x Exposure - Number restructuring data| severity:",SEV))
+      flush.console()
+      
+      level<-levels[i]
+      
+      haz_risk_n_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_n_dir,"/haz_risk_n_any_",levels[i],"_",SEV,".parquet"))))
+      N<-colnames(haz_risk_n_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_risk_n_tab))]
+      haz_risk_n_tab<-haz_risk_n_tab[,..N]
+      haz_risk_n_tab<-melt(haz_risk_n_tab,id.vars = c("admin_name","iso3"))
+      
+      haz_risk_n_tab<-recode_restructure(data=haz_risk_n_tab,
+                                         crop_choices = c("generic",crop_choices),
+                                         livestock_choices = livestock_choices,
+                                         Scenarios = Scenarios,
+                                         exposure="n",
+                                         Severity=SEV,
+                                         admin_level=names(levels)[i])
       haz_risk_n_tab
       
     }))
