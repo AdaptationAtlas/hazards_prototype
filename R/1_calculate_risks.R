@@ -1,8 +1,23 @@
-source("R/haz_functions.R")
+# Load R functions & packages ####
+source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+
 require(data.table)
 require(terra)
 require(doFuture)
 require(stringi)
+
+# Set location of climate data stacks ####
+
+#timeframe_choice<-"annual"
+timeframe_choice<-"jagermeyr"
+
+# Working locally
+#haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice
+
+# Working on cglabs server
+if(timeframe_choice!="annual"){
+  haz_timeseries_dir<-paste0("/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal/by_season/",timeframe_choice,"/hazard_timeseries")
+}
 
 # Set up workspace ####
 # Set scenarios and time frames to analyse
@@ -15,8 +30,10 @@ Scenarios[,combined:=paste0(Scenario,"-",Time)]
 
 # Set hazards to include in analysis
 hazards<-c("NDD","NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG")
-haz_meta<-data.table::fread("./Data/metadata/haz_metadata.csv")
-haz_class<-fread("./Data/metadata/haz_classes.csv")[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
+haz_meta<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv")
+haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
+haz_class<-data.table::fread(haz_class_url)
+haz_class<-haz_class[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
 haz_classes<-unique(haz_class$description)
 
 # duplicate generic non-heat stress variables for livestock
@@ -30,19 +47,22 @@ haz_class<-rbind(haz_class[crop=="generic"],
 )
 
 # Pull out severity classes and associate impact scores
-severity_classes<-unique(fread("./Data/metadata/haz_classes.csv")[,list(description,value)])
+severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
 setnames(severity_classes,"description","class")
 
 # Create combinations of scenarios and hazards
 scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios)))[,Scenario:=as.character(Scenario)][,Time:=as.character(Time)]
 
 # read in mapspam metadata
-ms_codes<-data.table::fread("./Data/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
+ms_codes<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
 ms_codes<-ms_codes[compound=="no"]
 
 # read in ecocrop
-ecocrop<-miceadds::load.Rdata2(file="Data/ecocrop.RData")[,list(species,Life.span,temp_opt_min,Temp_Opt_Max,Temp_Abs_Min,Temp_Abs_Max,Rain_Opt_Min,Rain_Opt_Max,Rain_Abs_Min,
-                                                                Rain_Abs_Max,cycle_min,cycle_max)]
+ecocrop<-fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/ecocrop.csv")
+ecocrop[,Temp_Abs_Min:=as.numeric(Temp_Abs_Min)
+        ][,Temp_Abs_Max:=as.numeric(Temp_Abs_Max)
+          ][,Rain_Abs_Min:=as.numeric(Rain_Abs_Min)
+            ][,Rain_Abs_Max:=as.numeric(Rain_Abs_Max)]
 
 # Using the mapspam species transpose the ecocrop data into mod, severe and extreme hazards (match the format of the haz_class data.table)
 description<-c("Moderate","Severe","Extreme")
@@ -132,28 +152,10 @@ haz_class<-unique(haz_class)
 PropThreshold<-0.5
 PropTDir=">"
 
-timeframe_choice<-"annual"
-#timeframe_choice<-"jagermeyr"
-
-# Where are climate data stacks saved?
-clim_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
-
-# where to save classified climate hazards?
-#haz_class_dir<-paste0("Data/hazard_classified/",timeframe_choice)
-#if(!dir.exists(haz_class_dir)){
-#  dir.create(haz_class_dir,recursive = T)
-#}
-
-# Global hazard index savedir
-haz_index_dir<-paste0("Data/hazard_index/",timeframe_choice)
-if(!dir.exists(haz_index_dir)){
-  dir.create(haz_index_dir,recursive=T)
-}
-
-crop_choices<-c(fread("./Data/metadata/haz_classes.csv")[,unique(crop)],ms_codes[,sort(Fullname)])
+crop_choices<-c(fread(haz_class_url)[,unique(crop)],ms_codes[,sort(Fullname)])
 
 # Classify time series climate variables based on hazard thresholds ####
-haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
+
 # Set save directory for classified hazard stacks
 haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
 if(!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir,recursive=T)}
@@ -185,8 +187,10 @@ rast_class<-function(data,direction,threshold,minval=-9999,maxval=9999){
   return(data)
 }
 
+parallel::detectCores()
+
 registerDoFuture()
-plan("multisession", workers = 12)
+plan("multisession", workers = 20) # change to multicore for linux execution
 
 foreach(i = 1:nrow(Thresholds_U)) %dopar% {
 

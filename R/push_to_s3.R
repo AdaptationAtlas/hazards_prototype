@@ -63,18 +63,14 @@ selected_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annua
 # Select a folder to upload
 folder<-"Data/hazard_risk_vop/annual"
 
+
+# Prepare tif data by converting to COG format ####
+
 # List tif files in the folder
 files_tif<-list.files(folder,".tif",full.names = T)
 # Remove any COGs from the tif list
 files_tif<-files_tif[!grepl("_COG.tif",files_tif)]
 
-# List parquet files in the folder
-files_parquet<-list.files(folder,".parquet",full.names = T)
-
-# List feather files in the folder
-files_feather<-list.files(folder,".feathert",full.names = T)
-
-# Prepare tif data by converting to COG format ####
 # Update tifs to cog format
 convert_to_cog <- function(file,delete=T,rename=T) {
 
@@ -125,8 +121,8 @@ closeAllConnections()
 #}
 
 
-# Upload tifs to S3 bucket ####
-upload_files_to_s3 <- function(files, selected_bucket, max_attempts = 3) {
+# Upload files S3 bucket ####
+upload_files_to_s3 <- function(files, selected_bucket, max_attempts = 3,overwrite=F) {
   
   if (sum(grepl("_COG.tif", files)) > 0) {
     stop("COG names still exist in tif directory, indicating an issue.")
@@ -141,7 +137,7 @@ upload_files_to_s3 <- function(files, selected_bucket, max_attempts = 3) {
         attempt <- 1
         while(attempt <= max_attempts) {
           file_check <- s3_file_exists(s3_file_path)
-          if (!file_check) {
+          if ((!file_check)|overwrite==T) {
             s3_file_upload(files[i], s3_file_path)
             
             # Check if upload successful
@@ -161,7 +157,22 @@ upload_files_to_s3 <- function(files, selected_bucket, max_attempts = 3) {
   }
 }
 
+# Consider updating the above to allow parallel uploads
+#plan(multisession, workers = 5)
+#s3_file_upload_async(localpath, s3path)
+
+# Tifs 
 upload_files_to_s3(files = list.files(folder, pattern = "\\.tif$", full.names = TRUE),
              selected_bucket=selected_bucket,
              max_attempts = 3)
+
+# Parquet
+upload_files_to_s3(files = list.files(folder, pattern = "\\.parquet$", full.names = TRUE),
+                   selected_bucket=selected_bucket,
+                   max_attempts = 3)
+
+# Feather
+upload_files_to_s3(files = list.files(folder, pattern = "\\.feather$", full.names = TRUE),
+                   selected_bucket=selected_bucket,
+                   max_attempts = 3)
 
