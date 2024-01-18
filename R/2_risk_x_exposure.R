@@ -662,8 +662,8 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
 haz_risk_files<-list.files(haz_risk_dir,".tif",full.names = T)
 haz_risk_files<-haz_risk_files[!grepl("_any.tif",haz_risk_files)]
 overwrite<-F
-do_ha<-F
-do_n<-F
+do_ha<-T
+do_n<-T
 
 for(SEV in tolower(severity_classes$class[2])){
   #### Multiply Hazard Risk by Exposure ####
@@ -764,7 +764,7 @@ for(SEV in tolower(severity_classes$class[2])){
     flush.console()
     
     data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
-    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex), dsn=file0)
+    sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
     rm(data_ex)
     gc()
   }
@@ -809,7 +809,7 @@ for(SEV in tolower(severity_classes$class[2])){
       flush.console()
       
       data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
-      sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex), dsn=file0)
+      sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
       rm(data_ex)
       gc()
     }
@@ -855,7 +855,7 @@ for(SEV in tolower(severity_classes$class[2])){
       flush.console()
       
       data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
-      sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex), dsn=file0)
+      sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
       rm(data_ex)
       gc()
     }
@@ -1027,8 +1027,8 @@ for(SEV in tolower(severity_classes$class[2])){
 # Any hazard only ####
 haz_risk_files<-list.files(haz_risk_dir,"_any.tif",full.names = T)
 overwrite<-F
-do_ha<-F
-do_n<-F
+do_ha<-T
+do_n<-T
 
 for(SEV in tolower(severity_classes$class[2])){
   
