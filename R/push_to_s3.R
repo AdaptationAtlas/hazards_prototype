@@ -1,0 +1,167 @@
+Sys.setenv(
+  AWS_ACCESS_KEY_ID = 'AKIAXU7P2KEEUWDPPMFW',
+  AWS_SECRET_ACCESS_KEY = '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',
+  AWS_REGION = "us-east-1"
+)
+
+
+library(s3fs)
+library(pbapply)
+library(future)
+library(future.apply)
+library(gdalUtilities)
+library(terra)
+
+#list buckets
+(buckets<-s3_dir_ls())
+
+# select a bucket
+selected_bucket <- buckets[2]
+
+# show directories
+s3_dir_ls(selected_bucket)
+
+# Add folder 1 ####
+# Define the new directory name
+new_directory_name <- "risk_prototype" # Replace with your desired directory name
+# Create the new directory in the selected bucket
+s3_dir_create(paste0(selected_bucket, "/", new_directory_name))
+# show directories
+s3_dir_ls(selected_bucket)
+
+# Add folder 2 ####
+# select a bucket
+selected_bucket <- "s3://digital-atlas/risk_prototype"
+new_directory_name<-"data"
+# Create the new directory in the selected bucket
+s3_dir_create(paste0(selected_bucket, "/", new_directory_name))
+# show directories
+s3_dir_ls(selected_bucket)
+
+# Add folder 3 ####
+# select a bucket
+selected_bucket <- "s3://digital-atlas/risk_prototype/data"
+new_directory_name<-"hazard_risk_vop"
+# Create the new directory in the selected bucket
+s3_dir_create(paste0(selected_bucket, "/", new_directory_name))
+# show directories
+s3_dir_ls(selected_bucket)
+
+# Add folder 4 ####
+# select a bucket
+selected_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_risk_vop"
+new_directory_name<-"annual"
+# Create the new directory in the selected bucket
+s3_dir_create(paste0(selected_bucket, "/", new_directory_name))
+# show directories
+s3_dir_ls(selected_bucket)
+
+# Upload Data ####
+# select a bucket
+selected_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual"
+
+# Select a folder to upload
+folder<-"Data/hazard_risk_vop/annual"
+
+# List tif files in the folder
+files_tif<-list.files(folder,".tif",full.names = T)
+# Remove any COGs from the tif list
+files_tif<-files_tif[!grepl("_COG.tif",files_tif)]
+
+# List parquet files in the folder
+files_parquet<-list.files(folder,".parquet",full.names = T)
+
+# List feather files in the folder
+files_feather<-list.files(folder,".feathert",full.names = T)
+
+# Prepare tif data by converting to COG format ####
+# Update tifs to cog format
+convert_to_cog <- function(file,delete=T,rename=T) {
+
+    is_cog<-grepl("LAYOUT=COG",gdalUtilities::gdalinfo(file))
+    closeAllConnections()
+  
+    if(is_cog==F){
+    # Define the new file name
+    file_out <- sub(".tif$", "_COG.tif", file)
+    
+    if(!file.exists(file_out)){
+      data<-terra::rast(file)
+      terra::writeRaster(data,filename = file_out,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"),overwrite=T)
+    }
+    
+    if(delete==T){
+     unlink(file,recursive = T)
+    }
+      if(rename==T){
+        if(!file.exists(file)){
+         file.rename(file_out,file)
+        }else{
+        print("Unlink not working COG name retained")
+      }
+    }
+    
+    }
+    
+}
+
+# Set up parallel backend
+plan(multisession,workers=10)  # Change to multicore on Unix/Linux
+
+# Apply the function to each file
+future_sapply(files_tif, convert_to_cog,future.packages = c("gdalUtilities","terra"),delete=T,rename=T)
+
+plan(sequential)
+closeAllConnections()
+
+# Remove non-cog files
+# This should now be handle in the function and is redundant, delete when confirmed
+#files_cog<-list.files(folder,"_COG.tif",full.names = T)
+
+#if(length(files_tif)==length(files_cog)){
+ # unlink(paste0(getwd(),"/",files_tif),recursive = TRUE)
+  #new_names<-gsub("_COG.tif",".tif",files_cog)
+  #file.rename(files_cog,new_names)
+#}
+
+
+# Upload tifs to S3 bucket ####
+upload_files_to_s3 <- function(files, selected_bucket, max_attempts = 3) {
+  
+  if (sum(grepl("_COG.tif", files)) > 0) {
+    stop("COG names still exist in tif directory, indicating an issue.")
+  } else {
+    for (i in seq_along(files)) {
+      cat('\r', paste("File:", i, "/", length(files)), "           ")
+      flush.console()
+      
+      s3_file_path <- paste0(selected_bucket, "/", basename(files[i]))
+      
+      tryCatch({
+        attempt <- 1
+        while(attempt <= max_attempts) {
+          file_check <- s3_file_exists(s3_file_path)
+          if (!file_check) {
+            s3_file_upload(files[i], s3_file_path)
+            
+            # Check if upload successful
+            file_check <- s3_file_exists(s3_file_path)
+            if (file_check) break # Exit the loop if upload is successful
+          }
+          
+          if (attempt == max_attempts && !file_check) {
+            stop("File did not upload successfully after ", max_attempts, " attempts.")
+          }
+          attempt <- attempt + 1
+        }
+      }, error = function(e) {
+        cat("Error during file upload:", e$message, "\n")
+      })
+    }
+  }
+}
+
+upload_files_to_s3(files = list.files(folder, pattern = "\\.tif$", full.names = TRUE),
+             selected_bucket=selected_bucket,
+             max_attempts = 3)
+
