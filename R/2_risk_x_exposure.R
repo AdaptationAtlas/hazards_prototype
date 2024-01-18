@@ -765,7 +765,7 @@ for(SEV in tolower(severity_classes$class[2])){
     
     data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
     sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex), dsn=file0)
-    rm(data,data_ex)
+    rm(data_ex)
     gc()
   }
   if(!file.exists(file1)|overwrite==T){
@@ -776,7 +776,7 @@ for(SEV in tolower(severity_classes$class[2])){
     
     data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
     sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
-    rm(data,data_ex)
+    rm(data_ex)
     gc()
   }
   if(!file.exists(file2)|overwrite==T){
@@ -787,7 +787,7 @@ for(SEV in tolower(severity_classes$class[2])){
     
     data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
     sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
-    rm(data,data_ex)
+    rm(data_ex)
     gc()
   }
   
@@ -810,7 +810,7 @@ for(SEV in tolower(severity_classes$class[2])){
       
       data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
       sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex), dsn=file0)
-      rm(data,data_ex)
+      rm(data_ex)
       gc()
     }
     if(!file.exists(file1)|overwrite==T){
@@ -821,7 +821,7 @@ for(SEV in tolower(severity_classes$class[2])){
       
       data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
       sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
-      rm(data,data_ex)
+      rm(data_ex)
       gc()
     }
     if(!file.exists(file2)|overwrite==T){
@@ -832,7 +832,7 @@ for(SEV in tolower(severity_classes$class[2])){
       
       data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
       sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
-      rm(data,data_ex)
+      rm(data_ex)
       gc()
     }
   }
@@ -856,7 +856,7 @@ for(SEV in tolower(severity_classes$class[2])){
       
       data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
       sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex), dsn=file0)
-      rm(data,data_ex)
+      rm(data_ex)
       gc()
     }
     if(!file.exists(file1)|overwrite==T){
@@ -867,7 +867,7 @@ for(SEV in tolower(severity_classes$class[2])){
       
       data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
       sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
-      rm(data,data_ex)
+      rm(data_ex)
       gc()
     }
     if(!file.exists(file2)|overwrite==T){
@@ -878,7 +878,7 @@ for(SEV in tolower(severity_classes$class[2])){
       
       data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
       sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
-      rm(data,data_ex)
+      rm(data_ex)
       gc()
     }
   }
@@ -1026,6 +1026,9 @@ for(SEV in tolower(severity_classes$class[2])){
 
 # Any hazard only ####
 haz_risk_files<-list.files(haz_risk_dir,"_any.tif",full.names = T)
+overwrite<-F
+do_ha<-F
+do_n<-F
 
 for(SEV in tolower(severity_classes$class[2])){
   
@@ -1049,10 +1052,8 @@ for(SEV in tolower(severity_classes$class[2])){
     cat('\r',paste("Risk x Exposure | crop:",i,"/",length(haz_risk_files2)," ",crop,"| severity:",SEV))
     flush.console()
     
-    # Load crop hazard rasters (joining solo and interaction of hazards)
-    files<-haz_risk_files2[i]
-    files<-c(files,gsub(".tif","_int.tif",files))
-    haz_risk<-terra::rast(files)
+    # Load crop hazard raster
+    haz_risk<-terra::rast(haz_risk_files2[i])
     
     # multiply risk by vop
     save_name_vop<-paste0(haz_risk_vop_dir,"/",crop,"_",SEV,"_vop_any.tif")
@@ -1128,7 +1129,7 @@ for(SEV in tolower(severity_classes$class[2])){
     
     data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
     sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
-    rm(data,data_ex)
+    rm(data_ex)
     gc()
   }
   if(!file.exists(file1)|overwrite==T){
@@ -1139,7 +1140,7 @@ for(SEV in tolower(severity_classes$class[2])){
     
     data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
     sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
-    rm(data,data_ex)
+    rm(data_ex)
     gc()
   }
   if(!file.exists(file2)|overwrite==T){
@@ -1150,7 +1151,7 @@ for(SEV in tolower(severity_classes$class[2])){
     
     data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
     sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
-    rm(data,data_ex)
+    rm(data_ex)
     gc()
   }
   
@@ -1178,7 +1179,7 @@ for(SEV in tolower(severity_classes$class[2])){
   
       data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
       sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
-      rm(data,data_ex)
+      rm(data_ex)
       gc()
     }
   }
@@ -1205,7 +1206,7 @@ for(SEV in tolower(severity_classes$class[2])){
       
       data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
       sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
-      rm(data,data_ex)
+      rm(data_ex)
       gc()
     }
   }
