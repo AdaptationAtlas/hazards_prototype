@@ -56,13 +56,12 @@ s3_dir_create(paste0(selected_bucket, "/", new_directory_name))
 # show directories
 s3_dir_ls(selected_bucket)
 
-# Upload Data ####
+# Upload Data - haz_vop_risk ####
 # select a bucket
 selected_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual"
 
 # Select a folder to upload
 folder<-"Data/hazard_risk_vop/annual"
-
 
 # Prepare tif data by converting to COG format ####
 
@@ -176,3 +175,33 @@ upload_files_to_s3(files = list.files(folder, pattern = "\\.feather$", full.name
                    selected_bucket=selected_bucket,
                    max_attempts = 3)
 
+
+
+# Upload Data - metadata ####
+# select a folder
+folder<-"metadata"
+# select a bucket
+selected_bucket <- "s3://digital-atlas/risk_prototype/data"
+new_directory_name<-"metadata"
+# Create the new directory in the selected bucket
+s3_dir_create(paste0(selected_bucket, "/", new_directory_name))
+# show directories
+s3_dir_exists(selected_bucket)
+
+upload_files_to_s3(files = list.files(folder, full.names = TRUE),
+                   selected_bucket=selected_bucket,
+                   max_attempts = 3)
+# Upload Data - hazard_risk_class ####
+folder<-"Data/hazard_timeseries_risk/annual"
+# select a bucket
+selected_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_timeseries_risk/annual"
+# Create the new directory in the selected bucket
+s3_dir_create(selected_bucket)
+# show directories
+s3_dir_exists(selected_bucket)
+
+files<-list.files(folder,full.names = T)
+
+upload_files_to_s3(files = files,
+                   selected_bucket=selected_bucket,
+                   max_attempts = 3)
