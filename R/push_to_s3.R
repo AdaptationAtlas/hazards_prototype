@@ -5,6 +5,8 @@ library(future.apply)
 library(gdalUtilities)
 library(terra)
 
+worker_n<-10
+
 # Update tifs to cog format
 convert_to_cog <- function(file,delete=T,rename=T) {
   
@@ -35,10 +37,43 @@ convert_to_cog <- function(file,delete=T,rename=T) {
   
 }
 
-# Upload files S3 bucket
-upload_files_to_s3 <- function(files, selected_bucket,new_only=F, max_attempts = 3,overwrite=F) {
+ctc_wrapper<-function(folder,worker_n=1,delete=T,rename=T){
+  # List tif files in the folder
+  files_tif<-list.files(folder,".tif",full.names = T)
+  # Remove any COGs from the tif list
+  files_tif<-files_tif[!grepl("_COG.tif",files_tif)]
   
-  if(new_only==T){
+  if(worker_n>1){
+    # Update tifs to cog format
+    # Set up parallel backend
+    future::plan(multisession,workers=worker_n)  # Change to multicore on Unix/Linux
+    
+    # Apply the function to each file
+    future.apply::future_sapply(files_tif, convert_to_cog,future.packages = c("gdalUtilities","terra"),delete=delete,rename=rename)
+    
+    future::plan(sequential)
+    closeAllConnections()
+  }else{
+    pbapply::pbsapply(files_tif,convert_to_cog,delete=delete,rename=rename)
+  }
+  return(NULL)
+}
+
+# Upload files S3 bucket
+upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max_attempts = 3,overwrite=F) {
+  
+  # Create the s3 directory if it does not already exist
+  if(!s3_dir_exists(selected_bucket)){
+    s3_dir_create(selected_bucket)
+  }
+  
+  
+  # List files if a folder location is provided
+  if(!is.null(folder)){
+    files<-list.files(folder,full.names = T)
+  }
+  
+  if(overwrite==F){
     #List files in the s3 bucket
     files_s3<-basename(s3_dir_ls(selected_bucket))
     # Remove any files that already exist in the s3 bucket
@@ -57,14 +92,11 @@ upload_files_to_s3 <- function(files, selected_bucket,new_only=F, max_attempts =
       tryCatch({
         attempt <- 1
         while(attempt <= max_attempts) {
-          file_check <- s3_file_exists(s3_file_path)
-          if ((!file_check)|overwrite==T) {
             s3_file_upload(files[i], s3_file_path)
-            
             # Check if upload successful
             file_check <- s3_file_exists(s3_file_path)
             if (file_check) break # Exit the loop if upload is successful
-          }
+          
           
           if (attempt == max_attempts && !file_check) {
             stop("File did not upload successfully after ", max_attempts, " attempts.")
@@ -78,7 +110,36 @@ upload_files_to_s3 <- function(files, selected_bucket,new_only=F, max_attempts =
   }
 }
 
-# Upload Data - haz_vop_risk ####
+# Upload - haz_vop_risk ####
+# Select a local folder
+folder<-"Data/hazard_risk_vop/annual"
+
+# select a bucket
+s3_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual"
+folder<-"Data/hazard_risk_vop/annual"
+
+# Prepare tif data by converting to COG format
+ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+
+# Upload files
+upload_files_to_s3(folder = folder,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=F)
+
+# Upload - metadata ####
+# select a folder
+folder<-"metadata"
+# select a bucket
+s3_bucket <- "s3://digital-atlas/risk_prototype/data/metadata"
+
+# Upload files
+upload_files_to_s3(folder = folder,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=F)
+
+# Upload - hazard_mean
 # Select a local folder
 folder<-"Data/hazard_risk_vop/annual"
 
@@ -110,103 +171,67 @@ closeAllConnections()
 
 # Tifs 
 upload_files_to_s3(files = list.files(folder, pattern = "\\.tif$", full.names = TRUE),
-             selected_bucket=selected_bucket,
-             max_attempts = 3,
-             new_only=T)
-
-# Parquet
-upload_files_to_s3(files = list.files(folder, pattern = "\\.parquet$", full.names = TRUE),
                    selected_bucket=selected_bucket,
                    max_attempts = 3,
                    new_only=T)
+# Upload - hazard mean ####
+folder<-"Data/hazard_mean/annual"
+s3_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_mean/annual"
 
-# Feather
-upload_files_to_s3(files = list.files(folder, pattern = "\\.feather$", full.names = TRUE),
-                   selected_bucket=selected_bucket,
+# Prepare tif data by converting to COG format
+ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+
+
+# Upload files
+upload_files_to_s3(folder = folder,
+                   selected_bucket=s3_bucket,
                    max_attempts = 3,
-                   new_only=T)
+                   overwrite = F)
 
 
 
-# Upload - metadata ####
-# select a folder
-folder<-"metadata"
-# select a bucket
-selected_bucket <- "s3://digital-atlas/risk_prototype/data"
-new_directory_name<-"metadata"
-# Create the new directory in the selected bucket
-s3_dir_create(paste0(selected_bucket, "/", new_directory_name))
-# show directories
-s3_dir_exists(selected_bucket)
+# Upload - hazard timeseries mean ####
+folder<-"Data/hazard_timeseries_mean/annual"
+s3_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_timeseries_mean/annual"
 
-upload_files_to_s3(files = list.files(folder, full.names = TRUE),
-                   selected_bucket=selected_bucket,
-                   max_attempts = 3)
+# Prepare tif data by converting to COG format
+ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+
+# Upload files
+upload_files_to_s3(folder = folder,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=F)
+
+
+
 # Upload - hazard_timeseries_risk ####
 folder<-"Data/hazard_timeseries_risk/annual"
-# select a bucket
-selected_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_timeseries_risk/annual"
-# Create the new directory in the selected bucket
-s3_dir_create(selected_bucket)
-# show directories
-s3_dir_exists(selected_bucket)
+s3_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_timeseries_risk/annual"
 
+# Prepare tif data by converting to COG format
+ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
 
-# Prepare tif data by converting to COG format ####
+# Upload files
+upload_files_to_s3(folder = folder,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=F)
 
-# List tif files in the folder
-files_tif<-list.files(folder,".tif",full.names = T)
-# Remove any COGs from the tif list
-files_tif<-files_tif[!grepl("_COG.tif",files_tif)]
-
-# Update tifs to cog format
-# Set up parallel backend
-plan(multisession,workers=10)  # Change to multicore on Unix/Linux
-
-# Apply the function to each file
-future_sapply(files_tif, convert_to_cog,future.packages = c("gdalUtilities","terra"),delete=T,rename=T)
-
-plan(sequential)
-closeAllConnections()
-
-# Upload cogs
-files_tif<-list.files(folder,".tif",full.names = T)
-
-upload_files_to_s3(files = files,
-                   selected_bucket=selected_bucket,
-                   max_attempts = 3)
 
 # Upload - hazard_timeseries_risk sd ####
 folder<-"Data/hazard_timeseries_sd/annual"
 # select a bucket
-selected_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_timeseries_sd/annual"
-# Create the new directory in the selected bucket
-if(!s3_dir_exists(selected_bucket)){
-  s3_dir_create(selected_bucket)
-}
+s3_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_timeseries_sd/annual"
 
-# Prepare tif data by converting to COG format ####
+# Prepare tif data by converting to COG format
+ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
 
-# List tif files in the folder
-files_tif<-list.files(folder,".tif",full.names = T)
-# Remove any COGs from the tif list
-files_tif<-files_tif[!grepl("_COG.tif",files_tif)]
+# Upload files
+upload_files_to_s3(folder = folder,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=F)
 
-# Update tifs to cog format
-# Set up parallel backend
-plan(multisession,workers=10)  # Change to multicore on Unix/Linux
-
-# Apply the function to each file
-future_sapply(files_tif, convert_to_cog,future.packages = c("gdalUtilities","terra"),delete=T,rename=T)
-
-plan(sequential)
-closeAllConnections()
-
-# Upload cogs
-files_tif<-list.files(folder,".tif",full.names = T)
-
-upload_files_to_s3(files = files,
-                   selected_bucket=selected_bucket,
-                   max_attempts = 3)
 
 
