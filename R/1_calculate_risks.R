@@ -6,6 +6,9 @@ require(data.table)
 require(terra)
 require(doFuture)
 require(stringi)
+require(stringr)
+
+worker_n<-20
 
 # Set location of climate data stacks ####
 
@@ -231,7 +234,7 @@ files2<-list.files(haz_time_class_dir)
 overwrite<-F
 
 registerDoFuture()
-plan("multisession", workers = 12)
+plan("multisession", workers = 20)
 
 foreach(i = 1:length(files)) %dopar% {
   
@@ -242,6 +245,76 @@ foreach(i = 1:length(files)) %dopar% {
     data<-terra::app(data,fun="mean",na.rm=T)
     terra::writeRaster(data,filename = file)
   }
+}
+
+plan(sequential)
+
+# Create crop risk stacks####
+haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
+if(!dir.exists(haz_risk_dir)){
+  dir.create(haz_risk_dir,recursive = T)
+}
+
+names(rast(list.files(haz_risk_dir,".tif",full.names = T)))
+
+
+# Create stacks of hazard x crop/animal x scenario x timeframe
+haz_class_files<-list.files(haz_time_class_dir)
+
+# Subset to severe
+severity_classes<-severity_classes[value %in% c(1,2,3)]
+
+overwrite=F
+
+registerDoFuture()
+plan("multisession", workers = worker_n)
+
+# Note there are only 2-3 severity values here it would be better to divide the next step between more workers
+foreach(i = 1:haz_class[,length(unique(crop))]) %dopar%{
+  
+  for(j in 1:nrow(severity_classes)){
+    
+    crop_focus<-haz_class[,unique(crop)][i]
+    severity_class<-severity_classes[j,class]
+    
+    save_name<-paste0(haz_risk_dir,"/",crop_focus,"_",tolower(severity_class),".tif")
+    
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste("Crop:",i,crop_focus,"| severity:",j,severity_class))
+    flush.console()
+    
+    if(!file.exists(save_name)|overwrite==T){
+      
+      haz_class_crop<-haz_class[crop==crop_focus & description == severity_class]
+      grep_vals<-haz_class_crop[,paste0(paste0(index_name,"-",direction2,threshold),collapse = "|")]
+      haz_class_files2<-gsub("_max_max","max",haz_class_files)
+      haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
+      haz_class_files2<-gsub("_max","",haz_class_files2)
+      haz_class_files2<-gsub("_mean","",haz_class_files2)
+      haz_class_files2<-gsub("_sum","",haz_class_files2)
+      haz_class_files2<-gsub("max","_max",haz_class_files2)
+      haz_class_files2<-gsub("mean","_mean",haz_class_files2)
+      
+      renames<-haz_class_files2[grepl(grep_vals,haz_class_files2)]
+      renames<-gsub("historical_","historic-historic-",renames)
+      renames<-gsub("ssp245_ENSEMBLE_mean_","ssp245-",renames)
+      renames<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",renames)
+      renames<-gsub("2021_2040_","2021_2040-",renames)
+      renames<-gsub("2041_2060_","2041_2060-",renames)
+      renames<-tstrsplit(renames,"-",keep=1:3)
+      renames<-paste0(renames[[1]],"-",renames[[2]],"-",renames[[3]],"-",crop_focus,"-",severity_class)
+      
+      haz_class_files2<-haz_class_files[grepl(grep_vals,haz_class_files2)]
+      
+      data<-terra::rast(paste0(haz_time_risk_dir,"/",haz_class_files2))
+      names(data)<-renames
+      
+      terra::writeRaster(data,file=save_name,overwrite=T)
+    }
+    
+  }
+  
 }
 
 plan(sequential)
@@ -258,7 +331,7 @@ files2<-list.files(haz_timeseries_dir,".tif")
 overwrite<-F
 
 registerDoFuture()
-plan("multisession", workers = 12)
+plan("multisession", workers = 20)
 
 foreach(i = 1:length(files)) %dopar% {
   
@@ -298,74 +371,6 @@ for(j in 1:length(files_fut)){
   save_name_change<-gsub(".tif","_change.tif",files_fut[j])  
   
   terra::writeRaster(change,filename = save_name_change,overwrite=T)
-  
-}
-
-# Create Crop Risk Stacks####
-haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
-if(!dir.exists(haz_risk_dir)){
-  dir.create(haz_risk_dir,recursive = T)
-}
-
-names(rast(list.files(haz_risk_dir,".tif",full.names = T)))
-
-
-# Create stacks of hazard x crop/animal x scenario x timeframe
-haz_class_files<-list.files(haz_time_class_dir)
-
-# Subset to severe
-severity_classes<-severity_classes[value %in% c(2,3)]
-
-overwrite=F
-
-registerDoFuture()
-plan("multisession", workers = 12)
-
-# Note there are only 2-3 severity values here it would be better to divide the next step between more workers
-foreach(i = 1:haz_class[,length(unique(crop))]) %dopar%{
-  
-  for(j in 1:nrow(severity_classes)){
-  
-    crop_focus<-haz_class[,unique(crop)][i]
-    severity_class<-severity_classes[j,class]
-
-    save_name<-paste0(haz_risk_dir,"/",crop_focus,"_",tolower(severity_class),".tif")
-    
-    # Display progress
-    cat('\r                                                                                                                     ')
-    cat('\r',paste("Crop:",i,crop_focus,"| severity:",j,severity_class))
-    flush.console()
-    
-    if(!file.exists(save_name)|overwrite==T){
-      
-      haz_class_crop<-haz_class[crop==crop_focus & description == severity_class]
-      grep_vals<-haz_class_crop[,paste0(paste0(index_name,"-",direction2,threshold),collapse = "|")]
-      haz_class_files2<-gsub("_max_max","max",haz_class_files)
-      haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
-      haz_class_files2<-gsub("_max","",haz_class_files2)
-      haz_class_files2<-gsub("_mean","",haz_class_files2)
-      haz_class_files2<-gsub("_sum","",haz_class_files2)
-      haz_class_files2<-gsub("max","_max",haz_class_files2)
-      haz_class_files2<-gsub("mean","_mean",haz_class_files2)
-      
-      renames<-haz_class_files2[grepl(grep_vals,haz_class_files2)]
-      renames<-gsub("historical_","historic-historic-",renames)
-      renames<-gsub("ssp245_ENSEMBLE_mean_","ssp245-",renames)
-      renames<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",renames)
-      renames<-gsub("2021_2040_","2021_2040-",renames)
-      renames<-gsub("2041_2060_","2041_2060-",renames)
-      renames<-tstrsplit(renames,"-",keep=1:3)
-      renames<-paste0(renames[[1]],"-",renames[[2]],"-",renames[[3]],"-",crop_focus,"-",severity_class)
-      
-      haz_class_files2<-haz_class_files[grepl(grep_vals,haz_class_files2)]
-      
-      data<-terra::rast(paste0(haz_time_risk_dir,"/",haz_class_files2))
-      names(data)<-renames
-      
-      terra::writeRaster(data,file=save_name,overwrite=T)
-    }
-    
-  }
   
 }
 
@@ -417,6 +422,9 @@ combinations_a<-unique(rbindlist(lapply(1:length(crop_choicesX),FUN=function(i){
   }))
 })))
 
+# Join livestock and crop combinations
+combinations<-unique(rbind(combinations_c,combinations_a)[,crop:=NULL])
+
 # Restructure names of classified hazard files so they can be easily searched for scenario x timeframe x hazard x threshold
 haz_class_files<-list.files(haz_time_class_dir,full.names = T)
 haz_class_files2<-list.files(haz_time_class_dir)
@@ -433,14 +441,13 @@ haz_class_files2<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",haz_class_files2)
 haz_class_files2<-gsub("2021_2040_","2021_2040-",haz_class_files2)
 haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
 
-# Join livestock and crop combinations
-combinations<-unique(rbind(combinations_c,combinations_a)[,crop:=NULL])
+
 # Limit to "Severe" class
 combinations<-combinations[severity_class=="Severe"]
 overwrite<-F
 
 registerDoFuture()
-plan("multisession", workers = 10)
+plan("multisession", workers = worker_n)
 
 foreach(i =  sample(1:nrow(combinations))) %dopar% {
 #for(i in 1:nrow(combinations)){
@@ -539,7 +546,7 @@ haz_int_files<-list.files(haz_time_int_dir,".tif",full.names = T)
 overwrite<-T
 
 registerDoFuture()
-plan("multisession", workers = 10)
+plan("multisession", workers = worker_n)
 
 foreach(i =  1:length(crop_choices)) %dopar% {
 #for(i in 1:length(crop_choices)){
