@@ -36,7 +36,14 @@ convert_to_cog <- function(file,delete=T,rename=T) {
 }
 
 # Upload files S3 bucket
-upload_files_to_s3 <- function(files, selected_bucket, max_attempts = 3,overwrite=F) {
+upload_files_to_s3 <- function(files, selected_bucket,new_only=F, max_attempts = 3,overwrite=F) {
+  
+  if(new_only==T){
+    #List files in the s3 bucket
+    files_s3<-basename(s3_dir_ls(selected_bucket))
+    # Remove any files that already exist in the s3 bucket
+    files<-files[!basename(files) %in% files_s3]
+  }
   
   if (sum(grepl("_COG.tif", files)) > 0) {
     stop("COG names still exist in tif directory, indicating an issue.")
@@ -72,6 +79,9 @@ upload_files_to_s3 <- function(files, selected_bucket, max_attempts = 3,overwrit
 }
 
 # Upload Data - haz_vop_risk ####
+# Select a local folder
+folder<-"Data/hazard_risk_vop/annual"
+
 # select a bucket
 selected_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual"
 
@@ -101,17 +111,20 @@ closeAllConnections()
 # Tifs 
 upload_files_to_s3(files = list.files(folder, pattern = "\\.tif$", full.names = TRUE),
              selected_bucket=selected_bucket,
-             max_attempts = 3)
+             max_attempts = 3,
+             new_only=T)
 
 # Parquet
 upload_files_to_s3(files = list.files(folder, pattern = "\\.parquet$", full.names = TRUE),
                    selected_bucket=selected_bucket,
-                   max_attempts = 3)
+                   max_attempts = 3,
+                   new_only=T)
 
 # Feather
 upload_files_to_s3(files = list.files(folder, pattern = "\\.feather$", full.names = TRUE),
                    selected_bucket=selected_bucket,
-                   max_attempts = 3)
+                   max_attempts = 3,
+                   new_only=T)
 
 
 
