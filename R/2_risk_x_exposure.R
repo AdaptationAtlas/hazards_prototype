@@ -1350,18 +1350,19 @@ for(SEV in tolower(severity_classes$class[2])){
 }
 
 # 5) Generic Risk x Human Population #####
-haz_risk_hpop_dir<-paste0("Data",timeframe_choice,"/hazard_risk_hpop")
+haz_risk_hpop_dir<-paste0("Data/hazard_risk_hpop/",timeframe_choice)
 if(!dir.exists(haz_risk_hpop_dir)){
   dir.create(haz_risk_hpop_dir)
 }
 
 overwrite<-T
+haz_risk_files<-list.files(haz_risk_dir,".tif",full.names = T)
+haz_risk_files<-haz_risk_files[grepl("generic_|_any.tif",haz_risk_files)]
 
 for(SEV in tolower(severity_classes$class[2])){
-  haz_risk_files2<-haz_risk_files[grepl(SEV,haz_risk_files)]
+  haz_risk_files2<- haz_risk_files[grepl(SEV,haz_risk_files)]
+ 
   # Intersect human population only with generic hazards
-  haz_risk_files2<-haz_risk_files2[grepl("generic",haz_risk_files2)]
-
     # Display progress
     cat('\r                                                                                                                     ')
     cat('\r',paste("Risk x Exposure - Human | severity:",SEV))

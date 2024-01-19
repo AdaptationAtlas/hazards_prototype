@@ -1,16 +1,39 @@
-Sys.setenv(
-  AWS_ACCESS_KEY_ID = 'AKIAXU7P2KEEUWDPPMFW',
-  AWS_SECRET_ACCESS_KEY = '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',
-  AWS_REGION = "us-east-1"
-)
-
-
 library(s3fs)
 library(pbapply)
 library(future)
 library(future.apply)
 library(gdalUtilities)
 library(terra)
+
+# Update tifs to cog format
+convert_to_cog <- function(file,delete=T,rename=T) {
+  
+  is_cog<-grepl("LAYOUT=COG",gdalUtilities::gdalinfo(file))
+  closeAllConnections()
+  
+  if(is_cog==F){
+    # Define the new file name
+    file_out <- sub(".tif$", "_COG.tif", file)
+    
+    if(!file.exists(file_out)){
+      data<-terra::rast(file)
+      terra::writeRaster(data,filename = file_out,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"),overwrite=T)
+    }
+    
+    if(delete==T){
+      unlink(file,recursive = T)
+    }
+    if(rename==T){
+      if(!file.exists(file)){
+        file.rename(file_out,file)
+      }else{
+        print("Unlink not working COG name retained")
+      }
+    }
+    
+  }
+  
+}
 
 #list buckets
 (buckets<-s3_dir_ls())
@@ -56,6 +79,7 @@ s3_dir_create(paste0(selected_bucket, "/", new_directory_name))
 # show directories
 s3_dir_ls(selected_bucket)
 
+
 # Upload Data - haz_vop_risk ####
 # select a bucket
 selected_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual"
@@ -70,36 +94,6 @@ files_tif<-list.files(folder,".tif",full.names = T)
 # Remove any COGs from the tif list
 files_tif<-files_tif[!grepl("_COG.tif",files_tif)]
 
-# Update tifs to cog format
-convert_to_cog <- function(file,delete=T,rename=T) {
-
-    is_cog<-grepl("LAYOUT=COG",gdalUtilities::gdalinfo(file))
-    closeAllConnections()
-  
-    if(is_cog==F){
-    # Define the new file name
-    file_out <- sub(".tif$", "_COG.tif", file)
-    
-    if(!file.exists(file_out)){
-      data<-terra::rast(file)
-      terra::writeRaster(data,filename = file_out,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"),overwrite=T)
-    }
-    
-    if(delete==T){
-     unlink(file,recursive = T)
-    }
-      if(rename==T){
-        if(!file.exists(file)){
-         file.rename(file_out,file)
-        }else{
-        print("Unlink not working COG name retained")
-      }
-    }
-    
-    }
-    
-}
-
 # Set up parallel backend
 plan(multisession,workers=10)  # Change to multicore on Unix/Linux
 
@@ -108,17 +102,6 @@ future_sapply(files_tif, convert_to_cog,future.packages = c("gdalUtilities","ter
 
 plan(sequential)
 closeAllConnections()
-
-# Remove non-cog files
-# This should now be handle in the function and is redundant, delete when confirmed
-#files_cog<-list.files(folder,"_COG.tif",full.names = T)
-
-#if(length(files_tif)==length(files_cog)){
- # unlink(paste0(getwd(),"/",files_tif),recursive = TRUE)
-  #new_names<-gsub("_COG.tif",".tif",files_cog)
-  #file.rename(files_cog,new_names)
-#}
-
 
 # Upload files S3 bucket ####
 upload_files_to_s3 <- function(files, selected_bucket, max_attempts = 3,overwrite=F) {
@@ -177,7 +160,7 @@ upload_files_to_s3(files = list.files(folder, pattern = "\\.feather$", full.name
 
 
 
-# Upload Data - metadata ####
+# Upload - metadata ####
 # select a folder
 folder<-"metadata"
 # select a bucket
@@ -191,7 +174,7 @@ s3_dir_exists(selected_bucket)
 upload_files_to_s3(files = list.files(folder, full.names = TRUE),
                    selected_bucket=selected_bucket,
                    max_attempts = 3)
-# Upload Data - hazard_risk_class ####
+# Upload - hazard_timeseries_risk ####
 folder<-"Data/hazard_timeseries_risk/annual"
 # select a bucket
 selected_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_timeseries_risk/annual"
@@ -200,8 +183,62 @@ s3_dir_create(selected_bucket)
 # show directories
 s3_dir_exists(selected_bucket)
 
-files<-list.files(folder,full.names = T)
+
+# Prepare tif data by converting to COG format ####
+
+# List tif files in the folder
+files_tif<-list.files(folder,".tif",full.names = T)
+# Remove any COGs from the tif list
+files_tif<-files_tif[!grepl("_COG.tif",files_tif)]
+
+# Update tifs to cog format
+# Set up parallel backend
+plan(multisession,workers=10)  # Change to multicore on Unix/Linux
+
+# Apply the function to each file
+future_sapply(files_tif, convert_to_cog,future.packages = c("gdalUtilities","terra"),delete=T,rename=T)
+
+plan(sequential)
+closeAllConnections()
+
+# Upload cogs
+files_tif<-list.files(folder,".tif",full.names = T)
 
 upload_files_to_s3(files = files,
                    selected_bucket=selected_bucket,
                    max_attempts = 3)
+
+# Upload - hazard_timeseries_risk sd ####
+folder<-"Data/hazard_timeseries_sd/annual"
+# select a bucket
+selected_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_timeseries_sd/annual"
+# Create the new directory in the selected bucket
+if(!s3_dir_exists(selected_bucket)){
+  s3_dir_create(selected_bucket)
+}
+
+# Prepare tif data by converting to COG format ####
+
+# List tif files in the folder
+files_tif<-list.files(folder,".tif",full.names = T)
+# Remove any COGs from the tif list
+files_tif<-files_tif[!grepl("_COG.tif",files_tif)]
+
+# Update tifs to cog format
+# Set up parallel backend
+plan(multisession,workers=10)  # Change to multicore on Unix/Linux
+
+# Apply the function to each file
+future_sapply(files_tif, convert_to_cog,future.packages = c("gdalUtilities","terra"),delete=T,rename=T)
+
+plan(sequential)
+closeAllConnections()
+
+# Upload cogs
+files_tif<-list.files(folder,".tif",full.names = T)
+
+upload_files_to_s3(files = files,
+                   selected_bucket=selected_bucket,
+                   max_attempts = 3)
+
+
