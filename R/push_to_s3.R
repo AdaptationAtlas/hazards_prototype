@@ -110,22 +110,6 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
   }
 }
 
-# Upload - haz_vop_risk ####
-# Select a local folder
-folder<-"Data/hazard_risk_vop/annual"
-
-# select a bucket
-s3_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual"
-folder<-"Data/hazard_risk_vop/annual"
-
-# Prepare tif data by converting to COG format
-ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
-
-# Upload files
-upload_files_to_s3(folder = folder,
-                   selected_bucket=s3_bucket,
-                   max_attempts = 3,
-                   overwrite=F)
 
 # Upload - metadata ####
 # select a folder
@@ -181,14 +165,11 @@ s3_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_mean/annual"
 # Prepare tif data by converting to COG format
 ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
 
-
 # Upload files
 upload_files_to_s3(folder = folder,
                    selected_bucket=s3_bucket,
                    max_attempts = 3,
                    overwrite = F)
-
-
 
 # Upload - hazard timeseries mean ####
 folder<-"Data/hazard_timeseries_mean/annual"
@@ -235,3 +216,29 @@ upload_files_to_s3(folder = folder,
 
 
 
+
+# Upload - haz_risk ####
+s3_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_risk/annual"
+folder<-"Data/hazard_risk/annual"
+
+# Prepare tif data by converting to COG format
+ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+
+# Upload files
+upload_files_to_s3(folder = folder,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=F)
+
+# Upload - haz_vop_risk ####
+s3_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual"
+folder<-"Data/hazard_risk_vop/annual"
+
+# Prepare tif data by converting to COG format
+ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+
+# Upload files
+upload_files_to_s3(folder = folder,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=F)

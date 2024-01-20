@@ -1,16 +1,3 @@
-#Sys.setenv(PATH = paste("C:/OSGeo4W/bin", Sys.getenv("PATH"), sep = ";"))
-#Sys.setenv(PROJ_LIB = "C:/OSGeo4W64/share/proj")
-#Sys.setenv(GDAL_DATA = "C:/OSGeo4W/apps/gdal/share")
-
-#install.packages("sf", type = "source")
-#install.packages("terra", type = "source")
-
-#sf::sf_extSoftVersion()["GDAL"]
-#terra::gdal()
-
-#Sys.getenv("GDAL_DATA")
-#Sys.getenv("PATH")
-
 require(terra)
 require(data.table)
 require(exactextractr)
