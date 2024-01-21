@@ -7,6 +7,8 @@ require(arrow)
 require(feather)
 require(doFuture)
 require(stringr)
+require(httr)
+
 
 # Set up workspace ####
 # Increase GDAL cache size
@@ -25,27 +27,34 @@ Scenarios[,combined:=paste0(Scenario,"-",Time)]
 
 # Set hazards to include in analysis
 hazards<-c("NDD","NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG")
-haz_meta<-data.table::fread("./Data/metadata/haz_metadata.csv")
-haz_class<-fread("./Data/metadata/haz_classes.csv")[,list(index_name,description,direction,crop,threshold)]
+haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
+haz_class<-data.table::fread(haz_class_url)
+haz_class<-haz_class[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
 haz_classes<-unique(haz_class$description)
 
 # Pull out severity classes and associate impact scores
-severity_classes<-unique(fread("./Data/metadata/haz_classes.csv")[,list(description,value)])
+severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
 setnames(severity_classes,"description","class")
 
 # Create combinations of scenarios and hazards
 scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios)))[,Scenario:=as.character(Scenario)][,Time:=as.character(Time)]
 
-timeframe_choice<-"annual"
-#timeframe_choice<-"jagermeyr"
+#timeframe_choice<-"annual"
+timeframe_choice<-"jagermeyr"
 
 # Load crop names from mapspam metadata
-ms_codes<-data.table::fread("./Data/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
+ms_codes<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
 ms_codes<-ms_codes[compound=="no"]
 crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
 
 # Load base raster to resample to 
-base_rast<-terra::rast(list.files("Data/hazard_timeseries_class/annual",".tif",full.names = T))[[1]]
+base_raster<-"base_raster.tif"
+if(!file.exists(base_raster)){
+url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
+httr::GET(url, write_disk(base_raster, overwrite = TRUE))
+}
+
+base_raster<-terra::rast(base_raster)
 
 # Create extraction function
 admin_extract<-function(data,Geographies,FUN="mean",max_cells_in_memory=3*10^7){
@@ -75,14 +84,13 @@ admin_extract<-function(data,Geographies,FUN="mean",max_cells_in_memory=3*10^7){
 # 1) Geographies #####
 # Load and combine geoboundaries
 Geographies<-list(
-  admin2=terra::vect("Data/geoboundaries/admin2_processed.shp"),
-  admin1=terra::vect("Data/geoboundaries/admin1_processed.shp"),
-  admin0=terra::vect("Data/geoboundaries/admin0_processed.shp")
+  admin2=terra::vect(paste0(geoboundaries_location,"/admin2_processed.shp")),
+  admin1=terra::vect(paste0(geoboundaries_location,"/admin1_processed.shp")),
+  admin0=terra::vect(paste0(geoboundaries_location,"/admin0_processed.shp"))
 )
 
 # 2) Exposure variables ####
 
-# create a "base raster" for resampling 
 haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
 haz_risk_files<-list.files(haz_risk_dir,full.names = T)
 haz_risk<-terra::rast(haz_risk_files[1])
@@ -92,23 +100,27 @@ if(!dir.exists(exposure_dir)){
   dir.create(exposure_dir)
 }
   # 2.1) Crops (MapSPAM) #####
-  
-  mapspam_dir<-"Data/mapspam"
-  
+  overwrite<-F
     # 2.1.1) Crop Value of production ######
-  vop<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_V_TA.csv"))
-  crops<-tolower(ms_codes$Code)
-  ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(vop),value=T))
-  vop<-rast(vop[,..ms_fields],type="xyz",crs="EPSG:4326")
-  names(vop)<-gsub("_a","",names(vop))
-  names(vop)<-ms_codes[match(names(vop),tolower(ms_codes$Code)),Fullname]
-  # convert to value/area 
-  crop_vop<-vop/terra::cellSize(vop,unit="ha")
-  # resample data
-  crop_vop<-terra::resample(crop_vop,haz_risk)
-  crop_vop_tot<-crop_vop*cellSize(crop_vop,unit="ha")
+  ms_vop_file<-paste0(exposure_dir,"/crop_vop.tif")
+
+  if(!file.exists(ms_vop_file)|overwrite==T){
+    vop<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_V_TA.csv"))
+    crops<-tolower(ms_codes$Code)
+    ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(vop),value=T))
+    vop<-rast(vop[,..ms_fields],type="xyz",crs="EPSG:4326")
+    names(vop)<-gsub("_a","",names(vop))
+    names(vop)<-ms_codes[match(names(vop),tolower(ms_codes$Code)),Fullname]
+    # convert to value/area 
+    crop_vop<-vop/terra::cellSize(vop,unit="ha")
+    # resample data
+    crop_vop<-terra::resample(crop_vop,haz_risk)
+    crop_vop_tot<-crop_vop*cellSize(crop_vop,unit="ha")
+    terra::writeRaster(crop_vop_tot,filename =ms_vop_file,overwrite=T)
+  }else{
+    crop_vop_tot<-terra::rast(ms_vop_file)
+  }
   
-  terra::writeRaster(crop_vop_tot,filename = paste0(exposure_dir,"/crop_vop.tif"),overwrite=T)
   
   # 2.1.1.2) Extraction of values by admin areas
   file<-paste0(exposure_dir,"/crop_vop_adm_sum.feather")
@@ -136,19 +148,26 @@ if(!dir.exists(exposure_dir)){
   }
   
     # 2.1.2) Crop Harvested Area #####
-  ha<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_H_TA.csv"))
-  crops<-tolower(ms_codes$Code)
-  ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(ha),value=T))
-  ha<-rast(ha[,..ms_fields],type="xyz",crs="EPSG:4326")
-  names(ha)<-gsub("_a","",names(ha))
-  names(ha)<-ms_codes[match(names(ha),tolower(ms_codes$Code)),Fullname]
-  # convert to value/area 
-  crop_ha<-ha/terra::cellSize(ha,unit="ha")
-  # resample  data
-  crop_ha<-terra::resample(crop_ha,haz_risk)
-  crop_ha_tot<-crop_ha*cellSize(crop_ha,unit="ha")
   
-  terra::writeRaster(crop_ha_tot,filename = paste0(exposure_dir,"/crop_ha.tif"),overwrite=T)
+  ms_ha_file<-paste0(exposure_dir,"/crop_ha.tif")
+  
+  if(!file.exists(ms_ha_file)|overwrite==T){
+    ha<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_H_TA.csv"))
+    crops<-tolower(ms_codes$Code)
+    ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(ha),value=T))
+    ha<-rast(ha[,..ms_fields],type="xyz",crs="EPSG:4326")
+    names(ha)<-gsub("_a","",names(ha))
+    names(ha)<-ms_codes[match(names(ha),tolower(ms_codes$Code)),Fullname]
+    # convert to value/area 
+    crop_ha<-ha/terra::cellSize(ha,unit="ha")
+    # resample  data
+    crop_ha<-terra::resample(crop_ha,haz_risk)
+    crop_ha_tot<-crop_ha*cellSize(crop_ha,unit="ha")
+    terra::writeRaster(crop_ha_tot,filename = ms_ha_file,overwrite=T)
+  }else{
+    crop_ha_tot<-terra::rast(ms_ha_file)
+  }
+  
   
   # 2.1.2.1) Extraction of values by admin areas
   file<-paste0(exposure_dir,"/crop_ha_adm_sum.feather")
@@ -176,27 +195,34 @@ if(!dir.exists(exposure_dir)){
   }
     # 2.1.3) Create Crop Masks ######
   commodity_mask_dir<-"Data/commodity_masks"
+  
   if(!dir.exists(commodity_mask_dir)){
     dir.create(commodity_mask_dir)
   }
   
   # Need to use mapspam physical area
-  pa<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_A_TA.csv"))
-  crops<-tolower(ms_codes$Code)
-  ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(pa),value=T))
-  pa<-rast(pa[,..ms_fields],type="xyz",crs="EPSG:4326")
-  names(pa)<-gsub("_a","",names(pa))
-  names(pa)<-ms_codes[match(names(pa),tolower(ms_codes$Code)),Fullname]
-  # convert to value/area 
-  crop_pa<-pa/terra::cellSize(pa,unit="ha")
-  # resample  data
-  crop_pa<-terra::resample(crop_pa,haz_risk)
-  crop_pa_tot<-crop_pa*cellSize(crop_pa,unit="ha")
+  mask_file<-paste0(commodity_mask_dir,"/crop_masks.tif")
   
-  # Areas with >0.01% harvested area = crop mask
-  crop_pa_prop<-crop_pa_tot/cellSize(crop_pa_tot,unit="ha")
-  crop_mask<-terra::classify(crop_pa_prop,  data.frame(from=c(0,0.001),to=c(0.001,2),becomes=c(0,1)))
-  terra::writeRaster(crop_mask,filename=paste0(commodity_mask_dir,"/crop_masks.tif"),overwrite=T)
+  if(!file.exists(mask_file)){
+    pa<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_A_TA.csv"))
+    crops<-tolower(ms_codes$Code)
+    ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(pa),value=T))
+    pa<-rast(pa[,..ms_fields],type="xyz",crs="EPSG:4326")
+    names(pa)<-gsub("_a","",names(pa))
+    names(pa)<-ms_codes[match(names(pa),tolower(ms_codes$Code)),Fullname]
+    # convert to value/area 
+    crop_pa<-pa/terra::cellSize(pa,unit="ha")
+    # resample  data
+    crop_pa<-terra::resample(crop_pa,haz_risk)
+    crop_pa_tot<-crop_pa*cellSize(crop_pa,unit="ha")
+    
+    # Areas with >0.01% harvested area = crop mask
+    crop_pa_prop<-crop_pa_tot/cellSize(crop_pa_tot,unit="ha")
+    crop_mask<-terra::classify(crop_pa_prop,  data.frame(from=c(0,0.001),to=c(0.001,2),becomes=c(0,1)))
+    terra::writeRaster(crop_mask,filename=mask_file,overwrite=T)
+  }else{
+    crop_mask<-terra::rast(mask_file)
+  }
   
   # 2.2) Livestock #####
     # 2.2.3) Livestock Mask #####
