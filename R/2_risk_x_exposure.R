@@ -54,7 +54,7 @@ url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main
 httr::GET(url, write_disk(base_raster, overwrite = TRUE))
 }
 
-base_raster<-terra::rast(base_raster)
+base_rast<-terra::rast(base_raster)
 
 # Create extraction function
 admin_extract<-function(data,Geographies,FUN="mean",max_cells_in_memory=3*10^7){
@@ -203,7 +203,7 @@ if(!dir.exists(exposure_dir)){
   # Need to use mapspam physical area
   mask_file<-paste0(commodity_mask_dir,"/crop_masks.tif")
   
-  if(!file.exists(mask_file)){
+  if(!file.exists(mask_file)|overwrite==T){
     pa<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_A_TA.csv"))
     crops<-tolower(ms_codes$Code)
     ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(pa),value=T))
@@ -226,11 +226,17 @@ if(!dir.exists(exposure_dir)){
   
   # 2.2) Livestock #####
     # 2.2.3) Livestock Mask #####
-    Cattle<-terra::rast("Data/GLW3/5_Ct_2010_Da.tif")
-    Chicken<-terra::rast("Data/GLW3/5_Ch_2010_Da.tif")
-    Goat<-terra::rast("Data/GLW3/5_Gt_2010_Da.tif")
-    Pig<-terra::rast("Data/GLW3/5_Pg_2010_Da.tif")
-    Sheep<-terra::rast("Data/GLW3/5_Sh_2010_Da.tif")
+  mask_ls_file<-paste0(commodity_mask_dir,"/livestock_masks.tif")
+  
+  if(!file.exists(mask_ls_file)|overwrite==T){
+    
+    ls_files<-list.files(glw3_dir,"_Da.tif",full.names = T)
+    
+    Cattle<-terra::rast(grep("_Ct_2010_Da.tif",ls_files,value=T))
+    Chicken<-terra::rast(grep("_Ch_2010_Da.tif",ls_files,value=T))
+    Goat<-terra::rast(grep("_Gt_2010_Da.tif",ls_files,value=T))
+    Pig<-terra::rast(grep("_Pg_2010_Da.tif",ls_files,value=T))
+    Sheep<-terra::rast(grep("_Sh_2010_Da.tif",ls_files,value=T))
     
     TLU<-Cattle*0.7 + Sheep*0.1 + Goat*0.1 + 0.01*Chicken + 0.2*Pig
     
@@ -248,7 +254,7 @@ if(!dir.exists(exposure_dir)){
     # Split mask by highland vs tropical areas
     
     # Load highland mask
-    highlands<-terra::rast("Data/afr_highlands/afr-highlands.asc")
+    highlands<-terra::rast(paste0(afr_highlands_dir,"/afr-highlands.asc"))
     highlands<-terra::resample(highlands,base_rast,method="near")
 
     
@@ -261,14 +267,25 @@ if(!dir.exists(exposure_dir)){
     
     livestock_mask<-c(livestock_mask_high,livestock_mask_low)
     
-    terra::writeRaster(livestock_mask,filename=paste0(commodity_mask_dir,"/livestock_masks.tif"),overwrite=T)
+    terra::writeRaster(livestock_mask,filename=mask_ls_file,overwrite=T)
+    
+  }else{
+    livestock_mask<-terra::rast(mask_ls_file)
+  }
+  
     
     # 2.2.1) Livestock Numbers (GLW3) ######
-    Cattle<-terra::rast("Data/GLW3/5_Ct_2010_Da.tif")
-    Chicken<-terra::rast("Data/GLW3/5_Ch_2010_Da.tif")
-    Goat<-terra::rast("Data/GLW3/5_Gt_2010_Da.tif")
-    Pig<-terra::rast("Data/GLW3/5_Pg_2010_Da.tif")
-    Sheep<-terra::rast("Data/GLW3/5_Sh_2010_Da.tif")
+  livestock_no_file<-paste0(exposure_dir,"/livestock_no.tif")
+  
+  if(!file.exists(livestock_no_file)|overwrite==T){
+    
+    ls_files<-list.files(glw3_dir,"_Da.tif",full.names = T)
+    
+    Cattle<-terra::rast(grep("_Ct_2010_Da.tif",ls_files,value=T))
+    Chicken<-terra::rast(grep("_Ch_2010_Da.tif",ls_files,value=T))
+    Goat<-terra::rast(grep("_Gt_2010_Da.tif",ls_files,value=T))
+    Pig<-terra::rast(grep("_Pg_2010_Da.tif",ls_files,value=T))
+    Sheep<-terra::rast(grep("_Sh_2010_Da.tif",ls_files,value=T))
     
     TLU<-Cattle*0.7 + Sheep*0.1 + Goat*0.1 + 0.01*Chicken + 0.2*Pig
     
@@ -301,7 +318,12 @@ if(!dir.exists(exposure_dir)){
     
     livestock_no<-c(livestock_no_low,livestock_no_high)
     
-    terra::writeRaster(livestock_no,filename = paste0(exposure_dir,"/livestock_no.tif"),overwrite=T)
+    terra::writeRaster(livestock_no,filename = livestock_no_file,overwrite=T)
+    
+  }else{
+    livestock_no<-terra::rast(livestock_no_file)
+  }
+  
   
     # 2.2.1.1) Extraction of values by admin areas
     file<-paste0(exposure_dir,"/livestock_no_adm_sum.feather")
@@ -326,8 +348,15 @@ if(!dir.exists(exposure_dir)){
       feather::write_feather(livestock_no_tot_adm,file)
     }
     # 2.2.2) Livestock VoP ######
+    livestock_vop_file<-paste0(exposure_dir,"/livestock_vop.tif")
+    
+    if(!file.exists(livestock_vop_file)|overwrite==T){
+      
     # Note unit is IUSD 2005
-    livestock_vop<-terra::rast(list.files("Data/livestock_vop",".tif",full.names = T))
+      ls_vop_files<-list.files(ls_vop_dir,".tif",full.names = T)
+      ls_vop_files<-grep("h7",ls_vop_files,value=T)
+      livestock_vop<-terra::rast(ls_vop_files)
+    
     names(livestock_vop)<-c("cattle","poultry","pigs","sheep_goat","total")
     
     # resample to 0.05
@@ -358,8 +387,10 @@ if(!dir.exists(exposure_dir)){
     
     livestock_vop<-c(livestock_vop_low,livestock_vop_high)
     
-    terra::writeRaster(livestock_vop,filename = paste0(exposure_dir,"/livestock_vop.tif"),overwrite=T)
-    
+    terra::writeRaster(livestock_vop,filename = livestock_vop_file,overwrite=T)
+    }else{
+      livestock_vop<-terra::rast(livestock_vop_file)
+    }
     # 2.2.2.1) Extraction of values by admin areas
     file<-paste0(exposure_dir,"/livestock_vop_adm_sum.feather")
     if(!file.exists(file)){
