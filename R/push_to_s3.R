@@ -56,7 +56,6 @@ ctc_wrapper<-function(folder,worker_n=1,delete=T,rename=T){
   }else{
     pbapply::pbsapply(files_tif,convert_to_cog,delete=delete,rename=rename)
   }
-  return(NULL)
 }
 
 # Upload files S3 bucket
@@ -110,12 +109,16 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
   }
 }
 
+# Check existing folders
+files<-s3_dir_ls("s3://digital-atlas/risk_prototype/data")
 
 # Upload - metadata ####
 # select a folder
 folder<-"metadata"
 # select a bucket
 s3_bucket <- "s3://digital-atlas/risk_prototype/data/metadata"
+
+ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
 
 # Upload files
 upload_files_to_s3(folder = folder,
