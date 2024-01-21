@@ -1,5 +1,5 @@
 # Setup if working from Atlas server####
-# Package location
+# Project location
 package_dir<-getwd()
 
 # Set working directory
@@ -10,7 +10,6 @@ if(!dir.exists(working_dir)){
 
 setwd(working_dir)
 
-# Geoboundaries location
 geoboundaries_location<-"/home/jovyan/common_data/atlas_boundaries/processed/geoboundaries_6.0.0"
 mapspam_dir<-"/home/jovyan/common_data/atlas_mapspam/raw"
 glw3_dir<-"/home/jovyan/common_data/atlas_glw"
