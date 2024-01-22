@@ -427,21 +427,26 @@ if(!dir.exists(exposure_dir)){
       }
 
   # 2.4) Population ######
-hpop<-terra::rast(list.files("Data/atlas_pop",".tif",full.names=T))
-hpop<-terra::crop(hpop,Geographies)
-
-# Convert hpop to density
-hpop<-hpop/cellSize(hpop,unit="ha")
-
-# Resample to base raster
-hpop<-terra::resample(hpop,base_rast)
-
-# Convert back to number per cell
-hpop<-hpop*cellSize(hpop,unit="ha")
-
-names(hpop)<-unlist(tail(tstrsplit(names(hpop),"_"),1))
-
-terra::writeRaster(hpop,filename = paste0(exposure_dir,"/hpop.tif"),overwrite=T)
+    file<-paste0(exposure_dir,"/hpop.tif")
+    if(!file.exists(file)){
+          
+      hpop<-terra::rast(list.files(hpop_dir,".tif",full.names=T))
+      hpop<-terra::crop(hpop,Geographies)
+      
+      # Convert hpop to density
+      hpop<-hpop/cellSize(hpop,unit="ha")
+      
+      # Resample to base raster
+      hpop<-terra::resample(hpop,base_rast)
+      
+      # Convert back to number per cell
+      hpop<-hpop*cellSize(hpop,unit="ha")
+      
+      names(hpop)<-unlist(tail(tstrsplit(names(hpop),"_"),1))
+      terra::writeRaster(hpop,filename =file,overwrite=T)
+    }else{
+      hpop<-terra::rast(file)
+      }
 
 # 2.3.1) Extraction of values by admin areas
 hpop_tot_adm<-admin_extract(hpop,Geographies,FUN="sum")

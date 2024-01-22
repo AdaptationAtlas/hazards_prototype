@@ -15,6 +15,7 @@ mapspam_dir<-"/home/jovyan/common_data/atlas_mapspam/raw"
 glw3_dir<-"/home/jovyan/common_data/atlas_glw"
 afr_highlands_dir<-"/home/jovyan/common_data/atlas_afr_highlands"
 ls_vop_dir<-"/home/jovyan/common_data/atlas_livestock/intermediate/vop_total"
+hpop_dir<-"/home/jovyan/common_data/atlas_pop/raw"
 
 # Setup for Pete working locally ####
 
@@ -23,3 +24,4 @@ mapspam_dir<-"Data/mapspam"
 glw3_dir<-"Data/GLW3"
 afr_highlands_dir<-"Data/afr_highlands"
 ls_vop_dir<-"Data/livestock_vop"
+hpop_dir<-"Data/atlas_pop"
