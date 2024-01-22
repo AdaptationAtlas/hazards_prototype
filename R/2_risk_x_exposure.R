@@ -458,31 +458,30 @@ if(!dir.exists(exposure_dir)){
       hpop<-terra::rast(file)
       }
 
-# 2.3.1) Extraction of values by admin areas
-hpop_tot_adm<-admin_extract(hpop,Geographies,FUN="sum")
-
-hpop_tot_adm<-rbindlist(lapply(1:length(levels),FUN=function(i){
-  level<-levels[i]
-  print(level)
+    # 2.4.1) Extraction of hpop by admin areas ####
+    file<-paste0(exposure_dir,"/hpop_adm_sum.feather")
+    if(!file.exists(file)){
+      
+      hpop_tot_adm<-admin_extract(hpop,Geographies,FUN="sum")
+      
+      hpop_tot_adm<-rbindlist(lapply(1:length(levels),FUN=function(i){
+        level<-levels[i]
+        print(level)
+        
+        data<-data.table(data.frame(hpop_tot_adm[[names(level)]]))
+        N<-colnames(data)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(data))]
+        data<-data[,..N]
+        data<-melt(data,id.vars = c("admin_name","iso3"))
+        
+        data[,variable:=gsub("sum.","",variable,fixed=T)][,exposure:="number"][,admin_level:=names(levels)[i]]
+        
+        data
+        
+      }))
   
-  data<-data.table(data.frame(hpop_tot_adm[[names(level)]]))
-  N<-colnames(data)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(data))]
-  data<-data[,..N]
-  data<-melt(data,id.vars = c("admin_name","iso3"))
+     feather::write_feather(hpop_tot_adm,file)
+    }
   
-  data[,variable:=gsub("sum.","",variable,fixed=T)][,exposure:="number"][,admin_level:=names(levels)[i]]
-  
-  data
-  
-}))
-
-feather::write_feather(hpop_tot_adm,paste0(exposure_dir,"/hpop_adm_sum.feather"))
-
-
-terra::writeVector(hpop_tot_adm$admin0, filename =paste0(exposure_dir,"/hpop_adm_sum_adm0.parquet"),filetype="Parquet")
-
-
-
 
 #### Intersect Risk and Exposure ####
 # 1) Hazard Risk ####
