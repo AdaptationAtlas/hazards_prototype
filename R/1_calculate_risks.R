@@ -255,16 +255,18 @@ if(!dir.exists(haz_risk_dir)){
   dir.create(haz_risk_dir,recursive = T)
 }
 
-names(rast(list.files(haz_risk_dir,".tif",full.names = T)))
-
 
 # Create stacks of hazard x crop/animal x scenario x timeframe
-haz_class_files<-list.files(haz_time_class_dir)
+haz_class_files<-list.files(haz_time_class_dir,".tif$")
+
+# Subset to ensemble or historical
+# Note if you want to use models with this process then we will have to adjust the layer naming to accommodate a model name, suggest joining with the scenario with a non - or _ delimiter.
+haz_class_files<-grep("ENSEMBLE|historical",haz_class_files,value=T)
 
 # Subset to severe
-severity_classes<-severity_classes[value %in% c(1,2,3)]
+#severity_classes<-severity_classes[value %in% c(1,2,3)]
 
-overwrite=F
+overwrite=T
 
 registerDoFuture()
 plan("multisession", workers = worker_n)
@@ -302,6 +304,7 @@ foreach(i = 1:haz_class[,length(unique(crop))]) %dopar%{
       renames<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",renames)
       renames<-gsub("2021_2040_","2021_2040-",renames)
       renames<-gsub("2041_2060_","2041_2060-",renames)
+      
       renames<-tstrsplit(renames,"-",keep=1:3)
       renames<-paste0(renames[[1]],"-",renames[[2]],"-",renames[[3]],"-",crop_focus,"-",severity_class)
       
@@ -328,6 +331,12 @@ if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
 
 files<-list.files(haz_timeseries_dir,".tif",full.names = T)
 files2<-list.files(haz_timeseries_dir,".tif")
+
+# Ensure we are only using ensemble or historical data
+files<-grep("ENSEMBLE|historical",files,value=T)
+files2<-grep("ENSEMBLE|historical",files2,value=T)
+
+
 overwrite<-F
 
 registerDoFuture()
@@ -443,7 +452,7 @@ haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
 
 
 # Limit to "Severe" class
-combinations<-combinations[severity_class=="Severe"]
+combinations<-combinations#[severity_class=="Severe"]
 overwrite<-F
 
 registerDoFuture()
@@ -493,7 +502,7 @@ foreach(i =  sample(1:nrow(combinations))) %dopar% {
             data<-terra::mask(haz_sum,haz_sum,maskvalues=1:111,updatevalue=1)
             data<-terra::app(data,fun="mean",na.rm=T)
             names(data)<-paste0(lyr_names[1],"_any")
-            terra::writeRaster(data,filename =  save_name_any,overwrite==T)
+            terra::writeRaster(data,filename =  save_name_any,overwrite=T)
           }
      
           
@@ -508,25 +517,25 @@ foreach(i =  sample(1:nrow(combinations))) %dopar% {
           
           if(!file.exists(save_names[1])|overwrite==T){
             data1<-int_risk(data=haz_sum,interaction_n = 1,lyr_names)
-            terra::writeRaster(data1,filename = save_names[1],overwrite==T)
+            terra::writeRaster(data1,filename = save_names[1],overwrite=T)
           }
    
        
           if(!file.exists(save_names[2])|overwrite==T){
             data2<-int_risk(data=haz_sum,interaction_n = 2,lyr_names)
-            terra::writeRaster(data2,filename = save_names[2],overwrite==T)
+            terra::writeRaster(data2,filename = save_names[2],overwrite=T)
             rm(data2)
           }
           
           if(!file.exists(save_names[3])|overwrite==T){
             data3<-int_risk(data=haz_sum,interaction_n = 3,lyr_names)
-            terra::writeRaster(data3,filename = save_names[3],overwrite==T)
+            terra::writeRaster(data3,filename = save_names[3],overwrite=T)
             rm(data3)
           }
           
           if(!file.exists(save_names[4])|overwrite==T){
             data4<-int_risk(data=haz_sum,interaction_n = 4,lyr_names)
-            terra::writeRaster(data4,filename = save_names[4],overwrite==T)
+            terra::writeRaster(data4,filename = save_names[4],overwrite=T)
             rm(data4)
           }
           
@@ -540,17 +549,17 @@ plan(sequential)
 
 # Interactions: For each crop combine hazards into a single file and add to hazard_risk dir #####
 combinations_ca<-rbind(combinations_c,combinations_a)
-sev_class<-"Severe"
+sev_class<-severity_classes$class
 
-haz_int_files<-list.files(haz_time_int_dir,".tif",full.names = T)
-overwrite<-T
+haz_int_files<-list.files(haz_time_int_dir,".tif$",full.names = T)
+overwrite<-F
 
 registerDoFuture()
 plan("multisession", workers = worker_n)
 
 foreach(i =  1:length(crop_choices)) %dopar% {
 #for(i in 1:length(crop_choices)){
-  for(j in 1:length(sev_class)){
+  for(j in 1:length()){
     
     # Display progress
     cat('\r                                                                                                                     ')
@@ -600,9 +609,17 @@ foreach(i =  1:length(crop_choices)) %dopar% {
                     haz3=unlist(tstrsplit(N1[[3]],"-",keep=1)))
       N[,layer_name:=paste0(scenario,"-",timeframe,"-",haz1,"+",haz2,if(!is.na(haz3[1])){paste0("+",haz3[1])}else{""},"-",crop_focus,"-",sev_class[j]),by=haz3]
       
+      # Check for missing data
+      N[,nlayers:=.N,by=list(scenario,timeframe)]
+      
+      if(!N[,length(unique(nlayers))==1]){
+        print(N)
+        stop("Appears to be missing interaction files in some scenario x timeframe combinations")
+      }
+      
       names(data)<-N$layer_name
       
-      terra::writeRaster(data,filename = save_name_any,overwrite=overwrite)
+      terra::writeRaster(data,filename = save_name_any,overwrite=T)
       
       }
       
@@ -629,9 +646,17 @@ foreach(i =  1:length(crop_choices)) %dopar% {
                       haz3=unlist(tstrsplit(N1[[3]],"-",keep=1)))
         N[,layer_name:=paste0(scenario,"-",timeframe,"-",haz1,"+",haz2,if(!is.na(haz3[1])){paste0("+",haz3[1])}else{""},"-",crop_focus,"-",sev_class[j]),by=haz3]
        
+        # Check for missing data
+        N[,nlayers:=.N,by=list(scenario,timeframe)]
+        
+        if(!N[,length(unique(nlayers))==1]){
+          print(N)
+          stop("Appears to be missing interaction files in some scenario x timeframe combinations")
+        }
+        
         names(data)<-N$layer_name
         
-        terra::writeRaster(data,filename = save_name2,overwrite=overwrite)
+        terra::writeRaster(data,filename = save_name2,overwrite=T)
       }
     
       
@@ -641,11 +666,11 @@ plan(sequential)
 
 # Check results 
 file<-list.files(haz_risk_dir,"_int",full.names = T)
-names(rast(file[1]))
+names(rast(file[111]))
 plot(rast(file[1]))
 
 
-# Calculate change for classified values ####
+# Non-Essential: Calculate change for classified values ####
 files<-list.files(haz_class_dir,".tif",full.names = T)
 files_hist<-grep("historic",files,value = T)
 
@@ -678,7 +703,7 @@ for(i in 1:length(files_hist)){
 }
 
 
-# Create Classified Risk Stacks ####
+# Redundant? Create Classified Risk Stacks ####
 risk_threshold<-0.5
 haz_risk_dir_class<-paste0("Data/hazard_risk_class/t",risk_threshold,"/",timeframe_choice)
 if(!dir.exists(haz_risk_dir_class)){
