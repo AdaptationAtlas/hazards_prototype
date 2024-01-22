@@ -1,4 +1,3 @@
-
 # Load R functions & packages ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
@@ -9,19 +8,6 @@ require(stringi)
 require(stringr)
 
 worker_n<-20
-
-# Set location of climate data stacks ####
-
-#timeframe_choice<-"annual"
-timeframe_choice<-"jagermeyr"
-
-# Working locally
-#haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice
-
-# Working on cglabs server
-if(timeframe_choice!="annual"){
-  haz_timeseries_dir<-paste0("/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal/by_season/",timeframe_choice,"/hazard_timeseries")
-}
 
 # Set up workspace ####
 # Set scenarios and time frames to analyse
@@ -171,7 +157,9 @@ Thresholds_U[,code:=paste0(direction,threshold)
 ][,code:=gsub(">","G",code)]
 
 files<-list.files(haz_timeseries_dir,".tif",full.names = T)
-files<-files[!grepl("ENSEMBLEsd",files)]
+# Ensure we are only using ensemble or historical data (for individual models we would need to customize the layer name functions of some sections)
+files<-grep("ENSEMBLEmean|historical",files,value=T)
+
 overwrite<-F
 n<-0
 
@@ -231,6 +219,12 @@ if(!dir.exists(haz_time_risk_dir)){dir.create(haz_time_risk_dir,recursive=T)}
 
 files<-list.files(haz_time_class_dir,full.names = T)
 files2<-list.files(haz_time_class_dir)
+
+# Ensure we are only using ensemble or historical data
+files<-grep("ENSEMBLE|historical",files,value=T)
+files2<-grep("ENSEMBLE|historical",files2,value=T)
+
+
 overwrite<-F
 
 registerDoFuture()
