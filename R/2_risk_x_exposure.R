@@ -1,14 +1,27 @@
-require(terra)
-require(data.table)
-require(exactextractr)
-require(sf)
-require(sfarrow)
-require(arrow)
-require(feather)
-require(doFuture)
-require(stringr)
-require(httr)
+# Install and load packages ####
+load_and_install_packages <- function(packages) {
+  for (package in packages) {
+    if (!require(package, character.only = TRUE)) {
+      install.packages(package)
+      library(package, character.only = TRUE)
+    }
+  }
+}
 
+# List of packages to be loaded
+packages <- c("terra", 
+              "data.table", 
+              "exactextractr", 
+              "sf", 
+              "sfarrow", 
+              "arrow",
+              "feather",
+              "doFuture",
+              "stringr", 
+              "httr")
+
+# Call the function to install and load packages
+load_and_install_packages(packages)
 
 # Set up workspace ####
 # Increase GDAL cache size
@@ -38,9 +51,6 @@ setnames(severity_classes,"description","class")
 
 # Create combinations of scenarios and hazards
 scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios)))[,Scenario:=as.character(Scenario)][,Time:=as.character(Time)]
-
-#timeframe_choice<-"annual"
-timeframe_choice<-"jagermeyr"
 
 # Load crop names from mapspam metadata
 ms_codes<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
@@ -479,12 +489,32 @@ terra::writeVector(hpop_tot_adm$admin0, filename =paste0(exposure_dir,"/hpop_adm
 haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
 haz_risk_files<-list.files(haz_risk_dir,".tif",full.names = T)
 haz_risk_files<-haz_risk_files[!grepl("_any.tif",haz_risk_files)]
+haz_risk_files<-haz_risk_files[!grepl(".aux.xml",haz_risk_files)]
 
 overwrite<-F
 
 # max_cells_in_memory<-14452723000 # It should be faster preloading the entire working to memory, this can be done by increase this argument and adding the argument max_cells_in_memory=max_cells_in_memory to the admin_extract function
+grep("pigeon",haz_risk_files)
+haz_risk_files[122]
+X<-rast(haz_risk_files[122])
+names(X)
 
-for(SEV in tolower(severity_classes$class[2])){
+names_n<-table(names(haz_risk))
+names_n[names_n>1]
+# ssp585_ACCESS-ESM1-5_2041_2060-pigeonpea-Moderate == 13
+
+# Issue is that there is no name mentioned in the layer title!
+N<-which(names(haz_risk)=="ssp585_ACCESS-ESM1-5_2041_2060-pigeonpea-Moderate")
+haz_risk[[N]]
+
+# Where is issue coming from?
+X<-grep("pigeonpea_moderate",haz_risk_files,value=T)
+names(rast(X[2]))
+# Issue is coming from interaction files and interaction names
+# Next check where issue is coming from the raw interaction calcs or the renaming when consolidating by crop (suspect the latter)
+
+
+for(SEV in tolower(severity_classes$class)){
   print(SEV)
   if((!file.exists(paste0(haz_risk_dir,"/haz_risk_adm0_",SEV,".parquet")))|overwrite==T){
     haz_risk<-terra::rast(haz_risk_files[grepl(SEV,haz_risk_files)])
