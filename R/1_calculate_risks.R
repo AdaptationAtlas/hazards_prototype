@@ -269,14 +269,12 @@ sum(table(haz_class_files2)>1)
 # Subset to severe
 #severity_classes<-severity_classes[value %in% c(1,2,3)]
 
-overwrite=T
+overwrite=F
+crops<-haz_class[,unique(crop)]
 
 registerDoFuture()
 plan("multisession", workers = worker_n)
 
-crops<-haz_class[,unique(crop)]
-
-# Note there are only 2-3 severity values here it would be better to divide the next step between more workers
 foreach(i = 1:length(crops)) %dopar%{
   
   for(j in 1:nrow(severity_classes)){
@@ -623,6 +621,10 @@ foreach(i =  1:length(crop_choices)) %dopar% {
         stop("Appears to be missing interaction files in some scenario x timeframe combinations")
       }
       
+      if(any(table(N$layer_name))>1){
+        stop("Non-unique layer names are present!")
+      }
+      
       names(data)<-N$layer_name
       
       terra::writeRaster(data,filename = save_name_any,overwrite=T)
@@ -658,6 +660,10 @@ foreach(i =  1:length(crop_choices)) %dopar% {
         if(!N[,length(unique(nlayers))==1]){
           print(N)
           stop("Appears to be missing interaction files in some scenario x timeframe combinations")
+        }
+        
+        if(any(table(N$layer_name))>1){
+          stop("Non-unique layer names are present!")
         }
         
         names(data)<-N$layer_name
