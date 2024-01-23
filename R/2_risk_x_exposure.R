@@ -111,14 +111,14 @@ if(!dir.exists(exposure_dir)){
 }
   # 2.1) Crops (MapSPAM) #####
   overwrite<-F
-    # 2.1.1) Crop Value of production ######
+    # 2.1.1) Crop VoP (Value of production) ######
   ms_vop_file<-paste0(exposure_dir,"/crop_vop.tif")
 
   if(!file.exists(ms_vop_file)|overwrite==T){
     vop<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_V_TA.csv"))
     crops<-tolower(ms_codes$Code)
     ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(vop),value=T))
-    vop<-rast(vop[,..ms_fields],type="xyz",crs="EPSG:4326")
+    vop<-terra::rast(vop[,..ms_fields],type="xyz",crs="EPSG:4326")
     names(vop)<-gsub("_a","",names(vop))
     names(vop)<-ms_codes[match(names(vop),tolower(ms_codes$Code)),Fullname]
     # convert to value/area 
@@ -133,7 +133,7 @@ if(!dir.exists(exposure_dir)){
   
   
   # 2.1.1.2) Extraction of values by admin areas
-  file<-paste0(exposure_dir,"/crop_vop_adm_sum.feather")
+  file<-paste0(exposure_dir,"/crop_vop_adm_sum.parquet")
   if(!file.exists(file)){
     crop_vop_tot_adm<-admin_extract(crop_vop_tot,Geographies,FUN="sum")
     
@@ -154,7 +154,7 @@ if(!dir.exists(exposure_dir)){
     }))
     crop_vop_tot_adm_sum[,crop:=gsub("."," ",crop,fixed=T)]
     
-    feather::write_feather(crop_vop_tot_adm_sum,file)
+    arrow::write_parquet(crop_vop_tot_adm_sum,file)
   }
   
     # 2.1.2) Crop Harvested Area #####
@@ -180,7 +180,7 @@ if(!dir.exists(exposure_dir)){
   
   
   # 2.1.2.1) Extraction of values by admin areas
-  file<-paste0(exposure_dir,"/crop_ha_adm_sum.feather")
+  file<-paste0(exposure_dir,"/crop_ha_adm_sum.parquet")
   if(!file.exists(file)){
     crop_ha_tot_adm<-admin_extract(crop_ha_tot,Geographies,FUN="sum")
     
@@ -201,7 +201,7 @@ if(!dir.exists(exposure_dir)){
     
     crop_ha_tot_adm_sum[,crop:=gsub("."," ",crop,fixed=T)]
     
-    feather::write_feather(crop_ha_tot_adm_sum,file)
+        arrow::write_parquet(crop_ha_tot_adm_sum,file)
   }
     # 2.1.3) Create Crop Masks ######
   commodity_mask_dir<-"Data/commodity_masks"
@@ -336,7 +336,7 @@ if(!dir.exists(exposure_dir)){
   
   
     # 2.2.1.1) Extraction of values by admin areas
-    file<-paste0(exposure_dir,"/livestock_no_adm_sum.feather")
+    file<-paste0(exposure_dir,"/livestock_no_adm_sum.parquet")
     if(!file.exists(file)){
       livestock_no_tot_adm<-admin_extract(livestock_no,Geographies,FUN="sum")
       
@@ -355,7 +355,7 @@ if(!dir.exists(exposure_dir)){
         
       }))
       
-      feather::write_feather(livestock_no_tot_adm,file)
+          arrow::write_parquet(livestock_no_tot_adm,file)
     }
     # 2.2.2) Livestock VoP ######
     livestock_vop_file<-paste0(exposure_dir,"/livestock_vop.tif")
@@ -402,7 +402,7 @@ if(!dir.exists(exposure_dir)){
       livestock_vop<-terra::rast(livestock_vop_file)
     }
     # 2.2.2.1) Extraction of values by admin areas
-    file<-paste0(exposure_dir,"/livestock_vop_adm_sum.feather")
+    file<-paste0(exposure_dir,"/livestock_vop_adm_sum.parquet")
     if(!file.exists(file)){
     livestock_vop_tot_adm<-admin_extract(livestock_vop,Geographies,FUN="sum")
     
@@ -421,11 +421,11 @@ if(!dir.exists(exposure_dir)){
       
     }))
     
-    feather::write_feather(livestock_vop_tot_adm,file)
+        arrow::write_parquet(livestock_vop_tot_adm,file)
     }
     
   # 2.3) Combine exposure totals by admin areas ####
-    file<-paste0(exposure_dir,"/exposure_adm_sum.feather")
+    file<-paste0(exposure_dir,"/exposure_adm_sum.parquet")
     if(!file.exists(file)){
       exposure_adm_sum_tab<-rbind(
         crop_vop_tot_adm_sum,
@@ -433,7 +433,7 @@ if(!dir.exists(exposure_dir)){
         livestock_vop_tot_adm,
         livestock_no_tot_adm
       )
-      feather::write_feather(exposure_adm_sum_tab,file)
+          arrow::write_parquet(exposure_adm_sum_tab,file)
       }
 
   # 2.4) Population ######
@@ -459,7 +459,7 @@ if(!dir.exists(exposure_dir)){
       }
 
     # 2.4.1) Extraction of hpop by admin areas ####
-    file<-paste0(exposure_dir,"/hpop_adm_sum.feather")
+    file<-paste0(exposure_dir,"/hpop_adm_sum.parquet")
     if(!file.exists(file)){
       
       hpop_tot_adm<-admin_extract(hpop,Geographies,FUN="sum")
@@ -479,7 +479,7 @@ if(!dir.exists(exposure_dir)){
         
       }))
   
-     feather::write_feather(hpop_tot_adm,file)
+         arrow::write_parquet(hpop_tot_adm,file)
     }
   
 
@@ -669,7 +669,7 @@ st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin0), dsn=paste0(save_dir_mea
 st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin1), dsn=paste0(save_dir_means,"/haz_means_adm1.parquet"))
 st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin2), dsn=paste0(save_dir_means,"/haz_means_adm2.parquet"))
 
-filename<-paste0(save_dir_means,"/haz_means.feather")
+filename<-paste0(save_dir_means,"/haz_means.parquet")
 
 # Extract data from vector files and restructure into tabular form
 haz_means_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
@@ -703,7 +703,7 @@ haz_means_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
 }))
 
 # Save mean values as feather object
-feather::write_feather(haz_means_tab,filename)
+    arrow::write_parquet(haz_means_tab,filename)
 
 # extract change in mean hazards
 haz_means_change_adm<-admin_extract(haz_means_change,Geographies)
@@ -757,7 +757,7 @@ haz_timeseries_adm<-admin_extract(haz_timeseries,Geographies["admin2"],FUN="mean
 st_write_parquet(obj=sf::st_as_sf(haz_timeseries_adm$admin2), dsn=paste0(haz_timeseries_dir,"/haz_timeseries_adm2.parquet"))
 
 # Restructure data into tabular form
-filename<-paste0(haz_timeseries_dir,"/haz_timeseries.feather")
+filename<-paste0(haz_timeseries_dir,"/haz_timeseries.parquet")
 # Extract data from vector files and restructure into tabular form
 haz_timeseries_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
   level<-levels[i]
@@ -798,7 +798,7 @@ haz_timeseries_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
 }))
 
 # Save mean values as feather object
-feather::write_feather(haz_timeseries_tab,filename)
+    arrow::write_parquet(haz_timeseries_tab,filename)
 
 
 # Extract hazard values by admin areas and average them
@@ -816,7 +816,7 @@ st_write_parquet(obj=sf::st_as_sf(haz_timeseries_adm$admin2), dsn=paste0(haz_tim
 
 
 # Restructure data into tabular form
-filename<-paste0(haz_timeseries_dir,"/haz_timeseries_sd.feather")
+filename<-paste0(haz_timeseries_dir,"/haz_timeseries_sd.parquet")
 # Extract data from vector files and restructure into tabular form
 haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
   level<-levels[i]
@@ -857,7 +857,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
 }))
 
 # Save mean values as feather object
-feather::write_feather(haz_timeseries_sd_tab,filename)
+    arrow::write_parquet(haz_timeseries_sd_tab,filename)
 
 # 5) Commodity Specific Hazard Risk x Crop or Livestock VoP & Crop Harvested Area ####
 haz_risk_vop_dir<-paste0("Data/hazard_risk_vop/",timeframe_choice)
@@ -1150,7 +1150,7 @@ for(SEV in tolower(severity_classes$class[2])){
   }
   
   # Vop
-  filename<-paste0(haz_risk_vop_dir,"/haz_risk_vop_",SEV,".feather")
+  filename<-paste0(haz_risk_vop_dir,"/haz_risk_vop_",SEV,".parquet")
   
   if(!file.exists(filename)){
     # Display progress
@@ -1179,12 +1179,12 @@ for(SEV in tolower(severity_classes$class[2])){
       haz_risk_vop_tab
     }))
     # Save as feather object
-    feather::write_feather(haz_risk_vop_tab,filename)
+        arrow::write_parquet(haz_risk_vop_tab,filename)
   }
   
   # Harvested area
   if(do_ha==T){
-    filename<-paste0(haz_risk_ha_dir,"/haz_risk_ha_",SEV,".feather")
+    filename<-paste0(haz_risk_ha_dir,"/haz_risk_ha_",SEV,".parquet")
     
     if(!file.exists(filename)){
       # Display progress
@@ -1211,13 +1211,13 @@ for(SEV in tolower(severity_classes$class[2])){
       haz_risk_ha_tab
       
     }))
-      feather::write_feather(haz_risk_ha_tab,filename)
+          arrow::write_parquet(haz_risk_ha_tab,filename)
     }
   }
   
   # Numbers
   if(do_n==T){
-    filename<-paste0(haz_risk_n_dir,"/haz_risk_n_",SEV,".feather")
+    filename<-paste0(haz_risk_n_dir,"/haz_risk_n_",SEV,".parquet")
     
     if(!file.exists(filename)){
       haz_risk_n_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
@@ -1243,7 +1243,7 @@ for(SEV in tolower(severity_classes$class[2])){
         haz_risk_n_tab
         
       }))
-      feather::write_feather(haz_risk_n_tab,filename)
+          arrow::write_parquet(haz_risk_n_tab,filename)
     }
   }
   
@@ -1478,7 +1478,7 @@ for(SEV in tolower(severity_classes$class[2])){
   }
   
   # Vop
-  filename<-paste0(haz_risk_vop_dir,"/haz_risk_vop_any_",SEV,".feather")
+  filename<-paste0(haz_risk_vop_dir,"/haz_risk_vop_any_",SEV,".parquet")
   
   if(!file.exists(filename)){
     # Display progress
@@ -1507,12 +1507,12 @@ for(SEV in tolower(severity_classes$class[2])){
       haz_risk_vop_tab
     }))
     # Save as feather object
-    feather::write_feather(haz_risk_vop_tab,filename)
+        arrow::write_parquet(haz_risk_vop_tab,filename)
   }
   
   # Harvested area
   if(do_ha==T){
-    filename<-paste0(haz_risk_ha_dir,"/haz_risk_ha_any_",SEV,".feather")
+    filename<-paste0(haz_risk_ha_dir,"/haz_risk_ha_any_",SEV,".parquet")
     
     if(!file.exists(filename)){
       # Display progress
@@ -1539,12 +1539,12 @@ for(SEV in tolower(severity_classes$class[2])){
         haz_risk_ha_tab
         
       }))
-      feather::write_feather(haz_risk_ha_tab,filename)
+          arrow::write_parquet(haz_risk_ha_tab,filename)
     }
   }
   # Numbers
   if(do_n==T){
-    filename<-paste0(haz_risk_n_dir,"/haz_risk_n_any_",SEV,".feather")
+    filename<-paste0(haz_risk_n_dir,"/haz_risk_n_any_",SEV,".parquet")
     if(!file.exists(filename)){
       haz_risk_n_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
         # Display progress
@@ -1569,7 +1569,7 @@ for(SEV in tolower(severity_classes$class[2])){
         haz_risk_n_tab
         
       }))
-      feather::write_feather(haz_risk_n_tab,filename)
+          arrow::write_parquet(haz_risk_n_tab,filename)
     }
   }
 }
