@@ -23,6 +23,125 @@ packages <- c("terra",
 # Call the function to install and load packages
 load_and_install_packages(packages)
 
+# Create functions ####
+# Create extraction function
+admin_extract<-function(data,Geographies,FUN="mean",max_cells_in_memory=3*10^7){
+  output<-list()
+  if("admin0" %in% names(Geographies)){
+    data0<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin0),fun=FUN,append_cols=c("admin_name","admin0_nam","iso3"),max_cells_in_memory=max_cells_in_memory)
+    data0<-terra::merge(Geographies$admin0,data0)
+    output$admin0<-data0
+  }
+  
+  if("admin1" %in% names(Geographies)){
+    data1<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin1),fun=FUN,append_cols=c("admin_name","admin0_nam","admin1_nam","iso3"),max_cells_in_memory=max_cells_in_memory)
+    data1<-terra::merge(Geographies$admin1,data1)
+    output$admin1<-data1
+  }
+  
+  if("admin2" %in% names(Geographies)){
+    data2<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin2),fun=FUN,append_cols=c("admin_name","admin0_nam","admin1_nam","admin2_nam","iso3"),max_cells_in_memory=max_cells_in_memory)
+    data2<-terra::merge(Geographies$admin2,data2)
+    output$admin2<-data2
+  }
+  
+  return(output)
+}
+
+# Create extraction function wrapper for exposure data
+admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname){
+  
+  file<-paste0(exposure_dir,"/",filename,"_adm_",FUN,".parquet")
+  file0<-gsub("_adm_","_adm0_",file)
+  file1<-gsub("_adm_","_adm1_",file)
+  file2<-gsub("_adm_","_adm2_",file)
+  
+  if(!file.exists(file)|!file.exists(file1)){
+    data_ex<-admin_extract(data,Geographies,FUN="sum")
+    
+    st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
+    st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+    st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+    
+    data_ex<-rbindlist(lapply(1:length(levels),FUN=function(i){
+      level<-levels[i]
+      print(level)
+      
+      
+      data<-data.table(data.frame(data_ex[[names(level)]]))
+      N<-colnames(data)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(data))]
+      data<-data[,..N]
+      data<-melt(data,id.vars = c("admin_name","iso3"))
+      
+      data[,crop:=gsub("sum.","",variable,fixed=T)][,exposure:=varname][,admin_level:=names(levels)[i]][,variable:=NULL]
+      
+      data
+      
+    }))
+    data_ex[,crop:=gsub("."," ",crop,fixed=T)]
+    
+    
+    arrow::write_parquet(data_ex,file)
+  }else{
+    data_ex<- arrow::read_parquet(file)
+  }
+  
+  return(data_ex)
+}
+
+# Create extraction function wrapper for risk data
+admin_extract_wrap2<-function(files,save_dir,filename,severity,overwrite=F,FUN="mean"){
+  
+  for(SEV in tolower(severity)){
+    
+    file0<-paste0(save_dir,"/",filename,"_adm0_",SEV,".parquet")
+    file1<-gsub("_adm0_","_adm1_",file0)
+    file2<-gsub("_adm0_","_adm1_",file0)
+    
+    data<-terra::rast(files[grepl(SEV,files)])
+    
+    
+    
+    if((!file.exists(file0))|overwrite==T){
+      # Display progress
+      cat('\r                                                                                                                                                 ')
+      cat('\r',paste("Adm0 - Severity Class:",SEV))
+      flush.console()
+      
+      data_ex<-admin_extract(data,Geographies["admin0"],FUN=FUN)
+      sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
+    }
+    
+    if((!file.exists(file1))|overwrite==T){
+      # Display progress
+      cat('\r                                                                                                                                                 ')
+      cat('\r',paste("Adm1 - Severity Class:",SEV))
+      flush.console()
+      
+      data_ex<-admin_extract(data,Geographies["admin1"],FUN=FUN)
+      sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+    }
+    
+    
+    if((!file.exists(file2))|overwrite==T){
+      # Display progress
+      cat('\r                                                                                                                                                 ')
+      cat('\r',paste("Adm2 - Severity Class:",SEV))
+      flush.console()
+      
+      data_ex<-admin_extract(data,Geographies["admin2"],FUN=FUN)
+      sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+    }
+    
+  }
+}
+
+
+X<-table(names(data))
+Y<-X[X==4]
+
+plot(data[[which(names(data)==names(Y)[1])]])
+
 # Set up workspace ####
 # Increase GDAL cache size
 terra::gdalCache(60000)
@@ -66,30 +185,6 @@ httr::GET(url, write_disk(base_raster, overwrite = TRUE))
 
 base_rast<-terra::rast(base_raster)
 
-# Create extraction function
-admin_extract<-function(data,Geographies,FUN="mean",max_cells_in_memory=3*10^7){
-  output<-list()
-  if("admin0" %in% names(Geographies)){
-    data0<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin0),fun=FUN,append_cols=c("admin_name","admin0_nam","iso3"),max_cells_in_memory=max_cells_in_memory)
-    data0<-terra::merge(Geographies$admin0,data0)
-    output$admin0<-data0
-  }
-  
-  if("admin1" %in% names(Geographies)){
-    data1<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin1),fun=FUN,append_cols=c("admin_name","admin0_nam","admin1_nam","iso3"),max_cells_in_memory=max_cells_in_memory)
-    data1<-terra::merge(Geographies$admin1,data1)
-    output$admin1<-data1
-  }
-  
-  if("admin2" %in% names(Geographies)){
-    data2<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin2),fun=FUN,append_cols=c("admin_name","admin0_nam","admin1_nam","admin2_nam","iso3"),max_cells_in_memory=max_cells_in_memory)
-    data2<-terra::merge(Geographies$admin2,data2)
-    output$admin2<-data2
-  }
-  
-  return(output)
-}
-
 #### Load datasets (non hazards)
 # 1) Geographies #####
 # Load and combine geoboundaries
@@ -132,47 +227,6 @@ if(!dir.exists(exposure_dir)){
   }
   
   # 2.1.1.2) Extraction of values by admin areas
-
-  admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname){
-
-    file<-paste0(exposure_dir,"/",filename,"_adm_",FUN,".parquet")
-    file0<-gsub("_adm_","_adm0_",file)
-    file1<-gsub("_adm_","_adm1_",file)
-    file2<-gsub("_adm_","_adm2_",file)
-    
-    if(!file.exists(file)|!file.exists(file1)){
-      data_ex<-admin_extract(data,Geographies,FUN="sum")
-      
-      st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
-      st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
-      st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
-      
-      data_ex<-rbindlist(lapply(1:length(levels),FUN=function(i){
-        level<-levels[i]
-        print(level)
-        
-        
-        data<-data.table(data.frame(data_ex[[names(level)]]))
-        N<-colnames(data)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(data))]
-        data<-data[,..N]
-        data<-melt(data,id.vars = c("admin_name","iso3"))
-        
-        data[,crop:=gsub("sum.","",variable,fixed=T)][,exposure:=varname][,admin_level:=names(levels)[i]][,variable:=NULL]
-        
-        data
-        
-      }))
-      data_ex[,crop:=gsub("."," ",crop,fixed=T)]
-      
-  
-      arrow::write_parquet(data_ex,file)
-    }else{
-      data_ex<- arrow::read_parquet(file)
-    }
-    
-    return(data_ex)
-  }
-  
   crop_vop_tot_adm_sum<-admin_extract_wrap(data=crop_vop_tot,save_dir=exposure_dir,filename = "crop_vop",FUN="sum",varname="vop")
   
     # 2.1.2) Crop Harvested Area #####
@@ -420,71 +474,15 @@ if(!dir.exists(exposure_dir)){
 #### Intersect Risk and Exposure ####
 # 1) Hazard Risk ####
 haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
-haz_risk_files<-list.files(haz_risk_dir,".tif",full.names = T)
-haz_risk_files<-haz_risk_files[!grepl("_any.tif",haz_risk_files)]
-haz_risk_files<-haz_risk_files[!grepl(".aux.xml",haz_risk_files)]
 
-overwrite<-F
+files<-list.files(haz_risk_dir,".tif$",full.names = T)
+files<-files[!grepl("_any.tif",files)]
 
-# max_cells_in_memory<-14452723000 # It should be faster preloading the entire working to memory, this can be done by increase this argument and adding the argument max_cells_in_memory=max_cells_in_memory to the admin_extract function
-grep("pigeon",haz_risk_files)
-haz_risk_files[122]
-X<-rast(haz_risk_files[122])
-names(X)
-
-names_n<-table(names(haz_risk))
-names_n[names_n>1]
-# ssp585_ACCESS-ESM1-5_2041_2060-pigeonpea-Moderate == 13
-
-# Issue is that there is no name mentioned in the layer title!
-N<-which(names(haz_risk)=="ssp585_ACCESS-ESM1-5_2041_2060-pigeonpea-Moderate")
-haz_risk[[N]]
-
-# Where is issue coming from?
-X<-grep("pigeonpea_moderate",haz_risk_files,value=T)
-names(rast(X[2]))
-# Issue is coming from interaction files and interaction names
-# Next check where issue is coming from the raw interaction calcs or the renaming when consolidating by crop (suspect the latter)
-
-
-for(SEV in tolower(severity_classes$class)){
-  print(SEV)
-  if((!file.exists(paste0(haz_risk_dir,"/haz_risk_adm0_",SEV,".parquet")))|overwrite==T){
-    haz_risk<-terra::rast(haz_risk_files[grepl(SEV,haz_risk_files)])
-    
-        # Display progress
-        cat('\r                                                                                                                                                 ')
-        cat('\r',paste("Adm0 - Severity Class:",SEV))
-        flush.console()
-        
-        haz_risk_adm<-admin_extract(haz_risk,Geographies["admin0"],FUN="mean")
-        st_write_parquet(obj=sf::st_as_sf(haz_risk_adm$admin0), dsn=paste0(haz_risk_dir,"/haz_risk_adm0_",SEV,".parquet"))
-        # terra::writeVector(haz_risk_adm$admin0, filename =paste0(haz_risk_dir,"/haz_risk_adm0_",SEV,".parquet"),filetype="Parquet")
-        gc()
-        
-        # Display progress
-        cat('\r                                                                                                                                                 ')
-        cat('\r',paste("Adm1 - Severity Class:",SEV))
-        flush.console()
-        
-        haz_risk_adm<-admin_extract(haz_risk,Geographies["admin1"],FUN="mean")
-        st_write_parquet(obj=sf::st_as_sf(haz_risk_adm$admin1), dsn=paste0(haz_risk_dir,"/haz_risk_adm1_",SEV,".parquet"))
-        #terra::writeVector(haz_risk_adm$admin1, filename=paste0(haz_risk_dir,"/haz_risk_adm1_",SEV,".parquet"),filetype="Parquet")
-        
-        gc()
-        
-        # Display progress
-        cat('\r                                                                                                                                                 ')
-        cat('\r',paste("Adm2 - Severity Class:",SEV))
-        flush.console()
-        
-        haz_risk_adm<-admin_extract(haz_risk,Geographies["admin2"],FUN="mean")
-        st_write_parquet(obj=sf::st_as_sf(haz_risk_adm$admin2), dsn=paste0(haz_risk_dir,"/haz_risk_adm2_",SEV,".parquet"))
-        #terra::writeVector(haz_risk_adm$admin2, filename=paste0(haz_risk_dir,"/haz_risk_adm2_",SEV,".parquet"),filetype="Parquet")
-        gc()
-    }
-
-}
+admin_extract_wrap2(files=files,
+                    save_dir = haz_risk_dir,
+                    filename="haz_risk",
+                    severity=severity_classes$class,
+                    overwrite=F)
 
 # 1.1) Hazard Total Risk ####
 
@@ -637,7 +635,7 @@ haz_means_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
 }))
 
 # Save mean values as feather object
-    arrow::write_parquet(haz_means_tab,filename)
+arrow::write_parquet(haz_means_tab,filename)
 
 # extract change in mean hazards
 haz_means_change_adm<-admin_extract(haz_means_change,Geographies)
