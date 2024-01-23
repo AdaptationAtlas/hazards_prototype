@@ -136,12 +136,6 @@ admin_extract_wrap2<-function(files,save_dir,filename,severity,overwrite=F,FUN="
   }
 }
 
-
-X<-table(names(data))
-Y<-X[X==4]
-
-plot(data[[which(names(data)==names(Y)[1])]])
-
 # Set up workspace ####
 # Increase GDAL cache size
 terra::gdalCache(60000)
