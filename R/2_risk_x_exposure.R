@@ -131,37 +131,55 @@ if(!dir.exists(exposure_dir)){
     crop_vop_tot<-terra::rast(ms_vop_file)
   }
   
-  
   # 2.1.1.2) Extraction of values by admin areas
-  file<-paste0(exposure_dir,"/crop_vop_adm_sum.parquet")
-  if(!file.exists(file)){
-    crop_vop_tot_adm<-admin_extract(crop_vop_tot,Geographies,FUN="sum")
+
+  admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname){
+
+    file<-paste0(exposure_dir,"/",filename,"_adm_",FUN,".parquet")
+    file0<-gsub("_adm_","_adm0_",file)
+    file1<-gsub("_adm_","_adm1_",file)
+    file2<-gsub("_adm_","_adm2_",file)
     
-    crop_vop_tot_adm_sum<-rbindlist(lapply(1:length(levels),FUN=function(i){
-      level<-levels[i]
-      print(level)
+    if(!file.exists(file)|!file.exists(file1)){
+      data_ex<-admin_extract(data,Geographies,FUN="sum")
       
+      st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
+      st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+      st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
       
-      data<-data.table(data.frame(crop_vop_tot_adm[[names(level)]]))
-      N<-colnames(data)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(data))]
-      data<-data[,..N]
-      data<-melt(data,id.vars = c("admin_name","iso3"))
+      data_ex<-rbindlist(lapply(1:length(levels),FUN=function(i){
+        level<-levels[i]
+        print(level)
+        
+        
+        data<-data.table(data.frame(data_ex[[names(level)]]))
+        N<-colnames(data)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(data))]
+        data<-data[,..N]
+        data<-melt(data,id.vars = c("admin_name","iso3"))
+        
+        data[,crop:=gsub("sum.","",variable,fixed=T)][,exposure:=varname][,admin_level:=names(levels)[i]][,variable:=NULL]
+        
+        data
+        
+      }))
+      data_ex[,crop:=gsub("."," ",crop,fixed=T)]
       
-      data[,crop:=gsub("sum.","",variable,fixed=T)][,exposure:="vop"][,admin_level:=names(levels)[i]][,variable:=NULL]
-      
-      data
-      
-    }))
-    crop_vop_tot_adm_sum[,crop:=gsub("."," ",crop,fixed=T)]
+  
+      arrow::write_parquet(data_ex,file)
+    }else{
+      data_ex<- arrow::read_parquet(file)
+    }
     
-    arrow::write_parquet(crop_vop_tot_adm_sum,file)
+    return(data_ex)
   }
+  
+  crop_vop_tot_adm_sum<-admin_extract_wrap(data=crop_vop_tot,save_dir=exposure_dir,filename = "crop_vop",FUN="sum",varname="vop")
   
     # 2.1.2) Crop Harvested Area #####
   
-  ms_ha_file<-paste0(exposure_dir,"/crop_ha.tif")
+  file<-paste0(exposure_dir,"/crop_ha.tif")
   
-  if(!file.exists(ms_ha_file)|overwrite==T){
+  if(!file.exists(file)|overwrite==T){
     ha<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_H_TA.csv"))
     crops<-tolower(ms_codes$Code)
     ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(ha),value=T))
@@ -173,36 +191,14 @@ if(!dir.exists(exposure_dir)){
     # resample  data
     crop_ha<-terra::resample(crop_ha,haz_risk)
     crop_ha_tot<-crop_ha*cellSize(crop_ha,unit="ha")
-    terra::writeRaster(crop_ha_tot,filename = ms_ha_file,overwrite=T)
+    terra::writeRaster(crop_ha_tot,filename = file,overwrite=T)
   }else{
-    crop_ha_tot<-terra::rast(ms_ha_file)
+    crop_ha_tot<-terra::rast(file)
   }
-  
   
   # 2.1.2.1) Extraction of values by admin areas
-  file<-paste0(exposure_dir,"/crop_ha_adm_sum.parquet")
-  if(!file.exists(file)){
-    crop_ha_tot_adm<-admin_extract(crop_ha_tot,Geographies,FUN="sum")
-    
-    crop_ha_tot_adm_sum<-rbindlist(lapply(1:length(levels),FUN=function(i){
-      level<-levels[i]
-      print(level)
-      
-      data<-data.table(data.frame(crop_ha_tot_adm[[names(level)]]))
-      N<-colnames(data)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(data))]
-      data<-data[,..N]
-      data<-melt(data,id.vars = c("admin_name","iso3"))
-      
-      data[,crop:=gsub("sum.","",variable,fixed=T)][,exposure:="ha"][,admin_level:=names(levels)[i]][,variable:=NULL]
-      
-      data
-      
-    }))
-    
-    crop_ha_tot_adm_sum[,crop:=gsub("."," ",crop,fixed=T)]
-    
-        arrow::write_parquet(crop_ha_tot_adm_sum,file)
-  }
+  crop_ha_tot_adm_sum<-admin_extract_wrap(data=crop_ha_tot,save_dir=exposure_dir,filename = "crop_ha",FUN="sum",varname="ha")
+
     # 2.1.3) Create Crop Masks ######
   commodity_mask_dir<-"Data/commodity_masks"
   
@@ -334,29 +330,9 @@ if(!dir.exists(exposure_dir)){
     livestock_no<-terra::rast(livestock_no_file)
   }
   
-  
     # 2.2.1.1) Extraction of values by admin areas
-    file<-paste0(exposure_dir,"/livestock_no_adm_sum.parquet")
-    if(!file.exists(file)){
-      livestock_no_tot_adm<-admin_extract(livestock_no,Geographies,FUN="sum")
-      
-      livestock_no_tot_adm<-rbindlist(lapply(1:length(levels),FUN=function(i){
-        level<-levels[i]
-        print(level)
-        
-        data<-data.table(data.frame(livestock_no_tot_adm[[names(level)]]))
-        N<-colnames(data)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(data))]
-        data<-data[,..N]
-        data<-melt(data,id.vars = c("admin_name","iso3"))
-        
-        data[,crop:=gsub("sum.","",variable,fixed=T)][,exposure:="number"][,admin_level:=names(levels)[i]][,variable:=NULL]
-        
-        data
-        
-      }))
-      
-          arrow::write_parquet(livestock_no_tot_adm,file)
-    }
+  livestock_no_tot_adm<-admin_extract_wrap(data=livestock_no,save_dir=exposure_dir,filename = "livestock_no",FUN="sum",varname="number")
+
     # 2.2.2) Livestock VoP ######
     livestock_vop_file<-paste0(exposure_dir,"/livestock_vop.tif")
     
@@ -402,28 +378,8 @@ if(!dir.exists(exposure_dir)){
       livestock_vop<-terra::rast(livestock_vop_file)
     }
     # 2.2.2.1) Extraction of values by admin areas
-    file<-paste0(exposure_dir,"/livestock_vop_adm_sum.parquet")
-    if(!file.exists(file)){
-    livestock_vop_tot_adm<-admin_extract(livestock_vop,Geographies,FUN="sum")
-    
-    livestock_vop_tot_adm<-rbindlist(lapply(1:length(levels),FUN=function(i){
-      level<-levels[i]
-      print(level)
-      
-      data<-data.table(data.frame(livestock_vop_tot_adm[[names(level)]]))
-      N<-colnames(data)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(data))]
-      data<-data[,..N]
-      data<-melt(data,id.vars = c("admin_name","iso3"))
-      
-      data[,crop:=gsub("sum.","",variable,fixed=T)][,exposure:="vop"][,admin_level:=names(levels)[i]][,variable:=NULL]
-      
-      data
-      
-    }))
-    
-        arrow::write_parquet(livestock_vop_tot_adm,file)
-    }
-    
+  livestock_vop_tot_adm<-admin_extract_wrap(data=livestock_vop,save_dir=exposure_dir,filename = "livestock_vop",FUN="sum",varname="vop")
+  
   # 2.3) Combine exposure totals by admin areas ####
     file<-paste0(exposure_dir,"/exposure_adm_sum.parquet")
     if(!file.exists(file)){
@@ -459,30 +415,8 @@ if(!dir.exists(exposure_dir)){
       }
 
     # 2.4.1) Extraction of hpop by admin areas ####
-    file<-paste0(exposure_dir,"/hpop_adm_sum.parquet")
-    if(!file.exists(file)){
-      
-      hpop_tot_adm<-admin_extract(hpop,Geographies,FUN="sum")
-      
-      hpop_tot_adm<-rbindlist(lapply(1:length(levels),FUN=function(i){
-        level<-levels[i]
-        print(level)
-        
-        data<-data.table(data.frame(hpop_tot_adm[[names(level)]]))
-        N<-colnames(data)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(data))]
-        data<-data[,..N]
-        data<-melt(data,id.vars = c("admin_name","iso3"))
-        
-        data[,variable:=gsub("sum.","",variable,fixed=T)][,exposure:="number"][,admin_level:=names(levels)[i]]
-        
-        data
-        
-      }))
+  admin_extract_wrap(data=hpop,save_dir=exposure_dir,filename = "hpop",FUN="sum",varname="number")
   
-         arrow::write_parquet(hpop_tot_adm,file)
-    }
-  
-
 #### Intersect Risk and Exposure ####
 # 1) Hazard Risk ####
 haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
