@@ -312,9 +312,9 @@ foreach(i = 1:length(crops)) %dopar%{
         stop("Non-unique layer names are present!")
       }
       
-      haz_class_files2<-haz_class_files[grepl(grep_vals,haz_class_files2)]
+      files<-haz_class_files[grepl(grep_vals,haz_class_files2)]
       
-      data<-terra::rast(paste0(haz_time_risk_dir,"/",haz_class_files2))
+      data<-terra::rast(paste0(haz_time_risk_dir,"/",files))
       names(data)<-renames
       
       terra::writeRaster(data,file=save_name,overwrite=T)
