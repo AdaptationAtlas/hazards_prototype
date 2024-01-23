@@ -1,7 +1,6 @@
-# Choose timeframe we are working with ####
+# Setup if working from Atlas server####
 timeframe_choice<-"jagermeyr"
 
-# Setup if working from Atlas server####
 # Project location
 package_dir<-getwd()
 
@@ -29,6 +28,7 @@ ls_vop_dir<-"/home/jovyan/common_data/atlas_livestock/intermediate/vop_total"
 hpop_dir<-"/home/jovyan/common_data/atlas_pop/raw"
 
 # Setup for Pete working locally ####
+timeframe_choice<-"annual"
 
 # Set data directories
 geoboundaries_location<-"Data/geoboundaries"
