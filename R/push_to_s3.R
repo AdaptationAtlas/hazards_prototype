@@ -233,12 +233,27 @@ upload_files_to_s3(folder = folder,
                    max_attempts = 3,
                    overwrite=F)
 
+
+
 # Upload - haz_vop_risk ####
 s3_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual"
 folder<-"Data/hazard_risk_vop/annual"
 
 # Prepare tif data by converting to COG format
 ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+
+# Upload files
+upload_files_to_s3(folder = folder,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=F)
+
+# Upload - exposure ####
+s3_bucket <- "s3://digital-atlas/risk_prototype/data/exposure"
+folder<-"Data/exposure"
+
+# Prepare tif data by converting to COG format
+ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
 
 # Upload files
 upload_files_to_s3(folder = folder,
