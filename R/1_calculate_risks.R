@@ -249,13 +249,22 @@ if(!dir.exists(haz_risk_dir)){
   dir.create(haz_risk_dir,recursive = T)
 }
 
-
 # Create stacks of hazard x crop/animal x scenario x timeframe
 haz_class_files<-list.files(haz_time_class_dir,".tif$")
 
 # Subset to ensemble or historical
 # Note if you want to use models with this process then we will have to adjust the layer naming to accommodate a model name, suggest joining with the scenario with a non - or _ delimiter.
 haz_class_files<-grep("ENSEMBLE|historical",haz_class_files,value=T)
+haz_class_files2<-gsub("_max_max","max",haz_class_files)
+haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
+haz_class_files2<-gsub("_max","",haz_class_files2)
+haz_class_files2<-gsub("_mean","",haz_class_files2)
+haz_class_files2<-gsub("_sum","",haz_class_files2)
+haz_class_files2<-gsub("max","_max",haz_class_files2)
+haz_class_files2<-gsub("mean","_mean",haz_class_files2)
+
+# Check names are unique
+sum(table(haz_class_files2)>1)
 
 # Subset to severe
 #severity_classes<-severity_classes[value %in% c(1,2,3)]
@@ -265,12 +274,14 @@ overwrite=T
 registerDoFuture()
 plan("multisession", workers = worker_n)
 
+crops<-haz_class[,unique(crop)]
+
 # Note there are only 2-3 severity values here it would be better to divide the next step between more workers
-foreach(i = 1:haz_class[,length(unique(crop))]) %dopar%{
+foreach(i = 1:length(crops)) %dopar%{
   
   for(j in 1:nrow(severity_classes)){
     
-    crop_focus<-haz_class[,unique(crop)][i]
+    crop_focus<-crops[i]
     severity_class<-severity_classes[j,class]
     
     save_name<-paste0(haz_risk_dir,"/",crop_focus,"_",tolower(severity_class),".tif")
@@ -283,24 +294,25 @@ foreach(i = 1:haz_class[,length(unique(crop))]) %dopar%{
     if(!file.exists(save_name)|overwrite==T){
       
       haz_class_crop<-haz_class[crop==crop_focus & description == severity_class]
-      grep_vals<-haz_class_crop[,paste0(paste0(index_name,"-",direction2,threshold),collapse = "|")]
-      haz_class_files2<-gsub("_max_max","max",haz_class_files)
-      haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
-      haz_class_files2<-gsub("_max","",haz_class_files2)
-      haz_class_files2<-gsub("_mean","",haz_class_files2)
-      haz_class_files2<-gsub("_sum","",haz_class_files2)
-      haz_class_files2<-gsub("max","_max",haz_class_files2)
-      haz_class_files2<-gsub("mean","_mean",haz_class_files2)
-      
+      grep_vals<-haz_class_crop[,paste0(paste0(index_name,"-",direction2,threshold,".tif"),collapse = "|")]
+
       renames<-haz_class_files2[grepl(grep_vals,haz_class_files2)]
       renames<-gsub("historical_","historic-historic-",renames)
       renames<-gsub("ssp245_ENSEMBLE_mean_","ssp245-",renames)
       renames<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",renames)
       renames<-gsub("2021_2040_","2021_2040-",renames)
       renames<-gsub("2041_2060_","2041_2060-",renames)
-      
+      renames<-gsub("PTOT-L","PTOT_L-",renames)
+      renames<-gsub("PTOT-G","PTOT_G-",renames)
+      renames<-gsub("TAVG-L","TAVG_L-",renames)
+      renames<-gsub("TAVG-G","TAVG_G-",renames)
+
       renames<-tstrsplit(renames,"-",keep=1:3)
       renames<-paste0(renames[[1]],"-",renames[[2]],"-",renames[[3]],"-",crop_focus,"-",severity_class)
+      
+      if(any(table(renames))>1){
+        stop("Non-unique layer names are present!")
+      }
       
       haz_class_files2<-haz_class_files[grepl(grep_vals,haz_class_files2)]
       
