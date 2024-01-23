@@ -480,55 +480,13 @@ admin_extract_wrap2(files=files,
 
 # 1.1) Hazard Total Risk ####
 
-haz_risk_files_any<-list.files(haz_risk_dir,"_any.tif",full.names = T)
+files<-list.files(haz_risk_dir,"_any.tif$",full.names = T)
 
-for(SEV in severity_classes$class[2]){
-  haz_risk_files_any2<-grep(paste0("_",SEV,"_"),haz_risk_files_any,value=T,ignore.case = T)
-  data<-terra::rast(haz_risk_files_any2)
-  
-  file0<-paste0(haz_risk_dir,"/haz_risk_adm0_",SEV,"_any.parquet")
-  file1<-paste0(haz_risk_dir,"/haz_risk_adm1_",SEV,"_any.parquet")
-  file2<-paste0(haz_risk_dir,"/haz_risk_adm2_",SEV,"_any.parquet")
-  
-  if(!file.exists(file0)){
-    # Display progress
-    cat('\r                                                                                                                                                 ')
-    cat('\r',paste("Adm0 - Severity Class:",SEV))
-    flush.console()
-    
-    data_ex<-admin_extract(data,Geographies["admin0"],FUN="mean")
-    st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
-    # terra::writeVector(haz_risk_adm$admin0, filename =file0,filetype="Parquet")
-    gc()
-  }
-  
-  if(!file.exists(file1)){
-    # Display progress
-    cat('\r                                                                                                                                                 ')
-    cat('\r',paste("Adm1 - Severity Class:",SEV))
-    flush.console()
-    
-    data_ex<-admin_extract(data,Geographies["admin1"],FUN="mean")
-    st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
-    #terra::writeVector(data_ex$admin1, filename=file1,filetype="Parquet")
-    
-    gc()
-  }
-  
-  if(!file.exists(file2)){
-    # Display progress
-    cat('\r                                                                                                                                                 ')
-    cat('\r',paste("Adm2 - Severity Class:",SEV))
-    flush.console()
-    
-    data_ex<-admin_extract(data,Geographies["admin2"],FUN="mean")
-    st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
-    #terra::writeVector(data_ex$admin2, filename=file2,filetype="Parquet")
-    gc()
-  }
-  
-}
-
+admin_extract_wrap2(files=files,
+                    save_dir = haz_risk_dir,
+                    filename="haz_risk_any",
+                    severity=severity_classes$class,
+                    overwrite=F)
 
 # Check resulting file
 X<-st_read_parquet(paste0(haz_risk_dir,"/haz_risk_adm0_",SEV,"_any.parquet"))
