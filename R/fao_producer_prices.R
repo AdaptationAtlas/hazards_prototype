@@ -30,7 +30,7 @@ require(data.table)
   prod_price<-fread(econ_file)
   
   # Load file for translation of spam to fao stat names/codes ####
-  spam2fao<-fread(file.path(mapspam_dir,"SPAM2010_FAO_crops.csv"))
+  spam2fao<-fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv")
   
   # Are all crops represented in fao name conversion sheet? 
   if(!length(crops[!crops %in% spam2fao$short_spam2010])==0){
