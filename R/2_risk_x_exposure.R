@@ -140,6 +140,9 @@ admin_extract_wrap2<-function(files,save_dir,filename,severity,overwrite=F,FUN="
 # Increase GDAL cache size
 terra::gdalCache(60000)
 
+# workers
+worker_n<-10
+
 # Set scenarios and time frames to analyse
 Scenarios<-c("ssp245","ssp585")
 Times<-c("2021_2040","2041_2060")
@@ -782,10 +785,10 @@ for(SEV in tolower(severity_classes$class)){
   haz_risk_files2<-haz_risk_files[grepl(SEV,haz_risk_files) & !grepl("_int",haz_risk_files)]
 
   #registerDoFuture()
-  #plan("multisession", workers = 10)
+  #plan("multisession", workers = worker_n)
   #foreach(i = 1:length(haz_risk_files2)) %dopar% {
     
-    for(i in 1:length(haz_risk_files2)){
+   for(i in 1:length(haz_risk_files2)){
     
     crop<-gsub(paste0("_",SEV,".tif"),"",tail(tstrsplit(haz_risk_files2[i],"/"),1))
     
@@ -1141,7 +1144,7 @@ overwrite<-F
 do_ha<-T
 do_n<-T
 
-for(SEV in tolower(severity_classes$class[2])){
+for(SEV in tolower(severity_classes$class)){
   
   #### Multiply Hazard Risk by Exposure ####
   
