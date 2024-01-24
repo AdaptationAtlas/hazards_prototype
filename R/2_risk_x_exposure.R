@@ -762,7 +762,7 @@ if(!dir.exists(haz_risk_n_dir)){
 }
 
 # List livestock names
-livestock_choices<-list.files(haz_risk_dir,".tif")
+livestock_choices<-list.files(haz_risk_dir,".tif$")
 livestock_choices<-grep("highland|tropical",livestock_choices,value = T)
 livestock_choices<-unique(unlist(tstrsplit(livestock_choices,"_extr|_seve",keep=1)))
 
@@ -770,11 +770,11 @@ livestock_choices<-unique(unlist(tstrsplit(livestock_choices,"_extr|_seve",keep=
 crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
 
 # Solo and interactions combined into a single file (not any hazard) ####
-haz_risk_files<-list.files(haz_risk_dir,".tif",full.names = T)
-haz_risk_files<-haz_risk_files[!grepl("_any.tif",haz_risk_files)]
+haz_risk_files<-list.files(haz_risk_dir,".tif$",full.names = T)
+haz_risk_files<-haz_risk_files[!grepl("_any.tif$",haz_risk_files)]
 overwrite<-F
-do_ha<-T
-do_n<-T
+do_ha<-F
+do_n<-F
 
 for(SEV in tolower(severity_classes$class[2])){
   #### Multiply Hazard Risk by Exposure ####
@@ -859,8 +859,8 @@ for(SEV in tolower(severity_classes$class[2])){
   #### Extract Risk x Exposure by Geography  ####
   
   # VoP #####
-  haz_risk_vop_files<-list.files(haz_risk_vop_dir,".tif",full.names = T)
-  haz_risk_vop_files<-haz_risk_vop_files[!grepl("_any.tif",haz_risk_vop_files)]
+  haz_risk_vop_files<-list.files(haz_risk_vop_dir,".tif$",full.names = T)
+  haz_risk_vop_files<-haz_risk_vop_files[!grepl("_any.tif$",haz_risk_vop_files)]
   haz_risk_vop_files<-haz_risk_vop_files[grepl(SEV,haz_risk_vop_files)]
   data<-terra::rast(haz_risk_vop_files)
   
@@ -904,8 +904,8 @@ for(SEV in tolower(severity_classes$class[2])){
   
   # Harvested Area #####
   if(do_ha==T){
-    haz_risk_ha_files<-list.files(haz_risk_ha_dir,".tif",full.names = T)
-    haz_risk_ha_files<-haz_risk_ha_files[!grepl("_any.tif",haz_risk_ha_files)]
+    haz_risk_ha_files<-list.files(haz_risk_ha_dir,".tif$",full.names = T)
+    haz_risk_ha_files<-haz_risk_ha_files[!grepl("_any.tif$",haz_risk_ha_files)]
     haz_risk_ha_files<-haz_risk_ha_files[grepl(SEV,haz_risk_ha_files)]
     data<-terra::rast(haz_risk_ha_files)
     
@@ -950,8 +950,8 @@ for(SEV in tolower(severity_classes$class[2])){
   
   # Numbers #####
   if(do_n==T){
-    haz_risk_n_files<-list.files(haz_risk_n_dir,".tif",full.names = T)
-    haz_risk_n_files<-haz_risk_n_files[!grepl("_any.tif",haz_risk_n_files)]
+    haz_risk_n_files<-list.files(haz_risk_n_dir,".tif$",full.names = T)
+    haz_risk_n_files<-haz_risk_n_files[!grepl("_any.tif$",haz_risk_n_files)]
     haz_risk_n_files<-haz_risk_n_files[grepl(SEV,haz_risk_n_files)]
     data<-terra::rast(haz_risk_n_files)
     
@@ -1546,4 +1546,6 @@ for(SEV in tolower(severity_classes$class[2])){
   }
   
 }
+
+
 
