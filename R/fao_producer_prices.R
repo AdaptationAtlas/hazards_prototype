@@ -1,15 +1,21 @@
 require(data.table)
+require(countrycode)
 
   # Load SPAM production data ####
   prod<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_P_TA.csv"))
-  crops<-tolower(ms_codes$Code)
+  
+  ms_codes<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
+  crops<-tolower(ms_codes[compound=="no",Code])
   colnames(prod)<-gsub("_a$","",colnames(prod))
   
   # Read in production value data from FAO ####
-  econ_file<-paste0(fao_dir,"/Prices_E_Africa_NOFLAG.csv")
+  fao_dir<-"Data/fao"
+  
   if(!dir.exists(fao_dir)){
     dir.create(fao_dir,recursive = T)
   }
+  
+  econ_file<-paste0(fao_dir,"/Prices_E_Africa_NOFLAG.csv")
   
   if(!file.exists(econ_file)){
     # Define the URL and set the save path
@@ -251,7 +257,8 @@ require(data.table)
   
   # Load SPAM production data (bring back the two crops we removed)
   prod<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_P_TA.csv"))
-  crops<-tolower(ms_codes$Code)
+  crops<-tolower(ms_codes[compound=="no",Code])
+  
   colnames(prod)<-gsub("_a$","",colnames(prod))
   
   ms_fields<-c("x","y","iso3",sort(crops))
@@ -265,8 +272,9 @@ require(data.table)
   
   # Add back missing crops
   prod_price_cast[,rcof:=acof][,smil:=pmil]
+  prod_price_cast[,country:=countrycode(sourcevar=iso3,origin="iso3c",destination = "country.name")]
   
-  write.table(prod_price_cast,"clipboard",sep="\t",row.names = F)
+  write.table(prod_price_cast,paste0(fao_dir,"/fao_producer_prices_2017.csv"))
   
   # List ms countries
   countries<-prod[,unique(iso3)]
