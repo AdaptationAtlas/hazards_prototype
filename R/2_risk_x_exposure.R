@@ -776,7 +776,7 @@ overwrite<-F
 do_ha<-F
 do_n<-F
 
-for(SEV in tolower(severity_classes$class[2])){
+for(SEV in tolower(severity_classes$class)){
   #### Multiply Hazard Risk by Exposure ####
   
   haz_risk_files2<-haz_risk_files[grepl(SEV,haz_risk_files) & !grepl("_int",haz_risk_files)]
