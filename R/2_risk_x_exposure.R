@@ -49,9 +49,9 @@ admin_extract<-function(data,Geographies,FUN="mean",max_cells_in_memory=3*10^7){
 }
 
 # Create extraction function wrapper for exposure data
-admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname){
+admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographies){
   
-  file<-paste0(exposure_dir,"/",filename,"_adm_",FUN,".parquet")
+  file<-paste0(save_dir,"/",filename,"_adm_",FUN,".parquet")
   file0<-gsub("_adm_","_adm0_",file)
   file1<-gsub("_adm_","_adm1_",file)
   file2<-gsub("_adm_","_adm2_",file)
@@ -90,7 +90,7 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname){
 }
 
 # Create extraction function wrapper for risk data
-admin_extract_wrap2<-function(files,save_dir,filename,severity,overwrite=F,FUN="mean"){
+admin_extract_wrap2<-function(files,save_dir,filename,severity,overwrite=F,FUN="mean",Geographies){
   
   for(SEV in tolower(severity)){
     
@@ -221,7 +221,7 @@ if(!dir.exists(exposure_dir)){
   }
   
   # 2.1.1.2) Extraction of values by admin areas
-  crop_vop_tot_adm_sum<-admin_extract_wrap(data=crop_vop_tot,save_dir=exposure_dir,filename = "crop_vop",FUN="sum",varname="vop")
+  crop_vop_tot_adm_sum<-admin_extract_wrap(data=crop_vop_tot,save_dir=exposure_dir,filename = "crop_vop",FUN="sum",varname="vop",Geographies=Geographies)
   
     # 2.1.2) Crop Harvested Area #####
   
@@ -245,7 +245,7 @@ if(!dir.exists(exposure_dir)){
   }
   
   # 2.1.2.1) Extraction of values by admin areas
-  crop_ha_tot_adm_sum<-admin_extract_wrap(data=crop_ha_tot,save_dir=exposure_dir,filename = "crop_ha",FUN="sum",varname="ha")
+  crop_ha_tot_adm_sum<-admin_extract_wrap(data=crop_ha_tot,save_dir=exposure_dir,filename = "crop_ha",FUN="sum",varname="ha",Geographies=Geographies)
 
     # 2.1.3) Create Crop Masks ######
   commodity_mask_dir<-"Data/commodity_masks"
@@ -379,7 +379,7 @@ if(!dir.exists(exposure_dir)){
   }
   
     # 2.2.1.1) Extraction of values by admin areas
-  livestock_no_tot_adm<-admin_extract_wrap(data=livestock_no,save_dir=exposure_dir,filename = "livestock_no",FUN="sum",varname="number")
+  livestock_no_tot_adm<-admin_extract_wrap(data=livestock_no,save_dir=exposure_dir,filename = "livestock_no",FUN="sum",varname="number",Geographies=Geographies)
 
     # 2.2.2) Livestock VoP ######
     livestock_vop_file<-paste0(exposure_dir,"/livestock_vop.tif")
@@ -426,7 +426,7 @@ if(!dir.exists(exposure_dir)){
       livestock_vop<-terra::rast(livestock_vop_file)
     }
     # 2.2.2.1) Extraction of values by admin areas
-  livestock_vop_tot_adm<-admin_extract_wrap(data=livestock_vop,save_dir=exposure_dir,filename = "livestock_vop",FUN="sum",varname="vop")
+  livestock_vop_tot_adm<-admin_extract_wrap(data=livestock_vop,save_dir=exposure_dir,filename = "livestock_vop",FUN="sum",varname="vop",Geographies=Geographies)
   
   # 2.3) Combine exposure totals by admin areas ####
     file<-paste0(exposure_dir,"/exposure_adm_sum.parquet")
@@ -463,7 +463,7 @@ if(!dir.exists(exposure_dir)){
       }
 
     # 2.4.1) Extraction of hpop by admin areas ####
-  admin_extract_wrap(data=hpop,save_dir=exposure_dir,filename = "hpop",FUN="sum",varname="number")
+  admin_extract_wrap(data=hpop,save_dir=exposure_dir,filename = "hpop",FUN="sum",varname="number",Geographies=Geographies)
   
 #### Intersect Risk and Exposure ####
 # 1) Hazard Risk ####
@@ -476,6 +476,7 @@ admin_extract_wrap2(files=files,
                     save_dir = haz_risk_dir,
                     filename="haz_risk",
                     severity=severity_classes$class,
+                    Geographies=Geographies,
                     overwrite=F)
 
 # 1.1) Hazard Total Risk ####
@@ -486,6 +487,7 @@ admin_extract_wrap2(files=files,
                     save_dir = haz_risk_dir,
                     filename="haz_risk_any",
                     severity=severity_classes$class,
+                    Geographies=Geographies,
                     overwrite=F)
 
 # Check resulting file
