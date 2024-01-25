@@ -37,6 +37,7 @@ if(!file.exists(local_file)){
 }
 
 adaptive_capacity<-data.table(arrow::read_parquet(local_file))
+
 # Cast dataset
 adaptive_capacity_cast<-dcast(adaptive_capacity,admin_code+admin_name+iso3+admin_level+total_pop+rural_pop~vulnerability,value.var="value_binary")
 
