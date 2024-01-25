@@ -2,7 +2,7 @@ require(data.table)
 require(countrycode)
 
   # Load SPAM production data ####
-  prod<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_P_TA.csv"))
+  prod<-fread("Data/mapspam/SSA_P_TA.csv")
   
   ms_codes<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
   crops<-tolower(ms_codes[compound=="no",Code])
@@ -69,11 +69,11 @@ require(countrycode)
   unique(prod[!iso3 %in% prod_price$iso3,list(name_cntr,iso3)])
   prod_price[,unique(Area)]
   
-  # Remove Ethiopia PDR & Sudan (Former)
-  prod_price<-prod_price[!Area %in% c("Ethiopia PDR","Sudan (former)")]
+  # Remove Ethiopia PDR & Sudan (Former) & non-atlas countries
+  prod_price<-prod_price[!Area %in% c("Ethiopia PDR","Sudan (former)","Cabo Verde","Comoros","Mauritius","R\xe9union","Seychelles")]
   
   # Some countries are missing
-  missing_countries<-c("SSD","DJI","SOM","LBR","COD","UGA","GAB","STP","SWZ")
+  missing_countries<-c("SSD","DJI","SOM","LBR","COD","UGA","GAB","SWZ")
   names(missing_countries)<-prod[match(missing_countries,iso3),name_cntr]
   
   
@@ -256,8 +256,8 @@ require(countrycode)
   # Multiply mapspam production by producer price ####
   
   # Load SPAM production data (bring back the two crops we removed)
-  prod<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_P_TA.csv"))
-  crops<-tolower(ms_codes[compound=="no",Code])
+  prod<-fread("Data/mapspam/SSA_P_TA.csv")
+  Crops<-tolower(ms_codes[compound=="no",Code])
   
   colnames(prod)<-gsub("_a$","",colnames(prod))
   
@@ -274,7 +274,7 @@ require(countrycode)
   prod_price_cast[,rcof:=acof][,smil:=pmil]
   prod_price_cast[,country:=countrycode(sourcevar=iso3,origin="iso3c",destination = "country.name")]
   
-  write.table(prod_price_cast,paste0(fao_dir,"/fao_producer_prices_2017.csv"))
+  fwrite(prod_price_cast,paste0(fao_dir,"/fao_producer_prices_2017.csv"),bom=T)
   
   # List ms countries
   countries<-prod[,unique(iso3)]
