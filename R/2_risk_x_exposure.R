@@ -11,7 +11,8 @@ load_and_install_packages <- function(packages) {
 # List of packages to be loaded
 packages <- c("terra", 
               "data.table", 
-              "exactextractr", 
+              "exactextractr",
+              "s3fs",
               "sf", 
               "sfarrow", 
               "arrow",
@@ -28,19 +29,19 @@ load_and_install_packages(packages)
 admin_extract<-function(data,Geographies,FUN="mean",max_cells_in_memory=3*10^7){
   output<-list()
   if("admin0" %in% names(Geographies)){
-    data0<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin0),fun=FUN,append_cols=c("admin_name","admin0_nam","iso3"),max_cells_in_memory=max_cells_in_memory)
+    data0<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin0),fun=FUN,append_cols=c("a2_a1_a0","admin_name","admin0_name","iso3"),max_cells_in_memory=max_cells_in_memory)
     data0<-terra::merge(Geographies$admin0,data0)
     output$admin0<-data0
   }
   
   if("admin1" %in% names(Geographies)){
-    data1<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin1),fun=FUN,append_cols=c("admin_name","admin0_nam","admin1_nam","iso3"),max_cells_in_memory=max_cells_in_memory)
+    data1<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin1),fun=FUN,append_cols=c("a2_a1_a0","admin_name","admin0_name","admin1_name","iso3"),max_cells_in_memory=max_cells_in_memory)
     data1<-terra::merge(Geographies$admin1,data1)
     output$admin1<-data1
   }
   
   if("admin2" %in% names(Geographies)){
-    data2<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin2),fun=FUN,append_cols=c("admin_name","admin0_nam","admin1_nam","admin2_nam","iso3"),max_cells_in_memory=max_cells_in_memory)
+    data2<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin2),fun=FUN,append_cols=c("a2_a1_a0","admin_name","admin0_name","admin1_name","admin2_name","iso3"),max_cells_in_memory=max_cells_in_memory)
     data2<-terra::merge(Geographies$admin2,data2)
     output$admin2<-data2
   }
@@ -184,12 +185,23 @@ base_rast<-terra::rast(base_raster)
 
 #### Load datasets (non hazards)
 # 1) Geographies #####
-# Load and combine geoboundaries
-Geographies<-list(
-  admin2=terra::vect(paste0(geoboundaries_location,"/admin2_processed.shp")),
-  admin1=terra::vect(paste0(geoboundaries_location,"/admin1_processed.shp")),
-  admin0=terra::vect(paste0(geoboundaries_location,"/admin0_processed.shp"))
-)
+# Load and combine geoboundarie
+
+geoboundaries_s3<-"s3://digital-atlas/boundaries"
+geo_files_s3<-s3fs::s3_dir_ls(geoboundaries_s3)
+geo_files_s3<-grep("harmonized.gpkg",geo_files_s3,value=T)
+
+geo_files_local<-file.path("Data/boundaries",basename(geo_files_s3))
+names(geo_files_local)<-c("admin0","admin1","admin2")
+
+Geographies<-sapply(i:length(geo_files_local),FUN=function(i){
+  file<-geo_files_local[i]
+  if(!file.exists(file)){
+    s3fs::s3_file_download(path=geo_files_s3[i],new_path=file,overwrite = T)
+  }
+  terra::vect(file)
+  
+},USE.NAMES = T)
 
 # 2) Exposure variables ####
 
