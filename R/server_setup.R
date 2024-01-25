@@ -20,7 +20,6 @@ if(timeframe_choice!="annual"){
 
 
 # Set data directories
-geoboundaries_location<-"/home/jovyan/common_data/atlas_boundaries/processed/geoboundaries_6.0.0"
 mapspam_dir<-"/home/jovyan/common_data/atlas_mapspam/raw"
 glw3_dir<-"/home/jovyan/common_data/atlas_glw"
 afr_highlands_dir<-"/home/jovyan/common_data/atlas_afr_highlands"
@@ -31,7 +30,6 @@ hpop_dir<-"/home/jovyan/common_data/atlas_pop/raw"
 timeframe_choice<-"annual"
 
 # Set data directories
-geoboundaries_location<-"Data/geoboundaries"
 mapspam_dir<-"Data/mapspam"
 glw3_dir<-"Data/GLW3"
 afr_highlands_dir<-"Data/afr_highlands"
