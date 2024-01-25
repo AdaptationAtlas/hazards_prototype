@@ -455,8 +455,8 @@ haz_class_files2<-gsub("2021_2040_","2021_2040-",haz_class_files2)
 haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
 
 
-# Limit to "Severe" class
-combinations<-combinations#[severity_class=="Severe"]
+
+#combinations<-combinations[severity_class=="Severe"]
 overwrite<-F
 
 registerDoFuture()
@@ -551,19 +551,27 @@ foreach(i =  sample(1:nrow(combinations))) %dopar% {
   
 plan(sequential)
 
+combinations[,code:=paste(sort(c(heat,wet,dry)),collapse="+"),by=list(heat,wet,dry)]
+n_missing<-combinations$code[!combinations$code %in% sub(".tif","",sub("(([^-]*-){2})", "", list.files(haz_time_int_dir)))]
+
+if(length(n_missing)>0){
+  stop("Analysis of interactions incomplete")
+  print(n_missing)
+}
+
 # Interactions: For each crop combine hazards into a single file and add to hazard_risk dir #####
 combinations_ca<-rbind(combinations_c,combinations_a)
 sev_class<-severity_classes$class
 
 haz_int_files<-list.files(haz_time_int_dir,".tif$",full.names = T)
-overwrite<-F
+overwrite<-T
 
 registerDoFuture()
 plan("multisession", workers = worker_n)
 
 foreach(i =  1:length(crop_choices)) %dopar% {
 #for(i in 1:length(crop_choices)){
-  for(j in 1:length()){
+  for(j in 1:length(sev_class)){
     
     # Display progress
     cat('\r                                                                                                                     ')
