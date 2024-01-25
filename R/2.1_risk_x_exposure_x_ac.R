@@ -22,8 +22,6 @@ load_and_install_packages(packages)
 haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
 severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
 
-
-
 # Adaptive Capacity ####
 ac_dir<-"Data/adaptive_capacity"
 if(!dir.exists(ac_dir)){
@@ -40,7 +38,7 @@ if(!file.exists(local_file)){
 
 adaptive_capacity<-data.table(arrow::read_parquet(local_file))
 # Cast dataset
-adaptive_capacity_cast<-dcast(adaptive_capacity,admin_code+admin_name+iso3+admin_level~vulnerability,value.var="value_binary")
+adaptive_capacity_cast<-dcast(adaptive_capacity,admin_code+admin_name+iso3+admin_level+total_pop+rural_pop~vulnerability,value.var="value_binary")
 
 # Hazard Risk x VoP #####
 haz_risk_vop_dir<-paste0("Data/hazard_risk_vop/",timeframe_choice)
