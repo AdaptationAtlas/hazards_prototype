@@ -213,13 +213,24 @@ exposure_dir<-"Data/exposure"
 if(!dir.exists(exposure_dir)){
   dir.create(exposure_dir)
 }
+
+# If mapspam data does not exist locally download from S3 bucket
+mapspam_local<-"Data/mapspam"
+
+if(!dir.exists(mapspam_local)){
+  dir.create(mapspam_local,recursive = T)
+  s3_bucket <- "s3://digital-atlas/risk_prototype/data/mapspam"
+  s3fs::s3_dir_download(s3_bucket,mapspam_local)
+}
+
   # 2.1) Crops (MapSPAM) #####
   overwrite<-F
+
     # 2.1.1) Crop VoP (Value of production) ######
   ms_vop_file<-paste0(exposure_dir,"/crop_vop.tif")
 
   if(!file.exists(ms_vop_file)|overwrite==T){
-    vop<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_V_TA.csv"))
+    vop<-fread(paste0(mapspam_dir,"/SSA_V_TA.csv"))
     crops<-tolower(ms_codes$Code)
     ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(vop),value=T))
     vop<-terra::rast(vop[,..ms_fields],type="xyz",crs="EPSG:4326")
@@ -243,7 +254,7 @@ if(!dir.exists(exposure_dir)){
   file<-paste0(exposure_dir,"/crop_ha.tif")
   
   if(!file.exists(file)|overwrite==T){
-    ha<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_H_TA.csv"))
+    ha<-fread(paste0(mapspam_dir,"/SSA_H_TA.csv"))
     crops<-tolower(ms_codes$Code)
     ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(ha),value=T))
     ha<-rast(ha[,..ms_fields],type="xyz",crs="EPSG:4326")
@@ -273,7 +284,7 @@ if(!dir.exists(exposure_dir)){
   mask_file<-paste0(commodity_mask_dir,"/crop_masks.tif")
   
   if(!file.exists(mask_file)|overwrite==T){
-    pa<-fread(paste0(mapspam_dir,"/spam2017V2r3_SSA_A_TA.csv"))
+    pa<-fread(paste0(mapspam_dir,"/SSA_A_TA.csv"))
     crops<-tolower(ms_codes$Code)
     ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(pa),value=T))
     pa<-rast(pa[,..ms_fields],type="xyz",crs="EPSG:4326")
