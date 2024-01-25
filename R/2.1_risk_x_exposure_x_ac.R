@@ -57,6 +57,19 @@ haz_risk_vop<-rbindlist(lapply(1:length(local_files),FUN=function(i){
   
 }))
 
+files<-paste0("haz_risk_vop_",tolower(severity_classes$description),".parquet")
+local_files<-file.path(haz_risk_vop_dir,files)
+
+haz_risk_vop<-rbindlist(lapply(1:length(local_files),FUN=function(i){
+  if(file.exists(local_files[i])){
+    arrow::read_parquet(local_files[i])
+  }else{
+    warning(paste0("File does not exist: ",local_files[i]))
+    NULL
+  }
+  
+}))
+
 # TEMP: Deal with naming issue of duplicate admin2 labels within countries ####
 # This is a hack that just removes the duplicate rows, eventually the hazards are going to be updated to remove this issue
 
