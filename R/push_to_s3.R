@@ -1,12 +1,28 @@
-library(s3fs)
-library(pbapply)
-library(future)
-library(future.apply)
-library(gdalUtilities)
-library(terra)
+# Install and load packages ####
+load_and_install_packages <- function(packages) {
+  for (package in packages) {
+    if (!require(package, character.only = TRUE)) {
+      install.packages(package)
+      library(package, character.only = TRUE)
+    }
+  }
+}
 
+# List of packages to be loaded
+packages <- c("s3fs", 
+              "pbapply", 
+              "future", 
+              "future.apply", 
+              "gdalUtilities", 
+              "terra")
+
+# Call the function to install and load packages
+load_and_install_packages(packages)
+
+# Set workers for parallel processing ####
 worker_n<-10
 
+# Creat Functions####
 # Update tifs to cog format
 convert_to_cog <- function(file,delete=T,rename=T) {
   
@@ -233,8 +249,6 @@ upload_files_to_s3(folder = folder,
                    max_attempts = 3,
                    overwrite=F)
 
-
-
 # Upload - haz_vop_risk ####
 s3_bucket <- "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual"
 folder<-"Data/hazard_risk_vop/annual"
@@ -256,7 +270,9 @@ folder<-"Data/exposure"
 ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
 
 # Upload files
-upload_files_to_s3(folder = folder,
+upload_files_to_s3(files = list.files(folder,".parquet$",full.names = T),
                    selected_bucket=s3_bucket,
                    max_attempts = 3,
                    overwrite=F)
+
+
