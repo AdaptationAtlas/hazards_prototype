@@ -194,16 +194,17 @@ geo_files_s3<-grep("harmonized.gpkg",geo_files_s3,value=T)
 geo_files_local<-file.path("Data/boundaries",basename(geo_files_s3))
 names(geo_files_local)<-c("admin0","admin1","admin2")
 
-Geographies<-sapply(i:length(geo_files_local),FUN=function(i){
+Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
   file<-geo_files_local[i]
   if(!file.exists(file)){
     s3fs::s3_file_download(path=geo_files_s3[i],new_path=file,overwrite = T)
   }
   terra::vect(file)
   
-},USE.NAMES = T)
+},U)
+names(Geographies)<-names(geo_files_local)
 
-# 2) Exposure variables ####
+#2) Exposure variables ####
 
 haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
 haz_risk_files<-list.files(haz_risk_dir,full.names = T)
@@ -569,26 +570,31 @@ for(k in 1:length(dirs)){
 
 # 3) Hazard Mean ####
 
-save_dir_means<-paste0("Data/hazard_mean/",timeframe_choice)
-files<-list.files(save_dir_means,".tif",full.names = T)
+haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
+files<-list.files(haz_mean_dir,".tif",full.names = T)
 
-haz_means<-terra::rast(files[!grepl("change",files)])
-haz_means_change<-terra::rast(files[grepl("change",files)])
+files_means<-files[!grepl("change",files)]
+haz_means<-terra::rast(files_means)
+names(haz_means)<-gsub(".tif$","",basename(files_means))
+
+files_change<-files[!grepl("change",files)]
+haz_means_change<-terra::rast(files_change)
+names(haz_means)<-gsub(".tif$","",basename(files_change))
 
 # extract mean hazards
-haz_means_adm<-admin_extract(haz_means,Geographies)
-st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin0), dsn=paste0(save_dir_means,"/haz_means_adm0.parquet"))
-st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin1), dsn=paste0(save_dir_means,"/haz_means_adm1.parquet"))
-st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin2), dsn=paste0(save_dir_means,"/haz_means_adm2.parquet"))
+haz_means_adm<-admin_extract(data=haz_means,Geographies)
+st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin0), dsn=paste0(haz_mean_dir,"/haz_means_adm0.parquet"))
+st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin1), dsn=paste0(haz_mean_dir,"/haz_means_adm1.parquet"))
+st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin2), dsn=paste0(haz_mean_dir,"/haz_means_adm2.parquet"))
 
-filename<-paste0(save_dir_means,"/haz_means.parquet")
+filename<-paste0(haz_mean_dir,"/haz_means.parquet")
 
 # Extract data from vector files and restructure into tabular form
 haz_means_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
   level<-levels[i]
   print(level)
   
-  haz_means_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(save_dir_means,"/haz_means_",levels[i],".parquet"))))
+  haz_means_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_mean_dir,"/haz_means_",levels[i],".parquet"))))
   N<-colnames(haz_means_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_means_tab))]
   haz_means_tab<-haz_means_tab[,..N]
   haz_means_tab<-melt(haz_means_tab,id.vars = c("admin_name","iso3"))
@@ -620,9 +626,9 @@ arrow::write_parquet(haz_means_tab,filename)
 # extract change in mean hazards
 haz_means_change_adm<-admin_extract(haz_means_change,Geographies)
 
-st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin0), dsn=paste0(save_dir_means,"/haz_means_change_adm0.parquet"))
-st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin1), dsn=paste0(save_dir_means,"/haz_means_change_adm1.parquet"))
-st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin2), dsn=paste0(save_dir_means,"/haz_means_change_adm2.parquet"))
+st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin0), dsn=paste0(haz_mean_dir,"/haz_means_change_adm0.parquet"))
+st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin1), dsn=paste0(haz_mean_dir,"/haz_means_change_adm1.parquet"))
+st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin2), dsn=paste0(haz_mean_dir,"/haz_means_change_adm2.parquet"))
 
 # 4) Hazard Trend ####
 haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
