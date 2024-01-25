@@ -1153,8 +1153,8 @@ for(SEV in tolower(severity_classes$class)){
 # Any hazard only ####
 haz_risk_files<-list.files(haz_risk_dir,"_any.tif",full.names = T)
 overwrite<-F
-do_ha<-T
-do_n<-T
+do_ha<-F
+do_n<-F
 
 for(SEV in tolower(severity_classes$class)){
   
