@@ -125,8 +125,6 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
   }
 }
 
-# Check existing folders
-files<-s3_dir_ls("s3://digital-atlas/risk_prototype/data")
 
 # Upload - exposure ####
 s3_bucket <-"s3://digital-atlas/risk_prototype/data/exposure"
@@ -284,3 +282,11 @@ upload_files_to_s3(folder = folder,
                    max_attempts = 3,
                    overwrite=T)
 
+# Upload - MapSPAM
+s3_bucket <- "s3://digital-atlas/MapSpam"
+s3_dir_ls(s3_bucket)
+
+upload_files_to_s3(folder = folder,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=T)
