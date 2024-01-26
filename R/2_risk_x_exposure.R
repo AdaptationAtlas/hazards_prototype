@@ -29,19 +29,19 @@ load_and_install_packages(packages)
 admin_extract<-function(data,Geographies,FUN="mean",max_cells_in_memory=3*10^7){
   output<-list()
   if("admin0" %in% names(Geographies)){
-    data0<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin0),fun=FUN,append_cols=c("a2_a1_a0","admin_name","admin0_name","iso3"),max_cells_in_memory=max_cells_in_memory)
+    data0<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin0),fun=FUN,append_cols=c("admin_name","admin0_name","iso3"),max_cells_in_memory=max_cells_in_memory)
     data0<-terra::merge(Geographies$admin0,data0)
     output$admin0<-data0
   }
   
   if("admin1" %in% names(Geographies)){
-    data1<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin1),fun=FUN,append_cols=c("a2_a1_a0","admin_name","admin0_name","admin1_name","iso3"),max_cells_in_memory=max_cells_in_memory)
+    data1<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin1),fun=FUN,append_cols=c("admin_name","admin0_name","admin1_name","iso3"),max_cells_in_memory=max_cells_in_memory)
     data1<-terra::merge(Geographies$admin1,data1)
     output$admin1<-data1
   }
   
   if("admin2" %in% names(Geographies)){
-    data2<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin2),fun=FUN,append_cols=c("a2_a1_a0","admin_name","admin0_name","admin1_name","admin2_name","iso3"),max_cells_in_memory=max_cells_in_memory)
+    data2<-exactextractr::exact_extract(data,sf::st_as_sf(Geographies$admin2),fun=FUN,append_cols=c("admin_name","admin0_name","admin1_name","admin2_name","iso3"),max_cells_in_memory=max_cells_in_memory)
     data2<-terra::merge(Geographies$admin2,data2)
     output$admin2<-data2
   }
@@ -201,7 +201,7 @@ Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
   }
   terra::vect(file)
   
-},U)
+})
 names(Geographies)<-names(geo_files_local)
 
 #2) Exposure variables ####
@@ -801,6 +801,94 @@ livestock_choices<-unique(unlist(tstrsplit(livestock_choices,"_extr|_seve",keep=
 # Crop choices only 
 crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
 
+  # Make functions to restructure geoparquet in a long tabular form ####
+  recode_restructure<-function(data,crop_choices,livestock_choices,Scenarios,exposure,Severity){
+    
+    # Remove "." in crop names
+    for(crop in crop_choices){
+      data[,variable:=gsub(gsub(" ",".",crop,fixed=T),crop,variable[1]),by=variable]
+    }
+    
+    # Remove "." in hazard names
+    variables<-data[,unique(variable)]
+    variables<-gsub("sum.","",variables)
+    variables<-gsub(paste0(Scenarios$Scenario,collapse = "|"),"",variables)
+    variables<-gsub(paste0(Scenarios$Time,collapse = "|"),"",variables)
+    variables<-gsub(paste0(crop_choices,collapse = "|"),"",variables)
+    variables<-gsub(paste0(livestock_choices,collapse = "|"),"",variables)
+    variables<-unique(gsub("Moderate|Severe|Extreme","",variables))
+    # Remove trailing exposure name (as this can be something like "n" it needs a different approach)
+    variables<-sapply(1:length(variables),FUN=function(g){
+      substring(variables[g],1,nchar(variables[g])-nchar(paste0(".",exposure)))
+    })
+    variables<-grep("[.]",unique(gsub("[.][.]|[.][.][.]","",variables)),value=T)
+    variables1<-unique(gsub("[.]","+",variables))
+    
+    for(n in 1:length(variables)){
+      data[,variable:=gsub(variables[n],variables1[n],variable,fixed=T)]
+    }
+    
+    # Split variable string into columns
+    data[,scenario:=unlist(tstrsplit(variable[1],"[.]",keep=2)),by=variable
+    ][,timeframe:=unlist(tstrsplit(variable[1],"[.]",keep=3)),by=variable
+    ][,hazard:=unlist(tstrsplit(variable[1],"[.]",keep=4)),by=variable
+    ][,crop:=unlist(tstrsplit(variable[1],"[.]",keep=5)),by=variable
+    ][,severity:=Severity
+    ][,exposure:=unlist(tstrsplit(variable[1],"[.]",keep=7)),by=variable
+    ][,variable:=NULL]
+    
+    return(data)
+  }
+  recode_restructure_wrap<-function(folder,file,crops,livestock,exposure_var,Severity,overwrite,any=F){
+    
+    if(any==F){
+      filename<-paste0(folder,"/",file,"_",Severity,".parquet")
+    }else{
+      filename<-paste0(folder,"/",file,"_any_",Severity,".parquet")
+    }
+    
+    if((!file.exists(filename))|overwrite==T){
+      data<-rbindlist(lapply(1:length(levels),FUN=function(i){
+        level<-levels[i]
+        
+        # Display progress
+        cat('\r                                                                                                                     ')
+        cat('\r',paste("Risk x Exposure - ",exposure_var," restructuring data | severity: ",Severity, " | admin level:",level))
+        flush.console()
+        
+        # Vop
+        if(any==F){
+          data<-data.table(data.frame(sfarrow::st_read_parquet(paste0(folder,"/",file,"_",levels[i],"_",Severity,".parquet"))))
+        }else{
+          data<-data.table(data.frame(sfarrow::st_read_parquet(paste0(folder,"/",file,"_any_",levels[i],"_",Severity,".parquet"))))
+        }
+        data<-data[,!c("geometry","iso3","admin_name")]
+        
+        admins<-"admin0_nam"
+        if(level %in% c("adm1","adm2")){
+          admins<-c(admins,"admin1_nam")
+        }
+        
+        if(level=="adm2"){
+          admins<-c(admins,"admin2_nam")
+        }
+        
+        data<-melt(data,id.vars = admins)
+        
+        data<-recode_restructure(data=data,
+                                 crop_choices = crops,
+                                 livestock_choices = livestock,
+                                 Scenarios = Scenarios,
+                                 exposure=exposure_var,
+                                 Severity=Severity)
+        
+        
+        data
+      }),fill=T)
+      # Save as feather object
+      arrow::write_parquet(data,filename)
+    }
+  }
   # 5.1) Solo and interactions combined into a single file (not any hazard) ####
   haz_risk_files<-list.files(haz_risk_dir,".tif$",full.names = T)
   haz_risk_files<-haz_risk_files[!grepl("_any.tif$",haz_risk_files)]
@@ -889,7 +977,6 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
    # plan(sequential)
     
     #### Extract Risk x Exposure by Geography  ####
-    
     # VoP #####
     haz_risk_vop_files<-list.files(haz_risk_vop_dir,".tif$",full.names = T)
     haz_risk_vop_files<-haz_risk_vop_files[!grepl("_any.tif$",haz_risk_vop_files)]
@@ -1028,141 +1115,35 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
     
     #### Restructure Extracted Data ####
     
-    recode_restructure<-function(data,crop_choices,livestock_choices,Scenarios,exposure,Severity,admin_level){
-      
-      # Remove "." in crop names
-      for(crop in crop_choices){
-        data[,variable:=gsub(gsub(" ",".",crop,fixed=T),crop,variable)]
-      }
-      
-      # Remove "." in hazard names
-      variables<-data[,unique(variable)]
-      variables<-gsub("sum.","",variables)
-      variables<-gsub(paste0(Scenarios$Scenario,collapse = "|"),"",variables)
-      variables<-gsub(paste0(Scenarios$Time,collapse = "|"),"",variables)
-      variables<-gsub(paste0(crop_choices,collapse = "|"),"",variables)
-      variables<-gsub(paste0(livestock_choices,collapse = "|"),"",variables)
-      variables<-unique(gsub("Moderate|Severe|Extreme","",variables))
-      # Remove trailing exposure name (as this can be something like "n" it needs a different approach)
-      variables<-sapply(1:length(variables),FUN=function(g){
-        substring(variables[g],1,nchar(variables[g])-nchar(paste0(".",exposure)))
-      })
-      variables<-grep("[.]",unique(gsub("[.][.]|[.][.][.]","",variables)),value=T)
-      variables1<-unique(gsub("[.]","+",variables))
-      
-      for(n in 1:length(variables)){
-        data[,variable:=gsub(variables[n],variables1[n],variable,fixed=T)]
-      }
-      
-      # Split variable string into columns
-      data[,scenario:=unlist(tstrsplit(variable[1],"[.]",keep=2)),by=variable
-      ][,timeframe:=unlist(tstrsplit(variable[1],"[.]",keep=3)),by=variable
-      ][,hazard:=unlist(tstrsplit(variable[1],"[.]",keep=4)),by=variable
-      ][,crop:=unlist(tstrsplit(variable[1],"[.]",keep=5)),by=variable
-      ][,severity:=Severity
-      ][,exposure:=unlist(tstrsplit(variable[1],"[.]",keep=7)),by=variable
-      ][,variable:=NULL
-      ][,admin_level:=admin_level] 
-  
-      return(data)
-    }
-    
     # Vop
-    filename<-paste0(haz_risk_vop_dir,"/haz_risk_vop_",SEV,".parquet")
-    
-    if(!file.exists(filename)){
-      # Display progress
-      cat('\r                                                                                                                     ')
-      cat('\r',paste("Risk x Exposure - VoP restructuring data| severity: ",SEV))
-      flush.console()
-      
-      haz_risk_vop_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
-        level<-levels[i]
-        print(level)
-        # Vop
-        haz_risk_vop_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_vop_dir,"/haz_risk_vop_",levels[i],"_",SEV,".parquet"))))
-        N<-colnames(haz_risk_vop_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_risk_vop_tab))]
-        haz_risk_vop_tab<-haz_risk_vop_tab[,..N]
-        haz_risk_vop_tab<-melt(haz_risk_vop_tab,id.vars = c("admin_name","iso3"))
-    
-        haz_risk_vop_tab<-recode_restructure(data=haz_risk_vop_tab,
-                                             crop_choices = c("generic",crop_choices),
-                                             livestock_choices = livestock_choices,
-                                             Scenarios = Scenarios,
-                                             exposure="vop",
-                                             Severity=SEV,
-                                             admin_level=names(levels)[i])
-        
-    
-        haz_risk_vop_tab
-      }))
-      # Save as feather object
-          arrow::write_parquet(haz_risk_vop_tab,filename)
-    }
+    recode_restructure_wrap(folder=haz_risk_vop_dir,
+                            file="haz_risk_vop",
+                            crops=c("generic",crop_choices),
+                            livestock=livestock_choices,
+                            exposure_var="vop",
+                            Severity=SEV,
+                            overwrite=overwrite)
     
     # Harvested area
     if(do_ha==T){
-      filename<-paste0(haz_risk_ha_dir,"/haz_risk_ha_",SEV,".parquet")
-      
-      if(!file.exists(filename)){
-        # Display progress
-        cat('\r                                                                                                                     ')
-        cat('\r',paste("Risk x Exposure - Harvested area restructuring data| severity:",SEV))
-        flush.console()
-        
-        haz_risk_ha_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
-        level<-levels[i]
-        
-        # Harvested area
-        haz_risk_ha_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_ha_dir,"/haz_risk_ha_",levels[i],"_",SEV,".parquet"))))
-        N<-colnames(haz_risk_ha_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_risk_ha_tab))]
-        haz_risk_ha_tab<-haz_risk_ha_tab[,..N]
-        haz_risk_ha_tab<-melt(haz_risk_ha_tab,id.vars = c("admin_name","iso3"))
-        
-        haz_risk_ha_tab<-recode_restructure(data=haz_risk_ha_tab,
-                                             crop_choices = c("generic",crop_choices),
-                                             livestock_choices = livestock_choices,
-                                             Scenarios = Scenarios,
-                                             exposure="ha",
-                                             Severity=SEV,
-                                             admin_level=names(levels)[i])
-        haz_risk_ha_tab
-        
-      }))
-            arrow::write_parquet(haz_risk_ha_tab,filename)
-      }
+      recode_restructure_wrap(folder=haz_risk_ha_dir,
+                              file="haz_risk_ha",
+                              crops=c("generic",crop_choices),
+                              livestock=livestock_choices,
+                              exposure_var="ha",
+                              Severity=SEV,
+                              overwrite=overwrite)
     }
     
     # Numbers
     if(do_n==T){
-      filename<-paste0(haz_risk_n_dir,"/haz_risk_n_",SEV,".parquet")
-      
-      if(!file.exists(filename)){
-        haz_risk_n_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
-          # Display progress
-          cat('\r                                                                                                                     ')
-          cat('\r',paste("Risk x Exposure - Number restructuring data| severity:",SEV))
-          flush.console()
-          
-          level<-levels[i]
-          
-          haz_risk_n_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_n_dir,"/haz_risk_n_",levels[i],"_",SEV,".parquet"))))
-          N<-colnames(haz_risk_n_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_risk_n_tab))]
-          haz_risk_n_tab<-haz_risk_n_tab[,..N]
-          haz_risk_n_tab<-melt(haz_risk_n_tab,id.vars = c("admin_name","iso3"))
-          
-          haz_risk_n_tab<-recode_restructure(data=haz_risk_n_tab,
-                                              crop_choices = c("generic",crop_choices),
-                                              livestock_choices = livestock_choices,
-                                              Scenarios = Scenarios,
-                                              exposure="n",
-                                              Severity=SEV,
-                                              admin_level=names(levels)[i])
-          haz_risk_n_tab
-          
-        }))
-            arrow::write_parquet(haz_risk_n_tab,filename)
-      }
+      recode_restructure_wrap(folder=haz_risk_n_dir,
+                              file="haz_risk_n",
+                              crops=c("generic",crop_choices),
+                              livestock=livestock_choices,
+                              exposure_var="number",
+                              Severity=SEV,
+                              overwrite=overwrite)
     }
     
   }
@@ -1356,139 +1337,36 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
   
   #### Restructure Extracted Data ####
   
-  recode_restructure<-function(data,crop_choices,livestock_choices,Scenarios,exposure,Severity,admin_level){
-    
-    # Remove "." in crop names
-    for(crop in crop_choices){
-      data[,variable:=gsub(gsub(" ",".",crop,fixed=T),crop,variable)]
-    }
-    
-    # Remove "." in hazard names
-    variables<-data[,unique(variable)]
-    variables<-gsub("sum.","",variables)
-    variables<-gsub(paste0(Scenarios$Scenario,collapse = "|"),"",variables)
-    variables<-gsub(paste0(Scenarios$Time,collapse = "|"),"",variables)
-    variables<-gsub(paste0(crop_choices,collapse = "|"),"",variables)
-    variables<-gsub(paste0(livestock_choices,collapse = "|"),"",variables)
-    variables<-unique(gsub("Moderate|Severe|Extreme","",variables))
-    # Remove trailing exposure name (as this can be something like "n" it needs a different approach)
-    variables<-sapply(1:length(variables),FUN=function(g){
-      substring(variables[g],1,nchar(variables[g])-nchar(paste0(".",exposure)))
-    })
-    variables<-grep("[.]",unique(gsub("[.][.]|[.][.][.]","",variables)),value=T)
-    variables1<-unique(gsub("[.]","+",variables))
-    
-    for(n in 1:length(variables)){
-      data[,variable:=gsub(variables[n],variables1[n],variable,fixed=T)]
-    }
-    
-    # Split variable string into columns
-    data[,scenario:=unlist(tstrsplit(variable[1],"[.]",keep=2)),by=variable
-    ][,timeframe:=unlist(tstrsplit(variable[1],"[.]",keep=3)),by=variable
-    ][,hazard:=unlist(tstrsplit(variable[1],"[.]",keep=4)),by=variable
-    ][,crop:=unlist(tstrsplit(variable[1],"[.]",keep=5)),by=variable
-    ][,severity:=Severity
-    ][,exposure:=unlist(tstrsplit(variable[1],"[.]",keep=7)),by=variable
-    ][,variable:=NULL
-    ][,admin_level:=admin_level] 
-    
-    return(data)
-  }
-  
   # Vop
-  filename<-paste0(haz_risk_vop_dir,"/haz_risk_vop_any_",SEV,".parquet")
-  
-  if(!file.exists(filename)){
-    # Display progress
-    cat('\r                                                                                                                     ')
-    cat('\r',paste("Risk x Exposure - VoP restructuring data| severity:",SEV))
-    flush.console()
-    
-    haz_risk_vop_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
-      level<-levels[i]
-      print(level)
-      # Vop
-      haz_risk_vop_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_vop_dir,"/haz_risk_vop_any_",levels[i],"_",SEV,".parquet"))))
-      N<-colnames(haz_risk_vop_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_risk_vop_tab))]
-      haz_risk_vop_tab<-haz_risk_vop_tab[,..N]
-      haz_risk_vop_tab<-melt(haz_risk_vop_tab,id.vars = c("admin_name","iso3"))
-      
-      haz_risk_vop_tab<-recode_restructure(data=haz_risk_vop_tab,
-                                           crop_choices = c("generic",crop_choices),
-                                           livestock_choices = livestock_choices,
-                                           Scenarios = Scenarios,
-                                           exposure="vop",
-                                           Severity=SEV,
-                                           admin_level=names(levels)[i])
-      
-      
-      haz_risk_vop_tab
-    }))
-    # Save as feather object
-        arrow::write_parquet(haz_risk_vop_tab,filename)
-  }
-  
+  recode_restructure_wrap(folder=haz_risk_vop_dir,
+                          file="haz_risk_vop",
+                          crops=c("generic",crop_choices),
+                          livestock=livestock_choices,
+                          exposure_var="vop",
+                          Severity=SEV,
+                          overwrite=overwrite,
+                          any=T)
   # Harvested area
   if(do_ha==T){
-    filename<-paste0(haz_risk_ha_dir,"/haz_risk_ha_any_",SEV,".parquet")
-    
-    if(!file.exists(filename)){
-      # Display progress
-      cat('\r                                                                                                                     ')
-      cat('\r',paste("Risk x Exposure - Harvested area restructuring data| severity:",SEV))
-      flush.console()
-      
-      haz_risk_ha_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
-        level<-levels[i]
-        
-        # Harvested area
-        haz_risk_ha_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_ha_dir,"/haz_risk_ha_any_",levels[i],"_",SEV,".parquet"))))
-        N<-colnames(haz_risk_ha_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_risk_ha_tab))]
-        haz_risk_ha_tab<-haz_risk_ha_tab[,..N]
-        haz_risk_ha_tab<-melt(haz_risk_ha_tab,id.vars = c("admin_name","iso3"))
-        
-        haz_risk_ha_tab<-recode_restructure(data=haz_risk_ha_tab,
-                                            crop_choices = c("generic",crop_choices),
-                                            livestock_choices = livestock_choices,
-                                            Scenarios = Scenarios,
-                                            exposure="ha",
-                                            Severity=SEV,
-                                            admin_level=names(levels)[i])
-        haz_risk_ha_tab
-        
-      }))
-          arrow::write_parquet(haz_risk_ha_tab,filename)
-    }
+    recode_restructure_wrap(folder=haz_risk_ha_dir,
+                            file="haz_risk_ha",
+                            crops=c("generic",crop_choices),
+                            livestock=livestock_choices,
+                            exposure_var="ha",
+                            Severity=SEV,
+                            overwrite=overwrite,
+                            any=T)
   }
   # Numbers
   if(do_n==T){
-    filename<-paste0(haz_risk_n_dir,"/haz_risk_n_any_",SEV,".parquet")
-    if(!file.exists(filename)){
-      haz_risk_n_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
-        # Display progress
-        cat('\r                                                                                                                     ')
-        cat('\r',paste("Risk x Exposure - Number restructuring data| severity:",SEV))
-        flush.console()
-        
-        level<-levels[i]
-        
-        haz_risk_n_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_risk_n_dir,"/haz_risk_n_any_",levels[i],"_",SEV,".parquet"))))
-        N<-colnames(haz_risk_n_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_risk_n_tab))]
-        haz_risk_n_tab<-haz_risk_n_tab[,..N]
-        haz_risk_n_tab<-melt(haz_risk_n_tab,id.vars = c("admin_name","iso3"))
-        
-        haz_risk_n_tab<-recode_restructure(data=haz_risk_n_tab,
-                                           crop_choices = c("generic",crop_choices),
-                                           livestock_choices = livestock_choices,
-                                           Scenarios = Scenarios,
-                                           exposure="n",
-                                           Severity=SEV,
-                                           admin_level=names(levels)[i])
-        haz_risk_n_tab
-        
-      }))
-          arrow::write_parquet(haz_risk_n_tab,filename)
-    }
+    recode_restructure_wrap(folder=haz_risk_n_dir,
+                            file="haz_risk_n",
+                            crops=c("generic",crop_choices),
+                            livestock=livestock_choices,
+                            exposure_var="n",
+                            Severity=SEV,
+                            overwrite=overwrite,
+                            any=T)
   }
 }
 
