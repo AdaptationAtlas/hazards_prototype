@@ -134,7 +134,7 @@ folder<-"Data/exposure"
 ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
 
 # Upload files
-upload_files_to_s3(files = list.files(folder,".parquet$",full.names = T),
+upload_files_to_s3(files = list.files(folder,"_adm_sum_.parquet$",full.names = T),
                    selected_bucket=s3_bucket,
                    max_attempts = 3,
                    overwrite=F)
@@ -277,7 +277,7 @@ s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_ac/"
 folder<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
 
 # Upload files
-upload_files_to_s3(folder = folder,
+upload_files_to_s3(files=list.files(folder,"reduced.parquet$",full.names = T),
                    selected_bucket=s3_bucket,
                    max_attempts = 3,
                    overwrite=T)
