@@ -120,7 +120,21 @@ require(countrycode)
   # Remove suspect tobacco values for Sierra Leone
   prod_price[iso3=="SLE" & short_spam2010=="toba",Y2015:=NA]
   
+  # 2016 and 2015 prices for maize and sesame in SLE are extremely high remove, coconut prices are volatile too, s
+  prod_price[iso3 %in% c("SLE") & short_spam2010 %in% c("maiz","cnut","sesa"),c("Y2016","Y2015"):=NA]
+  
+  # Many prices in GIN seem unreasonably low
+  prod_price[iso3 %in% c("GIN") & short_spam2010 %in% c("swpo","yams","cass","grou","cott","sorg","pmil","bana"),c("Y2019","Y2018","Y2017","Y2016","Y2015"):=NA]
 
+  # 2018 and 2017 prices for groundnut in EGY are extremely high remove
+  prod_price[iso3 %in% c("EGY") & short_spam2010=="grou",c("Y2018","Y2017"):=NA]
+  
+  # Remove oilpalm prices for Burundi
+  prod_price[iso3 %in% c("BDI") & short_spam2010 %in% c("oilp"),c("Y2019","Y2018","Y2017","Y2016","Y2015"):=NA]
+  
+  # Remove very low sugar cane price from Senegal
+  prod_price[iso3 %in% c("SEN") & short_spam2010 %in% c("sugc"),c("Y2019","Y2018","Y2017","Y2016","Y2015"):=NA]
+  
   # Average prices over 5-year period by country####
   prod_price[,mean:=mean(c(Y2019,Y2018,Y2017,Y2016,Y2015),na.rm=T),by=list(Area,iso3,short_spam2010)]
   
