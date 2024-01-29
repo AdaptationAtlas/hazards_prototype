@@ -11,7 +11,7 @@ admin1$admin_name<-str_to_title(admin1$shapeName)
 admin0$admin_name<-str_to_title(admin0$shapeName)
 
 # Create standard name field for each admin vector
-base_rast<-terra::rast(extent = terra::ext(admin0), resolution = 0.01, crs = "epsg:4326")
+base_rast<-terra::rast(extent = terra::ext(admin0), resolution = 0.007, crs = "epsg:4326")
 # Admin0
 admin0$admin0_name<-countrycode::countrycode(admin0$shapeGroup, origin = 'iso3c', destination = 'country.name')
 admin0$admin_name<-admin0$admin0_name
@@ -111,6 +111,6 @@ if (any(!sort(unique(admin0$admin_name)) == sort(unique(admin2$admin0_name)))) {
 }
 
 # Save processed files
-terra::writeVector(admin0,file="Data/geoboundaries/admin0_REprocessed.shp",overwrite=T)
-terra::writeVector(admin1,file="Data/geoboundaries/admin1_REprocessed.shp",overwrite=T)
-terra::writeVector(admin2,file="Data/geoboundaries/admin2_REprocessed.shp",overwrite=T)
+terra::writeVector(admin0,file="Data/geoboundaries/admin0_processed.gpkg",overwrite=T)
+terra::writeVector(admin1,file="Data/geoboundaries/admin1_processed.gpkg",overwrite=T)
+terra::writeVector(admin2,file="Data/geoboundaries/admin2_processed.gpkg",overwrite=T)
