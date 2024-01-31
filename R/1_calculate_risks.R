@@ -20,6 +20,7 @@ Scenarios[,combined:=paste0(Scenario,"-",Time)]
 
 # Set hazards to include in analysis
 hazards<-c("NDD","NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG")
+
 haz_meta<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv")
 haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
 haz_class<-data.table::fread(haz_class_url)
@@ -179,10 +180,8 @@ rast_class<-function(data,direction,threshold,minval=-9999,maxval=9999){
   return(data)
 }
 
-parallel::detectCores()
-
 registerDoFuture()
-plan("multisession", workers = 20) # change to multicore for linux execution
+plan("multisession", workers = worker_n) # change to multicore for linux execution
 
 foreach(i = 1:nrow(Thresholds_U)) %dopar% {
 
@@ -228,7 +227,7 @@ files2<-grep("ENSEMBLE|historical",files2,value=T)
 overwrite<-F
 
 registerDoFuture()
-plan("multisession", workers = 20)
+plan("multisession", workers = worker_n)
 
 foreach(i = 1:length(files)) %dopar% {
   

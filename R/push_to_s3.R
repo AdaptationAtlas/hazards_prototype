@@ -22,7 +22,7 @@ load_and_install_packages(packages)
 # Set workers for parallel processing ####
 worker_n<-10
 
-# Creat Functions####
+# Create functions####
 # Update tifs to cog format
 convert_to_cog <- function(file,delete=T,rename=T) {
   
@@ -134,10 +134,11 @@ folder<-"Data/exposure"
 ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
 
 # Upload files
-upload_files_to_s3(files = list.files(folder,"_adm_sum_.parquet$",full.names = T),
+upload_files_to_s3(files = list.files(folder,"_adm2_sum.parquet$",full.names = T),
                    selected_bucket=s3_bucket,
                    max_attempts = 3,
-                   overwrite=F)
+                   overwrite=T)
+
 # Upload - metadata ####
 # select a folder
 folder<-"metadata"
@@ -243,9 +244,6 @@ upload_files_to_s3(folder = folder,
                    max_attempts = 3,
                    overwrite=F)
 
-
-
-
 # Upload - haz_risk ####
 s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_risk/",timeframe_choice)
 folder<-paste0("Data/hazard_risk/",timeframe_choice)
@@ -282,7 +280,7 @@ upload_files_to_s3(files=list.files(folder,"reduced.parquet$",full.names = T),
                    max_attempts = 3,
                    overwrite=T)
 
-# Upload - MapSPAM
+# Upload - MapSPAM ####
 s3_bucket <- "s3://digital-atlas/MapSpam"
 s3_dir_ls(s3_bucket)
 

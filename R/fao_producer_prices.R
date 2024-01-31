@@ -1,5 +1,6 @@
 require(data.table)
 require(countrycode)
+require(terra)
 
   # Load SPAM production data ####
   prod<-fread("Data/mapspam/SSA_P_TA.csv")
@@ -31,8 +32,8 @@ require(countrycode)
     # Delete the ZIP file
     unlink(zip_file_path)
   }
-  
-  # Load fao producer price data
+
+  # Load fao producer price data ####
   prod_price<-fread(econ_file)
   
   # Load file for translation of spam to fao stat names/codes ####
@@ -117,6 +118,7 @@ require(countrycode)
    
    prod_price<-rbind(prod_price,missing)
   
+  # Fix suspect values ####
   # Remove suspect tobacco values for Sierra Leone
   prod_price[iso3=="SLE" & short_spam2010=="toba",Y2015:=NA]
   
@@ -199,8 +201,6 @@ require(countrycode)
   )
   
   # Fill in gaps with mean of neighbours ####
-  N<-prod_price[,which(is.na(mean))]
-  
   avg_neighbours<-function(iso3,crop,neighbours,prod_price){
     neighbours<-african_neighbors[[iso3]]
     N<-prod_price[short_spam2010==crop & iso3 %in% neighbours,mean(mean,na.rm=T)]
@@ -237,7 +237,6 @@ require(countrycode)
   avg_regions<-function(iso3,crop,regions,prod_price){
     region_focal<-names(regions)[sapply(regions,FUN=function(X){iso3 %in% X})]
     neighbours<-regions[[region_focal]]
-    neighbours<-neighbours[neighbours!="iso3"]
     N<-prod_price[short_spam2010==crop & iso3 %in% neighbours,mean(mean,na.rm=T)]
     return(N)
     }
@@ -269,36 +268,51 @@ require(countrycode)
   
   # Multiply mapspam production by producer price ####
   
-  # Load SPAM production data (bring back the two crops we removed)
-  prod<-fread("Data/mapspam/SSA_P_TA.csv")
-  Crops<-tolower(ms_codes[compound=="no",Code])
-  
-  colnames(prod)<-gsub("_a$","",colnames(prod))
-  
-  ms_fields<-c("x","y","iso3",sort(crops))
-  prod<-prod[,..ms_fields]
-  
-  # Restructure fao data
-  prod_price_cast<-dcast(prod_price[,list(iso3,mean_final,short_spam2010)],iso3~short_spam2010,value.var = "mean_final")
-  
-  # Check columns align
-  crops[!crops %in% colnames(prod_price_cast)]
-  
-  # Add back missing crops
-  prod_price_cast[,rcof:=acof][,smil:=pmil]
-  prod_price_cast[,country:=countrycode(sourcevar=iso3,origin="iso3c",destination = "country.name")]
-  
-  fwrite(prod_price_cast,paste0(fao_dir,"/fao_producer_prices_2017.csv"),bom=T)
-  
+
+  files<-list.files("Data/mapspam","SSA_P_",full.names = T)
+  prod_price_file<-paste0(fao_dir,"/fao_producer_prices_2017.csv")
   # List ms countries
   countries<-prod[,unique(iso3)]
   
-  # Mulitple production by price per ton for each country
-  vop<-rbindlist(lapply(1:length(countries),FUN=function(i){
-    data<-prod[iso3 == countries[i]]
-    vop<-cbind(data[,list(x,y)],data[,..crops] * prod_price_cast[iso3==countries[i],..crops][rep(1,nrow(data))])
-  }))
-  
-  vop<-terra::rast(vop,type="xyz",crs="EPSG:4326")
-  
+  for(i in 1:length(files)){
+    file<-files[i]
+    print(paste(i,"-",file))
+    save_name<-gsub("SSA_P_","SSA_Vusd17_",file)
+    
+    # Load SPAM production data (bring back the two crops we removed)
+    prod<-fread(file)
+    Crops<-tolower(ms_codes[compound=="no",Code])
+    
+    colnames(prod)<-gsub("_a$|_h$|_i$|_l$|_r$|_s$","",colnames(prod))
+    
+    ms_fields<-c("x","y","iso3",sort(crops))
+    prod<-prod[,..ms_fields]
+    
+    if(!file.exists(prod_price_file)){
+      # Restructure fao data
+      prod_price_cast<-dcast(prod_price[,list(iso3,mean_final,short_spam2010)],iso3~short_spam2010,value.var = "mean_final")
+      
+      # Check columns align
+      crops[!crops %in% colnames(prod_price_cast)]
+      
+      # Add back missing crops
+      prod_price_cast[,rcof:=acof][,smil:=pmil]
+      prod_price_cast[,country:=countrycode(sourcevar=iso3,origin="iso3c",destination = "country.name")]
+      
+      fwrite(prod_price_cast,prod_price_file,bom=T)
+    }else{
+      prod_price_cast<-fread(prod_price_file) 
+    }
 
+    
+    # Multiply production by price per ton for each country
+    vop<-rbindlist(lapply(1:length(countries),FUN=function(i){
+      data<-prod[iso3 == countries[i]]
+      vop<-cbind(data[,list(x,y)],data[,..crops] * prod_price_cast[iso3==countries[i],..crops][rep(1,nrow(data))])
+    }))
+    
+    vop[,tota:=apply(vop[,!c("x","y")],1,sum,na.rm=T)]
+    
+    fwrite(vop,file = save_name)
+  
+  }

@@ -19,13 +19,37 @@ packages <- c("terra",
               "feather",
               "doFuture",
               "stringr", 
+              "stringi",
               "httr")
 
 # Call the function to install and load packages
 load_and_install_packages(packages)
 
 # Create functions ####
-# Create extraction function
+# Function to convert tabular mapspam data into a raster
+read_spam<-function(variable,technology,mapspam_dir,save_dir,base_rast,filename,ms_codes,overwrite){
+  ms_file<-paste0(save_dir,"/",filename,".tif")
+  
+  if(!file.exists(ms_file)|overwrite==T){
+    data<-fread(paste0(mapspam_dir,"/SSA_",variable,"_",technology,".csv"))
+    crops<-tolower(ms_codes$Code)
+    ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(data),value=T))
+    data<-terra::rast(data[,..ms_fields],type="xyz",crs="EPSG:4326")
+    names(data)<-gsub("_a$|_h$|_i$|_l$|_r$|_s$","",names(data))
+    names(data)<-ms_codes[match(names(data),tolower(ms_codes$Code)),Fullname]
+    # convert to value/area 
+    data<-data/terra::cellSize(data,unit="ha")
+    # resample data
+    data<-terra::resample(data,base_rast)
+    data<-data*cellSize(data,unit="ha")
+    terra::writeRaster(data,filename =ms_file,overwrite=T)
+  }else{
+    data<-terra::rast(ms_file)
+  }
+  return(data)
+}
+
+# Create extraction by geography function
 admin_extract<-function(data,Geographies,FUN="mean",max_cells_in_memory=3*10^7){
   output<-list()
   if("admin0" %in% names(Geographies)){
@@ -50,14 +74,16 @@ admin_extract<-function(data,Geographies,FUN="mean",max_cells_in_memory=3*10^7){
 }
 
 # Create extraction function wrapper for exposure data
-admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographies){
+admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographies,overwrite=F){
+  
+  levels<-c(admin0="adm0",admin1="adm1",admin2="adm2")
   
   file<-paste0(save_dir,"/",filename,"_adm_",FUN,".parquet")
   file0<-gsub("_adm_","_adm0_",file)
   file1<-gsub("_adm_","_adm1_",file)
   file2<-gsub("_adm_","_adm2_",file)
   
-  if(!file.exists(file)|!file.exists(file1)){
+  if(!file.exists(file)|!file.exists(file1)|overwrite==T){
     data_ex<-admin_extract(data,Geographies,FUN="sum")
     
     st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
@@ -70,15 +96,29 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
       
       
       data<-data.table(data.frame(data_ex[[names(level)]]))
-      N<-colnames(data)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(data))]
-      data<-data[,..N]
-      data<-melt(data,id.vars = c("admin_name","iso3"))
+      data<-data[,!c("admin_name","iso3")]
       
-      data[,crop:=gsub("sum.","",variable,fixed=T)][,exposure:=varname][,admin_level:=names(levels)[i]][,variable:=NULL]
+      admin<-"admin0_name"
+      
+      if(level %in% c("adm1","adm2")){
+        admin<-c(admin,"admin1_name")
+        data<-suppressWarnings(data[,!"a1_a0"])
+      }
+      
+      if(level=="adm2"){
+        admin<-c(admin,"admin2_name")
+        data<-suppressWarnings(data[,!"a2_a1_a0"])
+      }
+      
+      colnames(data)<-gsub("_nam$","_name",colnames(data))
+      
+      data<-melt(data,id.vars = admin)
+      
+      data[,crop:=gsub("sum.","",variable[1],fixed=T),by=variable][,exposure:=varname][,variable:=NULL]
       
       data
       
-    }))
+    }),fill=T)
     data_ex[,crop:=gsub("."," ",crop,fixed=T)]
     
     
@@ -97,11 +137,9 @@ admin_extract_wrap2<-function(files,save_dir,filename,severity,overwrite=F,FUN="
     
     file0<-paste0(save_dir,"/",filename,"_adm0_",SEV,".parquet")
     file1<-gsub("_adm0_","_adm1_",file0)
-    file2<-gsub("_adm0_","_adm1_",file0)
+    file2<-gsub("_adm0_","_adm2_",file0)
     
     data<-terra::rast(files[grepl(SEV,files)])
-    
-    
     
     if((!file.exists(file0))|overwrite==T){
       # Display progress
@@ -123,7 +161,6 @@ admin_extract_wrap2<-function(files,save_dir,filename,severity,overwrite=F,FUN="
       sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
     }
     
-    
     if((!file.exists(file2))|overwrite==T){
       # Display progress
       cat('\r                                                                                                                                                 ')
@@ -134,6 +171,164 @@ admin_extract_wrap2<-function(files,save_dir,filename,severity,overwrite=F,FUN="
       sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
     }
     
+  }
+}
+
+# Function that restructures hazard risk data into a long format table
+restructure_parquet<-function(filename,save_dir,severity,overwrite=F,crops,livestock,Scenarios){
+  severity<-tolower(severity)
+  for(SEV in severity){
+    file<-paste0(save_dir,"/",filename,"_adm_",SEV,".parquet")
+    
+    if(!file.exists(file)|overwrite==T){
+      file0<-paste0(save_dir,"/",filename,"_adm0_",SEV,".parquet")
+      file1<-gsub("_adm0_","_adm1_",file0)
+      file2<-gsub("_adm0_","_adm2_",file0)
+      
+      files<-list(adm0=file0,adm1=file1,adm2=file2)
+      
+      # Read in geoparquet vectors, extract tabular data and join together
+      data<-rbindlist(lapply(1:length(files),FUN=function(i){
+        file<-files[i]
+        level<-names(files[i])
+        
+        print(paste0(SEV,"-",level))
+        
+        admins<-"admin0_name"
+        
+        if(level %in% c("adm1","adm2")){
+          admins<-c(admins,"admin1_name")
+        }
+        
+        if(level=="adm2"){
+          admins<-c(admins,"admin2_name")
+        }
+        
+        data<-data.table(data.frame(terra::vect(sfarrow::st_read_parquet(files[[i]]))))
+        data<-suppressWarnings(data[,!c("admin_name","iso3","a2_a1_a0","a1_a0")])
+        
+        colnames(data)<-gsub("_nam$","_name",colnames(data))
+        
+        melt(data,id.vars = admins)
+      }),fill=T)
+      
+      # Renaming of variable to allow splitting
+      new<-paste0(Scenarios$combined,"-")
+      old<-paste0(Scenarios[,paste0(Scenario,".",Time)],".")
+      
+      # Replace space in the crop names with a . to match the parquet column names
+      new<-c(new,paste0("-",crops,"-"))
+      old<-c(old,paste0(".",gsub(" ",".",crops,fixed = T),"."))
+      
+      new<-c(new,paste0("-",livestock,"-"))
+      old<-c(old,paste0(".",livestock,"."))
+
+      variable_old<-data[,unique(variable)]
+      variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F))
+      
+      # Note this method of merging a list back to the original table is much faster than the method employed in the hazards x exposure section
+      split<-variable_new[,list(var_split=list(tstrsplit(variable[1],"-"))),by=variable]
+      split_tab<-rbindlist(split$var_split)
+      colnames(split_tab)<-c("scenario","timeframe","hazard","crop","severity")
+      split_tab$variable<-variable_old
+      split_tab[,hazard:=gsub(".","+",hazard[1],fixed=T),by=hazard
+      ][,scenario:=unlist(tstrsplit(scenario[1],".",keep=2,fixed=T)),by=scenario
+      ][,severity:=tolower(severity)]
+      
+      data<-merge(data,split_tab,all.x=T)
+      data[,variable:=NULL]
+      
+      arrow::write_parquet(data,file)
+    }
+    
+  }
+  
+}
+
+# Make functions to restructure hazard risk x exposure geoparquet in a long tabular form
+recode_restructure<-function(data,crop_choices,livestock_choices,Scenarios,exposure,Severity){
+  
+  # Renaming of variable to allow splitting
+  new<-paste0(Scenarios$combined,"-")
+  old<-paste0(Scenarios[,paste0(Scenario,".",Time)],".")
+  
+  # Replace space in the crop names with a . to match the parquet column names
+  new<-c(new,paste0("-",crop_choices,"-"))
+  old<-c(old,paste0(".",gsub(" ",".",crop_choices,fixed = T),"."))
+  
+  new<-c(new,paste0("-",livestock_choices,"-"))
+  old<-c(old,paste0(".",livestock_choices,"."))
+  
+  new<-c(new,paste0("-",exposure))
+  old<-c(old,paste0(".",exposure))
+
+  variable_old<-data[,unique(variable)]
+  
+  variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F))
+  
+  split<-variable_new[,list(var_split=list(tstrsplit(variable[1],"-"))),by=variable]
+  split_tab<-rbindlist(split$var_split)
+  colnames(split_tab)<-c("scenario","timeframe","hazard","crop","severity","exposure")
+  split_tab$variable<-variable_old
+  split_tab[,hazard:=gsub(".","+",hazard[1],fixed=T),by=hazard
+  ][,scenario:=unlist(tstrsplit(scenario[1],".",keep=2,fixed=T)),by=scenario
+  ][,severity:=tolower(severity)]
+  
+  data<-merge(data,split_tab,all.x=T)
+  data[,variable:=NULL]
+
+  return(data)
+}
+recode_restructure_wrap<-function(folder,file,crops,livestock,exposure_var,Severity,overwrite,any=F,levels){
+  
+  if(any==F){
+    filename<-paste0(folder,"/",file,"_",Severity,".parquet")
+  }else{
+    filename<-paste0(folder,"/",file,"_any_",Severity,".parquet")
+  }
+  
+  if((!file.exists(filename))|overwrite==T){
+    data<-rbindlist(lapply(1:length(levels),FUN=function(i){
+      level<-levels[i]
+      
+      # Display progress
+      cat('\r                                                                                                                     ')
+      cat('\r',paste("Risk x Exposure - ",exposure_var," restructuring data | severity: ",Severity, " | admin level:",level))
+      flush.console()
+      
+      # Vop
+      if(any==F){
+        data<-data.table(data.frame(sfarrow::st_read_parquet(paste0(folder,"/",file,"_",levels[i],"_",Severity,".parquet"))))
+      }else{
+        data<-data.table(data.frame(sfarrow::st_read_parquet(paste0(folder,"/",file,"_any_",levels[i],"_",Severity,".parquet"))))
+      }
+      data<-data[,!c("geometry","iso3","admin_name")]
+      
+      colnames(data)<-gsub("_nam$","_name",colnames(data))
+      
+      admins<-"admin0_name"
+      if(level %in% c("adm1","adm2")){
+        admins<-c(admins,"admin1_name")
+      }
+      
+      if(level=="adm2"){
+        admins<-c(admins,"admin2_name")
+      }
+      
+      data<-melt(data,id.vars = admins)
+      
+      data<-recode_restructure(data=data,
+                               crop_choices = crops,
+                               livestock_choices = livestock,
+                               Scenarios = Scenarios,
+                               exposure=exposure_var,
+                               Severity=Severity)
+      
+      
+      data
+    }),fill=T)
+    # Save as feather object
+    arrow::write_parquet(data,filename)
   }
 }
 
@@ -157,10 +352,17 @@ Scenarios[,combined:=paste0(Scenario,"-",Time)]
 
 # Set hazards to include in analysis
 hazards<-c("NDD","NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG")
+haz_2way<-c("PTOT","TAVG")
+hazards2<-c(hazards[!hazards %in% haz_2way],paste0(haz_2way,rep(c("_L","_H"),each=2)))
+
+
 haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
 haz_class<-data.table::fread(haz_class_url)
 haz_class<-haz_class[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
 haz_classes<-unique(haz_class$description)
+
+# List livestock names
+livestock_choices<-paste0(rep(c("cattle","sheep","goats","pigs","poultry"),each=2),c("_highland","_tropical"))
 
 # Pull out severity classes and associate impact scores
 severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
@@ -185,7 +387,7 @@ base_rast<-terra::rast(base_raster)
 
 #### Load datasets (non hazards)
 # 1) Geographies #####
-# Load and combine geoboundarie
+# Load and combine geoboundaries
 
 geoboundaries_s3<-"s3://digital-atlas/boundaries"
 geo_files_s3<-s3fs::s3_dir_ls(geoboundaries_s3)
@@ -194,87 +396,98 @@ geo_files_s3<-grep("harmonized.gpkg",geo_files_s3,value=T)
 geo_files_local<-file.path("Data/boundaries",basename(geo_files_s3))
 names(geo_files_local)<-c("admin0","admin1","admin2")
 
+
 Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
   file<-geo_files_local[i]
-  if(!file.exists(file)){
+  if(!file.exists(file)|overwrite==T){
     s3fs::s3_file_download(path=geo_files_s3[i],new_path=file,overwrite = T)
   }
-  terra::vect(file)
+  data<-terra::vect(file)
+  names(data)<-gsub("_nam$","_name$",names(data))
+  data
   
 })
 names(Geographies)<-names(geo_files_local)
 
-#2) Exposure variables ####
-
-haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
-haz_risk_files<-list.files(haz_risk_dir,full.names = T)
-haz_risk<-terra::rast(haz_risk_files[1])
+# 2) Exposure variables ####
 
 exposure_dir<-"Data/exposure"
 if(!dir.exists(exposure_dir)){
   dir.create(exposure_dir)
 }
 
-# If mapspam data does not exist locally download from S3 bucket
-mapspam_local<-"Data/mapspam"
-
-if(!dir.exists(mapspam_local)){
-  dir.create(mapspam_local,recursive = T)
-  s3_bucket <- "s3://digital-atlas/risk_prototype/data/mapspam"
-  s3fs::s3_dir_download(s3_bucket,mapspam_local)
-}
+overwrite<-F
 
   # 2.1) Crops (MapSPAM) #####
-  overwrite<-F
+    # 2.1.1) Download MapSPAM #####
+    # If mapspam data does not exist locally download from S3 bucket
+    mapspam_local<-"Data/mapspam"
+    
+    if(!dir.exists(mapspam_local)){
+      dir.create(mapspam_local,recursive = T)
+      s3_bucket <- "s3://digital-atlas/risk_prototype/data/mapspam"
+      s3fs::s3_dir_download(s3_bucket,mapspam_local)
+    }
 
-    # 2.1.1) Crop VoP (Value of production) ######
-  ms_vop_file<-paste0(exposure_dir,"/crop_vop.tif")
+    # 2.1.2) Crop VoP (Value of production) ######
+      # To generalize it might be better to just supply a filename for the mapspam
+      crop_vop_tot<-read_spam(variable="V",
+                              technology="TA",
+                              mapspam_dir=mapspam_local,
+                              save_dir=exposure_dir,
+                              base_rast=base_rast,
+                              filename="crop_vop",
+                              ms_codes=ms_codes,
+                              overwrite=overwrite)
+      
+      crop_vop17_tot<-read_spam(variable="Vusd17",
+                                technology="TA",
+                                mapspam_dir=mapspam_local,
+                                save_dir=exposure_dir,
+                                base_rast=base_rast,
+                                filename="crop_vop_usd17",
+                                ms_codes=ms_codes,
+                                overwrite=overwrite)
 
-  if(!file.exists(ms_vop_file)|overwrite==T){
-    vop<-fread(paste0(mapspam_dir,"/SSA_V_TA.csv"))
-    crops<-tolower(ms_codes$Code)
-    ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(vop),value=T))
-    vop<-terra::rast(vop[,..ms_fields],type="xyz",crs="EPSG:4326")
-    names(vop)<-gsub("_a","",names(vop))
-    names(vop)<-ms_codes[match(names(vop),tolower(ms_codes$Code)),Fullname]
-    # convert to value/area 
-    crop_vop<-vop/terra::cellSize(vop,unit="ha")
-    # resample data
-    crop_vop<-terra::resample(crop_vop,haz_risk)
-    crop_vop_tot<-crop_vop*cellSize(crop_vop,unit="ha")
-    terra::writeRaster(crop_vop_tot,filename =ms_vop_file,overwrite=T)
-  }else{
-    crop_vop_tot<-terra::rast(ms_vop_file)
-  }
   
-  # 2.1.1.2) Extraction of values by admin areas
-  crop_vop_tot_adm_sum<-admin_extract_wrap(data=crop_vop_tot,save_dir=exposure_dir,filename = "crop_vop",FUN="sum",varname="vop",Geographies=Geographies)
-  
-    # 2.1.2) Crop Harvested Area #####
-  
-  file<-paste0(exposure_dir,"/crop_ha.tif")
-  
-  if(!file.exists(file)|overwrite==T){
-    ha<-fread(paste0(mapspam_dir,"/SSA_H_TA.csv"))
-    crops<-tolower(ms_codes$Code)
-    ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(ha),value=T))
-    ha<-rast(ha[,..ms_fields],type="xyz",crs="EPSG:4326")
-    names(ha)<-gsub("_a","",names(ha))
-    names(ha)<-ms_codes[match(names(ha),tolower(ms_codes$Code)),Fullname]
-    # convert to value/area 
-    crop_ha<-ha/terra::cellSize(ha,unit="ha")
-    # resample  data
-    crop_ha<-terra::resample(crop_ha,haz_risk)
-    crop_ha_tot<-crop_ha*cellSize(crop_ha,unit="ha")
-    terra::writeRaster(crop_ha_tot,filename = file,overwrite=T)
-  }else{
-    crop_ha_tot<-terra::rast(file)
-  }
-  
+  # 2.1.2.2) Extraction of values by admin areas
+    crop_vop_tot_adm_sum<-admin_extract_wrap(data=crop_vop_tot,
+                                             save_dir=exposure_dir,
+                                             filename = "crop_vop",
+                                             FUN="sum",
+                                             varname="vop",
+                                             Geographies=Geographies,
+                                             overwrite=overwrite)
+    
+    crop_vop17_tot_adm_sum<-admin_extract_wrap(data=crop_vop17_tot,
+                                               save_dir=exposure_dir,
+                                               filename = "crop_vop_usd17",
+                                               FUN="sum",
+                                               varname="vop_usd17",
+                                               Geographies=Geographies,
+                                               overwrite=overwrite)
+      
+    # 2.1.3) Crop Harvested Area #####
+
+    crop_ha_tot<-read_spam(variable="H",
+                            technology="TA",
+                            mapspam_dir=mapspam_local,
+                            save_dir=exposure_dir,
+                            base_rast=base_rast,
+                            filename="crop_ha",
+                            ms_codes=ms_codes,
+                            overwrite=overwrite)
+
   # 2.1.2.1) Extraction of values by admin areas
-  crop_ha_tot_adm_sum<-admin_extract_wrap(data=crop_ha_tot,save_dir=exposure_dir,filename = "crop_ha",FUN="sum",varname="ha",Geographies=Geographies)
+  crop_ha_tot_adm_sum<-admin_extract_wrap(data=crop_ha_tot,
+                                          save_dir=exposure_dir,
+                                          filename = "crop_ha",
+                                          FUN="sum",
+                                          varname="ha",
+                                          Geographies=Geographies,
+                                          overwrite=overwrite)
 
-    # 2.1.3) Create Crop Masks ######
+    # 2.1.4) Create Crop Masks ######
   commodity_mask_dir<-"Data/commodity_masks"
   
   if(!dir.exists(commodity_mask_dir)){
@@ -294,7 +507,7 @@ if(!dir.exists(mapspam_local)){
     # convert to value/area 
     crop_pa<-pa/terra::cellSize(pa,unit="ha")
     # resample  data
-    crop_pa<-terra::resample(crop_pa,haz_risk)
+    crop_pa<-terra::resample(crop_pa,base_rast)
     crop_pa_tot<-crop_pa*cellSize(crop_pa,unit="ha")
     
     # Areas with >0.01% harvested area = crop mask
@@ -306,6 +519,16 @@ if(!dir.exists(mapspam_local)){
   }
   
   # 2.2) Livestock #####
+    # 2.2.1) Download livestock data ####
+  # If glw3 data does not exist locally download from S3 bucket
+  glw3_dir<-"Data/GLW3"
+  
+  if(!dir.exists(glw3_dir)){
+    dir.create(glw3_dir,recursive = T)
+    s3_bucket <- "s3://digital-atlas/risk_prototype/data/GLW3"
+    s3fs::s3_dir_download(s3_bucket,glw3_dir)
+  }
+  
     # 2.2.3) Livestock Mask #####
   mask_ls_file<-paste0(commodity_mask_dir,"/livestock_masks.tif")
   
@@ -327,7 +550,7 @@ if(!dir.exists(mapspam_local)){
     
     # resample to 0.05
     lu_density<-lus/terra::cellSize(lus,unit="ha")
-    lu_density<-terra::resample(lu_density,haz_risk)
+    lu_density<-terra::resample(lu_density,base_rast)
     
     # Classify requires 0.00001 livestock units per ha to be present
     livestock_mask<-terra::classify(lu_density, data.frame(from=c(0,0.00001),to=c(0.00001,Inf),becomes=c(0,1)))
@@ -353,8 +576,6 @@ if(!dir.exists(mapspam_local)){
   }else{
     livestock_mask<-terra::rast(mask_ls_file)
   }
-  
-    
     # 2.2.1) Livestock Numbers (GLW3) ######
   livestock_no_file<-paste0(exposure_dir,"/livestock_no.tif")
   
@@ -376,7 +597,7 @@ if(!dir.exists(mapspam_local)){
     
     # resample to 0.05
     livestock_density<-livestock_no/terra::cellSize(livestock_no,unit="ha")
-    livestock_density<-terra::resample(livestock_density,haz_risk)
+    livestock_density<-terra::resample(livestock_density,base_rast)
     livestock_no<-livestock_density*cellSize(livestock_density,unit="ha")
     
     # Pull out sheep and goat proportions for use in vop calculations before highland/tropical splitting
@@ -406,7 +627,13 @@ if(!dir.exists(mapspam_local)){
   }
   
     # 2.2.1.1) Extraction of values by admin areas
-  livestock_no_tot_adm<-admin_extract_wrap(data=livestock_no,save_dir=exposure_dir,filename = "livestock_no",FUN="sum",varname="number",Geographies=Geographies)
+  livestock_no_tot_adm<-admin_extract_wrap(data=livestock_no,
+                                           save_dir=exposure_dir,
+                                           filename = "livestock_no",
+                                           FUN="sum",
+                                           varname="number",
+                                           Geographies=Geographies,
+                                           overwrite=overwrite)
 
     # 2.2.2) Livestock VoP ######
     livestock_vop_file<-paste0(exposure_dir,"/livestock_vop.tif")
@@ -422,7 +649,7 @@ if(!dir.exists(mapspam_local)){
     
     # resample to 0.05
     livestock_density<-livestock_vop/terra::cellSize(livestock_vop,unit="ha")
-    livestock_density<-terra::resample(livestock_density,haz_risk)
+    livestock_density<-terra::resample(livestock_density,base_rast)
     livestock_vop<-livestock_density*cellSize(livestock_density,unit="ha")
     rm(livestock_density)
     
@@ -453,13 +680,20 @@ if(!dir.exists(mapspam_local)){
       livestock_vop<-terra::rast(livestock_vop_file)
     }
     # 2.2.2.1) Extraction of values by admin areas
-  livestock_vop_tot_adm<-admin_extract_wrap(data=livestock_vop,save_dir=exposure_dir,filename = "livestock_vop",FUN="sum",varname="vop",Geographies=Geographies)
+  livestock_vop_tot_adm<-admin_extract_wrap(data=livestock_vop,
+                                            save_dir=exposure_dir,
+                                            filename = "livestock_vop",
+                                            FUN="sum",
+                                            varname="vop",
+                                            Geographies=Geographies,
+                                            overwrite=overwrite)
   
   # 2.3) Combine exposure totals by admin areas ####
     file<-paste0(exposure_dir,"/exposure_adm_sum.parquet")
-    if(!file.exists(file)){
+    if(!file.exists(file)|overwrite==T){
       exposure_adm_sum_tab<-rbind(
         crop_vop_tot_adm_sum,
+        crop_vop17_tot_adm_su,
         crop_ha_tot_adm_sum,
         livestock_vop_tot_adm,
         livestock_no_tot_adm
@@ -490,7 +724,13 @@ if(!dir.exists(mapspam_local)){
       }
 
     # 2.4.1) Extraction of hpop by admin areas ####
-  admin_extract_wrap(data=hpop,save_dir=exposure_dir,filename = "hpop",FUN="sum",varname="number",Geographies=Geographies)
+  admin_extract_wrap(data=hpop,
+                     save_dir=exposure_dir,
+                     filename = "hpop",
+                     FUN="sum",
+                     varname="number",
+                     Geographies=Geographies,
+                     overwrite=overwrite)
   
 #### Intersect Risk and Exposure ####
 # 1) Hazard Risk ####
@@ -506,7 +746,15 @@ admin_extract_wrap2(files=files,
                     Geographies=Geographies,
                     overwrite=F)
 
-# 1.1) Hazard Total Risk ####
+restructure_parquet(filename = "haz_risk",
+                    save_dir = haz_risk_dir,
+                    severity = severity_classes$class,
+                    overwrite=F,
+                    crops = c("generic",crop_choices),
+                    livestock,
+                    Scenarios)
+
+  # 1.1) Hazard Total Risk ####
 
 files<-list.files(haz_risk_dir,"_any.tif$",full.names = T)
 
@@ -517,8 +765,16 @@ admin_extract_wrap2(files=files,
                     Geographies=Geographies,
                     overwrite=F)
 
+restructure_parquet(filename = "haz_risk_any",
+                    save_dir = haz_risk_dir,
+                    severity = severity_classes$class,
+                    overwrite=F,
+                    crops = c("generic",crop_choices),
+                    livestock,
+                    Scenarios)
+
 # Check resulting file
-X<-st_read_parquet(paste0(haz_risk_dir,"/haz_risk_adm0_",SEV,"_any.parquet"))
+X<-arrow::read_parquet(paste0(haz_risk_dir,"/haz_risk_any_adm_",SEV,".parquet"))
 grep("THI",names(X),value=T)
 
 # 2) Apply Crop Mask to Classified Hazard Risk ####
@@ -793,102 +1049,9 @@ if(!dir.exists(haz_risk_n_dir)){
   dir.create(haz_risk_n_dir,recursive = T)
 }
 
-# List livestock names
-livestock_choices<-list.files(haz_risk_dir,".tif$")
-livestock_choices<-grep("highland|tropical",livestock_choices,value = T)
-livestock_choices<-unique(unlist(tstrsplit(livestock_choices,"_extr|_seve",keep=1)))
-
 # Crop choices only 
 crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
 
-  # Make functions to restructure geoparquet in a long tabular form ####
-  recode_restructure<-function(data,crop_choices,livestock_choices,Scenarios,exposure,Severity){
-    
-    # Remove "." in crop names
-    for(crop in crop_choices){
-      data[,variable:=gsub(gsub(" ",".",crop,fixed=T),crop,variable[1]),by=variable]
-    }
-    
-    # Remove "." in hazard names
-    variables<-data[,unique(variable)]
-    variables<-gsub("sum.","",variables)
-    variables<-gsub(paste0(Scenarios$Scenario,collapse = "|"),"",variables)
-    variables<-gsub(paste0(Scenarios$Time,collapse = "|"),"",variables)
-    variables<-gsub(paste0(crop_choices,collapse = "|"),"",variables)
-    variables<-gsub(paste0(livestock_choices,collapse = "|"),"",variables)
-    variables<-unique(gsub("Moderate|Severe|Extreme","",variables))
-    # Remove trailing exposure name (as this can be something like "n" it needs a different approach)
-    variables<-sapply(1:length(variables),FUN=function(g){
-      substring(variables[g],1,nchar(variables[g])-nchar(paste0(".",exposure)))
-    })
-    variables<-grep("[.]",unique(gsub("[.][.]|[.][.][.]","",variables)),value=T)
-    variables1<-unique(gsub("[.]","+",variables))
-    
-    for(n in 1:length(variables)){
-      data[,variable:=gsub(variables[n],variables1[n],variable,fixed=T)]
-    }
-    
-    # Split variable string into columns
-    data[,scenario:=unlist(tstrsplit(variable[1],"[.]",keep=2)),by=variable
-    ][,timeframe:=unlist(tstrsplit(variable[1],"[.]",keep=3)),by=variable
-    ][,hazard:=unlist(tstrsplit(variable[1],"[.]",keep=4)),by=variable
-    ][,crop:=unlist(tstrsplit(variable[1],"[.]",keep=5)),by=variable
-    ][,severity:=Severity
-    ][,exposure:=unlist(tstrsplit(variable[1],"[.]",keep=7)),by=variable
-    ][,variable:=NULL]
-    
-    return(data)
-  }
-  recode_restructure_wrap<-function(folder,file,crops,livestock,exposure_var,Severity,overwrite,any=F){
-    
-    if(any==F){
-      filename<-paste0(folder,"/",file,"_",Severity,".parquet")
-    }else{
-      filename<-paste0(folder,"/",file,"_any_",Severity,".parquet")
-    }
-    
-    if((!file.exists(filename))|overwrite==T){
-      data<-rbindlist(lapply(1:length(levels),FUN=function(i){
-        level<-levels[i]
-        
-        # Display progress
-        cat('\r                                                                                                                     ')
-        cat('\r',paste("Risk x Exposure - ",exposure_var," restructuring data | severity: ",Severity, " | admin level:",level))
-        flush.console()
-        
-        # Vop
-        if(any==F){
-          data<-data.table(data.frame(sfarrow::st_read_parquet(paste0(folder,"/",file,"_",levels[i],"_",Severity,".parquet"))))
-        }else{
-          data<-data.table(data.frame(sfarrow::st_read_parquet(paste0(folder,"/",file,"_any_",levels[i],"_",Severity,".parquet"))))
-        }
-        data<-data[,!c("geometry","iso3","admin_name")]
-        
-        admins<-"admin0_nam"
-        if(level %in% c("adm1","adm2")){
-          admins<-c(admins,"admin1_nam")
-        }
-        
-        if(level=="adm2"){
-          admins<-c(admins,"admin2_nam")
-        }
-        
-        data<-melt(data,id.vars = admins)
-        
-        data<-recode_restructure(data=data,
-                                 crop_choices = crops,
-                                 livestock_choices = livestock,
-                                 Scenarios = Scenarios,
-                                 exposure=exposure_var,
-                                 Severity=Severity)
-        
-        
-        data
-      }),fill=T)
-      # Save as feather object
-      arrow::write_parquet(data,filename)
-    }
-  }
   # 5.1) Solo and interactions combined into a single file (not any hazard) ####
   haz_risk_files<-list.files(haz_risk_dir,".tif$",full.names = T)
   haz_risk_files<-haz_risk_files[!grepl("_any.tif$",haz_risk_files)]
@@ -897,7 +1060,7 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
   do_n<-F
   
   for(SEV in tolower(severity_classes$class)){
-    #### Multiply Hazard Risk by Exposure ####
+    # Multiply Hazard Risk by Exposure ####
     
     haz_risk_files2<-haz_risk_files[grepl(SEV,haz_risk_files) & !grepl("_int",haz_risk_files)]
   
@@ -976,66 +1139,21 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
     
    # plan(sequential)
     
-    #### Extract Risk x Exposure by Geography  ####
-    # VoP #####
-    haz_risk_vop_files<-list.files(haz_risk_vop_dir,".tif$",full.names = T)
-    haz_risk_vop_files<-haz_risk_vop_files[!grepl("_any.tif$",haz_risk_vop_files)]
-    haz_risk_vop_files<-haz_risk_vop_files[grepl(SEV,haz_risk_vop_files)]
-    data<-terra::rast(haz_risk_vop_files)
-    
-    file0<-paste0(haz_risk_vop_dir,"/haz_risk_vop_adm0_",SEV,".parquet")
-    file1<-gsub("_adm0_","_adm1_",file0)
-    file2<-gsub("_adm0_","_adm2_",file0)
-    
-    if(!file.exists(file0)|overwrite==T){
-      # Display progress
-      cat('\r                                                                                                                     ')
-      cat('\r',paste("Risk x Exposure - VoP admin extraction - adm0| severity:",SEV))
-      flush.console()
+    # Extract Risk x Exposure by Geography  ####
+      # VoP #####
+      haz_risk_vop_files<-list.files(haz_risk_vop_dir,".tif$",full.names = T)
+      haz_risk_vop_files<-haz_risk_vop_files[!grepl("_any.tif$",haz_risk_vop_files)]
+      haz_risk_vop_files<-haz_risk_vop_files[grepl(SEV,haz_risk_vop_files)]
+      data<-terra::rast(haz_risk_vop_files)
       
-      data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
-      sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
-      rm(data_ex)
-      gc()
-    }
-    if(!file.exists(file1)|overwrite==T){
-      # Display progress
-      cat('\r                                                                                                                     ')
-      cat('\r',paste("Risk x Exposure - VoP admin extraction - adm1| severity:",SEV))
-      flush.console()
-      
-      data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
-      sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
-      rm(data_ex)
-      gc()
-    }
-    if(!file.exists(file2)|overwrite==T){
-      # Display progress
-      cat('\r                                                                                                                     ')
-      cat('\r',paste("Risk x Exposure - VoP admin extraction - adm2| severity:",SEV))
-      flush.console()
-      
-      data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
-      sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
-      rm(data_ex)
-      gc()
-    }
-    
-    # Harvested Area #####
-    if(do_ha==T){
-      haz_risk_ha_files<-list.files(haz_risk_ha_dir,".tif$",full.names = T)
-      haz_risk_ha_files<-haz_risk_ha_files[!grepl("_any.tif$",haz_risk_ha_files)]
-      haz_risk_ha_files<-haz_risk_ha_files[grepl(SEV,haz_risk_ha_files)]
-      data<-terra::rast(haz_risk_ha_files)
-      
-      file0<-paste0(haz_risk_ha_dir,"/haz_risk_ha_adm0_",SEV,".parquet")
+      file0<-paste0(haz_risk_vop_dir,"/haz_risk_vop_adm0_",SEV,".parquet")
       file1<-gsub("_adm0_","_adm1_",file0)
       file2<-gsub("_adm0_","_adm2_",file0)
       
       if(!file.exists(file0)|overwrite==T){
         # Display progress
         cat('\r                                                                                                                     ')
-        cat('\r',paste("Risk x Exposure - HA admin extraction - adm0| severity:",SEV))
+        cat('\r',paste("Risk x Exposure - VoP admin extraction - adm0| severity:",SEV))
         flush.console()
         
         data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
@@ -1046,7 +1164,7 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
       if(!file.exists(file1)|overwrite==T){
         # Display progress
         cat('\r                                                                                                                     ')
-        cat('\r',paste("Risk x Exposure - HA admin extraction - adm1| severity:",SEV))
+        cat('\r',paste("Risk x Exposure - VoP admin extraction - adm1| severity:",SEV))
         flush.console()
         
         data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
@@ -1057,7 +1175,7 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
       if(!file.exists(file2)|overwrite==T){
         # Display progress
         cat('\r                                                                                                                     ')
-        cat('\r',paste("Risk x Exposure - HA admin extraction - adm2| severity:",SEV))
+        cat('\r',paste("Risk x Exposure - VoP admin extraction - adm2| severity:",SEV))
         flush.console()
         
         data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
@@ -1065,55 +1183,100 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
         rm(data_ex)
         gc()
       }
-    }
-    
-    # Numbers #####
-    if(do_n==T){
-      haz_risk_n_files<-list.files(haz_risk_n_dir,".tif$",full.names = T)
-      haz_risk_n_files<-haz_risk_n_files[!grepl("_any.tif$",haz_risk_n_files)]
-      haz_risk_n_files<-haz_risk_n_files[grepl(SEV,haz_risk_n_files)]
-      data<-terra::rast(haz_risk_n_files)
       
-      file0<-paste0(haz_risk_n_dir,"/haz_risk_n_adm0_",SEV,".parquet")
-      file1<-gsub("_adm0_","_adm1_",file0)
-      file2<-gsub("_adm0_","_adm2_",file0)
+      # Harvested Area #####
+      if(do_ha==T){
+        haz_risk_ha_files<-list.files(haz_risk_ha_dir,".tif$",full.names = T)
+        haz_risk_ha_files<-haz_risk_ha_files[!grepl("_any.tif$",haz_risk_ha_files)]
+        haz_risk_ha_files<-haz_risk_ha_files[grepl(SEV,haz_risk_ha_files)]
+        data<-terra::rast(haz_risk_ha_files)
+        
+        file0<-paste0(haz_risk_ha_dir,"/haz_risk_ha_adm0_",SEV,".parquet")
+        file1<-gsub("_adm0_","_adm1_",file0)
+        file2<-gsub("_adm0_","_adm2_",file0)
+        
+        if(!file.exists(file0)|overwrite==T){
+          # Display progress
+          cat('\r                                                                                                                     ')
+          cat('\r',paste("Risk x Exposure - HA admin extraction - adm0| severity:",SEV))
+          flush.console()
+          
+          data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
+          sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
+          rm(data_ex)
+          gc()
+        }
+        if(!file.exists(file1)|overwrite==T){
+          # Display progress
+          cat('\r                                                                                                                     ')
+          cat('\r',paste("Risk x Exposure - HA admin extraction - adm1| severity:",SEV))
+          flush.console()
+          
+          data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
+          sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+          rm(data_ex)
+          gc()
+        }
+        if(!file.exists(file2)|overwrite==T){
+          # Display progress
+          cat('\r                                                                                                                     ')
+          cat('\r',paste("Risk x Exposure - HA admin extraction - adm2| severity:",SEV))
+          flush.console()
+          
+          data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
+          sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+          rm(data_ex)
+          gc()
+        }
+      }
       
-      if(!file.exists(file0)|overwrite==T){
-        # Display progress
-        cat('\r                                                                                                                     ')
-        cat('\r',paste("Risk x Exposure - N admin extraction - adm0| severity:",SEV))
-        flush.console()
+      # Numbers #####
+      if(do_n==T){
+        haz_risk_n_files<-list.files(haz_risk_n_dir,".tif$",full.names = T)
+        haz_risk_n_files<-haz_risk_n_files[!grepl("_any.tif$",haz_risk_n_files)]
+        haz_risk_n_files<-haz_risk_n_files[grepl(SEV,haz_risk_n_files)]
+        data<-terra::rast(haz_risk_n_files)
         
-        data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
-        sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
-        rm(data_ex)
-        gc()
-      }
-      if(!file.exists(file1)|overwrite==T){
-        # Display progress
-        cat('\r                                                                                                                     ')
-        cat('\r',paste("Risk x Exposure - N admin extraction - adm1| severity:",SEV))
-        flush.console()
+        file0<-paste0(haz_risk_n_dir,"/haz_risk_n_adm0_",SEV,".parquet")
+        file1<-gsub("_adm0_","_adm1_",file0)
+        file2<-gsub("_adm0_","_adm2_",file0)
         
-        data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
-        sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
-        rm(data_ex)
-        gc()
+        if(!file.exists(file0)|overwrite==T){
+          # Display progress
+          cat('\r                                                                                                                     ')
+          cat('\r',paste("Risk x Exposure - N admin extraction - adm0| severity:",SEV))
+          flush.console()
+          
+          data_ex<-admin_extract(data,Geographies["admin0"],FUN="sum")
+          sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
+          rm(data_ex)
+          gc()
+        }
+        if(!file.exists(file1)|overwrite==T){
+          # Display progress
+          cat('\r                                                                                                                     ')
+          cat('\r',paste("Risk x Exposure - N admin extraction - adm1| severity:",SEV))
+          flush.console()
+          
+          data_ex<-admin_extract(data,Geographies["admin1"],FUN="sum")
+          sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+          rm(data_ex)
+          gc()
+        }
+        if(!file.exists(file2)|overwrite==T){
+          # Display progress
+          cat('\r                                                                                                                     ')
+          cat('\r',paste("Risk x Exposure - N admin extraction - adm2| severity:",SEV))
+          flush.console()
+          
+          data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
+          sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+          rm(data_ex)
+          gc()
+        }
       }
-      if(!file.exists(file2)|overwrite==T){
-        # Display progress
-        cat('\r                                                                                                                     ')
-        cat('\r',paste("Risk x Exposure - N admin extraction - adm2| severity:",SEV))
-        flush.console()
-        
-        data_ex<-admin_extract(data,Geographies["admin2"],FUN="sum")
-        sfarrow::st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
-        rm(data_ex)
-        gc()
-      }
-    }
-    
-    #### Restructure Extracted Data ####
+      
+    # Restructure Extracted Data ####
     
     # Vop
     recode_restructure_wrap(folder=haz_risk_vop_dir,
@@ -1122,7 +1285,8 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
                             livestock=livestock_choices,
                             exposure_var="vop",
                             Severity=SEV,
-                            overwrite=overwrite)
+                            overwrite=overwrite,
+                            levels=levels)
     
     # Harvested area
     if(do_ha==T){
@@ -1132,7 +1296,8 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
                               livestock=livestock_choices,
                               exposure_var="ha",
                               Severity=SEV,
-                              overwrite=overwrite)
+                              overwrite=overwrite,
+                              levels=levels)
     }
     
     # Numbers
@@ -1143,7 +1308,8 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
                               livestock=livestock_choices,
                               exposure_var="number",
                               Severity=SEV,
-                              overwrite=overwrite)
+                              overwrite=overwrite,
+                              levels=levels)
     }
     
   }
@@ -1345,7 +1511,8 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
                           exposure_var="vop",
                           Severity=SEV,
                           overwrite=overwrite,
-                          any=T)
+                          any=T,
+                          levels=levels)
   # Harvested area
   if(do_ha==T){
     recode_restructure_wrap(folder=haz_risk_ha_dir,
@@ -1355,7 +1522,8 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
                             exposure_var="ha",
                             Severity=SEV,
                             overwrite=overwrite,
-                            any=T)
+                            any=T,
+                            levels=levels)
   }
   # Numbers
   if(do_n==T){
@@ -1366,7 +1534,8 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
                             exposure_var="n",
                             Severity=SEV,
                             overwrite=overwrite,
-                            any=T)
+                            any=T,
+                            levels=levels)
   }
 }
 
