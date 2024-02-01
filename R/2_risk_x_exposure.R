@@ -332,6 +332,27 @@ recode_restructure_wrap<-function(folder,file,crops,livestock,exposure_var,Sever
   }
 }
 
+# Function to split livestock between highland and tropical
+split_livestock<-function(data,livestock_mask_high,livestock_mask_low){
+  
+  # Reorder cols to match mask
+  order_n<-sapply(names(data),FUN=function(X){grep(X,names(livestock_mask_high))})
+  data_high<-data[[order_n]]
+  data_high<-data_high*livestock_mask_high
+  
+  order_n<-sapply(names(data),FUN=function(X){grep(X,names(livestock_mask_low))})
+  data_low<-data[[order_n]]
+  data_low<-data_low*livestock_mask_low
+  
+  
+  names(data_high)<-names(livestock_mask_high)
+  names(data_low)<-names(livestock_mask_low)
+  
+  data_joined<-c(data_low,data_high)
+  
+  return(data_joined)
+}
+
 # Set up workspace ####
 # Increase GDAL cache size
 terra::gdalCache(60000)
@@ -388,7 +409,7 @@ base_rast<-terra::rast(base_raster)
 #### Load datasets (non hazards)
 # 1) Geographies #####
 # Load and combine geoboundaries
-
+overwrite<-F
 geoboundaries_s3<-"s3://digital-atlas/boundaries"
 geo_files_s3<-s3fs::s3_dir_ls(geoboundaries_s3)
 geo_files_s3<-grep("harmonized.gpkg",geo_files_s3,value=T)
@@ -520,15 +541,24 @@ overwrite<-F
   
   # 2.2) Livestock #####
     # 2.2.1) Download livestock data ####
-  # If glw3 data does not exist locally download from S3 bucket
-  glw3_dir<-"Data/GLW3"
+    # If glw3 data does not exist locally download from S3 bucket
+    glw3_dir<-"Data/GLW3"
+    
+    if(!dir.exists(glw3_dir)){
+      dir.create(glw3_dir,recursive = T)
+      s3_bucket <- "s3://digital-atlas/risk_prototype/data/GLW3"
+      s3fs::s3_dir_download(s3_bucket,glw3_dir)
+    }
   
-  if(!dir.exists(glw3_dir)){
-    dir.create(glw3_dir,recursive = T)
-    s3_bucket <- "s3://digital-atlas/risk_prototype/data/GLW3"
-    s3fs::s3_dir_download(s3_bucket,glw3_dir)
-  }
-  
+    # If livestock vop data does not exist locally download from S3 bucket
+    ls_vop_dir<-"Data/livestock_vop"
+    
+    if(!dir.exists(ls_vop_dir)){
+      dir.create(ls_vop_dir,recursive = T)
+      s3_bucket <- "s3://digital-atlas/ls_vop_dir"
+      s3fs::s3_dir_download(s3_bucket,ls_vop_dir)
+    }
+    
     # 2.2.3) Livestock Mask #####
   mask_ls_file<-paste0(commodity_mask_dir,"/livestock_masks.tif")
   
@@ -575,10 +605,13 @@ overwrite<-F
     
   }else{
     livestock_mask<-terra::rast(mask_ls_file)
+    livestock_mask_high<-livestock_mask[[grep("highland",names(livestock_mask))]]
+    livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
   }
     # 2.2.1) Livestock Numbers (GLW3) ######
   livestock_no_file<-paste0(exposure_dir,"/livestock_no.tif")
-  
+  shoat_prop_file<-paste0(glw3_dir,"/shoat_prop.tif")
+    
   if(!file.exists(livestock_no_file)|overwrite==T){
     
     ls_files<-list.files(glw3_dir,"_Da.tif",full.names = T)
@@ -604,22 +637,11 @@ overwrite<-F
     sheep_prop<-livestock_no$sheep/(livestock_no$goats +livestock_no$sheep)
     goat_prop<-livestock_no$goats/(livestock_no$goats +livestock_no$sheep)
     
+    terra::writeRaster(terra::rast(c(sheep_prop=sheep_prop,goat_prop=goat_prop)),filename = shoat_prop_file,overwrite=T)
+    
     # Split livestock between highland and tropical
-    # Reorder cols to match mask
-    order_n<-sapply(names(livestock_no),FUN=function(X){grep(X,names(livestock_mask_high))})
-    livestock_no_high<-livestock_no[[order_n]]
-    livestock_no_high<-livestock_no_high*livestock_mask_high
-    
-    order_n<-sapply(names(livestock_no),FUN=function(X){grep(X,names(livestock_mask_low))})
-    livestock_no_low<-livestock_no[[order_n]]
-    livestock_no_low<-livestock_no*livestock_mask_low
-    
-    
-    names(livestock_no_high)<-names(livestock_mask_high)
-    names(livestock_no_low)<-names(livestock_mask_low)
-    
-    livestock_no<-c(livestock_no_low,livestock_no_high)
-    
+    livestock_no<-split_livestock(data=livestock_no,livestock_mask_high,livestock_mask_low)
+
     terra::writeRaster(livestock_no,filename = livestock_no_file,overwrite=T)
     
   }else{
@@ -636,29 +658,36 @@ overwrite<-F
                                            overwrite=overwrite)
 
     # 2.2.2) Livestock VoP ######
+    # IUSD (old)
     livestock_vop_file<-paste0(exposure_dir,"/livestock_vop.tif")
     
     if(!file.exists(livestock_vop_file)|overwrite==T){
       
     # Note unit is IUSD 2005
-      ls_vop_files<-list.files(ls_vop_dir,".tif",full.names = T)
+      ls_vop_files<-list.files(ls_vop_dir,"_total.tif$",full.names = T)
       ls_vop_files<-grep("h7",ls_vop_files,value=T)
       livestock_vop<-terra::rast(ls_vop_files)
     
-    names(livestock_vop)<-c("cattle","poultry","pigs","sheep_goat","total")
-    
-    # resample to 0.05
-    livestock_density<-livestock_vop/terra::cellSize(livestock_vop,unit="ha")
-    livestock_density<-terra::resample(livestock_density,base_rast)
-    livestock_vop<-livestock_density*cellSize(livestock_density,unit="ha")
-    rm(livestock_density)
-    
-    # Split sheep goat vop using their populations
-    livestock_vop$sheep<-livestock_vop$sheep_goat*sheep_prop
-    livestock_vop$goats<-livestock_vop$sheep_goat*goat_prop
-    livestock_vop$sheep_goat<-NULL
+      names(livestock_vop)<-c("cattle","poultry","pigs","sheep_goat","total")
+      
+      # resample to 0.05
+      livestock_density<-livestock_vop/terra::cellSize(livestock_vop,unit="ha")
+      livestock_density<-terra::resample(livestock_density,base_rast)
+      livestock_vop<-livestock_density*cellSize(livestock_density,unit="ha")
+      rm(livestock_density)
+      
+      # Load prop files
+      sheep_prop<-terra::rast(shoat_prop_file)$sheep_prop
+      goat_prop<-terra::rast(shoat_prop_file)$goat_prop
+      
+      # Split sheep goat vop using their populations
+      livestock_vop$sheep<-livestock_vop$sheep_goat*sheep_prop
+      livestock_vop$goats<-livestock_vop$sheep_goat*goat_prop
+      livestock_vop$sheep_goat<-NULL
     
     # Split vop by highland vs lowland
+    
+    livestock_vop<-split_livestock(data=livestock_vop,livestock_mask_high,livestock_mask_low)
     
     # Reorder cols to match mask
     order_n<-sapply(names(livestock_vop),FUN=function(X){grep(X,names(livestock_mask_high))})
@@ -679,12 +708,41 @@ overwrite<-F
     }else{
       livestock_vop<-terra::rast(livestock_vop_file)
     }
+  
+    # USD 2017 (see 0_fao_producer_prices_livestock.R)
+    livestock_vop17_file<-paste0(exposure_dir,"/livestock_vop_usd17.tif")
+  
+    if(!file.exists(livestock_vop17_file)){
+      data<-terra::rast(paste0(ls_vop_dir,"/vop_adj17.tif"))
+      
+      # Combine products for different species
+      data<-terra::rast(c(cattle=data$cattle_meat+data$cattle_milk,
+              goats=data$goat_meat+data$goat_milk,
+              pigs=data$pig_meat,
+              poultry=data$poultry_eggs+data$poultry_meat,
+              sheep=data$sheep_meat+data$sheep_milk,
+              total=sum(data,na.rm=T)))
+      
+      livestock_vop17<-split_livestock(data=data,livestock_mask_high,livestock_mask_low)
+      terra::writeRaster(livestock_vop17,filename = livestock_vop17_file)
+    }else{
+      livestock_vop17<-terra::rast(livestock_vop17_file)
+    }
+  
     # 2.2.2.1) Extraction of values by admin areas
   livestock_vop_tot_adm<-admin_extract_wrap(data=livestock_vop,
                                             save_dir=exposure_dir,
                                             filename = "livestock_vop",
                                             FUN="sum",
                                             varname="vop",
+                                            Geographies=Geographies,
+                                            overwrite=overwrite)
+  
+  livestock_vop17_tot_adm<-admin_extract_wrap(data=livestock_vop17,
+                                            save_dir=exposure_dir,
+                                            filename = "livestock_vop_usd17",
+                                            FUN="sum",
+                                            varname="vop_usd17",
                                             Geographies=Geographies,
                                             overwrite=overwrite)
   
@@ -736,6 +794,7 @@ overwrite<-F
 # 1) Hazard Risk ####
 haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
 
+ # 1.1) Solo and interactions combined into a single file (not any hazard) ####
 files<-list.files(haz_risk_dir,".tif$",full.names = T)
 files<-files[!grepl("_any.tif",files)]
 
@@ -754,7 +813,7 @@ restructure_parquet(filename = "haz_risk",
                     livestock,
                     Scenarios)
 
-  # 1.1) Hazard Total Risk ####
+  # 1.2) Any hazard only ####
 
 files<-list.files(haz_risk_dir,"_any.tif$",full.names = T)
 

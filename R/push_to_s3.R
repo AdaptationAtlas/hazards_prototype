@@ -134,10 +134,10 @@ folder<-"Data/exposure"
 ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
 
 # Upload files
-upload_files_to_s3(files = list.files(folder,"_adm2_sum.parquet$",full.names = T),
+upload_files_to_s3(files = list.files(folder,".parquet$",full.names = T),
                    selected_bucket=s3_bucket,
                    max_attempts = 3,
-                   overwrite=T)
+                   overwrite=F)
 
 # Upload - metadata ####
 # select a folder
@@ -265,24 +265,37 @@ folder<-paste0("Data/hazard_risk_vop/",timeframe_choice)
 ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
 
 # Upload files
-upload_files_to_s3(folder = folder,
+upload_files_to_s3(files = grep("_any_",list.files(folder,".parquet$",full.names = T),value=T),
                    selected_bucket=s3_bucket,
                    max_attempts = 3,
-                   overwrite=F)
+                   overwrite=T)
 
 # Upload - haz_vop_risk_ac ####
 s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_ac/",timeframe_choice)
 folder<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
 
 # Upload files
-upload_files_to_s3(files=list.files(folder,"reduced.parquet$",full.names = T),
+upload_files_to_s3(files=list.files(folder,".parquet$",full.names = T),
                    selected_bucket=s3_bucket,
                    max_attempts = 3,
                    overwrite=T)
 
 # Upload - MapSPAM ####
-s3_bucket <- "s3://digital-atlas/MapSpam"
+folder<-paste0("Data/mapspam/")
+s3_bucket <- "s3://digital-atlas/MapSpam/raw/spam2017V2r3"
 s3_dir_ls(s3_bucket)
+
+upload_files_to_s3(folder = folder,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=T)
+
+# Upload - livestock_vop ####
+folder<-paste0("Data/livestock_vop/")
+s3_bucket <- "s3://digital-atlas/livestock_vop"
+
+# Prepare tif data by converting to COG format
+ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
 
 upload_files_to_s3(folder = folder,
                    selected_bucket=s3_bucket,
