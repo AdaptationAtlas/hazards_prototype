@@ -84,7 +84,7 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
   file2<-gsub("_adm_","_adm2_",file)
   
   if(!file.exists(file)|!file.exists(file1)|overwrite==T){
-    data_ex<-admin_extract(data,Geographies,FUN="sum")
+    data_ex<-admin_extract(data,Geographies,FUN=FUN)
     
     st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
     st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
@@ -114,7 +114,7 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
       
       data<-melt(data,id.vars = admin)
       
-      data[,crop:=gsub("sum.","",variable[1],fixed=T),by=variable][,exposure:=varname][,variable:=NULL]
+      data[,crop:=gsub(paste0(FUN,"."),"",variable[1],fixed=T),by=variable][,exposure:=varname][,variable:=NULL]
       
       data
       
@@ -810,7 +810,7 @@ restructure_parquet(filename = "haz_risk",
                     severity = severity_classes$class,
                     overwrite=F,
                     crops = c("generic",crop_choices),
-                    livestock,
+                    livestock=livestock_choices,
                     Scenarios)
 
   # 1.2) Any hazard only ####
@@ -829,7 +829,7 @@ restructure_parquet(filename = "haz_risk_any",
                     severity = severity_classes$class,
                     overwrite=F,
                     crops = c("generic",crop_choices),
-                    livestock,
+                    livestock=livestock_choices,
                     Scenarios)
 
 # Check resulting file
