@@ -444,10 +444,10 @@ overwrite<-F
     # If mapspam data does not exist locally download from S3 bucket
     mapspam_local<-"Data/mapspam"
     
-    if(!dir.exists(mapspam_local)){
+    if(!dir.exists(mapspam_local)|overwrite==T){
       dir.create(mapspam_local,recursive = T)
       s3_bucket <- "s3://digital-atlas/risk_prototype/data/mapspam"
-      s3fs::s3_dir_download(s3_bucket,mapspam_local)
+      s3fs::s3_dir_download(s3_bucket,mapspam_local,overwrite=T)
     }
 
     # 2.1.2) Crop VoP (Value of production) ######
@@ -460,7 +460,10 @@ overwrite<-F
                               filename="crop_vop",
                               ms_codes=ms_codes,
                               overwrite=overwrite)
-      
+`      
+  if(!file.exists("Data/mapspam/SSA_Vusd17_TA.csv")){
+    stop("MapSPAM files ned udpated please redownload the mapspam folder")
+  }
       crop_vop17_tot<-read_spam(variable="Vusd17",
                                 technology="TA",
                                 mapspam_dir=mapspam_local,
