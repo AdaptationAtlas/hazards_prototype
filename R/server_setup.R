@@ -20,21 +20,17 @@ if(timeframe_choice!="annual"){
 
 
 # Set data directories
-mapspam_dir<-"/home/jovyan/common_data/atlas_mapspam/raw"
-glw3_dir<-"/home/jovyan/common_data/atlas_glw"
-afr_highlands_dir<-"/home/jovyan/common_data/atlas_afr_highlands"
-ls_vop_dir<-"/home/jovyan/common_data/atlas_livestock/intermediate/vop_total"
-hpop_dir<-"/home/jovyan/common_data/atlas_pop/raw"
+#mapspam_dir<-"/home/jovyan/common_data/atlas_mapspam/raw"
+#glw3_dir<-"/home/jovyan/common_data/atlas_glw"
+#ls_vop_dir<-"/home/jovyan/common_data/atlas_livestock/intermediate/vop_total"
 
 # Setup for Pete working locally ####
 timeframe_choice<-"annual"
 
 # Set data directories
-mapspam_dir<-"Data/mapspam"
-glw3_dir<-"Data/GLW3"
-afr_highlands_dir<-"Data/afr_highlands"
-ls_vop_dir<-"Data/livestock_vop"
-hpop_dir<-"Data/atlas_pop"
+#mapspam_dir<-"Data/mapspam"
+#glw3_dir<-"Data/GLW3"
+#ls_vop_dir<-"Data/livestock_vop"
 
 # Set output directories
 haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
