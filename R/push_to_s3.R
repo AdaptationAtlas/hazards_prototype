@@ -249,10 +249,10 @@ s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_risk/",timefra
 folder<-paste0("Data/hazard_risk/",timeframe_choice)
 
 # Prepare tif data by converting to COG format
-ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
 
 # Upload files
-upload_files_to_s3(folder = folder,
+upload_files_to_s3(files =list.files(folder,".parquet$",full.names = T),
                    selected_bucket=s3_bucket,
                    max_attempts = 3,
                    overwrite=F)
@@ -296,6 +296,15 @@ s3_bucket <- "s3://digital-atlas/livestock_vop"
 
 # Prepare tif data by converting to COG format
 ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
+
+upload_files_to_s3(folder = folder,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=T)
+
+# Upload - livestock afr-highlands ####
+folder<-paste0("Data/afr_highlands/")
+s3_bucket <- "s3://digital-atlas/afr_highlands"
 
 upload_files_to_s3(folder = folder,
                    selected_bucket=s3_bucket,
