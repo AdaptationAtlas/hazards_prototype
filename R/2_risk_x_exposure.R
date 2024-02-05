@@ -883,68 +883,85 @@ for(k in 1:length(dirs)){
 
 }
 
-# 3) Hazard Mean ####
-
+# 3) Hazard Means ####
 haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
-files<-list.files(haz_mean_dir,".tif",full.names = T)
 
-files_means<-files[!grepl("change",files)]
-haz_means<-terra::rast(files_means)
-names(haz_means)<-gsub(".tif$","",basename(files_means))
-
-files_change<-files[!grepl("change",files)]
-haz_means_change<-terra::rast(files_change)
-names(haz_means)<-gsub(".tif$","",basename(files_change))
-
-# extract mean hazards
-haz_means_adm<-admin_extract(data=haz_means,Geographies)
-st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin0), dsn=paste0(haz_mean_dir,"/haz_means_adm0.parquet"))
-st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin1), dsn=paste0(haz_mean_dir,"/haz_means_adm1.parquet"))
-st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin2), dsn=paste0(haz_mean_dir,"/haz_means_adm2.parquet"))
-
-filename<-paste0(haz_mean_dir,"/haz_means.parquet")
-
-# Extract data from vector files and restructure into tabular form
-haz_means_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
-  level<-levels[i]
-  print(level)
+  # 3.2.1) Extract mean hazards ####
+  folder<-haz_mean_dir
   
-  haz_means_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_mean_dir,"/haz_means_",levels[i],".parquet"))))
-  N<-colnames(haz_means_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_means_tab))]
-  haz_means_tab<-haz_means_tab[,..N]
-  haz_means_tab<-melt(haz_means_tab,id.vars = c("admin_name","iso3"))
+  files<-list.files(folder,".tif",full.names = T)
+  # Note to look at change you will need to calculate change in mean values in 1_calculate_risks.R script and then subset to files containing change in the name
+  files<-files[!grepl("change",files)]
+  data<-terra::rast(files)
+  names(data)<-gsub(".tif$","",basename(files))
   
-  haz_means_tab[,variable:=gsub("5.2","5|2",variable,fixed = T)
-  ][,variable:=gsub("mean.","",variable,fixed = T)
-  ][,variable:=gsub("ric.his","ric|his",variable,fixed = T)
-  ][,variable:=gsub("c_","c|",variable,fixed = T)
-  ][,variable:=gsub("_mean_mean","mean_mean",variable,fixed = T)
-  ][,variable:=gsub("_max_mean","max_mean",variable,fixed = T)
-  ][,variable:=gsub("_mean","",variable,fixed = T)
-  ][,variable:=gsub("0_","0|",variable,fixed = T)
-  ][,variable:=gsub("mean","_mean",variable,fixed = T)
-  ][,variable:=gsub("max","_max",variable,fixed = T)
-  ][,scenario:=unlist(tstrsplit(variable,"[|]",keep=1))
-  ][,timeframe:=unlist(tstrsplit(variable,"[|]",keep=2))
-  ][,hazard:=unlist(tstrsplit(variable,"[|]",keep=3))
-  ][,variable:=NULL
-  ][,admin_level:=names(levels)[i]]
+  # If looking at change make sure update this field
+  file<-"haz_means"
+  file0<-file.path(folder,paste0(file,"_adm0.parquet"))
+  file1<-gsub("adm0","adm1",file0)
+  file2<-gsub("adm0","adm2",file0)
   
   
+  if(!file.exists(file0)|overwrite==T){
+    data_ex<-admin_extract(data=data,Geographies,FUN="mean")
+    st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
+    st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
+    st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+  }
+
+  # 3.2.2) Compile mean hazards into tabular form ####
+  filename<-gsub("adm0","adm",file0)
   
-  haz_means_tab
-}))
-
-# Save mean values as feather object
-arrow::write_parquet(haz_means_tab,filename)
-
-# extract change in mean hazards
-haz_means_change_adm<-admin_extract(haz_means_change,Geographies)
-
-st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin0), dsn=paste0(haz_mean_dir,"/haz_means_change_adm0.parquet"))
-st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin1), dsn=paste0(haz_mean_dir,"/haz_means_change_adm1.parquet"))
-st_write_parquet(obj=sf::st_as_sf(haz_means_adm$admin2), dsn=paste0(haz_mean_dir,"/haz_means_change_adm2.parquet"))
-
+  if(!file.exists(filename)){
+    # Extract data from vector files and restructure into tabular form
+    data_ex<-rbindlist(lapply(1:length(levels),FUN=function(i){
+      level<-levels[i]
+      print(level)
+      
+      data<-data.table(data.frame(sfarrow::st_read_parquet(paste0(folder,"/",file,"_",levels[i],".parquet"))))
+      
+      data<-data[,!c("admin_name","iso3","geometry")]
+      
+      admin<-"admin0_name"
+      
+      if(level %in% c("adm1","adm2")){
+        admin<-c(admin,"admin1_name")
+        data<-suppressWarnings(data[,!"a1_a0"])
+      }
+      
+      if(level=="adm2"){
+        admin<-c(admin,"admin2_name")
+        data<-suppressWarnings(data[,!"a2_a1_a0"])
+      }
+      
+      colnames(data)<-gsub("_nam$","_name",colnames(data))
+      
+      data<-melt(data,id.vars = admin)
+      
+      data[,variable:=gsub("ENSEMBLEmean_","",variable)
+           ][,variable:=gsub("historical","historic-historic",variable)
+             ][,variable:=stringi::stri_replace_all_regex(variable,pattern=paste0(unique(Scenarios$Scenario),"_"),replacement=paste0(unique(Scenarios$Scenario),"-"),vectorise_all = F)
+              ][,variable:=stringi::stri_replace_all_regex(variable,pattern=paste0(unique(Scenarios$Time),"_"),replacement=paste0(unique(Scenarios$Time),"-"),vectorise_all = F)
+                ][,variable:=stringi::stri_replace_all_regex(variable,pattern=c("max_max","min_min","mean_mean"),replacement=c("max-max","min-min","mean-mean"),vectorise_all = F)
+                  ][,variable:=gsub(".","-",variable,fixed=T)]
+      
+      variable<-cbind(data$variable,data.table(do.call("cbind",tstrsplit(data$variable,"-"))[,-1]))
+      colnames(variable)<-c("variable","scenario","timeframe","hazard","hazard_stat")
+      variable[is.na(hazard_stat),hazard:=gsub("_","-",hazard)
+               ][is.na(hazard_stat),hazard_stat:=unlist(tstrsplit(hazard,"-",keep=2))
+                 ][,hazard:=unlist(tstrsplit(hazard,"-",keep=1))]
+    
+      data<-merge(data,unique(variable),all.x=T)[,variable:=NULL]
+      
+     
+      
+    }),fill=T)
+    data_ex<-data_ex[,c(1,7,8,3,4,5,6,2)]
+    
+    # Save mean values as feather object
+    arrow::write_parquet(data_ex,filename)
+  }
+  
 # 4) Hazard Trend ####
 haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
 haz_timeseries_files<-list.files(haz_timeseries_dir,".tif",full.names = T)
