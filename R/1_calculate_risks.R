@@ -332,13 +332,14 @@ if(!dir.exists(haz_mean_dir)){dir.create(haz_mean_dir,recursive=T)}
 haz_sd_dir<-paste0("Data/hazard_timeseries_sd/",timeframe_choice)
 if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
 
+# List timeseries hazard files
 files<-list.files(haz_timeseries_dir,".tif",full.names = T)
-files2<-list.files(haz_timeseries_dir,".tif")
+
+# Remove annual sd estimates
+files<-files[!grepl("ENSEMBLEsd",files)]
 
 # Ensure we are only using ensemble or historical data
 files<-grep("ENSEMBLE|historical",files,value=T)
-files2<-grep("ENSEMBLE|historical",files2,value=T)
-
 
 overwrite<-F
 
@@ -347,13 +348,13 @@ plan("multisession", workers = 20)
 
 foreach(i = 1:length(files)) %dopar% {
   
-  file<-paste0(haz_mean_dir,"/",files2[i])
-  file2<-paste0(haz_sd_dir,"/",files2[i])
+  file<-paste0(haz_mean_dir,"/",basename(files[i]))
+  file2<-paste0(haz_sd_dir,"/",basename(files[i]))
   
   if((!file.exists(file))|overwrite){
     data<-terra::rast(files[i])
     data<-terra::app(data,fun="mean",na.rm=T)
-    terra::writeRaster(data,filename = file)
+    terra::writeRaster(data,filename = file,overwrite=T)
     
     data<-terra::app(data,fun="sd",na.rm=T)
     terra::writeRaster(data,filename = file2,overwrite=T)
@@ -390,11 +391,12 @@ for(j in 1:length(files_fut)){
 haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
 if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
 
-# Interactions - Crops
+# Choose Interaction Variables ####
+# Crops
 # Set variables that can be interacted for heat wet and dry
 crop_heat<-c("NTx35","TAVG_G")
 crop_wet<-c("NDWL0","PTOT_G")
-crop_dry<-c("NDD","PTOT_L","NDWS")
+crop_dry<-c("PTOT_L","NDWS")
 
 crop_choices2<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
 
