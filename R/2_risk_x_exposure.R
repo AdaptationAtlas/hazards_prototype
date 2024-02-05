@@ -760,10 +760,21 @@ overwrite<-F
       }
 
   # 2.4) Population ######
+  hpop_dir<-"Data/atlas_pop"
+  bucket_files<-paste0("s3://digital-atlas/population/",c("total_pop.tif","rural_pop.tif","urban_pop.tif"))
+  local_files<-file.path(hpop_dir,basename(bucket_files))
+  
+  if(!dir.exists(hpop_dir)|overwrite==T){
+    dir.create(hpop_dir)
+    for (i in seq_along(bucket_files)) {
+      s3fs::s3_file_download(bucket_files[i], local_files[i],overwrite=T)
+    }
+  }
+  
     file<-paste0(exposure_dir,"/hpop.tif")
     if(!file.exists(file)){
           
-      hpop<-terra::rast(list.files(hpop_dir,".tif",full.names=T))
+      hpop<-terra::rast(local_files)
       hpop<-terra::crop(hpop,Geographies)
       
       # Convert hpop to density
@@ -775,7 +786,6 @@ overwrite<-F
       # Convert back to number per cell
       hpop<-hpop*cellSize(hpop,unit="ha")
       
-      names(hpop)<-unlist(tail(tstrsplit(names(hpop),"_"),1))
       terra::writeRaster(hpop,filename =file,overwrite=T)
     }else{
       hpop<-terra::rast(file)
@@ -789,7 +799,7 @@ overwrite<-F
                      varname="number",
                      Geographies=Geographies,
                      overwrite=overwrite)
-  
+    
 #### Intersect Risk and Exposure ####
 # 1) Hazard Risk ####
 haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
