@@ -559,6 +559,15 @@ overwrite<-F
       s3fs::s3_dir_download(s3_bucket,ls_vop_dir)
     }
     
+    # If livestock highland vs tropical map does not exist locally download from S3 bucket
+    afr_highlands_dir<-"Data/afr_highlands"
+    
+    if(!dir.exists(afr_highlands_dir)){
+      dir.create(afr_highlands_dir,recursive = T)
+      s3_bucket <- "s3://digital-atlas/afr_highlands"
+      s3fs::s3_dir_download(s3_bucket,afr_highlands_dir)
+    }
+    
     # 2.2.3) Livestock Mask #####
   mask_ls_file<-paste0(commodity_mask_dir,"/livestock_masks.tif")
   
