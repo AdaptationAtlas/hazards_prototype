@@ -567,7 +567,7 @@ overwrite<-F
       s3_bucket <- "s3://digital-atlas/afr_highlands"
       s3fs::s3_dir_download(s3_bucket,afr_highlands_dir,overwrite = T)
     }
-    
+
     # 2.2.3) Livestock Mask #####
   mask_ls_file<-paste0(commodity_mask_dir,"/livestock_masks.tif")
   
