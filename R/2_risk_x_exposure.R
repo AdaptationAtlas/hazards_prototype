@@ -547,7 +547,7 @@ overwrite<-F
     if(!dir.exists(glw3_dir)){
       dir.create(glw3_dir,recursive = T)
       s3_bucket <- "s3://digital-atlas/risk_prototype/data/GLW3"
-      s3fs::s3_dir_download(s3_bucket,glw3_dir)
+      s3fs::s3_dir_download(s3_bucket,glw3_dir,overwrite = T)
     }
   
     # If livestock vop data does not exist locally download from S3 bucket
@@ -556,7 +556,7 @@ overwrite<-F
     if(!dir.exists(ls_vop_dir)){
       dir.create(ls_vop_dir,recursive = T)
       s3_bucket <- "s3://digital-atlas/ls_vop_dir"
-      s3fs::s3_dir_download(s3_bucket,ls_vop_dir)
+      s3fs::s3_dir_download(s3_bucket,ls_vop_dir,overwrite = T)
     }
     
     # If livestock highland vs tropical map does not exist locally download from S3 bucket
@@ -565,7 +565,7 @@ overwrite<-F
     if(!dir.exists(afr_highlands_dir)){
       dir.create(afr_highlands_dir,recursive = T)
       s3_bucket <- "s3://digital-atlas/afr_highlands"
-      s3fs::s3_dir_download(s3_bucket,afr_highlands_dir)
+      s3fs::s3_dir_download(s3_bucket,afr_highlands_dir,overwrite = T)
     }
     
     # 2.2.3) Livestock Mask #####
