@@ -7,8 +7,6 @@ require(doFuture)
 require(stringi)
 require(stringr)
 
-worker_n<-20
-
 # Set up workspace ####
 # Set scenarios and time frames to analyse
 Scenarios<-c("ssp245","ssp585")
@@ -455,8 +453,7 @@ haz_class_files2<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",haz_class_files2)
 haz_class_files2<-gsub("2021_2040_","2021_2040-",haz_class_files2)
 haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
 
-
-
+# Interactions: Calculate interactions ####
 #combinations<-combinations[severity_class=="Severe"]
 overwrite<-F
 
@@ -466,8 +463,25 @@ plan("multisession", workers = worker_n)
 foreach(i =  sample(1:nrow(combinations))) %dopar% {
 #for(i in 1:nrow(combinations)){
 
+        combos<-unlist(combinations[i,list(dry,heat,wet)])
+        grep_vals<-paste0(paste0(combos,".tif"),collapse = "|")
+        
+        combo_names<-c(names(combos),
+                       apply(combn(names(combos),2),2,paste,collapse="+"),
+                       paste(names(combos),collapse="+"))
+        
+        combo_binary<-data.table(combo_name=combo_names,value=0)[grep(names(combos)[1],combo_name),value:=1
+                                                                   ][grep(names(combos)[2],combo_name),value:=value+10
+                                                                     ][grep(names(combos)[3],combo_name),value:=value+100]
+          
         combos<-combinations[i,1:3]
         combo_haz<-sort(unlist(combinations[i,1:3]))
+        folder<-paste0(haz_time_int_dir,"/",paste0(combo_haz,collapse = "+"))
+        
+        if(!dir.exists(folder)){
+          dir.create(folder)
+        }
+        
         grep_vals<-paste0(paste0(combo_haz,".tif"),collapse = "|")
         combo_names<-c(paste0(combo_haz,collapse="+"),apply(combn(1:3,2),2,FUN=function(X){paste0(combo_haz[X],collapse = "+")}))
         combo_binary<-data.table(combo_name=c(combo_names,combo_haz),value=0)[grep(combo_haz[1],combo_name),value:=1
@@ -482,20 +496,22 @@ foreach(i =  sample(1:nrow(combinations))) %dopar% {
          flush.console()
          
          
-         lyr_names<-paste0(Scenarios[l,combined],"-",combo_names)
-         save_names<-paste0(haz_time_int_dir,"/",lyr_names,".tif")
-         save_name_any<-gsub(".tif","_any.tif",save_names[1])
+         combo_binary[,lyr_names:=paste0(Scenarios[l,combined],"-",combo_name)
+                      ][,save_names:=paste0(folder,"/",lyr_names,".tif")]
+         save_names<-combo_binary$save_names
+         save_name_any<-paste0(folder,"/",Scenarios[l,combined],"-any.tif")
 
          
-         if((!file.exists(save_names[1])|!file.exists(save_name_any))|overwrite==T){
+         if((!all(file.exists(save_names))|!file.exists(save_name_any))|overwrite==T){
           
-          files<-haz_class_files[grepl(grep_vals,haz_class_files2) & grepl(Scenarios[l,combined],haz_class_files2)]
+          files<-sapply(combos,FUN=function(x){haz_class_files[grepl(x,haz_class_files2) & grepl(Scenarios[l,combined],haz_class_files2)]})
+          
           haz<-lapply(files,rast)
-          names(haz)<-combo_haz
+          names(haz)<-names(files)
           
           
-          haz[[2]]<-haz[[2]]*10
-          haz[[3]]<-haz[[3]]*100
+          haz[["heat"]]<-haz[["heat"]]*10
+          haz[["wet"]]<-haz[["wet"]]*100
           
           haz_sum<-terra::rast(lapply(1:nlyr(haz[[1]]),FUN=function(m){
             sum(terra::rast(lapply(haz,"[[",m)),na.rm=T)
@@ -509,41 +525,24 @@ foreach(i =  sample(1:nrow(combinations))) %dopar% {
             names(data)<-paste0(lyr_names[1],"_any")
             terra::writeRaster(data,filename =  save_name_any,overwrite=T)
           }
-     
           
-          # 3-way interaction
-          int_risk<-function(data,interaction_n,lyr_names){
-            data<-terra::mask(data,data,maskvalues=combo_binary$value[-interaction_n],updatevalue=0)
+          int_risk<-function(data,interaction_mask_vals,lyr_name,combo_binary){
+            data<-terra::mask(data,data,maskvalues=interaction_mask_vals,updatevalue=0)
             data<-terra::classify(data,data.table(from=1,to=999999,becomes=1))
             data<-terra::app(data,fun="mean",na.rm=T)
-            names(data)<-lyr_names[interaction_n]
+            names(data)<-lyr_name
             return(data)
           }
           
-          if(!file.exists(save_names[1])|overwrite==T){
-            data1<-int_risk(data=haz_sum,interaction_n = 1,lyr_names)
-            terra::writeRaster(data1,filename = save_names[1],overwrite=T)
+          # Interactions
+          for(i in 1:nrow(combo_binary)){
+            if(!file.exists(combo_binary[i,save_names])|overwrite==T){
+              data<-int_risk(data=haz_sum,interaction_mask_vals = combo_binary[-i,value],lyr_name = combo_binary[i,lyr_names])
+              terra::writeRaster(data,filename = combo_binary[i,save_names],overwrite=T)
+            }
+            
           }
-   
-       
-          if(!file.exists(save_names[2])|overwrite==T){
-            data2<-int_risk(data=haz_sum,interaction_n = 2,lyr_names)
-            terra::writeRaster(data2,filename = save_names[2],overwrite=T)
-            rm(data2)
-          }
-          
-          if(!file.exists(save_names[3])|overwrite==T){
-            data3<-int_risk(data=haz_sum,interaction_n = 3,lyr_names)
-            terra::writeRaster(data3,filename = save_names[3],overwrite=T)
-            rm(data3)
-          }
-          
-          if(!file.exists(save_names[4])|overwrite==T){
-            data4<-int_risk(data=haz_sum,interaction_n = 4,lyr_names)
-            terra::writeRaster(data4,filename = save_names[4],overwrite=T)
-            rm(data4)
-          }
-          
+         
           rm(data1,haz,haz_sum)
           gc()
           }
@@ -553,7 +552,7 @@ foreach(i =  sample(1:nrow(combinations))) %dopar% {
 plan(sequential)
 
 combinations[,code:=paste(sort(c(heat,wet,dry)),collapse="+"),by=list(heat,wet,dry)]
-n_missing<-combinations$code[!combinations$code %in% sub(".tif","",sub("(([^-]*-){2})", "", list.files(haz_time_int_dir)))]
+n_missing<-combinations$code[!combinations$code %in% sub(".tif","",sub("(([^-]*-){2})", "", list.files(haz_time_int_dir,recursive=T)))]
 
 if(length(n_missing)>0){
   stop("Analysis of interactions incomplete")
