@@ -474,20 +474,14 @@ foreach(i =  sample(1:nrow(combinations))) %dopar% {
                                                                    ][grep(names(combos)[2],combo_name),value:=value+10
                                                                      ][grep(names(combos)[3],combo_name),value:=value+100]
           
-        combos<-combinations[i,1:3]
-        combo_haz<-sort(unlist(combinations[i,1:3]))
-        folder<-paste0(haz_time_int_dir,"/",paste0(combo_haz,collapse = "+"))
+
+        folder<-paste0(haz_time_int_dir,"/",paste0(combos,collapse = "+"))
         
         if(!dir.exists(folder)){
           dir.create(folder)
         }
         
-        grep_vals<-paste0(paste0(combo_haz,".tif"),collapse = "|")
-        combo_names<-c(paste0(combo_haz,collapse="+"),apply(combn(1:3,2),2,FUN=function(X){paste0(combo_haz[X],collapse = "+")}))
-        combo_binary<-data.table(combo_name=c(combo_names,combo_haz),value=0)[grep(combo_haz[1],combo_name),value:=1
-                                                         ][grep(combo_haz[2],combo_name),value:=value+10
-                                                           ][grep(combo_haz[3],combo_name),value:=value+100]
-        
+
        for(l in 1:nrow(Scenarios)){
          
          # Display progress
@@ -522,7 +516,7 @@ foreach(i =  sample(1:nrow(combinations))) %dopar% {
           if(!file.exists(save_name_any)|overwrite==T){
             data<-terra::mask(haz_sum,haz_sum,maskvalues=1:111,updatevalue=1)
             data<-terra::app(data,fun="mean",na.rm=T)
-            names(data)<-paste0(lyr_names[1],"_any")
+            names(data)<-paste0("any")
             terra::writeRaster(data,filename =  save_name_any,overwrite=T)
           }
           
