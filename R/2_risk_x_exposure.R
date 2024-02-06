@@ -211,17 +211,17 @@ restructure_parquet<-function(filename,save_dir,severity,overwrite=F,crops,lives
         
         melt(data,id.vars = admins)
       }),fill=T)
-      
+      data[,variable:=as.character(variable)]
       # Renaming of variable to allow splitting
       new<-paste0(Scenarios$combined,"-")
-      old<-paste0(Scenarios[,paste0(Scenario,".",Time)],".")
+      old<-paste0(Scenarios[,paste0(Scenario,"[.]",Time)],"[.]")
       
       # Replace space in the crop names with a . to match the parquet column names
       new<-c(new,paste0("-",crops,"-"))
-      old<-c(old,paste0(".",gsub(" ",".",crops,fixed = T),"."))
+      old<-c(old,paste0("[.]",gsub(" ",".",crops,fixed = T),"[.]"))
       
       new<-c(new,paste0("-",livestock,"-"))
-      old<-c(old,paste0(".",livestock,"."))
+      old<-c(old,paste0("[.]",livestock,"[.]"))
 
       variable_old<-data[,unique(variable)]
       variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F))
@@ -254,13 +254,13 @@ recode_restructure<-function(data,crop_choices,livestock_choices,Scenarios,expos
   
   # Replace space in the crop names with a . to match the parquet column names
   new<-c(new,paste0("-",crop_choices,"-"))
-  old<-c(old,paste0(".",gsub(" ",".",crop_choices,fixed = T),"."))
+  old<-c(old,paste0("[.]",gsub(" ",".",crop_choices,fixed = T),"[.]"))
   
   new<-c(new,paste0("-",livestock_choices,"-"))
-  old<-c(old,paste0(".",livestock_choices,"."))
+  old<-c(old,paste0("[.]",livestock_choices,"[.]"))
   
   new<-c(new,paste0("-",exposure))
-  old<-c(old,paste0(".",exposure))
+  old<-c(old,paste0("[.]",exposure))
 
   variable_old<-data[,unique(variable)]
   
@@ -816,7 +816,7 @@ overwrite<-F
 # 1) Hazard Risk ####
 haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
 
- # 1.1) Solo and interactions combined into a single file (not any hazard) ####
+  # 1.1) Solo and interactions combined into a single file (not any hazard) ####
 files<-list.files(haz_risk_dir,".tif$",full.names = T)
 files<-files[!grepl("_any.tif",files)]
 
@@ -849,7 +849,7 @@ admin_extract_wrap2(files=files,
 restructure_parquet(filename = "haz_risk_any",
                     save_dir = haz_risk_dir,
                     severity = severity_classes$class,
-                    overwrite=F,
+                    overwrite=T,
                     crops = c("generic",crop_choices),
                     livestock=livestock_choices,
                     Scenarios)
@@ -858,6 +858,18 @@ restructure_parquet(filename = "haz_risk_any",
 X<-arrow::read_parquet(paste0(haz_risk_dir,"/haz_risk_any_adm_",SEV,".parquet"))
 grep("THI",names(X),value=T)
 
+  # 1.3) Modify solo and interactions to be completely independent of one another (i.e. they sum to total) ####
+  for(i in 1:length(severity_classes)){
+    SEV<-tolower(severity_classes$class[i])
+    file<-file.path(haz_risk_dir,paste0("haz_risk_adm0_",SEV,".parquet"))
+    data<-arrow::read_parquet(file)
+    
+    hazards<-data[,unique(hazard)]
+    hazards<-hazards[str_count(hazards,"[+]")==2]
+    
+    # Cast hazards into columns
+    data<-dcast(data,admin0_name+admin1_name+admin2_name+scenario+timeframe)
+  }
 # 2) Apply Crop Mask to Classified Hazard Risk ####
 
 dirs<-list.dirs("Data/hazard_risk_class",recursive = F)
@@ -1637,6 +1649,18 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
   }
 }
 
+  # 5.3) Modify solo and interactions to be completely independent of one another (i.e. they sum to total)
+  for(i in 1:length(severity_classes)){
+    SEV<-tolower(severity_classes$class[i])
+    file<-file.path(haz_risk_vop_dir,paste0("haz_risk_vop_any_",SEV,".parquet"))
+    data<-arrow::read_parquet(file)
+    
+    hazards<-data[,unique(hazard)]
+    hazards<-hazards[str_count(hazards,"[+]")==2]
+    
+    # Cast hazards into columns
+    data<-dcast(data,admin0_name+admin1_name+admin2_name+scenario+timeframe)
+  }
 # 6) Generic Risk x Human Population #####
 # This is only calculated for the risk of a "generic" hazard
 haz_risk_hpop_dir<-paste0("Data/hazard_risk_hpop/",timeframe_choice)
