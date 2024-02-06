@@ -327,7 +327,7 @@ recode_restructure_wrap<-function(folder,file,crops,livestock,exposure_var,Sever
       
       data
     }),fill=T)
-    # Save as feather object
+    # Save as parquet object
     arrow::write_parquet(data,filename)
   }
 }
@@ -354,11 +354,6 @@ split_livestock<-function(data,livestock_mask_high,livestock_mask_low){
 }
 
 # Set up workspace ####
-# Increase GDAL cache size
-terra::gdalCache(60000)
-
-# workers
-worker_n<-10
 
 # Set scenarios and time frames to analyse
 Scenarios<-c("ssp245","ssp585")
@@ -849,7 +844,7 @@ admin_extract_wrap2(files=files,
 restructure_parquet(filename = "haz_risk_any",
                     save_dir = haz_risk_dir,
                     severity = severity_classes$class,
-                    overwrite=T,
+                    overwrite=F,
                     crops = c("generic",crop_choices),
                     livestock=livestock_choices,
                     Scenarios)
@@ -859,17 +854,7 @@ X<-arrow::read_parquet(paste0(haz_risk_dir,"/haz_risk_any_adm_",SEV,".parquet"))
 grep("THI",names(X),value=T)
 
   # 1.3) Modify solo and interactions to be completely independent of one another (i.e. they sum to total) ####
-  for(i in 1:length(severity_classes)){
-    SEV<-tolower(severity_classes$class[i])
-    file<-file.path(haz_risk_dir,paste0("haz_risk_adm0_",SEV,".parquet"))
-    data<-arrow::read_parquet(file)
-    
-    hazards<-data[,unique(hazard)]
-    hazards<-hazards[str_count(hazards,"[+]")==2]
-    
-    # Cast hazards into columns
-    data<-dcast(data,admin0_name+admin1_name+admin2_name+scenario+timeframe)
-  }
+
 # 2) Apply Crop Mask to Classified Hazard Risk ####
 
 dirs<-list.dirs("Data/hazard_risk_class",recursive = F)
@@ -1652,14 +1637,31 @@ crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
   # 5.3) Modify solo and interactions to be completely independent of one another (i.e. they sum to total)
   for(i in 1:length(severity_classes)){
     SEV<-tolower(severity_classes$class[i])
-    file<-file.path(haz_risk_vop_dir,paste0("haz_risk_vop_any_",SEV,".parquet"))
+    file<-file.path(haz_risk_vop_dir,paste0("haz_risk_vop_",SEV,".parquet"))
     data<-arrow::read_parquet(file)
     
-    hazards<-data[,unique(hazard)]
-    hazards<-hazards[str_count(hazards,"[+]")==2]
+    hazard_unique<-data[,unique(hazard)]
+    hazard_unique<-hazard_unique[str_count(hazard_unique,"[+]")==2]
     
-    # Cast hazards into columns
-    data<-dcast(data,admin0_name+admin1_name+admin2_name+scenario+timeframe)
+    j<-1
+    
+    haz3<-hazard_unique[j]
+    haz1<-unlist(strsplit(haz3,"[+]"))
+    haz2<-apply(combn(haz1,2),2,paste,collapse="+")
+    haz123<-c(haz1,haz2,haz3)
+    
+    names(haz123)<-stringi::stri_replace_all_regex(haz123,pattern = haz1,replacement = haz_meta[match(haz1,variable.code),type],vectorize_all = F)
+    names(haz123)<-sapply(strsplit(names(haz123),"[+]"),FUN=function(x){paste(sort(x),collapse="+")})
+    
+    data_ss<-data[hazard %in% haz123]
+    data_ss<-dcast(data_ss,admin0_name+admin1_name+admin2_name+scenario+timeframe+crop+severity+exposure~hazard,value.var = "value")
+    colnames(data_ss)[match(haz123,colnames(data_ss))]<-names(haz123)
+    data_ss[,dry:=dry-`dry+wet`-`dry+heat`-`dry+heat+wet`
+            ][,heat:=heat-`heat+wet`-`dry+heat`-`dry+heat+wet`
+              ][,wet:=wet-`heat+wet`-`dry+wet`-`dry+heat+wet`
+                ][,total:=dry+heat+wet+`dry+heat`+`dry+wet`+`heat+wet`+`dry+heat+wet`
+                  ][,hazard:=haz3]
+    
   }
 # 6) Generic Risk x Human Population #####
 # This is only calculated for the risk of a "generic" hazard

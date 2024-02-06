@@ -1,6 +1,12 @@
 # Setup if working from Atlas server####
 timeframe_choice<-"jagermeyr"
 
+# Increase GDAL cache size
+terra::gdalCache(60000)
+
+# workers
+worker_n<-20
+
 # Project location
 package_dir<-getwd()
 
@@ -27,10 +33,11 @@ if(timeframe_choice!="annual"){
 # Setup for Pete working locally ####
 timeframe_choice<-"annual"
 
-# Set data directories
-#mapspam_dir<-"Data/mapspam"
-#glw3_dir<-"Data/GLW3"
-#ls_vop_dir<-"Data/livestock_vop"
+# Increase GDAL cache size
+terra::gdalCache(60000)
+
+# workers
+worker_n<-12
 
 # Set output directories
 haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
