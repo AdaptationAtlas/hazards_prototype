@@ -516,7 +516,7 @@ foreach(i =  sample(1:nrow(combinations))) %dopar% {
           if(!file.exists(save_name_any)|overwrite==T){
             data<-terra::mask(haz_sum,haz_sum,maskvalues=1:111,updatevalue=1)
             data<-terra::app(data,fun="mean",na.rm=T)
-            names(data)<-paste0("any")
+            names(data)<-paste0(Scenarios[l,combined],"-any")
             terra::writeRaster(data,filename =  save_name_any,overwrite=T)
           }
           
