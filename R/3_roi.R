@@ -40,18 +40,23 @@ irr_wrap <- function(project_cost, years, project_benefits) {
 }
 
 # 1) Load data ####
-file<-"Data/exposure/exposure_adm_sum.parquet"
+file<-"C:/Users/Peter Steward/OneDrive - CGIAR/Projects/EiA/Regional Prioritization/PAiCE/SPAM/mapspam_complete_extraction_adm1.csv"
 
 if(!file.exists(file)){
   if(!dir.exists(dirname(file))){
     dir.create(dirname(file),recursive = T)
   }
   
-  s3_file <-"s3://digital-atlas/risk_prototype/data/exposure/exposure_adm_sum.parquet"
-  s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
+  #s3_file <-"s3://digital-atlas/risk_prototype/data/exposure/exposure_adm_sum.parquet"
+  #s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
 }
 
-exposure<-data.table(arrow::read_parquet(file))
+#exposure<-data.table(arrow::read_parquet(file))
+# Subset to admin1
+#exposure<-exposure[is.na(admin2_name)][,admin2_name:=NULL]
+
+exposure<-fread(file)
+exposure<-exposure[technology=="all"][,list(exposure,admin0_name,admin1_name,crop,value)]
 
 # 2) Set parameters and save directory ####
 years<-20
@@ -73,9 +78,6 @@ combinations<-data.table(expand.grid(adoption=adoption,prod_impact=prod_impact))
 N1<-rep(1:nrow(exposure),each=nrow(combinations))
 N2<-rep(1:nrow(combinations),nrow(exposure))
 data<-cbind(exposure[N1],combinations[N2])
-
-# Subset to admin1 and value of production in USD2017
-data<-data[is.na(admin2_name)][,admin2_name:=NULL]
 
 # 3) Work out marginal change ####
 
@@ -123,7 +125,7 @@ data<-data[order(admin0_name,admin1_name,exposure,crop,adoption,prod_impact)]
 
   # 3.2) Work out costs ####
 
-  data_cost<-data[exposure=="ha"][,c("exposure","value"):=NULL]
+  data_cost<-data[exposure=="harvested_area"][,c("exposure","value"):=NULL]
   N1<-rep(1:nrow(data_cost),each=length(costs))
   N2<-rep(1:length(costs),nrow(data_cost))
   data_cost<-data.table(
@@ -254,4 +256,54 @@ ggplot(ad_rate, aes(x = factor(year), y = adoption_perc, fill = value)) +
         axis.text.y = element_text(size = 12, face = "bold"))   # Bold and larger y-axis text
 #geom_shadowtext(data = ad_rate, aes(label = sprintf("%.2f", value), x = factor(year), y = adoption),
 #               color = "black", bg.color = "white", size = 4, position = position_nudge(y = 0), lineheight = 0.5)
+
+
+
+# 5) Old Approach ####
+  data<-data[admin1_name=="" & admin0_name=="Kenya" & crop=="bean"]
+
+  # 5.1) Work out benefits ####
+  data_rs<-data[exposure %in% c("harvested_area","vop_USD17")]
+  data_rs_impact<-dcast(data_rs,admin0_name+admin1_name+crop+prod_impact+adoption+year~exposure,value.var = "result")
+  
+  # Add base harvested area
+  data_rs_impact<-merge(data_rs_impact,data_rs[exposure=="harvested_area",!c("result","exposure")])
+  setnames(data_rs_impact,"value","ha_base")
+  
+  # Add base price
+  data_rs_impact<-merge(data_rs_impact,data_rs[exposure=="vop_USD17",!c("result","exposure")])
+  setnames(data_rs_impact,"value","vop_base")
+  
+  # Add base production
+  data_rs<-data[exposure %in% c("production")]
+  data_rs_impact<-merge(data_rs_impact,data_rs[exposure=="production",!c("result","exposure")])
+  setnames(data_rs_impact,"value","prod_base")
+  
+  # Add base yield
+  data_rs<-data[exposure %in% c("yield")]
+  data_rs_impact<-merge(data_rs_impact,data_rs[exposure=="yield",!c("result","exposure")])
+  setnames(data_rs_impact,"value","yield")
+  
+  # Add Price
+  data_rs_impact[,Price:=vop_base/prod_base]
+  
+  setnames(data_rs_impact,c("harvested_area","yield"),c("A_adopt","Y_non_adopt"))
+  data_rs_impact[,A_non_adopt:=ha_base-A_adopt]
+  data_rs_impact[,Y_adopt:=Y_non_adopt*(1+prod_impact)]
+  
+  # Calculate VOP
+  data_rs_impact[,VOP_non_adopt:=A_non_adopt*Y_non_adopt*Price
+                 ][,VOP_adopt:=A_non_adopt*Y_non_adopt*Price]
+  
+  data_benefit<-data[exposure %in% c("vop_usd17") & !grepl("highland|tropical",crop)]
+
+
+  
+
+  
+  # To work out the marginal gain in VoP: 
+  # a) Multiply the cumulative adoption amount (value of production) by production benefit of adoption
+  # b) Substract the cumulative adoption amount to get the difference in production over non-adoption
+  data_benefit[, marginal_gain := (result * (1+prod_impact))-result][,c("result","exposure","value"):=NULL]
+
 
