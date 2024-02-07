@@ -1258,8 +1258,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
       
       save_file<-gsub(".tif","1.tif",file)
       if(!file.exists(save_file)){
-        crop<-unlist
-        (tstrsplit(basename(file),"-",keep=1))
+        crop<-unlist(tstrsplit(basename(file),"-",keep=1))
         data<-terra::rast(file)
         names_old<-names(data)
         names_new<-stringi::stri_replace_all_regex(names_old,
