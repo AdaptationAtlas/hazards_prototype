@@ -288,7 +288,7 @@ foreach(i = 1:length(crops)) %dopar%{
     crop_focus<-crops[i]
     severity_class<-severity_classes[j,class]
     
-    save_name<-paste0(haz_risk_dir,"/",crop_focus,"_",tolower(severity_class),".tif")
+    save_name<-paste0(haz_risk_dir,"/",crop_focus,"-",tolower(severity_class),".tif")
     
     # Display progress
     cat('\r                                                                                                                     ')
@@ -569,9 +569,9 @@ for(j in 1:length(files_fut)){
   #registerDoFuture()
   #plan("multisession", workers = worker_n)
   
-  #foreach(i =  1:length(combinations_crops)) %dopar% {
+  foreach(i =  1:length(combinations_crops)) %dopar% {
   
-  for(i in 1:length(combinations_crops)){
+  #for(i in 1:length(combinations_crops)){
     
     crop_combos<-combinations_ca[crop==combinations_crops[i],combo_name1]
   
@@ -592,7 +592,7 @@ for(j in 1:length(files_fut)){
         data<-terra::rast(lapply(1:nrow(subset),FUN=function(k){
           files<-list.files(subset[k,folder],full.names = T)
           data<-terra::rast(files)
-          names(data)<-paste0(names(data),"_",subset[k,combo_name1],"_",subset[k,severity_class])
+          names(data)<-paste0(names(data),"-",subset[k,combo_name1],"-",subset[k,severity_class])
           data
         }))
         
@@ -603,7 +603,8 @@ for(j in 1:length(files_fut)){
     
     
   }
-  
+
+# Retired interactions by crop code ####
   if(F){
   #plan(sequential)
   
