@@ -1243,6 +1243,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
   # 5.1.1) Temporary bug fix with naming ####
     
     files<-list.files(folder,".tif$",full.names = T)
+    files<-files[!grepl("1.tif",files)]
     files<-grep("-int-",files,value = T)
     
     registerDoFuture()
@@ -1250,7 +1251,8 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
     
     #  loop starts here
     foreach(i = 1:length(files)) %dopar% {
-      
+      #for(i in 1:length(files)){
+        
       print(i)
       file<-files[i]
       
@@ -1274,18 +1276,22 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
     
     
     # Remove old files and rename new - ADD IN AUX FILES TOO
+    files<-list.files(folder,".tif$|tif.aux.xml$",full.names = T)
+    files<-files[!grepl("1.tif",files)]
+    files<-grep("-int-",files,value = T)
+    
     unlink(files)
-    files<-list.files(folder,"1.tif$",full.names = T)
+    files<-list.files(folder,"1.tif$|tif.aux.xml$",full.names = T)
     files_new<-gsub("1.tif",".tif",files)
-    file.rename(from=files,to=filesnew)
+    file.rename(from=files,to=files_new)
         
   # 5.2) Extract Risk x Exposure by Geography  ####
   overwrite<-F
   do_ha<-F
   do_n<-F
+  rm_haz<-"NDD"
  
-  
-  haz_risk_exp_extract<-function(severity_classes,interactions,folder,overwrite=F){
+  haz_risk_exp_extract<-function(severity_classes,interactions,folder,overwrite=F,rm_haz=NULL,rm_crop=NULL){
     
     files<-list.files(folder,".tif$",full.names = T)
     
@@ -1301,6 +1307,14 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
     
     files_ss<-files[grepl(SEV,files)]
     data<-terra::rast(files_ss)
+    
+    if(!is.null(rm_haz)){
+      data<-data[[names(data)[!grepl(paste0(rm_haz,collapse="|"),names(data))]]]
+    }
+    
+    if(!is.null(rm_crop)){
+      data<-data[names(data)[!grepl(paste0(paste0("-",rm_crop,"-"),collapse="|"),names(data))]]
+    }
     
     file0<-paste0(folder,"/",SEV,"_adm0_",filename,".parquet")
     file1<-gsub("_adm0_","_adm1_",file0)
@@ -1347,7 +1361,8 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
   haz_risk_exp_extract(severity_classes,
                        interactions=INT,
                        folder=haz_risk_vop_dir,
-                       overwrite=overwrite)
+                       overwrite=overwrite,
+                       rm_haz=rm_haz)
   }
   
 
@@ -1357,7 +1372,8 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
                            folder=haz_risk_vop_dir,
-                           overwrite=overwrite)
+                           overwrite=overwrite,
+                           rm_haz=rm_haz)
     }
   }
   
@@ -1366,7 +1382,8 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
                            folder=haz_risk_vop_dir,
-                           overwrite=overwrite)
+                           overwrite=overwrite,
+                           rm_haz=rm_haz)
     }
   }
   
