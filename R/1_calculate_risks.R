@@ -144,11 +144,6 @@ PropTDir=">"
 crop_choices<-c(fread(haz_class_url)[,unique(crop)],ms_codes[,sort(Fullname)])
 
 # Classify time series climate variables based on hazard thresholds ####
-
-# Set save directory for classified hazard stacks
-haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
-if(!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir,recursive=T)}
-
 # Create a table of unique thresholds
 Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,direction,threshold)])
 Thresholds_U[,code:=paste0(direction,threshold)
@@ -210,6 +205,22 @@ foreach(i = 1:nrow(Thresholds_U)) %dopar% {
 
 plan(sequential)
 
+# Set directories ####
+haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
+if(!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir,recursive=T)}
+
+haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
+if(!dir.exists(haz_risk_dir)){dir.create(haz_risk_dir,recursive = T)}
+
+haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
+if(!dir.exists(haz_mean_dir)){dir.create(haz_mean_dir,recursive=T)}
+
+haz_sd_dir<-paste0("Data/hazard_timeseries_sd/",timeframe_choice)
+if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
+
+haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
+if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
+
 # Calculate risk across classified time series ####
 haz_time_risk_dir<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
 if(!dir.exists(haz_time_risk_dir)){dir.create(haz_time_risk_dir,recursive=T)}
@@ -241,10 +252,6 @@ foreach(i = 1:length(files)) %dopar% {
 plan(sequential)
 
 # Create crop risk stacks####
-haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
-if(!dir.exists(haz_risk_dir)){
-  dir.create(haz_risk_dir,recursive = T)
-}
 
 # Create stacks of hazard x crop/animal x scenario x timeframe
 haz_class_files<-list.files(haz_time_class_dir,".tif$")
@@ -324,11 +331,6 @@ foreach(i = 1:length(crops)) %dopar%{
 plan(sequential)
 
 # Calculate mean and sd across time series ####
-haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
-if(!dir.exists(haz_mean_dir)){dir.create(haz_mean_dir,recursive=T)}
-
-haz_sd_dir<-paste0("Data/hazard_timeseries_sd/",timeframe_choice)
-if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
 
 # List timeseries hazard files
 files<-list.files(haz_timeseries_dir,".tif",full.names = T)
@@ -361,7 +363,7 @@ foreach(i = 1:length(files)) %dopar% {
 
 plan(sequential)
 
-# Calculate change in mean values ####
+  # Calculate change in mean values ####
 files<-list.files(haz_mean_dir,".tif",full.names = T)
 files<-files[!grepl("change",files)]
 files_hist<-grep("historic",files,value = T)
@@ -386,9 +388,6 @@ for(j in 1:length(files_fut)){
 }
 
 # Interactions ####
-haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
-if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
-
   # Choose Interaction Variables ####
   # Crops
   # Set variables that can be interacted for heat wet and dry
