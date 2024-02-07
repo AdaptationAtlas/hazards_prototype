@@ -389,259 +389,217 @@ for(j in 1:length(files_fut)){
 haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
 if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
 
-# Choose Interaction Variables ####
-# Crops
-# Set variables that can be interacted for heat wet and dry
-crop_heat<-c("NTx35","TAVG_G")
-crop_wet<-c("NDWL0","PTOT_G")
-crop_dry<-c("PTOT_L","NDWS")
-
-crop_choices2<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
-
-# Create a unique list of all the 3-way combinations required for the crops and severity classes selected
-combinations_c<-unique(rbindlist(lapply(1:length(crop_choices2),FUN=function(i){
-  rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
-    X<-data.table(expand.grid(heat=crop_heat,wet=crop_wet,dry=crop_dry,stringsAsFactors=F))
-    haz_rename<-haz_class[crop==crop_choices2[i] & description == severity_classes$class[j],list(old=index_name2,new=paste0(index_name,"-",direction2,threshold))]
-    X[,heat:=stri_replace_all_regex(heat,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
-      ][,dry:=stri_replace_all_regex(dry,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
-        ][,wet:=stri_replace_all_regex(wet,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
-          ][,severity_class:=severity_classes$class[j]
-            ][,crop:=crop_choices2[i]]
-    X
-  }))
-})))
-
-# Interactions - Animals
-# Set variables that can be interacted for heat wet and dry
-animal_heat<-c("THI_max") # THI_mean or THI_max can be used here (or both)
-animal_wet<-c("NDWL0","PTOT_G")
-animal_dry<-c("NDD","PTOT_L","NDWS")
-
-crop_choicesX<-crop_choices[grepl("_tropical|_highland",crop_choices)]
-
-# Create a unique list of all the 3-way combinations required for the crops and severity classes selected
-combinations_a<-unique(rbindlist(lapply(1:length(crop_choicesX),FUN=function(i){
-  rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
-    X<-data.table(expand.grid(heat=animal_heat,wet=animal_wet,dry=animal_dry,stringsAsFactors=F))
-    haz_rename<-haz_class[crop==crop_choicesX[i] & description == severity_classes$class[j],list(old=index_name2,new=paste0(index_name,"-",direction2,threshold))]
-    X[,heat:=stri_replace_all_regex(heat,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
-    ][,dry:=stri_replace_all_regex(dry,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
-    ][,wet:=stri_replace_all_regex(wet,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
-    ][,severity_class:=severity_classes$class[j]
-      ][,crop:=crop_choicesX[i]]
-    X
-  }))
-})))
-
-# Join livestock and crop combinations
-combinations<-unique(rbind(combinations_c,combinations_a)[,crop:=NULL])
-
-# Restructure names of classified hazard files so they can be easily searched for scenario x timeframe x hazard x threshold
-haz_class_files<-list.files(haz_time_class_dir,full.names = T)
-haz_class_files2<-list.files(haz_time_class_dir)
-haz_class_files2<-gsub("_max_max","max",haz_class_files2)
-haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
-haz_class_files2<-gsub("_max","",haz_class_files2)
-haz_class_files2<-gsub("_mean","",haz_class_files2)
-haz_class_files2<-gsub("_sum","",haz_class_files2)
-haz_class_files2<-gsub("max","_max",haz_class_files2)
-haz_class_files2<-gsub("mean","_mean",haz_class_files2)
-haz_class_files2<-gsub("historical_","historic-historic-",haz_class_files2)
-haz_class_files2<-gsub("ssp245_ENSEMBLE_mean_","ssp245-",haz_class_files2)
-haz_class_files2<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",haz_class_files2)
-haz_class_files2<-gsub("2021_2040_","2021_2040-",haz_class_files2)
-haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
-
-# Interactions: Calculate interactions ####
-#combinations<-combinations[severity_class=="Severe"]
-overwrite<-F
-
-registerDoFuture()
-plan("multisession", workers = worker_n)
-
-foreach(i =  sample(1:nrow(combinations))) %dopar% {
-#for(i in 1:nrow(combinations)){
-
-        combos<-unlist(combinations[i,list(dry,heat,wet)])
-        grep_vals<-paste0(paste0(combos,".tif"),collapse = "|")
-        
-        combo_names<-c(names(combos),
-                       apply(combn(names(combos),2),2,paste,collapse="+"),
-                       paste(names(combos),collapse="+"))
-        
-        combo_binary<-data.table(combo_name=combo_names,value=0)[grep(names(combos)[1],combo_name),value:=1
-                                                                   ][grep(names(combos)[2],combo_name),value:=value+10
-                                                                     ][grep(names(combos)[3],combo_name),value:=value+100]
-          
-
-        folder<-paste0(haz_time_int_dir,"/",paste0(combos,collapse = "+"))
-        
-        if(!dir.exists(folder)){
-          dir.create(folder)
-        }
-        
-
-       for(l in 1:nrow(Scenarios)){
-         
-         # Display progress
-         cat('\r                                                                                                                     ')
-         cat('\r',paste("Combination:",i,"/",nrow(combinations),"| Scenario:",l,"/",nrow(Scenarios)))
-         flush.console()
-         
-         
-         combo_binary[,lyr_names:=paste0(Scenarios[l,combined],"-",combo_name)
-                      ][,save_names:=paste0(folder,"/",lyr_names,".tif")]
-         save_names<-combo_binary$save_names
-         save_name_any<-paste0(folder,"/",Scenarios[l,combined],"-any.tif")
-
-         
-         if((!all(file.exists(save_names))|!file.exists(save_name_any))|overwrite==T){
-          
-          files<-sapply(combos,FUN=function(x){haz_class_files[grepl(x,haz_class_files2) & grepl(Scenarios[l,combined],haz_class_files2)]})
-          
-          haz<-lapply(files,rast)
-          names(haz)<-names(files)
-          
-          
-          haz[["heat"]]<-haz[["heat"]]*10
-          haz[["wet"]]<-haz[["wet"]]*100
-          
-          haz_sum<-terra::rast(lapply(1:nlyr(haz[[1]]),FUN=function(m){
-            sum(terra::rast(lapply(haz,"[[",m)),na.rm=T)
-          }))
-          names(haz_sum)<-names(haz[[1]])
+  # Choose Interaction Variables ####
+  # Crops
+  # Set variables that can be interacted for heat wet and dry
+  crop_heat<-c("NTx35","TAVG_G")
+  crop_wet<-c("NDWL0","PTOT_G")
+  crop_dry<-c("PTOT_L","NDWS")
   
-          # Any haz
-          if(!file.exists(save_name_any)|overwrite==T){
-            data<-terra::mask(haz_sum,haz_sum,maskvalues=1:111,updatevalue=1)
-            data<-terra::app(data,fun="mean",na.rm=T)
-            names(data)<-paste0(Scenarios[l,combined],"-any")
-            terra::writeRaster(data,filename =  save_name_any,overwrite=T)
+  crop_choices2<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
+  
+  # Create a unique list of all the 3-way combinations required for the crops and severity classes selected
+  combinations_c<-unique(rbindlist(lapply(1:length(crop_choices2),FUN=function(i){
+    rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
+      X<-data.table(expand.grid(heat=crop_heat,wet=crop_wet,dry=crop_dry,stringsAsFactors=F))
+      haz_rename<-haz_class[crop==crop_choices2[i] & description == severity_classes$class[j],list(old=index_name2,new=paste0(index_name,"-",direction2,threshold))]
+      X[,heat:=stri_replace_all_regex(heat,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+        ][,dry:=stri_replace_all_regex(dry,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+          ][,wet:=stri_replace_all_regex(wet,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+            ][,severity_class:=severity_classes$class[j]
+              ][,crop:=crop_choices2[i]]
+      X
+    }))
+  })))
+  
+  # Interactions - Animals
+  # Set variables that can be interacted for heat wet and dry
+  animal_heat<-c("THI_max") # THI_mean or THI_max can be used here (or both)
+  animal_wet<-c("NDWL0","PTOT_G")
+  animal_dry<-c("NDD","PTOT_L","NDWS")
+  
+  crop_choicesX<-crop_choices[grepl("_tropical|_highland",crop_choices)]
+  
+  # Create a unique list of all the 3-way combinations required for the crops and severity classes selected
+  combinations_a<-unique(rbindlist(lapply(1:length(crop_choicesX),FUN=function(i){
+    rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
+      X<-data.table(expand.grid(heat=animal_heat,wet=animal_wet,dry=animal_dry,stringsAsFactors=F))
+      haz_rename<-haz_class[crop==crop_choicesX[i] & description == severity_classes$class[j],list(old=index_name2,new=paste0(index_name,"-",direction2,threshold))]
+      X[,heat:=stri_replace_all_regex(heat,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+      ][,dry:=stri_replace_all_regex(dry,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+      ][,wet:=stri_replace_all_regex(wet,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+      ][,severity_class:=severity_classes$class[j]
+        ][,crop:=crop_choicesX[i]]
+      X
+    }))
+  })))
+  
+  # Join livestock and crop combinations
+  combinations<-unique(rbind(combinations_c,combinations_a)[,crop:=NULL])
+  
+  # Restructure names of classified hazard files so they can be easily searched for scenario x timeframe x hazard x threshold
+  haz_class_files<-list.files(haz_time_class_dir,full.names = T)
+  haz_class_files2<-list.files(haz_time_class_dir)
+  haz_class_files2<-gsub("_max_max","max",haz_class_files2)
+  haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
+  haz_class_files2<-gsub("_max","",haz_class_files2)
+  haz_class_files2<-gsub("_mean","",haz_class_files2)
+  haz_class_files2<-gsub("_sum","",haz_class_files2)
+  haz_class_files2<-gsub("max","_max",haz_class_files2)
+  haz_class_files2<-gsub("mean","_mean",haz_class_files2)
+  haz_class_files2<-gsub("historical_","historic-historic-",haz_class_files2)
+  haz_class_files2<-gsub("ssp245_ENSEMBLE_mean_","ssp245-",haz_class_files2)
+  haz_class_files2<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",haz_class_files2)
+  haz_class_files2<-gsub("2021_2040_","2021_2040-",haz_class_files2)
+  haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
+  
+  # Interactions: Calculate interactions ####
+  #combinations<-combinations[severity_class=="Severe"]
+  overwrite<-F
+  
+  registerDoFuture()
+  plan("multisession", workers = worker_n)
+  
+  foreach(i =  sample(1:nrow(combinations))) %dopar% {
+  #for(i in 1:nrow(combinations)){
+  
+          combos<-unlist(combinations[i,list(dry,heat,wet)])
+          grep_vals<-paste0(paste0(combos,".tif"),collapse = "|")
+          
+          combo_names<-c(names(combos),
+                         apply(combn(names(combos),2),2,paste,collapse="+"),
+                         paste(names(combos),collapse="+"))
+          
+          combo_binary<-data.table(combo_name=combo_names,value=0)[grep(names(combos)[1],combo_name),value:=1
+                                                                     ][grep(names(combos)[2],combo_name),value:=value+10
+                                                                       ][grep(names(combos)[3],combo_name),value:=value+100]
+            
+  
+          folder<-paste0(haz_time_int_dir,"/",paste0(combos,collapse = "+"))
+          
+          if(!dir.exists(folder)){
+            dir.create(folder)
           }
           
-          int_risk<-function(data,interaction_mask_vals,lyr_name,combo_binary){
-            data<-terra::mask(data,data,maskvalues=interaction_mask_vals,updatevalue=0)
-            data<-terra::classify(data,data.table(from=1,to=999999,becomes=1))
-            data<-terra::app(data,fun="mean",na.rm=T)
-            names(data)<-lyr_name
-            return(data)
-          }
-          
-          # Interactions
-          for(i in 1:nrow(combo_binary)){
-            if(!file.exists(combo_binary[i,save_names])|overwrite==T){
-              data<-int_risk(data=haz_sum,interaction_mask_vals = combo_binary[-i,value],lyr_name = combo_binary[i,lyr_names])
-              terra::writeRaster(data,filename = combo_binary[i,save_names],overwrite=T)
+  
+         for(l in 1:nrow(Scenarios)){
+           
+           # Display progress
+           cat('\r                                                                                                                     ')
+           cat('\r',paste("Combination:",i,"/",nrow(combinations),"| Scenario:",l,"/",nrow(Scenarios)))
+           flush.console()
+           
+           
+           combo_binary[,lyr_names:=paste0(Scenarios[l,combined],"-",combo_name)
+                        ][,save_names:=paste0(folder,"/",lyr_names,".tif")]
+           save_names<-combo_binary$save_names
+           save_name_any<-paste0(folder,"/",Scenarios[l,combined],"-any.tif")
+  
+           
+           if((!all(file.exists(save_names))|!file.exists(save_name_any))|overwrite==T){
+            
+            files<-sapply(combos,FUN=function(x){haz_class_files[grepl(x,haz_class_files2) & grepl(Scenarios[l,combined],haz_class_files2)]})
+            
+            haz<-lapply(files,rast)
+            names(haz)<-names(files)
+            
+            
+            haz[["heat"]]<-haz[["heat"]]*10
+            haz[["wet"]]<-haz[["wet"]]*100
+            
+            haz_sum<-terra::rast(lapply(1:nlyr(haz[[1]]),FUN=function(m){
+              sum(terra::rast(lapply(haz,"[[",m)),na.rm=T)
+            }))
+            names(haz_sum)<-names(haz[[1]])
+    
+            # Any haz
+            if(!file.exists(save_name_any)|overwrite==T){
+              data<-terra::mask(haz_sum,haz_sum,maskvalues=1:111,updatevalue=1)
+              data<-terra::app(data,fun="mean",na.rm=T)
+              names(data)<-paste0(Scenarios[l,combined],"-any")
+              terra::writeRaster(data,filename =  save_name_any,overwrite=T)
             }
             
+            int_risk<-function(data,interaction_mask_vals,lyr_name,combo_binary){
+              data<-terra::mask(data,data,maskvalues=interaction_mask_vals,updatevalue=0)
+              data<-terra::classify(data,data.table(from=1,to=999999,becomes=1))
+              data<-terra::app(data,fun="mean",na.rm=T)
+              names(data)<-lyr_name
+              return(data)
+            }
+            
+            # Interactions
+            for(i in 1:nrow(combo_binary)){
+              if(!file.exists(combo_binary[i,save_names])|overwrite==T){
+                data<-int_risk(data=haz_sum,interaction_mask_vals = combo_binary[-i,value],lyr_name = combo_binary[i,lyr_names])
+                terra::writeRaster(data,filename = combo_binary[i,save_names],overwrite=T)
+              }
+              
+            }
+           
+            rm(data1,haz,haz_sum)
+            gc()
+            }
+            }
           }
-         
-          rm(data1,haz,haz_sum)
-          gc()
-          }
-          }
-        }
-  
-plan(sequential)
-
-combinations[,code:=paste(sort(c(heat,wet,dry)),collapse="+"),by=list(heat,wet,dry)]
-n_missing<-combinations$code[!combinations$code %in% sub(".tif","",sub("(([^-]*-){2})", "", list.files(haz_time_int_dir,recursive=T)))]
-
-if(length(n_missing)>0){
-  stop("Analysis of interactions incomplete")
-  print(n_missing)
-}
-
-# Interactions: For each crop combine hazards into a single file and add to hazard_risk dir #####
-combinations_ca<-rbind(combinations_c,combinations_a)
-sev_class<-severity_classes$class
-
-haz_int_files<-list.files(haz_time_int_dir,".tif$",full.names = T)
-overwrite<-T
-
-registerDoFuture()
-plan("multisession", workers = worker_n)
-
-foreach(i =  1:length(crop_choices)) %dopar% {
-#for(i in 1:length(crop_choices)){
-  for(j in 1:length(sev_class)){
     
-    # Display progress
-    cat('\r                                                                                                                     ')
-    cat('\r',paste("crop_choices:",i,"/",length(crop_choices),"| Severity Class:",j,"/",length(sev_class)))
-    flush.console()
-    
-    crop_focus<-crop_choices[i]
-
-    save_name2<-paste0(haz_risk_dir,"/",crop_focus,"_",tolower(sev_class[j]),"_int.tif")
-    save_name_any<-paste0(haz_risk_dir,"/",crop_focus,"_",tolower(sev_class[j]),"_any.tif")
-    
-    crop_combos<-combinations_ca[crop==crop_focus & severity_class==sev_class[j]]
+  plan(sequential)
   
-    grep_names<-unique(unlist(lapply(1:nrow(crop_combos),FUN=function(k){
-      combo_haz<-sort(unlist(crop_combos[k,1:3]))
-      combo_names<-paste0("-",c(paste0(combo_haz,collapse="+"),apply(combn(1:3,2),2,FUN=function(X){paste0(combo_haz[X],collapse = "+")})),".tif")   
-      combo_names
-    })))
-      
-      
-    if((!file.exists(save_name_any))|overwrite==T){
-      grep_names_any<-grep_names[str_count(grep_names,"[+]")==2]
-      grep_names_any<-gsub(".tif","_any.tif",grep_names_any)
+  combinations[,code:=paste(sort(c(heat,wet,dry)),collapse="+"),by=list(heat,wet,dry)]
+  n_missing<-combinations$code[!combinations$code %in% sub(".tif","",sub("(([^-]*-){2})", "", list.files(haz_time_int_dir,recursive=T)))]
   
-      grep_names_any<-paste0(grep_names_any,collapse = "|")
+  if(length(n_missing)>0){
+    stop("Analysis of interactions incomplete")
+    print(n_missing)
+  }
+  
+  # Interactions: For each crop combine hazards into a single file and add to hazard_risk dir #####
+  combinations_ca<-rbind(combinations_c,combinations_a)
+  sev_class<-severity_classes$class
+  
+  haz_int_files<-list.files(haz_time_int_dir,".tif$",full.names = T)
+  overwrite<-T
+  
+  registerDoFuture()
+  plan("multisession", workers = worker_n)
+  
+  foreach(i =  1:length(crop_choices)) %dopar% {
+  #for(i in 1:length(crop_choices)){
+    for(j in 1:length(sev_class)){
       
-      grep_names_any<-gsub(".","[.]",grep_names_any,fixed = T)
-      grep_names_any<-gsub("+","[+]",grep_names_any,fixed = T)
+      # Display progress
+      cat('\r                                                                                                                     ')
+      cat('\r',paste("crop_choices:",i,"/",length(crop_choices),"| Severity Class:",j,"/",length(sev_class)))
+      flush.console()
       
+      crop_focus<-crop_choices[i]
+  
+      save_name2<-paste0(haz_risk_dir,"/",crop_focus,"_",tolower(sev_class[j]),"_int.tif")
+      save_name_any<-paste0(haz_risk_dir,"/",crop_focus,"_",tolower(sev_class[j]),"_any.tif")
       
-      int_files_any<-grep(paste0(grep_names_any,collapse = "|"),haz_int_files,value = T)
-      
-      
-      data<-terra::rast(int_files_any)
-      N<-names(data)
-      N<-gsub("PTOT-L","PTOT_L-",N)
-      N<-gsub("PTOT-G","PTOT_G-",N)
-      N<-gsub("TAVG-L","TAVG_L-",N)
-      N<-gsub("TAVG-G","TAVG_G-",N)
-      N1<-tstrsplit(N,"[+]")
-      N2<-tstrsplit(N1[[1]],"-")
-      
-      N<-data.table(scenario=N2[[1]],
-                    timeframe=N2[[2]],
-                    haz1=unlist(tstrsplit(N2[[3]],"-",keep=1)),
-                    haz2=unlist(tstrsplit(N1[[2]],"-",keep=1)),
-                    haz3=unlist(tstrsplit(N1[[3]],"-",keep=1)))
-      N[,layer_name:=paste0(scenario,"-",timeframe,"-",haz1,"+",haz2,if(!is.na(haz3[1])){paste0("+",haz3[1])}else{""},"-",crop_focus,"-",sev_class[j]),by=haz3]
-      
-      # Check for missing data
-      N[,nlayers:=.N,by=list(scenario,timeframe)]
-      
-      if(!N[,length(unique(nlayers))==1]){
-        print(N)
-        stop("Appears to be missing interaction files in some scenario x timeframe combinations")
-      }
-      
-      if(any(table(N$layer_name))>1){
-        stop("Non-unique layer names are present!")
-      }
-      
-      names(data)<-N$layer_name
-      
-      terra::writeRaster(data,filename = save_name_any,overwrite=T)
-      
-      }
-      
-      if((!file.exists(save_name2))|overwrite==T){
-        grep_names<-paste0(grep_names,collapse = "|")
-        # Escape special characters, you cannot use fixed and the "|" character as it treats the bar as a fixed too
-        grep_names<-gsub(".","[.]",grep_names,fixed = T)
-        grep_names<-gsub("+","[+]",grep_names,fixed = T)
+      crop_combos<-combinations_ca[crop==crop_focus & severity_class==sev_class[j]]
+    
+      grep_names<-unique(unlist(lapply(1:nrow(crop_combos),FUN=function(k){
+        combo_haz<-sort(unlist(crop_combos[k,1:3]))
+        combo_names<-paste0("-",c(paste0(combo_haz,collapse="+"),apply(combn(1:3,2),2,FUN=function(X){paste0(combo_haz[X],collapse = "+")})),".tif")   
+        combo_names
+      })))
         
-        int_files<-grep(paste0(grep_names,collapse = "|"),haz_int_files,value = T)
         
-        data<-terra::rast(int_files)
+      if((!file.exists(save_name_any))|overwrite==T){
+        grep_names_any<-grep_names[str_count(grep_names,"[+]")==2]
+        grep_names_any<-gsub(".tif","_any.tif",grep_names_any)
+    
+        grep_names_any<-paste0(grep_names_any,collapse = "|")
+        
+        grep_names_any<-gsub(".","[.]",grep_names_any,fixed = T)
+        grep_names_any<-gsub("+","[+]",grep_names_any,fixed = T)
+        
+        
+        int_files_any<-grep(paste0(grep_names_any,collapse = "|"),haz_int_files,value = T)
+        
+        
+        data<-terra::rast(int_files_any)
         N<-names(data)
         N<-gsub("PTOT-L","PTOT_L-",N)
         N<-gsub("PTOT-G","PTOT_G-",N)
@@ -649,13 +607,14 @@ foreach(i =  1:length(crop_choices)) %dopar% {
         N<-gsub("TAVG-G","TAVG_G-",N)
         N1<-tstrsplit(N,"[+]")
         N2<-tstrsplit(N1[[1]],"-")
+        
         N<-data.table(scenario=N2[[1]],
                       timeframe=N2[[2]],
                       haz1=unlist(tstrsplit(N2[[3]],"-",keep=1)),
                       haz2=unlist(tstrsplit(N1[[2]],"-",keep=1)),
                       haz3=unlist(tstrsplit(N1[[3]],"-",keep=1)))
         N[,layer_name:=paste0(scenario,"-",timeframe,"-",haz1,"+",haz2,if(!is.na(haz3[1])){paste0("+",haz3[1])}else{""},"-",crop_focus,"-",sev_class[j]),by=haz3]
-       
+        
         # Check for missing data
         N[,nlayers:=.N,by=list(scenario,timeframe)]
         
@@ -670,20 +629,61 @@ foreach(i =  1:length(crop_choices)) %dopar% {
         
         names(data)<-N$layer_name
         
-        terra::writeRaster(data,filename = save_name2,overwrite=T)
-      }
-    
+        terra::writeRaster(data,filename = save_name_any,overwrite=T)
+        
+        }
+        
+        if((!file.exists(save_name2))|overwrite==T){
+          grep_names<-paste0(grep_names,collapse = "|")
+          # Escape special characters, you cannot use fixed and the "|" character as it treats the bar as a fixed too
+          grep_names<-gsub(".","[.]",grep_names,fixed = T)
+          grep_names<-gsub("+","[+]",grep_names,fixed = T)
+          
+          int_files<-grep(paste0(grep_names,collapse = "|"),haz_int_files,value = T)
+          
+          data<-terra::rast(int_files)
+          N<-names(data)
+          N<-gsub("PTOT-L","PTOT_L-",N)
+          N<-gsub("PTOT-G","PTOT_G-",N)
+          N<-gsub("TAVG-L","TAVG_L-",N)
+          N<-gsub("TAVG-G","TAVG_G-",N)
+          N1<-tstrsplit(N,"[+]")
+          N2<-tstrsplit(N1[[1]],"-")
+          N<-data.table(scenario=N2[[1]],
+                        timeframe=N2[[2]],
+                        haz1=unlist(tstrsplit(N2[[3]],"-",keep=1)),
+                        haz2=unlist(tstrsplit(N1[[2]],"-",keep=1)),
+                        haz3=unlist(tstrsplit(N1[[3]],"-",keep=1)))
+          N[,layer_name:=paste0(scenario,"-",timeframe,"-",haz1,"+",haz2,if(!is.na(haz3[1])){paste0("+",haz3[1])}else{""},"-",crop_focus,"-",sev_class[j]),by=haz3]
+         
+          # Check for missing data
+          N[,nlayers:=.N,by=list(scenario,timeframe)]
+          
+          if(!N[,length(unique(nlayers))==1]){
+            print(N)
+            stop("Appears to be missing interaction files in some scenario x timeframe combinations")
+          }
+          
+          if(any(table(N$layer_name))>1){
+            stop("Non-unique layer names are present!")
+          }
+          
+          names(data)<-N$layer_name
+          
+          terra::writeRaster(data,filename = save_name2,overwrite=T)
+        }
       
-  }}
-
-plan(sequential)
-
-# Check results 
-file<-list.files(haz_risk_dir,"_int",full.names = T)
-names(rast(file[111]))
-plot(rast(file[1]))
-
-
+        
+    }}
+  
+  plan(sequential)
+  
+  # Check results 
+  file<-list.files(haz_risk_dir,"_int",full.names = T)
+  names(rast(file[111]))
+  plot(rast(file[1]))
+  
+  
 # Non-Essential: Calculate change for classified values ####
 files<-list.files(haz_class_dir,".tif",full.names = T)
 files_hist<-grep("historic",files,value = T)
