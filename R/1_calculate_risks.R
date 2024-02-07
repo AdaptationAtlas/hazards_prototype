@@ -143,7 +143,27 @@ PropTDir=">"
 
 crop_choices<-c(fread(haz_class_url)[,unique(crop)],ms_codes[,sort(Fullname)])
 
+# Set directories ####
+haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
+if(!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir,recursive=T)}
+
+haz_time_risk_dir<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
+if(!dir.exists(haz_time_risk_dir)){dir.create(haz_time_risk_dir,recursive=T)}
+
+haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
+if(!dir.exists(haz_risk_dir)){dir.create(haz_risk_dir,recursive = T)}
+
+haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
+if(!dir.exists(haz_mean_dir)){dir.create(haz_mean_dir,recursive=T)}
+
+haz_sd_dir<-paste0("Data/hazard_timeseries_sd/",timeframe_choice)
+if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
+
+haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
+if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
+
 # Classify time series climate variables based on hazard thresholds ####
+
 # Create a table of unique thresholds
 Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,direction,threshold)])
 Thresholds_U[,code:=paste0(direction,threshold)
@@ -205,25 +225,7 @@ foreach(i = 1:nrow(Thresholds_U)) %dopar% {
 
 plan(sequential)
 
-# Set directories ####
-haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
-if(!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir,recursive=T)}
-
-haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
-if(!dir.exists(haz_risk_dir)){dir.create(haz_risk_dir,recursive = T)}
-
-haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
-if(!dir.exists(haz_mean_dir)){dir.create(haz_mean_dir,recursive=T)}
-
-haz_sd_dir<-paste0("Data/hazard_timeseries_sd/",timeframe_choice)
-if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
-
-haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
-if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
-
 # Calculate risk across classified time series ####
-haz_time_risk_dir<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
-if(!dir.exists(haz_time_risk_dir)){dir.create(haz_time_risk_dir,recursive=T)}
 
 files<-list.files(haz_time_class_dir,full.names = T)
 files2<-list.files(haz_time_class_dir)
@@ -553,8 +555,57 @@ for(j in 1:length(files_fut)){
   }
   
   # Interactions: For each crop combine hazards into a single file and add to hazard_risk dir #####
-  combinations_ca<-rbind(combinations_c,combinations_a)
-  sev_class<-severity_classes$class
+  combinations_ca<-rbind(combinations_c,combinations_a)[,combo_name:=paste0(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet,crop,severity_class)
+                                                        ][,folder:=paste0(haz_time_int_dir,"/",combo_name)
+                                                          ][,severity_class:=tolower(severity_class)]
+  
+  combinations_ca[,heat1:=stringi::stri_replace_all_regex(heat,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,heat1:=unlist(tstrsplit(heat1,"-",keep=1))]
+  combinations_ca[,dry1:=stringi::stri_replace_all_regex(dry,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,dry1:=unlist(tstrsplit(dry1,"-",keep=1))]
+  combinations_ca[,wet1:=stringi::stri_replace_all_regex(wet,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,wet1:=unlist(tstrsplit(wet1,"-",keep=1))]
+  combinations_ca[,combo_name1:=paste0(c(dry1[1],heat1[1],wet1[1]),collapse="+"),by=list(dry1,heat1,wet1)]
+  
+  combinations_crops<-combinations_ca[,unique(crop)]
+  
+  #registerDoFuture()
+  #plan("multisession", workers = worker_n)
+  
+  #foreach(i =  1:length(combinations_crops)) %dopar% {
+  
+  for(i in 1:length(combinations_crops)){
+    
+    crop_combos<-combinations_ca[crop==combinations_crops[i],combo_name1]
+  
+    
+    for(j in 1:nrow(severity_classes)){
+      
+      # Display progress
+      cat('\r                                                                                                                     ')
+      cat('\r',paste("crop_choices:",i,"/",length(combinations_crops),"| Severity Class:",j,"/",nrow(severity_classes)))
+      flush.console()
+      
+      save_file<-paste0(haz_risk_dir,"/",combinations_crops[i],"-",tolower(severity_classes$class[j]),"-int.tif")
+
+      subset<-combinations_ca[crop==combinations_crops[i] & severity_class==tolower(severity_classes$class[j])]
+      
+      if(!file.exists(save_file)|overwrite==T){
+        
+        data<-terra::rast(lapply(1:nrow(subset),FUN=function(k){
+          files<-list.files(subset[k,folder],full.names = T)
+          data<-terra::rast(files)
+          names(data)<-paste0(names(data),"_",subset[k,combo_name1],"_",subset[k,severity_class])
+          data
+        }))
+        
+        terra::writeRaster(data,filename = save_file,overwrite=T)
+      }
+      
+    }
+    
+    
+  }
+  
+  if(F){
+  #plan(sequential)
   
   haz_int_files<-list.files(haz_time_int_dir,".tif$",full.names = T)
   overwrite<-T
@@ -681,7 +732,7 @@ for(j in 1:length(files_fut)){
   file<-list.files(haz_risk_dir,"_int",full.names = T)
   names(rast(file[111]))
   plot(rast(file[1]))
-  
+  }
   
 # Non-Essential: Calculate change for classified values ####
 files<-list.files(haz_class_dir,".tif",full.names = T)
