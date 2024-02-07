@@ -1242,7 +1242,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
     
   # 5.1.1) Temporary bug fix with naming ####
     
-    files<-list.files(folder,".tif$",full.names = T)
+    files<-list.files(haz_risk_vop_dir,".tif$",full.names = T)
     files<-files[!grepl("1.tif",files)]
     files<-grep("-int-",files,value = T)
     
