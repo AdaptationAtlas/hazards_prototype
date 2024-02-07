@@ -592,7 +592,7 @@ for(j in 1:length(files_fut)){
         data<-terra::rast(lapply(1:nrow(subset),FUN=function(k){
           files<-list.files(subset[k,folder],full.names = T)
           data<-terra::rast(files)
-          names(data)<-paste0(names(data),"-",subset[k,combo_name1],"-",subset[k,severity_class])
+          names(data)<-paste0(names(data),"-",subset[k,combo_name1],"-",combinations_crops[i],"-",subset[k,severity_class])
           data
         }))
         
