@@ -1,4 +1,6 @@
+# !!!***This script assumes you have run the level 0.1_fao_production_cv.R script***!!! ####
 # TO DO: Harvested Areas Also Need to be adjusted to near present? #####
+
 
 # Install and load packages ####
 load_and_install_packages <- function(packages) {
@@ -20,16 +22,17 @@ packages <- c("data.table",
 # Call the function to install and load packages
 load_and_install_packages(packages)
 
+# Create functions ####
 # Create a wrapper for the fincal function
 irr_wrap <- function(project_cost, years, project_benefits) {
   sapply(years, FUN = function(YEAR) {
-    if (YEAR %in% 1) {
+    if (YEAR %in% 0) {
       return(as.numeric(NA))
     } else {
       cashflows <- c(-project_cost, project_benefits[1:YEAR])
       # Use tryCatch to handle errors
       result <- tryCatch({
-        jrvFinance::irr(cashflows)
+        suppressWarnings(jrvFinance::irr(cashflows))
       }, error = function(e) {
         # In case of an error, return NA
         as.numeric(NA)
@@ -40,6 +43,8 @@ irr_wrap <- function(project_cost, years, project_benefits) {
 }
 
 # 1) Load data ####
+
+# THIS FILE NEEDS UPLOADING TO THE BUCKET #####
 file<-"C:/Users/Peter Steward/OneDrive - CGIAR/Projects/EiA/Regional Prioritization/PAiCE/SPAM/mapspam_complete_extraction_adm1.csv"
 
 if(!file.exists(file)){
@@ -58,15 +63,17 @@ if(!file.exists(file)){
 exposure<-fread(file)
 exposure<-exposure[technology=="all"][,list(exposure,admin0_name,admin1_name,crop,value)]
 
-# 2) Set parameters and save directory ####
-years<-20
-adoption<-c(0.005,0.01,0.02)
-prod_impact<-seq(0.1,1,0.1)
-discount_rates<-0:15
-costs<-seq(-200,500,50)
+# CV in production
+cv<-fread("Data/fao/faostat_prod_cv.csv")
 
+# 2) Set parameters and save directory ####
+years<-15
+adoption<-c(0.005,0.01,0.02)
+prod_impact<-c(0.05,0.1,0.2,0.33,0.5,1)
+discount_rates<-c(4,8,12)
+bcrs<-1.62
 # Combinations
-nrow(expand.grid(1:years,adoption,prod_impact,costs))
+nrow(expand.grid(1:years,adoption,prod_impact,bcrs))
 
 save_dir<-"Data/roi"
 if(!dir.exists(save_dir)){
@@ -113,76 +120,65 @@ data<-melt(data,
 data[,year:=as.numeric(gsub("y","",year_char[1])),by=year_char][,year_char:=NULL]
 
 # Reorder dataset
-data<-data[order(admin0_name,admin1_name,exposure,crop,adoption,prod_impact)]
+data<-data[order(admin0_name,admin1_name,exposure,value,crop,adoption,prod_impact)]
 
-  # 3.1) Work out benefits ####
-  data_benefit<-data[exposure %in% c("vop_usd17") & !grepl("highland|tropical",crop)]
+# Add marginal benefit to production
+  # 1) Multiply the cumulative adoption amount (value of production) by production benefit of adoption
+  # 2) Substract the cumulative adoption amount to get the difference in production over non-adoption
+data[exposure %in% c("vop_USD17","vop","production"),result_w_impact:=result*(1+prod_impact)
+             ][,marginal_impact:=result_w_impact-result]
+
+
+# TEMP subset for development
+#data<-data[admin1_name=="" & admin0_name=="Kenya" & crop=="bean"]
+
+# 4) VoP only approach ####
+  data_benefit<-data[exposure == "vop_USD17"][,c("exposure"):=NULL]
   
-  # To work out the marginal gain in VoP: 
-    # 1) Multiply the cumulative adoption amount (value of production) by production benefit of adoption
-    # 2) Substract the cumulative adoption amount to get the difference in production over non-adoption
-  data_benefit[, marginal_gain := (result * (1+prod_impact))-result][,c("result","exposure","value"):=NULL]
-
-  # 3.2) Work out costs ####
-
-  data_cost<-data[exposure=="harvested_area"][,c("exposure","value"):=NULL]
-  N1<-rep(1:nrow(data_cost),each=length(costs))
-  N2<-rep(1:length(costs),nrow(data_cost))
-  data_cost<-data.table(
-    data_cost[N1],
-    cost_diff=costs[N2]
+  # Duplicate dataset for BCR values
+  N1<-rep(1:nrow(data_benefit),each=length(bcrs))
+  N2<-rep(1:length(bcrs),nrow(data_benefit))
+  data_benefit<-data.table(
+    data_benefit[N1],
+    bcr=bcrs[N2]
   )
-  
-  # Marginal cost is the cumulative area under adoption (ha) x the difference in cost between adopter and non-adopter
-  # Cost without the project is the total area x the number of years x the cost for non-adoption
-  # Cost with the project is the cost without plus the marginal change in cost
-  data_cost[,marginal_cost:=result*cost_diff][,result:=NULL]
-  
-  # 3.3) Merge costs and benefits ####
-  data_merge<-merge(data_benefit,data_cost)
-  rm(data_cost,data_benefit)
-  gc()
-  
-  data_merge[,project_benefit:=marginal_gain-marginal_cost]
-  
-  data_merge[,marginal_gain:=round(marginal_gain,0)
-             ][,marginal_cost:=round(marginal_cost,0)
-               ][,project_benefit:=round(project_benefit,0)]
-  
-  arrow::write_parquet(data_merge[year %in% 2:10 & 
-                                    costs %in% costs[seq(1,length(costs),2)] & 
-                                    prod_impact %in% c(0.1,0.2,0.3,0.5,1),!c("marginal_gain","marginal_cost")],sink=paste0(save_dir,"/roi_data.parquet"))
-  
-  rm(data_cost,data_benefit)
-  gc()
 
-# 4) Select crops and geography ####
+  #data_benefit[,cost:=(value+marginal_impact)/bcr
+  #          ][,nr:=(value+marginal_impact)-cost]
+  
+  data_benefit[,project_benefit:=marginal_impact-marginal_impact/bcr]
+  
+  
+  arrow::write_parquet(data_benefit[,!c("result_w_impact","marginal_impact","value","result")],sink=paste0(save_dir,"/roi_data.parquet"))
+  
+
+# 5) Select crops and geography ####
 admin0_choice<-"Kenya"
-admin1_choice<-data_merge[admin0_name==admin0_choice,sample(unique(admin1_name),4,replace=F)]
+admin1_choice<-data_benefit[admin0_name==admin0_choice,sample(unique(admin1_name),4,replace=F)]
 
-priority_crops<-data[exposure=="ha" & admin0_name %in% admin0_choice & admin1_name %in% admin1_choice
+priority_crops<-data[exposure=="harvested_area" & admin0_name %in% admin0_choice & admin1_name %in% admin1_choice
 ][,list(value=mean(value)),by=crop
 ][order(value,decreasing = T)
 ][value>100]
 
 crops_choice<-priority_crops$crop[1:4]
 
-# 4.1) Subset data ####
-data_merge_ss<-data_merge[admin0_name %in% admin0_choice & admin1_name %in% admin1_choice & crop %in% crops_choice]
+  # 5.1) Subset data ####
+data_merge_ss<-data_benefit[admin0_name %in% admin0_choice & admin1_name %in% admin1_choice & crop %in% crops_choice]
 
 # sum results
-data_sum<-data_merge_ss[,list(project_benefit=sum(project_benefit,na.rm=T)),by=list(adoption,prod_impact,year,cost_diff )]
+data_sum<-data_merge_ss[,list(project_benefit=sum(project_benefit,na.rm=T)),by=list(adoption,prod_impact,year,bcr )]
 
 # Re-sort dataset so that years are in order, this is required for irr calculations
-data_sum<-data_sum[order(adoption,prod_impact,cost_diff,year)]
+data_sum<-data_sum[order(adoption,prod_impact,bcr,year)]
 
-# 7) Economic indicators ###
+# 6) Economic indicators ####
 discount_rate_choice<-5
 project_year_choice<-5
 project_cost<-10^6
 
 # Calculate IRR
-data_sum[,irr:=as.numeric(irr_wrap(project_cost,years=year,project_benefits=project_benefit)),by=list(adoption,prod_impact,cost_diff)]
+data_sum[,irr:=as.numeric(irr_wrap(project_cost,years=year,project_benefits=project_benefit)),by=list(adoption,prod_impact,bcr)]
 
 # Add discount rates
 data_sum<-data.table(
@@ -192,13 +188,13 @@ data_sum<-data.table(
 
 
 # Calculate
-data_sum[,npv:=(project_benefit/(1+discount_rate/100)^year)-project_cost
+A[,npv:=(project_benefit/(1+discount_rate/100)^year)-project_cost
          ][,bcr:=npv/project_cost]
 
 # Under what conditions is NPV positive?
 unique(data_sum[npv>0,list(adoption,prod_impact,discount_rate,year,npv)][order(npv,decreasing=T)])
 
-# Adoption rate % table ####
+# 7) Adoption rate % table ####
 ad_rate<-data.table(value=1,adoption=seq(0.0025,0.03,0.0025))
 
 for(i in 1:years){
@@ -259,12 +255,12 @@ ggplot(ad_rate, aes(x = factor(year), y = adoption_perc, fill = value)) +
 
 
 
-# 5) Old Approach ####
-  data<-data[admin1_name=="" & admin0_name=="Kenya" & crop=="bean"]
+# 8) Old Approach ####
 
-  # 5.1) Work out benefits ####
+  # 8.1) Work out benefits ####
   data_rs<-data[exposure %in% c("harvested_area","vop_USD17")]
-  data_rs_impact<-dcast(data_rs,admin0_name+admin1_name+crop+prod_impact+adoption+year~exposure,value.var = "result")
+  data_rs[,BCR:=1.62]
+  data_rs_impact<-dcast(data_rs,admin0_name+admin1_name+crop+prod_impact+adoption+year+BCR~exposure,value.var = "result")
   
   # Add base harvested area
   data_rs_impact<-merge(data_rs_impact,data_rs[exposure=="harvested_area",!c("result","exposure")])
@@ -275,35 +271,71 @@ ggplot(ad_rate, aes(x = factor(year), y = adoption_perc, fill = value)) +
   setnames(data_rs_impact,"value","vop_base")
   
   # Add base production
-  data_rs<-data[exposure %in% c("production")]
-  data_rs_impact<-merge(data_rs_impact,data_rs[exposure=="production",!c("result","exposure")])
+  by_fields<-c("admin0_name","crop","admin1_name","adoption","prod_impact","year")
+    data_rs<-data[exposure %in% c("production")]
+  data_rs_impact<-merge(data_rs_impact,data_rs[,!c("result","exposure")],by=by_fields)
   setnames(data_rs_impact,"value","prod_base")
   
   # Add base yield
   data_rs<-data[exposure %in% c("yield")]
-  data_rs_impact<-merge(data_rs_impact,data_rs[exposure=="yield",!c("result","exposure")])
+  data_rs_impact<-merge(data_rs_impact,data_rs[exposure=="yield",!c("result","exposure")],by=by_fields)
   setnames(data_rs_impact,"value","yield")
+  data_rs_impact[,yield:=yield/1000]
   
   # Add Price
   data_rs_impact[,Price:=vop_base/prod_base]
-  
   setnames(data_rs_impact,c("harvested_area","yield"),c("A_adopt","Y_non_adopt"))
   data_rs_impact[,A_non_adopt:=ha_base-A_adopt]
   data_rs_impact[,Y_adopt:=Y_non_adopt*(1+prod_impact)]
   
   # Calculate VOP
   data_rs_impact[,VOP_non_adopt:=A_non_adopt*Y_non_adopt*Price
-                 ][,VOP_adopt:=A_non_adopt*Y_non_adopt*Price]
+                 ][,VOP_adopt:=A_adopt*Y_adopt*Price]
   
-  data_benefit<-data[exposure %in% c("vop_usd17") & !grepl("highland|tropical",crop)]
+  # Estimate Cost
+  data_rs_impact[,Cost_adopt:=Price*Y_adopt/BCR
+                 ][,Cost_non_adopt:=Price*Y_non_adopt/BCR]
+  
+  # Estimate Net Return
+  data_rs_impact[,NR_adopt:=A_adopt*(Y_adopt*Price-Cost_adopt)
+                 ][,NR_non_adopt:=A_non_adopt*(Y_non_adopt*Price-Cost_non_adopt)]
+  
+  # Estimate project benefit
+  data_rs_impact[,project_benefit:=NR_non_adopt+NR_adopt
+                 ][,project_benefit:=project_benefit-(ha_base*((Y_non_adopt*Price)-Cost_non_adopt)),by=list(admin0_name,admin1_name,crop,adoption,prod_impact)]
+  
 
-
+  # 8.2) Economic indicators ####
+  discount_rate_choice<-5
+  project_year_choice<-5
+  project_cost<-10^6
+  
+  
+  # sum results
+  data_rs_sum<-data_rs_impact[,list(project_benefit=sum(project_benefit,na.rm=T)),by=list(adoption,prod_impact,year,BCR )]
+  
+  # Re-sort dataset so that years are in order, this is required for irr calculations
+  data_rs_sum<-data_rs_sum[order(adoption,prod_impact,BCR,year)]
+  
+  # Calculate IRR
+  data_rs_sum[,irr:=as.numeric(irr_wrap(project_cost,years=year,project_benefits=project_benefit)),by=list(adoption,prod_impact,BCR)]
+  
+  # Add discount rates
+  data_rs_sum<-data.table(
+    data_rs_sum[rep(1:nrow(data_rs_sum),each=length(discount_rates))],
+    discount_rate=discount_rates[rep(1:length(discount_rates),nrow(data_rs_sum))]
+  )
+  
+  
+  # Calculate
+  data_rs_sum[,npv:=(project_benefit/(1+discount_rate/100)^year)-project_cost
+  ][,bcr:=npv/project_cost]
+  
+  # Under what conditions is NPV positive?
+  unique(data_rs_sum[npv>0,list(adoption,prod_impact,discount_rate,year,npv)][order(npv,decreasing=T)])
+  
   
 
   
-  # To work out the marginal gain in VoP: 
-  # a) Multiply the cumulative adoption amount (value of production) by production benefit of adoption
-  # b) Substract the cumulative adoption amount to get the difference in production over non-adoption
-  data_benefit[, marginal_gain := (result * (1+prod_impact))-result][,c("result","exposure","value"):=NULL]
 
 
