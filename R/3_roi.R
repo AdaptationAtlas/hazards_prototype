@@ -56,10 +56,6 @@ if(!file.exists(file)){
   #s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
 }
 
-#exposure<-data.table(arrow::read_parquet(file))
-# Subset to admin1
-#exposure<-exposure[is.na(admin2_name)][,admin2_name:=NULL]
-
 exposure<-fread(file)
 exposure<-exposure[technology=="all"][,list(exposure,admin0_name,admin1_name,crop,value)]
 
