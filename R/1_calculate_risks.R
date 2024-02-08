@@ -579,7 +579,7 @@ for(j in 1:length(files_fut)){
     for(j in 1:nrow(severity_classes)){
       
       # Display progress
-      cat('\r                                                                                                                     ')
+      cat('\r                                                                                                                                                           ')
       cat('\r',paste("crop_choices:",i,"/",length(combinations_crops),"| Severity Class:",j,"/",nrow(severity_classes)))
       flush.console()
       
