@@ -314,7 +314,7 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     }
   }
   # Functions to restructure hazard risk x exposure geoparquet in a long tabular form
-  recode_restructure<-function(data,crop_choices,livestock_choices,Scenarios,exposure,severity,hazards){
+  recode_restructure<-function(data,crop_choices,livestock_choices,Scenarios,exposure,severity,hazards,interaction){
     
     # Renaming of variable to allow splitting
     new<-paste0(Scenarios$combined,"-")
@@ -333,11 +333,12 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     new<-c(new,paste0(c("any",hazards),"-"))
     old<-c(old,paste0(c("any",hazards),"_"))
     
-    new<-c(new,paste0(c("any",hazards),"-"))
-    old<-c(old,paste0(c("any",hazards),"[.]"))
+    # Temporary inclusion to deal with solo practice naming
+    if(interaction==F){
+      new<-c(new,paste0(c("any",hazards),"-"))
+      old<-c(old,paste0(c("any",hazards),"[.]"))
+    }
     
-
-  
     variable_old<-data[,unique(variable)]
     
     variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F))
@@ -407,7 +408,8 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
                                  Scenarios = Scenarios,
                                  exposure=exposure_var,
                                  severity=severity,
-                                 hazards=hazards)
+                                 hazards=hazards,
+                                 interaction=interaction)
         
         
         data
@@ -1246,6 +1248,7 @@ if(!dir.exists(haz_risk_n_dir)){
     
     # 5.1)  Multiply Hazard Risk by Exposure ####
       
+      if(F){
       files<-list.files(haz_risk_dir,".tif$",full.names = T)
     
       files_rename<-stringi::stri_replace_all_regex(files,
@@ -1254,6 +1257,7 @@ if(!dir.exists(haz_risk_n_dir)){
                                                     vectorize_all = F)
       
       file.rename(from=files,to=files_rename)
+      }
       
       files<-list.files(haz_risk_dir,".tif$",full.names = T)
       
@@ -1325,7 +1329,7 @@ if(!dir.exists(haz_risk_n_dir)){
             
       }
       
-      # 5.1.x) Temporary bug fix with naming (should be resolved) ####
+      # 5.1.x) Temporary bug fix with naming (should be resolved next time haz_risk files are created) ####
       if(F){
         files<-list.files(haz_risk_vop_dir,".tif$",full.names = T)
         files<-files[!grepl("1.tif",files)]
@@ -1365,9 +1369,16 @@ if(!dir.exists(haz_risk_n_dir)){
         files<-grep("-int-",files,value = T)
         
         unlink(files)
-        files<-list.files(haz_risk_vop_dir,"1.tif$|tif.aux.xml$",full.names = T)
+        files<-list.files(haz_risk_vop_dir,"1.tif$|1.tif.aux.xml$",full.names = T)
         files_new<-gsub("1.tif",".tif",files)
         file.rename(from=files,to=files_new)
+      }
+      
+      files<-list.files(haz_risk_vop_dir,"int-vop.tif$",full.names = T)
+      
+      for(i in 1:length(files)){
+        data<-terra::rast(files[i])
+        print(names(data)[1])
       }
 
     # 5.2) Extract Risk x Exposure by Geography  ####
@@ -1421,13 +1432,16 @@ if(!dir.exists(haz_risk_n_dir)){
         sfarrow::st_write_parquet(data,files[i])
       }
       
+      (files<-list.files(haz_risk_vop_dir,"int.parquet$",full.names = T))
+      data<-sfarrow::st_read_parquet(files[5])
+      names(data)<-gsub("vop[.]vop","vop",names(data))
+      sfarrow::st_write_parquet(data,files[5])
+      
     # 5.3) Restructure Extracted Data ####
-
-    
     for(SEV in tolower(severity_classes$class)){
-   
       # Restructure Extracted Data ####
       for(INT in c(T,F)){
+        print(paste0(SEV,"-",INT))
         # Vop
         recode_restructure_wrap(folder=haz_risk_vop_dir,
                                 file="adm",
