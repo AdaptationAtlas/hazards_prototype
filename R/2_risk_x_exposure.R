@@ -1372,15 +1372,15 @@ if(!dir.exists(haz_risk_n_dir)){
         files<-list.files(haz_risk_vop_dir,"1.tif$|1.tif.aux.xml$",full.names = T)
         files_new<-gsub("1.tif",".tif",files)
         file.rename(from=files,to=files_new)
+        
+        # Check issues are resolved
+        files<-list.files(haz_risk_vop_dir,"int-vop.tif$",full.names = T)
+        
+        for(i in 1:length(files)){
+          data<-terra::rast(files[i])
+          print(names(data)[1])
+        }
       }
-      
-      files<-list.files(haz_risk_vop_dir,"int-vop.tif$",full.names = T)
-      
-      for(i in 1:length(files)){
-        data<-terra::rast(files[i])
-        print(names(data)[1])
-      }
-
     # 5.2) Extract Risk x Exposure by Geography  ####
     overwrite<-F
     do_ha<-F
@@ -1417,31 +1417,57 @@ if(!dir.exists(haz_risk_n_dir)){
     names(data)
           
       # 5.2.x) Temporary name fix for old solo hazards (not resolved) ####
-      files<-list.files(haz_risk_vop_dir,"solo.parquet$",full.names = T)
-      files<-files[!grepl("_adm_",files)]
-    
-      for(i in 1:length(files)){
-        print(i)
-        data<-sfarrow::st_read_parquet(files[i])
-
+      if(F){
+        files<-list.files(haz_risk_vop_dir,"solo.parquet$",full.names = T)
+        files<-files[!grepl("_adm_",files)]
+      
         new<-c(tolower(severity_classes$class),haz_meta[,paste0(".",type,".",code)])
         old<-c(severity_classes$class,haz_meta[,paste0("[.]",code)])
+
+        for(i in 1:length(files)){
+          print(i)
+          file<-files[i]
+          data<-sfarrow::st_read_parquet(file)
+          
+          colnames_new<-stringi::stri_replace_all_regex(colnames(data),old,new,vectorize_all=F)
+          names(data)<-colnames_new
+          sfarrow::st_write_parquet(data,file)
+
+        }
         
-        colnames_new<-stringi::stri_replace_all_regex(colnames(data),old,new,vectorize_all=F)
-        names(data)<-colnames_new
-        sfarrow::st_write_parquet(data,files[i])
+        for(i in 1:length(files)){
+          data<-sfarrow::st_read_parquet(files[i])
+          print(names(data)[10])
+        }
       }
+    
+
+    if(F){
+      # Strange issue encountered in severe_adm0_int.parquet where there is a set of columns without a crop name
+      # There are no missing crops or livestock names
+      # Suspect this is from a left over file duplicate from 5.1.x renaming exercise
       
-      (files<-list.files(haz_risk_vop_dir,"int.parquet$",full.names = T))
-      data<-sfarrow::st_read_parquet(files[5])
-      names(data)<-gsub("vop[.]vop","vop",names(data))
-      sfarrow::st_write_parquet(data,files[5])
+    (files<-list.files(haz_risk_vop_dir,"int.parquet$",full.names = T))
+    file<-files[10]
+    data<-sfarrow::st_read_parquet(file)
+    
+    sapply(paste0("[.]",gsub(" ","[.]",c(crop_choices,livestock_choices))),FUN=function(x){sum(grepl(x,names(data)))})
+    sapply(gsub(" ","[.]",crop_choices),FUN=function(x){any(grepl(x,names(data)))})
+    rm_cols<-which(!grepl(gsub(" ","[.]",paste0(c(livestock_choices,crop_choices),collapse="|")),names(data)))
+    rm_cols<-rm_cols[rm_cols>5]
+    rm_cols<-rm_cols[-length(rm_cols)]
+    if(length(rm_cols)==320){
+      data<-data[,-rm_cols]
+      sfarrow::st_write_parquet(data,file)
+    }
+    
+    }
       
     # 5.3) Restructure Extracted Data ####
     for(SEV in tolower(severity_classes$class)){
       # Restructure Extracted Data ####
       for(INT in c(T,F)){
-        print(paste0(SEV,"-",INT))
+        print(paste0(SEV," - interaction = ",INT))
         # Vop
         recode_restructure_wrap(folder=haz_risk_vop_dir,
                                 file="adm",
@@ -1485,11 +1511,17 @@ if(!dir.exists(haz_risk_n_dir)){
       
     }
     
-    (file<-list.files(haz_risk_vop_dir,"_adm_",full.names = T))
-    data<-arrow::read_parquet(file[2])
-    head(data)
-    data[,unique(hazard)]
-    data[,unique(crop)]
+    # Check results
+    (files<-list.files(haz_risk_vop_dir,"_adm_",full.names = T))
+    for(i in 1:length(files)){
+      file<-files[i]
+      print(file)
+      data<-arrow::read_parquet(file)
+      print(head(data))
+      print(data[,unique(hazard)])
+      print(data[,unique(crop)])
+    }
+    
   # 6) Generic Risk x Human Population #####
   # This is only calculated for the risk of a "generic" hazard
   haz_risk_hpop_dir<-paste0("Data/hazard_risk_hpop/",timeframe_choice)
