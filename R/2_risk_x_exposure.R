@@ -316,6 +316,22 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
   # Functions to restructure hazard risk x exposure geoparquet in a long tabular form
   recode_restructure<-function(data,crop_choices,livestock_choices,Scenarios,exposure,severity,hazards,interaction){
     
+    variable_old<-data[,as.character(unique(variable))]
+    
+    # Make sure crop names are separated with a _ instead of a
+    
+    # Replace space in the crop names with a . to match the parquet column names
+    new<-gsub(" ",".",crop_choices)
+    old<-crop_choices
+    
+    variable_old<-stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F)
+    
+    # Replace . in crop names with a _
+    new<-gsub(".","_",crop_choices)
+    old<-gsub(" ",".",crop_choices)
+    
+    variable_old<-stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F)
+    
     # Renaming of variable to allow splitting
     new<-paste0(Scenarios$combined,"-")
     old<-paste0(Scenarios[,paste0(Scenario,".",Time)],".")
@@ -339,9 +355,11 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
       old<-c(old,paste0(c("any",hazards),"[.]"))
     }
     
-    variable_old<-data[,unique(variable)]
-    
     variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F))
+    
+    N<-grep("sweet",variable_old)
+    variable_old[N][1]
+    variable_new[N][1]
     
     split<-variable_new[,list(var_split=list(tstrsplit(variable[1],"-"))),by=variable]
     split_tab<-rbindlist(split$var_split)
