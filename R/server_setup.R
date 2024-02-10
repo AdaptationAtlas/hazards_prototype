@@ -37,7 +37,7 @@ timeframe_choice<-"annual"
 terra::gdalCache(60000)
 
 # workers
-worker_n<-12
+worker_n<-10
 
 # Set output directories
 haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
