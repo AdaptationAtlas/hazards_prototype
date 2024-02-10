@@ -162,7 +162,7 @@ if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
 haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
 if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
 
-# Classify time series climate variables based on hazard thresholds ####
+# 1) Classify time series climate variables based on hazard thresholds ####
 
 # Create a table of unique thresholds
 Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,direction,threshold)])
@@ -225,7 +225,7 @@ foreach(i = 1:nrow(Thresholds_U)) %dopar% {
 
 plan(sequential)
 
-# Calculate risk across classified time series ####
+# 2) Calculate risk across classified time series ####
 
 files<-list.files(haz_time_class_dir,full.names = T)
 files2<-list.files(haz_time_class_dir)
@@ -253,7 +253,7 @@ foreach(i = 1:length(files)) %dopar% {
 
 plan(sequential)
 
-# Create crop risk stacks####
+# 3) Create crop risk stacks####
 
 # Create stacks of hazard x crop/animal x scenario x timeframe
 haz_class_files<-list.files(haz_time_class_dir,".tif$")
@@ -332,7 +332,7 @@ foreach(i = 1:length(crops)) %dopar%{
 
 plan(sequential)
 
-# Calculate mean and sd across time series ####
+# 4) Calculate mean and sd across time series ####
 
 # List timeseries hazard files
 files<-list.files(haz_timeseries_dir,".tif",full.names = T)
@@ -365,7 +365,7 @@ foreach(i = 1:length(files)) %dopar% {
 
 plan(sequential)
 
-  # Calculate change in mean values ####
+  # 4.1) Calculate change in mean values ####
 files<-list.files(haz_mean_dir,".tif",full.names = T)
 files<-files[!grepl("change",files)]
 files_hist<-grep("historic",files,value = T)
@@ -389,8 +389,8 @@ for(j in 1:length(files_fut)){
   
 }
 
-# Interactions ####
-  # Choose Interaction Variables ####
+# 5) Interactions ####
+  # 5.1) Choose Interaction Variables ####
   # Crops
   # Set variables that can be interacted for heat wet and dry
   crop_heat<-c("NTx35","TAVG_G")
@@ -454,7 +454,7 @@ for(j in 1:length(files_fut)){
   haz_class_files2<-gsub("2021_2040_","2021_2040-",haz_class_files2)
   haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
   
-  # Interactions: Calculate interactions ####
+  # 5.2) Interactions: Calculate interactions ####
   #combinations<-combinations[severity_class=="Severe"]
   overwrite<-F
   
@@ -554,7 +554,7 @@ for(j in 1:length(files_fut)){
     print(n_missing)
   }
   
-  # Interactions: For each crop combine hazards into a single file and add to hazard_risk dir #####
+  # 5.3) Interactions: For each crop combine hazards into a single file and add to hazard_risk dir #####
   combinations_ca<-rbind(combinations_c,combinations_a)[,combo_name:=paste0(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet,crop,severity_class)
                                                         ][,folder:=paste0(haz_time_int_dir,"/",combo_name)
                                                           ][,severity_class:=tolower(severity_class)]
@@ -604,7 +604,8 @@ for(j in 1:length(files_fut)){
     
   }
 
-# Retired interactions by crop code ####
+# ------------------------------------------ ####
+# x) Retired interactions by crop code ####
   if(F){
   #plan(sequential)
   
@@ -735,7 +736,7 @@ for(j in 1:length(files_fut)){
   plot(rast(file[1]))
   }
   
-# Non-Essential: Calculate change for classified values ####
+# x) Non-Essential: Calculate change for classified values ####
 files<-list.files(haz_class_dir,".tif",full.names = T)
 files_hist<-grep("historic",files,value = T)
 
@@ -768,7 +769,7 @@ for(i in 1:length(files_hist)){
 }
 
 
-# Redundant? Create Classified Risk Stacks ####
+# x) Redundant? Create Classified Risk Stacks ####
 risk_threshold<-0.5
 haz_risk_dir_class<-paste0("Data/hazard_risk_class/t",risk_threshold,"/",timeframe_choice)
 if(!dir.exists(haz_risk_dir_class)){
