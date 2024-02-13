@@ -22,7 +22,7 @@ load_and_install_packages(packages)
 haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
 severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
 
-# Adaptive Capacity ####
+# Load adaptive capacity data ####
 ac_dir<-"Data/adaptive_capacity"
 if(!dir.exists(ac_dir)){
   dir.create(ac_dir,recursive=T)
@@ -42,7 +42,7 @@ adaptive_capacity<-data.table(arrow::read_parquet(local_file))
 # Cast dataset
 adaptive_capacity_cast<-dcast(adaptive_capacity,admin0_name+admin1_name+admin2_name+iso3+total_pop+rural_pop~vulnerability,value.var="value_binary")
 
-# Hazard Risk x VoP #####
+# Load hazard Risk x VoP data #####
 # Data is found in "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual" for example
 
 interaction<-F

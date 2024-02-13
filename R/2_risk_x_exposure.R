@@ -25,7 +25,7 @@ packages <- c("terra",
 # Call the function to install and load packages
 load_and_install_packages(packages)
 
-# b) Create functions ####
+# b) Create functions & wrappers ####
 
 # Sectiond2Function to convert tabular mapspam data into a raster
 read_spam<-function(variable,technology,mapspam_dir,save_dir,base_rast,filename,ms_codes,overwrite){
@@ -321,13 +321,13 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     # Make sure crop names are separated with a _ instead of a
     
     # Replace space in the crop names with a . to match the parquet column names
-    new<-gsub(" ",".",crop_choices)
+    new<-gsub(" ",".",crop_choices,fixed=T)
     old<-crop_choices
     
     variable_old<-stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F)
     
-    # Replace . in crop names with a _
-    new<-gsub(".","_",crop_choices)
+    # Replace . in crop names with a 
+    new<-gsub(" ","_",crop_choices,fixed = T)
     old<-gsub(" ",".",crop_choices)
     
     variable_old<-stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F)
@@ -338,7 +338,7 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     
     # Replace space in the crop names with a . to match the parquet column names
     new<-c(new,paste0("-",crop_choices,"-"))
-    old<-c(old,paste0("[.]",gsub(" ",".",crop_choices,fixed = T),"[.]"))
+    old<-c(old,paste0("[.]",gsub(" ","_",crop_choices,fixed = T),"[.]"))
     
     new<-c(new,paste0("-",livestock_choices,"-"))
     old<-c(old,paste0("[.]",livestock_choices,"[.]"))
@@ -437,26 +437,27 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     }
   }
   
+# Section d2.2
   # Function to split livestock between highland and tropical
-split_livestock<-function(data,livestock_mask_high,livestock_mask_low){
-  
-  # Reorder cols to match mask
-  order_n<-sapply(names(data),FUN=function(X){grep(X,names(livestock_mask_high))})
-  data_high<-data[[order_n]]
-  data_high<-data_high*livestock_mask_high
-  
-  order_n<-sapply(names(data),FUN=function(X){grep(X,names(livestock_mask_low))})
-  data_low<-data[[order_n]]
-  data_low<-data_low*livestock_mask_low
-  
-  
-  names(data_high)<-names(livestock_mask_high)
-  names(data_low)<-names(livestock_mask_low)
-  
-  data_joined<-c(data_low,data_high)
-  
-  return(data_joined)
-}
+  split_livestock<-function(data,livestock_mask_high,livestock_mask_low){
+    
+    # Reorder cols to match mask
+    order_n<-sapply(names(data),FUN=function(X){grep(X,names(livestock_mask_high))})
+    data_high<-data[[order_n]]
+    data_high<-data_high*livestock_mask_high
+    
+    order_n<-sapply(names(data),FUN=function(X){grep(X,names(livestock_mask_low))})
+    data_low<-data[[order_n]]
+    data_low<-data_low*livestock_mask_low
+    
+    
+    names(data_high)<-names(livestock_mask_high)
+    names(data_low)<-names(livestock_mask_low)
+    
+    data_joined<-c(data_low,data_high)
+    
+    return(data_joined)
+  }
 
 # c) Set up workspace ####
 
@@ -530,13 +531,13 @@ if(!dir.exists(haz_risk_n_dir)){
   # 1) Geographies #####
   # Load and combine geoboundaries
   overwrite<-F
+
   geoboundaries_s3<-"s3://digital-atlas/boundaries"
   geo_files_s3<-s3fs::s3_dir_ls(geoboundaries_s3)
   geo_files_s3<-grep("harmonized.gpkg",geo_files_s3,value=T)
   
   geo_files_local<-file.path("Data/boundaries",basename(geo_files_s3))
   names(geo_files_local)<-c("admin0","admin1","admin2")
-  
   
   Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
     file<-geo_files_local[i]
@@ -1529,7 +1530,7 @@ if(!dir.exists(haz_risk_n_dir)){
       
     }
     
-    # Check results
+      # Check results
     (files<-list.files(haz_risk_vop_dir,"_adm_",full.names = T))
     for(i in 1:length(files)){
       file<-files[i]
