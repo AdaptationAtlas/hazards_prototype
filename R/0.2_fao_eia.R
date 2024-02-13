@@ -191,19 +191,8 @@ fill_gaps<-function(data){
 
 # Setup workspace ####
 # Load geoboundaries
-overwrite<-F
-geoboundaries_s3<-"s3://digital-atlas/boundaries"
-geo_files_s3<-s3fs::s3_dir_ls(geoboundaries_s3)
-geo_file_s3<-grep("admin0_harmonized.gpkg",geo_files_s3,value=T)
-
-file_local<-file.path("Data/boundaries",basename(geo_file_s3))
-
-if(!file.exists(file_local)|overwrite==T){
-  s3fs::s3_file_download(path=geo_files_s3[i],new_path=file_local,overwrite = T)
-}
-
+file_local<-file.path("Data/geoboundaries_SA",basename(geo_file_s3))
 geoboundaries<-terra::vect(file_local)
-
 atlas_iso3<-geoboundaries$iso3
 
 # Load base raster for resampling
@@ -214,6 +203,9 @@ if(!file.exists(base_raster)){
 }
 
 base_rast<-terra::mask(terra::rast(base_raster),geoboundaries)
+
+# Set save directory
+save_dir<-"C:/Users/Peter Steward/OneDrive - CGIAR/Projects/EiA/Regional Prioritization/PAiCE/SPAM/spam2010"
 
 
 # Load SPAM codes ####
@@ -272,5 +264,5 @@ data[,value_filled:=value
        ][is.na(value_filled),value_filled:=mean_region
          ][is.na(value_filled),value_filled:=mean_continent]
 
-fwrite(data,file=file.path(fao_dir,"faostat_price_2010_2022.csv"))
+fwrite(data,file=file.path(save_dir,"faostat_2010_2022.csv"))
 
