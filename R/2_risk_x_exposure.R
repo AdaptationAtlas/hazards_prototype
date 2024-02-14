@@ -324,13 +324,13 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     new<-gsub(" ",".",crop_choices,fixed=T)
     old<-crop_choices
     
-    variable_old<-stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F)
+    variable_old2<-stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F)
     
     # Replace . in crop names with a 
     new<-gsub(" ","_",crop_choices,fixed = T)
     old<-gsub(" ",".",crop_choices)
     
-    variable_old<-stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F)
+    variable_old2<-stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F)
     
     # Renaming of variable to allow splitting
     new<-paste0(Scenarios$combined,"-")
@@ -355,7 +355,7 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
       old<-c(old,paste0(c("any",hazards),"[.]"))
     }
     
-    variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F))
+    variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F))
     
     N<-grep("sweet",variable_old)
     variable_old[N][1]
@@ -365,6 +365,7 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     split_tab<-rbindlist(split$var_split)
     colnames(split_tab)<-c("scenario","timeframe","hazard","hazard_vars","crop","severity","exposure")
     split_tab$variable<-variable_old
+    
     split_tab[,hazard:=gsub(".","+",hazard[1],fixed=T),by=hazard
               ][,hazard_vars:=gsub(".","+",hazard_vars[1],fixed=T),by=hazard_vars
                 ][,scenario:=unlist(tstrsplit(scenario[1],".",keep=2,fixed=T)),by=scenario
@@ -372,6 +373,10 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     
     data<-merge(data,split_tab,all.x=T)
     data[,variable:=NULL]
+    
+    if(data[,any(is.na(hazard_vars))]){
+      warning("There are na values in the hazard_vars field which indicates a non match between the split variable name table and the orginal data table provided")
+    }
   
     return(data)
   }
