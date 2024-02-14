@@ -126,7 +126,7 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
 }
 
 
-# General ####
+# 1) General ####
   # Upload - exposure ####
   s3_bucket <-"s3://digital-atlas/risk_prototype/data/exposure"
   folder<-"Data/exposure"
@@ -203,6 +203,8 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
   folder<-paste0("Data/livestock_vop/")
   s3_bucket <- "s3://digital-atlas/livestock_vop"
   
+  s3_dir_ls(s3_bucket)
+  
   # Prepare tif data by converting to COG format
   ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
   
@@ -219,8 +221,12 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=T)
+  # Geographies
+  s3_bucket <- "s3://digital-atlas/boundaries"
   
-# Time sequence specific
+  s3_dir_ls(s3_bucket)
+  
+# 2) Time sequence specific ####
   # Upload - hazard mean ####
   folder<-paste0("Data/hazard_mean/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_mean/",timeframe_choice)
@@ -294,13 +300,17 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop/",timeframe_choice)
   folder<-paste0("Data/hazard_risk_vop/",timeframe_choice)
   
+  s3_file_delete(s3_dir_ls(s3_bucket))
+  
   # Prepare tif data by converting to COG format
   if(F){
     ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
   }
   
   # Upload files
-  upload_files_to_s3(files = list.files(folder,".parquet$",full.names = T),
+  files<-list.files(folder,".parquet$",full.names = T)
+  files<-grep("_adm_",files,value=T)
+  upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=T)
@@ -309,6 +319,8 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
   s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_ac/",timeframe_choice)
   folder<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
   
+  s3_dir_ls(s3_bucket)
+
   # Upload files
   upload_files_to_s3(files=list.files(folder,".parquet$",full.names = T),
                      selected_bucket=s3_bucket,
