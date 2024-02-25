@@ -17,7 +17,7 @@ Scenarios<-rbind(data.table(Scenario="historic",Time="historic"),data.table(expa
 Scenarios[,combined:=paste0(Scenario,"-",Time)]
 
 # Set hazards to include in analysis
-hazards<-c("NDD","NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG")
+hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG") # NDD is not being used as it cannot be projected to future scenarios
 
 haz_meta<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv")
 haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
@@ -26,8 +26,8 @@ haz_class<-haz_class[index_name %in% hazards,list(index_name,description,directi
 haz_classes<-unique(haz_class$description)
 
 # duplicate generic non-heat stress variables for livestock
-livestock<-haz_class[crop!="generic",unique(crop)]
-non_heat<-c("NDD","NTx40","NTx35","NDWS","TAI","NDWL0","PTOT")
+livestock<-livestock<-haz_class[grepl("cattle|goats|poultry|pigs|sheep",crop),unique(crop)]
+non_heat<-c("NTx40","NTx35","NDWS","TAI","NDWL0","PTOT") # NDD is not being used as it cannot be projected to future scenarios
 
 haz_class<-rbind(haz_class[crop=="generic"],
   rbindlist(lapply(1:length(livestock),FUN=function(i){
@@ -84,7 +84,7 @@ ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
                             crop=crop_common,
                             threshold=c(
                               unlist(ecrop$Rain_Opt_Max), # Moderate
-                              (unlist(ecrop$Rain_Opt_Max)+unlist(ecrop$Rain_Abs_Max))/2, # Severe
+                              ceiling((unlist(ecrop$Rain_Opt_Max)+unlist(ecrop$Rain_Abs_Max))/2), # Severe
                               unlist(ecrop$Rain_Abs_Max))) # Extreme
       
       # TAVG low
@@ -107,7 +107,35 @@ ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
                               (unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2, # Severe
                               unlist(ecrop$Temp_Abs_Max))) # Extreme
       
-      rbind(ptot_low,ptot_high,tavg_low,tavg_high)
+      # NTxCrop - moderate  (>optimum)
+      ntxcrop_m<-data.table(index_name=paste0("NTxM",ecrop$Temp_Opt_Max),
+                           description=description,
+                           direction=">",
+                           crop=crop_common,
+                           threshold=c(7, # Moderate
+                                       14, # Severe
+                                       21)) # Extreme
+      
+      # NTxCrop - severe  
+      ntxcrop_s<-data.table(index_name=paste0("NTxS",(unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2),
+                            description=description,
+                            direction=">",
+                            crop=crop_common,
+                            threshold=c(7, # Moderate
+                                        14, # Severe
+                                        21)) # Extreme
+      
+      
+      # NTxCrop extreme (>absolute)
+      ntxcrop_e<-data.table(index_name=paste0("NTxE",ecrop$Temp_Abs_Max),
+                          description=description,
+                          direction=">",
+                          crop=crop_common,
+                          threshold=c(1, # Moderate
+                                      5, # Severe
+                                      10)) # Extreme
+      
+      rbind(ptot_low,ptot_high,tavg_low,tavg_high,ntxcrop_m,ntxcrop_s,ntxcrop_e)
     }else{
       print(paste0(i,"-",j," | ",crop, " - ERROR NO MATCH"))
       NULL
@@ -117,6 +145,9 @@ ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
   ec_haz<-ec_haz[,list(threshold=mean(threshold,na.rm=T)),by=list(index_name,description,direction,crop)]
   ec_haz
 }))
+
+# Exclude NTxS, NTxE and NTxM for time being until hazard data are caculated
+ec_haz<-ec_haz[!grepl("NTxM|NTxS|NTxE",index_name)]
 
 # Replicate generic hazards that are not TAVG or PTOT for each crop
 haz_class2<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
@@ -165,7 +196,7 @@ if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
 # 1) Classify time series climate variables based on hazard thresholds ####
 
 # Create a table of unique thresholds
-Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,direction,threshold)])
+Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,direction,threshold)][,index_name:=gsub("NTxM|NTxS|NTxE","NTx",index_name)])
 Thresholds_U[,code:=paste0(direction,threshold)
 ][,code:=gsub("<","L",code)
 ][,code:=gsub(">","G",code)]
@@ -177,46 +208,35 @@ files<-grep("ENSEMBLEmean|historical",files,value=T)
 overwrite<-F
 n<-0
 
-rast_class<-function(data,direction,threshold,minval=-9999,maxval=9999){
-  from=c(minval,threshold)
-  to=c(threshold,maxval)
-  
-  if(direction %in% c("G","g",">")){
-    becomes<-c(0,1)
-  }
-  
-  if(direction %in% c("L","l","<")){
-    becomes<-c(1,0)
-  }
-  
-  data<-terra::classify(data,data.frame(from=from,to=to,becomes=becomes))
-  return(data)
-}
-
 registerDoFuture()
 plan("multisession", workers = worker_n) # change to multicore for linux execution
 
 foreach(i = 1:nrow(Thresholds_U)) %dopar% {
 
 #for(i in 1:nrow(Thresholds_U)){
-  files_ss<-grep(Thresholds_U[i,index_name],files,value=T)
+  index_name<-Thresholds_U[i,index_name]
+  files_ss<-grep(index_name,files,value=T)
   
   for(j in 1:length(files_ss)){
-    #n<-n+1
+    if(i==1 & j==1){
+      n<-1
+    }else{
+      n<-n+1
+    }
     file<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),paste0(haz_time_class_dir,"/",tail(tstrsplit(files_ss[j],"/"),1)),fixed = T)
     
     # Display progress
-    #cat('\r   ')
-    #cat('\r',paste0(n,"/",nrow(Thresholds_U)*length(files_ss)," | Threshold ",i,"/",nrow(Thresholds_U), " - ",Thresholds_U[i,paste0(c(index_name,direction,threshold),collapse = " ")]," | scenario ",j,"/",length(files_ss)))
-    #flush.console()
+    cat('\r   ')
+    cat('\r',paste0(n,"/",nrow(Thresholds_U)*length(files_ss)," | Threshold ",i,"/",nrow(Thresholds_U), " - ",Thresholds_U[i,paste0(c(index_name,direction,threshold),collapse = " ")]," | scenario ",j,"/",length(files_ss)))
+    flush.console()
     
     if((!file.exists(file))|overwrite){
       data<-terra::rast(files_ss[j])
       data_class<-rast_class(data=data,
                              direction = Thresholds_U[i,direction],
                              threshold = Thresholds_U[i,threshold],
-                             minval=-9999,
-                             maxval=9999)
+                             minval=-999999,
+                             maxval=999999)
       terra::writeRaster(data_class,filename = file)
       }
   }
@@ -235,7 +255,7 @@ files<-grep("ENSEMBLE|historical",files,value=T)
 files2<-grep("ENSEMBLE|historical",files2,value=T)
 
 
-overwrite<-F
+overwrite<-T
 
 registerDoFuture()
 plan("multisession", workers = worker_n)
@@ -247,7 +267,7 @@ foreach(i = 1:length(files)) %dopar% {
   if((!file.exists(file))|overwrite){
     data<-terra::rast(files[i])
     data<-terra::app(data,fun="mean",na.rm=T)
-    terra::writeRaster(data,filename = file)
+    terra::writeRaster(data,filename = file,overwrite=T)
   }
 }
 
@@ -275,7 +295,7 @@ sum(table(haz_class_files2)>1)
 # Subset to severe
 #severity_classes<-severity_classes[value %in% c(1,2,3)]
 
-overwrite=F
+overwrite<-T
 crops<-haz_class[,unique(crop)]
 
 registerDoFuture()
@@ -417,7 +437,7 @@ for(j in 1:length(files_fut)){
   # Set variables that can be interacted for heat wet and dry
   animal_heat<-c("THI_max") # THI_mean or THI_max can be used here (or both)
   animal_wet<-c("NDWL0","PTOT_G")
-  animal_dry<-c("NDD","PTOT_L","NDWS")
+  animal_dry<-c("PTOT_L","NDWS")
   
   crop_choicesX<-crop_choices[grepl("_tropical|_highland",crop_choices)]
   
@@ -492,9 +512,9 @@ for(j in 1:length(files_fut)){
            
            
            combo_binary[,lyr_names:=paste0(Scenarios[l,combined],"-",combo_name)
-                        ][,save_names:=paste0(folder,"/",lyr_names,".tif")]
+                        ][,save_names:=file.path(folder,paste0(lyr_names,".tif"))]
            save_names<-combo_binary$save_names
-           save_name_any<-paste0(folder,"/",Scenarios[l,combined],"-any.tif")
+           save_name_any<-file.path(folder,paste0(Scenarios[l,combined],"-any.tif"))
   
            
            if((!all(file.exists(save_names))|!file.exists(save_name_any))|overwrite==T){
@@ -521,19 +541,12 @@ for(j in 1:length(files_fut)){
               terra::writeRaster(data,filename =  save_name_any,overwrite=T)
             }
             
-            int_risk<-function(data,interaction_mask_vals,lyr_name,combo_binary){
-              data<-terra::mask(data,data,maskvalues=interaction_mask_vals,updatevalue=0)
-              data<-terra::classify(data,data.table(from=1,to=999999,becomes=1))
-              data<-terra::app(data,fun="mean",na.rm=T)
-              names(data)<-lyr_name
-              return(data)
-            }
             
             # Interactions
-            for(i in 1:nrow(combo_binary)){
+            for(a in 1:nrow(combo_binary)){
               if(!file.exists(combo_binary[i,save_names])|overwrite==T){
-                data<-int_risk(data=haz_sum,interaction_mask_vals = combo_binary[-i,value],lyr_name = combo_binary[i,lyr_names])
-                terra::writeRaster(data,filename = combo_binary[i,save_names],overwrite=T)
+                data<-int_risk(data=haz_sum,interaction_mask_vals = combo_binary[-a,value],lyr_name = combo_binary[a,lyr_names])
+                terra::writeRaster(data,filename = combo_binary[a,save_names],overwrite=T)
               }
               
             }
@@ -569,13 +582,12 @@ for(j in 1:length(files_fut)){
   #registerDoFuture()
   #plan("multisession", workers = worker_n)
   
-  foreach(i =  1:length(combinations_crops)) %dopar% {
+  #foreach(i =  1:length(combinations_crops)) %dopar% {
   
-  #for(i in 1:length(combinations_crops)){
+  for(i in 1:length(combinations_crops)){
     
     crop_combos<-combinations_ca[crop==combinations_crops[i],combo_name1]
   
-    
     for(j in 1:nrow(severity_classes)){
       
       # Display progress
@@ -598,12 +610,11 @@ for(j in 1:length(files_fut)){
         
         terra::writeRaster(data,filename = save_file,overwrite=T)
       }
-      
     }
-    
-    
   }
 
+  plan(sequential)
+  
 # ------------------------------------------ ####
 # x) Retired interactions by crop code ####
   if(F){
