@@ -43,14 +43,8 @@ irr_wrap <- function(cashflows) {
   })
 }
 
-# Create a function to calculate npv
-calculate_npv <- function(rate, cash_flows) {
-  npv <- sum(cash_flows / (1 + rate)^(0:(length(cash_flows) - 1)))
-  return(npv)
-}
-
 # Create a function to calculate NPV for a cashflow
-npv_wrap<-function(cashflows,discount_rate){
+calculate_npv<-function(cashflows,discount_rate){
   result <- sapply(1:length(cashflows), function(year) {
     future_cash_flows <- cashflows[year:length(cashflows)]
     
@@ -64,8 +58,6 @@ npv_wrap<-function(cashflows,discount_rate){
     
     return(result)
   })
-
-
 }
 
 # 1) Load precooked roi data ####
