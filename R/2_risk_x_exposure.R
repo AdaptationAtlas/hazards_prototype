@@ -314,21 +314,21 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     }
   }
   # Functions to restructure hazard risk x exposure geoparquet in a long tabular form
-  recode_restructure<-function(data,crop_choices,livestock_choices,Scenarios,exposure,severity,hazards,interaction){
+  recode_restructure<-function(data,crops,livestock,Scenarios,exposure_var,severity,hazards,interaction){
     
     variable_old<-data[,as.character(unique(variable))]
     
     # Make sure crop names are separated with a _ instead of a
     
     # Replace space in the crop names with a . to match the parquet column names
-    new<-gsub(" ",".",crop_choices,fixed=T)
-    old<-crop_choices
+    new<-gsub(" ",".",crops,fixed=T)
+    old<-crops
     
     variable_old2<-stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F)
     
     # Replace . in crop names with a 
-    new<-gsub(" ","_",crop_choices,fixed = T)
-    old<-gsub(" ",".",crop_choices)
+    new<-gsub(" ","_",crops,fixed = T)
+    old<-gsub(" ",".",crops)
     
     variable_old2<-stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F)
     
@@ -337,14 +337,14 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     old<-paste0(Scenarios[,paste0(Scenario,".",Time)],".")
     
     # Replace space in the crop names with a . to match the parquet column names
-    new<-c(new,paste0("-",crop_choices,"-"))
-    old<-c(old,paste0("[.]",gsub(" ","_",crop_choices,fixed = T),"[.]"))
+    new<-c(new,paste0("-",crops,"-"))
+    old<-c(old,paste0("[.]",gsub(" ","_",crops,fixed = T),"[.]"))
     
-    new<-c(new,paste0("-",livestock_choices,"-"))
-    old<-c(old,paste0("[.]",livestock_choices,"[.]"))
+    new<-c(new,paste0("-",livestock,"-"))
+    old<-c(old,paste0("[.]",livestock,"[.]"))
     
-    new<-c(new,paste0("-",exposure))
-    old<-c(old,paste0("[.]",exposure))
+    new<-c(new,paste0("-",exposure_var))
+    old<-c(old,paste0("[.]",exposure_var))
     
     new<-c(new,paste0(c("any",hazards),"-"))
     old<-c(old,paste0(c("any",hazards),"_"))
@@ -426,10 +426,10 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
         data<-melt(data,id.vars = admins)
         
         data<-recode_restructure(data=data,
-                                 crop_choices = crops,
-                                 livestock_choices = livestock,
+                                 crops = crops,
+                                 livestock = livestock,
                                  Scenarios = Scenarios,
-                                 exposure=exposure_var,
+                                 exposure_var=exposure_var,
                                  severity=severity,
                                  hazards=hazards,
                                  interaction=interaction)
@@ -1413,10 +1413,12 @@ if(!dir.exists(haz_risk_n_dir)){
     rm_haz<-"NDD"
    
     for(INT in c(T,F)){
+      print(INT)
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
                            folder=haz_risk_vop_dir,
                            overwrite=overwrite,
+                           rm_crop=NULL,
                            rm_haz=rm_haz)
       
       if(do_ha){
@@ -1424,6 +1426,7 @@ if(!dir.exists(haz_risk_n_dir)){
                              interactions=INT,
                              folder=haz_risk_vop_dir,
                              overwrite=overwrite,
+                             rm_crop=NULL,
                              rm_haz=rm_haz)
         }
       
@@ -1432,6 +1435,7 @@ if(!dir.exists(haz_risk_n_dir)){
                                interactions=INT,
                                folder=haz_risk_vop_dir,
                                overwrite=overwrite,
+                               rm_crop=NULL,
                                rm_haz=rm_haz)
         }
     }
@@ -1486,6 +1490,19 @@ if(!dir.exists(haz_risk_n_dir)){
       sfarrow::st_write_parquet(data,file)
     }
     
+    }
+    
+    
+    if(F){
+      # vop-vop issue
+      (files<-list.files(haz_risk_vop_dir,"int.parquet$",full.names = T))
+      file<-files[3]
+      data<-arrow::read_parquet(file)
+      old<-names(data)
+      new<-gsub("-vop-vop","-vop",old)
+      names(data)<-new
+      arrow::write_parquet(data,file)
+      
     }
       
     # 5.3) Restructure Extracted Data ####
