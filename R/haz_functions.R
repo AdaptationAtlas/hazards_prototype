@@ -1190,3 +1190,26 @@ rast_class <- function(data, direction, threshold, minval = -99999, maxval = 999
   
   return(data)
 }
+#' Calculate Interaction Risk
+#'
+#' This function applies a mask to the input data based on specified mask values, classifies the data into a binary format,
+#' and then computes the mean of the resulting data. The mean data is named according to the `lyr_name` parameter and returned.
+#' @param data A SpatRaster object representing the input data to be masked and analyzed.
+#' @param interaction_mask_vals A vector of values used for masking the input data. These values define which cells in `data` should be considered for analysis.
+#' @param lyr_name A character string specifying the name to be assigned to the output layer.
+#' @return A SpatRaster object with the computed mean after masking and classification, named according to `lyr_name`.
+#' @examples
+#' # Assuming `raster_data` is a SpatRaster loaded with `terra` package
+#' interaction_mask_vals <- c(1, 2, 3) # Example mask values
+#' lyr_name <- "RiskLayer"
+#' result <- int_risk(raster_data, interaction_mask_vals, lyr_name)
+#' print(result)
+#' @import terra
+#' @export
+int_risk <- function(data, interaction_mask_vals, lyr_name){
+  data <- terra::mask(data, data, maskvalues=interaction_mask_vals, updatevalue=0)
+  data <- terra::classify(data, data.table(from=1, to=999999, becomes=1))
+  data <- terra::app(data, fun="mean", na.rm=TRUE)
+  names(data) <- lyr_name
+  return(data)
+}
