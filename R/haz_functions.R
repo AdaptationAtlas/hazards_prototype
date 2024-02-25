@@ -1146,3 +1146,47 @@ range_fun<-function(data){
   # breaks<-seq(min_val,max_val,length=n) # alternative approach but gives breaks with many decimal places.
   return(range)
 }
+#' Classify Raster Data Based on a Threshold
+#'
+#' This function classifies raster data into two categories based on a specified threshold.
+#' It allows for classification in either direction (greater than or less than the threshold).
+#'
+#' @param data A \code{SpatRaster} object from the \code{terra} package that you want to classify.
+#' @param direction A character string indicating the direction of the classification.
+#'                  Acceptable values include "G", "g", ">", "L", "l", "<".
+#'                  "G" or ">" will classify values greater than the threshold as 1,
+#'                  and "L" or "<" will classify values less than the threshold as 1.
+#' @param threshold A numeric value representing the threshold for classification.
+#' @param minval An optional numeric parameter representing the minimum value to be classified.
+#'               Defaults to -99999 if not specified.
+#' @param maxval An optional numeric parameter representing the maximum value to be classified.
+#'               Defaults to 99999 if not specified.
+#'
+#' @return A \code{SpatRaster} object with the classification applied.
+#' @examples
+#' # Assuming 'rast' is a SpatRaster object
+#' rast_classified <- rast_class(rast, direction = ">", threshold = 500)
+#'
+#' @export
+#'
+#' @import terra
+rast_class <- function(data, direction, threshold, minval = -99999, maxval = 99999) {
+  
+  # Define the 'from' and 'to' vectors for the classification
+  from <- c(minval, threshold)
+  to <- c(threshold, maxval)
+  
+  # Determine the new values after classification based on the direction
+  if (direction %in% c("G", "g", ">")) {
+    becomes <- c(0, 1)
+  }
+  
+  if (direction %in% c("L", "l", "<")) {
+    becomes <- c(1, 0)
+  }
+  
+  # Reclassify the raster data using terra's classify function
+  data <- terra::classify(data, data.frame(from = from, to = to, becomes = becomes))
+  
+  return(data)
+}
