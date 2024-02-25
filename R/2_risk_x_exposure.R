@@ -940,7 +940,8 @@ if(!dir.exists(haz_risk_n_dir)){
       
 # e) Intersect Risk and Exposure ####
   # 1) Hazard Risk ####
-    # 1.1) Solo and interactions combined into a single file (not any hazard) ####
+    # 1.1) Solo and interactions combined into a single file (not any hazard) #####
+  overwrite<-F
   files<-list.files(haz_risk_dir,".tif$",full.names = T)
   files_solo<-files[!grepl("-int[.]tif$",files)]
   files_int<-grep("-int[.]tif$",files,value = T)
@@ -950,20 +951,20 @@ if(!dir.exists(haz_risk_n_dir)){
                       filename="haz_risk_solo",
                       severity=severity_classes$class,
                       Geographies=Geographies,
-                      overwrite=F)
+                      overwrite=overwrite)
   
   admin_extract_wrap2(files=files,
                       save_dir = files_int,
                       filename="haz_risk_int",
                       severity=severity_classes$class,
                       Geographies=Geographies,
-                      overwrite=F)
+                      overwrite=overwrite)
   
   # !!!NEEDS CONVERTING TO NEW INTERACTIONS SYSTEM!!!!
   restructure_parquet(filename = "haz_risk",
                       save_dir = haz_risk_dir,
                       severity = severity_classes$class,
-                      overwrite=F,
+                      overwrite=overwrite,
                       crops = c("generic",crop_choices),
                       livestock=livestock_choices,
                       Scenarios)
