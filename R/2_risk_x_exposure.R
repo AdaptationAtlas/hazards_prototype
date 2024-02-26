@@ -954,7 +954,7 @@ if(!dir.exists(haz_risk_n_dir)){
                       overwrite=overwrite)
   
   admin_extract_wrap2(files=files,
-                      save_dir = files_int,
+                      save_dir = haz_risk_dir,
                       filename="haz_risk_int",
                       severity=severity_classes$class,
                       Geographies=Geographies,

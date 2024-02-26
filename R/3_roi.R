@@ -127,7 +127,7 @@ avloss<-function(mean,sd,change,fixed,reps=100000){
   cv$admin0_name[!cv$admin0_name %in% exposure$admin0_name]
   
 # 2) Set parameters and save directory ####
-years<-15
+years<-20
 adoption<-c(0.005,0.01,0.02)
 prod_impact<-c(0.05,0.1,0.2,0.33,0.5,1)
 cis_impact<-c(0,0.05,0.01)
@@ -222,12 +222,6 @@ data[,value:=round(value,0)]
   data[,marginal_impact_w_cis:=round(marginal_impact*(1+avloss),1)
        ][is.na(marginal_impact_w_cis),marginal_impact_w_cis:=0]
   
-  
-  
-  data_benefit<-data_benefit[admin0_name=="Kenya" & is.na(admin1_name) & crop=="maize"]
-  
-  
-  
 # 4) Calculate adoption benefits using VoP approach ####
   data_benefit<-data[exposure == "vop_usd17"][,c("exposure"):=NULL]
 
@@ -247,7 +241,7 @@ data[,value:=round(value,0)]
   data_benefit<-data_benefit[,!c("result_w_impact","marginal_impact","value","result","cv","avloss","marginal_impact_w_cis")]
   arrow::write_parquet(data_benefit,sink=paste0(save_dir,"/roi_data.parquet"))
   
-# 5) See script 5.1 for economic indicators ####
+# 5) See script 3.1/3.2 for steps to generate economic indicators ####
 #---------------------------------------------------####
   # X) Old Approach ####
 
