@@ -1275,12 +1275,12 @@ if(!dir.exists(haz_risk_n_dir)){
   
     # Crop choices only 
     crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
-    do_vop17<-F
-    do_ha<-F
-    do_n<-F
-    overwrite<-F
-    
+
     # 5.1)  Multiply Hazard Risk by Exposure ####
+      do_vop17<-F
+      do_ha<-F
+      do_n<-F
+      overwrite<-F
       
       if(F){
       files<-list.files(haz_risk_dir,".tif$",full.names = T)
@@ -1435,18 +1435,28 @@ if(!dir.exists(haz_risk_n_dir)){
       }
     # 5.2) Extract Risk x Exposure by Geography  ####
     overwrite<-F
+    do_vop17<-F
     do_ha<-F
     do_n<-F
     rm_haz<-"NDD"
    
     for(INT in c(T,F)){
-      print(INT)
+      print(paste0("Interactions = ",INT))
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
                            folder=haz_risk_vop_dir,
                            overwrite=overwrite,
                            rm_crop=NULL,
                            rm_haz=rm_haz)
+      
+      if(do_vop17){
+        haz_risk_exp_extract(severity_classes,
+                             interactions=INT,
+                             folder=haz_risk_vop17_dir,
+                             overwrite=overwrite,
+                             rm_crop=NULL,
+                             rm_haz=rm_haz)
+      }
       
       if(do_ha){
         haz_risk_exp_extract(severity_classes,
