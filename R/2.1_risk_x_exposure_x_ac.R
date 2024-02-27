@@ -45,7 +45,7 @@ adaptive_capacity_cast<-dcast(adaptive_capacity,admin0_name+admin1_name+admin2_n
 # Load hazard Risk x VoP data #####
 # Data is found in "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual" for example
 
-interaction<-F
+interaction<-T
 haz_risk_vop_dir<-paste0("Data/hazard_risk_vop/",timeframe_choice)
 if(interaction==T){
   files<-list.files(haz_risk_vop_dir,"_adm_int",full.names = T)
@@ -153,5 +153,4 @@ data_ss[,hazard_vars:=NULL]
 # Save results
 file_r<-gsub("ac.parquet","ac_reduced.parquet",file)
 arrow::write_parquet(data_ss,file_r)
-
 
