@@ -518,6 +518,11 @@ haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
 haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
 haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
 
+haz_risk_vop17_dir<-paste0("Data/hazard_risk_vop17/",timeframe_choice)
+if(!dir.exists(haz_risk_vop17_dir)){
+  dir.create(haz_risk_vop17_dir,recursive = T)
+}
+
 haz_risk_vop_dir<-paste0("Data/hazard_risk_vop/",timeframe_choice)
 if(!dir.exists(haz_risk_vop_dir)){
   dir.create(haz_risk_vop_dir,recursive = T)
@@ -1266,7 +1271,7 @@ if(!dir.exists(haz_risk_n_dir)){
   
     # Crop choices only 
     crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
-  
+    do_vop17<-F
     do_ha<-F
     do_n<-F
     overwrite<-F
@@ -1314,6 +1319,24 @@ if(!dir.exists(haz_risk_n_dir)){
               
               names(haz_risk_vop)<-paste0(names(haz_risk_vop),"-vop")
               writeRaster(haz_risk_vop,file=save_name_vop,overwrite=T)
+            }
+            
+            # vop17
+            if(do_vop17==T){
+              save_name_vop17<-paste0(haz_risk_vop17_dir,"/",gsub(".tif","-vop.tif",basename(file)))
+              if(!file.exists(save_name_ha)|overwrite==T){
+                if(crop!="generic"){
+                  if(crop %in% crop_choices){
+                    haz_risk_vop17<-haz_risk*crop_vop17_tot[[crop]]
+                  }else{
+                    haz_risk_vop17<-haz_risk*crop_vop17_tot[[crop]]
+                  }
+                }else{
+                  haz_risk_vop17<-haz_risk*sum(crop_vop17_tot)
+                }
+                names(haz_risk_vop17)<-paste0(names(haz_risk_vop17),"-vop")
+                writeRaster(haz_risk_vop17,file=save_name_vop17,overwrite=T)
+              }
             }
             
             # ha
