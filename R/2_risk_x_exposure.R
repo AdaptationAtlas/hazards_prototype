@@ -1282,17 +1282,6 @@ if(!dir.exists(haz_risk_n_dir)){
       do_n<-F
       overwrite<-F
       
-      if(F){
-      files<-list.files(haz_risk_dir,".tif$",full.names = T)
-    
-      files_rename<-stringi::stri_replace_all_regex(files,
-                                                    pattern = severity_classes[,paste0("_",tolower(class))],
-                                                    replacement = severity_classes[,paste0("-",tolower(class))],
-                                                    vectorize_all = F)
-      
-      file.rename(from=files,to=files_rename)
-      }
-      
       files<-list.files(haz_risk_dir,".tif$",full.names = T)
       
       for(i in 1:length(files)){
