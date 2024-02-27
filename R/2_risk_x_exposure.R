@@ -332,6 +332,12 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     
     variable_old2<-stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F)
     
+    # Replace dots in hazard names with a "+"
+    old<-c("dry[.]heat","dry[.]wet","heat[.]wet","dry[.]heat[.]wet")
+    new<-c("dry+heat","dry+wet","heat+wet","dry+heat+wet")
+    
+    variable_old2<-stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F)
+    
     # Renaming of variable to allow splitting
     new<-paste0(Scenarios$combined,"-")
     old<-paste0(Scenarios[,paste0(Scenario,".",Time)],".")
@@ -347,7 +353,7 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     old<-c(old,paste0("[.]",exposure_var))
     
     new<-c(new,paste0(c("any",hazards),"-"))
-    old<-c(old,paste0(c("any",hazards),"_"))
+    old<-c(old,paste0(c("any",hazards),"[.]"))
     
     # Temporary inclusion to deal with solo practice naming
     if(interaction==F){
@@ -356,10 +362,6 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     }
     
     variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F))
-    
-    N<-grep("sweet",variable_old)
-    variable_old[N][1]
-    variable_new[N][1]
     
     split<-variable_new[,list(var_split=list(tstrsplit(variable[1],"-"))),by=variable]
     split_tab<-rbindlist(split$var_split)
