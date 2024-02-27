@@ -327,3 +327,14 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
                      max_attempts = 3,
                      overwrite=T)
   
+  # 3) ROI data ####
+  s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/roi")
+  folder<-paste0("Data/roi")
+  
+  s3_dir_ls(s3_bucket)
+  
+  # Upload files
+  upload_files_to_s3(files=list.files(folder,".parquet$",full.names = T),
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T)
