@@ -176,12 +176,12 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     }
   }
   # Function that restructures hazard risk data into a long format table
-  restructure_parquet<-function(filename,save_dir,severity,overwrite=F,crops,livestock,Scenarios){
+  restructure_parquet<-function(filename,save_dir,severity,overwrite=F,crops,livestock,Scenarios,hazards){
     severity<-tolower(severity)
     for(SEV in severity){
       file<-paste0(save_dir,"/",filename,"_adm_",SEV,".parquet")
       
-      if(!file.exists(file)|overwrite==T){
+      if((!file.exists(file))|overwrite==T){
         file0<-paste0(save_dir,"/",filename,"_adm0_",SEV,".parquet")
         file1<-gsub("_adm0_","_adm1_",file0)
         file2<-gsub("_adm0_","_adm2_",file0)
@@ -213,6 +213,15 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
           melt(data,id.vars = admins)
         }),fill=T)
         data[,variable:=as.character(variable)]
+        
+        variable_old<-data[,unique(variable)]
+        
+        # Replace dots in hazard names with a "+"
+        old<-c("dry[.]heat","dry[.]wet","heat[.]wet","dry[.]heat[.]wet")
+        new<-c("dry+heat","dry+wet","heat+wet","dry+heat+wet")
+        
+        variable_old2<-stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F)
+        
         # Renaming of variable to allow splitting
         new<-paste0(Scenarios$combined,"-")
         old<-paste0(Scenarios[,paste0(Scenario,"[.]",Time)],"[.]")
@@ -223,16 +232,18 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
         
         new<-c(new,paste0("-",livestock,"-"))
         old<-c(old,paste0("[.]",livestock,"[.]"))
+        
+        new<-c(new,paste0(c("any",hazards),"-"))
+        old<-c(old,paste0(c("any",hazards),"[.]"))
   
-        variable_old<-data[,unique(variable)]
-        variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F))
+        variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F))
         
         # Note this method of merging a list back to the original table is much faster than the method employed in the hazards x exposure section
         split<-variable_new[,list(var_split=list(tstrsplit(variable[1],"-"))),by=variable]
         split_tab<-rbindlist(split$var_split)
-        colnames(split_tab)<-c("scenario","timeframe","hazard","crop","severity")
+        colnames(split_tab)<-c("scenario","timeframe","hazard","hazard_vars","crop","severity")
         split_tab$variable<-variable_old
-        split_tab[,hazard:=gsub(".","+",hazard[1],fixed=T),by=hazard
+        split_tab[,hazard_vars:=gsub(".","+",hazard_vars[1],fixed=T),by=hazard_vars
         ][,scenario:=unlist(tstrsplit(scenario[1],".",keep=2,fixed=T)),by=scenario
         ][,severity:=tolower(severity)]
         
@@ -956,44 +967,35 @@ if(!dir.exists(haz_risk_n_dir)){
   admin_extract_wrap2(files=files_solo,
                       save_dir = haz_risk_dir,
                       filename="haz_risk_solo",
-                      severity=severity_classes$class,
+                      severity=unlist(severity_classes[,1]),
                       Geographies=Geographies,
                       overwrite=overwrite)
   
   admin_extract_wrap2(files=files,
                       save_dir = haz_risk_dir,
                       filename="haz_risk_int",
-                      severity=severity_classes$class,
+                      severity=unlist(severity_classes[,1]),
                       Geographies=Geographies,
                       overwrite=overwrite)
-  
-  # !!!NEEDS CONVERTING TO NEW INTERACTIONS SYSTEM!!!!
-  restructure_parquet(filename = "haz_risk",
+  # 1.2) Restructure extracted data ####
+
+    restructure_parquet(filename = "haz_risk_int",
                       save_dir = haz_risk_dir,
-                      severity = severity_classes$class,
+                      severity = unlist(severity_classes[,1]),
                       overwrite=overwrite,
                       crops = c("generic",crop_choices),
                       livestock=livestock_choices,
-                      Scenarios)
+                      Scenarios=Scenarios,
+                      hazards=haz_meta[,unique(type)])
   
-    # 1.2) REDUNDANT: Any hazard only ####
-  
-  files<-list.files(haz_risk_dir,"_any.tif$",full.names = T)
-  
-  admin_extract_wrap2(files=files,
+  restructure_parquet(filename = "haz_risk_solo",
                       save_dir = haz_risk_dir,
-                      filename="haz_risk_any",
-                      severity=severity_classes$class,
-                      Geographies=Geographies,
-                      overwrite=F)
-  
-  restructure_parquet(filename = "haz_risk_any",
-                      save_dir = haz_risk_dir,
-                      severity = severity_classes$class,
-                      overwrite=F,
+                      severity = unlist(severity_classes[,1]),
+                      overwrite=overwrite,
                       crops = c("generic",crop_choices),
                       livestock=livestock_choices,
-                      Scenarios)
+                      Scenarios=Scenarios,
+                      hazards=haz_meta[,unique(type)])
   
   # Check resulting file
   X<-arrow::read_parquet(paste0(haz_risk_dir,"/haz_risk_any_adm_",SEV,".parquet"))
@@ -1326,7 +1328,7 @@ if(!dir.exists(haz_risk_n_dir)){
             # vop17
             if(do_vop17==T){
               save_name_vop17<-paste0(haz_risk_vop17_dir,"/",gsub(".tif","-vop.tif",basename(file)))
-              if(!file.exists(save_name_ha)|overwrite==T){
+              if(!file.exists(save_name_vop17)|overwrite==T){
                 if(crop!="generic"){
                   if(crop %in% crop_choices){
                     haz_risk_vop17<-haz_risk*crop_vop17_tot[[crop]]
@@ -1379,7 +1381,7 @@ if(!dir.exists(haz_risk_n_dir)){
             
       }
       
-      # 5.1.x) Temporary bug fix with naming (should be resolved next time haz_risk files are created) ####
+      # 5.1.x) Temporary bug fix with naming (should be resolved) ####
       if(F){
         files<-list.files(haz_risk_vop_dir,".tif$",full.names = T)
         files<-files[!grepl("1.tif",files)]
@@ -1495,41 +1497,6 @@ if(!dir.exists(haz_risk_n_dir)){
         }
       }
     
-
-    if(F){
-      # Strange issue encountered in severe_adm0_int.parquet where there is a set of columns without a crop name
-      # There are no missing crops or livestock names
-      # Suspect this is from a left over file duplicate from 5.1.x renaming exercise
-      
-    (files<-list.files(haz_risk_vop_dir,"int.parquet$",full.names = T))
-    file<-files[10]
-    data<-sfarrow::st_read_parquet(file)
-    
-    sapply(paste0("[.]",gsub(" ","[.]",c(crop_choices,livestock_choices))),FUN=function(x){sum(grepl(x,names(data)))})
-    sapply(gsub(" ","[.]",crop_choices),FUN=function(x){any(grepl(x,names(data)))})
-    rm_cols<-which(!grepl(gsub(" ","[.]",paste0(c(livestock_choices,crop_choices),collapse="|")),names(data)))
-    rm_cols<-rm_cols[rm_cols>5]
-    rm_cols<-rm_cols[-length(rm_cols)]
-    if(length(rm_cols)==320){
-      data<-data[,-rm_cols]
-      sfarrow::st_write_parquet(data,file)
-    }
-    
-    }
-    
-    
-    if(F){
-      # vop-vop issue
-      (files<-list.files(haz_risk_vop_dir,"int.parquet$",full.names = T))
-      file<-files[3]
-      data<-arrow::read_parquet(file)
-      old<-names(data)
-      new<-gsub("-vop-vop","-vop",old)
-      names(data)<-new
-      arrow::write_parquet(data,file)
-      
-    }
-      
     # 5.3) Restructure Extracted Data ####
     for(SEV in tolower(severity_classes$class)){
       # Restructure Extracted Data ####
