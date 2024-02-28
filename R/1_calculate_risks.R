@@ -218,16 +218,12 @@ foreach(i = 1:nrow(Thresholds_U)) %dopar% {
   files_ss<-grep(index_name,files,value=T)
   
   for(j in 1:length(files_ss)){
-    if(i==1 & j==1){
-      n<-1
-    }else{
-      n<-n+1
-    }
+
     file<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),paste0(haz_time_class_dir,"/",tail(tstrsplit(files_ss[j],"/"),1)),fixed = T)
     
     # Display progress
     cat('\r   ')
-    cat('\r',paste0(n,"/",nrow(Thresholds_U)*length(files_ss)," | Threshold ",i,"/",nrow(Thresholds_U), " - ",Thresholds_U[i,paste0(c(index_name,direction,threshold),collapse = " ")]," | scenario ",j,"/",length(files_ss)))
+    cat('\r',paste0("Threshold ",i,"/",nrow(Thresholds_U), " - ",Thresholds_U[i,paste0(c(index_name,direction,threshold),collapse = " ")]," | scenario ",j,"/",length(files_ss)))
     flush.console()
     
     if((!file.exists(file))|overwrite){
