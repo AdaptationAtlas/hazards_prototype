@@ -194,7 +194,7 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
   s3_bucket <- "s3://digital-atlas/MapSpam/raw/spam2017V2r3"
   s3_dir_ls(s3_bucket)
   
-  upload_files_to_s3(folder = folder,
+  upload_files_to_s3(folder = list.files(folder,"Vusd17",full.names = T),
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=T)
@@ -327,7 +327,7 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
                      max_attempts = 3,
                      overwrite=T)
   
-  # 3) ROI data ####
+# 3) ROI data ####
   s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/roi")
   folder<-paste0("Data/roi")
   
@@ -338,3 +338,20 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=T)
+# 4) hazard_timeseries data
+  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
+  folder<-haz_timeseries_dir
+  
+  s3_dir_ls(s3_bucket)
+  
+  # Updated hazards
+  files<-list.files(folder,"ENSEMBLEmean",full.names = T)
+  haz<-"NTx35_mean|NTx40_mean|NDWL0_mean|NDWS_mean|PTOT_sum|TAVG_mean|HSH_max_max|HSH_mean_mean|THI_mean_mean|THI_max_max|TAI_mean"
+  files<-grep(haz,files,value=T)
+  
+  # Upload files
+  upload_files_to_s3(files=files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T)
+  
