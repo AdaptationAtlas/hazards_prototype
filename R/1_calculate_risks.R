@@ -197,6 +197,8 @@ crop_choices<-c(fread(haz_class_url)[,unique(crop)],ms_codes[,sort(Fullname)])
 
 # Set directories ####
 haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
+if(!dir.exists(haz_timeseries_dir)){dir.create(haz_timeseries_dir,recursive=T)}
+
 haz_timeseries_s3_dir<-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
 
 haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
@@ -366,7 +368,8 @@ foreach(i = 1:length(crops)) %dopar%{
       renames<-gsub("TAVG-G","TAVG_G-",renames)
 
       renames<-tstrsplit(renames,"-",keep=1:3)
-      renames<-paste0(renames[[1]],"-",renames[[2]],"-",renames[[3]],"-",crop_focus,"-",severity_class)
+      haz_simple<- haz_meta[match(renames[[3]],code),type]
+      renames<-paste0(renames[[1]],"-",renames[[2]],"-",haz_simple,"-",renames[[3]],"-",crop_focus,"-",severity_class)
       
       if(any(table(renames))>1){
         stop("Non-unique layer names are present!")
