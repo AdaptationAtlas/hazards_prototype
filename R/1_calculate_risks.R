@@ -1,11 +1,25 @@
 # Load R functions & packages ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
-require(data.table)
-require(terra)
-require(doFuture)
-require(stringi)
-require(stringr)
+load_and_install_packages <- function(packages) {
+  for (package in packages) {
+    if (!require(package, character.only = TRUE)) {
+      install.packages(package)
+      library(package, character.only = TRUE)
+    }
+  }
+}
+
+# List of packages to be loaded
+packages <- c("terra", 
+              "data.table", 
+              "s3fs",
+              "doFuture",
+              "stringr", 
+              "stringi")
+
+# Call the function to install and load packages
+load_and_install_packages(packages)
 
 # Set up workspace ####
 # Set scenarios and time frames to analyse
@@ -20,6 +34,9 @@ Scenarios[,combined:=paste0(Scenario,"-",Time)]
 hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG") # NDD is not being used as it cannot be projected to future scenarios
 
 haz_meta<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv")
+haz_meta[variable.code %in% hazards]
+haz_meta[,code2:=paste0(haz_meta$code,"_",haz_meta$`function`)]
+
 haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
 haz_class<-data.table::fread(haz_class_url)
 haz_class<-haz_class[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
@@ -168,6 +185,10 @@ haz_class[,direction2:="G"
 
 haz_class<-unique(haz_class)
 
+# Add summary function description to haz_class
+haz_class<-merge(haz_class,haz_meta[,c("code","code2","function")],by.x="index_name2",by.y="code",all.x=T)
+haz_class[,code2:=gsub("_G_|_L_","_",code2)]
+
 # Set analysis parameters
 PropThreshold<-0.5
 PropTDir=">"
@@ -175,6 +196,9 @@ PropTDir=">"
 crop_choices<-c(fread(haz_class_url)[,unique(crop)],ms_codes[,sort(Fullname)])
 
 # Set directories ####
+haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
+haz_timeseries_s3_dir<-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
+
 haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
 if(!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir,recursive=T)}
 
@@ -193,10 +217,24 @@ if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
 haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
 if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
 
+
+# 0) download hazard timeseries from s3 bucket ####
+files<-s3fs::s3_dir_ls(haz_timeseries_s3_dir)
+files<-grep(haz_meta[,paste0(code2,collapse="|")],files,value=T)
+new_files<-gsub(haz_timeseries_s3_dir,haz_timeseries_dir,files)
+overwrite<-F
+
+for(i in 1:length(files)){
+  if(!file.exists(new_files[i])|overwrite==T){
+    print(files[i])
+   s3fs::s3_file_download(path=files[i],new_path=new_files[i],overwrite=T)
+  }
+}
+
 # 1) Classify time series climate variables based on hazard thresholds ####
 
 # Create a table of unique thresholds
-Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,direction,threshold)][,index_name:=gsub("NTxM|NTxS|NTxE","NTx",index_name)])
+Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,code2,direction,threshold)][,index_name:=gsub("NTxM|NTxS|NTxE","NTx",index_name)])
 Thresholds_U[,code:=paste0(direction,threshold)
 ][,code:=gsub("<","L",code)
 ][,code:=gsub(">","G",code)]
@@ -214,7 +252,7 @@ plan("multisession", workers = worker_n) # change to multicore for linux executi
 foreach(i = 1:nrow(Thresholds_U)) %dopar% {
 
 #for(i in 1:nrow(Thresholds_U)){
-  index_name<-Thresholds_U[i,index_name]
+  index_name<-Thresholds_U[i,code2]
   files_ss<-grep(index_name,files,value=T)
   
   for(j in 1:length(files_ss)){
@@ -359,7 +397,7 @@ files<-files[!grepl("ENSEMBLEsd",files)]
 # Ensure we are only using ensemble or historical data
 files<-grep("ENSEMBLE|historical",files,value=T)
 
-overwrite<-F
+overwrite<-T
 
 registerDoFuture()
 plan("multisession", workers = 20)
@@ -520,7 +558,7 @@ for(j in 1:length(files_fut)){
             haz<-lapply(files,rast)
             names(haz)<-names(files)
             
-            
+            # Multiply risk probability to create a binary value when summed
             haz[["heat"]]<-haz[["heat"]]*10
             haz[["wet"]]<-haz[["wet"]]*100
             
@@ -528,7 +566,7 @@ for(j in 1:length(files_fut)){
               sum(terra::rast(lapply(haz,"[[",m)),na.rm=T)
             }))
             names(haz_sum)<-names(haz[[1]])
-    
+
             # Any haz
             if(!file.exists(save_name_any)|overwrite==T){
               data<-terra::mask(haz_sum,haz_sum,maskvalues=1:111,updatevalue=1)
