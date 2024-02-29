@@ -366,6 +366,9 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     new<-c(new,paste0(c("any",hazards),"-"))
     old<-c(old,paste0(c("any",hazards),"[.]"))
     
+    new<-c(new,paste0(c("any",hazards),"-"))
+    old<-c(old,paste0(c("any",hazards),"_"))
+    
     # Temporary inclusion to deal with solo practice naming
     if(interaction==F){
       new<-c(new,paste0(c("any",hazards),"-"))
@@ -1001,7 +1004,7 @@ if(!dir.exists(haz_risk_n_dir)){
   X<-arrow::read_parquet(paste0(haz_risk_dir,"/haz_risk_any_adm_",SEV,".parquet"))
   grep("THI",names(X),value=T)
   
-  # 2) REDUNDANT?: Apply Crop Mask to Classified Hazard Risk ####
+  # 2) Optional: Apply Crop Mask to Classified Hazard Risk ####
   
   dirs<-list.dirs("Data/hazard_risk_class",recursive = F)
   
@@ -1277,6 +1280,8 @@ if(!dir.exists(haz_risk_n_dir)){
     crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
 
     # 5.1)  Multiply Hazard Risk by Exposure ####
+      # It would be more efficient to multiply the risk layers by VoP directly then assemble into crops
+      
       do_vop17<-F
       do_ha<-F
       do_n<-F
@@ -1468,7 +1473,7 @@ if(!dir.exists(haz_risk_n_dir)){
     
     # Check resulting files
     (file<-list.files(haz_risk_vop_dir,"parquet",full.names = T))
-    data<-sfarrow::st_read_parquet(file[8])
+    data<-sfarrow::st_read_parquet(file[4])
     names(data)
           
       # 5.2.x) Temporary name fix for old solo hazards (not resolved) ####
@@ -1478,16 +1483,38 @@ if(!dir.exists(haz_risk_n_dir)){
       
         new<-c(tolower(severity_classes$class),haz_meta[,paste0(".",type,".",code)])
         old<-c(severity_classes$class,haz_meta[,paste0("[.]",code)])
-
+        
+        write_parquet_with_retries <- function(data, file, max_retries = 5) {
+          require(sfarrow) # Ensure sfarrow package is loaded
+          
+          attempt <- 1
+          while (attempt <= max_retries) {
+            tryCatch({
+              sfarrow::st_write_parquet(data, file)
+              cat("Write successful on attempt", attempt, "\n")
+              break # Exit the loop if successful
+            }, error = function(e) {
+              cat("Error on attempt", attempt, ": ", e$message, "\n")
+              if (attempt == max_retries) {
+                cat("Reached maximum number of retries. Stopping.\n")
+                stop("Failed to write file after ", attempt, " attempts.")
+              }
+            })
+            attempt <- attempt + 1
+            Sys.sleep(1) # Optional: wait for 1 second before retrying, can be adjusted or removed
+          }
+        }
+        
         for(i in 1:length(files)){
-          print(i)
           file<-files[i]
           data<-sfarrow::st_read_parquet(file)
           
-          colnames_new<-stringi::stri_replace_all_regex(colnames(data),old,new,vectorize_all=F)
-          names(data)<-colnames_new
-          sfarrow::st_write_parquet(data,file)
-
+          if(!any(grepl("[.]heat[.]",names(data)))){
+            print(i)
+            colnames_new<-stringi::stri_replace_all_regex(colnames(data),old,new,vectorize_all=F)
+            names(data)<-colnames_new
+            write_parquet_with_retries(data,file,max_retries = 5)
+          }
         }
         
         for(i in 1:length(files)){
@@ -1497,6 +1524,11 @@ if(!dir.exists(haz_risk_n_dir)){
       }
     
     # 5.3) Restructure Extracted Data ####
+    overwrite<-F
+    do_vop17<-F
+    do_ha<-F
+    do_n<-F
+    
     for(SEV in tolower(severity_classes$class)){
       # Restructure Extracted Data ####
       for(INT in c(T,F)){
