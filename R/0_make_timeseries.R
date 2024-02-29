@@ -1,8 +1,137 @@
 require(terra)
 require(data.table)
 
-# FIX Neg vals in precip
+# Create functions ####
+hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save_dir){
+  variable<-folders_x_hazards$hazards[i]
+  scenario<-folders_x_hazards$folders[i]
+  
+  haz_files<-list.files(paste0(scenario,"/",variable),".tif",recursive=F,full.names = T)
+  haz_files<-haz_files[!grepl("AVAIL.tif",haz_files)]
+  
+  n<-0
+  
+  # While loop to investigate strange and unrepeatable error (i.e. if you specify i & j and run from outside the loop there is no issue)
+  # Possibly relates to NTx40 or PTOT
+  while(is.na(haz_files[1]) & n<10){
+    print(paste0("cc = ",use_crop_cal," | ",scenario,"-",variable))
+    print(paste0("i=",i," | haz_files is returning NA | attempt = ",n))
+    haz_files<-list.files(paste0(scenario,"/",variable),".tif",recursive=F,full.names = T)
+    haz_files<-haz_files[!grepl("AVAIL.tif",haz_files)]
+    n<-n+1
+  }
+  
+  years<-unique(as.numeric(gsub(".tif","",unlist(tstrsplit(unlist(tail(tstrsplit(haz_files,"/"),1)),"-",keep=2)))))
+  
+  if(any(grepl("mean",haz_files))){
+    haz_files_mean<-grep("mean",haz_files,value=T)
+    haz_files_max<-grep("max",haz_files,value=T)
+    haz_files<-list(mean=haz_files_mean,max=haz_files_mean)
+  }else{
+    haz_files<-list(mean=haz_files)
+  }
+  
+  X<-""
+  for(k in 1:length(haz_files)){
+    
+    #print(paste0("i=",i," j=",j," k=",k))
+    variable2<-if(length(haz_files)>1){
+      paste0(variable,"_",names(haz_files)[k])
+    }else{
+      variable2<-variable
+    }
+    
+    stat<-unlist(haz_meta[variable.code==variable2,"function"])
+    
+    haz_files1<-haz_files[[k]]
+    
+    savename<-paste0(save_dir,"/",scenario,"_",variable2,"_",stat,".tif")
+    
+    if(!file.exists(savename)){
+      if(folders_x_hazards$hazards[i]=="TAI"){
+        # Display progress
+        cat('\r                                                                                                                                          ')
+        cat('\r',paste0("cc = ",use_crop_cal," | fixed = ",!use_eos," | ",scenario,"-",variable2,"-",stat))
+        flush.console()
+        
+        haz_rast_years<-terra::rast(haz_files1)
+        names(haz_rast_years)<-years
+        
+        # Remove last year of data (to be compatible with monthly derived hazards)
+        haz_rast_years<-haz_rast_years[[1:(nlyr(haz_rast_years)-1)]]
+        
+        haz_rast_years
+      }else{
+        
+        # Load all months of hazard data
+        haz_rast<-terra::rast(haz_files1)
+        
+        # Force into memory (more efficient, less read operations)
+        haz_rast<-haz_rast+0
+        
+        # Remove problematic -9999 values from precipitation data
+        if(variable=="PTOT"){
+          haz_rast<-terra::classify(haz_rast, cbind(-Inf, 0, NA), right=FALSE)
+        }
+        
+        # Copy planting and harvest months
+        plant<-r_cal$planting_month
+        
+        if(use_crop_cal=="yes"){
+          harvest<-r_cal$maturity_month
+          # Where plant>harvest (e.g. plant = 11 harvest = 3) add 12 to harvest (e.g. plant = 11 harvest = 15)
+          harvest[plant[]>harvest[]]<-harvest[plant[]>harvest[]]+12
+        }else{
+          # Calculate harvest for the year following planting
+          harvest<-plant+11
+        }
+        
+        plant_min<-min(plant[],na.rm=T)
+        harvest_max<-max(harvest[],na.rm=T)
+        
+        # Loop through years, note the final year is removed in case the harvest date extends beyond the end of the dataset
+        haz_rast_years<-terra::rast(lapply(1:(length(years)-1),FUN=function(m){
+          # Display progress
+          cat('\r                                                                                                                                          ')
+          cat('\r',paste0("cc = ",use_crop_cal," | fixed = ",!use_eos," | season = ",season," | ",scenario,"-",variable2,"-",stat,"-",years[m]," | i = ",i))
+          flush.console()
+          
+          #plant1<-plant+12*(m-1)
+          #harvest1<-harvest+12*(m-1)
+          
+          # Subset haz_rast to increase efficiency
+          x = haz_rast[[(plant_min+12*(m-1)):(harvest_max+12*(m-1))]]
+          
+          haz_rast1<-terra::rapp(x,
+                                 first=plant,
+                                 last=harvest,
+                                 fun=if(stat=="sum"){sum}else{
+                                   if(stat=="max"){max}else{
+                                     if(stat=="mean"){mean}else{if(stat=="min"){min}else{stop("invalid stat function supplied")}}}},
+                                 na.rm=T)
+          
+          #haz_rastX<-terra::rapp(haz_rast,
+          #                       first=plant1,
+          #                       last=harvest1,
+          #                       fun=if(stat=="sum"){sum}else{
+          #                         if(stat=="max"){max}else{
+          #                           if(stat=="mean"){mean}else{if(stat=="min"){min}else{stop("invalid stat function supplied")}}}},
+          #                       na.rm=T)
 
+          names(haz_rast1)<-years[m]
+          haz_rast1
+        }))
+      }
+      terra::writeRaster(haz_rast_years,savename,overwrite=T)
+      rm(haz_rast_years)
+      gc()
+    }
+    X[k]<-savename
+  }
+  
+  X
+  
+}
 
 # Set directories  ####
 working_dir<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices"
@@ -74,21 +203,24 @@ sos_rast<-terra::resample(sos_rast,base_rast)
 
 # Choose hazards #####
 # Read in climate variable information
-haz_meta<-unique(fread("/home/jovyan/common_data/atlas_hazards/cmip6/metadata/haz_metadata.csv")[,c("variable.code","function")])
+haz_meta<-unique(data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv")[,c("variable.code","function")])
 
 # Also available are NTx30:NTx50
-hazards<-c("HSH","NDD","NDWL0", "NDWS","NTx35","NTx40", "PTOT" , "TAI" ,  "TAVG" , "THI","TMIN","TMAX") 
-#hazards<-c("HSH","NDD","NDWL0") 
+hazards<-c("HSH","NDWL0", "NDWS","NTx35","NTx40", "PTOT" , "TAI" ,  "TAVG" , "THI","TMIN","TMAX") 
+
+hazards<-c("NDWL0", "NDWS","NTx35","NTx40") 
 
 # Add in more heat thresholds
-hazards<-c("NTx36","NTx37","NTx38","NTx39","NTx41","NTx42","NTx43","NTx44","NTx45","NTx30","NTx31","NTx32","NTx33","NTx34","NTx46","NTx47","NTx48","NTx49","NTx50")
-haz_meta<-data.table(variable.code=hazards,`function`="sum")
-
+if(F){
+  hazards2<-c("NTx36","NTx37","NTx38","NTx39","NTx41","NTx42","NTx43","NTx44","NTx45","NTx30","NTx31","NTx32","NTx33","NTx34","NTx46","NTx47","NTx48","NTx49","NTx50")
+  haz_meta<-rbind(haz_meta,data.table(variable.code=hazards2,`function`="mean"))
+  hazards<-c(hazards,hazards2)
+}
 
 # Run analysis loop   ####
 doParallel<-F
-use_sos_cc_choice<-c("no","yes") # Use onset of rain layer to set starting month of season
 use_crop_cal_choice<- c("no","yes") # if set to no then values are calculated for the year (using the jagermeyr cc as the starting month for each year)
+use_sos_cc_choice<-c("no","yes") # Use onset of rain layer to set starting month of season
 
 # Use end of season layer?
 use_eos_choice<-c(F,T) # If use_sos_cc is "yes" use eos as estimated using Aridity Index? If set to "no" then season_length argument will be used to fix the season length
@@ -98,7 +230,6 @@ for(use_crop_cal in use_crop_cal_choice){
   for(use_sos_cc in use_sos_cc_choice){
     for(use_eos in use_eos_choice){
       print(paste0("use_crop_cal = ",use_crop_cal," | use_sos_cc = ",use_sos_cc," | use_eos = ", use_eos))
-      
       
       # Set directory for output files
       if(use_crop_cal=="yes"){
@@ -130,7 +261,6 @@ for(use_crop_cal in use_crop_cal_choice){
         jagermeyer_cc<-jagermeyer_cc[[c("planting_month","maturity_month")]]
         jagermeyer_cc<-terra::resample(jagermeyer_cc,base_rast)
         
-        
         # Update save directory to create structures for different crop calendars within seasonal folder
         if(use_crop_cal=="yes"){
           
@@ -161,7 +291,6 @@ for(use_crop_cal in use_crop_cal_choice){
             if(!file.exists(sos_rast_file)){
               terra::writeRaster(sos_rast,sos_rast_file)
             }
-            
           }
           
         }else{
@@ -195,121 +324,6 @@ for(use_crop_cal in use_crop_cal_choice){
         }
         
         folders_x_hazards<-data.table(expand.grid(folders=folders,hazards=hazards))
-        
-        hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save_dir){
-          variable<-folders_x_hazards$hazards[i]
-          scenario<-folders_x_hazards$folders[i]
-          
-          haz_files<-list.files(paste0(scenario,"/",variable),".tif",recursive=F,full.names = T)
-          haz_files<-haz_files[!grepl("AVAIL.tif",haz_files)]
-          
-          n<-0
-          
-          # While loop to investigate strange and unrepeatable error (i.e. if you specify i & j and run from outside the loop there is no issue)
-          # Possibly relates to NTx40 or PTOT
-          while(is.na(haz_files[1]) & n<10){
-            print(paste0("cc = ",use_crop_cal," | ",scenario,"-",variable))
-            print(paste0("i=",i," | haz_files is returning NA | attempt = ",n))
-            haz_files<-list.files(paste0(scenario,"/",variable),".tif",recursive=F,full.names = T)
-            haz_files<-haz_files[!grepl("AVAIL.tif",haz_files)]
-            n<-n+1
-          }
-          
-          years<-unique(as.numeric(gsub(".tif","",unlist(tstrsplit(unlist(tail(tstrsplit(haz_files,"/"),1)),"-",keep=2)))))
-          
-          if(any(grepl("mean",haz_files))){
-            haz_files_mean<-grep("mean",haz_files,value=T)
-            haz_files_max<-grep("max",haz_files,value=T)
-            haz_files<-list(mean=haz_files_mean,max=haz_files_mean)
-          }else{
-            haz_files<-list(mean=haz_files)
-          }
-          
-          X<-""
-          for(k in 1:length(haz_files)){
-            
-            #print(paste0("i=",i," j=",j," k=",k))
-            variable2<-if(length(haz_files)>1){
-              paste0(variable,"_",names(haz_files)[k])
-            }else{
-              variable2<-variable
-            }
-            
-            stat<-unlist(haz_meta[variable.code==variable2,"function"])
-            
-            haz_files1<-haz_files[[k]]
-            
-            savename<-paste0(save_dir,"/",scenario,"_",variable2,"_",stat,".tif")
-            
-            
-            if(!file.exists(savename)){
-              if(folders_x_hazards$hazards[i]=="TAI"){
-                # Display progress
-                cat('\r                                                                                                                                          ')
-                cat('\r',paste0("cc = ",use_crop_cal," | fixed = ",!use_eos," | ",scenario,"-",variable2,"-",stat))
-                flush.console()
-                
-                haz_rast_years<-terra::rast(haz_files1)
-                names(haz_rast_years)<-years
-                
-                # Remove last year of data (to be compatible with monthly derived hazards)
-                haz_rast_years<-haz_rast_years[[1:(nlyr(haz_rast_years)-1)]]
-                
-                haz_rast_years
-              }else{
-                
-                # Load all months of hazard data
-                haz_rast<-terra::rast(haz_files1)
-                
-                # Remove problematic -9999 values from precipitation data
-                if(variable=="PTOT"){
-                  haz_rast<-terra::classify(haz_rast, cbind(-Inf, 0, NA), right=FALSE)
-                }
-                
-                # Copy planting and harvest months
-                plant<-r_cal$planting_month
-                
-                if(use_crop_cal=="yes"){
-                  harvest<-r_cal$maturity_month
-                  # Where plant>harvest (e.g. plant = 11 harvest = 3) add 12 to harvest (e.g. plant = 11 harvest = 15)
-                  harvest[plant[]>harvest[]]<-harvest[plant[]>harvest[]]+12
-                }else{
-                  # Calculate harvest for the year following planting
-                  harvest<-plant+11
-                }
-                
-                # Loop through years, note the final year is removed in case the harvest date extends beyond the end of the dataset
-                haz_rast_years<-terra::rast(lapply(1:(length(years)-1),FUN=function(m){
-                  # Display progress
-                  cat('\r                                                                                                                                          ')
-                  cat('\r',paste0("cc = ",use_crop_cal," | fixed = ",!use_eos," | season = ",season," | ",scenario,"-",variable2,"-",stat,"-",years[m]," | i = ",i))
-                  flush.console()
-                  
-                  plant1<-plant+12*(m-1)
-                  harvest1<-harvest+12*(m-1)
-                  
-                  haz_rast1<-terra::rapp(haz_rast,
-                                         first=plant1,
-                                         last=harvest1,
-                                         fun=if(stat=="sum"){sum}else{
-                                           if(stat=="max"){max}else{
-                                             if(stat=="mean"){mean}else{if(stat=="min"){min}else{"ERROR"}}}},
-                                         na.rm=T)
-                  
-                  names(haz_rast1)<-years[m]
-                  haz_rast1
-                }))
-              }
-              terra::writeRaster(haz_rast_years,savename,overwrite=T)
-              rm(haz_rast_years)
-              gc()
-            }
-            X[k]<-savename
-          }
-          
-          X
-          
-        }
         
         lapply(1:nrow(folders_x_hazards),
                FUN=hazard_stacker,
