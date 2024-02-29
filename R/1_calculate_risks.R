@@ -222,7 +222,6 @@ if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
 
 # 0) download hazard timeseries from s3 bucket ####
 files<-s3fs::s3_dir_ls(haz_timeseries_s3_dir)
-files<-grep(haz_meta[,paste0(code2,collapse="|")],files,value=T)
 new_files<-gsub(haz_timeseries_s3_dir,haz_timeseries_dir,files)
 overwrite<-F
 
@@ -290,8 +289,7 @@ files2<-list.files(haz_time_class_dir)
 files<-grep("ENSEMBLE|historical",files,value=T)
 files2<-grep("ENSEMBLE|historical",files2,value=T)
 
-
-overwrite<-T
+overwrite<-F
 
 registerDoFuture()
 plan("multisession", workers = worker_n)
@@ -400,7 +398,7 @@ files<-files[!grepl("ENSEMBLEsd",files)]
 # Ensure we are only using ensemble or historical data
 files<-grep("ENSEMBLE|historical",files,value=T)
 
-overwrite<-T
+overwrite<-F
 
 registerDoFuture()
 plan("multisession", workers = 20)
@@ -512,7 +510,6 @@ for(j in 1:length(files_fut)){
   haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
   
   # 5.2) Interactions: Calculate interactions ####
-  #combinations<-combinations[severity_class=="Severe"]
   overwrite<-F
   
   registerDoFuture()
@@ -538,7 +535,6 @@ for(j in 1:length(files_fut)){
           if(!dir.exists(folder)){
             dir.create(folder)
           }
-          
   
          for(l in 1:nrow(Scenarios)){
            
@@ -588,7 +584,7 @@ for(j in 1:length(files_fut)){
               
             }
            
-            rm(data1,haz,haz_sum)
+            rm(data,haz,haz_sum)
             gc()
             }
             }
