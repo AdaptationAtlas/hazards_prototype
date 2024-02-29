@@ -43,20 +43,19 @@ irr_wrap <- function(cashflows) {
   })
 }
 
-# Create a function to calculate NPV for a cashflow
-calculate_npv<-function(cashflows,discount_rate){
-  result <- sapply(1:length(cashflows), function(year) {
-    future_cash_flows <- cashflows[year:length(cashflows)]
+npv_wrap <- function(cashflows,discount_rate) {
+  sapply(1:length(cashflows), FUN = function(i) {
     
+    cashflows <- cashflows[1:i]
     # Use tryCatch to handle errors
     result <- tryCatch({
-      sum(future_cash_flows / (1 + discount_rate)^(0:(length(future_cash_flows)-1)))
-      }, error = function(e) {
+      suppressWarnings(jrvFinance::npv(cf=cashflows,rate=discount_rate))
+    }, error = function(e) {
       # In case of an error, return NA
       as.numeric(NA)
     })
-    
     return(result)
+    
   })
 }
 
@@ -144,7 +143,7 @@ data_merge_ss[,year:=year-1]
   
   # 4.3) Calculate npv and bcr ####
   
-  data_sum[,npv:=npv_wrap(cashflows = project_benefit-cost,discount_rate = discount_rate[1]),by=list(adoption,prod_impact,cis_impact,bcr,discount_rate)
+  data_sum[,npv:=npv_wrap(cashflow = project_benefit-cost,discount_rate = discount_rate[1]/100),by=list(adoption,prod_impact,cis_impact,bcr,discount_rate)
            ][,project_bcr:=npv/project_cost]
   
   # Change bcr name
