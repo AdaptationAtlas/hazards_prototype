@@ -127,11 +127,10 @@ avloss<-function(mean,sd,change,fixed,reps=100000){
   cv$admin0_name[!cv$admin0_name %in% exposure$admin0_name]
   
 # 2) Set parameters and save directory ####
-years<-20
+years<-16
 adoption<-c(0.005,0.01,0.02)
-prod_impact<-c(0.05,0.1,0.2,0.33,0.5,1)
-cis_impact<-c(0,0.05,0.01)
-discount_rates<-c(4,8,12)
+prod_impact<-c(0.1,0.2,0.3,0.4,0.5)
+cis_impact<-c(0,0.01,0.05,0.1)
 bcrs<-1.62
 # Combinations
 nrow(expand.grid(1:years,adoption,prod_impact,bcrs))
@@ -239,93 +238,9 @@ data[,value:=round(value,0)]
   data_benefit[,project_benefit:=marginal_impact_w_cis-marginal_impact_w_cis/bcr]
   
   data_benefit<-data_benefit[,!c("result_w_impact","marginal_impact","value","result","cv","avloss","marginal_impact_w_cis")]
+  
+  # Set benefits to be integer to reduce file size
+  data_benefit[,project_benefit:=as.integer(project_benefit)]
+  
+# 4.1) Save dataset ####
   arrow::write_parquet(data_benefit,sink=paste0(save_dir,"/roi_data.parquet"))
-  
-# 5) See script 3.1/3.2 for steps to generate economic indicators ####
-#---------------------------------------------------####
-  # X) Old Approach ####
-
-  # X.1) Work out benefits ####
-  data_rs<-data[exposure %in% c("harvested_area","vop_USD17")]
-  data_rs[,BCR:=1.62]
-  data_rs_impact<-dcast(data_rs,admin0_name+admin1_name+crop+prod_impact+adoption+year+BCR~exposure,value.var = "result")
-  
-  # Add base harvested area
-  data_rs_impact<-merge(data_rs_impact,data_rs[exposure=="harvested_area",!c("result","exposure")])
-  setnames(data_rs_impact,"value","ha_base")
-  
-  # Add base price
-  data_rs_impact<-merge(data_rs_impact,data_rs[exposure=="vop_USD17",!c("result","exposure")])
-  setnames(data_rs_impact,"value","vop_base")
-  
-  # Add base production
-  by_fields<-c("admin0_name","crop","admin1_name","adoption","prod_impact","year")
-    data_rs<-data[exposure %in% c("production")]
-  data_rs_impact<-merge(data_rs_impact,data_rs[,!c("result","exposure")],by=by_fields)
-  setnames(data_rs_impact,"value","prod_base")
-  
-  # Add base yield
-  data_rs<-data[exposure %in% c("yield")]
-  data_rs_impact<-merge(data_rs_impact,data_rs[exposure=="yield",!c("result","exposure")],by=by_fields)
-  setnames(data_rs_impact,"value","yield")
-  data_rs_impact[,yield:=yield/1000]
-  
-  # Add Price
-  data_rs_impact[,Price:=vop_base/prod_base]
-  setnames(data_rs_impact,c("harvested_area","yield"),c("A_adopt","Y_non_adopt"))
-  data_rs_impact[,A_non_adopt:=ha_base-A_adopt]
-  data_rs_impact[,Y_adopt:=Y_non_adopt*(1+prod_impact)]
-  
-  # Calculate VOP
-  data_rs_impact[,VOP_non_adopt:=A_non_adopt*Y_non_adopt*Price
-                 ][,VOP_adopt:=A_adopt*Y_adopt*Price]
-  
-  # Estimate Cost
-  data_rs_impact[,Cost_adopt:=Price*Y_adopt/BCR
-                 ][,Cost_non_adopt:=Price*Y_non_adopt/BCR]
-  
-  # Estimate Net Return
-  data_rs_impact[,NR_adopt:=A_adopt*(Y_adopt*Price-Cost_adopt)
-                 ][,NR_non_adopt:=A_non_adopt*(Y_non_adopt*Price-Cost_non_adopt)]
-  
-  # Estimate project benefit
-  data_rs_impact[,project_benefit:=NR_non_adopt+NR_adopt
-                 ][,project_benefit:=project_benefit-(ha_base*((Y_non_adopt*Price)-Cost_non_adopt)),by=list(admin0_name,admin1_name,crop,adoption,prod_impact)]
-  
-
-  # X.2) Economic indicators ####
-  discount_rate_choice<-5
-  project_year_choice<-5
-  project_cost<-10^6
-  
-  
-  # sum results
-  data_rs_sum<-data_rs_impact[,list(project_benefit=sum(project_benefit,na.rm=T)),by=list(adoption,prod_impact,year,BCR )]
-  
-  # Re-sort dataset so that years are in order, this is required for irr calculations
-  data_rs_sum<-data_rs_sum[order(adoption,prod_impact,BCR,year)]
-  
-  # Calculate IRR
-  data_rs_sum[,irr:=as.numeric(irr_wrap(project_cost,years=year,project_benefits=project_benefit)),by=list(adoption,prod_impact,BCR)]
-  
-  # Add discount rates
-  data_rs_sum<-data.table(
-    data_rs_sum[rep(1:nrow(data_rs_sum),each=length(discount_rates))],
-    discount_rate=discount_rates[rep(1:length(discount_rates),nrow(data_rs_sum))]
-  )
-  
-  
-  # Calculate
-  data_rs_sum[,npv:=(project_benefit/(1+discount_rate/100)^year)-project_cost
-  ][,bcr:=npv/project_cost]
-  
-  # Under what conditions is NPV positive?
-  unique(data_rs_sum[npv>0,list(adoption,prod_impact,discount_rate,year,npv)][order(npv,decreasing=T)])
-  
-  
-
-  
-
-
-
-  
