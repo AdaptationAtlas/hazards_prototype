@@ -281,7 +281,6 @@ foreach(i = 1:nrow(Thresholds_U)) %dopar% {
 plan(sequential)
 
 # 2) Calculate risk across classified time series ####
-
 files<-list.files(haz_time_class_dir,full.names = T)
 files2<-list.files(haz_time_class_dir)
 
@@ -295,6 +294,7 @@ registerDoFuture()
 plan("multisession", workers = worker_n)
 
 foreach(i = 1:length(files)) %dopar% {
+ # for(i in 1:length(files)){
   
   file<-paste0(haz_time_risk_dir,"/",files2[i])
   
@@ -510,7 +510,13 @@ for(j in 1:length(files_fut)){
   haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
   
   # 5.2) Interactions: Calculate interactions ####
+  combinations[,code:=paste(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet)]
+  combinations<-combinations[order(code)]
+  
   overwrite<-F
+  
+  
+ # TAKE FIRST EXAMPLE - 3 WAY COMBO APPEARS TO BE MISSING!!!
   
   registerDoFuture()
   plan("multisession", workers = worker_n)
@@ -550,7 +556,7 @@ for(j in 1:length(files_fut)){
            save_name_any<-file.path(folder,paste0(Scenarios[l,combined],"-any.tif"))
   
            
-           if((!all(file.exists(save_names))|!file.exists(save_name_any))|overwrite==T){
+           if(!all(file.exists(save_names))|!file.exists(save_name_any)|overwrite==T){
             
             files<-sapply(combos,FUN=function(x){haz_class_files[grepl(x,haz_class_files2) & grepl(Scenarios[l,combined],haz_class_files2)]})
             
@@ -574,14 +580,12 @@ for(j in 1:length(files_fut)){
               terra::writeRaster(data,filename =  save_name_any,overwrite=T)
             }
             
-            
             # Interactions
             for(a in 1:nrow(combo_binary)){
-              if(!file.exists(combo_binary[i,save_names])|overwrite==T){
+              if(combo_binary[a,!file.exists(save_names)]|overwrite==T){
                 data<-int_risk(data=haz_sum,interaction_mask_vals = combo_binary[-a,value],lyr_name = combo_binary[a,lyr_names])
                 terra::writeRaster(data,filename = combo_binary[a,save_names],overwrite=T)
               }
-              
             }
            
             rm(data,haz,haz_sum)
@@ -592,8 +596,8 @@ for(j in 1:length(files_fut)){
     
   plan(sequential)
   
-  combinations[,code:=paste(sort(c(heat,wet,dry)),collapse="+"),by=list(heat,wet,dry)]
-  n_missing<-combinations$code[!combinations$code %in% sub(".tif","",sub("(([^-]*-){2})", "", list.files(haz_time_int_dir,recursive=T)))]
+#  n_combos<-combinations[,code:=paste(sort(c(heat,wet,dry)),collapse="+"),by=list(heat,wet,dry)][,unique(code)]
+ # n_missing<-n_combos[!n_combos %in% list.dirs(haz_time_int_dir,recursive = F,full.names=F)]
   
   if(length(n_missing)>0){
     stop("Analysis of interactions incomplete")
