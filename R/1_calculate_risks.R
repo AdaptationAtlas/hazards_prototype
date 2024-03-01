@@ -515,9 +515,6 @@ for(j in 1:length(files_fut)){
   
   overwrite<-F
   
-  
- # TAKE FIRST EXAMPLE - 3 WAY COMBO APPEARS TO BE MISSING!!!
-  
   registerDoFuture()
   plan("multisession", workers = worker_n)
   
