@@ -30,35 +30,20 @@ convert_to_cog <- function(file,delete=T,rename=T) {
   closeAllConnections()
   
   if(is_cog==F){
-    # Define the new file name
-    file_out <- sub(".tif$", "_COG.tif", file)
-    
-    if(!file.exists(file_out)){
+
       data<-terra::rast(file)
-      terra::writeRaster(data,filename = file_out,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"),overwrite=T)
+      # Force into memory
+      data<-data+0
+      
+      terra::writeRaster(data,filename = file,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"),overwrite=T)
+
     }
-    
-    if(delete==T){
-      unlink(file,recursive = T)
-    }
-    if(rename==T){
-      if(!file.exists(file)){
-        file.rename(file_out,file)
-      }else{
-        print("Unlink not working COG name retained")
-      }
-    }
-    
   }
-  
-}
 
 ctc_wrapper<-function(folder,worker_n=1,delete=T,rename=T){
   # List tif files in the folder
   files_tif<-list.files(folder,".tif",full.names = T)
-  # Remove any COGs from the tif list
-  files_tif<-files_tif[!grepl("_COG.tif",files_tif)]
-  
+
   if(worker_n>1){
     # Update tifs to cog format
     # Set up parallel backend
@@ -227,23 +212,10 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
   s3_dir_ls(s3_bucket)
   
 # 2) Time sequence specific ####
-  # Upload - hazard mean ####
-  folder<-paste0("Data/hazard_mean/",timeframe_choice)
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_mean/",timeframe_choice)
-  
-  # Prepare tif data by converting to COG format
-  ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
-  
-  # Upload files
-  upload_files_to_s3(folder = folder,
-                     selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite = F)
-  
   # Upload - hazard timeseries mean ####
   folder<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_mean/",timeframe_choice)
-  
+
   # Prepare tif data by converting to COG format
   ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
   
@@ -252,12 +224,11 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F)
-  
-  
   
   # Upload - hazard_timeseries_risk ####
   folder<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_risk/",timeframe_choice)
+  s3fs::s3_dir_ls(s3_bucket)
   
   # Prepare tif data by converting to COG format
   ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
@@ -267,7 +238,6 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F)
-  
   
   # Upload - hazard_timeseries_risk sd ####
   folder<-paste0("Data/hazard_timeseries_sd/",timeframe_choice)
@@ -287,11 +257,15 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_risk/",timeframe_choice)
   folder<-paste0("Data/hazard_risk/",timeframe_choice)
   
+  s3fs::s3_dir_ls(s3_bucket)
+  #s3fs::s3_file_delete(s3fs::s3_dir_ls(s3_bucket))
+  #s3fs::s3_dir_ls(s3_bucket)
+  
   # Prepare tif data by converting to COG format
-  ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
+  ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
   
   # Upload files
-  upload_files_to_s3(files =list.files(folder,".parquet$",full.names = T),
+  upload_files_to_s3(files =list.files(folder,full.names = T),
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F)
@@ -300,7 +274,8 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop/",timeframe_choice)
   folder<-paste0("Data/hazard_risk_vop/",timeframe_choice)
   
-  s3_file_delete(s3_dir_ls(s3_bucket))
+  s3fs::s3_dir_ls(s3_bucket)
+  #s3_file_delete(s3_dir_ls(s3_bucket))
   
   # Prepare tif data by converting to COG format
   if(F){
@@ -338,7 +313,7 @@ upload_files_to_s3 <- function(files,folder=NULL,selected_bucket,new_only=F, max
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=T)
-# 4) hazard_timeseries data
+# 4) hazard_timeseries data ####
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
   folder<-haz_timeseries_dir
   
