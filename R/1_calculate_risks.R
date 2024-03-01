@@ -593,14 +593,21 @@ for(j in 1:length(files_fut)){
     
   plan(sequential)
   
-#  n_combos<-combinations[,code:=paste(sort(c(heat,wet,dry)),collapse="+"),by=list(heat,wet,dry)][,unique(code)]
- # n_missing<-n_combos[!n_combos %in% list.dirs(haz_time_int_dir,recursive = F,full.names=F)]
+ n_combos<-combinations[,code:=paste(c(dry,heat,wet),collapse="+"),by=list(heat,wet,dry)][,unique(code)]
+ n_missing<-n_combos[!n_combos %in% list.dirs(haz_time_int_dir,recursive = F,full.names=F)]
   
   if(length(n_missing)>0){
     stop("Analysis of interactions incomplete")
     print(n_missing)
   }
-  
+ 
+ n_length<-sapply(list.dirs(haz_time_int_dir,recursive = F,full.names=T),FUN=function(DIR){length(list.files(DIR))},USE.NAMES = T)
+ 
+ if(length(unique(n_length))>1|unique(n_length)!=40){
+   stop("Missing files")
+   print(n_length[n_length!=40])
+ }
+ 
   # 5.3) Interactions: For each crop combine hazards into a single file and add to hazard_risk dir #####
   combinations_ca<-rbind(combinations_c,combinations_a)[,combo_name:=paste0(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet,crop,severity_class)
                                                         ][,folder:=paste0(haz_time_int_dir,"/",combo_name)
