@@ -22,11 +22,21 @@ load_and_install_packages(packages)
 haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
 severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
 
-# Load adaptive capacity data ####
+# Set directories ####
+haz_risk_vop_ac_dir<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
+if(!dir.exists(haz_risk_vop_ac_dir)){
+  dir.create(haz_risk_vop_ac_dir,recursive=T)
+}
+
 ac_dir<-"Data/adaptive_capacity"
 if(!dir.exists(ac_dir)){
   dir.create(ac_dir,recursive=T)
 }
+
+haz_risk_vop_dir<-paste0("Data/hazard_risk_vop/",timeframe_choice)
+
+
+# Load adaptive capacity data ####
 
 # Download data from s3
 file<-"vulnerability_adm_long.parquet"
@@ -42,11 +52,10 @@ adaptive_capacity<-data.table(arrow::read_parquet(local_file))
 # Cast dataset
 adaptive_capacity_cast<-dcast(adaptive_capacity,admin0_name+admin1_name+admin2_name+iso3+total_pop+rural_pop~vulnerability,value.var="value_binary")
 
-# Load hazard Risk x VoP data #####
+# Load hazard risk x VoP data #####
 # Data is found in "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual" for example
 
 interaction<-T
-haz_risk_vop_dir<-paste0("Data/hazard_risk_vop/",timeframe_choice)
 if(interaction==T){
   files<-list.files(haz_risk_vop_dir,"_adm_int",full.names = T)
 }else{
@@ -65,6 +74,20 @@ haz_risk_vop<-rbindlist(lapply(1:length(files),FUN=function(i){
 }))
 
 haz_risk_vop<-haz_risk_vop[,list(admin0_name,admin1_name,admin2_name,scenario,timeframe,crop,severity,hazard_vars,hazard,value)]
+
+# Load total VoP data ####
+# Data is found in "s3://digital-atlas/risk_prototype/data/exposure/annual" for example
+exposure_dir<-"Data/exposure/"
+exposure<-arrow::read_parquet(file.path(exposure_dir,"exposure_adm_sum.parquet"))
+# Subset exposure to VoP
+exposure<-exposure[exposure=="vop"][,exposure:=NULL]
+setnames(exposure,"value","total_value")
+
+# Work out total exposure 
+haz_risk_vop_any<-haz_risk_vop[hazard=="any"]
+haz_risk_vop_any<-merge(haz_risk_vop_any,exposure,all.x=T)
+haz_risk_vop_any[,value_non_exposed:=round(total_value-value,0)]
+haz_risk_vop_any[value_non_exposed<(-1000),]
 
 # Check admin names all match ####
 if(F){
@@ -91,11 +114,6 @@ if(F){
 }
 
 # Append adaptive capacity data to haz_risk_vop ####
-haz_risk_vop_ac_dir<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
-if(!dir.exists(haz_risk_vop_ac_dir)){
-  dir.create(haz_risk_vop_ac_dir,recursive=T)
-}
-
 if(interaction==T){
   file<-file.path(haz_risk_vop_ac_dir,"haz_risk_vop_int_ac.parquet")
 }else{
@@ -120,37 +138,63 @@ if(is.null(haz_risk_vop_ac)){
   haz_risk_vop_ac<-arrow::read_parquet(file)
 }
 
-
 # Subset data to a specific hazard combination to reduce file size ####
-# Set crop hazard combination
-crop_haz<-c(dry="NDWS",heat="NTx35",wet="NDWL0")
-
-# Set animal hazard combination
-ani_haz<-c(dry="NDWS",heat="THI_max",wet="NDWL0")
-
-# Join crop and animal hazard combinations
-if(interaction==T){
-  haz<-c(paste0(crop_haz,collapse = "+"),paste0(ani_haz,collapse = "+"))
-}else{
-  haz<-unique(c(crop_haz,ani_haz))
-}
-# Subset data
-
-data_ss<-haz_risk_vop_ac[hazard_vars %in% haz]
-
-
 # Set population fields to be integer to reduce file size
-data_ss[,total_pop:=as.integer(total_pop)][,rural_pop:=as.integer(rural_pop)]
-data_ss[,value:=round(value,0)]
 
-# Remove crops we don't need
-rm_crops<-c("rapeseed","sugarbeet")
-data_ss<-data_ss[!crop %in% rm_crops]
 
-# Remove hazard_vars column 
-data_ss[,hazard_vars:=NULL]
+haz_risk_vop_ac[,total_pop:=as.integer(total_pop)
+                ][,rural_pop:=as.integer(rural_pop)
+                  ][,value:=round(value,0)]
 
-# Save results
-file_r<-gsub("ac.parquet","ac_reduced.parquet",file)
-arrow::write_parquet(data_ss,file_r)
+
+reduce_parquet<-function(dry,heat_crop,heat_ani,wet,interaction,data,rm_crops,filename,folder){
+  # Set crop hazard combination
+  crop_haz<-c(dry=dry,heat=heat_crop,wet=wet)
+  
+  # Set animal hazard combination
+  ani_haz<-c(dry=dry,heat=heat_ani,wet=wet)
+  
+  # Join crop and animal hazard combinations
+  if(interaction==T){
+    haz<-c(paste0(crop_haz,collapse = "+"),paste0(ani_haz,collapse = "+"))
+  }else{
+    haz<-unique(c(crop_haz,ani_haz))
+  }
+  
+  # Subset data to hazards
+  data_ss<-data[hazard_vars %in% haz]
+  
+  # Remove crops we don't need
+  data_ss<-data_ss[!crop %in% rm_crops]
+  
+  # Remove hazard_vars column 
+  data_ss[,hazard_vars:=NULL]
+  
+  # Save results
+  file_r<-file.path(paste0(filename,".parquet"),folder)
+  arrow::write_parquet(data_ss,file_r)
+
+}
+
+reduce_parquet(dry="NDWS",
+               heat_crop="NTx35",
+               heat_ani="THI_max",
+               wet="NDWL0",
+               interaction=T,
+               data=haz_risk_vop_ac,
+               rm_crops=c("rapeseed","sugarbeet"),
+               filename = "haz_risk_vop_int_ac_reduced",
+               folder=haz_risk_vop_ac_dir)
+
+
+# Subset loop ####
+haz<-haz_risk_vop_ac[,unique(hazard_vars)]
+haz<-haz[!grepl("THI",haz)]
+
+haz<-rbindlist(strsplit(haz,"+"))
+
+for()
+
+
+
 
