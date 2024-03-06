@@ -5,6 +5,11 @@ format: html
 runtime: shiny
 ---
 
+```{r set the timeframe}
+timeframe_choice<-"annual"
+#timeframe_choice<-"jagermeyr"
+```
+
 ```{r load packages,echo=F,message=F,warning=F}
 load_and_install_packages <- function(packages) {
   options(repos = c(CRAN = "https://cloud.r-project.org/")) # Set CRAN mirror
@@ -30,7 +35,6 @@ load_and_install_packages(packages)
 ```
 
 ```{r set parameter values,echo=F,message=F,warning=F}
-timeframe_choice<-"annual"
 haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
 haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
 haz_time_risk_dir<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
