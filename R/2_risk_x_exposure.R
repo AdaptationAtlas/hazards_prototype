@@ -329,8 +329,6 @@ admin_extract_wrap<-function(data,save_dir,filename,FUN="sum",varname,Geographie
     
     variable_old<-data[,as.character(unique(variable))]
     
-    # Make sure crop names are separated with a _ instead of a
-    
     # Replace space in the crop names with a . to match the parquet column names
     new<-gsub(" ",".",crops,fixed=T)
     old<-crops
@@ -494,7 +492,7 @@ Scenarios<-rbind(data.table(Scenario="historic",Time="historic"),data.table(expa
 Scenarios[,combined:=paste0(Scenario,"-",Time)]
 
 # Set hazards to include in analysis
-hazards<-c("NDD","NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG")
+hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG")
 haz_2way<-c("PTOT","TAVG")
 hazards2<-c(hazards[!hazards %in% haz_2way],paste0(haz_2way,rep(c("_L","_H"),each=2)))
 
@@ -1280,8 +1278,6 @@ if(!dir.exists(haz_risk_n_dir)){
     crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
 
     # 5.1)  Multiply Hazard Risk by Exposure ####
-      # It would be more efficient to multiply the risk layers by VoP directly then assemble into crops
-      
       do_vop17<-F
       do_ha<-F
       do_n<-F
@@ -1476,8 +1472,8 @@ if(!dir.exists(haz_risk_n_dir)){
     data<-sfarrow::st_read_parquet(file[4])
     names(data)
           
-      # 5.2.x) Temporary name fix for old solo hazards (not resolved) ####
-      if(F){
+      # 5.2.x) Temporary name fix for old solo hazards (should be resolved) ####
+      if(T){
         files<-list.files(haz_risk_vop_dir,"solo.parquet$",full.names = T)
         files<-files[!grepl("_adm_",files)]
       
