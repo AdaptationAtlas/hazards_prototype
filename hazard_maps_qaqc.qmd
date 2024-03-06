@@ -1,0 +1,511 @@
+---
+title: "Hazards Map QAQC"
+author: "Peter Steward"
+format: html
+runtime: shiny
+---
+
+```{r load packages,echo=F,message=F,warning=F}
+load_and_install_packages <- function(packages) {
+  options(repos = c(CRAN = "https://cloud.r-project.org/")) # Set CRAN mirror
+  
+  for (package in packages) {
+    if (!require(package, character.only = TRUE)) {
+      install.packages(package)
+      library(package, character.only = TRUE)
+    }
+  }
+}
+
+packages <- c("terra","shinydashboard","data.table","shiny","stringi") # Ensure correct package names
+
+load_and_install_packages(packages)
+```
+
+```{css, echo=FALSE,eval=T}
+.shiny-frame{
+  width: 80vw;
+  height: 100vw;
+}
+```
+
+```{r set parameter values,echo=F,message=F,warning=F}
+timeframe_choice<-"annual"
+haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
+haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
+haz_time_risk_dir<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
+haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
+
+files_timeseries<-list.files(haz_timeseries_dir,".tif$",full.names = T)
+files_class<-list.files(haz_time_class_dir,".tif$",full.names = T)
+files_risk<-list.files(haz_time_risk_dir,".tif$",full.names = T)
+
+# Set scenarios and time frames to analyse
+Scenarios<-c("ssp245","ssp585")
+Times<-c("2021_2040","2041_2060")
+Scenarios<-rbind(data.table(Scenario="historical",Time="historical"),data.table(expand.grid(Scenario=Scenarios,Time=Times)))
+Scenarios[,combined:=paste0(Scenario,"-",Time)]
+
+hazards<-c("NDD","NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG")
+haz_2way<-c("PTOT","TAVG")
+hazards2<-c(hazards[!hazards %in% haz_2way],paste0(haz_2way,rep(c("_L","_H"),each=2)))
+
+```
+
+```{r create hazard class table,echo=F,message=F,warning=F}
+haz_meta<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv")
+haz_meta[,code2:=paste0(haz_meta$code,"_",haz_meta$`function`)]
+
+haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
+haz_class<-data.table::fread(haz_class_url)
+haz_class<-haz_class[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
+haz_classes<-unique(haz_class$description)
+
+# duplicate generic non-heat stress variables for livestock
+livestock<-livestock<-haz_class[grepl("cattle|goats|poultry|pigs|sheep",crop),unique(crop)]
+non_heat<-c("NTx40","NTx35","NDWS","TAI","NDWL0","PTOT") # NDD is not being used as it cannot be projected to future scenarios
+
+haz_class<-rbind(haz_class[crop=="generic"],
+  rbindlist(lapply(1:length(livestock),FUN=function(i){
+    rbind(haz_class[crop=="generic" & index_name %in% non_heat][,crop:=livestock[i]],haz_class[crop==livestock[i]])
+  }))
+)
+
+# read in mapspam metadata
+ms_codes<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
+ms_codes<-ms_codes[compound=="no"]
+
+# read in ecocrop
+ecocrop<-fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/ecocrop.csv")
+ecocrop[,Temp_Abs_Min:=as.numeric(Temp_Abs_Min)
+        ][,Temp_Abs_Max:=as.numeric(Temp_Abs_Max)
+          ][,Rain_Abs_Min:=as.numeric(Rain_Abs_Min)
+            ][,Rain_Abs_Max:=as.numeric(Rain_Abs_Max)]
+
+# Using the mapspam species transpose the ecocrop data into mod, severe and extreme hazards (match the format of the haz_class data.table)
+description<-c("Moderate","Severe","Extreme")
+ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
+  crop<-ms_codes[i,sci_name]
+  crop_common<-ms_codes[i,Fullname]
+  
+  crops<-unlist(strsplit(crop,";"))
+  
+  ec_haz<-rbindlist(lapply(1:length(crops),FUN=function(j){
+    ecrop<-ecocrop[species==crops[j]]
+    
+    if(nrow(ecrop)>0){
+     # print(paste0(i,"-",j," | ",crop_common,"/",crops[j]))
+      
+      # PTOT low
+      ptot_low<-data.table(index_name="PTOT",
+                           description=description,
+                           direction="<",
+                           crop=crop_common,
+                           threshold=c(
+                             unlist(ecrop$Rain_Opt_Min), # Moderate
+                             (unlist(ecrop$Rain_Abs_Min)+unlist(ecrop$Rain_Opt_Min))/2, # Severe
+                             unlist(ecrop$Rain_Abs_Min))) # Extreme
+      
+      # PTOT high
+      ptot_high<-data.table(index_name="PTOT",
+                            description=description,
+                            direction=">",
+                            crop=crop_common,
+                            threshold=c(
+                              unlist(ecrop$Rain_Opt_Max), # Moderate
+                              ceiling((unlist(ecrop$Rain_Opt_Max)+unlist(ecrop$Rain_Abs_Max))/2), # Severe
+                              unlist(ecrop$Rain_Abs_Max))) # Extreme
+      
+      # TAVG low
+      tavg_low<-data.table(index_name="TAVG",
+                           description=description,
+                           direction="<",
+                           crop=crop_common,
+                           threshold=c(
+                             unlist(ecrop$temp_opt_min), # Moderate
+                             (unlist(ecrop$temp_opt_min)+unlist(ecrop$Temp_Abs_Min))/2, # Severe
+                             unlist(ecrop$Temp_Abs_Min))) # Extreme
+      
+      # TAVG high
+      tavg_high<-data.table(index_name="TAVG",
+                            description=description,
+                            direction=">",
+                            crop=crop_common,
+                            threshold=c(
+                              unlist(ecrop$Temp_Opt_Max), # Moderate
+                              (unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2, # Severe
+                              unlist(ecrop$Temp_Abs_Max))) # Extreme
+      
+      # NTxCrop - moderate  (>optimum)
+      ntxcrop_m<-data.table(index_name=paste0("NTxM",ecrop$Temp_Opt_Max),
+                           description=description,
+                           direction=">",
+                           crop=crop_common,
+                           threshold=c(7, # Moderate
+                                       14, # Severe
+                                       21)) # Extreme
+      
+      # NTxCrop - severe  
+      ntxcrop_s<-data.table(index_name=paste0("NTxS",(unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2),
+                            description=description,
+                            direction=">",
+                            crop=crop_common,
+                            threshold=c(7, # Moderate
+                                        14, # Severe
+                                        21)) # Extreme
+      
+      
+      # NTxCrop extreme (>absolute)
+      ntxcrop_e<-data.table(index_name=paste0("NTxE",ecrop$Temp_Abs_Max),
+                          description=description,
+                          direction=">",
+                          crop=crop_common,
+                          threshold=c(1, # Moderate
+                                      5, # Severe
+                                      10)) # Extreme
+      
+      rbind(ptot_low,ptot_high,tavg_low,tavg_high,ntxcrop_m,ntxcrop_s,ntxcrop_e)
+    }else{
+     # print(paste0(i,"-",j," | ",crop, " - ERROR NO MATCH"))
+      NULL
+    }
+  }))
+  
+  ec_haz<-ec_haz[,list(threshold=mean(threshold,na.rm=T)),by=list(index_name,description,direction,crop)]
+  ec_haz
+}))
+
+# Exclude NTxS, NTxE and NTxM for time being until hazard data are caculated
+ec_haz<-ec_haz[!grepl("NTxM|NTxS|NTxE",index_name)]
+
+# Replicate generic hazards that are not TAVG or PTOT for each crop
+haz_class2<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
+  Y<-ec_haz[crop==ms_codes[i,Fullname]]
+  X<-haz_class[!index_name %in% ec_haz[,unique(index_name)]]
+  # Remove THI & HSH this is not for crops
+  X<-X[!grepl("THI|HSH",index_name)]
+  X$crop<-ms_codes[i,Fullname]
+  rbind(Y,X)
+}))
+
+haz_class<-rbind(haz_class,haz_class2)
+
+haz_class[,direction2:="G"
+          ][direction=="<",direction2:="L"
+            ][,index_name2:=index_name
+              ][index_name %in% c("TAVG","PTOT"),index_name2:=paste0(index_name,"_",direction2)]
+
+haz_class<-unique(haz_class)
+
+# Add summary function description to haz_class
+haz_class<-merge(haz_class,haz_meta[,c("code","code2","function")],by.x="index_name2",by.y="code",all.x=T)
+haz_class[,code2:=gsub("_G_|_L_","_",code2)][,haz_code:=paste0(direction2,threshold)]
+```
+
+```{r create interactions,echo=F}
+# Severity classes
+severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
+setnames(severity_classes,"description","class")
+
+# Crops
+crop_choices<-c(fread(haz_class_url)[,unique(crop)],ms_codes[,sort(Fullname)])
+
+# Set variables that can be interacted for heat wet and dry
+crop_heat<-c("NTx35","TAVG_G")
+crop_wet<-c("NDWL0","PTOT_G")
+crop_dry<-c("PTOT_L","NDWS")
+
+crop_choices2<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
+
+# Create a unique list of all the 3-way combinations required for the crops and severity classes selected
+combinations_c<-unique(rbindlist(lapply(1:length(crop_choices2),FUN=function(i){
+  rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
+    X<-data.table(expand.grid(heat=crop_heat,wet=crop_wet,dry=crop_dry,stringsAsFactors=F))
+    haz_rename<-haz_class[crop==crop_choices2[i] & description == severity_classes$class[j],list(old=index_name2,new=paste0(index_name,"-",direction2,threshold))]
+    X[,heat:=stri_replace_all_regex(heat,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+      ][,dry:=stri_replace_all_regex(dry,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+        ][,wet:=stri_replace_all_regex(wet,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+          ][,severity_class:=severity_classes$class[j]
+            ][,crop:=crop_choices2[i]]
+    X
+  }))
+})))
+
+
+# Interactions - Animals
+# Set variables that can be interacted for heat wet and dry
+animal_heat<-c("THI_max") # THI_mean or THI_max can be used here (or both)
+animal_wet<-c("NDWL0","PTOT_G")
+animal_dry<-c("PTOT_L","NDWS")
+
+crop_choicesX<-crop_choices[grepl("_tropical|_highland",crop_choices)]
+
+# Create a unique list of all the 3-way combinations required for the crops and severity classes selected
+combinations_a<-unique(rbindlist(lapply(1:length(crop_choicesX),FUN=function(i){
+  rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
+    X<-data.table(expand.grid(heat=animal_heat,wet=animal_wet,dry=animal_dry,stringsAsFactors=F))
+    haz_rename<-haz_class[crop==crop_choicesX[i] & description == severity_classes$class[j],list(old=index_name2,new=paste0(index_name,"-",direction2,threshold))]
+    X[,heat:=stri_replace_all_regex(heat,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+    ][,dry:=stri_replace_all_regex(dry,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+    ][,wet:=stri_replace_all_regex(wet,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+    ][,severity_class:=severity_classes$class[j]
+      ][,crop:=crop_choicesX[i]]
+    X
+  }))
+})))
+
+# Join livestock and crop combinations
+combinations<-rbind(combinations_c,combinations_a)[crop!="generic"][,heat1:=unlist(tstrsplit(heat,"-",keep=1))
+                                                                    ][,heat1:=gsub("TAVG","TAVG_G",heat1)
+                                                                      ][,heat2:=unlist(tstrsplit(heat,"-",keep=2))
+                                                                        ][,wet1:=unlist(tstrsplit(wet,"-",keep=1))
+                                                                          ][,wet1:=gsub("PTOT","PTOT_G",wet1)
+                                                                            ][,wet2:=unlist(tstrsplit(wet,"-",keep=2))
+                                                                              ][,dry1:=unlist(tstrsplit(dry,"-",keep=1))
+                                                                                ][,dry1:=gsub("PTOT","PTOT_L",dry1)
+                                                                                  ][,dry2:=unlist(tstrsplit(dry,"-",keep=2))
+                                                                                    ][,combination:=paste0("heat:",heat1," wet:",wet1," d:",dry1)]
+                                                                        
+```
+
+```{r ui,echo=F}
+ui <- dashboardPage(
+  dashboardHeader(title = "Hazards QAQC"),
+  dashboardSidebar(
+    sidebarMenu(
+      menuItem("Data Filtering", tabName = "data_filtering", icon = icon("filter")),
+            selectInput("scenario", "Choose scenario:", choices = unique(Scenarios$combined), selected = "historic"),
+            selectInput("hazard", "Choose hazard combination:", choices = unique(combinations$combination), selected = "PTOT_L"),
+            selectInput("crop", "Choose crop:", choices = unique(haz_class$crop), selected = "maize"),
+            selectInput("severity", "Choose severity:", choices = unique(haz_class$description), selected = "Severe")
+    )
+    ),
+  dashboardBody(
+        fluidRow(
+          # The first 5 boxes are for debugging file selections are working
+          #box(DT::dataTableOutput("haz_class_filtered"), width = 12) ,
+          #box(textOutput("files_timeseries_filtered"), width = 12),
+          #box(textOutput("files_class_filtered"), width = 12) ,
+          #box(textOutput("files_risk_filtered"), width = 12),
+          #box(textOutput("files_int_filtered"), width = 12),
+          box(plotOutput("plot_timeseries"),title="Timeseries (year1)"),
+          box(plotOutput("plot_class"),title="Classified timeseries (year1)"),
+          box(plotOutput("plot_risk"),title="Hazard risk (over timeseries)"),
+          box(plotOutput("plot_risk_int"),title = "Hazard risk interactions")
+        )
+  )
+  )
+```
+
+```{r set up server,echo=F,eval=T}
+server <- function(input, output, session) {
+  
+    observe({
+      print(paste("Scenario:", input$scenario))
+      print(paste("Hazard:", input$hazard))
+      print(paste("Crop:", input$crop))
+      print(paste("Severity:", input$severity))
+      })
+  
+#0) Create hazards ####
+  combinations_filtered<-reactive({
+    combinations[combination == input$hazard & severity_class==input$severity & crop==input$crop,]
+    })
+  
+  hazards_filtered<-reactive({
+    unlist(combinations_filtered()[,list(heat1,wet1,dry1)])
+  })
+  
+  thresholds_filtered<-reactive({
+    unlist(combinations_filtered()[,list(heat2,wet2,dry2)])
+  })
+  
+  
+  observe({
+    print(combinations_filtered()$combination)
+    print(hazards_filtered())
+  })
+  
+#1) Hazard classes  ####
+  haz_class_filtered <- reactive({
+    # Assuming `haz_class` is a data frame or data table available in your global environment
+     haz_class[haz_class$index_name2 %in% hazards_filtered() & 
+                 haz_class$crop == input$crop & 
+                 haz_class$description == input$severity,   
+               c("index_name2", "description", "crop", "function", "haz_code")]
+  })
+  
+  observe({
+    filtered_data <- haz_class_filtered()
+    if (!is.null(filtered_data)){
+      print(head(filtered_data))
+    }else{
+      print("Result is NULL")
+    }
+  })
+  
+  observe({
+    print(haz_class_filtered()$haz_code)
+  })
+  
+  output$haz_class_filtered <- DT::renderDataTable({
+    DT::datatable(haz_class_filtered())
+  })
+  
+  #2) Hazard timeseries files ####
+   files_timeseries_filtered <- reactive({
+    c(
+      heat = files_timeseries[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_timeseries) & 
+                       grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_timeseries) & 
+                       grepl(unlist(gsub("_L|_H","",hazards_filtered()[1])),files_timeseries)],
+      wet = files_timeseries[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_timeseries) & 
+                       grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_timeseries) & 
+                       grepl(unlist(gsub("_L|_H","",hazards_filtered()[2])),files_timeseries)],
+      dry = files_timeseries[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_timeseries) & 
+                       grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_timeseries) & 
+                       grepl(unlist(gsub("_L|_H","",hazards_filtered()[3])),files_timeseries)]
+    )
+    })
+  
+  observe({
+      filtered_data <- files_timeseries_filtered()
+      if (!is.null(filtered_data)) {
+        print(filtered_data)
+        }else{
+          print("Result is NULL")
+          }
+      })
+    
+  output$files_timeseries_filtered  <- renderText({  # Update ID to match UI
+    # Format your files_timeseries_filtered for text output
+    paste(files_timeseries_filtered(), collapse = ", ")
+  })
+  
+  # 3) Hazard class files  ####
+   files_class_filtered <- reactive({
+     c(
+      heat = files_class[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
+                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
+                  grepl(unlist(gsub("_L|_H","",hazards_filtered()[1])),files_class) &
+                  grepl(thresholds_filtered()[1],files_class)],
+      wet = files_class[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
+                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
+                  grepl(unlist(gsub("_L|_H","",hazards_filtered()[2])),files_class) &
+                  grepl(thresholds_filtered()[2],files_class)],
+      dry = files_class[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
+                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
+                  grepl(unlist(gsub("_L|_H","",hazards_filtered()[3])),files_class) &
+                  grepl(thresholds_filtered()[3],files_class)]
+     )
+    })
+
+  observe({
+    filtered_data <- files_class_filtered()
+    if (!is.null(filtered_data)) {
+      print(filtered_data)
+    }else{
+      print("Result is NULL")
+    }
+  })
+      
+  output$files_class_filtered <- renderText({
+    paste(files_class_filtered(), collapse = ", ")
+  })
+  
+  # 4) Hazard risk files ####
+  files_risk_filtered <- reactive({
+     c(
+      heat = files_risk[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
+                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
+                  grepl(unlist(gsub("_L|_H","",hazards_filtered()[1])),files_class) &
+                  grepl(thresholds_filtered()[1],files_class)],
+      wet = files_risk[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
+                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
+                  grepl(unlist(gsub("_L|_H","",hazards_filtered()[2])),files_class) &
+                  grepl(thresholds_filtered()[2],files_class)],
+      dry = files_risk[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
+                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
+                  grepl(unlist(gsub("_L|_H","",hazards_filtered()[3])),files_class) &
+                  grepl(thresholds_filtered()[3],files_class)]
+     )
+  })
+  
+  observe({
+    filtered_data <- files_risk_filtered()
+    if (!is.null(filtered_data)) {
+      print(filtered_data)
+    }else{
+      print("Result is NULL")
+    }
+  })
+  
+  output$files_risk_filtered <- renderText({
+    paste(files_risk_filtered(), collapse = ", ")
+  })
+  
+  # 5) Hazard int files
+  files_int_filtered<-reactive({
+    files_int<-list.files(paste0(haz_time_int_dir,"/",combinations_filtered()[,paste0(c(dry,heat,wet),collapse="+")]),full.names = T)
+    files_int[grepl(gsub("historical","historic",input$scenario),files_int)]
+  })
+  
+    observe({
+    filtered_data <- files_int_filtered()
+    if (!is.null(filtered_data)) {
+      print(filtered_data)
+    }else{
+      print("Result is NULL")
+    }
+  })
+  
+  output$files_int_filtered <- renderText({
+    paste(files_int_filtered(), collapse = ", ")
+  })
+  
+  # 6)  Hazard timeseries plot ####
+  output$plot_timeseries<-renderPlot({
+    data_dry<-terra::rast(files_timeseries_filtered()[3])[[1]]
+    data_heat<-terra::rast(files_timeseries_filtered()[1])[[1]]
+    data_wet<-terra::rast(files_timeseries_filtered()[2])[[1]]
+
+    data<-c(data_dry,data_heat,data_wet)
+    names(data)<-c("dry","heat","wet")
+
+    plot(data)
+  }) 
+  
+    # 7)  Hazard timeseries plot ####
+  output$plot_class<-renderPlot({
+    data_dry<-terra::rast(files_class_filtered()[3])[[1]]
+    data_heat<-terra::rast(files_class_filtered()[1])[[1]]
+    data_wet<-terra::rast(files_class_filtered()[2])[[1]]
+
+    data<-c(data_dry,data_heat,data_wet)
+    names(data)<-c("dry","heat","wet")
+
+    plot(data)
+  }) 
+  
+    # 8)  Hazard risk ####
+  output$plot_risk<-renderPlot({
+    data_dry<-terra::rast(files_risk_filtered()[3])[[1]]
+    data_heat<-terra::rast(files_risk_filtered()[1])[[1]]
+    data_wet<-terra::rast(files_risk_filtered()[2])[[1]]
+
+    data<-c(data_dry,data_heat,data_wet)
+    names(data)<-c("dry","heat","wet")
+
+    plot(data)
+  }) 
+  
+      # 9)  Hazard risk interaction ####
+  output$plot_risk_int<-renderPlot({
+    data<-terra::rast(files_int_filtered())
+    plot(data)
+  }) 
+}
+```
+
+```{r, echo=F}
+shinyApp(ui, server)
+```
