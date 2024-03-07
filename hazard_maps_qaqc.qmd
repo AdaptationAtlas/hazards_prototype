@@ -5,7 +5,7 @@ format: html
 runtime: shiny
 ---
 
-```{r set the timeframe}
+```{r set the timeframe,echo=F}
 timeframe_choice<-"annual"
 #timeframe_choice<-"jagermeyr"
 ```
@@ -268,7 +268,7 @@ combinations<-rbind(combinations_c,combinations_a)[crop!="generic"][,heat1:=unli
                                                                               ][,dry1:=unlist(tstrsplit(dry,"-",keep=1))
                                                                                 ][,dry1:=gsub("PTOT","PTOT_L",dry1)
                                                                                   ][,dry2:=unlist(tstrsplit(dry,"-",keep=2))
-                                                                                    ][,combination:=paste0("heat:",heat1," wet:",wet1," d:",dry1)]
+                                                                                    ][,combination:=paste0("dry:",dry1," heat:",heat1," wet:",wet1)]
                                                                         
 ```
 
@@ -361,13 +361,13 @@ server <- function(input, output, session) {
     c(
       heat = files_timeseries[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_timeseries) & 
                        grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_timeseries) & 
-                       grepl(unlist(gsub("_L|_H","",hazards_filtered()[1])),files_timeseries)],
+                       grepl(unlist(gsub("_L|_G","",hazards_filtered()[1])),files_timeseries)],
       wet = files_timeseries[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_timeseries) & 
                        grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_timeseries) & 
-                       grepl(unlist(gsub("_L|_H","",hazards_filtered()[2])),files_timeseries)],
+                       grepl(unlist(gsub("_L|_G","",hazards_filtered()[2])),files_timeseries)],
       dry = files_timeseries[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_timeseries) & 
                        grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_timeseries) & 
-                       grepl(unlist(gsub("_L|_H","",hazards_filtered()[3])),files_timeseries)]
+                       grepl(unlist(gsub("_L|_G","",hazards_filtered()[3])),files_timeseries)]
     )
     })
   
@@ -390,15 +390,15 @@ server <- function(input, output, session) {
      c(
       heat = files_class[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
                   grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
-                  grepl(unlist(gsub("_L|_H","",hazards_filtered()[1])),files_class) &
+                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[1])),files_class) &
                   grepl(thresholds_filtered()[1],files_class)],
       wet = files_class[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
                   grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
-                  grepl(unlist(gsub("_L|_H","",hazards_filtered()[2])),files_class) &
+                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[2])),files_class) &
                   grepl(thresholds_filtered()[2],files_class)],
       dry = files_class[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
                   grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
-                  grepl(unlist(gsub("_L|_H","",hazards_filtered()[3])),files_class) &
+                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[3])),files_class) &
                   grepl(thresholds_filtered()[3],files_class)]
      )
     })
@@ -421,15 +421,15 @@ server <- function(input, output, session) {
      c(
       heat = files_risk[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
                   grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
-                  grepl(unlist(gsub("_L|_H","",hazards_filtered()[1])),files_class) &
+                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[1])),files_class) &
                   grepl(thresholds_filtered()[1],files_class)],
       wet = files_risk[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
                   grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
-                  grepl(unlist(gsub("_L|_H","",hazards_filtered()[2])),files_class) &
+                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[2])),files_class) &
                   grepl(thresholds_filtered()[2],files_class)],
       dry = files_risk[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
                   grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
-                  grepl(unlist(gsub("_L|_H","",hazards_filtered()[3])),files_class) &
+                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[3])),files_class) &
                   grepl(thresholds_filtered()[3],files_class)]
      )
   })
