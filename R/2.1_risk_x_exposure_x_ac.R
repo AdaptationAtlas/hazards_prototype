@@ -144,10 +144,12 @@ if(is.null(haz_risk_vop_ac)){
 
 haz_risk_vop_ac[,total_pop:=as.integer(total_pop)
                 ][,rural_pop:=as.integer(rural_pop)
-                  ][,value:=round(value,0)]
+                  ][,value:=round(value,0)
+                    ][,scenario_x_time:=unique(paste0(scenario[1],"-",timeframe[1])),by=list(scenario,timeframe)]
 
 
-reduce_parquet<-function(dry,heat_crop,heat_ani,wet,interaction,data,rm_crops,filename,folder){
+# Create function that subsets parquet table
+reduce_parquet<-function(dry,heat_crop,heat_ani,wet,interaction,data,rm_crops,filename,folder,severities,scenarios,admin_level){
   # Set crop hazard combination
   crop_haz<-c(dry=dry,heat=heat_crop,wet=wet)
   
@@ -161,8 +163,22 @@ reduce_parquet<-function(dry,heat_crop,heat_ani,wet,interaction,data,rm_crops,fi
     haz<-unique(c(crop_haz,ani_haz))
   }
   
+  if(admin_level!="all"){
+    # Subset data to admin_level
+    if(admin_level=="admin2"){
+      data<-data[!is.na(admin2_name)]
+    }
+    
+    if(admin_level=="admin1"){
+      data<-data[is.na(admin2_name) & !is.na(admin1_name)]
+    }
+    
+    if(admin_level=="admin0"){
+      data<-data[is.na(admin1_name)]
+    }
+  }
   # Subset data to hazards
-  data_ss<-data[hazard_vars %in% haz]
+  data_ss<-data[hazard_vars %in% haz & severity %in% severities & scenario_x_time %in% scenarios ]
   
   # Remove crops we don't need
   data_ss<-data_ss[!crop %in% rm_crops]
@@ -171,29 +187,67 @@ reduce_parquet<-function(dry,heat_crop,heat_ani,wet,interaction,data,rm_crops,fi
   data_ss[,hazard_vars:=NULL]
   
   # Save results
-  file_r<-file.path(paste0(filename,".parquet"),folder)
-  arrow::write_parquet(data_ss,file_r)
-
+  if(!is.null(filename)){
+    file_r<-file.path(folder,paste0(filename,".parquet"))
+    arrow::write_parquet(data_ss,file_r)
+  }
+  
+  return(data_ss)
 }
 
-reduce_parquet(dry="NDWS",
+scenarios<-haz_risk_vop_ac[,unique(scenario_x_time)]
+
+reduce_parquet(data=haz_risk_vop_ac,
+               dry="NDWS",
                heat_crop="NTx35",
                heat_ani="THI_max",
                wet="NDWL0",
+               severities=c("moderate","severe","extreme"),
+               admin_level<-"all",
+               scenarios=scenarios,
                interaction=T,
-               data=haz_risk_vop_ac,
                rm_crops=c("rapeseed","sugarbeet"),
                filename = "haz_risk_vop_int_ac_reduced",
                folder=haz_risk_vop_ac_dir)
 
-
 # Subset loop ####
+
+
+# Ideally folder structure of
+# 1) admin0, admin1 and admin2
+# 2) files named by hazard, scenario, severity
 haz<-haz_risk_vop_ac[,unique(hazard_vars)]
 haz<-haz[!grepl("THI",haz)]
+haz<-strsplit(haz,"[+]")
 
-haz<-rbindlist(strsplit(haz,"+"))
+folder<-paste0(haz_risk_vop_ac_dir,"/subsets")
+if(!dir.exists(folder)){
+  dir.create(folder,recursive = T)
+}
 
-for()
+admin_level<-"admin0"
+
+for(i in 1:length(haz)){
+  for(SEV in c("moderate","severe","extreme")){
+    for(j in 1:length(scenarios)){
+      filename<-paste0(admin_level,"-",paste0(haz[[i]],collapse = "+"),"-",SEV,"-",scenarios[j])
+      print(filename)
+      X<-reduce_parquet(data=haz_risk_vop_ac,
+                     dry=haz[[i]][1],
+                     heat_crop=haz[[i]][2],
+                     heat_ani="THI_max",
+                     wet=haz[[i]][3],
+                     severities=SEV,
+                     admin_levels<-admin_level,
+                     scenarios=scenarios[j],
+                     interaction=T,
+                     rm_crops=c("rapeseed","sugarbeet"),
+                     filename = filename,
+                     folder=folder)
+    }
+}
+}
+
 
 
 
