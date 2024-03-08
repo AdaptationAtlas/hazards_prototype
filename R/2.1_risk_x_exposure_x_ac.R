@@ -141,7 +141,6 @@ if(is.null(haz_risk_vop_ac)){
 # Subset data to a specific hazard combination to reduce file size ####
 # Set population fields to be integer to reduce file size
 
-
 haz_risk_vop_ac[,total_pop:=as.integer(total_pop)
                 ][,rural_pop:=as.integer(rural_pop)
                   ][,value:=round(value,0)
@@ -149,7 +148,7 @@ haz_risk_vop_ac[,total_pop:=as.integer(total_pop)
 
 
 # Create function that subsets parquet table
-reduce_parquet<-function(dry,heat_crop,heat_ani,wet,interaction,data,rm_crops,filename,folder,severities,scenarios,admin_level){
+reduce_parquet<-function(dry,heat_crop,heat_ani,wet,interaction,data,rm_crops,filename,folder,severities,scenarios,admin_level,rm_st){
   # Set crop hazard combination
   crop_haz<-c(dry=dry,heat=heat_crop,wet=wet)
   
@@ -186,6 +185,10 @@ reduce_parquet<-function(dry,heat_crop,heat_ani,wet,interaction,data,rm_crops,fi
   # Remove hazard_vars column 
   data_ss[,hazard_vars:=NULL]
   
+  if(rm_st){
+    data_ss[,scenario_x_time:=NULL]
+  }
+  
   # Save results
   if(!is.null(filename)){
     file_r<-file.path(folder,paste0(filename,".parquet"))
@@ -203,15 +206,15 @@ reduce_parquet(data=haz_risk_vop_ac,
                heat_ani="THI_max",
                wet="NDWL0",
                severities=c("moderate","severe","extreme"),
-               admin_level<-"all",
+               admin_level<-"all", # subsets to admin0, admin1, admin2
                scenarios=scenarios,
                interaction=T,
                rm_crops=c("rapeseed","sugarbeet"),
                filename = "haz_risk_vop_int_ac_reduced",
-               folder=haz_risk_vop_ac_dir)
+               folder=haz_risk_vop_ac_dir,
+               rm_st=T)
 
 # Subset loop ####
-
 
 # Ideally folder structure of
 # 1) admin0, admin1 and admin2
@@ -243,7 +246,8 @@ for(i in 1:length(haz)){
                      interaction=T,
                      rm_crops=c("rapeseed","sugarbeet"),
                      filename = filename,
-                     folder=folder)
+                     folder=folder,
+                     rm_st=F)
     }
 }
 }
