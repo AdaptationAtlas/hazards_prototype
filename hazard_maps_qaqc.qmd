@@ -29,7 +29,7 @@ load_and_install_packages(packages)
 
 ```{css, echo=FALSE,eval=T}
 .shiny-frame{
-  width: 80vw;
+  width: 100vw;
   height: 100vw;
 }
 
@@ -281,7 +281,7 @@ ui <- dashboardPage(
     sidebarMenu(style = "position: fixed; overflow: visible;",
       selectInput("timeframe_choice", "Choose scenario:", choices = c("annual","jagermeyr"), selected = "annual"),
       selectInput("scenario", "Choose scenario:", choices = unique(Scenarios$combined), selected = "historic"),
-      selectInput("hazard", "Choose hazard combination:", choices = unique(combinations$combination), selected = "PTOT_L"),
+      selectInput("hazard", "Choose hazard combination:", choices = combinations[!grepl("THI",combination),unique(combination)], selected = "PTOT_L"),
       selectInput("crop", "Choose crop:", choices = unique(haz_class$crop), selected = "maize"),
       selectInput("severity", "Choose severity:", choices = unique(haz_class$description), selected = "Severe"),
       selectizeInput("admin0", "Choose country:", choices = unique(admin0$admin_name), selected = c("Kenya","Uganda","Tanzania","Ethiopia","Somalia"),multiple=T),
