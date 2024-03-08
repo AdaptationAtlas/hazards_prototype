@@ -22,7 +22,7 @@ load_and_install_packages <- function(packages) {
   }
 }
 
-packages <- c("terra","shinydashboard","data.table","shiny","stringi") # Ensure correct package names
+packages <- c("terra","shinydashboard","data.table","shiny","stringi","arrow","ggplot2") # Ensure correct package names
 
 load_and_install_packages(packages)
 ```
@@ -32,18 +32,20 @@ load_and_install_packages(packages)
   width: 80vw;
   height: 100vw;
 }
+
+.shiny-page-wrapper, .container-fluid {
+  margin: 0.5vw !important;
+  padding: 0.5vw !important;
+}
+
+```
+
+```{r load geographies,echo=F}
+  geo_files_local<-grep("gpkg",list.files("Data/boundaries","admin0",full.names = T),value = T)
+  admin0<-terra::vect(geo_files_local)
 ```
 
 ```{r set parameter values,echo=F,message=F,warning=F}
-haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
-haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
-haz_time_risk_dir<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
-haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
-
-files_timeseries<-list.files(haz_timeseries_dir,".tif$",full.names = T)
-files_class<-list.files(haz_time_class_dir,".tif$",full.names = T)
-files_risk<-list.files(haz_time_risk_dir,".tif$",full.names = T)
-
 # Set scenarios and time frames to analyse
 Scenarios<-c("ssp245","ssp585")
 Times<-c("2021_2040","2041_2060")
@@ -272,46 +274,93 @@ combinations<-rbind(combinations_c,combinations_a)[crop!="generic"][,heat1:=unli
                                                                         
 ```
 
-```{r ui,echo=F}
+```{r set up ui,echo=F}
 ui <- dashboardPage(
   dashboardHeader(title = "Hazards QAQC"),
-  dashboardSidebar(
-    sidebarMenu(
-      menuItem("Data Filtering", tabName = "data_filtering", icon = icon("filter")),
-            selectInput("scenario", "Choose scenario:", choices = unique(Scenarios$combined), selected = "historic"),
-            selectInput("hazard", "Choose hazard combination:", choices = unique(combinations$combination), selected = "PTOT_L"),
-            selectInput("crop", "Choose crop:", choices = unique(haz_class$crop), selected = "maize"),
-            selectInput("severity", "Choose severity:", choices = unique(haz_class$description), selected = "Severe")
+  dashboardSidebar(width=300,
+    sidebarMenu(style = "position: fixed; overflow: visible;",
+      selectInput("timeframe_choice", "Choose scenario:", choices = c("annual","jagermeyr"), selected = "annual"),
+      selectInput("scenario", "Choose scenario:", choices = unique(Scenarios$combined), selected = "historic"),
+      selectInput("hazard", "Choose hazard combination:", choices = unique(combinations$combination), selected = "PTOT_L"),
+      selectInput("crop", "Choose crop:", choices = unique(haz_class$crop), selected = "maize"),
+      selectInput("severity", "Choose severity:", choices = unique(haz_class$description), selected = "Severe"),
+      selectizeInput("admin0", "Choose country:", choices = unique(admin0$admin_name), selected = c("Kenya","Uganda","Tanzania","Ethiopia","Somalia"),multiple=T),
+      selectInput("bar_var", "Choose barplot variable:", choices = c("%","IntDollar"), selected = "%")
     )
     ),
   dashboardBody(
-        fluidRow(
-          # The first 5 boxes are for debugging file selections are working
-          #box(DT::dataTableOutput("haz_class_filtered"), width = 12) ,
-          #box(textOutput("files_timeseries_filtered"), width = 12),
-          #box(textOutput("files_class_filtered"), width = 12) ,
-          #box(textOutput("files_risk_filtered"), width = 12),
-          #box(textOutput("files_int_filtered"), width = 12),
-          box(plotOutput("plot_timeseries"),title="Timeseries (year1)"),
-          box(plotOutput("plot_class"),title="Classified timeseries (year1)"),
-          box(plotOutput("plot_risk"),title="Hazard risk (over timeseries)"),
-          box(plotOutput("plot_risk_int"),title = "Hazard risk interactions")
-        )
+    fluidRow(
+      # The first 5 boxes are for debugging file selections are working
+      box(DT::dataTableOutput("haz_class_filtered"), width = 12) 
+      ),
+    #box(textOutput("files_timeseries_filtered"), width = 12),
+    #box(textOutput("files_class_filtered"), width = 12) ,
+    #box(textOutput("files_risk_filtered"), width = 12),
+    #box(textOutput("files_int_filtered"), width = 12),
+    #box(textOutput("files_vop_filtered"), width = 12),
+    fluidRow(
+      box(plotOutput("plot_timeseries"),title="Timeseries (year1)", width = "1400px",height="400px",style = "padding: 0;")
+      ),
+    fluidRow(
+      box(plotOutput("plot_class"),title="Classified timeseries (year1)", width = "1400px",height="400px",style = "padding: 0;")
+      ),
+    fluidRow(
+      box(plotOutput("plot_risk"),title="Hazard risk (over timeseries)", width = "1400px",height="400px",style = "padding: 0;")
+      ),
+    fluidRow(
+      box(plotOutput("plot_risk_int1"),title = "Hazard risk interactions", width = "1400px",height="400px",style = "padding: 0;")
+      ),
+      fluidRow(
+      box(plotOutput("plot_risk_int2"), width = "1400px",height="400px",style = "padding: 0;")
+      ),
+    fluidRow(
+      box(DT::dataTableOutput("vop_data"), width = 12,title="VoP exposed")
+      ),
+    fluidRow(
+      box(plotOutput("vop_bar_plot"), width = 12,height="600px")
+      )
+    )
   )
-  )
+  
 ```
 
 ```{r set up server,echo=F,eval=T}
 server <- function(input, output, session) {
+
+  observe({
+    print(paste("Timeframe:", input$timeframe_choice))
+    print(paste("Scenario:", input$scenario))
+    print(paste("Hazard:", input$hazard))
+    print(paste("Crop:", input$crop))
+    print(paste("Severity:", input$severity))
+  })
   
-    observe({
-      print(paste("Scenario:", input$scenario))
-      print(paste("Hazard:", input$hazard))
-      print(paste("Crop:", input$crop))
-      print(paste("Severity:", input$severity))
-      })
+  #-2) Subset geography ####
+  admin0_ss<-reactive({
+    admin0[admin0$admin_name %in% input$admin0,]
+  })
   
-#0) Create hazards ####
+  #-1) Create folders & list files ####
+  
+haz_timeseries_dir<-reactive({paste0("Data/hazard_timeseries/",input$timeframe_choice)})
+haz_time_class_dir<-reactive({paste0("Data/hazard_timeseries_class/",input$timeframe_choice)})
+haz_time_risk_dir<-reactive({paste0("Data/hazard_timeseries_risk/",input$timeframe_choice)})
+haz_time_int_dir<-reactive({paste0("Data/hazard_timeseries_int/",input$timeframe_choice)})
+haz_risk_vop_ac_dir<-reactive({paste0("Data/hazard_risk_vop_ac/",input$timeframe_choice,"/subsets")})
+
+files_timeseries<-reactive({list.files(haz_timeseries_dir(),".tif$",full.names = T)})
+files_class<-reactive({list.files(haz_time_class_dir(),".tif$",full.names = T)})
+files_risk<-reactive({list.files(haz_time_risk_dir(),".tif$",full.names = T)})
+files_vop<-reactive({list.files(haz_risk_vop_ac_dir(),".parquet$",full.names = T)})
+
+  observe({
+    print(paste("Files timeseries :", files_timeseries()[1]))
+    print(paste("Files class: ", files_class()[1]))
+    print(paste("Files risk: ", files_risk()[1]))
+    print(paste("Files vop: ", files_vop()[1]))
+  })
+
+  #0) Create hazards ####
   combinations_filtered<-reactive({
     combinations[combination == input$hazard & severity_class==input$severity & crop==input$crop,]
     })
@@ -330,7 +379,7 @@ server <- function(input, output, session) {
     print(hazards_filtered())
   })
   
-#1) Hazard classes  ####
+  #1) Hazard classes  ####
   haz_class_filtered <- reactive({
     # Assuming `haz_class` is a data frame or data table available in your global environment
      haz_class[haz_class$index_name2 %in% hazards_filtered() & 
@@ -359,15 +408,15 @@ server <- function(input, output, session) {
   #2) Hazard timeseries files ####
    files_timeseries_filtered <- reactive({
     c(
-      heat = files_timeseries[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_timeseries) & 
-                       grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_timeseries) & 
-                       grepl(unlist(gsub("_L|_G","",hazards_filtered()[1])),files_timeseries)],
-      wet = files_timeseries[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_timeseries) & 
-                       grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_timeseries) & 
-                       grepl(unlist(gsub("_L|_G","",hazards_filtered()[2])),files_timeseries)],
-      dry = files_timeseries[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_timeseries) & 
-                       grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_timeseries) & 
-                       grepl(unlist(gsub("_L|_G","",hazards_filtered()[3])),files_timeseries)]
+      heat = files_timeseries()[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_timeseries()) & 
+                       grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_timeseries()) & 
+                       grepl(unlist(gsub("_L|_G","",hazards_filtered()[1])),files_timeseries())],
+      wet = files_timeseries()[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_timeseries()) & 
+                       grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_timeseries()) & 
+                       grepl(unlist(gsub("_L|_G","",hazards_filtered()[2])),files_timeseries())],
+      dry = files_timeseries()[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_timeseries()) & 
+                       grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_timeseries()) & 
+                       grepl(unlist(gsub("_L|_G","",hazards_filtered()[3])),files_timeseries())]
     )
     })
   
@@ -385,23 +434,24 @@ server <- function(input, output, session) {
     paste(files_timeseries_filtered(), collapse = ", ")
   })
   
-  # 3) Hazard class files  ####
-   files_class_filtered <- reactive({
-     c(
-      heat = files_class[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
-                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
-                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[1])),files_class) &
-                  grepl(thresholds_filtered()[1],files_class)],
-      wet = files_class[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
-                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
-                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[2])),files_class) &
-                  grepl(thresholds_filtered()[2],files_class)],
-      dry = files_class[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
-                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
-                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[3])),files_class) &
-                  grepl(thresholds_filtered()[3],files_class)]
-     )
-    })
+  #3) Hazard class files  ####
+files_class_filtered <- reactive({
+  c(
+    heat = files_class()[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)), files_class()) & 
+                         grepl(unlist(tstrsplit(input$scenario,"-",keep=2)), files_class()) &
+                         grepl(unlist(gsub("_L|_G","",hazards_filtered()[1])), files_class()) &
+                         grepl(thresholds_filtered()[1], files_class())],
+    wet = files_class()[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)), files_class()) & 
+                         grepl(unlist(tstrsplit(input$scenario,"-",keep=2)), files_class()) &
+                         grepl(unlist(gsub("_L|_G","",hazards_filtered()[2])), files_class()) &
+                         grepl(thresholds_filtered()[2], files_class())],
+    dry = files_class()[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)), files_class()) & 
+                         grepl(unlist(tstrsplit(input$scenario,"-",keep=2)), files_class()) &
+                         grepl(unlist(gsub("_L|_G","",hazards_filtered()[3])), files_class()) &
+                         grepl(thresholds_filtered()[3], files_class())]
+  )
+})
+
 
   observe({
     filtered_data <- files_class_filtered()
@@ -416,21 +466,21 @@ server <- function(input, output, session) {
     paste(files_class_filtered(), collapse = ", ")
   })
   
-  # 4) Hazard risk files ####
+  #4) Hazard risk files ####
   files_risk_filtered <- reactive({
      c(
-      heat = files_risk[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
-                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
-                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[1])),files_class) &
-                  grepl(thresholds_filtered()[1],files_class)],
-      wet = files_risk[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
-                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
-                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[2])),files_class) &
-                  grepl(thresholds_filtered()[2],files_class)],
-      dry = files_risk[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_class) & 
-                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_class) &
-                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[3])),files_class) &
-                  grepl(thresholds_filtered()[3],files_class)]
+      heat = files_risk()[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_risk()) & 
+                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_risk()) &
+                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[1])),files_risk()) &
+                  grepl(thresholds_filtered()[1],files_risk())],
+      wet = files_risk()[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_risk()) & 
+                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_risk()) &
+                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[2])),files_risk()) &
+                  grepl(thresholds_filtered()[2],files_risk())],
+      dry = files_risk()[grepl(unlist(tstrsplit(input$scenario,"-",keep=1)),files_risk()) & 
+                  grepl(unlist(tstrsplit(input$scenario,"-",keep=2)),files_risk()) &
+                  grepl(unlist(gsub("_L|_G","",hazards_filtered()[3])),files_risk()) &
+                  grepl(thresholds_filtered()[3],files_risk())]
      )
   })
   
@@ -447,9 +497,11 @@ server <- function(input, output, session) {
     paste(files_risk_filtered(), collapse = ", ")
   })
   
-  # 5) Hazard int files
+  #5) Hazard int files ####
+  int_name<-reactive({combinations_filtered()[,paste0(c(dry,heat,wet),collapse="+")]})
+  
   files_int_filtered<-reactive({
-    files_int<-list.files(paste0(haz_time_int_dir,"/",combinations_filtered()[,paste0(c(dry,heat,wet),collapse="+")]),full.names = T)
+    files_int<-list.files(paste0(haz_time_int_dir(),"/",int_name()),full.names = T)
     files_int[grepl(gsub("historical","historic",input$scenario),files_int)]
   })
   
@@ -460,13 +512,43 @@ server <- function(input, output, session) {
     }else{
       print("Result is NULL")
     }
+    print(int_name())
   })
   
   output$files_int_filtered <- renderText({
     paste(files_int_filtered(), collapse = ", ")
   })
   
-  # 6)  Hazard timeseries plot ####
+  #X) VoP files ####
+   files_vop_filtered <- reactive({
+     int_name2<-unlist(strsplit(int_name(),"[+]"))
+     int_name2<-gsub("PTOT-L","PTOT_L-",int_name2)
+     int_name2<-gsub("PTOT-G","PTOT_G-",int_name2)
+     int_name2<-gsub("TAVG-G","TAVG_G-",int_name2)
+     int_name2<-unlist(tstrsplit(int_name2,"-",keep=1))
+     int_name2<-paste0(int_name2,collapse="+")
+     
+      files_vop()[grepl("admin0",files_vop()) & 
+                  grepl(gsub("historical","historic",input$scenario),files_vop()) & 
+                  grepl(tolower(input$severity),files_vop()) &
+                  grepl(int_name2,files_vop(),fixed=T)]
+  })
+  
+  observe({
+    filtered_data <- files_vop_filtered()
+    if (!is.null(filtered_data)) {
+      print(filtered_data)
+    }else{
+      print("Result is NULL")
+    }
+  })
+  
+  output$files_vop_filtered <- renderText({
+    paste(files_vop_filtered(), collapse = ", ")
+  })
+  
+  
+  #6) Hazard timeseries plot ####
   output$plot_timeseries<-renderPlot({
     data_dry<-terra::rast(files_timeseries_filtered()[3])[[1]]
     data_heat<-terra::rast(files_timeseries_filtered()[1])[[1]]
@@ -474,11 +556,13 @@ server <- function(input, output, session) {
 
     data<-c(data_dry,data_heat,data_wet)
     names(data)<-c("dry","heat","wet")
+    
+    data<-terra::mask(terra::crop(data,admin0_ss()),admin0_ss())
 
-    plot(data)
+    plot(data,nc=3,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2))
   }) 
   
-    # 7)  Hazard timeseries plot ####
+  #7)  Hazard timeseries plot ####
   output$plot_class<-renderPlot({
     data_dry<-terra::rast(files_class_filtered()[3])[[1]]
     data_heat<-terra::rast(files_class_filtered()[1])[[1]]
@@ -486,11 +570,13 @@ server <- function(input, output, session) {
 
     data<-c(data_dry,data_heat,data_wet)
     names(data)<-c("dry","heat","wet")
+    
+    data<-terra::mask(terra::crop(data,admin0_ss()),admin0_ss())
 
-    plot(data)
+    plot(data,nc=3,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2))
   }) 
   
-    # 8)  Hazard risk ####
+  #8)  Hazard risk plot ####
   output$plot_risk<-renderPlot({
     data_dry<-terra::rast(files_risk_filtered()[3])[[1]]
     data_heat<-terra::rast(files_risk_filtered()[1])[[1]]
@@ -498,16 +584,78 @@ server <- function(input, output, session) {
 
     data<-c(data_dry,data_heat,data_wet)
     names(data)<-c("dry","heat","wet")
+    
+    data<-terra::mask(terra::crop(data,admin0_ss()),admin0_ss())
 
-    plot(data)
+    plot(data,nc=3,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2))
   }) 
   
-      # 9)  Hazard risk interaction ####
-  output$plot_risk_int<-renderPlot({
-    data<-terra::rast(files_int_filtered())
-    plot(data)
+  #9)  Hazard risk interaction plot ####
+      data<-reactive({
+        data<-terra::rast(files_int_filtered())
+        terra::mask(terra::crop(data,admin0_ss()),admin0_ss())
+      })
+  output$plot_risk_int1<-renderPlot({
+    plot(data()[[1:4]],nc=4,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2))
   }) 
-}
+  output$plot_risk_int2<-renderPlot({
+    plot(data()[[5:8]],nc=4,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2))
+  }) 
+  
+  
+  #10) VoP Exposure ####
+  vop_data<-reactive({
+    data<-data.table(arrow::read_parquet(files_vop_filtered()))
+    data<-data[hazard!="any"
+               ][crop!="generic"
+               ][admin0_name %in% input$admin0 #& crop %in% input$crop
+                 ][,list(admin0_name,scenario,timeframe,crop,severity,hazard,value)
+                   ][,list(value=sum(value,na.rm=T)),by=list(crop,hazard)
+                     ][,total_value:=sum(value,na.rm=T),by=crop
+                       ][,value_p:=100*(value/total_value)]
+    return(data)
+    })
+  
+  output$vop_data <- DT::renderDataTable({
+    DT::datatable(vop_data()[,value:=round(value,0)
+                           ][,total_value:=round(total_value,0)
+                             ][,value_p:=round(value_p,0)])
+  })
+  
+  output$vop_bar_plot <- renderPlot({
+    
+    vop_data_ordered<-vop_data()
+    vop_data_ordered$hazard <- factor(vop_data_ordered$hazard, levels = rev(c("dry", "heat", "wet", "dry+heat", "dry+wet", "heat+wet","dry+heat+wet","No hazard")))
+    custom_colors <- c("dry" = "#F28E2B", "heat" = "#E15759", "wet" = "#76B7B2", "dry+heat" = "#59A14F", "dry+wet" = "#EDC948", "heat+wet" = "#B07AA1","dry+heat+wet" = "black", "No hazard" = "grey90")
+    
+    if(input$bar_var=="IntDollar"){
+      vop_data_ordered[,plot_value:=value]
+      y_lab<-"Total Value (IntDollar)"
+    }else{
+      vop_data_ordered[,plot_value:=value_p]
+      y_lab<-"Total Value (%)"
+    }
+
+
+  ggplot(vop_data_ordered, aes(x = crop, y = plot_value, fill = hazard)) +
+    geom_bar(stat = "identity", position = "stack") +
+    labs(x = "Crop", y = y_lab, fill = "Hazard") +
+    coord_flip() +  # Flipping coordinates to have crops on the y-axis
+    theme_minimal() +
+   scale_fill_manual(values = custom_colors) + # Using custom color palette
+      theme(
+      axis.text = element_text(size=14),      
+      axis.title = element_text(size = 16), # Adjusting axis title size
+      legend.title = element_text(size = 14), # Adjusting legend title size
+      legend.text = element_text(size = 14), # Adjusting legend text size
+      panel.spacing.y = unit(0.5, "lines") # Reducing space between bars
+      )
+    
+  },height = function() {
+  # Calculate height dynamically or return a fixed number
+  return(600)
+})
+  }
 ```
 
 ```{r, echo=F}
