@@ -555,7 +555,9 @@ for(j in 1:length(files_fut)){
            
            if(!all(file.exists(save_names))|!file.exists(save_name_any)|overwrite==T){
             
-            files<-sapply(combos,FUN=function(x){haz_class_files[grepl(x,haz_class_files2) & grepl(Scenarios[l,combined],haz_class_files2)]})
+            files<-sapply(combos,FUN=function(x){haz_class_files[grepl(x,haz_class_files2) & 
+                                                                   grepl(Scenarios[l,Scenario],haz_class_files2) & 
+                                                                   grepl(Scenarios[l,Time],haz_class_files2)]})
             
             haz<-lapply(files,rast)
             names(haz)<-names(files)
