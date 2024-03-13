@@ -16,7 +16,6 @@ packages <- c("terra",
               "sf", 
               "sfarrow", 
               "arrow",
-              "feather",
               "doFuture",
               "stringr", 
               "stringi",
@@ -978,7 +977,7 @@ if(!dir.exists(haz_risk_n_dir)){
                       severity=unlist(severity_classes[,1]),
                       Geographies=Geographies,
                       overwrite=overwrite)
-  # 1.2) Restructure extracted data ####
+    # 1.2) Restructure extracted data ####
 
     restructure_parquet(filename = "haz_risk_int",
                       save_dir = haz_risk_dir,

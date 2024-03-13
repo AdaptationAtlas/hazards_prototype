@@ -1359,3 +1359,640 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
   X
   
 }
+
+#' Read and Process MapSPAM Data
+#'
+#' This function reads agricultural variable data for a given technology from MapSPAM, processes it, and saves it as a raster file. If the file already exists, it can be optionally overwritten or simply read from disk.
+#'
+#' @param variable Character string specifying the agricultural variable to process.
+#' @param technology Character string specifying the technology level (e.g., "HighYield").
+#' @param mapspam_dir Character string of the directory containing MapSPAM CSV files.
+#' @param save_dir Character string of the directory where output raster files are saved.
+#' @param base_rast Raster object specifying the base raster for resampling.
+#' @param filename Character string specifying the base name for the output raster file.
+#' @param ms_codes Data frame mapping MapSPAM codes to full crop names.
+#' @param overwrite Logical indicating whether to overwrite existing files.
+#' @return A raster object of the processed MapSPAM data.
+#' @examples
+#' base_rast <- terra::rast(system.file("ex/lux.tif", package="terra"))
+#' ms_codes <- data.frame(Code = c("maize"), Fullname = c("Maize"))
+#' data <- read_spam("production", "HighYield", "/path/to/mapspam", "/path/to/save", base_rast, "maize_highyield", ms_codes, TRUE)
+#' @export
+read_spam <- function(variable, technology, mapspam_dir, save_dir, base_rast, filename, ms_codes, overwrite) {
+  # Construct the filename for the output raster file.
+  ms_file <- paste0(save_dir, "/", filename, ".tif")
+  
+  # Check if the file exists and whether it should be overwritten. If it doesn't exist or should be overwritten, process the data.
+  if (!file.exists(ms_file) | overwrite == T) {
+    # Read the CSV file containing the MapSPAM data for the given variable and technology.
+    data <- fread(paste0(mapspam_dir, "/SSA_", variable, "_", technology, ".csv"))
+    
+    # Prepare a list of crop names to filter from the MapSPAM data, based on the ms_codes lookup table.
+    crops <- tolower(ms_codes$Code)
+    
+    # Identify the columns in the data that match the crop names, plus x and y coordinates.
+    ms_fields <- c("x", "y", grep(paste0(crops, collapse = "|"), colnames(data), value=T))
+    
+    # Convert the selected columns of the CSV data into a raster, setting the projection to EPSG:4326.
+    data <- terra::rast(data[, ..ms_fields], type="xyz", crs="EPSG:4326")
+    
+    # Clean up the names of the data columns, removing suffixes and matching them to full crop names from ms_codes.
+    names(data) <- gsub("_a$|_h$|_i$|_l$|_r$|_s$", "", names(data))
+    names(data) <- ms_codes[match(names(data), tolower(ms_codes$Code)), Fullname]
+    
+    # Convert the raster values from total values to values per hectare, based on cell size.
+    data <- data / terra::cellSize(data, unit="ha")
+    
+    # Resample the raster data to match the resolution and extent of the base_rast.
+    data <- terra::resample(data, base_rast)
+    
+    # Convert the resampled values back to total values by multiplying by the new cell size.
+    data <- data * cellSize(data, unit="ha")
+    
+    # Save the processed raster data to a file.
+    terra::writeRaster(data, filename=ms_file, overwrite=T)
+  } else {
+    # If the file exists and should not be overwritten, simply read the existing raster file.
+    data <- terra::rast(ms_file)
+  }
+  
+  # Return the raster data.
+  return(data)
+}
+
+#' Spatial Data Extraction by Administrative Levels
+#'
+#' Extracts spatial data for specified administrative levels (e.g., countries, states/provinces, counties/districts) using precise area weighting. The function supports applying a specified summary function (e.g., mean) to the data during the extraction process.
+#'
+#' @param data Raster layer from which to extract data.
+#' @param Geographies List containing `spatvect` or `sf` objects for each administrative level to be processed (`admin0`, `admin1`, `admin2`).
+#' @param FUN Character string naming the function to apply when summarizing data for each administrative area. Defaults to "mean".
+#' @param max_cells_in_memory Numeric, sets the maximum number of raster cells to keep in memory during the extraction process, influencing performance and memory usage.
+#' @return A list of `data.frame` objects containing the extracted data merged with geographical metadata for each requested administrative level.
+#' @examples
+#' # Assuming 'data' is a raster layer and 'Geographies' is a list of sf objects for admin0, admin1, and admin2 levels:
+#' extracted_data <- admin_extract(data, Geographies, FUN = "mean", max_cells_in_memory = 30000000)
+#' @export
+# The `admin_extract` function performs spatial extraction of data for specified administrative levels using exact extraction methods, then merges the extracted data with geographical metadata.
+admin_extract <- function(data, Geographies, FUN = "mean", max_cells_in_memory = 3*10^7) {
+  # Initialize an empty list to store the output data frames for each administrative level.
+  output <- list()
+  
+  # Process administrative level 0 data if present in the Geographies list.
+  if ("admin0" %in% names(Geographies)) {
+    # Perform exact extraction of data for admin0 level, appending relevant columns and applying the specified function (e.g., mean).
+    data0 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin0), fun = FUN, append_cols = c("admin_name", "admin0_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
+    # Merge the extracted data with admin0 geographical metadata.
+    data0 <- terra::merge(Geographies$admin0, data0)
+    # Add the merged data frame to the output list under the admin0 key.
+    output$admin0 <- data0
+  }
+  
+  # Repeat the process for administrative level 1 data if present.
+  if ("admin1" %in% names(Geographies)) {
+    data1 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin1), fun = FUN, append_cols = c("admin_name", "admin0_name", "admin1_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
+    data1 <- terra::merge(Geographies$admin1, data1)
+    output$admin1 <- data1
+  }
+  
+  # Repeat the process for administrative level 2 data if present.
+  if ("admin2" %in% names(Geographies)) {
+    data2 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin2), fun = FUN, append_cols = c("admin_name", "admin0_name", "admin1_name", "admin2_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
+    data2 <- terra::merge(Geographies$admin2, data2)
+    output$admin2 <- data2
+  }
+  
+  # Return the list containing the merged data frames for each processed administrative level.
+  return(output)
+}
+
+#' Wrap Spatial Data Extraction and Save as Parquet
+#'
+#' This function wraps around the `admin_extract` function to perform spatial data extraction for specified administrative levels. It processes and formats the extracted data, then saves it as Parquet files. If specified files already exist, they can be optionally overwritten or read directly.
+#'
+#' @param data Raster layer or object from which to extract data.
+#' @param save_dir Directory where output Parquet files will be saved.
+#' @param filename Base name for the output Parquet files.
+#' @param FUN Aggregation function to apply during data extraction (e.g., "sum").
+#' @param varname Name of the variable being processed, to be added to the output data.
+#' @param Geographies List containing `spatvect` or `sf` objects for each administrative level to be processed.
+#' @param overwrite Logical; if TRUE, existing Parquet files will be overwritten.
+#' @return A data.table object containing the processed and formatted data from all administrative levels.
+#' @examples
+#' # Assuming 'data' is a raster layer, 'Geographies' is a list of sf objects, and other parameters are set:
+#' processed_data <- admin_extract_wrap(data, "/path/to/save", "my_data", "sum", "my_variable", Geographies, FALSE)
+#' @export
+admin_extract_wrap <- function(data, save_dir, filename, FUN = "sum", varname, Geographies, overwrite = F) {
+  
+  # Define a mapping of administrative level names to short codes.
+  levels <- c(admin0 = "adm0", admin1 = "adm1", admin2 = "adm2")
+  
+  # Create filenames for saving the output based on administrative level and aggregation function.
+  file <- paste0(save_dir, "/", filename, "_adm_", FUN, ".parquet")
+  file0 <- gsub("_adm_", "_adm0_", file)
+  file1 <- gsub("_adm_", "_adm1_", file)
+  file2 <- gsub("_adm_", "_adm2_", file)
+  
+  # Check if any of the files don't exist or if overwrite is enabled. If so, proceed with data extraction.
+  if (!file.exists(file) | !file.exists(file1) | overwrite == T) {
+    # Extract data for all specified administrative levels.
+    data_ex <- admin_extract(data, Geographies, FUN = FUN)
+    
+    # Save the extracted data for each administrative level as a Parquet file.
+    st_write_parquet(obj = sf::st_as_sf(data_ex$admin0), dsn = file0)
+    st_write_parquet(obj = sf::st_as_sf(data_ex$admin1), dsn = file1)
+    st_write_parquet(obj = sf::st_as_sf(data_ex$admin2), dsn = file2)
+    
+    # Process the extracted data to format it for analysis or further processing.
+    data_ex <- rbindlist(lapply(1:length(levels), FUN = function(i) {
+      level <- levels[i]
+      print(level)
+      
+      # Convert the data to a data.table and remove specific columns.
+      data <- data.table(data.frame(data_ex[[names(level)]]))
+      data <- data[, !c("admin_name", "iso3")]
+      
+      # Determine the administrative level being processed and adjust the data accordingly.
+      admin <- "admin0_name"
+      if (level %in% c("adm1", "adm2")) {
+        admin <- c(admin, "admin1_name")
+        data <- suppressWarnings(data[, !"a1_a0"])
+      }
+      
+      if (level == "adm2") {
+        admin <- c(admin, "admin2_name")
+        data <- suppressWarnings(data[, !"a2_a1_a0"])
+      }
+      
+      # Adjust column names and reshape the data.
+      colnames(data) <- gsub("_nam$", "_name", colnames(data))
+      data <- melt(data, id.vars = admin)
+      
+      # Add and modify columns to include crop type and exposure information.
+      data[, crop := gsub(paste0(FUN, "."), "", variable[1], fixed = T), by = variable]
+      data[, exposure := varname]
+      data[, variable := NULL]
+      
+      data
+    }), fill = T)
+    # Adjust the crop column formatting.
+    data_ex[, crop := gsub(".", " ", crop, fixed = T)]
+    
+    # Save the processed data to a single Parquet file.
+    arrow::write_parquet(data_ex, file)
+  } else {
+    # If the Parquet file exists and should not be overwritten, read it instead of processing data.
+    data_ex <- arrow::read_parquet(file)
+  }
+  
+  # Return the processed or read data.
+  return(data_ex)
+}
+
+
+#' Process and Save Spatial Data by Severity and Administrative Level
+#'
+#' Iterates over specified severity levels to extract spatial data for given administrative levels (admin0, admin1, admin2) and saves the extracted data into Parquet files. Allows for overwriting existing files.
+#'
+#' @param files Vector of file paths pointing to raster data files to be processed.
+#' @param save_dir Directory where the output Parquet files will be saved.
+#' @param filename Base name to be used for generating the output file names.
+#' @param severity Vector of severity classes to be processed.
+#' @param overwrite Logical; if TRUE, existing Parquet files for the given severity and administrative level will be overwritten.
+#' @param FUN Aggregation function (passed as a character string) to be applied during data extraction.
+#' @param Geographies List containing `spatvect` or `sf` objects for each administrative level to be processed.
+#' @examples
+#' # Example usage assuming 'files', 'save_dir', 'filename', 'severity', and 'Geographies' are defined:
+#' admin_extract_wrap2(files, save_dir, "my_data", c("high", "low"), FALSE, "mean", Geographies)
+#' @export
+admin_extract_wrap2 <- function(files, save_dir, filename, severity, overwrite = F, FUN = "mean", Geographies) {
+  
+  # Loop through each severity level provided in the 'severity' argument.
+  for(SEV in tolower(severity)) {
+    
+    # Construct file paths for output Parquet files for administrative levels 0, 1, and 2.
+    file0 <- paste0(save_dir, "/", filename, "_adm0_", SEV, ".parquet")
+    file1 <- gsub("_adm0_", "_adm1_", file0)
+    file2 <- gsub("_adm0_", "_adm2_", file0)
+    
+    # Load raster data that matches the current severity level from the provided files.
+    data <- terra::rast(files[grepl(SEV, files)])
+    
+    # Process and save data for admin0 level if the file doesn't exist or if overwrite is enabled.
+    if ((!file.exists(file0)) | overwrite == T) {
+      # Display current progress.
+      cat('\r', paste("Adm0 - Severity Class:", SEV))
+      flush.console()
+      
+      # Extract data for the admin0 level using the `admin_extract` function.
+      data_ex <- admin_extract(data, Geographies["admin0"], FUN = FUN)
+      # Write the extracted data to a Parquet file.
+      sfarrow::st_write_parquet(obj = sf::st_as_sf(data_ex$admin0), dsn = file0)
+    }
+    
+    # Repeat the process for admin1 and admin2 levels.
+    if ((!file.exists(file1)) | overwrite == T) {
+      cat('\r', paste("Adm1 - Severity Class:", SEV))
+      flush.console()
+      
+      data_ex <- admin_extract(data, Geographies["admin1"], FUN = FUN)
+      sfarrow::st_write_parquet(obj = sf::st_as_sf(data_ex$admin1), dsn = file1)
+    }
+    
+    if ((!file.exists(file2)) | overwrite == T) {
+      cat('\r', paste("Adm2 - Severity Class:", SEV))
+      flush.console()
+      
+      data_ex <- admin_extract(data, Geographies["admin2"], FUN = FUN)
+      sfarrow::st_write_parquet(obj = sf::st_as_sf(data_ex$admin2), dsn = file2)
+    }
+  }
+}
+
+#' Restructure and Save Parquet Data Files by Severity
+#'
+#' For given severity levels, this function restructures spatial data stored in Parquet files by combining and refining it based on crops, livestock, scenarios, and hazards. It outputs restructured data into new Parquet files, supporting optional overwrite of existing files.
+#'
+#' @param filename Base name for reading input Parquet files.
+#' @param save_dir Directory where the output Parquet files will be saved.
+#' @param severity Vector of severity levels to process.
+#' @param overwrite Logical; determines if existing output files should be overwritten.
+#' @param crops Vector of crop names to include in the restructuring process.
+#' @param livestock Vector of livestock names to include in the restructuring process.
+#' @param Scenarios Data frame or list mapping scenarios to specific attributes for inclusion in the output.
+#' @param hazards Vector of hazard types to include in the restructuring process.
+#' @examples
+#' # Assuming proper setup and existence of the necessary directories and data:
+#' restructure_parquet("data_filename", "/path/to/save", c("High", "Medium", "Low"), FALSE, c("Wheat", "Maize"), c("Cattle"), Scenarios, c("Drought", "Flood"))
+#' @export
+restructure_parquet<-function(filename,save_dir,severity,overwrite=F,crops,livestock,Scenarios,hazards){
+  severity<-tolower(severity)
+  for(SEV in severity){
+    file<-paste0(save_dir,"/",filename,"_adm_",SEV,".parquet")
+    
+    if((!file.exists(file))|overwrite==T){
+      file0<-paste0(save_dir,"/",filename,"_adm0_",SEV,".parquet")
+      file1<-gsub("_adm0_","_adm1_",file0)
+      file2<-gsub("_adm0_","_adm2_",file0)
+      
+      files<-list(adm0=file0,adm1=file1,adm2=file2)
+      
+      # Read in geoparquet vectors, extract tabular data and join together
+      data<-rbindlist(lapply(1:length(files),FUN=function(i){
+        file<-files[i]
+        level<-names(files[i])
+        
+        print(paste0(SEV,"-",level))
+        
+        admins<-"admin0_name"
+        
+        if(level %in% c("adm1","adm2")){
+          admins<-c(admins,"admin1_name")
+        }
+        
+        if(level=="adm2"){
+          admins<-c(admins,"admin2_name")
+        }
+        
+        data<-data.table(data.frame(terra::vect(sfarrow::st_read_parquet(files[[i]]))))
+        data<-suppressWarnings(data[,!c("admin_name","iso3","a2_a1_a0","a1_a0")])
+        
+        colnames(data)<-gsub("_nam$","_name",colnames(data))
+        
+        melt(data,id.vars = admins)
+      }),fill=T)
+      data[,variable:=as.character(variable)]
+      
+      variable_old<-data[,unique(variable)]
+      
+      # Replace dots in hazard names with a "+"
+      old<-c("dry[.]heat","dry[.]wet","heat[.]wet","dry[.]heat[.]wet")
+      new<-c("dry+heat","dry+wet","heat+wet","dry+heat+wet")
+      
+      variable_old2<-stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F)
+      
+      # Renaming of variable to allow splitting
+      new<-paste0(Scenarios$combined,"-")
+      old<-paste0(Scenarios[,paste0(Scenario,"[.]",Time)],"[.]")
+      
+      # Replace space in the crop names with a . to match the parquet column names
+      new<-c(new,paste0("-",crops,"-"))
+      old<-c(old,paste0("[.]",gsub(" ",".",crops,fixed = T),"[.]"))
+      
+      new<-c(new,paste0("-",livestock,"-"))
+      old<-c(old,paste0("[.]",livestock,"[.]"))
+      
+      new<-c(new,paste0(c("any",hazards),"-"))
+      old<-c(old,paste0(c("any",hazards),"[.]"))
+      
+      variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F))
+      
+      # Note this method of merging a list back to the original table is much faster than the method employed in the hazards x exposure section
+      split<-variable_new[,list(var_split=list(tstrsplit(variable[1],"-"))),by=variable]
+      split_tab<-rbindlist(split$var_split)
+      colnames(split_tab)<-c("scenario","timeframe","hazard","hazard_vars","crop","severity")
+      split_tab$variable<-variable_old
+      split_tab[,hazard_vars:=gsub(".","+",hazard_vars[1],fixed=T),by=hazard_vars
+      ][,scenario:=unlist(tstrsplit(scenario[1],".",keep=2,fixed=T)),by=scenario
+      ][,severity:=tolower(severity)]
+      
+      data<-merge(data,split_tab,all.x=T)
+      data[,variable:=NULL]
+      
+      arrow::write_parquet(data,file)
+    }
+    
+  }
+  
+}
+
+#' Extract Hazard Risk and Exposure Data and Save to Parquet
+#'
+#' For given severity classes, this function extracts hazard risk and exposure data from raster files, optionally focusing on interactions or solo hazards. It allows for filtering out specific hazards or crops and saves the processed data in Parquet format for different administrative levels.
+#'
+#' @param severity_classes Data frame or list specifying the severity classes to process.
+#' @param interactions Logical; if TRUE, only considers files indicating hazard interactions.
+#' @param folder String specifying the directory containing raster files to be processed.
+#' @param overwrite Logical; if TRUE, existing Parquet files will be overwritten.
+#' @param rm_haz Vector of hazard names to be removed from the analysis.
+#' @param rm_crop Vector of crop names to be removed from the analysis.
+#' @examples
+#' # Assuming setup and existence of the necessary directories and data:
+#' haz_risk_exp_extract(severity_classes = df_severity, interactions = TRUE, folder = "/path/to/data", overwrite = FALSE, rm_haz = c("flood"), rm_crop = NULL)
+#' @export
+# Function to extract hazard risk and exposure data for specified severity classes and save in Parquet format.
+haz_risk_exp_extract <- function(severity_classes, interactions, folder, overwrite = F, rm_haz = NULL, rm_crop = NULL) {
+  
+  # List all TIFF files in the specified folder.
+  files <- list.files(folder, ".tif$", full.names = T)
+  
+  # Filter files based on whether interactions are considered.
+  if (interactions) {
+    files <- grep("-int-", files, value = T)
+    filename <- "int"
+  } else {
+    files <- files[!grepl("-int-", files)]
+    filename <- "solo"
+  }
+  
+  # Process files for each severity class specified.
+  for (SEV in tolower(severity_classes$class)) {
+    
+    # Filter files specific to the current severity class.
+    files_ss <- files[grepl(SEV, files)]
+    # Read the filtered files as raster objects.
+    data <- terra::rast(files_ss)
+    
+    # Remove specified hazards and crops from the data if requested.
+    if (!is.null(rm_haz)) {
+      data <- data[[names(data)[!grepl(paste0(rm_haz, collapse = "|"), names(data))]]]
+    }
+    if (!is.null(rm_crop)) {
+      data <- data[names(data)[!grepl(paste0(paste0("-", rm_crop, "-"), collapse = "|"), names(data))]]
+    }
+    
+    # Define file paths for saving extracted data in Parquet format for admin levels 0, 1, and 2.
+    file0 <- paste0(folder, "/", SEV, "_adm0_", filename, ".parquet")
+    file1 <- gsub("_adm0_", "_adm1_", file0)
+    file2 <- gsub("_adm0_", "_adm2_", file0)
+    
+    # Save the extracted data to Parquet files if they do not exist or if overwrite is enabled.
+    if (!file.exists(file0) | overwrite == T) {
+      cat('\r', paste("Risk x Exposure - admin extraction - adm0| severity:", SEV))
+      flush.console()
+      
+      data_ex <- admin_extract(data, Geographies["admin0"], FUN = "sum")
+      sfarrow::st_write_parquet(obj = sf::st_as_sf(data_ex$admin0), dsn = file0)
+      rm(data_ex)
+      gc()
+    }
+    # Repeat for admin levels 1 and 2.
+    if (!file.exists(file1) | overwrite == T) {
+      cat('\r', paste("Risk x Exposure - admin extraction - adm1| severity:", SEV))
+      flush.console()
+      
+      data_ex <- admin_extract(data, Geographies["admin1"], FUN = "sum")
+      sfarrow::st_write_parquet(obj = sf::st_as_sf(data_ex$admin1), dsn = file1)
+      rm(data_ex)
+      gc()
+    }
+    if (!file.exists(file2) | overwrite == T) {
+      cat('\r', paste("Risk x Exposure - admin extraction - adm2| severity:", SEV))
+      flush.console()
+      
+      data_ex <- admin_extract(data, Geographies["admin2"], FUN = "sum")
+      sfarrow::st_write_parquet(obj = sf::st_as_sf(data_ex$admin2), dsn = file2)
+      rm(data_ex)
+      gc()
+    }
+  }
+}
+
+#' Recode and Restructure Data for Analysis
+#'
+#' This function recodes and restructures a dataset by renaming variables according to predefined mappings. It supports handling of crop names, livestock, severity levels, exposure variables, and hazards, including their interactions. The function prepares data for further analysis by adjusting variable names for consistency and facilitating their categorization.
+#'
+#' @param data A `data.table` containing the dataset to be restructured.
+#' @param crops Vector of crop names to be adjusted in the dataset.
+#' @param livestock Vector of livestock names to be adjusted.
+#' @param Scenarios Data frame or list that contains scenario mappings.
+#' @param exposure_var Name of the exposure variable to be adjusted.
+#' @param severity Severity levels present in the data.
+#' @param hazards Vector of hazard types to be adjusted in the dataset.
+#' @param interaction Logical indicating if interaction effects are to be considered.
+#' @return A `data.table` with recoded and restructured data.
+#' @examples
+#' # Assuming 'data' is your dataset and other parameters are defined:
+#' recoded_data <- recode_restructure(data, crops, livestock, Scenarios, "exposure_var", "severity", hazards, FALSE)
+#' @export
+recode_restructure<-function(data,crops,livestock,Scenarios,exposure_var,severity,hazards,interaction){
+  
+  variable_old<-data[,as.character(unique(variable))]
+  
+  # Replace space in the crop names with a . to match the parquet column names
+  new<-gsub(" ",".",crops,fixed=T)
+  old<-crops
+  
+  variable_old2<-stringi::stri_replace_all_regex(variable_old,pattern=old,replacement=new,vectorise_all = F)
+  
+  # Replace . in crop names with a 
+  new<-gsub(" ","_",crops,fixed = T)
+  old<-gsub(" ",".",crops)
+  
+  variable_old2<-stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F)
+  
+  # Replace dots in hazard names with a "+"
+  old<-c("dry[.]heat","dry[.]wet","heat[.]wet","dry[.]heat[.]wet")
+  new<-c("dry+heat","dry+wet","heat+wet","dry+heat+wet")
+  
+  variable_old2<-stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F)
+  
+  # Renaming of variable to allow splitting
+  new<-paste0(Scenarios$combined,"-")
+  old<-paste0(Scenarios[,paste0(Scenario,".",Time)],".")
+  
+  # Replace space in the crop names with a . to match the parquet column names
+  new<-c(new,paste0("-",crops,"-"))
+  old<-c(old,paste0("[.]",gsub(" ","_",crops,fixed = T),"[.]"))
+  
+  new<-c(new,paste0("-",livestock,"-"))
+  old<-c(old,paste0("[.]",livestock,"[.]"))
+  
+  new<-c(new,paste0("-",exposure_var))
+  old<-c(old,paste0("[.]",exposure_var))
+  
+  new<-c(new,paste0(c("any",hazards),"-"))
+  old<-c(old,paste0(c("any",hazards),"[.]"))
+  
+  new<-c(new,paste0(c("any",hazards),"-"))
+  old<-c(old,paste0(c("any",hazards),"_"))
+  
+  # Temporary inclusion to deal with solo practice naming
+  if(interaction==F){
+    new<-c(new,paste0(c("any",hazards),"-"))
+    old<-c(old,paste0(c("any",hazards),"[.]"))
+  }
+  
+  variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F))
+  
+  split<-variable_new[,list(var_split=list(tstrsplit(variable[1],"-"))),by=variable]
+  split_tab<-rbindlist(split$var_split)
+  colnames(split_tab)<-c("scenario","timeframe","hazard","hazard_vars","crop","severity","exposure")
+  split_tab$variable<-variable_old
+  
+  split_tab[,hazard:=gsub(".","+",hazard[1],fixed=T),by=hazard
+  ][,hazard_vars:=gsub(".","+",hazard_vars[1],fixed=T),by=hazard_vars
+  ][,scenario:=unlist(tstrsplit(scenario[1],".",keep=2,fixed=T)),by=scenario
+  ][,severity:=tolower(severity)]
+  
+  data<-merge(data,split_tab,all.x=T)
+  data[,variable:=NULL]
+  
+  if(data[,any(is.na(hazard_vars))]){
+    warning("There are na values in the hazard_vars field which indicates a non match between the split variable name table and the orginal data table provided")
+  }
+  
+  return(data)
+}
+
+#' Recode and Restructure Data from Parquet Files
+#'
+#' Reads, recodes, and restructures data from Parquet files based on specified interactions, severity, administrative levels, crops, livestock, and hazards. The function saves the restructured data into a new Parquet file.
+#'
+#' @param folder Directory containing the input Parquet files.
+#' @param file Base name for input Parquet files.
+#' @param crops Vector of crop names to be considered in the recoding process.
+#' @param livestock Vector of livestock names to be considered.
+#' @param exposure_var The exposure variable to be considered in recoding.
+#' @param severity Severity level to filter and process the data.
+#' @param overwrite Logical indicating whether to overwrite existing output files.
+#' @param interaction Logical indicating if interactions between hazards should be considered.
+#' @param levels Administrative levels (e.g., "adm0", "adm1", "adm2") to be processed.
+#' @param hazards Vector of hazard types to be considered in the recoding process.
+#' @return Saves the restructured data as a new Parquet file in the specified directory. Does not return data to the R environment.
+#' @examples
+#' # Example usage:
+#' recode_restructure_wrap(folder = "/path/to/folder",
+#'                         file = "data",
+#'                         crops = c("Wheat", "Maize"),
+#'                         livestock = c("Cattle", "Sheep"),
+#'                         exposure_var = "exposure",
+#'                         severity = "high",
+#'                         overwrite = TRUE,
+#'                         interaction = TRUE,
+#'                         levels = c("adm0", "adm1", "adm2"),
+#'                         hazards = c("Drought", "Flood"))
+#' @export
+recode_restructure_wrap <- function(folder, file, crops, livestock, exposure_var, severity, overwrite, interaction = T, levels, hazards) {
+  
+  # Determine the filename based on interaction and severity parameters.
+  if (interaction == T) {
+    filename <- paste0(folder, "/", severity, "_", file, "_int.parquet")
+  } else {
+    filename <- paste0(folder, "/", severity, "_", file, "_solo.parquet")
+  }
+  
+  # Check if the file should be created or overwritten.
+  if ((!file.exists(filename)) | overwrite == T) {
+    # Concatenate data from different administrative levels.
+    data <- rbindlist(lapply(1:length(levels), FUN = function(i) {
+      level <- levels[i]
+      
+      # Display current progress.
+      cat('\r', paste("Risk x Exposure - ", exposure_var, " restructuring data | severity: ", severity, " | admin level:", level, " | interaction = ", interaction))
+      flush.console()
+      
+      # Define the specific data file based on the current level and interaction.
+      data_file <- if (interaction == T) {
+        paste0(folder, "/", severity, "_", levels[i], "_int.parquet")
+      } else {
+        paste0(folder, "/", severity, "_", levels[i], "_solo.parquet")
+      }
+      
+      # Read the specified Parquet file as a data table.
+      data <- data.table(data.frame(sfarrow::st_read_parquet(data_file)))
+      
+      # Remove columns not needed for further analysis.
+      data <- data[, !c("geometry", "iso3", "admin_name")]
+      
+      # Correct truncated administrative column names.
+      colnames(data) <- gsub("_nam$", "_name", colnames(data))
+      
+      # Define the names of administrative columns to keep based on the level.
+      admins <- "admin0_name"
+      if (level %in% c("adm1", "adm2")) {
+        admins <- c(admins, "admin1_name")
+      }
+      if (level == "adm2") {
+        admins <- c(admins, "admin2_name")
+      }
+      
+      # Reshape the data table for restructuring.
+      data <- melt(data, id.vars = admins)
+      
+      # Apply the recoding and restructuring process.
+      data <- recode_restructure(data = data, crops = crops, livestock = livestock, Scenarios = Scenarios, exposure_var = exposure_var, severity = severity, hazards = hazards, interaction = interaction)
+      
+      data
+    }), fill = T)
+    
+    # Save the restructured data as a new Parquet file.
+    arrow::write_parquet(data, filename)
+  }
+}
+
+#' Apply High and Low Livestock Masks and Combine Data
+#'
+#' This function takes a dataset and applies separate masks for high and low categories of livestock, then combines these processed segments. It ensures that data is appropriately masked according to predefined criteria, facilitating differentiated analysis or treatment based on livestock density levels.
+#'
+#' @param data A numeric vector or matrix representing the original livestock data.
+#' @param livestock_mask_high A numeric vector or matrix serving as the mask for high-density livestock data.
+#' @param livestock_mask_low A numeric vector or matrix serving as the mask for low-density livestock data.
+#' @return Returns a combined numeric vector of the processed data after applying both high and low masks.
+#' @examples
+#' # Assuming 'data', 'livestock_mask_high', and 'livestock_mask_low' are predefined:
+#' data_processed <- split_livestock(data, livestock_mask_high, livestock_mask_low)
+#' @export
+split_livestock <- function(data, livestock_mask_high, livestock_mask_low) {
+  
+  # Reorder data columns to match the order of high mask columns.
+  order_n <- sapply(names(data), FUN = function(X) { grep(X, names(livestock_mask_high)) })
+  data_high <- data[[order_n]]
+  # Apply the high mask to the data.
+  data_high <- data_high * livestock_mask_high
+  
+  # Reorder data columns to match the order of low mask columns.
+  order_n <- sapply(names(data), FUN = function(X) { grep(X, names(livestock_mask_low)) })
+  data_low <- data[[order_n]]
+  # Apply the low mask to the data.
+  data_low <- data_low * livestock_mask_low
+  
+  # Ensure the names of the high and low data match their respective masks.
+  names(data_high) <- names(livestock_mask_high)
+  names(data_low) <- names(livestock_mask_low)
+  
+  # Combine the high and low data into a single vector.
+  data_joined <- c(data_low, data_high)
+  
+  return(data_joined)
+}
