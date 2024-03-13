@@ -5,12 +5,14 @@ This repository takes the monthly hazard data generated in the [hazards](https:/
 While the Atlas is under development, the hazard time-series data used in the risk analysis is internally available to Atlas scientists in the EiA server under `~/common_data/atlas_hazards/cmip6`. The data are also available in the [AWS S3](s3://digital-atlas/).
 
 Other dataset downloaded and used during the risk analysis include:
-1. MapSPAM 2017V2r3 value of production available from [s3://digital-atlas/MapSpam/raw/spam2017V2r3]
-2. Livestock value of production
-3. Livestock numbers
+1. MapSPAM 2017V2r3 value of production available from s3://digital-atlas/MapSpam/raw/spam2017V2r3. *This is an updated version of the dataset that fixes several bugs and using country specific value of production values rather than global*_
+2. Livestock value of production available from s3://digital-atlas/livestock_vop and were provided the authors of [Herrero et al. (2013)](https://www.pnas.org/doi/full/10.1073/pnas.1308149110)
+3. [Livestock numbers](https://data.apps.fao.org/catalog/organization/gridded-livestock-of-the-world-glw) from [Gilbert et al. (2018)](https://www.nature.com/articles/sdata2018227)
 4. Human population
 5. [GGCMI Phase 3 crop calendars](https://zenodo.org/records/5062513)
 6. [Geoboundaries 6.0.0](https://github.com/wmgeolab/geoBoundaries) downloadable in processed form at s3://digital-atlas/boundaries. 
+
+Note, until the s3 repository is made publically available you will need login credentials for s3://digital-atlas the bucket to run these scripts.
 
 ## What code is available?
 This repository is divided into 4 main workflows, 0 to 3, available in the project [R](https://github.com/AdaptationAtlas/hazards_prototype/tree/main/R) folder. Other functions and miscellaneous data processing scripts are also contained with the folder.
