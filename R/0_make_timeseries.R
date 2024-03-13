@@ -1,8 +1,21 @@
 # Load R functions & packages ####
-
-require(terra)
-require(data.table)
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+
+load_and_install_packages <- function(packages) {
+  for (package in packages) {
+    if (!require(package, character.only = TRUE)) {
+      install.packages(package)
+      library(package, character.only = TRUE)
+    }
+  }
+}
+
+# List of packages to be loaded
+packages <- c("terra", 
+              "data.table")
+
+# Call the function to install and load packages
+load_and_install_packages(packages)
 
 # Set directories  ####
 # Directory where monthly timeseries data generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
