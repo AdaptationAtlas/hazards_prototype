@@ -5,7 +5,7 @@ This repository takes the monthly hazard data generated in the [hazards](https:/
 While the Atlas is under development, the hazard time-series data used in the risk analysis is internally available to Atlas scientists in the EiA server under `~/common_data/atlas_hazards/cmip6`. The data are also available in the [AWS S3](s3://digital-atlas/).
 
 Other dataset downloaded and used during the risk analysis include:
-1. MapSPAM 2017 value of production (v5 available internally)
+1. MapSPAM 2017V2r3 value of production available from (s3://digital-atlas/MapSpam/raw/spam2017V2r3)
 2. Livestock value of production
 3. Livestock numbers
 4. Human population
