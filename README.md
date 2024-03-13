@@ -12,7 +12,7 @@ Other dataset downloaded and used during the risk analysis include:
 5. Human population available from s3://digital-atlas/population/ and was downloaded from (!!Brayden to add source!!).
 6. [GGCMI Phase 3 crop calendars](https://zenodo.org/records/5062513)
 7. [Geoboundaries 6.0.0](https://github.com/wmgeolab/geoBoundaries) downloadable in processed form at s3://digital-atlas/boundaries.
-8. [Ecocrop]("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/ecocrop.csv")
+8. [Ecocrop](https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/ecocrop.csv)
 
 Note, until the s3 repository is made publically available you will need login credentials for s3://digital-atlas the bucket to run these scripts.
 
