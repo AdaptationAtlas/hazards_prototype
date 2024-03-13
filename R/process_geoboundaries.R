@@ -1,9 +1,14 @@
 require(terra)
 require(stringr)
 
-admin2=terra::vect("Data/geoboundaries/admin2.shp")
-admin1=terra::vect("Data/geoboundaries/admin1.shp")
-admin0=terra::vect("Data/geoboundaries/admin0.shp")
+# South Asia
+folder<-"Data/geoboundaries_SA"
+# Sub-saharan Africa
+folder<-"Data/geoboundaries_SSA"
+
+admin2=terra::vect(paste0(folder,"/admin2.shp"))
+admin1=terra::vect(paste0(folder,"/admin1.shp"))
+admin0=terra::vect(paste0(folder,"/admin0.shp"))
 
 # Create standard name field for each admin vector
 admin2$admin_name<-str_to_title(admin2$shapeName)
@@ -51,10 +56,12 @@ admin2$admin1_name<-admin1$admin1_name[match(X,admin1$ID)]
 admin2$admin2_name<-str_to_title(admin2$shapeName)
 
 # There are few instances where the match doesn't work, we will need to address these
-data.frame(admin2[is.na(admin2$admin1_name)])
-missing_a1 <- c('Collines', 'Collines', 'Elobey Chico')
-admin2$admin1_name[is.na(admin2$admin1_name)] <- missing_a1
-# admin2$admin1_name[is.na(admin2$admin1_name)]<-c("Banjul","Banjul","Collines","Elobey Chico","Elobey Grande")
+if(folder=="Data/geoboundaries_SSA"){
+  data.frame(admin2[is.na(admin2$admin1_name)])
+  missing_a1 <- c('Collines', 'Collines', 'Elobey Chico')
+  admin2$admin1_name[is.na(admin2$admin1_name)] <- missing_a1
+  # admin2$admin1_name[is.na(admin2$admin1_name)]<-c("Banjul","Banjul","Collines","Elobey Chico","Elobey Grande")
+}
 
 # Add missing iso3 codes to admin2
 data.frame(admin2[is.na(admin2$admin0_name)])
@@ -62,20 +69,24 @@ admin2$iso3[is.na(admin2$admin0_name)]<-admin2$shapeGroup[is.na(admin2$admin0_na
 # Update names for missing iso3 codes
 admin2$admin0_name[is.na(admin2$admin0_name)]<-countrycode::countrycode(admin2$shapeGroup[is.na(admin2$admin0_name)], origin = 'iso3c', destination = 'country.name')
 
-# Some admin 1 names appear to be missing
-admin1[is.na(admin1$admin_name)]
-# NA polygon appears to be a duplicate, remove one of the duplicates
-N<-which(is.na(admin1$admin_name))
-admin1<-admin1[-N[2]]
 
-admin1$admin_name[is.na(admin1$admin_name)]<-"Collines"
-admin1$admin1_name[is.na(admin1$admin1_name)]<-"Collines"
 
-nrow(admin1[is.na(admin1$admin_name)]) == 0
+if(folder=="Data/geoboundaries_SSA"){
+  # Some admin 1 names appear to be missing
+  admin1[is.na(admin1$admin_name)]
+  # NA polygon appears to be a duplicate, remove one of the duplicates
+  N<-which(is.na(admin1$admin_name))
+  admin1<-admin1[-N[2]]
+  
+  admin1$admin_name[is.na(admin1$admin_name)]<-"Collines"
+  admin1$admin1_name[is.na(admin1$admin1_name)]<-"Collines"
+  
+  nrow(admin1[is.na(admin1$admin_name)]) == 0
+}
 
-admin0[, c("ID", "shapeName", "shapeISO", "shapeID", "shapeGroup", "shapeType", "agg_n")]<-NULL
-admin1[, c("ID", "shapeName", "shapeISO", "shapeID", "shapeGroup", "shapeType", "agg_n")] <- NULL
-admin2[, c("ID", "shapeName", "shapeISO", "shapeID", "shapeGroup", "shapeType", "agg_n")] <- NULL
+admin0[, c("ID", "shapeName", "shapeISO", "shapeID", "shapeGroup", "shapeType")]<-NULL
+admin1[, c("ID", "shapeName", "shapeISO", "shapeID", "shapeGroup", "shapeType")] <- NULL
+admin2[, c("ID", "shapeName", "shapeISO", "shapeID", "shapeGroup", "shapeType")] <- NULL
 
 ### Merge polygons
 # Pre-calc the correct unique aggregated rows
@@ -91,11 +102,6 @@ if (a0_check != nrow(admin0)) stop("Admin 0 merge error")
 
 # admin1$a1_a0 <- paste0(admin1$admin_name,"_", admin1$admin0_name)
 admin1 <- terra::aggregate(admin1, by = c('admin1_name', 'admin0_name'), count = FALSE)
-
-# This method also works but is more sensitive to NA
-# admin1 <- terra::aggregate(admin1,
-#   by = c("admin_name", "admin0_name"),
-#   fun = "modal", count = FALSE, na.rm = TRUE)
 if (a1_check != nrow(admin1)) stop("Admin 1 merge error")
 
 # admin2$a2_a1_a0 <- paste0(admin2$admin_name,"_", admin2$admin1_name, "_", admin2$admin0_name)
@@ -111,6 +117,6 @@ if (any(!sort(unique(admin0$admin_name)) == sort(unique(admin2$admin0_name)))) {
 }
 
 # Save processed files
-terra::writeVector(admin0,file="Data/geoboundaries/admin0_processed.gpkg",overwrite=T)
-terra::writeVector(admin1,file="Data/geoboundaries/admin1_processed.gpkg",overwrite=T)
-terra::writeVector(admin2,file="Data/geoboundaries/admin2_processed.gpkg",overwrite=T)
+terra::writeVector(admin0,file=paste0(folder,"/admin0_processed.gpkg"),overwrite=T)
+terra::writeVector(admin1,file=paste0(folder,"/admin1_processed.gpkg"),overwrite=T)
+terra::writeVector(admin2,file=paste0(folder,"/admin2_processed.gpkg"),overwrite=T)
