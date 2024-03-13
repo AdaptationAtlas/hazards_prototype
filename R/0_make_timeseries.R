@@ -1,4 +1,4 @@
-# Load R functions & packages ####
+# 1) Load R functions & packages ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
 load_and_install_packages <- function(packages) {
@@ -17,7 +17,7 @@ packages <- c("terra",
 # Call the function to install and load packages
 load_and_install_packages(packages)
 
-# Set directories  ####
+# 2) Set directories  ####
 # Directory where monthly timeseries data generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
 working_dir<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices"
 setwd(working_dir)
@@ -29,7 +29,7 @@ output_dir<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
 # Set sos calendar directory
 sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
 
-# Set up workspace ####
+# 3) Set up workspace ####
 # Load base raster for resampling to
 base_raster<-"base_raster.tif"
 if(!file.exists(base_raster)){
@@ -91,7 +91,7 @@ sos_data[is.na(LGP1),c("LGP1","LGP2"):=list(LGP2,LGP1)]
 sos_rast<-terra::rast(as.data.frame(sos_data)[,c("x","y","S1","S2","E1","E2","LGP1","LGP2")], type="xyz", crs="+proj=longlat +datum=WGS84 +no_defs", digits=3, extent=NULL)
 sos_rast<-terra::resample(sos_rast,base_rast)
 
-# Choose hazards #####
+# 4) Choose hazards #####
 # Read in climate variable information
 haz_meta<-unique(data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv")[,c("variable.code","function")])
 
@@ -105,7 +105,7 @@ if(F){
   hazards<-c(hazards,hazards2)
 }
 
-# Analysis loop   ####
+# 5) Set analysis parameters ####
 doParallel<-F
 use_crop_cal_choice<- c("no","yes") # if set to no then values are calculated for the year (using the jagermeyr cc as the starting month for each year)
 use_sos_cc_choice<-c("no","yes") # Use onset of rain layer to set starting month of season
@@ -113,6 +113,8 @@ use_sos_cc_choice<-c("no","yes") # Use onset of rain layer to set starting month
 # Use end of season layer?
 use_eos_choice<-c(F,T) # If use_sos_cc is "yes" use eos as estimated using Aridity Index? If set to "no" then season_length argument will be used to fix the season length
 season_length<-4 # This can be varied to create season lengths for different crops (2,3,4,5,6,7,8 months) - gets messy when two season are present?
+
+# 6) Run Analysis loop   ####
 
 for(use_crop_cal in use_crop_cal_choice){
   for(use_sos_cc in use_sos_cc_choice){
