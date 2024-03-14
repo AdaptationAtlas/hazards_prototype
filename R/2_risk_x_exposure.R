@@ -828,12 +828,14 @@ if(!dir.exists(haz_risk_n_dir)){
     # Crop choices only 
     crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
 
-    # 5.1)  Multiply Hazard Risk by Exposure ####
-      do_vop17<-F
+    # 5.0) Set-up ####
+      do_vop17<-T
       do_ha<-F
       do_n<-F
       overwrite<-F
       
+    # 5.1)  Multiply Hazard Risk by Exposure ####
+
       files<-list.files(haz_risk_dir,".tif$",full.names = T)
       
       for(i in 1:length(files)){
@@ -923,20 +925,15 @@ if(!dir.exists(haz_risk_n_dir)){
       }
       
     # 5.2) Extract Risk x Exposure by Geography  ####
-    overwrite<-F
-    do_vop17<-F
-    do_ha<-F
-    do_n<-F
-    rm_haz<-"NDD"
-   
-    for(INT in c(T,F)){
+
+      for(INT in c(T,F)){
       print(paste0("Interactions = ",INT))
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
                            folder=haz_risk_vop_dir,
                            overwrite=overwrite,
                            rm_crop=NULL,
-                           rm_haz=rm_haz)
+                           rm_haz=NULL)
       
       if(do_vop17){
         haz_risk_exp_extract(severity_classes,
@@ -944,7 +941,7 @@ if(!dir.exists(haz_risk_n_dir)){
                              folder=haz_risk_vop17_dir,
                              overwrite=overwrite,
                              rm_crop=NULL,
-                             rm_haz=rm_haz)
+                             rm_haz=NULL)
       }
       
       if(do_ha){
@@ -953,7 +950,7 @@ if(!dir.exists(haz_risk_n_dir)){
                              folder=haz_risk_vop_dir,
                              overwrite=overwrite,
                              rm_crop=NULL,
-                             rm_haz=rm_haz)
+                             rm_haz=NULL)
         }
       
       if(do_n){
@@ -962,21 +959,19 @@ if(!dir.exists(haz_risk_n_dir)){
                                folder=haz_risk_vop_dir,
                                overwrite=overwrite,
                                rm_crop=NULL,
-                               rm_haz=rm_haz)
+                               rm_haz=NULL)
         }
     }
     
-    # Check resulting files
-    (file<-list.files(haz_risk_vop_dir,"parquet",full.names = T))
-    data<-sfarrow::st_read_parquet(file[4])
-    names(data)
+    if(F){
+      # Check resulting files
+      (file<-list.files(haz_risk_vop_dir,"parquet",full.names = T))
+      data<-sfarrow::st_read_parquet(file[4])
+      names(data)
+    }
           
     # 5.3) Restructure Extracted Data ####
-    overwrite<-F
-    do_vop17<-F
-    do_ha<-F
-    do_n<-F
-    
+
     for(SEV in tolower(severity_classes$class)){
       # Restructure Extracted Data ####
       for(INT in c(T,F)){
