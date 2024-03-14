@@ -378,3 +378,68 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
                      max_attempts = 3,
                      overwrite=T)
   
+  # =========================####
+  # UPLOAD TO GOOGLEDRIVE ####
+  # Ensure the necessary libraries are loaded
+  library(googledrive)
+  library(s3fs)
+  library(mime)
+  
+  # Updated transfer function with support for s3fs
+  transfer_s3_to_drive <- function(s3_bucket, prefix, drive_folder_id, overwrite = FALSE) {
+    # Check for existing Google Drive authentication without forcing re-authentication
+    if (!drive_has_token()) {
+      drive_auth()
+    } else {
+      message("Using existing Google Drive authentication.")
+    }
+    
+    # Check if the Google Drive folder exists
+    if (length(drive_ls(drive_folder_id)) == 0) {
+      stop("The specified Google Drive folder ID does not exist.")
+    }
+    
+    
+    # List files in the S3 bucket with the specified prefix
+    s3_files <- s3fs::s3_dir_ls(s3_bucket)
+    s3_files<-grep(prefix,s3_files,value = T)
+    
+    for (i in 1:length(s3_files)) {
+      file_name <- basename(s3_files[i])
+      
+      # Check if the file exists in Google Drive and skip if overwrite is FALSE
+      existing_files <- drive_ls(drive_folder_id)
+      
+      # Report progress
+      message(sprintf("Processing file %d of %d: %s", i, length(s3_files), file_name))
+      
+      
+      if (!(file_name %in% existing_files) |overwrite==T) {
+        
+        # Download file from S3 to a temporary location
+        temp_file_path <- file.path(tempfile(),file_name)
+        s3fs::s3_file_download(s3_files[i],new_path = temp_file_path)
+        
+        # Upload file to the specified Google Drive folder, overwriting if necessary
+        drive_upload(media = temp_file_path,
+                     path = paste0(as_id(drive_folder_id), "/", file_name))
+        
+        # Optionally, delete the temp file
+        unlink(temp_file_path)
+      }
+      
+    }
+    
+  }
+  
+  # Upload - haz_vop_risk
+  
+  s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_ac/",timeframe_choice)
+  gdrive_folder<-paste0("atlas_",timeframe_choice)
+  
+  
+  transfer_s3_to_drive(s3_bucket = s3_bucket,
+                       prefix = "parquet",
+                       drive_folder_id = gdrive_folder,
+                       overwrite=F)
+  
