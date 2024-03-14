@@ -22,7 +22,7 @@ load_and_install_packages <- function(packages) {
   }
 }
 
-packages <- c("terra","shinydashboard","data.table","shiny","stringi","arrow","ggplot2") # Ensure correct package names
+packages <- c("terra","shinydashboard","data.table","shiny","stringi","arrow","ggplot2","DT") # Ensure correct package names
 
 load_and_install_packages(packages)
 ```
