@@ -547,9 +547,11 @@ if(!dir.exists(haz_risk_n_dir)){
                       Scenarios=Scenarios,
                       hazards=haz_meta[,unique(type)])
   
+  if(F){
   # Check resulting file
-  X<-arrow::read_parquet(paste0(haz_risk_dir,"/haz_risk_any_adm_",SEV,".parquet"))
+  X<-arrow::read_parquet(paste0(haz_risk_dir,"/haz_risk_any_adm_moderate.parquet"))
   grep("THI",names(X),value=T)
+  }
   
   # 2) Optional: Apply Crop Mask to Classified Hazard Risk ####
   
@@ -920,58 +922,6 @@ if(!dir.exists(haz_risk_n_dir)){
             
       }
       
-      # 5.1.x) Temporary bug fix with naming (should be resolved) ####
-      if(F){
-        files<-list.files(haz_risk_vop_dir,".tif$",full.names = T)
-        files<-files[!grepl("1.tif",files)]
-        files<-grep("-int-",files,value = T)
-        
-        registerDoFuture()
-        plan("multisession", workers = worker_n)
-        
-        #  loop starts here
-        foreach(i = 1:length(files)) %dopar% {
-          #for(i in 1:length(files)){
-            
-          print(i)
-          file<-files[i]
-          
-          save_file<-gsub(".tif","1.tif",file)
-          if(!file.exists(save_file)){
-            crop<-unlist(tstrsplit(basename(file),"-",keep=1))
-            data<-terra::rast(file)
-            names_old<-names(data)
-            names_new<-stringi::stri_replace_all_regex(names_old,
-                                                       pattern=severity_classes[,paste0("_",tolower(class))],
-                                                       replacement=severity_classes[,paste0("-",crop,"-",tolower(class))],
-                                                       vectorise_all =F
-            )
-            names(data)<-names_new
-            terra::writeRaster(data,filename = gsub(".tif","1.tif",file))
-          }
-        }
-        
-        plan(sequential)
-        
-        
-        # Remove old files and rename new - ADD IN AUX FILES TOO
-        files<-list.files(haz_risk_vop_dir,".tif$|tif.aux.xml$",full.names = T)
-        files<-files[!grepl("1.tif",files)]
-        files<-grep("-int-",files,value = T)
-        
-        unlink(files)
-        files<-list.files(haz_risk_vop_dir,"1.tif$|1.tif.aux.xml$",full.names = T)
-        files_new<-gsub("1.tif",".tif",files)
-        file.rename(from=files,to=files_new)
-        
-        # Check issues are resolved
-        files<-list.files(haz_risk_vop_dir,"int-vop.tif$",full.names = T)
-        
-        for(i in 1:length(files)){
-          data<-terra::rast(files[i])
-          print(names(data)[1])
-        }
-      }
     # 5.2) Extract Risk x Exposure by Geography  ####
     overwrite<-F
     do_vop17<-F
@@ -1021,53 +971,6 @@ if(!dir.exists(haz_risk_n_dir)){
     data<-sfarrow::st_read_parquet(file[4])
     names(data)
           
-      # 5.2.x) Temporary name fix for old solo hazards (should be resolved) ####
-      if(T){
-        files<-list.files(haz_risk_vop_dir,"solo.parquet$",full.names = T)
-        files<-files[!grepl("_adm_",files)]
-      
-        new<-c(tolower(severity_classes$class),haz_meta[,paste0(".",type,".",code)])
-        old<-c(severity_classes$class,haz_meta[,paste0("[.]",code)])
-        
-        write_parquet_with_retries <- function(data, file, max_retries = 5) {
-          require(sfarrow) # Ensure sfarrow package is loaded
-          
-          attempt <- 1
-          while (attempt <= max_retries) {
-            tryCatch({
-              sfarrow::st_write_parquet(data, file)
-              cat("Write successful on attempt", attempt, "\n")
-              break # Exit the loop if successful
-            }, error = function(e) {
-              cat("Error on attempt", attempt, ": ", e$message, "\n")
-              if (attempt == max_retries) {
-                cat("Reached maximum number of retries. Stopping.\n")
-                stop("Failed to write file after ", attempt, " attempts.")
-              }
-            })
-            attempt <- attempt + 1
-            Sys.sleep(1) # Optional: wait for 1 second before retrying, can be adjusted or removed
-          }
-        }
-        
-        for(i in 1:length(files)){
-          file<-files[i]
-          data<-sfarrow::st_read_parquet(file)
-          
-          if(!any(grepl("[.]heat[.]",names(data)))){
-            print(i)
-            colnames_new<-stringi::stri_replace_all_regex(colnames(data),old,new,vectorize_all=F)
-            names(data)<-colnames_new
-            write_parquet_with_retries(data,file,max_retries = 5)
-          }
-        }
-        
-        for(i in 1:length(files)){
-          data<-sfarrow::st_read_parquet(files[i])
-          print(names(data)[10])
-        }
-      }
-    
     # 5.3) Restructure Extracted Data ####
     overwrite<-F
     do_vop17<-F
@@ -1121,15 +1024,17 @@ if(!dir.exists(haz_risk_n_dir)){
       
     }
     
-      # Check results
-    (files<-list.files(haz_risk_vop_dir,"_adm_",full.names = T))
-    for(i in 1:length(files)){
-      file<-files[i]
-      print(file)
-      data<-arrow::read_parquet(file)
-      print(head(data))
-      print(data[,unique(hazard)])
-      print(data[,unique(crop)])
+    if(F){
+       # Check results
+      (files<-list.files(haz_risk_vop_dir,"_adm_",full.names = T))
+      for(i in 1:length(files)){
+        file<-files[i]
+        print(file)
+        data<-arrow::read_parquet(file)
+        print(head(data))
+        print(data[,unique(hazard)])
+        print(data[,unique(crop)])
+    }
     }
     
   # 6) Generic Risk x Human Population #####
