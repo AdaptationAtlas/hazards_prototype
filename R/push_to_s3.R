@@ -80,7 +80,7 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   }
   
   for (i in seq_along(files)) {
-    cat('\r', paste("File:", i, "/", length(files)), "           ")
+    cat('\r', paste("File:", i, "/", length(files))," | ",basename(files[i]),"                                                 ")
     flush.console()
     
     s3_file_path <- paste0(selected_bucket, "/", basename(files[i]))
@@ -233,8 +233,9 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_mean/",timeframe_choice)
 
   # Prepare tif data by converting to COG format
-  ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
-  
+  if(F){
+    ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+  }
   # Upload files
   upload_files_to_s3(folder = folder,
                      selected_bucket=s3_bucket,
@@ -244,10 +245,12 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   # Upload - hazard_timeseries_risk ####
   folder<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_risk/",timeframe_choice)
-  s3fs::s3_dir_ls(s3_bucket)
+  #s3fs::s3_dir_ls(s3_bucket)
   
   # Prepare tif data by converting to COG format
+  if(F){
   ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+  }
   
   # Upload files
   upload_files_to_s3(folder = folder,
@@ -258,10 +261,12 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   # Upload - hazard_timeseries_int ####
   folder<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_int/",timeframe_choice)
-  s3fs::s3_dir_ls(s3_bucket)
+  #s3fs::s3_dir_ls(s3_bucket)
   
   # Prepare tif data by converting to COG format
+  if(F){
   ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+  }
   
   s3_files<-s3fs::s3_dir_ls(s3_bucket,recurse = T)
   s3_files<-unlist(tstrsplit(s3_files,paste0(timeframe_choice,"/"),keep=2))
@@ -292,7 +297,9 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_sd/",timeframe_choice)
   
   # Prepare tif data by converting to COG format
+  if(F){
   ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+  }
   
   # Upload files
   upload_files_to_s3(folder = folder,
@@ -310,7 +317,9 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   #s3fs::s3_dir_ls(s3_bucket)
   
   # Prepare tif data by converting to COG format
-  ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+  if(F){
+    ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+  }
   
   # Upload files
   upload_files_to_s3(files =list.files(folder,full.names = T),
@@ -322,33 +331,31 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop/",timeframe_choice)
   folder<-paste0("Data/hazard_risk_vop/",timeframe_choice)
   
-  s3fs::s3_dir_ls(s3_bucket)
-  #s3_file_delete(s3_dir_ls(s3_bucket))
-  
   # Prepare tif data by converting to COG format
   if(F){
     ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
   }
   
-  # Upload files
+  # Which files are missing
   files<-list.files(folder,full.names = T)
-  files<-grep("_adm_",files,value=T)
+
+  # files<-grep("_adm_",files,value=T)
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=T)
+                     overwrite=F)
   
   # Upload - haz_vop_risk_ac ####
   s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_ac/",timeframe_choice)
   folder<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
   
-  s3_dir_ls(s3_bucket)
+  #s3_dir_ls(s3_bucket)
 
   # Upload files
   upload_files_to_s3(files=list.files(folder,".parquet$",full.names = T),
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=T)
+                     overwrite=F)
   
 # 3) ROI data ####
   s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/roi")
@@ -378,8 +385,9 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
                      max_attempts = 3,
                      overwrite=T)
   
-  # =========================####
-  # UPLOAD TO GOOGLEDRIVE ####
+
+# =========================####
+# UPLOAD TO GOOGLEDRIVE ####
   # Ensure the necessary libraries are loaded
   library(googledrive)
   library(s3fs)
