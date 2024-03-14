@@ -2,7 +2,7 @@
 This repository takes the monthly hazard data generated in the [hazards](https://github.com/AdaptationAtlas/hazards/tree/main) workflow and calculates the risk of a hazard occurring over historical and future climate scenarios.
 
 ## Where is the data?
-While the Atlas is under development, the hazard time-series data used in the risk analysis is internally available to Atlas scientists in the EiA server under `~/common_data/atlas_hazards/cmip6`. The data are also available in the [AWS S3](s3://digital-atlas/).
+While the Atlas is under development, the hazard time-series data used in the risk analysis is internally available to Atlas scientists in the EiA server under `~/common_data/atlas_hazards/cmip6/indices`. The data are also available in the [AWS S3](s3://digital-atlas/).
 
 Other dataset downloaded and used during the risk analysis include:
 1. [MapSPAM](https://mapspam.info/) 2017V2r3 value of production available from s3://digital-atlas/MapSpam/raw/spam2017V2r3. *This is an updated version of the dataset that fixes several bugs and using country specific value of production values rather than global*
