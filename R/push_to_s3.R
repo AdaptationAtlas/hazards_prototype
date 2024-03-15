@@ -375,7 +375,7 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   s3_dir_ls(s3_bucket)
   
   # Updated hazards
-  files<-list.files(folder,"ENSEMBLEmean",full.names = T)
+  files<-list.files(folder,"ENSEMBLEmean|ENSEMBLEsd|historic",full.names = T)
   haz<-"NTx35_mean|NTx40_mean|NDWL0_mean|NDWS_mean|PTOT_sum|TAVG_mean|HSH_max_max|HSH_mean_mean|THI_mean_mean|THI_max_max|TAI_mean"
   files<-grep(haz,files,value=T)
   
@@ -383,7 +383,7 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   upload_files_to_s3(files=files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=T)
+                     overwrite=F)
   
 
 # =========================####
