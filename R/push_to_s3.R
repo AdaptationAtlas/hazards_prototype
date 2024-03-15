@@ -215,6 +215,18 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   s3_dir_ls(s3_bucket)
   
 # 2) Time sequence specific ####
+  # Upload - hazard timeseries (parquets) ####
+  folder<-paste0("Data/hazard_timeseries/",timeframe_choice)
+  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
+  
+  s3_files<-s3_dir_ls(s3_bucket)
+
+  # Upload files
+  upload_files_to_s3(files = list.files(folder,".parquet$",full.names = T),
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=F)
+  
   # Upload - hazard classified ####
   folder<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_class/",timeframe_choice)
@@ -349,10 +361,11 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_ac/",timeframe_choice)
   folder<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
   
-  #s3_dir_ls(s3_bucket)
+  s3_dir_ls(s3_bucket)
+  #s3fs::s3_dir_delete(s3_bucket)
 
   # Upload files
-  upload_files_to_s3(files=list.files(folder,".parquet$",full.names = T),
+  upload_files_to_s3(files=list.files(folder,".parquet",full.names = T),
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F)
