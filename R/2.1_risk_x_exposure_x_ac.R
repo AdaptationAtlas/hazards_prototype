@@ -13,7 +13,8 @@ packages <- c("terra",
               "data.table", 
               "arrow",
               "stringr",
-              "s3fs")
+              "s3fs",
+              "ggplot2")
 
 # Call the function to install and load packages
 load_and_install_packages(packages)
@@ -216,9 +217,55 @@ reduce_parquet(data=haz_risk_vop_ac,
 
 # Check resulting file
 check<-arrow::read_parquet(file.path(haz_risk_vop_ac_dir,"haz_risk_vop_int_ac_reduced.parquet"))
+check<-arrow::read_parquet("haz_risk_vop_int_ac_reduced.parquet")
+
 head(check)
 dim(check)
 check[,unique(hazard)]
+
+admin0<-"Malawi"
+bar_var<-"%"
+
+vop_data_ordered<-check[hazard!="any"
+                       ][crop!="generic"
+                         ][admin0_name %in% admin0 #& crop %in% input$crop
+                           ][,list(admin0_name,scenario,timeframe,crop,severity,hazard,value)
+                             ][,list(value=sum(value,na.rm=T)),by=list(crop,hazard,scenario,timeframe)
+                               ][,total_value:=sum(value,na.rm=T),by=list(crop,scenario,timeframe)
+                                 ][,value_p:=100*(value/total_value)]
+
+
+
+
+  vop_data_ordered$hazard <- factor(vop_data_ordered$hazard, levels = rev(c("dry", "heat", "wet", "dry+heat", "dry+wet", "heat+wet","dry+heat+wet","no hazard")))
+  custom_colors <- c("dry" = "#F28E2B", "heat" = "#E15759", "wet" = "#76B7B2", "dry+heat" = "#59A14F", "dry+wet" = "#EDC948", "heat+wet" = "#B07AA1","dry+heat+wet" = "black", "no hazard" = "grey90")
+  
+  if(bar_var=="IntDollar"){
+    vop_data_ordered[,plot_value:=value]
+    y_lab<-"Total Value (IntDollar)"
+  }else{
+    vop_data_ordered[,plot_value:=value_p]
+    y_lab<-"Total Value (%)"
+  }
+  
+  livestock<-vop_data_ordered[grep("tropical|highland",crop),sort(unique(crop))]
+  crops<-vop_data_ordered[!grepl("tropical|highland",crop),sort(unique(crop))]
+  
+  vop_data_ordered[,crop:=factor(crop,levels=rev(c(crops,livestock)))]
+  
+  ggplot(vop_data_ordered[!total_value==0 & scenario=="historic"], aes(x = crop, y = plot_value, fill = hazard)) +
+    geom_bar(stat = "identity", position = "stack") +
+    labs(x = "Crop", y = y_lab, fill = "Hazard") +
+    coord_flip() +  # Flipping coordinates to have crops on the y-axis
+    theme_minimal() +
+    scale_fill_manual(values = custom_colors) + # Using custom color palette
+    theme(
+      axis.text = element_text(size=14),      
+      axis.title = element_text(size = 16), # Adjusting axis title size
+      legend.title = element_text(size = 14), # Adjusting legend title size
+      legend.text = element_text(size = 14), # Adjusting legend text size
+      panel.spacing.y = unit(0.5, "lines") # Reducing space between bars
+    )
 
 # Subset loop ####
 
