@@ -518,8 +518,8 @@ for(j in 1:length(files_fut)){
   registerDoFuture()
   plan("multisession", workers = worker_n)
   
-  foreach(i =  sample(1:nrow(combinations))) %dopar% {
-  #for(i in 1:nrow(combinations)){
+  #foreach(i =  sample(1:nrow(combinations))) %dopar% {
+  for(i in 1:nrow(combinations)){
   
           combos<-unlist(combinations[i,list(dry,heat,wet)])
           grep_vals<-paste0(paste0(combos,".tif"),collapse = "|")
@@ -555,7 +555,7 @@ for(j in 1:length(files_fut)){
            
            if(!all(file.exists(save_names))|!file.exists(save_name_any)|overwrite==T){
             
-            files<-sapply(combos,FUN=function(x){haz_class_files[grepl(x,haz_class_files2) & 
+            files<-sapply(combos,FUN=function(x){haz_class_files[grepl(paste0(x,".tif"),haz_class_files2) & 
                                                                    grepl(Scenarios[l,combined],haz_class_files2)]
                                                                    })
             
