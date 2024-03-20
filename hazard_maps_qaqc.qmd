@@ -22,7 +22,7 @@ load_and_install_packages <- function(packages) {
   }
 }
 
-packages <- c("terra","shinydashboard","data.table","shiny","stringi","arrow","ggplot2","DT") # Ensure correct package names
+packages <- c("terra","shinydashboard","data.table","shiny","stringi","arrow","ggplot2") # Ensure correct package names
 
 load_and_install_packages(packages)
 ```
@@ -282,13 +282,14 @@ ui <- dashboardPage(
       selectInput("timeframe_choice", "Choose scenario:", choices = c("annual","jagermeyr"), selected = "annual"),
       selectInput("scenario", "Choose scenario:", choices = unique(Scenarios$combined), selected = "historic"),
       selectInput("hazard", "Choose hazard combination:", choices = combinations[!grepl("THI",combination),unique(combination)], selected = "PTOT_L"),
-      selectInput("crop", "Choose crop:", choices = unique(haz_class$crop), selected = "maize"),
+      selectInput("crop", "Choose crop or livestock:", choices = unique(haz_class$crop), selected = "maize"),
       selectInput("severity", "Choose severity:", choices = unique(haz_class$description), selected = "Severe"),
       selectizeInput("admin0", "Choose country:", choices = unique(admin0$admin_name), selected = c("Kenya","Uganda","Tanzania","Ethiopia","Somalia"),multiple=T),
       selectInput("bar_var", "Choose barplot variable:", choices = c("%","IntDollar"), selected = "%")
     )
     ),
   dashboardBody(
+    fluidRow("Note if you choose any livestock the heat hazard is automatically set to THI"),
     fluidRow(
       # The first 5 boxes are for debugging file selections are working
       box(DT::dataTableOutput("haz_class_filtered"), width = 12) 
@@ -362,7 +363,13 @@ files_vop<-reactive({list.files(haz_risk_vop_ac_dir(),".parquet$",full.names = T
 
   #0) Create hazards ####
   combinations_filtered<-reactive({
-    combinations[combination == input$hazard & severity_class==input$severity & crop==input$crop,]
+    if(grepl("_tropical|_highland",input$crop)){
+      heat_codes<-paste0(haz_meta[type=="heat" & !grepl("THI",code),unique(code)],collapse="|")
+      hazard_input<-gsub(heat_codes,"THI_max",input$hazard)
+    }else{
+      hazard_input<-input$hazard
+    }
+    combinations[combination == hazard_input & severity_class==input$severity & crop==input$crop,]
     })
   
   hazards_filtered<-reactive({
@@ -498,10 +505,11 @@ files_class_filtered <- reactive({
   })
   
   #5) Hazard int files ####
+
   int_name<-reactive({combinations_filtered()[,paste0(c(dry,heat,wet),collapse="+")]})
   
   files_int_filtered<-reactive({
-    files_int<-list.files(paste0(haz_time_int_dir(),"/",int_name()),full.names = T)
+    files_int<-list.files(paste0(haz_time_int_dir(),"/",int_name()),".tif$",full.names = T)
     files_int[grepl(gsub("historical","historic",input$scenario),files_int)]
   })
   
@@ -512,7 +520,7 @@ files_class_filtered <- reactive({
     }else{
       print("Result is NULL")
     }
-    print(int_name())
+    print(paste0("Int_name: ",int_name()))
   })
   
   output$files_int_filtered <- renderText({
@@ -520,19 +528,21 @@ files_class_filtered <- reactive({
   })
   
   #X) VoP files ####
+  
+  int_nameX<-reactive({
+    combinations[combination == input$hazard & severity_class==input$severity][1,paste0(c(dry1,heat1,wet1),collapse="+")]
+  })
+  
+  observe({
+    print(paste0("Int_nameX: ",int_nameX()))
+  })
+  
    files_vop_filtered <- reactive({
-     int_name2<-unlist(strsplit(int_name(),"[+]"))
-     int_name2<-gsub("PTOT-L","PTOT_L-",int_name2)
-     int_name2<-gsub("PTOT-G","PTOT_G-",int_name2)
-     int_name2<-gsub("TAVG-G","TAVG_G-",int_name2)
-     int_name2<-unlist(tstrsplit(int_name2,"-",keep=1))
-     int_name2<-paste0(int_name2,collapse="+")
-     
       files_vop()[grepl("admin0",files_vop()) & 
                   grepl(gsub("historical","historic",input$scenario),files_vop()) & 
                   grepl(tolower(input$severity),files_vop()) &
-                  grepl(int_name2,files_vop(),fixed=T)]
-  })
+                  grepl(int_nameX(),files_vop(),fixed=T)]
+     })
   
   observe({
     filtered_data <- files_vop_filtered()
@@ -572,8 +582,9 @@ files_class_filtered <- reactive({
     names(data)<-c("dry","heat","wet")
     
     data<-terra::mask(terra::crop(data,admin0_ss()),admin0_ss())
+    
 
-    plot(data,nc=3,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2))
+    plot(data,nc=3,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2),all_levels=T,type="classes",levels=c("no hazard","hazard"),legend="bottomleft")
   }) 
   
   #8)  Hazard risk plot ####
@@ -587,7 +598,7 @@ files_class_filtered <- reactive({
     
     data<-terra::mask(terra::crop(data,admin0_ss()),admin0_ss())
 
-    plot(data,nc=3,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2))
+    plot(data,nc=3,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2),type="continuous",range=c(0,1))
   }) 
   
   #9)  Hazard risk interaction plot ####
@@ -596,25 +607,33 @@ files_class_filtered <- reactive({
         terra::mask(terra::crop(data,admin0_ss()),admin0_ss())
       })
   output$plot_risk_int1<-renderPlot({
-    plot(data()[[1:4]],nc=4,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2))
+    plot(data()[[1:4]],nc=4,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2),type="continuous",range=c(0,1))
   }) 
   output$plot_risk_int2<-renderPlot({
-    plot(data()[[5:8]],nc=4,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2))
+    plot(data()[[5:8]],nc=4,pax=list(cex.axis = 2), cex.main = 2,mar= c(4.1, 4.1, 2.1, 2.1),plg=list(cex=2),type="continuous",range=c(0,1))
   }) 
   
   
   #10) VoP Exposure ####
-  vop_data<-reactive({
+  vop_data2<-reactive({
     data<-data.table(arrow::read_parquet(files_vop_filtered()))
     data<-data[hazard!="any"
                ][crop!="generic"
-               ][admin0_name %in% input$admin0 #& crop %in% input$crop
-                 ][,list(admin0_name,scenario,timeframe,crop,severity,hazard,value)
-                   ][,list(value=sum(value,na.rm=T)),by=list(crop,hazard)
-                     ][,total_value:=sum(value,na.rm=T),by=crop
-                       ][,value_p:=100*(value/total_value)]
+                 ][admin0_name %in% input$admin0 #& crop %in% input$crop
+                   ][,list(admin0_name,scenario,timeframe,crop,severity,hazard,value)
+                     ][,list(value=sum(value,na.rm=T)),by=list(crop,hazard,scenario,timeframe)
+                       ][,total_value:=sum(value,na.rm=T),by=list(crop,scenario,timeframe)
+                         ][,value_p:=100*(value/total_value)
+                           ][,scenario:=paste0(scenario,"-",timeframe)
+                             ][,timeframe:=NULL]
+
     return(data)
     })
+  
+  vop_data<-reactive({
+    vop_data2()[scenario==gsub("historical","historic",input$scenario)]
+  })
+
   
   output$vop_data <- DT::renderDataTable({
     DT::datatable(vop_data()[,value:=round(value,0)
@@ -625,8 +644,8 @@ files_class_filtered <- reactive({
   output$vop_bar_plot <- renderPlot({
     
     vop_data_ordered<-vop_data()
-    vop_data_ordered$hazard <- factor(vop_data_ordered$hazard, levels = rev(c("dry", "heat", "wet", "dry+heat", "dry+wet", "heat+wet","dry+heat+wet","No hazard")))
-    custom_colors <- c("dry" = "#F28E2B", "heat" = "#E15759", "wet" = "#76B7B2", "dry+heat" = "#59A14F", "dry+wet" = "#EDC948", "heat+wet" = "#B07AA1","dry+heat+wet" = "black", "No hazard" = "grey90")
+    vop_data_ordered$hazard <- factor(vop_data_ordered$hazard, levels = rev(c("dry", "heat", "wet", "dry+heat", "dry+wet", "heat+wet","dry+heat+wet","no hazard")))
+    custom_colors <- c("dry" = "#F28E2B", "heat" = "#E15759", "wet" = "#76B7B2", "dry+heat" = "#59A14F", "dry+wet" = "#EDC948", "heat+wet" = "#B07AA1","dry+heat+wet" = "black", "no hazard" = "grey90")
     
     if(input$bar_var=="IntDollar"){
       vop_data_ordered[,plot_value:=value]
@@ -635,9 +654,14 @@ files_class_filtered <- reactive({
       vop_data_ordered[,plot_value:=value_p]
       y_lab<-"Total Value (%)"
     }
+    
+  livestock<-vop_data_ordered[grep("tropical|highland",crop),sort(unique(crop))]
+  crops<-vop_data_ordered[!grepl("tropical|highland",crop),sort(unique(crop))]
+  
+  vop_data_ordered[,crop:=factor(crop,levels=rev(c(crops,livestock)))]
 
 
-  ggplot(vop_data_ordered, aes(x = crop, y = plot_value, fill = hazard)) +
+  ggplot(vop_data_ordered[!total_value==0], aes(x = crop, y = plot_value, fill = hazard)) +
     geom_bar(stat = "identity", position = "stack") +
     labs(x = "Crop", y = y_lab, fill = "Hazard") +
     coord_flip() +  # Flipping coordinates to have crops on the y-axis
