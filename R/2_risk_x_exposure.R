@@ -166,8 +166,7 @@ hpop_dir<-"Data/atlas_pop"
                                   base_rast=base_rast,
                                   filename="crop_vop_usd17",
                                   ms_codes=ms_codes,
-                                  overwrite=F)
-  
+                                  overwrite=overwrite)
     
     # 2.1.2.2) Extraction of values by admin areas
       crop_vop_tot_adm_sum<-admin_extract_wrap(data=crop_vop_tot,
@@ -458,7 +457,7 @@ hpop_dir<-"Data/atlas_pop"
       if(!file.exists(file)|overwrite==T){
         exposure_adm_sum_tab<-rbind(
           crop_vop_tot_adm_sum,
-          crop_vop17_tot_adm_su,
+          crop_vop17_tot_adm_sum,
           crop_ha_tot_adm_sum,
           livestock_vop_tot_adm,
           livestock_no_tot_adm
