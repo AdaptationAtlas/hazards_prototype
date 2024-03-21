@@ -1,4 +1,4 @@
-# !!!***This script assumes you have run the level 0_fao scripts first***!!! ####
+# !!!***This script assumes you have already run the fao_producer_prices.R and fao_producer_prices_livestock.R scripts to create the data this script needs to run***!!! ####
 
 # Install and load packages ####
 load_and_install_packages <- function(packages) {
