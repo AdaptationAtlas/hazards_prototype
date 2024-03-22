@@ -135,7 +135,7 @@ if(!file.exists(econ_file)){
 # Download production data from FAO ####
 prod_file<-paste0(fao_dir,"/Production_Crops_Livestock_E_Africa_NOFLAG.csv")
 
-if(!file.exists(econ_file)){
+if(!file.exists(prod_file)){
   # Define the URL and set the save path
   url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip"
   zip_file_path <- file.path(fao_dir, "Production_E_Africa.zip")
@@ -657,10 +657,4 @@ plot(prod_adj_rast)
   filename<-file.path(save_dir,"vop_adj17.tif")
   terra::writeRaster(prod_vop,filename)
   
-# IUSD
-  # Check names match
-  names(prod_adj_rast) %in% names(price_rast)
-  prod_vop<-prod_adj_rast*price_rast
-  
-  filename<-file.path(save_dir,"vop_adj17.tif")
-  terra::writeRaster(prod_vop,filename)
+# IUSD - to do

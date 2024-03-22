@@ -274,6 +274,8 @@ require(terra)
   # List ms countries
   countries<-prod[,unique(iso3)]
   
+  overwrite<-T
+  
   for(i in 1:length(files)){
     file<-files[i]
     print(paste(i,"-",file))
@@ -285,15 +287,15 @@ require(terra)
     
     colnames(prod)<-gsub("_a$|_h$|_i$|_l$|_r$|_s$","",colnames(prod))
     
-    ms_fields<-c("x","y","iso3",sort(crops))
+    ms_fields<-c("x","y","iso3",sort(Crops))
     prod<-prod[,..ms_fields]
     
-    if(!file.exists(prod_price_file)){
+    if(!file.exists(prod_price_file)|overwrite){
       # Restructure fao data
       prod_price_cast<-dcast(prod_price[,list(iso3,mean_final,short_spam2010)],iso3~short_spam2010,value.var = "mean_final")
       
       # Check columns align
-      crops[!crops %in% colnames(prod_price_cast)]
+      Crops[!Crops %in% colnames(prod_price_cast)]
       
       # Add back missing crops
       prod_price_cast[,rcof:=acof][,smil:=pmil]
@@ -308,7 +310,7 @@ require(terra)
     # Multiply production by price per ton for each country
     vop<-rbindlist(lapply(1:length(countries),FUN=function(i){
       data<-prod[iso3 == countries[i]]
-      vop<-cbind(data[,list(x,y)],data[,..crops] * prod_price_cast[iso3==countries[i],..crops][rep(1,nrow(data))])
+      vop<-cbind(data[,list(x,y)],data[,..Crops] * prod_price_cast[iso3==countries[i],..Crops][rep(1,nrow(data))])
     }))
     
     vop[,tota:=apply(vop[,!c("x","y")],1,sum,na.rm=T)]

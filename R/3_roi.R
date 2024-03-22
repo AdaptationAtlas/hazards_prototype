@@ -1,3 +1,8 @@
+# You will need run these scripts before running this one: ####
+# https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/fao_producer_prices.R
+# https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/fao_producer_prices_livestock.R
+# https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/fao_production_cv.R
+
 # Install and load packages ####
 load_and_install_packages <- function(packages) {
   for (package in packages) {
@@ -19,28 +24,36 @@ load_and_install_packages(packages)
 
 # Create functions ####
 # Function to calculate avoided loss
-avloss<-function(mean,sd,change,fixed,reps=100000){
+avloss_old<-function(cv,change,fixed,reps=100000){
   #Calculate co-efficient of variation
   
   # Calculate new standard deviation based on changed CV
+  # cv = sd/mean
+  
+  if(change>cv){
+    change<-cv
+    }
+  
   if(fixed){
-    sdcis<-((sd/mean)-change)*mean # Change value is substracted from CV
+    sdcis<-(cv-change) # Change value is substracted from CV
   }else{
-    sdcis<-((sd/mean)*(1-change))*mean # Change value is applied as a proportional reduction in CV
+    sdcis<-(cv*(1-change)) # Change value is applied as a proportional reduction in CV
   }
   
-  if(!sdcis<=0){
+  if(!sdcis<0){
     
     # Create normal distribution of values
-    x<-rnorm(n=reps,mean=mean,sd=sd)
+    x<-rnorm(n=reps,mean=1,sd=cv)
+    
     # Calculate probabilities
-    pnorm<-pnorm(x,mean=mean,sd=sd)
-    pnormCIS<-pnorm(x,mean=mean,sd=sdcis)
+    pnorm<-pnorm(x,mean=1,sd=cv)
+    pnormCIS<-pnorm(x,mean=1,sd=sdcis)
     
     # Calculate differences in probabilities
     pnormDiff<-pnormCIS-pnorm
     
     # Sum negative differences and divide by total probability for normal CV
+
     avloss<-sum(pnormDiff[pnormDiff<0])/sum(pnorm)
   }else{
     avloss<-NA
@@ -49,14 +62,79 @@ avloss<-function(mean,sd,change,fixed,reps=100000){
   return(avloss)
 }
 
+# Recreated function above to work in a mechanistically more straightforward way, behavior is consistent with expectations
+avloss <- function(cv, change, fixed = FALSE, reps = 10^6) {
+  # Calculate co-efficient of variation
+  x <- 1
+  
+  # Calculate new standard deviations
+  if(fixed){
+    # Ensure fixed change does not exceed cv
+    change <- min(change, cv)
+    sd_with<-(cv - change) * x
+  }else{
+    sd_with<-(cv * (1 - change)) * x
+    }
+  
+  sd_without <- cv * x
+  
+  # Avoid computation if the standard deviation would be negative
+  if (sd_with < 0) {
+    return(NA)
+  }
+  
+  # Generate normal distributions
+  with <- rnorm(n = reps, mean = x, sd = sd_with)
+  without <- rnorm(n = reps, mean = x, sd = sd_without)
+  
+  # Direct calculation of sum of lower half without sorting
+  with_lh <- sum(with[with <= median(with)])
+  without_lh <- sum(without[without <= median(without)])
+  
+  # Calculate average loss reduction and express as proportion of total without innovation
+  avloss <- (with_lh - without_lh) / sum(without)
+  
+  avloss[avloss<0]<-0
+  
+  return(avloss)
+}
+
+# Test avloss function
+if(F){
+  library(ggplot2)
+  library(reshape2)
+  
+  # Create the input ranges for cv and change
+  cv <- seq(0, 1, by = 0.025)
+  change <- seq(0, 0.9, by = 0.01)
+  
+  # Create an empty data frame to store the results
+  results <- expand.grid(cv=cv, change=change)
+  results$avloss <- NA
+  
+  # Calculate avloss for each combination of cv and change
+  for (i in 1:nrow(results)) {
+    results$avloss[i] <- avloss(cv = results$cv[i], change = results$change[i], reps = 10^4)  # Reduced reps for speed
+  }
+  
+  # Reshape for plotting
+  results_long <- melt(results, id.vars = c("cv", "change"), variable.name = "variable", value.name = "avloss")
+  
+  # Generate the plot
+  ggplot(results_long, aes(x = change, y = cv, fill = avloss)) +
+    geom_tile() +
+    scale_fill_gradient2(low = "grey90", mid="yellow2",high = "darkgreen") +
+    labs(x = "Proportional reduction in CV", y = "CV", fill = "Avoided Loss Benefit") +
+    theme_minimal() +
+    theme(axis.text.x = element_text(angle = 90, hjust = 1))
+
+}
+
+
 # 1) Load data ####
   # 1.1) Crops - MapSPAM ####
-
+    # 1.1.1) Vop 2017usd ####
     # This file can be used if yields are required
-    # file<-"C:/Users/Peter Steward/OneDrive - CGIAR/Projects/EiA/Regional Prioritization/PAiCE/SPAM/mapspam_complete_extraction_adm1.csv"
-    #exposure<-fread(file)
-    #exposure<-exposure[technology=="all"][,list(exposure,admin0_name,admin1_name,crop,value)]
-
     file<-"Data/exposure/crop_vop_usd17_adm_sum.parquet"
     
     if(!file.exists(file)){
@@ -122,6 +200,13 @@ avloss<-function(mean,sd,change,fixed,reps=100000){
   
   cv[,unique(crop)]
   
+  # Note robusta coffee and small millet do not exist in FAOstat data so substitute values for arabica and pearl millet
+  
+  cv<-rbind(cv,
+            cv[crop=="arabica coffee"][,crop:="robusta coffee"],
+            cv[crop=="pearl millet"][,crop:="small millet"]
+  )
+  
   # Do all countries match?
   exposure$admin0_name[!exposure$admin0_name %in% cv$admin0_name]
   cv$admin0_name[!cv$admin0_name %in% exposure$admin0_name]
@@ -130,7 +215,7 @@ avloss<-function(mean,sd,change,fixed,reps=100000){
 years<-16
 adoption<-c(0.005,0.01,0.02)
 prod_impact<-c(0.1,0.2,0.3,0.4,0.5)
-cis_impact<-c(0,0.01,0.05,0.1)
+cis_impact<-c(0,0.1,0.25,0.5)
 bcrs<-1.62
 # Combinations
 nrow(expand.grid(1:years,adoption,prod_impact,bcrs))
@@ -195,7 +280,6 @@ data[,value:=round(value,0)]
   unique(data$crop[!data$crop %in% cv$crop])
   unique(cv$crop[!cv$crop %in% data$crop])
   
-  
   # Duplicate dataset for cis_impact values
   N1<-rep(1:nrow(data),each=length(cis_impact))
   N2<-rep(1:length(cis_impact),nrow(data))
@@ -212,14 +296,17 @@ data[,value:=round(value,0)]
   # Calculate % avoided loss
   # Note it appears the mean is not actually required in the avloss function as it returns a proportion that relates to
   # cv, the magnitude of the mean does not affect the outcome.
-  data[value!=0,avloss:=abs(round(avloss(mean=1,
-                                 sd=1*cv[1],
-                                 change=cis_impact[1],
-                                 fixed=F,
-                                 reps=10000),4)),by=list(cv,cis_impact)]
+  data[value!=0,avloss:=abs(round(avloss(cv=1*cv[1],
+                                         change=cis_impact[1],
+                                         fixed=F,
+                                         reps=10^6),4)),by=list(cv,cis_impact)]
   
-  data[,marginal_impact_w_cis:=round(marginal_impact*(1+avloss),1)
-       ][is.na(marginal_impact_w_cis),marginal_impact_w_cis:=0]
+  # Multiply production of adopters by cis benefit, subtract adopter product from adopter production + cis to get marginal benefit of cis
+  data[,result_w_impact_cis:=round(result_w_impact*(1+avloss),1)
+       ][,marginal_cis:=result_w_impact_cis-result_w_impact
+         ][is.na(marginal_cis),marginal_cis:=0
+           ][is.na(result_w_impact_cis),result_w_impact_cis:=0
+             ][,marginal_impact_cis:=marginal_cis+marginal_impact]
   
 # 4) Calculate adoption benefits using VoP approach ####
   data_benefit<-data[exposure == "vop_usd17"][,c("exposure"):=NULL]
@@ -231,16 +318,30 @@ data[,value:=round(value,0)]
     data_benefit[N1],
     bcr=bcrs[N2]
   )
+  
 
-  #data_benefit[,cost:=(value+marginal_impact)/bcr
-  #          ][,nr:=(value+marginal_impact)-cost]
+  #data_benefit[,cost:=(value+marginal_impact_cis)/bcr
+  #          ][,nr:=(value+marginal_impact_cis)-cost]
   
-  data_benefit[,project_benefit:=marginal_impact_w_cis-marginal_impact_w_cis/bcr]
+  data_benefit[,project_benefit:=marginal_impact_cis-marginal_impact_cis/bcr]
   
-  data_benefit<-data_benefit[,!c("result_w_impact","marginal_impact","value","result","cv","avloss","marginal_impact_w_cis")]
+  # You can use this section to manually validate the project benefit formula
+  if(F){
+    income_with<-303137.2
+    income_without<-275551.7
+    marginal_impact_cis<-27585.5
+    bcr<-1.62
+    cost_with<-income_with/bcr
+    cost_without<-income_without/bcr
+    cost_diff<-cost_with-cost_without
+    (project_benefit<-marginal_impact_cis-cost_diff)
+  }
+  
+  data_benefit<-data_benefit[,!c("result_w_impact","marginal_impact","value","result","cv","avloss","marginal_impact_cis","result_w_impact_cis","marginal_cis")]
   
   # Set benefits to be integer to reduce file size
   data_benefit[,project_benefit:=as.integer(project_benefit)]
   
 # 4.1) Save dataset ####
   arrow::write_parquet(data_benefit,sink=paste0(save_dir,"/roi_data.parquet"))
+  

@@ -1,4 +1,6 @@
-# !!!***This script assumes you have already run the fao_producer_prices.R and fao_producer_prices_livestock.R scripts to create the data this script needs to run***!!! ####
+# You will need run these scripts before running this one: ####
+# https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/fao_producer_prices.R
+# https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/fao_producer_prices_livestock.R
 
 # Install and load packages ####
 load_and_install_packages <- function(packages) {
@@ -346,6 +348,7 @@ data[,value_filled:=value
      ][is.na(value_filled),value_filled:=mean_neighbors
        ][is.na(value_filled),value_filled:=mean_region
          ][is.na(value_filled),value_filled:=mean_continent]
+
 
 fwrite(data,file=file.path(fao_dir,"faostat_prod_cv.csv"))
 
