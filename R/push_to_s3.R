@@ -60,7 +60,7 @@ ctc_wrapper<-function(folder,worker_n=1,delete=T,rename=T){
 }
 
 # Upload files S3 bucket
-upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, max_attempts = 3, overwrite=F, check_identical=T) {
+upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, max_attempts = 3, overwrite=F) {
   
   # Create the s3 directory if it does not already exist
   if(!s3_dir_exists(selected_bucket)){
@@ -84,16 +84,6 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
     flush.console()
     
     s3_file_path <- paste0(selected_bucket, "/", basename(files[i]))
-    
-    if(check_identical){
-      # Assume s3_file_md5 and local_file_md5 are available
-      if(s3_file_exists(s3_file_path)){
-        if(s3_file_md5(s3_file_path) == local_file_md5(files[i])){
-          cat("Skipping identical file:", files[i], "\n")
-          next
-        }
-      }
-    }
     
     tryCatch({
       attempt <- 1
@@ -219,10 +209,11 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   folder<-paste0("Data/hazard_timeseries/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
   
-  s3_files<-s3_dir_ls(s3_bucket)
+  s3_dir_ls(s3_bucket)
+  #s3fs::s3_dir_delete(s3_bucket)
 
   # Upload files
-  upload_files_to_s3(files = list.files(folder,".parquet$",full.names = T),
+  upload_files_to_s3(files = list.files(folder,full.names = T),
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F)
@@ -231,8 +222,12 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   folder<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_class/",timeframe_choice)
   
+  s3_dir_ls(s3_bucket)
+  
+  if(F){
   # Prepare tif data by converting to COG format
   ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+  }
   
   # Upload files
   upload_files_to_s3(folder = folder,
@@ -244,6 +239,9 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   folder<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_mean/",timeframe_choice)
 
+  s3_dir_ls(s3_bucket)
+  
+  
   # Prepare tif data by converting to COG format
   if(F){
     ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
@@ -257,7 +255,7 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   # Upload - hazard_timeseries_risk ####
   folder<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_risk/",timeframe_choice)
-  #s3fs::s3_dir_ls(s3_bucket)
+  s3fs::s3_dir_ls(s3_bucket)
   
   # Prepare tif data by converting to COG format
   if(F){
@@ -273,7 +271,7 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   # Upload - hazard_timeseries_int ####
   folder<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_int/",timeframe_choice)
-  #s3fs::s3_dir_ls(s3_bucket)
+  s3fs::s3_dir_ls(s3_bucket)
   
   # Prepare tif data by converting to COG format
   if(F){
@@ -298,8 +296,7 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
       upload_files_to_s3(files = LOCAL_FILES,
                          selected_bucket=S3_BUCKET,
                          max_attempts = 3,
-                         overwrite=F,
-                         check_identical = F)
+                         overwrite=F)
     }
   }
   
@@ -317,8 +314,7 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   upload_files_to_s3(folder = folder,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F,
-                     check_identical = F)
+                     overwrite=F)
   
   # Upload - haz_risk ####
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_risk/",timeframe_choice)
@@ -370,6 +366,9 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
                      max_attempts = 3,
                      overwrite=F)
   
+  file<-grep("reduced",s3_dir_ls(s3_bucket),value=T)
+  s3_file_download(file,new_path="haz_risk_vop_int_ac_reduced.parquet")
+  
 # 3) ROI data ####
   s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/roi")
   folder<-paste0("Data/roi")
@@ -383,6 +382,7 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
                      overwrite=T)
 # 4) hazard_timeseries data ####
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
+  # make sure the folder is set to the atlas_hazards/cmip6/indices server folder
   folder<-haz_timeseries_dir
   
   s3_dir_ls(s3_bucket)
