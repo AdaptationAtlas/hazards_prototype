@@ -177,6 +177,44 @@ fill_gaps<-function(data){
   return(data)
   
 }
+calc_cv<-function(data,detrend=T,rm.na=T,min_data=10,prob_req=0.05,rsq_req=0.1){
+  
+  if(sum(is.na(data))>0 & rm.na==F){
+    return(as.numeric(NA))
+  }else{
+    data<-data[!is.na(data)]
+    
+    if(length(data)<min_data|length(unique(data))==1){
+      return(as.numeric(NA))
+    }else{
+      
+      if(detrend==T){
+        years <- seq_along(data)  # Assuming each yield corresponds to a consecutive year
+        
+        # Fit a linear model to the data
+        model <- lm(data ~ years)
+        
+        X<-summary(model)
+        pr_years<-data.frame(X$coefficients)[2,4]
+        r2_adj<-data.frame(X$adj.r.squared)
+        
+        if(pr_years<prob_req & r2_adj>rsq_req){
+          # Get the residuals, which represent the detrended data
+          detrended_data <- residuals(model) + mean(data)
+          
+          # Then calculate the coefficient of variation on the adjusted detrended datauction
+          cv <- sd(detrended_data) / mean(detrended_data)
+        }else{
+          cv<-as.numeric(NA)
+        }
+      }else{
+        cv <- sd(data) / mean(data)
+      }
+      
+      return(cv)
+    }
+  }
+}
 
 # Setup workspace ####
 # Load geoboundaries
@@ -261,46 +299,6 @@ data<-rbind(yield,prod)
 # Set zero values to NAs 
 data[value==0,value:=NA]
 
-
-# Function to detrend data ####
-calc_cv<-function(data,detrend=T,rm.na=T,min_data=10,prob_req=0.05,rsq_req=0.1){
-  
-  if(sum(is.na(data))>0 & rm.na==F){
-    return(as.numeric(NA))
-  }else{
-    data<-data[!is.na(data)]
-    
-    if(length(data)<min_data|length(unique(data))==1){
-      return(as.numeric(NA))
-    }else{
-        
-      if(detrend==T){
-        years <- seq_along(data)  # Assuming each yield corresponds to a consecutive year
-        
-        # Fit a linear model to the data
-        model <- lm(data ~ years)
-        
-        X<-summary(model)
-        pr_years<-data.frame(X$coefficients)[2,4]
-        r2_adj<-data.frame(X$adj.r.squared)
-        
-        if(pr_years<prob_req & r2_adj>rsq_req){
-        # Get the residuals, which represent the detrended data
-        detrended_data <- residuals(model) + mean(data)
-        
-        # Then calculate the coefficient of variation on the adjusted detrended datauction
-        cv <- sd(detrended_data) / mean(detrended_data)
-        }else{
-          cv<-as.numeric(NA)
-        }
-      }else{
-        cv <- sd(data) / mean(data)
-      }
-      
-    return(cv)
-    }
-  }
-}
 
 # Look for issues in the data ####
 if(F){
