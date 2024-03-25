@@ -110,13 +110,13 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   folder<-"Data/exposure"
   
   # Prepare tif data by converting to COG format
-  ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
+  #ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
   
   # Upload files
   upload_files_to_s3(files = list.files(folder,".parquet$",full.names = T),
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F)
+                     overwrite=T)
   
   # Upload - metadata ####
   # select a folder
@@ -344,21 +344,21 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
     ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
   }
   
-  # Which files are missing
+
   files<-list.files(folder,full.names = T)
 
   # files<-grep("_adm_",files,value=T)
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F)
+                     overwrite=T)
   
   # Upload - haz_vop_risk_ac ####
   s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_ac/",timeframe_choice)
   folder<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
   
   s3_dir_ls(s3_bucket)
-  #s3fs::s3_dir_delete(s3_bucket)
+  s3fs::s3_dir_delete(s3_bucket)
 
   # Upload files
   upload_files_to_s3(files=list.files(folder,".parquet",full.names = T),
@@ -366,8 +366,8 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
                      max_attempts = 3,
                      overwrite=F)
   
-  file<-grep("reduced",s3_dir_ls(s3_bucket),value=T)
-  s3_file_download(file,new_path="haz_risk_vop_int_ac_reduced.parquet")
+  #file<-grep("reduced",s3_dir_ls(s3_bucket),value=T)
+  #s3_file_download(file,new_path="haz_risk_vop_int_ac_reduced.parquet")
   
 # 3) ROI data ####
   s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/roi")
