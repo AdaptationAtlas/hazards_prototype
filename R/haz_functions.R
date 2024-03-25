@@ -866,7 +866,7 @@ SxRtabFun<-function(Hazards,Plot_Vars,ExtractBy){
   
   Data<-merge(Data,Data_sd)
   
-  Data<-melt(Data,id.vars="admin")
+  Data<-data.table(melt(Data,id.vars="admin"))
   Data[,Variable:=strsplit(as.character(variable),"_")][,Variable:=unlist(lapply(Variable,FUN=function(x){x[length(x)]}))]
   Data[,Hazard:=gsub(paste(paste0("_",unique(Variable)),collapse="|"),"",variable)][,variable:=NULL]
   
@@ -1526,7 +1526,7 @@ admin_extract_wrap <- function(data, save_dir, filename, FUN = "sum", varname, G
       
       # Adjust column names and reshape the data.
       colnames(data) <- gsub("_nam$", "_name", colnames(data))
-      data <- melt(data, id.vars = admin)
+      data <- data.table(melt(data, id.vars = admin))
       
       # Add and modify columns to include crop type and exposure information.
       data[, crop := gsub(paste0(FUN, "."), "", variable[1], fixed = T), by = variable]
@@ -1865,7 +1865,7 @@ recode_restructure<-function(data,crops,livestock,Scenarios,exposure_var,severit
   ][,scenario:=unlist(tstrsplit(scenario[1],".",keep=2,fixed=T)),by=scenario
   ][,severity:=tolower(severity)]
   
-  data<-merge(data,split_tab,all.x=T)
+  data<-data.table(merge(data,split_tab,all.x=T))
   data[,variable:=NULL]
   
   if(data[,any(is.na(hazard_vars))]){
@@ -1948,7 +1948,7 @@ recode_restructure_wrap <- function(folder, file, crops, livestock, exposure_var
       }
       
       # Reshape the data table for restructuring.
-      data <- melt(data, id.vars = admins)
+      data <- data.table(melt(data, id.vars = admins))
       
       # Apply the recoding and restructuring process.
       data <- recode_restructure(data = data, crops = crops, livestock = livestock, Scenarios = Scenarios, exposure_var = exposure_var, severity = severity, hazards = hazards, interaction = interaction)
@@ -1974,25 +1974,30 @@ recode_restructure_wrap <- function(folder, file, crops, livestock, exposure_var
 #' data_processed <- split_livestock(data, livestock_mask_high, livestock_mask_low)
 #' @export
 split_livestock <- function(data, livestock_mask_high, livestock_mask_low) {
+  names(data) <-gsub("chicken","poultry",names(data))
+  names(data) <-gsub("pig$","pigs",names(data))
+  data_names<-names(data)  
   
-  # Reorder data columns to match the order of high mask columns.
-  order_n <- sapply(names(data), FUN = function(X) { grep(X, names(livestock_mask_high)) })
-  data_high <- data[[order_n]]
-  # Apply the high mask to the data.
-  data_high <- data_high * livestock_mask_high
+  names(livestock_mask_high)<-unlist(tstrsplit(names(livestock_mask_high),"_",keep=1))
+  livestock_mask_high<-livestock_mask_high[[names(data)]]
   
-  # Reorder data columns to match the order of low mask columns.
-  order_n <- sapply(names(data), FUN = function(X) { grep(X, names(livestock_mask_low)) })
-  data_low <- data[[order_n]]
-  # Apply the low mask to the data.
-  data_low <- data_low * livestock_mask_low
+  if(!all(names(data)==names(livestock_mask_high))){
+    stop("Misalignment with mask and dataset names")
+  }
+  data_high <- data * livestock_mask_high
+  names(data_high)<-paste0(names(data_high),"_highland")
   
-  # Ensure the names of the high and low data match their respective masks.
-  names(data_high) <- names(livestock_mask_high)
-  names(data_low) <- names(livestock_mask_low)
+  
+  names(livestock_mask_low)<-unlist(tstrsplit(names(livestock_mask_low),"_",keep=1))
+  livestock_mask_low<-livestock_mask_low[[names(data)]]
+  
+  if(!all(names(data)==names(livestock_mask_low))){
+    stop("Misalignment with mask and dataset names")
+  }
+  data_low <- data * livestock_mask_low
+  names(data_low)<-paste0(names(data_low),"_tropical")
   
   # Combine the high and low data into a single vector.
   data_joined <- c(data_low, data_high)
-  
   return(data_joined)
 }
