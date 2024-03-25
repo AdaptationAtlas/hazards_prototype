@@ -241,9 +241,9 @@ hpop_dir<-"Data/atlas_pop"
       # If glw3 data does not exist locally download from S3 bucket
       glw3_dir<-"Data/GLW3"
       
-      if(!dir.exists(glw3_dir)){
+      if(!dir.exists(glw3_dir)|length(list.files(glw3_dir))==0){
         dir.create(glw3_dir,recursive = T)
-        s3_bucket <- "s3://digital-atlas/risk_prototype/data/GLW3"
+        s3_bucket <- "s3://digital-atlas/GLW3"
         s3fs::s3_dir_download(s3_bucket,glw3_dir,overwrite = T)
       }
     
@@ -374,7 +374,7 @@ hpop_dir<-"Data/atlas_pop"
         ls_vop_files<-grep("h7",ls_vop_files,value=T)
         livestock_vop<-terra::rast(ls_vop_files)
       
-        names(livestock_vop)<-c("cattle","poultry","pigs","sheep_goat","total")
+        names(livestock_vop)<-unlist(tstrsplit(names(livestock_vop),"-",keep=3))
         
         # resample to 0.05
         livestock_density<-livestock_vop/terra::cellSize(livestock_vop,unit="ha")
@@ -394,22 +394,6 @@ hpop_dir<-"Data/atlas_pop"
       # Split vop by highland vs lowland
       
       livestock_vop<-split_livestock(data=livestock_vop,livestock_mask_high,livestock_mask_low)
-      
-      # Reorder cols to match mask
-      order_n<-sapply(names(livestock_vop),FUN=function(X){grep(X,names(livestock_mask_high))})
-      livestock_vop_high<-livestock_vop[[order_n]]
-      livestock_vop_high<-livestock_vop_high*livestock_mask_high
-      
-      order_n<-sapply(names(livestock_vop),FUN=function(X){grep(X,names(livestock_mask_low))})
-      livestock_vop_low<-livestock_vop[[order_n]]
-      livestock_vop_low<-livestock_vop_low*livestock_mask_low
-      
-      
-      names(livestock_vop_high)<-names(livestock_mask_high)
-      names(livestock_vop_low)<-names(livestock_mask_low)
-      
-      livestock_vop<-c(livestock_vop_low,livestock_vop_high)
-      
       terra::writeRaster(livestock_vop,filename = livestock_vop_file,overwrite=T)
       }else{
         livestock_vop<-terra::rast(livestock_vop_file)
@@ -430,7 +414,7 @@ hpop_dir<-"Data/atlas_pop"
                 total=sum(data,na.rm=T)))
         
         livestock_vop17<-split_livestock(data=data,livestock_mask_high,livestock_mask_low)
-        terra::writeRaster(livestock_vop17,filename = livestock_vop17_file)
+        terra::writeRaster(livestock_vop17,filename = livestock_vop17_file,overwrite=T)
       }else{
         livestock_vop17<-terra::rast(livestock_vop17_file)
       }
