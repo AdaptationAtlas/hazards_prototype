@@ -23,46 +23,6 @@ packages <- c("data.table",
 load_and_install_packages(packages)
 
 # Create functions ####
-# Function to calculate avoided loss
-avloss_old<-function(cv,change,fixed,reps=100000){
-  #Calculate co-efficient of variation
-  
-  # Calculate new standard deviation based on changed CV
-  # cv = sd/mean
-  
-  if(change>cv){
-    change<-cv
-    }
-  
-  if(fixed){
-    sdcis<-(cv-change) # Change value is substracted from CV
-  }else{
-    sdcis<-(cv*(1-change)) # Change value is applied as a proportional reduction in CV
-  }
-  
-  if(!sdcis<0){
-    
-    # Create normal distribution of values
-    x<-rnorm(n=reps,mean=1,sd=cv)
-    
-    # Calculate probabilities
-    pnorm<-pnorm(x,mean=1,sd=cv)
-    pnormCIS<-pnorm(x,mean=1,sd=sdcis)
-    
-    # Calculate differences in probabilities
-    pnormDiff<-pnormCIS-pnorm
-    
-    # Sum negative differences and divide by total probability for normal CV
-
-    avloss<-sum(pnormDiff[pnormDiff<0])/sum(pnorm)
-  }else{
-    avloss<-NA
-  }
-  
-  return(avloss)
-}
-
-# Recreated function above to work in a mechanistically more straightforward way, behavior is consistent with expectations
 avloss <- function(cv, change, fixed = FALSE, reps = 10^6) {
   # Calculate co-efficient of variation
   x <- 1
@@ -129,7 +89,6 @@ if(F){
     theme(axis.text.x = element_text(angle = 90, hjust = 1))
 
 }
-
 
 # 1) Load data ####
   # 1.1) Crops - MapSPAM ####
@@ -255,10 +214,10 @@ for(i in 1:years){
 }
 
 # Melt data into long form
-data<-melt(data,
+data<-data.table(melt(data,
              id.vars = c("admin0_name","value","crop","exposure", "admin1_name","adoption","prod_impact"),
              variable.name = "year_char",
-             value.name = "result")
+             value.name = "result"))
 
 # Convert year from character to numeric
 data[,year:=as.numeric(gsub("y","",year_char[1])),by=year_char][,year_char:=NULL]
