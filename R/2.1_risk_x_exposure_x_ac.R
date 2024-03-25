@@ -53,7 +53,7 @@ if(!file.exists(local_file)|overwrite==T){
 adaptive_capacity<-data.table(arrow::read_parquet(local_file))
 
 # Cast dataset
-adaptive_capacity_cast<-dcast(adaptive_capacity,admin0_name+admin1_name+admin2_name+iso3+total_pop+rural_pop~vulnerability,value.var="value_binary")
+adaptive_capacity_cast<-data.table(dcast(adaptive_capacity,admin0_name+admin1_name+admin2_name+iso3+total_pop+rural_pop~vulnerability,value.var="value_binary"))
 
 # Load hazard risk x VoP data #####
 # Data is found in "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual" for example
@@ -79,16 +79,23 @@ haz_risk_vop<-haz_risk_vop[,list(admin0_name,admin1_name,admin2_name,scenario,ti
 # Load total VoP data ####
 # Data is found in "s3://digital-atlas/risk_prototype/data/exposure/annual" for example
 exposure_dir<-"Data/exposure/"
-exposure<-arrow::read_parquet(file.path(exposure_dir,"exposure_adm_sum.parquet"))
+exposure<-data.table(arrow::read_parquet(file.path(exposure_dir,"exposure_adm_sum.parquet")))
 # Subset exposure to VoP
 exposure<-exposure[exposure=="vop"][,exposure:=NULL]
 setnames(exposure,"value","total_value")
 
+
+# merge data
+haz_risk_vop<-merge(haz_risk_vop,exposure,all.x=T)
+
 # Work out total exposure 
 haz_risk_vop_any<-haz_risk_vop[hazard=="any"]
-haz_risk_vop_any<-merge(haz_risk_vop_any,exposure,all.x=T)
 haz_risk_vop_any[,value_non_exposed:=round(total_value-value,0)]
 haz_risk_vop_any[value_non_exposed<(-1000),]
+haz_risk_vop_any[,hazard:="no hazard"][,value:=value_non_exposed][,value_non_exposed:=NULL]
+
+# combine back
+haz_risk_vop<-rbind(haz_risk_vop,haz_risk_vop_any)
 
 # Check admin names all match ####
 if(F){
@@ -215,6 +222,7 @@ reduce_parquet(data=haz_risk_vop_ac,
                folder=haz_risk_vop_ac_dir,
                rm_st=T)
 
+if(F){
 # Check resulting file
 check<-arrow::read_parquet(file.path(haz_risk_vop_ac_dir,"haz_risk_vop_int_ac_reduced.parquet"))
 check<-arrow::read_parquet("haz_risk_vop_int_ac_reduced.parquet")
@@ -266,6 +274,7 @@ vop_data_ordered<-check[hazard!="any"
       legend.text = element_text(size = 14), # Adjusting legend text size
       panel.spacing.y = unit(0.5, "lines") # Reducing space between bars
     )
+}
 
 # Subset loop ####
 
