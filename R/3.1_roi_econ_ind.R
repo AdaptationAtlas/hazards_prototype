@@ -13,7 +13,8 @@ packages <- c("data.table",
               "s3fs",
               "arrow",
               "FinCal",
-              "ggplot2")
+              "ggplot2",
+              "treemap")
 
 # Call the function to install and load packages
 load_and_install_packages(packages)
@@ -98,7 +99,7 @@ if(!file.exists(file)){
     dir.create(dirname(file),recursive = T)
   }
   
-  s3_file <-"s3://digital-atlas/risk_prototype/data/exposure/crop_vop_usd17_adm_sum.parquet"
+  s3_file <-"s3://digital-atlas/risk_prototype/data/exposure/livestock_vop_usd17_adm_sum.parquet"
   s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
 }
 
@@ -108,8 +109,21 @@ data_vop_usd17_ls<-data_vop_usd17_ls[!grepl("total",crop)]
 # Combine crops and livestock
 data_vop_usd17<-rbind(data_vop_usd17,data_vop_usd17_ls)
 
+  # 1.2) Load adoption data ####
+  file<-"Data/roi/adoption_rates_perc.parquet"
+  
+  if(!file.exists(file)){
+    if(!dir.exists(dirname(file))){
+      dir.create(dirname(file),recursive = T)
+    }
+    
+    s3_file <-"s3://digital-atlas/risk_prototype/data/roi/adoption_rates_perc.parquet"
+    s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
+  }
+  
+  data_adoption<-arrow::read_parquet(file)
+  
 # 2) User sets up project  ####
-
   # 2.1) Geography  #####
   # This code is just to select some geographies and crops that are interesting, it is not intended for the UI
   admin0_choice<-c("Kenya")
@@ -117,15 +131,42 @@ data_vop_usd17<-rbind(data_vop_usd17,data_vop_usd17_ls)
   # 2.2) Crops  #####
   
     # 2.2.1) Value of crops ####
-    data_vop_usd17[admin0_name %in% admin0_choice & is.na(admin1_name)
-                   ][,value_Musd:=round(value/10^6,0)
-                     ][order(value,decreasing=T)
-                       ][,list(admin0_name,crop,value_Musd)]
+    crop_values<-data_vop_usd17[admin0_name %in% admin0_choice & is.na(admin1_name)
+                       ][,value_Musd:=round(value/10^6,0)
+                         ][order(value,decreasing=T)
+                           ][,list(admin0_name,crop,value_Musd)
+                             ][,crop:=gsub("_"," ",crop)
+                               ][,crop:=paste0(crop," $",value_Musd,"M")]
     
-    # 2.2.2) Choose crops ####
+
+    # Assuming 'data' is your data frame and it looks like the one in the image
+    # Replace 'data' with the actual name of your data frame
+    
+    # Create a scaled version of the value_Musd column to range from 0 to 1
+    scaled_values <- scale(crop_values$value_Musd, 
+                           center = min(crop_values$value_Musd), 
+                           scale = max(crop_values$value_Musd) - min(crop_values$value_Musd))
+    
+    # Use the scaled values to get a gradient color from the YlGn palette
+    get_color <- colorRampPalette(RColorBrewer::brewer.pal(9, "YlGn"))(100)
+    crop_values$color <- get_color[as.numeric(cut(scaled_values, breaks = 100))]
+    
+    # Create the treemap with the manually created color gradient
+    treemap(crop_values,
+            index = c("crop"),     # The column that defines the grouping
+            vSize = "value_Musd",  # The column that defines the size of the rectangles
+            vColor = "color",      # The column that defines the manually created color gradient
+            title = "Treemap of Crop Values",
+            type="color",
+            fontsize.title = 18)
+    
+        
+        # 2.2.2) Choose crops ####
     crops_choice<-c("maize")
     
     data_vop_usd17[admin0_name %in% admin0_choice & is.na(admin1_name) & crop %in% crops_choice,paste0("total crop value ($M) = ",round(sum(value)/10^6,1))]
+    
+ 
     
   # 2.3) Cost #####
   project_cost<-50*10^6
@@ -138,7 +179,11 @@ data_vop_usd17<-rbind(data_vop_usd17,data_vop_usd17_ls)
   cis_impact_choice<-0.25
   adoption_rate_choice<-0.01
   
-  # 2.5) Discount rate ####
+  # 2.5.1) Show adoption ####
+   data_adoption[adoption==adoption_rate_choice,list(year,adoption_perc)
+                 ][year<=project_years]
+
+  # 2.6) Discount rate ####
   discount_rate<-0.08
   
   # 2.5) User sets return start year (min = 1)
