@@ -126,6 +126,22 @@ if(F){
   # Combine highland and lowland cattle
   livestock_vop<-livestock_vop[,crop:=gsub("_tropical|_highland","",crop)][,list(value=sum(value,na.rm=T)),by=list(admin0_name,admin1_name,crop,exposure)]
     
+  # x) Human pop ####
+  file<-"Data/exposure/hpop_adm_sum.parquet"
+  
+  if(!file.exists(file)){
+    if(!dir.exists(dirname(file))){
+      dir.create(dirname(file),recursive = T)
+    }
+    
+    s3_file <-"s3://digital-atlas/risk_prototype/data/exposure/hpop_adm_sum.parquet"
+    s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
+  }
+  
+  hpop<-data.table(arrow::read_parquet(file))
+  hpop<-hpop[is.na(admin2_name)][,admin2_name:=NULL][crop=="rural"]
+
+  
   # 1.3) Join livestock and crop exposures ####
   exposure<-rbind(exposure,livestock_vop)[crop!="total"]
   rm(livestock_vop)
@@ -170,6 +186,33 @@ if(F){
   exposure$admin0_name[!exposure$admin0_name %in% cv$admin0_name]
   cv$admin0_name[!cv$admin0_name %in% exposure$admin0_name]
   
+  
+  # 1.5) Combine exposure and impact tables ####
+  combine_tables <- function(table1, table2) {
+    # Get the number of rows for each table
+    n1 <- nrow(table1)
+    n2 <- nrow(table2)
+    
+    # Create an index for each table
+    idx1 <- rep(1:n1, each=n2)
+    idx2 <- rep(1:n2, times=n1)
+    
+    # Expand the tables
+    expanded_table1 <- table1[idx1, ]
+    expanded_table2 <- table2[idx2, ]
+    
+    # Bind the columns of both expanded tables side by side
+    combined_table <- cbind(expanded_table1, expanded_table2)
+    
+    # Return the combined table
+    return(combined_table)
+  }
+  
+  data_hpop<-combine_tables(hpop,combinations[,"adoption"])[,prod_impact:=NA]
+  data<-combine_tables(exposure,combinations)
+  
+  data<-rbind(data,data_hpop)
+  
 # 2) Set parameters and save directory ####
 years<-16
 adoption<-c(0.005,0.01,0.02)
@@ -185,11 +228,9 @@ if(!dir.exists(save_dir)){
 }
 combinations<-data.table(expand.grid(adoption=adoption,prod_impact=prod_impact))
 
-N1<-rep(1:nrow(exposure),each=nrow(combinations))
-N2<-rep(1:nrow(combinations),nrow(exposure))
+
 
 # 3) Work out marginal change ####
-data<-cbind(exposure[N1],combinations[N2])
 
 y_cols<-paste0("y",1:years)
 
@@ -227,6 +268,29 @@ data<-data[order(admin0_name,admin1_name,exposure,value,crop,adoption,prod_impac
 
 # Round value to integer to reduced size and calculation demands
 data[,value:=round(value,0)]
+
+# 3.1) Separate population and production/vop ####
+data_hpop<-data[crop=="rural"][,prod_impact:=NULL]
+data_hpop[,crop:="rural_pop"]
+
+setnames(data_hpop,c("crop","exposure","result"),c("variable","unit","adopters"))
+data_hpop[,non_adopters:=value-adopters][,adoption_perc:=round(100*adopters/value,2)]
+
+data_hpop<-unique(data_hpop)
+
+arrow::write_parquet(data_hpop,sink="Data/roi/adoption_rates.parquet")
+
+# Remove population data, this is because we cannot easily assign human population to crops
+# As we have removed population data we can also remove the geographic data
+
+data_hpop<-unique(data_hpop[,list(adoption_perc=mean(adoption_perc)),
+                                    by=list(adoption,year)
+                            ][,adoption_perc:=round(adoption_perc,1)])
+
+arrow::write_parquet(data_hpop,sink="Data/roi/adoption_rates_perc.parquet")
+
+
+data<-data[crop!="rural"]
 
   # 3.1) Add marginal benefit to production ####
     # a) Multiply the cumulative adoption amount (value of production) by production benefit of adoption
