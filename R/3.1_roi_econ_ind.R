@@ -27,13 +27,14 @@ load_and_install_packages(packages)
 
 # Create a function to calculate internal rate of return
 
-irr_wrap <- function(cashflows) {
-  sapply(1:length(cashflows), FUN = function(i) {
+irr_wrap <- function(cashflow) {
+  
+  sapply(1:length(cashflow), FUN = function(i) {
     
-    cashflows <- cashflows[1:i]
+    cashflow_ss <- cashflow[1:i]
       # Use tryCatch to handle errors
       result <- tryCatch({
-        suppressWarnings(jrvFinance::irr(cashflows))
+        suppressWarnings(jrvFinance::irr(cashflow_ss))
       }, error = function(e) {
         # In case of an error, return NA
         as.numeric(NA)
@@ -73,93 +74,136 @@ if(!file.exists(file)){
 
 data_benefit<-arrow::read_parquet(file)
 
-  # 1.1) Set number of discount rate the user can choose from ####
-discount_rates<-c(4,8,12)
+  # 1.1) Load value of production data #####
 
-# 2) User selects crops and geography ####
+# Crops
+file<-"Data/exposure/crop_vop_usd17_adm_sum.parquet"
 
-# This code is just to select some geographies and crops that are interesting, it is not intended for the UI
-admin0_choice<-"Kenya"
-admin1_choice<-data_benefit[admin0_name==admin0_choice,sample(unique(admin1_name),4,replace=F)]
-
-priority_crops<-data_benefit[admin0_name %in% admin0_choice & admin1_name %in% admin1_choice
-                             ][,list(value=mean(project_benefit)),by=crop
-                               ][order(value,decreasing = T)
-                                 ][value>100]
-
-crops_choice<-priority_crops$crop[1:4]
-
-# 3) Subset data ####
-data_merge_ss<-data_benefit[admin0_name %in% admin0_choice & admin1_name %in% admin1_choice & crop %in% crops_choice]
-
-# sum results
-data_merge_ss<-data_merge_ss[,list(project_benefit=sum(project_benefit,na.rm=T)),by=list(adoption,prod_impact,cis_impact,bcr,year)]
-
-# Re-sort dataset so that years are in order, this is required for irr calculations
-data_merge_ss<-data_merge_ss[order(adoption,prod_impact,cis_impact,bcr,year)]
-
-# Adjust years so that year 1 becomes year 0
-data_merge_ss[,year:=year-1]
-
-# 4) Calculate economic indicators ####
-  # 4.1) User sets a project cost ####
-  project_cost<-10^6
+if(!file.exists(file)){
+  if(!dir.exists(dirname(file))){
+    dir.create(dirname(file),recursive = T)
+  }
   
-  # 4.1.1) User sets return start year
+  s3_file <-"s3://digital-atlas/risk_prototype/data/exposure/crop_vop_usd17_adm_sum.parquet"
+  s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
+}
+
+data_vop_usd17<-arrow::read_parquet(file)
+
+# Livestock
+file<-"Data/exposure/livestock_vop_usd17_adm_sum.parquet"
+
+if(!file.exists(file)){
+  if(!dir.exists(dirname(file))){
+    dir.create(dirname(file),recursive = T)
+  }
+  
+  s3_file <-"s3://digital-atlas/risk_prototype/data/exposure/crop_vop_usd17_adm_sum.parquet"
+  s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
+}
+
+data_vop_usd17_ls<-arrow::read_parquet(file)
+data_vop_usd17_ls<-data_vop_usd17_ls[!grepl("total",crop)]
+
+# Combine crops and livestock
+data_vop_usd17<-rbind(data_vop_usd17,data_vop_usd17_ls)
+
+# 2) User sets up project  ####
+
+  # 2.1) Geography  #####
+  # This code is just to select some geographies and crops that are interesting, it is not intended for the UI
+  admin0_choice<-c("Kenya")
+  
+  # 2.2) Crops  #####
+  
+    # 2.2.1) Value of crops ####
+    data_vop_usd17[admin0_name %in% admin0_choice & is.na(admin1_name)
+                   ][,value_Musd:=round(value/10^6,0)
+                     ][order(value,decreasing=T)
+                       ][,list(admin0_name,crop,value_Musd)]
+    
+    # 2.2.2) Choose crops ####
+    crops_choice<-c("maize")
+    
+    data_vop_usd17[admin0_name %in% admin0_choice & is.na(admin1_name) & crop %in% crops_choice,paste0("total crop value ($M) = ",round(sum(value)/10^6,1))]
+    
+  # 2.3) Cost #####
+  project_cost<-50*10^6
+  
+  # 2.4) Duration #####
+  project_years<-8
+  
+  # 2.5) Impact ####
+  prod_impact_choice<-0.3
+  cis_impact_choice<-0.25
+  adoption_rate_choice<-0.01
+  
+  # 2.5) Discount rate ####
+  discount_rate<-0.08
+  
+  # 2.5) User sets return start year (min = 1)
   return_start<-1
   
-  # Adjust data_sum according to return year
-  data_merge_ss_adj<-rbind(
-    # Set project benefits in years less than the return start year to 0
-    data_merge_ss[year<return_start][,project_benefit:=0],
-    # Nudge project return years
-    data_merge_ss[,year:=year+return_start]
+# 3) Prepare data ####
+  # 3.1) Subset data #####
+  data_ss<-data_benefit[admin0_name %in% admin0_choice & 
+                          is.na(admin1_name) &
+                          crop %in% crops_choice &
+                          prod_impact == prod_impact_choice &
+                          adoption == adoption_rate_choice &
+                          cis_impact == cis_impact_choice &
+                          year %in% 1:project_years]
+  
+  # 3.2) Sum benefits #####
+  data_ss<-data_ss[,list(project_benefit=sum(project_benefit,na.rm=T)),by=list(adoption,prod_impact,cis_impact,bcr,year)]
+  
+  # 3.3) Re-sort dataset so that years are in order, this is required for irr calculations #####
+  data_ss<-data_ss[order(adoption,prod_impact,cis_impact,bcr,year)]
+  
+  # 3.4) Add year0 where project benefit is zero #####
+  data_ss<-data_ss[c(1,1:nrow(data_ss))]
+  data_ss[1,c("year","project_benefit"):=list(0,0)]
+  
+  # 3.5) Add cost data #####
+  # Here we are assuming an even disbursement schedule, however we may want to give the user the option to specify this manually
+  disbursement_schedule<-project_cost/project_years
+  data_ss[,cost:=0][1:project_years,cost:=disbursement_schedule][,cost_cum:=cumsum(cost)]
+  
+  # 3.6) Adjust data_sum according to return year ####
+  # results start in year 1, if results > year 1 then we need to shift benefit start dates
+  if(return_start>1){
+    benefit<-data_ss$project_benefit
+    benefit<-c(rep(0,return_start),benefit[2:(length(benefit)-return_start+1)])
+    data_ss[,project_benefit:=benefit]
+  }
+  
+  # 3.7) Add cashflow ####
+  data_ss[,cashflow:=project_benefit-cost]
+  
+# 4) Calculate economic indicators ####
 
+  # 4.1) Calculate IRR ####
+  data_ss[,irr:=as.numeric(irr_wrap(cashflow = cashflow))]
+  
+  # 4.3) Calculate NPV ####
+  data_ss[,npv:=npv_wrap(cashflow = cashflow,discount_rate = discount_rate)] 
+
+  # 4.3) Calculate BCR ####
+  data_ss[,project_bcr:=npv/cost_cum]
+
+  print(data_ss)
+  
+  c(
+  data_ss[nrow(data_ss),paste0("IRR = ",round(irr*100,2),"%")],
+  data_ss[nrow(data_ss),paste0("NPV = $",round(npv/10^6,2),"M")],
+  data_ss[nrow(data_ss),paste0("BCR = ",round(project_bcr,2))]
   )
   
-  # 4.1.2) User sets cost disbursement schedule
-  project_years<-5
+  write.table(data_ss,"clipboard",sep="/t",row.names = F)
   
-  # Example payment schedule the user will need to be able to adjust the proportions
-  payment_schedule<-data.table(year=0:(project_years-1),proportion=1/project_years)
-  payment_schedule[,cost:=project_cost*proportion][,cost:=cumsum(cost)]
+
   
-  # 4.1.3) Add project costs to table
-  data_sum<-merge(data_merge_ss_adj,payment_schedule[,list(year,cost)],all.x = T)
-  data_sum[is.na(cost),cost:=0]
-  
-  # 4.2) Calculate IRR ####
-  data_sum[,irr:=as.numeric(irr_wrap(cashflows = project_benefit-cost)),by=list(adoption,prod_impact,cis_impact,bcr)]
-  
-  # Add discount rates
-  data_sum<-data.table(
-    data_sum[rep(1:nrow(data_sum),each=length(discount_rates))],
-    discount_rate=discount_rates[rep(1:length(discount_rates),nrow(data_sum))]
-  )
-  
- # Order on year
-  data_sum<-data_sum[order(adoption,prod_impact,cis_impact,bcr,discount_rate,year)]
-  
-  
-  # 4.3) Calculate npv and bcr ####
-  
-  data_sum[,npv:=npv_wrap(cashflow = project_benefit-cost,discount_rate = discount_rate[1]/100),by=list(adoption,prod_impact,cis_impact,bcr,discount_rate)
-           ][,project_bcr:=npv/project_cost]
-  
-  # Change bcr name
-  setnames(data_sum,"bcr","farm_bcr")
-  
-  # This is the final table the user can interrogate by adoption, production impact, cis_impact, bcr ratio for farming system used to estimate cost,
-  # year and discount rate
-  
-  # Reorder cols
-  data_sum<-data_sum[,list(adoption,prod_impact,cis_impact,farm_bcr,year,project_benefit,irr,discount_rate,npv,project_bcr)]
-  
-  
-  # Under what conditions is NPV positive?
-  unique(data_sum[npv>0,list(adoption,prod_impact,discount_rate,year,npv)][order(npv,decreasing=T)])
-  
-# Misc - Example of Adoption rate % table ####
+# 5) Misc - Example of Adoption rate % table ####
 ad_rate<-data.table(value=1,adoption=seq(0.0025,0.03,0.0025))
 
 for(i in 1:years){
