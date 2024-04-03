@@ -1,7 +1,138 @@
-require(data.table)
-require(countrycode)
-require(terra)
-require(pbapply)
+# Install and load packages ####
+load_and_install_packages <- function(packages) {
+  for (package in packages) {
+    if (!require(package, character.only = TRUE)) {
+      install.packages(package)
+      library(package, character.only = TRUE)
+    }
+  }
+}
+
+# List of packages to be loaded
+packages <- c("data.table", 
+              "countrycode",
+              "terra",
+              "pbapply")
+
+# Call the function to install and load packages
+load_and_install_packages(packages)
+
+# Create functions ####
+avg_neighbours<-function(iso3,crop,neighbours,data,value_field){
+  neighbours<-african_neighbors[[iso3]]
+  setnames(data,value_field,"value")
+  N<-data[atlas_name==crop & iso3 %in% neighbours,mean(value,na.rm=T)]
+  return(N)
+}
+
+prepare_fao_data<-function(file,lps2fao,elements=NULL,units=NULL,remove_countries,keep_years){
+  
+  data<-fread(file)
+  
+  data<-data[Item %in% lps2fao][,atlas_name:=names(lps2fao)[match(Item,lps2fao)]]
+  
+  if(!is.null(elements)){
+    data<-data[Element %in% elements]
+  }
+  
+  if(!is.null(units)){
+    data<-data[Unit %in% units]
+  }
+  
+  # Add iso3 codes and remove non-atlas countries
+  data[,M49:=as.numeric(gsub("[']","",`Area Code (M49)`))]
+  data[,iso3:=countrycode(sourcevar=M49,origin="un",destination = "iso3c")]
+  data<-data[iso3 %in% atlas_iso3]
+  
+  # Remove countries
+  data<-data[!Area %in% remove_countries]
+  
+  keep_years<-paste0("Y",c(1998:2002,2015:2019))
+  keep_cols<-c("iso3","atlas_name",keep_years)
+  data<-data[,..keep_cols]
+  
+  # Add missing crops x countries to fao
+  fao_countries<-unique(data[,list(iso3)])
+  crops<-data[,unique(atlas_name)]
+  
+  data<-data
+  
+  missing<-rbindlist(lapply(1:nrow(fao_countries),FUN=function(i){
+    country<-fao_countries[i,iso3]
+    missing_crops<-crops[!crops %in% data[iso3==country,atlas_name]]
+    if(length(missing_crops)>0){
+      data<-data.table(iso3=country,
+                       atlas_name=missing_crops)
+      data[,(keep_years):=NA]
+      data
+    }else{
+      NULL
+    }
+  }))
+  data<-rbind(data,missing)
+  
+  # Add missing countries to fao
+  missing_countries<-atlas_iso3[!atlas_iso3 %in% prod_price$iso3]
+  
+  
+  if(length(missing_countries)>0){
+    missing<-rbindlist(lapply( 1:length(missing_countries),FUN=function(i){
+      data<-data.table(iso3=missing_countries[i],
+                       atlas_name=data[,unique(atlas_name)])
+      data[,(keep_years):=NA]
+      data
+    }))
+    
+    data<-rbind(data,missing)
+  }
+  
+  
+  return(data)
+  
+}
+
+avg_regions<-function(iso3,crop,regions,data,value_field){
+  region_focal<-names(regions)[sapply(regions,FUN=function(X){iso3 %in% X})]
+  neighbours<-regions[[region_focal]]
+  setnames(data,value_field,"value")
+  N<-data[atlas_name==crop & iso3 %in% neighbours,mean(value,na.rm=T)]
+  return(N)
+}
+
+add_nearby<-function(data,value_field,african_neighbors,regions){
+  # Add mean of neighbours
+  data[,mean_neighbours:=avg_neighbours(iso3=iso3,
+                                        crop=atlas_name,
+                                        neighbours=african_neighbors,
+                                        data=copy(data),
+                                        value_field=value_field),
+       by=list(iso3,atlas_name)]
+  
+  # Add mean of regions
+  data[,mean_region:=avg_regions(iso3=iso3,
+                                 crop=atlas_name,
+                                 regions=regions,
+                                 data=copy(data),
+                                 value_field=value_field),
+       by=list(iso3,atlas_name)]
+  
+  # Add continental average
+  setnames(data,value_field,"value")
+  data[,mean_continent:=mean(value,na.rm=T),by=atlas_name]
+  
+  # Add composite value ####
+  data[,mean_final:=value
+  ][is.na(mean_final),mean_final:=mean_neighbours
+  ][is.na(mean_final),mean_final:=mean_region
+  ][is.na(mean_final),mean_final:=mean_continent]
+  
+  setnames(data,"value",value_field)
+  
+  colnames(data)<-gsub("mean_",paste0(value_field,"_"),colnames(data))
+  
+  return(data)
+  
+}
 
 # Setup workspace ####
 # Load base raster to resample to 
@@ -12,6 +143,74 @@ if(!file.exists(base_raster)){
 }
 
 base_rast<-terra::mask(terra::rast(base_raster),geoboundaries)
+
+# Create list of neighbouring countries ####
+african_neighbors <- list(
+  DZA = c("TUN", "LBY", "NER", "ESH", "MRT", "MLI", "MAR"),
+  AGO = c("COG", "COD", "ZMB", "NAM"),
+  BEN = c("BFA", "NER", "NGA", "TGO"),
+  BWA = c("ZMB", "ZWE", "NAM", "ZAF"),
+  BFA = c("MLI", "NER", "BEN", "TGO", "GHA", "CIV"),
+  BDI = c("COD", "RWA", "TZA"),
+  CPV = c(),
+  CMR = c("NGA", "TCD", "CAF", "COG", "GAB", "GNQ"),
+  CAF = c("TCD", "SDN", "COD", "COG", "CMR"),
+  TCD = c("LBY", "SDN", "CAF", "CMR", "NGA", "NER"),
+  COM = c(),
+  COG = c("GAB", "CMR", "CAF", "COD", "AGO"),
+  COD = c("CAF", "SSD", "UGA", "RWA", "BDI", "TZA", "ZMB", "AGO", "COG"),
+  CIV = c("LBR", "GIN", "MLI", "BFA", "GHA"),
+  DJI = c("ERI", "ETH", "SOM"),
+  EGY = c("LBY", "SDN", "ISR", "PSE"),
+  GNQ = c("CMR", "GAB"),
+  ERI = c("ETH", "SDN", "DJI"),
+  SWZ = c("MOZ", "ZAF"),
+  ETH = c("ERI", "DJI", "SOM", "KEN", "SSD", "SDN"),
+  GAB = c("CMR", "GNQ", "COG"),
+  GMB = c("SEN"),
+  GHA = c("CIV", "BFA", "TGO"),
+  GIN = c("LBR", "SLE", "CIV", "MLI", "SEN"),
+  GNB = c("SEN", "GIN"),
+  KEN = c("ETH", "SOM", "SSD", "UGA", "TZA"),
+  LSO = c("ZAF"),
+  LBR = c("GIN", "CIV", "SLE"),
+  LBY = c("TUN", "DZA", "NER", "TCD", "SDN", "EGY"),
+  MDG = c(),
+  MWI = c("MOZ", "TZA", "ZMB"),
+  MLI = c("DZA", "NER", "BFA", "CIV", "GIN", "SEN", "MRT"),
+  MRT = c("DZA", "ESH", "SEN", "MLI"),
+  MAR = c("DZA", "ESH", "ESP"),
+  MOZ = c("ZAF", "SWZ", "ZWE", "ZMB", "MWI", "TZA"),
+  NAM = c("AGO", "BWA", "ZAF", "ZMB"),
+  NER = c("DZA", "LBY", "TCD", "NGA", "BEN", "BFA", "MLI"),
+  NGA = c("BEN", "CMR", "TCD", "NER"),
+  RWA = c("BDI", "COD", "TZA", "UGA"),
+  STP = c(),
+  SEN = c("GMB", "GIN", "GNB", "MLI", "MRT"),
+  SYC = c(),
+  SLE = c("GIN", "LBR"),
+  SOM = c("ETH", "DJI", "KEN"),
+  ZAF = c("NAM", "BWA", "ZWE", "MOZ", "SWZ", "LSO"),
+  SSD = c("CAF", "COD", "ETH", "KEN", "UGA"),
+  SDN = c("EGY", "ERI", "ETH", "SSD", "CAF", "TCD", "LBY"),
+  TZA = c("KEN", "UGA", "RWA", "BDI", "COD", "ZMB", "MWI", "MOZ"),
+  TGO = c("BEN", "BFA", "GHA"),
+  TUN = c("DZA", "LBY"),
+  UGA = c("KEN", "SSD", "COD", "RWA", "TZA"),
+  ZMB = c("AGO", "COD", "MWI", "MOZ", "NAM", "TZA", "ZWE"),
+  ZWE = c("BWA", "MOZ", "ZAF", "ZMB")
+)
+
+
+# Create list of regions ####
+regions <- list(
+  East_Africa = c("BDI", "COM", "DJI", "ERI", "ETH", "KEN", "MDG", "MUS", "MWI", "RWA", "SYC", "SOM", "SSD", "TZA", "UGA"),
+  Southern_Africa = c("BWA", "LSO", "NAM", "SWZ", "ZAF", "ZMB", "ZWE","MOZ"),
+  West_Africa = c("BEN", "BFA", "CPV", "CIV", "GMB", "GHA", "GIN", "GNB", "LBR", "MLI", "MRT", "NER", "NGA", "SEN", "SLE", "TGO"),
+  Central_Africa = c("AGO", "CMR", "CAF", "TCD", "COD", "COG", "GNQ", "GAB", "STP"),
+  North_Africa = c("DZA", "EGY", "LBY", "MAR", "SDN", "TUN")
+)
+
 
 # Load Livestock production data ####
 
@@ -31,20 +230,16 @@ if(dir.exists(save_dir)){
 }
 
 # Load geoboundaries ####
-overwrite<-F
-geoboundaries_s3<-"s3://digital-atlas/boundaries"
-geo_files_s3<-s3fs::s3_dir_ls(geoboundaries_s3)
-geo_file_s3<-grep("admin0_harmonized.gpkg",geo_files_s3,value=T)
+# Load and combine geoboundaries
+geo_files_s3<-"https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin0_harmonized.gpkg"
+geo_files_local<-file.path("Data/boundaries",basename(geo_files_s3))
 
-file_local<-file.path("Data/boundaries",basename(geo_file_s3))
-
-
-if(!file.exists(file_local)|overwrite==T){
-  s3fs::s3_file_download(path=geo_files_s3[i],new_path=file_local,overwrite = T)
+if(!file.exists(geo_files_local)|overwrite==T){
+  download.file(url=geo_files_s3,destfile=geo_files_local)
 }
 
-geoboundaries<-terra::vect(file_local)
-
+geoboundaries<-terra::vect(geo_files_local)
+  
 atlas_iso3<-geoboundaries$iso3
 
 # LPS 2005 production ####
@@ -107,7 +302,7 @@ lps2fao<-c(cattle_meat="Meat of cattle with the bone, fresh or chilled",
            goat_meat="Meat of goat, fresh or chilled",
            goat_milk="Raw milk of goats")
 
-# Download production value data from FAO ####
+# Download producer price data from FAO ####
 fao_dir<-"Data/fao"
 
 if(!dir.exists(fao_dir)){
@@ -150,299 +345,73 @@ if(!file.exists(prod_file)){
   unlink(zip_file_path)
 }
 
-# Prepare fao data ####
+# Download production value data from FAO ####
+vop_file<-paste0(fao_dir,"/Value_of_Production_E_Africa.csv")
 
-# Load datasets
-prod<-fread(prod_file)
-prod<-prod[Item %in% lps2fao & Element=="Production" & Unit == "t"]
+if(!file.exists(vop_file)){
+  # Define the URL and set the save path
+  url<-"https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip"
 
-prod_price<-fread(econ_file)
-prod_price<-prod_price[Item %in% lps2fao & Element=="Producer Price (USD/tonne)"][,atlas_name:=names(lps2fao)[match(Item,lps2fao)]]
+  zip_file_path <- file.path(fao_dir, "Value_of_Production_E_Africa.zip")
+  
+  # Download the file
+  download.file(url, zip_file_path, mode = "wb")
+  
+  # Unzip the file
+  unzip(zip_file_path, exdir = fao_dir)
+  
+  # Delete the ZIP file
+  unlink(zip_file_path)
+}
 
-prod_price_IUSD<-fread(econ_file)
-prod_price_IUSD<-prod_price[Item %in% lps2fao & Element=="Producer Price (IUSD/tonne)"][,atlas_name:=names(lps2fao)[match(Item,lps2fao)]]
-
-# Covert fao item name to atlas name
-prod[,atlas_name:=names(lps2fao)[match(Item,lps2fao)]]
-prod_price[,atlas_name:=names(lps2fao)[match(Item,lps2fao)]]
-prod_price_IUSD[,atlas_name:=names(lps2fao)[match(Item,lps2fao)]]
-
-# Add iso3 codes and remove non-atlas countries
-prod[,M49:=as.numeric(gsub("[']","",`Area Code (M49)`))]
-prod[,iso3:=countrycode(sourcevar=M49,origin="un",destination = "iso3c")]
-prod<-prod[iso3 %in% atlas_iso3]
-
-prod_price[,M49:=as.numeric(gsub("[']","",`Area Code (M49)`))]
-prod_price[,iso3:=countrycode(sourcevar=M49,origin="un",destination = "iso3c")]
-prod_price<-prod_price[iso3 %in% atlas_iso3]
-
-prod_price_IUSD[,M49:=as.numeric(gsub("[']","",`Area Code (M49)`))]
-prod_price_IUSD[,iso3:=countrycode(sourcevar=M49,origin="un",destination = "iso3c")]
-prod_price_IUSD<-prod_price_IUSD[iso3 %in% atlas_iso3]
-
-# Remove Ethiopia PDR & Sudan (Former) & non-atlas countries
+# Load and prepare fao data ####
 remove_countries<- c("Ethiopia PDR","Sudan (former)","Cabo Verde","Comoros","Mauritius","R\xe9union","Seychelles")
 
-prod<-prod[!Area %in% remove_countries]
-prod_price<-prod_price[!Area %in% remove_countries]
-prod_price_IUSD<-prod_price_IUSD[!Area %in% remove_countries]
+prod<-prepare_fao_data(file=prod_file,
+                       lps2fao,
+                       elements="Production",
+                       units="t",
+                       remove_countries = remove_countries,
+                       keep_years=c(1998:2002,2015:2019))
 
-keep_years_prod<-paste0("Y",c(1998:2002,2015:2019))
-keep_cols<-c("iso3","atlas_name",keep_years_prod)
-prod<-prod[,..keep_cols]
+prod_price<-prepare_fao_data(file=econ_file,
+                             lps2fao,
+                             elements="Producer Price (USD/tonne)",
+                             remove_countries = remove_countries,
+                             keep_years=2015:2019)
 
-keep_years_price<-paste0("Y",2015:2019)
-keep_cols<-c("iso3","atlas_name",keep_years_price)
+# !!NEED TO DEAL WITH INDIGENOUS vs NON-INDIGENOUS IN FAOSTAT NAMING!!
+fread(vop_file)[,unique(Item)]
+prod_value<-prepare_fao_data(file=vop_file,
+                             lps2fao,
+                             elements="Gross Production Value (constant 2014-2016 thousand US$)",
+                             remove_countries = remove_countries,
+                             keep_years=2015:2019)
 
-prod_price<-prod_price[,..keep_cols]
-prod_price_IUSD<-prod_price_IUSD[,..keep_cols]
+# Average prices over 5-year period by country
+prod_price[,mean:=mean(c(Y2019,Y2018,Y2017,Y2016,Y2015),na.rm=T),by=list(iso3,atlas_name)]
 
-  # Add missing crops x countries to fao ####
-  # Price
-  fao_countries<-unique(prod_price[,list(iso3)])
-  crops<-prod_price[,unique(atlas_name)]
-  
-  data<-prod_price
-  keep_years<-keep_years_price
-  
-  missing<-rbindlist(lapply(1:nrow(fao_countries),FUN=function(i){
-    country<-fao_countries[i,iso3]
-    missing_crops<-crops[!crops %in% data[iso3==country,atlas_name]]
-    if(length(missing_crops)>0){
-      data<-data.table(iso3=country,
-                       atlas_name=missing_crops)
-      data[,(keep_years):=NA]
-      data
-    }else{
-      NULL
-    }
-  }))
-  prod_price<-rbind(prod_price,missing)
-  
-  data<-prod_price_IUSD
-  missing<-rbindlist(lapply(1:nrow(fao_countries),FUN=function(i){
-    country<-fao_countries[i,iso3]
-    missing_crops<-crops[!crops %in% data[iso3==country,atlas_name]]
-    if(length(missing_crops)>0){
-      data<-data.table(iso3=country,
-                       atlas_name=missing_crops)
-      data[,(keep_years):=NA]
-      data
-    }else{
-      NULL
-    }
-  }))
-  prod_price_IUSD<-rbind(prod_price_IUSD,missing)
-  
-  # Production
-  fao_countries<-unique(prod[,list(iso3)])
-  data<-prod
-  keep_years<-keep_years_prod
-  missing<-rbindlist(lapply(1:nrow(fao_countries),FUN=function(i){
-    country<-fao_countries[i,iso3]
-    missing_crops<-crops[!crops %in% data[iso3==country,atlas_name]]
-    if(length(missing_crops)>0){
-      data<-data.table(iso3=country,
-                       atlas_name=missing_crops)
-      data[,(keep_years):=NA]
-      data
-    }else{
-      NULL
-    }
-  }))
-  prod<-rbind(prod,missing)
-  
-  # Add missing countries to fao ####
-    # Price
-    missing_countries<-atlas_iso3[!atlas_iso3 %in% prod_price$iso3]
-    keep_years<-keep_years_price
+# Average VoP over 5-year period by country
+prod_value[,mean:=mean(c(Y2019,Y2018,Y2017,Y2016,Y2015),na.rm=T),by=list(iso3,atlas_name)]
 
-    missing<-rbindlist(lapply( 1:length(missing_countries),FUN=function(i){
-      data<-data.table(iso3=missing_countries[i],
-                       atlas_name=prod_price[,unique(atlas_name)])
-      data[,(keep_years):=NA]
-      data
-    }))
-    
-    prod_price<-rbind(prod_price,missing)
-    
-    # Price IUSD
-    missing<-rbindlist(lapply( 1:length(missing_countries),FUN=function(i){
-      data<-data.table(iso3=missing_countries[i],
-                       atlas_name=prod_price_IUSD[,unique(atlas_name)])
-      data[,(keep_years):=NA]
-      data
-    }))
-    
-    prod_price_IUSD<-rbind(prod_price_IUSD,missing)
-    
-    #Production
-    missing_countries<-atlas_iso3[!atlas_iso3 %in% prod$iso3]
-    
-    if(length(missing_countries)>0){
-    keep_years<-keep_years_prod
-    
-    missing<-rbindlist(lapply( 1:length(missing_countries),FUN=function(i){
-      data<-data.table(iso3=missing_countries[i],
-                       atlas_name=prod[,unique(atlas_name)])
-      data[,(keep_years):=NA]
-      data
-    }))
-    
-    prod<-rbind(prod,missing)
-    }
-    
-  # Average prices over 5-year period by country####
-    prod_price[,mean:=mean(c(Y2019,Y2018,Y2017,Y2016,Y2015),na.rm=T),by=list(iso3,atlas_name)]
-    prod_price_IUSD[,mean:=mean(c(Y2019,Y2018,Y2017,Y2016,Y2015),na.rm=T),by=list(iso3,atlas_name)]
+# Determine change in production 2000 to 2017
+prod[,mean17:=mean(c(Y2019,Y2018,Y2017,Y2016,Y2015),na.rm=T),by=list(iso3,atlas_name)
+     ][,mean00:=mean(c(Y1998,Y1999,Y2000,Y2001,Y2002),na.rm=T),by=list(iso3,atlas_name)
+       ][,ratio:=mean17/mean00]
   
-  # Determine change in production 2000 to 2017 ####
-  prod[,mean17:=mean(c(Y2019,Y2018,Y2017,Y2016,Y2015),na.rm=T),by=list(iso3,atlas_name)
-       ][,mean00:=mean(c(Y1998,Y1999,Y2000,Y2001,Y2002),na.rm=T),by=list(iso3,atlas_name)
-         ][,ratio:=mean17/mean00]
-  
-  # Create list of neighbouring countries ####
-  african_neighbors <- list(
-    DZA = c("TUN", "LBY", "NER", "ESH", "MRT", "MLI", "MAR"),
-    AGO = c("COG", "COD", "ZMB", "NAM"),
-    BEN = c("BFA", "NER", "NGA", "TGO"),
-    BWA = c("ZMB", "ZWE", "NAM", "ZAF"),
-    BFA = c("MLI", "NER", "BEN", "TGO", "GHA", "CIV"),
-    BDI = c("COD", "RWA", "TZA"),
-    CPV = c(),
-    CMR = c("NGA", "TCD", "CAF", "COG", "GAB", "GNQ"),
-    CAF = c("TCD", "SDN", "COD", "COG", "CMR"),
-    TCD = c("LBY", "SDN", "CAF", "CMR", "NGA", "NER"),
-    COM = c(),
-    COG = c("GAB", "CMR", "CAF", "COD", "AGO"),
-    COD = c("CAF", "SSD", "UGA", "RWA", "BDI", "TZA", "ZMB", "AGO", "COG"),
-    CIV = c("LBR", "GIN", "MLI", "BFA", "GHA"),
-    DJI = c("ERI", "ETH", "SOM"),
-    EGY = c("LBY", "SDN", "ISR", "PSE"),
-    GNQ = c("CMR", "GAB"),
-    ERI = c("ETH", "SDN", "DJI"),
-    SWZ = c("MOZ", "ZAF"),
-    ETH = c("ERI", "DJI", "SOM", "KEN", "SSD", "SDN"),
-    GAB = c("CMR", "GNQ", "COG"),
-    GMB = c("SEN"),
-    GHA = c("CIV", "BFA", "TGO"),
-    GIN = c("LBR", "SLE", "CIV", "MLI", "SEN"),
-    GNB = c("SEN", "GIN"),
-    KEN = c("ETH", "SOM", "SSD", "UGA", "TZA"),
-    LSO = c("ZAF"),
-    LBR = c("GIN", "CIV", "SLE"),
-    LBY = c("TUN", "DZA", "NER", "TCD", "SDN", "EGY"),
-    MDG = c(),
-    MWI = c("MOZ", "TZA", "ZMB"),
-    MLI = c("DZA", "NER", "BFA", "CIV", "GIN", "SEN", "MRT"),
-    MRT = c("DZA", "ESH", "SEN", "MLI"),
-    MAR = c("DZA", "ESH", "ESP"),
-    MOZ = c("ZAF", "SWZ", "ZWE", "ZMB", "MWI", "TZA"),
-    NAM = c("AGO", "BWA", "ZAF", "ZMB"),
-    NER = c("DZA", "LBY", "TCD", "NGA", "BEN", "BFA", "MLI"),
-    NGA = c("BEN", "CMR", "TCD", "NER"),
-    RWA = c("BDI", "COD", "TZA", "UGA"),
-    STP = c(),
-    SEN = c("GMB", "GIN", "GNB", "MLI", "MRT"),
-    SYC = c(),
-    SLE = c("GIN", "LBR"),
-    SOM = c("ETH", "DJI", "KEN"),
-    ZAF = c("NAM", "BWA", "ZWE", "MOZ", "SWZ", "LSO"),
-    SSD = c("CAF", "COD", "ETH", "KEN", "UGA"),
-    SDN = c("EGY", "ERI", "ETH", "SSD", "CAF", "TCD", "LBY"),
-    TZA = c("KEN", "UGA", "RWA", "BDI", "COD", "ZMB", "MWI", "MOZ"),
-    TGO = c("BEN", "BFA", "GHA"),
-    TUN = c("DZA", "LBY"),
-    UGA = c("KEN", "SSD", "COD", "RWA", "TZA"),
-    ZMB = c("AGO", "COD", "MWI", "MOZ", "NAM", "TZA", "ZWE"),
-    ZWE = c("BWA", "MOZ", "ZAF", "ZMB")
-  )
-  
-  # Add mean of neighbours ####
-  # Price
-  avg_neighbours<-function(iso3,crop,neighbours,data){
-    neighbours<-african_neighbors[[iso3]]
-    N<-data[atlas_name==crop & iso3 %in% neighbours,mean(mean,na.rm=T)]
-    return(N)
-  }
-  
-  prod_price[,mean_neighbours:=avg_neighbours(iso3=iso3,
-                                              crop=atlas_name,
-                                              neighbours=african_neighbors,
-                                              data=copy(prod_price)),
-             by=list(iso3,atlas_name)]
-  
-  
-  # Production
-  avg_neighbours<-function(iso3,crop,neighbours,data){
-    neighbours<-african_neighbors[[iso3]]
-    N<-data[atlas_name==crop & iso3 %in% neighbours,mean(ratio,na.rm=T)]
-    return(N)
-  }
-  
-  prod[,ratio_neighbours:=avg_neighbours(iso3=iso3,
-                                         crop=atlas_name,
-                                         neighbours=african_neighbors,
-                                         data=copy(prod)),
-       by=list(iso3,atlas_name)]
-  
-  # Create list of regions ####
-  regions <- list(
-    East_Africa = c("BDI", "COM", "DJI", "ERI", "ETH", "KEN", "MDG", "MUS", "MWI", "RWA", "SYC", "SOM", "SSD", "TZA", "UGA"),
-    Southern_Africa = c("BWA", "LSO", "NAM", "SWZ", "ZAF", "ZMB", "ZWE","MOZ"),
-    West_Africa = c("BEN", "BFA", "CPV", "CIV", "GMB", "GHA", "GIN", "GNB", "LBR", "MLI", "MRT", "NER", "NGA", "SEN", "SLE", "TGO"),
-    Central_Africa = c("AGO", "CMR", "CAF", "TCD", "COD", "COG", "GNQ", "GAB", "STP"),
-    North_Africa = c("DZA", "EGY", "LBY", "MAR", "SDN", "TUN")
-  )
+# Substitute data from nearby areas ####
 
-  # Add mean of regions ####
-  # Price
-  avg_regions<-function(iso3,crop,regions,data){
-    region_focal<-names(regions)[sapply(regions,FUN=function(X){iso3 %in% X})]
-    neighbours<-regions[[region_focal]]
-    N<-data[atlas_name==crop & iso3 %in% neighbours,mean(mean,na.rm=T)]
-    return(N)
-  }
+# Price
+prod_price<-add_nearby(data=prod_price,value_field = "mean",african_neighbors,regions)
+
+# Production
+prod<-add_nearby(data=prod,value_field = "ratio",african_neighbors,regions)
+
+
   
-  
-  prod_price[,mean_region:=avg_regions(iso3=iso3,
-                                       crop=atlas_name,
-                                       regions=regions,
-                                       data=copy(prod_price)),
-             by=list(iso3,atlas_name)]
-  
-  # Production
-  avg_regions<-function(iso3,crop,regions,data){
-    region_focal<-names(regions)[sapply(regions,FUN=function(X){iso3 %in% X})]
-    neighbours<-regions[[region_focal]]
-    N<-data[atlas_name==crop & iso3 %in% neighbours,mean(ratio,na.rm=T)]
-    return(N)
-  }
-  
-  prod[,ratio_region:=avg_regions(iso3=iso3,
-                                 crop=atlas_name,
-                                 regions=regions,
-                                 data=copy(prod)),
-             by=list(iso3,atlas_name)]
-  
-  # Add continental average ####
-  prod_price[,mean_continent:=mean(mean,na.rm=T),by=atlas_name]
-  prod[,ratio_continent:=mean(ratio,na.rm=T),by=atlas_name]
-  
-  # Add composite value ####
-  prod_price[,mean_final:=mean
-             ][is.na(mean_final),mean_final:=mean_neighbours
-               ][is.na(mean_final),mean_final:=mean_region
-                 ][is.na(mean_final),mean_final:=mean_continent]
-  
-  prod[,ratio_final:=ratio
-       ][is.na(ratio_final),ratio_final:=ratio_neighbours
-         ][is.na(ratio_final),ratio_final:=ratio_region
-           ][is.na(ratio_final),ratio_final:=ratio_continent]
-  
-  # Save processed faostat data ####
-  fwrite(prod_price,paste0(fao_dir,"/production_value_processed.csv"))
-  fwrite(prod,paste0(fao_dir,"/production_processed.csv"))
+# Save processed faostat data ####
+fwrite(prod_price,paste0(fao_dir,"/production_value_processed.csv"))
+fwrite(prod,paste0(fao_dir,"/production_processed.csv"))
   
 # Convert faostat data into a raster ####
   # Prices
