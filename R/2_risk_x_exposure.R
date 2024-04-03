@@ -113,19 +113,22 @@ hpop_dir<-"Data/atlas_pop"
   # 0.1) Geographies #####
   # Load and combine geoboundaries
   overwrite<-F
-
-  geoboundaries_s3<-"s3://digital-atlas/boundaries"
-  geo_files_s3<-s3fs::s3_dir_ls(geoboundaries_s3)
-  geo_files_s3<-grep("harmonized.gpkg",geo_files_s3,value=T)
   
-  geo_files_local<-file.path("Data/boundaries",basename(geo_files_s3))
+  geo_files_s3<-c(
+    "https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin0_harmonized.gpkg",
+    "https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin1_harmonized.gpkg",
+    "https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin2_harmonized.gpkg")
+  
+  
+  geo_files_local<-file.path("data/boundaries",basename(geo_files_s3))
   names(geo_files_local)<-c("admin0","admin1","admin2")
   
   Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
     file<-geo_files_local[i]
     if(!file.exists(file)|overwrite==T){
-      s3fs::s3_file_download(path=geo_files_s3[i],new_path=file,overwrite = T)
+      download.file(url=geo_files_s3[i],destfile=file)
     }
+    
     data<-terra::vect(file)
     names(data)<-gsub("_nam$","_name$",names(data))
     data
@@ -444,6 +447,7 @@ hpop_dir<-"Data/atlas_pop"
           crop_vop17_tot_adm_sum,
           crop_ha_tot_adm_sum,
           livestock_vop_tot_adm,
+          livestock_vop17_tot_adm,
           livestock_no_tot_adm
         )
             arrow::write_parquet(exposure_adm_sum_tab,file)
@@ -811,7 +815,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
   crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
 
   # 4.0) Set-up ####
-    do_vop17<-T
+    do_vop17<-F
     do_ha<-F
     do_n<-F
     overwrite<-F
