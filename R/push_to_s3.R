@@ -24,7 +24,7 @@ worker_n<-10
 
 # Create functions####
 # Update tifs to cog format
-convert_to_cog <- function(file,delete=T,rename=T) {
+convert_to_cog <- function(file) {
   
   is_cog<-grepl("LAYOUT=COG",gdalUtilities::gdalinfo(file))
   closeAllConnections()
@@ -35,14 +35,19 @@ convert_to_cog <- function(file,delete=T,rename=T) {
       # Force into memory
       data<-data+0
       
-      terra::writeRaster(data,filename = file,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"),overwrite=T)
+     terra::writeRaster(data,filename = file,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"),overwrite=T)
 
     }
   }
 
-ctc_wrapper<-function(folder,worker_n=1,delete=T,rename=T){
-  # List tif files in the folder
-  files_tif<-list.files(folder,".tif",full.names = T)
+ctc_wrapper<-function(folder=NULL,files=NULL,worker_n=1){
+  
+  if(is.null(files)){
+    # List tif files in the folder
+    files_tif<-list.files(folder,".tif",full.names = T)
+  }else{
+    files_tif<-files
+  }
 
   if(worker_n>1){
     # Update tifs to cog format
@@ -55,12 +60,12 @@ ctc_wrapper<-function(folder,worker_n=1,delete=T,rename=T){
     future::plan(sequential)
     closeAllConnections()
   }else{
-    pbapply::pbsapply(files_tif,convert_to_cog,delete=delete,rename=rename)
+    pbapply::pbsapply(files_tif,convert_to_cog)
   }
 }
 
 # Upload files S3 bucket
-upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, max_attempts = 3, overwrite=F) {
+upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_bucket, new_only=F, max_attempts = 3, overwrite=F,mode="private") {
   
   # Create the s3 directory if it does not already exist
   if(!s3_dir_exists(selected_bucket)){
@@ -83,7 +88,12 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
     cat('\r', paste("File:", i, "/", length(files))," | ",basename(files[i]),"                                                 ")
     flush.console()
     
+    if(is.null(s3_file_names)){
     s3_file_path <- paste0(selected_bucket, "/", basename(files[i]))
+    }else{
+      if(length(s3_file_names)!=length(files)){stop("s3 filenames provided different length to local files")}
+      s3_file_path <- paste0(selected_bucket, "/", s3_file_names[i])
+    }
     
     tryCatch({
       attempt <- 1
@@ -91,6 +101,11 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
         s3_file_upload(files[i], s3_file_path, overwrite = overwrite)
         # Check if upload successful
         file_check <- s3_file_exists(s3_file_path)
+        
+        if(mode!="private"){
+          s3_file_chmod(path=s3_file_path,mode=mode)
+        }
+        
         if (file_check) break # Exit the loop if upload is successful
         
         if (attempt == max_attempts && !file_check) {
@@ -109,14 +124,40 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
   s3_bucket <-"s3://digital-atlas/risk_prototype/data/exposure"
   folder<-"Data/exposure"
   
+  s3_dir_ls(s3_bucket)
+  
+  
   # Prepare tif data by converting to COG format
   #ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
   
   # Upload files
-  upload_files_to_s3(files = list.files(folder,".parquet$",full.names = T),
+  upload_files_to_s3(files = list.files(folder,full.names = T),
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=T)
+  
+  # Processed livestock data parquets
+  s3_bucket<-"s3://digital-atlas//exposure/livestock/processed"
+
+  files<-list.files(folder,"livestock_vop",full.names = T)
+  files<-grep("parquet$",files,value = T)
+  s3_file_names<-gsub("_sum","",basename(files))
+  
+  upload_files_to_s3(files = files,
+                     s3_file_names = s3_file_names,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T,
+                     mode="public-read")
+  
+  # Processed livestock data tifs
+  files<-list.files(folder,"livestock_vop",full.names = T)
+  files<-grep("tif$",files,value = T)
+  
+  ctc_wrapper(files=files)
+  
+  s3_file_names<-gsub("_sum","",basename(files))
+
   
   # Upload - metadata ####
   # select a folder
@@ -380,6 +421,7 @@ upload_files_to_s3 <- function(files, folder=NULL, selected_bucket, new_only=F, 
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=T)
+  
 # 4) hazard_timeseries data ####
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
   # make sure the folder is set to the atlas_hazards/cmip6/indices server folder
