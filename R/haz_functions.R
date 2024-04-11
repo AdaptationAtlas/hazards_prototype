@@ -2248,6 +2248,17 @@ regions <- list(
   North_Africa = c("DZA", "EGY", "LBY", "MAR", "SDN", "TUN")
 )
 
+#' Map LPS names to FAOstat
+lps2fao<-c(cattle_meat="Meat of cattle with the bone, fresh or chilled",
+           cattle_milk="Raw milk of cattle",
+           pig_meat="Meat of pig with the bone, fresh or chilled",
+           poultry_eggs="Hen eggs in shell, fresh",
+           poultry_meat="Meat of chickens, fresh or chilled",
+           sheep_meat="Meat of sheep, fresh or chilled",
+           sheep_milk="Raw milk of sheep",
+           goat_meat="Meat of goat, fresh or chilled",
+           goat_milk="Raw milk of goats")
+
 #' Calculate Average Value of a Crop in Neighboring Countries
 #'
 #' This function computes the average value (e.g., production, yield) of a specified
