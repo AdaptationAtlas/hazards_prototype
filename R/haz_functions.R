@@ -2268,7 +2268,7 @@ lps2fao<-c(cattle_meat="Meat of cattle with the bone, fresh or chilled",
 #' @param iso3 The ISO 3166-1 alpha-3 code of the country for which to find the
 #'        average value of the specified crop in its neighboring countries.
 #' @param crop The name of the crop for which the average value is to be calculated.
-#' @param neighbours A list where each key is an ISO 3166-1 alpha-3 country code
+#' @param neighbors A list where each key is an ISO 3166-1 alpha-3 country code
 #'        and the associated value is a vector of its neighboring countries' ISO codes.
 #' @param data A data.table or data.frame that contains the crop data. It must
 #'        include columns for country codes (ISO3), crop names, and the value
@@ -2281,18 +2281,18 @@ lps2fao<-c(cattle_meat="Meat of cattle with the bone, fresh or chilled",
 #'         of the given country. Returns `NA` if no data is available.
 #' @examples
 #' # Assuming `crop_data` is a data.table with columns "iso3", "atlas_name", and "production",
-#' # and `neighbours_list` is similar to `african_neighbors`:
-#' avg_prod <- avg_neighbours(iso3 = "KEN", crop = "Maize", neighbours = neighbours_list, data = crop_data, value_field = "production")
+#' # and `neighbors_list` is similar to `african_neighbors`:
+#' avg_prod <- avg_neighbors(iso3 = "KEN", crop = "Maize", neighbors = neighbors_list, data = crop_data, value_field = "production")
 #' print(avg_prod)
-avg_neighbours <- function(iso3, crop, neighbours, data, value_field) {
+avg_neighbors <- function(iso3, crop, neighbors, data, value_field) {
   # Retrieve the actual neighbors of the country using its ISO3 code from the provided list
-  neighbours <- neighbours[[iso3]]
+  neighbors <- neighbors[[iso3]]
   
   # Temporarily rename the specified value field to "value" for easier manipulation
   setnames(data, value_field, "value")
   
-  # Calculate the mean value of the specified crop across the neighbours
-  N <- data[atlas_name == crop & iso3 %in% neighbours, mean(value, na.rm = TRUE)]
+  # Calculate the mean value of the specified crop across the neighbors
+  N <- data[atlas_name == crop & iso3 %in% neighbors, mean(value, na.rm = TRUE)]
   
   # Return the calculated average
   return(N)
@@ -2328,7 +2328,7 @@ avg_regions <- function(iso3, crop, regions, data, value_field) {
   region_focal <- names(regions)[sapply(regions, FUN = function(X) { iso3 %in% X })]
   
   # Retrieve the countries in the same region as the given country
-  neighbours <- regions[[region_focal]]
+  neighbors <- regions[[region_focal]]
   
   # Temporarily rename the specified value field to "value" for easier manipulation
   setnames(data, value_field, "value")
@@ -2336,7 +2336,7 @@ avg_regions <- function(iso3, crop, regions, data, value_field) {
   # Calculate the mean value of the specified crop across countries in the same region,
   # excluding the given country
   iso3_target<-iso3
-  N <- data[atlas_name == crop & iso3 %in% neighbours & iso3 != iso3_target, mean(value, na.rm = TRUE)]
+  N <- data[atlas_name == crop & iso3 %in% neighbors & iso3 != iso3_target, mean(value, na.rm = TRUE)]
   
   # Return the calculated average
   return(N)
@@ -2351,7 +2351,7 @@ avg_regions <- function(iso3, crop, regions, data, value_field) {
 #'
 #' @param data A data.table or data.frame containing the dataset to be enhanced.
 #' @param value_field The name of the field in `data` from which to calculate mean values.
-#' @param neighbours A list where each key is an ISO 3166-1 alpha-3 country code and the
+#' @param neighbors A list where each key is an ISO 3166-1 alpha-3 country code and the
 #'        associated value is a vector of its neighboring countries' ISO codes.
 #' @param regions A list categorizing countries into different regions, where each key
 #'        is a region name and the associated value is a vector of country codes in that region.
@@ -2362,16 +2362,16 @@ avg_regions <- function(iso3, crop, regions, data, value_field) {
 #'         prioritizing neighbor, then regional, then continental averages.
 #' @examples
 #' # Assuming `crop_data` is a data.table with columns "iso3", "atlas_name", and "production",
-#' # `neighbours_list` similar to `african_neighbors`, and `regions_list` categorizes
+#' # `neighbors_list` similar to `african_neighbors`, and `regions_list` categorizes
 #' # countries into regions:
 #' enhanced_data <- add_nearby(data = crop_data, value_field = "production",
-#'                             neighbours = neighbours_list, regions = regions_list)
+#'                             neighbors = neighbors_list, regions = regions_list)
 #' print(enhanced_data)
-add_nearby <- function(data, value_field, neighbours, regions) {
+add_nearby <- function(data, value_field, neighbors, regions) {
   # Calculate and add the mean value from neighbors
-  data[, mean_neighbours := avg_neighbours(iso3 = iso3,
+  data[, mean_neighbors := avg_neighbors(iso3 = iso3,
                                            crop = atlas_name,
-                                           neighbours = neighbours,
+                                           neighbors = neighbors,
                                            data = copy(data),
                                            value_field = value_field),
        by = list(iso3, atlas_name)]
@@ -2390,7 +2390,7 @@ add_nearby <- function(data, value_field, neighbours, regions) {
   
   # Compute and add the composite value, prioritizing the most specific data available
   data[, mean_final := value
-  ][is.na(mean_final), mean_final := mean_neighbours
+  ][is.na(mean_final), mean_final := mean_neighbors
   ][is.na(mean_final), mean_final := mean_region
   ][is.na(mean_final), mean_final := mean_continent]
   
