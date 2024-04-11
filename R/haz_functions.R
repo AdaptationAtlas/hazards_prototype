@@ -2099,26 +2099,50 @@ prepare_fao_data <- function(file, lps2fao, elements = NULL, units = NULL, remov
   return(data)
 }
 
-# african_neighbors: A list mapping African countries to their neighbors.
-# 
-# This list contains the ISO 3166-1 alpha-3 codes of African countries as keys,
-# and vectors of ISO 3166-1 alpha-3 codes of their neighboring countries as values.
-# For countries with no neighboring countries (island nations), the list contains an empty vector.
-# 
-# Usage:
-# - To find the neighbors of a specific country, access the list with the country's ISO code.
-#   For example, `african_neighbors[["KEN"]]` returns Kenya's neighbors.
-# - To iterate over all countries and their neighbors, use a loop or an lapply function.
-# 
-# Example of finding and printing neighbors of Kenya:
-neighbors_of_kenya <- african_neighbors[["KEN"]]
-print(paste("Kenya's neighbors:", paste(neighbors_of_kenya, collapse = ", ")))
-
-# Example of counting the number of neighbors for each country:
-num_neighbors <- sapply(african_neighbors, length)
-print(num_neighbors)
-
-# Note: Countries with no listed neighbors are island nations or have unique geopolitical situations.
+#' African Countries and Their Neighbors
+#'
+#' This dataset provides a mapping of African countries to their neighboring countries. 
+#' Each country is represented by its ISO 3166-1 alpha-3 code, and neighbors are listed 
+#' in vectors of ISO 3166-1 alpha-3 codes. For island nations or countries without any 
+#' land-based neighbors, an empty vector is provided.
+#'
+#' Usage:
+#' 
+#' data(african_neighbors)
+#'
+#' Format:
+#'
+#' A list where each element is named by the ISO 3166-1 alpha-3 code of an African country. 
+#' Each element is a character vector containing the ISO 3166-1 alpha-3 codes of its neighboring countries.
+#'
+#' Details:
+#'
+#' The `african_neighbors` dataset can be used to explore geographic, economic, and 
+#' environmental relationships between African countries and their neighbors. It is 
+#' particularly useful for analyses that require understanding of regional dynamics, such 
+#' as trade, migration, and environmental policy studies.
+#'
+#' Note:
+#'
+#' - Countries with no listed neighbors are primarily island nations.
+#' - The dataset is based on current geopolitical boundaries as of [year]. Geopolitical 
+#'   changes may necessitate updates to this dataset.
+#'
+#' Examples of usage:
+#' 
+#' Accessing neighbors of Kenya:
+#' 
+#' \dontrun{
+#' neighbors_of_kenya <- african_neighbors[["KEN"]]
+#' print(neighbors_of_kenya)
+#' }
+#'
+#' Counting the number of neighbors for each country:
+#'
+#' \dontrun{
+#' num_neighbors <- sapply(african_neighbors, length)
+#' print(num_neighbors)
+#' }
 african_neighbors <- list(
   DZA = c("TUN", "LBY", "NER", "ESH", "MRT", "MLI", "MAR"),
   AGO = c("COG", "COD", "ZMB", "NAM"),
@@ -2175,28 +2199,47 @@ african_neighbors <- list(
   ZWE = c("BWA", "MOZ", "ZAF", "ZMB")
 )
 
-# regions: A list categorizing African countries into their respective geographic regions.
-#
-# This list contains five main geographic regions as keys: East Africa, Southern Africa,
-# West Africa, Central Africa, and North Africa. Each key is associated with a vector
-# of ISO 3166-1 alpha-3 country codes that fall within that geographic region.
-#
-# Usage:
-# - To access the countries in a specific region, use the region's name as the key.
-#   For example, `regions[["East_Africa"]]` returns the countries in East Africa.
-# - This structure is useful for regional analysis, grouping, or filtering based on geographic location.
-#
-# Example of accessing countries in Southern Africa:
-southern_africa_countries <- regions[["Southern_Africa"]]
-print(paste("Countries in Southern Africa:", paste(southern_africa_countries, collapse = ", ")))
-
-# Example of iterating over each region and printing the number of countries:
-sapply(regions, function(country_codes) {
-  length(country_codes)
-})
-
-# Note: This list can be extended or modified to include additional details or regions
-# based on specific analysis needs or geopolitical changes.
+#' African Countries Categorized by Region
+#'
+#' This dataset categorizes African countries into their respective regions: East Africa,
+#' Southern Africa, West Africa, Central Africa, and North Africa. Each region is associated
+#' with a vector of country codes (ISO 3166-1 alpha-3) representing the countries within that region.
+#'
+#' Usage:
+#'
+#' data(regions)
+#'
+#' Format:
+#'
+#' A list where each element is named by the region. Each element is a character vector 
+#' containing the ISO 3166-1 alpha-3 codes of countries belonging to that region.
+#'
+#' Details:
+#'
+#' The `regions` dataset facilitates regional analyses by providing an easy way to group 
+#' countries by their geographic regions. This is useful for studies focusing on economic, 
+#' environmental, or political patterns within specific areas of Africa.
+#'
+#' Note:
+#'
+#' - The dataset reflects the current geopolitical region classifications as of [year].
+#' - Changes in geopolitical boundaries or regional classifications may necessitate updates to this dataset.
+#'
+#' Examples of usage:
+#' 
+#' Accessing countries in Southern Africa:
+#' 
+#' \dontrun{
+#' southern_africa_countries <- regions[["Southern_Africa"]]
+#' print(southern_africa_countries)
+#' }
+#'
+#' Counting the number of countries in each region:
+#'
+#' \dontrun{
+#' num_countries_per_region <- sapply(regions, length)
+#' print(num_countries_per_region)
+#' }
 regions <- list(
   East_Africa = c("BDI", "COM", "DJI", "ERI", "ETH", "KEN", "MDG", "MUS", "MWI", "RWA", "SYC", "SOM", "SSD", "TZA", "UGA"),
   Southern_Africa = c("BWA", "LSO", "NAM", "SWZ", "ZAF", "ZMB", "ZWE","MOZ"),
