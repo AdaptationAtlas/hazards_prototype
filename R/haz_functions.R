@@ -2001,3 +2001,351 @@ split_livestock <- function(data, livestock_mask_high, livestock_mask_low) {
   data_joined <- c(data_low, data_high)
   return(data_joined)
 }
+#' Prepare FAO Data
+#'
+#' This function processes food and agriculture data from the FAO file,
+#' subsetting it according to specified elements, units, and years, and augmenting
+#' it with atlas commodity names, ISO3 country codes, and handling missing data.
+#'
+#' @param file A string representing the path to the FAO data file to be processed.
+#' @param lps2fao A named vector where names correspond to atlas commodity names
+#'        and values correspond to FAO item codes. If NULL, atlas names are assumed
+#'        to be identical to FAO item names.
+#' @param elements An optional vector of element names to subset the data.
+#'        If NULL, no subsetting is done based on elements.
+#' @param units An optional vector of unit names to subset the data.
+#'        If NULL, no subsetting is done based on units.
+#' @param remove_countries A vector of country names to be removed from the data.
+#' @param keep_years A vector of years (as integers or strings without the 'Y' prefix)
+#'        to specify which years' data should be retained.
+#' @param atlas_iso3 A vector of ISO3 country codes representing countries to be
+#'        kept in the dataset.
+#' @return A data.table that has been subsetted, augmented, and potentially expanded
+#'         with missing combinations of crops and countries, according to the parameters.
+#' @export
+#' @examples
+#' prepare_fao_data("fao_data.csv", lps2fao = c("Wheat" = "15"),
+#'                  elements = c("Production"), units = c("tonnes"),
+#'                  remove_countries = c("China"), keep_years = 1990:2020,
+#'                  atlas_iso3 = c("USA", "BRA", "ARG"))
+prepare_fao_data <- function(file, lps2fao, elements = NULL, units = NULL, remove_countries, keep_years, atlas_iso3) {
+  
+  # Read data from the file
+  data <- fread(file)
+  
+  # Subset data based on elements if provided
+  if(!is.null(elements)) {
+    data <- data[Element %in% elements]
+  }
+  
+  # Subset data based on units if provided
+  if(!is.null(units)) {
+    data <- data[Unit %in% units]
+  }
+  
+  # Add atlas commodity names or use item names if lps2fao is null
+  if(!is.null(lps2fao)) {
+    data <- data[Item %in% lps2fao][, atlas_name := names(lps2fao)[match(Item, lps2fao)]]
+  } else {
+    data[, atlas_name := Item]
+  }
+  
+  # Convert Area Code (M49) to ISO3 codes and filter by atlas_iso3 countries
+  data[, M49 := as.numeric(gsub("[']", "", `Area Code (M49)`))]
+  data[, iso3 := countrycode(sourcevar = M49, origin = "un", destination = "iso3c")]
+  data <- data[iso3 %in% atlas_iso3]
+  
+  # Remove specified countries
+  data <- data[!Area %in% remove_countries]
+  
+  # Keep only the specified years
+  keep_years <- paste0("Y", keep_years)
+  keep_cols <- c("iso3", "atlas_name", keep_years)
+  data <- data[, ..keep_cols]
+  
+  # Add missing crop-country combinations
+  fao_countries <- unique(data[, .(iso3)])
+  crops <- data[, unique(atlas_name)]
+  
+  # Generate missing crop entries for each country
+  missing <- rbindlist(lapply(1:nrow(fao_countries), FUN = function(i) {
+    country <- fao_countries[i, iso3]
+    missing_crops <- crops[!crops %in% data[iso3 == country, atlas_name]]
+    if(length(missing_crops) > 0) {
+      data <- data.table(iso3 = country, atlas_name = missing_crops)
+      data[, (keep_years) := NA]
+      data
+    } else {
+      NULL
+    }
+  }))
+  
+  # Combine original and missing data
+  data <- rbind(data, missing)
+  
+  # Handle missing countries
+  missing_countries <- atlas_iso3[!atlas_iso3 %in% data$iso3]
+  
+  if(length(missing_countries) > 0) {
+    missing <- rbindlist(lapply(1:length(missing_countries), FUN = function(i) {
+      data <- data.table(iso3 = missing_countries[i], atlas_name = data[, unique(atlas_name)])
+      data[, (keep_years) := NA]
+      data
+    }))
+    
+    data <- rbind(data, missing)
+  }
+  
+  return(data)
+}
+
+# african_neighbors: A list mapping African countries to their neighbors.
+# 
+# This list contains the ISO 3166-1 alpha-3 codes of African countries as keys,
+# and vectors of ISO 3166-1 alpha-3 codes of their neighboring countries as values.
+# For countries with no neighboring countries (island nations), the list contains an empty vector.
+# 
+# Usage:
+# - To find the neighbors of a specific country, access the list with the country's ISO code.
+#   For example, `african_neighbors[["KEN"]]` returns Kenya's neighbors.
+# - To iterate over all countries and their neighbors, use a loop or an lapply function.
+# 
+# Example of finding and printing neighbors of Kenya:
+neighbors_of_kenya <- african_neighbors[["KEN"]]
+print(paste("Kenya's neighbors:", paste(neighbors_of_kenya, collapse = ", ")))
+
+# Example of counting the number of neighbors for each country:
+num_neighbors <- sapply(african_neighbors, length)
+print(num_neighbors)
+
+# Note: Countries with no listed neighbors are island nations or have unique geopolitical situations.
+african_neighbors <- list(
+  DZA = c("TUN", "LBY", "NER", "ESH", "MRT", "MLI", "MAR"),
+  AGO = c("COG", "COD", "ZMB", "NAM"),
+  BEN = c("BFA", "NER", "NGA", "TGO"),
+  BWA = c("ZMB", "ZWE", "NAM", "ZAF"),
+  BFA = c("MLI", "NER", "BEN", "TGO", "GHA", "CIV"),
+  BDI = c("COD", "RWA", "TZA"),
+  CPV = c(),
+  CMR = c("NGA", "TCD", "CAF", "COG", "GAB", "GNQ"),
+  CAF = c("TCD", "SDN", "COD", "COG", "CMR"),
+  TCD = c("LBY", "SDN", "CAF", "CMR", "NGA", "NER"),
+  COM = c(),
+  COG = c("GAB", "CMR", "CAF", "COD", "AGO"),
+  COD = c("CAF", "SSD", "UGA", "RWA", "BDI", "TZA", "ZMB", "AGO", "COG"),
+  CIV = c("LBR", "GIN", "MLI", "BFA", "GHA"),
+  DJI = c("ERI", "ETH", "SOM"),
+  EGY = c("LBY", "SDN", "ISR", "PSE"),
+  GNQ = c("CMR", "GAB"),
+  ERI = c("ETH", "SDN", "DJI"),
+  SWZ = c("MOZ", "ZAF"),
+  ETH = c("ERI", "DJI", "SOM", "KEN", "SSD", "SDN"),
+  GAB = c("CMR", "GNQ", "COG"),
+  GMB = c("SEN"),
+  GHA = c("CIV", "BFA", "TGO"),
+  GIN = c("LBR", "SLE", "CIV", "MLI", "SEN"),
+  GNB = c("SEN", "GIN"),
+  KEN = c("ETH", "SOM", "SSD", "UGA", "TZA"),
+  LSO = c("ZAF"),
+  LBR = c("GIN", "CIV", "SLE"),
+  LBY = c("TUN", "DZA", "NER", "TCD", "SDN", "EGY"),
+  MDG = c(),
+  MWI = c("MOZ", "TZA", "ZMB"),
+  MLI = c("DZA", "NER", "BFA", "CIV", "GIN", "SEN", "MRT"),
+  MRT = c("DZA", "ESH", "SEN", "MLI"),
+  MAR = c("DZA", "ESH", "ESP"),
+  MOZ = c("ZAF", "SWZ", "ZWE", "ZMB", "MWI", "TZA"),
+  NAM = c("AGO", "BWA", "ZAF", "ZMB"),
+  NER = c("DZA", "LBY", "TCD", "NGA", "BEN", "BFA", "MLI"),
+  NGA = c("BEN", "CMR", "TCD", "NER"),
+  RWA = c("BDI", "COD", "TZA", "UGA"),
+  STP = c(),
+  SEN = c("GMB", "GIN", "GNB", "MLI", "MRT"),
+  SYC = c(),
+  SLE = c("GIN", "LBR"),
+  SOM = c("ETH", "DJI", "KEN"),
+  ZAF = c("NAM", "BWA", "ZWE", "MOZ", "SWZ", "LSO"),
+  SSD = c("CAF", "COD", "ETH", "KEN", "UGA"),
+  SDN = c("EGY", "ERI", "ETH", "SSD", "CAF", "TCD", "LBY"),
+  TZA = c("KEN", "UGA", "RWA", "BDI", "COD", "ZMB", "MWI", "MOZ"),
+  TGO = c("BEN", "BFA", "GHA"),
+  TUN = c("DZA", "LBY"),
+  UGA = c("KEN", "SSD", "COD", "RWA", "TZA"),
+  ZMB = c("AGO", "COD", "MWI", "MOZ", "NAM", "TZA", "ZWE"),
+  ZWE = c("BWA", "MOZ", "ZAF", "ZMB")
+)
+
+# regions: A list categorizing African countries into their respective geographic regions.
+#
+# This list contains five main geographic regions as keys: East Africa, Southern Africa,
+# West Africa, Central Africa, and North Africa. Each key is associated with a vector
+# of ISO 3166-1 alpha-3 country codes that fall within that geographic region.
+#
+# Usage:
+# - To access the countries in a specific region, use the region's name as the key.
+#   For example, `regions[["East_Africa"]]` returns the countries in East Africa.
+# - This structure is useful for regional analysis, grouping, or filtering based on geographic location.
+#
+# Example of accessing countries in Southern Africa:
+southern_africa_countries <- regions[["Southern_Africa"]]
+print(paste("Countries in Southern Africa:", paste(southern_africa_countries, collapse = ", ")))
+
+# Example of iterating over each region and printing the number of countries:
+sapply(regions, function(country_codes) {
+  length(country_codes)
+})
+
+# Note: This list can be extended or modified to include additional details or regions
+# based on specific analysis needs or geopolitical changes.
+regions <- list(
+  East_Africa = c("BDI", "COM", "DJI", "ERI", "ETH", "KEN", "MDG", "MUS", "MWI", "RWA", "SYC", "SOM", "SSD", "TZA", "UGA"),
+  Southern_Africa = c("BWA", "LSO", "NAM", "SWZ", "ZAF", "ZMB", "ZWE","MOZ"),
+  West_Africa = c("BEN", "BFA", "CPV", "CIV", "GMB", "GHA", "GIN", "GNB", "LBR", "MLI", "MRT", "NER", "NGA", "SEN", "SLE", "TGO"),
+  Central_Africa = c("AGO", "CMR", "CAF", "TCD", "COD", "COG", "GNQ", "GAB", "STP"),
+  North_Africa = c("DZA", "EGY", "LBY", "MAR", "SDN", "TUN")
+)
+
+#' Calculate Average Value of a Crop in Neighboring Countries
+#'
+#' This function computes the average value (e.g., production, yield) of a specified
+#' crop across the neighboring countries of a given country. It uses a provided list
+#' of neighboring countries and a data table containing the crop data.
+#'
+#' @param iso3 The ISO 3166-1 alpha-3 code of the country for which to find the
+#'        average value of the specified crop in its neighboring countries.
+#' @param crop The name of the crop for which the average value is to be calculated.
+#' @param neighbours A list where each key is an ISO 3166-1 alpha-3 country code
+#'        and the associated value is a vector of its neighboring countries' ISO codes.
+#' @param data A data.table or data.frame that contains the crop data. It must
+#'        include columns for country codes (ISO3), crop names, and the value
+#'        field specified.
+#' @param value_field The name of the field in `data` from which to calculate the
+#'        average value (e.g., "production", "yield"). This field name is dynamically
+#'        used to reference the relevant column in the data table.
+#'
+#' @return The average value of the specified crop across the neighboring countries
+#'         of the given country. Returns `NA` if no data is available.
+#' @examples
+#' # Assuming `crop_data` is a data.table with columns "iso3", "atlas_name", and "production",
+#' # and `neighbours_list` is similar to `african_neighbors`:
+#' avg_prod <- avg_neighbours(iso3 = "KEN", crop = "Maize", neighbours = neighbours_list, data = crop_data, value_field = "production")
+#' print(avg_prod)
+avg_neighbours <- function(iso3, crop, neighbours, data, value_field) {
+  # Retrieve the actual neighbors of the country using its ISO3 code from the provided list
+  neighbours <- neighbours[[iso3]]
+  
+  # Temporarily rename the specified value field to "value" for easier manipulation
+  setnames(data, value_field, "value")
+  
+  # Calculate the mean value of the specified crop across the neighbours
+  N <- data[atlas_name == crop & iso3 %in% neighbours, mean(value, na.rm = TRUE)]
+  
+  # Return the calculated average
+  return(N)
+}
+
+#' Calculate Average Crop Value in the Same Region Excluding the Given Country
+#'
+#' Computes the average value (e.g., production, yield) of a specified crop across countries
+#' in the same geographic region as the given country, excluding the country itself. This function
+#' leverages a predefined list categorizing countries into regions.
+#'
+#' @param iso3 The ISO 3166-1 alpha-3 code of the country used to determine the region
+#'        for which the average crop value is calculated.
+#' @param crop The name of the crop for which the average value is to be calculated.
+#' @param regions A list where each key is a region name and the associated value is a
+#'        vector of country codes (ISO 3166-1 alpha-3) belonging to that region.
+#' @param data A data.table or data.frame that contains the crop data. It must
+#'        include columns for country codes (ISO3), crop names, and the value
+#'        field specified.
+#' @param value_field The name of the field in `data` from which to calculate the
+#'        average value (e.g., "production", "yield"). This field name is dynamically
+#'        used to reference the relevant column in the data table.
+#'
+#' @return The average value of the specified crop across countries in the same region
+#'         as the given country, excluding the country itself. Returns `NA` if no data is available.
+#' @examples
+#' # Assuming `crop_data` is a data.table with columns "iso3", "atlas_name", and "production",
+#' # and `regions_list` categorizes countries into regions:
+#' avg_prod_region <- avg_regions(iso3 = "KEN", crop = "Maize", regions = regions_list, data = crop_data, value_field = "production")
+#' print(avg_prod_region)
+avg_regions <- function(iso3, crop, regions, data, value_field) {
+  # Identify the region to which the given country belongs
+  region_focal <- names(regions)[sapply(regions, FUN = function(X) { iso3 %in% X })]
+  
+  # Retrieve the countries in the same region as the given country
+  neighbours <- regions[[region_focal]]
+  
+  # Temporarily rename the specified value field to "value" for easier manipulation
+  setnames(data, value_field, "value")
+  
+  # Calculate the mean value of the specified crop across countries in the same region,
+  # excluding the given country
+  iso3_target<-iso3
+  N <- data[atlas_name == crop & iso3 %in% neighbours & iso3 != iso3_target, mean(value, na.rm = TRUE)]
+  
+  # Return the calculated average
+  return(N)
+}
+
+#' Enhance Data with Mean Values from Neighbors, Region, and Continent
+#'
+#' This function augments a given dataset with additional columns representing the mean
+#' values of a specified field across neighboring countries, the same region, and the
+#' entire continent. It also calculates a composite mean that prioritizes the most
+#' specific available data (neighbor, region, continent).
+#'
+#' @param data A data.table or data.frame containing the dataset to be enhanced.
+#' @param value_field The name of the field in `data` from which to calculate mean values.
+#' @param neighbours A list where each key is an ISO 3166-1 alpha-3 country code and the
+#'        associated value is a vector of its neighboring countries' ISO codes.
+#' @param regions A list categorizing countries into different regions, where each key
+#'        is a region name and the associated value is a vector of country codes in that region.
+#'
+#' @return The original `data` augmented with new columns for mean values calculated
+#'         from neighbors, the same region, and the entire continent. Additionally, a
+#'         `value_field_mean_final` column is added, which is a composite value
+#'         prioritizing neighbor, then regional, then continental averages.
+#' @examples
+#' # Assuming `crop_data` is a data.table with columns "iso3", "atlas_name", and "production",
+#' # `neighbours_list` similar to `african_neighbors`, and `regions_list` categorizes
+#' # countries into regions:
+#' enhanced_data <- add_nearby(data = crop_data, value_field = "production",
+#'                             neighbours = neighbours_list, regions = regions_list)
+#' print(enhanced_data)
+add_nearby <- function(data, value_field, neighbours, regions) {
+  # Calculate and add the mean value from neighbors
+  data[, mean_neighbours := avg_neighbours(iso3 = iso3,
+                                           crop = atlas_name,
+                                           neighbours = neighbours,
+                                           data = copy(data),
+                                           value_field = value_field),
+       by = list(iso3, atlas_name)]
+  
+  # Calculate and add the mean value from the same region
+  data[, mean_region := avg_regions(iso3 = iso3,
+                                    crop = atlas_name,
+                                    regions = regions,
+                                    data = copy(data),
+                                    value_field = value_field),
+       by = list(iso3, atlas_name)]
+  
+  # Calculate and add the continental average
+  setnames(data, value_field, "value")
+  data[, mean_continent := mean(value, na.rm = TRUE), by = atlas_name]
+  
+  # Compute and add the composite value, prioritizing the most specific data available
+  data[, mean_final := value
+  ][is.na(mean_final), mean_final := mean_neighbours
+  ][is.na(mean_final), mean_final := mean_region
+  ][is.na(mean_final), mean_final := mean_continent]
+  
+  # Restore the original name of the value field
+  setnames(data, "value", value_field)
+  
+  # Rename columns to reflect the mean values are related to the specified value field
+  colnames(data) <- gsub("mean_", paste0(value_field, "_"), colnames(data))
+  
+  return(data)
+}
+
