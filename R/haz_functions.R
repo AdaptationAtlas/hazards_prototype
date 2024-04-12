@@ -2403,3 +2403,51 @@ add_nearby <- function(data, value_field, neighbors, regions) {
   return(data)
 }
 
+#' Average Loss Function
+#'
+#' Calculates the average loss reduction by simulating normal distributions
+#' with and without a specified change in standard deviation.
+#' The reduction is expressed as a proportion of the total without the change.
+#'
+#' @param cv numeric, the initial coefficient of variation.
+#' @param change numeric, the proposed change in standard deviation.
+#' @param fixed logical, if TRUE, the change is capped at the value of cv.
+#' @param reps integer, the number of repetitions for the simulation.
+#' @return numeric, the average loss reduction proportion.
+#' @examples
+#' avloss(cv = 0.2, change = 0.05, fixed = TRUE, reps = 10000)
+avloss <- function(cv, change, fixed = FALSE, reps = 10^6) {
+  # Calculate co-efficient of variation
+  x <- 1
+  
+  # Calculate new standard deviations
+  if (fixed) {
+    # Ensure fixed change does not exceed cv
+    change <- min(change, cv)
+    sd_with <- (cv - change) * x
+  } else {
+    sd_with <- (cv * (1 - change)) * x
+  }
+  
+  sd_without <- cv * x
+  
+  # Avoid computation if the standard deviation would be negative
+  if (sd_with < 0) {
+    return(NA)
+  }
+  
+  # Generate normal distributions
+  with <- rnorm(n = reps, mean = x, sd = sd_with)
+  without <- rnorm(n = reps, mean = x, sd = sd_without)
+  
+  # Direct calculation of sum of lower half without sorting
+  with_lh <- sum(with[with <= median(with)])
+  without_lh <- sum(without[without <= median(without)])
+  
+  # Calculate average loss reduction and express as proportion of total without innovation
+  avloss <- (with_lh - without_lh) / sum(without)
+  
+  avloss[avloss < 0] <- 0
+  
+  return(avloss)
+}
