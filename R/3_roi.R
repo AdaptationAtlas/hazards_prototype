@@ -22,42 +22,8 @@ packages <- c("data.table",
 # Call the function to install and load packages
 load_and_install_packages(packages)
 
-# Create functions ####
-avloss <- function(cv, change, fixed = FALSE, reps = 10^6) {
-  # Calculate co-efficient of variation
-  x <- 1
-  
-  # Calculate new standard deviations
-  if(fixed){
-    # Ensure fixed change does not exceed cv
-    change <- min(change, cv)
-    sd_with<-(cv - change) * x
-  }else{
-    sd_with<-(cv * (1 - change)) * x
-    }
-  
-  sd_without <- cv * x
-  
-  # Avoid computation if the standard deviation would be negative
-  if (sd_with < 0) {
-    return(NA)
-  }
-  
-  # Generate normal distributions
-  with <- rnorm(n = reps, mean = x, sd = sd_with)
-  without <- rnorm(n = reps, mean = x, sd = sd_without)
-  
-  # Direct calculation of sum of lower half without sorting
-  with_lh <- sum(with[with <= median(with)])
-  without_lh <- sum(without[without <= median(without)])
-  
-  # Calculate average loss reduction and express as proportion of total without innovation
-  avloss <- (with_lh - without_lh) / sum(without)
-  
-  avloss[avloss<0]<-0
-  
-  return(avloss)
-}
+# Load functions & wrappers
+source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
 # Test avloss function
 if(F){
@@ -92,8 +58,7 @@ if(F){
 
 # 1) Load data ####
   # 1.1) Crops - MapSPAM ####
-    # 1.1.1) Vop 2017usd ####
-    # This file can be used if yields are required
+    # Vop 2017usd
     file<-"Data/exposure/crop_vop_usd17_adm_sum.parquet"
     
     if(!file.exists(file)){
@@ -101,7 +66,7 @@ if(F){
         dir.create(dirname(file),recursive = T)
       }
       
-      s3_file <-"s3://digital-atlas/risk_prototype/data/exposure/crop_vop_usd17_adm_sum.parquet"
+      s3_file <-"s3://digital-atlas/exposure/mapspam/processed/crop_vop_adm.parquet"
       s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
     }
     
@@ -116,7 +81,7 @@ if(F){
         dir.create(dirname(file),recursive = T)
       }
       
-      s3_file <-"s3://digital-atlas/risk_prototype/data/exposure/livestock_vop_usd17_adm_sum.parquet"
+      s3_file <-"s3://digital-atlas/exposure/livestock/processed/livestock_vop_usd17_adm.parquet"
       s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
     }
     
@@ -127,20 +92,20 @@ if(F){
   livestock_vop<-livestock_vop[,crop:=gsub("_tropical|_highland","",crop)][,list(value=sum(value,na.rm=T)),by=list(admin0_name,admin1_name,crop,exposure)]
     
   # x) Human pop ####
-  file<-"Data/exposure/hpop_adm_sum.parquet"
+  file<-"Data/exposure/population_2017_admALL.parquet"
   
   if(!file.exists(file)){
     if(!dir.exists(dirname(file))){
       dir.create(dirname(file),recursive = T)
     }
     
-    s3_file <-"s3://digital-atlas/risk_prototype/data/exposure/hpop_adm_sum.parquet"
+    s3_file <-"s3://digital-atlas/population/worldpop_2020/population_2017_admALL.parquet"
     s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
   }
   
   hpop<-data.table(arrow::read_parquet(file))
-  hpop<-hpop[is.na(admin2_name)][,admin2_name:=NULL][crop=="rural"]
-
+  hpop<-hpop[is.na(admin2_name)][,admin2_name:=NULL][,total_pop:=NULL][,crop:="rural"][,exposure:="hpop"]
+  setnames(hpop,"rural_pop","value")
   
   # 1.3) Join livestock and crop exposures ####
   exposure<-rbind(exposure,livestock_vop)[crop!="total"]
@@ -187,7 +152,23 @@ if(F){
   cv$admin0_name[!cv$admin0_name %in% exposure$admin0_name]
   
   
-  # 1.5) Combine exposure and impact tables ####
+
+# 2) Set parameters and save directory ####
+years<-16
+adoption<-c(0.005,0.01,0.02)
+prod_impact<-c(0.1,0.2,0.3,0.4,0.5)
+cis_impact<-c(0,0.1,0.25,0.5)
+bcrs<-1.62
+  # 2.1) Create combinations #####
+  nrow(expand.grid(1:years,adoption,prod_impact,bcrs))
+  
+  save_dir<-"Data/roi"
+  if(!dir.exists(save_dir)){
+    dir.create(save_dir)
+  }
+  combinations<-data.table(expand.grid(adoption=adoption,prod_impact=prod_impact))
+  
+  # Combine exposure and impact tables
   combine_tables <- function(table1, table2) {
     # Get the number of rows for each table
     n1 <- nrow(table1)
@@ -212,23 +193,6 @@ if(F){
   data<-combine_tables(exposure,combinations)
   
   data<-rbind(data,data_hpop)
-  
-# 2) Set parameters and save directory ####
-years<-16
-adoption<-c(0.005,0.01,0.02)
-prod_impact<-c(0.1,0.2,0.3,0.4,0.5)
-cis_impact<-c(0,0.1,0.25,0.5)
-bcrs<-1.62
-# Combinations
-nrow(expand.grid(1:years,adoption,prod_impact,bcrs))
-
-save_dir<-"Data/roi"
-if(!dir.exists(save_dir)){
-  dir.create(save_dir)
-}
-combinations<-data.table(expand.grid(adoption=adoption,prod_impact=prod_impact))
-
-
 
 # 3) Work out marginal change ####
 
@@ -366,5 +330,5 @@ data<-data[crop!="rural"]
   data_benefit[,project_benefit:=as.integer(project_benefit)]
   
 # 4.1) Save dataset ####
-  arrow::write_parquet(data_benefit,sink=paste0(save_dir,"/roi_data.parquet"))
+  arrow::write_parquet(data_benefit,sink=paste0(save_dir,"/roi_data_v2.parquet"))
   
