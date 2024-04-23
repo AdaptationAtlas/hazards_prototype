@@ -19,7 +19,8 @@ packages <- c("terra",
               "doFuture",
               "stringr", 
               "stringi",
-              "httr")
+              "httr",
+              "wbstats")
 
 # Call the function to install and load packages
 load_and_install_packages(packages)
@@ -77,26 +78,26 @@ base_rast<-terra::rast(base_raster)
 
 #### Load datasets (non hazards)
 # d) Create directories ####
-haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
-haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
-haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
+haz_risk_dir<-file.path("Data/hazard_risk",timeframe_choice)
+haz_mean_dir<-file.path("Data/hazard_timeseries_mean",timeframe_choice)
+haz_timeseries_dir<-file.path("Data/hazard_timeseries",timeframe_choice)
 
-haz_risk_vop17_dir<-paste0("Data/hazard_risk_vop17/",timeframe_choice)
+haz_risk_vop17_dir<-file.path("Data/hazard_risk_vop17",timeframe_choice)
 if(!dir.exists(haz_risk_vop17_dir)){
   dir.create(haz_risk_vop17_dir,recursive = T)
 }
 
-haz_risk_vop_dir<-paste0("Data/hazard_risk_vop/",timeframe_choice)
+haz_risk_vop_dir<-file.path("Data/hazard_risk_vop",timeframe_choice)
 if(!dir.exists(haz_risk_vop_dir)){
   dir.create(haz_risk_vop_dir,recursive = T)
 }
 
-haz_risk_ha_dir<-paste0("Data/hazard_risk_ha/",timeframe_choice)
+haz_risk_ha_dir<-file.path("Data/hazard_risk_ha",timeframe_choice)
 if(!dir.exists(haz_risk_ha_dir)){
   dir.create(haz_risk_ha_dir,recursive = T)
 }
 
-haz_risk_n_dir<-paste0("Data/hazard_risk_n/",timeframe_choice)
+haz_risk_n_dir<-file.path("Data/hazard_risk_n",timeframe_choice)
 if(!dir.exists(haz_risk_n_dir)){
   dir.create(haz_risk_n_dir,recursive = T)
 }
@@ -106,21 +107,31 @@ if(!dir.exists(exposure_dir)){
   dir.create(exposure_dir)
 }
 
-mapspam_local<-"Data/mapspam"
+mapspam_dir<-"Data/mapspam"
 hpop_dir<-"Data/atlas_pop"
+
+commodity_mask_dir<-"Data/commodity_masks"
+if(!dir.exists(commodity_mask_dir)){
+  dir.create(commodity_mask_dir)
+}
+
+glw_dir<-"Data/GLW4"
+ls_vop_dir<-"Data/livestock_vop"
+afr_highlands_dir<-"Data/afr_highlands"
+fao_dir<-"Data/fao"
 
 # 0) Load an prepare admin vectors and exposure rasters, extract exposure by admin ####
   # 0.1) Geographies #####
   # Load and combine geoboundaries
   overwrite<-F
-  
+
   geo_files_s3<-c(
     "https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin0_harmonized.gpkg",
     "https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin1_harmonized.gpkg",
     "https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin2_harmonized.gpkg")
   
   
-  geo_files_local<-file.path("data/boundaries",basename(geo_files_s3))
+  geo_files_local<-file.path("Data/boundaries",basename(geo_files_s3))
   names(geo_files_local)<-c("admin0","admin1","admin2")
   
   Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
@@ -142,17 +153,17 @@ hpop_dir<-"Data/atlas_pop"
       # 0.2.1.1) Download MapSPAM #####
       # If mapspam data does not exist locally download from S3 bucket
       
-      if(!dir.exists(mapspam_local)|overwrite==T){
-        dir.create(mapspam_local,recursive = T)
+      if(!dir.exists(mapspam_dir)|overwrite==T){
+        dir.create(mapspam_dir,recursive = T)
         s3_bucket <- "s3://digital-atlas/MapSpam/raw/spam2017V2r3"
-        s3fs::s3_dir_download(s3_bucket,mapspam_local,overwrite=T)
+        s3fs::s3_dir_download(s3_bucket,mapspam_dir,overwrite=T)
       }
   
       # 0.2.1.2) Crop VoP (Value of production) ######
         # To generalize it might be better to just supply a filename for the mapspam
         crop_vop_tot<-read_spam(variable="V",
                                 technology="TA",
-                                mapspam_dir=mapspam_local,
+                                mapspam_dir=mapspam_dir,
                                 save_dir=exposure_dir,
                                 base_rast=base_rast,
                                 filename="crop_vop",
@@ -164,7 +175,7 @@ hpop_dir<-"Data/atlas_pop"
     }
         crop_vop17_tot<-read_spam(variable="Vusd17",
                                   technology="TA",
-                                  mapspam_dir=mapspam_local,
+                                  mapspam_dir=mapspam_dir,
                                   save_dir=exposure_dir,
                                   base_rast=base_rast,
                                   filename="crop_vop_usd17",
@@ -192,7 +203,7 @@ hpop_dir<-"Data/atlas_pop"
   
       crop_ha_tot<-read_spam(variable="H",
                               technology="TA",
-                              mapspam_dir=mapspam_local,
+                              mapspam_dir=mapspam_dir,
                               save_dir=exposure_dir,
                               base_rast=base_rast,
                               filename="crop_ha",
@@ -209,12 +220,6 @@ hpop_dir<-"Data/atlas_pop"
                                             overwrite=overwrite)
   
       # 0.2.1.4) Create Crop Masks ######
-    commodity_mask_dir<-"Data/commodity_masks"
-    
-    if(!dir.exists(commodity_mask_dir)){
-      dir.create(commodity_mask_dir)
-    }
-    
     # Need to use mapspam physical area
     mask_file<-paste0(commodity_mask_dir,"/crop_masks.tif")
     
@@ -241,18 +246,29 @@ hpop_dir<-"Data/atlas_pop"
     
     # 0.2.2) Livestock #####
       # 0.2.2.1) Download livestock data ####
-      # If glw3 data does not exist locally download from S3 bucket
-      glw3_dir<-"Data/GLW3"
-      
-      if(!dir.exists(glw3_dir)|length(list.files(glw3_dir))==0){
-        dir.create(glw3_dir,recursive = T)
-        s3_bucket <- "s3://digital-atlas/GLW3"
-        s3fs::s3_dir_download(s3_bucket,glw3_dir,overwrite = T)
+      # If glw data does not exist locally download from S3 bucket
+      glw_names<-c(poultry="Ch",sheep="Sh",pigs="Pg",horses="Ho",goats="Gt",ducks="Dk",buffalo="Bf",cattle="Ct")
+      glw_codes<-c(poultry=6786792,sheep=6769626,pigs=6769654,horses=6769681,goats=6769696,ducks=6769700,buffalo=6770179,cattle=6769711)
+      glw_files <- file.path(glw_dir,paste0("5_",glw_names,"_2015_Da.tif"))
+
+      for(i in 1:length(glw_files)){
+        glw_file<-glw_files[i]
+        if(!file.exists(glw_file)|overwrite==T){
+          api_url <- paste0("https://dataverse.harvard.edu/api/access/datafile/",glw_codes[i])
+          # Perform the API request and save the file
+          response <- GET(url = api_url, write_disk(glw_file, overwrite = TRUE))
+          
+          # Check if the download was successful
+          if (status_code(response) == 200) {
+            print(paste0("File ",i," downloaded successfully."))
+          } else {
+            print(paste("Failed to download file ",i,". Status code:", status_code(response)))
+          }
+        }
       }
+
     
       # If livestock vop data does not exist locally download from S3 bucket
-      ls_vop_dir<-"Data/livestock_vop"
-      
       if(!dir.exists(ls_vop_dir)){
         dir.create(ls_vop_dir,recursive = T)
         s3_bucket <- "s3://digital-atlas/ls_vop_dir"
@@ -260,30 +276,43 @@ hpop_dir<-"Data/atlas_pop"
       }
       
       # If livestock highland vs tropical map does not exist locally download from S3 bucket
-      afr_highlands_dir<-"Data/afr_highlands"
-      
       if(!dir.exists(afr_highlands_dir)){
         dir.create(afr_highlands_dir,recursive = T)
         s3_bucket <- "s3://digital-atlas/afr_highlands"
         s3fs::s3_dir_download(s3_bucket,afr_highlands_dir,overwrite = T)
       }
-  
+    
+      # Download FAOstat deflators
+      def_file<-paste0(fao_dir,"/Deflators_E_All_Data_(Normalized).csv")
+    
+      if(!file.exists(def_file)){
+        # Define the URL and set the save path
+        url<-"https://fenixservices.fao.org/faostat/static/bulkdownloads/Deflators_E_All_Data_(Normalized).zip"
+        
+        zip_file_path <- file.path(fao_dir,basename(url))
+        
+        # Download the file
+        download.file(url, zip_file_path, mode = "wb")
+        
+        # Unzip the file
+        unzip(zip_file_path, exdir = fao_dir)
+        
+        # Delete the ZIP file
+        unlink(zip_file_path)
+      }
+      
       # 0.2.2.3) Livestock Mask #####
     mask_ls_file<-paste0(commodity_mask_dir,"/livestock_masks.tif")
     
     if(!file.exists(mask_ls_file)|overwrite==T){
       
-      ls_files<-list.files(glw3_dir,"_Da.tif",full.names = T)
+      glw<-terra::rast(glw_files)
+      names(glw)<-names(glw_names)
       
-      Cattle<-terra::rast(grep("_Ct_2010_Da.tif",ls_files,value=T))
-      Chicken<-terra::rast(grep("_Ch_2010_Da.tif",ls_files,value=T))
-      Goat<-terra::rast(grep("_Gt_2010_Da.tif",ls_files,value=T))
-      Pig<-terra::rast(grep("_Pg_2010_Da.tif",ls_files,value=T))
-      Sheep<-terra::rast(grep("_Sh_2010_Da.tif",ls_files,value=T))
+      glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
       
-      TLU<-Cattle*0.7 + Sheep*0.1 + Goat*0.1 + 0.01*Chicken + 0.2*Pig
-      
-      lus<-c(Cattle*0.7,Chicken*0.01,Goat*0.1,Pig*0.2,Sheep*0.1,TLU)
+      lus<-c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1)
+      lus<-c(lus,sum(lus,na.rm=T))
       names(lus)<-c("cattle","poultry","goats","pigs","sheep","total")
       lus<-terra::mask(terra::crop(lus,Geographies$admin0),Geographies$admin0)
       
@@ -291,8 +320,8 @@ hpop_dir<-"Data/atlas_pop"
       lu_density<-lus/terra::cellSize(lus,unit="ha")
       lu_density<-terra::resample(lu_density,base_rast)
       
-      # Classify requires 0.00001 livestock units per ha to be present
-      livestock_mask<-terra::classify(lu_density, data.frame(from=c(0,0.00001),to=c(0.00001,Inf),becomes=c(0,1)))
+      # Classify into binary mask
+      livestock_mask <- terra::ifel(lu_density > 0, 1, 0)
       
       # Split mask by highland vs tropical areas
       
@@ -300,7 +329,6 @@ hpop_dir<-"Data/atlas_pop"
       highlands<-terra::rast(paste0(afr_highlands_dir,"/afr-highlands.asc"))
       highlands<-terra::resample(highlands,base_rast,method="near")
   
-      
       livestock_mask_high<-livestock_mask*highlands
       names(livestock_mask_high)<-paste0( names(livestock_mask_high),"_highland")
       
@@ -317,24 +345,23 @@ hpop_dir<-"Data/atlas_pop"
       livestock_mask_high<-livestock_mask[[grep("highland",names(livestock_mask))]]
       livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
     }
-      # 0.2.2.1) Livestock Numbers (GLW3) ######
+      # 0.2.2.1) Livestock Numbers (GLW) ######
     livestock_no_file<-paste0(exposure_dir,"/livestock_no.tif")
-    shoat_prop_file<-paste0(glw3_dir,"/shoat_prop.tif")
+    shoat_prop_file<-paste0(glw_dir,"/shoat_prop.tif")
       
     if(!file.exists(livestock_no_file)|overwrite==T){
       
-      ls_files<-list.files(glw3_dir,"_Da.tif",full.names = T)
+      ls_files<-list.files(glw_dir,"_Da.tif",full.names = T)
       
-      Cattle<-terra::rast(grep("_Ct_2010_Da.tif",ls_files,value=T))
-      Chicken<-terra::rast(grep("_Ch_2010_Da.tif",ls_files,value=T))
-      Goat<-terra::rast(grep("_Gt_2010_Da.tif",ls_files,value=T))
-      Pig<-terra::rast(grep("_Pg_2010_Da.tif",ls_files,value=T))
-      Sheep<-terra::rast(grep("_Sh_2010_Da.tif",ls_files,value=T))
+      glw<-terra::rast(glw_files)
+      names(glw)<-names(glw_names)
       
-      TLU<-Cattle*0.7 + Sheep*0.1 + Goat*0.1 + 0.01*Chicken + 0.2*Pig
+      glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
       
-      livestock_no<-c(Cattle,Chicken,Goat,Pig,Sheep,TLU)
-      names(livestock_no)<-c("cattle","poultry","goats","pigs","sheep","total_livestock_units")
+      TLU<-sum(c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1))
+      
+      livestock_no<-c(glw$cattle,glw$poultry,glw$goats,glw$pigs,glw$sheep,TLU)
+      names(livestock_no)[nlyr(livestock_no)]<-"total"
       livestock_no<-terra::mask(terra::crop(livestock_no,Geographies$admin0),Geographies$admin0)
       
       # resample to 0.05
@@ -368,7 +395,7 @@ hpop_dir<-"Data/atlas_pop"
   
       # 0.2.2.2) Livestock VoP ######
       # IUSD (old)
-      livestock_vop_file<-paste0(exposure_dir,"/livestock_vop.tif")
+      livestock_vop_file<-file.path(exposure_dir,"livestock_vop.tif")
       
       if(!file.exists(livestock_vop_file)|overwrite==T){
         
@@ -378,6 +405,9 @@ hpop_dir<-"Data/atlas_pop"
         livestock_vop<-terra::rast(ls_vop_files)
       
         names(livestock_vop)<-unlist(tstrsplit(names(livestock_vop),"-",keep=3))
+        
+        # Remove totals
+        livestock_vop<-livestock_vop[[!grepl("total",names(livestock_vop))]]
         
         # resample to 0.05
         livestock_density<-livestock_vop/terra::cellSize(livestock_vop,unit="ha")
@@ -395,26 +425,17 @@ hpop_dir<-"Data/atlas_pop"
         livestock_vop$sheep_goat<-NULL
       
       # Split vop by highland vs lowland
-      
       livestock_vop<-split_livestock(data=livestock_vop,livestock_mask_high,livestock_mask_low)
       terra::writeRaster(livestock_vop,filename = livestock_vop_file,overwrite=T)
       }else{
         livestock_vop<-terra::rast(livestock_vop_file)
       }
-    
+      
       # USD 2017 (see 0_fao_producer_prices_livestock.R)
       livestock_vop17_file<-paste0(exposure_dir,"/livestock_vop_usd17.tif")
     
       if(!file.exists(livestock_vop17_file)){
-        data<-terra::rast(paste0(ls_vop_dir,"/vop_adj17.tif"))
-        
-        # Combine products for different species
-        data<-terra::rast(c(cattle=data$cattle_meat+data$cattle_milk,
-                goats=data$goat_meat+data$goat_milk,
-                pigs=data$pig_meat,
-                poultry=data$poultry_eggs+data$poultry_meat,
-                sheep=data$sheep_meat+data$sheep_milk,
-                total=sum(data,na.rm=T)))
+        data<-terra::rast(paste0(ls_vop_dir,"/livestock-vop-2017-usd17.tif"))
         
         livestock_vop17<-split_livestock(data=data,livestock_mask_high,livestock_mask_low)
         terra::writeRaster(livestock_vop17,filename = livestock_vop17_file,overwrite=T)
@@ -451,7 +472,29 @@ hpop_dir<-"Data/atlas_pop"
           livestock_no_tot_adm
         )
             arrow::write_parquet(exposure_adm_sum_tab,file)
-        }
+      }
+    
+    # Create a table for total values 
+    file<-file.path(exposure_dir,"admin0_totals")
+      
+      if(!file.exists(file)|overwrite==T){
+      # Load raw mapspam
+      data <- fread(paste0(mapspam_dir, "/SSA_", "V", "_", "TA", ".csv"))
+      crop_columns<-grep("_a$",colnames(data),value=T)
+  
+      # Calculating the sum for each crop within each iso3 group.
+      vop_adm0_total <- data[, .(total_crops = sum(unlist(.SD))), by = .(iso3), .SDcols = crop_columns]
+      
+      vop_adm0_total<-merge(vop_adm0_total,Geographies$admin0[,c("iso3","admin0_name")])
+      
+      # Add livestock
+      vop_adm0_total<-merge(vop_adm0_total,livestock_vop_tot_adm[is.na(admin1_name),list(total_livestock=sum(value)),by=admin0_name],by="admin0_name")
+      
+      # Grand total
+      vop_adm0_total<-vop_adm0_total[,total:=total_crops+total_livestock][,exposure:="vop"]
+      
+      fwrite(vop_adm0_total,file.path(exposure_dir,"admin0_totals.csv"))
+    }
   
     # 0.2.4) Population ######
     bucket_files<-paste0("s3://digital-atlas/population/",c("total_pop.tif","rural_pop.tif","urban_pop.tif"))
@@ -825,6 +868,13 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
     files<-list.files(haz_risk_dir,".tif$",full.names = T)
     
     # The process below would benefit from parallization, but error in { : task  failed - "NULL value passed as symbol address!" needs debugging
+    
+    # Problem may be resolved using multicore in linux environment ####
+    #if (.Platform$OS.type == "windows") {
+    #  plan(multisession, workers = cores)
+    #} else {
+    #  plan(multicore, workers = cores)
+    #}
     
     #registerDoFuture()
     #plan("multisession", workers = 2)
