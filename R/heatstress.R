@@ -2,7 +2,11 @@
 ## By: H. Achicanoy & P.Steward
 ## April, 2024
 
-# 1) Load packages and create functions ####
+# 1) R options ####
+g <- gc(reset = T); rm(list = ls()) # Empty garbage collector
+options(warn = -1, scipen = 999)    # Remove warning alerts and scientific notation
+
+# 2) Load packages and create functions ####
 suppressMessages(library(pacman))
 suppressMessages(pacman::p_load(tidyverse,terra,gtools,lubridate,future,furrr,purrr,dplyr,parallel,future.apply))
 
@@ -78,10 +82,6 @@ process_raster_wrap<-function(old_path,new_path,cores,mask){
   return(results)
 }
 
-# 2) R options ####
-g <- gc(reset = T); rm(list = ls()) # Empty garbage collector
-options(warn = -1, scipen = 999)    # Remove warning alerts and scientific notation
-
 # 3) Set directories ####
 root <- '/home/jovyan/common_data'
 
@@ -97,6 +97,7 @@ thresholds<-20:29
 sce_climates <- c("historical","future")
 
 # Future setup
+sce_climates <- c("historical","future")
 
 # Set future gcms
 gcms <- c('MRI-ESM2-0','ACCESS-ESM1-5','MPI-ESM1-2-HR','EC-Earth3','INM-CM5-0')
@@ -109,10 +110,8 @@ ssps<-c( 'ssp245','ssp585')
 #prds<-c('2021_2040', '2041_2060', '2061_2080', '2081_2100')
 prds<-c('2021_2040', '2041_2060')
 
-# Future setup
-gcms <- c('MRI-ESM2-0','ACCESS-ESM1-5','MPI-ESM1-2-HR','EC-Earth3','INM-CM5-0')
+# Set temperature thresholds
 thresholds<-20:29
-sce_climates <- c("historical","future")
 
 # Cores for parallel processing
 cores<-floor(parallel::detectCores()*0.9)
@@ -148,12 +147,23 @@ for(sce_climate in sce_climates){
       base::as.data.frame()
     tx_pth <-tx_pth_hist
     out_dir <- paste0(root,'/atlas_hazards/cmip6/indices/historical')
+    
+    if (.Platform$OS.type == "windows") {
+      plan(multisession, workers = cores)
+    } else {
+      plan(multicore, workers = cores)
+    }
+    
+    
     1:nrow(stp) %>%
-      purrr::map(.f = function(i){
-        calc_ntx(yr = stp$yrs[i], mn = stp$mns[i], thr=thresholds,out_dir=out_dir)
+      furrr::future_map(.f = function(i){
+        calc_ntx(tx_pth=tx_pth,yr = stp$yrs[i], mn = stp$mns[i], thr=thresholds,out_dir=out_dir)
         tmpfls <- list.files(tempdir(), full.names=TRUE)
         1:length(tmpfls) %>% purrr::map(.f = function(k) {system(paste0("rm -f ", tmpfls[k]))})
       })
+    
+    plan(sequential)
+    
   } else if (sce_climate == "future") {
     for (gcm in gcms) {
       for (ssp in ssps) {
@@ -181,13 +191,10 @@ for(sce_climate in sce_climates){
           
           1:nrow(stp) %>%
             furrr::future_map(.f = function(i){
-              calc_ntx(yr = stp$yrs[i], mn = stp$mns[i], thr=thresholds,out_dir=out_dir)
+              calc_ntx(tx_pth=tx_pth,yr = stp$yrs[i], mn = stp$mns[i], thr=thresholds,out_dir=out_dir)
               tmpfls <- list.files(tempdir(), full.names=TRUE)
               1:length(tmpfls) %>% purrr::map(.f = function(k) {system(paste0("rm -f ", tmpfls[k]))})
             })
-          
-          plan(sequential)
-          
           
           # Alternative approach using lapply
           if(F){

@@ -130,8 +130,11 @@ upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_b
   # Prepare tif data by converting to COG format
   #ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
   
+  files<-list.files(folder,full.names = T)
+  files<-grep("admin0_totals.csv$",files,value=T)
+  
   # Upload files
-  upload_files_to_s3(files = list.files(folder,full.names = T),
+  upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=T)
@@ -158,6 +161,12 @@ upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_b
   
   s3_file_names<-gsub("_sum","",basename(files))
 
+  upload_files_to_s3(files = files,
+                     s3_file_names = s3_file_names,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T,
+                     mode="public-read")
   
   # Upload - metadata ####
   # select a folder
