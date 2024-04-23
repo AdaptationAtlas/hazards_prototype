@@ -1,4 +1,4 @@
-# Install and load packages ####
+# a) Load R functions & packages ####
 load_and_install_packages <- function(packages) {
   for (package in packages) {
     if (!require(package, character.only = TRUE)) {
@@ -9,621 +9,576 @@ load_and_install_packages <- function(packages) {
 }
 
 # List of packages to be loaded
-packages <- c("data.table", 
+packages <- c("terra", 
+              "data.table",
+              "httr",
               "countrycode",
-              "terra",
-              "pbapply")
+              "wbstats")
 
 # Call the function to install and load packages
 load_and_install_packages(packages)
 
-# Create functions ####
-avg_neighbours<-function(iso3,crop,neighbours,data,value_field){
-  neighbours<-african_neighbors[[iso3]]
-  setnames(data,value_field,"value")
-  N<-data[atlas_name==crop & iso3 %in% neighbours,mean(value,na.rm=T)]
-  return(N)
-}
+# Load functions & wrappers
+source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
-prepare_fao_data<-function(file,lps2fao,elements=NULL,units=NULL,remove_countries,keep_years){
-  
-  data<-fread(file)
-  
-  data<-data[Item %in% lps2fao][,atlas_name:=names(lps2fao)[match(Item,lps2fao)]]
-  
-  if(!is.null(elements)){
-    data<-data[Element %in% elements]
-  }
-  
-  if(!is.null(units)){
-    data<-data[Unit %in% units]
-  }
-  
-  # Add iso3 codes and remove non-atlas countries
-  data[,M49:=as.numeric(gsub("[']","",`Area Code (M49)`))]
-  data[,iso3:=countrycode(sourcevar=M49,origin="un",destination = "iso3c")]
-  data<-data[iso3 %in% atlas_iso3]
-  
-  # Remove countries
-  data<-data[!Area %in% remove_countries]
-  
-  keep_years<-paste0("Y",c(1998:2002,2015:2019))
-  keep_cols<-c("iso3","atlas_name",keep_years)
-  data<-data[,..keep_cols]
-  
-  # Add missing crops x countries to fao
-  fao_countries<-unique(data[,list(iso3)])
-  crops<-data[,unique(atlas_name)]
-  
-  data<-data
-  
-  missing<-rbindlist(lapply(1:nrow(fao_countries),FUN=function(i){
-    country<-fao_countries[i,iso3]
-    missing_crops<-crops[!crops %in% data[iso3==country,atlas_name]]
-    if(length(missing_crops)>0){
-      data<-data.table(iso3=country,
-                       atlas_name=missing_crops)
-      data[,(keep_years):=NA]
-      data
-    }else{
-      NULL
-    }
-  }))
-  data<-rbind(data,missing)
-  
-  # Add missing countries to fao
-  missing_countries<-atlas_iso3[!atlas_iso3 %in% prod_price$iso3]
-  
-  
-  if(length(missing_countries)>0){
-    missing<-rbindlist(lapply( 1:length(missing_countries),FUN=function(i){
-      data<-data.table(iso3=missing_countries[i],
-                       atlas_name=data[,unique(atlas_name)])
-      data[,(keep_years):=NA]
-      data
-    }))
-    
-    data<-rbind(data,missing)
-  }
-  
-  
-  return(data)
-  
-}
-
-avg_regions<-function(iso3,crop,regions,data,value_field){
-  region_focal<-names(regions)[sapply(regions,FUN=function(X){iso3 %in% X})]
-  neighbours<-regions[[region_focal]]
-  setnames(data,value_field,"value")
-  N<-data[atlas_name==crop & iso3 %in% neighbours,mean(value,na.rm=T)]
-  return(N)
-}
-
-add_nearby<-function(data,value_field,african_neighbors,regions){
-  # Add mean of neighbours
-  data[,mean_neighbours:=avg_neighbours(iso3=iso3,
-                                        crop=atlas_name,
-                                        neighbours=african_neighbors,
-                                        data=copy(data),
-                                        value_field=value_field),
-       by=list(iso3,atlas_name)]
-  
-  # Add mean of regions
-  data[,mean_region:=avg_regions(iso3=iso3,
-                                 crop=atlas_name,
-                                 regions=regions,
-                                 data=copy(data),
-                                 value_field=value_field),
-       by=list(iso3,atlas_name)]
-  
-  # Add continental average
-  setnames(data,value_field,"value")
-  data[,mean_continent:=mean(value,na.rm=T),by=atlas_name]
-  
-  # Add composite value ####
-  data[,mean_final:=value
-  ][is.na(mean_final),mean_final:=mean_neighbours
-  ][is.na(mean_final),mean_final:=mean_region
-  ][is.na(mean_final),mean_final:=mean_continent]
-  
-  setnames(data,"value",value_field)
-  
-  colnames(data)<-gsub("mean_",paste0(value_field,"_"),colnames(data))
-  
-  return(data)
-  
-}
-
-# Setup workspace ####
+# b) Set up workspace ####
 # Load base raster to resample to 
 base_raster<-"base_raster.tif"
 if(!file.exists(base_raster)){
-  url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
-  httr::GET(url, write_disk(base_raster, overwrite = TRUE))
+url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
+httr::GET(url, write_disk(base_raster, overwrite = TRUE))
 }
 
-base_rast<-terra::mask(terra::rast(base_raster),geoboundaries)
+base_rast<-terra::rast(base_raster)
 
-# Create list of neighbouring countries ####
-african_neighbors <- list(
-  DZA = c("TUN", "LBY", "NER", "ESH", "MRT", "MLI", "MAR"),
-  AGO = c("COG", "COD", "ZMB", "NAM"),
-  BEN = c("BFA", "NER", "NGA", "TGO"),
-  BWA = c("ZMB", "ZWE", "NAM", "ZAF"),
-  BFA = c("MLI", "NER", "BEN", "TGO", "GHA", "CIV"),
-  BDI = c("COD", "RWA", "TZA"),
-  CPV = c(),
-  CMR = c("NGA", "TCD", "CAF", "COG", "GAB", "GNQ"),
-  CAF = c("TCD", "SDN", "COD", "COG", "CMR"),
-  TCD = c("LBY", "SDN", "CAF", "CMR", "NGA", "NER"),
-  COM = c(),
-  COG = c("GAB", "CMR", "CAF", "COD", "AGO"),
-  COD = c("CAF", "SSD", "UGA", "RWA", "BDI", "TZA", "ZMB", "AGO", "COG"),
-  CIV = c("LBR", "GIN", "MLI", "BFA", "GHA"),
-  DJI = c("ERI", "ETH", "SOM"),
-  EGY = c("LBY", "SDN", "ISR", "PSE"),
-  GNQ = c("CMR", "GAB"),
-  ERI = c("ETH", "SDN", "DJI"),
-  SWZ = c("MOZ", "ZAF"),
-  ETH = c("ERI", "DJI", "SOM", "KEN", "SSD", "SDN"),
-  GAB = c("CMR", "GNQ", "COG"),
-  GMB = c("SEN"),
-  GHA = c("CIV", "BFA", "TGO"),
-  GIN = c("LBR", "SLE", "CIV", "MLI", "SEN"),
-  GNB = c("SEN", "GIN"),
-  KEN = c("ETH", "SOM", "SSD", "UGA", "TZA"),
-  LSO = c("ZAF"),
-  LBR = c("GIN", "CIV", "SLE"),
-  LBY = c("TUN", "DZA", "NER", "TCD", "SDN", "EGY"),
-  MDG = c(),
-  MWI = c("MOZ", "TZA", "ZMB"),
-  MLI = c("DZA", "NER", "BFA", "CIV", "GIN", "SEN", "MRT"),
-  MRT = c("DZA", "ESH", "SEN", "MLI"),
-  MAR = c("DZA", "ESH", "ESP"),
-  MOZ = c("ZAF", "SWZ", "ZWE", "ZMB", "MWI", "TZA"),
-  NAM = c("AGO", "BWA", "ZAF", "ZMB"),
-  NER = c("DZA", "LBY", "TCD", "NGA", "BEN", "BFA", "MLI"),
-  NGA = c("BEN", "CMR", "TCD", "NER"),
-  RWA = c("BDI", "COD", "TZA", "UGA"),
-  STP = c(),
-  SEN = c("GMB", "GIN", "GNB", "MLI", "MRT"),
-  SYC = c(),
-  SLE = c("GIN", "LBR"),
-  SOM = c("ETH", "DJI", "KEN"),
-  ZAF = c("NAM", "BWA", "ZWE", "MOZ", "SWZ", "LSO"),
-  SSD = c("CAF", "COD", "ETH", "KEN", "UGA"),
-  SDN = c("EGY", "ERI", "ETH", "SSD", "CAF", "TCD", "LBY"),
-  TZA = c("KEN", "UGA", "RWA", "BDI", "COD", "ZMB", "MWI", "MOZ"),
-  TGO = c("BEN", "BFA", "GHA"),
-  TUN = c("DZA", "LBY"),
-  UGA = c("KEN", "SSD", "COD", "RWA", "TZA"),
-  ZMB = c("AGO", "COD", "MWI", "MOZ", "NAM", "TZA", "ZWE"),
-  ZWE = c("BWA", "MOZ", "ZAF", "ZMB")
-)
-
-
-# Create list of regions ####
-regions <- list(
-  East_Africa = c("BDI", "COM", "DJI", "ERI", "ETH", "KEN", "MDG", "MUS", "MWI", "RWA", "SYC", "SOM", "SSD", "TZA", "UGA"),
-  Southern_Africa = c("BWA", "LSO", "NAM", "SWZ", "ZAF", "ZMB", "ZWE","MOZ"),
-  West_Africa = c("BEN", "BFA", "CPV", "CIV", "GMB", "GHA", "GIN", "GNB", "LBR", "MLI", "MRT", "NER", "NGA", "SEN", "SLE", "TGO"),
-  Central_Africa = c("AGO", "CMR", "CAF", "TCD", "COD", "COG", "GNQ", "GAB", "STP"),
-  North_Africa = c("DZA", "EGY", "LBY", "MAR", "SDN", "TUN")
-)
-
-
-# Load Livestock production data ####
-
-prod<-fread("Data/mapspam/SSA_P_TA.csv")
-
-ms_codes<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
-crops<-tolower(ms_codes[compound=="no",Code])
-colnames(prod)<-gsub("_a$","",colnames(prod))
-
-# Location of livestock production datasets
-lps_dir<-"D:/datasets/Livestock Production Systems (Herrero)"
-
-# Where to save processed lps data
-save_dir<-"Data/lps_herrero"
-if(dir.exists(save_dir)){
-  dir.create(save_dir)
+# c) Set directories ####
+glw_dir<-"Data/GLW4"
+if(!dir.exists(glw_dir)){
+  dir.create(glw_dir)
 }
 
-# Load geoboundaries ####
-# Load and combine geoboundaries
-geo_files_s3<-"https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin0_harmonized.gpkg"
-geo_files_local<-file.path("Data/boundaries",basename(geo_files_s3))
-
-if(!file.exists(geo_files_local)|overwrite==T){
-  download.file(url=geo_files_s3,destfile=geo_files_local)
-}
-
-geoboundaries<-terra::vect(geo_files_local)
-  
-atlas_iso3<-geoboundaries$iso3
-
-# LPS 2005 production ####
-prod05_file<-paste0(save_dir,"/prod_05.tif")
-
-if(!file.exists(prod05_file)){
-  files<-list.files(lps_dir,"_kg.zip$",full.names = T)
-  
-  # Unzip files
-  sapply(files,unzip,exdir=save_dir)
-  
-  files<-list.files(save_dir,".tif$",full.names = T)
-  
-  names<-unlist(tstrsplit(basename(files),"_",keep=1))
-  keep<-c(cattle_meat="bvmeat",cattle_milk="bvmilk",pig_meat="pimeat",poultry_eggs="poeggs",poultry_meat="pomeat",shoat_meat="sgmeat",shoat_milk="sgmilk")
-  
-  files<-files[names %in% keep]
-  names<-names[names %in% keep]
-  names(files)<-names(keep)[match(names,keep)]
-  
-  # Unit is kg/km2
-  prod_05<-terra::rast(lapply(1:length(files),FUN=function(i){
-    data<-terra::rast(files[i])
-    data<-resample(data,base_rast)
-    # Convert to tons per pixel
-    data<-data*terra::cellSize(data,unit="km")/1000
-    data
-  }))
-  names(prod_05)<-names(files)
-  
-  # mask to atlas area
-  prod_05<-terra::mask(prod_05,geoboundaries)
-  
-  # Divide shoats according to sheep_goat ratios in glw3
-  prod_05$sheep_meat<-prod_05$shoat_meat*sheep_prop
-  prod_05$sheep_milk<-prod_05$shoat_milk*sheep_prop
-  prod_05$goat_meat<-prod_05$shoat_meat*goat_prop
-  prod_05$goat_milk<-prod_05$shoat_milk*goat_prop
-  
-  prod_05$shoat_meat<-NULL
-  prod_05$shoat_milk<-NULL
-  
-  terra::writeRaster(prod_05,filename = prod05_file,overwrite=T)
-  
-  files<-list.files(save_dir,full.names = T)
-  files<-files[!files %in% c(prod05_file)]
-  unlink(files)
-}else{
-  prod_05<-terra::rast(prod05_file)
-}
-
-# Map LPS names to FAOstat ####
-lps2fao<-c(cattle_meat="Meat of cattle with the bone, fresh or chilled",
-           cattle_milk="Raw milk of cattle",
-           pig_meat="Meat of pig with the bone, fresh or chilled",
-           poultry_eggs="Hen eggs in shell, fresh",
-           poultry_meat="Meat of chickens, fresh or chilled",
-           sheep_meat="Meat of sheep, fresh or chilled",
-           sheep_milk="Raw milk of sheep",
-           goat_meat="Meat of goat, fresh or chilled",
-           goat_milk="Raw milk of goats")
-
-# Download producer price data from FAO ####
 fao_dir<-"Data/fao"
-
 if(!dir.exists(fao_dir)){
   dir.create(fao_dir,recursive = T)
 }
 
-econ_file<-paste0(fao_dir,"/Prices_E_Africa_NOFLAG.csv")
-
-if(!file.exists(econ_file)){
-  # Define the URL and set the save path
-  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip"
-  zip_file_path <- file.path(fao_dir, "Prices_E_Africa.zip")
-  
-  # Download the file
-  download.file(url, zip_file_path, mode = "wb")
-  
-  # Unzip the file
-  unzip(zip_file_path, exdir = fao_dir)
-  
-  # Delete the ZIP file
-  unlink(zip_file_path)
+geo_dir<-"Data/boundaries"
+if(!dir.exists(geo_dir)){
+  dir.create(geo_dir,recursive = T)
 }
 
-
-# Download production data from FAO ####
-prod_file<-paste0(fao_dir,"/Production_Crops_Livestock_E_Africa_NOFLAG.csv")
-
-if(!file.exists(prod_file)){
-  # Define the URL and set the save path
-  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip"
-  zip_file_path <- file.path(fao_dir, "Production_E_Africa.zip")
-  
-  # Download the file
-  download.file(url, zip_file_path, mode = "wb")
-  
-  # Unzip the file
-  unzip(zip_file_path, exdir = fao_dir)
-  
-  # Delete the ZIP file
-  unlink(zip_file_path)
+ls_vop_dir<-"Data/livestock_vop"
+if(!dir.exists(ls_vop_dir)){
+  dir.create(ls_vop_dir,recursive = T)
 }
 
-# Download production value data from FAO ####
-vop_file<-paste0(fao_dir,"/Value_of_Production_E_Africa.csv")
+# 1) Load geographies ####
+# Load and combine geoboundaries
+overwrite<-F
 
-if(!file.exists(vop_file)){
-  # Define the URL and set the save path
-  url<-"https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip"
+geo_files_s3<-"https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin0_harmonized.gpkg"
 
-  zip_file_path <- file.path(fao_dir, "Value_of_Production_E_Africa.zip")
-  
-  # Download the file
-  download.file(url, zip_file_path, mode = "wb")
-  
-  # Unzip the file
-  unzip(zip_file_path, exdir = fao_dir)
-  
-  # Delete the ZIP file
-  unlink(zip_file_path)
+file<-file.path(geo_dir,basename(geo_files_s3))
+
+if(!file.exists(file)|overwrite==T){
+  download.file(url=geo_files_s3[i],destfile=file)
 }
-
-# Load and prepare fao data ####
-remove_countries<- c("Ethiopia PDR","Sudan (former)","Cabo Verde","Comoros","Mauritius","R\xe9union","Seychelles")
-
-prod<-prepare_fao_data(file=prod_file,
-                       lps2fao,
-                       elements="Production",
-                       units="t",
-                       remove_countries = remove_countries,
-                       keep_years=c(1998:2002,2015:2019))
-
-prod_price<-prepare_fao_data(file=econ_file,
-                             lps2fao,
-                             elements="Producer Price (USD/tonne)",
-                             remove_countries = remove_countries,
-                             keep_years=2015:2019)
-
-# !!NEED TO DEAL WITH INDIGENOUS vs NON-INDIGENOUS IN FAOSTAT NAMING!!
-fread(vop_file)[,unique(Item)]
-prod_value<-prepare_fao_data(file=vop_file,
-                             lps2fao,
-                             elements="Gross Production Value (constant 2014-2016 thousand US$)",
-                             remove_countries = remove_countries,
-                             keep_years=2015:2019)
-
-# Average prices over 5-year period by country
-prod_price[,mean:=mean(c(Y2019,Y2018,Y2017,Y2016,Y2015),na.rm=T),by=list(iso3,atlas_name)]
-
-# Average VoP over 5-year period by country
-prod_value[,mean:=mean(c(Y2019,Y2018,Y2017,Y2016,Y2015),na.rm=T),by=list(iso3,atlas_name)]
-
-# Determine change in production 2000 to 2017
-prod[,mean17:=mean(c(Y2019,Y2018,Y2017,Y2016,Y2015),na.rm=T),by=list(iso3,atlas_name)
-     ][,mean00:=mean(c(Y1998,Y1999,Y2000,Y2001,Y2002),na.rm=T),by=list(iso3,atlas_name)
-       ][,ratio:=mean17/mean00]
   
-# Substitute data from nearby areas ####
+geoboundaries<-terra::vect(file)
 
-# Price
-prod_price<-add_nearby(data=prod_price,value_field = "mean",african_neighbors,regions)
+# 2) Load glw4 data ####
+glw_names<-c(poultry="Ch",sheep="Sh",pigs="Pg",horses="Ho",goats="Gt",ducks="Dk",buffalo="Bf",cattle="Ct")
+glw_codes<-c(poultry=6786792,sheep=6769626,pigs=6769654,horses=6769681,goats=6769696,ducks=6769700,buffalo=6770179,cattle=6769711)
 
-# Production
-prod<-add_nearby(data=prod,value_field = "ratio",african_neighbors,regions)
+glw_files <- file.path(glw_dir,paste0("5_",glw_names,"_2015_Da.tif"))
+overwrite<-F
 
-
-  
-# Save processed faostat data ####
-fwrite(prod_price,paste0(fao_dir,"/production_value_processed.csv"))
-fwrite(prod,paste0(fao_dir,"/production_processed.csv"))
-  
-# Convert faostat data into a raster ####
-  # Prices
-  prod_price_cast<-dcast(prod_price[,list(iso3,mean_final,atlas_name)],iso3~atlas_name,value.var = "mean_final")
-  
-  # Use goat milk as proxy for sheep milk
-  prod_price_cast$sheep_milk<-prod_price_cast$goat_milk
-  
-  file<-file.path(fao_dir,"production_value.tif")
-  
-  if(!file.exists(file)|overwrite){
-    data<-merge(geoboundaries,prod_price_cast)
+for(i in 1:length(glw_files)){
+  glw_file<-glw_files[i]
+  if(!file.exists(glw_file)|overwrite==T){
+    api_url <- paste0("https://dataverse.harvard.edu/api/access/datafile/",glw_codes[i])
+    # Perform the API request and save the file
+    response <- GET(url = api_url, write_disk(glw_file, overwrite = TRUE))
     
-    cols<-names(data)
-    cols<-cols[!cols %in% c("iso3","admin_name","admin0_name")]    
-    
-    price_rast<-terra::rast(pblapply(cols,FUN=function(COL){terra::rasterize(x=data,y=base_rast,field=COL)}))
-    
-    terra::writeRaster(price_rast,file,overwrite=T)
-  }else{
-    price_rast<-terra::rast(file)
-  }
-  
-  
-  # Production
-  prod_ratio_cast<-dcast(prod[,list(iso3,ratio_final,atlas_name)],iso3~atlas_name,value.var = "ratio_final")
-  
-  file<-file.path(fao_dir,"fao_production_ratio.tif")
-  
-  if(!file.exists(file)|overwrite){
-
-    geoboundaries<-merge(geoboundaries,prod_ratio_cast)
-    
-    cols<-names(geoboundaries)
-    cols<-cols[!cols %in% c("iso3","admin_name","admin0_name")]
-    
-    prod_rast<-terra::rast(pblapply(cols,FUN=function(COL){terra::rasterize(x=geoboundaries,y=base_rast,field=COL)}))
-  
-    terra::writeRaster(prod_rast,file,overwrite=T)
-  }else{
-    prod_rast<-terra::rast(file)
-  }
-
-# Inflate 2000 to 2017 ####
-  
-# Reorder layers to match
-layer_order<-names(prod_05)
-prod_rast<-prod_rast[[layer_order]]
-
-# extract pixel values
-pix_vals<-base_rast
-pix_vals[]<-1:ncell(pix_vals)
-
-pix_vals_ext<-data.table(extract(pix_vals,geoboundaries))
-pix_vals_ext$ID<-geoboundaries$iso3[pix_vals_ext$ID]
-pix_vals_ext$N<-1:nrow(pix_vals_ext)
-colnames(pix_vals_ext)[2]<-"pix_val"
-
-# extract production
-data<-data.table(extract(prod_05,geoboundaries))
-data$ID<-geoboundaries$iso3[data$ID]
-data$N<-1:nrow(data)
-data$pix_val<-pix_vals_ext$pix_val
-
-# Subset faostat production data for national checks
-prod_ss<-prod[,list(iso3,atlas_name,mean00,mean17,Y2000,Y2017)]
-setnames(prod_ss,c("iso3","atlas_name"),c("country","item"))
-
-# Save simplified production dataset
-fwrite(prod_ss,file = paste0(fao_dir,"/fao_summary.csv"))
-
-item_country<-prod[,expand.grid(item=unique(atlas_name),country=unique(iso3),stringsAsFactors =F)]
-
-# Adjust production values per item x country
-verbose<-F
-data_ex<-rbindlist(lapply(1:nrow(item_country),FUN=function(i){
-  
-  country<-item_country$country[i]
-  item<-item_country$item[i]
-  
-  # Display progress
-  message<-paste0("Row:",i," | ",country,"/",item)
-  
-  if(verbose==F){
-  cat('\r                                                                                                                                                 ')
-  cat('\r',message)
-  flush.console()
-  }else{
-    print(message)
-  }
-  
-  
-  cols<-c("N","pix_val",item)
-  Y<-data[ID==country,..cols]
-  colnames(Y)[3]<-"value"
-  
-  # Sort values in increasing order
-  Y<-Y[order(value)]
-  
-  
-  # ratio by which we need to inflate production by
-    # NOTE: we could simply use Y_sum (lps production in 2000) and fao production in 2017 instead of a ratio derived from
-    # fao stat to cut out the fao validation steps below. However this would not work for countries where we do have production
-    # data and we cannot infer this from neighbouring countries.
-  ratio<-round(unlist(prod_ratio_cast[iso3==country,..item]),3)
-  
-  # Production in 2000
-  Y_sum<-Y[,sum(value,na.rm=T)]
-  
-  # calculate amount  we need to add to get to 2017
-  Y_add<-Y_sum*ratio-Y_sum
-  
-  # Adjust total to match 2017 fao stat data where FAO production data exist (note lps in 2000 vs faostat does not always match well)
-  fao17<-prod_ss[item==item_country$item[i] & country==item_country$country[i],Y2017]
-  
-  if(!is.na(fao17)){
-    Y_add<-fao17-Y_sum
-  }
-  
-  if(is.na(fao17)){
-    fao17<-prod_ss[item==item_country$item[i] & country==item_country$country[i],mean17]
-    if(!is.na(fao17)){
-      Y_add<-fao17-Y_sum
+    # Check if the download was successful
+    if (status_code(response) == 200) {
+      print(paste0("File ",i," downloaded successfully."))
+    } else {
+      print(paste("Failed to download file ",i,". Status code:", status_code(response)))
     }
   }
+}
+
+glw<-terra::rast(glw_files)
+names(glw)<-names(glw_names)
+
+glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
+
+# 2.1) Resample & mask to atlas area #####
+#### units are absolute number of animals per pixel
+# convert to density
+glw<-glw/terra::cellSize(glw,unit="ha")
+# resample to the atlas base raster
+glw<-terra::resample(glw,base_rast)
+# convert back to numbers per pixel
+glw<-glw*terra::cellSize(glw,unit="ha")
+# mask to focal countries
+glw<-terra::mask(glw,geoboundaries)
+
+# 3) Load FAOstat data ####
+remove_countries<- c("Ethiopia PDR","Sudan (former)","Cabo Verde","Comoros","Mauritius","R\xe9union","Seychelles")
+atlas_iso3<-geoboundaries$iso3
+target_year<-c(2015,2017)
+
+  # 3.1) VoP #####
+    # 3.1.1) Download ######
+    vop_file<-file.path(fao_dir,"Value_of_Production_E_Africa.csv")
+    update<-F
+    if(!file.exists(vop_file)|update){
+      # Define the URL and set the save path
+      url<-"https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip"
+      
+      zip_file_path <- file.path(fao_dir, "Value_of_Production_E_Africa.zip")
+      
+      # Download the file
+      download.file(url, zip_file_path, mode = "wb")
+      
+      # Unzip the file
+      unzip(zip_file_path, exdir = fao_dir)
+      
+      # Delete the ZIP file
+      unlink(zip_file_path)
+    }
+    
+    vop_file_world<-file.path(fao_dir,"Value_of_Production_E_All_Area_Groups.csv")
+    if(!file.exists(vop_file_world)){
+      # Define the URL and set the save path
+      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_All_Area_Groups.zip"
+      zip_file_path <- file.path(fao_dir, "Value_of_Production_E_All_Area_Groups.zip")
+      
+      # Download the file
+      download.file(url, zip_file_path, mode = "wb")
+      
+      # Unzip the file
+      unzip(zip_file_path, exdir = fao_dir)
+      
+      # Delete the ZIP file
+      unlink(zip_file_path)
+    }
+    
+    # 3.1.2) Prepare ######
+    
+    prod_value<-fread(vop_file)
+    prod_value[grep(paste(lps2fao,collapse="|"),Item),unique(Item)]
+
+    # use indigenous meat production values
+    lps2fao_ind<-lps2fao
+    lps2fao_ind[grep("Meat",lps2fao_ind)]<-paste0(lps2fao_ind[grep("Meat",lps2fao_ind)]," (indigenous)")
+    lps2fao_ind %in% prod_value[Item %in% lps2fao_ind,unique(Item)]
+    
+    # Choose element
+    prod_value[,unique(Element)]
+    element<-"Gross Production Value (constant 2014-2016 thousand US$)"
+    #element<-"Gross Production Value (constant 2014-2016 thousand I$)"
+    # Note current thousand US$ has only 35 values whereas constant 12-16 has 157
+    
+    prod_value<-prepare_fao_data(file=vop_file,
+                                 lps2fao_ind,
+                                 elements=element,
+                                 remove_countries = remove_countries,
+                                 keep_years=target_year,
+                                 atlas_iso3=atlas_iso3)
+    
+    prod_value[,atlas_name:=gsub(" (indigenous)","",atlas_name)]
+    
+    prod_value[!is.na(Y2017),.N]
+    prod_value[!is.na(Y2015),.N]
+    
+    prod_value_world<-fread(vop_file_world)
+    prod_value_world<-prod_value_world[Area=="World" & Element == element & Item %in% lps2fao_ind,list(Item,Y2016,Y2017,Y2018)]
+    prod_value_world<-merge(prod_value_world,data.table(Item=lps2fao_ind,atlas_name=names(lps2fao_ind)),all.x=T)
+
+  # 3.2) Price #####
+    # 3.2.1) Download ######
+    econ_file<-file.path(fao_dir,"Prices_E_Africa_NOFLAG.csv")
+    
+    if(!file.exists(econ_file)){
+      # Define the URL and set the save path
+      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip"
+      zip_file_path <- file.path(fao_dir, "Prices_E_Africa.zip")
+      
+      # Download the file
+      download.file(url, zip_file_path, mode = "wb")
+      
+      # Unzip the file
+      unzip(zip_file_path, exdir = fao_dir)
+      
+      # Delete the ZIP file
+      unlink(zip_file_path)
+    }
+
+    # 3.2.2) Prepare ######
+    prod_price<-fread(econ_file)
+    prod_price[grep("Meat of goat",Item),unique(Item)]
+    prod_price[grep(paste(lps2fao,collapse="|"),Item),unique(Item)]
+    
+    prod_price[,unique(Element)]
+    element<-"Producer Price (USD/tonne)"
+    
+    prod_price<-prepare_fao_data(file=econ_file,
+                                 lps2fao,
+                                 elements=element,
+                                 remove_countries = remove_countries,
+                                 keep_years=2016:2018,
+                                 atlas_iso3=atlas_iso3)
+    
+    prod_price[,mean:=mean(c(Y2018,Y2017,Y2016),na.rm=T),by=list(iso3,atlas_name)]
+    
+    prod_price[!is.na(mean),.N]
+    
+    prod_price<-add_nearby(data=prod_price,value_field = "mean",neighbors=african_neighbors,regions)
+    
+  # 3.3) Production #####
+    # 3.3.1) Download ######
+    prod_file<-file.path(fao_dir,"Production_Crops_Livestock_E_Africa_NOFLAG.csv")
+    
+    if(!file.exists(prod_file)){
+      # Define the URL and set the save path
+      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip"
+      zip_file_path <- file.path(fao_dir, "Production_E_Africa.zip")
+      
+      # Download the file
+      download.file(url, zip_file_path, mode = "wb")
+      
+      # Unzip the file
+      unzip(zip_file_path, exdir = fao_dir)
+      
+      # Delete the ZIP file
+      unlink(zip_file_path)
+    }
+    
+    prod_file_world<-file.path(fao_dir,"Production_Crops_Livestock_E_All_Area_Groups.csv")
+    if(!file.exists(prod_file_world)){
+      # Define the URL and set the save path
+      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_All_Area_Groups.zip"
+      zip_file_path <- file.path(fao_dir, "Production_Crops_Livestock_E_All_Area_Groups.zip")
+      
+      # Download the file
+      download.file(url, zip_file_path, mode = "wb")
+      
+      # Unzip the file
+      unzip(zip_file_path, exdir = fao_dir)
+      
+      # Delete the ZIP file
+      unlink(zip_file_path)
+    }
+
+    # 3.3.2) Prepare ######
+    prod<-fread(prod_file, encoding = "Latin-1")
+    prod[grep(paste(lps2fao,collapse="|"),Item),unique(Item)]
+    
+    element<-"Production"
+    prod<-prepare_fao_data(file=prod_file,
+                           lps2fao,
+                           elements=element,
+                           units="t",
+                           remove_countries = remove_countries,
+                           keep_years=c(2016:2018),
+                           atlas_iso3=atlas_iso3)
+    
+    prod[,prod_mean:=mean(c(Y2018,Y2017,Y2016),na.rm=T),by=list(iso3,atlas_name)]
+    
+
+    prod_world<-fread(prod_file_world)
+    prod_world<-prod_world[Area=="World" & Element == element & Item %in% lps2fao & Unit=="t",list(Item,Y2016,Y2017,Y2018)]
+    prod_world<-merge(prod_world,data.table(Item=lps2fao,atlas_name=names(lps2fao)),all.x=T)
+    
+  # 3.4) Deflators #####
+    # 3.4.1) Download ######
+    def_file<-file.path(fao_dir,"Deflators_E_All_Data_(Normalized).csv")
+    
+    if(!file.exists(def_file)){
+      # Define the URL and set the save path
+      url<-"https://fenixservices.fao.org/faostat/static/bulkdownloads/Deflators_E_All_Data_(Normalized).zip"
+      
+      zip_file_path <- file.path(fao_dir,basename(url))
+      
+      # Download the file
+      download.file(url, zip_file_path, mode = "wb")
+      
+      # Unzip the file
+      unzip(zip_file_path, exdir = fao_dir)
+      
+      # Delete the ZIP file
+      unlink(zip_file_path)
+    }
+    # 3.4.2) Prepare ######
+    # Prepare deflators data 
+    deflators<-fread(def_file)
+    deflators[,M49:=as.numeric(gsub("[']","",`Area Code (M49)`))]
+    deflators[,iso3:=countrycode(sourcevar=M49,origin="un",destination = "iso3c")]
+    deflators<-deflators[iso3 %in% atlas_iso3 & 
+                           Year %in% target_year & 
+                           Element == "Value US$, 2015 prices" &
+                           Item == "Value Added Deflator (Agriculture, forestry and fishery)"
+    ][,deflator:=Value]
+    
+    deflators<-deflators[,list(iso3,Year,deflator)][,Year:=paste0("D",Year)]
+    deflators<-dcast(deflators,iso3~Year)
+    setnames(deflators,paste0("D",target_year),c("def_past","def_target"))
+    deflators[,def:=def_target/def_past][,c("def_past","def_target"):=NULL]
+    
+  # 4) Infer missing value from production and price data
+  # 3.5) PPP ####
+    ppp<- data.table(wbstats::wb_data("PA.NUS.PPP", country="countries_only"))
+    setnames(ppp,"iso3c","iso3")
+    
+    ppp17<-ppp[date==2017 & iso3 %in% atlas_iso3,list(iso3,PA.NUS.PPP)]
+    
+    # SSD has no data for 2017, nearest is 2005
+    ppp17[iso3=="SSD",PA.NUS.PPP:= ppp[iso3 == "SSD" & date==2015,PA.NUS.PPP]]
+    
+    ppp15<-ppp[date==2015 & iso3 %in% atlas_iso3,list(iso3,PA.NUS.PPP)]
+    
+  # 4.1) Merge production and national or nearby price ####
+  prod_price2<-prod_price[,list(iso3,atlas_name,mean,mean_neighbors,mean_region,mean_continent,mean_final)]
   
-  # Add cumulative value and cumulative proportion
-  Y[,value_cum:=cumsum(value)][,value_cum_prop:=value_cum/sum(value,na.rm=T)]
+  setnames(prod_price2,"mean_final","price_mean")
   
-  # Limit the values we are adding to those with cumulative proportion above 5% (we exclude the low tail of the values)
-  Z<-Y[value_cum_prop>0.05,list(N,value)]
+  prod<-prod[,list(iso3,atlas_name,prod_mean)]
   
-  if(nrow(Z)>0){
+  prod<-merge(prod,prod_price2,all.x=T)
+  prod[,VoP:=prod_mean*price_mean]
   
-    # If value is positive distribute increase biased towards intermediate production
-  if(Y_add>0){
-    # Work out the range of the remaining data
-    Z_range<-Z[,range(value)]
+  # Deflate USD to 2015
+  prod<-merge(prod,deflators,all.x=T)
+  prod[,VoP15:=VoP/def][,VoP_est:=round(VoP15/1000,0)]
+  
+  # Merge VoP estimate from price and production with faostat vop
+  prod_value<-merge(prod_value,prod[,list(iso3,atlas_name,def,VoP_est)],all.x=T)
+  
+  # 4.2) Using World VoP - merge  production and price ####
+  
+  # Unit is tonnes
+  prod_world<-prod_world[,list(atlas_name,Y2017)]
+  setnames(prod_world,"Y2017","production")
+  
+  # Unit is $1000
+  prod_value_world<-prod_value_world[,list(atlas_name,Y2017)]
+  setnames(prod_value_world,"Y2017","value")
+  
+  price_world<-merge(prod_world,prod_value_world,all.x=T)
+  
+  # Unit is $1000 per tonne (constant USD 2014-2016)
+  price_world[,price_world:=value/production]
+  
+  # Add production to value table
+  prod_value<-merge(prod_value,prod[,list(iso3,atlas_name,prod_mean)],all.x=T,by=c("iso3","atlas_name"))
+  
+  # Add global vop to value table
+  prod_value<-merge(prod_value,price_world[,list(atlas_name,price_world)],all.x=T,by=c("atlas_name"))
+  
+  # Estimate value 
+  prod_value[,VoP_world:=prod_mean*price_world]
+  
+  # 4.3) Hybrid ####
+  prod_price2<-prod_price[,list(iso3,atlas_name,mean,mean_neighbors,mean_region,mean_continent)
+                          ][,mean_final:=mean][is.na(mean_final),mean_final:=mean_neighbors]
+  
+  setnames(prod_price2,"mean_final","price_mean_n")
+  
+  prod_value<-merge(prod_value,prod_price2,all.x=T,by=c("iso3","atlas_name"))
+  prod_value[,VoP_hybrid:=(price_mean_n*prod_mean)/def/1000][is.na(VoP_hybrid),VoP_hybrid:=VoP_world]
+
+  # 4.4) Which estimation approach is better? ####
+  
+  max_y<-prod_value[,max(max(VoP_est,na.rm=T),max(VoP_world,na.rm=T),max(VoP_hybrid,na.rm=T))]
+
+  #VoP_est
+  model<-lm(Y2017~VoP_est,prod_value)
+  plot(prod_value$Y2017, prod_value$VoP_est, main = "VoP_est",xlab = "FAO", ylab = "Estimated", pch = 19, col = "red",ylim=c(0,max_y))
+  abline(model, col = "blue")
+  
+  # VoP_world
+  model<-lm(Y2017~VoP_world,prod_value)
+  plot(prod_value$Y2017, prod_value$VoP_world, main = "VoP_world",xlab = "FAO", ylab = "Estimated", pch = 19, col = "red",ylim=c(0,max_y))
+  abline(model, col = "blue")
+  
+  # VoP_hybrid
+  model<-lm(Y2017~VoP_hybrid,prod_value)
+  plot(prod_value$Y2017, prod_value$VoP_hybrid, main = "VoP_hybrid",xlab = "FAO", ylab = "Estimated", pch = 19, col = "red",ylim=c(0,max_y))
+  abline(model, col = "blue")
+
+  rbind(
+  prod_value[,list(source="VoP_est",
+                   mean_prop=mean(Y2017/VoP_est,na.rm=T),
+                   mean_sd=sd(Y2017/VoP_est,na.rm=T),
+                   lm.adj.r.squared=summary(lm(Y2017~VoP_est,prod_value))$adj.r.squared)
+             ][,cv:=mean_sd/mean_prop],
+  
+  prod_value[,list(source="VoP_world",
+                   mean_prop=mean(Y2017/VoP_world,na.rm=T),
+                   mean_sd=sd(Y2017/VoP_world,na.rm=T),
+                   lm.adj.r.squared=summary(lm(Y2017~VoP_world,prod_value))$adj.r.squared)
+             ][,cv:=mean_sd/mean_prop],
+  
+  prod_value[,list(source="VoP_hybrid",
+                   mean_prop=mean(Y2017/VoP_hybrid,na.rm=T),
+                   mean_sd=sd(Y2017/VoP_hybrid,na.rm=T),
+                   lm.adj.r.squared=summary(lm(Y2017~VoP_hybrid,prod_value))$adj.r.squared)  
+             ][,cv:=mean_sd/mean_prop]
+  )
+  
+# 5) Distribute vop to GLW4 livestock ####
+  
+  glw_admin0<-extract(glw,geoboundaries,fun="sum",na.rm=T)
+  glw_admin0$iso3<-geoboundaries$iso3
+  glw_admin0$ID<-NULL
+  glw_admin0<-melt(glw_admin0,id.vars="iso3",variable.name = "glw3_name",value.name="glw3_no")
+  
+  glw2atlas<-list(poultry=grep("poultry",names(lps2fao ),value=T),
+                  sheep=grep("sheep",names(lps2fao ),value=T),
+                  pigs=grep("pig",names(lps2fao ),value=T),
+                  goats=grep("goat",names(lps2fao ),value=T),
+                  cattle=grep("cattle",names(lps2fao ),value=T))
+  
+  glw2atlas <- data.table(
+    glw3_name = rep(names(glw2atlas), sapply(glw2atlas, length)),
+    atlas_name = unlist(glw2atlas, use.names = FALSE)
+  )
+  
+  final_vop<-prod_value[,list(iso3,atlas_name,Y2017,VoP_hybrid)][is.na(Y2017),Y2017:=VoP_hybrid][,VoP_hybrid:=NULL]
+  final_vop<-merge(final_vop,glw2atlas,all.x=T,by="atlas_name")
+  
+  # Where there is missing data explore how many animals are in these areas
+  final_vop_merge<-merge(final_vop,glw_admin0,all.x=T,by=c("iso3","glw3_name"))
+  final_vop_merge[is.na(Y2017) & !grepl("goat_milk|sheep_milk",atlas_name)]
+  
+  # Sum values for glw classes
+  final_vop<-final_vop[,list(value=sum(Y2017,na.rm=T)),by=list(glw3_name,iso3)]
+  final_vop<-dcast(final_vop,iso3~glw3_name)
+  
+  # Convert value to vector then raster
+  final_vop_vect<-geoboundaries
+  final_vop_vect<-merge(final_vop_vect,final_vop,all.x=T)
+  
+  final_vop_rast<-terra::rast(lapply(unique(glw2atlas$glw3_name),FUN=function(NAME){
+    terra::rasterize(final_vop_vect,base_rast,field=NAME)
+  }))
+  names(final_vop_rast)<-unique(glw2atlas$glw3_name)
+  
+  # Convert glw3 pixels to proportion of national total
+  glw_admin0<-dcast(glw_admin0,iso3~glw3_name,value.var="glw3_no")
+  glw_vect<-geoboundaries
+  glw_vect<-merge(glw_vect,glw_admin0,all.x=T,by="iso3")
+  
+  glw_rast<-terra::rast(lapply(unique(glw2atlas$glw3_name),FUN=function(NAME){
+    terra::rasterize(glw_vect,base_rast,field=NAME)
+  }))
+  
+  names(glw_rast)<-unique(glw2atlas$glw3_name)
+  
+  glw_prop<-glw/glw_rast
+  
+  # Multiply national VoP by cell proportion
+  glw_vop<-glw_prop*final_vop_rast
+  
+  terra::writeRaster(round(glw_vop*1000,0),file.path(ls_vop_dir,"livestock-vop-2017-cusd15.tif"),overwrite=T)
+  
+  # 5.1) Convert to IUSD and USD 2017####
+  # vectorise ppp & deflators
+  deflators_vect<-geoboundaries
+  deflators_vect<-merge(deflators_vect,deflators,all.x=T,by="iso3")
+  deflators_rast<-terra::rasterize(deflators_vect,base_rast,field="def")  
+  
+  ppp17_vect<-geoboundaries
+  ppp17_vect<-merge(ppp17_vect,ppp17,all.x=T,by="iso3")
+  ppp17_rast<-terra::rasterize(ppp17_vect,base_rast,field="PA.NUS.PPP")  
+  
+  ppp15_vect<-geoboundaries
+  ppp15_vect<-merge(ppp15_vect,ppp15,all.x=T,by="iso3")
+  ppp15_rast<-terra::rasterize(ppp15_vect,base_rast,field="PA.NUS.PPP")  
+  
+  # vop constant usd 14-16 x ppp2015
+  glw_vop_intd15<-glw_vop*ppp15_rast
+  terra::writeRaster(round(glw_vop_intd15*1000,0),file.path(ls_vop_dir,"livestock-vop-2017-intd15.tif"),overwrite=T)
+  
+  # current usd 2017
+  glw_vop_usd17<-glw_vop*deflators_rast
+  terra::writeRaster(round(glw_vop_usd17*1000,0),file.path(ls_vop_dir,"livestock-vop-2017-usd17.tif"),overwrite=T)
+  
+  # 6) QAQC: Extract by admin0 and compare back to FAOstat ####
+  
+  # GLW3 distributed data
+  data<-glw_vop
+  
+  qa_rasterizer<-function(data,base_rast,geoboundaries,glw2atlas){
+    # constant usd 2014-2016
+    data_ex<-extract(data,geoboundaries,fun="sum",na.rm=T)
+    data_ex$ID<-NULL
+    names(data_ex)<-paste0(names(data_ex))
+    data_ex$iso3<-geoboundaries$iso3
     
-    # Create a normal distribution based on the centre of the range 
-    Z_rdist<-rnorm(n=nrow(Z),mean=mean(Z_range),sd=mean(Z_range)*0.33)
-    # Values cannot be negative,set to zero
-    Z_rdist[Z_rdist<0]<-0
     
-    # Truncate high values
-    max<-tail(quantile(Z_rdist,probs=seq(0,1,0.1)),2)[1]
+    data_ex_vect<-geoboundaries
+    data_ex_vect<-merge(data_ex_vect,data_ex,all.x=T,by="iso3")
     
-    N<-Z_rdist[Z_rdist>max]
-    Z_rdist[Z_rdist>max]<-rnorm(n=length(N),mean=max,sd=max/100)
+    data_ex_rast<-terra::rast(lapply(unique(glw2atlas$glw3_name),FUN=function(NAME){
+      terra::rasterize(data_ex_vect,base_rast,field=NAME)
+    }))
     
-    # Rescale to amount that needs to be added
-    Z_rdist<-Z_rdist*(Y_add/sum(Z_rdist))
-    
-    # Order so that tails are low values and mid point is high values
-    Z_rdist<-sort(Z_rdist)
-    Z_rdist_odd<-Z_rdist[seq(1,length(Z_rdist),2)]
-    Z_rdist_even<-Z_rdist[seq(2,length(Z_rdist),2)]
-    Z_to_add<-c(Z_rdist_odd,rev(Z_rdist_even))
-    
-    # Add adjustment values back to original table and the combine with the starting values
-    Y[,to_add:=0
-      ][value_cum_prop>0.05,to_add:=Z_to_add
-        ][,value_adj:=value+to_add]
-    
-  }else{
-    # If value is negative reduce production evenly across production
-    red_ratio<-(Y_add+Y_sum)/Y_sum
-    Y[,to_add:=value*red_ratio
-      ][,value_adj:=value+to_add]
+    return(list(table=data_ex,vect=data_ex_vect,rast=data_ex_rast))
   }
-    
-    Y[,item:=item][,country:=country]
-    
-
-  if(verbose==T){
-    print(Y[,c(country=country[1],item=item[1],ratio=ratio,intial_value=round(sum(value,na.rm=T),0),to_add_calc=round(as.numeric(Y_add),0),to_add=round(sum(to_add,na.rm=T),0))])
-  }
   
-  Y
-  }else{
-    NULL
-  }
-
-}))
-
-# Check national totals against FAOstat
-data_sum<-data_ex[,list(prod00=sum(value,na.rm=T),prod_adj17=sum(value_adj,na.rm=T)),by=list(item,country)]
-data_sum<-merge(data_sum,prod_ss,all.x=T,by=c("item","country"))
-
-# Recreate raster ####
-items<-data_ex[,sort(unique(item))]
-
-prod_adj_rast<-terra::rast(lapply(1:length(items),FUN = function(i){
-  print(paste(i,"/",length(items)))
-  data_ss<-data_ex[!is.na(value) & item==items[i]]
-  XX<-base_rast
-  XX[match(data_ss$pix_val,pix_vals[])]<-data_ss$value
-  XX
-
-}))
-
-names(prod_adj_rast)<-items
-plot(prod_adj_rast)
-
-
-# Multiply production by production value ####
-# USD
-  # Check names match
-  names(prod_adj_rast) %in% names(price_rast)
-  prod_vop<-prod_adj_rast*price_rast
+  glw_vop_cusd15_adm0<-qa_rasterizer(data=glw_vop,base_rast,geoboundaries,glw2atlas)$rast
+  glw_vop_int15_adm0<-qa_rasterizer(data=glw_vop_intd15,base_rast,geoboundaries,glw2atlas)$rast
+  glw_vop_usd17_adm0<-qa_rasterizer(data=glw_vop_usd17,base_rast,geoboundaries,glw2atlas)$rast
   
-  filename<-file.path(save_dir,"vop_adj17.tif")
-  terra::writeRaster(prod_vop,filename)
+  # FAOstat data
+  fao_vop_cusd15<-prod_value[,list(Y2017,iso3,atlas_name)]
+  fao_vop_cusd15<-merge(fao_vop_cusd15,glw2atlas,all.x=T,by="atlas_name")
+  fao_vop_cusd15<-fao_vop_cusd15[,list(value=sum(Y2017,na.rm=T),N=sum(is.na(Y2017))),by=list(glw3_name,iso3)]
+  fao_vop_cusd15<-fao_vop_cusd15[N==0]
   
-# IUSD - to do
+  fao_vop_cusd15<-dcast(fao_vop_cusd15,iso3~glw3_name)
+  fao_vop_cusd15_vect<-geoboundaries
+  fao_vop_cusd15_vect<-merge(fao_vop_cusd15_vect,fao_vop_cusd15,all.x=T,by="iso3")
+  
+  fao_vop_cusd15_rast<-terra::rast(lapply(unique(glw2atlas$glw3_name),FUN=function(NAME){
+    terra::rasterize(fao_vop_cusd15_vect,base_rast,field=NAME)
+  }))
+  
+  # Constant USD 2017
+  
+  # use indigenous meat production values
+  lps2fao_ind<-lps2fao
+  lps2fao_ind[grep("Meat",lps2fao_ind)]<-paste0(lps2fao_ind[grep("Meat",lps2fao_ind)]," (indigenous)")
+
+  element<-"Gross Production Value (current thousand US$)" 
+  # Note current thousand US$ has only 35 values whereas constant 12-16 has 157
+  
+  fao_vop_usd17<-prepare_fao_data(file=vop_file,
+                               lps2fao_ind,
+                               elements=element,
+                               remove_countries = remove_countries,
+                               keep_years=target_year,
+                               atlas_iso3=atlas_iso3)
+  
+  fao_vop_usd17[,atlas_name:=gsub(" (indigenous)","",atlas_name)]
+
+  fao_vop_usd17<-fao_vop_usd17[,list(Y2017,iso3,atlas_name)]
+  fao_vop_usd17<-merge(fao_vop_usd17,glw2atlas,all.x=T,by="atlas_name")
+  fao_vop_usd17<-fao_vop_usd17[,list(value=sum(Y2017,na.rm=T),N=sum(is.na(Y2017))),by=list(glw3_name,iso3)]
+  fao_vop_usd17<-fao_vop_usd17[N==0]
+  
+  fao_vop_usd17<-dcast(fao_vop_usd17,iso3~glw3_name)
+  fao_vop_usd17_vect<-geoboundaries
+  fao_vop_usd17_vect<-merge(fao_vop_usd17_vect,fao_vop_usd17,all.x=T,by="iso3")
+  
+  NAMES<-unique(glw2atlas$glw3_name)
+  NAMES<-NAMES[NAMES %in% names(fao_vop_usd17_vect)]
+  fao_vop_usd17_rast<-terra::rast(lapply(NAMES,FUN=function(NAME){
+    terra::rasterize(fao_vop_usd17_vect,base_rast,field=NAME)
+  }))
+  
+  # Comparisons
+  plot(glw_vop_cusd15_adm0/fao_vop_cusd15_rast)
+  
+  # Differences are due to where only one of meat or milk is present.
+
+  glw_vop_cusd15_tab<-qa_rasterizer(data=glw_vop,base_rast,geoboundaries,glw2atlas)$table
+  glw_vop_cusd15_tab<-melt(glw_vop_cusd15_tab,id.vars=c("iso3"),variable.name="glw3_name",value.name="VoP_ext")
+  
+  data<-prod_value[,list(iso3,atlas_name,Y2017,VoP_world,VoP_hybrid)]
+  
+  setnames(data,c("Y2017","VoP_world","VoP_hybrid"),c("FAOstat","VoP_est_world","VoP_est_hybrid"))
+  data[,Unit:="Gross Production Value (constant 2014-2016 thousand US$)"][,Year:=2017]
+  data<-merge(data,glw2atlas,all.x=T,by="atlas_name")
+  
+  fwrite(data,file.path(ls_vop_dir,"QAQC_2017_cusd15_full.csv"))
+  
+  data2<-data[,list(FAOstat=sum(FAOstat,na.rm=T),n_na=sum(is.na(FAOstat)),VoP_est_world=sum(VoP_est_world ,na.rm=T),VoP_est_hybrid=sum(VoP_est_hybrid,na.rm=T)),by=list(iso3,glw3_name,Unit,Year)]
+  data2<-merge(data2,glw_vop_cusd15_tab,all.x=T)
+  
+  fwrite(data2,file.path(ls_vop_dir,"QAQC_2017_cusd15_glw.csv"))
+  
