@@ -1,3 +1,4 @@
+# First run server_setup script
 # 0) Load R functions & packages ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
@@ -14,6 +15,7 @@ load_and_install_packages <- function(packages) {
 packages <- c("terra", 
               "data.table", 
               "doFuture",
+              "future.apply",
               "exactextractr",
               "parallel")
 
@@ -41,7 +43,7 @@ Scenarios<-rbind(data.table(Scenario="historic",Time="historic"),data.table(expa
 Scenarios[,combined:=paste0(Scenario,"-",Time)]
 
 # Set hazards to include in analysis
-hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG") # NDD is not being used as it cannot be projected to future scenarios
+hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","NDWL0","PTOT","TAVG","TMAX") # NDD is not being used as it cannot be projected to future scenarios
 
 
 # 1.3) List hazard folders ####
@@ -85,36 +87,42 @@ names(Geographies)<-names(geo_files_local)
 FUN<-"mean"
 overwrite<-F
 
-if(cores>nrow(folders)){
-  cores<-nrow(folders)
-}
+# Parallel processing did not appear to speed up process
 
-if (.Platform$OS.type == "windows") {
-  plan(multisession, workers = cores)
-} else {
-  plan(multicore, workers = cores)
-}
-
-data_ex<-rbindlist(future_lapply(1:nrow(folders),FUN=function(i){
+data_ex<-rbindlist(lapply(1:nrow(folders),FUN=function(i){
   folders_ss<-paste0(folders$path[i],"/",hazards)
+  
   rbindlist(lapply(1:length(folders_ss),FUN=function(j){
-    filename<-paste0(basename(folders$path[i]),"_",basename(folders_ss[j]),".parquet")
+    
+    folders_ss_focus<-folders_ss[j]
+    
+    h_var<-unlist(tail(tstrsplit(folders_ss_focus,"_"),1))
+    if(h_var %in% c("mean","max")){
+      folders_ss_focus<-gsub("_max|_mean","",folders_ss_focus)
+    }
+    
+    filename<-paste0(basename(folders$path[i]),"_",basename(folders_ss_focus),".parquet")
     save_file<-file.path(output_dir,filename)
     
     # Progress
-    cat("folder =", i,"/",nrow(folders),basename(folders$path[i])," | hazard = ",j,"/",length(folders_ss),basename(folders_ss[j]),"\n")
+    cat("folder =", i,"/",nrow(folders),basename(folders$path[i])," | hazard = ",j,"/",length(folders_ss),basename(folders_ss_focus),"\n")
 
-    if(!file.exist(save_file)|overwrite==T){
-    files<-list.files(folders_ss[j],".tif$",full.names = T)
+    if(!file.exists(save_file)|overwrite==T){
+
+    files<-list.files(folders_ss_focus,".tif$",full.names = T)
+    
+    if(h_var %in% c("mean","max")){
+      files<-grep(paste0("_",h_var,"-"),files,value=T)
+    }
+    
     rast_stack<-terra::rast(files)
     names(rast_stack)<-gsub(".tif","",basename(files))
    
-    data_ex <- admin_extract(data=rast_stack, Geographies, FUN = "mean")
+    data_ex <- admin_extract(data=rast_stack, Geographies, FUN = "mean", max_cells_in_memory = 1*10^9)
     
     # Process the extracted data to format it for analysis or further processing.
     data_ex <- rbindlist(lapply(1:length(levels), FUN = function(i) {
       level <- levels[i]
-      print(level)
       
       # Convert the data to a data.table and remove specific columns.
       data <- data.table(data.frame(data_ex[[names(level)]]))
@@ -160,8 +168,5 @@ data_ex<-rbindlist(future_lapply(1:nrow(folders),FUN=function(i){
     
   }))
  }))
-
-
-plan(sequential)
 
 
