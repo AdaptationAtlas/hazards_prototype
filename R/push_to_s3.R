@@ -255,6 +255,18 @@ upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_b
   s3_dir_ls(s3_bucket)
   
 # 2) Time sequence specific ####
+  # Upload - hazard timeseries mean monthly ####
+  folder<-"Data/hazard_timeseries_mean_month"
+  s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month"
+  
+  files<-list.files(folder,"all_data.parquet$",full.names = T)
+
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T,
+                     mode="public-read")
+  
   # Upload - hazard timeseries (parquets) ####
   folder<-paste0("Data/hazard_timeseries/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
