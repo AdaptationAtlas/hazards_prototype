@@ -1233,8 +1233,8 @@ int_risk <- function(data, interaction_mask_vals, lyr_name){
 #' @export
 hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save_dir,overwrite=F){
   # Extract the specific hazard and scenario based on the index 'i'
-  variable<-folders_x_hazards$hazards[i]
-  scenario<-folders_x_hazards$folders[i]
+  variable<-as.character(folders_x_hazards$hazards[i])
+  scenario<-as.character(folders_x_hazards$folders[i])
   
   # List all hazard files for the given scenario and variable, excluding "AVAIL.tif"
   haz_files<-list.files(paste0(scenario,"/",variable),".tif",recursive=F,full.names = T)
@@ -1266,7 +1266,7 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
   X<-""
   for(k in 1:length(haz_files)){
     
-    cat("i=",i, "k=",k)
+    cat("i=",i,variable,scenario,"| k=",k,"/",length(haz_files),names(haz_files)[k],"\n")
     variable2<-if(length(haz_files)>1){
       paste0(variable,"_",names(haz_files)[k])
     }else{
@@ -1274,7 +1274,7 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
     }
     
     # Retrieve the statistical function (e.g., mean, max) for processing the hazard data
-    stat<-unlist(haz_meta[variable.code==variable2,"function"])
+    stat<-as.character(unlist(haz_meta[variable.code==variable2,"function"]))
     
     haz_files1<-haz_files[[k]]
     
