@@ -12,11 +12,11 @@ suppressMessages(pacman::p_load(tidyverse,terra,gtools,lubridate,future,furrr,pu
 
 # Calculate NTx function
 calc_ntx <- function(tx_pth,yr, mn, thr=40,out_dir){
+  thr<-as.numeric(thr)
   outfile <- paste0(out_dir,'/NTx',thr,'/NTx',thr,'-',yr,'-',mn,'.tif') 
   thr <- thr[!file.exists(outfile)]
   outfile <- outfile[!file.exists(outfile)]
   if(length(outfile) > 0){
-    cat("...processing n=", length(outfile), "files for yr=", yr, "/ mn=", mn, "\n")
     # Create directories
     1:length(outfile) %>%
       purrr::map(.f = function(j){dir.create(dirname(outfile[j]),F,T)})
@@ -37,7 +37,7 @@ calc_ntx <- function(tx_pth,yr, mn, thr=40,out_dir){
     # It might be faster to classify into a 0/1 rast then sum
     
     for (j in 1:length(thr)) {
-      cat("...processing threshold thr=", thr[j], "\n")
+      cat("...processing n=", length(outfile), "files for yr=", yr, "/ mn=", mn,"/ thr=", thr[j], "\n")
       ntxval <- sum(classify(tmx, matrix(c(-Inf, thr[j], 0, thr[j], Inf, 1), ncol = 3, byrow = TRUE)),na.rm = TRUE)
       terra::writeRaster(ntxval,filename = outfile[j])
     }
@@ -48,7 +48,7 @@ calc_ntx <- function(tx_pth,yr, mn, thr=40,out_dir){
   }
 }
 
-# Functions to crop and mask rasters in parallel into a new file structure
+# Functions to crop and mask rasters into a new file structure
 process_raster <- function(raster_file,old_path,new_path,mask) {
   save_file<-gsub(old_path,new_path,raster_file)
   cat("...processing - ",raster_file,"\n")
@@ -93,10 +93,7 @@ ref <- terra::rast(paste0(root,'/atlas_hazards/roi/africa.tif'))
 # NTx thresholds to calculate
 thresholds<-20:29
 
-# Set historic or future?
-sce_climates <- c("historical","future")
-
-# Future setup
+# Historic,future or both?
 sce_climates <- c("historical","future")
 
 # Set future gcms
@@ -109,6 +106,9 @@ ssps<-c( 'ssp245','ssp585')
 # Set future timeframes
 #prds<-c('2021_2040', '2041_2060', '2061_2080', '2081_2100')
 prds<-c('2021_2040', '2041_2060')
+
+# Baseline period
+baseline_yrs<-1995:2014
 
 # Set temperature thresholds
 thresholds<-20:29
@@ -138,7 +138,7 @@ for(sce_climate in sce_climates){
     flush.console()
     
     # Historical setup
-    yrs <- 1995:2014
+    yrs <- baseline_yrs
     mns <- c(paste0('0',1:9),10:12)
     stp <- base::expand.grid(yrs, mns) %>% base::as.data.frame(); rm(yrs,mns)
     names(stp) <- c('yrs','mns')
@@ -153,6 +153,11 @@ for(sce_climate in sce_climates){
     } else {
       plan(multicore, workers = cores)
     }
+    
+    lapply(1:nrow(stp),FUN=function(i){
+      # cat(i,"\n")
+      calc_ntx(tx_pth=tx_pth,yr = stp$yrs[i], mn = stp$mns[i], thr=thresholds,out_dir=out_dir)
+    })
     
     
     1:nrow(stp) %>%
