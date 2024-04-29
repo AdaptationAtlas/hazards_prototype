@@ -100,7 +100,7 @@ haz_meta<-unique(data.table::fread("https://raw.githubusercontent.com/Adaptation
 
 # Choose hazards
 hazards<-c("HSH","NDWL0", "NDWS","NTx35","NTx40", "PTOT" , "TAI" ,  "TAVG" , "THI","TMIN","TMAX") 
-hazards<-paste0("NTx",c(20:29))
+
 # Add in more heat thresholds
 if(F){
   hazards2<-paste0("NTx",c(20:34,36:44,46:50))
@@ -108,9 +108,14 @@ if(F){
   hazards<-c(hazards,hazards2)
 }
 
+if(T){
+  hazards<-paste0("NTx",c(20:29))
+  haz_meta<-data.table(variable.code=hazards,`function`="mean")
+}
+
 # 4.1) Check hazards are complete #####
 check_folders<-list.dirs(working_dir)
-check_folders<-check_folders[!grepl("ipynb",checkfolders)]
+check_folders<-check_folders[!grepl("ipynb",check_folders)]
 
 exists<-rbindlist(pbapply::pblapply(hazards,FUN=function(H){
   folders<-grep(paste0("/",H,"$"),check_folders,value=T)
@@ -259,7 +264,6 @@ for(ii in 1:nrow(parameters)){
            use_crop_cal=use_crop_cal,
            r_cal=r_cal,
            save_dir=save_dir)
-    
     
     # Create ensembles
     files<-list.files(save_dir,".tif")
