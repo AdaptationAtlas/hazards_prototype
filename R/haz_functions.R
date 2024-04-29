@@ -1244,8 +1244,8 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
   
   # Attempt to reload files if the first attempt returns NA, up to 10 tries
   while(is.na(haz_files[1]) & n<10){
-    print(paste0("cc = ",use_crop_cal," | ",scenario,"-",variable))
-    print(paste0("i=",i," | haz_files is returning NA | attempt = ",n))
+    cat("cc = ",use_crop_cal," | ",scenario,"-",variable,"\n")
+    cat("i=",i," | haz_files is returning NA | attempt = ",n,"\n")
     haz_files<-list.files(paste0(scenario,"/",variable),".tif",recursive=F,full.names = T)
     haz_files<-haz_files[!grepl("AVAIL.tif",haz_files)]
     n<-n+1
@@ -1266,7 +1266,7 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
   X<-""
   for(k in 1:length(haz_files)){
     
-    #print(paste0("i=",i," j=",j," k=",k))
+    cat("i=",i, "k=",k)
     variable2<-if(length(haz_files)>1){
       paste0(variable,"_",names(haz_files)[k])
     }else{
@@ -1306,6 +1306,7 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
         haz_rast<-haz_rast+0
         
         # Remove problematic -9999 values from precipitation data
+        # Might be quicker as an ifelse
         if(variable=="PTOT"){
           haz_rast<-terra::classify(haz_rast, cbind(-Inf, 0, NA), right=FALSE)
         }
@@ -1350,7 +1351,7 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
       # Write the processed raster to file
       terra::writeRaster(haz_rast_years,savename,overwrite=T)
       # Clean up the memory
-      rm(haz_rast_years)
+      rm(haz_rast_years,haz_rast)
       gc()
     }
     X[k]<-savename
