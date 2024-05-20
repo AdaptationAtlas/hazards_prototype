@@ -115,10 +115,16 @@ if(!dir.exists(commodity_mask_dir)){
   dir.create(commodity_mask_dir)
 }
 
+boundary_dir<-"Data/boundaries"
+if(!dir.exists(boundary_dir)){
+  dir.create(boundary_dir)
+}
+
 glw_dir<-"Data/GLW4"
 ls_vop_dir<-"Data/livestock_vop"
 afr_highlands_dir<-"Data/afr_highlands"
 fao_dir<-"Data/fao"
+
 
 # 0) Load an prepare admin vectors and exposure rasters, extract exposure by admin ####
   # 0.1) Geographies #####
@@ -131,7 +137,7 @@ fao_dir<-"Data/fao"
     "https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin2_harmonized.gpkg")
   
   
-  geo_files_local<-file.path("Data/boundaries",basename(geo_files_s3))
+  geo_files_local<-file.path(boundary_dir,basename(geo_files_s3))
   names(geo_files_local)<-c("admin0","admin1","admin2")
   
   Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
@@ -550,7 +556,7 @@ admin_extract_wrap2(files=files_solo,
                     Geographies=Geographies,
                     overwrite=overwrite)
 
-admin_extract_wrap2(files=files,
+admin_extract_wrap2(files=files_int,
                     save_dir = haz_risk_dir,
                     filename="haz_risk_int",
                     severity=unlist(severity_classes[,1]),

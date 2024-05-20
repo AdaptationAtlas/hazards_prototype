@@ -1329,7 +1329,7 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
         # Loop through years, note the final year is removed in case the harvest date extends beyond the end of the dataset
         haz_rast_years<-terra::rast(lapply(1:(length(years)-1),FUN=function(m){
           # Display progress
-          cat('\r                                                                                                                                          ')
+          cat('\r                                                                                                                                                                                  ')
           cat('\r',paste0("cc = ",use_crop_cal," | fixed = ",!use_eos," | season = ",season," | ",scenario,"-",variable2,"-",stat,"-",years[m]," | i = ",i))
           flush.console()
           

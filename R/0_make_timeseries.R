@@ -109,11 +109,12 @@ if(F){
 }
 
 if(T){
-  hazards<-paste0("NTx",c(20:29))
+  hazards<-paste0("NTx",c(30:34,36:44,46:50))
   haz_meta<-data.table(variable.code=hazards,`function`="mean")
 }
 
 # 4.1) Check hazards are complete #####
+if(F){
 check_folders<-list.dirs(working_dir)
 check_folders<-check_folders[!grepl("ipynb",check_folders)]
 
@@ -126,7 +127,7 @@ exists<-rbindlist(pbapply::pblapply(hazards,FUN=function(H){
   exists
 }))
 (exists<-dcast(exists,scenario~hazard,value.var = "nfiles"))
-
+}
 
 # 5) Set analysis parameters ####
 doParallel<-F
@@ -158,10 +159,7 @@ for(ii in 1:nrow(parameters)){
   use_eos<-parameters[ii,use_eos]
   season_length<-parameters[ii,season_length]
   
-  print(paste0("use_crop_cal = ",use_crop_cal,
-               " | use_sos_cc = ",use_sos_cc,
-               " | use_eos = ", use_eos,
-               " |season_length = ",season_length))
+  cat("use_crop_cal = ",use_crop_cal," | use_sos_cc = ",use_sos_cc," | use_eos = ", use_eos," |season_length = ",season_length,"\n")
   
   # Set directory for output files
   if(use_crop_cal=="yes"){
@@ -282,10 +280,8 @@ for(ii in 1:nrow(parameters)){
     
     for(i in 1:nrow(scen_haz_time)){
       # Display progress
-      cat('\r                                                                                                                                          ')
-      cat('\r',paste0("Ensembling: cc = ",use_crop_cal," | fixed = ",!use_eos," | season = ",season," | ",scen_haz_time$scenario[i]," | ",scen_haz_time$hazards[i]," | ",scen_haz_time$time[i]," - ",i))
-      flush.console()
-      
+      cat("Ensembling: cc = ",use_crop_cal," | fixed = ",!use_eos," | season = ",season," | ",scen_haz_time$scenario[i]," | ",scen_haz_time$hazards[i]," | ",scen_haz_time$time[i]," - ",i,"\n")
+
       haz_files<-list.files(save_dir,scen_haz_time$hazards[i],full.names = T)
       haz_files<-haz_files[!grepl("historic",haz_files)]
       haz_files<-grep(scen_haz_time$scenario[i],haz_files,value = T)
