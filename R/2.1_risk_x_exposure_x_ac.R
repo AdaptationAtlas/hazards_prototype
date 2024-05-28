@@ -26,19 +26,6 @@ severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
 # Look at solo or interaction hazard risk data?
 interaction<-T # set to F if you want to look at solo data
 
-# Set directories ####
-haz_risk_vop_ac_dir<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
-if(!dir.exists(haz_risk_vop_ac_dir)){
-  dir.create(haz_risk_vop_ac_dir,recursive=T)
-}
-
-ac_dir<-"Data/adaptive_capacity"
-if(!dir.exists(ac_dir)){
-  dir.create(ac_dir,recursive=T)
-}
-
-haz_risk_vop_dir<-paste0("Data/hazard_risk_vop/",timeframe_choice)
-
 # Load adaptive capacity data ####
 
 # Download data from s3
