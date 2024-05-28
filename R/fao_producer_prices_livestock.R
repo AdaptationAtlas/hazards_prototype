@@ -54,17 +54,7 @@ if(!dir.exists(ls_vop_dir)){
 
 # 1) Load geographies ####
 # Load and combine geoboundaries
-overwrite<-F
-
-geo_files_s3<-"https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin0_harmonized.gpkg"
-
-file<-file.path(geo_dir,basename(geo_files_s3))
-
-if(!file.exists(file)|overwrite==T){
-  download.file(url=geo_files_s3[i],destfile=file)
-}
-  
-geoboundaries<-terra::vect(file)
+geoboundaries<-terra::vect(geo_files_local[1])
 
 # 2) Load glw4 data ####
 glw_names<-c(poultry="Ch",sheep="Sh",pigs="Pg",horses="Ho",goats="Gt",ducks="Dk",buffalo="Bf",cattle="Ct")
