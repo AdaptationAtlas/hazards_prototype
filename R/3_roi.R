@@ -59,7 +59,7 @@ if(F){
 # 1) Load data ####
   # 1.1) Crops - MapSPAM ####
     # Vop 2017usd
-    file<-"Data/exposure/crop_vop_usd17_adm_sum.parquet"
+    file<-file.path(exposure_dir,"crop_vop_usd17_adm_sum.parquet")
     
     if(!file.exists(file)){
       if(!dir.exists(dirname(file))){
@@ -74,7 +74,7 @@ if(F){
     exposure<-exposure[is.na(admin2_name)][,admin2_name:=NULL]
     
   # 1.2) Livestock ####
-    file<-"Data/exposure/livestock_vop_usd17_adm_sum.parquet"
+    file<-file.path(exposure_dir,"livestock_vop_usd17_adm_sum.parquet")
     
     if(!file.exists(file)){
       if(!dir.exists(dirname(file))){
@@ -92,7 +92,7 @@ if(F){
   livestock_vop<-livestock_vop[,crop:=gsub("_tropical|_highland","",crop)][,list(value=sum(value,na.rm=T)),by=list(admin0_name,admin1_name,crop,exposure)]
     
   # x) Human pop ####
-  file<-"Data/exposure/population_2017_admALL.parquet"
+  file<-file.path(exposure_dir,"population_2017_admALL.parquet")
   
   if(!file.exists(file)){
     if(!dir.exists(dirname(file))){
@@ -162,7 +162,7 @@ bcrs<-1.62
   # 2.1) Create combinations #####
   nrow(expand.grid(1:years,adoption,prod_impact,bcrs))
   
-  save_dir<-"Data/roi"
+  save_dir<-roi_dir
   if(!dir.exists(save_dir)){
     dir.create(save_dir)
   }
