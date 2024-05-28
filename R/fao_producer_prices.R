@@ -1,21 +1,32 @@
-require(data.table)
-require(countrycode)
-require(terra)
+# 0) Install and load packages ####
+load_and_install_packages <- function(packages) {
+  for (package in packages) {
+    if (!require(package, character.only = TRUE)) {
+      install.packages(package)
+      library(package, character.only = TRUE)
+    }
+  }
+}
+
+# List of packages to be loaded
+packages <- c("data.table", 
+              "countrycode", 
+              "terra")
+
+# Call the function to install and load packages
+load_and_install_packages(packages)
+
 
   # Load SPAM production data ####
-  prod<-fread("Data/mapspam/SSA_P_TA.csv")
+file<-list.files(mapspam_dir,"SSA_P_TA.csv",full.names = T)
+file<-file[!grepl("_gr_",mapspam_dir)]
+prod<-fread(file)
   
   ms_codes<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
   crops<-tolower(ms_codes[compound=="no",Code])
   colnames(prod)<-gsub("_a$","",colnames(prod))
   
   # Read in production value data from FAO ####
-  fao_dir<-"Data/fao"
-  
-  if(!dir.exists(fao_dir)){
-    dir.create(fao_dir,recursive = T)
-  }
-  
   econ_file<-paste0(fao_dir,"/Prices_E_Africa_NOFLAG.csv")
   
   if(!file.exists(econ_file)){
@@ -269,7 +280,7 @@ require(terra)
   # Multiply mapspam production by producer price ####
   
 
-  files<-list.files("Data/mapspam","SSA_P_",full.names = T)
+  files<-list.files(mapspam_dir,"SSA_P_",full.names = T)
   prod_price_file<-paste0(fao_dir,"/fao_producer_prices_2017.csv")
   # List ms countries
   countries<-prod[,unique(iso3)]
