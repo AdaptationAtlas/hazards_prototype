@@ -195,31 +195,6 @@ PropTDir=">"
 
 crop_choices<-c(fread(haz_class_url)[,unique(crop)],ms_codes[,sort(Fullname)])
 
-# Set directories ####
-haz_timeseries_dir<-paste0("Data/hazard_timeseries/",timeframe_choice)
-if(!dir.exists(haz_timeseries_dir)){dir.create(haz_timeseries_dir,recursive=T)}
-
-haz_timeseries_s3_dir<-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
-
-haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
-if(!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir,recursive=T)}
-
-haz_time_risk_dir<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
-if(!dir.exists(haz_time_risk_dir)){dir.create(haz_time_risk_dir,recursive=T)}
-
-haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
-if(!dir.exists(haz_risk_dir)){dir.create(haz_risk_dir,recursive = T)}
-
-haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
-if(!dir.exists(haz_mean_dir)){dir.create(haz_mean_dir,recursive=T)}
-
-haz_sd_dir<-paste0("Data/hazard_timeseries_sd/",timeframe_choice)
-if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
-
-haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
-if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
-
-
 # 0) download hazard timeseries from s3 bucket ####
 files<-s3fs::s3_dir_ls(haz_timeseries_s3_dir)
 new_files<-gsub(haz_timeseries_s3_dir,haz_timeseries_dir,files)
