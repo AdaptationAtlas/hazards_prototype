@@ -1,124 +1,125 @@
-# Install and load packages ####
-load_and_install_packages <- function(packages) {
-  for (package in packages) {
-    if (!require(package, character.only = TRUE)) {
-      install.packages(package)
-      library(package, character.only = TRUE)
-    }
-  }
-}
-
-# List of packages to be loaded
-packages <- c("s3fs", 
-              "pbapply", 
-              "future", 
-              "future.apply", 
-              "gdalUtilities", 
-              "terra")
-
-# Call the function to install and load packages
-load_and_install_packages(packages)
-
-# Set workers for parallel processing ####
-worker_n<-10
-
-# Create functions####
-# Update tifs to cog format
-convert_to_cog <- function(file) {
-  
-  is_cog<-grepl("LAYOUT=COG",gdalUtilities::gdalinfo(file))
-  closeAllConnections()
-  
-  if(is_cog==F){
-
-      data<-terra::rast(file)
-      # Force into memory
-      data<-data+0
-      
-     terra::writeRaster(data,filename = file,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"),overwrite=T)
-
-    }
-  }
-
-ctc_wrapper<-function(folder=NULL,files=NULL,worker_n=1){
-  
-  if(is.null(files)){
-    # List tif files in the folder
-    files_tif<-list.files(folder,".tif",full.names = T)
-  }else{
-    files_tif<-files
-  }
-
-  if(worker_n>1){
-    # Update tifs to cog format
-    # Set up parallel backend
-    future::plan(multisession,workers=worker_n)  # Change to multicore on Unix/Linux
-    
-    # Apply the function to each file
-    future.apply::future_sapply(files_tif, convert_to_cog,future.packages = c("gdalUtilities","terra"),delete=delete,rename=rename)
-    
-    future::plan(sequential)
-    closeAllConnections()
-  }else{
-    pbapply::pbsapply(files_tif,convert_to_cog)
-  }
-}
-
-# Upload files S3 bucket
-upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_bucket, new_only=F, max_attempts = 3, overwrite=F,mode="private") {
-  
-  # Create the s3 directory if it does not already exist
-  if(!s3_dir_exists(selected_bucket)){
-    s3_dir_create(selected_bucket)
-  }
-  
-  # List files if a folder location is provided
-  if(!is.null(folder)){
-    files <- list.files(folder, full.names = T)
-  }
-  
-  if(overwrite==F){
-    # List files in the s3 bucket
-    files_s3 <- basename(s3_dir_ls(selected_bucket))
-    # Remove any files that already exist in the s3 bucket
-    files <- files[!basename(files) %in% files_s3]
-  }
-  
-  for (i in seq_along(files)) {
-    cat('\r', paste("File:", i, "/", length(files))," | ",basename(files[i]),"                                                 ")
-    flush.console()
-    
-    if(is.null(s3_file_names)){
-    s3_file_path <- paste0(selected_bucket, "/", basename(files[i]))
-    }else{
-      if(length(s3_file_names)!=length(files)){stop("s3 filenames provided different length to local files")}
-      s3_file_path <- paste0(selected_bucket, "/", s3_file_names[i])
-    }
-    
-    tryCatch({
-      attempt <- 1
-      while(attempt <= max_attempts) {
-        s3_file_upload(files[i], s3_file_path, overwrite = overwrite)
-        # Check if upload successful
-        file_check <- s3_file_exists(s3_file_path)
-        
-        if(mode!="private"){
-          s3_file_chmod(path=s3_file_path,mode=mode)
-        }
-        
-        if (file_check) break # Exit the loop if upload is successful
-        
-        if (attempt == max_attempts && !file_check) {
-          stop("File did not upload successfully after ", max_attempts, " attempts.")
-        }
-        attempt <- attempt + 1
+# 0) Set-up workspace
+  # 0.1) Install and load packages ####
+  load_and_install_packages <- function(packages) {
+    for (package in packages) {
+      if (!require(package, character.only = TRUE)) {
+        install.packages(package)
+        library(package, character.only = TRUE)
       }
-    }, error = function(e) {
-      cat("Error during file upload:", e$message, "\n")
-    })
+    }
   }
-}
-
+  
+  # List of packages to be loaded
+  packages <- c("s3fs", 
+                "pbapply", 
+                "future", 
+                "future.apply", 
+                "gdalUtilities", 
+                "terra")
+  
+  # Call the function to install and load packages
+  load_and_install_packages(packages)
+  
+  # 0.2) Set workers for parallel processing ####
+  worker_n<-10
+  
+  # 0.3) Create functions####
+  # Update tifs to cog format
+  convert_to_cog <- function(file) {
+    
+    is_cog<-grepl("LAYOUT=COG",gdalUtilities::gdalinfo(file))
+    closeAllConnections()
+    
+    if(is_cog==F){
+  
+        data<-terra::rast(file)
+        # Force into memory
+        data<-data+0
+        
+       terra::writeRaster(data,filename = file,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"),overwrite=T)
+  
+      }
+    }
+  
+  ctc_wrapper<-function(folder=NULL,files=NULL,worker_n=1){
+    
+    if(is.null(files)){
+      # List tif files in the folder
+      files_tif<-list.files(folder,".tif",full.names = T)
+    }else{
+      files_tif<-files
+    }
+  
+    if(worker_n>1){
+      # Update tifs to cog format
+      # Set up parallel backend
+      future::plan(multisession,workers=worker_n)  # Change to multicore on Unix/Linux
+      
+      # Apply the function to each file
+      future.apply::future_sapply(files_tif, convert_to_cog,future.packages = c("gdalUtilities","terra"),delete=delete,rename=rename)
+      
+      future::plan(sequential)
+      closeAllConnections()
+    }else{
+      pbapply::pbsapply(files_tif,convert_to_cog)
+    }
+  }
+  
+  # Upload files S3 bucket
+  upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_bucket, new_only=F, max_attempts = 3, overwrite=F,mode="private") {
+    
+    # Create the s3 directory if it does not already exist
+    if(!s3_dir_exists(selected_bucket)){
+      s3_dir_create(selected_bucket)
+    }
+    
+    # List files if a folder location is provided
+    if(!is.null(folder)){
+      files <- list.files(folder, full.names = T)
+    }
+    
+    if(overwrite==F){
+      # List files in the s3 bucket
+      files_s3 <- basename(s3_dir_ls(selected_bucket))
+      # Remove any files that already exist in the s3 bucket
+      files <- files[!basename(files) %in% files_s3]
+    }
+    
+    for (i in seq_along(files)) {
+      cat('\r', paste("File:", i, "/", length(files))," | ",basename(files[i]),"                                                 ")
+      flush.console()
+      
+      if(is.null(s3_file_names)){
+      s3_file_path <- paste0(selected_bucket, "/", basename(files[i]))
+      }else{
+        if(length(s3_file_names)!=length(files)){stop("s3 filenames provided different length to local files")}
+        s3_file_path <- paste0(selected_bucket, "/", s3_file_names[i])
+      }
+      
+      tryCatch({
+        attempt <- 1
+        while(attempt <= max_attempts) {
+          s3_file_upload(files[i], s3_file_path, overwrite = overwrite)
+          # Check if upload successful
+          file_check <- s3_file_exists(s3_file_path)
+          
+          if(mode!="private"){
+            s3_file_chmod(path=s3_file_path,mode=mode)
+          }
+          
+          if (file_check) break # Exit the loop if upload is successful
+          
+          if (attempt == max_attempts && !file_check) {
+            stop("File did not upload successfully after ", max_attempts, " attempts.")
+          }
+          attempt <- attempt + 1
+        }
+      }, error = function(e) {
+        cat("Error during file upload:", e$message, "\n")
+      })
+    }
+  }
+  
 # 1) General ####
   # Upload - exposure ####
   s3_bucket <-"s3://digital-atlas/risk_prototype/data/exposure"
@@ -131,16 +132,17 @@ upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_b
   #ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
   
   files<-list.files(folder,full.names = T)
-  files<-grep("admin0_totals.csv$",files,value=T)
+  files<-grep("exposure_adm_sum.parquet$",files,value=T)
   
   # Upload files
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=T)
+                     overwrite=T,
+                     mode="public-read")
   
   # Processed livestock data parquets
-  s3_bucket<-"s3://digital-atlas//exposure/livestock/processed"
+  s3_bucket<-"s3://digital-atlas/exposure/livestock/processed"
 
   files<-list.files(folder,"livestock_vop",full.names = T)
   files<-grep("parquet$",files,value = T)
@@ -218,17 +220,26 @@ upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_b
                      max_attempts = 3,
                      new_only=T)
   # Upload - MapSPAM ####
-  folder<-paste0("Data/mapspam/")
-  s3_bucket <- "s3://digital-atlas/MapSpam/raw/spam2017V2r3"
-  s3_dir_ls(s3_bucket)
+  folder<-mapspam_dir
+  s3_bucket <- "s3://digital-atlas/MapSpam/raw/2020V1r0_SSA"
   
-  upload_files_to_s3(folder = list.files(folder,"Vusd17",full.names = T),
+  # Add an index (temporary fix until we get admin rights to make folder public-read)
+  index<-data.table(s3_path=s3_dir_ls(s3_bucket))[!grepl("index.csv",s3_path)]
+  index[,technology:=gsub(".csv|.DBF","",sapply(strsplit(index$s3_path,"_"),tail,1))
+        ][,variable:=sapply(strsplit(index$s3_path,"_"),tail,2)[1,]
+          ][,group:=F
+            ][grep("_gr_",s3_path),group:=T
+              ][,s3_path:=gsub("s3://digital-atlas","https://digital-atlas.s3.amazonaws.com",s3_path)]
+  fwrite(index,file.path(folder,"index.csv"))
+
+  upload_files_to_s3(files = list.files(folder,full.names = T),
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=T)
+                     overwrite=F,
+                     mode="public-read")
   
   # Upload - livestock_vop ####
-  folder<-paste0("Data/livestock_vop/")
+  folder<-ls_vop_dir
   s3_bucket <- "s3://digital-atlas/livestock_vop"
   
   s3_dir_ls(s3_bucket)
@@ -236,22 +247,30 @@ upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_b
   # Prepare tif data by converting to COG format
   ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
   
-  upload_files_to_s3(folder = folder,
+  files<-list.files(folder,".tif$",full.names = T)
+  
+  upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=T)
+                     overwrite=F,
+                     mode="public-read")
+  
+  # You will need to run the function above again with overwrite=F to add the index
+  index<-data.table(s3_path=s3_dir_ls(s3_bucket))[!grepl("index.csv",s3_path)]
+  index[,s3_path:=gsub("s3://digital-atlas","https://digital-atlas.s3.amazonaws.com",s3_path)]
+  fwrite(index,file.path(folder,"index.csv"))
   
   # Upload - livestock afr-highlands ####
-  folder<-paste0("Data/afr_highlands/")
+  folder<-afr_highlands_dir
   s3_bucket <- "s3://digital-atlas/afr_highlands"
   
   upload_files_to_s3(folder = folder,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=T)
+                     overwrite=T,
+                     mode="public-read")
   # Geographies
   s3_bucket <- "s3://digital-atlas/boundaries"
-  
   s3_dir_ls(s3_bucket)
   
 # 2) Time sequence specific ####
@@ -383,19 +402,17 @@ upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_b
   folder<-paste0("Data/hazard_risk/",timeframe_choice)
   
   s3fs::s3_dir_ls(s3_bucket)
-  #s3fs::s3_file_delete(s3fs::s3_dir_ls(s3_bucket))
-  #s3fs::s3_dir_ls(s3_bucket)
   
-  # Prepare tif data by converting to COG format
-  if(F){
-    ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
-  }
+  files<-list.files(folder,"parquet$",full.names = T,recursive=T)
+  files<-grep("_adm_",files,value=T)
   
   # Upload files
-  upload_files_to_s3(files =list.files(folder,full.names = T),
+  upload_files_to_s3(files =files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F)
+                     overwrite=T,
+                     mode="public-read"
+                     )
   
   # Upload - haz_vop_risk ####
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop/",timeframe_choice)
@@ -433,7 +450,7 @@ upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_b
   
 # 3) ROI data ####
   s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/roi")
-  folder<-paste0("Data/roi")
+  folder<-roi_dir
   
   s3_dir_ls(s3_bucket)
   
@@ -446,13 +463,14 @@ upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_b
 # 4) hazard_timeseries data ####
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
   # make sure the folder is set to the atlas_hazards/cmip6/indices server folder
-  folder<-haz_timeseries_dir
+  folder<-indices_seasonal_dir
   
   s3_dir_ls(s3_bucket)
   
   # Updated hazards
-  files<-list.files(folder,"ENSEMBLEmean|ENSEMBLEsd|historic",full.names = T)
-  haz<-"NTx35_mean|NTx40_mean|NDWL0_mean|NDWS_mean|PTOT_sum|TAVG_mean|HSH_max_max|HSH_mean_mean|THI_mean_mean|THI_max_max|TAI_mean"
+  files<-list.files(folder,"tif$",full.names = T)
+  # files<-grep("ENSEMBLEmean|ENSEMBLEsd|historic",files,value = T)
+  haz<-paste0(paste(paste0("NTx",20:50,"_mean"),collapse="|"),"|NDWL0_mean|NDWS_mean|PTOT_sum|TAVG_mean|HSH_max_max|HSH_mean_mean|THI_mean_mean|THI_max_max|TAI_mean")
   files<-grep(haz,files,value=T)
   
   # Upload files
@@ -462,6 +480,7 @@ upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_b
                      overwrite=F)
   
 
+# 5) !!!***TO DO***!!! raw data by season
 # =========================####
 # UPLOAD TO GOOGLEDRIVE ####
   # Ensure the necessary libraries are loaded
