@@ -1373,20 +1373,30 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
 #' @param filename Character string specifying the base name for the output raster file.
 #' @param ms_codes Data frame mapping MapSPAM codes to full crop names.
 #' @param overwrite Logical indicating whether to overwrite existing files.
+#' @param group Logical indicating whether to use mapspam group file or not (default = T)
 #' @return A raster object of the processed MapSPAM data.
 #' @examples
 #' base_rast <- terra::rast(system.file("ex/lux.tif", package="terra"))
 #' ms_codes <- data.frame(Code = c("maize"), Fullname = c("Maize"))
 #' data <- read_spam("production", "HighYield", "/path/to/mapspam", "/path/to/save", base_rast, "maize_highyield", ms_codes, TRUE)
 #' @export
-read_spam <- function(variable, technology, mapspam_dir, save_dir, base_rast, filename, ms_codes, overwrite) {
+read_spam <- function(variable, technology, mapspam_dir, save_dir, base_rast, filename, ms_codes, overwrite,do_group=F) {
   # Construct the filename for the output raster file.
   ms_file <- paste0(save_dir, "/", filename, ".tif")
   
   # Check if the file exists and whether it should be overwritten. If it doesn't exist or should be overwritten, process the data.
   if (!file.exists(ms_file) | overwrite == T) {
-    # Read the CSV file containing the MapSPAM data for the given variable and technology.
-    data <- fread(paste0(mapspam_dir, "/SSA_", variable, "_", technology, ".csv"))
+    # Read the CSV file containing the MapSPAM data for the given variable and technology
+    file<-list.files(mapspam_dir,paste0(variable, "_", technology, ".csv"),full.names = T)
+    if(!group){
+      file<-file[!grepl("_gr_",file)]
+    }else{
+      file<-file[grepl("_gr_",file)]
+      
+    }
+    
+    data <- fread(file)
+    
     
     # Prepare a list of crop names to filter from the MapSPAM data, based on the ms_codes lookup table.
     crops <- tolower(ms_codes$Code)
