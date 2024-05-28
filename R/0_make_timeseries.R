@@ -20,25 +20,13 @@ load_and_install_packages(packages)
 
 # 2) Set directories  ####
 # Directory where monthly timeseries data generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
-working_dir<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices"
+working_dir<-indices_dir
 setwd(working_dir)
 
 # Where will hazard time series be saved?
-output_dir<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
-#output_dir<-"indices_seasonal"
-
-# Set sos calendar directory
-sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
+output_dir<-indices_dir2
 
 # 3) Set up workspace ####
-# Load base raster for resampling to
-base_raster<-"base_raster.tif"
-if(!file.exists(base_raster)){
-  url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
-  httr::GET(url, httr::write_disk(base_raster, overwrite = TRUE))
-}
-
-base_rast<-terra::rast(base_raster)
 
 # List hazard folders
 folders<-list.dirs(recursive=F)
