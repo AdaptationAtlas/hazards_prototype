@@ -1388,7 +1388,7 @@ read_spam <- function(variable, technology, mapspam_dir, save_dir, base_rast, fi
   if (!file.exists(ms_file) | overwrite == T) {
     # Read the CSV file containing the MapSPAM data for the given variable and technology
     file<-list.files(mapspam_dir,paste0(variable, "_", technology, ".csv"),full.names = T)
-    if(!group){
+    if(!do_group){
       file<-file[!grepl("_gr_",file)]
     }else{
       file<-file[grepl("_gr_",file)]
