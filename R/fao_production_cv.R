@@ -218,19 +218,7 @@ calc_cv<-function(data,detrend=T,rm.na=T,min_data=10,prob_req=0.05,rsq_req=0.1){
 
 # Setup workspace ####
 # Load geoboundaries
-overwrite<-F
-geoboundaries_s3<-"s3://digital-atlas/boundaries"
-geo_files_s3<-s3fs::s3_dir_ls(geoboundaries_s3)
-geo_file_s3<-grep("admin0_harmonized.gpkg",geo_files_s3,value=T)
-
-file_local<-file.path("Data/boundaries",basename(geo_file_s3))
-
-if(!file.exists(file_local)|overwrite==T){
-  s3fs::s3_file_download(path=geo_files_s3[i],new_path=file_local,overwrite = T)
-}
-
-geoboundaries<-terra::vect(file_local)
-
+geoboundaries<-terra::vect(geo_files_local[1])
 atlas_iso3<-geoboundaries$iso3
 
 # Load base raster for resampling
