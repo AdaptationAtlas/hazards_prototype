@@ -1,14 +1,4 @@
 # a) Install and load packages ####
-load_and_install_packages <- function(packages) {
-  for (package in packages) {
-    if (!require(package, character.only = TRUE)) {
-      install.packages(package)
-      library(package, character.only = TRUE)
-    }
-  }
-}
-
-# List of packages to be loaded
 packages <- c("terra", 
               "data.table", 
               "exactextractr",
