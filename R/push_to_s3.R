@@ -120,6 +120,111 @@
     }
   }
   
+  library(paws)
+  
+  upload_files_to_s3 <- function(files, s3_file_names = NULL, folder = NULL, selected_bucket, new_only = FALSE, max_attempts = 3, overwrite = FALSE, mode = "private", folder_public = F) {
+    
+    # Create the s3 directory if it does not already exist
+    if (!s3_dir_exists(selected_bucket)) {
+      s3_dir_create(selected_bucket)
+    }
+    
+    # Update the ACL of the folder if mode_folder is provided
+    if (folder_public) {
+      s3 <- paws::s3()
+      bucket_name <-unlist(tstrsplit(s3_bucket,"/",keep=3))
+      folder_path<-gsub(paste0("s3://",bucket_name,"/"),"",s3_bucket)
+      
+      bucket_policy <- sprintf('{
+      "Version": "2012-10-17",
+      "Statement": [
+      {
+      "Sid": "PublicReadListBucket",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:ListBucket",
+      "Resource": "arn:aws:s3:::%s",
+      "Condition": {
+        "StringLike": {
+          "s3:prefix": "%s/*"
+        }
+      }
+    },
+    {
+      "Sid": "PublicReadGetObject",
+      "Effect": "Allow",
+      "Principal": "*",
+      "Action": "s3:GetObject",
+      "Resource": "arn:aws:s3:::%s/%s/*"
+    }
+  ]
+}', bucket_name, folder_path, bucket_name, folder_path)
+      
+      # Put the bucket policy
+      s3$put_bucket_policy(
+        Bucket = bucket_name ,
+        Policy = bucket_policy
+      )
+      
+      
+      # Put the bucket policy
+      s3$put_bucket_policy(
+        Bucket = bucket_name ,
+        Policy = bucket_policy
+      )
+      
+      cat("Bucket policy updated to allow public read access to the folder.")    
+      }
+    
+    # List files if a folder location is provided
+    if (!is.null(folder)) {
+      files <- list.files(folder, full.names = TRUE)
+    }
+    
+    if (overwrite == FALSE) {
+      # List files in the s3 bucket
+      files_s3 <- basename(s3_dir_ls(selected_bucket))
+      # Remove any files that already exist in the s3 bucket
+      files <- files[!basename(files) %in% files_s3]
+    }
+    
+    for (i in seq_along(files)) {
+      cat('\r', paste("File:", i, "/", length(files)), " | ", basename(files[i]), "                                                 ")
+      flush.console()
+      
+      if (is.null(s3_file_names)) {
+        s3_file_path <- paste0(selected_bucket, "/", basename(files[i]))
+      } else {
+        if (length(s3_file_names) != length(files)) {
+          stop("s3 filenames provided different length to local files")
+        }
+        s3_file_path <- paste0(selected_bucket, "/", s3_file_names[i])
+      }
+      
+      tryCatch({
+        attempt <- 1
+        while (attempt <= max_attempts) {
+          s3_file_upload(files[i], s3_file_path, overwrite = overwrite)
+          # Check if upload successful
+          file_check <- s3_file_exists(s3_file_path)
+          
+          if (mode != "private") {
+            put_object_acl(bucket = selected_bucket, object = basename(s3_file_path), acl = mode)
+          }
+          
+          if (file_check) break # Exit the loop if upload is successful
+          
+          if (attempt == max_attempts && !file_check) {
+            stop("File did not upload successfully after ", max_attempts, " attempts.")
+          }
+          attempt <- attempt + 1
+        }
+      }, error = function(e) {
+        cat("Error during file upload:", e$message, "\n")
+      })
+    }
+  }
+  
 # 1) General ####
   # Upload - exposure ####
   s3_bucket <-"s3://digital-atlas/risk_prototype/data/exposure"
@@ -274,18 +379,6 @@
   s3_dir_ls(s3_bucket)
   
 # 2) Time sequence specific ####
-  # Upload - hazard timeseries mean monthly ####
-  folder<-"Data/hazard_timeseries_mean_month"
-  s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month"
-  
-  files<-list.files(folder,"all_data.parquet$",full.names = T)
-
-  upload_files_to_s3(files = files,
-                     selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite=T,
-                     mode="public-read")
-  
   # Upload - hazard timeseries (parquets) ####
   folder<-paste0("Data/hazard_timeseries/",timeframe_choice)
   s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
@@ -461,7 +554,22 @@
                      overwrite=T)
   
 # 4) hazard_timeseries data ####
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
+  # 4.1) Upload - hazard timeseries mean monthly #####
+  folder<-haz_timeseries_monthly_dir
+  s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month"
+  
+  files<-list.files(folder,"ensembled_data.parquet$",full.names = T)
+  
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T,
+                     mode="public-read")
+  
+  s3_dir_ls(s3_bucket)
+  
+  # 4.2) Upload - hazard_timeseries #####
+  s3_bucket <-haz_timeseries_s3_dir
   # make sure the folder is set to the atlas_hazards/cmip6/indices server folder
   folder<-indices_seasonal_dir
   
@@ -477,7 +585,9 @@
   upload_files_to_s3(files=files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F)
+                     overwrite=F,
+                     mode="public-read",
+                     folder_public = T)
   
 
 # 5) !!!***TO DO***!!! raw data by season

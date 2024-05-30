@@ -15,8 +15,9 @@ packages <- c("s3fs","remotes")
 load_and_install_packages(packages)
 
 # Install package for exactextractr
-remotes::install_github("isciences/exactextractr")
-
+require("exactextractr", character.only = TRUE){
+  remotes::install_github("isciences/exactextractr")
+}
 
 # 1) Setup server####
 
@@ -57,6 +58,9 @@ if(timeframe_choice!="annual"){
 haz_timeseries_dir<-file.path("Data/hazard_timeseries",timeframe_choice)
 if(!dir.exists(haz_timeseries_dir)){dir.create(haz_timeseries_dir,recursive=T)}
 haz_timeseries_s3_dir<-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
+
+haz_timeseries_monthly_dir<-"Data/hazard_timeseries_mean_month"
+if(!dir.exists(haz_timeseries_monthly_dir)){dir.create(haz_timeseries_monthly_dir,recursive=T)}
 
 haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
 if(!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir,recursive=T)}
@@ -138,6 +142,10 @@ if(!dir.exists(fao_dir)){
   dir.create(fao_dir,recursive = T)
 }
 
+mapspam_dir<-"Data/mapspam/2020V1r0_SSA"
+if(!dir.exists(mapspam_dir)){
+  dir.create(mapspam_dir)
+}
 
 # Set sos calendar directory
 sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
@@ -170,11 +178,7 @@ sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
   })
   
   # 3.2) Mapspam #####
-  update<-T
-  mapspam_dir<-"Data/mapspam/2020V1r0_SSA"
-  if(!dir.exists(mapspam_dir)){
-    dir.create(mapspam_dir)
-  }
+  update<-F
   
   # get index
   index<-fread("https://digital-atlas.s3.amazonaws.com/MapSpam/raw/2020V1r0_SSA/index.csv")
@@ -222,7 +226,7 @@ sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
     }
   }
   
-  # 3.5) Fao stat deflators
+  # 3.5) Fao stat deflators #####
   update<-F
   # Download FAOstat deflators
   def_file<-paste0(fao_dir,"/Deflators_E_All_Data_(Normalized).csv")
@@ -241,5 +245,29 @@ sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
     
     # Delete the ZIP file
     unlink(zip_file_path)
+  }
+  
+  # 3.6) Highlands map #####
+  update<-F
+  
+  afr_highlands_file<-file.path(afr_highlands_dir,"afr-highlands.asc")
+  
+  if(!file.exists(afr_highlands_file)|update==T){
+    download.file(url="https://digital-atlas.s3.amazonaws.com/afr_highlands/afr-highlands.asc",
+                  destfile=afr_highlands_file)
+  }
+  # 3.7) Livestock vop #####
+  update<-F
+
+  # get index
+  index<-fread("https://digital-atlas.s3.amazonaws.com/livestock_vop/index.csv")
+  files_local<-file.path(ls_vop_dir,basename(index$s3_path))
+  
+  # If data does not exist locally download from S3 bucket
+  for(i in 1:length(files_local)){
+    file<-files_local[i]
+    if(!file.exists(file)|update==T){
+      download.file(url=index$s3_path[i],destfile=file)
+    }
   }
   

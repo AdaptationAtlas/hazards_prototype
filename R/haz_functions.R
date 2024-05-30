@@ -1388,15 +1388,16 @@ read_spam <- function(variable, technology, mapspam_dir, save_dir, base_rast, fi
   if (!file.exists(ms_file) | overwrite == T) {
     # Read the CSV file containing the MapSPAM data for the given variable and technology
     file<-list.files(mapspam_dir,paste0(variable, "_", technology, ".csv"),full.names = T)
-    if(!do_group){
-      file<-file[!grepl("_gr_",file)]
-    }else{
-      file<-file[grepl("_gr_",file)]
-      
+    
+    if(length(file)==2){
+      if(!do_group){
+        file<-file[!grepl("_gr_",file)]
+      }else{
+        file<-file[grepl("_gr_",file)]
+      }
     }
     
     data <- fread(file)
-    
     
     # Prepare a list of crop names to filter from the MapSPAM data, based on the ms_codes lookup table.
     crops <- tolower(ms_codes$Code)
@@ -2462,3 +2463,44 @@ avloss <- function(cv, change, fixed = FALSE, reps = 10^6) {
   
   return(avloss)
 }
+
+#' List Contents of an S3 Bucket
+#'
+#' This function lists the contents of an S3 bucket folder and returns the file names.
+#'
+#' @param bucket_url A character string specifying the base URL of the S3 bucket.
+#' @param folder_path A character string specifying the folder path within the S3 bucket.
+#'
+#' @return A character vector of file names (full URLs) within the specified folder.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' bucket_url <- "http://digital-atlas.s3.amazonaws.com"
+#' folder_path <- "risk_prototype/data/hazard_timeseries/annual/"
+#' file_names <- list_s3_bucket_contents(bucket_url, folder_path)
+#' print(file_names)
+#' }
+list_s3_bucket_contents <- function(bucket_url, folder_path) {
+  response <- GET(paste0(bucket_url, "?prefix=", folder_path))
+  
+  if (status_code(response) == 200) {
+    content <- content(response, "text")
+    xml_content <- read_xml(content)
+    
+    # Define the namespace
+    ns <- xml_ns(xml_content)
+    
+    # Extract object keys using the namespace
+    object_keys <- xml_find_all(xml_content, ".//d1:Contents/d1:Key", ns)
+    file_names <- xml_text(object_keys)
+    
+    # Remove the folder path itself from the list of file names
+    file_names <- file_names[file_names != folder_path]
+    file_names <- file.path(bucket_url, file_names)
+    return(file_names)
+  } else {
+    stop(paste("Failed to list objects. HTTP status code:", status_code(response)))
+  }
+}
+
