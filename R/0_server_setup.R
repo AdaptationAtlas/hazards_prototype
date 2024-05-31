@@ -222,7 +222,7 @@ sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
     if(!file.exists(glw_file)|update==T){
       api_url <- paste0("https://dataverse.harvard.edu/api/access/datafile/",glw_codes[i])
       # Perform the API request and save the file
-      response <- GET(url = api_url, write_disk(glw_file, overwrite = TRUE))
+      response <- httr::GET(url = api_url, httr::write_disk(glw_file, overwrite = TRUE))
       
       # Check if the download was successful
       if (status_code(response) == 200) {
