@@ -10,7 +10,9 @@
   }
   
   # List of packages to be loaded
-  packages <- c("s3fs", 
+  packages <- c("s3fs",
+                "aws.s3",
+                "paws",
                 "pbapply", 
                 "future", 
                 "future.apply", 
@@ -120,8 +122,6 @@
     }
   }
   
-  library(paws)
-  
   upload_files_to_s3 <- function(files, s3_file_names = NULL, folder = NULL, selected_bucket, new_only = FALSE, max_attempts = 3, overwrite = FALSE, mode = "private", folder_public = F) {
     
     # Create the s3 directory if it does not already exist
@@ -166,13 +166,6 @@
         Policy = bucket_policy
       )
       
-      
-      # Put the bucket policy
-      s3$put_bucket_policy(
-        Bucket = bucket_name ,
-        Policy = bucket_policy
-      )
-      
       cat("Bucket policy updated to allow public read access to the folder.")    
       }
     
@@ -209,7 +202,7 @@
           file_check <- s3_file_exists(s3_file_path)
           
           if (mode != "private") {
-            put_object_acl(bucket = selected_bucket, object = basename(s3_file_path), acl = mode)
+            s3fs::s3_file_chmod(path=s3_file_path,mode=mode)
           }
           
           if (file_check) break # Exit the loop if upload is successful

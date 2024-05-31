@@ -7,7 +7,9 @@ packages <- c("terra",
               "s3fs",
               "doFuture",
               "stringr", 
-              "stringi")
+              "stringi",
+              "httr",
+              "xml2")
 
 # Call the function to install and load packages
 load_and_install_packages(packages)
@@ -24,11 +26,10 @@ Scenarios[,combined:=paste0(Scenario,"-",Time)]
 # Set hazards to include in analysis
 hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG") # NDD is not being used as it cannot be projected to future scenarios
 
-haz_meta<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv")
+haz_meta<-data.table::fread(haz_meta_url)
 haz_meta[variable.code %in% hazards]
 haz_meta[,code2:=paste0(haz_meta$code,"_",haz_meta$`function`)]
 
-haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
 haz_class<-data.table::fread(haz_class_url)
 haz_class<-haz_class[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
 haz_classes<-unique(haz_class$description)
@@ -51,11 +52,11 @@ setnames(severity_classes,"description","class")
 scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios)))[,Scenario:=as.character(Scenario)][,Time:=as.character(Time)]
 
 # read in mapspam metadata
-ms_codes<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
+ms_codes<-data.table::fread(ms_codes_url)[,Code:=toupper(Code)]
 ms_codes<-ms_codes[compound=="no"]
 
 # read in ecocrop
-ecocrop<-fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/ecocrop.csv")
+ecocrop<-fread(ecocrop_url)
 ecocrop[,Temp_Abs_Min:=as.numeric(Temp_Abs_Min)
         ][,Temp_Abs_Max:=as.numeric(Temp_Abs_Max)
           ][,Rain_Abs_Min:=as.numeric(Rain_Abs_Min)
@@ -125,7 +126,7 @@ ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
                                        21)) # Extreme
       
       # NTxCrop - severe  
-      ntxcrop_s<-data.table(index_name=paste0("NTxS",(unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2),
+      ntxcrop_s<-data.table(index_name=paste0("NTxS",ceiling((unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2)),
                             description=description,
                             direction=">",
                             crop=crop_common,
@@ -172,41 +173,47 @@ haz_class<-rbind(haz_class,haz_class2)
 haz_class[,direction2:="G"
           ][direction=="<",direction2:="L"
             ][,index_name2:=index_name
-              ][index_name %in% c("TAVG","PTOT"),index_name2:=paste0(index_name,"_",direction2)]
+              ][index_name %in% c("TAVG","PTOT"),index_name2:=paste0(index_name,"_",direction2)
+                ][,index_name:=gsub("NTxE|NTxM|NTxS","NTx",index_name)
+                  ][grep("NTxE",index_name2),index_name2:="NTxE"
+                    ][grep("NTxM",index_name2),index_name2:="NTxM"
+                      ][grep("NTxS",index_name2),index_name2:="NTxS"]
 
 haz_class<-unique(haz_class)
 
 # Add summary function description to haz_class
-haz_class<-merge(haz_class,haz_meta[,c("code","code2","function")],by.x="index_name2",by.y="code",all.x=T)
-haz_class[,code2:=gsub("_G_|_L_","_",code2)]
+haz_class<-merge(haz_class,unique(haz_meta[,c("variable.code","function")]),by.x="index_name",by.y="variable.code",all.x=T)
+haz_class[,code2:=paste0(index_name,"_",`function`)][,code2:=gsub("_G_|_L_","_",code2)]
 
 # Set analysis parameters
 PropThreshold<-0.5
 PropTDir=">"
 
+# Set crops and livestock included in the analysis
 crop_choices<-c(fread(haz_class_url)[,unique(crop)],ms_codes[,sort(Fullname)])
 
 # 0) download hazard timeseries from s3 bucket ####
-
+overwrite<-F
 # Specify the bucket name and the prefix (folder path)
-bucket_name <- "http://digital-atlas.s3.amazonaws.com"
 folder_path <- "risk_prototype/data/hazard_timeseries/annual/"
 
 # List files in the specified S3 bucket and prefix
 file_list <- list_s3_bucket_contents(bucket_url=bucket_name, folder_path = folder_path)
-new_files<-gsub(file.path(bucket_name,folder_path),haz_timeseries_dir,file_list)
+file_list<-grep(".tif",file_list,value=T)
+new_files<-gsub(file.path(bucket_name,folder_path),paste0(haz_timeseries_dir,"/"),file_list)
 
 # Download files
 for (i in seq_along(file_list)) {
   if (!file.exists(new_files[i]) || overwrite) {
-    print(file_list[i])
+    cat(i,"-",file_list[i])
     response <- GET(file_list[i], write_disk(new_files[i], overwrite = TRUE))
     
     if (status_code(response) == 200) {
-      print(paste("Successfully downloaded:", new_files[i]))
+      cat("Successfully downloaded:", new_files[i],"\n")
     } else {
-      print(paste("Failed to download:", file_list[i], "with status code:", status_code(response)))
+      cat("Failed to download:", file_list[i], "with status code:", status_code(response),"\n")
     }
+    flush.console()
   }
 }
 
@@ -218,6 +225,8 @@ Thresholds_U[,code:=paste0(direction,threshold)
 ][,code:=gsub("<","L",code)
 ][,code:=gsub(">","G",code)]
 
+Thresholds_U[,unique(index_name)]
+
 files<-list.files(haz_timeseries_dir,".tif",full.names = T)
 # Ensure we are only using ensemble or historical data (for individual models we would need to customize the layer name functions of some sections)
 files<-grep("ENSEMBLEmean|historical",files,value=T)
@@ -226,66 +235,98 @@ overwrite<-F
 n<-0
 
 registerDoFuture()
-plan("multisession", workers = worker_n) # change to multicore for linux execution
 
-foreach(i = 1:nrow(Thresholds_U)) %dopar% {
-
-#for(i in 1:nrow(Thresholds_U)){
-  index_name<-Thresholds_U[i,code2]
-  files_ss<-grep(index_name,files,value=T)
-  
-  for(j in 1:length(files_ss)){
-
-    file<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),paste0(haz_time_class_dir,"/",tail(tstrsplit(files_ss[j],"/"),1)),fixed = T)
-    
-    # Display progress
-    cat('\r   ')
-    cat('\r',paste0("Threshold ",i,"/",nrow(Thresholds_U), " - ",Thresholds_U[i,paste0(c(index_name,direction,threshold),collapse = " ")]," | scenario ",j,"/",length(files_ss)))
-    flush.console()
-    
-    if((!file.exists(file))|overwrite){
-      data<-terra::rast(files_ss[j])
-      data_class<-rast_class(data=data,
-                             direction = Thresholds_U[i,direction],
-                             threshold = Thresholds_U[i,threshold],
-                             minval=-999999,
-                             maxval=999999)
-      terra::writeRaster(data_class,filename = file)
-      }
-  }
-  
+# Set up the parallel plan based on the operating system
+if (.Platform$OS.type == "unix" && Sys.info()[["sysname"]] == "Linux") {
+  plan("multicore", workers = worker_n)
+} else {
+  plan("multisession", workers = worker_n)
 }
+
+# Enable progressr
+progressr::handlers(global = TRUE)
+progressr::handlers("progress")
+
+
+# Wrap the parallel processing in a with_progress call
+p<-with_progress({
+  # Define the progress bar
+  progress <- progressr::progressor(along = 1:nrow(Thresholds_U))
+  
+  foreach(i = 1:nrow(Thresholds_U), .packages = c("terra", "progressr")) %dopar% {
+    
+  #for(i in 1:nrow(Thresholds_U)){
+    index_name<-Thresholds_U[i,code2]
+    files_ss<-grep(index_name,files,value=T)
+    
+    for(j in 1:length(files_ss)){
+  
+      file<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),paste0(haz_time_class_dir,"/",tail(tstrsplit(files_ss[j],"/"),1)),fixed = T)
+      
+      if((!file.exists(file))|overwrite){
+        data<-terra::rast(files_ss[j])
+        data_class<-rast_class(data=data,
+                               direction = Thresholds_U[i,direction],
+                               threshold = Thresholds_U[i,threshold],
+                               minval=-999999,
+                               maxval=999999)
+        terra::writeRaster(data_class,filename = file,overwrite=T)
+      }
+      
+      # Display progress
+    }
+    progress(sprintf("Threshold %d/%d", i, nrow(Thresholds_U)))
+    
+  }
+})
 
 plan(sequential)
 
 # 2) Calculate risk across classified time series ####
-files<-list.files(haz_time_class_dir,full.names = T)
-files2<-list.files(haz_time_class_dir)
 
-# Ensure we are only using ensemble or historical data
+files<-list.files(haz_time_class_dir,full.names = T)
+
+# Limit to ensemble or historical data
 files<-grep("ENSEMBLE|historical",files,value=T)
-files2<-grep("ENSEMBLE|historical",files2,value=T)
 
 overwrite<-F
 
 registerDoFuture()
-plan("multisession", workers = worker_n)
-
-foreach(i = 1:length(files)) %dopar% {
- # for(i in 1:length(files)){
-  
-  file<-paste0(haz_time_risk_dir,"/",files2[i])
-  
-  if((!file.exists(file))|overwrite){
-    data<-terra::rast(files[i])
-    data<-terra::app(data,fun="mean",na.rm=T)
-    terra::writeRaster(data,filename = file,overwrite=T)
-  }
+if (.Platform$OS.type == "unix" && Sys.info()[["sysname"]] == "Linux") {
+  plan("multicore", workers = worker_n)
+} else {
+  plan("multisession", workers = worker_n)
 }
 
+# Enable progressr
+progressr::handlers(global = TRUE)
+progressr::handlers("progress")
+
+# Wrap the parallel processing in a with_progress call
+p<-with_progress({
+  # Define the progress bar
+  progress <- progressr::progressor(along = 1:length(files))
+    
+  foreach(i = 1:length(files)) %dopar% {
+    #for(i in 1:length(files)){
+    print(i)
+    file<-paste0(haz_time_risk_dir,"/",basename(files[i]))
+    
+    if((!file.exists(file))|overwrite){
+      data<-terra::rast(files[i])
+      data<-terra::app(data,fun="mean",na.rm=T)
+      terra::writeRaster(data,filename = file,overwrite=T)
+    }
+    
+    # Display progress
+    progress(sprintf("File %d/%d", i, length(files)))
+  }
+
+})
 plan(sequential)
 
 # 3) Create crop risk stacks####
+
 
 # Create stacks of hazard x crop/animal x scenario x timeframe
 haz_class_files<-list.files(haz_time_class_dir,".tif$")
@@ -301,67 +342,110 @@ haz_class_files2<-gsub("_sum","",haz_class_files2)
 haz_class_files2<-gsub("max","_max",haz_class_files2)
 haz_class_files2<-gsub("mean","_mean",haz_class_files2)
 
+
+haz_class_scenarios<-gsub("historical_","historic-historic-",haz_class_files2)
+haz_class_scenarios<-gsub("ssp245_ENSEMBLE_mean_","ssp245-",haz_class_scenarios)
+haz_class_scenarios<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",haz_class_scenarios)
+haz_class_scenarios<-gsub("2021_2040_","2021_2040-",haz_class_scenarios)
+haz_class_scenarios<-gsub("2041_2060_","2041_2060-",haz_class_scenarios)
+
+# Step 1: Split the elements
+split_elements <- strsplit(renames, "-")
+
+# Step 2: Extract the first and second parts
+list1 <- sapply(split_elements, `[`, 1)
+list2 <- sapply(split_elements, `[`, 2)
+
+# Step 3: Paste corresponding elements
+haz_class_scenarios <- mapply(paste, list1, list2, MoreArgs = list(sep = "-"))
+
+
 # Check names are unique
 sum(table(haz_class_files2)>1)
+
+# Add hazard type to haz_class
+haz_class[,filename:=paste0(index_name,"-",direction2,threshold,".tif")]
+haz_class[,match_field:=code2][grepl("PTOT|TAVG",code2),match_field:=paste0(index_name2[1],"_",`function`[1]),by=code2]
+haz_class[,match_field:=unlist(match_field)]
+haz_class<-merge(haz_class,unique(haz_meta[,list(code2,type)]),by.y="code2",by.x="match_field",all.x=T)
+haz_class[,match_field:=NULL]
+haz_class[,haz_filename:=paste0(type,"-",index_name2,"-",crop,"-",description)]
 
 # Subset to severe
 #severity_classes<-severity_classes[value %in% c(1,2,3)]
 
-overwrite<-T
+overwrite<-F
 crops<-haz_class[,unique(crop)]
 
+# THIS DO NOT APPEAR TO BE WORKING IN PARALLEL!!
+
 registerDoFuture()
-plan("multisession", workers = worker_n)
+if (.Platform$OS.type == "unix" && Sys.info()[["sysname"]] == "Linux") {
+  plan("multicore", workers = worker_n)
+} else {
+  plan("multisession", workers = worker_n)
+}
 
-foreach(i = 1:length(crops)) %dopar%{
+# Enable progressr
+progressr::handlers(global = TRUE)
+progressr::handlers("progress")
+
+# Wrap the parallel processing in a with_progress call
+p<-with_progress({
+  # Define the progress bar
+  progress <- progressr::progressor(along = 1:length(crops))
   
-  for(j in 1:nrow(severity_classes)){
-    
+ foreach(i = 1:length(crops)) %dopar%{
+    #for(i in 1:length(crops)){
     crop_focus<-crops[i]
-    severity_class<-severity_classes[j,class]
     
-    save_name<-paste0(haz_risk_dir,"/",crop_focus,"-",tolower(severity_class),".tif")
-    
-    # Display progress
-    cat('\r                                                                                                                     ')
-    cat('\r',paste("Crop:",i,crop_focus,"| severity:",j,severity_class))
-    flush.console()
-    
-    if(!file.exists(save_name)|overwrite==T){
+    for(j in 1:nrow(severity_classes)){
       
-      haz_class_crop<-haz_class[crop==crop_focus & description == severity_class]
-      grep_vals<-haz_class_crop[,paste0(paste0(index_name,"-",direction2,threshold,".tif"),collapse = "|")]
-
-      renames<-haz_class_files2[grepl(grep_vals,haz_class_files2)]
-      renames<-gsub("historical_","historic-historic-",renames)
-      renames<-gsub("ssp245_ENSEMBLE_mean_","ssp245-",renames)
-      renames<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",renames)
-      renames<-gsub("2021_2040_","2021_2040-",renames)
-      renames<-gsub("2041_2060_","2041_2060-",renames)
-      renames<-gsub("PTOT-L","PTOT_L-",renames)
-      renames<-gsub("PTOT-G","PTOT_G-",renames)
-      renames<-gsub("TAVG-L","TAVG_L-",renames)
-      renames<-gsub("TAVG-G","TAVG_G-",renames)
-
-      renames<-tstrsplit(renames,"-",keep=1:3)
-      haz_simple<- haz_meta[match(renames[[3]],code),type]
-      renames<-paste0(renames[[1]],"-",renames[[2]],"-",haz_simple,"-",renames[[3]],"-",crop_focus,"-",severity_class)
+      severity_class<-severity_classes[j,class]
       
-      if(any(table(renames))>1){
-        stop("Non-unique layer names are present!")
+      save_name<-file.path(haz_risk_dir,paste0(crop_focus,"-",tolower(severity_class),".tif"))
+      
+      # Display progress
+      cat('\r                                                                                                                     ')
+      cat('\r',paste("Crop:",i,crop_focus,"| severity:",j,severity_class))
+      flush.console()
+      
+      if(!file.exists(save_name)|overwrite==T){
+        
+        haz_class_crop<-haz_class[crop==crop_focus & description == severity_class]
+        
+        files<-lapply(haz_class_crop$filename,FUN=function(file){
+          grep(file,haz_class_files2)
+          })
+        
+        layer_names<-unlist(lapply(1:length(files),FUN=function(k){
+          scen_name<-haz_class_scenarios[files[[k]]]
+          h_name<-haz_class_crop[k,haz_filename]
+          paste0(scen_name,"-",h_name)
+        }))
+        
+        files<-haz_class_files[unlist(files)]
+        
+        
+        if(any(table(layer_names))>1){
+          stop("Non-unique layer names are present!")
+        }
+        
+
+        data<-terra::rast(file.path(haz_time_risk_dir,files))
+        names(data)<-layer_names
+        
+        terra::writeRaster(data,file=save_name,overwrite=T)
       }
       
-      files<-haz_class_files[grepl(grep_vals,haz_class_files2)]
-      
-      data<-terra::rast(paste0(haz_time_risk_dir,"/",files))
-      names(data)<-renames
-      
-      terra::writeRaster(data,file=save_name,overwrite=T)
     }
     
+    # Display progress
+    progress(sprintf("File %d/%d", i, length(crops)))
+    
   }
-  
-}
+
+})
 
 plan(sequential)
 

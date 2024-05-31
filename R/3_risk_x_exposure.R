@@ -36,8 +36,7 @@ hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI
 haz_2way<-c("PTOT","TAVG")
 hazards2<-c(hazards[!hazards %in% haz_2way],paste0(haz_2way,rep(c("_L","_H"),each=2)))
 
-haz_meta<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv")
-haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
+haz_meta<-data.table::fread(haz_meta_url)
 haz_class<-data.table::fread(haz_class_url)
 haz_class<-haz_class[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
 haz_classes<-unique(haz_class$description)
@@ -53,7 +52,7 @@ setnames(severity_classes,"description","class")
 scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios)))[,Scenario:=as.character(Scenario)][,Time:=as.character(Time)]
 
 # Load crop names from mapspam metadata
-ms_codes<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
+ms_codes<-data.table::fread(ms_codes_url)[,Code:=toupper(Code)]
 ms_codes<-ms_codes[compound=="no"]
 crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
 

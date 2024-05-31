@@ -16,7 +16,11 @@ require("exactextractr"){
 }
 
 # 1) Setup server####
-timeframe_choices<-c("annual","jagermeyr")
+timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
+                     "sos_primary_fixed_3","sos_primary_fixed_4","sos_primary_fixed_5",
+                     "sos_secondary_fixed_3","sos_secondary_fixed_4","sos_secondary_fixed_5")
+
+timeframe_choice<-timeframe_choices[1]
 
 # Increase GDAL cache size
 terra::gdalCache(60000)

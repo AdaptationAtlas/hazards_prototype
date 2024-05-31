@@ -84,7 +84,7 @@ sos_rast<-terra::resample(sos_rast,base_rast)
 
 # 4) Choose hazards #####
 # Read in climate variable information
-haz_meta<-unique(data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv")[,c("variable.code","function")])
+haz_meta<-unique(data.table::fread(haz_meta_url)[,c("variable.code","function")])
 
 # Choose hazards
 hazards<-c("HSH","NDWL0", "NDWS","NTx35","NTx40", "PTOT" , "TAI" ,  "TAVG" , "THI","TMIN","TMAX") 
