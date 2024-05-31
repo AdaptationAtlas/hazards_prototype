@@ -273,7 +273,7 @@ if(timeframe_choice!="annual"){
       download.file(url=index$s3_path[i],destfile=file)
     }
   }
-  # 4) Set data paths
+  # 4) Set data paths ####
     # 4.1) hazard class #####
     haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
     # 4.2) hazard metadata #####
