@@ -1,18 +1,14 @@
-# 0) Install and load packages ####
-load_and_install_packages <- function(packages) {
-  for (package in packages) {
-    if (!require(package, character.only = TRUE)) {
-      install.packages(package)
-      library(package, character.only = TRUE)
-    }
-  }
+# Install and load pacman if not already installed
+if (!require("pacman", character.only = TRUE)) {
+  install.packages("pacman")
+  library(pacman)
 }
 
 # List of packages to be loaded
-packages <- c("s3fs","remotes")
+packages <- c("s3fs", "remotes","data.table")
 
-# Call the function to install and load packages
-load_and_install_packages(packages)
+# Use pacman to install and load the packages
+pacman::p_load(packages)
 
 # Install package for exactextractr
 require("exactextractr", character.only = TRUE){
@@ -28,13 +24,15 @@ timeframe_choice<-"annual"
 terra::gdalCache(60000)
 
 # workers
-worker_n<-20
+worker_n<-8
 
 # Project location
 package_dir<-getwd()
 
 # Where should workflow outputs be stored?
 working_dir<-"/home/jovyan/common_data/hazards_prototype"
+working_dir<-"D:/common_data/hazards_prototype"
+
 if(!dir.exists(working_dir)){
   dir.create(working_dir,recursive=T)
 }
@@ -132,19 +130,28 @@ if(!dir.exists(boundary_dir)){
 }
 
 glw_dir<-"Data/GLW4"
+if(!dir.exists(glw_dir)){
+  dir.create(glw_dir)
+}
 
 ls_vop_dir<-"Data/livestock_vop"
+if(!dir.exists(ls_vop_dir)){
+  dir.create(ls_vop_dir)
+}
 
 afr_highlands_dir<-"Data/afr_highlands"
+if(!dir.exists(afr_highlands_dir)){
+  dir.create(afr_highlands_dir)
+}
 
 fao_dir<-"Data/fao"
 if(!dir.exists(fao_dir)){
-  dir.create(fao_dir,recursive = T)
+  dir.create(fao_dir)
 }
 
 mapspam_dir<-"Data/mapspam/2020V1r0_SSA"
 if(!dir.exists(mapspam_dir)){
-  dir.create(mapspam_dir)
+  dir.create(mapspam_dir,recursive=T)
 }
 
 # Set sos calendar directory
