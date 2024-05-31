@@ -4,15 +4,19 @@ source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/
 # List of packages to be loaded
 packages <- c("terra", 
               "data.table", 
-              "s3fs",
+              "future",
+              "future.apply",
+              "progressr",
               "doFuture",
+              "httr",
+              "s3fs",
               "stringr", 
               "stringi",
               "httr",
               "xml2")
 
 # Call the function to install and load packages
-load_and_install_packages(packages)
+pacman::p_load(char=packages)
 
 # Set up workspace ####
 # Set scenarios and time frames to analyse
@@ -26,11 +30,11 @@ Scenarios[,combined:=paste0(Scenario,"-",Time)]
 # Set hazards to include in analysis
 hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG") # NDD is not being used as it cannot be projected to future scenarios
 
-haz_meta<-data.table::fread(haz_meta_url)
+haz_meta<-data.table::fread(haz_meta_url, showProgress = FALSE)
 haz_meta[variable.code %in% hazards]
 haz_meta[,code2:=paste0(haz_meta$code,"_",haz_meta$`function`)]
 
-haz_class<-data.table::fread(haz_class_url)
+haz_class<-data.table::fread(haz_class_url, showProgress = FALSE)
 haz_class<-haz_class[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
 haz_classes<-unique(haz_class$description)
 
@@ -52,11 +56,11 @@ setnames(severity_classes,"description","class")
 scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios)))[,Scenario:=as.character(Scenario)][,Time:=as.character(Time)]
 
 # read in mapspam metadata
-ms_codes<-data.table::fread(ms_codes_url)[,Code:=toupper(Code)]
+ms_codes<-data.table::fread(ms_codes_url, showProgress = FALSE)[,Code:=toupper(Code)]
 ms_codes<-ms_codes[compound=="no"]
 
 # read in ecocrop
-ecocrop<-fread(ecocrop_url)
+ecocrop<-fread(ecocrop_url, showProgress = FALSE)
 ecocrop[,Temp_Abs_Min:=as.numeric(Temp_Abs_Min)
         ][,Temp_Abs_Max:=as.numeric(Temp_Abs_Max)
           ][,Rain_Abs_Min:=as.numeric(Rain_Abs_Min)
@@ -155,9 +159,6 @@ ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
   ec_haz
 }))
 
-# Exclude NTxS, NTxE and NTxM for time being until hazard data are calculated
-#ec_haz<-ec_haz[!grepl("NTxM|NTxS|NTxE",index_name)]
-
 # Replicate generic hazards that are not TAVG or PTOT for each crop
 haz_class2<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
   Y<-ec_haz[crop==ms_codes[i,Fullname]]
@@ -198,7 +199,7 @@ PropThreshold<-0.5
 PropTDir=">"
 
 # Set crops and livestock included in the analysis
-crop_choices<-c(fread(haz_class_url)[,unique(crop)],ms_codes[,sort(Fullname)])
+crop_choices<-c(fread(haz_class_url, showProgress = FALSE)[,unique(crop)],ms_codes[,sort(Fullname)])
 
 # 0) download hazard timeseries from s3 bucket ####
 overwrite<-F
@@ -210,20 +211,46 @@ file_list <- list_s3_bucket_contents(bucket_url=bucket_name, folder_path = folde
 file_list<-grep(".tif",file_list,value=T)
 new_files<-gsub(file.path(bucket_name,folder_path),paste0(haz_timeseries_dir,"/"),file_list)
 
-# Download files
-for (i in seq_along(file_list)) {
-  if (!file.exists(new_files[i]) || overwrite) {
-    cat(i,"-",file_list[i])
-    response <- GET(file_list[i], write_disk(new_files[i], overwrite = TRUE))
-    
-    if (status_code(response) == 200) {
-      cat("Successfully downloaded:", new_files[i],"\n")
-    } else {
-      cat("Failed to download:", file_list[i], "with status code:", status_code(response),"\n")
+# Define a function to download a single file with retries
+download_file <- function(url, destfile, overwrite = TRUE, retries = 3) {
+  for (attempt in 1:retries) {
+    if (!file.exists(destfile) || overwrite) {
+      response <- GET(url, write_disk(destfile, overwrite = TRUE))
+      if (status_code(response) == 200) {
+        message("Successfully downloaded: ", destfile)
+        break
+      } else {
+        message("Failed to download: ", url, " with status code: ", status_code(response))
+        if (attempt == retries) {
+          warning("Reached maximum retries for: ", url)
+        }
+      }
     }
-    flush.console()
+    Sys.sleep(1) # Wait for 1 second before retrying
   }
 }
+
+# Set up the future plan for parallel processing
+plan(multisession, workers = 8) # Adjust the number of workers based on your system's capabilities
+
+# Enable progressr
+progressr::handlers(global = TRUE)
+progressr::handlers("progress")
+
+# Wrap the parallel processing in a with_progress call
+p<-with_progress({
+  # Define the progress bar
+  progress <- progressr::progressor(along = 1:length(file_list))
+  
+  # Download files in parallel
+  future_lapply(seq_along(file_list), function(i) {
+    download_file(file_list[i], new_files[i],overwrite = overwrite)
+    progress(sprintf("File %d/%d", i, length(file_list)))
+    })
+})
+
+plan(sequential)
+
 
 # 1) Classify time series climate variables based on hazard thresholds ####
 
