@@ -49,113 +49,107 @@ if(timeframe_choice!="annual"){
 }
 
 # 2) Set directories ####
-
-# Outputs
-haz_timeseries_dir<-file.path("Data/hazard_timeseries",timeframe_choice)
-if(!dir.exists(haz_timeseries_dir)){dir.create(haz_timeseries_dir,recursive=T)}
-haz_timeseries_s3_dir<-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
-
-haz_timeseries_monthly_dir<-"Data/hazard_timeseries_mean_month"
-if(!dir.exists(haz_timeseries_monthly_dir)){dir.create(haz_timeseries_monthly_dir,recursive=T)}
-
-haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
-if(!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir,recursive=T)}
-
-haz_time_risk_dir<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
-if(!dir.exists(haz_time_risk_dir)){dir.create(haz_time_risk_dir,recursive=T)}
-
-haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
-if(!dir.exists(haz_risk_dir)){dir.create(haz_risk_dir,recursive = T)}
-
-haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
-if(!dir.exists(haz_mean_dir)){dir.create(haz_mean_dir,recursive=T)}
-
-haz_sd_dir<-paste0("Data/hazard_timeseries_sd/",timeframe_choice)
-if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
-
-haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
-if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
-
-haz_risk_vop17_dir<-file.path("Data/hazard_risk_vop17",timeframe_choice)
-if(!dir.exists(haz_risk_vop17_dir)){
-  dir.create(haz_risk_vop17_dir,recursive = T)
-}
-
-haz_risk_vop_dir<-file.path("Data/hazard_risk_vop",timeframe_choice)
-if(!dir.exists(haz_risk_vop_dir)){
-  dir.create(haz_risk_vop_dir,recursive = T)
-}
-
-haz_risk_ha_dir<-file.path("Data/hazard_risk_ha",timeframe_choice)
-if(!dir.exists(haz_risk_ha_dir)){
-  dir.create(haz_risk_ha_dir,recursive = T)
-}
-
-haz_risk_n_dir<-file.path("Data/hazard_risk_n",timeframe_choice)
-if(!dir.exists(haz_risk_n_dir)){
-  dir.create(haz_risk_n_dir,recursive = T)
-}
-
-haz_risk_vop_ac_dir<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
-if(!dir.exists(haz_risk_vop_ac_dir)){
-  dir.create(haz_risk_vop_ac_dir,recursive=T)
-}
-
-roi_dir<-"Data/roi"
-
-exposure_dir<-"Data/exposure"
-if(!dir.exists(exposure_dir)){
-  dir.create(exposure_dir)
-}
-
-# Inputs
-ac_dir<-"Data/adaptive_capacity"
-if(!dir.exists(ac_dir)){
-  dir.create(ac_dir,recursive=T)
-}
-
-
-hpop_dir<-"Data/atlas_pop"
-
-commodity_mask_dir<-"Data/commodity_masks"
-if(!dir.exists(commodity_mask_dir)){
-  dir.create(commodity_mask_dir)
-}
-
-boundary_dir<-"Data/boundaries"
-if(!dir.exists(boundary_dir)){
-  dir.create(boundary_dir)
-}
-
-glw_dir<-"Data/GLW4"
-if(!dir.exists(glw_dir)){
-  dir.create(glw_dir)
-}
-
-ls_vop_dir<-"Data/livestock_vop"
-if(!dir.exists(ls_vop_dir)){
-  dir.create(ls_vop_dir)
-}
-
-afr_highlands_dir<-"Data/afr_highlands"
-if(!dir.exists(afr_highlands_dir)){
-  dir.create(afr_highlands_dir)
-}
-
-fao_dir<-"Data/fao"
-if(!dir.exists(fao_dir)){
-  dir.create(fao_dir)
-}
-
-mapspam_dir<-"Data/mapspam/2020V1r0_SSA"
-if(!dir.exists(mapspam_dir)){
-  dir.create(mapspam_dir,recursive=T)
-}
-
-# Set sos calendar directory
-sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
-
-
+  # 2.1) Local folders #####
+  haz_timeseries_dir<-file.path("Data/hazard_timeseries",timeframe_choice)
+  if(!dir.exists(haz_timeseries_dir)){dir.create(haz_timeseries_dir,recursive=T)}
+  haz_timeseries_s3_dir<-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
+  
+  haz_timeseries_monthly_dir<-"Data/hazard_timeseries_mean_month"
+  if(!dir.exists(haz_timeseries_monthly_dir)){dir.create(haz_timeseries_monthly_dir,recursive=T)}
+  
+  haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
+  if(!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir,recursive=T)}
+  
+  haz_time_risk_dir<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
+  if(!dir.exists(haz_time_risk_dir)){dir.create(haz_time_risk_dir,recursive=T)}
+  
+  haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
+  if(!dir.exists(haz_risk_dir)){dir.create(haz_risk_dir,recursive = T)}
+  
+  haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
+  if(!dir.exists(haz_mean_dir)){dir.create(haz_mean_dir,recursive=T)}
+  
+  haz_sd_dir<-paste0("Data/hazard_timeseries_sd/",timeframe_choice)
+  if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
+  
+  haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
+  if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
+  
+  haz_risk_vop17_dir<-file.path("Data/hazard_risk_vop17",timeframe_choice)
+  if(!dir.exists(haz_risk_vop17_dir)){
+    dir.create(haz_risk_vop17_dir,recursive = T)
+  }
+  
+  haz_risk_vop_dir<-file.path("Data/hazard_risk_vop",timeframe_choice)
+  if(!dir.exists(haz_risk_vop_dir)){
+    dir.create(haz_risk_vop_dir,recursive = T)
+  }
+  
+  haz_risk_ha_dir<-file.path("Data/hazard_risk_ha",timeframe_choice)
+  if(!dir.exists(haz_risk_ha_dir)){
+    dir.create(haz_risk_ha_dir,recursive = T)
+  }
+  
+  haz_risk_n_dir<-file.path("Data/hazard_risk_n",timeframe_choice)
+  if(!dir.exists(haz_risk_n_dir)){
+    dir.create(haz_risk_n_dir,recursive = T)
+  }
+  
+  haz_risk_vop_ac_dir<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
+  if(!dir.exists(haz_risk_vop_ac_dir)){
+    dir.create(haz_risk_vop_ac_dir,recursive=T)
+  }
+  
+  roi_dir<-"Data/roi"
+  
+  exposure_dir<-"Data/exposure"
+  if(!dir.exists(exposure_dir)){
+    dir.create(exposure_dir)
+  }
+  
+  # Inputs
+  ac_dir<-"Data/adaptive_capacity"
+  if(!dir.exists(ac_dir)){
+    dir.create(ac_dir,recursive=T)
+  }
+  
+  
+  hpop_dir<-"Data/atlas_pop"
+  
+  commodity_mask_dir<-"Data/commodity_masks"
+  if(!dir.exists(commodity_mask_dir)){
+    dir.create(commodity_mask_dir)
+  }
+  
+  boundary_dir<-"Data/boundaries"
+  if(!dir.exists(boundary_dir)){
+    dir.create(boundary_dir)
+  }
+  
+  glw_dir<-"Data/GLW4"
+  
+  ls_vop_dir<-"Data/livestock_vop"
+  
+  afr_highlands_dir<-"Data/afr_highlands"
+  
+  fao_dir<-"Data/fao"
+  if(!dir.exists(fao_dir)){
+    dir.create(fao_dir,recursive = T)
+  }
+  
+  mapspam_dir<-"Data/mapspam/2020V1r0_SSA"
+  if(!dir.exists(mapspam_dir)){
+    dir.create(mapspam_dir)
+  }
+  
+  # Set sos calendar directory
+  sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
+  
+  
+  # 2.2) Atlas s3 bucket #####
+  bucket_name <- "http://digital-atlas.s3.amazonaws.com"
+  bucket_name_s3<-"s3://digital-atlas"
+  
 # 3) Download key datasets ####
   # 3.1) Geoboundaries #####
   geo_dir<-"Data/boundaries"
