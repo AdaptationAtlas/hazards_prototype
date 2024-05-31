@@ -12,8 +12,10 @@ packages <- c("s3fs", "remotes","data.table","httr")
 pacman::p_load(char=packages)
 
 # Install package for exactextractr
-require("exactextractr"){
+# Install and load the exactextractr package
+if (!require("exactextractr", character.only = TRUE)) {
   remotes::install_github("isciences/exactextractr")
+  library(exactextractr, character.only = TRUE)
 }
 
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
@@ -24,13 +26,16 @@ timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
                      "sos_primary_fixed_3","sos_primary_fixed_4","sos_primary_fixed_5",
                      "sos_secondary_fixed_3","sos_secondary_fixed_4","sos_secondary_fixed_5")
 
-timeframe_choice<-timeframe_choices[2]
+timeframe_choice<-timeframe_choices[1]
 
 # Increase GDAL cache size
 terra::gdalCache(60000)
 
 # workers
-worker_n<-8
+parallel::detectCores()
+terra::free_RAM()/10^6
+
+worker_n<-20
 
 # Project location
 package_dir<-getwd()
@@ -38,6 +43,7 @@ package_dir<-getwd()
 # Where should workflow outputs be stored?
 working_dir<-"/home/jovyan/common_data/hazards_prototype"
 working_dir<-"D:/common_data/hazards_prototype"
+working_dir<-"/home/psteward/common_data"
 
 if(!dir.exists(working_dir)){
   dir.create(working_dir,recursive=T)
