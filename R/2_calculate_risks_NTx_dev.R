@@ -334,7 +334,6 @@ p<-with_progress({
     
   foreach(i = 1:length(files)) %dopar% {
     #for(i in 1:length(files)){
-    print(i)
     file<-paste0(haz_time_risk_dir,"/",basename(files[i]))
     
     if((!file.exists(file))|overwrite){
