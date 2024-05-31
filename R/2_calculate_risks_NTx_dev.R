@@ -185,6 +185,14 @@ haz_class<-unique(haz_class)
 haz_class<-merge(haz_class,unique(haz_meta[,c("variable.code","function")]),by.x="index_name",by.y="variable.code",all.x=T)
 haz_class[,code2:=paste0(index_name,"_",`function`)][,code2:=gsub("_G_|_L_","_",code2)]
 
+# Add hazard type to haz_class
+haz_class[,filename:=paste0(index_name,"-",direction2,threshold,".tif")]
+haz_class[,match_field:=code2][grepl("PTOT|TAVG",code2),match_field:=paste0(index_name2[1],"_",`function`[1]),by=code2]
+haz_class[,match_field:=unlist(match_field)]
+haz_class<-merge(haz_class,unique(haz_meta[,list(code2,type)]),by.y="code2",by.x="match_field",all.x=T)
+haz_class[,match_field:=NULL]
+haz_class[,haz_filename:=paste0(type,"-",index_name2,"-",crop,"-",description)]
+
 # Set analysis parameters
 PropThreshold<-0.5
 PropTDir=">"
@@ -235,13 +243,7 @@ overwrite<-F
 n<-0
 
 registerDoFuture()
-
-# Set up the parallel plan based on the operating system
-if (.Platform$OS.type == "unix" && Sys.info()[["sysname"]] == "Linux") {
-  plan("multicore", workers = worker_n)
-} else {
-  plan("multisession", workers = worker_n)
-}
+plan("multisession", workers = worker_n)
 
 # Enable progressr
 progressr::handlers(global = TRUE)
@@ -292,11 +294,7 @@ files<-grep("ENSEMBLE|historical",files,value=T)
 overwrite<-F
 
 registerDoFuture()
-if (.Platform$OS.type == "unix" && Sys.info()[["sysname"]] == "Linux") {
-  plan("multicore", workers = worker_n)
-} else {
-  plan("multisession", workers = worker_n)
-}
+plan("multisession", workers = worker_n)
 
 # Enable progressr
 progressr::handlers(global = TRUE)
@@ -363,28 +361,14 @@ haz_class_scenarios <- mapply(paste, list1, list2, MoreArgs = list(sep = "-"))
 # Check names are unique
 sum(table(haz_class_files2)>1)
 
-# Add hazard type to haz_class
-haz_class[,filename:=paste0(index_name,"-",direction2,threshold,".tif")]
-haz_class[,match_field:=code2][grepl("PTOT|TAVG",code2),match_field:=paste0(index_name2[1],"_",`function`[1]),by=code2]
-haz_class[,match_field:=unlist(match_field)]
-haz_class<-merge(haz_class,unique(haz_meta[,list(code2,type)]),by.y="code2",by.x="match_field",all.x=T)
-haz_class[,match_field:=NULL]
-haz_class[,haz_filename:=paste0(type,"-",index_name2,"-",crop,"-",description)]
-
 # Subset to severe
 #severity_classes<-severity_classes[value %in% c(1,2,3)]
 
 overwrite<-F
 crops<-haz_class[,unique(crop)]
 
-# THIS DO NOT APPEAR TO BE WORKING IN PARALLEL!!
-
 registerDoFuture()
-if (.Platform$OS.type == "unix" && Sys.info()[["sysname"]] == "Linux") {
-  plan("multicore", workers = worker_n)
-} else {
-  plan("multisession", workers = worker_n)
-}
+plan("multisession", workers = worker_n)
 
 # Enable progressr
 progressr::handlers(global = TRUE)
@@ -441,7 +425,7 @@ p<-with_progress({
     }
     
     # Display progress
-    progress(sprintf("File %d/%d", i, length(crops)))
+    progress(sprintf("Crop %d/%d", i, length(crops)))
     
   }
 
@@ -463,54 +447,70 @@ files<-grep("ENSEMBLE|historical",files,value=T)
 overwrite<-F
 
 registerDoFuture()
-plan("multisession", workers = 20)
+plan("multisession", workers = worker_n)
 
-foreach(i = 1:length(files)) %dopar% {
-  
-  file<-paste0(haz_mean_dir,"/",basename(files[i]))
-  file2<-paste0(haz_sd_dir,"/",basename(files[i]))
-  
-  if((!file.exists(file))|overwrite){
-    data<-terra::rast(files[i])
-    data<-terra::app(data,fun="mean",na.rm=T)
-    terra::writeRaster(data,filename = file,overwrite=T)
+
+# Enable progressr
+progressr::handlers(global = TRUE)
+progressr::handlers("progress")
+
+# Wrap the parallel processing in a with_progress call
+p<-with_progress({
+  # Define the progress bar
+  progress <- progressr::progressor(along = 1:length(files))
     
-    data<-terra::app(data,fun="sd",na.rm=T)
-    terra::writeRaster(data,filename = file2,overwrite=T)
+  foreach(i = 1:length(files)) %dopar% {
+    
+    file<-paste0(haz_mean_dir,"/",basename(files[i]))
+    file2<-paste0(haz_sd_dir,"/",basename(files[i]))
+    
+    if((!file.exists(file))|overwrite){
+      data<-terra::rast(files[i])
+      data<-terra::app(data,fun="mean",na.rm=T)
+      terra::writeRaster(data,filename = file,overwrite=T)
+      
+      data<-terra::app(data,fun="sd",na.rm=T)
+      terra::writeRaster(data,filename = file2,overwrite=T)
+    }
+    # Display progress
+    progress(sprintf("File %d/%d", i, length(files)))
   }
-}
+
+})
 
 plan(sequential)
 
-  # 4.1) Calculate change in mean values ####
-files<-list.files(haz_mean_dir,".tif",full.names = T)
-files<-files[!grepl("change",files)]
-files_hist<-grep("historic",files,value = T)
-files_fut<-files[!files %in% files_hist]
-
-data_hist<-terra::rast(files_hist[1])
-
-for(j in 1:length(files_fut)){
-  data_fut<-terra::rast(files_fut[j])
-  # Display progress
-  cat('\r                                                                                                                     ')
-  cat('\r',paste0("Scenario: ",j))
-  flush.console()
+  # 4.1) Calculate change in mean values #####
+if(F){
+  files<-list.files(haz_mean_dir,".tif",full.names = T)
+  files<-files[!grepl("change",files)]
+  files_hist<-grep("historic",files,value = T)
+  files_fut<-files[!files %in% files_hist]
   
-  change<-data_fut-data_hist
-  names(change)<-paste0(names(change),"_change")
+  data_hist<-terra::rast(files_hist[1])
   
-  save_name_change<-gsub(".tif","_change.tif",files_fut[j])  
-  
-  terra::writeRaster(change,filename = save_name_change,overwrite=T)
-  
+  for(j in 1:length(files_fut)){
+    data_fut<-terra::rast(files_fut[j])
+    # Display progress
+    cat('\r                                                                                                                     ')
+    cat('\r',paste0("Scenario: ",j))
+    flush.console()
+    
+    change<-data_fut-data_hist
+    names(change)<-paste0(names(change),"_change")
+    
+    save_name_change<-gsub(".tif","_change.tif",files_fut[j])  
+    
+    terra::writeRaster(change,filename = save_name_change,overwrite=T)
+    
+  }
 }
 
 # 5) Interactions ####
   # 5.1) Choose Interaction Variables ####
   # Crops
   # Set variables that can be interacted for heat wet and dry
-  crop_heat<-c("NTx35","TAVG_G")
+  crop_heat<-c("NTx35","TAVG_G","NTxS")
   crop_wet<-c("NDWL0","PTOT_G")
   crop_dry<-c("PTOT_L","NDWS")
   
@@ -518,14 +518,18 @@ for(j in 1:length(files_fut)){
   
   # Create a unique list of all the 3-way combinations required for the crops and severity classes selected
   combinations_c<-unique(rbindlist(lapply(1:length(crop_choices2),FUN=function(i){
+    crop_focus<-crop_choices2[i]
     rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
+      severity_focus<-severity_classes$class[j]
       X<-data.table(expand.grid(heat=crop_heat,wet=crop_wet,dry=crop_dry,stringsAsFactors=F))
-      haz_rename<-haz_class[crop==crop_choices2[i] & description == severity_classes$class[j],list(old=index_name2,new=paste0(index_name,"-",direction2,threshold))]
+      haz_rename<-haz_class[crop==crop_focus & description==severity_focus,
+                            list(old=index_name2,new=gsub(".tif","",filename))]
+      
       X[,heat:=stri_replace_all_regex(heat,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
         ][,dry:=stri_replace_all_regex(dry,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
           ][,wet:=stri_replace_all_regex(wet,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
-            ][,severity_class:=severity_classes$class[j]
-              ][,crop:=crop_choices2[i]]
+            ][,severity_class:=severity_focus
+              ][,crop:=crop_focus]
       X
     }))
   })))
@@ -536,18 +540,22 @@ for(j in 1:length(files_fut)){
   animal_wet<-c("NDWL0","PTOT_G")
   animal_dry<-c("PTOT_L","NDWS")
   
-  crop_choicesX<-crop_choices[grepl("_tropical|_highland",crop_choices)]
+  livestock_choices<-crop_choices[grepl("_tropical|_highland",crop_choices)]
   
   # Create a unique list of all the 3-way combinations required for the crops and severity classes selected
-  combinations_a<-unique(rbindlist(lapply(1:length(crop_choicesX),FUN=function(i){
+  combinations_a<-unique(rbindlist(lapply(1:length(livestock_choices),FUN=function(i){
+    crop_focus<-livestock_choices[i]
     rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
-      X<-data.table(expand.grid(heat=animal_heat,wet=animal_wet,dry=animal_dry,stringsAsFactors=F))
-      haz_rename<-haz_class[crop==crop_choicesX[i] & description == severity_classes$class[j],list(old=index_name2,new=paste0(index_name,"-",direction2,threshold))]
+      severity_focus<-severity_classes$class[j]
+      X<-data.table(expand.grid(heat=crop_heat,wet=crop_wet,dry=crop_dry,stringsAsFactors=F))
+      haz_rename<-haz_class[crop==crop_focus & description==severity_focus,
+                            list(old=index_name2,new=gsub(".tif","",filename))]
+      
       X[,heat:=stri_replace_all_regex(heat,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
       ][,dry:=stri_replace_all_regex(dry,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
       ][,wet:=stri_replace_all_regex(wet,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
-      ][,severity_class:=severity_classes$class[j]
-        ][,crop:=crop_choicesX[i]]
+      ][,severity_class:=severity_focus
+      ][,crop:=crop_focus]
       X
     }))
   })))
@@ -577,11 +585,25 @@ for(j in 1:length(files_fut)){
   
   overwrite<-F
   
-  registerDoFuture()
-  plan("multisession", workers = worker_n)
   
-  #foreach(i =  sample(1:nrow(combinations))) %dopar% {
-  for(i in 1:nrow(combinations)){
+  registerDoFuture()
+  # Estimate the RAM available therefore the number of workers
+  workers_int<- floor(free_RAM()*0.6/10^6/5)
+  if(workers_int>worker_n){workers_int<-worker_n}
+  plan("multisession", workers =workers_int)
+  
+  # Enable progressr
+  progressr::handlers(global = TRUE)
+  progressr::handlers("progress")
+  
+  # Wrap the parallel processing in a with_progress call
+  p<-with_progress({
+    # Define the progress bar
+    progress <- progressr::progressor(along = 1:nrow(combinations))
+    
+  
+  foreach(i =  sample(1:nrow(combinations))) %dopar% {
+  #for(i in 1:nrow(combinations)){
   
           combos<-unlist(combinations[i,list(dry,heat,wet)])
           grep_vals<-paste0(paste0(combos,".tif"),collapse = "|")
@@ -657,7 +679,12 @@ for(j in 1:length(files_fut)){
             gc()
             }
             }
-          }
+  }
+    
+    # Display progress
+    progress(sprintf("File %d/%d", i, nrow(combinations)))
+    
+  })
     
   plan(sequential)
   
