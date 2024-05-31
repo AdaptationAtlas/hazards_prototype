@@ -334,7 +334,7 @@ p<-with_progress({
     
   foreach(i = 1:length(files)) %dopar% {
     #for(i in 1:length(files)){
-    file<-paste0(haz_time_risk_dir,"/",basename(files[i]))
+    file<-file.path(haz_time_risk_dir,basename(files[i]))
     
     if((!file.exists(file))|overwrite){
       data<-terra::rast(files[i])
@@ -350,7 +350,6 @@ p<-with_progress({
 plan(sequential)
 
 # 3) Create crop risk stacks####
-
 
 # Create stacks of hazard x crop/animal x scenario x timeframe
 haz_class_files<-list.files(haz_time_class_dir,".tif$")
@@ -374,7 +373,7 @@ haz_class_scenarios<-gsub("2021_2040_","2021_2040-",haz_class_scenarios)
 haz_class_scenarios<-gsub("2041_2060_","2041_2060-",haz_class_scenarios)
 
 # Step 1: Split the elements
-split_elements <- strsplit(renames, "-")
+split_elements <- strsplit(haz_class_scenarios, "-")
 
 # Step 2: Extract the first and second parts
 list1 <- sapply(split_elements, `[`, 1)
@@ -383,12 +382,8 @@ list2 <- sapply(split_elements, `[`, 2)
 # Step 3: Paste corresponding elements
 haz_class_scenarios <- mapply(paste, list1, list2, MoreArgs = list(sep = "-"))
 
-
 # Check names are unique
 sum(table(haz_class_files2)>1)
-
-# Subset to severe
-#severity_classes<-severity_classes[value %in% c(1,2,3)]
 
 overwrite<-F
 crops<-haz_class[,unique(crop)]
@@ -405,8 +400,8 @@ p<-with_progress({
   # Define the progress bar
   progress <- progressr::progressor(along = 1:length(crops))
   
- foreach(i = 1:length(crops)) %dopar%{
-    #for(i in 1:length(crops)){
+  foreach(i = 1:length(crops), .packages = c("terra", "data.table")) %dopar% {
+    # for(i in 1:length(crops)){
     crop_focus<-crops[i]
     
     for(j in 1:nrow(severity_classes)){
