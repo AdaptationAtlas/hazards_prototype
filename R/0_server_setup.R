@@ -1,3 +1,4 @@
+# 0) Load packages and functions
 # Install and load pacman if not already installed
 if (!require("pacman", character.only = TRUE)) {
   install.packages("pacman")
@@ -8,19 +9,22 @@ if (!require("pacman", character.only = TRUE)) {
 packages <- c("s3fs", "remotes","data.table","httr")
 
 # Use pacman to install and load the packages
-pacman::p_load(packages)
+pacman::p_load(char=packages)
 
 # Install package for exactextractr
 require("exactextractr"){
   remotes::install_github("isciences/exactextractr")
 }
 
+source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+
+
 # 1) Setup server####
 timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
                      "sos_primary_fixed_3","sos_primary_fixed_4","sos_primary_fixed_5",
                      "sos_secondary_fixed_3","sos_secondary_fixed_4","sos_secondary_fixed_5")
 
-timeframe_choice<-timeframe_choices[1]
+timeframe_choice<-timeframe_choices[2]
 
 # Increase GDAL cache size
 terra::gdalCache(60000)
