@@ -11,14 +11,12 @@ packages <- c("s3fs", "remotes","data.table","httr")
 pacman::p_load(packages)
 
 # Install package for exactextractr
-require("exactextractr", character.only = TRUE){
+require("exactextractr"){
   remotes::install_github("isciences/exactextractr")
 }
 
 # 1) Setup server####
-
-timeframe_choice<-"jagermeyr"
-timeframe_choice<-"annual"
+timeframe_choices<-c("annual","jagermeyr")
 
 # Increase GDAL cache size
 terra::gdalCache(60000)
@@ -277,4 +275,13 @@ sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
       download.file(url=index$s3_path[i],destfile=file)
     }
   }
+  # 4) Set data paths
+    # 4.1) hazard class #####
+    haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
+    # 4.2) hazard metadata #####
+    haz_meta_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv"
+    # 4.3) mapspam codes #####
+    ms_codes_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv"
+    # 4.4) ecocrop ####
+    ecocrop_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/ecocrop.csv"
   
