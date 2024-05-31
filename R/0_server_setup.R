@@ -5,7 +5,7 @@ if (!require("pacman", character.only = TRUE)) {
 }
 
 # List of packages to be loaded
-packages <- c("s3fs", "remotes","data.table")
+packages <- c("s3fs", "remotes","data.table","httr")
 
 # Use pacman to install and load the packages
 pacman::p_load(packages)
@@ -205,7 +205,7 @@ sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
   base_raster<-"base_raster.tif"
   if(!file.exists(base_raster)){
     url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
-    httr::GET(url, write_disk(base_raster, overwrite = TRUE))
+    httr::GET(url, httr::write_disk(base_raster, overwrite = TRUE))
   }
   
   base_rast<-terra::rast(base_raster)
