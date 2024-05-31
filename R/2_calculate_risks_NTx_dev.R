@@ -629,7 +629,7 @@ if(F){
     progress <- progressr::progressor(along = 1:nrow(combinations))
     
   
-  foreach(i =  sample(1:nrow(combinations))) %dopar% {
+  foreach(i =  1:nrow(combinations)) %dopar% {
   #for(i in 1:nrow(combinations)){
   
           combos<-unlist(combinations[i,list(dry,heat,wet)])
@@ -709,7 +709,7 @@ if(F){
   }
     
     # Display progress
-    progress(sprintf("File %d/%d", i, nrow(combinations)))
+    progress(sprintf("Combination %d/%d", i, nrow(combinations)))
     
   })
     
