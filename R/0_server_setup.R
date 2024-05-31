@@ -225,10 +225,10 @@ sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
       response <- httr::GET(url = api_url, httr::write_disk(glw_file, overwrite = TRUE))
       
       # Check if the download was successful
-      if (status_code(response) == 200) {
+      if (httr::status_code(response) == 200) {
         print(paste0("File ",i," downloaded successfully."))
       } else {
-        print(paste("Failed to download file ",i,". Status code:", status_code(response)))
+        print(paste("Failed to download file ",i,". Status code:", httr::status_code(response)))
       }
     }
   }
