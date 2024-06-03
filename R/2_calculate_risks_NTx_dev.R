@@ -535,7 +535,7 @@ if(F){
   crop_wet<-c("NDWL0","PTOT_G")
   crop_dry<-c("PTOT_L","NDWS")
   
-  crop_choices2<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
+  crop_choices2<-crop_choices[!grepl("_tropical|_highland|generic",crop_choices)]
   
   # Create a unique list of all the 3-way combinations required for the crops and severity classes selected
   # Function to replace exact matches
@@ -630,7 +630,7 @@ if(F){
     progress <- progressr::progressor(along = 1:nrow(combinations))
   
     foreach(i = 1:nrow(combinations), .packages = c("terra", "data.table", "progressr")) %dopar% {
-      #for(i in 1:nrow(combinations)){
+    #  for(i in 1:nrow(combinations)){
     
     # Display progress
     progress(sprintf("Combination %d/%d", i, nrow(combinations)))
@@ -743,13 +743,21 @@ if(F){
   registerDoFuture()
   plan("multisession", workers = worker_n)
   
-  #foreach(i =  1:length(combinations_crops)) %dopar% {
+  # Enable progressr
+  progressr::handlers(global = TRUE)
+  progressr::handlers("progress")
   
-  for(i in 1:length(combinations_crops)){
+  # Wrap the parallel processing in a with_progress call
+  p<-with_progress({
+    # Define the progress bar
+    progress <- progressr::progressor(along = 1:length(combinations_crops))
     
-    crop_combos<-combinations_ca[crop==combinations_crops[i],combo_name1]
+    foreach(i = 1:length(combinations_crops), .packages = c("terra", "data.table", "progressr")) %dopar% {
+    #  for(i in 1:length(combinations_crops)){
+      
+      crop_combos<-combinations_ca[crop==combinations_crops[i],combo_name1]
   
-    for(j in 1:nrow(severity_classes)){
+      for(j in 1:nrow(severity_classes)){
       
       # Display progress
       cat('\r                                                                                                                                                           ')
@@ -771,8 +779,13 @@ if(F){
         
         terra::writeRaster(data,filename = save_file,overwrite=T)
       }
+      }
+      
+      progress(sprintf("Crop %d/%d", i, length(combinations_crops)))
+      
     }
-  }
+    
+  })
 
   plan(sequential)
   
