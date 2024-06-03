@@ -38,7 +38,7 @@ load_and_install_packages(packages)
   Scenarios[,combined:=paste0(Scenario,"-",Time)]
   
   # Set hazards to include in analysis
-  hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","NDWL0","PTOT","TAVG","TMAX") # NDD is not being used as it cannot be projected to future scenarios
+  hazards<-c("HSH_max","TMAX","TAVG","NDWL0","NDWS","NTx35","NTx40","PTOT","THI_max") # NDD is not being used as it cannot be projected to future scenarios
   
   # 1.3) List hazard folders ####
   folders<-list.dirs(indices_dir,recursive=F,full.names = T)
@@ -49,7 +49,7 @@ load_and_install_packages(packages)
           ][scenario!="historical",model:=unlist(tstrsplit(basename(path),"_",keep=2))
             ][scenario!="historical",timeframe:=paste0(unlist(tstrsplit(basename(path),"_",keep=3:4)),collapse="-"),by=path
               ][scenario=="historical",timeframe:="historical"]
-  
+
   # 1.4) Load admin boundaries #####
   Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
     file<-geo_files_local[i]
@@ -59,22 +59,24 @@ load_and_install_packages(packages)
   })
   names(Geographies)<-names(geo_files_local)
   
+  # 1.5) Load hazard meta-data #####
+  haz_meta<-data.table::fread(haz_meta_url, showProgress = FALSE)
+  
 # 2) Extract by admin ####
-
+levels<-c(admin0="adm0",admin1="adm1",admin2="adm2")
 FUN<-"mean"
 overwrite<-F
-
-# Parallel processing did not appear to speed up process
+update<-T
 
 file_all<-file.path(output_dir,"all_data.parquet")
 
-if(!file.exists(file_all)|overwrite==T){
+if(!file.exists(file_all)|update==T){
   data_ex<-rbindlist(lapply(1:nrow(folders),FUN=function(i){
   folders_ss<-paste0(folders$path[i],"/",hazards)
-  
-  rbindlist(lapply(1:length(folders_ss),FUN=function(j){
+  data<-rbindlist(lapply(1:length(folders_ss),FUN=function(j){
     
     folders_ss_focus<-folders_ss[j]
+    hazard<-basename(folders_ss_focus)
     
     h_var<-unlist(tail(tstrsplit(folders_ss_focus,"_"),1))
     if(h_var %in% c("mean","max")){
@@ -85,7 +87,7 @@ if(!file.exists(file_all)|overwrite==T){
     save_file<-file.path(output_dir,filename)
     
     # Progress
-    cat("folder =", i,"/",nrow(folders),basename(folders$path[i])," | hazard = ",j,"/",length(folders_ss),basename(folders_ss[j]),"\n")
+    cat("folder =", i,"/",nrow(folders),basename(folders$path[i])," | hazard = ",j,"/",length(folders_ss),hazard,"\n")
 
     if(!file.exists(save_file)|overwrite==T){
 
@@ -97,6 +99,12 @@ if(!file.exists(file_all)|overwrite==T){
     }
     
     rast_stack<-terra::rast(files)
+    
+    if(hazard=="PTOT"){
+      # Reclassify -9999 to NA
+      rast_stack[rast_stack <0] <- NA
+    }
+    
     names(rast_stack)<-gsub(".tif","",basename(files))
    
     data_ex <- admin_extract(data=rast_stack, Geographies, FUN = "mean", max_cells_in_memory = 1*10^9)
@@ -128,7 +136,7 @@ if(!file.exists(file_all)|overwrite==T){
       data[, variable := sub(paste0(FUN, "\\."), "", variable[1]), by = variable]
       
       data
-    }), fill = T)
+    }),use.names=T)
     
     # Add and modify columns to include crop type and exposure information.
     
@@ -150,21 +158,28 @@ if(!file.exists(file_all)|overwrite==T){
     
     data_ex
     
-  }))
- }))
+  }),use.names=T)
+  data
+ }),use.names=T)
   
   data_ex <- data_ex[order(admin0_name, admin1_name, admin2_name, variable, scenario, timeframe, model)]
+  
+  # This step is redundant and can be removed once the data is replaced (i.e. update = T, overwrite= T)
+  data_ex<-data_ex[,value:=round(value,1)
+                   ][!variable %in% c("AVAIL")]
+  
   arrow::write_parquet(data_ex,file.path(output_dir,"all_data.parquet"))
 
 }else{
   data_ex<-arrow::read_parquet(file_all)
 }
+
 # 3) Summarize annually or 3 month windows ####
 data_ex_ens<-data_ex[is.na(admin2_name)
                      ][,admin2_name:=NULL
-                       ][!variable %in% c("AVAIL","HSH_mean","THI_mean")
-                         ][,month:=as.integer(month)
-                           ][,year:=as.integer(year)]
+                       ][,month:=as.integer(month)
+                         ][,year:=as.integer(year)
+                           ][!variable %in% c("AVAIL","HSH_mean","THI_mean")] 
 
 vars<-data_ex_ens[,unique(variable)]
 
@@ -193,21 +208,33 @@ names(three_month_periods) <- sapply(1:12, function(start) {
 
 three_month_periods$annual<-1:12
 
+find_consecutive_pattern <- function(seq, pattern) {
+  pattern_length <- length(pattern_split)
+  
+  # Initialize the result vector with NA
+  result <- rep(NA, length(seq))
+  
+  # Check for the pattern in the sequence using a sliding window approach
+  for (i in 1:(length(seq) - pattern_length + 1)) {
+    if (all(seq[i:(i + pattern_length - 1)] == pattern)) {
+      result[i:(i + pattern_length - 1)] <- 1
+    }
+  }
+  
+  # Replace NA with a unique marker (e.g., 0)
+  result[!is.na(result)]<-rep(1:(length(result[!is.na(result)])/pattern_length),each=pattern_length)
+
+  return(result)
+}
+
 data_ex_ens <- rbindlist(pblapply(1:length(three_month_periods),FUN=function(i){
   m_period<-three_month_periods[[i]]
   data<-data_ex_ens[month %in% m_period]
-  if(length(m_period)!=12){
-    n<-data[1:length(m_period),month]
-    n1<-which(data[1:length(m_period),month]==m_period[1])
-    if(n1!=1){
-      m_low<-n[1:(n1-1)]
-      m_high<-n[n1:length(m_period)]
-      data<-data[!(year==min(year) & month %in% m_low|(year==max(year) & month %in% m_high))]
-      data[,seq:=rep(1:(nrow(data)/3),each=3)
-           ][,year:=year[1],by=seq
-             ][,seq:=NULL]
-    }
-  }
+
+  data[,seq:=find_consecutive_pattern(seq=month,pattern=m_period),by=list(admin0_name,admin1_name,model,scenario,timeframe,variable)]
+  data<-data[!is.na(seq)
+             ][,year:=year[1],by=list(admin0_name,admin1_name,model,scenario,timeframe,variable,seq)
+               ][,seq:=NULL]
   
   data<-rbindlist(lapply(vars, function(VAR) {
     # Get the corresponding function for the variable
@@ -215,21 +242,26 @@ data_ex_ens <- rbindlist(pblapply(1:length(three_month_periods),FUN=function(i){
     # Ensure the function exists and is valid
     func <- get(func_name, mode = "function", envir = parent.frame())
     # Summarize the data for the variable using the specified function
+    
+    data<-data[variable == VAR, .(value = func(value, na.rm = TRUE)),
+               by = .(admin0_name, admin1_name, scenario, model, timeframe, year, variable)
+    ][,season:=names(three_month_periods)[i]]
+    
     data
-    }))
+  }))
+
   
-  data<-data[variable == VAR, .(value = func(value, na.rm = TRUE)),
-       by = .(admin0_name, admin1_name, scenario, model, timeframe, year, variable)
-       ][,season:=names(three_month_periods)[i]]
   
-  data
   
   }))
 
 # Check -Inf values (Annobón is an island)
-unique(data_ex_ens[value==-Inf,list(admin0_name,admin1_name,variable)])
+unique(data_ex_ens[value==-Inf|is.infinite(value)|is.na(value)|is.null(value),list(admin0_name,admin1_name,variable)])
 
-data_ex_ens<-data_ex_ens[,list(mean=mean(value,na.rm=T),max=max(value,na.rm=T),min=min(value,na.rm=T),sd=sd(value,na.rm=T)),
+data_ex_ens<-data_ex_ens[,list(mean=mean(value,na.rm=T),
+                               max=max(value,na.rm=T),
+                               min=min(value,na.rm=T),
+                               sd=sd(value,na.rm=T)),
                          by=list(admin0_name,admin1_name,scenario,timeframe,year,variable,season)]
 
 data_ex_ens[,variable:=gsub("_mean|_max","",variable)
@@ -239,7 +271,11 @@ data_ex_ens[,variable:=gsub("_mean|_max","",variable)
 numeric_cols <- c("mean","max","min","sd")
 data_ex_ens[, (numeric_cols) := lapply(.SD, round,1), .SDcols = numeric_cols]
 
-data_ex_ens <- data_ex_ens[order(admin0_name, admin1_name, season,variable, scenario, timeframe)]
+
+data_ex_ens<- data_ex_ens[order(admin0_name, admin1_name, season,variable, scenario, timeframe)]
+
+unique(data_ex_ens[mean<0 & admin1_name!="Annobón",list(admin0_name,admin1_name,scenario,timeframe,variable,mean)])
+
 
 arrow::write_parquet(data_ex_ens,file.path(output_dir,"annual_ensembled_data.parquet"))
 
