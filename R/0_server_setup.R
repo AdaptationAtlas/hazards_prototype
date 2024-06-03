@@ -37,8 +37,10 @@ terra::free_RAM()/10^6
 
 worker_n<-20
 
-# Project location
-package_dir<-getwd()
+# Record R-project location
+if(!exists("package_dir")){
+  package_dir<-getwd()
+}
 
 # Where should workflow outputs be stored?
 working_dir<-"/home/jovyan/common_data/hazards_prototype"
