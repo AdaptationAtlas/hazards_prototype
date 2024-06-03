@@ -538,6 +538,12 @@ if(F){
   crop_choices2<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
   
   # Create a unique list of all the 3-way combinations required for the crops and severity classes selected
+  # Function to replace exact matches
+  replace_exact_matches <- function(strings, old_values, new_values) {
+    replacement_map <- setNames(new_values, old_values)
+    return(replacement_map[strings])
+  }
+  
   combinations_c<-unique(rbindlist(lapply(1:length(crop_choices2),FUN=function(i){
     crop_focus<-crop_choices2[i]
     rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
@@ -545,10 +551,12 @@ if(F){
       X<-data.table(expand.grid(heat=crop_heat,wet=crop_wet,dry=crop_dry,stringsAsFactors=F))
       haz_rename<-haz_class[crop==crop_focus & description==severity_focus,
                             list(old=index_name2,new=gsub(".tif","",filename))]
-      
-      X[,heat:=stri_replace_all_regex(heat,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
-        ][,dry:=stri_replace_all_regex(dry,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
-          ][,wet:=stri_replace_all_regex(wet,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+
+      replace_exact_matches(X$heat,haz_rename$old, haz_rename$new)
+
+      X[,heat:=replace_exact_matches(heat,old_values=haz_rename$old,new_values = haz_rename$new)
+        ][,dry:=replace_exact_matches(dry,old_values=haz_rename$old,new_values = haz_rename$new)
+          ][,wet:=replace_exact_matches(wet,old_values=haz_rename$old,new_values = haz_rename$new)
             ][,severity_class:=severity_focus
               ][,crop:=crop_focus]
       X
@@ -568,13 +576,13 @@ if(F){
     crop_focus<-livestock_choices[i]
     rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
       severity_focus<-severity_classes$class[j]
-      X<-data.table(expand.grid(heat=crop_heat,wet=crop_wet,dry=crop_dry,stringsAsFactors=F))
+      X<-data.table(expand.grid(heat=animal_heat,wet=animal_wet,dry=animal_dry,stringsAsFactors=F))
       haz_rename<-haz_class[crop==crop_focus & description==severity_focus,
                             list(old=index_name2,new=gsub(".tif","",filename))]
       
-      X[,heat:=stri_replace_all_regex(heat,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
-      ][,dry:=stri_replace_all_regex(dry,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
-      ][,wet:=stri_replace_all_regex(wet,pattern=haz_rename$old,replacement = haz_rename$new,vectorize_all = F)
+      X[,heat:=replace_exact_matches(heat,old_values=haz_rename$old,new_values = haz_rename$new)
+      ][,dry:=replace_exact_matches(dry,old_values=haz_rename$old,new_values = haz_rename$new)
+      ][,wet:=replace_exact_matches(wet,old_values=haz_rename$old,new_values = haz_rename$new)
       ][,severity_class:=severity_focus
       ][,crop:=crop_focus]
       X
@@ -606,7 +614,6 @@ if(F){
   
   overwrite<-F
   
-  
   registerDoFuture()
   # Estimate the RAM available therefore the number of workers
   workers_int<- floor(free_RAM()*0.6/10^6/5)
@@ -621,10 +628,12 @@ if(F){
   p<-with_progress({
     # Define the progress bar
     progress <- progressr::progressor(along = 1:nrow(combinations))
-    
   
-  foreach(i =  1:nrow(combinations)) %dopar% {
-  #for(i in 1:nrow(combinations)){
+    foreach(i = 1:nrow(combinations), .packages = c("terra", "data.table", "progressr")) %dopar% {
+      #for(i in 1:nrow(combinations)){
+    
+    # Display progress
+    progress(sprintf("Combination %d/%d", i, nrow(combinations)))
   
           combos<-unlist(combinations[i,list(dry,heat,wet)])
           grep_vals<-paste0(paste0(combos,".tif"),collapse = "|")
@@ -637,7 +646,6 @@ if(F){
                                                                      ][grep(names(combos)[2],combo_name),value:=value+10
                                                                        ][grep(names(combos)[3],combo_name),value:=value+100]
             
-  
           folder<-paste0(haz_time_int_dir,"/",paste0(combos,collapse = "+"))
           
           if(!dir.exists(folder)){
@@ -701,10 +709,6 @@ if(F){
             }
             }
   }
-    
-    # Display progress
-    progress(sprintf("Combination %d/%d", i, nrow(combinations)))
-    
   })
     
   plan(sequential)
