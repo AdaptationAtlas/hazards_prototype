@@ -68,60 +68,6 @@
   }
   
   # Upload files S3 bucket
-  upload_files_to_s3 <- function(files,s3_file_names=NULL, folder=NULL, selected_bucket, new_only=F, max_attempts = 3, overwrite=F,mode="private") {
-    
-    # Create the s3 directory if it does not already exist
-    if(!s3_dir_exists(selected_bucket)){
-      s3_dir_create(selected_bucket)
-    }
-    
-    # List files if a folder location is provided
-    if(!is.null(folder)){
-      files <- list.files(folder, full.names = T)
-    }
-    
-    if(overwrite==F){
-      # List files in the s3 bucket
-      files_s3 <- basename(s3_dir_ls(selected_bucket))
-      # Remove any files that already exist in the s3 bucket
-      files <- files[!basename(files) %in% files_s3]
-    }
-    
-    for (i in seq_along(files)) {
-      cat('\r', paste("File:", i, "/", length(files))," | ",basename(files[i]),"                                                 ")
-      flush.console()
-      
-      if(is.null(s3_file_names)){
-      s3_file_path <- paste0(selected_bucket, "/", basename(files[i]))
-      }else{
-        if(length(s3_file_names)!=length(files)){stop("s3 filenames provided different length to local files")}
-        s3_file_path <- paste0(selected_bucket, "/", s3_file_names[i])
-      }
-      
-      tryCatch({
-        attempt <- 1
-        while(attempt <= max_attempts) {
-          s3_file_upload(files[i], s3_file_path, overwrite = overwrite)
-          # Check if upload successful
-          file_check <- s3_file_exists(s3_file_path)
-          
-          if(mode!="private"){
-            s3_file_chmod(path=s3_file_path,mode=mode)
-          }
-          
-          if (file_check) break # Exit the loop if upload is successful
-          
-          if (attempt == max_attempts && !file_check) {
-            stop("File did not upload successfully after ", max_attempts, " attempts.")
-          }
-          attempt <- attempt + 1
-        }
-      }, error = function(e) {
-        cat("Error during file upload:", e$message, "\n")
-      })
-    }
-  }
-  
   upload_files_to_s3 <- function(files, s3_file_names = NULL, folder = NULL, selected_bucket, new_only = FALSE, max_attempts = 3, overwrite = FALSE, mode = "private", folder_public = F) {
     
     # Create the s3 directory if it does not already exist
