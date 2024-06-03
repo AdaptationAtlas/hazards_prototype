@@ -91,13 +91,13 @@ hazards<-c("HSH","NDWL0", "NDWS","NTx35","NTx40", "PTOT" , "TAI" ,  "TAVG" , "TH
 
 # Add in more heat thresholds
 if(F){
-  hazards2<-paste0("NTx",c(20:34,36:44,46:50))
+  hazards2<-paste0("NTx",c(20:34,36:39,41:50))
   haz_meta<-rbind(haz_meta,data.table(variable.code=hazards2,`function`="mean"))
   hazards<-c(hazards,hazards2)
 }
 
 if(T){
-  hazards<-paste0("NTx",c(30:34,36:44,46:50))
+  hazards<-paste0("NTx",c(30:34,36:39,41:50))
   haz_meta<-data.table(variable.code=hazards,`function`="mean")
 }
 
