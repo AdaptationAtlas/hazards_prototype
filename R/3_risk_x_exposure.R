@@ -13,7 +13,7 @@ packages <- c("terra",
               "wbstats")
 
 # Call the function to install and load packages
-load_and_install_packages(packages)
+pacman::p_load(char=packages)
 
 # b) Load functions & wrappers ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
@@ -61,9 +61,10 @@ crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
 # 0) Load an prepare admin vectors and exposure rasters, extract exposure by admin ####
   # 0.1) Geographies #####
   Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
+    print(i)
     file<-geo_files_local[i]
-    data<-terra::vect(file)
-    names(data)<-gsub("_nam$","_name$",names(data))
+    data<-arrow::open_dataset(file)
+    data <- data |> sf::st_as_sf() |> terra::vect()
     data
   })
   names(Geographies)<-names(geo_files_local)
@@ -527,7 +528,7 @@ for(k in 1:length(dirs)){
       level<-levels[i]
       print(level)
       
-      data<-data.table(data.frame(sfarrow::st_read_parquet(paste0(folder,"/",file,"_",levels[i],".parquet"))))
+      data<-data.table(data.frame(arrow::read_parquet(paste0(folder,"/",file,"_",levels[i],".parquet"))))
       
       data<-data[,!c("admin_name","iso3","geometry")]
       
