@@ -1,4 +1,8 @@
 # 0) Load packages and functions
+
+# Increase download timeout
+options(timeout = 600)
+
 # Install and load pacman if not already installed
 if (!require("pacman", character.only = TRUE)) {
   install.packages("pacman")
@@ -6,7 +10,7 @@ if (!require("pacman", character.only = TRUE)) {
 }
 
 # List of packages to be loaded
-packages <- c("remotes","data.table","httr")
+packages <- c("remotes","data.table","httr","s3fs","xml2")
 
 # Use pacman to install and load the packages
 pacman::p_load(char=packages)
@@ -41,7 +45,7 @@ if(!exists("package_dir")){
   package_dir<-getwd()
 }
 
-# Where should workflow outputs be stored?
+# 1.1) Where should workflow outputs be stored? #####
 
 # Cglabs
 working_dir<-"/home/jovyan/common_data/hazards_prototype"
@@ -126,14 +130,22 @@ if(!dir.exists(exposure_dir)){
   dir.create(exposure_dir)
 }
 
+geo_dir<-"Data/boundaries"
+
+if(!dir.exists(geo_dir)){
+  dir.create(geo_dir)
+}
+
 # Inputs
 ac_dir<-"Data/adaptive_capacity"
 if(!dir.exists(ac_dir)){
   dir.create(ac_dir,recursive=T)
 }
 
-
 hpop_dir<-"Data/atlas_pop"
+if(!dir.exists(hpop_dir)){
+  dir.create(hpop_dir)
+}
 
 commodity_mask_dir<-"Data/commodity_masks"
 if(!dir.exists(commodity_mask_dir)){
@@ -168,22 +180,15 @@ sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
 # 2.2) Atlas s3 bucket #####
 bucket_name <- "http://digital-atlas.s3.amazonaws.com"
 bucket_name_s3<-"s3://digital-atlas"
-
+s3<-s3fs::S3FileSystem$new(anonymous = T)
 # 3) Download key datasets ####
 # 3.1) Geoboundaries #####
-geo_dir<-"Data/boundaries"
-
-if(!dir.exists(geo_dir)){
-  dir.create(geo_dir)
-}
-
 update<-F
 
 geo_files_s3<-c(
-  "https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin0_harmonized.gpkg",
-  "https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin1_harmonized.gpkg",
-  "https://digital-atlas.s3.amazonaws.com/boundaries/atlas-region_admin2_harmonized.gpkg")
-
+  file.path(bucket_name_s3,"boundaries/atlas-region_admin0_harmonized.parquet"),
+  file.path(bucket_name_s3,"boundaries/atlas-region_admin1_harmonized.parquet"),
+  file.path(bucket_name_s3,"boundaries/atlas-region_admin2_harmonized.parquet"))
 
 geo_files_local<-file.path(geo_dir,basename(geo_files_s3))
 names(geo_files_local)<-c("admin0","admin1","admin2")
@@ -191,23 +196,33 @@ names(geo_files_local)<-c("admin0","admin1","admin2")
 lapply(1:length(geo_files_local),FUN=function(i){
   file<-geo_files_local[i]
   if(!file.exists(file)|update==T){
-    download.file(url=geo_files_s3[i],destfile=file)
+    #download.file(url=geo_files_s3[i],destfile=file)
+    s3$file_download(geo_files_s3[i],file)
   }
 })
+
+file<-"s3://digital-atlas/boundaries/atlas-region_admin0_harmonized.parquet"
+download.file(url=file,destfile=file.path(geo_dir,basename(file)))
+
+s3fs::s3_file_download(path=file,new_path = file.path(geo_dir,basename(file)))
 
 # 3.2) Mapspam #####
 update<-F
 
-# get index
-index<-fread("https://digital-atlas.s3.amazonaws.com/MapSpam/raw/2020V1r0_SSA/index.csv")
+# Specify s3 prefix (folder path)
+folder_path <- "MapSpam/raw/2020V1r0_SSA/"
 
-files_local<-file.path(mapspam_dir,basename(index$s3_path))
+# List files in the specified S3 bucket and prefix
+files_s3 <- list_s3_bucket_contents(bucket_url=bucket_name, folder_path = folder_path)
+files_s3<-files_s3[grepl(".csv",files_s3) & !grepl("index",files_s3)]
+files_s3<-gsub(bucket_name,bucket_name_s3,files_s3)
+files_local<-gsub(file.path(bucket_name_s3,folder_path),paste0(ls_vop_dir),files_s3)
 
 # If mapspam data does not exist locally download from S3 bucket
 lapply(1:length(files_local),FUN=function(i){
   file<-files_local[i]
   if(!file.exists(file)|update==T){
-    download.file(url=index$s3_path[i],destfile=file)
+    s3$file_download(files_s3[i],file)
   }
 })
 
@@ -277,17 +292,40 @@ if(!file.exists(afr_highlands_file)|update==T){
 # 3.7) Livestock vop #####
 update<-F
 
-# get index
-index<-fread("https://digital-atlas.s3.amazonaws.com/livestock_vop/index.csv")
-files_local<-file.path(ls_vop_dir,basename(index$s3_path))
+# Specify s3 prefix (folder path)
+folder_path <- "livestock_vop/"
+
+# List files in the specified S3 bucket and prefix
+files_s3 <- list_s3_bucket_contents(bucket_url=bucket_name, folder_path = folder_path)
+files_s3<-files_s3[grepl(".tif",files_s3)]
+files_s3<-gsub(bucket_name,bucket_name_s3,files_s3)
+files_local<-gsub(file.path(bucket_name_s3,folder_path),paste0(ls_vop_dir),files_s3)
 
 # If data does not exist locally download from S3 bucket
 for(i in 1:length(files_local)){
   file<-files_local[i]
   if(!file.exists(file)|update==T){
-    download.file(url=index$s3_path[i],destfile=file)
+    s3$file_download(files_s3[i],file)
   }
 }
+
+# 3.8) Human population #####
+# Specify s3 prefix (folder path)
+folder_path <- "population/"
+
+# List files in the specified S3 bucket and prefix
+files_s3 <- list_s3_bucket_contents(bucket_url=bucket_name, folder_path = folder_path)
+files_s3<-files_s3[grepl(".tif",files_s3)]
+files_s3<-gsub(bucket_name,bucket_name_s3,files_s3)
+files_local<-gsub(file.path(bucket_name_s3,folder_path),paste0(hpop_dir),files_s3)
+
+for(i in 1:length(files_local)){
+  file<-files_local[i]
+  if(!file.exists(file)|update==T){
+    s3$file_download(files_s3[i],file)
+  }
+}
+
 # 4) Set data paths ####
 # 4.1) hazard class #####
 haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
