@@ -3,8 +3,9 @@ packages <- c("terra",
               "data.table", 
               "exactextractr",
               "s3fs",
-              "sf", 
-              "sfarrow", 
+              "sf",
+              "sfarrow",
+              "geoarrow", 
               "arrow",
               "doFuture",
               "stringr", 
@@ -61,7 +62,6 @@ crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
 # 0) Load an prepare admin vectors and exposure rasters, extract exposure by admin ####
   # 0.1) Geographies #####
   Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
-    print(i)
     file<-geo_files_local[i]
     data<-arrow::open_dataset(file)
     data <- data |> sf::st_as_sf() |> terra::vect()
@@ -363,19 +363,10 @@ crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
     }
   
     # 0.2.4) Population ######
-    bucket_files<-paste0("s3://digital-atlas/population/",c("total_pop.tif","rural_pop.tif","urban_pop.tif"))
-    local_files<-file.path(hpop_dir,basename(bucket_files))
-    
-    if(!dir.exists(hpop_dir)|overwrite==T){
-      dir.create(hpop_dir)
-      for (i in seq_along(bucket_files)) {
-        s3fs::s3_file_download(bucket_files[i], local_files[i],overwrite=T)
-      }
-    }
     
       file<-paste0(exposure_dir,"/hpop.tif")
       if(!file.exists(file)){
-            
+        local_files<-list.files(hpop_dir,".tif",full.names = T)
         hpop<-terra::rast(local_files)
         hpop<-terra::crop(hpop,Geographies)
         
