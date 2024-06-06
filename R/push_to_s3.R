@@ -267,20 +267,12 @@
   folder<-mapspam_dir
   s3_bucket <- "s3://digital-atlas/MapSpam/raw/2020V1r0_SSA"
   
-  # Add an index (temporary fix until we get admin rights to make folder public-read)
-  index<-data.table(s3_path=s3_dir_ls(s3_bucket))[!grepl("index.csv",s3_path)]
-  index[,technology:=gsub(".csv|.DBF","",sapply(strsplit(index$s3_path,"_"),tail,1))
-        ][,variable:=sapply(strsplit(index$s3_path,"_"),tail,2)[1,]
-          ][,group:=F
-            ][grep("_gr_",s3_path),group:=T
-              ][,s3_path:=gsub("s3://digital-atlas","https://digital-atlas.s3.amazonaws.com",s3_path)]
-  fwrite(index,file.path(folder,"index.csv"))
-
   upload_files_to_s3(files = list.files(folder,full.names = T),
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F,
-                     mode="public-read")
+                     mode="public-read",
+                     folder_public=T)
   
   # Upload - livestock_vop ####
   folder<-ls_vop_dir
@@ -289,15 +281,15 @@
   s3_dir_ls(s3_bucket)
   
   # Prepare tif data by converting to COG format
-  ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
-  
+  #ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
   files<-list.files(folder,".tif$",full.names = T)
   
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F,
-                     mode="public-read")
+                     mode="public-read",
+                     folder_public = T)
   
   # You will need to run the function above again with overwrite=F to add the index
   index<-data.table(s3_path=s3_dir_ls(s3_bucket))[!grepl("index.csv",s3_path)]
@@ -317,6 +309,19 @@
   s3_bucket <- "s3://digital-atlas/boundaries"
   s3_dir_ls(s3_bucket)
   
+  # Upload - human population ####
+  folder<-hpop_dir
+  s3_bucket <- file.path(bucket_name_s3,"population/worldpop_2020")
+  
+  files<-list.files(folder,".tif$",full.names = T)
+  
+  upload_files_to_s3(files = files,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=F,
+                   mode="public-read",
+                   folder_public = T)
+
 # 2) Time sequence specific ####
   # Upload - hazard timeseries (parquets) ####
   folder<-paste0("Data/hazard_timeseries/",timeframe_choice)

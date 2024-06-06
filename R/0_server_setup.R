@@ -196,15 +196,9 @@ names(geo_files_local)<-c("admin0","admin1","admin2")
 lapply(1:length(geo_files_local),FUN=function(i){
   file<-geo_files_local[i]
   if(!file.exists(file)|update==T){
-    #download.file(url=geo_files_s3[i],destfile=file)
     s3$file_download(geo_files_s3[i],file)
   }
 })
-
-file<-"s3://digital-atlas/boundaries/atlas-region_admin0_harmonized.parquet"
-download.file(url=file,destfile=file.path(geo_dir,basename(file)))
-
-s3fs::s3_file_download(path=file,new_path = file.path(geo_dir,basename(file)))
 
 # 3.2) Mapspam #####
 update<-F
