@@ -29,6 +29,7 @@ timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
                      "sos_primary_fixed_3","sos_primary_fixed_4","sos_primary_fixed_5",
                      "sos_secondary_fixed_3","sos_secondary_fixed_4","sos_secondary_fixed_5")
 
+  # 1.1) Choose timeframe #####
 timeframe_choice<-timeframe_choices[1]
 
 # Increase GDAL cache size
@@ -45,7 +46,7 @@ if(!exists("package_dir")){
   package_dir<-getwd()
 }
 
-  # 1.1) Where should workflow outputs be stored? #####
+  # 1.2) Where should workflow outputs be stored? #####
 
 # Cglabs
 working_dir<-"/home/jovyan/common_data/hazards_prototype"
@@ -201,7 +202,7 @@ if(timeframe_choice!="annual"){
   })
   
   # 3.2) Mapspam #####
-  update<-T
+  update<-F
   
   # Specify s3 prefix (folder path)
   folder_path <- "MapSpam/raw/2020V1r0_SSA/"
