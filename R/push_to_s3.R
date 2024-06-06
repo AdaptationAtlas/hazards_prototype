@@ -497,22 +497,8 @@
                      max_attempts = 3,
                      overwrite=T)
   
-# 4) hazard_timeseries data ####
-  # 4.1) Upload - hazard timeseries mean monthly #####
-  folder<-haz_timeseries_monthly_dir
-  s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month"
-  
-  files<-list.files(folder,"ensembled_data.parquet$",full.names = T)
-  
-  upload_files_to_s3(files = files,
-                     selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite=T,
-                     mode="public-read")
-  
-  s3_dir_ls(s3_bucket)
-  
-  # 4.2) Upload - hazard_timeseries #####
+# 4) Hazard_timeseries data (datasets from Julian's hazard workflow) ####
+  # 4.1) Upload - hazard_timeseries #####
   s3_bucket <-haz_timeseries_s3_dir
   # make sure the folder is set to the atlas_hazards/cmip6/indices server folder
   folder<-indices_seasonal_dir
@@ -535,6 +521,48 @@
   
 
 # 5) !!!***TO DO***!!! raw data by season
+  # 4.2) Upload - hazard timeseries mean monthly #####
+  folder<-haz_timeseries_monthly_dir
+  s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month"
+  
+  files<-list.files(folder,"ensembled",full.names = T)
+  
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=F,
+                     mode="public-read",
+                     folder_public = T)
+  
+  s3_dir_ls(s3_bucket)
+  
+  # 4.3) Upload - change in ptot area calcs #####
+  folder<-haz_mean_ptot_dir
+  s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month/ptot_change"
+  
+  files<-list.files(folder,"parquet$",full.names = T)
+  
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=F,
+                     mode="public-read",
+                     folder_public = T)
+  
+  # 4.3) Upload - THI area vs severity #####
+  folder<-haz_mean_thi_dir
+  s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month/thi_perc"
+  
+  files<-list.files(folder,"parquet$",full.names = T)
+  
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=F,
+                     mode="public-read",
+                     folder_public = T)
+  
+  
 # =========================####
 # UPLOAD TO GOOGLEDRIVE ####
   # Ensure the necessary libraries are loaded
