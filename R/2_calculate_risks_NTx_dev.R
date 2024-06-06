@@ -207,28 +207,9 @@ overwrite<-F
 folder_path <- "risk_prototype/data/hazard_timeseries/annual/"
 
 # List files in the specified S3 bucket and prefix
-file_list <- list_s3_bucket_contents(bucket_url=bucket_name, folder_path = folder_path)
+file_list<-s3fs::s3_dir_ls(file.path(bucket_name_s3,folder_path))
 file_list<-grep(".tif",file_list,value=T)
-new_files<-gsub(file.path(bucket_name,folder_path),paste0(haz_timeseries_dir,"/"),file_list)
-
-# Define a function to download a single file with retries
-download_file <- function(url, destfile, overwrite = TRUE, retries = 3) {
-  for (attempt in 1:retries) {
-    if (!file.exists(destfile) || overwrite) {
-      response <- GET(url, write_disk(destfile, overwrite = TRUE))
-      if (status_code(response) == 200) {
-        message("Successfully downloaded: ", destfile)
-        break
-      } else {
-        message("Failed to download: ", url, " with status code: ", status_code(response))
-        if (attempt == retries) {
-          warning("Reached maximum retries for: ", url)
-        }
-      }
-    }
-    Sys.sleep(1) # Wait for 1 second before retrying
-  }
-}
+new_files<-gsub(file.path(bucket_name_s3,folder_path),paste0(haz_timeseries_dir,"/"),file_list)
 
 # Set up the future plan for parallel processing
 plan(multisession, workers = 8) # Adjust the number of workers based on your system's capabilities
@@ -244,8 +225,14 @@ p<-with_progress({
   
   # Download files in parallel
   future_lapply(seq_along(file_list), function(i) {
-    download_file(file_list[i], new_files[i],overwrite = overwrite)
+    #lapply(seq_along(file_list), function(i) {
+    #print(i)
     progress(sprintf("File %d/%d", i, length(file_list)))
+    
+    if((!file.exists(new_files[i]))|overwrite==T){
+      s3$file_download(file_list[i],new_files[i],overwrite=T)
+    }
+
     })
 })
 
@@ -260,11 +247,9 @@ Thresholds_U[,code:=paste0(direction,threshold)
 ][,code:=gsub("<","L",code)
 ][,code:=gsub(">","G",code)]
 
-Thresholds_U[,unique(index_name)]
-
 files<-list.files(haz_timeseries_dir,".tif",full.names = T)
-# Ensure we are only using ensemble or historical data (for individual models we would need to customize the layer name functions of some sections)
-files<-grep("ENSEMBLEmean|historical",files,value=T)
+# Limite to ensemble or historical data (for individual models we would need to customize the layer name functions of some sections)
+# files<-grep("ENSEMBLEmean|historical",files,value=T)
 
 overwrite<-F
 n<-0
@@ -290,7 +275,7 @@ p<-with_progress({
     
     for(j in 1:length(files_ss)){
   
-      file<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),paste0(haz_time_class_dir,"/",tail(tstrsplit(files_ss[j],"/"),1)),fixed = T)
+      file<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),file.path(haz_time_class_dir,"/",tail(tstrsplit(files_ss[j],"/"),1)),fixed = T)
       
       if((!file.exists(file))|overwrite){
         data<-terra::rast(files_ss[j])
@@ -316,7 +301,7 @@ plan(sequential)
 files<-list.files(haz_time_class_dir,full.names = T)
 
 # Limit to ensemble or historical data
-files<-grep("ENSEMBLE|historical",files,value=T)
+#files<-grep("ENSEMBLE|historical",files,value=T)
 
 overwrite<-F
 
@@ -462,8 +447,8 @@ files<-list.files(haz_timeseries_dir,".tif",full.names = T)
 # Remove annual sd estimates
 files<-files[!grepl("ENSEMBLEsd",files)]
 
-# Ensure we are only using ensemble or historical data
-files<-grep("ENSEMBLE|historical",files,value=T)
+# Limit to ensemble or historical data
+#files<-grep("ENSEMBLE|historical",files,value=T)
 
 overwrite<-F
 
@@ -508,24 +493,32 @@ if(F){
   files_hist<-grep("historic",files,value = T)
   files_fut<-files[!files %in% files_hist]
   
-  data_hist<-terra::rast(files_hist[1])
+  change_file<-file.path(haz_mean_dir,"change.tif")
   
-  for(j in 1:length(files_fut)){
-    data_fut<-terra::rast(files_fut[j])
-    # Display progress
-    cat('\r                                                                                                                     ')
-    cat('\r',paste0("Scenario: ",j))
-    flush.console()
+  if(!file.exists(change_file)|overwrite==T){
     
-    change<-data_fut-data_hist
-    names(change)<-paste0(names(change),"_change")
-    
-    save_name_change<-gsub(".tif","_change.tif",files_fut[j])  
-    
-    terra::writeRaster(change,filename = save_name_change,overwrite=T)
-    
+     change<-pblapply(1:length(files_hist),FUN=function(i){
+     # Display progress
+      sprintf("File %d/%d", i, length(file_hist))
+      
+      file_hist<-files_hist[i]
+      var<-gsub("historical_","",tail(tstrsplit(file_hist,"/"),1))
+      files_fut_ss<-grep(var,files_fut,value=T)
+      future<-terra::rast(files_fut_ss)
+      past<-terra::rast(file_hist)
+      
+      change<-future-past
+      names(change)<-gsub(".tif","",basename(files_fut_ss))
+      return(change)
+      })
+   
+   change<-terra::rast(change)
+   
+   terra::writeRaster(change,filename=change_file)
+   
   }
 }
+
 
 # 5) Interactions ####
   # 5.1) Choose Interaction Variables ####
@@ -594,6 +587,8 @@ if(F){
   
   # Restructure names of classified hazard files so they can be easily searched for scenario x timeframe x hazard x threshold
   haz_class_files<-list.files(haz_time_class_dir,full.names = T)
+  haz_class_files<-grep("ENSEMBLE|historical",haz_class_files,value=T)
+  
   haz_class_files2<-list.files(haz_time_class_dir)
   haz_class_files2<-gsub("_max_max","max",haz_class_files2)
   haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
@@ -729,6 +724,7 @@ if(F){
  }
  
   # 5.3) Interactions: For each crop combine hazards into a single file and add to hazard_risk dir #####
+ overwrite<-T
   combinations_ca<-rbind(combinations_c,combinations_a)[,combo_name:=paste0(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet,crop,severity_class)
                                                         ][,folder:=paste0(haz_time_int_dir,"/",combo_name)
                                                           ][,severity_class:=tolower(severity_class)]
