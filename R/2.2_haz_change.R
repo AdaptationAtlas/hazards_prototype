@@ -69,7 +69,7 @@ merge_admin_extract<-function(data_ex) {
   return(data_ex)
 }
 
-# 0.1) Set up workspace #####
+  # 0.1) Set up workspace #####
 haz_class<-fread(haz_class_url)
 
 # Make cell size raster
@@ -96,32 +96,34 @@ if(!dir.exists(haz_mean_ptot_dir)){
 files<-list.files(haz_mean_dir,".tif",full.names = T)
 files<-grep("PTOT",files,value=T)
 files<-files[!grepl("change",files)]
-files_hist<-grep("historic",files,value = T)
+file_hist<-grep("historic",files,value = T)
 files_fut<-files[!files %in% files_hist]
 
 save_file<-file.path(haz_mean_ptot_dir,"ptot_perc_change.tif")
+do_save<-F
 
 if(!file.exists(save_file)|overwrite==T){
   
-  change<-pblapply(1:length(files_hist),FUN=function(i){
-    # Display progress
-    sprintf("File %d/%d", i, length(file_hist))
-    
-    file_hist<-files_hist[i]
+
     var<-gsub("historical_","",tail(tstrsplit(file_hist,"/"),1))
     files_fut_ss<-grep(var,files_fut,value=T)
     future<-terra::rast(files_fut_ss)
     past<-terra::rast(file_hist)
     
-    change<-round(100*(future-past)/past,1)
+    diff<-future-past
+    change<-round(100*(diff)/past,1)
+    
     names(change)<-gsub(".tif","",basename(files_fut_ss))
-    return(change)
-  })
+    names(diff)<-gsub(".tif","",basename(files_fut_ss))
+    
+  if(do_save){
+   terra::writeRaster(change,filename=save_file)
+   terra::writeRaster(diff,filename=gsub("_change","_diff",save_file))
+  }
   
-  change<-terra::rast(change)
-  
-  terra::writeRaster(change,filename=save_file)
-  
+}else{
+  change<-terra::rast(save_file)
+  diff<-terra::rast(gsub("_change","_diff",save_file))
 }
 
 
@@ -145,11 +147,18 @@ change_dec<-admin_extract(change_dec,
                           Geographies = Geographies,
                           FUN = "sum")
 
+diff<-admin_extract(diff,
+                    Geographies = Geographies,
+                    FUN = "mean")
+
 # Tabulate data
 change_inc<-merge_admin_extract(change_inc)[,direction:="increase_5"]
 change_dec<-merge_admin_extract(change_dec)[,direction:="decrease_5"]
+
 base_areas<-merge_admin_extract(base_areas)[,direction:="total"]
 setnames(base_areas,"value","total")
+
+diff<-merge_admin_extract(diff)
 
 # Work out percentage change
 change<-rbind(change_inc,change_dec)
@@ -164,18 +173,27 @@ var_names<-do.call("cbind",tstrsplit(var_names,"_"))
 colnames(var_names)<-c("scenario","model","timeframe")
 
 change<-cbind(change,var_names)[,variable:="PTOT"][,stat:="perc_change"]
+diff<-cbind(diff,var_names)[,variable:="PTOT"][,stat:="diff"]
+
 
 # Generate ensemble data from models
 change_ens<-change[!grepl("ENSEMBLE",model)]
 change_ens<-change_ens[,list(mean=mean(value,na.rm=T),min=min(value,na.rm=T),max=max(value,na.rm=T),sd=sd(value,na.rm=T)),
                        by=list(admin0_name,admin1_name,admin2_name,scenario,timeframe,direction,variable,stat)]
 
+diff_ens<-diff[!grepl("ENSEMBLE",model)]
+diff_ens<-diff_ens[,list(mean=mean(value,na.rm=T),min=min(value,na.rm=T),max=max(value,na.rm=T),sd=sd(value,na.rm=T)),
+                       by=list(admin0_name,admin1_name,admin2_name,scenario,timeframe,variable,stat)]
+
 # save results
 arrow::write_parquet(change,file.path(haz_mean_ptot_dir,"ptot_change_by_model.parquet"))
 arrow::write_parquet(change_ens,file.path(haz_mean_ptot_dir,"ptot_change_ensemble.parquet"))
 
-# 2) % area of severe or extreme crop or livestock stress
-# 2.1) Livestock #####
+arrow::write_parquet(diff,file.path(haz_mean_ptot_dir,"ptot_diff_by_model.parquet"))
+arrow::write_parquet(diff_ens,file.path(haz_mean_ptot_dir,"ptot_diff_ensemble.parquet"))
+
+# 2) % area of severe or extreme crop or livestock heat stress ####
+  # 2.1) Livestock #####
 # set save location
 haz_mean_thi_dir<-file.path(haz_mean_dir,"thi_perc")
 if(!dir.exists(haz_mean_thi_dir)){
@@ -260,3 +278,5 @@ data_ens<-data[,list(mean=mean(value,na.rm=T),
 
 arrow::write_parquet(data,file.path(haz_mean_thi_dir,"thi_perc_area_by_model.parquet"))
 arrow::write_parquet(data_ens,file.path(haz_mean_thi_dir,"thi_perc_area_ensemble.parquet"))
+
+  # 2.2) Crops #####
