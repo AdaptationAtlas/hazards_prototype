@@ -1,3 +1,10 @@
+# Note I think this entire script can be generalized.
+  # We would need to pull in the stat from haz_meta to automate the "_mean-G" text creation (e.g. 2.2)
+  # Would also need to automate the G/L coding
+  # Livestock and crops could combined, but the highland/tropical split for livestock would need to be incorporated
+  # The entire workflow here could be generalized to generate area merge with total area. The resulting table could then
+  # Be wrangled to give % and % change from baseline.
+
 # First run server_setup script
 # 0) Load R functions & packages ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
@@ -194,89 +201,182 @@ arrow::write_parquet(diff_ens,file.path(haz_mean_ptot_dir,"ptot_diff_ensemble.pa
 
 # 2) % area of severe or extreme crop or livestock heat stress ####
   # 2.1) Livestock #####
-# set save location
-haz_mean_thi_dir<-file.path(haz_mean_dir,"thi_perc")
-if(!dir.exists(haz_mean_thi_dir)){
-  dir.create(haz_mean_thi_dir)
-}
-
-# list data files
-files<-list.files(haz_time_risk_dir,"THI_max",full.names =T)
-
-# get severity thresholds
-cat_thresholds<-haz_class[index_name=="THI_max" & 
-                            description %in% c("Severe","Extreme") & 
-                            crop  %in% c("cattle_highland","cattle_tropical"),list(index_name,crop,description,threshold)
-                          ][,code:=paste0("THI_max_max-G",threshold)]
-
-# get highland/lowland mask
-highlands<-terra::rast(afr_highlands_file)
-highlands<-terra::resample(highlands,base_rast,method="near")
-tropical<-classify(highlands,data.frame(from=c(0,1),to=c(1,0)))
-
-# subset data files to 
-data<-pblapply(1:nrow(cat_thresholds),FUN=function(i){
-  files_ss<-grep(cat_thresholds[i,code],files,value=T)
-  data<-terra::rast(files_ss)
-  
-  # Apply highland/lowland mask
-  if(cat_thresholds[i,grepl("tropical",crop)]){
-    data<-data*tropical
-  }else{
-    data<-data*highlands
+  # set save location
+  haz_mean_thi_dir<-file.path(haz_mean_dir,"thi_perc")
+  if(!dir.exists(haz_mean_thi_dir)){
+    dir.create(haz_mean_thi_dir)
   }
   
-  names(data)<-paste0(gsub(".tif","",basename(files_ss)),"_",cat_thresholds[i,tolower(description)])
+  # list data files
+  files<-list.files(haz_time_risk_dir,"THI_max",full.names =T)
   
-  data
-})
-
-data_sev<-data[grep("Severe",cat_thresholds$description)]
-data_sev<-data_sev[[1]]+data_sev[[2]]
-
-data_ext<-data[grep("Extreme",cat_thresholds$description)]
-data_ext<-data_ext[[1]]+data_ext[[2]]
-
-data<-c(data_sev,data_ext)
-data<-data*base_cellsize
-
-# Extract by admin area
-base_areas<-admin_extract(base_cellsize,
-                          Geographies = Geographies,
-                          FUN = "sum")
-
-data<-admin_extract(data,
-                    Geographies = Geographies,
-                    FUN = "sum")
-
-# Tabulate data
-data<-merge_admin_extract(data)
-base_areas<-merge_admin_extract(base_areas)
-setnames(base_areas,"value","total")
-
-# Work out percentage change
-data<-merge(data,base_areas[,list(admin0_name,admin1_name,admin2_name,total)],all.x=T)
-data[,value:=round(100*value/total,1)][,total:=NULL]
-
-# Wrangle variable name
-var_names<-data$variable
-var_names<-gsub("sum.|_THI_max_max","",var_names)
-var_names<-gsub("1_2","1-2",var_names)
-var_names<-gsub(".G","_",var_names)
-var_names<-gsub("historical","historical_historical_historical",var_names)
-var_names<-do.call("cbind",tstrsplit(var_names,"_"))[,c(1:3,5)]
-colnames(var_names)<-c("scenario","model","timeframe","severity")
-
-data<-cbind(data,var_names)[,variable:="THI"][,stat:="perc_area"][,crop:="cattle"]
-
-# Generate ensemble data from models
-data_ens<-data[,list(mean=mean(value,na.rm=T),
-                     min=min(value,na.rm=T),
-                     max=max(value,na.rm=T),
-                     sd=sd(value,na.rm=T)),
-                       by=list(admin0_name,admin1_name,admin2_name,scenario,timeframe,variable,severity,stat,crop)]
-
-arrow::write_parquet(data,file.path(haz_mean_thi_dir,"thi_perc_area_by_model.parquet"))
-arrow::write_parquet(data_ens,file.path(haz_mean_thi_dir,"thi_perc_area_ensemble.parquet"))
+  # get severity thresholds
+  cat_thresholds<-haz_class[index_name=="THI_max" & 
+                              description %in% c("Severe","Extreme") & 
+                              crop  %in% c("cattle_highland","cattle_tropical"),list(index_name,crop,description,threshold)
+                            ][,code:=paste0("THI_max_max-G",threshold)]
+  
+  # get highland/lowland mask
+  highlands<-terra::rast(afr_highlands_file)
+  highlands<-terra::resample(highlands,base_rast,method="near")
+  tropical<-classify(highlands,data.frame(from=c(0,1),to=c(1,0)))
+  
+  # subset data files to 
+  data<-pblapply(1:nrow(cat_thresholds),FUN=function(i){
+    files_ss<-grep(cat_thresholds[i,code],files,value=T)
+    data<-terra::rast(files_ss)
+    
+    # Apply highland/lowland mask
+    if(cat_thresholds[i,grepl("tropical",crop)]){
+      data<-data*tropical
+    }else{
+      data<-data*highlands
+    }
+    
+    names(data)<-paste0(gsub(".tif","",basename(files_ss)),"_",cat_thresholds[i,tolower(description)])
+    
+    data
+  })
+  
+  data_sev<-data[grep("Severe",cat_thresholds$description)]
+  data_sev<-data_sev[[1]]+data_sev[[2]]
+  
+  data_ext<-data[grep("Extreme",cat_thresholds$description)]
+  data_ext<-data_ext[[1]]+data_ext[[2]]
+  
+  data<-c(data_sev,data_ext)
+  data<-data*base_cellsize
+  
+  # Extract by admin area
+  base_areas<-admin_extract(base_cellsize,
+                            Geographies = Geographies,
+                            FUN = "sum")
+  
+  data<-admin_extract(data,
+                      Geographies = Geographies,
+                      FUN = "sum")
+  
+  # Tabulate data
+  data<-merge_admin_extract(data)
+  base_areas<-merge_admin_extract(base_areas)
+  setnames(base_areas,"value","total")
+  
+  # Work out percentage change
+  data<-merge(data,base_areas[,list(admin0_name,admin1_name,admin2_name,total)],all.x=T)
+  data[,value:=round(100*value/total,1)][,total:=NULL]
+  
+  # Wrangle variable name
+  var_names<-data$variable
+  var_names<-gsub("sum.|_THI_max_max","",var_names)
+  var_names<-gsub("1_2","1-2",var_names)
+  var_names<-gsub(".G","_",var_names)
+  var_names<-gsub("historical","historical_historical_historical",var_names)
+  var_names<-do.call("cbind",tstrsplit(var_names,"_"))[,c(1:3,5)]
+  colnames(var_names)<-c("scenario","model","timeframe","severity")
+  
+  data<-cbind(data,var_names)[,hazard:="THI"][,variable:="perc_area"][,crop:="cattle"]
+  
+  # Generate ensemble data from models
+  data_ens<-data[,list(mean=mean(value,na.rm=T),
+                       min=min(value,na.rm=T),
+                       max=max(value,na.rm=T),
+                       sd=round(sd(value,na.rm=T),1)),
+                         by=list(admin0_name,admin1_name,admin2_name,scenario,timeframe,variable,severity,variable,crop)]
+  
+  arrow::write_parquet(data,file.path(haz_mean_thi_dir,"thi_perc_area_by_model.parquet"))
+  arrow::write_parquet(data_ens,file.path(haz_mean_thi_dir,"thi_perc_area_ensemble.parquet"))
 
   # 2.2) Crops #####
+
+haz_mean_ntx_dir<-file.path(haz_mean_dir,"ntx_perc")
+if(!dir.exists(haz_mean_ntx_dir)){
+  dir.create(haz_mean_ntx_dir)
+}
+
+# choose hazards
+haz_choices<-c("NTx35","NTx40")
+# choose crops
+crop_choices<-"generic"
+# choose severity classes
+sev_classes<-c("Severe","Extreme")
+
+
+choices<-expand.grid(haz=haz_choices,crop=crop_choices)
+
+data<-rbindlist(lapply(1:length(choices),FUN=function(j){
+  haz<-as.character(choices$haz[j])
+  crop_focus<-as.character(choices$crop[j])
+
+  # list data files
+  files<-list.files(haz_time_risk_dir,haz,full.names =T)
+  files<-files[!grepl("ENSEMBLE",files)]
+
+  
+  # get severity thresholds
+  cat_thresholds<-haz_class[index_name=="NTx35" & 
+                              description %in% sev_classes & 
+                              crop  %in% crop_focus,list(index_name,crop,description,threshold)
+  ][,code:=paste0(haz,"_mean-G",threshold)] # mean-G -> this needs to be generalized
+  
+  data<-terra::rast(lapply(1:length(sev_classes),FUN=function(i){
+    files_ss<-grep(cat_thresholds[description==sev_classes[i],code],files,value=T)
+    data<-terra::rast(files_ss)
+    names(data)<-paste0(gsub(".tif","",basename(files_ss)),"_",tolower(sev_classes[i]))
+    data
+  }))
+  
+  data<-data*base_cellsize
+  
+  # Extract by admin area
+  base_areas<-admin_extract(base_cellsize,
+                            Geographies = Geographies,
+                            FUN = "sum")
+  
+  data<-admin_extract(data,
+                      Geographies = Geographies,
+                      FUN = "sum",
+                      max_cells_in_memory = 3*10^8)
+  
+  # Tabulate data
+  data<-merge_admin_extract(data)
+  setnames(data,"value","area")
+  base_areas<-merge_admin_extract(base_areas)
+  setnames(base_areas,"value","total_area")
+  
+  # Work out percentage change
+  data<-merge(data,base_areas[,list(admin0_name,admin1_name,admin2_name,total_area)],all.x=T)
+  data[,perc:=round(100*area/total_area,1)]
+  
+  # Wrangle variable name
+  var_names<-data$variable
+  var_names<-gsub(paste0("sum.|_",haz,"_mean"),"",var_names) # _mean needs to be generalized
+  var_names<-gsub("1_2","1-2",var_names)
+  var_names<-gsub(".G","_",var_names) # .G needs to be generalized
+  var_names<-gsub("historical","historical_historical_historical",var_names)
+  var_names<-do.call("cbind",tstrsplit(var_names,"_"))[,c(1:3,5)]
+  colnames(var_names)<-c("scenario","model","timeframe","severity")
+  
+  data<-cbind(data,var_names)[,hazard:=haz][,crop:=crop_focus]
+  
+  data
+  
+}))
+
+  # Generate ensemble data from models
+  data_ens<-data
+  setnames(data_ens,"perc","value")
+
+  data_ens<-data[,list(mean=mean(value,na.rm=T),
+                       min=min(value,na.rm=T),
+                       max=max(value,na.rm=T),
+                       sd=round(sd(value,na.rm=T),1)),
+                 by=list(admin0_name,admin1_name,admin2_name,scenario,timeframe,hazard,severity,crop)
+                 ][,variable:="perc_area"]
+
+
+  arrow::write_parquet(data,file.path(haz_mean_ntx_dir,"ntx_perc_area_by_model.parquet"))
+  arrow::write_parquet(data_ens,file.path(haz_mean_ntx_dir,"ntx_perc_area_ensemble.parquet"))
+  
+  # 3) Extreme drought or wet spells ####
+  # 3.1) Wet spells #####
+  
