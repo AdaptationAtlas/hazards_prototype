@@ -78,7 +78,8 @@ merge_admin_extract<-function(data_ex) {
 
   # 0.1) Set up workspace #####
 haz_class<-fread(haz_class_url)
-
+haz_class[,direction2:="G"][direction=="<",direction2:="L"]
+haz_meta<-fread(haz_meta_url)
 # Make cell size raster
 base_cellsize<-terra::cellSize(base_rast,unit="km")
 
@@ -313,7 +314,7 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
 
   
   # get severity thresholds
-  cat_thresholds<-haz_class[index_name=="NTx35" & 
+  cat_thresholds<-haz_class[index_name==haz & 
                               description %in% sev_classes & 
                               crop  %in% crop_focus,list(index_name,crop,description,threshold)
   ][,code:=paste0(haz,"_mean-G",threshold)] # mean-G -> this needs to be generalized
@@ -377,6 +378,69 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
   arrow::write_parquet(data,file.path(haz_mean_ntx_dir,"ntx_perc_area_by_model.parquet"))
   arrow::write_parquet(data_ens,file.path(haz_mean_ntx_dir,"ntx_perc_area_ensemble.parquet"))
   
-  # 3) Extreme drought or wet spells ####
+# 3) Extreme drought or wet spells ####
   # 3.1) Wet spells #####
+  
+
+  haz<-""
+  files<-list.files(haz_time_risk_dir,"THI_max",full.names =T)
+  
+  
+  # choose hazards
+  haz_choices<-c("NDWS","NDWL50","NDWL0")
+  # choose crops
+  crop_choices<-"generic"
+  # choose severity classes
+  sev_classes<-c("Severe","Extreme")
+  
+  choices<-expand.grid(haz=haz_choices,crop=crop_choices)
+  extract_fun<-"mean"
+  
+  data<-rbindlist(lapply(1:length(choices),FUN=function(j){
+    haz<-as.character(choices$haz[j])
+    crop_focus<-as.character(choices$crop[j])
+    
+    # list data files
+    files<-list.files(haz_time_risk_dir,haz,full.names =T)
+    files<-files[!grepl("ENSEMBLE",files)]
+    
+    # get stat
+    stat<-haz_meta[code==haz,`function`]
+    
+    # get severity thresholds
+    cat_thresholds<-haz_class[index_name==haz & 
+                                description %in% sev_classes & 
+                                crop  %in% crop_focus,list(index_name,crop,description,threshold,direction2)
+    ][,code:=paste0(haz,"_",stat,"-",direction2,threshold)] # mean-G -> this needs to be generalized
+    
+    data<-terra::rast(lapply(1:length(sev_classes),FUN=function(i){
+      files_ss<-grep(cat_thresholds[description==sev_classes[i],code],files,value=T)
+      data<-terra::rast(files_ss)
+      names(data)<-paste0(gsub(".tif","",basename(files_ss)),"_",tolower(sev_classes[i]))
+      data
+    }))
+    
+    data<-admin_extract(data,
+                        Geographies = Geographies,
+                        FUN = extract_fun,
+                        max_cells_in_memory = 3*10^8)
+    
+    # Tabulate data
+    data<-merge_admin_extract(data)
+
+    # Wrangle variable name
+    var_names<-data$variable
+    var_names<-gsub(paste0(extract_fun,".|_",haz,"_",stat),"",var_names) # _mean needs to be generalized
+    var_names<-gsub("1_2","1-2",var_names)
+    var_names<-gsub(".G","_",var_names) # .G needs to be generalized
+    var_names<-gsub("historical","historical_historical_historical",var_names)
+    var_names<-do.call("cbind",tstrsplit(var_names,"_"))[,c(1:3,5)]
+    colnames(var_names)<-c("scenario","model","timeframe","severity")
+    
+    data<-cbind(data,var_names)[,hazard:=haz][,crop:=crop_focus]
+    
+    data
+    
+  }))
+  
   
