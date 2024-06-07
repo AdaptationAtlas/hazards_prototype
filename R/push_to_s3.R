@@ -68,52 +68,12 @@
   }
   
   # Upload files S3 bucket
-  upload_files_to_s3 <- function(files, s3_file_names = NULL, folder = NULL, selected_bucket, new_only = FALSE, max_attempts = 3, overwrite = FALSE, mode = "private", folder_public = F) {
+  upload_files_to_s3 <- function(files, s3_file_names = NULL, folder = NULL, selected_bucket, new_only = FALSE, max_attempts = 3, overwrite = FALSE, mode = "private") {
     
     # Create the s3 directory if it does not already exist
     if (!s3_dir_exists(selected_bucket)) {
       s3_dir_create(selected_bucket)
     }
-    
-    # Update the ACL of the folder if mode_folder is provided
-    if (folder_public) {
-      s3 <- paws::s3()
-      bucket_name <-unlist(tstrsplit(s3_bucket,"/",keep=3))
-      folder_path<-gsub(paste0("s3://",bucket_name,"/"),"",s3_bucket)
-      
-      bucket_policy <- sprintf('{
-      "Version": "2012-10-17",
-      "Statement": [
-      {
-      "Sid": "PublicReadListBucket",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:ListBucket",
-      "Resource": "arn:aws:s3:::%s",
-      "Condition": {
-        "StringLike": {
-          "s3:prefix": "%s/*"
-        }
-      }
-    },
-    {
-      "Sid": "PublicReadGetObject",
-      "Effect": "Allow",
-      "Principal": "*",
-      "Action": "s3:GetObject",
-      "Resource": "arn:aws:s3:::%s/%s/*"
-    }
-  ]
-}', bucket_name, folder_path, bucket_name, folder_path)
-      
-      # Put the bucket policy
-      s3$put_bucket_policy(
-        Bucket = bucket_name ,
-        Policy = bucket_policy
-      )
-      
-      cat("Bucket policy updated to allow public read access to the folder.")    
-      }
     
     # List files if a folder location is provided
     if (!is.null(folder)) {
@@ -271,8 +231,7 @@
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F,
-                     mode="public-read",
-                     folder_public=T)
+                     mode="public-read")
   
   # Upload - livestock_vop ####
   folder<-ls_vop_dir
@@ -288,8 +247,7 @@
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F,
-                     mode="public-read",
-                     folder_public = T)
+                     mode="public-read")
   
   # You will need to run the function above again with overwrite=F to add the index
   index<-data.table(s3_path=s3_dir_ls(s3_bucket))[!grepl("index.csv",s3_path)]
@@ -319,8 +277,7 @@
                    selected_bucket=s3_bucket,
                    max_attempts = 3,
                    overwrite=F,
-                   mode="public-read",
-                   folder_public = T)
+                   mode="public-read")
 
 # 2) Time sequence specific ####
   # Upload - hazard timeseries (parquets) ####
@@ -516,8 +473,7 @@
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F,
-                     mode="public-read",
-                     folder_public = T)
+                     mode="public-read")
   
 
 # 5) !!!***TO DO***!!! raw data by season
@@ -531,12 +487,11 @@
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F,
-                     mode="public-read",
-                     folder_public = T)
+                     mode="public-read")
   
   s3_dir_ls(s3_bucket)
   
-  # 4.3) Upload - change in ptot area calcs #####
+  # 4.3) Upload - ptot change #####
   folder<-haz_mean_ptot_dir
   s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month/ptot_change"
   
@@ -545,9 +500,10 @@
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F,
-                     mode="public-read",
-                     folder_public = T)
+                     overwrite=T,
+                     mode="public-read")
+  
+  s3_dir_ls(s3_bucket)
   
   # 4.3) Upload - THI area vs severity #####
   folder<-haz_mean_thi_dir
@@ -558,9 +514,8 @@
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F,
-                     mode="public-read",
-                     folder_public = T)
+                     overwrite=T,
+                     mode="public-read")
   
   
 # =========================####
