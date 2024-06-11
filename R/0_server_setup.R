@@ -178,10 +178,19 @@ if(Cglabs){
   }
   
   glw_dir<-"Data/GLW4"
+  if(!dir.exists(glw_dir)){
+    dir.create(glw_dir)
+  }
   
   ls_vop_dir<-"Data/livestock_vop"
+  if(!dir.exists(ls_vop_dir)){
+    dir.create(ls_vop_dir)
+  }
   
   afr_highlands_dir<-"Data/afr_highlands"
+  if(!dir.exists(afr_highlands_dir)){
+    dir.create(afr_highlands_dir)
+  }
   
   fao_dir<-"Data/fao"
   if(!dir.exists(fao_dir)){
@@ -193,9 +202,10 @@ if(Cglabs){
     dir.create(mapspam_dir,recursive=T)
   }
   
-  # Set sos calendar directory
-  sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
-  
+  if(Cglabs){
+    # Set sos calendar directory
+    sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
+  }
   
   # 2.2) Atlas s3 bucket #####
   bucket_name <- "http://digital-atlas.s3.amazonaws.com"
@@ -241,13 +251,8 @@ if(Cglabs){
   
   # 3.3) Base Raster #####
   # Load base raster to which other datasets are resampled to
-  base_raster<-"base_raster.tif"
-  if(!file.exists(base_raster)){
-    url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
-    httr::GET(url, httr::write_disk(base_raster, overwrite = TRUE))
-  }
-  
-  base_rast<-terra::rast(base_raster)
+  base_rast_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
+  base_rast<-terra::rast(base_rast_url)
   # 3.4) GLW #####
   update<-F
   # If glw data does not exist locally download from S3 bucket
