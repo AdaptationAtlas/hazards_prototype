@@ -272,7 +272,8 @@ if(Cglabs){
     }
   }
   
-  # 3.5) Fao stat deflators #####
+  # 3.5) Fao stat 
+    # 3.5.1) deflators ######
   update<-F
   # Download FAOstat deflators
   def_file<-paste0(fao_dir,"/Deflators_E_All_Data_(Normalized).csv")
@@ -282,6 +283,24 @@ if(Cglabs){
     url<-"https://fenixservices.fao.org/faostat/static/bulkdownloads/Deflators_E_All_Data_(Normalized).zip"
     
     zip_file_path <- file.path(fao_dir,basename(url))
+    
+    # Download the file
+    download.file(url, zip_file_path, mode = "wb")
+    
+    # Unzip the file
+    unzip(zip_file_path, exdir = fao_dir)
+    
+    # Delete the ZIP file
+    unlink(zip_file_path)
+  }
+  
+    # 3.6.1) producer prices ######
+  fao_econ_file<-file.path(fao_dir,"Prices_E_Africa_NOFLAG.csv")
+  
+  if(!file.exists(fao_econ_file)){
+    # Define the URL and set the save path
+    url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip"
+    zip_file_path <- file.path(fao_dir, "Prices_E_Africa.zip")
     
     # Download the file
     download.file(url, zip_file_path, mode = "wb")
@@ -344,6 +363,7 @@ if(Cglabs){
   haz_meta_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv"
   # 4.3) mapspam codes #####
   ms_codes_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv"
+  spam2fao_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv"
   # 4.4) ecocrop ####
   ecocrop_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/ecocrop.csv"
   
