@@ -212,7 +212,7 @@ crop_choices<-c(fread(haz_class_url, showProgress = FALSE)[,unique(crop)],ms_cod
 # 0) download hazard timeseries from s3 bucket ####
 overwrite<-F
 # Specify the bucket name and the prefix (folder path)
-folder_path <- "risk_prototype/data/hazard_timeseries/annual/"
+folder_path <- file.path("risk_prototype/data/hazard_timeseries",timeframe_choice,"")
 
 # List files in the specified S3 bucket and prefix
 file_list<-s3fs::s3_dir_ls(file.path(bucket_name_s3,folder_path))
