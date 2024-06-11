@@ -53,8 +53,10 @@ if(!exists("project_dir")){
 }
 
 # Cglabs
+Cglabs<-F
 if(project_dir=="/home/jovyan/common_data/hazards_prototype"){
   working_dir<-"/home/jovyan/common_data/hazards_prototype"
+  Cglabs<-T
 }
 
 # Local
@@ -62,7 +64,7 @@ if(project_dir=="D:/rprojects/hazards_prototype"){
   working_dir<-"D:/common_data/hazards_prototype"
 }
 # Afrilabs
-if(project_dir=="home/rprojects/hazards_prototype"){
+if(project_dir=="home/psteward/rprojects/hazards_prototype"){
   working_dir<-"/home/psteward/common_data"
 }
 
@@ -73,14 +75,20 @@ if(!dir.exists(working_dir)){
 setwd(working_dir)
 
 # Where is the raw monthly hazards data stored?
-# Generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
-indices_dir<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices"
-indices_dir2<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
-
-if(timeframe_choice!="annual"){
-  indices_seasonal_dir<-paste0(indices_dir2,"/by_season/",timeframe_choice,"/hazard_timeseries")
+if(Cglabs){
+  # Generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
+  indices_dir<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices"
+  indices_dir2<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
+  
+  if(timeframe_choice!="annual"){
+    indices_seasonal_dir<-paste0(indices_dir2,"/by_season/",timeframe_choice,"/hazard_timeseries")
+  }else{
+    indices_seasonal_dir<-paste0(indices_dir2,"/by_year/hazard_timeseries")
+  }
 }else{
-  indices_seasonal_dir<-paste0(indices_dir2,"/by_year/hazard_timeseries")
+  cat("Indice files are currently only available in CGlabs, adding download functionality for raw data used in
+      workflow is on the to-do list. You should also see the https://github.com/AdaptationAtlas/hazards workflow which 
+      will enable you to replicate the creation of the foundational monthly hazard data used in this workflow.")
 }
 
 # 2) Set directories ####
@@ -182,7 +190,7 @@ if(timeframe_choice!="annual"){
   
   mapspam_dir<-"Data/mapspam/2020V1r1_SSA"
   if(!dir.exists(mapspam_dir)){
-    dir.create(mapspam_dir)
+    dir.create(mapspam_dir,recursive=T)
   }
   
   # Set sos calendar directory
