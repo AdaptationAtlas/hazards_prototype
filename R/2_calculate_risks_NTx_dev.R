@@ -15,8 +15,30 @@ packages <- c("terra",
               "httr",
               "xml2")
 
+# This function will call packages first from the user library and second the system library
+# This can help overcome issues with the Afrilab server where the system library has outdated packages that 
+# require an contacting admin user to update
+load_packages_prefer_user <- function(packages) {
+  user_lib <- Sys.getenv("R_LIBS_USER")
+  current_libs <- .libPaths()
+  
+  # Set user library as the first in the search path
+  .libPaths(c(user_lib, current_libs))
+  
+  # Load pacman package
+  library(pacman)
+  
+  # Install and load packages using pacman
+  pacman::p_load(char = packages)
+  
+  # Restore original library paths
+  .libPaths(current_libs)
+}
+
+load_packages_prefer_user(packages)
+
 # Call the function to install and load packages
-pacman::p_load(char=packages)
+# pacman::p_load(char=packages)
 
 # Set up workspace ####
 # Set scenarios and time frames to analyse
