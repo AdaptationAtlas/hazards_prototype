@@ -2482,25 +2482,25 @@ avloss <- function(cv, change, fixed = FALSE, reps = 10^6) {
 #' print(file_names)
 #' }
 list_s3_bucket_contents <- function(bucket_url, folder_path) {
-  response <- GET(paste0(bucket_url, "?prefix=", folder_path))
+  response <- httr::GET(paste0(bucket_url, "?prefix=", folder_path))
   
   if (status_code(response) == 200) {
-    content <- content(response, "text")
-    xml_content <- read_xml(content)
+    content <- httr::content(response, "text")
+    xml_content <- xml2::read_xml(content)
     
     # Define the namespace
-    ns <- xml_ns(xml_content)
+    ns <- xml2::xml_ns(xml_content)
     
     # Extract object keys using the namespace
-    object_keys <- xml_find_all(xml_content, ".//d1:Contents/d1:Key", ns)
-    file_names <- xml_text(object_keys)
+    object_keys <- xml2::xml_find_all(xml_content, ".//d1:Contents/d1:Key", ns)
+    file_names <- xml2::xml_text(object_keys)
     
     # Remove the folder path itself from the list of file names
     file_names <- file_names[file_names != folder_path]
     file_names <- file.path(bucket_url, file_names)
     return(file_names)
   } else {
-    stop(paste("Failed to list objects. HTTP status code:", status_code(response)))
+    stop(paste("Failed to list objects. HTTP status code:", httr::status_code(response)))
   }
 }
 
