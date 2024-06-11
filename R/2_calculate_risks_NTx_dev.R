@@ -155,9 +155,19 @@ ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
     }
   }))
   
-  ec_haz<-ec_haz[,list(threshold=mean(threshold,na.rm=T)),by=list(index_name,description,direction,crop)]
+  # Average NTxM/S/E thresholds
+  ec_haz<-unique(ec_haz[grep("NTxS",index_name),index_name:=paste0("NTxS",ceiling(mean(as.numeric(substr(index_name,5,6)))))
+                        ][grep("NTxM",index_name),index_name:=paste0("NTxM",ceiling(mean(as.numeric(substr(index_name,5,6)))))
+                          ][grep("NTxE",index_name),index_name:=paste0("NTxE",ceiling(mean(as.numeric(substr(index_name,5,6)))))])
+  
+  # Average threholds where multiple crops exist for a mapspam commodity
+  ec_haz<-ec_haz[,list(threshold=mean(threshold,na.rm=T)),by=list(index_name,description,direction,crop)
+                 ][direction==">",threshold:=ceiling(threshold)
+                   ][direction=="<",threshold:=floor(threshold)]
+         
   ec_haz
 }))
+
 
 # Replicate generic hazards that are not TAVG or PTOT for each crop
 haz_class2<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
@@ -260,7 +270,6 @@ plan("multisession", workers = worker_n)
 # Enable progressr
 progressr::handlers(global = TRUE)
 progressr::handlers("progress")
-
 
 # Wrap the parallel processing in a with_progress call
 p<-with_progress({
