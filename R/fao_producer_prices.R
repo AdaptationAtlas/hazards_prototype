@@ -1,54 +1,24 @@
 # 0) Install and load packages ####
-load_and_install_packages <- function(packages) {
-  for (package in packages) {
-    if (!require(package, character.only = TRUE)) {
-      install.packages(package)
-      library(package, character.only = TRUE)
-    }
-  }
-}
-
-# List of packages to be loaded
 packages <- c("data.table", 
               "countrycode", 
               "terra")
 
-# Call the function to install and load packages
-load_and_install_packages(packages)
+pacman::p_load(char=packages)
 
-
-  # Load SPAM production data ####
+# Load SPAM production data ####
 file<-list.files(mapspam_dir,"SSA_P_TA.csv",full.names = T)
 file<-file[!grepl("_gr_",mapspam_dir)]
 prod<-fread(file)
   
-  ms_codes<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
+  ms_codes<-data.table::fread(ms_codes_url)[,Code:=toupper(Code)]
   crops<-tolower(ms_codes[compound=="no",Code])
   colnames(prod)<-gsub("_a$","",colnames(prod))
   
   # Read in production value data from FAO ####
-  econ_file<-paste0(fao_dir,"/Prices_E_Africa_NOFLAG.csv")
-  
-  if(!file.exists(econ_file)){
-    # Define the URL and set the save path
-    url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip"
-    zip_file_path <- file.path(fao_dir, "Prices_E_Africa.zip")
-    
-    # Download the file
-    download.file(url, zip_file_path, mode = "wb")
-    
-    # Unzip the file
-    unzip(zip_file_path, exdir = fao_dir)
-    
-    # Delete the ZIP file
-    unlink(zip_file_path)
-  }
-
-  # Load fao producer price data ####
-  prod_price<-fread(econ_file)
+  prod_price<-fread(fao_econ_file)
   
   # Load file for translation of spam to fao stat names/codes ####
-  spam2fao<-fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv")
+  spam2fao<-fread(spam2fao_url)
   
   # Are all crops represented in fao name conversion sheet? 
   if(!length(crops[!crops %in% spam2fao$short_spam2010])==0){
@@ -279,7 +249,6 @@ prod<-fread(file)
   
   # Multiply mapspam production by producer price ####
   
-
   files<-list.files(mapspam_dir,"SSA_P_",full.names = T)
   prod_price_file<-paste0(fao_dir,"/fao_producer_prices_2017.csv")
   # List ms countries
