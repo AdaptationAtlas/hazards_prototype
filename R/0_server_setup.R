@@ -48,12 +48,23 @@ if(!exists("package_dir")){
 
   # 1.2) Where should workflow outputs be stored? #####
 
+if(!exists("project_dir")){
+  project_dir<-getwd()
+}
+
 # Cglabs
-working_dir<-"/home/jovyan/common_data/hazards_prototype"
+if(project_dir=="/home/jovyan/common_data/hazards_prototype"){
+  working_dir<-"/home/jovyan/common_data/hazards_prototype"
+}
+
 # Local
-working_dir<-"D:/common_data/hazards_prototype"
+if(project_dir=="D:/rprojects/hazards_prototype"){
+  working_dir<-"D:/common_data/hazards_prototype"
+}
 # Afrilabs
-working_dir<-"/home/psteward/common_data"
+if(project_dir=="home/rprojects/hazards_prototype"){
+  working_dir<-"/home/psteward/common_data"
+}
 
 if(!dir.exists(working_dir)){
   dir.create(working_dir,recursive=T)
@@ -169,7 +180,7 @@ if(timeframe_choice!="annual"){
     dir.create(fao_dir,recursive = T)
   }
   
-  mapspam_dir<-"Data/mapspam/2020V1r0_SSA"
+  mapspam_dir<-"Data/mapspam/2020V1r1_SSA"
   if(!dir.exists(mapspam_dir)){
     dir.create(mapspam_dir)
   }
@@ -205,7 +216,7 @@ if(timeframe_choice!="annual"){
   update<-F
   
   # Specify s3 prefix (folder path)
-  folder_path <- "MapSpam/raw/2020V1r0_SSA/"
+  folder_path <- file.path("MapSpam/raw",basename(mapspam_dir),"")
   
   # List files in the specified S3 bucket and prefix
   files_s3<-s3fs::s3_dir_ls(file.path(bucket_name_s3,folder_path))
