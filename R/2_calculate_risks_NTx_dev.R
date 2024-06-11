@@ -161,9 +161,7 @@ ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
                           ][grep("NTxE",index_name),index_name:=paste0("NTxE",ceiling(mean(as.numeric(substr(index_name,5,6)))))])
   
   # Average threholds where multiple crops exist for a mapspam commodity
-  ec_haz<-ec_haz[,list(threshold=mean(threshold,na.rm=T)),by=list(index_name,description,direction,crop)
-                 ][direction==">",threshold:=ceiling(threshold)
-                   ][direction=="<",threshold:=floor(threshold)]
+  ec_haz<-ec_haz[,list(threshold=mean(threshold,na.rm=T)),by=list(index_name,description,direction,crop)]
          
   ec_haz
 }))
@@ -598,7 +596,7 @@ if(F){
   haz_class_files<-list.files(haz_time_class_dir,full.names = T)
   haz_class_files<-grep("ENSEMBLE|historical",haz_class_files,value=T)
   
-  haz_class_files2<-list.files(haz_time_class_dir)
+  haz_class_files2<-basename(haz_class_files)
   haz_class_files2<-gsub("_max_max","max",haz_class_files2)
   haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
   haz_class_files2<-gsub("_max","",haz_class_files2)
@@ -634,7 +632,7 @@ if(F){
     progress <- progressr::progressor(along = 1:nrow(combinations))
   
     foreach(i = 1:nrow(combinations), .packages = c("terra", "data.table", "progressr")) %dopar% {
-    #  for(i in 1:nrow(combinations)){
+   # for(i in 1:nrow(combinations)){
     
     # Display progress
     progress(sprintf("Combination %d/%d", i, nrow(combinations)))
@@ -669,12 +667,12 @@ if(F){
            save_names<-combo_binary$save_names
            save_name_any<-file.path(folder,paste0(Scenarios[l,combined],"-any.tif"))
   
-           
            if(!all(file.exists(save_names))|!file.exists(save_name_any)|overwrite==T){
             
-            files<-sapply(combos,FUN=function(x){haz_class_files[grepl(paste0(x,".tif"),haz_class_files2) & 
-                                                                   grepl(Scenarios[l,combined],haz_class_files2)]
-                                                                   })
+            files<-sapply(combos,FUN=function(x){
+              haz_class_files[grepl(paste0(x,".tif"),haz_class_files2) & 
+                                grepl(Scenarios[l,combined],haz_class_files2)]
+              })
             
             if(length(unlist(files))!=3){
               stop("Issue with classified hazard files, 3 files not found.")
