@@ -771,9 +771,8 @@ if(F){
       
       save_file<-paste0(haz_risk_dir,"/",combinations_crops[i],"-",tolower(severity_classes$class[j]),"-int.tif")
 
-      subset<-combinations_ca[crop==combinations_crops[i] & severity_class==tolower(severity_classes$class[j])]
-      
       if(!file.exists(save_file)|overwrite==T){
+        subset<-combinations_ca[crop==combinations_crops[i] & severity_class==tolower(severity_classes$class[j])]
         
         data<-terra::rast(lapply(1:nrow(subset),FUN=function(k){
           files<-list.files(subset[k,folder],full.names = T)
