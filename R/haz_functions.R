@@ -1561,7 +1561,6 @@ admin_extract_wrap <- function(data, save_dir, filename, FUN = "sum", varname, G
   return(data_ex)
 }
 
-
 #' Process and Save Spatial Data by Severity and Administrative Level
 #'
 #' Iterates over specified severity levels to extract spatial data for given administrative levels (admin0, admin1, admin2) and saves the extracted data into Parquet files. Allows for overwriting existing files.
@@ -1675,6 +1674,9 @@ restructure_parquet<-function(filename,save_dir,severity,overwrite=F,crops,lives
       }),fill=T)
       data[,variable:=as.character(variable)]
       
+      # Remove any values that have mistaken made it into the data
+      data<-data[!grepl("ENSEMBLE",variable)]
+      
       variable_old<-data[,unique(variable)]
       
       # Replace dots in hazard names with a "+"
@@ -1698,6 +1700,7 @@ restructure_parquet<-function(filename,save_dir,severity,overwrite=F,crops,lives
       old<-c(old,paste0(c("any",hazards),"[.]"))
       
       variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F))
+
       
       # Note this method of merging a list back to the original table is much faster than the method employed in the hazards x exposure section
       split<-variable_new[,list(var_split=list(tstrsplit(variable[1],"-"))),by=variable]
