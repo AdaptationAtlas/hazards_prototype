@@ -15,11 +15,6 @@ packages <- c("remotes","data.table","httr","s3fs","xml2")
 # Use pacman to install and load the packages
 pacman::p_load(char=packages)
 
-# Install package for exactextractr
-if (!require("exactextractr", character.only = TRUE)) {
-  remotes::install_github("isciences/exactextractr")
-}
-
 # Source functions used in this workflow
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
