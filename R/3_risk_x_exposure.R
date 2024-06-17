@@ -59,7 +59,7 @@ crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
 
 #### Load datasets (non hazards)
 
-# 0) Load an prepare admin vectors and exposure rasters, extract exposure by admin ####
+# 0) Load and prepare admin vectors and exposure rasters, extract exposure by admin ####
   # 0.1) Geographies #####
   Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
     file<-geo_files_local[i]
@@ -385,7 +385,7 @@ crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
         }
   
       # 0.2.4.1) Extraction of hpop by admin areas ####
-    admin_extract_wrap(data=hpop,
+    hpop_admin<-admin_extract_wrap(data=hpop,
                        save_dir=exposure_dir,
                        filename = "hpop",
                        FUN="sum",
@@ -432,12 +432,6 @@ restructure_parquet(filename = "haz_risk_solo",
                     livestock=livestock_choices,
                     Scenarios=Scenarios,
                     hazards=haz_meta[,unique(type)])
-
-if(F){
-# Check resulting file
-X<-arrow::read_parquet(paste0(haz_risk_dir,"/haz_risk_any_adm_moderate.parquet"))
-grep("THI",names(X),value=T)
-}
 
   # 1.3) Optional: Apply Crop Mask to Classified Hazard Risk ####
 
@@ -715,149 +709,134 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
   crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
 
   # 4.0) Set-up ####
+    do_vop<-T
     do_vop17<-F
     do_ha<-F
     do_n<-F
     overwrite<-F
-  
-  # 4.1) Multiply Hazard Risk by Exposure ####
-
+    
     files<-list.files(haz_risk_dir,".tif$",full.names = T)
     
-    # The process below would benefit from parallization, but error in { : task  failed - "NULL value passed as symbol address!" needs debugging
+  # 4.1) Multiply Hazard Risk by Exposure ####£
     
-    # Problem may be resolved using multicore in linux environment ####
-    #if (.Platform$OS.type == "windows") {
-    #  plan(multisession, workers = cores)
-    #} else {
-    #  plan(multicore, workers = cores)
-    #}
+        # The process below would benefit from parallization, but persistent error in { : task  failed - "NULL value passed as symbol address!" needs debugging
+    # Saving the exposure data as individual tifs then reading these in may be required
     
-    #registerDoFuture()
-    #plan("multisession", workers = 2)
-    
-    #foreach(i =  1:length(files), .packages = c("terra")) %dopar% {
-    for(i in 1:length(files)){
-          
-          file<-files[i]
-          crop<-unlist(tstrsplit(basename(file),"-",keep=1))
+     risk_x_exposure<-function(file,save_dir,variable,overwrite,crop_exposure,livestock_exposure,crop_choices){
+      crop<-unlist(data.table::tstrsplit(basename(file),"-",keep=1))
+      save_name<-file.path(save_dir,gsub(".tif",paste0("-",variable,".tif"),basename(file)))
 
-          save_name_vop<-paste0(haz_risk_vop_dir,"/",gsub(".tif","-vop.tif",basename(file)))
-          
-          haz_risk<-terra::rast(file)
-          
-          # Display progress
-          cat('\r                                                                                                                           ')
-          cat('\r',paste("Risk x Exposure x VoP17 | file:",i,"/",length(files))," - ",file)
-          flush.console()
-          
-          
-          if(!file.exists(save_name_vop)|overwrite==T){
-            # vop
-            if(crop!="generic"){
-              if(crop %in% crop_choices){
-                haz_risk_vop<-haz_risk*crop_vop_tot[[crop]]
-                }else{
-                haz_risk_vop<-haz_risk*livestock_vop[[crop]]
-              }
+      if(!file.exists(save_name)|overwrite==T){
+        data<-terra::rast(file)
+        
+        # vop
+        if(crop!="generic"){
+          if(crop %in% crop_choices & variable!="n"){
+            exposure<-crop_exposure[[crop]]
+            data_ex<-data*exposure
+          }else{
+            if(!variable %in% c("ha")){
+            exposure<-livestock_exposure[[crop]]
+            data_ex<-data*exposure
             }else{
-              haz_risk_vop<-haz_risk*sum(crop_vop_tot)
-            }
-            
-            names(haz_risk_vop)<-paste0(names(haz_risk_vop),"-vop")
-            terra::writeRaster(haz_risk_vop,file=save_name_vop,overwrite=T)
-            haz_risk_vop<-NULL
-            gc()
-          }
-          
-          # vop17
-          if(do_vop17==T){
-            save_name_vop17<-paste0(haz_risk_vop17_dir,"/",gsub(".tif","-vop.tif",basename(file)))
-            if(!file.exists(save_name_vop17)|overwrite==T){
-    
-              if(crop!="generic"){
-                if(crop %in% crop_choices){
-                  haz_risk_vop17<-haz_risk*crop_vop17_tot[[crop]]
-                }else{
-                  haz_risk_vop17<-haz_risk*livestock_vop17[[crop]]
-                }
-              }else{
-                haz_risk_vop17<-haz_risk*sum(crop_vop17_tot)
-              }
-              names(haz_risk_vop17)<-paste0(names(haz_risk_vop17),"-vop")
-              terra::writeRaster(haz_risk_vop17,file=save_name_vop17,overwrite=T)
-              haz_risk_vop17<-NULL
-              gc()
-            }
-            
-          }
-          
-          # ha
-          if(do_ha==T){
-
-            if(crop %in% c("generic",crop_choices)){
-              # Display progress
-              cat('\r                                                                                                                           ')
-              cat('\r',paste("Risk x Exposure x ha | file:",i,"/",length(files))," - ",file)
-              flush.console()
-              
-              save_name_ha<-paste0(haz_risk_ha_dir,"/",gsub(".tif$","-ha.tif$",basename(file)))
-              
-              if(!file.exists(save_name_ha)|overwrite==T){
-                if(crop!="generic"){
-                  haz_risk_ha<-haz_risk*crop_ha_tot[[crop]]
-                }else{
-                  haz_risk_ha<-haz_risk*sum(crop_ha_tot)
-                }
-                
-                names(haz_risk_ha)<-paste0(names(haz_risk_ha),"-ha")
-                terra::writeRaster(haz_risk_ha,file=save_name_ha,overwrite=T)
-                haz_risk_ha<-NULL
-                gc()
-              }
+              data_ex<-NA
             }
           }
-          
-          # numbers
-          if(do_n==T){
-            
-             if(crop %in% c("generic",livestock_choices)){
-               # Display progress
-               cat('\r                                                                                                                           ')
-               cat('\r',paste("Risk x Exposure x n | file:",i,"/",length(files))," - ",file)
-               flush.console()
-               
-              save_name_n<-paste0(haz_risk_n_dir,"/",gsub(".tif$","-n.tif$",basename(file)))
-              
-              if(!file.exists(save_name_n)|overwrite==T){
-                if(crop!="generic"){
-                  haz_risk_n<-haz_risk*livestock_no[[crop]]
-                }else{
-                  haz_risk_n<-haz_risk*sum(livestock_no[[(c("total_tropical","total_highland"))]],na.rm=T)
-                }
-                
-                names(haz_risk_n)<-paste0(names(haz_risk_n),"-n")
-                terra::writeRaster(haz_risk_n,file=save_name_n,overwrite=T)
-                haz_risk_n<-NULL
-                gc()
-              }
-            }
+        }else{
+          if(variable!="n"){
+            exposure<-sum(crop_exposure)
+            data_ex<-data*exposure
+          }else{
+            data_ex<-NA
           }
-          
+        }
+        
+        if(class(data_ex)=="SpatRaster"){
+          names(data_ex)<-paste0(names(data_ex),"-",variable)
+          terra::writeRaster(data_ex,file=save_name,overwrite=T)
+        }
+      }
+      
     }
     
-    #plan(sequential)
-    
-  # 4.2) Extract Risk x Exposure by Geography  ####
+    for(i in 1:length(files)){
+      file<-files[i]
+      
+      if(do_vop){
+        # Display progress
+        cat('\r                                                                                                                           ')
+        cat('\r',paste("Risk x Exposure x VoP | file:",i,"/",length(files))," - ",file)
+        flush.console()
+        
+      risk_x_exposure(file,
+                      save_dir=haz_risk_vop_dir,
+                      variable="vop",
+                      overwrite = overwrite,
+                      crop_exposure = crop_vop_tot,
+                      livestock_exposure=livestock_vop,
+                      crop_choices=crop_choices)
+      }
+      
+      if(do_vop17){
+        # Display progress
+        cat('\r                                                                                                                           ')
+        cat('\r',paste("Risk x Exposure x VoP17 | file:",i,"/",length(files))," - ",file)
+        flush.console()
+        
+        risk_x_exposure(file,
+                        save_dir=haz_risk_vop17_dir,
+                        variable="vop",
+                        overwrite = overwrite,
+                        crop_exposure = crop_vop17_tot,
+                        livestock_exposure=livestock17_vop,
+                        crop_choices=crop_choices)
+      }
+      
+      if(do_ha){
+        # Display progress
+        cat('\r                                                                                                                           ')
+        cat('\r',paste("Risk x Exposure x Harvested Area | file:",i,"/",length(files))," - ",file)
+        flush.console()
+        
+        risk_x_exposure(file,
+                        save_dir=haz_risk_ha_dir,
+                        variable="ha",
+                        overwrite = overwrite,
+                        crop_exposure = crop_ha_tot,
+                        livestock_exposure=NA,
+                        crop_choices=crop_choices)
+      }
+      
+      if(do_n){
+        # Display progress
+        cat('\r                                                                                                                           ')
+        cat('\r',paste("Risk x Exposure x Livestock Number | file:",i,"/",length(files))," - ",file)
+        flush.console()
+        
+        risk_x_exposure(file,
+                        save_dir=haz_risk_n_dir,
+                        variable="n",
+                        overwrite = overwrite,
+                        crop_exposure = NA,
+                        livestock_exposure=livestock_no,
+                        crop_choices=crop_choices)
+      }
+      
+      }
+
+  # 4.2) Extract Risk x Exposure by Geography ####£
 
     for(INT in c(T,F)){
     print(paste0("Interactions = ",INT))
-    haz_risk_exp_extract(severity_classes,
-                         interactions=INT,
-                         folder=haz_risk_vop_dir,
-                         overwrite=overwrite,
-                         rm_crop=NULL,
-                         rm_haz=NULL)
+      
+      if(do_vop){
+      haz_risk_exp_extract(severity_classes,
+                           interactions=INT,
+                           folder=haz_risk_vop_dir,
+                           overwrite=overwrite,
+                           rm_crop=NULL,
+                           rm_haz=NULL)
+      }
     
     if(do_vop17){
       haz_risk_exp_extract(severity_classes,
