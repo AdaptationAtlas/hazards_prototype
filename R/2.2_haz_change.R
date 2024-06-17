@@ -37,13 +37,7 @@ merge_admin_extract<-function(data_ex) {
   
   # Define a mapping of administrative level names to short codes.
   levels <- c(admin0 = "adm0", admin1 = "adm1", admin2 = "adm2")
-  
-  # Create filenames for saving the output based on administrative level and aggregation function.
-  file0 <- gsub("_adm_", "_adm0_", file)
-  file1 <- gsub("_adm_", "_adm1_", file)
-  file2 <- gsub("_adm_", "_adm2_", file)
-  
-  
+
   # Process the extracted data to format it for analysis or further processing.
   data_ex <- rbindlist(lapply(1:length(levels), FUN = function(i) {
     level <- levels[i]
@@ -83,7 +77,7 @@ haz_meta<-fread(haz_meta_url)
 # Make cell size raster
 base_cellsize<-terra::cellSize(base_rast,unit="km")
 
-# Load admin boundaries
+# 0.2) Load admin boundaries #####
 Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
   file<-geo_files_local[i]
   data<-arrow::open_dataset(file)
@@ -375,19 +369,14 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
                  ][,variable:="perc_area"]
 
 
+  data_ens[scenario=="historical",c("min","max","sd"):=NA]
+  
   arrow::write_parquet(data,file.path(haz_mean_ntx_dir,"ntx_perc_area_by_model.parquet"))
   arrow::write_parquet(data_ens,file.path(haz_mean_ntx_dir,"ntx_perc_area_ensemble.parquet"))
   
 # 3) Extreme drought or wet spells ####
-  # 3.1) Wet spells #####
-  
-
-  haz<-""
-  files<-list.files(haz_time_risk_dir,"THI_max",full.names =T)
-  
-  
   # choose hazards
-  haz_choices<-c("NDWS","NDWL50","NDWL0")
+  haz_choices<-c("NDWS","NDWL0")
   # choose crops
   crop_choices<-"generic"
   # choose severity classes
@@ -411,7 +400,7 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
     cat_thresholds<-haz_class[index_name==haz & 
                                 description %in% sev_classes & 
                                 crop  %in% crop_focus,list(index_name,crop,description,threshold,direction2)
-    ][,code:=paste0(haz,"_",stat,"-",direction2,threshold)] # mean-G -> this needs to be generalized
+    ][,code:=paste0(haz,"_",stat,"-",direction2,threshold)]
     
     data<-terra::rast(lapply(1:length(sev_classes),FUN=function(i){
       files_ss<-grep(cat_thresholds[description==sev_classes[i],code],files,value=T)
@@ -430,17 +419,51 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
 
     # Wrangle variable name
     var_names<-data$variable
-    var_names<-gsub(paste0(extract_fun,".|_",haz,"_",stat),"",var_names) # _mean needs to be generalized
+    var_names<-gsub(paste0(extract_fun,".|_",haz,"_",stat),"",var_names)
     var_names<-gsub("1_2","1-2",var_names)
-    var_names<-gsub(".G","_",var_names) # .G needs to be generalized
+    var_names<-gsub(paste0(".",cat_thresholds[1,direction2]),"_",var_names)
     var_names<-gsub("historical","historical_historical_historical",var_names)
     var_names<-do.call("cbind",tstrsplit(var_names,"_"))[,c(1:3,5)]
     colnames(var_names)<-c("scenario","model","timeframe","severity")
     
-    data<-cbind(data,var_names)[,hazard:=haz][,crop:=crop_focus]
+    data<-cbind(data,var_names)[,hazard:=haz][,crop:=crop_focus][,variable:="frequency"]
     
     data
     
   }))
+  
+  years_hist<-terra::nlyr(terra::rast(list.files(haz_timeseries_dir,"hist",full.names =T)[1]))
+  years_scen<-terra::nlyr(terra::rast(list.files(haz_timeseries_dir,"ssp245",full.names =T)[1]))
+  
+  data2<-data.table::copy(data)
+  data2<-data2[scenario!="historical",value:=round(value*years_scen,0)
+               ][scenario=="historical",value:=round(value*years_hist,0)
+                 ][,variable:="frequency_n"]
+  
+  data[,value:=round(value,2)]
+  
+  data<-rbind(data,data2)
+  
+  data[hazard=="NDWS",hazard_user:="drought"
+       ][hazard=="NDWL0",hazard_user:="wet"]
+  
+  data_ens<-data[,list(mean=round(mean(value,na.rm=T),2),
+                       min=min(value,na.rm=T),
+                       max=max(value,na.rm=T),
+                       sd=round(sd(value,na.rm=T),1)),
+                 by=list(admin0_name,admin1_name,admin2_name,scenario,timeframe,hazard,hazard_user,severity,crop,variable)]
+  
+  data_ens[scenario=="historical",c("min","max","sd"):=NA]
+  
+  haz_time_risk_stats_dir<-file.path(haz_time_risk_dir,"stats")
+  if(!dir.exists(haz_time_risk_stats_dir)){
+    dir.create(haz_time_risk_stats_dir)
+  }
+  
+  arrow::write_parquet(data,file.path(haz_time_risk_stats_dir,"haz_freq.parquet"))
+  arrow::write_parquet(data_ens,file.path(haz_time_risk_stats_dir,"haz_freq_ensemble.parquet"))
+  
+  
+    
   
   
