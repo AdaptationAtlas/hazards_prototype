@@ -705,21 +705,22 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
 
 # 4) Extract hazard risk x exposure by admin ####
 
-  # Crop choices only 
-  crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
-
   # 4.0) Set-up ####
     do_vop<-T
     do_vop17<-F
     do_ha<-F
     do_n<-F
     overwrite<-F
+
+    
+    # Crop choices only 
+    crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
     
     files<-list.files(haz_risk_dir,".tif$",full.names = T)
     
-  # 4.1) Multiply Hazard Risk by Exposure ####£
+  # 4.1) Multiply Hazard Risk by Exposure #####
     
-        # The process below would benefit from parallization, but persistent error in { : task  failed - "NULL value passed as symbol address!" needs debugging
+    # The process below would benefit from parallelization, but persistent error in { : task  failed - "NULL value passed as symbol address!" needs debugging
     # Saving the exposure data as individual tifs then reading these in may be required
     
      risk_x_exposure<-function(file,save_dir,variable,overwrite,crop_exposure,livestock_exposure,crop_choices){
@@ -824,7 +825,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
       
       }
 
-  # 4.2) Extract Risk x Exposure by Geography ####£
+  # 4.2) Extract Risk x Exposure by Geography #####
 
     for(INT in c(T,F)){
     print(paste0("Interactions = ",INT))
