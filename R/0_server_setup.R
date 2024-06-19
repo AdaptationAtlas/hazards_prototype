@@ -25,7 +25,11 @@ timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
                      "sos_secondary_fixed_3","sos_secondary_fixed_4","sos_secondary_fixed_5")
 
   # 1.1) Choose timeframe #####
-timeframe_choice<-timeframe_choices[1]
+cat("Please choose a timeframe:\n")
+timeframe_choice_index <- menu(timeframe_choices, title = "Select a timeframe")
+timeframe_choice <- timeframe_choices[timeframe_choice_index]
+
+cat("You selected:", timeframe_choice, "\n")
 
 # Increase GDAL cache size
 terra::gdalCache(60000)
@@ -49,7 +53,7 @@ if(!exists("project_dir")){
 
 # Cglabs
 Cglabs<-F
-if(project_dir=="/home/jovyan/common_data/hazards_prototype"){
+if(project_dir=="/home/jovyan/rstudio/atlas/hazards_prototype"){
   working_dir<-"/home/jovyan/common_data/hazards_prototype"
   Cglabs<-T
 }
@@ -237,12 +241,12 @@ if(Cglabs){
   files_local<-gsub(file.path(bucket_name_s3,folder_path),paste0(mapspam_dir,"/"),files_s3)
   
   # If mapspam data does not exist locally download from S3 bucket
-  lapply(1:length(files_local),FUN=function(i){
+  for(i in 1:length(files_local)){
     file<-files_local[i]
     if(!file.exists(file)|update==T){
       s3$file_download(files_s3[i],file,overwrite=T)
     }
-  })
+  }
   
   # 3.3) Base Raster #####
   # Load base raster to which other datasets are resampled to
@@ -343,7 +347,7 @@ if(Cglabs){
   # 3.8) Human population #####
   # Specify s3 prefix (folder path)
   folder_path <- "population/worldpop_2020/"
-  
+
   # List files in the specified S3 bucket and prefix
   files_s3<-s3fs::s3_dir_ls(file.path(bucket_name_s3,folder_path))
   files_s3<-files_s3[grepl("pop.tif",files_s3)]
