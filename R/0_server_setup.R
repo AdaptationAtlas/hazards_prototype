@@ -469,7 +469,6 @@ if(Cglabs){
       s3$file_download(files_s3[i],file)
     }
   }
-
 # 4) Set data paths ####
   # 4.1) hazard class #####
   haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
