@@ -1,14 +1,5 @@
+# Please run 0_server_setup.R before executing this script
 # 1) Load R functions & packages ####
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
-
-load_and_install_packages <- function(packages) {
-  for (package in packages) {
-    if (!require(package, character.only = TRUE)) {
-      install.packages(package)
-      library(package, character.only = TRUE)
-    }
-  }
-}
 
 # List of packages to be loaded
 packages <- c("terra", 
@@ -16,7 +7,7 @@ packages <- c("terra",
               "httr")
 
 # Call the function to install and load packages
-load_and_install_packages(packages)
+p_load(char=packages)
 
 # 2) Set directories  ####
 # Directory where monthly timeseries data generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
@@ -97,11 +88,12 @@ if(F){
 }
 
 if(T){
-  hazards<-paste0("NTx",c(30:34,36:39,41:50))
-  haz_meta<-data.table(variable.code=hazards,`function`="mean")
+  hazards2<-paste0("NTx",c(30:50))
+  haz_meta<-rbind(haz_meta,data.table(variable.code=hazards2,`function`="mean"))
+  hazards<-c(hazards,hazards2)
 }
 
-# 4.1) Check hazards are complete #####
+  # 4.1) Check hazards are complete #####
 if(F){
 check_folders<-list.dirs(working_dir)
 check_folders<-check_folders[!grepl("ipynb",check_folders)]
@@ -119,13 +111,6 @@ exists<-rbindlist(pbapply::pblapply(hazards,FUN=function(H){
 
 # 5) Set analysis parameters ####
 doParallel<-F
-
-# Add parallel - previous problem can be resolved using multicore in linux environment ####
-#if (.Platform$OS.type == "windows") {
-#  plan(multisession, workers = cores)
-#} else {
-#  plan(multicore, workers = cores)
-#}
 
 use_crop_cal_choice<- c("no","yes") # if set to no then values are calculated for the year (using the jagermeyr cc as the starting month for each year)
 use_sos_cc_choice<-c("no","yes") # Use onset of rain layer to set starting month of season
