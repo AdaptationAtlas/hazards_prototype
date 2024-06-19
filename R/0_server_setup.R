@@ -251,7 +251,7 @@ if(Cglabs){
   folder_path <- file.path("MapSpam/raw",basename(mapspam_dir),"")
   
   # List files in the specified S3 bucket and prefix
-  files_s3<-s3fs::s3_dir_ls(file.path(bucket_name_s3,folder_path))
+  files_s3<-s3$dir_ls(file.path(bucket_name_s3,folder_path))
   files_s3<-files_s3[grepl(".csv",files_s3) & !grepl("index",files_s3)]
   files_local<-gsub(file.path(bucket_name_s3,folder_path),paste0(mapspam_dir,"/"),files_s3)
   
@@ -414,7 +414,7 @@ if(Cglabs){
   folder_path <- "livestock_vop/"
   
   # List files in the specified S3 bucket and prefix
-  files_s3<-s3fs::s3_dir_ls(file.path(bucket_name_s3,folder_path))
+  files_s3<-s3$dir_ls(file.path(bucket_name_s3,folder_path))
   files_s3<-files_s3[grepl(".tif",files_s3)]
   files_local<-gsub(file.path(bucket_name_s3,folder_path),paste0(ls_vop_dir,"/"),files_s3)
   
@@ -431,7 +431,7 @@ if(Cglabs){
   folder_path <- "population/worldpop_2020/"
 
   # List files in the specified S3 bucket and prefix
-  files_s3<-s3fs::s3_dir_ls(file.path(bucket_name_s3,folder_path))
+  files_s3<-s3$dir_ls(file.path(bucket_name_s3,folder_path))
   files_s3<-files_s3[grepl("pop.tif",files_s3)]
   files_local<-gsub(file.path(bucket_name_s3,folder_path),paste0(hpop_dir,"/"),files_s3)
   
@@ -445,7 +445,7 @@ if(Cglabs){
   # 3.9) GLPS #####
   local_dir<-glps_dir
   # List files in the specified S3 bucket and prefix
-  files_s3<-s3fs::s3_dir_ls(file.path(bucket_name_s3, basename(local_dir)))
+  files_s3<-s3$dir_ls(file.path(bucket_name_s3, basename(local_dir)))
   files_local<-file.path(local_dir,basename(files_s3))
 
   # If data does not exist locally download from S3 bucket
@@ -459,7 +459,7 @@ if(Cglabs){
   # 3.10) Cattle heatstress #####
   local_dir<-cattle_heatstress_dir
   # List files in the specified S3 bucket and prefix
-  files_s3<-s3fs::s3_dir_ls(file.path(bucket_name_s3, basename(local_dir)))
+  files_s3<-s3$dir_ls(file.path(bucket_name_s3, basename(local_dir)))
   files_local<-file.path(local_dir,basename(files_s3))
   
   # If data does not exist locally download from S3 bucket
