@@ -62,6 +62,11 @@ if(project_dir=="/home/jovyan/rstudio/atlas/hazards_prototype"){
 if(project_dir=="D:/rprojects/hazards_prototype"){
   working_dir<-"D:/common_data/hazards_prototype"
 }
+
+if(project_dir=="C:/rprojects/hazards_prototype"){
+  working_dir<-"C:/rprojects/common_data/hazards_prototype"
+}
+
 # Afrilabs
 if(project_dir=="home/psteward/rprojects/hazards_prototype"){
   working_dir<-"/home/psteward/common_data"
@@ -150,10 +155,20 @@ if(Cglabs){
   }
   
   geo_dir<-"Data/boundaries"
-  
   if(!dir.exists(geo_dir)){
     dir.create(geo_dir)
   }
+  
+  glps_dir<-file.path(working_dir,"Data","GLPS")
+  if(!dir.exists(glps_dir)){
+    dir.create(glps_dir)
+  }
+  
+  cattle_heatstress_dir<-file.path(working_dir,"Data","cattle_heatstress")
+  if(!dir.exists(cattle_heatstress_dir)){
+    dir.create(cattle_heatstress_dir)
+  }
+  
   
   # Inputs
   ac_dir<-"Data/adaptive_capacity"
@@ -276,7 +291,7 @@ if(Cglabs){
     }
   }
   
-  # 3.5) Fao stat 
+  # 3.5) Fao stat #####
     # 3.5.1) deflators ######
   update<-F
   # Download FAOstat deflators
@@ -298,7 +313,7 @@ if(Cglabs){
     unlink(zip_file_path)
   }
   
-    # 3.6.1) producer prices ######
+    # 3.5.2) producer prices ######
   fao_econ_file<-file.path(fao_dir,"Prices_E_Africa_NOFLAG.csv")
   
   if(!file.exists(fao_econ_file)){
@@ -316,6 +331,73 @@ if(Cglabs){
     unlink(zip_file_path)
   }
   
+    # 3.5.3) production ######
+    prod_file<-file.path(fao_dir,"Production_Crops_Livestock_E_Africa_NOFLAG.csv")
+    
+    if(!file.exists(prod_file)){
+      # Define the URL and set the save path
+      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip"
+      zip_file_path <- file.path(fao_dir, "Production_E_Africa.zip")
+      
+      # Download the file
+      download.file(url, zip_file_path, mode = "wb")
+      
+      # Unzip the file
+      unzip(zip_file_path, exdir = fao_dir)
+      
+      # Delete the ZIP file
+      unlink(zip_file_path)
+    }
+    
+    prod_file_world<-file.path(fao_dir,"Production_Crops_Livestock_E_All_Area_Groups.csv")
+    if(!file.exists(prod_file_world)){
+      # Define the URL and set the save path
+      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_All_Area_Groups.zip"
+      zip_file_path <- file.path(fao_dir, "Production_Crops_Livestock_E_All_Area_Groups.zip")
+      
+      # Download the file
+      download.file(url, zip_file_path, mode = "wb")
+      
+      # Unzip the file
+      unzip(zip_file_path, exdir = fao_dir)
+      
+      # Delete the ZIP file
+      unlink(zip_file_path)
+    }
+    # 3.5.4) value of production #####
+    vop_file<-file.path(fao_dir,"Value_of_Production_E_Africa.csv")
+    if(!file.exists(vop_file)){
+      # Define the URL and set the save path
+      url<-"https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip"
+      
+      zip_file_path <- file.path(fao_dir, "Value_of_Production_E_Africa.zip")
+      
+      # Download the file
+      download.file(url, zip_file_path, mode = "wb")
+      
+      # Unzip the file
+      unzip(zip_file_path, exdir = fao_dir)
+      
+      # Delete the ZIP file
+      unlink(zip_file_path)
+    }
+    
+    vop_file_world<-file.path(fao_dir,"Value_of_Production_E_All_Area_Groups.csv")
+    if(!file.exists(vop_file_world)){
+      # Define the URL and set the save path
+      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_All_Area_Groups.zip"
+      zip_file_path <- file.path(fao_dir, "Value_of_Production_E_All_Area_Groups.zip")
+      
+      # Download the file
+      download.file(url, zip_file_path, mode = "wb")
+      
+      # Unzip the file
+      unzip(zip_file_path, exdir = fao_dir)
+      
+      # Delete the ZIP file
+      unlink(zip_file_path)
+    }
+    
   # 3.6) Highlands map #####
   update<-F
   
@@ -353,6 +435,34 @@ if(Cglabs){
   files_s3<-files_s3[grepl("pop.tif",files_s3)]
   files_local<-gsub(file.path(bucket_name_s3,folder_path),paste0(hpop_dir,"/"),files_s3)
   
+  for(i in 1:length(files_local)){
+    file<-files_local[i]
+    if(!file.exists(file)|update==T){
+      s3$file_download(files_s3[i],file)
+    }
+  }
+
+  # 3.9) GLPS #####
+  local_dir<-glps_dir
+  # List files in the specified S3 bucket and prefix
+  files_s3<-s3fs::s3_dir_ls(file.path(bucket_name_s3, basename(local_dir)))
+  files_local<-file.path(local_dir,basename(files_s3))
+
+  # If data does not exist locally download from S3 bucket
+  for(i in 1:length(files_local)){
+    file<-files_local[i]
+    if(!file.exists(file)|update==T){
+      s3$file_download(files_s3[i],file)
+    }
+  }
+
+  # 3.10) Cattle heatstress #####
+  local_dir<-cattle_heatstress_dir
+  # List files in the specified S3 bucket and prefix
+  files_s3<-s3fs::s3_dir_ls(file.path(bucket_name_s3, basename(local_dir)))
+  files_local<-file.path(local_dir,basename(files_s3))
+  
+  # If data does not exist locally download from S3 bucket
   for(i in 1:length(files_local)){
     file<-files_local[i]
     if(!file.exists(file)|update==T){
