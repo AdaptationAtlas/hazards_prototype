@@ -101,43 +101,9 @@ atlas_iso3<-geoboundaries$iso3
 target_year<-c(2015,2017)
 
   # 3.1) VoP #####
-    # 3.1.1) Download ######
     vop_file<-file.path(fao_dir,"Value_of_Production_E_Africa.csv")
-    update<-F
-    if(!file.exists(vop_file)|update){
-      # Define the URL and set the save path
-      url<-"https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip"
-      
-      zip_file_path <- file.path(fao_dir, "Value_of_Production_E_Africa.zip")
-      
-      # Download the file
-      download.file(url, zip_file_path, mode = "wb")
-      
-      # Unzip the file
-      unzip(zip_file_path, exdir = fao_dir)
-      
-      # Delete the ZIP file
-      unlink(zip_file_path)
-    }
-    
     vop_file_world<-file.path(fao_dir,"Value_of_Production_E_All_Area_Groups.csv")
-    if(!file.exists(vop_file_world)){
-      # Define the URL and set the save path
-      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_All_Area_Groups.zip"
-      zip_file_path <- file.path(fao_dir, "Value_of_Production_E_All_Area_Groups.zip")
-      
-      # Download the file
-      download.file(url, zip_file_path, mode = "wb")
-      
-      # Unzip the file
-      unzip(zip_file_path, exdir = fao_dir)
-      
-      # Delete the ZIP file
-      unlink(zip_file_path)
-    }
-    
-    # 3.1.2) Prepare ######
-    
+
     prod_value<-fread(vop_file)
     prod_value[grep(paste(lps2fao,collapse="|"),Item),unique(Item)]
 
@@ -169,25 +135,7 @@ target_year<-c(2015,2017)
     prod_value_world<-merge(prod_value_world,data.table(Item=lps2fao_ind,atlas_name=names(lps2fao_ind)),all.x=T)
 
   # 3.2) Price #####
-    # 3.2.1) Download ######
     econ_file<-file.path(fao_dir,"Prices_E_Africa_NOFLAG.csv")
-    
-    if(!file.exists(econ_file)){
-      # Define the URL and set the save path
-      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip"
-      zip_file_path <- file.path(fao_dir, "Prices_E_Africa.zip")
-      
-      # Download the file
-      download.file(url, zip_file_path, mode = "wb")
-      
-      # Unzip the file
-      unzip(zip_file_path, exdir = fao_dir)
-      
-      # Delete the ZIP file
-      unlink(zip_file_path)
-    }
-
-    # 3.2.2) Prepare ######
     prod_price<-fread(econ_file)
     prod_price[grep("Meat of goat",Item),unique(Item)]
     prod_price[grep(paste(lps2fao,collapse="|"),Item),unique(Item)]
@@ -209,41 +157,9 @@ target_year<-c(2015,2017)
     prod_price<-add_nearby(data=prod_price,value_field = "mean",neighbors=african_neighbors,regions)
     
   # 3.3) Production #####
-    # 3.3.1) Download ######
     prod_file<-file.path(fao_dir,"Production_Crops_Livestock_E_Africa_NOFLAG.csv")
-    
-    if(!file.exists(prod_file)){
-      # Define the URL and set the save path
-      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip"
-      zip_file_path <- file.path(fao_dir, "Production_E_Africa.zip")
-      
-      # Download the file
-      download.file(url, zip_file_path, mode = "wb")
-      
-      # Unzip the file
-      unzip(zip_file_path, exdir = fao_dir)
-      
-      # Delete the ZIP file
-      unlink(zip_file_path)
-    }
-    
     prod_file_world<-file.path(fao_dir,"Production_Crops_Livestock_E_All_Area_Groups.csv")
-    if(!file.exists(prod_file_world)){
-      # Define the URL and set the save path
-      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_All_Area_Groups.zip"
-      zip_file_path <- file.path(fao_dir, "Production_Crops_Livestock_E_All_Area_Groups.zip")
-      
-      # Download the file
-      download.file(url, zip_file_path, mode = "wb")
-      
-      # Unzip the file
-      unzip(zip_file_path, exdir = fao_dir)
-      
-      # Delete the ZIP file
-      unlink(zip_file_path)
-    }
-
-    # 3.3.2) Prepare ######
+    
     prod<-fread(prod_file, encoding = "Latin-1")
     prod[grep(paste(lps2fao,collapse="|"),Item),unique(Item)]
     
@@ -264,26 +180,9 @@ target_year<-c(2015,2017)
     prod_world<-merge(prod_world,data.table(Item=lps2fao,atlas_name=names(lps2fao)),all.x=T)
     
   # 3.4) Deflators #####
-    # 3.4.1) Download ######
+    # Prepare deflators data 
     def_file<-file.path(fao_dir,"Deflators_E_All_Data_(Normalized).csv")
     
-    if(!file.exists(def_file)){
-      # Define the URL and set the save path
-      url<-"https://fenixservices.fao.org/faostat/static/bulkdownloads/Deflators_E_All_Data_(Normalized).zip"
-      
-      zip_file_path <- file.path(fao_dir,basename(url))
-      
-      # Download the file
-      download.file(url, zip_file_path, mode = "wb")
-      
-      # Unzip the file
-      unzip(zip_file_path, exdir = fao_dir)
-      
-      # Delete the ZIP file
-      unlink(zip_file_path)
-    }
-    # 3.4.2) Prepare ######
-    # Prepare deflators data 
     deflators<-fread(def_file)
     deflators[,M49:=as.numeric(gsub("[']","",`Area Code (M49)`))]
     deflators[,iso3:=countrycode(sourcevar=M49,origin="un",destination = "iso3c")]
