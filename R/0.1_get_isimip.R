@@ -73,7 +73,8 @@ check<-lapply(1:nrow(datasets),FUN=function(i){
 # 2) Download files #####
 delete_original<-T
 
-pbapply::pblapply(1:nrow(datasets),FUN=function(i){
+lapply(1:nrow(datasets),FUN=function(i){
+  cat(i,"/",nrow(datasets),"\n")
   # Define URL and local file path
   url_path <- datasets$dl_path[i]
   local_path <- file.path(isimip_dir, basename(url_path))
