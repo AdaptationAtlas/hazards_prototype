@@ -57,6 +57,12 @@ setnames(deflators,paste0("D",target_year),c("def_past","def_target"))
 deflators[,def:=def_target/def_past][,c("def_past","def_target"):=NULL]
 
 # 0.5) Read in thornton et al. 2022 economic loss data #####
+
+# Phil T: (what is dmi?) It’s a unitless DMI modification factor to account for cold 
+# (so more than the baseline value, i.e. the animal eats more) and heat (less than the baseline value, the animal 
+# eats less).  The baseline value depends very much on AEZ etc – so up to 1.1 in some colder places, down to 0.8 or 
+# so in other hot/humid places.
+
 econ_loss<-data.table::fread(file.path(cattle_heatstress_dir,"dmi_and_econ_loss.csv"))
 econ_loss<-econ_loss[ISO %in% Geographies$admin0$iso3]
 econ_loss<-econ_loss[,`WTD-AV`:=NULL][,Region:=NULL]
