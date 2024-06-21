@@ -1,3 +1,4 @@
+# Please run 0_server_setup.R before executing this script
 # 0) Load packages and create functions ####
 packages<-c("terra","data.table","pbapply")
 pacman::p_load(char=packages)
@@ -30,6 +31,7 @@ model <- c("WaterGAP2-2e", "H08", "CWatM")
 gcms <- c("gfdl-esm4", "ipsl-cm6a-lr", "mpi-esm1-2-hr", "mri-esm2-0", "ukesm1-0-ll")
 scenarios <- c("historical_histsoc", "ssp126_2015soc", "ssp370_2015soc", "ssp585_2015soc")
 variables <- c("evap", "qg", "qr", "qs", "qtot", "groundwstor", "dis")
+variable_stat<-data.table(var=variables,stat=c("sum","sum","sum","sum","sum","mean","mean"))
 
 # Create a data table with all combinations of the parameters
 datasets <- data.table(expand.grid(topic = topic, model = model, gcms = gcms, scenarios = scenarios, variable = variables))
@@ -75,9 +77,10 @@ delete_original<-T
 
 lapply(1:nrow(datasets),FUN=function(i){
   cat(i,"/",nrow(datasets),"\n")
+  
   # Define URL and local file path
   url_path <- datasets$dl_path[i]
-  local_path <- file.path(isimip_dir, basename(url_path))
+  local_path <- file.path(isimip_raw_dir, basename(url_path))
   local_path <- gsub("global_", "africa_", local_path)
   
   # Modify file path based on scenario
@@ -147,3 +150,22 @@ lapply(1:nrow(datasets),FUN=function(i){
     }
   }
 })
+
+
+# 3) Create an index #####
+file_index<-data.table(file_path=list.files(isimip_dir,".nc$",full.names = T))[,basename:=basename(file_path)]
+file_index[,model:=unlist(tstrsplit(basename,"_",keep=1))
+      ][,gcm:=unlist(tstrsplit(basename,"_",keep=2))
+        ][,scenario:=unlist(tstrsplit(basename,"_",keep=4))
+          ][,scenario2:=unlist(tstrsplit(basename,"_",keep=5))
+            ][,var:=unlist(tstrsplit(basename,"_",keep=7))
+              ][,region:=unlist(tstrsplit(basename,"_",keep=8))
+                ][,frequency:=unlist(tstrsplit(basename,"_",keep=9))
+                  ][,timeframe:=gsub(".nc","",paste0(unlist(tstrsplit(basename[1],"_",keep=10:11)),collapse="-")),by=basename
+                    ][,var:=gsub("-total","",var)]
+
+file_index<-merge(file_index,variable_stat,all.x=T)
+
+# Add aggregation function to file index
+data.table::fwrite(file_index,file.path(isimip_raw_dir,"file_index.csv"))
+
