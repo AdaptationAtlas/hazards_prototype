@@ -61,7 +61,7 @@ for(ii in 1:nrow(parameters)){
   if(use_crop_cal){
     save_dir1<-paste0(output_dir,"/by_season")
   }else{
-    save_dir1<-paste0(output_dir,"/by_year/hazard_timeseries")
+    save_dir1<-paste0(output_dir,"/by_year")
   }
   
   if(!dir.exists(save_dir1)){
@@ -86,30 +86,25 @@ for(ii in 1:nrow(parameters)){
       if(!use_sos_cc){
         r_cal<-ggcmi_cc
         
-        save_dir<-paste0(save_dir1,"/jagermeyr/hazard_timeseries")
+        save_dir<-file.path(save_dir1,"jagermeyr")
         if(!dir.exists(save_dir)){
           dir.create(save_dir,recursive=T)
         }
         
-        r_cal_file<-paste0(save_dir,"/crop_cal.tif")
+        r_cal_file<-file.path(save_dir,"crop_cal.tif")
         if(!file.exists(r_cal_file)){
           terra::writeRaster(r_cal,r_cal_file)
         }
         
       }else{
-        s1_name<-if(use_eos==T){"primary_eos/hazard_timeseries"}else{paste0("primary_fixed_",season_length,"/hazard_timeseries")}
-        s2_name<-if(use_eos==T){"secondary_eos/hazard_timeseries"}else{paste0("secondary_fixed_",season_length,"/hazard_timeseries")}
+        s1_name<-if(use_eos==T){"primary_eos"}else{paste0("primary_fixed_",season_length,"")}
+        s2_name<-if(use_eos==T){"secondary_eos"}else{paste0("secondary_fixed_",season_length,"")}
         
-        save_dir<-paste0(save_dir1,"/sos_",if(season==1){s1_name}else{s2_name})
+        save_dir<-file.path(save_dir1,paste0("/sos_",if(season==1){s1_name}else{s2_name}))
         if(!dir.exists(save_dir)){
           dir.create(save_dir,recursive=T)
         }
         
-        sos_rast_file<-paste0(save_dir,"/crop_cal.tif")
-        
-        if(!file.exists(sos_rast_file)){
-          terra::writeRaster(sos_rast,sos_rast_file)
-        }
       }
       
     }else{
@@ -162,6 +157,7 @@ for(ii in 1:nrow(parameters)){
     
     # Create ensembles
     groups<-unique(file_index[,list(group,ensemble_name)])
+
     
     for(i in 1:nrow(groups)){
       # Display progress
@@ -182,7 +178,9 @@ for(ii in 1:nrow(parameters)){
           ens_mean_rast<-terra::rast(lapply(1:terra::nlyr(rast_list[[1]]),FUN=function(j){
             terra::app(terra::rast(lapply(rast_list,"[[",j)),mean,na.rm=T)
           }))
-          names(ens_mean_rast)<-names(rast_list[[1]])
+          names(ens_mean_rast)<-format(time(rast_list[[1]]),"%Y")
+          varnames(ens_mean_rast)<-gsub(".nc","",basename(save_file_mean))
+          time(ens_mean_rast)<-time(rast_list[[1]])
           
           terra::writeCDF(ens_mean_rast,save_file_mean,overwrite=T)
           
@@ -190,7 +188,9 @@ for(ii in 1:nrow(parameters)){
           ens_sd_rast<-terra::rast(lapply(1:terra::nlyr(rast_list[[1]]),FUN=function(j){
             terra::app(terra::rast(lapply(rast_list,"[[",j)),sd,na.rm=T)
           }))
-          names(ens_sd_rast)<-names(rast_list[[1]])
+          names(ens_sd_rast)<-format(time(rast_list[[1]]),"%Y")
+          varnames(ens_sd_rast)<-gsub(".nc","",basename(save_file_mean))
+          time(ens_sd_rast)<-time(rast_list[[1]])
           
           terra::writeCDF(ens_sd_rast,save_file_sd,overwrite=T)
          }
