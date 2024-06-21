@@ -1,16 +1,11 @@
 # Please run 0_server_setup.R before executing this script
 # 1) Load R functions & packages ####
-
-# List of packages to be loaded
-packages <- c("terra", 
-              "data.table",
-              "httr")
-
-# Call the function to install and load packages
+packages <- c("terra","data.table")
 p_load(char=packages)
 
 # 2) Set directories  ####
 # Directory where monthly timeseries data generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
+# Note this is currently only available on cglabs, but we will be adding the ability to downlaod these data from the s3
 working_dir<-indices_dir
 setwd(working_dir)
 
@@ -27,51 +22,16 @@ folders<-unlist(tstrsplit(folders,"/",keep=2))
 
 model_names<-unique(unlist(tstrsplit(folders[!grepl("histor",folders)],"_",keep=2)))
 
-# combine sos crop calendars
-files<-list.files(sos_dir,".RData")
-
-# Load sos data estimated from historical data, here SOS is calculated for each season and then averaged
-sos_data<-rbindlist(lapply(files,FUN=function(file){
-  X<-miceadds::load.Rdata2(file=file,path=sos_dir)
-  X$admin0<-gsub(".RData","",file)
-  X
-}),use.names=T)[,list(admin0,x,y,S1,S2,E1,E2,LGP1,LGP2,Tot.Rain1,Tot.Rain2)]
-
-# Fix seasonal allocation for specific countries
-N<-sos_data[,which(S1>30 & ((is.na(S1)+is.na(S2))==1) & admin0=="Angola")]
-sos_data[N,E2:=E1]
-sos_data[N,E1:=NA]
-sos_data[N,LGP2:=LGP1]
-sos_data[N,LGP1:=NA]
-sos_data[N,Tot.Rain2:=Tot.Rain1]
-sos_data[N,Tot.Rain1:=NA]
-sos_data[N,S2:=S1]
-sos_data[N,S1:=NA]
-sos_data[,admin0:=NULL]
-
-# Update dekads to months
-sos_data[,S1:=as.numeric(format(as.Date((S1*10),origin = as.Date("2024-01-01")),"%m"))]
-sos_data[,S2:=as.numeric(format(as.Date((S2*10),origin = as.Date("2024-01-01")),"%m"))]
-sos_data[,E1:=as.numeric(format(as.Date((E1*10),origin = as.Date("2024-01-01")),"%m"))]
-sos_data[,E2:=as.numeric(format(as.Date((E2*10),origin = as.Date("2024-01-01")),"%m"))]
-sos_data[,LGP1:=ceiling(LGP1/3)]
-sos_data[,LGP2:=ceiling(LGP2/3)]
-
-# If start and end month are the same then add a month to the end month
-sos_data[S1==E1,E1:=E1+1]
-sos_data[S2==E2,E2:=E2+1]
-sos_data[E1==13,E1:=1]
-sos_data[E2==13,E2:=1]
-
-N<-sos_data[,which(is.na(S1))]
-
-sos_data[is.na(S1),c("S1","S2"):=list(S2,S1)]
-sos_data[is.na(E1),c("E1","E2"):=list(E2,E1)]
-sos_data[is.na(LGP1),c("LGP1","LGP2"):=list(LGP2,LGP1)]
-
-# covert to raster
-sos_rast<-terra::rast(as.data.frame(sos_data)[,c("x","y","S1","S2","E1","E2","LGP1","LGP2")], type="xyz", crs="+proj=longlat +datum=WGS84 +no_defs", digits=3, extent=NULL)
-sos_rast<-terra::resample(sos_rast,base_rast)
+  # 3.1) Load sos raster #####
+  sos_rast<-terra::rast(file.path(sos_dir,"sos.tif"))
+  
+  # 3.2) Load & process ggcmi crop calendar #####
+  ggcmi_cc<-terra::rast(file.path(ggcmi_dir,"mai_rf_ggcmi_crop_calendar_phase3_v1.01.nc4"))
+  ggcmi_cc<-terra::crop(ggcmi_cc,base_rast)
+  ggcmi_cc <- terra::resample(ggcmi_cc, base_rast, method = "near")
+  ggcmi_cc$planting_month<-as.numeric(format(as.Date(ggcmi_cc$planting_day[],origin = as.Date("2024-01-01")),"%m"))
+  ggcmi_cc$maturity_month<-as.numeric(format(as.Date(ggcmi_cc$maturity_day[],origin = as.Date("2024-01-01")),"%m"))
+  ggcmi_cc<-ggcmi_cc[[c("planting_month","maturity_month")]]
 
 # 4) Choose hazards #####
 # Read in climate variable information
@@ -156,19 +116,12 @@ for(ii in 1:nrow(parameters)){
   }
   
   for(season in 1:n_seasons){
-    
-    # Load crop calendar - jagermeyer   ####
-    jagermeyer_cc<-terra::rast("/home/jovyan/common_data/atlas_crop_calendar/intermediate/mai_rf_ggcmi_crop_calendar_phase3_v1.01_Africa.tif")
-    jagermeyer_cc$planting_month<-as.numeric(format(as.Date(jagermeyer_cc$planting_day[],origin = as.Date("2024-01-01")),"%m"))
-    jagermeyer_cc$maturity_month<-as.numeric(format(as.Date(jagermeyer_cc$maturity_day[],origin = as.Date("2024-01-01")),"%m"))
-    jagermeyer_cc<-jagermeyer_cc[[c("planting_month","maturity_month")]]
-    jagermeyer_cc<-terra::resample(jagermeyer_cc,base_rast)
-    
+
     # Update save directory to create structures for different crop calendars within seasonal folder
     if(use_crop_cal=="yes"){
       
       if(use_sos_cc=="no"){
-        r_cal<-jagermeyer_cc
+        r_cal<-ggcmi_cc
         
         save_dir<-paste0(save_dir1,"/jagermeyr/hazard_timeseries")
         if(!dir.exists(save_dir)){
@@ -197,12 +150,12 @@ for(ii in 1:nrow(parameters)){
       }
       
     }else{
-      r_cal<-jagermeyer_cc
+      r_cal<-ggcmi_cc
       save_dir<-save_dir1
     }
     
     if(use_sos_cc=="yes" & use_crop_cal=="yes"){
-      r_cal<-jagermeyer_cc
+      r_cal<-ggcmi_cc
       # Major season
       if(season==1){
         r_cal$planting_month<-sos_rast$S1
