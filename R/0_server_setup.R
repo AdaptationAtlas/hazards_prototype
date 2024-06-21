@@ -10,7 +10,7 @@ if (!require("pacman", character.only = TRUE)) {
 }
 
 # List of packages to be loaded
-packages <- c("remotes","data.table","httr","s3fs","xml2")
+packages <- c("remotes","data.table","httr","s3fs","xml2","paws","rvest")
 
 # Use pacman to install and load the packages
 pacman::p_load(char=packages)
@@ -53,7 +53,7 @@ if(!exists("project_dir")){
 
 # Cglabs
 Cglabs<-F
-if(project_dir=="/home/jovyan/rstudio/atlas/hazards_prototype"){
+if(project_dir=="/home/jovyan/atlas/hazards_prototype"){
   working_dir<-"/home/jovyan/common_data/hazards_prototype"
   Cglabs<-T
 }
@@ -97,6 +97,8 @@ if(Cglabs){
 
 # 2) Set directories ####
   # 2.1) Local folders #####
+
+  # 2.1.1) Outputs ######
   haz_timeseries_dir<-file.path("Data/hazard_timeseries",timeframe_choice)
   if(!dir.exists(haz_timeseries_dir)){dir.create(haz_timeseries_dir,recursive=T)}
   haz_timeseries_s3_dir<-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
@@ -153,12 +155,14 @@ if(Cglabs){
   if(!dir.exists(exposure_dir)){
     dir.create(exposure_dir)
   }
+
+  # 2.1.2) Inputs #####
   
   geo_dir<-"Data/boundaries"
   if(!dir.exists(geo_dir)){
     dir.create(geo_dir)
   }
-  
+
   glps_dir<-file.path(working_dir,"Data","GLPS")
   if(!dir.exists(glps_dir)){
     dir.create(glps_dir)
@@ -169,8 +173,6 @@ if(Cglabs){
     dir.create(cattle_heatstress_dir)
   }
   
-  
-  # Inputs
   ac_dir<-"Data/adaptive_capacity"
   if(!dir.exists(ac_dir)){
     dir.create(ac_dir,recursive=T)
@@ -186,11 +188,7 @@ if(Cglabs){
     dir.create(commodity_mask_dir)
   }
   
-  boundary_dir<-"Data/boundaries"
-  if(!dir.exists(boundary_dir)){
-    dir.create(boundary_dir)
-  }
-  
+
   glw_dir<-"Data/GLW4"
   if(!dir.exists(glw_dir)){
     dir.create(glw_dir)
@@ -216,9 +214,22 @@ if(Cglabs){
     dir.create(mapspam_dir,recursive=T)
   }
   
+  sos_dir<-"Data/sos"
+  if(!dir.exists(sos_dir)){
+    dir.create(sos_dir,recursive=T)
+  }
+  
+  ggcmi_dir<-"Data/ggcmi"
+  if(!dir.exists(ggcmi_dir)){
+    dir.create(ggcmi_dir,recursive=T)
+  }
+  
   if(Cglabs){
-    # Set sos calendar directory
-    sos_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
+    sos_raw_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
+    isimip_dir<-"/home/jovyan/common_data/isimip"
+    if(!dir.exists(isimip_dir)){
+      dir.create(isimip_dir,recursive=T)
+    }
   }
   
   # 2.2) Atlas s3 bucket #####
@@ -441,6 +452,8 @@ if(Cglabs){
       s3$file_download(files_s3[i],file)
     }
   }
+  
+  make_s3_public(file.path(bucket_name_s3,folder_path))
 
   # 3.9) GLPS #####
   local_dir<-glps_dir
@@ -469,6 +482,43 @@ if(Cglabs){
       s3$file_download(files_s3[i],file)
     }
   }
+  # 3.11) SOS #####
+  local_dir<-sos_dir
+  # List files in the specified S3 bucket and prefix
+  files_s3<-s3$dir_ls(file.path(bucket_name_s3, basename(local_dir)))
+  files_local<-file.path(local_dir,basename(files_s3))
+  
+  # If data does not exist locally download from S3 bucket
+  for(i in 1:length(files_local)){
+    file<-files_local[i]
+    if(!file.exists(file)|update==T){
+      s3$file_download(files_s3[i],file)
+    }
+  }
+  
+  # 3.12) GGCMI crop calendars #####
+  update<-F
+  if(length(list.files(ggcmi_dir))!=40){
+  url <- "https://www.pik-potsdam.de/~jonasjae/GGCMI_Phase3_crop_calendar"
+  webpage <- rvest::read_html(url)
+  
+  file_links <- webpage %>%
+    rvest::html_nodes("a") %>%
+    rvest::html_attr("href") %>%
+    grep("\\.nc4$", ., value = TRUE) # Only keep .nc4 files
+  
+  file_links<-file.path(url,file_links)
+  
+  for(i in 1:length(file_links)){
+    cat(sprintf("\rDownloading GGCMI file %d/%d", i, length(file_links)))
+    file<-file.path(ggcmi_dir,basename(file_links[i]))
+    if(!file.exists(file)|update==T){
+      download.file(file_links[i],file)
+    }
+  }
+  
+  }
+  
 # 4) Set data paths ####
   # 4.1) hazard class #####
   haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
