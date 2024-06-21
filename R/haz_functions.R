@@ -2681,3 +2681,86 @@ upload_files_to_s3 <- function(files,
     make_s3_public(selected_bucket)
   }
 }
+#' Process ISIMIP Files
+#'
+#' This function processes ISIMIP climate model output files for a given variable, aggregates the data by the growing season, and saves the processed data to a specified directory.
+#'
+#' @param file_path A character string specifying the path to the input file.
+#' @param stat A character string specifying the statistic to apply (e.g., "sum", "max", "mean", "min").
+#' @param save_dir A character string specifying the directory to save the processed files.
+#' @param r_cal A `SpatRaster` object containing the planting and harvest month information.
+#' @param overwrite A logical value indicating whether to overwrite existing files. Default is FALSE.
+#' @param use_crop_cal A logical value indicating whether to use crop calendar data for harvest calculation. Default is FALSE.
+#'
+#' @return None. The function saves the processed `SpatRaster` object to the specified directory.
+#' @import terra
+#' @export
+process_isimip_files <- function(file_path, stat, save_dir, r_cal, overwrite = FALSE, use_crop_cal = FALSE) {
+  
+  # Define the save path for the processed file
+  save_file <- file.path(save_dir, basename(file_path))
+  
+  # Check if the file already exists or if we should overwrite it
+  if (!file.exists(save_file) || overwrite) {
+    # Load the raster data from the file
+    data <- terra::rast(file_path) + 0
+    # Extract the range of years from the time information in the raster
+    years_range <- range(format(time(data), "%Y"))
+    # Create a numeric sequence of years from the start to the end year
+    years <- as.numeric(years_range[1]):as.numeric(years_range[2])
+    
+    # Copy planting month data from the crop calendar
+    plant <- r_cal$planting_month
+    
+    if (use_crop_cal) {
+      # If using the crop calendar, copy harvest month data
+      harvest <- r_cal$maturity_month
+      # Adjust harvest months where planting occurs in one year and harvest in the next
+      harvest[plant[] > harvest[]] <- harvest[plant[] > harvest[]] + 12
+    } else {
+      # Calculate harvest as 11 months after planting
+      harvest <- plant + 11
+    }
+    
+    # Find the minimum planting month and maximum harvest month
+    plant_min <- min(plant[], na.rm = TRUE)
+    harvest_max <- max(harvest[], na.rm = TRUE)
+    
+    # Loop through the years, note the final year is removed to avoid extending beyond the dataset
+    data_seasons <- terra::rast(lapply(1:(length(years) - 1), function(m) {
+      # Display progress
+      cat('\r', strrep(' ', 150), '\r')
+      cat("Processing file", i, "/", nrow(file_index), "| year", years[m])
+      flush.console()
+      
+      # Subset the data for the current season to increase efficiency
+      data_season <- data[[(plant_min + 12 * (m - 1)):(harvest_max + 12 * (m - 1))]]
+      
+      # Aggregate the data for the current season using the specified statistic
+      data_season_agg<-terra::rapp(data_season,
+                                   first=plant,
+                                   last=harvest,
+                                   fun=if(stat=="sum"){sum}else{
+                                     if(stat=="max"){max}else{
+                                       if(stat=="mean"){mean}else{if(stat=="min"){min}else{stop("invalid stat function supplied")}}}},
+                                   na.rm=T)
+      
+      # Set the name of the aggregated data to the current year
+      names(data_season_agg) <- years[m]
+      data_season_agg
+    }))
+    
+    # Round the data if the statistic is mean
+    if (stat == "mean") {
+      data_seasons <- round(data_seasons, 0)
+    }
+    
+    # Set the time attribute of the data to the start of each year
+    time(data_seasons) <- as.Date(paste0(names(data_seasons), "-01-01"))
+    # Copy the variable names from the original data
+    varnames(data_seasons) <- varnames(data)
+    # Save the processed data to a NetCDF file
+    terra::writeCDF(data_seasons, save_file, overwrite = TRUE)
+  }
+}
+
