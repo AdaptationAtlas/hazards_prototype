@@ -78,23 +78,6 @@ if(!dir.exists(working_dir)){
 
 setwd(working_dir)
 
-# Where is the raw monthly hazards data stored?
-if(Cglabs){
-  # Generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
-  indices_dir<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices"
-  indices_dir2<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
-  
-  if(timeframe_choice!="annual"){
-    indices_seasonal_dir<-paste0(indices_dir2,"/by_season/",timeframe_choice,"/hazard_timeseries")
-  }else{
-    indices_seasonal_dir<-paste0(indices_dir2,"/by_year/hazard_timeseries")
-  }
-}else{
-  cat("Indice files are currently only available in CGlabs, adding download functionality for raw data used in
-      workflow is on the to-do list. You should also see the https://github.com/AdaptationAtlas/hazards workflow which 
-      will enable you to replicate the creation of the foundational monthly hazard data used in this workflow.")
-}
-
 # 2) Set directories ####
   # 2.1) Local folders #####
 
@@ -155,8 +138,47 @@ if(Cglabs){
   if(!dir.exists(exposure_dir)){
     dir.create(exposure_dir)
   }
+  
+  isimip_timeseries_dir<-"Data/isimip_timeseries"
+  if(!dir.exists(isimip_timeseries_dir)){
+    dir.create(isimip_timeseries_dir)
+  }
+  
+  isimip_mean_dir<-"Data/isimip_timeseries_mean"
+  if(!dir.exists(isimip_mean_dir)){
+    dir.create(isimip_mean_dir)
+  }
+  
+  isimip_sd_dir<-"Data/isimip_timeseries_sd"
+  if(!dir.exists(isimip_sd_dir)){
+    dir.create(isimip_sd_dir)
+  }
+  
+  
+  cropsuite_class_dir<-"Data/cropsuite_class"
+  if(!dir.exists(cropsuite_class_dir)){
+    dir.create(cropsuite_class_dir,recursive=T)
+  }
 
   # 2.1.2) Inputs #####
+  
+  # Where is the raw monthly hazards data stored?
+  if(Cglabs){
+    # Generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
+    indices_dir<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices"
+    indices_dir2<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
+    
+    if(timeframe_choice!="annual"){
+      indices_seasonal_dir<-paste0(indices_dir2,"/by_season/",timeframe_choice,"/hazard_timeseries")
+    }else{
+      indices_seasonal_dir<-paste0(indices_dir2,"/by_year/hazard_timeseries")
+    }
+  }else{
+    cat("Indice files are currently only available in CGlabs, adding download functionality for raw data used in
+      workflow is on the to-do list. You should also see the https://github.com/AdaptationAtlas/hazards workflow which 
+      will enable you to replicate the creation of the foundational monthly hazard data used in this workflow.")
+  }
+  
   
   geo_dir<-"Data/boundaries"
   if(!dir.exists(geo_dir)){
@@ -223,12 +245,13 @@ if(Cglabs){
   if(!dir.exists(ggcmi_dir)){
     dir.create(ggcmi_dir,recursive=T)
   }
-  
+
   if(Cglabs){
     sos_raw_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
-    isimip_dir<-"/home/jovyan/common_data/isimip"
-    if(!dir.exists(isimip_dir)){
-      dir.create(isimip_dir,recursive=T)
+    isimip_raw_dir<-"/home/jovyan/common_data/isimip"
+    cropsuite_raw_dir<-"/home/jovyan/common_data/atlas_cropSuite"
+    if(!dir.exists(isimip_raw_dir)){
+      dir.create(isimip_raw_dir,recursive=T)
     }
   }
   
@@ -530,3 +553,5 @@ if(Cglabs){
   # 4.4) ecocrop ####
   ecocrop_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/ecocrop.csv"
   
+  # 4.5) isimip metadata #####
+  isimip_meta_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/isimip_water_var_metadata.csv"
