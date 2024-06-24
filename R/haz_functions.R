@@ -1494,8 +1494,8 @@ admin_extract <- function(data, Geographies, FUN = "mean", max_cells_in_memory =
 #' # Assuming 'data' is a raster layer, 'Geographies' is a list of sf objects, and other parameters are set:
 #' processed_data <- admin_extract_wrap(data, "/path/to/save", "my_data", "sum", "my_variable", Geographies, FALSE)
 #' @export
-admin_extract_wrap <- function(data, save_dir, filename, FUN = "sum", varname, Geographies, overwrite = F) {
-  
+admin_extract_wrap <- function(data, save_dir, filename, FUN = "sum", varname, Geographies, overwrite = F,modify_colnames=T) {
+  library(geoarrow)
   # Define a mapping of administrative level names to short codes.
   levels <- c(admin0 = "adm0", admin1 = "adm1", admin2 = "adm2")
   
@@ -1511,9 +1511,9 @@ admin_extract_wrap <- function(data, save_dir, filename, FUN = "sum", varname, G
     data_ex <- admin_extract(data, Geographies, FUN = FUN)
     
     # Save the extracted data for each administrative level as a Parquet file.
-    st_write_parquet(obj = sf::st_as_sf(data_ex$admin0), dsn = file0)
-    st_write_parquet(obj = sf::st_as_sf(data_ex$admin1), dsn = file1)
-    st_write_parquet(obj = sf::st_as_sf(data_ex$admin2), dsn = file2)
+    arrow::write_parquet(sf::st_as_sf(data_ex$admin0), file0)
+    arrow::write_parquet(sf::st_as_sf(data_ex$admin1), file1)
+    arrow::write_parquet( sf::st_as_sf(data_ex$admin2), file2)
     
     # Process the extracted data to format it for analysis or further processing.
     data_ex <- rbindlist(lapply(1:length(levels), FUN = function(i) {
@@ -1540,15 +1540,15 @@ admin_extract_wrap <- function(data, save_dir, filename, FUN = "sum", varname, G
       colnames(data) <- gsub("_nam$", "_name", colnames(data))
       data <- data.table(melt(data, id.vars = admin))
       
-      # Add and modify columns to include crop type and exposure information.
-      data[, crop := gsub(paste0(FUN, "."), "", variable[1], fixed = T), by = variable]
-      data[, exposure := varname]
-      data[, variable := NULL]
+      if(modify_colnames){
+        # Add and modify columns to include crop type and exposure information.
+        data[, crop := gsub(paste0(FUN, "."), "", variable[1], fixed = T), by = variable][, crop := gsub(".", " ", crop, fixed = T)]
+        data[, exposure := varname]
+        data[, variable := NULL]
+      }
       
       data
     }), fill = T)
-    # Adjust the crop column formatting.
-    data_ex[, crop := gsub(".", " ", crop, fixed = T)]
     
     # Save the processed data to a single Parquet file.
     arrow::write_parquet(data_ex, file)
@@ -2695,7 +2695,7 @@ upload_files_to_s3 <- function(files,
 #' @return None. The function saves the processed `SpatRaster` object to the specified directory.
 #' @import terra
 #' @export
-process_isimip_files <- function(file_path, stat, save_dir, r_cal, overwrite = FALSE, use_crop_cal = FALSE) {
+process_isimip_files <- function(file_path, stat, save_dir, r_cal, overwrite = FALSE, use_crop_cal = FALSE,verbose=T) {
   
   # Define the save path for the processed file
   save_file <- file.path(save_dir, basename(file_path))
@@ -2728,10 +2728,13 @@ process_isimip_files <- function(file_path, stat, save_dir, r_cal, overwrite = F
     
     # Loop through the years, note the final year is removed to avoid extending beyond the dataset
     data_seasons <- terra::rast(lapply(1:(length(years) - 1), function(m) {
+      
+      if(verbose){
       # Display progress
       cat('\r', strrep(' ', 150), '\r')
       cat("Processing file", i, "/", nrow(file_index), "| year", years[m])
       flush.console()
+      }
       
       # Subset the data for the current season to increase efficiency
       data_season <- data[[(plant_min + 12 * (m - 1)):(harvest_max + 12 * (m - 1))]]
@@ -2762,5 +2765,33 @@ process_isimip_files <- function(file_path, stat, save_dir, r_cal, overwrite = F
     # Save the processed data to a NetCDF file
     terra::writeCDF(data_seasons, save_file, overwrite = TRUE)
   }
+}
+#' List Bottom-Level Directories
+#'
+#' This function lists all bottom-level directories in a given path. A bottom-level directory is defined
+#' as a directory that does not contain any subdirectories.
+#'
+#' @param path A character string representing the path to the directory to be searched.
+#'
+#' @return A character vector containing the paths of the bottom-level directories.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' list_bottom_directories("/path/to/your/directory")
+#' }
+list_bottom_directories <- function(path) {
+  # List all directories recursively
+  all_dirs <- list.dirs(path, recursive = TRUE, full.names = TRUE)
+  
+  # Filter out directories that contain subdirectories
+  leaf_dirs <- all_dirs[sapply(all_dirs, function(dir) {
+    # List files in the directory
+    files <- list.files(dir, full.names = TRUE)
+    # Check if any of the files are directories
+    !any(file.info(files)$isdir)
+  })]
+  
+  return(leaf_dirs)
 }
 
