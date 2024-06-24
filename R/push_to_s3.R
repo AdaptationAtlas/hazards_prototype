@@ -245,6 +245,18 @@
                      overwrite=F,
                      mode="public-read")
   
+  # Upload - sos raster #####
+  folder<-sos_dir
+  s3_bucket <- file.path(bucket_name_s3,basename(folder))
+  
+  files<-list.files(folder,full.names = T)
+  
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=F,
+                     mode="public-read")
+
 # 2) Time sequence specific ####
   # Upload - hazard timeseries (parquets) ####
   folder<-paste0("Data/hazard_timeseries/",timeframe_choice)
@@ -484,68 +496,16 @@
                      mode="public-read")
   
   
-# =========================####
-# UPLOAD TO GOOGLEDRIVE ####
-  # Ensure the necessary libraries are loaded
-  library(googledrive)
-  library(s3fs)
-  library(mime)
-  
-  # Updated transfer function with support for s3fs
-  transfer_s3_to_drive <- function(s3_bucket, prefix, drive_folder_id, overwrite = FALSE) {
-    # Check for existing Google Drive authentication without forcing re-authentication
-    if (!drive_has_token()) {
-      drive_auth()
-    } else {
-      message("Using existing Google Drive authentication.")
-    }
-    
-    # Check if the Google Drive folder exists
-    if (length(drive_ls(drive_folder_id)) == 0) {
-      stop("The specified Google Drive folder ID does not exist.")
-    }
-    
-    
-    # List files in the S3 bucket with the specified prefix
-    s3_files <- s3fs::s3_dir_ls(s3_bucket)
-    s3_files<-grep(prefix,s3_files,value = T)
-    
-    for (i in 1:length(s3_files)) {
-      file_name <- basename(s3_files[i])
-      
-      # Check if the file exists in Google Drive and skip if overwrite is FALSE
-      existing_files <- drive_ls(drive_folder_id)
-      
-      # Report progress
-      message(sprintf("Processing file %d of %d: %s", i, length(s3_files), file_name))
-      
-      
-      if (!(file_name %in% existing_files) |overwrite==T) {
-        
-        # Download file from S3 to a temporary location
-        temp_file_path <- file.path(tempfile(),file_name)
-        s3fs::s3_file_download(s3_files[i],new_path = temp_file_path)
-        
-        # Upload file to the specified Google Drive folder, overwriting if necessary
-        drive_upload(media = temp_file_path,
-                     path = paste0(as_id(drive_folder_id), "/", file_name))
-        
-        # Optionally, delete the temp file
-        unlink(temp_file_path)
-      }
-      
-    }
-    
-  }
-  
-  # Upload - haz_vop_risk
-  
-  s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_ac/",timeframe_choice)
-  gdrive_folder<-paste0("atlas_",timeframe_choice)
-  
-  
-  transfer_s3_to_drive(s3_bucket = s3_bucket,
-                       prefix = "parquet",
-                       drive_folder_id = gdrive_folder,
-                       overwrite=F)
+# 5) Isimip data
+  # 5.1) Upload - isimip timeseries mean
+  folder<-isimip_timeseries_mean_dir
+  s3_bucket<-file.path(bucket_name_s3,"hazards",basename(isimip_timeseries_mean_dir),timeframe_choice)
+  folder<-file.path(folder,timeframe_choice)
+
+  files<-list.files(folder,".parquet",full.names=T)
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T,
+                     mode="public-read")
   
