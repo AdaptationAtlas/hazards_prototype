@@ -85,11 +85,11 @@ lapply(1:nrow(datasets),FUN=function(i){
   
   # Modify file path based on scenario
   if (datasets[i]$scenarios == "historical_histsoc") {
-    local_path_hist <- gsub("1850_2014", "1981_2014", local_path)
+    local_path_hist <- gsub("1850_2014", "1995_2014", local_path)
     file_exists <- file.exists(local_path_hist)
   } else {
-    local_path_2030 <- gsub("2015_2100", "2020_2040", local_path)
-    local_path_2050 <- gsub("2015_2100", "2040_2060", local_path)
+    local_path_2030 <- gsub("2015_2100", "2021_2040", local_path)
+    local_path_2050 <- gsub("2015_2100", "2041_2060", local_path)
     file_exists <- all(file.exists(local_path_2030, local_path_2050))
   }
   
@@ -118,15 +118,17 @@ lapply(1:nrow(datasets),FUN=function(i){
     
     # Process historical data
     if (datasets[i]$scenarios == "historical_histsoc") {
-      start_date <- as.Date("1981-01-01")
+      start_date <- as.Date("1995-01-01")
+      end_date <- as.Date("2014-12-31")
       start_index <- which(time_info >= start_date)[1]
-      data_subset <- subset(data, start_index:nlyr(data))
+      end_index <- which(time_info <= end_date)[length(which(time_info <= end_date))]
+      data_subset <- subset(data, start_index:end_index)
       data_subset <- terra::crop(data_subset, base_rast)
       terra::writeCDF(data_subset, local_path_hist,overwrite=T)
       
     } else {
       # Process future scenarios for 2020-2040
-      start_date <- as.Date("2020-01-01")
+      start_date <- as.Date("2021-01-01")
       end_date <- as.Date("2040-12-31")
       start_index <- which(time_info >= start_date)[1]
       end_index <- which(time_info <= end_date)[length(which(time_info <= end_date))]
@@ -135,7 +137,7 @@ lapply(1:nrow(datasets),FUN=function(i){
       terra::writeCDF(data_subset, local_path_2030,overwrite=T)
       
       # Process future scenarios for 2040-2060
-      start_date <- as.Date("2040-01-01")
+      start_date <- as.Date("2041-01-01")
       end_date <- as.Date("2060-12-31")
       start_index <- which(time_info >= start_date)[1]
       end_index <- which(time_info <= end_date)[length(which(time_info <= end_date))]
@@ -153,7 +155,7 @@ lapply(1:nrow(datasets),FUN=function(i){
 
 
 # 3) Create an index #####
-file_index<-data.table(file_path=list.files(isimip_dir,".nc$",full.names = T))[,basename:=basename(file_path)]
+file_index<-data.table(file_path=list.files(isimip_raw_dir,".nc$",full.names = T))[,basename:=basename(file_path)]
 file_index[,model:=unlist(tstrsplit(basename,"_",keep=1))
       ][,gcm:=unlist(tstrsplit(basename,"_",keep=2))
         ][,scenario:=unlist(tstrsplit(basename,"_",keep=4))
