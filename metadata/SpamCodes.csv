@@ -1,52 +1,52 @@
-Fullname,Code,sci_name,compound
-arabica coffee,acof,Coffea arabica,no
-banana,bana,Musa acuminata,no
-barley,barl,Hordeum vulgare,no
-bean,bean,Phaseolus vulgaris,no
-cassava,cass,Manihot esculenta,no
-chickpea,chic,Cicer arietinum,no
-coconut,cnut,Cocos nucifera,no
-cocoa,coco,Theobroma cacao,no
-coffee,coff,NA,yes
-cotton,cott,Gossypium hirsutum,no
-cowpea,cowp,Vigna unguiculata,no
-fruit,fruit,NA,yes
-groundnut,grou,Arachis hypogaea,no
-lentil,lent,Lens culinaris,no
-maize,maiz,Zea mays,no
-millet,mill,NA,yes
-other cereals,ocer,NA,yes
-other fibre crops,ofib,NA,yes
-oil crops,oilc,NA,yes
-oilpalm,oilp,Elaeis guineensis,no
-other oil crops,ooil,NA,yes
-other pulses,opul,NA,yes
-other roots,orts,NA,yes
-pigeonpea,pige,Cajanus cajan,no
-plantain,plnt,Musa acuminata x balbisiana;Musa balbisiana,no
-pearl millet,pmil,Pennisetum glaucum,no
-potato,pota,Solanum tuberosum,no
-rapeseed,rape,Brassica napus,no
-robusta coffee,rcof,Coffea canephora,no
-rest of crops,rest,NA,yes
-rice,rice,Oryza sativa,no
-roots,root,NA,yes
-sesameseed,sesa,Sesamum indicum,no
-small millet,smil,Eleusine coracana ssp. coracana,no
-sorghum,sorg,Sorghum bicolor,no
-soybean,soyb,Glycine max,no
-sugarbeet,sugb,Beta vulgaris,no
-sugarcane,sugc,Saccharum officinarum,no
-sunflower,sunf,Helianthus annuus,no
-sweet potato,swpo,Ipomoea batatas,no
-tea,teas,Camellia sinensis,no
-temperate fruit,temf,NA,yes
-tobacco,toba,Nicotiana tabacum,no
-tropical fruit,trof,NA,yes
-vegetables,vege,NA,yes
-wheat,whea,Triticum aestivum,no
-yams,yams,Dioscorea rotundata,no
-banana and plantain,banpl,NA,yes
-cereals,cere,NA,yes
-pulses,puls,NA,yes
-total,total,NA,yes
+Fullname,Code,sci_name,compound,cropsuite_name
+arabica coffee,acof,Coffea arabica,no,coffeearabica
+banana,bana,Musa acuminata,no,banana
+barley,barl,Hordeum vulgare,no,barley
+bean,bean,Phaseolus vulgaris,no,beans
+cassava,cass,Manihot esculenta,no,cassava
+chickpea,chic,Cicer arietinum,no,chickpea
+coconut,cnut,Cocos nucifera,no,coconut
+cocoa,coco,Theobroma cacao,no,cocoa
+coffee,coff,NA,yes,NA
+cotton,cott,Gossypium hirsutum,no,cotton
+cowpea,cowp,Vigna unguiculata,no,cowpea
+fruit,fruit,NA,yes,NA
+groundnut,grou,Arachis hypogaea,no,groundnut
+lentil,lent,Lens culinaris,no,NA
+maize,maiz,Zea mays,no,maize
+millet,mill,NA,yes,pearl millet
+other cereals,ocer,NA,yes,NA
+other fibre crops,ofib,NA,yes,NA
+oil crops,oilc,NA,yes,NA
+oilpalm,oilp,Elaeis guineensis,no,oilpalm
+other oil crops,ooil,NA,yes,NA
+other pulses,opul,NA,yes,NA
+other roots,orts,NA,yes,NA
+pigeonpea,pige,Cajanus cajan,no,NA
+plantain,plnt,Musa acuminata x balbisiana;Musa balbisiana,no,NA
+pearl millet,pmil,Pennisetum glaucum,no,NA
+potato,pota,Solanum tuberosum,no,potato
+rapeseed,rape,Brassica napus,no,rapeseed
+robusta coffee,rcof,Coffea canephora,no,coffeerobusta
+rest of crops,rest,NA,yes,NA
+rice,rice,Oryza sativa,no,rice
+roots,root,NA,yes,NA
+sesameseed,sesa,Sesamum indicum,no,sesame
+small millet,smil,Eleusine coracana ssp. coracana,no,NA
+sorghum,sorg,Sorghum bicolor,no,sorghum
+soybean,soyb,Glycine max,no,soy
+sugarbeet,sugb,Beta vulgaris,no,NA
+sugarcane,sugc,Saccharum officinarum,no,sugarcane
+sunflower,sunf,Helianthus annuus,no,sunflower
+sweet potato,swpo,Ipomoea batatas,no,sweetpotato
+tea,teas,Camellia sinensis,no,tea
+temperate fruit,temf,NA,yes,NA
+tobacco,toba,Nicotiana tabacum,no,tobacco
+tropical fruit,trof,NA,yes,NA
+vegetables,vege,NA,yes,NA
+wheat,whea,Triticum aestivum,no,wheat
+yams,yams,Dioscorea rotundata,no,yam
+banana and plantain,banpl,NA,yes,NA
+cereals,cere,NA,yes,NA
+pulses,puls,NA,yes,NA
+total,total,NA,yes,NA
