@@ -2510,89 +2510,57 @@ list_s3_bucket_contents <- function(bucket_url, folder_path) {
 #' Make S3 Bucket Public
 #'
 #' This function sets the policy of an S3 bucket to allow public read access to specified folders.
+#' It also backs up the past and current policies to the bucket for reference.
+#' The function is vectorized where possible and can handle multiple paths simultaneously. 
+#' Due to the overhead of multiple writes and creating S3 instances, it is recommended to 
+#' pass a list of URIs to the function rather than using it within a loop when adding multiple
+#' folders.
 #'
-#' @param s3_bucket A character string specifying the S3 bucket and folder path (e.g., "s3://bucket-name/folder-path").
-#' @return None. This function modifies the S3 bucket policy.
-#' @importFrom jsonlite fromJSON toJSON
-#' @importFrom paws s3
+#' @param s3_uri A character string or list of strings specifying the S3 bucket and folder path (e.g., "s3://bucket-name/folder-path").
+#' @return The new bucket policy. This function modifies the S3 bucket policy.
+#' @importFrom jsonlite parseJSON toJSON write_json
+#' @importFrom paws.storage s3
 #' @examples
 #' \dontrun{
-#' make_s3_public("s3://your-bucket-name/your-folder-path")
+#' make_s3_public("s3://your-bucket-name/your-folder-path", "your-bucket-name")
+#' make_s3_public(c("your-folder-path1", "your-folder-path2"), "your-bucket-name")
 #' }
 #' @export
-make_s3_public <- function(s3_bucket) {
-  s3 <- paws::s3()
-  bucket_name <- unlist(strsplit(s3_bucket, "/"))[3]
-  folder_path <- gsub(paste0("s3://", bucket_name, "/"), "", s3_bucket)
-  
-  # Retrieve the current bucket policy
-  current_policy <- tryCatch(
-    {
-      s3$get_bucket_policy(Bucket = bucket_name)$Policy
-    },
-    error = function(e) {
-      # Return an empty policy if no policy exists
-      return('{"Version": "2012-10-17", "Statement": []}')
-    }
-  )
-  
-  # Parse the current policy as JSON
-  current_policy <- jsonlite::fromJSON(current_policy, simplifyVector = FALSE)
-  
-  # Define the new statements for the folder to be made public
-  new_statements <- list(
-    list(
-      Sid = paste0("PublicReadListBucket-", gsub("[^A-Za-z0-9]", "", folder_path)),
-      Effect = "Allow",
-      Principal = list(AWS = "*"),
-      Action = "s3:ListBucket",
-      Resource = paste0("arn:aws:s3:::", bucket_name),
-      Condition = list(
-        StringLike = list(
-          `s3:prefix` = paste0(folder_path, "/*")
-        )
+make_s3_public <- function(s3_uri, bucket = "digital-atlas") {
+    s3_inst <- paws.storage::s3()
+    policy <- s3_inst$get_bucket_policy(Bucket = bucket)$Policy
+    policy_ls <- jsonlite::parse_json(policy)
+    tmp <- tempdir()
+    on.exit(unlink(tmp))
+    jsonlite::write_json(policy_ls, file.path(tmp, 'previous_policy.json'),
+        pretty = T, auto_unbox = T)
+    s3_inst$put_object(Bucket = bucket, 
+                    Key = '.bucket_policy/previous_policy.json',
+                    Body = file.path(tmp, 'previous_policy.json'))
+    s3_uri_clean <- gsub("s3://", "", s3_uri)
+    s3_arn <- paste0("arn:aws:s3:::", s3_uri_clean)
+    s3_path <- gsub(paste0(bucket, "/"), "", s3_uri_clean)
+    policy_ls$Statement <- lapply(policy_ls$Statement, function(statement) {
+      switch(statement$Sid,
+        "AllowPublicGet" = {
+            statement$Resource <- unique(c(statement$Resource, s3_arn))
+        },
+        "AllowPublicList" = {
+            statement$Condition$StringLike$`s3:prefix` <- unique(
+              c(statement$Condition$StringLike$`s3:prefix`, s3_path)
+            )
+        }
       )
-    ),
-    list(
-      Sid = paste0("PublicReadGetObject-", gsub("[^A-Za-z0-9]", "", folder_path)),
-      Effect = "Allow",
-      Principal = list(AWS = "*"),
-      Action = "s3:GetObject",
-      Resource = paste0("arn:aws:s3:::", bucket_name, "/", folder_path, "/*")
-    )
-  )
-  
-  # Remove any existing statements for the given s3_bucket
-  current_policy$Statement <- lapply(current_policy$Statement, function(statement) {
-    if (!is.null(statement$Condition) &&
-        !is.null(statement$Condition$StringLike) &&
-        !is.null(statement$Condition$StringLike$`s3:prefix`) &&
-        grepl(folder_path, statement$Condition$StringLike$`s3:prefix`)) {
-      return(NULL)
-    } else if (!is.null(statement$Resource) &&
-               grepl(paste0("arn:aws:s3:::", bucket_name, "/", folder_path), statement$Resource)) {
-      return(NULL)
-    } else {
       return(statement)
-    }
   })
-  
-  # Filter out NULLs from the list
-  current_policy$Statement <- Filter(Negate(is.null), current_policy$Statement)
-  
-  # Append the new statements to the current policy
-  current_policy$Statement <- append(current_policy$Statement, new_statements)
-  
-  # Convert the updated policy back to JSON
-  updated_policy <- jsonlite::toJSON(current_policy, auto_unbox = TRUE, pretty = TRUE)
-  
-  # Set the updated bucket policy
-  s3$put_bucket_policy(
-    Bucket = bucket_name,
-    Policy = updated_policy
-  )
-  
-  message("Bucket policy updated successfully.")
+    new_policy <- jsonlite::toJSON(policy_ls, pretty = T, auto_unbox = T)
+    s3_inst$put_bucket_policy(Bucket = bucket, Policy = new_policy)
+    jsonlite::write_json(policy_ls, file.path(tmp, 'current_policy.json'), 
+        pretty = T, auto_unbox = T)
+    s3_inst$put_object(Bucket = bucket, 
+                      Key = '.bucket_policy/current_policy.json',
+                      Body = file.path(tmp, 'current_policy.json'))
+    return(new_policy)
 }
 #' Upload Files to S3
 #'
