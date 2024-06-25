@@ -2530,7 +2530,9 @@ make_s3_public <- function(s3_uri, bucket = "digital-atlas") {
     s3_inst <- paws.storage::s3()
     policy <- s3_inst$get_bucket_policy(Bucket = bucket)$Policy
     policy_ls <- jsonlite::parse_json(policy)
-    tmp <- tempdir()
+    tmp_dir <- tempdir()
+    tmp <- dir.create(file.path(tmp_dir, "s3_policy"))
+    on.exit(unlink(tmp))
     on.exit(unlink(tmp))
     jsonlite::write_json(policy_ls, file.path(tmp, 'previous_policy.json'),
         pretty = T, auto_unbox = T)
