@@ -496,8 +496,8 @@
                      mode="public-read")
   
   
-# 5) Isimip data
-  # 5.1) Upload - isimip timeseries mean
+# 5) Isimip ####
+  # 5.1) Upload - isimip timeseries mean #####
   folder<-isimip_timeseries_mean_dir
   s3_bucket<-file.path(bucket_name_s3,"hazards",basename(isimip_timeseries_mean_dir),timeframe_choice)
   folder<-file.path(folder,timeframe_choice)
@@ -508,4 +508,16 @@
                      max_attempts = 3,
                      overwrite=T,
                      mode="public-read")
+# 6) CropSuite ####
+  s3_bucket<-file.path(bucket_name_s3,"productivity","CropSuite","processed")
+  
+  folder<-cropsuite_class_dir
+  
+  files<-list.files(folder,"_adm_",full.names=T)
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T,
+                     mode="public-read")
+  
   
