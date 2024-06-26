@@ -2531,7 +2531,7 @@ makeObjectPublic <- function(s3_uri, bucket = "digital-atlas") {
     policy <- s3_inst$get_bucket_policy(Bucket = bucket)$Policy
     policy_ls <- jsonlite::parse_json(policy)
     tmp <- tempdir()
-    tmp_dir <- file.path(tmp_dir, "s3_policy")
+    tmp_dir <- file.path(tmp, "s3_policy")
     if (!dir.exists(tmp_dir)) dir.create(tmp_dir, recursive = T)
     on.exit(unlink(tmp_dir, recursive = T))
     jsonlite::write_json(policy_ls, file.path(tmp_dir, 'previous_policy.json'),
