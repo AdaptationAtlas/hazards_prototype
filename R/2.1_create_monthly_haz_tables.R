@@ -17,7 +17,7 @@ packages <- c("arrow",
               "sf",
               "terra", 
               "data.table", 
-              "doFuture",
+              "future",
               "future.apply",
               "exactextractr",
               "parallel",
@@ -42,9 +42,9 @@ load_and_install_packages(packages)
   # 1.2) Set scenarios and time frames to analyse #####
   Scenarios<-c("ssp126","ssp245","ssp370","ssp585")
   
-  if(file_name=="all_data.parquet"){
-    Scenarios<-c("ssp245","ssp585")
-  }
+  #if(file_name=="all_data.parquet"){
+  #  Scenarios<-c("ssp245","ssp585")
+  #}
   
   Times<-c("2021_2040","2041_2060")
   
@@ -63,136 +63,137 @@ load_and_install_packages(packages)
               ][scenario=="historical",timeframe:="historical"]
 
   # 1.4) Load admin boundaries #####
-  Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
+  # This is limited to admin1 (admin2 is possible but we generate huge files that go beyond the 2gb recommended size for a parquet file, so the data would need to split into chunks)
+  Geographies<-lapply(1:2,FUN=function(i){
     file<-geo_files_local[i]
     data<-arrow::open_dataset(file)
     data <- data |> sf::st_as_sf() |> terra::vect()
     data
   })
-  names(Geographies)<-names(geo_files_local)
+  names(Geographies)<-names(geo_files_local)[1:2]
   
   # 1.5) Load hazard meta-data #####
   haz_meta<-data.table::fread(haz_meta_url, showProgress = FALSE)
   
 # 2) Extract by admin ####
-levels<-c(admin0="adm0",admin1="adm1",admin2="adm2")
+levels<-c(admin0="adm0",admin1="adm1") #,admin2="adm2")
 FUN<-"mean"
-overwrite<-F
-update<-T
+overwrite<-F # overwrite folder level extractions
+update<-T # if files have already been extracted, rebuild the dataset?
 
-file_all<-file.path(output_dir,file_name)
+save_file<-file.path(haz_timeseries_monthly_dir,file_name)
 
-if(!file.exists(file_all)|update==T){
+if(!file.exists(save_file_all)|update){
   data_ex<-rbindlist(lapply(1:nrow(folders),FUN=function(i){
-    folders_ss<-paste0(folders$path[i],"/",hazards)
-    data<-lapply(1:length(folders_ss),FUN=function(j){
-      
-      folders_ss_focus<-folders_ss[j]
-      hazard<-basename(folders_ss_focus)
-      
-      h_var<-unlist(tail(tstrsplit(folders_ss_focus,"_"),1))
-      if(h_var %in% c("mean","max")){
-        folders_ss_focus<-gsub("_max|_mean","",folders_ss_focus)
-      }
-      
-      filename<-paste0(basename(folders$path[i]),"_",basename(folders_ss[j]),".parquet")
-      save_file<-file.path(output_dir,filename)
-      
-      # Progress
-      cat("folder =", i,"/",nrow(folders),basename(folders$path[i])," | hazard = ",j,"/",length(folders_ss),hazard,"\n")
-  
-      if(!file.exists(save_file)|overwrite==T){
-  
-      files<-list.files(folders_ss_focus,".tif$",full.names = T)
-      files<-files[!grepl("AVAIL",files)]
-      
-      if(h_var %in% c("mean","max")){
-        files<-grep(paste0("_",h_var,"-"),files,value=T)
-      }
-      
-      rast_stack<-terra::rast(files)
-      
-      if(hazard=="PTOT"){
-        # Reclassify -9999 to NA
-        rast_stack[rast_stack <0] <- NA
-      }
-      
-      names(rast_stack)<-gsub(".tif","",basename(files))
-     
-      data_ex <- admin_extract(data=rast_stack, Geographies, FUN = "mean", max_cells_in_memory = 1*10^9)
-      
-      # Process the extracted data to format it for analysis or further processing.
-      data_ex <- rbindlist(lapply(1:length(levels), FUN = function(i) {
-        level <- levels[i]
+      folders_ss<-paste0(folders$path[i],"/",hazards)
+      data<-lapply(1:length(folders_ss),FUN=function(j){
         
-        # Convert the data to a data.table and remove specific columns.
-        data <- data.table(data.frame(data_ex[[names(level)]]))
-        data <- data[, !c("admin_name", "iso3")]
+        folders_ss_focus<-folders_ss[j]
+        hazard<-basename(folders_ss_focus)
         
-        # Determine the administrative level being processed and adjust the data accordingly.
-        admin <- "admin0_name"
-        if (level %in% c("adm1", "adm2")) {
-          admin <- c(admin, "admin1_name")
-          data <- suppressWarnings(data[, !"a1_a0"])
+        h_var<-unlist(tail(tstrsplit(folders_ss_focus,"_"),1))
+        if(h_var %in% c("mean","max")){
+          folders_ss_focus<-gsub("_max|_mean","",folders_ss_focus)
         }
         
-        if (level == "adm2") {
-          admin <- c(admin, "admin2_name")
-          data <- suppressWarnings(data[, !"a2_a1_a0"])
-        }
-        
-        # Adjust column names and reshape the data.
-        colnames(data) <- gsub("_nam$", "_name", colnames(data))
-        data <- data.table(melt(data, id.vars = admin))
-        
-        data[, variable := sub(paste0(FUN, "\\."), "", variable[1]), by = variable]
-        
-        data
-      }),use.names=T,fill=T)
-      
-      # Add and modify columns to include crop type and exposure information.
-      
-      data_ex<-data_ex[,scenario:=folders$scenario[i]
-                       ][,model :=folders$model [i]
-                         ][,timeframe:=folders$timeframe[i]
-                           ][,year:=as.integer(unlist(tstrsplit(variable,"[.]",keep=2)))
-                             ][,month:=as.integer(unlist(tstrsplit(variable,"[.]",keep=3)))
-                              ][,variable:=unlist(tstrsplit(variable,"[.]",keep=1))
-                                ][,list(admin0_name,admin1_name,admin2_name,scenario,timeframe,model,year,month,variable,value)
-                                  ][,value:=round(value,1)]
-      
-      arrow::write_parquet(data_ex,sink=save_file)
-      }else{
-        data_ex<-arrow::read_parquet(save_file)
-      }
-      
-      data_ex
-      
-    })
-    data<-rbindlist(data,use.names=T)
- }),use.names=T)
-  
-  data_ex <- data_ex[order(admin0_name, admin1_name, admin2_name, variable, scenario, timeframe, model)]
-  
-  # This step is redundant and can be removed once the data is replaced (i.e. update = T, overwrite= T)
-  data_ex<-data_ex[,value:=round(value,1)
-                   ][!variable %in% c("AVAIL")]
-  
-  arrow::write_parquet(data_ex,file_all)
+        filename<-paste0(basename(folders$path[i]),"_",basename(folders_ss[j]),".parquet")
+        save_file<-file.path(output_dir,filename)
+    
+        # Progress
+        cat("folder =", i,"/",nrow(folders),basename(folders$path[i])," | hazard = ",j,"/",length(folders_ss),hazard,"/n")
 
+        if(!file.exists(save_file)|overwrite==T){
+          
+        files<-list.files(folders_ss_focus,".tif$",full.names = T)
+        if(length(files)!=0){
+        files<-files[!grepl("AVAIL",files)]
+        
+        if(h_var %in% c("mean","max")){
+          files<-grep(paste0("_",h_var,"-"),files,value=T)
+        }
+        
+        rast_stack<-terra::rast(files)
+        
+        if(hazard=="PTOT"){
+          # Reclassify -9999 to NA
+          rast_stack[rast_stack <0] <- NA
+        }
+        
+        names(rast_stack)<-gsub(".tif","",basename(files))
+       
+        data_ex <- admin_extract(data=rast_stack, Geographies, FUN = "mean", max_cells_in_memory = 1*10^9)
+        
+        # Process the extracted data to format it for analysis or further processing.
+        data_ex <- rbindlist(lapply(1:length(levels), FUN = function(i) {
+          level <- levels[i]
+          
+          # Convert the data to a data.table and remove specific columns.
+          data <- data.table(data.frame(data_ex[[names(level)]]))
+          data <- data[, !c("admin_name", "iso3")]
+          
+          # Determine the administrative level being processed and adjust the data accordingly.
+          admin <- "admin0_name"
+          if (level %in% c("adm1", "adm2")) {
+            admin <- c(admin, "admin1_name")
+            data <- suppressWarnings(data[, !"a1_a0"])
+          }
+          
+          if (level == "adm2") {
+            admin <- c(admin, "admin2_name")
+            data <- suppressWarnings(data[, !"a2_a1_a0"])
+          }
+          
+          # Adjust column names and reshape the data.
+          colnames(data) <- gsub("_nam$", "_name", colnames(data))
+          data <- data.table(melt(data, id.vars = admin))
+          
+          data[, variable := sub(paste0(FUN, "\\."), "", variable[1]), by = variable]
+          
+          data
+        }),use.names=T,fill=T)
+        
+        # Add and modify columns to include crop type and exposure information.
+        data_ex<-data_ex[,scenario:=folders$scenario[i]
+                         ][,model :=folders$model [i]
+                           ][,timeframe:=folders$timeframe[i]
+                             ][,year:=as.integer(unlist(tstrsplit(variable,"[.]",keep=2)))
+                               ][,month:=as.integer(unlist(tstrsplit(variable,"[.]",keep=3)))
+                                ][,variable:=unlist(tstrsplit(variable,"[.]",keep=1))
+                                  ][,list(admin0_name,admin1_name,scenario,timeframe,model,year,month,variable,value)
+                                    ][,value:=round(value,1)]
+        
+        data_ex<-data_ex[,list(admin0_name,admin1_name,variable,scenario,timeframe,model,year,month,value)]
+        
+        data_ex<-data_ex[order(admin0_name,admin1_name,variable,scenario,timeframe,model,year,month)]
+        
+        arrow::write_parquet(data_ex,sink=save_file)
+        }else{
+          data_ex<-NULL
+        }
+        }else{
+          data_ex<-arrow::read_parquet(save_file)
+        }
+        
+        data_ex
+      })
+      data<-rbindlist(data,use.names=T)
+   }),use.names=T)
+  arrow::write_parquet(data_ex,save_file_all)
 }else{
-  data_ex<-arrow::read_parquet(file_all)
+  data_ex<-arrow::read_parquet(save_file_all)
 }
-
+  
 # 3) Summarize annually or 3 month windows ####
-data_ex_ens<-data_ex[is.na(admin2_name)
-                     ][,admin2_name:=NULL
-                       ][,month:=as.integer(month)
-                         ][,year:=as.integer(year)
-                           ][!variable %in% c("AVAIL","HSH_mean","THI_mean")] 
+# 3.1) Subset data #####
+data_ex_ss<-data_ex[is.na(admin2_name)
+                 ][,admin2_name:=NULL
+                   ][,month:=as.integer(month)
+                     ][,year:=as.integer(year)
+                       ][!variable %in% c("AVAIL","HSH_mean","THI_mean")] 
 
-vars<-data_ex_ens[,unique(variable)]
+vars<-data_ex_ss[,unique(variable)]
 
+# 3.2) Create 3 month windows #####
 # Define month abbreviations
 month_abbr <- c("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")
 
@@ -215,31 +216,13 @@ names(three_month_periods) <- sapply(1:12, function(start) {
     return(paste(c(month_abbr[start:12], month_abbr[1:(end - 12)]), collapse = ""))
   }
 })
-
 three_month_periods$annual<-1:12
 
-find_consecutive_pattern <- function(seq, pattern) {
-  pattern_length <- length(pattern_split)
-  
-  # Initialize the result vector with NA
-  result <- rep(NA, length(seq))
-  
-  # Check for the pattern in the sequence using a sliding window approach
-  for (i in 1:(length(seq) - pattern_length + 1)) {
-    if (all(seq[i:(i + pattern_length - 1)] == pattern)) {
-      result[i:(i + pattern_length - 1)] <- 1
-    }
-  }
-  
-  # Replace NA with a unique marker (e.g., 0)
-  result[!is.na(result)]<-rep(1:(length(result[!is.na(result)])/pattern_length),each=pattern_length)
-
-  return(result)
-}
-
-data_ex_ens <- rbindlist(pblapply(1:length(three_month_periods),FUN=function(i){
+# 3.3) Summarize data by season #####
+round_by<-2
+data_ex_season <- rbindlist(pblapply(1:length(three_month_periods),FUN=function(i){
   m_period<-three_month_periods[[i]]
-  data<-data_ex_ens[month %in% m_period]
+  data<-data_ex_ss[month %in% m_period]
 
   data[,seq:=find_consecutive_pattern(seq=month,pattern=m_period),by=list(admin0_name,admin1_name,model,scenario,timeframe,variable)]
   data<-data[!is.na(seq)
@@ -255,24 +238,23 @@ data_ex_ens <- rbindlist(pblapply(1:length(three_month_periods),FUN=function(i){
     
     data<-data[variable == VAR, .(value = func(value, na.rm = TRUE)),
                by = .(admin0_name, admin1_name, scenario, model, timeframe, year, variable)
-    ][,season:=names(three_month_periods)[i]]
+    ][,season:=names(three_month_periods)[i]
+      ][,value:=round(value,round_by)]
     
     data
     }))
   }))
 
 # Add historical mean
-data_ex_ens[,baseline_mean:=round(mean(value[scenario=="historical" & timeframe=="historical"]),1),
+data_ex_season[,baseline_mean:=round(mean(value[scenario=="historical" & timeframe=="historical"]),round_by),
             by=list(admin0_name,admin1_name,variable,season)
-            ][,anomaly:=value-baseline_mean]
-
-
+            ][,anomaly:=round(value-baseline_mean,round_by)]
 
 # Check -Inf values (Annobón is a tiny island missed by CHIRTS)
-unique(data_ex_ens[value==-Inf|is.infinite(value)|is.na(value)|is.null(value),list(admin0_name,admin1_name,variable)])
+unique(data_ex_season[value==-Inf|is.infinite(value)|is.na(value)|is.null(value),list(admin0_name,admin1_name,variable)])
 
-# Calculate ensembled statistics
-data_ex_ens<-data_ex_ens[,list(mean=mean(value,na.rm=T),
+# 3.4) Calculate ensembled statistics #####
+data_ex_season_ens<-data_ex_season[,list(mean=mean(value,na.rm=T),
                                max=max(value,na.rm=T),
                                min=min(value,na.rm=T),
                                sd=sd(value,na.rm=T),
@@ -282,20 +264,135 @@ data_ex_ens<-data_ex_ens[,list(mean=mean(value,na.rm=T),
                                sd_anomaly=sd(anomaly,na.rm=T)),
                          by=list(admin0_name,admin1_name,scenario,timeframe,year,variable,season)]
 
-data_ex_ens[scenario=="historical",c("max","min","max_anomaly","min_anomaly","sd_anomaly"):=NA]
+data_ex_season_ens[scenario=="historical",c("max","min","max_anomaly","min_anomaly","sd_anomaly"):=NA]
 
-data_ex_ens[,variable:=gsub("_mean|_max","",variable)]
+data_ex_season_ens[,variable:=gsub("_mean|_max","",variable)]
 
 numeric_cols <- c("mean","max","min","sd","max_anomaly","mean_anomaly","min_anomaly","sd_anomaly")
-data_ex_ens[, (numeric_cols) := lapply(.SD, round,1), .SDcols = numeric_cols]
+data_ex_season_ens[, (numeric_cols) := lapply(.SD, round,1), .SDcols = numeric_cols]
+
+data_ex_season_ens<- data_ex_season_ens[order(admin0_name, admin1_name, season,variable, scenario, timeframe)]
+
+unique(data_ex_season_ens[mean<0 & admin1_name!="Annobón",list(admin0_name,admin1_name,scenario,timeframe,variable,mean)])
+data_ex_ens_stats[is.infinite(mean) & admin1_name!="Annobón"]
+
+# 3.5) Save output #####
+arrow::write_parquet(data_ex_season_ens[,!c("sd","sd_anomaly")],file.path(output_dir,gsub(".parquet","_ensembled.parquet",file_name)))
+
+# 3.6) Calculate trends #####
+# This involves running >10^6 linear models to look at trends, so the process is designed to run in parallel
+
+# Filter out rows with NA/NaN/Inf in 'value' or 'year' before fitting the model
+data_ex_trend <- data_ex_season[is.finite(value) & is.finite(year)]
+
+# Add a grouping variable id
+data_ex_trend[, ID := .GRP, by = list(admin0_name, admin1_name, scenario, timeframe, model, variable, season)]
+
+# Create an object with the minimal data required
+dt<-data_ex_trend[,list(ID,year,value)]
+
+# Define a function to fit a linear model
+fit_lm <- function(df) {
+  df[, {
+    model <- tryCatch(lm(value ~ year), error = function(e) NULL)
+    if (is.null(model)) {
+      list(intercept = NA, slope = NA, p_value = NA)
+    } else {
+      coef <- coef(model)
+      p_value <- summary(model)$coefficients["year", "Pr(>|t|)"]
+      list(intercept = coef["(Intercept)"], slope = coef["year"], p_value = p_value)
+    }
+  }, by = ID]
+}
+
+# Split in n chunks
+unique_ids <- unique(dt$ID)
+chunk_size <- ceiling(length(unique_ids) / n_workers)
+id_chunks <- split(unique_ids, ceiling(seq_along(unique_ids) / chunk_size))
+dt_chunks <- lapply(id_chunks, function(ids) dt[ID %in% ids])
+
+# Set up parallel processing plan
+n_workers<-20
+future::plan(multisession, workers = n_workers)
+
+results_list <- future.apply::future_lapply(dt_chunks, fit_lm)
+
+# Clean up the future plan
+future::plan(sequential)
+
+# Combine results into a data.table
+results <- rbindlist(results_list)
+
+# Merge results back with original data
+data_ex_trend_m<-merge(data_ex_trend,results,all.x=T,by="ID")
+
+# 3.7) Calculate trend stats using the lms  #####
+data_ex_trend_stats <- data_ex_trend_m[,.(value_slope=round(slope[1],3),
+                                               value_start=round(min(year)*slope[1]+intercept[1],1),
+                                               value_s5=round(mean(value[1:5]),1),
+                                               anomaly_s5=round(mean(anomaly[1:5]),1),
+                                               value_end=round(max(year)*slope[1]+intercept[1],1),
+                                               value_e5=round(mean(tail(value,5)),1),
+                                               anomaly_e5=round(mean(tail(anomaly)),1),
+                                               value_decade=round(10*slope,1),
+                                               value_pval=round(p_value[1],3)),
+                                            by=.(admin0_name,admin1_name,scenario,model,timeframe,variable,season)
+                                            ][,value_diff:=value_e5-value_s5
+                                              ][,anomaly_diff:=anomaly_e5-anomaly_s5]
 
 
-data_ex_ens<- data_ex_ens[order(admin0_name, admin1_name, season,variable, scenario, timeframe)]
+# 3.7.1) Ensemble trend stats ######
+data_ex_trend_stats_ens<-melt(data_ex_trend_stats,
+                              id.vals=c("admin0_name","admin1_name","scenario","model","timeframe","variable","season"),
+                              variable.name="stat")
 
-unique(data_ex_ens[mean<0 & admin1_name!="Annobón",list(admin0_name,admin1_name,scenario,timeframe,variable,mean)])
-data_ex_ens[is.infinite(mean) & admin1_name!="Annobón"]
+data_ex_trend_stats_ens<-data_ex_trend_stats_ens[,list(mean=mean(value,na.rm=T),
+                                     max=max(value,na.rm=T),
+                                     min=min(value,na.rm=T),
+                                     sd=round(sd(value,na.rm=T),2)),
+                               by=list(admin0_name,admin1_name,scenario,timeframe,season,variable,stat)]
 
-arrow::write_parquet(data_ex_ens[,!c("sd","sd_anomaly")],file.path(output_dir,gsub(".parquet","_ensembled.parquet",file_name)))
+data_ex_trend_stats_ens_simple<-data_ex_trend_stats_ens[variable %in% c("PTOT","TAVG") & stat %in% c("value_diff","value_decade","anomaly_diff")]
+
+save_file_trends<-file.path(haz_timeseries_monthly_dir,gsub("_data.parquet","_trends.parquet",file_name))
+save_file_trends_simple<-file.path(haz_timeseries_monthly_dir,gsub("_data.parquet","_trends_simple.parquet",file_name))
 
 
+# Define the schema with metadata
+schema <- schema(
+  admin0_name = utf8(),
+  admin1_name = utf8(),
+  scenario = utf8(),
+  model = utf8(),
+  timeframe = utf8(),
+  variable = utf8(),
+  season = utf8(),
+  stat = utf8(),
+  mean = float64(),
+  max = float64(),
+  min = float64(),
+  sd = float64()
+)
 
+# Add metadata to the schema
+metadata <- list(
+  description = "Ensemble trend statistics for various scenarios and models",
+  value_slope = "The slope of the linear regression model for the `value` variable.",
+  value_start = "The estimated value of the `value` variable at the start year.",
+  value_s5 = "The mean of the first 5 values in the time series.",
+  anomaly_s5 = "The mean of the first 5 anomaly values in the time series.",
+  value_end = "The estimated value of the `value` variable at the end year.",
+  value_e5 = "The mean of the last 5 values in the time series.",
+  anomaly_e5 = "The mean of the last 5 anomaly values in the time series.",
+  value_decade = "The change in `value` over a decade.",
+  value_pval = "The p-value of the slope coefficient in the linear regression model.",
+  value_diff = "The difference between the ending and starting 5-year mean values.",
+  anomaly_diff = "The difference between the ending and starting 5-year mean anomalies."
+)
+
+# Convert metadata to JSON and save it
+arrow::write_parquet(data_ex_trend_stats_ens, save_file_trends)
+jsonlite::write_json(metadata, gsub(".parquet",".json",save_file_trends))
+
+arrow::write_parquet(data_ex_trend_stats_ens_simple, save_file_trends_simple)
+jsonlite::write_json(metadata, gsub(".parquet",".json",save_file_trends_simple))
