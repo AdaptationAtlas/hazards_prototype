@@ -68,7 +68,7 @@ if(project_dir=="C:/rprojects/hazards_prototype"){
 }
 
 # Afrilabs
-if(project_dir=="home/psteward/rprojects/hazards_prototype"){
+if(project_dir=="/home/psteward/rprojects/hazards_prototype"){
   working_dir<-"/home/psteward/common_data"
 }
 
@@ -179,7 +179,6 @@ setwd(working_dir)
       will enable you to replicate the creation of the foundational monthly hazard data used in this workflow.")
   }
   
-  
   geo_dir<-"Data/boundaries"
   if(!dir.exists(geo_dir)){
     dir.create(geo_dir)
@@ -245,10 +244,11 @@ setwd(working_dir)
   if(!dir.exists(ggcmi_dir)){
     dir.create(ggcmi_dir,recursive=T)
   }
-
+  
   if(Cglabs){
     sos_raw_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
     isimip_raw_dir<-"/home/jovyan/common_data/isimip"
+    chirts_raw_dir<-"/home/jovyan/common_data/chirts"
     cropsuite_raw_dir<-"/home/jovyan/common_data/atlas_cropSuite"
     if(!dir.exists(isimip_raw_dir)){
       dir.create(isimip_raw_dir,recursive=T)
@@ -301,6 +301,8 @@ setwd(working_dir)
   # Load base raster to which other datasets are resampled to
   base_rast_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
   base_rast<-terra::rast(base_rast_url)
+  base_rast_path<-file.path(project_dir,"metadata","base_raster.tif")
+  
   # 3.4) GLW #####
   update<-F
   # If glw data does not exist locally download from S3 bucket
@@ -461,22 +463,24 @@ setwd(working_dir)
   }
   
   # 3.8) Human population #####
-  # Specify s3 prefix (folder path)
-  folder_path <- "population/worldpop_2020/"
-
-  # List files in the specified S3 bucket and prefix
-  files_s3<-s3$dir_ls(file.path(bucket_name_s3,folder_path))
-  files_s3<-files_s3[grepl("pop.tif",files_s3)]
-  files_local<-gsub(file.path(bucket_name_s3,folder_path),paste0(hpop_dir,"/"),files_s3)
+  # There is an issue with this folder we are trying fix,we cannot seem to change the policy to public-read
+  if(F){
+    # Specify s3 prefix (folder path)
+    folder_path <- "population/worldpop_2020/"
   
-  for(i in 1:length(files_local)){
-    file<-files_local[i]
-    if(!file.exists(file)|update==T){
-      s3$file_download(files_s3[i],file)
+    # List files in the specified S3 bucket and prefix
+    files_s3<-s3$dir_ls(file.path(bucket_name_s3,folder_path))
+    files_s3<-files_s3[grepl("pop.tif",files_s3)]
+    files_local<-gsub(file.path(bucket_name_s3,folder_path),paste0(hpop_dir,"/"),files_s3)
+    
+    for(i in 1:length(files_local)){
+      file<-files_local[i]
+      if(!file.exists(file)|update==T){
+        s3$file_download(files_s3[i],file)
+      }
     }
-  }
-  
-  make_s3_public(file.path(bucket_name_s3,folder_path))
+  }  
+
 
   # 3.9) GLPS #####
   local_dir<-glps_dir
