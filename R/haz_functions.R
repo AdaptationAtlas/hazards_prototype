@@ -2764,4 +2764,38 @@ list_bottom_directories <- function(path) {
   
   return(leaf_dirs)
 }
-
+#' Find Consecutive Pattern in a Sequence
+#'
+#' This function searches for a specified consecutive pattern in a given sequence and marks the positions where the pattern occurs.
+#'
+#' @param seq A numeric or character vector representing the sequence in which to search for the pattern.
+#' @param pattern A numeric or character vector representing the pattern to search for in the sequence.
+#' @return A numeric vector of the same length as `seq`, with 1 indicating the positions of the pattern and 0 elsewhere.
+#' @examples
+#' find_consecutive_pattern(c(1, 2, 3, 1, 2, 3, 1, 2, 3), c(1, 2, 3))
+#' find_consecutive_pattern(c('a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c'), c('a', 'b', 'c'))
+#' @export
+find_consecutive_pattern <- function(seq, pattern) {
+  pattern_length <- length(pattern)
+  
+  # Initialize the result vector with NA
+  result <- rep(NA, length(seq))
+  
+  # Check for the pattern in the sequence using a sliding window approach
+  for (i in 1:(length(seq) - pattern_length + 1)) {
+    if (all(seq[i:(i + pattern_length - 1)] == pattern)) {
+      result[i:(i + pattern_length - 1)] <- 1
+    }
+  }
+  
+  # Replace NA with a unique marker (e.g., 0)
+  result[is.na(result)] <- 0
+  
+  # Assign group numbers to consecutive patterns
+  pattern_indices <- which(result == 1)
+  if (length(pattern_indices) > 0) {
+    result[pattern_indices] <- rep(seq_along(unique(floor((pattern_indices - 1) / pattern_length))), each = pattern_length)
+  }
+  
+  return(result)
+}
