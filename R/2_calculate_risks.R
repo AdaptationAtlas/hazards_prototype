@@ -1,3 +1,4 @@
+# Please run 0_server_setup.R before executing this script
 # Load R functions & packages ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
