@@ -1,17 +1,6 @@
-# First run server_setup script
+# Please run 0_server_setup.R before executing this script
+
 # 0) Load R functions & packages ####
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
-
-load_and_install_packages <- function(packages) {
-  for (package in packages) {
-    if (!require(package, character.only = TRUE)) {
-      install.packages(package)
-      library(package, character.only = TRUE)
-    }
-  }
-}
-
-# List of packages to be loaded
 packages <- c("arrow",
               "geoarrow",
               "sf",
@@ -24,7 +13,7 @@ packages <- c("arrow",
               "pbapply")
 
 # Call the function to install and load packages
-load_and_install_packages(packages)
+p_load(char=packages)
 
 # 1) Set up workspace ####
   # 1.0) Set cores for parallel #####
@@ -81,7 +70,7 @@ FUN<-"mean"
 overwrite<-F # overwrite folder level extractions
 update<-T # if files have already been extracted, rebuild the dataset?
 
-save_file<-file.path(haz_timeseries_monthly_dir,file_name)
+save_file_all<-file.path(haz_timeseries_monthly_dir,file_name)
 
 if(!file.exists(save_file_all)|update){
   data_ex<-rbindlist(lapply(1:nrow(folders),FUN=function(i){
@@ -100,7 +89,7 @@ if(!file.exists(save_file_all)|update){
         save_file<-file.path(output_dir,filename)
     
         # Progress
-        cat("folder =", i,"/",nrow(folders),basename(folders$path[i])," | hazard = ",j,"/",length(folders_ss),hazard,"/n")
+        cat("folder =", i,"/",nrow(folders),basename(folders$path[i])," | hazard = ",j,"/",length(folders_ss),hazard,"\n")
 
         if(!file.exists(save_file)|overwrite==T){
           
@@ -172,6 +161,10 @@ if(!file.exists(save_file_all)|update){
         }
         }else{
           data_ex<-arrow::read_parquet(save_file)
+          
+          if(!"adm2" %in% levels){
+            data_ex[,admin2_name:=NULL]
+          }
         }
         
         data_ex
@@ -185,9 +178,7 @@ if(!file.exists(save_file_all)|update){
   
 # 3) Summarize annually or 3 month windows ####
 # 3.1) Subset data #####
-data_ex_ss<-data_ex[is.na(admin2_name)
-                 ][,admin2_name:=NULL
-                   ][,month:=as.integer(month)
+data_ex_ss<-data_ex[,month:=as.integer(month)
                      ][,year:=as.integer(year)
                        ][!variable %in% c("AVAIL","HSH_mean","THI_mean")] 
 
@@ -253,6 +244,9 @@ data_ex_season[,baseline_mean:=round(mean(value[scenario=="historical" & timefra
 # Check -Inf values (Annobón is a tiny island missed by CHIRTS)
 unique(data_ex_season[value==-Inf|is.infinite(value)|is.na(value)|is.null(value),list(admin0_name,admin1_name,variable)])
 
+# Remove non-finite values
+data_ex_season<-data_ex_season[is.finite(value)]
+
 # 3.4) Calculate ensembled statistics #####
 data_ex_season_ens<-data_ex_season[,list(mean=mean(value,na.rm=T),
                                max=max(value,na.rm=T),
@@ -261,10 +255,14 @@ data_ex_season_ens<-data_ex_season[,list(mean=mean(value,na.rm=T),
                                mean_anomaly=mean(anomaly,na.rm=T),
                                max_anomaly=max(anomaly,na.rm=T),
                                min_anomaly=min(anomaly,na.rm=T),
-                               sd_anomaly=sd(anomaly,na.rm=T)),
+                               sd_anomaly=sd(anomaly,na.rm=T),
+                               n_models=length(unique(model))),
                          by=list(admin0_name,admin1_name,scenario,timeframe,year,variable,season)]
 
-data_ex_season_ens[scenario=="historical",c("max","min","max_anomaly","min_anomaly","sd_anomaly"):=NA]
+
+data_ex_season_ens<-data_ex_season_ens[!n_models %in% c(2:4)][!(n_models==1 & timeframe!="historical")]
+
+data_ex_season_ens[scenario=="historical",c("max","min","max_anomaly","min_anomaly","sd_anomaly","n_models"):=NA]
 
 data_ex_season_ens[,variable:=gsub("_mean|_max","",variable)]
 
@@ -272,9 +270,6 @@ numeric_cols <- c("mean","max","min","sd","max_anomaly","mean_anomaly","min_anom
 data_ex_season_ens[, (numeric_cols) := lapply(.SD, round,1), .SDcols = numeric_cols]
 
 data_ex_season_ens<- data_ex_season_ens[order(admin0_name, admin1_name, season,variable, scenario, timeframe)]
-
-unique(data_ex_season_ens[mean<0 & admin1_name!="Annobón",list(admin0_name,admin1_name,scenario,timeframe,variable,mean)])
-data_ex_ens_stats[is.infinite(mean) & admin1_name!="Annobón"]
 
 # 3.5) Save output #####
 arrow::write_parquet(data_ex_season_ens[,!c("sd","sd_anomaly")],file.path(output_dir,gsub(".parquet","_ensembled.parquet",file_name)))
@@ -328,13 +323,13 @@ data_ex_trend_m<-merge(data_ex_trend,results,all.x=T,by="ID")
 
 # 3.7) Calculate trend stats using the lms  #####
 data_ex_trend_stats <- data_ex_trend_m[,.(value_slope=round(slope[1],3),
-                                               value_start=round(min(year)*slope[1]+intercept[1],1),
-                                               value_s5=round(mean(value[1:5]),1),
-                                               anomaly_s5=round(mean(anomaly[1:5]),1),
-                                               value_end=round(max(year)*slope[1]+intercept[1],1),
-                                               value_e5=round(mean(tail(value,5)),1),
-                                               anomaly_e5=round(mean(tail(anomaly)),1),
-                                               value_decade=round(10*slope,1),
+                                               value_start=round(min(year)*slope[1]+intercept[1],round_by),
+                                               value_s5=round(mean(value[1:5]),round_by),
+                                               anomaly_s5=round(mean(anomaly[1:5]),round_by),
+                                               value_end=round(max(year)*slope[1]+intercept[1],round_by),
+                                               value_e5=round(mean(tail(value,5)),round_by),
+                                               anomaly_e5=round(mean(tail(anomaly)),round_by),
+                                               value_decade=round(10*slope,round_by),
                                                value_pval=round(p_value[1],3)),
                                             by=.(admin0_name,admin1_name,scenario,model,timeframe,variable,season)
                                             ][,value_diff:=value_e5-value_s5
