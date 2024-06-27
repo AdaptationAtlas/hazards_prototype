@@ -1,4 +1,6 @@
-# Note I think this entire script can be generalized.
+# Please run 0_server_setup.R before executing this script
+
+# Note - this entire script can be generalized.
   # We would need to pull in the stat from haz_meta to automate the "_mean-G" text creation (e.g. 2.2)
   # Would also need to automate the G/L coding
   # Livestock and crops could combined, but the highland/tropical split for livestock would need to be incorporated
