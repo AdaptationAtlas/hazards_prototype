@@ -2648,7 +2648,7 @@ upload_files_to_s3 <- function(files,
   }
   
   if (mode == "public-read") {
-    make_s3_public(selected_bucket)
+    makeObjectPublic(selected_bucket)
   }
 }
 #' Process ISIMIP Files
@@ -2775,6 +2775,17 @@ list_bottom_directories <- function(path) {
 #' find_consecutive_pattern(c(1, 2, 3, 1, 2, 3, 1, 2, 3), c(1, 2, 3))
 #' find_consecutive_pattern(c('a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c'), c('a', 'b', 'c'))
 #' @export
+#' Find Consecutive Pattern in a Sequence
+#'
+#' This function searches for a specified consecutive pattern in a given sequence and marks the positions where the pattern occurs.
+#'
+#' @param seq A numeric or character vector representing the sequence in which to search for the pattern.
+#' @param pattern A numeric or character vector representing the pattern to search for in the sequence.
+#' @return A numeric vector of the same length as `seq`, with 1 indicating the positions of the pattern and 0 elsewhere.
+#' @examples
+#' find_consecutive_pattern(c(1, 2, 3, 1, 2, 3, 1, 2, 3), c(1, 2, 3))
+#' find_consecutive_pattern(c('a', 'b', 'c', 'a', 'b', 'c', 'a', 'b', 'c'), c('a', 'b', 'c'))
+#' @export
 find_consecutive_pattern <- function(seq, pattern) {
   pattern_length <- length(pattern)
   
@@ -2794,8 +2805,13 @@ find_consecutive_pattern <- function(seq, pattern) {
   # Assign group numbers to consecutive patterns
   pattern_indices <- which(result == 1)
   if (length(pattern_indices) > 0) {
-    result[pattern_indices] <- rep(seq_along(unique(floor((pattern_indices - 1) / pattern_length))), each = pattern_length)
+    groups <- rep(seq_along(pattern_indices), each = pattern_length)
+    if (length(groups) > length(pattern_indices)) {
+      groups <- groups[1:length(pattern_indices)]
+    }
+    result[pattern_indices] <- groups
   }
   
   return(result)
 }
+
