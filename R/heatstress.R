@@ -1,3 +1,5 @@
+# Please run 0_server_setup.R before executing this script
+
 ## Heat stress generic crop (NTx40)
 ## By: H. Achicanoy & P.Steward
 ## April, 2024
