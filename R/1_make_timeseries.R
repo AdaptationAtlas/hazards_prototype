@@ -1,21 +1,68 @@
 # Please run 0_server_setup.R before executing this script
 # 1) Load R functions & packages ####
-packages <- c("terra","data.table")
-p_load(char=packages)
+packages <- c("terra","data.table","fs")
+pacman::p_load(char=packages)
 
 # 2) Set directories  ####
 # Directory where monthly timeseries data generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
 # Note this is currently only available on cglabs, but we will be adding the ability to downlaod these data from the s3
 working_dir<-indices_dir
-setwd(working_dir)
+#setwd(working_dir)
 
 # Where will hazard time series be saved?
 output_dir<-indices_dir2
 
+# 2.1) Summarize existing data #####
+list_files_fs <- function(path, pattern, recursive = TRUE) {
+  files <- fs::dir_ls(path, glob = paste0("*", pattern), recurse = recursive)
+  return(files)
+}
+
+existing_files<-list_files_fs(working_dir,"tif$",recursive=T)
+existing_files<-existing_files[!grepl("GSeason|THI/THI_MAX/|/THI_AgERA5/|stats|daily|historical/HSM_NTx|AVAIL.tif|LongTermMean|/max_year|/mean_monthly|/mean_year|/median_monthly|/median_year",
+                                      existing_files)]
+
+existing_files<-data.table(file_path=existing_files)
+
+existing_files<-existing_files[,variable:=dirname(file_path)
+                               ][,scenario:=basename(dirname(variable[1])),by=variable
+                                 ][,var_folder:=basename(variable)
+                                   ][,base_name:=gsub(".tif","",basename(file_path))]
+
+existing_files[grep("TAI",base_name)]
+
+# Function to check problem file names
+if(F){
+  base_names<-existing_files[,unique(base_name)]
+  
+  for(i in 1:length(base_names)){
+    # Display progress
+    cat('\r', strrep(' ', 150), '\r')
+    cat("processing crop", i, "/", length(base_names), base_names[i])
+    flush.console()  # Ensure console output is updated
+    
+    if(!grepl("TAI",base_names[i])){
+    tstrsplit(base_names[i],"-",keep=3)
+    }
+  }
+}
+
+existing_files[,var_file:=unlist(tstrsplit(base_name[1],"-",keep=1)),by=base_name
+                       ][,year:=unlist(tstrsplit(base_name[1],"-",keep=2)),by=base_name
+                         ][!grepl("TAI",base_name),month:=unlist(tstrsplit(base_name[1],"-",keep=3)),by=base_name]
+
+# Ignoring AgERA5 files what files are present in the historical scenario not present in others
+existing_files_summary<-existing_files[!grepl("AgERA5",var_folder),.(n_files=.N,years=length(unique(year))),by=.(scenario,var_folder,var_file)]
+existing_files_summary[,var_code:=paste0(var_folder,"-",var_file)]
+
+hazard_completion<-dcast(existing_files_summary,scenario~var_code,value.var="n_files")
+
+fwrite(hazard_completion,file.path(working_dir,"indice_completion.csv"))
+
 # 3) Set up workspace ####
 
 # List hazard folders
-folders<-list.dirs(recursive=F)
+folders<-list.dirs(working_dir,recursive=F)
 folders<-folders[!grepl("ENSEMBLE|ipyn|gadm0|hazard_comb|indices_seasonal",folders)]
 folders<-folders[!grepl("ssp126|ssp370|2061_2080|2081_2100",folders)] # these scenarios have incomplete information
 folders<-unlist(tstrsplit(folders,"/",keep=2))
