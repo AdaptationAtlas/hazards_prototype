@@ -521,3 +521,15 @@
                      mode="public-read")
   
   
+# 7) Chirps/chirts historical differences #####
+  s3_bucket<-file.path(bucket_name_s3,"hazards","chirps_chirts")
+  
+  folder<-chirts_chirps_dir
+  
+  files<-list.files(folder,".parquet",full.names=T)
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T,
+                     mode="public-read")
+  
