@@ -47,8 +47,50 @@ if(!exists("package_dir")){
 
   # 1.2) Where should workflow outputs be stored? #####
 
-if(!exists("project_dir")){
-  project_dir<-getwd()
+# Record R-project location
+# Function to add or update an environment variable in .Renviron file
+set_env_variable <- function(var_name, var_value, renviron_file = "~/.Renviron") {
+  # Read the .Renviron file if it exists
+  if (file.exists(renviron_file)) {
+    env_vars <- readLines(renviron_file)
+  } else {
+    env_vars <- character(0)
+  }
+  
+  # Check if the variable already exists
+  var_exists <- grepl(paste0("^", var_name, "="), env_vars)
+  
+  if (any(var_exists)) {
+    # Update the existing variable
+    env_vars[var_exists] <- paste0(var_name, "=", var_value)
+  } else {
+    # Add the new variable
+    env_vars <- c(env_vars, paste0(var_name, "=", var_value))
+  }
+  
+  # Write the updated .Renviron file
+  writeLines(env_vars, renviron_file)
+}
+
+# Check if the package_dir variable is already set
+if (!nzchar(Sys.getenv("package_dir"))) {
+  package_dir <- getwd()
+  Sys.setenv(package_dir = package_dir)
+  
+  # Add or update the package_dir variable in the .Renviron file
+  set_env_variable("package_dir", package_dir)
+  
+  # Optional: Reload the .Renviron file to make sure the environment variable is set
+  readRenviron("~/.Renviron")
+}
+
+# Verify the environment variable is set
+Sys.getenv("package_dir")
+
+
+if(!exists("package_dir")){
+  package_dir<-getwd()
+  Sys.setenv(package_dir=package_dir)
 }
 
 # Cglabs
@@ -154,10 +196,14 @@ setwd(working_dir)
     dir.create(isimip_sd_dir)
   }
   
-  
   cropsuite_class_dir<-"Data/cropsuite_class"
   if(!dir.exists(cropsuite_class_dir)){
     dir.create(cropsuite_class_dir,recursive=T)
+  }
+  
+  chirts_chirps_dir<-"Data/chirts_chirps_hist"
+  if(!dir.exists(chirts_chirps_dir)){
+    dir.create(chirts_chirps_dir,recursive=T)
   }
 
   # 2.1.2) Inputs #####
@@ -249,6 +295,8 @@ setwd(working_dir)
     sos_raw_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
     isimip_raw_dir<-"/home/jovyan/common_data/isimip"
     chirts_raw_dir<-"/home/jovyan/common_data/chirts"
+    chirps_raw_dir<-"/home/jovyan/common_data/chirps_wrld"
+    
     cropsuite_raw_dir<-"/home/jovyan/common_data/atlas_cropSuite"
     if(!dir.exists(isimip_raw_dir)){
       dir.create(isimip_raw_dir,recursive=T)
