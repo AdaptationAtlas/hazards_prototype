@@ -1,3 +1,4 @@
+# Please run 0_server_setup.R before executing this script
 # a) Install and load packages ####
 packages <- c("terra", 
               "data.table", 
@@ -703,15 +704,22 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
 # Save mean values as feather object
     arrow::write_parquet(haz_timeseries_sd_tab,filename)
 
-# 4) Extract hazard risk x exposure by admin ####
-
+# 4) Hazard risk x exposure ####
   # 4.0) Set-up ####
     do_vop<-T
-    do_vop17<-F
+    do_vop17<-T
     do_ha<-F
     do_n<-F
-    overwrite<-F
-
+    overwrite<-T
+    crop_vop_path<-file.path(exposure_dir,"crop_vop.tif")
+    crop_vop_usd17_path<-file.path(exposure_dir,"crop_vop_usd17.tif")
+    crop_ha_path<-file.path(exposure_dir,"crop_ha.tif")
+    
+    livestock_vop_path<-file.path(exposure_dir,"livestock_vop.tif")
+    livestock_vop_usd17_path<-file.path(exposure_dir,"livestock_vop_usd17.tif")
+    livestock_no_path<-file.path(exposure_dir,"livestock_no.tif")
+    
+    worker_n<-10
     
     # Crop choices only 
     crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
@@ -720,15 +728,21 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
     
   # 4.1) Multiply Hazard Risk by Exposure #####
     
-    # The process below would benefit from parallelization, but persistent error in { : task  failed - "NULL value passed as symbol address!" needs debugging
-    # Saving the exposure data as individual tifs then reading these in may be required
-    
-     risk_x_exposure<-function(file,save_dir,variable,overwrite,crop_exposure,livestock_exposure,crop_choices){
+     risk_x_exposure<-function(file,
+                               save_dir,
+                               variable,
+                               overwrite,
+                               crop_exposure_path,
+                               livestock_exposure_path,
+                               crop_choices){
       crop<-unlist(data.table::tstrsplit(basename(file),"-",keep=1))
       save_name<-file.path(save_dir,gsub(".tif",paste0("-",variable,".tif"),basename(file)))
 
       if(!file.exists(save_name)|overwrite==T){
         data<-terra::rast(file)
+        
+        crop_exposure<-terra::rast(crop_exposure_path)
+        livestock_exposure<-terra::rast(livestock_exposure_path)
         
         # vop
         if(crop!="generic"){
@@ -758,73 +772,65 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
         }
       }
       
-    }
-    
-    for(i in 1:length(files)){
-      file<-files[i]
-      
+     }
+
       if(do_vop){
-        # Display progress
-        cat('\r                                                                                                                           ')
-        cat('\r',paste("Risk x Exposure x VoP | file:",i,"/",length(files))," - ",file)
-        flush.console()
+        future::plan("multisession", workers = worker_n)
         
-      risk_x_exposure(file,
-                      save_dir=haz_risk_vop_dir,
-                      variable="vop",
-                      overwrite = overwrite,
-                      crop_exposure = crop_vop_tot,
-                      livestock_exposure=livestock_vop,
-                      crop_choices=crop_choices)
+        future.apply::future_lapply(files,
+                                    risk_x_exposure,             
+                                    save_dir=haz_risk_vop_dir,
+                                    variable="vop",
+                                    overwrite = overwrite,
+                                    crop_exposure = crop_vop_usd17_path,
+                                    livestock_exposure=livestock_vop_usd17_path,
+                                    crop_choices=crop_choices)
+        
+        future::plan(sequential)
       }
       
       if(do_vop17){
-        # Display progress
-        cat('\r                                                                                                                           ')
-        cat('\r',paste("Risk x Exposure x VoP17 | file:",i,"/",length(files))," - ",file)
-        flush.console()
+        future::plan("multisession", workers = worker_n)
+        future.apply::future_lapply(files,
+                                    risk_x_exposure,             
+                                    save_dir=haz_risk_vop17_dir,
+                                    variable="vop",
+                                    overwrite = overwrite,
+                                    crop_exposure = crop_vop_path,
+                                    livestock_exposure=livestock_vop_path,
+                                    crop_choices=crop_choices)
         
-        risk_x_exposure(file,
-                        save_dir=haz_risk_vop17_dir,
-                        variable="vop",
-                        overwrite = overwrite,
-                        crop_exposure = crop_vop17_tot,
-                        livestock_exposure=livestock17_vop,
-                        crop_choices=crop_choices)
+        future::plan(sequential)
       }
       
       if(do_ha){
-        # Display progress
-        cat('\r                                                                                                                           ')
-        cat('\r',paste("Risk x Exposure x Harvested Area | file:",i,"/",length(files))," - ",file)
-        flush.console()
+        future::plan("multisession", workers = worker_n)
+        future.apply::future_lapply(files,
+                                    risk_x_exposure,             
+                                    save_dir=haz_risk_ha_dir,
+                                    variable="ha",
+                                    overwrite = overwrite,
+                                    crop_exposure = crop_ha_path,
+                                    livestock_exposure=NA,
+                                    crop_choices=crop_choices)
         
-        risk_x_exposure(file,
-                        save_dir=haz_risk_ha_dir,
-                        variable="ha",
-                        overwrite = overwrite,
-                        crop_exposure = crop_ha_tot,
-                        livestock_exposure=NA,
-                        crop_choices=crop_choices)
+        future::plan(sequential)
       }
       
       if(do_n){
-        # Display progress
-        cat('\r                                                                                                                           ')
-        cat('\r',paste("Risk x Exposure x Livestock Number | file:",i,"/",length(files))," - ",file)
-        flush.console()
+        future::plan("multisession", workers = worker_n)
         
-        risk_x_exposure(file,
-                        save_dir=haz_risk_n_dir,
-                        variable="n",
-                        overwrite = overwrite,
-                        crop_exposure = NA,
-                        livestock_exposure=livestock_no,
-                        crop_choices=crop_choices)
+        future.apply::future_lapply(files,
+                                    risk_x_exposure,             
+                                    save_dir=haz_risk_n_dir,
+                                    variable="n",
+                                    overwrite = overwrite,
+                                    crop_exposure = NA,
+                                    livestock_exposure=livestock_no_path,
+                                    crop_choices=crop_choices)
+        
+        future::plan(sequential)
       }
-      
-      }
-
   # 4.2) Extract Risk x Exposure by Geography #####
 
     for(INT in c(T,F)){
