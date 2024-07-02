@@ -1,3 +1,4 @@
+# Please run 0_server_setup.R before executing this script
 # 0) Set-up workspace
   # 0.1) Install and load packages ####
   load_and_install_packages <- function(packages) {
@@ -167,9 +168,11 @@
                      new_only=T)
   # Upload - MapSPAM ####
   folder<-mapspam_dir
-  s3_bucket <- "s3://digital-atlas/MapSpam/raw/2020V1r0_SSA"
+  s3_bucket <- file.path("s3://digital-atlas/MapSpam/raw",basename(mapspam_dir))
   
-  upload_files_to_s3(files = list.files(folder,full.names = T),
+  files<-list.files(folder,full.names = T)
+  
+  upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F,
