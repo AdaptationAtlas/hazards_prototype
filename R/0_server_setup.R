@@ -40,11 +40,6 @@ terra::free_RAM()/10^6
 
 worker_n<-20
 
-# Record R-project location
-if(!exists("package_dir")){
-  package_dir<-getwd()
-}
-
   # 1.2) Where should workflow outputs be stored? #####
 
 # Record R-project location
@@ -72,26 +67,20 @@ set_env_variable <- function(var_name, var_value, renviron_file = "~/.Renviron")
   writeLines(env_vars, renviron_file)
 }
 
-# Check if the package_dir variable is already set
-if (!nzchar(Sys.getenv("package_dir"))) {
-  package_dir <- getwd()
-  Sys.setenv(package_dir = package_dir)
+# Check if the project_dir variable is already set
+if (!nzchar(Sys.getenv("project_dir"))) {
+  project_dir <- getwd()
+  Sys.setenv(project_dir = project_dir)
   
-  # Add or update the package_dir variable in the .Renviron file
-  set_env_variable("package_dir", package_dir)
+  # Add or update the project_dir variable in the .Renviron file
+  set_env_variable("project_dir", project_dir)
   
   # Optional: Reload the .Renviron file to make sure the environment variable is set
   readRenviron("~/.Renviron")
 }
 
 # Verify the environment variable is set
-Sys.getenv("package_dir")
-
-
-if(!exists("package_dir")){
-  package_dir<-getwd()
-  Sys.setenv(package_dir=package_dir)
-}
+(project_dir<-Sys.getenv("project_dir"))
 
 # Cglabs
 Cglabs<-F
@@ -276,7 +265,7 @@ setwd(working_dir)
     dir.create(fao_dir,recursive = T)
   }
   
-  mapspam_dir<-"Data/mapspam/2020V1r1_SSA"
+  mapspam_dir<-"Data/mapspam/2020V1r2_SSA"
   if(!dir.exists(mapspam_dir)){
     dir.create(mapspam_dir,recursive=T)
   }
@@ -330,8 +319,8 @@ setwd(working_dir)
   update<-F
   
   # Specify s3 prefix (folder path)
-  folder_path <- file.path("MapSpam/raw",basename(mapspam_dir),"")
-  
+  folder_path <- file.path("MapSpam/raw",basename(mapspam_dir))
+
   # List files in the specified S3 bucket and prefix
   files_s3<-s3$dir_ls(file.path(bucket_name_s3,folder_path))
   files_s3<-files_s3[grepl(".csv",files_s3) & !grepl("index",files_s3)]
