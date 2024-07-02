@@ -1,9 +1,6 @@
+# Please run 0_server_setup.R before executing this script
 # 0) Install and load packages ####
-packages <- c("data.table", 
-              "countrycode", 
-              "terra")
-
-pacman::p_load(char=packages)
+pacman::p_load(data.table,countrycode,terra)
 
 # Load SPAM production data ####
 file<-list.files(mapspam_dir,"SSA_P_TA.csv",full.names = T)
