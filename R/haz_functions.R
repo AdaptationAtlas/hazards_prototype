@@ -2526,8 +2526,11 @@ list_s3_bucket_contents <- function(bucket_url, folder_path) {
 #' make_s3_public(c("your-bucket-name/your-folder-path1", "your-bucket-name/your-folder-path2"), "your-bucket-name")
 #' }
 #' @export
-makeObjectPublic <- function(s3_uri, bucket = "digital-atlas") {
+makeObjectPublic <- function(s3_uri, bucket = "digital-atlas", directory = T) {
     s3_inst <- paws.storage::s3()
+    if(gsub('/|s3:|\\*', "", s3_uri) == bucket) {
+        stop("Setting full bucket to public is not allowed using this function to prevential accidential changes.")
+    }
     policy <- s3_inst$get_bucket_policy(Bucket = bucket)$Policy
     policy_ls <- jsonlite::parse_json(policy)
     tmp <- tempdir()
@@ -2540,6 +2543,8 @@ makeObjectPublic <- function(s3_uri, bucket = "digital-atlas") {
                     Key = '.bucket_policy/previous_policy.json',
                     Body = file.path(tmp_dir, 'previous_policy.json'))
     s3_uri_clean <- gsub("s3://", "", s3_uri)
+    dir_wildcard  <- ifelse(directory, "/*", "")
+    s3_uri_clean <- paste0(s3_uri_clean, dir_wildcard)
     s3_arn <- paste0("arn:aws:s3:::", s3_uri_clean)
     s3_path <- gsub(paste0(bucket, "/"), "", s3_uri_clean)
     policy_ls$Statement <- lapply(policy_ls$Statement, function(statement) {
