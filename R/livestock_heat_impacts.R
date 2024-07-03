@@ -10,7 +10,7 @@ pacman::p_load(char=packages)
 
 
 # 0.1) Load glps data #####
-glps_file<-list.files(glps_dir,".tif$")
+glps_file<-list.files(glps_dir,".tif$",full.names = T)
 
 glps_systems<-terra::rast(glps_file)
 glps_systems<-terra::classify(glps_systems,matrix(c(1:15,c(0,0,1,2,3,3,4,5,3,3,4,5,6,7,NA)),ncol = 2))
@@ -145,7 +145,7 @@ heat_impacts<-rbindlist(lapply(1:length(admin_levels),FUN=function(i){
   }
   
   if(admin_choice=="admin1"){
-    focal_admin$admin_name<-paste0(focal_admin$admin1_name,"_",focal_admin$admin1_name)
+    focal_admin$admin_name<-paste0(focal_admin$admin1_name,"_",focal_admin$admin0_name)
   }
   
   # Mask glps to admin area
@@ -220,15 +220,24 @@ heat_impacts<-rbindlist(lapply(1:length(admin_levels),FUN=function(i){
   
   # f) Split admin names #####
   if(admin_choice=="admin2"){
-    heat_impacts[,admin2_name:=unlist(tstrsplit(admin,"_",keep=1))][,admin1_name:=unlist(tstrsplit(admin,"_",keep=2))][,admin0_name:=unlist(tstrsplit(admin,"_",keep=3))][,admin:=NULL]
+    heat_impacts[,admin2_name:=unlist(tstrsplit(admin,"_",keep=1))
+                 ][,admin1_name:=unlist(tstrsplit(admin,"_",keep=2))
+                   ][,admin0_name:=unlist(tstrsplit(admin,"_",keep=3))
+                     ][,admin:=NULL]
   }
   
   if(admin_choice=="admin1"){
-    heat_impacts[,admin2_name:=as.character(NA)][,admin1_name:=unlist(tstrsplit(admin,"_",keep=1))][,admin0_name:=unlist(tstrsplit(admin,"_",keep=2))][,admin:=NULL]
+    heat_impacts[,admin2_name:=as.character(NA)
+                 ][,admin1_name:=unlist(tstrsplit(admin,"_",keep=1))
+                   ][,admin0_name:=unlist(tstrsplit(admin,"_",keep=2))
+                     ][,admin:=NULL]
   }
   
   if(admin_choice=="admin0"){
-    heat_impacts[,admin2_name:=as.character(NA)][,admin1_name:=as.character(NA)][,admin0_name:=admin][,admin:=NULL]
+    heat_impacts[,admin2_name:=as.character(NA)
+                 ][,admin1_name:=as.character(NA)
+                   ][,admin0_name:=admin
+                     ][,admin:=NULL]
   }
   
   setnames(heat_impacts,"area","glps_area")
