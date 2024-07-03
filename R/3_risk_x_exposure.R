@@ -1,4 +1,6 @@
 # Please run 0_server_setup.R before executing this script
+# If you are experiencing issues with the admin_extract functions, delete the exactextractr package and use this version:  remotes::install_github("isciences/exactextractr")
+
 # a) Install and load packages ####
 packages <- c("terra", 
               "data.table", 
@@ -16,6 +18,7 @@ packages <- c("terra",
 
 # Call the function to install and load packages
 pacman::p_load(char=packages)
+
 
 # b) Load functions & wrappers ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
@@ -725,6 +728,29 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
     crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
     
     files<-list.files(haz_risk_dir,".tif$",full.names = T)
+    
+    # Download pre-baked tifs from the s3?
+    if(F){
+      # Specify s3 prefix (folder path)
+      folder_path <- haz_risk_dir
+      s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_risk/",timeframe_choice)
+      
+      
+      # List files in the specified S3 bucket and prefix
+      files_s3<-grep(".tif",s3$dir_ls(s3_bucket),value=T)
+      
+      files_local<-file.path(folder_path,basename(files_s3))
+      
+      # If mapspam data does not exist locally download from S3 bucket
+      for(i in 1:length(files_local)){
+        file<-files_local[i]
+        if(!file.exists(file)|update==T){
+          cat("downloading file",i,"/",length(files_local),"\n")
+          s3$file_download(files_s3[i],file,overwrite=T)
+        }
+      }
+    }
+    
     
   # 4.1) Multiply Hazard Risk by Exposure #####
     
