@@ -25,8 +25,8 @@ p_load(char=packages)
   hazards<-c("HSH_max","TMAX","TAVG","NDWL0","NDWS","NTx35","NTx40","PTOT","THI_max") # NDD is not being used as it cannot be projected to future scenarios
   file_name<-"all_hazards.parquet"
   
-  hazards<-c("TMAX","TAVG","PTOT") # NDD is not being used as it cannot be projected to future scenarios
-  file_name<-"tmax_tavg_ptot_data.parquet"
+  #hazards<-c("TMAX","TAVG","PTOT") # NDD is not being used as it cannot be projected to future scenarios
+  #file_name<-"tmax_tavg_ptot_data.parquet"
   
   # 1.2) Set scenarios and time frames to analyse #####
   Scenarios<-c("ssp126","ssp245","ssp370","ssp585")
@@ -68,12 +68,8 @@ p_load(char=packages)
 levels<-c(admin0="adm0",admin1="adm1") #,admin2="adm2")
 FUN<-"mean"
 overwrite<-F # overwrite folder level extractions
-update<-T # if files have already been extracted, rebuild the dataset?
 
-save_file_all<-file.path(haz_timeseries_monthly_dir,file_name)
-
-if(!file.exists(save_file_all)|update){
-  data_ex<-rbindlist(lapply(1:nrow(folders),FUN=function(i){
+data_ex<-rbindlist(lapply(1:nrow(folders),FUN=function(i){
       folders_ss<-paste0(folders$path[i],"/",hazards)
       data<-lapply(1:length(folders_ss),FUN=function(j){
         
@@ -171,10 +167,7 @@ if(!file.exists(save_file_all)|update){
       })
       data<-rbindlist(data,use.names=T)
    }),use.names=T)
-  arrow::write_parquet(data_ex,save_file_all)
-}else{
-  data_ex<-arrow::read_parquet(save_file_all)
-}
+
   
 # 3) Summarize annually or 3 month windows ####
 # 3.1) Subset data #####
