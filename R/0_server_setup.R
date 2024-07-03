@@ -9,6 +9,10 @@ if (!require("pacman", character.only = TRUE)) {
   library(pacman)
 }
 
+if(!require("exactextractr")){
+  remotes::install_github("isciences/exactextractr")
+}
+
 # List of packages to be loaded
 packages <- c("remotes","data.table","httr","s3fs","xml2","paws","rvest")
 
@@ -323,6 +327,7 @@ setwd(working_dir)
 
   # List files in the specified S3 bucket and prefix
   files_s3<-s3$dir_ls(file.path(bucket_name_s3,folder_path))
+
   files_s3<-files_s3[grepl(".csv",files_s3) & !grepl("index",files_s3)]
   files_local<-gsub(file.path(bucket_name_s3,folder_path),paste0(mapspam_dir,"/"),files_s3)
   
@@ -475,10 +480,8 @@ setwd(working_dir)
   update<-F
   
   afr_highlands_file<-file.path(afr_highlands_dir,"afr-highlands.asc")
-  
   if(!file.exists(afr_highlands_file)|update==T){
-    download.file(url="https://digital-atlas.s3.amazonaws.com/afr_highlands/afr-highlands.asc",
-                  destfile=afr_highlands_file)
+      s3$file_download(file.path(bucket_name_s3,"afr_highlands/afr-highlands.asc"),afr_highlands_file,overwrite = T)
   }
   # 3.7) Livestock vop #####
   update<-F
@@ -596,3 +599,4 @@ setwd(working_dir)
   
   # 4.5) isimip metadata #####
   isimip_meta_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/isimip_water_var_metadata.csv"
+
