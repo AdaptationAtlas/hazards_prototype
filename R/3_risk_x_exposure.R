@@ -708,8 +708,8 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
   # 4.0) Set-up ####
     do_vop<-T
     do_vop17<-T
-    do_ha<-F
-    do_n<-F
+    do_ha<-T
+    do_n<-T
     overwrite<-T
     crop_vop_path<-file.path(exposure_dir,"crop_vop.tif")
     crop_vop_usd17_path<-file.path(exposure_dir,"crop_vop_usd17.tif")
@@ -741,8 +741,13 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
       if(!file.exists(save_name)|overwrite==T){
         data<-terra::rast(file)
         
-        crop_exposure<-terra::rast(crop_exposure_path)
-        livestock_exposure<-terra::rast(livestock_exposure_path)
+        if(!is.na(crop_exposure_path)){
+          crop_exposure<-terra::rast(crop_exposure_path)
+        }
+        
+        if(!is.na(livestock_exposure_path)){
+          livestock_exposure<-terra::rast(livestock_exposure_path)
+        }
         
         # vop
         if(crop!="generic"){
@@ -750,7 +755,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
             exposure<-crop_exposure[[crop]]
             data_ex<-data*exposure
           }else{
-            if(!variable %in% c("ha")){
+            if(variable !="ha"){
             exposure<-livestock_exposure[[crop]]
             data_ex<-data*exposure
             }else{
