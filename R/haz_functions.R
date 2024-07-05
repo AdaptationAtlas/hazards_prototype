@@ -1449,6 +1449,7 @@ read_spam <- function(variable, technology, mapspam_dir, save_dir, base_rast, fi
 admin_extract <- function(data, Geographies, FUN = "mean", max_cells_in_memory = 3*10^7) {
   # Initialize an empty list to store the output data frames for each administrative level.
   output <- list()
+  Geographies<-lapply(Geographies,sf::st_as_sf)
   
   # Process administrative level 0 data if present in the Geographies list.
   if ("admin0" %in% names(Geographies)) {
@@ -1508,7 +1509,7 @@ admin_extract_wrap <- function(data, save_dir, filename, FUN = "sum", varname, G
   # Check if any of the files don't exist or if overwrite is enabled. If so, proceed with data extraction.
   if (!file.exists(file) | !file.exists(file1) | overwrite == T) {
     # Extract data for all specified administrative levels.
-    data_ex <- admin_extract(data, Geographies, FUN = FUN)
+    data_ex <- admin_extract(data=data, Geographies=Geographies, FUN = FUN)
     
     # Save the extracted data for each administrative level as a Parquet file.
     arrow::write_parquet(sf::st_as_sf(data_ex$admin0), file0)
