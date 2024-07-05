@@ -21,7 +21,7 @@
                 "terra")
   
   # Call the function to install and load packages
-  load_and_install_packages(packages)
+  pacman::p_load(char=packages)
   
   # 0.2) Set workers for parallel processing ####
   worker_n<-10
@@ -245,7 +245,7 @@
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F,
+                     overwrite=T,
                      mode="public-read")
   
   # Upload - sos raster #####
@@ -462,7 +462,7 @@
   folder<-haz_timeseries_monthly_dir
   s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month"
   
-  files<-list.files(folder,"ensembled",full.names = T)
+  files<-list.files(folder,"parquet",full.names = T)
   
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
