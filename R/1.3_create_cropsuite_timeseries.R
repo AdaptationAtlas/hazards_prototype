@@ -1,5 +1,6 @@
 # Please run 0_server_setup.R before executing this script
 # Note this only runs from CGlabs server as cropSuite is not publicly available yet
+# If you are experiencing issues with the admin_extract functions, delete the exactextractr package and use this version:  remotes::install_github("isciences/exactextractr")
 
 # 1) Load R functions & packages ####
 packages <- c("terra","data.table","future","doFuture","sf","geoarrow","arrow")
@@ -15,6 +16,9 @@ Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
 })
 names(Geographies)<-names(geo_files_local)
 
+# Remove admin2 to speed things up
+Geographies$admin2<-NULL
+
 # 2.2) Create file index #####
 cropsuite_dirs<-list_bottom_directories(cropsuite_raw_dir)
 cropsuite_dirs<-cropsuite_dirs[!grepl("ipynb_checkpoints",cropsuite_dirs)]
@@ -28,8 +32,9 @@ file_index[,file_name:=basename(file_path)
 
 data.table::fwrite(file_index,file.path(cropsuite_raw_dir,"file_index.csv"))
 
-# 2.3) Load mapspam codes #####
+# 2.3) Load mapspam codes and vop #####
 spamcodes<-data.table::fread(ms_codes_url)
+crop_vop_tot<-arrow::read_parquet(file.path(exposure_dir,"crop_vop_adm_sum.parquet"))
 
 # 3) Extract suitability data ####
 
@@ -96,19 +101,47 @@ for(var in cs_vars){
       data = data_diff, 
       save_dir = cropsuite_class_dir, 
       filename = paste0(var, "_diff"), 
-      FUN = "mean", 
+      FUN = NULL, 
       varname = NA, 
       Geographies, 
       overwrite = TRUE,
       modify_colnames = FALSE
     )  # Extract and save administrative level summaries
     
-    data_diff_ex <- data_diff_ex[, variable := gsub("mean.", "", variable)
-    ][, scenario := unlist(tstrsplit(variable[1], "_", keep = 1)), by = variable
-    ][, timeframe := unlist(tstrsplit(variable[1], "_", keep = 2)), by = variable
-    ][, crop := unlist(tstrsplit(variable[1], "_", keep = 3)), by = variable
-    ][, variable := gsub(".tif", "", unlist(tstrsplit(variable[1], "_", keep = 4))), by = variable
-    ][, value := round(value, 1)]  # Clean and structure the extracted data
+    # Melt
+    data_diff_ex<-melt(data_diff_ex,id.vars=c("admin0_name","admin1_name","coverage_fraction"))
+    
+    # Clean out NAs or zeros
+    data_diff_ex <- data_diff_ex[!is.na(value) & !is.na(coverage_fraction) & coverage_fraction > 0]
+    
+    optimize_histograms <- function(data, breaks = 10) {
+      # Create a list to store histograms
+      hist_dat <- hist(data, breaks = breaks, plot = FALSE)
+      # Combine counts and breaks into a single data.table
+      hist_dat <- paste0(bin_counts =hist_dat$counts,bin_width = hist_dat$breaks)
+      
+      return(hist_data)
+    }
+    
+    # Caculate stats
+    data_diff_ex<-data_diff_ex[,list(mean=weighted.mean(value,coverage_fraction),
+                       min=min(value),
+                       max=max(value),
+                       median=Hmisc::wtd.quantile(value, coverage_fraction, probs = 0.5),
+                       bin_counts =list(as.numeric(hist(value, breaks = 10, plot = FALSE)$counts)),
+                       bin_width = list(as.numeric(hist(value, breaks = 10, plot = FALSE)$breaks))),
+                       by=.(admin0_name,admin1_name,variable)]
+    
+    # Split variable name into cols and round decimal places
+    data_diff_ex <- data_diff_ex[, scenario := unlist(tstrsplit(variable[1], "_", keep = 1)), by = variable
+                                 ][, timeframe := unlist(tstrsplit(variable[1], "_", keep = 2)), by = variable
+                                   ][, crop := unlist(tstrsplit(variable[1], "_", keep = 3)), by = variable
+                                     ][, variable := "% change in suitability"
+                                       ][, mean := round(mean,1)
+                                         ][, median := round(median,1)] 
+    
+    # Append vop data to weight average yields
+    
     
     save_file <- file.path(cropsuite_class_dir, paste0(var, "_diff", "_adm_mean.parquet"))
     arrow::write_parquet(data_diff_ex, save_file)  # Save the cleaned data to a parquet file
