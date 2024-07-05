@@ -304,8 +304,8 @@ HazardWrapper<-function(Thresholds,SaveDir,PropThreshold,PropTDir,hazard_dir,Sce
       
       Threshold_focal<-Thresholds[i]
       Threshold_focal[,Code:=paste0(Direction,threshold)
-                      ][,Code:=gsub("<","L",Code)
-                        ][,Code:=gsub(">","G",Code)]
+      ][,Code:=gsub("<","L",Code)
+      ][,Code:=gsub(">","G",Code)]
       TCode<-Threshold_focal[,Code]
       
       
@@ -930,7 +930,7 @@ hazard_index<-function(Data,hazards,verbose=T,SaveDir,crop_choice,severity_class
       # Note that this section is not generalization and works with fixed severity_classes table, in future we should improve this to be able
       # work with tables of different lengths.
       for(i in 1:length(hazards)){
-
+        
         
         haz_levels<-grep(hazards[i],names(data),value=T)
         haz_levels<-unique(substr(haz_levels,nchar(haz_levels),nchar(haz_levels)))
@@ -973,10 +973,10 @@ hazard_index<-function(Data,hazards,verbose=T,SaveDir,crop_choice,severity_class
             flush.console()
           }
           
-        N<-paste0(hazards[i],"_prop_",severity_classes$class,"_",k)
-        X<-terra::app(data[[N]],sum,na.rm=T)
-        names(X)<-paste0(hazards[i],"_",k,"_hi")
-        X
+          N<-paste0(hazards[i],"_prop_",severity_classes$class,"_",k)
+          X<-terra::app(data[[N]],sum,na.rm=T)
+          names(X)<-paste0(hazards[i],"_",k,"_hi")
+          X
         }))
         
       }))
@@ -1343,7 +1343,7 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
                                    if(stat=="max"){max}else{
                                      if(stat=="mean"){mean}else{if(stat=="min"){min}else{stop("invalid stat function supplied")}}}},
                                  na.rm=T)
-
+          
           names(haz_rast1)<-years[m]
           haz_rast1
         }))
@@ -1446,32 +1446,45 @@ read_spam <- function(variable, technology, mapspam_dir, save_dir, base_rast, fi
 #' extracted_data <- admin_extract(data, Geographies, FUN = "mean", max_cells_in_memory = 30000000)
 #' @export
 # The `admin_extract` function performs spatial extraction of data for specified administrative levels using exact extraction methods, then merges the extracted data with geographical metadata.
-admin_extract <- function(data, Geographies, FUN = "mean", max_cells_in_memory = 3*10^7) {
+admin_extract <- function(data, Geographies, FUN = "sum", max_cells_in_memory = 3*10^7) {
   # Initialize an empty list to store the output data frames for each administrative level.
   output <- list()
-  Geographies<-lapply(Geographies,sf::st_as_sf)
   
   # Process administrative level 0 data if present in the Geographies list.
   if ("admin0" %in% names(Geographies)) {
-    # Perform exact extraction of data for admin0 level, appending relevant columns and applying the specified function (e.g., mean).
-    data0 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin0), fun = FUN, append_cols = c("admin_name", "admin0_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
-    # Merge the extracted data with admin0 geographical metadata.
-    data0 <- terra::merge(Geographies$admin0, data0)
+    if(!is.null(FUN)){
+      # Perform exact extraction of data for admin0 level, appending relevant columns and applying the specified function (e.g., mean).
+      data0 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin0), fun = FUN, append_cols = c("admin_name", "admin0_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
+      # Merge the extracted data with admin0 geographical metadata.
+      data0 <- terra::merge(Geographies$admin0, data0)
+    }else{
+      data0 <-rbindlist(exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin0), fun = FUN, include_cols = c("admin_name", "admin0_name", "iso3"), max_cells_in_memory = max_cells_in_memory) )
+    }
+    
     # Add the merged data frame to the output list under the admin0 key.
     output$admin0 <- data0
   }
   
   # Repeat the process for administrative level 1 data if present.
   if ("admin1" %in% names(Geographies)) {
-    data1 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin1), fun = FUN, append_cols = c("admin_name", "admin0_name", "admin1_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
-    data1 <- terra::merge(Geographies$admin1, data1)
+    if(!is.null(FUN)){
+      data1 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin1), fun = FUN, append_cols = c("admin_name", "admin0_name", "admin1_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
+      data1 <- terra::merge(Geographies$admin1, data1)
+    }else{
+      data1 <- rbindlist(exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin1), fun = FUN, include_cols = c("admin_name", "admin0_name", "admin1_name", "iso3"), max_cells_in_memory = max_cells_in_memory))
+    }
     output$admin1 <- data1
   }
   
   # Repeat the process for administrative level 2 data if present.
   if ("admin2" %in% names(Geographies)) {
-    data2 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin2), fun = FUN, append_cols = c("admin_name", "admin0_name", "admin1_name", "admin2_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
-    data2 <- terra::merge(Geographies$admin2, data2)
+    if(!is.null(FUN)){
+      data2 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin2), fun = FUN, append_cols = c("admin_name", "admin0_name", "admin1_name", "admin2_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
+      data2 <- terra::merge(Geographies$admin2, data2)
+    }else{
+      data2 <- rbindlist(exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin2), fun = FUN, include_cols = c("admin_name", "admin0_name", "admin1_name", "admin2_name", "iso3"), max_cells_in_memory = max_cells_in_memory))
+      
+    }
     output$admin2 <- data2
   }
   
@@ -1509,47 +1522,59 @@ admin_extract_wrap <- function(data, save_dir, filename, FUN = "sum", varname, G
   # Check if any of the files don't exist or if overwrite is enabled. If so, proceed with data extraction.
   if (!file.exists(file) | !file.exists(file1) | overwrite == T) {
     # Extract data for all specified administrative levels.
-    data_ex <- admin_extract(data=data, Geographies=Geographies, FUN = FUN)
+    data_ex <- admin_extract(data, Geographies, FUN = FUN)
     
-    # Save the extracted data for each administrative level as a Parquet file.
-    arrow::write_parquet(sf::st_as_sf(data_ex$admin0), file0)
-    arrow::write_parquet(sf::st_as_sf(data_ex$admin1), file1)
-    arrow::write_parquet( sf::st_as_sf(data_ex$admin2), file2)
-    
-    # Process the extracted data to format it for analysis or further processing.
-    data_ex <- rbindlist(lapply(1:length(levels), FUN = function(i) {
-      level <- levels[i]
-      print(level)
-      
-      # Convert the data to a data.table and remove specific columns.
-      data <- data.table(data.frame(data_ex[[names(level)]]))
-      data <- data[, !c("admin_name", "iso3")]
-      
-      # Determine the administrative level being processed and adjust the data accordingly.
-      admin <- "admin0_name"
-      if (level %in% c("adm1", "adm2")) {
-        admin <- c(admin, "admin1_name")
-        data <- suppressWarnings(data[, !"a1_a0"])
+    if(!is.null(FUN)){
+      # Save the extracted data for each administrative level as a Parquet file.
+      if("admin0" %in% names(Geographies)){
+        arrow::write_parquet(sf::st_as_sf(data_ex$admin0), file0)
+      }
+      if("admin1" %in% names(Geographies)){
+        arrow::write_parquet(sf::st_as_sf(data_ex$admin1), file1)
       }
       
-      if (level == "adm2") {
-        admin <- c(admin, "admin2_name")
-        data <- suppressWarnings(data[, !"a2_a1_a0"])
+      if("admin2" %in% names(Geographies)){ 
+        arrow::write_parquet( sf::st_as_sf(data_ex$admin2), file2)
       }
       
-      # Adjust column names and reshape the data.
-      colnames(data) <- gsub("_nam$", "_name", colnames(data))
-      data <- data.table(melt(data, id.vars = admin))
-      
-      if(modify_colnames){
-        # Add and modify columns to include crop type and exposure information.
-        data[, crop := gsub(paste0(FUN, "."), "", variable[1], fixed = T), by = variable][, crop := gsub(".", " ", crop, fixed = T)]
-        data[, exposure := varname]
-        data[, variable := NULL]
-      }
-      
-      data
-    }), fill = T)
+      # Process the extracted data to format it for analysis or further processing.
+      data_ex <- rbindlist(lapply(1:length(levels), FUN = function(i) {
+        level <- levels[i]
+        print(level)
+        
+        # Convert the data to a data.table and remove specific columns.
+        data <- data.table(data.frame(data_ex[[names(level)]]))
+        data <- data[, !c("admin_name", "iso3")]
+        
+        # Determine the administrative level being processed and adjust the data accordingly.
+        admin <- "admin0_name"
+        if (level %in% c("adm1", "adm2")) {
+          admin <- c(admin, "admin1_name")
+          data <- suppressWarnings(data[, !"a1_a0"])
+        }
+        
+        if (level == "adm2") {
+          admin <- c(admin, "admin2_name")
+          data <- suppressWarnings(data[, !"a2_a1_a0"])
+        }
+        
+        # Adjust column names and reshape the data.
+        colnames(data) <- gsub("_nam$", "_name", colnames(data))
+        data <- data.table(melt(data, id.vars = admin))
+        
+        if(modify_colnames){
+          # Add and modify columns to include crop type and exposure information.
+          data[, crop := gsub(paste0(FUN, "."), "", variable[1], fixed = T), by = variable
+          ][, crop := gsub(".", " ", crop, fixed = T)]
+          data[, exposure := varname]
+          data[, variable := NULL]
+        }
+        
+        data
+      }), fill = T)
+    }else{
+      data_ex<-rbindlist(data_ex[c(3,2,1)],fill = T)[, !c("admin_name", "iso3")]
+    }
     
     # Save the processed data to a single Parquet file.
     arrow::write_parquet(data_ex, file)
@@ -1701,7 +1726,7 @@ restructure_parquet<-function(filename,save_dir,severity,overwrite=F,crops,lives
       old<-c(old,paste0(c("any",hazards),"[.]"))
       
       variable_new<-data.table(variable=stringi::stri_replace_all_regex(variable_old2,pattern=old,replacement=new,vectorise_all = F))
-
+      
       
       # Note this method of merging a list back to the original table is much faster than the method employed in the hazards x exposure section
       split<-variable_new[,list(var_split=list(tstrsplit(variable[1],"-"))),by=variable]
@@ -1785,7 +1810,7 @@ haz_risk_exp_extract <- function(severity_classes, interactions, folder, overwri
     # Repeat for admin levels 1 and 2.
     if (!file.exists(file1) | overwrite == T) {
       cat("Risk x Exposure - admin extraction - adm1| severity:", SEV,"\n")
-
+      
       data_ex <- admin_extract(data, Geographies["admin1"], FUN = "sum")
       sfarrow::st_write_parquet(obj = sf::st_as_sf(data_ex$admin1), dsn = file1)
       rm(data_ex)
@@ -1794,7 +1819,7 @@ haz_risk_exp_extract <- function(severity_classes, interactions, folder, overwri
     
     if (!file.exists(file2) | overwrite == T) {
       cat("Risk x Exposure - admin extraction - adm2| severity:", SEV,"\n")
-
+      
       data_ex <- admin_extract(data, Geographies["admin2"], FUN = "sum")
       sfarrow::st_write_parquet(obj = sf::st_as_sf(data_ex$admin2), dsn = file2)
       rm(data_ex)
@@ -1935,7 +1960,7 @@ recode_restructure_wrap <- function(folder, file, crops, livestock, exposure_var
       
       # Display current progress.
       cat("Risk x Exposure - ", exposure_var, " restructuring data | severity: ", severity, " | admin level:", level, " | interaction = ", interaction,"\n")
-
+      
       # Define the specific data file based on the current level and interaction.
       data_file <- if (interaction == T) {
         paste0(folder, "/", severity, "_", levels[i], "_int.parquet")
@@ -2387,10 +2412,10 @@ avg_regions <- function(iso3, crop, regions, data, value_field) {
 add_nearby <- function(data, value_field, neighbors, regions) {
   # Calculate and add the mean value from neighbors
   data[, mean_neighbors := avg_neighbors(iso3 = iso3,
-                                           crop = atlas_name,
-                                           neighbors = neighbors,
-                                           data = copy(data),
-                                           value_field = value_field),
+                                         crop = atlas_name,
+                                         neighbors = neighbors,
+                                         data = copy(data),
+                                         value_field = value_field),
        by = list(iso3, atlas_name)]
   
   # Calculate and add the mean value from the same region
@@ -2490,47 +2515,47 @@ avloss <- function(cv, change, fixed = FALSE, reps = 10^6) {
 #' }
 #' @export
 makeObjectPublic <- function(s3_uri, bucket = "digital-atlas", directory = TRUE) {
-    s3_inst <- paws.storage::s3()
-    if(gsub('/|s3:|\\*', "", s3_uri) == bucket) {
-        stop("Setting full bucket to public is not allowed using this function to prevential accidential changes.")
-    }
-    policy <- s3_inst$get_bucket_policy(Bucket = bucket)$Policy
-    policy_ls <- jsonlite::parse_json(policy)
-    tmp <- tempdir()
-    tmp_dir <- file.path(tmp, "s3_policy")
-    if (!dir.exists(tmp_dir)) dir.create(tmp_dir, recursive = T)
-    on.exit(unlink(tmp_dir, recursive = T))
-    jsonlite::write_json(policy_ls, file.path(tmp_dir, 'previous_policy.json'),
-        pretty = T, auto_unbox = T)
-    s3_inst$put_object(Bucket = bucket, 
-                    Key = '.bucket_policy/previous_policy.json',
-                    Body = file.path(tmp_dir, 'previous_policy.json'))
-    s3_uri_clean <- gsub("s3://", "", s3_uri)
-    dir_wildcard  <- ifelse(directory, "/*", "")
-    s3_uri_clean <- paste0(s3_uri_clean, dir_wildcard)
-    s3_arn <- paste0("arn:aws:s3:::", s3_uri_clean)
-    s3_path <- gsub(paste0(bucket, "/"), "", s3_uri_clean)
-    policy_ls$Statement <- lapply(policy_ls$Statement, function(statement) {
-      switch(statement$Sid,
-        "AllowPublicGet" = {
-            statement$Resource <- unique(c(statement$Resource, s3_arn))
-        },
-        "AllowPublicList" = {
-            statement$Condition$StringLike$`s3:prefix` <- unique(
-              c(statement$Condition$StringLike$`s3:prefix`, s3_path)
-            )
-        }
-      )
-      return(statement)
+  s3_inst <- paws.storage::s3()
+  if(gsub('/|s3:|\\*', "", s3_uri) == bucket) {
+    stop("Setting full bucket to public is not allowed using this function to prevential accidential changes.")
+  }
+  policy <- s3_inst$get_bucket_policy(Bucket = bucket)$Policy
+  policy_ls <- jsonlite::parse_json(policy)
+  tmp <- tempdir()
+  tmp_dir <- file.path(tmp, "s3_policy")
+  if (!dir.exists(tmp_dir)) dir.create(tmp_dir, recursive = T)
+  on.exit(unlink(tmp_dir, recursive = T))
+  jsonlite::write_json(policy_ls, file.path(tmp_dir, 'previous_policy.json'),
+                       pretty = T, auto_unbox = T)
+  s3_inst$put_object(Bucket = bucket, 
+                     Key = '.bucket_policy/previous_policy.json',
+                     Body = file.path(tmp_dir, 'previous_policy.json'))
+  s3_uri_clean <- gsub("s3://", "", s3_uri)
+  dir_wildcard  <- ifelse(directory, "/*", "")
+  s3_uri_clean <- paste0(s3_uri_clean, dir_wildcard)
+  s3_arn <- paste0("arn:aws:s3:::", s3_uri_clean)
+  s3_path <- gsub(paste0(bucket, "/"), "", s3_uri_clean)
+  policy_ls$Statement <- lapply(policy_ls$Statement, function(statement) {
+    switch(statement$Sid,
+           "AllowPublicGet" = {
+             statement$Resource <- unique(c(statement$Resource, s3_arn))
+           },
+           "AllowPublicList" = {
+             statement$Condition$StringLike$`s3:prefix` <- unique(
+               c(statement$Condition$StringLike$`s3:prefix`, s3_path)
+             )
+           }
+    )
+    return(statement)
   })
-    new_policy <- jsonlite::toJSON(policy_ls, pretty = T, auto_unbox = T)
-    s3_inst$put_bucket_policy(Bucket = bucket, Policy = new_policy)
-    jsonlite::write_json(policy_ls, file.path(tmp_dir, 'current_policy.json'), 
-        pretty = T, auto_unbox = T)
-    s3_inst$put_object(Bucket = bucket, 
-                      Key = '.bucket_policy/current_policy.json',
-                      Body = file.path(tmp_dir, 'current_policy.json'))
-    return(new_policy)
+  new_policy <- jsonlite::toJSON(policy_ls, pretty = T, auto_unbox = T)
+  s3_inst$put_bucket_policy(Bucket = bucket, Policy = new_policy)
+  jsonlite::write_json(policy_ls, file.path(tmp_dir, 'current_policy.json'), 
+                       pretty = T, auto_unbox = T)
+  s3_inst$put_object(Bucket = bucket, 
+                     Key = '.bucket_policy/current_policy.json',
+                     Body = file.path(tmp_dir, 'current_policy.json'))
+  return(new_policy)
 }
 #' Upload Files to S3
 #'
@@ -2544,6 +2569,7 @@ makeObjectPublic <- function(s3_uri, bucket = "digital-atlas", directory = TRUE)
 #' @param max_attempts Integer; maximum number of attempts for each file upload. Default is 3.
 #' @param overwrite Logical; whether to overwrite existing files. Default is \code{FALSE}.
 #' @param mode A character string specifying the access mode ("private", "public-read"). Default is "private".
+#' @param directory A logical value indicating if "/*" should be appended to the end of the path for globbing. Default is TRUE.
 #' @return None. This function uploads files to an S3 bucket.
 #' @importFrom paws s3
 #' @importFrom utils flush.console
@@ -2559,7 +2585,8 @@ upload_files_to_s3 <- function(files,
                                new_only = FALSE, 
                                max_attempts = 3, 
                                overwrite = FALSE,
-                               mode = "private") {
+                               mode = "private",
+                               directory=T) {
   s3 <- paws::s3()
   
   # Create the s3 directory if it does not already exist
@@ -2616,7 +2643,7 @@ upload_files_to_s3 <- function(files,
   }
   
   if (mode == "public-read") {
-    makeObjectPublic(selected_bucket)
+    makeObjectPublic(selected_bucket,directory=directory)
   }
 }
 #' Process ISIMIP Files
@@ -2668,10 +2695,10 @@ process_isimip_files <- function(file_path, stat, save_dir, r_cal, overwrite = F
     data_seasons <- terra::rast(lapply(1:(length(years) - 1), function(m) {
       
       if(verbose){
-      # Display progress
-      cat('\r', strrep(' ', 150), '\r')
-      cat("Processing file", i, "/", nrow(file_index), "| year", years[m])
-      flush.console()
+        # Display progress
+        cat('\r', strrep(' ', 150), '\r')
+        cat("Processing file", i, "/", nrow(file_index), "| year", years[m])
+        flush.console()
       }
       
       # Subset the data for the current season to increase efficiency
