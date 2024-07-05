@@ -14,7 +14,7 @@ fruit,fruit,NA,yes,NA
 groundnut,grou,Arachis hypogaea,no,groundnut
 lentil,lent,Lens culinaris,no,NA
 maize,maiz,Zea mays,no,maize
-millet,mill,NA,yes,pearl millet
+millet,mill,NA,yes,NA
 other cereals,ocer,NA,yes,NA
 other fibre crops,ofib,NA,yes,NA
 oil crops,oilc,NA,yes,NA
@@ -24,7 +24,7 @@ other pulses,opul,NA,yes,NA
 other roots,orts,NA,yes,NA
 pigeonpea,pige,Cajanus cajan,no,NA
 plantain,plnt,Musa acuminata x balbisiana;Musa balbisiana,no,NA
-pearl millet,pmil,Pennisetum glaucum,no,NA
+pearl millet,pmil,Pennisetum glaucum,no,millet
 potato,pota,Solanum tuberosum,no,potato
 rapeseed,rape,Brassica napus,no,rapeseed
 robusta coffee,rcof,Coffea canephora,no,coffeerobusta

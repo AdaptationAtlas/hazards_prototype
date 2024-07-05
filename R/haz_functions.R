@@ -2468,46 +2468,6 @@ avloss <- function(cv, change, fixed = FALSE, reps = 10^6) {
   
   return(avloss)
 }
-
-#' List Contents of an S3 Bucket
-#'
-#' This function lists the contents of an S3 bucket folder and returns the file names.
-#'
-#' @param bucket_url A character string specifying the base URL of the S3 bucket.
-#' @param folder_path A character string specifying the folder path within the S3 bucket.
-#'
-#' @return A character vector of file names (full URLs) within the specified folder.
-#' @export
-#'
-#' @examples
-#' \dontrun{
-#' bucket_url <- "http://digital-atlas.s3.amazonaws.com"
-#' folder_path <- "risk_prototype/data/hazard_timeseries/annual/"
-#' file_names <- list_s3_bucket_contents(bucket_url, folder_path)
-#' print(file_names)
-#' }
-list_s3_bucket_contents <- function(bucket_url, folder_path) {
-  response <- httr::GET(paste0(bucket_url, "?prefix=", folder_path))
-  
-  if (status_code(response) == 200) {
-    content <- httr::content(response, "text")
-    xml_content <- xml2::read_xml(content)
-    
-    # Define the namespace
-    ns <- xml2::xml_ns(xml_content)
-    
-    # Extract object keys using the namespace
-    object_keys <- xml2::xml_find_all(xml_content, ".//d1:Contents/d1:Key", ns)
-    file_names <- xml2::xml_text(object_keys)
-    
-    # Remove the folder path itself from the list of file names
-    file_names <- file_names[file_names != folder_path]
-    file_names <- file.path(bucket_url, file_names)
-    return(file_names)
-  } else {
-    stop(paste("Failed to list objects. HTTP status code:", httr::status_code(response)))
-  }
-}
 #' Make S3 Bucket Public
 #'
 #' This function sets the policy of an S3 bucket to allow public read access to specified folders or items.
