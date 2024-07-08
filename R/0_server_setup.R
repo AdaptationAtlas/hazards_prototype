@@ -32,7 +32,6 @@ timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
 cat("Please choose a timeframe:\n")
 timeframe_choice_index <- menu(timeframe_choices, title = "Select a timeframe")
 timeframe_choice <- timeframe_choices[timeframe_choice_index]
-
 cat("You selected:", timeframe_choice, "\n")
 
 # Increase GDAL cache size
@@ -103,8 +102,10 @@ if(project_dir=="C:/rprojects/hazards_prototype"){
 }
 
 # Afrilabs
+Aflabs<-F
 if(project_dir=="/home/psteward/rprojects/hazards_prototype"){
-  working_dir<-"/home/psteward/common_data"
+  Aflabs<-T
+  working_dir<-"/cluster01/workspace/atlas/hazards_prototype"
 }
 
 if(!dir.exists(working_dir)){

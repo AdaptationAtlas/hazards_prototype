@@ -238,37 +238,42 @@ overwrite<-F
 folder_path <- file.path("risk_prototype/data/hazard_timeseries",timeframe_choice,"")
 
 # List files in the specified S3 bucket and prefix
-file_list<-s3fs::s3_dir_ls(file.path(bucket_name_s3,folder_path))
-file_list<-grep(".tif",file_list,value=T)
-new_files<-gsub(file.path(bucket_name_s3,folder_path),paste0(haz_timeseries_dir,"/"),file_list)
+file_list<-s3$dir_ls(file.path(bucket_name_s3,folder_path))
+file_list<-data.table(file_list=grep(".tif",file_list,value=T))
+file_list<-file_list[,new_files:=gsub(file.path(bucket_name_s3,folder_path),paste0(haz_timeseries_dir,"/"),file_list)]
 
-# Set up the future plan for parallel processing
-plan(multisession, workers = 8) # Adjust the number of workers based on your system's capabilities
+if(!overwrite){
+  file_list<-file_list[!file.exists(new_files)]
+}
 
-# Enable progressr
-progressr::handlers(global = TRUE)
-progressr::handlers("progress")
-
-# Wrap the parallel processing in a with_progress call
-p<-with_progress({
-  # Define the progress bar
-  progress <- progressr::progressor(along = 1:length(file_list))
+  if(nrow(file_list)>0){
+  # Set up the future plan for parallel processing
+  future::plan(multisession, workers = 10) # Adjust the number of workers based on your system's capabilities
   
-  # Download files in parallel
-  future_lapply(seq_along(file_list), function(i) {
-    #lapply(seq_along(file_list), function(i) {
-    #print(i)
-    progress(sprintf("File %d/%d", i, length(file_list)))
+  # Enable progressr
+  progressr::handlers(global = TRUE)
+  progressr::handlers("progress")
+  
+  # Wrap the parallel processing in a with_progress call
+  p<-progressr::with_progress({
+    # Define the progress bar
+    progress <- progressr::progressor(along = 1:nrow(file_list))
     
-    if((!file.exists(new_files[i]))|overwrite==T){
-      s3$file_download(file_list[i],new_files[i],overwrite=T)
-    }
-
-    })
-})
-
-plan(sequential)
-
+    # Download files in parallel
+    future.apply::future_lapply(1:nrow(file_list), function(i) {
+      #lapply(seq_along(file_list), function(i) {
+      #print(i)
+      progress(sprintf("File %d/%d", i, nrow(file_list)))
+      
+      if((!file.exists(file_list$new_files[i]))|overwrite==T){
+        s3$file_download(file_list$file_list[i],file_list$new_files[i],overwrite=T)
+      }
+  
+      })
+  })
+  
+  future::plan(sequential)
+  }
 
 # 1) Classify time series climate variables based on hazard thresholds ####
 
