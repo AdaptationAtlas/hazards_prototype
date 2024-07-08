@@ -232,7 +232,7 @@ PropTDir=">"
 # Set crops and livestock included in the analysis
 crop_choices<-c(fread(haz_class_url, showProgress = FALSE)[,unique(crop)],ms_codes[,sort(Fullname)])
 
-# 0) download hazard timeseries from s3 bucket ####
+# 0) Download hazard timeseries from s3 bucket ####
 overwrite<-F
 # Specify the bucket name and the prefix (folder path)
 folder_path <- file.path("risk_prototype/data/hazard_timeseries",timeframe_choice,"")
@@ -240,37 +240,125 @@ folder_path <- file.path("risk_prototype/data/hazard_timeseries",timeframe_choic
 # List files in the specified S3 bucket and prefix
 file_list<-s3$dir_ls(file.path(bucket_name_s3,folder_path))
 file_list<-data.table(file_list=grep(".tif",file_list,value=T))
+
 file_list<-file_list[,new_files:=gsub(file.path(bucket_name_s3,folder_path),paste0(haz_timeseries_dir,"/"),file_list)]
+
+# Here you can check if there are issues with file downloads by comparing the local size to the s3 size
+if(F){
+  file_list[,local_size:=round(file.info(new_files)$size/10^6,1)]
+  file_list[,s3_size:=s3$file_size(file_list)][,s3_size:=round(as.numeric(s3_size),1)]
+  file_list[s3_size!=local_size,new_files]
+}
 
 if(!overwrite){
   file_list<-file_list[!file.exists(new_files)]
 }
 
+convert_to_bytes <- function(size) {
+  # Convert to character
+  size <- as.character(size)
+  # Remove any spaces
+  size <- gsub(" ", "", size)
+  
+  # Extract the units (K, M, G) and the numeric value
+  units <- tolower(substr(size, nchar(size), nchar(size)))
+  value <- as.numeric(substr(size, 1, nchar(size) - 1))
+  
+  # Convert based on the unit
+  if (units == "k") {
+    return(value * 1024)
+  } else if (units == "m") {
+    return(value * 1024^2)
+  } else if (units == "g") {
+    return(value * 1024^3)
+  } else {
+    return(value)  # If no units, assume it's already in bytes
+  }
+}
+
+calculate_file_hash <- function(file_path) {
+  return(digest::digest(file = file_path, algo = "md5"))
+}
+
+
+
   if(nrow(file_list)>0){
   # Set up the future plan for parallel processing
-  future::plan(multisession, workers = 10) # Adjust the number of workers based on your system's capabilities
+  future::plan(multisession, workers = 4) # Adjust the number of workers based on your system's capabilities
   
-  # Enable progressr
-  progressr::handlers(global = TRUE)
-  progressr::handlers("progress")
-  
-  # Wrap the parallel processing in a with_progress call
-  p<-progressr::with_progress({
-    # Define the progress bar
-    progress <- progressr::progressor(along = 1:nrow(file_list))
     
-    # Download files in parallel
-    future.apply::future_lapply(1:nrow(file_list), function(i) {
-      #lapply(seq_along(file_list), function(i) {
-      #print(i)
-      progress(sprintf("File %d/%d", i, nrow(file_list)))
+    # Enable progressr
+    progressr::handlers(global = TRUE)
+    progressr::handlers("progress")
+    
+    # Define the maximum number of retry attempts
+    max_retries <- 3
+    # Difference in file size allowed
+    tolerance<-0.05 # % difference 
+    
+    
+    # Wrap the parallel processing in a with_progress call
+    p <- progressr::with_progress({
+      # Define the progress bar
+      progress <- progressr::progressor(along = 1:nrow(file_list))
       
-      if((!file.exists(file_list$new_files[i]))|overwrite==T){
-        s3$file_download(file_list$file_list[i],file_list$new_files[i],overwrite=T)
-      }
-  
+      # Initialize a list to store problematic files
+      problem_files <- list()
+      
+      # Download files in parallel
+      results <- future.apply::future_lapply(1:nrow(file_list), function(i) {
+        progress(sprintf("File %d/%d", i, nrow(file_list)))
+        
+        # Initialize retry count
+        retries <- 0
+        
+        repeat {
+          tryCatch({
+            # Check if the file needs to be downloaded
+            if ((!file.exists(file_list$new_files[i])) || overwrite == TRUE) {
+              # Get the size of the S3 file
+              s3_file_info<- s3$file_info(file_list$file_list[i])
+              s3_file_hash<-s3_file_info$etag
+              s3_file_hash<-gsub("\"", "", s3_file_hash)
+              s3_file_size <- convert_to_bytes(as.character(s3_file_info$size))
+              # Download the file
+              s3$file_download(file_list$file_list[i], file_list$new_files[i], overwrite = TRUE)
+              
+              # Get the size of the downloaded file
+              downloaded_file_size <- file.info(file_list$new_files[i])$size
+              downloaded_file_hash <- calculate_file_hash(file_list$new_files[i])
+              
+              diff<-100*(((1-(s3_file_size/downloaded_file_size))^2)^0.5)
+              
+              # Check if the file sizes match
+              if (diff>tolerance|s3_file_hash!=downloaded_file_hash) {
+                stop(sprintf("File size mismatch for %s: S3 size = %d, Downloaded size = %d",
+                             file_list$file_list[i], s3_file_size, downloaded_file_size))
+              }
+            }
+            
+            # If download and size check succeed, break the loop
+            break
+          }, error = function(e) {
+            retries <- retries + 1
+            if (retries >= max_retries) {
+              # Record the problematic file and the error message
+              problem_files <<- rbind(problem_files, data.frame(
+                file_name = file_list$file_list[i],
+                error_message = e$message,
+                stringsAsFactors = FALSE
+              ))
+              break
+            }
+          })
+        }
       })
-  })
+      
+      # Return the list of problematic files
+      problem_files
+    })
+    
+    print(p)
   
   future::plan(sequential)
   }
@@ -432,7 +520,7 @@ p<-with_progress({
       
       # Display progress
       cat('\r                                                                                                                     ')
-      cat('\r',paste("Crop:",i,crop_focus,"| severity:",j,severity_class))
+      cat('\r',"Crop:",i,crop_focus,"| severity:",j,severity_class)
       flush.console()
       
       if(!file.exists(save_name)|overwrite==T){
