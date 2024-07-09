@@ -1,3 +1,6 @@
+# Please run 0_server_setup.R before executing this script
+# If you are experiencing issues with the admin_extract functions, delete the exactextractr package and use this version:  remotes::install_github("isciences/exactextractr")
+
 # a) Install and load packages ####
 packages <- c("terra", 
               "data.table",
