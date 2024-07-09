@@ -39,8 +39,18 @@ file_index[,group:=paste0(model,"_",scenario,"_",timeframe,"_",var)
     data
   })
   names(Geographies)<-names(geo_files_local)
+  
+    # Remove admin2 to speed things up
+  Geographies$admin2<-NULL
+  
   # 3.4) Load isimip metadata
   isimip_meta<-data.table::fread(isimip_meta_url)
+  # 3.4) Load hydrobasins ####
+  files<-list.files(hydrobasins_dir,".shp$",full.names = T)
+  hydrobasins<-lapply(files,terra::vect)
+  names(hydrobasins)<-unlist(tstrsplit(basename(files),"_",keep=3))
+  data.frame(hydrobasins$lev02)
+  
 # 4) Set analysis parameters ####
 use_crop_cal_choice<- c("no","yes") # if set to no then values are calculated for the year (using the jagermeyr cc as the starting month for each year)
 use_sos_cc_choice<-c("no","yes") # Use onset of rain layer to set starting month of season
@@ -219,7 +229,7 @@ unlink(file.path(isimip_timeseries_dir,"by_season"),recursive = T)
 
 # 6) Calculate timeseries mean and sd ####
 
-# List timese
+# List times
 files<-data.table(timeseries_path=list.files(output_dir,".nc",full.names = T,recursive = T))
 # Remove annual sd estimates
 files<-files[!grepl("ensemble-sd",timeseries_path)]
@@ -285,70 +295,345 @@ for(i in 1:length(leaf_dirs)){
   cat("Processing files in dir",i,"/",length(leaf_dirs),":",leaf_dirs[i],"\n")
   
   files<-list.files(leaf_dirs[i],".nc",full.names = T)
-  data<-terra::rast(files)
 
-  #names(data)<-basename(gsub(".nc","",files))
+  # 7.1) Extract data unchanged #####
   save_file<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean.parquet"))
   
   if(!file.exists(save_file)|overwrite){
-  data_ex<-admin_extract_wrap(data=data, 
+    data<-terra::rast(files)
+    
+    data_ex<-admin_extract_wrap(data=data, 
+                                save_dir=leaf_dirs[i], 
+                                filename=filename, 
+                                FUN = NULL, 
+                                varname:=NA, 
+                                Geographies, 
+                                overwrite = overwrite,
+                                modify_colnames = F)
+    
+    data_ex<-melt(data_ex,id.vars=c("admin0_name","admin1_name","coverage_fraction"))
+    
+    # Clean out NAs or zeros
+    data_ex <- data_ex[!is.na(value) & !is.na(coverage_fraction) & coverage_fraction > 0]
+    
+    # Caculate stats (this will take some time)
+    data_ex_stats<-data_ex[,list(mean=weighted.mean(value,coverage_fraction),
+                                     min=min(value),
+                                     max=max(value),
+                                     median=Hmisc::wtd.quantile(value, coverage_fraction, probs = 0.5),
+                                     bin_counts =list(as.numeric(hist(value, breaks = 10, plot = FALSE)$counts)),
+                                     bin_width = list(as.numeric(hist(value, breaks = 10, plot = FALSE)$breaks))),
+                               by=.(admin0_name,admin1_name,variable)]
+    
+    data_ex_stats<-data_ex_stats[,variable:=gsub("mean[.]","",variable[1]),by=variable
+            ][,model:=unlist(tstrsplit(variable[1],"_",keep=1)),by=variable
+              ][,gcm:=gsub(".w5e5","",unlist(tstrsplit(variable[1],"_",keep=2))),by=variable
+                ][,scenario:=unlist(tstrsplit(variable[1],"_",keep=4)),by=variable
+                  ][,var:=unlist(tstrsplit(variable[1],"_",keep=7)),by=variable
+                    ][,timeframe:=unlist(tstrsplit(variable[1],"_",keep=10)),by=variable
+                      ][,variable:=NULL
+                        ][,var:=gsub("evap.total","evap",var)
+                          ][timeframe %in% c("1981","1995"),timeframe:="historical"
+                            ][timeframe %in% c("2040","2041"),timeframe:="2041_2060"
+                              ][timeframe %in% c("2020","2021"),timeframe:="2021_2040"]
+    
+    
+    arrow::write_parquet(data_ex_stats,save_file)
+    
+    data_ex_stats<-merge(data_ex_stats,isimip_meta[,list(var,var_long)],by="var",all.x=T)
+    data_ex_stats[,var:=NULL]
+    setnames(data_ex_stats,"var_long","variable")
+    
+    
+    # Round values to reduce size
+    data_ex_stats[, (names(data_ex_stats)) := lapply(.SD, function(x) if (is.numeric(x)) round(x, 2) else x)]
+    
+    save_file2<-gsub("mean.parquet","mean_simple.parquet",save_file)
+    
+    arrow::write_parquet(data_ex_stats,save_file2)
+    
+    
+  }
+  
+  # 7.2) Extract differences between historical and future scenarios #####
+  
+  file_index<-data.table(file_path=files)[,file_name:=basename(file_path)
+  ][,model:=unlist(tstrsplit(basename(file_name),"_",keep=1))
+  ][,gcm:=unlist(tstrsplit(basename(file_name),"_",keep=2))
+  ][,scenario:=unlist(tstrsplit(basename(file_name),"_",keep=4))
+  ][,var:=unlist(tstrsplit(basename(file_name),"_",keep=7))
+  ][,timeframe:=unlist(tstrsplit(basename(file_name),"_",keep=10))]
+  
+  # 7.2.1) Models x GCMS #####~
+  save_file_diff<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff_all.parquet"))
+  if(!file.exists(save_file)|overwrite){
+    
+  files_fut<-file_index[scenario!="historical" & gcm!="gcm-ensemble-mean",file_path]
+  files_hist<-file_index[scenario=="historical" & gcm!="gcm-ensemble-mean",file_path]
+  
+  # Average values over timeseries
+  data_diff<-terra::rast(lapply(1:length(files_hist),FUN=function(i){
+    
+    # Display progress
+    cat('\r                                                                                                                                                 ')
+    cat('\r',"File ",i,"/",length(files_hist))
+    flush.console()
+    
+    file_hist<-files_hist[i]
+    model<-paste0(unlist(tstrsplit(basename(file_hist),"_",keep=1)),"_")
+    gcm<-paste0(unlist(tstrsplit(basename(file_hist),"_",keep=2)),"_")
+    variable<-paste0("_",unlist(tstrsplit(basename(file_hist),"_",keep=7)),"_")
+    
+    files_fut_ss<-files_fut[grepl(model,files_fut) & grepl(variable,files_fut) & grepl(gcm,files_fut)]
+    
+    hist_rast<-terra::rast(file_hist)
+    fut_rast<-terra::rast(files_fut_ss)
+    
+    diff_rast<-fut_rast-hist_rast
+    return(diff_rast)
+  }))
+  
+  data_diff_ex<-admin_extract_wrap(data=data_diff, 
                               save_dir=leaf_dirs[i], 
-                              filename=filename, 
-                              FUN = "mean", 
+                              filename=paste(filename,"_diff"), 
+                              FUN = NULL, 
                               varname:=NA, 
                               Geographies, 
-                              overwrite = F,
+                              overwrite = overwrite,
                               modify_colnames = F)
   
-  data_ex<-data_ex[,variable:=gsub("mean[.]","",variable[1]),by=variable
-          ][,model:=unlist(tstrsplit(variable[1],"_",keep=1)),by=variable
-            ][,gcm:=gsub(".w5e5","",unlist(tstrsplit(variable[1],"_",keep=2))),by=variable
-              ][,scenario:=unlist(tstrsplit(variable[1],"_",keep=4)),by=variable
-                ][,var:=unlist(tstrsplit(variable[1],"_",keep=7)),by=variable
-                  ][,timeframe:=unlist(tstrsplit(variable[1],"_",keep=10)),by=variable
-                    ][,variable:=NULL
-                      ][,var:=gsub("evap.total","evap",var)]
+  # Melt
+  data_diff_ex<-melt(data_diff_ex,id.vars=c("admin0_name","admin1_name","coverage_fraction"))
   
-  arrow::write_parquet(data_ex,save_file)
+  # Clean out NAs or zeros
+  data_diff_ex <- data_diff_ex[!is.na(value) & !is.na(coverage_fraction) & coverage_fraction > 0]
   
-  # Prepare for notebook
-  data_ex_ens<-merge(data_ex,isimip_meta[,list(var,var_long)],all.x=T)[gcm!="gcm.ensemble.mean"][,]
-  data_ex_ens[,var:=NULL]
-  setnames(data_ex_ens,"var_long","variable")
-  data_ex_ens[timeframe %in% c("1981","1995"),timeframe:="historical"
+  data_diff_ex<-data_diff_ex[,list(mean=weighted.mean(value,coverage_fraction),
+                                   min=min(value),
+                                   max=max(value),
+                                   median=Hmisc::wtd.quantile(value, coverage_fraction, probs = 0.5),
+                                   bin_counts =list(as.numeric(hist(value, breaks = 10, plot = FALSE)$counts)),
+                                   bin_width = list(as.numeric(hist(value, breaks = 10, plot = FALSE)$breaks))),
+                             by=.(admin0_name,admin1_name,variable)]
+  
+  data_diff_ex<-data_diff_ex[,variable:=gsub("mean[.]","",variable[1]),by=variable
+  ][,model:=unlist(tstrsplit(variable[1],"_",keep=1)),by=variable
+  ][,gcm:=gsub(".w5e5","",unlist(tstrsplit(variable[1],"_",keep=2))),by=variable
+  ][,scenario:=unlist(tstrsplit(variable[1],"_",keep=4)),by=variable
+  ][,var:=unlist(tstrsplit(variable[1],"_",keep=7)),by=variable
+  ][,timeframe:=unlist(tstrsplit(variable[1],"_",keep=10)),by=variable
+  ][,variable:=NULL
+  ][,var:=gsub("evap.total","evap",var)]
+  
+  arrow::write_parquet(data_diff_ex,save_file_diff)
+  }
+  
+  # 7.2.2) GCMS (Average across models) ######
+  save_file_diff_gcms<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff_gcms.parquet"))
+  
+  if(!file.exists(save_file_diff_gcms)|overwrite){
+    
+    hist_gcms<-unique(file_index[gcm!="gcm-ensemble-mean" & scenario=="historical",list(scenario,var,gcm)])
+    
+    # Average values over timeseries
+    data_diff_gcm<-terra::rast(lapply(1:nrow(hist_gcms),FUN=function(i){
+      
+      # Display progress
+      cat('\r                                                                                                                                                 ')
+      cat('\r',"Row ",i,"/",nrow(hist_gcms))
+      flush.console()
+      
+      gcm_focus<-hist_gcms[i,gcm]
+      var_focus<-hist_gcms[i,var]
+      
+      files_hist<-file_index[scenario=="historical" & gcm==gcm_focus & var==var_focus,file_path]
+      hist_rast<-terra::app(terra::rast(file_hist),mean,na.rm=T)
+      
+      files_fut<-file_index[scenario!="historical" & gcm==gcm_focus & var==var_focus][,SxT:=paste0(scenario,timeframe)]
+      files_fut<-split(files_fut,by="SxT")
+      
+      fut_rast<-terra::rast(lapply(1:length(files_fut),FUN=function(i){
+        data<-terra::rast(files_fut[[1]]$file_path)
+        data_mean<-terra::app(data,mean,na.rm=T)
+        names(data_mean)<-names(data)[1]
+        return(data_mean)
+      }))
+
+      diff_rast<-fut_rast_mean-hist_rast
+      names(diff_rast)<-names(fut_rast)[1]
+      return(diff_rast)
+    }))
+    
+    data_diff_gcm_ex<-admin_extract_wrap(data=data_diff_gcm, 
+                                     save_dir=leaf_dirs[i], 
+                                     filename=paste(filename,"_diff"), 
+                                     FUN = NULL, 
+                                     varname:=NA, 
+                                     Geographies, 
+                                     overwrite = overwrite,
+                                     modify_colnames = F)
+    
+    # Melt
+    data_diff_gcm_ex<-melt(data_diff_gcm_ex,id.vars=c("admin0_name","admin1_name","coverage_fraction"))
+    
+    # Clean out NAs or zeros
+    data_diff_gcm_ex <- data_diff_gcm_ex[!is.na(value) & !is.na(coverage_fraction) & coverage_fraction > 0]
+    
+    data_diff_gcm_ex<-data_diff_gcm_ex[,list(mean=weighted.mean(value,coverage_fraction),
+                                     min=min(value),
+                                     max=max(value),
+                                     median=Hmisc::wtd.quantile(value, coverage_fraction, probs = 0.5),
+                                     bin_counts =list(as.numeric(hist(value, breaks = 10, plot = FALSE)$counts)),
+                                     bin_width = list(as.numeric(hist(value, breaks = 10, plot = FALSE)$breaks))),
+                               by=.(admin0_name,admin1_name,variable)]
+    
+    data_diff_gcm_ex<-data_diff_gcm_ex[,variable:=gsub("mean[.]","",variable[1]),by=variable
+    ][,gcm:=gsub(".w5e5","",unlist(tstrsplit(variable[1],"_",keep=2))),by=variable
+    ][,scenario:=unlist(tstrsplit(variable[1],"_",keep=4)),by=variable
+    ][,var:=unlist(tstrsplit(variable[1],"_",keep=7)),by=variable
+    ][,timeframe:=unlist(tstrsplit(variable[1],"_",keep=10)),by=variable
+    ][,variable:=NULL
+    ][,var:=gsub("evap.total","evap",var)
+    ][timeframe %in% c("1981","1995"),timeframe:="historical"
+    ][timeframe %in% c("2040","2041"),timeframe:="2041_2060"
+    ][timeframe %in% c("2020","2021"),timeframe:="2021_2040"]
+    
+    
+    # Round values to reduce size
+    data_diff_gcm_ex[, (names(data_diff_gcm_ex)) := lapply(.SD, function(x) if (is.numeric(x)) round(x, 2) else x)]
+    
+    arrow::write_parquet(data_diff_gcm_ex,save_file_diff_gcms)
+  }
+  
+  # 7.2.3) All (Average across models and gcms) ######
+  save_file_diff_all<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff_all.parquet"))
+  
+  if(!file.exists(save_file_diff_all)|overwrite){
+    
+    hist_index<-unique(file_index[scenario=="historical" & gcm!="gcm-ensemble-mean",list(scenario,var)])
+    
+    # Average values over timeseries
+    data_diff_all<-terra::rast(lapply(1:nrow(hist_index),FUN=function(i){
+      
+      # Display progress
+      cat('\r                                                                                                                                                 ')
+      cat('\r',"Row ",i,"/",nrow(hist_index))
+      flush.console()
+      
+      var_focus<-hist_index[i,var]
+      
+      files_hist<-file_index[scenario=="historical"  & var==var_focus,file_path]
+      hist_rast<-terra::app(terra::rast(file_hist),mean,na.rm=T)
+      
+      files_fut<-file_index[scenario!="historical" & var==var_focus &  gcm!="gcm-ensemble-mean"][,SxT:=paste0(scenario,timeframe)]
+      files_fut<-split(files_fut,by="SxT")
+      
+      fut_rast<-terra::rast(lapply(1:length(files_fut),FUN=function(i){
+        data<-terra::rast(files_fut[[1]]$file_path)
+        data_mean<-terra::app(data,mean,na.rm=T)
+        names(data_mean)<-names(data)[1]
+        return(data_mean)
+      }))
+      
+      diff_rast<-fut_rast_mean-hist_rast
+      names(diff_rast)<-names(fut_rast)[1]
+      return(diff_rast)
+    }))
+    
+    data_diff_all_ex<-admin_extract_wrap(data=data_diff_all, 
+                                         save_dir=leaf_dirs[i], 
+                                         filename=paste(filename,"_diff"), 
+                                         FUN = NULL, 
+                                         varname:=NA, 
+                                         Geographies, 
+                                         overwrite = overwrite,
+                                         modify_colnames = F)
+    
+    # Melt
+    data_diff_all_ex<-melt(data_diff_all_ex,id.vars=c("admin0_name","admin1_name","coverage_fraction"))
+    
+    # Clean out NAs or zeros
+    data_diff_all_ex <- data_diff_all_ex[!is.na(value) & !is.na(coverage_fraction) & coverage_fraction > 0]
+    
+    data_diff_all_ex<-data_diff_all_ex[,list(mean=weighted.mean(value,coverage_fraction),
+                                             min=min(value),
+                                             max=max(value),
+                                             median=Hmisc::wtd.quantile(value, coverage_fraction, probs = 0.5),
+                                             bin_counts =list(as.numeric(hist(value, breaks = 10, plot = FALSE)$counts)),
+                                             bin_width = list(as.numeric(hist(value, breaks = 10, plot = FALSE)$breaks))),
+                                       by=.(admin0_name,admin1_name,variable)]
+    
+    data_diff_all_ex<-data_diff_all_ex[,variable:=gsub("mean[.]","",variable[1]),by=variable
+    ][,scenario:=unlist(tstrsplit(variable[1],"_",keep=4)),by=variable
+    ][,var:=unlist(tstrsplit(variable[1],"_",keep=7)),by=variable
+    ][,timeframe:=unlist(tstrsplit(variable[1],"_",keep=10)),by=variable
+    ][,variable:=NULL
+    ][,var:=gsub("evap.total","evap",var)
+    ][timeframe %in% c("1981","1995"),timeframe:="historical"
+    ][timeframe %in% c("2040","2041"),timeframe:="2041_2060"
+    ][timeframe %in% c("2020","2021"),timeframe:="2021_2040"]
+    
+    
+    # Round values to reduce size
+    data_diff_all_ex[, (names(data_diff_all_ex)) := lapply(.SD, function(x) if (is.numeric(x)) round(x, 2) else x)]
+    
+    data_diff_all_ex<-merge(data_diff_all_ex,isimip_meta[,list(var,var_long)],by="var",all.x=T)
+    data_diff_all_ex[,var:=NULL]
+    setnames(data_diff_all_ex,"var_long","variable")
+    
+    arrow::write_parquet(data_diff_all_ex,save_file_diff_all)
+  }
+  
+  # 7.2.4) Ensemble over models and prepare for notebook ######
+  data_ex_stats_diff<-arrow::read_parquet(save_file_diff)[gcm!="gcm-ensemble-mean",!c("min","max","bin_counts","bin_width")]
+  data_ex_stats_hist<-arrow::read_parquet(save_file)[gcm!="gcm-ensemble-mean" & scenario=="historical",!c("scenario","timeframe","min","max","bin_counts","bin_width")]
+  setnames(data_ex_stats_hist,c("mean","median"),c("mean_hist","median_hist"))
+  
+  data_ex_stats<-merge(data_ex_stats_diff,data_ex_stats_hist,all.x=T)
+  
+  data_ex_stats<-merge(data_ex_stats,isimip_meta[,list(var,var_long)],by="var",all.x=T)
+  data_ex_stats[,var:=NULL]
+  setnames(data_ex_stats,"var_long","variable")
+  data_ex_stats[timeframe %in% c("1981","1995"),timeframe:="historical"
               ][timeframe %in% c("2040","2041"),timeframe:="2041_2060"
                 ][timeframe %in% c("2020","2021"),timeframe:="2021_2040"]
   
-  hist_dat<-data_ex_ens[scenario=="historical",!c("scenario","timeframe")]
-  setnames(hist_dat,"value","value_hist")
+
+  data_ex_stats[,mean_perc_change:=100*(1-(mean+mean_hist)/mean_hist)]
+  data_ex_stats[,median_perc_change:=100*(1-(median+median_hist)/median_hist)]
   
-  data_ex_ens<-merge(data_ex_ens[scenario!="historical"],hist_dat,all.x=T)
-  data_ex_ens[,prop_change:=value/value_hist]
+  # Ensemble over gcms and models
+  data_ex_stats_ens<-data_ex_stats[,list(diff_mean_mean=mean(mean,na.rm=T),
+                                         diff_max_mean=max(mean,na.rm=T),
+                                         diff_min_mean=min(mean,na.rm=T),
+                                         diff_sd_mean=sd(mean,na.rm=T),
+                                         diff_mean_median=mean(median,na.rm=T),
+                                         diff_max_median=max(median,na.rm=T),
+                                         diff_min_median=min(median,na.rm=T),
+                                         diff_sd_median=sd(median,na.rm=T),
+                                         perc_mean_mean=mean(mean_perc_change,na.rm=T),
+                                         perc_max_mean=max(mean_perc_change,na.rm=T),
+                                         perc_min_mean=min(mean_perc_change,na.rm=T),
+                                         perc_sd_mean=sd(mean_perc_change,na.rm=T),
+                                         perc_mean_median=mean(median_perc_change,na.rm=T),
+                                         perc_max_median=max(median_perc_change,na.rm=T),
+                                         perc_min_median=min(median_perc_change,na.rm=T),
+                                         perc_sd_median=sd(median_perc_change,na.rm=T)),
+                           by=.(admin0_name,admin1_name,scenario,timeframe,variable)]
   
-  # Ensemble over gcms by model
-  data_ex_ens_mod<-data_ex_ens[,list(mean=mean(prop_change,na.rm=T),
-                                 max=max(prop_change,na.rm=T),
-                                 min=min(prop_change,na.rm=T),
-                                 sd=sd(prop_change,na.rm=T)),
-                           by=list(admin0_name,admin1_name,admin2_name,model,scenario,timeframe,variable)
-                           ][,unit:="proportional change"]
+  # Round values to reduce size
+  data_ex_stats_ens[, (names(data_ex_stats_ens)) := lapply(.SD, function(x) if (is.numeric(x)) round(x, 2) else x)]
   
-  # Ensemble over models and gcms
-  data_ex_ens_all<-data_ex_ens[,list(mean=mean(prop_change,na.rm=T),
-                                 max=max(prop_change,na.rm=T),
-                                 min=min(prop_change,na.rm=T),
-                                 sd=sd(prop_change,na.rm=T)),
-                                by=list(admin0_name,admin1_name,admin2_name,scenario,timeframe,variable)
-                               ][,unit:="proportional change"]
+
+  save_file_diff_ens<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff_ens_all.parquet"))
+  arrow::write_parquet(data_ex_stats_ens,save_file_diff_ens)
   
-  focal_cols<-c("mean","min","max","sd")
+  data_ex_stats_ens_ss<-data_ex_stats_ens[,.(admin0_name,admin1_name,variable,scenario,timeframe,perc_mean_mean,perc_max_mean,perc_min_mean,perc_sd_mean)]
+  setnames(data_ex_stats_ens_ss,
+           c("perc_mean_mean","perc_max_mean","perc_min_mean","perc_sd_mean"),
+           c("mean","max","min","sd"))
+  data_ex_stats_ens_ss[,unit:="% change"]
   
-  data_ex_ens_all[, (focal_cols) := lapply(.SD, round,2), .SDcols = focal_cols]
-  save_file<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_ens_all.parquet"))
-  arrow::write_parquet(data_ex_ens_all,save_file)
-  
-  data_ex_ens_mod[, (focal_cols) := lapply(.SD, round,2), .SDcols = focal_cols]
-  save_file<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_ens_mod.parquet"))
-  arrow::write_parquet(data_ex_ens_mod,save_file)
+  save_file_diff_ens_simple<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff_ens_simple.parquet"))
+  arrow::write_parquet(data_ex_stats_ens_ss,save_file_diff_ens_simple)
   }
-}
