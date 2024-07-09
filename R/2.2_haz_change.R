@@ -100,11 +100,16 @@ if(!dir.exists(haz_mean_ptot_dir)){
 files<-list.files(haz_mean_dir,".tif",full.names = T)
 files<-grep("PTOT",files,value=T)
 files<-files[!grepl("change",files)]
-file_hist<-grep("historic",files,value = T)
+files_hist<-grep("historic",files,value = T)
 files_fut<-files[!files %in% files_hist]
+
+# Temporarily exclude problem folders until issues with input data are resolved ####
+exclude_dirs<-file.path(haz_mean_dir,"ssp245_EC-Earth3_2021_2040_PTOT_sum.tif")
+files_fut<-files_fut[!files_fut %in% exclude_dirs]
 
 save_file<-file.path(haz_mean_ptot_dir,"ptot_perc_change.tif")
 do_save<-F
+overwrite<-T
 
 if(!file.exists(save_file)|overwrite==T){
   
