@@ -285,7 +285,13 @@ setwd(working_dir)
     dir.create(ggcmi_dir,recursive=T)
   }
   
-  if(Cglabs){
+  hydrobasins_dir<-"Data/hydrobasins"
+  if(!dir.exists(hydrobasins_dir)){
+    dir.create(hydrobasins_dir,recursive=T)
+  }
+  
+  
+    if(Cglabs){
     sos_raw_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
     isimip_raw_dir<-"/home/jovyan/common_data/isimip"
     chirts_raw_dir<-"/home/jovyan/common_data/chirts"
@@ -587,6 +593,14 @@ setwd(working_dir)
   
   }
   
+  # 3.13) hydrobasins
+  if(!file.exists(file.path(hydrobasins_dir,"hybas_af_lev01_v1c.shp"))){
+    url<-"https://data.hydrosheds.org/file/hydrobasins/standard/hybas_af_lev01-06_v1c.zip"
+    local_path<-file.path(hydrobasins_dir,basename(url))
+    download.file(url,local_path)
+    unzip(local_path,exdir=dirname(local_path))
+    unlink(local_path)
+  }
 # 4) Set data paths ####
   # 4.1) hazard class #####
   haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
