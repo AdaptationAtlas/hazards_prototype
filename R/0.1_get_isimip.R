@@ -63,14 +63,16 @@ datasets[, dl_path := paste0(base_url, "/",
 )]
 
 # 1.1) Validate download paths #####
-check<-lapply(1:nrow(datasets),FUN=function(i){
-  a<-datasets$dl_path[i]
-  exists<-url_exists(a)
-  if(!exists){
-    cat(exists,gsub("https://files.isimip.org/ISIMIP3b/OutputData/water_global/","",a),"\n")
-  }
-  exists
-})
+if(F){
+  check<-pbapply::pblapply(1:nrow(datasets),FUN=function(i){
+    a<-datasets$dl_path[i]
+    exists<-url_exists(a)
+    if(!exists){
+      cat(exists,gsub("https://files.isimip.org/ISIMIP3b/OutputData/water_global/","",a),"\n")
+    }
+    exists
+  })
+}
 
 # 2) Download files #####
 delete_original<-T
@@ -152,7 +154,6 @@ lapply(1:nrow(datasets),FUN=function(i){
     }
   }
 })
-
 
 # 3) Create an index #####
 file_index<-data.table(file_path=list.files(isimip_raw_dir,".nc$",full.names = T))[,basename:=basename(file_path)]
