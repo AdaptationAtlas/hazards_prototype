@@ -17,7 +17,7 @@ p_load(char=packages)
 
 # 1) Set up workspace ####
   # 1.0) Set cores for parallel #####
-  cores<-parallel::detectCores()-2
+  n_workers<-parallel::detectCores()-2
   # 1.1) Set directories #####
   output_dir<-haz_timeseries_monthly_dir
 
@@ -25,8 +25,8 @@ p_load(char=packages)
   hazards<-c("HSH_max","TMAX","TAVG","NDWL0","NDWS","NTx35","NTx40","PTOT","THI_max") # NDD is not being used as it cannot be projected to future scenarios
   file_name<-"all_hazards.parquet"
   
-  #hazards<-c("TMAX","TAVG","PTOT") # NDD is not being used as it cannot be projected to future scenarios
-  #file_name<-"tmax_tavg_ptot_data.parquet"
+  hazards<-c("TMAX","TAVG","PTOT") # NDD is not being used as it cannot be projected to future scenarios
+  file_name<-"tmax_tavg_ptot_data.parquet"
   
   # 1.2) Set scenarios and time frames to analyse #####
   Scenarios<-c("ssp126","ssp245","ssp370","ssp585")
@@ -69,8 +69,15 @@ levels<-c(admin0="adm0",admin1="adm1") #,admin2="adm2")
 FUN<-"mean"
 overwrite<-F # overwrite folder level extractions
 
+# Temporarily exclude problem folders until issues with input data are resolved ####
+exclude_dirs<-file.path(indices_dir,"ssp245_EC-Earth3_2021_2040","PTOT")
+
 data_ex<-rbindlist(lapply(1:nrow(folders),FUN=function(i){
       folders_ss<-paste0(folders$path[i],"/",hazards)
+      
+      # Exclude any folders with problem data
+      folders_ss<-folders_ss[!folders_ss %in% exclude_dirs]
+      
       data<-lapply(1:length(folders_ss),FUN=function(j){
         
         folders_ss_focus<-folders_ss[j]
@@ -90,18 +97,19 @@ data_ex<-rbindlist(lapply(1:nrow(folders),FUN=function(i){
         if(!file.exists(save_file)|overwrite==T){
           
         files<-list.files(folders_ss_focus,".tif$",full.names = T)
-        if(length(files)!=0){
         files<-files[!grepl("AVAIL",files)]
         
         if(h_var %in% c("mean","max")){
           files<-grep(paste0("_",h_var,"-"),files,value=T)
         }
         
+        if(length(files)!=0){
+        
         rast_stack<-terra::rast(files)
         
         if(hazard=="PTOT"){
           # Reclassify -9999 to NA
-          rast_stack[rast_stack <0] <- NA
+          terra::classify(rast_stack,rcl=data.frame(from=-99999999,to=-0.000000001,NA))
         }
         
         names(rast_stack)<-gsub(".tif","",basename(files))
@@ -159,7 +167,9 @@ data_ex<-rbindlist(lapply(1:nrow(folders),FUN=function(i){
           data_ex<-arrow::read_parquet(save_file)
           
           if(!"adm2" %in% levels){
-            data_ex[,admin2_name:=NULL]
+            if("admin2_name" %in% colnames(data_ex)){
+            data_ex<-data_ex[is.na(admin2_name)][,admin2_name:=NULL]
+            }
           }
         }
         
@@ -168,7 +178,8 @@ data_ex<-rbindlist(lapply(1:nrow(folders),FUN=function(i){
       data<-rbindlist(data,use.names=T)
    }),use.names=T)
 
-  
+data_ex[value>10000]
+
 # 3) Summarize annually or 3 month windows ####
 # 3.1) Subset data #####
 data_ex_ss<-data_ex[,month:=as.integer(month)
@@ -213,23 +224,27 @@ data_ex_season <- rbindlist(pblapply(1:length(three_month_periods),FUN=function(
              ][,year:=year[1],by=list(admin0_name,admin1_name,model,scenario,timeframe,variable,seq)
                ][,seq:=NULL]
   
-  data<-rbindlist(lapply(vars, function(VAR) {
+  data_season<-rbindlist(lapply(vars, function(VAR) {
     # Get the corresponding function for the variable
     func_name <- unique(haz_meta$`function`[haz_meta$variable.code == VAR])
     # Ensure the function exists and is valid
     func <- get(func_name, mode = "function", envir = parent.frame())
     # Summarize the data for the variable using the specified function
     
-    data<-data[variable == VAR, .(value = func(value, na.rm = TRUE)),
+    data_ss<-data[variable == VAR, .(value = func(value, na.rm = TRUE),n_value=.N),
                by = .(admin0_name, admin1_name, scenario, model, timeframe, year, variable)
     ][,season:=names(three_month_periods)[i]
       ][,value:=round(value,round_by)]
     
-    data
+    data_ss
     }))
+  return(data_season)
   }))
 
 # Add historical mean
+data_ex_season_hist<-data_ex_season[scenario=="historical" & timeframe=="historical"
+                                    ][,.(baseline_mean=mean(value,na.rm=T)),by=.(admin0_name,admin1_name,variable,season)]
+
 data_ex_season[,baseline_mean:=round(mean(value[scenario=="historical" & timeframe=="historical"]),round_by),
             by=list(admin0_name,admin1_name,variable,season)
             ][,anomaly:=round(value-baseline_mean,round_by)]
@@ -264,8 +279,34 @@ data_ex_season_ens[, (numeric_cols) := lapply(.SD, round,1), .SDcols = numeric_c
 
 data_ex_season_ens<- data_ex_season_ens[order(admin0_name, admin1_name, season,variable, scenario, timeframe)]
 
+# 3.4.1) Calculate differences between baseline and future
+data_ex_season_ag<-data_ex_season[,list(mean=mean(value,na.rm=T),
+                                        mean_anomaly=mean(anomaly,na.rm=T)),
+                                   by=list(admin0_name,admin1_name,scenario,timeframe,model,variable,season)]
+
+# Add ensemble
+data_ex_season_ag_ens<-data_ex_season_ag[,list(mean_mean=mean(mean,na.rm=T),
+                                               min_mean=min(mean,na.rm=T),
+                                               max_mean=max(mean,na.rm=T),
+                                               median_mean=median(mean,na.rm=T),
+                                            mean_anomaly=mean(mean_anomaly,na.rm=T),
+                                            max_anomaly=max(mean_anomaly,na.rm=T),
+                                            min_anomaly=min(mean_anomaly,na.rm=T),
+                                            sd_anomaly=sd(mean_anomaly,na.rm=T),
+                                            n_models=length(unique(model))),
+                                  by=list(admin0_name,admin1_name,scenario,timeframe,variable,season)]
+
+
 # 3.5) Save output #####
 arrow::write_parquet(data_ex_season_ens[,!c("sd","sd_anomaly")],file.path(output_dir,gsub(".parquet","_ensembled.parquet",file_name)))
+
+data_ex_season_ag[, c("mean","mean_anomaly") := lapply(.SD, round, 1), .SDcols = c("mean","mean_anomaly")]
+arrow::write_parquet(data_ex_season_ag,file.path(output_dir,gsub(".parquet","_season-agg.parquet",file_name)))
+
+numeric_cols <- names(data_ex_season_ag_ens)[sapply(data_ex_season_ag_ens, is.numeric)]
+numeric_cols<-numeric_cols[numeric_cols!="n_models"]
+data_ex_season_ag_ens[, (numeric_cols) := lapply(.SD, round, 1), .SDcols = numeric_cols]
+arrow::write_parquet(data_ex_season_ag,file.path(output_dir,gsub(".parquet","_season-agg_ens.parquet",file_name)))
 
 # 3.6) Calculate trends #####
 # This involves running >10^6 linear models to look at trends, so the process is designed to run in parallel
@@ -384,3 +425,4 @@ jsonlite::write_json(metadata, gsub(".parquet",".json",save_file_trends))
 
 arrow::write_parquet(data_ex_trend_stats_ens_simple, save_file_trends_simple)
 jsonlite::write_json(metadata, gsub(".parquet",".json",save_file_trends_simple))
+
