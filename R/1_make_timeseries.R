@@ -173,7 +173,7 @@ for(ii in 1:nrow(parameters)){
       if(use_sos_cc=="no"){
         r_cal<-ggcmi_cc
         
-        save_dir<-file_path(save_dir1,subfolder_name)
+        save_dir<-file.path(save_dir1,subfolder_name)
         if(!dir.exists(save_dir)){
           dir.create(save_dir,recursive=T)
         }
@@ -299,7 +299,7 @@ for(ii in 1:nrow(parameters)){
       # Display progress
       # cat("Ensembling: cc = ",use_crop_cal," | fixed = ",!use_eos," | season = ",season," | ",scen_haz_time$scenario[i]," | ",scen_haz_time$hazards[i]," | ",scen_haz_time$time[i]," - ",i,"\n")
 
-      progress(sprintf("Threshold %d/%d: %s, %s, %s", 
+      progress(sprintf("Ensembling row %d/%d: %s, %s, %s", 
                        i, 
                        nrow(scen_haz_time),
                        scen_haz_time$scenario[i],
