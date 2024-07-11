@@ -1223,7 +1223,7 @@ int_risk <- function(data, interaction_mask_vals, lyr_name){
 #' @param folders_x_hazards A data table containing the mapping of folders to hazard variables.
 #' @param model_names Character vector of model names involved in the analysis.
 #' @param use_crop_cal Character, indicating whether crop calendars are used in the analysis.
-#' @param r_cal Data frame or list containing crop calendar information for the region.
+#' @param r_cal_filepath File path of crop calendar raster (the calendar needs two layers named planting_month and maturity_month each containing values 1:12).
 #' @param save_dir Character, the directory where processed raster files will be saved.
 #' @param overwrite Logical, should existing files be replaced?
 #' @return A character vector of filenames for the processed and saved raster files.
@@ -1231,14 +1231,18 @@ int_risk <- function(data, interaction_mask_vals, lyr_name){
 #' # This example assumes 'folders_x_hazards', 'model_names', and 'r_cal' are predefined.
 #' result <- hazard_stacker(1, folders_x_hazards, model_names, "yes", r_cal, "./output")
 #' @export
-hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save_dir,overwrite=F){
+hazard_stacker<-function(i,folders_x_hazards,haz_meta,model_names,use_crop_cal,r_cal_filepath,save_dir,overwrite=F){
   # Extract the specific hazard and scenario based on the index 'i'
   variable<-as.character(folders_x_hazards$hazards[i])
   scenario<-as.character(folders_x_hazards$folders[i])
+  folder<-as.character(folders_x_hazards$folder_path[i])
   
   # List all hazard files for the given scenario and variable, excluding "AVAIL.tif"
-  haz_files<-list.files(paste0(scenario,"/",variable),".tif",recursive=F,full.names = T)
+  haz_files<-list.files(folder,".tif",recursive=F,full.names = T)
   haz_files<-haz_files[!grepl("AVAIL.tif",haz_files)]
+  
+  # read in the crop calendar
+  r_cal<-terra::rast(r_cal_filepath)
   
   n<-0
   
@@ -1274,7 +1278,7 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
     }
     
     # Retrieve the statistical function (e.g., mean, max) for processing the hazard data
-    stat<-as.character(unlist(haz_meta[variable.code==variable2,"function"]))
+    stat<-unique(as.character(unlist(haz_meta[variable.code==variable2,"function"])))
     
     haz_files1<-haz_files[[k]]
     
@@ -1287,7 +1291,7 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
       if(folders_x_hazards$hazards[i]=="TAI"){
         # Display progress
         cat('\r                                                                                                                                          ')
-        cat('\r',paste0("cc = ",use_crop_cal," | fixed = ",!use_eos," | ",scenario,"-",variable2,"-",stat))
+        cat('\r',"cc =",use_crop_cal,"| fixed =",!use_eos,"|",scenario,"-",variable2,"-",stat)
         flush.console()
         
         haz_rast_years<-terra::rast(haz_files1)
@@ -1330,7 +1334,7 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
         haz_rast_years<-terra::rast(lapply(1:(length(years)-1),FUN=function(m){
           # Display progress
           cat('\r                                                                                                                                                                                  ')
-          cat('\r',paste0("cc = ",use_crop_cal," | fixed = ",!use_eos," | season = ",season," | ",scenario,"-",variable2,"-",stat,"-",years[m]," | i = ",i))
+          cat('\r',"cc = ",use_crop_cal,"| fixed =",!use_eos," |season = ",season,"|",scenario,"-",variable2,"-",stat,"-",years[m]," | i = ",i)
           flush.console()
           
           # Subset haz_rast to increase efficiency
@@ -1353,6 +1357,7 @@ hazard_stacker<-function(i,folders_x_hazards,model_names,use_crop_cal,r_cal,save
       # Clean up the memory
       rm(haz_rast_years,haz_rast)
       gc()
+      cat("\n")
     }
     X[k]<-savename
   }
@@ -2810,3 +2815,28 @@ find_consecutive_pattern <- function(seq, pattern) {
   return(result)
 }
 
+#' Optimize and Generate Histogram Data
+#'
+#' This function creates histogram data from the given dataset and combines
+#' the bin counts and breaks into a single data frame.
+#'
+#' @param data A numeric vector for which the histogram is to be generated.
+#' @param breaks Number of breaks for the histogram. Default is 10.
+#' @return A data frame containing the bin counts and bin widths.
+#' @examples
+#' \dontrun{
+#'   data <- rnorm(100)
+#'   hist_data <- optimize_histograms(data, breaks = 15)
+#'   print(hist_data)
+#' }
+#' @export
+optimize_histograms <- function(data, breaks = 10) {
+  # Create a list to store histograms
+  hist_data <- hist(data, breaks = breaks, plot = FALSE)
+  
+  # Combine counts and breaks into a single data frame
+  hist_data <- data.frame(bin_counts = hist_data$counts,
+                          bin_widths = diff(hist_data$breaks))
+  
+  return(hist_data)
+}
