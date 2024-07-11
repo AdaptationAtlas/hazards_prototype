@@ -1,13 +1,5 @@
+# Please run 0_server_setup.R before executing this script
 # Install and load packages ####
-load_and_install_packages <- function(packages) {
-  for (package in packages) {
-    if (!require(package, character.only = TRUE)) {
-      install.packages(package)
-      library(package, character.only = TRUE)
-    }
-  }
-}
-
 # List of packages to be loaded
 packages <- c("terra", 
               "data.table", 
@@ -17,7 +9,7 @@ packages <- c("terra",
               "ggplot2")
 
 # Call the function to install and load packages
-load_and_install_packages(packages)
+pacman::p_load(packages)
 
 # Set up workspace ####
 haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
@@ -27,14 +19,13 @@ severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
 interaction<-T # set to F if you want to look at solo data
 
 # Load adaptive capacity data ####
-
 # Download data from s3
 file<-"vulnerability_adm_long.parquet"
 local_file<-file.path(ac_dir,file)
 overwrite<-F
 if(!file.exists(local_file)|overwrite==T){
-  s3_file <- paste0("s3://digital-atlas/vulnerability/",file)
-  s3fs::s3_file_download(path=s3_file,new_path=local_file,overwrite = T)
+  s3_file <- file.path(bucket_name_s3,"vulnerability",file)
+  s3$file_download(s3_file,local_file,overwrite = T)
 }
 
 adaptive_capacity<-data.table(arrow::read_parquet(local_file))
