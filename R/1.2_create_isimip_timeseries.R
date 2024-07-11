@@ -46,10 +46,9 @@ file_index[,group:=paste0(model,"_",scenario,"_",timeframe,"_",var)
   # 3.4) Load isimip metadata
   isimip_meta<-data.table::fread(isimip_meta_url)
   # 3.4) Load hydrobasins ####
-  files<-list.files(hydrobasins_dir,".shp$",full.names = T)
-  hydrobasins<-lapply(files,terra::vect)
-  names(hydrobasins)<-unlist(tstrsplit(basename(files),"_",keep=3))
-  data.frame(hydrobasins$lev02)
+  file<-list.files(hydrobasins_dir,"basins.json",full.names = T)
+  basins<-terra::vect(file)
+  basins<-basins[basins$REGNAME=="Africa",]
   
 # 4) Set analysis parameters ####
 use_crop_cal_choice<- c("no","yes") # if set to no then values are calculated for the year (using the jagermeyr cc as the starting month for each year)
@@ -64,6 +63,8 @@ parameters<-data.table(use_crop_cal=c(F,T,T,T,T,T),
                        use_sos_cc=c(NA,F,T,T,T,T),
                        use_eos=c(NA,NA,T,F,F,F),
                        season_length=c(NA,NA,NA,3,4,5))
+# Use basins or admin1?
+use_basins<-T
 
 # overwrite existing files?
 overwrite<-F
@@ -288,14 +289,31 @@ future::plan(sequential)
 # 7) Extract by admin area ####
 focal_dir<-isimip_mean_dir
 leaf_dirs<-list_bottom_directories(focal_dir)
-filename<-basename(focal_dir)
+
 overwrite=T
+
+if(use_basins){
+  basins_admin0<-terra::intersect(Geographies$admin0,basins)[,c("admin_name","admin0_name","iso3","WMOBB_DESCRIPTION")]
+  names(basins_admin0)[4]<-"admin1_name"
+  basins_admin0$admin_name<-basins_admin0$admin1_name
+  extract_by<-list(admin0=Geographies$admin0,admin1=basins_admin0)
+  filename<-paste0(basename(focal_dir),"_basins")
+}else{
+  filename<-basename(focal_dir)
+  extract_by<-Geographies
+}
 
 for(i in 1:length(leaf_dirs)){
   cat("Processing files in dir",i,"/",length(leaf_dirs),":",leaf_dirs[i],"\n")
   
   files<-list.files(leaf_dirs[i],".nc",full.names = T)
-
+  file_index<-data.table(file_path=files)[,file_name:=basename(file_path)
+  ][,model:=unlist(tstrsplit(basename(file_name),"_",keep=1))
+  ][,gcm:=unlist(tstrsplit(basename(file_name),"_",keep=2))
+  ][,scenario:=unlist(tstrsplit(basename(file_name),"_",keep=4))
+  ][,var:=unlist(tstrsplit(basename(file_name),"_",keep=7))
+  ][,timeframe:=unlist(tstrsplit(basename(file_name),"_",keep=10))]
+  
   # 7.1) Extract data unchanged #####
   save_file<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean.parquet"))
   
@@ -307,7 +325,7 @@ for(i in 1:length(leaf_dirs)){
                                 filename=filename, 
                                 FUN = NULL, 
                                 varname:=NA, 
-                                Geographies, 
+                                extract_by, 
                                 overwrite = overwrite,
                                 modify_colnames = F)
     
@@ -344,7 +362,6 @@ for(i in 1:length(leaf_dirs)){
     data_ex_stats[,var:=NULL]
     setnames(data_ex_stats,"var_long","variable")
     
-    
     # Round values to reduce size
     data_ex_stats[, (names(data_ex_stats)) := lapply(.SD, function(x) if (is.numeric(x)) round(x, 2) else x)]
     
@@ -352,21 +369,14 @@ for(i in 1:length(leaf_dirs)){
     
     arrow::write_parquet(data_ex_stats,save_file2)
     
-    
   }
   
   # 7.2) Extract differences between historical and future scenarios #####
   
-  file_index<-data.table(file_path=files)[,file_name:=basename(file_path)
-  ][,model:=unlist(tstrsplit(basename(file_name),"_",keep=1))
-  ][,gcm:=unlist(tstrsplit(basename(file_name),"_",keep=2))
-  ][,scenario:=unlist(tstrsplit(basename(file_name),"_",keep=4))
-  ][,var:=unlist(tstrsplit(basename(file_name),"_",keep=7))
-  ][,timeframe:=unlist(tstrsplit(basename(file_name),"_",keep=10))]
-  
   # 7.2.1) Models x GCMS #####~
   save_file_diff<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff_all.parquet"))
-  if(!file.exists(save_file)|overwrite){
+  
+  if(!file.exists(save_file_diff)|overwrite){
     
   files_fut<-file_index[scenario!="historical" & gcm!="gcm-ensemble-mean",file_path]
   files_hist<-file_index[scenario=="historical" & gcm!="gcm-ensemble-mean",file_path]
@@ -398,7 +408,7 @@ for(i in 1:length(leaf_dirs)){
                               filename=paste(filename,"_diff"), 
                               FUN = NULL, 
                               varname:=NA, 
-                              Geographies, 
+                              extract_by, 
                               overwrite = overwrite,
                               modify_colnames = F)
   
@@ -469,7 +479,7 @@ for(i in 1:length(leaf_dirs)){
                                      filename=paste(filename,"_diff"), 
                                      FUN = NULL, 
                                      varname:=NA, 
-                                     Geographies, 
+                                     extract_by, 
                                      overwrite = overwrite,
                                      modify_colnames = F)
     
@@ -545,7 +555,7 @@ for(i in 1:length(leaf_dirs)){
                                          filename=paste(filename,"_diff"), 
                                          FUN = NULL, 
                                          varname:=NA, 
-                                         Geographies, 
+                                         extract_by, 
                                          overwrite = overwrite,
                                          modify_colnames = F)
     
