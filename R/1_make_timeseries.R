@@ -65,7 +65,7 @@ fwrite(hazard_completion,file.path(working_dir,"indice_completion.csv"))
 folders<-list.dirs(working_dir,recursive=F)
 folders<-folders[!grepl("ENSEMBLE|ipyn|gadm0|hazard_comb|indices_seasonal",folders)]
 folders<-folders[!grepl("ssp126|ssp370|2061_2080|2081_2100",folders)] # these scenarios have incomplete information
-folders<-unlist(tstrsplit(folders,"/",keep=2))
+folders<-basename(folders)
 
 model_names<-unique(unlist(tstrsplit(folders[!grepl("histor",folders)],"_",keep=2)))
 
@@ -117,7 +117,7 @@ exists<-rbindlist(pbapply::pblapply(hazards,FUN=function(H){
 }
 
 # 5) Set analysis parameters ####
-doParallel<-F
+worker_n<-10
 
 use_crop_cal_choice<- c("no","yes") # if set to no then values are calculated for the year (using the jagermeyr cc as the starting month for each year)
 use_sos_cc_choice<-c("no","yes") # Use onset of rain layer to set starting month of season
@@ -130,7 +130,12 @@ season_lengths<-c(3,4,5) # This can be varied to create season lengths for diffe
 parameters<-data.table(use_crop_cal=c("no","yes","yes","yes","yes","yes"),
            use_sos_cc=c(NA,"no","yes","yes","yes","yes"),
            use_eos=c(NA,NA,T,F,F,F),
-           season_length=c(NA,NA,NA,3,4,5))
+           season_length=c(NA,NA,NA,3,4,5),
+           folder_name=c("by_year",rep("by_season",5)),
+           subfolder_name=c(NA,"jagermeyr","sos","sos","sos","sos"))
+
+# Create folder index of scenarios and hazards
+folders_x_hazards<-data.table(expand.grid(folders=folders,hazards=hazards))[,folder_path:=file.path(working_dir,folders,hazards)]
 
 # 6) Run Analysis loop   ####
 for(ii in 1:nrow(parameters)){
@@ -138,16 +143,14 @@ for(ii in 1:nrow(parameters)){
   use_sos_cc<-parameters[ii,use_sos_cc]
   use_eos<-parameters[ii,use_eos]
   season_length<-parameters[ii,season_length]
+  folder_name<-parameters[ii,folder_name]
+  subfolder_name<-parameters[ii,subfolder_name]
   
   cat("use_crop_cal = ",use_crop_cal," | use_sos_cc = ",use_sos_cc," | use_eos = ", use_eos," |season_length = ",season_length,"\n")
   
   # Set directory for output files
-  if(use_crop_cal=="yes"){
-    save_dir1<-paste0(output_dir,"/by_season")
-  }else{
-    save_dir1<-paste0(output_dir,"/by_year/hazard_timeseries")
-  }
-  
+  save_dir1<-file.path(output_dir,folder_name)
+
   if(!dir.exists(save_dir1)){
     dir.create(save_dir1,recursive=T)
   }
@@ -170,29 +173,18 @@ for(ii in 1:nrow(parameters)){
       if(use_sos_cc=="no"){
         r_cal<-ggcmi_cc
         
-        save_dir<-paste0(save_dir1,"/jagermeyr/hazard_timeseries")
+        save_dir<-file_path(save_dir1,subfolder_name)
         if(!dir.exists(save_dir)){
           dir.create(save_dir,recursive=T)
-        }
-        
-        r_cal_file<-paste0(save_dir,"/crop_cal.tif")
-        if(!file.exists(r_cal_file)){
-          terra::writeRaster(r_cal,r_cal_file)
         }
         
       }else{
-        s1_name<-if(use_eos==T){"primary_eos/hazard_timeseries"}else{paste0("primary_fixed_",season_length,"/hazard_timeseries")}
-        s2_name<-if(use_eos==T){"secondary_eos/hazard_timeseries"}else{paste0("secondary_fixed_",season_length,"/hazard_timeseries")}
+        s1_name<-if(use_eos==T){"primary_eos"}else{paste0("primary_fixed_",season_length)}
+        s2_name<-if(use_eos==T){"secondary_eos"}else{paste0("secondary_fixed_",season_length)}
         
-        save_dir<-paste0(save_dir1,"/sos_",if(season==1){s1_name}else{s2_name})
+        save_dir<-file.path(save_dir1,paste0(subfolder_name,"_",if(season==1){s1_name}else{s2_name}))
         if(!dir.exists(save_dir)){
           dir.create(save_dir,recursive=T)
-        }
-        
-        sos_rast_file<-paste0(save_dir,"/crop_cal.tif")
-        
-        if(!file.exists(sos_rast_file)){
-          terra::writeRaster(sos_rast,sos_rast_file)
         }
       }
       
@@ -226,15 +218,60 @@ for(ii in 1:nrow(parameters)){
       }
     }
     
-    folders_x_hazards<-data.table(expand.grid(folders=folders,hazards=hazards))
+    # Save r_cal in a temporary location for reading into hazard_stacker function (needed for parallel processing)
+    r_cal_filepath<-file.path(output_dir,"rcal_temp.tif")
+    terra::writeRaster(r_cal,r_cal_filepath,overwrite=T)
     
-    lapply(1:nrow(folders_x_hazards),
-           FUN=hazard_stacker,
-           folders_x_hazards=folders_x_hazards,
-           model_names=model_names,
-           use_crop_cal=use_crop_cal,
-           r_cal=r_cal,
-           save_dir=save_dir)
+    # Run hazard_stacker function
+    if(worker_n>1){
+    future::plan("multisession", workers = worker_n)
+    
+    # Enable progressr
+    progressr::handlers(global = TRUE)
+    progressr::handlers("progress")
+    
+    # Wrap the parallel processing in a with_progress call
+    p <- with_progress({
+      # Define the progress bar
+      progress <- progressr::progressor(along = 1:nrow(folders_x_hazards))
+      
+      future.apply::future_lapply(
+        1:nrow(folders_x_hazards),
+        FUN = function(i) {
+          progress(sprintf("Processing row %d/%d: %s, %s", 
+                           i, 
+                           nrow(folders_x_hazards), 
+                           folders_x_hazards$folders[i], 
+                           folders_x_hazards$hazards[i]))
+          hazard_stacker(
+            i,
+            folders_x_hazards = folders_x_hazards,
+            haz_meta=haz_meta,
+            model_names = model_names,
+            use_crop_cal = use_crop_cal,
+            r_cal_filepath = r_cal_filepath,
+            save_dir = save_dir
+          )
+        }
+      )
+    })
+    future::plan(sequential)
+    }else{
+      p<-lapply(
+        1:nrow(folders_x_hazards),
+        FUN = function(i) {
+          hazard_stacker(
+            i,
+            folders_x_hazards = folders_x_hazards,
+            haz_meta=haz_meta,
+            model_names = model_names,
+            use_crop_cal = use_crop_cal,
+            r_cal_filepath = r_cal_filepath,
+            save_dir = save_dir
+          )
+        }
+      )
+    }
     
     # Create ensembles
     files<-list.files(save_dir,".tif")
@@ -251,10 +288,25 @@ for(ii in 1:nrow(parameters)){
     scen_haz_time<-expand.grid(scenario=scenario,hazards=hazards,time=time,stringsAsFactors =F)
     
     
-    for(i in 1:nrow(scen_haz_time)){
+    doFuture::registerDoFuture()
+    future::plan("multisession", workers = worker_n)
+    
+    p<-with_progress({
+      # Define the progress bar
+      progress <- progressr::progressor(along = 1:nrow(scen_haz_time))
+    
+      foreach(i = 1:nrow(scen_haz_time)) %dopar% {
       # Display progress
-      cat("Ensembling: cc = ",use_crop_cal," | fixed = ",!use_eos," | season = ",season," | ",scen_haz_time$scenario[i]," | ",scen_haz_time$hazards[i]," | ",scen_haz_time$time[i]," - ",i,"\n")
+      # cat("Ensembling: cc = ",use_crop_cal," | fixed = ",!use_eos," | season = ",season," | ",scen_haz_time$scenario[i]," | ",scen_haz_time$hazards[i]," | ",scen_haz_time$time[i]," - ",i,"\n")
 
+      progress(sprintf("Threshold %d/%d: %s, %s, %s", 
+                       i, 
+                       nrow(scen_haz_time),
+                       scen_haz_time$scenario[i],
+                       scen_haz_time$time[i],
+                       scen_haz_time$hazards[i]))
+        
+        
       haz_files<-list.files(save_dir,scen_haz_time$hazards[i],full.names = T)
       haz_files<-haz_files[!grepl("historic",haz_files)]
       haz_files<-grep(scen_haz_time$scenario[i],haz_files,value = T)
@@ -295,6 +347,10 @@ for(ii in 1:nrow(parameters)){
         }
       }
     }
+    
+    })
+    
+    future::plan(sequential)
   }
 }
 
