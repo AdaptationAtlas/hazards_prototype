@@ -8,11 +8,14 @@ url_exists <- function(url) {
   return(status_code(response) == 200)
 }
 
+# 
 
 # 1) Create download paths #####
 # This section of the code is responsible for constructing the download paths for the datasets based on various parameters.
 # It uses a base URL and combines it with different model names, General Circulation Models (GCMs), scenarios, variables,
 # and timeframes to create a complete URL for each dataset.
+
+# Further information/source: https://data.isimip.org/search/tree/ISIMIP3b/OutputData/water_global
 
 # Explanation of Scenarios:
 # 1850soc: This represents a historical simulation using socio-economic conditions as they were in 1850.
