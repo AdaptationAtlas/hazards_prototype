@@ -1,5 +1,5 @@
 # Please run 0_server_setup.R before executing this script
-# Load R functions & packages ####
+# 0.1) Load R functions & packages ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
 # List of packages to be loaded
@@ -38,10 +38,7 @@ load_packages_prefer_user <- function(packages) {
 
 load_packages_prefer_user(packages)
 
-# Call the function to install and load packages
-# pacman::p_load(char=packages)
-
-# Set up workspace ####
+# 0.2) Set up workspace ####
 # Set scenarios and time frames to analyse
 Scenarios<-c("ssp245","ssp585")
 Times<-c("2021_2040","2041_2060")
@@ -232,16 +229,16 @@ PropTDir=">"
 # Set crops and livestock included in the analysis
 crop_choices<-c(fread(haz_class_url, showProgress = FALSE)[,unique(crop)],ms_codes[,sort(Fullname)])
 
-# 0) Download hazard timeseries from s3 bucket ####
+# 0.3) Download hazard timeseries from s3 bucket ####
 overwrite<-F
 # Specify the bucket name and the prefix (folder path)
-folder_path <- file.path("risk_prototype/data/hazard_timeseries",timeframe_choice,"")
+s3_folder_path <- file.path("risk_prototype/data/hazard_timeseries",timeframe_choice,"")
 
 # List files in the specified S3 bucket and prefix
-file_list<-s3$dir_ls(file.path(bucket_name_s3,folder_path))
+file_list<-s3$dir_ls(file.path(bucket_name_s3,s3_folder_path))
 file_list<-data.table(file_list=grep(".tif",file_list,value=T))
 
-file_list<-file_list[,new_files:=gsub(file.path(bucket_name_s3,folder_path),paste0(haz_timeseries_dir,"/"),file_list)]
+file_list<-file_list[,new_files:=gsub(file.path(bucket_name_s3,s3_folder_path),paste0(haz_timeseries_dir,"/"),file_list)]
 
 # Here you can check if there are issues with file downloads by comparing the local size to the s3 size
 if(F){
@@ -253,36 +250,34 @@ if(F){
 if(!overwrite){
   file_list<-file_list[!file.exists(new_files)]
 }
-
-convert_to_bytes <- function(size) {
-  # Convert to character
-  size <- as.character(size)
-  # Remove any spaces
-  size <- gsub(" ", "", size)
-  
-  # Extract the units (K, M, G) and the numeric value
-  units <- tolower(substr(size, nchar(size), nchar(size)))
-  value <- as.numeric(substr(size, 1, nchar(size) - 1))
-  
-  # Convert based on the unit
-  if (units == "k") {
-    return(value * 1024)
-  } else if (units == "m") {
-    return(value * 1024^2)
-  } else if (units == "g") {
-    return(value * 1024^3)
-  } else {
-    return(value)  # If no units, assume it's already in bytes
-  }
-}
-
-calculate_file_hash <- function(file_path) {
-  return(digest::digest(file = file_path, algo = "md5"))
-}
-
-
-
   if(nrow(file_list)>0){
+    
+    convert_to_bytes <- function(size) {
+      # Convert to character
+      size <- as.character(size)
+      # Remove any spaces
+      size <- gsub(" ", "", size)
+      
+      # Extract the units (K, M, G) and the numeric value
+      units <- tolower(substr(size, nchar(size), nchar(size)))
+      value <- as.numeric(substr(size, 1, nchar(size) - 1))
+      
+      # Convert based on the unit
+      if (units == "k") {
+        return(value * 1024)
+      } else if (units == "m") {
+        return(value * 1024^2)
+      } else if (units == "g") {
+        return(value * 1024^3)
+      } else {
+        return(value)  # If no units, assume it's already in bytes
+      }
+    }
+    
+    calculate_file_hash <- function(file_path) {
+      return(digest::digest(file = file_path, algo = "md5"))
+    }
+    
   # Set up the future plan for parallel processing
   future::plan(multisession, workers = 4) # Adjust the number of workers based on your system's capabilities
   
@@ -395,8 +390,10 @@ p<-with_progress({
   #for(i in 1:nrow(Thresholds_U)){
     index_name<-Thresholds_U[i,code2]
     files_ss<-grep(index_name,files,value=T)
+    progress(sprintf("Threshold %d/%d", i, nrow(Thresholds_U)))
     
     for(j in 1:length(files_ss)){
+      #cat(i,"-",j,"\n")
   
       file<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),file.path(haz_time_class_dir,"/",tail(tstrsplit(files_ss[j],"/"),1)),fixed = T)
       
@@ -412,7 +409,7 @@ p<-with_progress({
       
       # Display progress
     }
-    progress(sprintf("Threshold %d/%d", i, nrow(Thresholds_U)))
+
     
   }
 })
