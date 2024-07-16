@@ -260,6 +260,18 @@
                      overwrite=F,
                      mode="public-read")
 
+  # Upload - solutions
+  folder<-solution_tables_dir
+  s3_bucket <- file.path(bucket_name_s3,basename(folder))
+  
+  files<-list.files(folder,".csv$",full.names = T)
+  
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=F,
+                     mode="public-read")
+  
 # 2) Time sequence specific ####
   # Upload - hazard timeseries (parquets) ####
   folder<-paste0("Data/hazard_timeseries/",timeframe_choice)
@@ -467,7 +479,7 @@
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F,
+                     overwrite=T,
                      mode="public-read")
   
   s3_dir_ls(s3_bucket)
@@ -502,10 +514,23 @@
 # 5) Isimip ####
   # 5.1) Upload - isimip timeseries mean #####
   folder<-isimip_timeseries_mean_dir
-  s3_bucket<-file.path(bucket_name_s3,"hazards",basename(isimip_timeseries_mean_dir),timeframe_choice)
+  s3_bucket<-file.path(bucket_name_s3,"hazards",basename(folder),timeframe_choice)
   folder<-file.path(folder,timeframe_choice)
 
   files<-list.files(folder,".parquet",full.names=T)
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T,
+                     mode="public-read")
+  
+  # 5.2) Upload - extracted data #####
+  folder<-isimip_mean_dir
+  s3_bucket<-file.path(bucket_name_s3,"hazards",basename(folder),timeframe_choice)
+  folder<-file.path(folder,timeframe_choice)
+  
+  files<-list.files(folder,"_adm_",full.names=T)
+
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
@@ -522,7 +547,7 @@
                      max_attempts = 3,
                      overwrite=T,
                      mode="public-read")
-  
+  s3$dir_ls(s3_bucket)
   
 # 7) Chirps/chirts historical differences #####
   s3_bucket<-file.path(bucket_name_s3,"hazards","chirps_chirts")

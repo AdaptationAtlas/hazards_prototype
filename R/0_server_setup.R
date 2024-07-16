@@ -9,6 +9,7 @@ if (!require("pacman", character.only = TRUE)) {
   library(pacman)
 }
 
+# Use the isciences version and not the CRAN version of exactextractr
 if(!require("exactextractr")){
   remotes::install_github("isciences/exactextractr")
 }
@@ -25,7 +26,7 @@ source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/
 # 1) Setup server####
 # Choose season calculation method
 timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
-                     "sos_primary_fixed_3","sos_primary_fixed_4","sos_primary_fixed_5",
+                     "sos_primary_fixed_3","sos_primary_fixed_4","sos_primary_fixed_5","sos_secondary_eos",
                      "sos_secondary_fixed_3","sos_secondary_fixed_4","sos_secondary_fixed_5")
 
   # 1.1) Choose timeframe #####
@@ -117,192 +118,197 @@ setwd(working_dir)
 # 2) Set directories ####
   # 2.1) Local folders #####
 
-  # 2.1.1) Outputs ######
-  haz_timeseries_dir<-file.path("Data/hazard_timeseries",timeframe_choice)
-  if(!dir.exists(haz_timeseries_dir)){dir.create(haz_timeseries_dir,recursive=T)}
-  haz_timeseries_s3_dir<-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
-  
-  haz_timeseries_monthly_dir<-"Data/hazard_timeseries_mean_month"
-  if(!dir.exists(haz_timeseries_monthly_dir)){dir.create(haz_timeseries_monthly_dir,recursive=T)}
-  
-  haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
-  if(!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir,recursive=T)}
-  
-  haz_time_risk_dir<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
-  if(!dir.exists(haz_time_risk_dir)){dir.create(haz_time_risk_dir,recursive=T)}
-  
-  haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
-  if(!dir.exists(haz_risk_dir)){dir.create(haz_risk_dir,recursive = T)}
-  
-  haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
-  if(!dir.exists(haz_mean_dir)){dir.create(haz_mean_dir,recursive=T)}
-  
-  haz_sd_dir<-paste0("Data/hazard_timeseries_sd/",timeframe_choice)
-  if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
-  
-  haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
-  if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
-  
-  haz_risk_vop17_dir<-file.path("Data/hazard_risk_vop17",timeframe_choice)
-  if(!dir.exists(haz_risk_vop17_dir)){
-    dir.create(haz_risk_vop17_dir,recursive = T)
-  }
-  
-  haz_risk_vop_dir<-file.path("Data/hazard_risk_vop",timeframe_choice)
-  if(!dir.exists(haz_risk_vop_dir)){
-    dir.create(haz_risk_vop_dir,recursive = T)
-  }
-  
-  haz_risk_ha_dir<-file.path("Data/hazard_risk_ha",timeframe_choice)
-  if(!dir.exists(haz_risk_ha_dir)){
-    dir.create(haz_risk_ha_dir,recursive = T)
-  }
-  
-  haz_risk_n_dir<-file.path("Data/hazard_risk_n",timeframe_choice)
-  if(!dir.exists(haz_risk_n_dir)){
-    dir.create(haz_risk_n_dir,recursive = T)
-  }
-  
-  haz_risk_vop_ac_dir<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
-  if(!dir.exists(haz_risk_vop_ac_dir)){
-    dir.create(haz_risk_vop_ac_dir,recursive=T)
-  }
-  
-  roi_dir<-"Data/roi"
-  
-  exposure_dir<-"Data/exposure"
-  if(!dir.exists(exposure_dir)){
-    dir.create(exposure_dir)
-  }
-  
-  isimip_timeseries_dir<-"Data/isimip_timeseries"
-  if(!dir.exists(isimip_timeseries_dir)){
-    dir.create(isimip_timeseries_dir)
-  }
-  
-  isimip_mean_dir<-"Data/isimip_timeseries_mean"
-  if(!dir.exists(isimip_mean_dir)){
-    dir.create(isimip_mean_dir)
-  }
-  
-  isimip_sd_dir<-"Data/isimip_timeseries_sd"
-  if(!dir.exists(isimip_sd_dir)){
-    dir.create(isimip_sd_dir)
-  }
-  
-  cropsuite_class_dir<-"Data/cropsuite_class"
-  if(!dir.exists(cropsuite_class_dir)){
-    dir.create(cropsuite_class_dir,recursive=T)
-  }
-  
-  chirts_chirps_dir<-"Data/chirts_chirps_hist"
-  if(!dir.exists(chirts_chirps_dir)){
-    dir.create(chirts_chirps_dir,recursive=T)
-  }
-
-  # 2.1.2) Inputs #####
-  
-  # Where is the raw monthly hazards data stored?
-  if(Cglabs){
-    # Generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
-    indices_dir<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices"
-    indices_dir2<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
+    # 2.1.1) Outputs ######
+    haz_timeseries_dir<-file.path("Data/hazard_timeseries",timeframe_choice)
+    if(!dir.exists(haz_timeseries_dir)){dir.create(haz_timeseries_dir,recursive=T)}
+    haz_timeseries_s3_dir<-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
     
-    if(timeframe_choice!="annual"){
-      indices_seasonal_dir<-paste0(indices_dir2,"/by_season/",timeframe_choice,"/hazard_timeseries")
-    }else{
-      indices_seasonal_dir<-paste0(indices_dir2,"/by_year/hazard_timeseries")
+    haz_timeseries_monthly_dir<-"Data/hazard_timeseries_mean_month"
+    if(!dir.exists(haz_timeseries_monthly_dir)){dir.create(haz_timeseries_monthly_dir,recursive=T)}
+    
+    haz_time_class_dir<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
+    if(!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir,recursive=T)}
+    
+    haz_time_risk_dir<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
+    if(!dir.exists(haz_time_risk_dir)){dir.create(haz_time_risk_dir,recursive=T)}
+    
+    haz_risk_dir<-paste0("Data/hazard_risk/",timeframe_choice)
+    if(!dir.exists(haz_risk_dir)){dir.create(haz_risk_dir,recursive = T)}
+    
+    haz_mean_dir<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
+    if(!dir.exists(haz_mean_dir)){dir.create(haz_mean_dir,recursive=T)}
+    
+    haz_sd_dir<-paste0("Data/hazard_timeseries_sd/",timeframe_choice)
+    if(!dir.exists(haz_sd_dir)){dir.create(haz_sd_dir,recursive=T)}
+    
+    haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
+    if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
+    
+    haz_risk_vop17_dir<-file.path("Data/hazard_risk_vop17",timeframe_choice)
+    if(!dir.exists(haz_risk_vop17_dir)){
+      dir.create(haz_risk_vop17_dir,recursive = T)
     }
-  }else{
-    cat("Indice files are currently only available in CGlabs, adding download functionality for raw data used in
-      workflow is on the to-do list. You should also see the https://github.com/AdaptationAtlas/hazards workflow which 
-      will enable you to replicate the creation of the foundational monthly hazard data used in this workflow.")
-  }
+    
+    haz_risk_vop_dir<-file.path("Data/hazard_risk_vop",timeframe_choice)
+    if(!dir.exists(haz_risk_vop_dir)){
+      dir.create(haz_risk_vop_dir,recursive = T)
+    }
+    
+    haz_risk_ha_dir<-file.path("Data/hazard_risk_ha",timeframe_choice)
+    if(!dir.exists(haz_risk_ha_dir)){
+      dir.create(haz_risk_ha_dir,recursive = T)
+    }
+    
+    haz_risk_n_dir<-file.path("Data/hazard_risk_n",timeframe_choice)
+    if(!dir.exists(haz_risk_n_dir)){
+      dir.create(haz_risk_n_dir,recursive = T)
+    }
+    
+    haz_risk_vop_ac_dir<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
+    if(!dir.exists(haz_risk_vop_ac_dir)){
+      dir.create(haz_risk_vop_ac_dir,recursive=T)
+    }
+    
+    roi_dir<-"Data/roi"
+    
+    exposure_dir<-"Data/exposure"
+    if(!dir.exists(exposure_dir)){
+      dir.create(exposure_dir)
+    }
+    
+    isimip_timeseries_dir<-"Data/isimip_timeseries"
+    if(!dir.exists(isimip_timeseries_dir)){
+      dir.create(isimip_timeseries_dir)
+    }
+    
+    isimip_mean_dir<-"Data/isimip_timeseries_mean"
+    if(!dir.exists(isimip_mean_dir)){
+      dir.create(isimip_mean_dir)
+    }
+    
+    isimip_sd_dir<-"Data/isimip_timeseries_sd"
+    if(!dir.exists(isimip_sd_dir)){
+      dir.create(isimip_sd_dir)
+    }
+    
+    cropsuite_class_dir<-"Data/cropsuite_class"
+    if(!dir.exists(cropsuite_class_dir)){
+      dir.create(cropsuite_class_dir,recursive=T)
+    }
+    
+    chirts_chirps_dir<-"Data/chirts_chirps_hist"
+    if(!dir.exists(chirts_chirps_dir)){
+      dir.create(chirts_chirps_dir,recursive=T)
+    }
   
-  geo_dir<-"Data/boundaries"
-  if(!dir.exists(geo_dir)){
-    dir.create(geo_dir)
-  }
-
-  glps_dir<-file.path(working_dir,"Data","GLPS")
-  if(!dir.exists(glps_dir)){
-    dir.create(glps_dir)
-  }
-  
-  cattle_heatstress_dir<-file.path(working_dir,"Data","cattle_heatstress")
-  if(!dir.exists(cattle_heatstress_dir)){
-    dir.create(cattle_heatstress_dir)
-  }
-  
-  ac_dir<-"Data/adaptive_capacity"
-  if(!dir.exists(ac_dir)){
-    dir.create(ac_dir,recursive=T)
-  }
-  
-  hpop_dir<-"Data/atlas_pop"
-  if(!dir.exists(hpop_dir)){
-    dir.create(hpop_dir)
-  }
-  
-  commodity_mask_dir<-"Data/commodity_masks"
-  if(!dir.exists(commodity_mask_dir)){
-    dir.create(commodity_mask_dir)
-  }
-  
-
-  glw_dir<-"Data/GLW4"
-  if(!dir.exists(glw_dir)){
-    dir.create(glw_dir)
-  }
-  
-  ls_vop_dir<-"Data/livestock_vop"
-  if(!dir.exists(ls_vop_dir)){
-    dir.create(ls_vop_dir)
-  }
-  
-  afr_highlands_dir<-"Data/afr_highlands"
-  if(!dir.exists(afr_highlands_dir)){
-    dir.create(afr_highlands_dir)
-  }
-  
-  fao_dir<-"Data/fao"
-  if(!dir.exists(fao_dir)){
-    dir.create(fao_dir,recursive = T)
-  }
-  
-  mapspam_dir<-"Data/mapspam/2020V1r2_SSA"
-  if(!dir.exists(mapspam_dir)){
-    dir.create(mapspam_dir,recursive=T)
-  }
-  
-  sos_dir<-"Data/sos"
-  if(!dir.exists(sos_dir)){
-    dir.create(sos_dir,recursive=T)
-  }
-  
-  ggcmi_dir<-"Data/ggcmi"
-  if(!dir.exists(ggcmi_dir)){
-    dir.create(ggcmi_dir,recursive=T)
-  }
-  
-  hydrobasins_dir<-"Data/hydrobasins"
-  if(!dir.exists(hydrobasins_dir)){
-    dir.create(hydrobasins_dir,recursive=T)
-  }
-  
-  
+    # 2.1.2) Inputs #####
+    
+    # Where is the raw monthly hazards data stored?
     if(Cglabs){
-    sos_raw_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
-    isimip_raw_dir<-"/home/jovyan/common_data/isimip"
-    chirts_raw_dir<-"/home/jovyan/common_data/chirts"
-    chirps_raw_dir<-"/home/jovyan/common_data/chirps_wrld"
-    
-    cropsuite_raw_dir<-"/home/jovyan/common_data/atlas_cropSuite"
-    if(!dir.exists(isimip_raw_dir)){
-      dir.create(isimip_raw_dir,recursive=T)
+      # Generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
+      indices_dir<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices"
+      indices_dir2<-"/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
+      
+      if(timeframe_choice!="annual"){
+        indices_seasonal_dir<-paste0(indices_dir2,"/by_season/",timeframe_choice,"/hazard_timeseries")
+      }else{
+        indices_seasonal_dir<-paste0(indices_dir2,"/by_year/hazard_timeseries")
+      }
+    }else{
+      cat("Indice files are currently only available in CGlabs, adding download functionality for raw data used in
+        workflow is on the to-do list. You should also see the https://github.com/AdaptationAtlas/hazards workflow which 
+        will enable you to replicate the creation of the foundational monthly hazard data used in this workflow.")
     }
-  }
+    
+    geo_dir<-"Data/boundaries"
+    if(!dir.exists(geo_dir)){
+      dir.create(geo_dir)
+    }
   
+    glps_dir<-file.path(working_dir,"Data","GLPS")
+    if(!dir.exists(glps_dir)){
+      dir.create(glps_dir)
+    }
+    
+    cattle_heatstress_dir<-file.path(working_dir,"Data","cattle_heatstress")
+    if(!dir.exists(cattle_heatstress_dir)){
+      dir.create(cattle_heatstress_dir)
+    }
+    
+    ac_dir<-"Data/adaptive_capacity"
+    if(!dir.exists(ac_dir)){
+      dir.create(ac_dir,recursive=T)
+    }
+    
+    hpop_dir<-"Data/atlas_pop"
+    if(!dir.exists(hpop_dir)){
+      dir.create(hpop_dir)
+    }
+    
+    commodity_mask_dir<-"Data/commodity_masks"
+    if(!dir.exists(commodity_mask_dir)){
+      dir.create(commodity_mask_dir)
+    }
+    
+  
+    glw_dir<-"Data/GLW4"
+    if(!dir.exists(glw_dir)){
+      dir.create(glw_dir)
+    }
+    
+    ls_vop_dir<-"Data/livestock_vop"
+    if(!dir.exists(ls_vop_dir)){
+      dir.create(ls_vop_dir)
+    }
+    
+    afr_highlands_dir<-"Data/afr_highlands"
+    if(!dir.exists(afr_highlands_dir)){
+      dir.create(afr_highlands_dir)
+    }
+    
+    fao_dir<-"Data/fao"
+    if(!dir.exists(fao_dir)){
+      dir.create(fao_dir,recursive = T)
+    }
+    
+    mapspam_dir<-"Data/mapspam/2020V1r2_SSA"
+    if(!dir.exists(mapspam_dir)){
+      dir.create(mapspam_dir,recursive=T)
+    }
+    
+    sos_dir<-"Data/sos"
+    if(!dir.exists(sos_dir)){
+      dir.create(sos_dir,recursive=T)
+    }
+    
+    ggcmi_dir<-"Data/ggcmi"
+    if(!dir.exists(ggcmi_dir)){
+      dir.create(ggcmi_dir,recursive=T)
+    }
+    
+    hydrobasins_dir<-"Data/hydrobasins"
+    if(!dir.exists(hydrobasins_dir)){
+      dir.create(hydrobasins_dir,recursive=T)
+    }
+    
+    
+    if(Cglabs){
+      sos_raw_dir<-"/home/jovyan/common_data/atlas_sos/seasonal_mean"
+      isimip_raw_dir<-"/home/jovyan/common_data/isimip"
+      chirts_raw_dir<-"/home/jovyan/common_data/chirts"
+      chirps_raw_dir<-"/home/jovyan/common_data/chirps_wrld"
+      
+      cropsuite_raw_dir<-"/home/jovyan/common_data/atlas_cropSuite"
+      if(!dir.exists(isimip_raw_dir)){
+        dir.create(isimip_raw_dir,recursive=T)
+      }
+    }
+    
+    solution_tables_dir<-"Data/solution_tables"
+    if(!dir.exists(solution_tables_dir)){
+      dir.create(solution_tables_dir,recursive=T)
+    }
+    
   # 2.2) Atlas s3 bucket #####
   bucket_name <- "http://digital-atlas.s3.amazonaws.com"
   bucket_name_s3<-"s3://digital-atlas"
@@ -593,15 +599,31 @@ setwd(working_dir)
   
   }
   
-  # 3.13) hydrobasins
-  if(!file.exists(file.path(hydrobasins_dir,"hybas_af_lev01_v1c.shp"))){
-    url<-"https://data.hydrosheds.org/file/hydrobasins/standard/hybas_af_lev01-06_v1c.zip"
+  # 3.13) Hydrobasins #####
+  # https://grdc.bafg.de/GRDC/EN/02_srvcs/22_gslrs/223_WMO/wmo_regions_node.html
+  if(!file.exists(file.path(hydrobasins_dir,"wmobb_rivnets_Q00_01.json"))){
+    url<-"https://grdc.bafg.de/SharedDocs/ExterneLinks/GRDC/wmobb_json_zip.zip?__blob=publicationFile"
     local_path<-file.path(hydrobasins_dir,basename(url))
     download.file(url,local_path)
     unzip(local_path,exdir=dirname(local_path))
     unlink(local_path)
   }
-# 4) Set data paths ####
+  # 3.14) Solution tables #####
+  update<-F
+  local_dir<-solution_tables_dir
+  # List files in the specified S3 bucket and prefix
+  files_s3<-s3$dir_ls(file.path(bucket_name_s3, basename(local_dir)))
+  files_local<-file.path(local_dir,basename(files_s3))
+  
+  # If data does not exist locally download from S3 bucket
+  for(i in 1:length(files_local)){
+    file<-files_local[i]
+    if(!file.exists(file)|update==T){
+      s3$file_download(files_s3[i],file)
+    }
+  }
+  
+# 4) Set data urls ####
   # 4.1) hazard class #####
   haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
   # 4.2) hazard metadata #####
@@ -615,3 +637,7 @@ setwd(working_dir)
   # 4.5) isimip metadata #####
   isimip_meta_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/isimip_water_var_metadata.csv"
 
+
+  
+  
+  
