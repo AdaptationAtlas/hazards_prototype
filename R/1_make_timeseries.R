@@ -1,7 +1,6 @@
 # Please run 0_server_setup.R before executing this script
 # 1) Load R functions & packages ####
-packages <- c("terra","data.table","fs")
-pacman::p_load(char=packages)
+pacman::p_load(terra,data.table,future,fs,future.apply,progressr)
 
 # 2) Set directories  ####
 # Directory where monthly timeseries data generated from https://github.com/AdaptationAtlas/hazards/tree/main is stored
@@ -18,7 +17,19 @@ list_files_fs <- function(path, pattern, recursive = TRUE) {
   return(files)
 }
 
-existing_files<-list_files_fs(working_dir,"tif$",recursive=T)
+# There are a very large number of files to be listed, this seems to create instability when running the function.
+# Loop over each folder to try and overcome this issue
+folders<-list.dirs(working_dir,recursive=F)
+folders<-folders[!grepl("ipynb_checkpoints",folders)]
+
+existing_files<-unlist(lapply(1:length(folders),FUN=function(i){
+  cat('\r', strrep(' ', 150), '\r')
+  cat("folder",i,"/",length(folders))
+  flush.console()
+  files<-list_files_fs(folders[i],"tif$",recursive=T)
+  return(files)
+}))
+
 existing_files<-existing_files[!grepl("GSeason|THI/THI_MAX/|/THI_AgERA5/|stats|daily|historical/HSM_NTx|AVAIL.tif|LongTermMean|/max_year|/mean_monthly|/mean_year|/median_monthly|/median_year",
                                       existing_files)]
 
@@ -117,7 +128,7 @@ exists<-rbindlist(pbapply::pblapply(hazards,FUN=function(H){
 }
 
 # 5) Set analysis parameters ####
-worker_n<-10
+worker_n<-1
 
 use_crop_cal_choice<- c("no","yes") # if set to no then values are calculated for the year (using the jagermeyr cc as the starting month for each year)
 use_sos_cc_choice<-c("no","yes") # Use onset of rain layer to set starting month of season
@@ -128,11 +139,11 @@ season_lengths<-c(3,4,5) # This can be varied to create season lengths for diffe
 
 # Create table of possible combinations
 parameters<-data.table(use_crop_cal=c("no","yes","yes","yes","yes","yes"),
-           use_sos_cc=c(NA,"no","yes","yes","yes","yes"),
-           use_eos=c(NA,NA,T,F,F,F),
-           season_length=c(NA,NA,NA,3,4,5),
-           folder_name=c("by_year",rep("by_season",5)),
-           subfolder_name=c(NA,"jagermeyr","sos","sos","sos","sos"))
+                       use_sos_cc=c(NA,"no","yes","yes","yes","yes"),
+                       use_eos=c(NA,NA,T,F,F,F),
+                       season_length=c(NA,NA,NA,3,4,5),
+                       folder_name=c("by_year",rep("by_season",5)),
+                       subfolder_name=c(NA,"jagermeyr","sos","sos","sos","sos"))
 
 # Create folder index of scenarios and hazards
 folders_x_hazards<-data.table(expand.grid(folders=folders,hazards=hazards))[,folder_path:=file.path(working_dir,folders,hazards)]
@@ -289,9 +300,13 @@ for(ii in 1:nrow(parameters)){
     
     
     doFuture::registerDoFuture()
-    future::plan("multisession", workers = worker_n)
+    if (worker_n == 1) {
+      future::plan("sequential")
+    } else {
+      future::plan("multisession", workers = worker_n)
+    }
     
-    p<-with_progress({
+    p<-progressr::with_progress({
       # Define the progress bar
       progress <- progressr::progressor(along = 1:nrow(scen_haz_time))
     
