@@ -1,8 +1,12 @@
+# This script is for internal use and merges/wrangles Todd's solution tables into a standard format
+# You will need access to the files contained in the onedrive folder 2. Adaptation Atlas/Phase II_Shared/2. Product/2. MVP/Solutions
+# Please run 0_server_setup.R before executing this script
 
 # 0) Load packages ####
 pacman::p_load(data.table,readxl)
 
 # 1) Load data ####
+# file.path(solution_tables_dir,"raw") is where the "raw" Solution tables are stored
 list.files(file.path(solution_tables_dir,"raw"),full.names = T)
 
 # 1.1) Load hazard response data #####
