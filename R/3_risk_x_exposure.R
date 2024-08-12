@@ -399,7 +399,7 @@ crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
       
 # 1) Extract hazard risk by admin ####
   # 1.1) Solo and interactions combined into a single file (not any hazard) #####
-overwrite<-F
+overwrite<-T
 files<-list.files(haz_risk_dir,".tif$",full.names = T)
 files_solo<-files[!grepl("-int[.]tif$",files)]
 files_int<-grep("-int[.]tif$",files,value = T)
@@ -485,6 +485,7 @@ for(k in 1:length(dirs)){
 }
 
 # 2) Extract hazard means and sd by admin ####
+  overwrite<-T
   # 2.1) Extract mean hazards ####
   folder<-haz_mean_dir
   
@@ -500,18 +501,17 @@ for(k in 1:length(dirs)){
   file1<-gsub("adm0","adm1",file0)
   file2<-gsub("adm0","adm2",file0)
   
-  
   if(!file.exists(file0)|overwrite==T){
     data_ex<-admin_extract(data=data,Geographies,FUN="mean")
-    st_write_parquet(obj=sf::st_as_sf(data_ex$admin0), dsn=file0)
-    st_write_parquet(obj=sf::st_as_sf(data_ex$admin1), dsn=file1)
-    st_write_parquet(obj=sf::st_as_sf(data_ex$admin2), dsn=file2)
+    write_parquet(sf::st_as_sf(data_ex$admin0), file0)
+    write_parquet(sf::st_as_sf(data_ex$admin1), file1)
+    write_parquet(sf::st_as_sf(data_ex$admin2), file2)
   }
 
   # 2.2) Compile mean hazards into tabular form ####
   filename<-gsub("adm0","adm",file0)
   
-  if(!file.exists(filename)){
+  if(!file.exists(filename)|overwrite==T){
     # Extract data from vector files and restructure into tabular form
     data_ex<-rbindlist(lapply(1:length(levels),FUN=function(i){
       level<-levels[i]
@@ -537,15 +537,37 @@ for(k in 1:length(dirs)){
       
       data<-melt(data,id.vars = admin)
       
-      data[,variable:=gsub("ENSEMBLEmean_","",variable)
-           ][,variable:=gsub("historical","historic-historic",variable)
-             ][,variable:=stringi::stri_replace_all_regex(variable,pattern=paste0(unique(Scenarios$Scenario),"_"),replacement=paste0(unique(Scenarios$Scenario),"-"),vectorise_all = F)
-              ][,variable:=stringi::stri_replace_all_regex(variable,pattern=paste0(unique(Scenarios$Time),"_"),replacement=paste0(unique(Scenarios$Time),"-"),vectorise_all = F)
-                ][,variable:=stringi::stri_replace_all_regex(variable,pattern=c("max_max","min_min","mean_mean"),replacement=c("max-max","min-min","mean-mean"),vectorise_all = F)
-                  ][,variable:=gsub(".","-",variable,fixed=T)]
+      Scenarios
+      
+      data[,variable:=gsub("historical","historic-NA-historic",variable[1]),by=variable
+             #][,variable:=stringi::stri_replace_all_regex(variable,pattern=paste0(unique(Scenarios$Scenario),"_"),replacement=paste0(unique(Scenarios$Scenario),"-"),vectorise_all = F)
+            #  ][,variable:=stringi::stri_replace_all_regex(variable,pattern=paste0(unique(Scenarios$Time),"_"),replacement=paste0(unique(Scenarios$Time),"-"),vectorise_all = F)
+                ][,variable:=stringi::stri_replace_all_regex(variable[1],pattern=c("max_max","min_min","mean_mean"),replacement=c("max-max","min-min","mean-mean"),vectorise_all = F),by=variable
+                  ][,variable:=gsub(".","_",variable,fixed=T)
+                    ]
+      
+      data[,variable:=stringi::stri_replace_all_regex(variable[1],
+                                                      pattern=Scenarios[Scenario!="historic",paste0("_",Time)],
+                                                      replacement = Scenarios[Scenario!="historic",paste0("-",Time)],
+                                                      vectorise_all = F),by=variable]
+      
+      data[,variable:=stringi::stri_replace_all_regex(variable[1],
+                                                      pattern=paste0("_",haz_meta$code),
+                                                      replacement =paste0("-",haz_meta$code),
+                                                      vectorise_all = F),by=variable]
+      
+      data[,variable:=stringi::stri_replace_all_regex(variable[1],
+                                                      pattern=paste0("_",Scenarios$Scenario),
+                                                      replacement =paste0("-",Scenarios$Scenario),
+                                                      vectorise_all = F),by=variable]
+      
+      data[,variable:=stringi::stri_replace_all_regex(variable[1],
+                                                      pattern=paste0(Scenarios$Scenario,"_"),
+                                                      replacement =paste0(Scenarios$Scenario,"-"),
+                                                      vectorise_all = F),by=variable]
       
       variable<-cbind(data$variable,data.table(do.call("cbind",tstrsplit(data$variable,"-"))[,-1]))
-      colnames(variable)<-c("variable","scenario","timeframe","hazard","hazard_stat")
+      colnames(variable)<-c("variable","scenario","model","timeframe","hazard","hazard_stat")
       variable[is.na(hazard_stat),hazard:=gsub("_","-",hazard)
                ][is.na(hazard_stat),hazard_stat:=unlist(tstrsplit(hazard,"-",keep=2))
                  ][,hazard:=unlist(tstrsplit(hazard,"-",keep=1))]
@@ -555,7 +577,7 @@ for(k in 1:length(dirs)){
      
       
     }),fill=T)
-    data_ex<-data_ex[,c(1,7,8,3,4,5,6,2)]
+    data_ex<-data_ex[,c(1,8,9,3,5,4,6,7,2)]
     
     # Save mean values as feather object
     arrow::write_parquet(data_ex,filename)
