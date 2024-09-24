@@ -1,7 +1,7 @@
 # Please run 0_server_setup.R before executing this script
 # Note this only runs from CGlabs server as cropSuite is not publicly available yet
 # If you are experiencing issues with the admin_extract functions, delete the exactextractr package and use this version:  remotes::install_github("isciences/exactextractr")
-
+# Note % change in suitable area results in some very large numbers, probably due to very small areas expanding. This is not a useful statistic to use.
 # 1) Load R functions & packages ####
 packages <- c("terra","data.table","future","doFuture","sf","geoarrow","arrow")
 p_load(char=packages)
@@ -42,7 +42,7 @@ crop_vop_tot<-arrow::read_parquet(file.path(exposure_dir,"crop_vop_adm_sum.parqu
 # (do not change the class names else you will need to propagate the changes to the extraction code)
 thresholds <- data.table(
   from = c(0, 1, 33, 74),
-  to = c(0, 32, 74, 100),
+  to = c(0, 33, 74, 100),
   becomes = c(0, 1, 2, 3),
   name = c("unsuitable", "marginal", "moderate", "high")
 )  # Create a data.table defining the thresholds for suitability classes
@@ -90,7 +90,7 @@ for(var in cs_vars){
       data_hist <- terra::rast(files_hist)  # Load historical data
       data_fut <- terra::rast(files_fut)  # Load future data
       
-      data_diff <- data_hist - data_fut  # Calculate the difference between historical and future data
+      data_diff <- data_fut - data_hist # Calculate the difference between historical and future data
       names(data_diff) <- gsub(".tif", "", basename(files_fut))  # Rename the layers of the difference raster
       data_diff
     }))
@@ -114,14 +114,8 @@ for(var in cs_vars){
     # Clean out NAs or zeros
     data_diff_ex <- data_diff_ex[!is.na(value) & !is.na(coverage_fraction) & coverage_fraction > 0]
     
-    optimize_histograms <- function(data, breaks = 10) {
-      # Create a list to store histograms
-      hist_dat <- hist(data, breaks = breaks, plot = FALSE)
-      # Combine counts and breaks into a single data.table
-      hist_dat <- paste0(bin_counts =hist_dat$counts,bin_width = hist_dat$breaks)
-      
-      return(hist_data)
-    }
+    check<-data_diff_ex[admin0_name=="Angola" & is.na(admin1_name) & variable=="ssp585_2041-2060_maize_crop-suitability",
+                        hist(value,breaks=seq(-100,100,10))]
     
     # Caculate stats
     data_diff_ex<-data_diff_ex[,list(mean=weighted.mean(value,coverage_fraction),
@@ -140,11 +134,34 @@ for(var in cs_vars){
                                        ][, mean := round(mean,1)
                                          ][, median := round(median,1)] 
     
-    # Append vop data to weight average yields
-    
-    
     save_file <- file.path(cropsuite_class_dir, paste0(var, "_diff", "_adm_mean.parquet"))
     arrow::write_parquet(data_diff_ex, save_file)  # Save the cleaned data to a parquet file
+    
+    # Append vop data to weight average yields
+    # Append map cropnames
+    data_diff_ex_ms<-merge(data_diff_ex,spamcodes[,.(Fullname,cropsuite_name)],by.x="crop",by.y="cropsuite_name",all.x=T)
+    # Cropsuite crops not in mapspam
+    data_diff_ex_ms[is.na(Fullname),unique(crop)]
+    # Rename crop to spam names and exclude non-spam crops
+    data_diff_ex_ms<-data_diff_ex_ms[,crop:=Fullname][!is.na(crop)][,Fullname:=NULL]
+    # Merge with spam vop values
+    data_diff_ex_ms<-merge(data_diff_ex_ms,crop_vop_tot[is.na(admin2_name),.(admin0_name,admin1_name,crop,value)],all.x=T)
+    # Calulate weighted stats across crops
+    data_diff_ex_ms_w<-data_diff_ex_ms[!is.na(mean) & !is.na(value) & value!=0, # Remove NA and zero values
+                                       list(mean_mean=round(weighted.mean(mean,value),1),
+                                         min_mean=min(mean),
+                                         max_mean=max(mean),
+                                         median_mean=round(Hmisc::wtd.quantile(mean, value, probs = 0.5),1),
+                                         quantiles_mean=list(round(Hmisc::wtd.quantile(mean,value,probs=seq(0,1,0.1)),1)),
+                                         mean_median=round(weighted.mean(median,value),1),
+                                         min_median=min(median),
+                                         max_median=max(median),
+                                         median_median=round(Hmisc::wtd.quantile(median, value, probs = 0.5),1),
+                                         quantiles_median=list(round(Hmisc::wtd.quantile(median,value,probs=seq(0,1,0.1)),1))),
+                                    by=.(admin0_name,admin1_name)]
+    
+    save_file <- file.path(cropsuite_class_dir, paste0(var, "_diff", "_adm_mean_agg.parquet"))
+    arrow::write_parquet(data_diff_ex_ms_w, save_file)  # Save the cleaned data to a parquet file
     
     # Classify differences
     data_diff_class <- terra::rast(lapply(1:length(crops), FUN = function(i) {
@@ -178,16 +195,20 @@ for(var in cs_vars){
     base_cellsize <- terra::cellSize(data_diff_class, unit = "km")
     
     # Historical suitable area
-    thresholds_past <- thresholds_change[, value_past := 0][name_hist %in% c("med", "high"), value_past := 1][, list(value, value_past)]
-    thresholds_past <- setnames(thresholds_past, c("value", "value_past"), c("from", "to"))
-    data_class_past <- terra::classify(data_diff_class, thresholds_past)  # Classify historical suitable area
+    thresholds2 <- data.frame(from=c(0,thresholds[name=="moderate",from]),
+                             to=c(thresholds[name=="marginal",to],100),
+                             becomes=c(0,1))
+    
+    files <- file_index[variable == var & scenario == "historical", file_path]  # Get historical files
+    data_class_past<-terra::rast(files)
+    data_class_past <- terra::classify(data_class_past, rcl=thresholds2)  # Classify historical suitable area
     data_class_past_area <- data_class_past * base_cellsize  # Calculate area
     names(data_class_past_area) <- paste0(names(data_class_past_area), "_past-area")
     
     # Future suitable area
-    thresholds_fut <- thresholds_change[, value_fut := 0][name_fut %in% c("med", "high"), value_fut := 1][, list(value, value_fut)]
-    thresholds_fut <- setnames(thresholds_fut, c("value", "value_fut"), c("from", "to"))
-    data_class_fut <- terra::classify(data_diff_class, thresholds_fut)  # Classify future suitable area
+    files <- file_index[variable == var & scenario != "historical", file_path]  # Get historical files
+    data_class_fut<-terra::rast(files)
+    data_class_fut <- terra::classify(data_class_fut, rcl=thresholds2)  # Classify future suitable area
     data_class_fut_area <- data_class_fut * base_cellsize  # Calculate area
     names(data_class_fut_area) <- paste0(names(data_class_fut_area), "_future-area")
     
@@ -230,7 +251,6 @@ for(var in cs_vars){
     names(decrease20_area) <- paste0(names(decrease20_area), "_decrease20-area")
     
     data_area <- terra::rast(list(
-      data_class_past_area,
       data_class_fut_area,
       increase5_area,
       increase10_area,
@@ -259,8 +279,22 @@ for(var in cs_vars){
     ][, variable := unlist(tstrsplit(variable[1], "_", keep = 4)), by = variable
     ][, unit := "km2"]
     
-    data_area_ex_hist <- unique(data_area_ex[stat == "past.area"][, value_hist := value][, c("value", "scenario", "timeframe", "stat") := NULL])
-    data_area_ex <- merge(data_area_ex[stat != "past.area"], data_area_ex_hist, all.x = TRUE)[stat != "future.area", value_hist := NA]
+    data_area_ex_hist<-admin_extract_wrap(
+      data = data_class_past_area, 
+      save_dir = cropsuite_class_dir, 
+      filename = paste0(var, "_area-changes-hist"), 
+      FUN = "sum", 
+      varname = NA, 
+      Geographies, 
+      overwrite = TRUE,
+      modify_colnames = FALSE
+    )  # Extract and save area changes at the administrative level
+    
+    data_area_ex_hist <- data_area_ex_hist[, crop := unlist(tstrsplit(variable[1], "_", keep = 3)), by = variable
+                                           ][, variable :=NULL]
+    setnames(data_area_ex_hist,"value","value_hist")
+
+    data_area_ex <- merge(data_area_ex, data_area_ex_hist, by=c("admin0_name","admin1_name","crop"),all.x = TRUE)[stat != "future.area", value_hist := NA]
     
     data_area_ex[stat == "future.area", diff := value - value_hist
                  ][stat == "future.area", perc_change := round(100 * diff / value_hist, 1)]
@@ -270,16 +304,39 @@ for(var in cs_vars){
     setnames(codes, c("Fullname", "cropsuite_name"), c("crop_spam", "crop"))
     data_area_ex <- merge(data_area_ex, codes, by = "crop", all.x = TRUE)
     
-    data_area_ex <- data_area_ex[, list(admin0_name, admin1_name, admin2_name, scenario, timeframe, crop, crop_spam, variable, stat, unit, value, value_hist, diff, perc_change)
-    ][order(admin0_name, admin1_name, admin2_name, scenario, timeframe, crop, stat)
+    data_area_ex <- data_area_ex[, list(admin0_name, admin1_name, scenario, timeframe, crop, crop_spam, variable, stat, unit, value, value_hist, diff, perc_change)
+    ][order(admin0_name, admin1_name,scenario, timeframe, crop, stat)
     ][, timeframe := gsub(".", "_", timeframe, fixed = TRUE)]
     
     save_file <- file.path(cropsuite_class_dir, paste0(var, "_area-changes", "_adm_sum.parquet"))
     arrow::write_parquet(data_area_ex, save_file)  # Save the summarized area changes to a parquet file
     
     save_file <- file.path(cropsuite_class_dir, paste0(var, "_area-changes", "_adm_sum_simple.parquet"))
-    data_area_ex_simple <- data_area_ex[is.na(admin2_name)][, diff := round(diff, 0)][, value := round(value, 0)][, value_hist := round(value_hist, 0)]
+    data_area_ex_simple <- data_area_ex[, diff := round(diff, 0)][, value := round(value, 0)][, value_hist := round(value_hist, 0)]
     arrow::write_parquet(data_area_ex_simple, save_file)  # Save a simplified version of the summarized area changes to a parquet file
+    
+    # Append vop data to weight average % change in suitable area
+
+    # Cropsuite crops not in mapspam
+    data_area_ex[is.na(crop_spam),unique(crop)]
+    # Rename crop to spam names and exclude non-spam crops
+    data_area_ex_ms<-data_area_ex[stat=="future.area"
+                                  ][,crop:=crop_spam
+                                    ][!is.na(crop)
+                                      ][,c("crop_spam","value_hist","stat","diff","value","variable","unit"):=NULL]
+    # Merge with spam vop values
+    data_area_ex_ms<-merge(data_area_ex_ms,crop_vop_tot[is.na(admin2_name),.(admin0_name,admin1_name,crop,value)],all.x=T)
+    # Calulate weighted stats across crops
+    data_area_ex_ms_w<-data_area_ex_ms[!is.na(perc_change) & !is.na(value) & value!=0 & is.finite(perc_change), # Remove NA and zero values
+                                       list(mean=round(weighted.mean(perc_change,value),1),
+                                            min=min(perc_change),
+                                            max=max(perc_change),
+                                            median=round(Hmisc::wtd.quantile(perc_change, value, probs = 0.5),1),
+                                            quantiles=list(round(Hmisc::wtd.quantile(perc_change,value,probs=seq(0,1,0.1)),1))),
+                     by=.(admin0_name,admin1_name)
+                     ][,unit="%"
+                       ][,variable:="change in suitable area"]
+    
   }
 }
 
