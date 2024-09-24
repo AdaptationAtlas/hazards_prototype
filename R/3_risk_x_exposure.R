@@ -537,14 +537,9 @@ for(k in 1:length(dirs)){
       
       data<-melt(data,id.vars = admin)
       
-      Scenarios
-      
       data[,variable:=gsub("historical","historic-NA-historic",variable[1]),by=variable
-             #][,variable:=stringi::stri_replace_all_regex(variable,pattern=paste0(unique(Scenarios$Scenario),"_"),replacement=paste0(unique(Scenarios$Scenario),"-"),vectorise_all = F)
-            #  ][,variable:=stringi::stri_replace_all_regex(variable,pattern=paste0(unique(Scenarios$Time),"_"),replacement=paste0(unique(Scenarios$Time),"-"),vectorise_all = F)
-                ][,variable:=stringi::stri_replace_all_regex(variable[1],pattern=c("max_max","min_min","mean_mean"),replacement=c("max-max","min-min","mean-mean"),vectorise_all = F),by=variable
-                  ][,variable:=gsub(".","_",variable,fixed=T)
-                    ]
+           ][,variable:=stringi::stri_replace_all_regex(variable[1],pattern=c("max_max","min_min","mean_mean"),replacement=c("max-max","min-min","mean-mean"),vectorise_all = F),by=variable
+                  ][,variable:=gsub(".","_",variable[1],fixed=T),by=variable]
       
       data[,variable:=stringi::stri_replace_all_regex(variable[1],
                                                       pattern=Scenarios[Scenario!="historic",paste0("_",Time)],
@@ -587,12 +582,13 @@ for(k in 1:length(dirs)){
 haz_timeseries_files<-list.files(haz_timeseries_dir,".tif",full.names = T)
 haz_timeseries_files<-grep(paste(hazards,collapse = "|"),haz_timeseries_files,value=T)
 
-haz_timeseries_files_sd<-grep("ENSEMBLEsd",haz_timeseries_files,value=T)
-haz_timeseries_files<-haz_timeseries_files[!grepl("ENSEMBLEsd",haz_timeseries_files)]
+# Limit files to ensemble mean (very large files otherwise)
+  # See 2.1_create_monthly_haz_tables.R for ideas on alternative methods for getting to this information
+  # If needed per model suggest looping over models (or futher file splitting measures)
+haz_timeseries_files<-grep("ENSEMBLEmean",haz_timeseries_files,value = T)
 
 # Load all timeseries data into a raster stack
 haz_timeseries<-terra::rast(haz_timeseries_files)
-haz_timeseries_sd<-terra::rast(haz_timeseries_files_sd)
 
 # Update names of raster stack to be filename/year
 layer_names<-unlist(lapply(1:length(haz_timeseries_files),FUN=function(i){
@@ -616,15 +612,15 @@ names(haz_timeseries_sd)<-layer_names
 # Extract hazard values by admin areas and average them
 # Extract by admin0
 haz_timeseries_adm<-admin_extract(haz_timeseries,Geographies["admin0"],FUN="mean")
-st_write_parquet(obj=sf::st_as_sf(haz_timeseries_adm$admin0), dsn=paste0(haz_timeseries_dir,"/haz_timeseries_adm0.parquet"))
+write_parquet(sf::st_as_sf(haz_timeseries_adm$admin0), paste0(haz_timeseries_dir,"/haz_timeseries_adm0.parquet"))
 
 # Extract by admin1
 haz_timeseries_adm<-admin_extract(haz_timeseries,Geographies["admin1"],FUN="mean")
-st_write_parquet(obj=sf::st_as_sf(haz_timeseries_adm$admin1), dsn=paste0(haz_timeseries_dir,"/haz_timeseries_adm1.parquet"))
+write_parquet(sf::st_as_sf(haz_timeseries_adm$admin1), paste0(haz_timeseries_dir,"/haz_timeseries_adm1.parquet"))
 
 # Extract by admin2
 haz_timeseries_adm<-admin_extract(haz_timeseries,Geographies["admin2"],FUN="mean")
-st_write_parquet(obj=sf::st_as_sf(haz_timeseries_adm$admin2), dsn=paste0(haz_timeseries_dir,"/haz_timeseries_adm2.parquet"))
+write_parquet(sf::st_as_sf(haz_timeseries_adm$admin2), paste0(haz_timeseries_dir,"/haz_timeseries_adm2.parquet"))
 
 # Restructure data into tabular form
 filename<-paste0(haz_timeseries_dir,"/haz_timeseries.parquet")
@@ -633,101 +629,72 @@ haz_timeseries_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
   level<-levels[i]
   print(level)
   
-  haz_timeseries_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_timeseries_dir,"/haz_timeseries_",levels[i],".parquet"))))
-  N<-colnames(haz_timeseries_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_timeseries_tab))]
-  haz_timeseries_tab<-haz_timeseries_tab[,..N]
-  haz_timeseries_tab<-melt(haz_timeseries_tab,id.vars = c("admin_name","iso3"))
+  data<-data.table(data.frame(read_parquet(paste0(haz_timeseries_dir,"/haz_timeseries_",levels[i],".parquet"))))
   
-  haz_timeseries_tab[,variable:=gsub("mean.","",variable,fixed = T)
-  ][,variable:=gsub("mean.","",variable,fixed = T)
-  ][,variable:=gsub("_ENSEMBLEmean","",variable,fixed = T)
-  ][,variable:=gsub("ssp245_","ssp245|",variable,fixed = T)
-  ][,variable:=gsub("ssp585_","ssp585|",variable,fixed = T)
-  ][,variable:=gsub("_year","|",variable,fixed = T)
-  ][,variable:=gsub("historical_","historical|historical|",variable,fixed = T)
-  ][,variable:=gsub("2060_","2060|",variable,fixed = T)
-  ][,variable:=gsub("2040_","2040|",variable,fixed = T)
-  ][,scenario:=unlist(tstrsplit(variable,"[|]",keep=1))
-  ][,timeframe:=unlist(tstrsplit(variable,"[|]",keep=2))
-  ][,hazard:=unlist(tstrsplit(variable,"[|]",keep=3))
-  ][,year:=unlist(tstrsplit(variable,"[|]",keep=4))
-  ][,stat:=tail(unlist(tstrsplit(hazard[1],"_")),1),by=hazard
-  ][,hazard:=gsub("_mean_mean","mean",hazard,fixed = T)
-  ][,hazard:=gsub("_max_max","max",hazard,fixed = T)
-  ][,hazard:=gsub("_mean","",hazard,fixed = T)
-  ][,hazard:=gsub("_sum","",hazard,fixed = T)
-  ][,hazard:=gsub("_max","",hazard,fixed = T)
-  ][,hazard:=gsub("mean","_mean",hazard,fixed = T)
-  ][,hazard:=gsub("max","_max",hazard,fixed = T)
-  ][,variable:=NULL
-  ][,admin_level:=names(levels)[i]]
+  data<-data[,!c("admin_name","iso3","geometry")]
   
+  admin<-"admin0_name"
   
-  haz_timeseries_tab
+  if(level %in% c("adm1","adm2")){
+    admin<-c(admin,"admin1_name")
+    data<-suppressWarnings(data[,!"a1_a0"])
+  }
   
-}))
+  if(level=="adm2"){
+    admin<-c(admin,"admin2_name")
+    data<-suppressWarnings(data[,!"a2_a1_a0"])
+  }
+  
+  colnames(data)<-gsub("_nam$","_name",colnames(data))
+  
+  data<-melt(data,id.vars = admin)
+  
+  data[,variable:=gsub("historical","historic-NA-historic",variable[1]),by=variable
+  ][,variable:=stringi::stri_replace_all_regex(variable[1],pattern=c("max_max","min_min","mean_mean"),replacement=c("max-max","min-min","mean-mean"),vectorise_all = F),by=variable
+  ][,variable:=gsub(".","_",variable[1],fixed=T),by=variable
+  ][,variable:=gsub("_year","-",variable[1],fixed=T),by=variable]
+  
+  data[,variable:=stringi::stri_replace_all_regex(variable[1],
+                                                  pattern=Scenarios[Scenario!="historic",paste0("_",Time)],
+                                                  replacement = Scenarios[Scenario!="historic",paste0("-",Time)],
+                                                  vectorise_all = F),by=variable]
+  
+  data[,variable:=stringi::stri_replace_all_regex(variable[1],
+                                                  pattern=Scenarios[,paste0(Time,"_")],
+                                                  replacement = Scenarios[,paste0(Time,"-")],
+                                                  vectorise_all = F),by=variable]
+  
+  data[,variable:=stringi::stri_replace_all_regex(variable[1],
+                                                  pattern=paste0("_",haz_meta$code),
+                                                  replacement =paste0("-",haz_meta$code),
+                                                  vectorise_all = F),by=variable]
+  
+  data[,variable:=stringi::stri_replace_all_regex(variable[1],
+                                                  pattern=paste0("_",Scenarios$Scenario),
+                                                  replacement =paste0("-",Scenarios$Scenario),
+                                                  vectorise_all = F),by=variable]
+  
+  data[,variable:=stringi::stri_replace_all_regex(variable[1],
+                                                  pattern=paste0(Scenarios$Scenario,"_"),
+                                                  replacement =paste0(Scenarios$Scenario,"-"),
+                                                  vectorise_all = F),by=variable]
+  
+  variable<-cbind(data$variable,data.table(do.call("cbind",tstrsplit(data$variable,"-"))[,-1]))
+  colnames(variable)<-c("variable","scenario","model","timeframe","hazard","hazard_stat","year")
+  variable[is.na(hazard_stat),hazard:=gsub("_","-",hazard)
+  ][is.na(hazard_stat),hazard_stat:=unlist(tstrsplit(hazard,"-",keep=2))
+  ][,hazard:=unlist(tstrsplit(hazard,"-",keep=1))]
+  
+  data<-merge(data,unique(variable),all.x=T)[,variable:=NULL]
+  
+  return(data)
+  
+}),fill=T)
+
+haz_timeseries_tab<-haz_timeseries_tab[,.(admin0_name,admin1_name,admin2_name,scenario,model,timeframe,hazard,hazard_stat,year,value)]
 
 # Save mean values as feather object
-    arrow::write_parquet(haz_timeseries_tab,filename)
-
-
-# Extract hazard values by admin areas and average them
-# Extract by admin0
-haz_timeseries_adm<-admin_extract(haz_timeseries_sd,Geographies["admin0"],FUN="mean")
-st_write_parquet(obj=sf::st_as_sf(haz_timeseries_adm$admin0), dsn=paste0(haz_timeseries_dir,"/haz_timeseries_sd_adm0.parquet"))
-
-# Extract by admin1
-haz_timeseries_adm<-admin_extract(haz_timeseries_sd,Geographies["admin1"],FUN="mean")
-st_write_parquet(obj=sf::st_as_sf(haz_timeseries_adm$admin1), dsn=paste0(haz_timeseries_dir,"/haz_timeseries_sd_adm1.parquet"))
-
-# Extract by admin2
-haz_timeseries_adm<-admin_extract(haz_timeseries_sd,Geographies["admin2"],FUN="mean")
-st_write_parquet(obj=sf::st_as_sf(haz_timeseries_adm$admin2), dsn=paste0(haz_timeseries_dir,"/haz_timeseries_sd_adm2.parquet"))
-
-
-# Restructure data into tabular form
-filename<-paste0(haz_timeseries_dir,"/haz_timeseries_sd.parquet")
-# Extract data from vector files and restructure into tabular form
-haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
-  level<-levels[i]
-  print(level)
-  
-  haz_timeseries_tab<-data.table(data.frame(sfarrow::st_read_parquet(paste0(haz_timeseries_dir,"/haz_timeseries_sd_",levels[i],".parquet"))))
-  N<-colnames(haz_timeseries_tab)[-grep(c("admin0_nam|admin1_nam|admin2_nam|geometry"),colnames(haz_timeseries_tab))]
-  haz_timeseries_tab<-haz_timeseries_tab[,..N]
-  haz_timeseries_tab<-melt(haz_timeseries_tab,id.vars = c("admin_name","iso3"))
-  
-  haz_timeseries_tab[,variable:=gsub("mean.","",variable,fixed = T)
-  ][,variable:=gsub("mean.","",variable,fixed = T)
-  ][,variable:=gsub("_ENSEMBLEsd","",variable,fixed = T)
-  ][,variable:=gsub("ssp245_","ssp245|",variable,fixed = T)
-  ][,variable:=gsub("ssp585_","ssp585|",variable,fixed = T)
-  ][,variable:=gsub("_year","|",variable,fixed = T)
-  ][,variable:=gsub("historical_","historical|historical|",variable,fixed = T)
-  ][,variable:=gsub("2060_","2060|",variable,fixed = T)
-  ][,variable:=gsub("2040_","2040|",variable,fixed = T)
-  ][,scenario:=unlist(tstrsplit(variable,"[|]",keep=1))
-  ][,timeframe:=unlist(tstrsplit(variable,"[|]",keep=2))
-  ][,hazard:=unlist(tstrsplit(variable,"[|]",keep=3))
-  ][,year:=unlist(tstrsplit(variable,"[|]",keep=4))
-  ][,stat:=tail(unlist(tstrsplit(hazard[1],"_")),1),by=hazard
-  ][,hazard:=gsub("_mean_mean","mean",hazard,fixed = T)
-  ][,hazard:=gsub("_max_max","max",hazard,fixed = T)
-  ][,hazard:=gsub("_mean","",hazard,fixed = T)
-  ][,hazard:=gsub("_sum","",hazard,fixed = T)
-  ][,hazard:=gsub("_max","",hazard,fixed = T)
-  ][,hazard:=gsub("mean","_mean",hazard,fixed = T)
-  ][,hazard:=gsub("max","_max",hazard,fixed = T)
-  ][,variable:=NULL
-  ][,admin_level:=names(levels)[i]]
-  
-  
-  haz_timeseries_tab
-  
-}))
-
-# Save mean values as feather object
-    arrow::write_parquet(haz_timeseries_sd_tab,filename)
+arrow::write_parquet(haz_timeseries_tab,filename)
 
 # 4) Hazard risk x exposure ####
   # 4.0) Set-up ####
@@ -749,9 +716,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
     # Crop choices only 
     crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
     
-    files<-list.files(haz_risk_dir,".tif$",full.names = T)
-    
-    # Download pre-baked tifs from the s3?
+    # Download pre-baked hazard_risk tifs from the s3?
     if(F){
       # Specify s3 prefix (folder path)
       folder_path <- haz_risk_dir
@@ -763,7 +728,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
       
       files_local<-file.path(folder_path,basename(files_s3))
       
-      # If mapspam data does not exist locally download from S3 bucket
+      # If data does not exist locally download from S3 bucket
       for(i in 1:length(files_local)){
         file<-files_local[i]
         if(!file.exists(file)|update==T){
@@ -773,27 +738,33 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
       }
     }
     
+    # List files
+    files<-list.files(haz_risk_dir,".tif$",full.names = T)
     
   # 4.1) Multiply Hazard Risk by Exposure #####
+    # Note if you are finding the parallel processing is not working reload /reimport packages and functions.
     
      risk_x_exposure<-function(file,
                                save_dir,
                                variable,
                                overwrite,
-                               crop_exposure_path,
-                               livestock_exposure_path,
-                               crop_choices){
+                               crop_exposure_path=NULL,
+                               livestock_exposure_path=NULL,
+                               crop_choices,
+                               verbose=F){
+      if(verbose){print(file)}
+       
+      data<-terra::rast(file)
       crop<-unlist(data.table::tstrsplit(basename(file),"-",keep=1))
       save_name<-file.path(save_dir,gsub(".tif",paste0("-",variable,".tif"),basename(file)))
 
       if(!file.exists(save_name)|overwrite==T){
-        data<-terra::rast(file)
         
-        if(!is.na(crop_exposure_path)){
+        if(!is.null(crop_exposure_path)){
           crop_exposure<-terra::rast(crop_exposure_path)
         }
         
-        if(!is.na(livestock_exposure_path)){
+        if(!is.null(livestock_exposure_path)){
           livestock_exposure<-terra::rast(livestock_exposure_path)
         }
         
@@ -803,7 +774,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
             exposure<-crop_exposure[[crop]]
             data_ex<-data*exposure
           }else{
-            if(variable !="ha"){
+            if(variable !="ha" & !crop %in% crop_choices){
             exposure<-livestock_exposure[[crop]]
             data_ex<-data*exposure
             }else{
@@ -829,7 +800,6 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
 
       if(do_vop){
         future::plan("multisession", workers = worker_n)
-        
         future.apply::future_lapply(files,
                                     risk_x_exposure,             
                                     save_dir=haz_risk_vop_dir,
@@ -838,7 +808,6 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
                                     crop_exposure = crop_vop_usd17_path,
                                     livestock_exposure=livestock_vop_usd17_path,
                                     crop_choices=crop_choices)
-        
         future::plan(sequential)
       }
       
@@ -852,7 +821,6 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
                                     crop_exposure = crop_vop_path,
                                     livestock_exposure=livestock_vop_path,
                                     crop_choices=crop_choices)
-        
         future::plan(sequential)
       }
       
@@ -864,24 +832,19 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
                                     variable="ha",
                                     overwrite = overwrite,
                                     crop_exposure = crop_ha_path,
-                                    livestock_exposure=NA,
                                     crop_choices=crop_choices)
-        
         future::plan(sequential)
       }
       
       if(do_n){
         future::plan("multisession", workers = worker_n)
-        
         future.apply::future_lapply(files,
                                     risk_x_exposure,             
                                     save_dir=haz_risk_n_dir,
                                     variable="n",
                                     overwrite = overwrite,
-                                    crop_exposure = NA,
                                     livestock_exposure=livestock_no_path,
                                     crop_choices=crop_choices)
-        
         future::plan(sequential)
       }
   # 4.2) Extract Risk x Exposure by Geography #####
@@ -894,6 +857,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
                            interactions=INT,
                            folder=haz_risk_vop_dir,
                            overwrite=overwrite,
+                           Geographies=Geographies,
                            rm_crop=NULL,
                            rm_haz=NULL)
       }
@@ -903,6 +867,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
                            interactions=INT,
                            folder=haz_risk_vop17_dir,
                            overwrite=overwrite,
+                           Geographies=Geographies,
                            rm_crop=NULL,
                            rm_haz=NULL)
     }
@@ -912,6 +877,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
                            interactions=INT,
                            folder=haz_risk_vop_dir,
                            overwrite=overwrite,
+                           Geographies=Geographies,
                            rm_crop=NULL,
                            rm_haz=NULL)
       }
@@ -921,6 +887,7 @@ haz_timeseries_sd_tab<-rbindlist(lapply(1:length(levels),FUN=function(i){
                              interactions=INT,
                              folder=haz_risk_vop_dir,
                              overwrite=overwrite,
+                             Geographies=Geographies,
                              rm_crop=NULL,
                              rm_haz=NULL)
       }

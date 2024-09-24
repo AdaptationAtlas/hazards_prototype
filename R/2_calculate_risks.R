@@ -237,7 +237,6 @@ s3_folder_path <- file.path("risk_prototype/data/hazard_timeseries",timeframe_ch
 # List files in the specified S3 bucket and prefix
 file_list<-s3$dir_ls(file.path(bucket_name_s3,s3_folder_path))
 file_list<-data.table(file_list=grep(".tif",file_list,value=T))
-
 file_list<-file_list[,new_files:=gsub(file.path(bucket_name_s3,s3_folder_path),paste0(haz_timeseries_dir,"/"),file_list)]
 
 # Here you can check if there are issues with file downloads by comparing the local size to the s3 size
@@ -279,8 +278,12 @@ if(!overwrite){
     }
     
   # Set up the future plan for parallel processing
-  future::plan(multisession, workers = 4) # Adjust the number of workers based on your system's capabilities
-  
+    if (worker_n == 1) {
+      future::plan("sequential")
+    } else {
+      future::plan("multisession", workers = worker_n)
+    }
+    
     
     # Enable progressr
     progressr::handlers(global = TRUE)
@@ -374,7 +377,11 @@ overwrite<-F
 n<-0
 
 registerDoFuture()
-plan("multisession", workers = worker_n)
+if (worker_n == 1) {
+  future::plan("sequential")
+} else {
+  future::plan("multisession", workers = worker_n)
+}
 
 # Enable progressr
 progressr::handlers(global = TRUE)
@@ -426,7 +433,11 @@ files<-list.files(haz_time_class_dir,full.names = T)
 overwrite<-F
 
 registerDoFuture()
-plan("multisession", workers = worker_n)
+if (worker_n == 1) {
+  future::plan("sequential")
+} else {
+  future::plan("multisession", workers = worker_n)
+}
 
 # Enable progressr
 progressr::handlers(global = TRUE)
@@ -490,11 +501,15 @@ haz_class_scenarios <- mapply(paste, list1, list2, MoreArgs = list(sep = "-"))
 # Check names are unique
 sum(table(haz_class_files2)>1)
 
-overwrite<-F
+overwrite<-T
 crops<-haz_class[,unique(crop)]
 
 registerDoFuture()
-plan("multisession", workers = worker_n)
+if (worker_n == 1) {
+  future::plan("sequential")
+} else {
+  future::plan("multisession", workers = worker_n)
+}
 
 # Enable progressr
 progressr::handlers(global = TRUE)
@@ -573,7 +588,11 @@ files<-files[!grepl("ENSEMBLEsd",files)]
 overwrite<-F
 
 registerDoFuture()
-plan("multisession", workers = worker_n)
+if (worker_n == 1) {
+  future::plan("sequential")
+} else {
+  future::plan("multisession", workers = worker_n)
+}
 
 
 # Enable progressr
@@ -593,10 +612,10 @@ p<-with_progress({
     if((!file.exists(file))|overwrite){
       data<-terra::rast(files[i])
       data<-terra::app(data,fun="mean",na.rm=T)
-      terra::writeRaster(data,filename = file,overwrite=T)
+      terra::writeRaster(data,filename = file,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"))
       
       data<-terra::app(data,fun="sd",na.rm=T)
-      terra::writeRaster(data,filename = file2,overwrite=T)
+      terra::writeRaster(data,filename = file2,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"))
     }
     # Display progress
     progress(sprintf("File %d/%d", i, length(files)))
@@ -723,7 +742,7 @@ if(F){
   haz_class_files2<-gsub("2021_2040_","2021_2040-",haz_class_files2)
   haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
   
-  # 5.2) Interactions: Calculate interactions ####
+  # 5.2) Calculate interactions ####
   combinations[,code:=paste(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet)]
   combinations<-combinations[order(code)]
   
@@ -733,7 +752,11 @@ if(F){
   # Estimate the RAM available therefore the number of workers
   workers_int<- floor(free_RAM()*0.6/10^6/5)
   if(workers_int>worker_n){workers_int<-worker_n}
-  plan("multisession", workers =workers_int)
+  if (workers_int == 1) {
+    future::plan("sequential")
+  } else {
+    future::plan("multisession", workers = workers_int)
+  }
   
   # Enable progressr
   progressr::handlers(global = TRUE)
@@ -843,7 +866,7 @@ if(F){
    print(n_length[n_length!=40])
  }
  
-  # 5.3) Interactions: For each crop combine hazards into a single file and add to hazard_risk dir #####
+  # 5.3) Per crop combine hazards into a single file #####
  overwrite<-T
   combinations_ca<-rbind(combinations_c,combinations_a)[,combo_name:=paste0(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet,crop,severity_class)
                                                         ][,folder:=paste0(haz_time_int_dir,"/",combo_name)
@@ -857,7 +880,12 @@ if(F){
   combinations_crops<-combinations_ca[,unique(crop)]
   
   registerDoFuture()
-  plan("multisession", workers = worker_n)
+  if (worker_n == 1) {
+    future::plan("sequential")
+  } else {
+    future::plan("multisession", workers = worker_n)
+  }
+  
   
   # Enable progressr
   progressr::handlers(global = TRUE)
