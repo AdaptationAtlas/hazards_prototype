@@ -680,15 +680,15 @@ if(F){
     crop_focus<-crop_choices2[i]
     rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
       severity_focus<-severity_classes$class[j]
-      X<-data.table(expand.grid(heat=crop_heat,wet=crop_wet,dry=crop_dry,stringsAsFactors=F))
+      X<-data.table(expand.grid(heat_simple=crop_heat,wet_simple=crop_wet,dry_simple=crop_dry,stringsAsFactors=F))
       haz_rename<-haz_class[crop==crop_focus & description==severity_focus,
                             list(old=index_name2,new=gsub(".tif","",filename))]
 
       replace_exact_matches(X$heat,haz_rename$old, haz_rename$new)
 
-      X[,heat:=replace_exact_matches(heat,old_values=haz_rename$old,new_values = haz_rename$new)
-        ][,dry:=replace_exact_matches(dry,old_values=haz_rename$old,new_values = haz_rename$new)
-          ][,wet:=replace_exact_matches(wet,old_values=haz_rename$old,new_values = haz_rename$new)
+      X[,heat:=replace_exact_matches(heat_simple,old_values=haz_rename$old,new_values = haz_rename$new)
+        ][,dry:=replace_exact_matches(dry_simple,old_values=haz_rename$old,new_values = haz_rename$new)
+          ][,wet:=replace_exact_matches(wet_simple,old_values=haz_rename$old,new_values = haz_rename$new)
             ][,severity_class:=severity_focus
               ][,crop:=crop_focus]
       X
@@ -708,13 +708,13 @@ if(F){
     crop_focus<-livestock_choices[i]
     rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
       severity_focus<-severity_classes$class[j]
-      X<-data.table(expand.grid(heat=animal_heat,wet=animal_wet,dry=animal_dry,stringsAsFactors=F))
+      X<-data.table(expand.grid(heat_simple=animal_heat,wet_simple=animal_wet,dry_simple=animal_dry,stringsAsFactors=F))
       haz_rename<-haz_class[crop==crop_focus & description==severity_focus,
                             list(old=index_name2,new=gsub(".tif","",filename))]
       
-      X[,heat:=replace_exact_matches(heat,old_values=haz_rename$old,new_values = haz_rename$new)
-      ][,dry:=replace_exact_matches(dry,old_values=haz_rename$old,new_values = haz_rename$new)
-      ][,wet:=replace_exact_matches(wet,old_values=haz_rename$old,new_values = haz_rename$new)
+      X[,heat:=replace_exact_matches(heat_simple,old_values=haz_rename$old,new_values = haz_rename$new)
+      ][,dry:=replace_exact_matches(dry_simple,old_values=haz_rename$old,new_values = haz_rename$new)
+      ][,wet:=replace_exact_matches(wet_simple,old_values=haz_rename$old,new_values = haz_rename$new)
       ][,severity_class:=severity_focus
       ][,crop:=crop_focus]
       X
@@ -876,10 +876,11 @@ if(F){
   combinations_ca[,dry1:=stringi::stri_replace_all_regex(dry,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,dry1:=unlist(tstrsplit(dry1,"-",keep=1))]
   combinations_ca[,wet1:=stringi::stri_replace_all_regex(wet,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,wet1:=unlist(tstrsplit(wet1,"-",keep=1))]
   combinations_ca[,combo_name1:=paste0(c(dry1[1],heat1[1],wet1[1]),collapse="+"),by=list(dry1,heat1,wet1)]
+  combinations_ca[,combo_name_simple:=paste0(c(dry_simple[1],heat_simple[1],wet_simple[1]),collapse="+"),by=list(dry,heat,wet)]
   
   combinations_crops<-combinations_ca[,unique(crop)]
   
-  registerDoFuture()
+  doFuture::registerDoFuture()
   if (worker_n == 1) {
     future::plan("sequential")
   } else {
@@ -899,8 +900,6 @@ if(F){
     foreach(i = 1:length(combinations_crops), .packages = c("terra", "data.table", "progressr")) %dopar% {
     #  for(i in 1:length(combinations_crops)){
       
-      crop_combos<-combinations_ca[crop==combinations_crops[i],combo_name1]
-  
       for(j in 1:nrow(severity_classes)){
       
       # Display progress
@@ -916,7 +915,7 @@ if(F){
         data<-terra::rast(lapply(1:nrow(subset),FUN=function(k){
           files<-list.files(subset[k,folder],full.names = T)
           data<-terra::rast(files)
-          names(data)<-paste0(names(data),"-",subset[k,combo_name1],"-",combinations_crops[i],"-",subset[k,severity_class])
+          names(data)<-paste0(names(data),"-",subset[k,combo_name_simple],"-",combinations_crops[i],"-",subset[k,severity_class])
           data
         }))
         
