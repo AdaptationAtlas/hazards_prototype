@@ -1,7 +1,14 @@
-# 0) Load packages and functions ####
+# 0.1) Choose timeframe #####
+# Choose season calculation method
+timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
+                     "sos_primary_fixed_3","sos_primary_fixed_4","sos_primary_fixed_5","sos_secondary_eos",
+                     "sos_secondary_fixed_3","sos_secondary_fixed_4","sos_secondary_fixed_5")
 
-# Increase download timeout
-options(timeout = 600)
+timeframe_choice_index<-2
+timeframe_choice <- timeframe_choices[timeframe_choice_index]
+cat("You selected:", timeframe_choice, "\n")
+
+# 0.2)Load packages and functions #####
 
 # Install and load pacman if not already installed
 if (!require("pacman", character.only = TRUE)) {
@@ -23,17 +30,10 @@ pacman::p_load(char=packages)
 # Source functions used in this workflow
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
-# 1) Setup server####
-# Choose season calculation method
-timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
-                     "sos_primary_fixed_3","sos_primary_fixed_4","sos_primary_fixed_5","sos_secondary_eos",
-                     "sos_secondary_fixed_3","sos_secondary_fixed_4","sos_secondary_fixed_5")
+# 1) Setup workspace ####
 
-  # 1.1) Choose timeframe #####
-cat("Please choose a timeframe:\n")
-timeframe_choice_index <- menu(timeframe_choices, title = "Select a timeframe")
-timeframe_choice <- timeframe_choices[timeframe_choice_index]
-cat("You selected:", timeframe_choice, "\n")
+# Increase download timeout
+options(timeout = 600)
 
 # Increase GDAL cache size
 terra::gdalCache(60000)
@@ -44,9 +44,7 @@ terra::free_RAM()/10^6
 
 worker_n<-20
 
-  # 1.2) Where should workflow outputs be stored? #####
-
-# Record R-project location
+  # 1.1) Record R-project location #####
 # Function to add or update an environment variable in .Renviron file
 set_env_variable <- function(var_name, var_value, renviron_file = "~/.Renviron") {
   # Read the .Renviron file if it exists
@@ -86,7 +84,7 @@ if (!nzchar(Sys.getenv("project_dir"))) {
 # Verify the environment variable is set
 (project_dir<-Sys.getenv("project_dir"))
 
-# Cglabs
+# 1.2) Change working directory according to compute facility #####
 Cglabs<-F
 if(project_dir=="/home/jovyan/atlas/hazards_prototype"){
   working_dir<-"/home/jovyan/common_data/hazards_prototype"
@@ -102,6 +100,10 @@ if(project_dir=="C:/rprojects/hazards_prototype"){
   working_dir<-"C:/rprojects/common_data/hazards_prototype"
 }
 
+if(project_dir=="/Users/pstewarda/Documents/rprojects/hazards_prototype"){
+  working_dir<-"/Users/pstewarda/Documents/rprojects/common_data"
+}
+
 # Afrilabs
 Aflabs<-F
 if(project_dir=="/home/psteward/rprojects/hazards_prototype"){
@@ -115,9 +117,8 @@ if(!dir.exists(working_dir)){
 
 setwd(working_dir)
 
-# 2) Set directories ####
-  # 2.1) Local folders #####
-
+# 2) Create directory structures ####
+  # 2.1) Local directories #####
     # 2.1.1) Outputs ######
     haz_timeseries_dir<-file.path("Data/hazard_timeseries",timeframe_choice)
     if(!dir.exists(haz_timeseries_dir)){dir.create(haz_timeseries_dir,recursive=T)}
@@ -309,11 +310,11 @@ setwd(working_dir)
       dir.create(solution_tables_dir,recursive=T)
     }
     
-  # 2.2) Atlas s3 bucket #####
+  # 2.2) Cloud directories (Atlas s3 bucket) #####
   bucket_name <- "http://digital-atlas.s3.amazonaws.com"
   bucket_name_s3<-"s3://digital-atlas"
   s3<-s3fs::S3FileSystem$new(anonymous = T)
-# 3) Download key datasets ####
+# 3) Download data ####
   # 3.1) Geoboundaries #####
   update<-F
   
