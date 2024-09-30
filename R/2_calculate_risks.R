@@ -481,7 +481,6 @@ haz_class_files2<-gsub("_sum","",haz_class_files2)
 haz_class_files2<-gsub("max","_max",haz_class_files2)
 haz_class_files2<-gsub("mean","_mean",haz_class_files2)
 
-
 haz_class_scenarios<-gsub("historical_","historic-historic-",haz_class_files2)
 haz_class_scenarios<-gsub("ssp245_ENSEMBLE_mean_","ssp245-",haz_class_scenarios)
 haz_class_scenarios<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",haz_class_scenarios)
@@ -551,11 +550,9 @@ p<-with_progress({
         
         files<-haz_class_files[unlist(files)]
         
-        
         if(any(table(layer_names))>1){
           stop("Non-unique layer names are present!")
         }
-        
 
         data<-terra::rast(file.path(haz_time_risk_dir,files))
         names(data)<-layer_names
@@ -660,7 +657,7 @@ if(F){
 
 
 # 5) Interactions ####
-  # 5.1) Choose Interaction Variables ####
+  # 5.1) Set Interaction Variables ####
   # Crops
   # Set variables that can be interacted for heat wet and dry
   crop_heat<-c("NTx35","TAVG_G","NTxS")
@@ -876,7 +873,7 @@ if(F){
   combinations_ca[,dry1:=stringi::stri_replace_all_regex(dry,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,dry1:=unlist(tstrsplit(dry1,"-",keep=1))]
   combinations_ca[,wet1:=stringi::stri_replace_all_regex(wet,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,wet1:=unlist(tstrsplit(wet1,"-",keep=1))]
   combinations_ca[,combo_name1:=paste0(c(dry1[1],heat1[1],wet1[1]),collapse="+"),by=list(dry1,heat1,wet1)]
-  combinations_ca[,combo_name_simple:=paste0(c(dry_simple[1],heat_simple[1],wet_simple[1]),collapse="+"),by=list(dry,heat,wet)]
+  combinations_ca[,combo_name_simple:=paste0(c(dry_simple[1],heat_simple[1],wet_simple[1]),collapse="+"),by=list(dry_simple,heat_simple,wet_simple)]
   
   combinations_crops<-combinations_ca[,unique(crop)]
   
@@ -903,9 +900,9 @@ if(F){
       for(j in 1:nrow(severity_classes)){
       
       # Display progress
-      cat('\r                                                                                                                                                           ')
-      cat('\r',paste("crop_choices:",i,"/",length(combinations_crops),"| Severity Class:",j,"/",nrow(severity_classes)))
-      flush.console()
+      #cat('\r                                                                                                                                                           ')
+      #cat('\r',paste("crop_choices:",i,"/",length(combinations_crops),"| Severity Class:",j,"/",nrow(severity_classes)))
+      #flush.console()
       
       save_file<-paste0(haz_risk_dir,"/",combinations_crops[i],"-",tolower(severity_classes$class[j]),"-int.tif")
 
@@ -918,6 +915,13 @@ if(F){
           names(data)<-paste0(names(data),"-",subset[k,combo_name_simple],"-",combinations_crops[i],"-",subset[k,severity_class])
           data
         }))
+        
+        x<-table(names(data))
+        x<-x[x>1]
+        
+        if(length(x)>0){
+        stop(paste("i = ",i,"| j = ",j,"Duplicate layers present."))
+        }
         
         terra::writeRaster(data,filename = save_file,overwrite=T)
       }
