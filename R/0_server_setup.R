@@ -603,7 +603,7 @@ setwd(working_dir)
   # 3.13) Hydrobasins #####
   # https://grdc.bafg.de/GRDC/EN/02_srvcs/22_gslrs/223_WMO/wmo_regions_node.html
   if(!file.exists(file.path(hydrobasins_dir,"wmobb_rivnets_Q00_01.json"))){
-    url<-"https://grdc.bafg.de/SharedDocs/ExterneLinks/GRDC/wmobb_json_zip.zip?__blob=publicationFile"
+    url<-"https://grdc.bafg.de/downloads/wmobb_json.zip"
     local_path<-file.path(hydrobasins_dir,basename(url))
     download.file(url,local_path)
     unzip(local_path,exdir=dirname(local_path))
