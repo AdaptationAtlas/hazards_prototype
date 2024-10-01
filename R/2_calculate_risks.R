@@ -8,6 +8,7 @@ packages <- c("terra",
               "future",
               "future.apply",
               "progressr",
+              "parallel",
               "doFuture",
               "httr",
               "s3fs",
@@ -39,6 +40,9 @@ load_packages_prefer_user <- function(packages) {
 load_packages_prefer_user(packages)
 
 # 0.2) Set up workspace ####
+# Set number of workers
+worker_n<-parallel::detectCores()-1
+
 # Set scenarios and time frames to analyse
 Scenarios<-c("ssp245","ssp585")
 Times<-c("2021_2040","2041_2060")
@@ -333,6 +337,9 @@ if(!overwrite){
                 stop(sprintf("File size mismatch for %s: S3 size = %d, Downloaded size = %d",
                              file_list$file_list[i], s3_file_size, downloaded_file_size))
               }
+              
+              # This should not return an error, if it does it will trigger the tryCatch
+              tail(rast(file_list$new_files[i]))
             }
             
             # If download and size check succeed, break the loop
@@ -359,6 +366,29 @@ if(!overwrite){
     print(p)
   
   future::plan(sequential)
+  }
+
+# Check if files can load 
+files<-list.files(haz_timeseries_dir,".tif",full.names = T)
+
+# Function to check if a file can be loaded by terra::rast
+load_rast <- function(file) {
+  tryCatch({
+  suppressWarnings(tail(rast(file)) ) # Suppress warnings while loading the file
+    TRUE                          # If successful, return TRUE
+  }, error = function(e) {
+    FALSE                         # If there's an error, return FALSE
+  })
+}
+
+# Apply the load_rast function to each file
+load_results <- pbapply::pbsapply(files, load_rast)
+(bad_files<-files[!load_results])
+
+# If you finding files will not open delete them then run the download process again
+if(length(bad_files)>0){
+  unlink(bad_files)
+  stop("Bad downloads, these have been deleted please run through the download section again")
   }
 
 # 1) Classify time series climate variables based on hazard thresholds ####
@@ -394,13 +424,13 @@ p<-with_progress({
   
   foreach(i = 1:nrow(Thresholds_U), .packages = c("terra", "progressr")) %dopar% {
     
-  #for(i in 1:nrow(Thresholds_U)){
+    # for(i in 1:nrow(Thresholds_U)){
     index_name<-Thresholds_U[i,code2]
     files_ss<-grep(index_name,files,value=T)
     progress(sprintf("Threshold %d/%d", i, nrow(Thresholds_U)))
     
     for(j in 1:length(files_ss)){
-      #cat(i,"-",j,"\n")
+     # cat(i,"-",j,"\n")
   
       file<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),file.path(haz_time_class_dir,"/",tail(tstrsplit(files_ss[j],"/"),1)),fixed = T)
       
