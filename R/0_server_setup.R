@@ -517,8 +517,6 @@ setwd(working_dir)
   }
   
   # 3.8) Human population #####
-  # There is an issue with this folder we are trying fix,we cannot seem to change the policy to public-read
-  if(F){
     # Specify s3 prefix (folder path)
     folder_path <- "population/worldpop_2020/"
   
@@ -533,9 +531,6 @@ setwd(working_dir)
         s3$file_download(files_s3[i],file)
       }
     }
-  }  
-
-
   # 3.9) GLPS #####
   local_dir<-glps_dir
   # List files in the specified S3 bucket and prefix
