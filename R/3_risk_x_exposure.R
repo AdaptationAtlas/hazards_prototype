@@ -1,13 +1,14 @@
 # Please run 0_server_setup.R before executing this script
-# If you are experiencing issues with the admin_extract functions, delete the exactextractr package and use this version:  remotes::install_github("isciences/exactextractr")
-
+# Please run 0.0.1_process_exposure.R before executing this script
+# Please run 0.3_fao_producer_prices.R to 0.4_fao_producer_prices_livestock.R before running this script
+# Please run 1_make_timeseries.R if time series have not been calculated or are not available on the server
+# Please run 2_calculate_risks.R before executing this script
 # a) Install and load packages ####
 packages <- c("terra", 
               "data.table", 
               "exactextractr",
               "s3fs",
               "sf",
-              #"sfarrow",
               "geoarrow", 
               "arrow",
               "doFuture",
@@ -18,7 +19,7 @@ packages <- c("terra",
 
 # Call the function to install and load packages
 pacman::p_load(char=packages)
-
+# If you are experiencing issues with the admin_extract functions, delete the exactextractr package and use this version:  remotes::install_github("isciences/exactextractr")
 
 # b) Load functions & wrappers ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
