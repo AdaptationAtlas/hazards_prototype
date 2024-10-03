@@ -11,6 +11,7 @@ packages <- c("terra",
               "sf",
               "geoarrow", 
               "arrow",
+              "sfarrow", 
               "doFuture",
               "stringr", 
               "stringi",
@@ -65,6 +66,7 @@ crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
 #### Load datasets (non hazards)
 
 # 0) Load and prepare admin vectors and exposure rasters, extract exposure by admin ####
+# Note this sections has been moved to 0.0.1_process_exposure.R so can be simplied to loading the datasets ####
   # 0.1) Geographies #####
   Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
     file<-geo_files_local[i]
