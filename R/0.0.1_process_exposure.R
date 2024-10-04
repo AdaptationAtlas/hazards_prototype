@@ -1,4 +1,5 @@
 # Please run 0_server_setup.R before executing this script
+# For livestock vop 2017 you will need to run 0.4_fao_producer_prices_livestock.R, after running this script and then rerun this script
 # a) Load R functions & packages ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
@@ -268,7 +269,7 @@ source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/
         livestock_vop<-terra::rast(livestock_vop_file)
       }
       
-      # USD 2017 (see 0_fao_producer_prices_livestock.R)
+      # USD 2017 (see 0.4_fao_producer_prices_livestock.R)
       livestock_vop17_file<-paste0(exposure_dir,"/livestock_vop_usd17.tif")
       
       if(!file.exists(livestock_vop17_file)){
