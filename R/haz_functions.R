@@ -1767,7 +1767,7 @@ restructure_parquet<-function(filename,save_dir,severity,overwrite=F,crops,lives
 #' haz_risk_exp_extract(severity_classes = df_severity, interactions = TRUE, folder = "/path/to/data", overwrite = FALSE, rm_haz = c("flood"), rm_crop = NULL)
 #' @export
 # Function to extract hazard risk and exposure data for specified severity classes and save in Parquet format.
-haz_risk_exp_extract <- function(severity_classes, interactions, folder, overwrite = F, rm_haz = NULL, rm_crop = NULL) {
+haz_risk_exp_extract <- function(severity_classes, interactions, folder, overwrite = F, rm_haz = NULL, rm_crop = NULL,Geographies) {
   
   # List all TIFF files in the specified folder.
   files <- list.files(folder, ".tif$", full.names = T)
