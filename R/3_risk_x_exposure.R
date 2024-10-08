@@ -908,24 +908,41 @@ arrow::write_parquet(haz_timeseries_tab,filename)
   for(SEV in tolower(severity_classes$class)){
     # Restructure Extracted Data ####
     for(INT in c(T,F)){
-      print(paste0(SEV," - interaction = ",INT))
-      # Vop
-      recode_restructure_wrap(folder=haz_risk_vop_dir,
-                              file="adm",
-                              crops=c("generic",crop_choices),
-                              livestock=livestock_choices,
-                              exposure_var="vop",
-                              severity=SEV,
-                              overwrite=overwrite,
-                              levels=levels,
-                              interaction=INT,
-                              hazards=haz_meta[,unique(type)])
+      if(do_vop==T){
+        cat(SEV,"- interaction =",INT,"variable = vop")
+        recode_restructure_wrap(folder=haz_risk_vop_dir,
+                                file="adm",
+                                crops=crop_choices,
+                                livestock=livestock_choices,
+                                exposure_var="vop",
+                                severity=SEV,
+                                overwrite=overwrite,
+                                levels=levels,
+                                interaction=INT,
+                                hazards=haz_meta[,unique(type)])
+      }
+      
+      if(do_vop17==T){
+        cat(SEV,"- interaction =",INT,"variable = vop17")
+        # Vop
+        recode_restructure_wrap(folder=haz_risk_vop17_dir,
+                                file="adm",
+                                crops=crop_choices,
+                                livestock=livestock_choices,
+                                exposure_var="vop",
+                                severity=SEV,
+                                overwrite=overwrite,
+                                levels=levels,
+                                interaction=INT,
+                                hazards=haz_meta[,unique(type)])
+      }
       
       # Harvested area
       if(do_ha==T){
+        cat(SEV,"- interaction =",INT,"variable = do_ha")
         recode_restructure_wrap(folder=haz_risk_ha_dir,
                                 file="adm",
-                                crops=c("generic",crop_choices),
+                                crops=crop_choices,
                                 livestock=livestock_choices,
                                 exposure_var="ha",
                                 Severity=SEV,
@@ -937,9 +954,10 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       
       # Numbers
       if(do_n==T){
+        cat(SEV,"- interaction =",INT,"variable = do_n")
         recode_restructure_wrap(folder=haz_risk_n_dir,
                                 file="adm",
-                                crops=c("generic",crop_choices),
+                                crops=crop_choices,
                                 livestock=livestock_choices,
                                 exposure_var="number",
                                 Severity=SEV,
