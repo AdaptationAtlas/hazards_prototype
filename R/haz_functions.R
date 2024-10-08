@@ -1994,7 +1994,7 @@ recode_restructure_wrap <- function(folder, file, crops, livestock, exposure_var
       # Reshape the data table for restructuring.
       data <- data.table(melt(data, id.vars = admins))
       
-      # Remove any ENSEMBLEsd rows that have accidently been included
+      # Remove any ENSEMBLEsd rows that have accidentally been included
       data<-data[!grepl("ENSEMBLEsd",variable)]
       
       # Apply the recoding and restructuring process.
