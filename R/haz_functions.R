@@ -2562,26 +2562,39 @@ makeObjectPublic <- function(s3_uri, bucket = "digital-atlas", directory = TRUE)
                      Body = file.path(tmp_dir, 'current_policy.json'))
   return(new_policy)
 }
-#' Upload Files to S3
+#' Upload Files to S3 in Parallel with Retry and Progress Tracking
 #'
-#' This function uploads local files to an S3 bucket, optionally setting the access mode.
+#' This function uploads a list of files to an AWS S3 bucket in parallel. It provides
+#' retry logic for failed uploads, progress tracking using the `progressr` package, 
+#' and allows for setting file permissions on S3. It can handle overwriting and 
+#' skipping already uploaded files.
 #'
-#' @param files A character vector of local file paths to be uploaded.
-#' @param s3_file_names A character vector of filenames to use in S3 (optional).
-#' @param folder A character string specifying a local folder to list files from (optional).
-#' @param selected_bucket A character string specifying the S3 bucket.
-#' @param new_only Logical; whether to upload only new files. Default is \code{FALSE}.
-#' @param max_attempts Integer; maximum number of attempts for each file upload. Default is 3.
-#' @param overwrite Logical; whether to overwrite existing files. Default is \code{FALSE}.
-#' @param mode A character string specifying the access mode ("private", "public-read"). Default is "private".
-#' @param directory A logical value indicating if "/*" should be appended to the end of the path for globbing. Default is TRUE.
-#' @return None. This function uploads files to an S3 bucket.
-#' @importFrom paws s3
-#' @importFrom utils flush.console
+#' @param files A character vector of file paths to upload. If `folder` is specified, 
+#' this is populated with the files in the folder.
+#' @param s3_file_names Optional character vector of S3 file names. Must be the same 
+#' length as `files`. If NULL, uses the base file names of the local files.
+#' @param folder Optional. A folder containing files to upload. If provided, the `files`
+#' argument is ignored.
+#' @param selected_bucket A string specifying the name of the S3 bucket to upload the files to.
+#' @param new_only Logical. If TRUE, only uploads files that are not already present in the S3 bucket.
+#' @param max_attempts Integer. The maximum number of attempts to retry failed uploads. Default is 3.
+#' @param overwrite Logical. If TRUE, files in the S3 bucket are overwritten. If FALSE, skips already existing files.
+#' @param mode A character string specifying the S3 permissions for the uploaded files. Defaults to "private".
+#' @param directory Logical. If `mode` is "public-read", applies public access to the whole S3 directory. Default is TRUE.
+#' @param workers Integer. The number of workers to use for parallel uploads. Default is 2.
+#'
+#' @return None. This function is called for its side effects of uploading files to S3.
+#' 
 #' @examples
 #' \dontrun{
-#' upload_files_to_s3(files = c("file1.txt", "file2.txt"), selected_bucket = "s3://your-bucket-name")
+#' upload_files_to_s3(
+#'   files = c("file1.csv", "file2.csv"),
+#'   selected_bucket = "my-bucket",
+#'   overwrite = FALSE,
+#'   workers = 4
+#' )
 #' }
+#'
 #' @export
 upload_files_to_s3 <- function(files,
                                s3_file_names = NULL, 
@@ -2591,66 +2604,101 @@ upload_files_to_s3 <- function(files,
                                max_attempts = 3, 
                                overwrite = FALSE,
                                mode = "private",
-                               directory=T) {
+                               directory = TRUE,
+                               workers = 1) {
+  
   s3 <- paws::s3()
   
-  # Create the s3 directory if it does not already exist
+  # Enable progressr handlers for progress tracking
+  progressr::handlers(global = TRUE)
+  progressr::handlers("progress")  # Use a parallel-friendly handler
+  
+  # Ensure the S3 directory exists, create if not
   if (!s3_dir_exists(selected_bucket)) {
     s3_dir_create(selected_bucket)
   }
   
-  # List files if a folder location is provided
+  # If a folder is provided, use files from that folder
   if (!is.null(folder)) {
     files <- list.files(folder, full.names = TRUE)
   }
   
+  # If not overwriting, check for existing files in S3 and filter out
   if (!overwrite) {
-    # List files in the s3 bucket
+    # List existing files in S3 bucket
     files_s3 <- basename(s3_dir_ls(selected_bucket))
-    # Remove any files that already exist in the s3 bucket
+    # Keep only new files that are not already in S3
     files <- files[!basename(files) %in% files_s3]
   }
   
-  for (i in seq_along(files)) {
-    cat('\r', paste("File:", i, "/", length(files)), " | ", basename(files[i]), "                                                 ")
-    flush.console()
-    
-    if (is.null(s3_file_names)) {
-      s3_file_path <- paste0(selected_bucket, "/", basename(files[i]))
-    } else {
-      if (length(s3_file_names) != length(files)) {
-        stop("s3 filenames provided different length to local files")
-      }
-      s3_file_path <- paste0(selected_bucket, "/", s3_file_names[i])
-    }
-    
+  # Configure parallel processing
+  future::plan(multisession, workers = workers)
+  
+  # Define the file upload function with retry and error handling
+  upload_file <- function(i) {
     tryCatch({
       attempt <- 1
-      while (attempt <= max_attempts) {
-        s3_file_upload(files[i], s3_file_path, overwrite = overwrite)
-        # Check if upload successful
-        file_check <- s3_file_exists(s3_file_path)
+      success <- FALSE
+      
+      while (attempt <= max_attempts && !success) {
+        tryCatch({
+          # Determine S3 file path
+          if (is.null(s3_file_names)) {
+            s3_file_path <- paste0(selected_bucket, "/", basename(files[i]))
+          } else {
+            if (length(s3_file_names) != length(files)) {
+              stop("s3 filenames provided are a different length than local files")
+            }
+            s3_file_path <- paste0(selected_bucket, "/", s3_file_names[i])
+          }
+          
+          # Upload the file
+          s3_file_upload(files[i], s3_file_path, overwrite = overwrite)
+          
+          # Check if the upload was successful
+          file_check <- s3_file_exists(s3_file_path)
+          
+          if (file_check) {
+            success <- TRUE
+            
+            # Set permissions if needed
+            if (mode != "private") {
+              s3_file_chmod(path = s3_file_path, mode = mode)
+            }
+            progress()  # Update progress upon successful upload
+          } else {
+            stop("File upload failed for: ", basename(files[i]))
+          }
+        }, error = function(e) {
+          cat("\nError during upload of file:", basename(files[i]), "- Attempt:", attempt, "\nError Message: ", e$message, "\n")
+        })
         
-        if (mode != "private") {
-          s3_file_chmod(path = s3_file_path, mode = mode)
-        }
-        
-        if (file_check) break # Exit the loop if upload is successful
-        
-        if (attempt == max_attempts && !file_check) {
-          stop("File did not upload successfully after ", max_attempts, " attempts.")
-        }
         attempt <- attempt + 1
+        if (attempt > max_attempts && !success) {
+          cat("Failed to upload file after ", max_attempts, " attempts: ", basename(files[i]), "\n")
+        }
       }
+      
     }, error = function(e) {
       cat("Error during file upload:", e$message, "\n")
     })
   }
   
+  # Progress tracking with progressr
+  with_progress({
+    # Initialize the progress bar
+    progress <- progressr::progressor(along = seq_along(files))
+    
+    # Parallelize file uploads using future.apply::future_lapply
+    future.apply::future_lapply(seq_along(files), FUN = upload_file, future.seed = TRUE)
+  })
+  
+  # If mode is "public-read", make the entire directory public
   if (mode == "public-read") {
-    makeObjectPublic(selected_bucket,directory=directory)
+    makeObjectPublic(selected_bucket, directory = directory)
   }
 }
+
 #' Process ISIMIP Files
 #'
 #' This function processes ISIMIP climate model output files for a given variable, aggregates the data by the growing season, and saves the processed data to a specified directory.
