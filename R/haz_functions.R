@@ -2626,11 +2626,14 @@ upload_files_to_s3 <- function(files,
   # If not overwriting, check for existing files in S3 and filter out
   if (!overwrite) {
     # List existing files in S3 bucket
-    files_s3 <- basename(s3_dir_ls(selected_bucket))
+    bucket_name<-unlist(tstrsplit(selected_bucket,"/",keep=3))
+    prefix<-paste0(tail(unlist(tstrsplit(selected_bucket,paste0(bucket_name,"/"))),1),"/")
+    files_s3 <- basename(s3fs::s3_dir_ls(bucket_name,prefix=prefix))
     # Keep only new files that are not already in S3
     files <- files[!basename(files) %in% files_s3]
   }
   
+  if(length(files)>0){
   # Configure parallel processing
   future::plan(multisession, workers = workers)
   
@@ -2653,6 +2656,9 @@ upload_files_to_s3 <- function(files,
           }
           
           # Upload the file
+          s3_file_exists(s3_file_path)
+          s3_dir_ls(selected_bucket)
+          
           s3_file_upload(files[i], s3_file_path, overwrite = overwrite)
           
           # Check if the upload was successful
@@ -2692,6 +2698,7 @@ upload_files_to_s3 <- function(files,
     # Parallelize file uploads using future.apply::future_lapply
     future.apply::future_lapply(seq_along(files), FUN = upload_file, future.seed = TRUE)
   })
+  }
   
   # If mode is "public-read", make the entire directory public
   if (mode == "public-read") {
