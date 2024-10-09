@@ -906,10 +906,9 @@ arrow::write_parquet(haz_timeseries_tab,filename)
   # 4.3) Restructure Extracted Data ####
 
   for(SEV in tolower(severity_classes$class)){
-    # Restructure Extracted Data ####
     for(INT in c(T,F)){
       if(do_vop==T){
-        cat(SEV,"- interaction =",INT,"variable = vop")
+        cat(SEV,"- interaction =",INT,"variable = vop\n")
         recode_restructure_wrap(folder=haz_risk_vop_dir,
                                 file="adm",
                                 crops=crop_choices,
@@ -923,7 +922,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       }
       
       if(do_vop17==T){
-        cat(SEV,"- interaction =",INT,"variable = vop17")
+        cat(SEV,"- interaction =",INT,"variable = vop17\n")
         # Vop
         recode_restructure_wrap(folder=haz_risk_vop17_dir,
                                 file="adm",
@@ -939,7 +938,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       
       # Harvested area
       if(do_ha==T){
-        cat(SEV,"- interaction =",INT,"variable = do_ha")
+        cat(SEV,"- interaction =",INT,"variable = do_ha\n")
         recode_restructure_wrap(folder=haz_risk_ha_dir,
                                 file="adm",
                                 crops=crop_choices,
@@ -954,7 +953,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       
       # Numbers
       if(do_n==T){
-        cat(SEV,"- interaction =",INT,"variable = do_n")
+        cat(SEV,"- interaction =",INT,"variable = do_n\n")
         recode_restructure_wrap(folder=haz_risk_n_dir,
                                 file="adm",
                                 crops=crop_choices,
