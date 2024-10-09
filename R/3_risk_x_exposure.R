@@ -853,9 +853,9 @@ arrow::write_parquet(haz_timeseries_tab,filename)
   # 4.2) Extract Risk x Exposure by Geography #####
 
     for(INT in c(T,F)){
-    print(paste0("Interactions = ",INT))
-      
       if(do_vop){
+        cat(SEV,"- interaction =",INT,"variable = vop\n")
+        
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
                            folder=haz_risk_vop_dir,
@@ -866,6 +866,8 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       }
     
     if(do_vop17){
+      cat(SEV,"- interaction =",INT,"variable = vop17\n")
+      
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
                            folder=haz_risk_vop17_dir,
@@ -876,6 +878,8 @@ arrow::write_parquet(haz_timeseries_tab,filename)
     }
     
     if(do_ha){
+      cat(SEV,"- interaction =",INT,"variable = ha\n")
+      
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
                            folder=haz_risk_vop_dir,
@@ -886,6 +890,8 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       }
     
     if(do_n){
+      cat(SEV,"- interaction =",INT,"variable = n\n")
+      
         haz_risk_exp_extract(severity_classes,
                              interactions=INT,
                              folder=haz_risk_vop_dir,
@@ -971,14 +977,16 @@ arrow::write_parquet(haz_timeseries_tab,filename)
   
   if(F){
      # Check results
-    (files<-list.files(haz_risk_vop_dir,"_adm_",full.names = T))
+    (files<-list.files(haz_risk_vop17_dir,"_adm_",full.names = T))
     for(i in 1:length(files)){
       file<-files[i]
       print(file)
       data<-arrow::read_parquet(file)
       print(head(data))
       print(data[,unique(hazard)])
+      print(data[,unique(hazard_vars)])
       print(data[,unique(crop)])
   }
   }
+    
   
