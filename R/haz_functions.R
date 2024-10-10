@@ -2607,7 +2607,7 @@ upload_files_to_s3 <- function(files,
                                directory = TRUE,
                                workers = 1) {
   
-  s3 <- paws::s3()
+  s3 <- paws.storage::s3()
   
   # Enable progressr handlers for progress tracking
   progressr::handlers(global = TRUE)
