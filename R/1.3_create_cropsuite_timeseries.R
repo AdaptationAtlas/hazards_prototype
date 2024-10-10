@@ -122,8 +122,8 @@ for(var in cs_vars){
                        min=min(value),
                        max=max(value),
                        median=Hmisc::wtd.quantile(value, coverage_fraction, probs = 0.5),
-                       bin_counts =list(as.numeric(hist(value, breaks = 10, plot = FALSE)$counts)),
-                       bin_width = list(as.numeric(hist(value, breaks = 10, plot = FALSE)$breaks))),
+                       bin_counts =list(as.numeric(hist(value, breaks = seq(-100,100,10), plot = FALSE)$counts)),
+                       bin_width = list(as.numeric(hist(value, breaks = seq(-100,100,10), plot = FALSE)$breaks))),
                        by=.(admin0_name,admin1_name,variable)]
     
     # Split variable name into cols and round decimal places
@@ -334,8 +334,7 @@ for(var in cs_vars){
                                             median=round(Hmisc::wtd.quantile(perc_change, value, probs = 0.5),1),
                                             quantiles=list(round(Hmisc::wtd.quantile(perc_change,value,probs=seq(0,1,0.1)),1))),
                      by=.(admin0_name,admin1_name)
-                     ][,unit="%"
-                       ][,variable:="change in suitable area"]
+                     ][,unit:="%"][,variable:="change in suitable area"]
     
   }
 }
