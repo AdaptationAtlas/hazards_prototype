@@ -374,7 +374,7 @@ for(i in 1:length(leaf_dirs)){
   # 7.2) Extract differences between historical and future scenarios #####
   
   # 7.2.1) Models x GCMS #####~
-  save_file_diff<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff_all.parquet"))
+  save_file_diff<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff.parquet"))
   
   if(!file.exists(save_file_diff)|overwrite){
     
@@ -402,7 +402,6 @@ for(i in 1:length(leaf_dirs)){
     diff_rast<-fut_rast-hist_rast
     return(diff_rast)
   }))
-  
   data_diff_ex<-admin_extract_wrap(data=data_diff, 
                               save_dir=leaf_dirs[i], 
                               filename=paste(filename,"_diff"), 
@@ -437,7 +436,6 @@ for(i in 1:length(leaf_dirs)){
   
   arrow::write_parquet(data_diff_ex,save_file_diff)
   }
-  
   # 7.2.2) GCMS (Average across models) ######
   save_file_diff_gcms<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff_gcms.parquet"))
   
@@ -457,20 +455,19 @@ for(i in 1:length(leaf_dirs)){
       var_focus<-hist_gcms[i,var]
       
       files_hist<-file_index[scenario=="historical" & gcm==gcm_focus & var==var_focus,file_path]
-      hist_rast<-terra::app(terra::rast(file_hist),mean,na.rm=T)
+      hist_rast<-terra::app(terra::rast(files_hist),mean,na.rm=T)
       
       files_fut<-file_index[scenario!="historical" & gcm==gcm_focus & var==var_focus][,SxT:=paste0(scenario,timeframe)]
       files_fut<-split(files_fut,by="SxT")
       
-      fut_rast<-terra::rast(lapply(1:length(files_fut),FUN=function(i){
-        data<-terra::rast(files_fut[[1]]$file_path)
+      fut_rast_mean <- terra::rast(lapply(1:length(files_fut),FUN=function(i){
+        data<-terra::rast(files_fut[[i]]$file_path)
         data_mean<-terra::app(data,mean,na.rm=T)
         names(data_mean)<-names(data)[1]
         return(data_mean)
       }))
 
       diff_rast<-fut_rast_mean-hist_rast
-      names(diff_rast)<-names(fut_rast)[1]
       return(diff_rast)
     }))
     
@@ -514,14 +511,14 @@ for(i in 1:length(leaf_dirs)){
     
     arrow::write_parquet(data_diff_gcm_ex,save_file_diff_gcms)
   }
-  
   # 7.2.3) All (Average across models and gcms) ######
+  
   save_file_diff_all<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff_all.parquet"))
   
   if(!file.exists(save_file_diff_all)|overwrite){
     
     hist_index<-unique(file_index[scenario=="historical" & gcm!="gcm-ensemble-mean",list(scenario,var)])
-    
+    hist_index <- hist_index[-2]
     # Average values over timeseries
     data_diff_all<-terra::rast(lapply(1:nrow(hist_index),FUN=function(i){
       
@@ -531,25 +528,27 @@ for(i in 1:length(leaf_dirs)){
       flush.console()
       
       var_focus<-hist_index[i,var]
+      file_hist<-file_index[scenario=="historical"  & grepl(var_focus, var),file_path]
       
-      files_hist<-file_index[scenario=="historical"  & var==var_focus,file_path]
+      # file_hist<-file_index[scenario=="historical"  & var==var_focus,file_path]
+      
       hist_rast<-terra::app(terra::rast(file_hist),mean,na.rm=T)
       
       files_fut<-file_index[scenario!="historical" & var==var_focus &  gcm!="gcm-ensemble-mean"][,SxT:=paste0(scenario,timeframe)]
+
       files_fut<-split(files_fut,by="SxT")
       
-      fut_rast<-terra::rast(lapply(1:length(files_fut),FUN=function(i){
-        data<-terra::rast(files_fut[[1]]$file_path)
+      fut_rast_mean<-terra::rast(lapply(1:length(files_fut),FUN=function(i){
+        data<-terra::rast(files_fut[[i]]$file_path)
         data_mean<-terra::app(data,mean,na.rm=T)
         names(data_mean)<-names(data)[1]
         return(data_mean)
       }))
       
       diff_rast<-fut_rast_mean-hist_rast
-      names(diff_rast)<-names(fut_rast)[1]
       return(diff_rast)
     }))
-    
+
     data_diff_all_ex<-admin_extract_wrap(data=data_diff_all, 
                                          save_dir=leaf_dirs[i], 
                                          filename=paste(filename,"_diff"), 
@@ -608,7 +607,6 @@ for(i in 1:length(leaf_dirs)){
               ][timeframe %in% c("2040","2041"),timeframe:="2041_2060"
                 ][timeframe %in% c("2020","2021"),timeframe:="2021_2040"]
   
-
   data_ex_stats[,mean_perc_change:=100*(1-(mean+mean_hist)/mean_hist)]
   data_ex_stats[,median_perc_change:=100*(1-(median+median_hist)/median_hist)]
   
