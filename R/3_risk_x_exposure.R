@@ -703,8 +703,8 @@ arrow::write_parquet(haz_timeseries_tab,filename)
   # 4.0) Set-up ####
     do_vop<-T
     do_vop17<-T
-    do_ha<-T
-    do_n<-T
+    do_ha<-F
+    do_n<-F
     overwrite<-T
     crop_vop_path<-file.path(exposure_dir,"crop_vop.tif")
     crop_vop_usd17_path<-file.path(exposure_dir,"crop_vop_usd17.tif")
@@ -854,7 +854,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
 
     for(INT in c(T,F)){
       if(do_vop){
-        cat(SEV,"- interaction =",INT,"variable = vop\n")
+        cat("Interaction =",INT,"variable = vop\n")
         
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
@@ -866,7 +866,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       }
     
     if(do_vop17){
-      cat(SEV,"- interaction =",INT,"variable = vop17\n")
+      cat("Interaction =",INT,"variable = vop17\n")
       
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
@@ -878,7 +878,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
     }
     
     if(do_ha){
-      cat(SEV,"- interaction =",INT,"variable = ha\n")
+      cat("Interaction =",INT,"variable = ha\n")
       
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
@@ -890,7 +890,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       }
     
     if(do_n){
-      cat(SEV,"- interaction =",INT,"variable = n\n")
+      cat("Interaction =",INT,"variable = n\n")
       
         haz_risk_exp_extract(severity_classes,
                              interactions=INT,
@@ -910,7 +910,8 @@ arrow::write_parquet(haz_timeseries_tab,filename)
   }
         
   # 4.3) Restructure Extracted Data ####
-
+  levels<-c(admin0="adm0",admin1="adm1",admin2="adm2")
+    
   for(SEV in tolower(severity_classes$class)){
     for(INT in c(T,F)){
       if(do_vop==T){
@@ -977,7 +978,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
   
   if(F){
      # Check results
-    (files<-list.files(haz_risk_vop17_dir,"_adm_",full.names = T))
+    (files<-list.files(haz_risk_vop_dir,"_adm_",full.names = T))
     for(i in 1:length(files)){
       file<-files[i]
       print(file)
