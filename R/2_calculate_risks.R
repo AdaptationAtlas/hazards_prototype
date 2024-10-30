@@ -390,7 +390,21 @@ load_results <- pbapply::pbsapply(files, load_rast)
 if(length(bad_files)>0){
   unlink(bad_files)
   stop("Bad downloads, these have been deleted please run through the download section again")
-  }
+}
+
+# 0.4) Summarize data availability #####
+file_summary<-basename(files)
+file_summary<-gsub("historical","historic_historic_1995_2014",file_summary)
+file_summary<-gsub("max_max","max-max",file_summary)
+file_summary<-gsub("mean_max","mean-max",file_summary)
+file_summary<-gsub("max_mean","max-mean",file_summary)
+file_summary<-gsub("mean_mean","mean-mean",file_summary)
+
+file_summary<-as.data.table(t(as.data.table(strsplit(file_summary,"_"))))
+colnames(file_summary)<-c("scenario","timeframe","y1","y2","variable","stat")
+file_summary[,timeframe:=paste0(y1,"-",y2)][,c("y1","y2"):=NULL][,stat:=gsub(".tif","",stat)]
+
+dcast(file_summary,formula = scenario+timeframe~variable,fun.aggregate = length)
 
 # 1) Classify time series climate variables based on hazard thresholds ####
 
@@ -425,13 +439,13 @@ p<-with_progress({
   
   foreach(i = 1:nrow(Thresholds_U), .packages = c("terra", "progressr")) %dopar% {
     
-   # for(i in 1:nrow(Thresholds_U)){
+  #for(i in 1:nrow(Thresholds_U)){
     index_name<-Thresholds_U[i,code2]
     files_ss<-grep(index_name,files,value=T)
     progress(sprintf("Threshold %d/%d", i, nrow(Thresholds_U)))
     
     for(j in 1:length(files_ss)){
-     cat(i,"-",j,"\n")
+    # cat(i,"-",j,"\n")
   
       file<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),file.path(haz_time_class_dir,"/",tail(tstrsplit(files_ss[j],"/"),1)),fixed = T)
       
