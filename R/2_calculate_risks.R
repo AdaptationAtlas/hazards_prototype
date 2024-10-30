@@ -309,7 +309,8 @@ if(!overwrite){
       
       # Download files in parallel
       results <- future.apply::future_lapply(1:nrow(file_list), function(i) {
-        progress(sprintf("File %d/%d", i, nrow(file_list)))
+        #progress(sprintf("File %d/%d", i, nrow(file_list)))
+        progress()
         
         # Initialize retry count
         retries <- 0
@@ -424,13 +425,13 @@ p<-with_progress({
   
   foreach(i = 1:nrow(Thresholds_U), .packages = c("terra", "progressr")) %dopar% {
     
-    # for(i in 1:nrow(Thresholds_U)){
+   # for(i in 1:nrow(Thresholds_U)){
     index_name<-Thresholds_U[i,code2]
     files_ss<-grep(index_name,files,value=T)
     progress(sprintf("Threshold %d/%d", i, nrow(Thresholds_U)))
     
     for(j in 1:length(files_ss)){
-     # cat(i,"-",j,"\n")
+     cat(i,"-",j,"\n")
   
       file<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),file.path(haz_time_class_dir,"/",tail(tstrsplit(files_ss[j],"/"),1)),fixed = T)
       
@@ -964,4 +965,5 @@ if(F){
   })
 
   plan(sequential)
+
   
