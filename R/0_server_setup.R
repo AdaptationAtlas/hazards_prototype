@@ -8,7 +8,7 @@ timeframe_choice_index<-2
 timeframe_choice <- timeframe_choices[timeframe_choice_index]
 cat("You selected:", timeframe_choice, "\n")
 
-# 0.2)Load packages and functions #####
+# 0.2) Load packages and functions #####
 
 # Install and load pacman if not already installed
 if (!require("pacman", character.only = TRUE)) {
@@ -101,7 +101,7 @@ if(project_dir=="C:/rprojects/hazards_prototype"){
 }
 
 if(project_dir=="/Users/pstewarda/Documents/rprojects/hazards_prototype"){
-  working_dir<-"/Users/pstewarda/Documents/rprojects/common_data"
+  working_dir<-"/Users/pstewarda/Documents/rprojects/common_data/hazards_prototype"
 }
 
 # Afrilabs
@@ -634,6 +634,8 @@ setwd(working_dir)
   isimip_meta_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/isimip_water_var_metadata.csv"
 
 
+  
+  
   
   
   
