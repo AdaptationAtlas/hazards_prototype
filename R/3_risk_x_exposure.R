@@ -808,8 +808,8 @@ arrow::write_parquet(haz_timeseries_tab,filename)
                                     save_dir=haz_risk_vop_dir,
                                     variable="vop",
                                     overwrite = overwrite,
-                                    crop_exposure = crop_vop_usd17_path,
-                                    livestock_exposure=livestock_vop_usd17_path,
+                                    crop_exposure = crop_vop_path,
+                                    livestock_exposure=livestock_vop_path,
                                     crop_choices=crop_choices)
         future::plan(sequential)
       }
@@ -821,8 +821,8 @@ arrow::write_parquet(haz_timeseries_tab,filename)
                                     save_dir=haz_risk_vop17_dir,
                                     variable="vop",
                                     overwrite = overwrite,
-                                    crop_exposure = crop_vop_path,
-                                    livestock_exposure=livestock_vop_path,
+                                    crop_exposure = crop_vop_usd17_path,
+                                    livestock_exposure=livestock_vop_usd17_path,
                                     crop_choices=crop_choices)
         future::plan(sequential)
       }
@@ -850,6 +850,40 @@ arrow::write_parquet(haz_timeseries_tab,filename)
                                     crop_choices=crop_choices)
         future::plan(sequential)
       }
+    # 4.1.1) Check results
+    if(F){
+      crop_focus<-"potato"
+      severity<-"severe"
+      vop<-terra::rast(file.path(exposure_dir,"crop_vop.tif"))[[crop_focus]]
+      
+      (file<-list.files(haz_risk_vop_dir,paste0(crop_focus,"-",severity,"-int"),full.names = T)[1])
+      risk_vop<-terra::rast(file)
+      # Pick a scenario
+      risk_vop<-risk_vop[[1]]
+      
+      # Values should not exceed 1
+      plot(risk_vop/vop)
+      
+      # Check input hazard data
+      (file<-list.files(haz_risk_dir,paste0(crop_focus,"-moderate-int"),full.names = T)[1])
+      risk<-terra::rast(file)
+      
+      # Check max values
+      max_values <- global(risk, fun = max, na.rm = TRUE)
+      max_values<-data.table(variable=row.names(max_values),value=max_values)
+      max_values[value.max>1]
+      
+      # Check that interacting hazards do not sum to greater than 1
+      risk_names<-names(risk)
+      risk_names<-risk_names[grepl("NDWS+NTxS+PTOT_G",risk_names,fixed = T) & grepl("ssp585-2041",risk_names)]
+      i<-which(risk[[1]][]>0.5)
+      (values<-data.table(risk[[risk_names]][i]))
+      values_ss<-values[sample(1:nrow(values),10,replace = F)]
+      t(values_ss)
+      (issue<-which(apply(t(values)[2:8,],2,sum)>1.00001))
+      
+    }
+    
   # 4.2) Extract Risk x Exposure by Geography #####
 
     for(INT in c(T,F)){
@@ -902,12 +936,22 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       }
   }
   
+    # 4.2.1) Check results #####
   if(F){
+    admin0<-"Nigeria"
+    crop_focus<-"potato"
+    
+    vop<-arrow::read_parquet(list.files("Data/exposure","crop_vop_adm_sum",full.names = T))
+    (vop_val<-vop[admin0_name==admin0 & is.na(admin1_name) & crop==crop_focus,value])
+    
     # Check resulting files
-    (file<-list.files(haz_risk_vop_dir,"parquet",full.names = T))
-    data<-sfarrow::st_read_parquet(file[4])
-    names(data)
-  }
+    (file<-list.files(haz_risk_vop_dir,"moderate_adm0_int",full.names = T))
+    data<-sfarrow::st_read_parquet(file)
+    dat_names<-c(names(data)[1:3],grep("ssp585.2021_2040.any.NDWS.NTxS.PTOT_G.potato.moderate",names(data),value=T))
+    data<-data.table(data[dat_names])
+    # This number should not exceed 1
+    data[admin0_name==admin0,4]/vop_val
+      }
         
   # 4.3) Restructure Extracted Data ####
   levels<-c(admin0="adm0",admin1="adm1",admin2="adm2")
@@ -976,18 +1020,26 @@ arrow::write_parquet(haz_timeseries_tab,filename)
     
   }
   
+    # 4.3.1) Check results #####
   if(F){
      # Check results
-    (files<-list.files(haz_risk_vop_dir,"_adm_",full.names = T))
-    for(i in 1:length(files)){
-      file<-files[i]
-      print(file)
-      data<-arrow::read_parquet(file)
-      print(head(data))
-      print(data[,unique(hazard)])
-      print(data[,unique(hazard_vars)])
-      print(data[,unique(crop)])
-  }
+    (file<-list.files(haz_risk_vop_dir,"moderate_adm_int",full.names = T))
+    
+    vop<-arrow::read_parquet(list.files("Data/exposure","crop_vop_adm_sum",full.names = T))
+    data<-arrow::read_parquet(file)
+    
+    admin0<-"Nigeria"
+    crop_focus<-"potato"
+    
+    # The numbers should never exceed 1
+    (vop_val<-vop[admin0_name==admin0 & is.na(admin1_name) & crop==crop_focus,value])
+    data[admin0_name==admin0 & is.na(admin1_name) & crop==crop_focus & hazard=="any",value]/vop_val
+    
+    print(head(data))
+    print(data[,unique(hazard)])
+    print(data[,unique(hazard_vars)])
+    print(data[,unique(crop)])
+
   }
     
   
