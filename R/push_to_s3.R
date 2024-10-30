@@ -44,7 +44,6 @@
   
       }
     }
-  
   ctc_wrapper<-function(folder=NULL,files=NULL,worker_n=1){
     
     if(is.null(files)){
@@ -482,11 +481,19 @@
   
 # 4) Hazard_timeseries data (datasets from Julian's hazard workflow) ####
   # 4.1) Upload - hazard_timeseries #####
-  s3_bucket <-haz_timeseries_s3_dir
+  for(i in 1:length(timeframe_choices)){
+    timeframe<-timeframe_choices[i]
+    cat("Uploading timeframe:",timeframe,i,"\n")
+    if(timeframe!="annual"){
+      local_dir<-paste0(indices_dir2,"/by_season/",timeframe_choice)
+    }else{
+      local_dir<-paste0(indices_dir2,"/by_year")
+    }
+    
+    s3_bucket<-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe)
+    
   # make sure the folder is set to the atlas_hazards/cmip6/indices server folder
   folder<-indices_seasonal_dir
-  
-  s3_dir_ls(s3_bucket)
   
   # Updated hazards
   files<-list.files(folder,"tif$",full.names = T)
@@ -499,7 +506,10 @@
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F,
+                     workers=worker_n,
                      mode="public-read")
+  
+  }
   
 
 # 5) !!!***TO DO***!!! raw data by season
@@ -512,8 +522,9 @@
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=T,
-                     mode="public-read")
+                     overwrite=F,
+                     mode="public-read",
+                     workers=worker_n)
   
   s3_dir_ls(s3_bucket)
   
