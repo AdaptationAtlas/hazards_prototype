@@ -2895,3 +2895,51 @@ optimize_histograms <- function(data, breaks = 10) {
   
   return(hist_data)
 }
+#' Check and Optionally Delete Bad Raster Files
+#'
+#' This function attempts to load a list of raster files using `terra::rast`. It identifies any files that cannot be loaded and optionally deletes them if specified. The function provides progress updates and runs in parallel for faster processing.
+#'
+#' @param files A character vector of file paths to raster files (e.g., TIFF files) to check.
+#' @param delete_bad Logical, default `TRUE`. If `TRUE`, files that cannot be loaded will be deleted.
+#' @param worker_n Integer, default `2`. Number of parallel workers for processing.
+#' 
+#' @return A character vector of file paths that could not be loaded (bad files).
+#' @examples
+#' bad_files <- check_and_delete_bad_files(files = list_of_files, delete_bad = TRUE, worker_n = 4)
+#'
+check_and_delete_bad_files <- function(files, delete_bad = TRUE, worker_n = 2) {
+  # Set up progress handling and parallel plan
+  progressr::handlers("progress")
+  future::plan(future::multisession, workers = worker_n)
+  
+  # Progress and error-handling for loading files
+  progressr::with_progress({
+    p <- progressr::progressor(along = files)  # Initialize progress for each file
+    
+    # Load each raster file in parallel
+    results <- future.apply::future_sapply(files, function(file) {
+      p()  # Update progress bar
+      tryCatch({
+        suppressMessages(suppressWarnings(terra::rast(file)))  # Attempt to load raster
+        TRUE  # Return TRUE if loaded successfully
+      }, error = function(e) {
+        FALSE  # Return FALSE if loading fails
+      })
+    })
+  })
+  
+  # Identify bad files
+  bad_files <- files[!results]
+  
+  # If bad files are found, handle based on delete_bad argument
+  if (length(bad_files) > 0) {
+    if (delete_bad) {
+      unlink(bad_files)  # Delete bad files
+      message("Bad data files have been deleted. Please re-run this section.")
+    } else {
+      message("Bad data files detected but not deleted.")
+    }
+  }
+  
+  return(bad_files)  # Return the list of bad files
+}
