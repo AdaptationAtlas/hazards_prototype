@@ -441,52 +441,52 @@ restructure_parquet(filename = "haz_risk_solo",
                     hazards=haz_meta[,unique(type)])
 
   # 1.3) Optional: Apply Crop Mask to Classified Hazard Risk ####
-
-dirs<-list.dirs("Data/hazard_risk_class",recursive = F)
-
-# join crop and livestock masks
-commodity_masks<-c(crop_mask,livestock_mask)
-
-# Remove total livestock units
-commodity_masks<-commodity_masks[[!grepl("total_",names(commodity_masks))]]
-
-for(k in 1:length(dirs)){
+if(F){
+  dirs<-list.dirs("Data/hazard_risk_class",recursive = F)
   
-  haz_risk_class_dir<-paste0(dirs[k],"/",timeframe_choice)
-
-  haz_risk_mask_dir<-gsub("hazard_risk_class/","hazard_risk_class_mask/",haz_risk_class_dir)
-  if(!dir.exists(haz_risk_mask_dir)){
-    dir.create(haz_risk_mask_dir,recursive = T)
-  }
+  # join crop and livestock masks
+  commodity_masks<-c(crop_mask,livestock_mask)
   
-  risk_class_rast_files<-list.files(haz_risk_class_dir,".tif",full.names = T)
+  # Remove total livestock units
+  commodity_masks<-commodity_masks[[!grepl("total_",names(commodity_masks))]]
   
-  file_crops<-gsub("_severe|_extreme|_int|[.]tif","",unlist(tail(tstrsplit(risk_class_rast_files,"/"),1)))
+  for(k in 1:length(dirs)){
+    
+    haz_risk_class_dir<-paste0(dirs[k],"/",timeframe_choice)
   
-  for(i in 1:nlyr(commodity_masks)){
-    crop<-names(commodity_masks)[i]
-    mask<-commodity_masks[[i]]
-    risk_files<-risk_class_rast_files[file_crops==crop]
-    for(j in 1:length(risk_files)){
-      
-      # Display progress
-      cat('\r                                                                                                                                                 ')
-      cat('\r',paste("Crop:",i,"/",nlyr(commodity_masks)," | file:",j,"/",length(risk_files)))
-      flush.console()
-      
-      file<-risk_files[j]
-      
-      save_name<-gsub(haz_risk_class_dir,haz_risk_mask_dir,file)
-      if(!file.exists(save_name)){
-        risk<-terra::rast(file)
-        risk_masked<-risk*mask
-        terra::writeRaster(risk_masked,filename =save_name)
+    haz_risk_mask_dir<-gsub("hazard_risk_class/","hazard_risk_class_mask/",haz_risk_class_dir)
+    if(!dir.exists(haz_risk_mask_dir)){
+      dir.create(haz_risk_mask_dir,recursive = T)
+    }
+    
+    risk_class_rast_files<-list.files(haz_risk_class_dir,".tif",full.names = T)
+    
+    file_crops<-gsub("_severe|_extreme|_int|[.]tif","",unlist(tail(tstrsplit(risk_class_rast_files,"/"),1)))
+    
+    for(i in 1:nlyr(commodity_masks)){
+      crop<-names(commodity_masks)[i]
+      mask<-commodity_masks[[i]]
+      risk_files<-risk_class_rast_files[file_crops==crop]
+      for(j in 1:length(risk_files)){
+        
+        # Display progress
+        cat('\r                                                                                                                                                 ')
+        cat('\r',paste("Crop:",i,"/",nlyr(commodity_masks)," | file:",j,"/",length(risk_files)))
+        flush.console()
+        
+        file<-risk_files[j]
+        
+        save_name<-gsub(haz_risk_class_dir,haz_risk_mask_dir,file)
+        if(!file.exists(save_name)){
+          risk<-terra::rast(file)
+          risk_masked<-risk*mask
+          terra::writeRaster(risk_masked,filename =save_name)
+        }
       }
     }
+  
   }
-
 }
-
 # 2) Extract hazard means and sd by admin ####
   overwrite<-T
   # 2.1) Extract mean hazards ####
@@ -588,10 +588,12 @@ haz_timeseries_files<-grep(paste(hazards,collapse = "|"),haz_timeseries_files,va
 # Limit files to ensemble mean (very large files otherwise)
   # See 2.1_create_monthly_haz_tables.R for ideas on alternative methods for getting to this information
   # If needed per model suggest looping over models (or futher file splitting measures)
+#haz_timeseries_files_sd<-grep("ENSEMBLEsd",haz_timeseries_files,value = T)
 haz_timeseries_files<-grep("ENSEMBLEmean",haz_timeseries_files,value = T)
 
 # Load all timeseries data into a raster stack
 haz_timeseries<-terra::rast(haz_timeseries_files)
+#haz_timeseries_sd<-terra::rast(haz_timeseries_files)
 
 # Update names of raster stack to be filename/year
 layer_names<-unlist(lapply(1:length(haz_timeseries_files),FUN=function(i){
@@ -600,17 +602,15 @@ layer_names<-unlist(lapply(1:length(haz_timeseries_files),FUN=function(i){
   file<-gsub(".tif","",tail(unlist(strsplit(file,"/")),1),fixed=T)
   paste0(file,"_year",layers)
 }))
-
 names(haz_timeseries)<-layer_names
 
-layer_names<-unlist(lapply(1:length(haz_timeseries_files_sd),FUN=function(i){
-  file<-haz_timeseries_files_sd[i]
-  layers<-names(terra::rast(file))
-  file<-gsub(".tif","",tail(unlist(strsplit(file,"/")),1),fixed=T)
-  paste0(file,"_year",layers)
-}))
-
-names(haz_timeseries_sd)<-layer_names
+#layer_names<-unlist(lapply(1:length(haz_timeseries_files_sd),FUN=function(i){
+#  file<-haz_timeseries_files_sd[i]
+#  layers<-names(terra::rast(file))
+#  file<-gsub(".tif","",tail(unlist(strsplit(file,"/")),1),fixed=T)
+#  paste0(file,"_year",layers)
+#}))
+#names(haz_timeseries_sd)<-layer_names
 
 # Extract hazard values by admin areas and average them
 # Extract by admin0
@@ -850,7 +850,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
                                     crop_choices=crop_choices)
         future::plan(sequential)
       }
-    # 4.1.1) Check results
+    # 4.1.1) Check results ######
     if(F){
       crop_focus<-"potato"
       severity<-"severe"
