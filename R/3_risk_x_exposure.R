@@ -15,8 +15,7 @@ packages <- c("terra",
               "doFuture",
               "stringr", 
               "stringi",
-              "httr",
-              "wbstats")
+              "httr")
 
 # Call the function to install and load packages
 pacman::p_load(char=packages)
