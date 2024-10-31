@@ -1,6 +1,5 @@
 # Please run 0_server_setup.R before executing this script
 # 0.1) Load R functions & packages ####
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
 # List of packages to be loaded
 packages <- c("terra", 
@@ -38,6 +37,9 @@ load_packages_prefer_user <- function(packages) {
 }
 
 load_packages_prefer_user(packages)
+
+# Source functions from github
+source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
 # 0.2) Set up workspace ####
 # Set number of workers
@@ -370,44 +372,13 @@ if(!overwrite){
   future::plan(sequential)
   }
 
-# Check if files can load 
+  # 0.3.1) Check if files can load ######
 files<-list.files(haz_timeseries_dir,".tif",full.names = T)
-
-# Function to check if a file can be loaded by terra::rast
-load_rast <- function(file) {
-  tryCatch({
-  suppressWarnings(tail(rast(file)) ) # Suppress warnings while loading the file
-    TRUE                          # If successful, return TRUE
-  }, error = function(e) {
-    FALSE                         # If there's an error, return FALSE
-  })
-}
-
-# Apply the load_rast function to each file
-# Set up progress handling and parallel plan
-handlers("progress")
-plan(multisession,workers=worker_n)  # Adjust to your system: multisession, multicore, or cluster
-
-# Define the file list
-files <- list.files(path = "your_directory", pattern = "*.tif", full.names = TRUE)
-
-# Use progressr and future.apply to process in parallel with a progress bar
-with_progress({
-  p <- progressor(along = files)  # Initialize progress for each file
-  
-  # Load each raster file in parallel
-  results <- future_sapply(files, function(file) {
-    p()  # Update progress bar
-    terra::rast(file)  # Load raster using terra package
-  })
-})
-
-(bad_files<-files[!load_results])
+(bad_files<-check_and_delete_bad_files(files,delete_bad=T,worker_n=worker_n))
 
 # If you finding files will not open delete them then run the download process again
 if(length(bad_files)>0){
-  unlink(bad_files)
-  stop("Bad downloads, these have been deleted please run through the download section again")
+  stop("Bad downloads were present run through the download section again")
 }
 
 # 0.4) Summarize data availability #####
@@ -513,6 +484,9 @@ p<-with_progress({
     
   foreach(i = 1:length(files)) %dopar% {
     #for(i in 1:length(files)){
+    # Display progress
+    progress(sprintf("File %d/%d", i, length(files)))
+    
     file<-file.path(haz_time_risk_dir,basename(files[i]))
     
     if((!file.exists(file))|overwrite){
@@ -521,8 +495,7 @@ p<-with_progress({
       terra::writeRaster(data,filename = file,overwrite=T)
     }
     
-    # Display progress
-    progress(sprintf("File %d/%d", i, length(files)))
+   
   }
 
 })
@@ -535,7 +508,7 @@ haz_class_files<-list.files(haz_time_class_dir,".tif$")
 
 # Subset to ensemble or historical
 # Note if you want to use models with this process then we will have to adjust the layer naming to accommodate a model name, suggest joining with the scenario with a non - or _ delimiter.
-haz_class_files<-grep("ENSEMBLE|historical",haz_class_files,value=T)
+haz_class_files<-grep("ENSEMBLEmean|historical",haz_class_files,value=T)
 haz_class_files2<-gsub("_max_max","max",haz_class_files)
 haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
 haz_class_files2<-gsub("_max","",haz_class_files2)
@@ -928,8 +901,13 @@ if(F){
    print(n_length[n_length!=40])
  }
  
+    # 5.2.1) Check results ######
+ files<-list.files(haz_time_int_dir,"tif$",full.names = T,recursive=T)
+ (bad_files<-check_and_delete_bad_files(files,delete_bad=F,worker_n=worker_n))
+ (bad_dirs<-unique(dirname(bad_files)))
+ 
   # 5.3) Per crop combine hazards into a single file #####
- overwrite<-T
+ overwrite<-F
   combinations_ca<-rbind(combinations_c,combinations_a)[,combo_name:=paste0(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet,crop,severity_class)
                                                         ][,folder:=paste0(haz_time_int_dir,"/",combo_name)
                                                           ][,severity_class:=tolower(severity_class)]
@@ -960,6 +938,7 @@ if(F){
     progress <- progressr::progressor(along = 1:length(combinations_crops))
     
     foreach(i = 1:length(combinations_crops), .packages = c("terra", "data.table", "progressr")) %dopar% {
+      progress(sprintf("Crop %d/%d", i, length(combinations_crops)))
     #  for(i in 1:length(combinations_crops)){
       
       for(j in 1:nrow(severity_classes)){
@@ -992,12 +971,16 @@ if(F){
       }
       }
       
-      progress(sprintf("Crop %d/%d", i, length(combinations_crops)))
       
     }
     
   })
 
   plan(sequential)
-
+  
+   # 5.3.1) Check results ######
+  files<-list.files(haz_risk_dir,"tif$",full.names = T)
+  check_and_delete_bad_files(files,delete_bad=T,worker_n=worker_n)
+  
+  
   
