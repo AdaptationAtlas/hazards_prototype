@@ -457,6 +457,15 @@ p<-with_progress({
 
 plan(sequential)
 
+  # 1.1) Check results ######
+  files<-list.files(haz_time_class_dir,"tif$",full.names = T,recursive=T)
+  (bad_files<-check_and_delete_bad_files(files,delete_bad=T,worker_n=worker_n))
+  # If you finding files will not open delete them then run the download process again
+  if(length(bad_files)>0){
+    stop("Bad files were present, run through this section again")
+  }
+
+
 # 2) Calculate risk across classified time series ####
 
 files<-list.files(haz_time_class_dir,full.names = T)
