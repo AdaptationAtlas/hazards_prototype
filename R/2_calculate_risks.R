@@ -235,6 +235,7 @@ crop_choices<-c(fread(haz_class_url, showProgress = FALSE)[,unique(crop)],ms_cod
 
 # 0.3) Download hazard timeseries from s3 bucket ####
 overwrite<-F
+workers_dl<-10
 # Specify the bucket name and the prefix (folder path)
 s3_folder_path <- file.path("risk_prototype/data/hazard_timeseries",timeframe_choice,"")
 
@@ -383,7 +384,24 @@ load_rast <- function(file) {
 }
 
 # Apply the load_rast function to each file
-load_results <- pbapply::pbsapply(files, load_rast)
+# Set up progress handling and parallel plan
+handlers("progress")
+plan(multisession,workers=worker_n)  # Adjust to your system: multisession, multicore, or cluster
+
+# Define the file list
+files <- list.files(path = "your_directory", pattern = "*.tif", full.names = TRUE)
+
+# Use progressr and future.apply to process in parallel with a progress bar
+with_progress({
+  p <- progressor(along = files)  # Initialize progress for each file
+  
+  # Load each raster file in parallel
+  results <- future_sapply(files, function(file) {
+    p()  # Update progress bar
+    terra::rast(file)  # Load raster using terra package
+  })
+})
+
 (bad_files<-files[!load_results])
 
 # If you finding files will not open delete them then run the download process again
