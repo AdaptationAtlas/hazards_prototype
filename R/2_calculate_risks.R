@@ -904,7 +904,12 @@ if(F){
     # 5.2.1) Check results ######
  files<-list.files(haz_time_int_dir,"tif$",full.names = T,recursive=T)
  (bad_files<-check_and_delete_bad_files(files,delete_bad=F,worker_n=worker_n))
- (bad_dirs<-unique(dirname(bad_files)))
+ # If you finding files will not open delete them then run the download process again
+ if(length(bad_files)>0){
+   (bad_dirs<-unique(dirname(bad_files)))
+   unlink(bad_dirs,recursive=T)
+   stop("Bad files were present, run through this section again")
+ }
  
   # 5.3) Per crop combine hazards into a single file #####
  overwrite<-F
@@ -980,7 +985,12 @@ if(F){
   
    # 5.3.1) Check results ######
   files<-list.files(haz_risk_dir,"tif$",full.names = T)
-  check_and_delete_bad_files(files,delete_bad=T,worker_n=worker_n)
+  (bad_files<-check_and_delete_bad_files(files,delete_bad=T,worker_n=worker_n))
+  
+  # If you finding files will not open delete them then run the download process again
+  if(length(bad_files)>0){
+    stop("Corrupt files were present, run through this section again")
+  }
   
   
   
