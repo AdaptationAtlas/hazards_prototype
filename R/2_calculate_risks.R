@@ -803,6 +803,8 @@ if(F){
   haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
   
   # 5.2) Calculate interactions ####
+  # At the moment this section handles moderate, severe and extreme hazards separately
+  # Can we upgrade this? so instead of 1/0 classification we can merge the hazard severity class to have 3/2/1/0
   combinations[,code:=paste(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet)]
   combinations<-combinations[order(code)]
   
