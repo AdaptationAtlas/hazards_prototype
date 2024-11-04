@@ -483,7 +483,7 @@
   # 4.1) Upload - hazard_timeseries #####
   for(i in 1:length(timeframe_choices)){
     timeframe<-timeframe_choices[i]
-    cat("Uploading timeframe:",timeframe,i,"\n")
+    cat("Uploading timeframe:",timeframe,"i =",i,"\n")
     if(timeframe!="annual"){
       local_dir<-paste0(indices_dir2,"/by_season/",timeframe_choice)
     }else{
