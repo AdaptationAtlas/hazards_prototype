@@ -400,8 +400,8 @@ crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
                        overwrite=overwrite)
       
 # 1) Extract hazard risk by admin ####
+    overwrite<-F
   # 1.1) Solo and interactions combined into a single file (not any hazard) #####
-overwrite<-T
 files<-list.files(haz_risk_dir,".tif$",full.names = T)
 files_solo<-files[!grepl("-int[.]tif$",files)]
 files_int<-grep("-int[.]tif$",files,value = T)
@@ -487,7 +487,7 @@ if(F){
   }
 }
 # 2) Extract hazard means and sd by admin ####
-  overwrite<-T
+  overwrite<-F
   # 2.1) Extract mean hazards ####
   folder<-haz_mean_dir
   
@@ -700,11 +700,11 @@ arrow::write_parquet(haz_timeseries_tab,filename)
 
 # 4) Hazard risk x exposure ####
   # 4.0) Set-up ####
+    overwrite<-F
     do_vop<-T
     do_vop17<-T
     do_ha<-F
     do_n<-F
-    overwrite<-T
     crop_vop_path<-file.path(exposure_dir,"crop_vop.tif")
     crop_vop_usd17_path<-file.path(exposure_dir,"crop_vop_usd17.tif")
     crop_ha_path<-file.path(exposure_dir,"crop_ha.tif")
