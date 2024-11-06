@@ -168,25 +168,7 @@ target_year<-c(2015,2017)
     prod_world<-prod_world[Area=="World" & Element == element & Item %in% lps2fao & Unit=="t",.(Item,Y2014,Y2015,Y2016)]
     prod_world<-merge(prod_world,data.table(Item=lps2fao,atlas_name=names(lps2fao)),all.x=T)
     
-  # 3.4) Deflators #####
-    # Prepare deflators data 
-    def_file<-file.path(fao_dir,"Deflators_E_All_Data_(Normalized).csv")
-    
-    deflators<-fread(def_file)
-    deflators[,M49:=as.numeric(gsub("[']","",`Area Code (M49)`))]
-    deflators[,iso3:=countrycode(sourcevar=M49,origin="un",destination = "iso3c")]
-    deflators<-deflators[iso3 %in% atlas_iso3 & 
-                           Year %in% target_year & 
-                           Element == "Value US$, 2015 prices" &
-                           Item == "Value Added Deflator (Agriculture, forestry and fishery)"
-    ][,deflator:=Value]
-    
-    deflators<-deflators[,list(iso3,Year,deflator)][,Year:=paste0("D",Year)]
-    deflators<-dcast(deflators,iso3~Year)
-    setnames(deflators,paste0("D",target_year),c("def_past","def_target"))
-    deflators[,def:=def_target/def_past]
-    
-  # 3.5) PPP ####
+  # 3.4) PPP ####
     indicators <- data.table(wb_search(pattern = "PPP"))
     print(indicators[grepl("conversion",indicator) & grepl("PP",indicator_id),indicator])
     
@@ -277,7 +259,7 @@ target_year<-c(2015,2017)
     ][is.na(VoP_hybrid3),VoP_hybrid3:=VoP_continent]
     
   
-    # 4.4) Which estimation approach is better? ####
+    # 4.4) Which $US estimation approach is better? ####
     
     max_y<-prod_value_usd[,max(max(VoP,na.rm=T),max(VoP_world,na.rm=T),max(VoP_hybrid,na.rm=T))]
   
@@ -450,7 +432,7 @@ target_year<-c(2015,2017)
        
           
 # 5) Distribute vop to GLW4 livestock ####
-    
+    # 5.1) US$ ####
     # We will use reported value or substitute using world prices (vop_hybrid2)
   focal_year<-"Y2015"
   final_vop<-copy(prod_value_usd)
@@ -502,7 +484,7 @@ target_year<-c(2015,2017)
   
   terra::writeRaster(round(glw_vop*1000,0),file.path(ls_vop_dir,"livestock-vop-2015-cusd15.tif"),overwrite=T)
   
-  # 5.1) Convert to IUSD####
+    # 5.2) I$ ####
   final_vop_i<-copy(prod_value_i)
   setnames(final_vop_i,focal_year,"value")
   
@@ -518,7 +500,7 @@ target_year<-c(2015,2017)
   final_vop_i[NAs>0 & !glw3_name %in% c("goats","sheep")]
   final_vop_i[NAs>0 & !glw3_name %in% c("goats","sheep"),value:=NA]
   
-  # 5.1.1) Explore if we can convert cusd values from faostat or estimated from production x price data to get missing $I data ######
+      # 5.2.1) Explore if we can convert cusd values from faostat or estimated from production x price data to get missing $I data ######
   # Merge in missing values from cusd table
   setnames(final_vop,"value","cusd")
   final_vop_i<-merge(final_vop_i,final_vop,all.x=T)
@@ -561,9 +543,8 @@ target_year<-c(2015,2017)
   ppp_missing<-final_vop_merge[is.na(value) & !grepl("milk",atlas_name),unique(iso3)]
   final_vop_merge[iso3 %in% ppp_missing]
   
-  # !!!TO DO!!! see if the missing ppp cf values can be inputed from other years #####
-  
-  # 5.1.2) Distribute $I data we do have to GLW4
+      # !!!TO DO!!! see if the missing ppp cf values can be inputed from other years #####
+      # 5.2.2) Distribute $I data we do have to GLW4 ######
   final_vop_i_cast<-dcast(final_vop_i,iso3~glw3_name)
   
   # Convert value to vector then raster
