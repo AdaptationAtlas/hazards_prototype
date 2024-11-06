@@ -7,9 +7,8 @@ packages <- c("terra",
               "stringr",
               "s3fs",
               "ggplot2")
-
 # Call the function to install and load packages
-pacman::p_load(packages)
+pacman::p_load(char=packages)
 
 # Set up workspace ####
 haz_class_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
@@ -18,24 +17,10 @@ severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
 # Look at solo or interaction hazard risk data?
 interaction<-T # set to F if you want to look at solo data
 
-# Load adaptive capacity data ####
-# Download data from s3
-file<-"vulnerability_adm_long.parquet"
-local_file<-file.path(ac_dir,file)
-overwrite<-F
-if(!file.exists(local_file)|overwrite==T){
-  s3_file <- file.path(bucket_name_s3,"vulnerability",file)
-  s3$file_download(s3_file,local_file,overwrite = T)
-}
-
-adaptive_capacity<-data.table(arrow::read_parquet(local_file))
-
-# Cast dataset
-adaptive_capacity_cast<-data.table(dcast(adaptive_capacity,admin0_name+admin1_name+admin2_name+iso3+total_pop+rural_pop~vulnerability,value.var="value_binary"))
-
 # Load hazard risk x VoP data #####
 # Data is found in "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual" for example
 
+haz_risk_vop_dir <- 'Data/hazard_risk_vop/annual/'
 if(interaction==T){
   files<-list.files(haz_risk_vop_dir,"_adm_int",full.names = T)
 }else{
@@ -99,39 +84,34 @@ if(F){
   adaptive_capacity_cast[,admin_code:=NULL]
 }
 
-# Append adaptive capacity data to haz_risk_vop ####
+# Write Hazard Risk VOP####
 if(interaction==T){
-  file<-file.path(haz_risk_vop_ac_dir,"haz_risk_vop_int_ac.parquet")
+  file<-file.path(haz_risk_vop_reduced,"haz_risk_vop_int.parquet")
 }else{
-  file<-file.path(haz_risk_vop_ac_dir,"haz_risk_vop_solo_ac.parquet")
+  file<-file.path(haz_risk_vop_reduced,"haz_risk_vop_solo.parquet")
 }
 
-# Merge ac and risk exposure datasets
-haz_risk_vop_ac<-merge(haz_risk_vop,adaptive_capacity_cast[,-c("iso3")],all.x=T)
-
 # Save merged dataset ####
-arrow::write_parquet(haz_risk_vop_ac,file)
+arrow::write_parquet(haz_risk_vop,file)
+
 # ==================================== #####
 # Reduce file size of merged data (interactions only) ####
 
 # Read in the data
-if(!exists("haz_risk_vop_ac")){
+if(!exists("haz_risk_vop")){
   if(interaction==T){
-    file<-file.path(haz_risk_vop_ac_dir,"haz_risk_vop_int_ac.parquet")
+    file<-file.path(haz_risk_vop_reduced,"haz_risk_vop_int.parquet")
   }else{
-    file<-file.path(haz_risk_vop_ac_dir,"haz_risk_vop_solo_ac.parquet")
+    file<-file.path(haz_risk_vop_reduced,"haz_risk_vop_solo.parquet")
   }
-  haz_risk_vop_ac<-arrow::read_parquet(file)
+  haz_risk_vop<-arrow::read_parquet(file)
 }
-
 # Subset data to a specific hazard combination to reduce file size ####
 # Set population fields to be integer to reduce file size
 
-haz_risk_vop_ac[,total_pop:=as.integer(total_pop)
-                ][,rural_pop:=as.integer(rural_pop)
-                  ][,value:=round(value,0)]
+haz_risk_vop[,value:=round(value,0)]
 
-haz_risk_vop_ac[,scenario_x_time:=unique(paste0(scenario[1],"-",timeframe[1])),by=list(scenario,timeframe)]
+haz_risk_vop[,scenario_x_time:=unique(paste0(scenario[1],"-",timeframe[1])),by=list(scenario,timeframe)]
 
 # Create function that subsets parquet table
 reduce_parquet<-function(dry,heat_crop,heat_ani,wet,interaction,data,rm_crops,filename,folder,severities,scenarios,admin_level,rm_st){
@@ -184,9 +164,9 @@ reduce_parquet<-function(dry,heat_crop,heat_ani,wet,interaction,data,rm_crops,fi
   return(data_ss)
 }
 
-scenarios<-haz_risk_vop_ac[,unique(scenario_x_time)]
+scenarios<-haz_risk_vop[,unique(scenario_x_time)]
 
-reduce_parquet(data=haz_risk_vop_ac,
+reduce_parquet(data=haz_risk_vop,
                dry="NDWS",
                heat_crop="NTx35",
                heat_ani="THI_max",
@@ -196,14 +176,13 @@ reduce_parquet(data=haz_risk_vop_ac,
                scenarios=scenarios,
                interaction=T,
                rm_crops=c("rapeseed","sugarbeet"),
-               filename = "haz_risk_vop_int_ac_reduced",
-               folder=haz_risk_vop_ac_dir,
+               filename = "haz_risk_vop_int_reduced",
+               folder=haz_risk_vop_reduced,
                rm_st=T)
 
 if(F){
 # Check resulting file
-check<-arrow::read_parquet(file.path(haz_risk_vop_ac_dir,"haz_risk_vop_int_ac_reduced.parquet"))
-check<-arrow::read_parquet("haz_risk_vop_int_ac_reduced.parquet")
+check<-arrow::read_parquet(file.path(haz_risk_vop_redued,"haz_risk_vop_int_reduced.parquet"))
 
 head(check)
 dim(check)
@@ -259,11 +238,11 @@ vop_data_ordered<-check[hazard!="any"
 # Ideally folder structure of
 # 1) admin0, admin1 and admin2
 # 2) files named by hazard, scenario, severity
-haz<-haz_risk_vop_ac[,unique(hazard_vars)]
+haz<-haz_risk_vop[,unique(hazard_vars)]
 haz<-haz[!grepl("THI",haz)]
 haz<-strsplit(haz,"[+]")
 
-folder<-paste0(haz_risk_vop_ac_dir,"/subsets")
+folder<-paste0(haz_risk_vop_reduced, "/subsets")
 if(!dir.exists(folder)){
   dir.create(folder,recursive = T)
 }
@@ -275,7 +254,7 @@ for(i in 1:length(haz)){
     for(j in 1:length(scenarios)){
       filename<-paste0(admin_level,"-",paste0(haz[[i]],collapse = "+"),"-",SEV,"-",scenarios[j])
       print(filename)
-      X<-reduce_parquet(data=haz_risk_vop_ac,
+      X<-reduce_parquet(data=haz_risk_vop,
                      dry=haz[[i]][1],
                      heat_crop=haz[[i]][2],
                      heat_ani="THI_max",

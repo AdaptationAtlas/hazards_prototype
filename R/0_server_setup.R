@@ -26,7 +26,7 @@ if(!require("exactextractr")){
 }
 
 # List of packages to be loaded
-packages <- c("remotes","data.table","httr","s3fs","xml2","paws","rvest")
+packages <- c("remotes","data.table","httr","s3fs","xml2","paws.storage","rvest")
 
 # Use pacman to install and load the packages
 pacman::p_load(char=packages)
@@ -168,10 +168,10 @@ setwd(working_dir)
     if(!dir.exists(haz_risk_n_dir)){
       dir.create(haz_risk_n_dir,recursive = T)
     }
-    
-    haz_risk_vop_ac_dir<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
-    if(!dir.exists(haz_risk_vop_ac_dir)){
-      dir.create(haz_risk_vop_ac_dir,recursive=T)
+
+    haz_risk_vop_reduced<-paste0("Data/hazard_risk_vop_reduced/",timeframe_choice)
+    if(!dir.exists(haz_risk_vop_reduced)){
+      dir.create(haz_risk_vop_reduced,recursive=T)
     }
     
     roi_dir<-"Data/roi"
