@@ -470,7 +470,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
     files<-list.files(haz_risk_dir,".tif$",full.names = T)
     
     if(F){
-      unlink(grep(paste(livestock_choices,collapse = "|"),list.files(haz_risk_vop_dir,full.names = T)))
+      unlink(grep(paste(livestock_choices,collapse = "|"),list.files(haz_risk_vop_dir,full.names = T),value=T))
     }
     
   # 4.1) Multiply Hazard Risk by Exposure #####
