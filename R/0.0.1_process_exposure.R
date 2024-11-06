@@ -46,59 +46,63 @@ names(Geographies)<-names(geo_files_local)
 # 0.2) Exposure variables ####
 overwrite<-F
 # 0.2.1) Crops (MapSPAM) #####
+# read in mapspam metadata
+ms_codes<-data.table::fread(ms_codes_url, showProgress = FALSE)[,Code:=toupper(Code)]
+ms_codes<-ms_codes[compound=="no"]
 # 0.2.1.1) Crop VoP (Value of production) ######
-# To generalize it might be better to just supply a filename for the mapspam
-crop_vop_tot<-read_spam(variable="V",
-                        technology="TA",
-                        mapspam_dir=mapspam_dir,
-                        save_dir=exposure_dir,
-                        base_rast=base_rast,
-                        filename="crop_vop",
-                        ms_codes=ms_codes,
-                        overwrite=overwrite)
-
-if(F){
-  # This sub-section needs updating after we change the usd values to 2015 and apply a different methodology ####
-  file_present<-any(grepl("SSA_Vusd17_TA.csv",list.files(mapspam_dir)))
-  if(!file_present){
-    print("MapSPAM usd17 files do not exist - please redownload the mapspam folder and/or create these")
-    # https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/fao_producer_prices.R
-  }else{
-    crop_vop17_tot<-read_spam(variable="Vusd17",
-                              technology="TA",
-                              mapspam_dir=mapspam_dir,
-                              save_dir=exposure_dir,
-                              base_rast=base_rast,
-                              filename="crop_vop_usd17",
-                              ms_codes=ms_codes,
-                              overwrite=overwrite)
-  }
-}
-
-# 2.1.2.2) Extraction of values by admin areas
-crop_vop_tot_adm_sum<-admin_extract_wrap(data=crop_vop_tot,
+  # 0.2.1.1.1) I$ #########
+  # To generalize it might be better to just supply a filename for the mapspam
+  crop_vop_intd<-read_spam(variable="V",
+                          technology="TA",
+                          mapspam_dir=mapspam_dir,
+                          save_dir=exposure_dir,
+                          base_rast=base_rast,
+                          filename="crop_vop15_intd15",
+                          ms_codes=ms_codes,
+                          overwrite=overwrite)
+  
+  # Extract  values by admin areas
+  crop_vop_intd_adm<-admin_extract_wrap(data=crop_vop_intd,
                                          save_dir=exposure_dir,
-                                         filename = "crop_vop",
+                                         filename = "crop_vop15_intd15",
                                          FUN="sum",
                                          varname="vop",
                                          Geographies=Geographies,
                                          overwrite=overwrite)
-
-if(F){
-  if(file_present){
-    crop_vop17_tot_adm_sum<-admin_extract_wrap(data=crop_vop17_tot,
-                                               save_dir=exposure_dir,
-                                               filename = "crop_vop_usd17",
-                                               FUN="sum",
-                                               varname="vop_usd17",
-                                               Geographies=Geographies,
-                                               overwrite=overwrite)
+  # 0.2.1.1.2) US$ #########
+  
+    # !!! This sub-section needs updating after we change the usd values to 2015 and apply a different methodology ####
+    file_present<-any(grepl("SSA_Vusd17_TA.csv",list.files(mapspam_dir)))
+    if(!file_present){
+      print("MapSPAM usd17 files do not exist - please redownload the mapspam folder and/or create these")
+      # https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/fao_producer_prices.R
+      
+      crop_vop_usd<-NULL
+      crop_vop_usd_adm<-NULL
+      
+    }else{
+      crop_vop_usd<-read_spam(variable="Vusd17",
+                                technology="TA",
+                                mapspam_dir=mapspam_dir,
+                                save_dir=exposure_dir,
+                                base_rast=base_rast,
+                                filename="crop_vop_usd",
+                                ms_codes=ms_codes,
+                                overwrite=overwrite)
+  
+      crop_vop_usd_adm<-admin_extract_wrap(data=crop_vop_usd,
+                                                 save_dir=exposure_dir,
+                                                 filename = "crop_vop15_cusd15",
+                                                 FUN="sum",
+                                                 varname="vop_cusd",
+                                                 Geographies=Geographies,
+                                                 overwrite=overwrite)
+    
   }
-}
-
+  
 # 0.2.1.2) Crop Harvested Area #####
 
-crop_ha_tot<-read_spam(variable="H",
+crop_ha<-read_spam(variable="H",
                        technology="TA",
                        mapspam_dir=mapspam_dir,
                        save_dir=exposure_dir,
@@ -108,13 +112,13 @@ crop_ha_tot<-read_spam(variable="H",
                        overwrite=overwrite)
 
 # 2.1.2.1) Extraction of values by admin areas
-crop_ha_tot_adm_sum<-admin_extract_wrap(data=crop_ha_tot,
-                                        save_dir=exposure_dir,
-                                        filename = "crop_ha",
-                                        FUN="sum",
-                                        varname="ha",
-                                        Geographies=Geographies,
-                                        overwrite=overwrite)
+crop_ha_adm<-admin_extract_wrap(data=crop_ha,
+                                save_dir=exposure_dir,
+                                filename = "crop_ha",
+                                FUN="sum",
+                                varname="ha",
+                                Geographies=Geographies,
+                                overwrite=overwrite)
 
 # 0.2.1.3) Create Crop Masks ######
 # Need to use mapspam physical area
@@ -144,152 +148,151 @@ if(!file.exists(mask_file)|overwrite==T){
 }
 
 # 0.2.2) Livestock #####
-# 0.2.2.1) Livestock Mask #####
-mask_ls_file<-paste0(commodity_mask_dir,"/livestock_masks.tif")
-
-if(!file.exists(mask_ls_file)|overwrite==T){
+  # 0.2.2.1) Livestock Mask #####
+  mask_ls_file<-paste0(commodity_mask_dir,"/livestock_masks.tif")
   
-  glw<-terra::rast(glw_files)
-  names(glw)<-names(glw_names)
+  if(!file.exists(mask_ls_file)|overwrite==T){
+    
+    glw<-terra::rast(glw_files)
+    names(glw)<-names(glw_names)
+    
+    glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
+    
+    lus<-c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1)
+    lus<-c(lus,sum(lus,na.rm=T))
+    names(lus)<-c("cattle","poultry","goats","pigs","sheep","total")
+    lus<-terra::mask(terra::crop(lus,Geographies$admin0),Geographies$admin0)
+    
+    # resample to 0.05
+    lu_density<-lus/terra::cellSize(lus,unit="ha")
+    lu_density<-terra::resample(lu_density,base_rast)
+    
+    # Classify into binary mask
+    livestock_mask <- terra::ifel(lu_density > 0, 1, 0)
+    
+    # Split mask by highland vs tropical areas
+    
+    # Load highland mask
+    highlands<-terra::rast(afr_highlands_file)
+    highlands<-terra::resample(highlands,base_rast,method="near")
+    
+    livestock_mask_high<-livestock_mask*highlands
+    names(livestock_mask_high)<-paste0( names(livestock_mask_high),"_highland")
+    
+    lowlands<-classify(highlands,data.frame(from=c(0,1),to=c(1,0)))
+    livestock_mask_low<-livestock_mask*lowlands
+    names(livestock_mask_low)<-paste0( names(livestock_mask_low),"_tropical")
+    
+    livestock_mask<-c(livestock_mask_high,livestock_mask_low)
+    
+    terra::writeRaster(livestock_mask,filename=mask_ls_file,overwrite=T)
+    
+  }else{
+    livestock_mask<-terra::rast(mask_ls_file)
+    livestock_mask_high<-livestock_mask[[grep("highland",names(livestock_mask))]]
+    livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
+  }
+  # 0.2.2.2) Livestock Numbers (GLW) ######
+  livestock_no_file<-paste0(exposure_dir,"/livestock_no.tif")
+  shoat_prop_file<-paste0(glw_dir,"/shoat_prop.tif")
   
-  glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
+  if(!file.exists(livestock_no_file)|overwrite==T){
+    
+    ls_files<-list.files(glw_dir,"_Da.tif",full.names = T)
+    
+    glw<-terra::rast(glw_files)
+    names(glw)<-names(glw_names)
+    
+    glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
+    
+    TLU<-sum(c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1))
+    
+    livestock_no<-c(glw$cattle,glw$poultry,glw$goats,glw$pigs,glw$sheep,TLU)
+    names(livestock_no)[nlyr(livestock_no)]<-"total"
+    livestock_no<-terra::mask(terra::crop(livestock_no,Geographies$admin0),Geographies$admin0)
+    
+    # resample to 0.05
+    livestock_density<-livestock_no/terra::cellSize(livestock_no,unit="ha")
+    livestock_density<-terra::resample(livestock_density,base_rast)
+    livestock_no<-livestock_density*cellSize(livestock_density,unit="ha")
+    
+    # Pull out sheep and goat proportions for use in vop calculations before highland/tropical splitting
+    sheep_prop<-livestock_no$sheep/(livestock_no$goats +livestock_no$sheep)
+    goat_prop<-livestock_no$goats/(livestock_no$goats +livestock_no$sheep)
+    
+    terra::writeRaster(terra::rast(c(sheep_prop=sheep_prop,goat_prop=goat_prop)),filename = shoat_prop_file,overwrite=T)
+    
+    # Split livestock between highland and tropical
+    livestock_no<-split_livestock(data=livestock_no,livestock_mask_high,livestock_mask_low)
+    
+    terra::writeRaster(livestock_no,filename = livestock_no_file,overwrite=T)
+    
+  }else{
+    livestock_no<-terra::rast(livestock_no_file)
+  }
   
-  lus<-c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1)
-  lus<-c(lus,sum(lus,na.rm=T))
-  names(lus)<-c("cattle","poultry","goats","pigs","sheep","total")
-  lus<-terra::mask(terra::crop(lus,Geographies$admin0),Geographies$admin0)
+  # 2.2.1.1) Extraction of values by admin areas
+  livestock_no_tot_adm<-admin_extract_wrap(data=livestock_no,
+                                           save_dir=exposure_dir,
+                                           filename = "livestock_no",
+                                           FUN="sum",
+                                           varname="number",
+                                           Geographies=Geographies,
+                                           overwrite=overwrite)
   
-  # resample to 0.05
-  lu_density<-lus/terra::cellSize(lus,unit="ha")
-  lu_density<-terra::resample(lu_density,base_rast)
-  
-  # Classify into binary mask
-  livestock_mask <- terra::ifel(lu_density > 0, 1, 0)
-  
-  # Split mask by highland vs tropical areas
-  
-  # Load highland mask
-  highlands<-terra::rast(afr_highlands_file)
-  highlands<-terra::resample(highlands,base_rast,method="near")
-  
-  livestock_mask_high<-livestock_mask*highlands
-  names(livestock_mask_high)<-paste0( names(livestock_mask_high),"_highland")
-  
-  lowlands<-classify(highlands,data.frame(from=c(0,1),to=c(1,0)))
-  livestock_mask_low<-livestock_mask*lowlands
-  names(livestock_mask_low)<-paste0( names(livestock_mask_low),"_tropical")
-  
-  livestock_mask<-c(livestock_mask_high,livestock_mask_low)
-  
-  terra::writeRaster(livestock_mask,filename=mask_ls_file,overwrite=T)
-  
-}else{
-  livestock_mask<-terra::rast(mask_ls_file)
-  livestock_mask_high<-livestock_mask[[grep("highland",names(livestock_mask))]]
-  livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
-}
-# 0.2.2.2) Livestock Numbers (GLW) ######
-livestock_no_file<-paste0(exposure_dir,"/livestock_no.tif")
-shoat_prop_file<-paste0(glw_dir,"/shoat_prop.tif")
-
-if(!file.exists(livestock_no_file)|overwrite==T){
-  
-  ls_files<-list.files(glw_dir,"_Da.tif",full.names = T)
-  
-  glw<-terra::rast(glw_files)
-  names(glw)<-names(glw_names)
-  
-  glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
-  
-  TLU<-sum(c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1))
-  
-  livestock_no<-c(glw$cattle,glw$poultry,glw$goats,glw$pigs,glw$sheep,TLU)
-  names(livestock_no)[nlyr(livestock_no)]<-"total"
-  livestock_no<-terra::mask(terra::crop(livestock_no,Geographies$admin0),Geographies$admin0)
-  
-  # resample to 0.05
-  livestock_density<-livestock_no/terra::cellSize(livestock_no,unit="ha")
-  livestock_density<-terra::resample(livestock_density,base_rast)
-  livestock_no<-livestock_density*cellSize(livestock_density,unit="ha")
-  
-  # Pull out sheep and goat proportions for use in vop calculations before highland/tropical splitting
-  sheep_prop<-livestock_no$sheep/(livestock_no$goats +livestock_no$sheep)
-  goat_prop<-livestock_no$goats/(livestock_no$goats +livestock_no$sheep)
-  
-  terra::writeRaster(terra::rast(c(sheep_prop=sheep_prop,goat_prop=goat_prop)),filename = shoat_prop_file,overwrite=T)
-  
-  # Split livestock between highland and tropical
-  livestock_no<-split_livestock(data=livestock_no,livestock_mask_high,livestock_mask_low)
-  
-  terra::writeRaster(livestock_no,filename = livestock_no_file,overwrite=T)
-  
-}else{
-  livestock_no<-terra::rast(livestock_no_file)
-}
-
-# 2.2.1.1) Extraction of values by admin areas
-livestock_no_tot_adm<-admin_extract_wrap(data=livestock_no,
-                                         save_dir=exposure_dir,
-                                         filename = "livestock_no",
-                                         FUN="sum",
-                                         varname="number",
-                                         Geographies=Geographies,
-                                         overwrite=overwrite)
-
-# 0.2.2.3) Livestock VoP ######
-
-# 0.2.2.3.1) International dollars 2015 ########
-livestock_vop_file<-file.path(ls_vop_dir,"livestock-vop-2015-intd15-processed.tif")
-
-if(!file.exists(livestock_vop_file)|overwrite==T){
-  
-  livestock_vop<-terra::rast(file.path(ls_vop_dir,"livestock-vop-2015-intd15.tif"))
-
-  # Split vop by highland vs lowland
-  livestock_vop<-split_livestock(data=livestock_vop,livestock_mask_high,livestock_mask_low)
-  terra::writeRaster(livestock_vop,filename = livestock_vop_file,overwrite=T)
-}else{
-  livestock_vop<-terra::rast(livestock_vop_file)
-}
-
-# USD 2015 (see 0.4_fao_producer_prices_livestock.R)
-livestock_vop17_file<-paste0(exposure_dir,"/livestock_vop_usd17.tif")
-
-if(!file.exists(livestock_vop17_file)){
-  data<-terra::rast(paste0(ls_vop_dir,"/livestock-vop-2017-usd17.tif"))
-  
-  livestock_vop17<-split_livestock(data=data,livestock_mask_high,livestock_mask_low)
-  terra::writeRaster(livestock_vop17,filename = livestock_vop17_file,overwrite=T)
-}else{
-  livestock_vop17<-terra::rast(livestock_vop17_file)
-}
-
-# 2.2.2.1) Extraction of values by admin areas
-livestock_vop_tot_adm<-admin_extract_wrap(data=livestock_vop,
+  # 0.2.2.3) Livestock VoP ######
+    # You must have run 0.4_fao_producer_prices_livestock.R for the section to work
+    # 0.2.2.3.1) I$ ######## 
+    livestock_vop_intd_file<-file.path(exposure_dir,"livestock-vop15-intd15-processed.tif")
+    
+    if(!file.exists(livestock_vop_file)|overwrite==T){
+      
+      livestock_vop_intd<-terra::rast(file.path(ls_vop_dir,"livestock-vop-2015-intd15.tif"))
+    
+      # Split vop by highland vs lowland
+      livestock_vop_intd<-split_livestock(data=livestock_vop_intd,livestock_mask_high,livestock_mask_low)
+      terra::writeRaster(livestock_vop_intd,filename = livestock_vop_intd_file,overwrite=T)
+    }else{
+      livestock_vop_intd<-terra::rast(livestock_vop_intd_file)
+    }
+    
+    livestock_vop_intd_adm<-admin_extract_wrap(data=livestock_vop_intd,
                                           save_dir=exposure_dir,
-                                          filename = "livestock_vop",
+                                          filename = "livestock_vop15_intd15",
                                           FUN="sum",
                                           varname="vop",
                                           Geographies=Geographies,
                                           overwrite=overwrite)
-
-livestock_vop17_tot_adm<-admin_extract_wrap(data=livestock_vop17,
-                                            save_dir=exposure_dir,
-                                            filename = "livestock_vop_usd17",
-                                            FUN="sum",
-                                            varname="vop_usd17",
-                                            Geographies=Geographies,
-                                            overwrite=overwrite)
+    
+    # 0.2.2.3.2) US$ ########
+    livestock_vop_usd_file<-paste0(exposure_dir,"/livestock_vop15-cusd15-processed.tif")
+    
+    if(!file.exists(livestock_vop_usd_file)){
+      data<-terra::rast(paste0(ls_vop_dir,"/livestock-vop-2015-cusd15.tif"))
+      
+      livestock_vop_usd<-split_livestock(data=data,livestock_mask_high,livestock_mask_low)
+      terra::writeRaster(livestock_vop_usd,filename = livestock_vop_usd_file,overwrite=T)
+    }else{
+      livestock_vop_usd<-terra::rast(livestock_vop_usd_file)
+    }
+    
+    livestock_vop_usd_adm<-admin_extract_wrap(data=livestock_vop_usd,
+                                              save_dir=exposure_dir,
+                                              filename = "livestock_vop15_cusd15",
+                                              FUN="sum",
+                                              varname="vop_cusd",
+                                              Geographies=Geographies,
+                                              overwrite=overwrite)
 
 # 0.2.3) Combine exposure totals by admin areas ####
 file<-paste0(exposure_dir,"/exposure_adm_sum.parquet")
 if(!file.exists(file)|overwrite==T){
   exposure_adm_sum_tab<-rbind(
-    crop_vop_tot_adm_sum,
-    crop_vop17_tot_adm_sum,
-    crop_ha_tot_adm_sum,
-    livestock_vop_tot_adm,
-    livestock_vop17_tot_adm,
+    crop_vop_intd_adm,
+    crop_vop_usd_adm,
+    crop_ha_adm,
+    livestock_vop_intd_adm,
+    livestock_vop_usd_adm,
     livestock_no_tot_adm
   )
   arrow::write_parquet(exposure_adm_sum_tab,file)
@@ -312,7 +315,7 @@ if(!file.exists(file)|overwrite==T){
   vop_adm0_total<-merge(vop_adm0_total,Geographies$admin0[,c("iso3","admin0_name")])
   
   # Add livestock
-  vop_adm0_total<-merge(vop_adm0_total,livestock_vop_tot_adm[is.na(admin1_name),list(total_livestock=sum(value)),by=admin0_name],by="admin0_name")
+  vop_adm0_total<-merge(vop_adm0_total,livestock_vop_intd_adm[is.na(admin1_name),list(total_livestock=sum(value)),by=admin0_name],by="admin0_name")
   
   # Grand total
   vop_adm0_total<-vop_adm0_total[,total:=total_crops+total_livestock][,exposure:="vop"]
