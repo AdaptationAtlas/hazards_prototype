@@ -1,5 +1,6 @@
 # 0.1) Choose timeframe #####
 
+# Where are the different timeframes being analysed?
 read.csv("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/refs/heads/main/metadata/analysis_record.csv")
 
 # Choose season calculation method
@@ -7,7 +8,7 @@ timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
                      "sos_primary_fixed_3","sos_primary_fixed_4","sos_primary_fixed_5","sos_secondary_eos",
                      "sos_secondary_fixed_3","sos_secondary_fixed_4","sos_secondary_fixed_5")
 
-timeframe_choice_index<-4
+timeframe_choice_index<-1
 timeframe_choice <- timeframe_choices[timeframe_choice_index]
 cat("You selected:", timeframe_choice, "\n")
 
@@ -148,9 +149,9 @@ setwd(working_dir)
     haz_time_int_dir<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
     if(!dir.exists(haz_time_int_dir)){dir.create(haz_time_int_dir,recursive=T)}
     
-    haz_risk_vop17_dir<-file.path("Data/hazard_risk_vop17",timeframe_choice)
-    if(!dir.exists(haz_risk_vop17_dir)){
-      dir.create(haz_risk_vop17_dir,recursive = T)
+    haz_risk_vop_usd_dir<-file.path("Data/hazard_risk_vop_usd",timeframe_choice)
+    if(!dir.exists(haz_risk_vop_usd_dir)){
+      dir.create(haz_risk_vop_usd_dir,recursive = T)
     }
     
     haz_risk_vop_dir<-file.path("Data/hazard_risk_vop",timeframe_choice)
