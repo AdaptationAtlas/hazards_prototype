@@ -2339,7 +2339,7 @@ avg_neighbors <- function(iso3, crop, neighbors, data, value_field) {
   setnames(data, value_field, "value")
   
   # Calculate the mean value of the specified crop across the neighbors
-  N <- data[atlas_name == crop & iso3 %in% neighbors, mean(value, na.rm = TRUE)]
+  N <- data[group == crop & iso3 %in% neighbors, mean(value, na.rm = TRUE)]
   
   # Return the calculated average
   return(N)
@@ -2383,7 +2383,7 @@ avg_regions <- function(iso3, crop, regions, data, value_field) {
   # Calculate the mean value of the specified crop across countries in the same region,
   # excluding the given country
   iso3_target<-iso3
-  N <- data[atlas_name == crop & iso3 %in% neighbors & iso3 != iso3_target, mean(value, na.rm = TRUE)]
+  N <- data[group == crop & iso3 %in% neighbors & iso3 != iso3_target, mean(value, na.rm = TRUE)]
   
   # Return the calculated average
   return(N)
@@ -2414,26 +2414,27 @@ avg_regions <- function(iso3, crop, regions, data, value_field) {
 #' enhanced_data <- add_nearby(data = crop_data, value_field = "production",
 #'                             neighbors = neighbors_list, regions = regions_list)
 #' print(enhanced_data)
-add_nearby <- function(data, value_field, neighbors, regions) {
+add_nearby <- function(data, value_field,group_field="atlas_name", neighbors, regions) {
+  setnames(data,group_field,"group")
   # Calculate and add the mean value from neighbors
   data[, mean_neighbors := avg_neighbors(iso3 = iso3,
-                                         crop = atlas_name,
+                                         crop = group,
                                          neighbors = neighbors,
                                          data = copy(data),
                                          value_field = value_field),
-       by = list(iso3, atlas_name)]
+       by = list(iso3, group)]
   
   # Calculate and add the mean value from the same region
   data[, mean_region := avg_regions(iso3 = iso3,
-                                    crop = atlas_name,
+                                    crop = group,
                                     regions = regions,
                                     data = copy(data),
                                     value_field = value_field),
-       by = list(iso3, atlas_name)]
+       by = list(iso3, group)]
   
   # Calculate and add the continental average
   setnames(data, value_field, "value")
-  data[, mean_continent := mean(value, na.rm = TRUE), by = atlas_name]
+  data[, mean_continent := mean(value, na.rm = TRUE), by = group]
   
   # Compute and add the composite value, prioritizing the most specific data available
   data[, mean_final := value
@@ -2446,6 +2447,8 @@ add_nearby <- function(data, value_field, neighbors, regions) {
   
   # Rename columns to reflect the mean values are related to the specified value field
   colnames(data) <- gsub("mean_", paste0(value_field, "_"), colnames(data))
+  
+  setnames(data,"group",group_field)
   
   return(data)
 }
