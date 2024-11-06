@@ -79,12 +79,13 @@ crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
     # 0.2.1) Crops (MapSPAM) #####
       # 0.2.1.1) Crop VoP (Value of production) ######
         # To generalize it might be better to just supply a filename for the mapspam
-        crop_vop_tot<-terra::rast(file.path(exposure_dir,"crop_vop15_intd15.tif"))
+        crop_vop_file<-file.path(exposure_dir,"crop_vop15_intd15.tif")
+        crop_vop_tot<-terra::rast(crop_vop_file)
         crop_vop_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_intd15_adm_sum.parquet"))
   
-        file<-file.path(exposure_dir,"crop_vop15_cusd15.tif")
-        if(file.exists(file)){
-          crop_vop_usd15_tot<-terra::rast(file.path(exposure_dir,"crop_vop15_cusd15.tif"))
+        crop_vop_usd_file<-file.path(exposure_dir,"crop_vop15_cusd15.tif")
+        if(file.exists(crop_vop_usd_file)){
+          crop_vop_usd15_tot<-terra::rast(crop_vop_usd_file)
           crop_vop_usd15_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_cusd15_adm_sum.parquet"))
         }else{
           crop_vop_usd15_tot<-NULL
@@ -92,7 +93,8 @@ crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
         }
    
       # 0.2.1.2) Crop Harvested Area #####
-        crop_ha_tot<-terra::rast(file.path(exposure_dir,"crop_ha.tif"))
+        crop_ha_file<-file.path(exposure_dir,"crop_ha.tif")
+        crop_ha_tot<-terra::rast(crop_ha_file)
         crop_ha_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_ha_adm_sum.parquet"))
       # 0.2.1.3) Create Crop Masks ######
         mask_file<-paste0(commodity_mask_dir,"/crop_masks.tif")
@@ -105,9 +107,9 @@ crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
       livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
     
       # 0.2.2.2) Livestock Numbers (GLW) ######
-    livestock_no_file<-paste0(exposure_dir,"/livestock_no.tif")
-    livestock_no<-terra::rast(livestock_no_file)
-    livestock_no_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_no_adm_sum.parquet"))
+      livestock_no_file<-paste0(exposure_dir,"/livestock_no.tif")
+      livestock_no<-terra::rast(livestock_no_file)
+      livestock_no_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_no_adm_sum.parquet"))
 
       # 0.2.2.3) Livestock VoP ######
       livestock_vop_file<-file.path(exposure_dir,"livestock-vop15-intd15-processed.tif")
@@ -426,16 +428,17 @@ arrow::write_parquet(haz_timeseries_tab,filename)
   # 4.0) Set-up ####
     overwrite<-F
     do_vop<-T
-    do_vop17<-T
+    do_vop_usd<-T
     do_ha<-F
     do_n<-F
-    crop_vop_path<-file.path(exposure_dir,"crop_vop.tif")
-    crop_vop_usd17_path<-file.path(exposure_dir,"crop_vop_usd17.tif")
-    crop_ha_path<-file.path(exposure_dir,"crop_ha.tif")
     
-    livestock_vop_path<-file.path(exposure_dir,"livestock_vop.tif")
-    livestock_vop_usd17_path<-file.path(exposure_dir,"livestock_vop_usd17.tif")
-    livestock_no_path<-file.path(exposure_dir,"livestock_no.tif")
+    crop_vop_path<-crop_vop_file
+    crop_vop_usd_path<-crop_vop_usd_file
+    crop_ha_path<-crop_ha_file
+    
+    livestock_vop_path<-livestock_vop_file
+    livestock_vop_usd_path<-livestock_vop_usd_file
+    livestock_no_path<-livestock_no_file
     
     worker_n<-10
     
@@ -466,6 +469,10 @@ arrow::write_parquet(haz_timeseries_tab,filename)
     
     # List files
     files<-list.files(haz_risk_dir,".tif$",full.names = T)
+    
+    if(F){
+      unlink(grep(paste(livestock_choices,collapse = "|"),list.files(haz_risk_vop_dir,full.names = T)))
+    }
     
   # 4.1) Multiply Hazard Risk by Exposure #####
     # Note if you are finding the parallel processing is not working reload /reimport packages and functions.
@@ -537,15 +544,15 @@ arrow::write_parquet(haz_timeseries_tab,filename)
         future::plan(sequential)
       }
       
-      if(do_vop17){
+      if(do_vop_usd){
         future::plan("multisession", workers = worker_n)
         future.apply::future_lapply(files,
                                     risk_x_exposure,             
-                                    save_dir=haz_risk_vop17_dir,
+                                    save_dir=haz_risk_vop_usd_dir,
                                     variable="vop",
                                     overwrite = overwrite,
-                                    crop_exposure = crop_vop_usd17_path,
-                                    livestock_exposure=livestock_vop_usd17_path,
+                                    crop_exposure = crop_vop_usd_path,
+                                    livestock_exposure=livestock_vop_usd_path,
                                     crop_choices=crop_choices)
         future::plan(sequential)
       }
@@ -622,12 +629,12 @@ arrow::write_parquet(haz_timeseries_tab,filename)
                            rm_haz=NULL)
       }
     
-    if(do_vop17){
-      cat("Interaction =",INT,"variable = vop17\n")
+    if(do_vop_usd){
+      cat("Interaction =",INT,"variable = vop_usd\n")
       
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
-                           folder=haz_risk_vop17_dir,
+                           folder=haz_risk_vop_usd_dir,
                            overwrite=overwrite,
                            Geographies=Geographies,
                            rm_crop=NULL,
@@ -695,10 +702,10 @@ arrow::write_parquet(haz_timeseries_tab,filename)
                                 hazards=haz_meta[,unique(type)])
       }
       
-      if(do_vop17==T){
-        cat(SEV,"- interaction =",INT,"variable = vop17\n")
+      if(do_vop_usd==T){
+        cat(SEV,"- interaction =",INT,"variable = vop_usd\n")
         # Vop
-        recode_restructure_wrap(folder=haz_risk_vop17_dir,
+        recode_restructure_wrap(folder=haz_risk_vop_usd_dir,
                                 file="adm",
                                 crops=crop_choices,
                                 livestock=livestock_choices,
