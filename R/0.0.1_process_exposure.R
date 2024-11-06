@@ -245,7 +245,7 @@ if(!file.exists(mask_file)|overwrite==T){
     # 0.2.2.3.1) I$ ######## 
     livestock_vop_intd_file<-file.path(exposure_dir,"livestock-vop15-intd15-processed.tif")
     
-    if(!file.exists(livestock_vop_file)|overwrite==T){
+    if(!file.exists(livestock_vop_intd_file)|overwrite==T){
       
       livestock_vop_intd<-terra::rast(file.path(ls_vop_dir,"livestock-vop-2015-intd15.tif"))
     
