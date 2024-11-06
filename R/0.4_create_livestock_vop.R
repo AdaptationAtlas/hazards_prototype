@@ -221,7 +221,10 @@ target_year<-c(2015,2017)
   }
   
   # Merge VoP estimate from price and production with faostat vop
-  prod_value_usd<-merge(prod_value_usd,prod[,list(iso3,atlas_name,VoP,VoP_neighbors,VoP_region,VoP_continent)],all.x=T)
+  prod_value_usd<-merge(prod_value_usd,
+                        prod[,list(iso3,atlas_name,VoP,VoP_neighbors,VoP_region,VoP_continent)],
+                        by=c("iso3","atlas_name"),
+                        all.x=T)
 
     # 4.2) Using World VoP - merge  production and price ####
     # Unit is tonnes
