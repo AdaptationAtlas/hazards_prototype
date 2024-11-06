@@ -265,7 +265,7 @@ if(!file.exists(mask_file)|overwrite==T){
                                           overwrite=overwrite)
     
     # 0.2.2.3.2) US$ ########
-    livestock_vop_usd_file<-paste0(exposure_dir,"/livestock_vop15-cusd15-processed.tif")
+    livestock_vop_usd_file<-paste0(exposure_dir,"/livestock-vop15-cusd15-processed.tif")
     
     if(!file.exists(livestock_vop_usd_file)){
       data<-terra::rast(paste0(ls_vop_dir,"/livestock-vop-2015-cusd15.tif"))
