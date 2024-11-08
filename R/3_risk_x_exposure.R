@@ -216,7 +216,7 @@ if(F){
   # 2.1) Extract mean hazards ####
   folder<-haz_mean_dir
   
-  files<-list.files(folder,".tif",full.names = T)
+  files<-list.files(folder,".tif$",full.names = T)
   # Note to look at change you will need to calculate change in mean values in 1_calculate_risks.R script and then subset to files containing change in the name
   files<-files[!grepl("change",files)]
   data<-terra::rast(files)
