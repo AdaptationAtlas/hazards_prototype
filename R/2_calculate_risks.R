@@ -44,6 +44,9 @@ source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/
 # 0.2) Set up workspace ####
 # Set number of workers
 worker_n<-parallel::detectCores()-1
+if(worker_n>20){
+  worker_n<-20
+}
 
 # Set scenarios and time frames to analyse
 Scenarios<-c("ssp245","ssp585")
