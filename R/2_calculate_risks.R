@@ -1,403 +1,404 @@
 # Please run 0_server_setup.R before executing this script
-# 0.1) Load R functions & packages ####
-
-# List of packages to be loaded
-packages <- c("terra", 
-              "data.table", 
-              "future",
-              "future.apply",
-              "progressr",
-              "parallel",
-              "doFuture",
-              "httr",
-              "s3fs",
-              "stringr", 
-              "stringi",
-              "httr",
-              "xml2")
-
-# This function will call packages first from the user library and second the system library
-# This can help overcome issues with the Afrilab server where the system library has outdated packages that 
-# require an contacting admin user to update
-load_packages_prefer_user <- function(packages) {
-  user_lib <- Sys.getenv("R_LIBS_USER")
-  current_libs <- .libPaths()
+# 0) Set-up workspace ####
+  # 0.1) Load R functions & packages ####
   
-  # Set user library as the first in the search path
-  .libPaths(c(user_lib, current_libs))
+  # List of packages to be loaded
+  packages <- c("terra", 
+                "data.table", 
+                "future",
+                "future.apply",
+                "progressr",
+                "parallel",
+                "doFuture",
+                "httr",
+                "s3fs",
+                "stringr", 
+                "stringi",
+                "httr",
+                "xml2")
   
-  # Load pacman package
-  library(pacman)
-  
-  # Install and load packages using pacman
-  pacman::p_load(char = packages)
-  
-  # Restore original library paths
-  .libPaths(current_libs)
-}
-
-load_packages_prefer_user(packages)
-
-# Source functions from github
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
-
-# 0.2) Set up workspace ####
-# Set number of workers
-worker_n<-parallel::detectCores()-1
-if(worker_n>20){
-  worker_n<-20
-}
-
-# Set scenarios and time frames to analyse
-Scenarios<-c("ssp245","ssp585")
-Times<-c("2021_2040","2041_2060")
-
-# Create combinations of scenarios and times
-Scenarios<-rbind(data.table(Scenario="historic",Time="historic"),data.table(expand.grid(Scenario=Scenarios,Time=Times)))
-Scenarios[,combined:=paste0(Scenario,"-",Time)]
-
-# Set hazards to include in analysis
-hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG") # NDD is not being used as it cannot be projected to future scenarios
-
-haz_meta<-data.table::fread(haz_meta_url, showProgress = FALSE)
-haz_meta[variable.code %in% hazards]
-haz_meta[,code2:=paste0(haz_meta$code,"_",haz_meta$`function`)]
-
-haz_class<-data.table::fread(haz_class_url, showProgress = FALSE)
-haz_class<-haz_class[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
-haz_classes<-unique(haz_class$description)
-
-# duplicate generic non-heat stress variables for livestock
-livestock<-livestock<-haz_class[grepl("cattle|goats|poultry|pigs|sheep",crop),unique(crop)]
-non_heat<-c("NTx40","NTx35","NDWS","TAI","NDWL0","PTOT") # NDD is not being used as it cannot be projected to future scenarios
-
-haz_class<-rbind(haz_class[crop=="generic"],
-  rbindlist(lapply(1:length(livestock),FUN=function(i){
-    rbind(haz_class[crop=="generic" & index_name %in% non_heat][,crop:=livestock[i]],haz_class[crop==livestock[i]])
-  }))
-)
-
-# Pull out severity classes and associate impact scores
-severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
-setnames(severity_classes,"description","class")
-
-# Create combinations of scenarios and hazards
-scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios)))[,Scenario:=as.character(Scenario)][,Time:=as.character(Time)]
-
-# read in mapspam metadata
-ms_codes<-data.table::fread(ms_codes_url, showProgress = FALSE)[,Code:=toupper(Code)]
-ms_codes<-ms_codes[compound=="no"]
-
-# read in ecocrop
-ecocrop<-fread(ecocrop_url, showProgress = FALSE)
-ecocrop[,Temp_Abs_Min:=as.numeric(Temp_Abs_Min)
-        ][,Temp_Abs_Max:=as.numeric(Temp_Abs_Max)
-          ][,Rain_Abs_Min:=as.numeric(Rain_Abs_Min)
-            ][,Rain_Abs_Max:=as.numeric(Rain_Abs_Max)]
-
-# Using the mapspam species transpose the ecocrop data into mod, severe and extreme hazards (match the format of the haz_class data.table)
-description<-c("Moderate","Severe","Extreme")
-ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
-  crop<-ms_codes[i,sci_name]
-  crop_common<-ms_codes[i,Fullname]
-  
-  crops<-unlist(strsplit(crop,";"))
-  
-  ec_haz<-rbindlist(lapply(1:length(crops),FUN=function(j){
-    ecrop<-ecocrop[species==crops[j]]
+  # This function will call packages first from the user library and second the system library
+  # This can help overcome issues with the Afrilab server where the system library has outdated packages that 
+  # require an contacting admin user to update
+  load_packages_prefer_user <- function(packages) {
+    user_lib <- Sys.getenv("R_LIBS_USER")
+    current_libs <- .libPaths()
     
-    if(nrow(ecrop)>0){
-      print(paste0(i,"-",j," | ",crop_common,"/",crops[j]))
-      
-      # PTOT low
-      ptot_low<-data.table(index_name="PTOT",
-                           description=description,
-                           direction="<",
-                           crop=crop_common,
-                           threshold=c(
-                             unlist(ecrop$Rain_Opt_Min), # Moderate
-                             (unlist(ecrop$Rain_Abs_Min)+unlist(ecrop$Rain_Opt_Min))/2, # Severe
-                             unlist(ecrop$Rain_Abs_Min))) # Extreme
-      
-      # PTOT high
-      ptot_high<-data.table(index_name="PTOT",
-                            description=description,
-                            direction=">",
-                            crop=crop_common,
-                            threshold=c(
-                              unlist(ecrop$Rain_Opt_Max), # Moderate
-                              ceiling((unlist(ecrop$Rain_Opt_Max)+unlist(ecrop$Rain_Abs_Max))/2), # Severe
-                              unlist(ecrop$Rain_Abs_Max))) # Extreme
-      
-      # TAVG low
-      tavg_low<-data.table(index_name="TAVG",
-                           description=description,
-                           direction="<",
-                           crop=crop_common,
-                           threshold=c(
-                             unlist(ecrop$temp_opt_min), # Moderate
-                             (unlist(ecrop$temp_opt_min)+unlist(ecrop$Temp_Abs_Min))/2, # Severe
-                             unlist(ecrop$Temp_Abs_Min))) # Extreme
-      
-      # TAVG high
-      tavg_high<-data.table(index_name="TAVG",
-                            description=description,
-                            direction=">",
-                            crop=crop_common,
-                            threshold=c(
-                              unlist(ecrop$Temp_Opt_Max), # Moderate
-                              (unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2, # Severe
-                              unlist(ecrop$Temp_Abs_Max))) # Extreme
-      
-      # NTxCrop - moderate  (>optimum)
-      ntxcrop_m<-data.table(index_name=paste0("NTxM",ecrop$Temp_Opt_Max),
-                           description=description,
-                           direction=">",
-                           crop=crop_common,
-                           threshold=c(7, # Moderate
-                                       14, # Severe
-                                       21)) # Extreme
-      
-      # NTxCrop - severe  
-      ntxcrop_s<-data.table(index_name=paste0("NTxS",ceiling((unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2)),
-                            description=description,
-                            direction=">",
-                            crop=crop_common,
-                            threshold=c(7, # Moderate
-                                        14, # Severe
-                                        21)) # Extreme
-      
-      
-      # NTxCrop extreme (>absolute)
-      ntxcrop_e<-data.table(index_name=paste0("NTxE",ecrop$Temp_Abs_Max),
-                          description=description,
-                          direction=">",
-                          crop=crop_common,
-                          threshold=c(1, # Moderate
-                                      5, # Severe
-                                      10)) # Extreme
-      
-      rbind(ptot_low,ptot_high,tavg_low,tavg_high,ntxcrop_m,ntxcrop_s,ntxcrop_e)
-    }else{
-      print(paste0(i,"-",j," | ",crop, " - ERROR NO MATCH"))
-      NULL
-    }
-  }))
-  
-  # Average NTxM/S/E thresholds
-  ec_haz<-unique(ec_haz[grep("NTxS",index_name),index_name:=paste0("NTxS",ceiling(mean(as.numeric(substr(index_name,5,6)))))
-                        ][grep("NTxM",index_name),index_name:=paste0("NTxM",ceiling(mean(as.numeric(substr(index_name,5,6)))))
-                          ][grep("NTxE",index_name),index_name:=paste0("NTxE",ceiling(mean(as.numeric(substr(index_name,5,6)))))])
-  
-  # Average threholds where multiple crops exist for a mapspam commodity
-  ec_haz<-ec_haz[,list(threshold=mean(threshold,na.rm=T)),by=list(index_name,description,direction,crop)]
-         
-  ec_haz
-}))
-
-
-# Replicate generic hazards that are not TAVG or PTOT for each crop
-haz_class2<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
-  Y<-ec_haz[crop==ms_codes[i,Fullname]]
-  X<-haz_class[!index_name %in% ec_haz[,unique(index_name)]]
-  # Remove THI & HSH this is not for crops
-  X<-X[!grepl("THI|HSH",index_name)]
-  X$crop<-ms_codes[i,Fullname]
-  rbind(Y,X)
-}))
-
-haz_class<-rbind(haz_class,haz_class2)
-
-haz_class[,direction2:="G"
-          ][direction=="<",direction2:="L"
-            ][,index_name2:=index_name
-              ][index_name %in% c("TAVG","PTOT"),index_name2:=paste0(index_name,"_",direction2)
-                ][,index_name:=gsub("NTxE|NTxM|NTxS","NTx",index_name)
-                  ][grep("NTxE",index_name2),index_name2:="NTxE"
-                    ][grep("NTxM",index_name2),index_name2:="NTxM"
-                      ][grep("NTxS",index_name2),index_name2:="NTxS"]
-
-haz_class<-unique(haz_class)
-
-# Add summary function description to haz_class
-haz_class<-merge(haz_class,unique(haz_meta[,c("variable.code","function")]),by.x="index_name",by.y="variable.code",all.x=T)
-haz_class[,code2:=paste0(index_name,"_",`function`)][,code2:=gsub("_G_|_L_","_",code2)]
-
-# Add hazard type to haz_class
-haz_class[,filename:=paste0(index_name,"-",direction2,threshold,".tif")]
-haz_class[,match_field:=code2][grepl("PTOT|TAVG",code2),match_field:=paste0(index_name2[1],"_",`function`[1]),by=code2]
-haz_class[,match_field:=unlist(match_field)]
-haz_class<-merge(haz_class,unique(haz_meta[,list(code2,type)]),by.y="code2",by.x="match_field",all.x=T)
-haz_class[,match_field:=NULL]
-haz_class[,haz_filename:=paste0(type,"-",index_name2,"-",crop,"-",description)]
-
-# Set analysis parameters
-PropThreshold<-0.5
-PropTDir=">"
-
-# Set crops and livestock included in the analysis
-crop_choices<-c(fread(haz_class_url, showProgress = FALSE)[,unique(crop)],ms_codes[,sort(Fullname)])
-
-# 0.3) Download hazard timeseries from s3 bucket ####
-overwrite<-F
-workers_dl<-10
-# Specify the bucket name and the prefix (folder path)
-s3_folder_path <- file.path("risk_prototype/data/hazard_timeseries",timeframe_choice,"")
-
-# List files in the specified S3 bucket and prefix
-file_list<-s3$dir_ls(file.path(bucket_name_s3,s3_folder_path))
-file_list<-data.table(file_list=grep(".tif",file_list,value=T))
-file_list<-file_list[,new_files:=gsub(file.path(bucket_name_s3,s3_folder_path),paste0(haz_timeseries_dir,"/"),file_list)]
-
-# Here you can check if there are issues with file downloads by comparing the local size to the s3 size
-if(F){
-  file_list[,local_size:=round(file.info(new_files)$size/10^6,1)]
-  file_list[,s3_size:=s3$file_size(file_list)][,s3_size:=round(as.numeric(s3_size),1)]
-  file_list[s3_size!=local_size,new_files]
-}
-
-if(!overwrite){
-  file_list<-file_list[!file.exists(new_files)]
-}
-  if(nrow(file_list)>0){
+    # Set user library as the first in the search path
+    .libPaths(c(user_lib, current_libs))
     
-    convert_to_bytes <- function(size) {
-      # Convert to character
-      size <- as.character(size)
-      # Remove any spaces
-      size <- gsub(" ", "", size)
+    # Load pacman package
+    library(pacman)
+    
+    # Install and load packages using pacman
+    pacman::p_load(char = packages)
+    
+    # Restore original library paths
+    .libPaths(current_libs)
+  }
+  
+  load_packages_prefer_user(packages)
+  
+  # Source functions from github
+  source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+  
+  # 0.2) Set up workspace #####
+    # 0.2.1) Set number of workers ######
+    worker_n<-parallel::detectCores()-1
+    cat("System workers -1 = ",worker_n)
+    worker_n<-10
+    
+    # 0.2.2) Set other parameters ######
+  # Set scenarios and time frames to analyse
+  Scenarios<-c("ssp245","ssp585")
+  Times<-c("2021_2040","2041_2060")
+  
+  # Create combinations of scenarios and times
+  Scenarios<-rbind(data.table(Scenario="historic",Time="historic"),data.table(expand.grid(Scenario=Scenarios,Time=Times)))
+  Scenarios[,combined:=paste0(Scenario,"-",Time)]
+  
+  # Set hazards to include in analysis
+  hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG") # NDD is not being used as it cannot be projected to future scenarios
+  
+  haz_meta<-data.table::fread(haz_meta_url, showProgress = FALSE)
+  haz_meta[variable.code %in% hazards]
+  haz_meta[,code2:=paste0(haz_meta$code,"_",haz_meta$`function`)]
+  
+  haz_class<-data.table::fread(haz_class_url, showProgress = FALSE)
+  haz_class<-haz_class[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
+  haz_classes<-unique(haz_class$description)
+  
+  # duplicate generic non-heat stress variables for livestock
+  livestock<-livestock<-haz_class[grepl("cattle|goats|poultry|pigs|sheep",crop),unique(crop)]
+  non_heat<-c("NTx40","NTx35","NDWS","TAI","NDWL0","PTOT") # NDD is not being used as it cannot be projected to future scenarios
+  
+  haz_class<-rbind(haz_class[crop=="generic"],
+    rbindlist(lapply(1:length(livestock),FUN=function(i){
+      rbind(haz_class[crop=="generic" & index_name %in% non_heat][,crop:=livestock[i]],haz_class[crop==livestock[i]])
+    }))
+  )
+  
+  # Pull out severity classes and associate impact scores
+  severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
+  setnames(severity_classes,"description","class")
+  
+  # Create combinations of scenarios and hazards
+  scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios)))[,Scenario:=as.character(Scenario)][,Time:=as.character(Time)]
+  
+  # read in mapspam metadata
+  ms_codes<-data.table::fread(ms_codes_url, showProgress = FALSE)[,Code:=toupper(Code)]
+  ms_codes<-ms_codes[compound=="no"]
+  
+  # read in ecocrop
+  ecocrop<-fread(ecocrop_url, showProgress = FALSE)
+  ecocrop[,Temp_Abs_Min:=as.numeric(Temp_Abs_Min)
+          ][,Temp_Abs_Max:=as.numeric(Temp_Abs_Max)
+            ][,Rain_Abs_Min:=as.numeric(Rain_Abs_Min)
+              ][,Rain_Abs_Max:=as.numeric(Rain_Abs_Max)]
+  
+  # Using the mapspam species transpose the ecocrop data into mod, severe and extreme hazards (match the format of the haz_class data.table)
+  description<-c("Moderate","Severe","Extreme")
+  ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
+    crop<-ms_codes[i,sci_name]
+    crop_common<-ms_codes[i,Fullname]
+    
+    crops<-unlist(strsplit(crop,";"))
+    
+    ec_haz<-rbindlist(lapply(1:length(crops),FUN=function(j){
+      ecrop<-ecocrop[species==crops[j]]
       
-      # Extract the units (K, M, G) and the numeric value
-      units <- tolower(substr(size, nchar(size), nchar(size)))
-      value <- as.numeric(substr(size, 1, nchar(size) - 1))
-      
-      # Convert based on the unit
-      if (units == "k") {
-        return(value * 1024)
-      } else if (units == "m") {
-        return(value * 1024^2)
-      } else if (units == "g") {
-        return(value * 1024^3)
-      } else {
-        return(value)  # If no units, assume it's already in bytes
+      if(nrow(ecrop)>0){
+        print(paste0(i,"-",j," | ",crop_common,"/",crops[j]))
+        
+        # PTOT low
+        ptot_low<-data.table(index_name="PTOT",
+                             description=description,
+                             direction="<",
+                             crop=crop_common,
+                             threshold=c(
+                               unlist(ecrop$Rain_Opt_Min), # Moderate
+                               (unlist(ecrop$Rain_Abs_Min)+unlist(ecrop$Rain_Opt_Min))/2, # Severe
+                               unlist(ecrop$Rain_Abs_Min))) # Extreme
+        
+        # PTOT high
+        ptot_high<-data.table(index_name="PTOT",
+                              description=description,
+                              direction=">",
+                              crop=crop_common,
+                              threshold=c(
+                                unlist(ecrop$Rain_Opt_Max), # Moderate
+                                ceiling((unlist(ecrop$Rain_Opt_Max)+unlist(ecrop$Rain_Abs_Max))/2), # Severe
+                                unlist(ecrop$Rain_Abs_Max))) # Extreme
+        
+        # TAVG low
+        tavg_low<-data.table(index_name="TAVG",
+                             description=description,
+                             direction="<",
+                             crop=crop_common,
+                             threshold=c(
+                               unlist(ecrop$temp_opt_min), # Moderate
+                               (unlist(ecrop$temp_opt_min)+unlist(ecrop$Temp_Abs_Min))/2, # Severe
+                               unlist(ecrop$Temp_Abs_Min))) # Extreme
+        
+        # TAVG high
+        tavg_high<-data.table(index_name="TAVG",
+                              description=description,
+                              direction=">",
+                              crop=crop_common,
+                              threshold=c(
+                                unlist(ecrop$Temp_Opt_Max), # Moderate
+                                (unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2, # Severe
+                                unlist(ecrop$Temp_Abs_Max))) # Extreme
+        
+        # NTxCrop - moderate  (>optimum)
+        ntxcrop_m<-data.table(index_name=paste0("NTxM",ecrop$Temp_Opt_Max),
+                             description=description,
+                             direction=">",
+                             crop=crop_common,
+                             threshold=c(7, # Moderate
+                                         14, # Severe
+                                         21)) # Extreme
+        
+        # NTxCrop - severe  
+        ntxcrop_s<-data.table(index_name=paste0("NTxS",ceiling((unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2)),
+                              description=description,
+                              direction=">",
+                              crop=crop_common,
+                              threshold=c(7, # Moderate
+                                          14, # Severe
+                                          21)) # Extreme
+        
+        
+        # NTxCrop extreme (>absolute)
+        ntxcrop_e<-data.table(index_name=paste0("NTxE",ecrop$Temp_Abs_Max),
+                            description=description,
+                            direction=">",
+                            crop=crop_common,
+                            threshold=c(1, # Moderate
+                                        5, # Severe
+                                        10)) # Extreme
+        
+        rbind(ptot_low,ptot_high,tavg_low,tavg_high,ntxcrop_m,ntxcrop_s,ntxcrop_e)
+      }else{
+        print(paste0(i,"-",j," | ",crop, " - ERROR NO MATCH"))
+        NULL
       }
-    }
+    }))
     
-    calculate_file_hash <- function(file_path) {
-      return(digest::digest(file = file_path, algo = "md5"))
-    }
+    # Average NTxM/S/E thresholds
+    ec_haz<-unique(ec_haz[grep("NTxS",index_name),index_name:=paste0("NTxS",ceiling(mean(as.numeric(substr(index_name,5,6)))))
+                          ][grep("NTxM",index_name),index_name:=paste0("NTxM",ceiling(mean(as.numeric(substr(index_name,5,6)))))
+                            ][grep("NTxE",index_name),index_name:=paste0("NTxE",ceiling(mean(as.numeric(substr(index_name,5,6)))))])
     
-  # Set up the future plan for parallel processing
-    if (worker_n == 1) {
-      future::plan("sequential")
-    } else {
-      future::plan("multisession", workers = worker_n)
-    }
-    
-    
-    # Enable progressr
-    progressr::handlers(global = TRUE)
-    progressr::handlers("progress")
-    
-    # Define the maximum number of retry attempts
-    max_retries <- 3
-    # Difference in file size allowed
-    tolerance<-0.05 # % difference 
-    
-    
-    # Wrap the parallel processing in a with_progress call
-    p <- progressr::with_progress({
-      # Define the progress bar
-      progress <- progressr::progressor(along = 1:nrow(file_list))
+    # Average threholds where multiple crops exist for a mapspam commodity
+    ec_haz<-ec_haz[,list(threshold=mean(threshold,na.rm=T)),by=list(index_name,description,direction,crop)]
+           
+    ec_haz
+  }))
+  
+  
+  # Replicate generic hazards that are not TAVG or PTOT for each crop
+  haz_class2<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
+    Y<-ec_haz[crop==ms_codes[i,Fullname]]
+    X<-haz_class[!index_name %in% ec_haz[,unique(index_name)]]
+    # Remove THI & HSH this is not for crops
+    X<-X[!grepl("THI|HSH",index_name)]
+    X$crop<-ms_codes[i,Fullname]
+    rbind(Y,X)
+  }))
+  
+  haz_class<-rbind(haz_class,haz_class2)
+  
+  haz_class[,direction2:="G"
+            ][direction=="<",direction2:="L"
+              ][,index_name2:=index_name
+                ][index_name %in% c("TAVG","PTOT"),index_name2:=paste0(index_name,"_",direction2)
+                  ][,index_name:=gsub("NTxE|NTxM|NTxS","NTx",index_name)
+                    ][grep("NTxE",index_name2),index_name2:="NTxE"
+                      ][grep("NTxM",index_name2),index_name2:="NTxM"
+                        ][grep("NTxS",index_name2),index_name2:="NTxS"]
+  
+  haz_class<-unique(haz_class)
+  
+  # Add summary function description to haz_class
+  haz_class<-merge(haz_class,unique(haz_meta[,c("variable.code","function")]),by.x="index_name",by.y="variable.code",all.x=T)
+  haz_class[,code2:=paste0(index_name,"_",`function`)][,code2:=gsub("_G_|_L_","_",code2)]
+  
+  # Add hazard type to haz_class
+  haz_class[,filename:=paste0(index_name,"-",direction2,threshold,".tif")]
+  haz_class[,match_field:=code2][grepl("PTOT|TAVG",code2),match_field:=paste0(index_name2[1],"_",`function`[1]),by=code2]
+  haz_class[,match_field:=unlist(match_field)]
+  haz_class<-merge(haz_class,unique(haz_meta[,list(code2,type)]),by.y="code2",by.x="match_field",all.x=T)
+  haz_class[,match_field:=NULL]
+  haz_class[,haz_filename:=paste0(type,"-",index_name2,"-",crop,"-",description)]
+  
+  # Set analysis parameters
+  PropThreshold<-0.5
+  PropTDir=">"
+  
+  # Set crops and livestock included in the analysis
+  crop_choices<-c(fread(haz_class_url, showProgress = FALSE)[,unique(crop)],ms_codes[,sort(Fullname)])
+  
+  # 0.3) Download hazard timeseries from s3 bucket ####
+  overwrite<-F
+  workers_dl<-10
+  # Specify the bucket name and the prefix (folder path)
+  s3_folder_path <- file.path("risk_prototype/data/hazard_timeseries",timeframe_choice,"")
+  
+  # List files in the specified S3 bucket and prefix
+  file_list<-s3$dir_ls(file.path(bucket_name_s3,s3_folder_path))
+  file_list<-data.table(file_list=grep(".tif",file_list,value=T))
+  file_list<-file_list[,new_files:=gsub(file.path(bucket_name_s3,s3_folder_path),paste0(haz_timeseries_dir,"/"),file_list)]
+  
+  # Here you can check if there are issues with file downloads by comparing the local size to the s3 size
+  if(F){
+    file_list[,local_size:=round(file.info(new_files)$size/10^6,1)]
+    file_list[,s3_size:=s3$file_size(file_list)][,s3_size:=round(as.numeric(s3_size),1)]
+    file_list[s3_size!=local_size,new_files]
+  }
+  
+  if(!overwrite){
+    file_list<-file_list[!file.exists(new_files)]
+  }
+    if(nrow(file_list)>0){
       
-      # Initialize a list to store problematic files
-      problem_files <- list()
+      convert_to_bytes <- function(size) {
+        # Convert to character
+        size <- as.character(size)
+        # Remove any spaces
+        size <- gsub(" ", "", size)
+        
+        # Extract the units (K, M, G) and the numeric value
+        units <- tolower(substr(size, nchar(size), nchar(size)))
+        value <- as.numeric(substr(size, 1, nchar(size) - 1))
+        
+        # Convert based on the unit
+        if (units == "k") {
+          return(value * 1024)
+        } else if (units == "m") {
+          return(value * 1024^2)
+        } else if (units == "g") {
+          return(value * 1024^3)
+        } else {
+          return(value)  # If no units, assume it's already in bytes
+        }
+      }
       
-      # Download files in parallel
-      results <- future.apply::future_lapply(1:nrow(file_list), function(i) {
-        #progress(sprintf("File %d/%d", i, nrow(file_list)))
-        progress()
+      calculate_file_hash <- function(file_path) {
+        return(digest::digest(file = file_path, algo = "md5"))
+      }
+      
+    # Set up the future plan for parallel processing
+      if (worker_n == 1) {
+        future::plan("sequential")
+      } else {
+        future::plan("multisession", workers = worker_n)
+      }
+      
+      
+      # Enable progressr
+      progressr::handlers(global = TRUE)
+      progressr::handlers("progress")
+      
+      # Define the maximum number of retry attempts
+      max_retries <- 3
+      # Difference in file size allowed
+      tolerance<-0.05 # % difference 
+      
+      
+      # Wrap the parallel processing in a with_progress call
+      p <- progressr::with_progress({
+        # Define the progress bar
+        progress <- progressr::progressor(along = 1:nrow(file_list))
         
-        # Initialize retry count
-        retries <- 0
+        # Initialize a list to store problematic files
+        problem_files <- list()
         
-        repeat {
-          tryCatch({
-            # Check if the file needs to be downloaded
-            if ((!file.exists(file_list$new_files[i])) || overwrite == TRUE) {
-              # Get the size of the S3 file
-              s3_file_info<- s3$file_info(file_list$file_list[i])
-              s3_file_hash<-s3_file_info$etag
-              s3_file_hash<-gsub("\"", "", s3_file_hash)
-              s3_file_size <- convert_to_bytes(as.character(s3_file_info$size))
-              # Download the file
-              s3$file_download(file_list$file_list[i], file_list$new_files[i], overwrite = TRUE)
-              
-              # Get the size of the downloaded file
-              downloaded_file_size <- file.info(file_list$new_files[i])$size
-              downloaded_file_hash <- calculate_file_hash(file_list$new_files[i])
-              
-              diff<-100*(((1-(s3_file_size/downloaded_file_size))^2)^0.5)
-              
-              # Check if the file sizes match
-              if (diff>tolerance|s3_file_hash!=downloaded_file_hash) {
-                stop(sprintf("File size mismatch for %s: S3 size = %d, Downloaded size = %d",
-                             file_list$file_list[i], s3_file_size, downloaded_file_size))
+        # Download files in parallel
+        results <- future.apply::future_lapply(1:nrow(file_list), function(i) {
+          #progress(sprintf("File %d/%d", i, nrow(file_list)))
+          progress()
+          
+          # Initialize retry count
+          retries <- 0
+          
+          repeat {
+            tryCatch({
+              # Check if the file needs to be downloaded
+              if ((!file.exists(file_list$new_files[i])) || overwrite == TRUE) {
+                # Get the size of the S3 file
+                s3_file_info<- s3$file_info(file_list$file_list[i])
+                s3_file_hash<-s3_file_info$etag
+                s3_file_hash<-gsub("\"", "", s3_file_hash)
+                s3_file_size <- convert_to_bytes(as.character(s3_file_info$size))
+                # Download the file
+                s3$file_download(file_list$file_list[i], file_list$new_files[i], overwrite = TRUE)
+                
+                # Get the size of the downloaded file
+                downloaded_file_size <- file.info(file_list$new_files[i])$size
+                downloaded_file_hash <- calculate_file_hash(file_list$new_files[i])
+                
+                diff<-100*(((1-(s3_file_size/downloaded_file_size))^2)^0.5)
+                
+                # Check if the file sizes match
+                if (diff>tolerance|s3_file_hash!=downloaded_file_hash) {
+                  stop(sprintf("File size mismatch for %s: S3 size = %d, Downloaded size = %d",
+                               file_list$file_list[i], s3_file_size, downloaded_file_size))
+                }
+                
+                # This should not return an error, if it does it will trigger the tryCatch
+                tail(rast(file_list$new_files[i]))
               }
               
-              # This should not return an error, if it does it will trigger the tryCatch
-              tail(rast(file_list$new_files[i]))
-            }
-            
-            # If download and size check succeed, break the loop
-            break
-          }, error = function(e) {
-            retries <- retries + 1
-            if (retries >= max_retries) {
-              # Record the problematic file and the error message
-              problem_files <<- rbind(problem_files, data.frame(
-                file_name = file_list$file_list[i],
-                error_message = e$message,
-                stringsAsFactors = FALSE
-              ))
+              # If download and size check succeed, break the loop
               break
-            }
-          })
-        }
+            }, error = function(e) {
+              retries <- retries + 1
+              if (retries >= max_retries) {
+                # Record the problematic file and the error message
+                problem_files <<- rbind(problem_files, data.frame(
+                  file_name = file_list$file_list[i],
+                  error_message = e$message,
+                  stringsAsFactors = FALSE
+                ))
+                break
+              }
+            })
+          }
+        })
+        
+        # Return the list of problematic files
+        problem_files
       })
       
-      # Return the list of problematic files
-      problem_files
-    })
+      print(p)
     
-    print(p)
+    future::plan(sequential)
+    }
   
-  future::plan(sequential)
+    # 0.3.1) Check if files can load ######
+  files<-list.files(haz_timeseries_dir,".tif",full.names = T)
+  (bad_files<-check_and_delete_bad_files(files,delete_bad=T,worker_n=worker_n))
+  
+  # If you finding files will not open delete them then run the download process again
+  if(length(bad_files)>0){
+    stop("Bad downloads were present run through the download section again")
   }
-
-  # 0.3.1) Check if files can load ######
-files<-list.files(haz_timeseries_dir,".tif",full.names = T)
-(bad_files<-check_and_delete_bad_files(files,delete_bad=T,worker_n=worker_n))
-
-# If you finding files will not open delete them then run the download process again
-if(length(bad_files)>0){
-  stop("Bad downloads were present run through the download section again")
-}
-
-# 0.4) Summarize data availability #####
-file_summary<-basename(files)
-file_summary<-gsub("historical","historic_historic_1995_2014",file_summary)
-file_summary<-gsub("max_max","max-max",file_summary)
-file_summary<-gsub("mean_max","mean-max",file_summary)
-file_summary<-gsub("max_mean","max-mean",file_summary)
-file_summary<-gsub("mean_mean","mean-mean",file_summary)
-
-file_summary<-as.data.table(t(as.data.table(strsplit(file_summary,"_"))))
-colnames(file_summary)<-c("scenario","timeframe","y1","y2","variable","stat")
-file_summary[,timeframe:=paste0(y1,"-",y2)][,c("y1","y2"):=NULL][,stat:=gsub(".tif","",stat)]
-
-dcast(file_summary,formula = scenario+timeframe~variable,fun.aggregate = length)
-
+  
+  # 0.4) Summarize data availability #####
+  file_summary<-basename(files)
+  file_summary<-gsub("historical","historic_historic_1995_2014",file_summary)
+  file_summary<-gsub("max_max","max-max",file_summary)
+  file_summary<-gsub("mean_max","mean-max",file_summary)
+  file_summary<-gsub("max_mean","max-mean",file_summary)
+  file_summary<-gsub("mean_mean","mean-mean",file_summary)
+  
+  file_summary<-as.data.table(t(as.data.table(strsplit(file_summary,"_"))))
+  colnames(file_summary)<-c("scenario","timeframe","y1","y2","variable","stat")
+  file_summary[,timeframe:=paste0(y1,"-",y2)][,c("y1","y2"):=NULL][,stat:=gsub(".tif","",stat)]
+  
+  dcast(file_summary,formula = scenario+timeframe~variable,fun.aggregate = length)
+  
 # 1) Classify time series climate variables based on hazard thresholds ####
 
 # Create a table of unique thresholds
