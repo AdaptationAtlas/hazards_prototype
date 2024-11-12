@@ -1,4 +1,5 @@
 # Please run 0_server_setup.R before executing this script
+# Note this script will only work on CGlabs server or if a folder containing the hazard_indices calculated in the https://github.com/AdaptationAtlas/hazards workflow are present
 
 # 0) Load R functions & packages ####
 packages <- c("arrow",
