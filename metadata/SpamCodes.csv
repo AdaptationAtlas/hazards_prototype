@@ -50,7 +50,7 @@ banana and plantain,banpl,NA,yes,NA,TRUE,FALSE
 cereals,cere,NA,yes,NA,TRUE,FALSE
 pulses,puls,NA,yes,NA,TRUE,FALSE
 total,total,NA,yes,NA,TRUE,FALSE
-citrus,citrus,NA,yes,NA,FALSE,TRUE
-onion,onion,Allium cepa,no,NA,FALSE,TRUE
-rubb,rubber,Hevea brasiliensis,no,NA,FALSE,TRUE
-toma,tomato,Solanum lycopersicum,no,NA,FALSE,TRUE
+citrus,citrus,NA,yes,,FALSE,TRUE
+onion,onion,Allium cepa,no,,FALSE,TRUE
+rubb,rubber,Hevea brasiliensis,no,,FALSE,TRUE
+toma,tomato,Solanum lycopersicum,no,,FALSE,TRUE
