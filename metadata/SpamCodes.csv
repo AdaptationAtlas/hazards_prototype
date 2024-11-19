@@ -1,56 +1,56 @@
-Fullname,Code,sci_name,compound,cropsuite_name,ssa_2o20,ifpri_2020,,
-arabica coffee,acof,Coffea arabica,no,coffeearabica,TRUE,FALSE,,
-banana,bana,Musa acuminata,no,banana,TRUE,TRUE,,
-barley,barl,Hordeum vulgare,no,barley,TRUE,TRUE,,
-bean,bean,Phaseolus vulgaris,no,beans,TRUE,TRUE,,
-cassava,cass,Manihot esculenta,no,cassava,TRUE,TRUE,,
-chickpea,chic,Cicer arietinum,no,chickpea,TRUE,TRUE,,
-coconut,cnut,Cocos nucifera,no,coconut,TRUE,TRUE,,
-cocoa,coco,Theobroma cacao,no,cocoa,TRUE,TRUE,,
-coffee,coff,NA,yes,NA,TRUE,TRUE,,
-cotton,cott,Gossypium hirsutum,no,cotton,TRUE,TRUE,,
-cowpea,cowp,Vigna unguiculata,no,cowpea,TRUE,TRUE,,
-fruit,fruit,NA,yes,NA,TRUE,FALSE,,
-groundnut,grou,Arachis hypogaea,no,groundnut,TRUE,TRUE,,
-lentil,lent,Lens culinaris,no,NA,TRUE,TRUE,,
-maize,maiz,Zea mays,no,maize,TRUE,TRUE,,
-millet,mill,NA,yes,NA,TRUE,TRUE,,
-other cereals,ocer,NA,yes,NA,TRUE,TRUE,,
-other fibre crops,ofib,NA,yes,NA,TRUE,TRUE,,
-oil crops,oilc,NA,yes,NA,TRUE,FALSE,,
-oilpalm,oilp,Elaeis guineensis,no,oilpalm,TRUE,TRUE,,
-other oil crops,ooil,NA,yes,NA,TRUE,TRUE,,
-other pulses,opul,NA,yes,NA,TRUE,TRUE,,
-other roots,orts,NA,yes,NA,TRUE,TRUE,,
-pigeonpea,pige,Cajanus cajan,no,NA,TRUE,TRUE,,
-plantain,plnt,Musa acuminata x balbisiana;Musa balbisiana,no,NA,TRUE,TRUE,,
-pearl millet,pmil,Pennisetum glaucum,no,millet,TRUE,TRUE,,
-potato,pota,Solanum tuberosum,no,potato,TRUE,TRUE,,
-rapeseed,rape,Brassica napus,no,rapeseed,TRUE,TRUE,,
-robusta coffee,rcof,Coffea canephora,no,coffeerobusta,TRUE,TRUE,,
-rest of crops,rest,NA,yes,NA,TRUE,TRUE,,
-rice,rice,Oryza sativa,no,rice,TRUE,TRUE,,
-roots,root,NA,yes,NA,TRUE,FALSE,,
-sesameseed,sesa,Sesamum indicum,no,sesame,TRUE,TRUE,,
-small millet,smil,Eleusine coracana ssp. coracana,no,NA,TRUE,FALSE,,
-sorghum,sorg,Sorghum bicolor,no,sorghum,TRUE,TRUE,,
-soybean,soyb,Glycine max,no,soy,TRUE,TRUE,,
-sugarbeet,sugb,Beta vulgaris,no,NA,TRUE,TRUE,,
-sugarcane,sugc,Saccharum officinarum,no,sugarcane,TRUE,TRUE,,
-sunflower,sunf,Helianthus annuus,no,sunflower,TRUE,TRUE,,
-sweet potato,swpo,Ipomoea batatas,no,sweetpotato,TRUE,TRUE,,
-tea,teas,Camellia sinensis,no,tea,TRUE,TRUE,,
-temperate fruit,temf,NA,yes,NA,TRUE,TRUE,,
-tobacco,toba,Nicotiana tabacum,no,tobacco,TRUE,TRUE,,
-tropical fruit,trof,NA,yes,NA,TRUE,TRUE,,
-vegetables,vege,NA,yes,NA,TRUE,TRUE,,
-wheat,whea,Triticum aestivum,no,wheat,TRUE,TRUE,,
-yams,yams,Dioscorea rotundata,no,yam,TRUE,TRUE,,
-banana and plantain,banpl,NA,yes,NA,TRUE,FALSE,,
-cereals,cere,NA,yes,NA,TRUE,FALSE,,
-pulses,puls,NA,yes,NA,TRUE,FALSE,,
-total,total,NA,yes,NA,TRUE,FALSE,,
-citrus,citrus,NA,yes,NA,FALSE,TRUE,,
-onion,onion,Allium cepa,no,NA,FALSE,TRUE,,
-rubb,rubber,Hevea brasiliensis,no,NA,FALSE,TRUE,,
-toma,tomato,Solanum lycopersicum,no,NA,FALSE,TRUE,,
+Fullname,Code,sci_name,compound,cropsuite_name,ssa_2020,ifpri_2020
+arabica coffee,acof,Coffea arabica,no,coffeearabica,TRUE,FALSE
+banana,bana,Musa acuminata,no,banana,TRUE,TRUE
+barley,barl,Hordeum vulgare,no,barley,TRUE,TRUE
+bean,bean,Phaseolus vulgaris,no,beans,TRUE,TRUE
+cassava,cass,Manihot esculenta,no,cassava,TRUE,TRUE
+chickpea,chic,Cicer arietinum,no,chickpea,TRUE,TRUE
+coconut,cnut,Cocos nucifera,no,coconut,TRUE,TRUE
+cocoa,coco,Theobroma cacao,no,cocoa,TRUE,TRUE
+coffee,coff,NA,yes,NA,TRUE,TRUE
+cotton,cott,Gossypium hirsutum,no,cotton,TRUE,TRUE
+cowpea,cowp,Vigna unguiculata,no,cowpea,TRUE,TRUE
+fruit,fruit,NA,yes,NA,TRUE,FALSE
+groundnut,grou,Arachis hypogaea,no,groundnut,TRUE,TRUE
+lentil,lent,Lens culinaris,no,NA,TRUE,TRUE
+maize,maiz,Zea mays,no,maize,TRUE,TRUE
+millet,mill,NA,yes,NA,TRUE,TRUE
+other cereals,ocer,NA,yes,NA,TRUE,TRUE
+other fibre crops,ofib,NA,yes,NA,TRUE,TRUE
+oil crops,oilc,NA,yes,NA,TRUE,FALSE
+oilpalm,oilp,Elaeis guineensis,no,oilpalm,TRUE,TRUE
+other oil crops,ooil,NA,yes,NA,TRUE,TRUE
+other pulses,opul,NA,yes,NA,TRUE,TRUE
+other roots,orts,NA,yes,NA,TRUE,TRUE
+pigeonpea,pige,Cajanus cajan,no,NA,TRUE,TRUE
+plantain,plnt,Musa acuminata x balbisiana;Musa balbisiana,no,NA,TRUE,TRUE
+pearl millet,pmil,Pennisetum glaucum,no,millet,TRUE,TRUE
+potato,pota,Solanum tuberosum,no,potato,TRUE,TRUE
+rapeseed,rape,Brassica napus,no,rapeseed,TRUE,TRUE
+robusta coffee,rcof,Coffea canephora,no,coffeerobusta,TRUE,TRUE
+rest of crops,rest,NA,yes,NA,TRUE,TRUE
+rice,rice,Oryza sativa,no,rice,TRUE,TRUE
+roots,root,NA,yes,NA,TRUE,FALSE
+sesameseed,sesa,Sesamum indicum,no,sesame,TRUE,TRUE
+small millet,smil,Eleusine coracana ssp. coracana,no,NA,TRUE,FALSE
+sorghum,sorg,Sorghum bicolor,no,sorghum,TRUE,TRUE
+soybean,soyb,Glycine max,no,soy,TRUE,TRUE
+sugarbeet,sugb,Beta vulgaris,no,NA,TRUE,TRUE
+sugarcane,sugc,Saccharum officinarum,no,sugarcane,TRUE,TRUE
+sunflower,sunf,Helianthus annuus,no,sunflower,TRUE,TRUE
+sweet potato,swpo,Ipomoea batatas,no,sweetpotato,TRUE,TRUE
+tea,teas,Camellia sinensis,no,tea,TRUE,TRUE
+temperate fruit,temf,NA,yes,NA,TRUE,TRUE
+tobacco,toba,Nicotiana tabacum,no,tobacco,TRUE,TRUE
+tropical fruit,trof,NA,yes,NA,TRUE,TRUE
+vegetables,vege,NA,yes,NA,TRUE,TRUE
+wheat,whea,Triticum aestivum,no,wheat,TRUE,TRUE
+yams,yams,Dioscorea rotundata,no,yam,TRUE,TRUE
+banana and plantain,banpl,NA,yes,NA,TRUE,FALSE
+cereals,cere,NA,yes,NA,TRUE,FALSE
+pulses,puls,NA,yes,NA,TRUE,FALSE
+total,total,NA,yes,NA,TRUE,FALSE
+citrus,citrus,NA,yes,NA,FALSE,TRUE
+onion,onion,Allium cepa,no,NA,FALSE,TRUE
+rubb,rubber,Hevea brasiliensis,no,NA,FALSE,TRUE
+toma,tomato,Solanum lycopersicum,no,NA,FALSE,TRUE
