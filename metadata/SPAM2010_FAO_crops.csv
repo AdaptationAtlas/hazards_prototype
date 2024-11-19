@@ -1,185 +1,163 @@
-﻿code_spam2010,short_spam2010,long_spam2010,code_fao,name_fao
-1,whea,wheat,15,Wheat
-2,rice,rice,27,"Rice, paddy"
-4,barl,barley,44,Barley
-,,,51,Beer of Barley
-3,maiz,maize,56,Maize
-,,,60,Maize oil
-8,ocer,other cereals,68,Popcorn
-8,ocer,other cereals,71,Rye
-8,ocer,other cereals,75,Oats
-5,pmil,pearl millet,79,Millet (split into pmil and smil)
-6,smil,small millet,79,Millet (split into pmil and smil)
-7,sorg,sorghum,83,Sorghum
-8,ocer,other cereals,89,Buckwheat
-8,ocer,other cereals,92,Quinoa
-8,ocer,other cereals,94,Fonio
-8,ocer,other cereals,97,Triticale
-8,ocer,other cereals,101,Canary seed
-8,ocer,other cereals,103,Mixed grain
-8,ocer,other cereals,108,"Cereals, nes"
-9,pota,potato,116,Potatoes
-10,swpo,sweet potato,122,Sweet potatoes
-12,cass,cassava,125,Cassava
-13,orts,other roots,135,Yautia (cocoyam)
-13,orts,other roots,136,Taro (cocoyam)
-11,yams,yams,137,Yams
-13,orts,other roots,149,"Roots and Tubers, nes"
-28,sugc,sugarcane,156,Sugar cane
-29,sugb,sugarbeet,157,Sugar beet
-42,rest,rest of crops,161,"Sugar crops, nes"
-0,,,162,Sugar Raw Centrifugal
-0,,,165,Molasses
-14,bean,bean,176,"Beans, dry"
-19,opul,other pulses,181,"Broad beans, horse beans, dry"
-19,opul,other pulses,187,"Peas, dry"
-15,chic,chickpea,191,Chick peas
-16,cowp,cowpea,195,"Cow peas, dry"
-17,pige,pigeonpea,197,Pigeon peas
-18,lent,lentil,201,Lentils
-19,opul,other pulses,203,Bambara beans
-19,opul,other pulses,205,Vetches
-19,opul,other pulses,210,Lupins
-19,opul,other pulses,211,"Pulses, nes"
-42,rest,rest of crops,216,"Brazil nuts, with shell"
-42,rest,rest of crops,217,"Cashew nuts, with shell"
-42,rest,rest of crops,220,Chestnuts
-42,rest,rest of crops,221,"Almonds, with shell"
-42,rest,rest of crops,222,"Walnuts, with shell"
-42,rest,rest of crops,223,Pistachios
-42,rest,rest of crops,224,Kolanuts
-42,rest,rest of crops,225,"Hazelnuts, with shell"
-42,rest,rest of crops,226,Arecanuts
-42,rest,rest of crops,234,"Nuts, nes"
-20,soyb,soybean,236,Soybeans
-,,,237,Soybean oil
-21,grou,groundnut,242,"Groundnuts, with shell"
-,,,244,Groundnut oil
-22,cnut,coconut,249,Coconuts
-,,,252,Coconut (copra) oil
-23,oilp,oilpalm,254,Oil palm fruit
-,,,256,Palm kernels
-,,,257,Palm oil
-,,,258,Palm kernel oil
-27,ooil,other oil crops,260,Olives
-,,,261,"Olive oil, virgin"
-27,ooil,other oil crops,263,Karite Nuts (Sheanuts)
-27,ooil,other oil crops,265,Castor oil seed
-24,sunf,sunflower,267,Sunflower seed
-,,,268,Sunflower oil
-25,rape,rapeseed,270,Rapeseed
-,,,271,Rapeseed oil
-27,ooil,other oil crops,275,Tung Nuts
-27,ooil,other oil crops,280,Safflower seed
-,,,281,Safflower oil
-26,sesa,sesameseed,289,Sesame seed
-,,,290,Sesame oil
-25,rape,rapeseed,292,Mustard seed
-27,ooil,other oil crops,296,Poppy seed
-27,ooil,other oil crops,299,Melonseed
-31,ofib,other fibre crops,310,Kapok Fruit
-,,,311,Kapokseed in Shell
-30,cott,cotton,328,Seed cotton
-,,,329,Cottonseed
-,,,331,Cottonseed oil
-27,ooil,other oil crops,333,Linseed
-,,,334,Linseed oil
-27,ooil,other oil crops,336,Hempseed
-27,ooil,other oil crops,339,"Oilseeds, Nes"
-41,vege,vegetables,358,Cabbages and other brassicas
-41,vege,vegetables,366,Artichokes
-41,vege,vegetables,367,Asparagus
-41,vege,vegetables,372,Lettuce and chicory
-41,vege,vegetables,373,Spinach
-41,vege,vegetables,388,Tomatoes
-41,vege,vegetables,393,Cauliflowers and broccoli
-41,vege,vegetables,394,"Pumpkins, squash and gourds"
-41,vege,vegetables,397,Cucumbers and gherkins
-41,vege,vegetables,399,Eggplants (aubergines)
-41,vege,vegetables,401,"Chillies and peppers, green"
-41,vege,vegetables,402,"Onions (inc. shallots), green"
-41,vege,vegetables,403,"Onions, dry"
-41,vege,vegetables,406,Garlic
-41,vege,vegetables,407,"Leeks, other alliaceous veg"
-41,vege,vegetables,414,"Beans, green"
-41,vege,vegetables,417,"Peas, green"
-41,vege,vegetables,420,"Leguminous vegetables, nes"
-41,vege,vegetables,423,String beans
-41,vege,vegetables,426,Carrots and turnips
-41,vege,vegetables,430,Okra
-41,vege,vegetables,446,"Maize, green"
-41,vege,vegetables,449,Mushrooms and truffles
-41,vege,vegetables,459,Chicory roots
-41,vege,vegetables,461,Carobs
-41,vege,vegetables,463,Vegetables fresh nes
-37,bana,banana,486,Bananas
-38,plnt,plantain,489,Plantains
-39,trof,tropical fruit,490,Oranges
-39,trof,tropical fruit,495,"Tangerines, mandarins, clem."
-39,trof,tropical fruit,497,Lemons and limes
-39,trof,tropical fruit,507,Grapefruit (inc. pomelos)
-39,trof,tropical fruit,512,"Citrus fruit, nes"
-40,temf,temperate fruit,515,Apples
-40,temf,temperate fruit,521,Pears
-40,temf,temperate fruit,523,Quinces
-40,temf,temperate fruit,526,Apricots
-40,temf,temperate fruit,530,Sour cherries
-40,temf,temperate fruit,531,Cherries
-40,temf,temperate fruit,534,Peaches and nestarines
-40,temf,temperate fruit,536,Plums and sloes
-40,temf,temperate fruit,541,"Stone fruit, nes"
-40,temf,temperate fruit,542,"Pome fruit, nes"
-40,temf,temperate fruit,544,Strawberries
-40,temf,temperate fruit,547,Raspberries
-40,temf,temperate fruit,549,Gooseberries
-40,temf,temperate fruit,550,Currants
-40,temf,temperate fruit,552,Blueberries
-40,temf,temperate fruit,554,Cranberries
-40,temf,temperate fruit,558,Berries Nes
-40,temf,temperate fruit,560,Grapes
-,,,564,Wine
-39,trof,tropical fruit,567,Watermelons
-39,trof,tropical fruit,568,Other melons (inc.cantaloupes)
-39,trof,tropical fruit,569,Figs
-39,trof,tropical fruit,571,"Mangoes, mangosteens, guavas"
-39,trof,tropical fruit,572,Avocados
-39,trof,tropical fruit,574,Pineapples
-39,trof,tropical fruit,577,Dates
-39,trof,tropical fruit,587,Persimmons
-39,trof,tropical fruit,591,Cashewapple
-40,temf,temperate fruit,592,Kiwi fruit
-39,trof,tropical fruit,600,Papayas
-39,trof,tropical fruit,603,"Fruit, tropical fresh nes"
-40,temf,temperate fruit,619,Fruit Fresh Nes
-32,acof,arabica coffee,656,"Coffee, green (split into acof and rcof)"
-33,rcof,robusta coffee,656,"Coffee, green (split into acof and rcof)"
-34,coco,cocoa,661,Cocoa beans
-35,teas,tea,667,Tea
-42,rest,rest of crops,671,Maté
-42,rest,rest of crops,677,Hops
-42,rest,rest of crops,687,Pepper (Piper spp.)
-42,rest,rest of crops,689,"Chillies and peppers, dry"
-42,rest,rest of crops,692,Vanilla
-42,rest,rest of crops,693,Cinnamon (canella)
-42,rest,rest of crops,698,Cloves
-42,rest,rest of crops,702,"Nutmeg, mace and cardamoms"
-42,rest,rest of crops,711,"Anise, badian, fennel, corian."
-42,rest,rest of crops,720,Ginger
-42,rest,rest of crops,723,"Spices, nes"
-42,rest,rest of crops,748,Peppermint
-42,rest,rest of crops,754,"Pyrethrum,Dried"
-,,,767,Cotton lint
-31,ofib,other fibre crops,773,Flax fibre and tow
-31,ofib,other fibre crops,777,Hemp Tow Waste
-,,,778,Kapok Fibre
-31,ofib,other fibre crops,780,Jute
-31,ofib,other fibre crops,782,Other Bastfibres
-31,ofib,other fibre crops,788,Ramie
-31,ofib,other fibre crops,789,Sisal
-31,ofib,other fibre crops,800,Agave Fibres Nes
-31,ofib,other fibre crops,809,Manila Fibre (Abaca)
-,,,813,Coir
-31,ofib,other fibre crops,821,Fibre Crops Nes
-36,toba,tobacco,826,"Tobacco, unmanufactured"
-42,rest,rest of crops,836,Natural rubber
-42,rest,rest of crops,839,Gums Natural
+﻿code_spam2010,short_spam2010,long_spam2010,code_fao,name_fao,name_fao_val
+32,acof,arabica coffee,656,"Coffee, green (split into acof and rcof)","Coffee, green (split into acof and rcof)"
+,coff,coffee,656,"Coffee, green","Coffee, green"
+37,bana,banana,486,Bananas,Bananas
+4,barl,barley,44,Barley,Barley
+14,bean,bean,176,"Beans, dry","Beans, dry"
+12,cass,cassava,125,Cassava,"Cassava, fresh"
+15,chic,chickpea,191,Chick peas,"Chick peas, dry"
+22,cnut,coconut,249,Coconuts,"Coconuts, in shell"
+34,coco,cocoa,661,Cocoa beans,Cocoa beans
+30,cott,cotton,328,Seed cotton,"Seed cotton, unginned"
+16,cowp,cowpea,195,"Cow peas, dry","Cow peas, dry"
+21,grou,groundnut,242,"Groundnuts, with shell","Groundnuts, excluding shelled"
+18,lent,lentil,201,Lentils,"Lentils, dry"
+3,maiz,maize,56,Maize,Maize (corn)
+8,ocer,other cereals,68,Popcorn,Popcorn
+8,ocer,other cereals,71,Rye,Rye
+8,ocer,other cereals,75,Oats,Oats
+8,ocer,other cereals,89,Buckwheat,Buckwheat
+8,ocer,other cereals,92,Quinoa,Quinoa
+8,ocer,other cereals,94,Fonio,Fonio
+8,ocer,other cereals,97,Triticale,Triticale
+8,ocer,other cereals,101,Canary seed,Canary seed
+8,ocer,other cereals,103,Mixed grain,Mixed grain
+8,ocer,other cereals,108,"Cereals, nes","Cereals, nes"
+31,ofib,other fibre crops,310,Kapok Fruit,Kapok Fruit
+31,ofib,other fibre crops,773,Flax fibre and tow,Flax fibre and tow
+31,ofib,other fibre crops,777,Hemp Tow Waste,Hemp Tow Waste
+31,ofib,other fibre crops,780,Jute,Jute
+31,ofib,other fibre crops,782,Other Bastfibres,Other Bastfibres
+31,ofib,other fibre crops,788,Ramie,Ramie
+31,ofib,other fibre crops,789,Sisal,Sisal
+31,ofib,other fibre crops,800,Agave Fibres Nes,Agave Fibres Nes
+31,ofib,other fibre crops,809,Manila Fibre (Abaca),Manila Fibre (Abaca)
+31,ofib,other fibre crops,821,Fibre Crops Nes,Fibre Crops Nes
+23,oilp,oilpalm,254,Oil palm fruit,Oil palm fruit
+27,ooil,other oil crops,260,Olives,Olives
+27,ooil,other oil crops,263,Karite Nuts (Sheanuts),Karite Nuts (Sheanuts)
+27,ooil,other oil crops,265,Castor oil seed,Castor oil seed
+27,ooil,other oil crops,275,Tung Nuts,Tung Nuts
+27,ooil,other oil crops,280,Safflower seed,Safflower seed
+27,ooil,other oil crops,296,Poppy seed,Poppy seed
+27,ooil,other oil crops,299,Melonseed,Melonseed
+27,ooil,other oil crops,333,Linseed,Linseed
+27,ooil,other oil crops,336,Hempseed,Hempseed
+27,ooil,other oil crops,339,"Oilseeds, Nes","Oilseeds, Nes"
+19,opul,other pulses,181,"Broad beans, horse beans, dry","Broad beans, horse beans, dry"
+19,opul,other pulses,187,"Peas, dry","Peas, dry"
+19,opul,other pulses,203,Bambara beans,Bambara beans
+19,opul,other pulses,205,Vetches,Vetches
+19,opul,other pulses,210,Lupins,Lupins
+19,opul,other pulses,211,"Pulses, nes","Pulses, nes"
+13,orts,other roots,135,Yautia (cocoyam),Yautia (cocoyam)
+13,orts,other roots,136,Taro (cocoyam),Taro (cocoyam)
+13,orts,other roots,149,"Roots and Tubers, nes","Roots and Tubers, nes"
+17,pige,pigeonpea,197,Pigeon peas,"Pigeon peas, dry"
+38,plnt,plantain,489,Plantains,Plantains and cooking bananas
+5,pmil,pearl millet,79,Millet (split into pmil and smil),Millet
+9,pota,potato,116,Potatoes,Potatoes
+25,rape,rapeseed,270,Rapeseed,Rapeseed
+25,rape,rapeseed,292,Mustard seed,Mustard seed
+33,rcof,robusta coffee,656,"Coffee, green (split into acof and rcof)","Coffee, green (split into acof and rcof)"
+42,rest,rest of crops,161,"Sugar crops, nes","Sugar crops, nes"
+42,rest,rest of crops,216,"Brazil nuts, with shell","Brazil nuts, with shell"
+42,rest,rest of crops,217,"Cashew nuts, with shell","Cashew nuts, with shell"
+42,rest,rest of crops,220,Chestnuts,Chestnuts
+42,rest,rest of crops,221,"Almonds, with shell","Almonds, with shell"
+42,rest,rest of crops,222,"Walnuts, with shell","Walnuts, with shell"
+42,rest,rest of crops,223,Pistachios,Pistachios
+42,rest,rest of crops,224,Kolanuts,Kolanuts
+42,rest,rest of crops,225,"Hazelnuts, with shell","Hazelnuts, with shell"
+42,rest,rest of crops,226,Arecanuts,Arecanuts
+42,rest,rest of crops,234,"Nuts, nes","Nuts, nes"
+42,rest,rest of crops,671,Maté,Maté
+42,rest,rest of crops,677,Hops,Hops
+42,rest,rest of crops,687,Pepper (Piper spp.),Pepper (Piper spp.)
+42,rest,rest of crops,689,"Chillies and peppers, dry","Chillies and peppers, dry"
+42,rest,rest of crops,692,Vanilla,Vanilla
+42,rest,rest of crops,693,Cinnamon (canella),Cinnamon (canella)
+42,rest,rest of crops,698,Cloves,Cloves
+42,rest,rest of crops,702,"Nutmeg, mace and cardamoms","Nutmeg, mace and cardamoms"
+42,rest,rest of crops,711,"Anise, badian, fennel, corian.","Anise, badian, fennel, corian."
+42,rest,rest of crops,720,Ginger,Ginger
+42,rest,rest of crops,723,"Spices, nes","Spices, nes"
+42,rest,rest of crops,748,Peppermint,Peppermint
+42,rest,rest of crops,754,"Pyrethrum,Dried","Pyrethrum,Dried"
+42,rest,rest of crops,836,Natural rubber,Natural rubber
+42,rest,rest of crops,839,Gums Natural,Gums Natural
+2,rice,rice,27,"Rice, paddy",Rice
+26,sesa,sesameseed,289,Sesame seed,Sesame seed
+6,smil,small millet,79,Millet (split into pmil and smil),Millet (split into pmil and smil)
+7,sorg,sorghum,83,Sorghum,Sorghum
+20,soyb,soybean,236,Soybeans,Soya beans
+29,sugb,sugarbeet,157,Sugar beet,Sugar beet
+28,sugc,sugarcane,156,Sugar cane,Sugar cane
+24,sunf,sunflower,267,Sunflower seed,Sunflower seed
+10,swpo,sweet potato,122,Sweet potatoes,Sweet potatoes
+35,teas,tea,667,Tea,Tea leaves
+40,temf,temperate fruit,515,Apples,Apples
+40,temf,temperate fruit,521,Pears,Pears
+40,temf,temperate fruit,523,Quinces,Quinces
+40,temf,temperate fruit,526,Apricots,Apricots
+40,temf,temperate fruit,530,Sour cherries,Sour cherries
+40,temf,temperate fruit,531,Cherries,Cherries
+40,temf,temperate fruit,534,Peaches and nestarines,Peaches and nestarines
+40,temf,temperate fruit,536,Plums and sloes,Plums and sloes
+40,temf,temperate fruit,541,"Stone fruit, nes","Stone fruit, nes"
+40,temf,temperate fruit,542,"Pome fruit, nes","Pome fruit, nes"
+40,temf,temperate fruit,544,Strawberries,Strawberries
+40,temf,temperate fruit,547,Raspberries,Raspberries
+40,temf,temperate fruit,549,Gooseberries,Gooseberries
+40,temf,temperate fruit,550,Currants,Currants
+40,temf,temperate fruit,552,Blueberries,Blueberries
+40,temf,temperate fruit,554,Cranberries,Cranberries
+40,temf,temperate fruit,558,Berries Nes,Berries Nes
+40,temf,temperate fruit,560,Grapes,Grapes
+40,temf,temperate fruit,592,Kiwi fruit,Kiwi fruit
+40,temf,temperate fruit,619,Fruit Fresh Nes,Fruit Fresh Nes
+36,toba,tobacco,826,"Tobacco, unmanufactured",Unmanufactured tobacco
+39,trof,tropical fruit,490,Oranges,Oranges
+39,trof,tropical fruit,495,"Tangerines, mandarins, clem.","Tangerines, mandarins, clem."
+39,trof,tropical fruit,497,Lemons and limes,Lemons and limes
+39,trof,tropical fruit,507,Grapefruit (inc. pomelos),Grapefruit (inc. pomelos)
+39,trof,tropical fruit,512,"Citrus fruit, nes","Citrus fruit, nes"
+39,trof,tropical fruit,567,Watermelons,Watermelons
+39,trof,tropical fruit,568,Other melons (inc.cantaloupes),Other melons (inc.cantaloupes)
+39,trof,tropical fruit,569,Figs,Figs
+39,trof,tropical fruit,571,"Mangoes, mangosteens, guavas","Mangoes, mangosteens, guavas"
+39,trof,tropical fruit,572,Avocados,Avocados
+39,trof,tropical fruit,574,Pineapples,Pineapples
+39,trof,tropical fruit,577,Dates,Dates
+39,trof,tropical fruit,587,Persimmons,Persimmons
+39,trof,tropical fruit,591,Cashewapple,Cashewapple
+39,trof,tropical fruit,600,Papayas,Papayas
+39,trof,tropical fruit,603,"Fruit, tropical fresh nes","Fruit, tropical fresh nes"
+41,vege,vegetables,358,Cabbages and other brassicas,Cabbages and other brassicas
+41,vege,vegetables,366,Artichokes,Artichokes
+41,vege,vegetables,367,Asparagus,Asparagus
+41,vege,vegetables,372,Lettuce and chicory,Lettuce and chicory
+41,vege,vegetables,373,Spinach,Spinach
+41,vege,vegetables,388,Tomatoes,Tomatoes
+41,vege,vegetables,393,Cauliflowers and broccoli,Cauliflowers and broccoli
+41,vege,vegetables,394,"Pumpkins, squash and gourds","Pumpkins, squash and gourds"
+41,vege,vegetables,397,Cucumbers and gherkins,Cucumbers and gherkins
+41,vege,vegetables,399,Eggplants (aubergines),Eggplants (aubergines)
+41,vege,vegetables,401,"Chillies and peppers, green","Chillies and peppers, green"
+41,vege,vegetables,402,"Onions (inc. shallots), green","Onions (inc. shallots), green"
+41,vege,vegetables,403,"Onions, dry","Onions, dry"
+41,vege,vegetables,406,Garlic,Garlic
+41,vege,vegetables,407,"Leeks, other alliaceous veg","Leeks, other alliaceous veg"
+41,vege,vegetables,414,"Beans, green","Beans, green"
+41,vege,vegetables,417,"Peas, green","Peas, green"
+41,vege,vegetables,420,"Leguminous vegetables, nes","Leguminous vegetables, nes"
+41,vege,vegetables,423,String beans,String beans
+41,vege,vegetables,426,Carrots and turnips,Carrots and turnips
+41,vege,vegetables,430,Okra,Okra
+41,vege,vegetables,446,"Maize, green","Maize, green"
+41,vege,vegetables,449,Mushrooms and truffles,Mushrooms and truffles
+41,vege,vegetables,459,Chicory roots,Chicory roots
+41,vege,vegetables,461,Carobs,Carobs
+41,vege,vegetables,463,Vegetables fresh nes,Vegetables fresh nes
+1,whea,wheat,15,Wheat,Wheat
+11,yams,yams,137,Yams,Yams
