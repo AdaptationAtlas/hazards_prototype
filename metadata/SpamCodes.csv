@@ -7,7 +7,7 @@ cassava,cass,cass,Manihot esculenta,no,cassava
 chickpea,chic,chic,Cicer arietinum,no,chickpea
 coconut,cnut,cnut,Cocos nucifera,no,coconut
 cocoa,coco,coco,Theobroma cacao,no,cocoa
-coffee,coff,NA,NA,yes,NA
+coffee,coff,NA,Coffea ,yes,NA
 cotton,cott,cott,Gossypium hirsutum,no,cotton
 cowpea,cowp,cowp,Vigna unguiculata,no,cowpea
 fruit,fruit,NA,NA,yes,NA
@@ -51,6 +51,6 @@ cereals,cere,NA,NA,yes,NA
 pulses,puls,NA,NA,yes,NA
 total,total,NA,NA,yes,NA
 citrus,citrus,citrus,NA,yes,
-onion,onion,onion,Allium cepa,no,
-rubb,rubber,rubber,Hevea brasiliensis,no,
-toma,tomato,tomato,Solanum lycopersicum,no,
+onion,onio,onion,Allium cepa,no,
+rubb,rubb,rubber,Hevea brasiliensis,no,
+toma,toma,tomato,Solanum lycopersicum,no,
