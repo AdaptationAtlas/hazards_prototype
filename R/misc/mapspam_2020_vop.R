@@ -242,5 +242,5 @@ target_year<-c(2013,2014,2015,2016,2017)
   spam_vop_i$RCOF<-rcof
   spam_vop_i$ACOF<-acof
   
-  terra::writeRaster(round(spam_vop_i*1000,0),file.path(spam_dir,"crop-vop-2015-intd15.tif"),overwrite=T)
+  terra::writeRaster(round(spam_vop_i*1000,0),file.path(spam_dir,"global_crop_vop15_int15.tif"),overwrite=T)
   
