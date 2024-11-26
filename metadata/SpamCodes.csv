@@ -51,6 +51,6 @@ cereals,cere,NA,NA,yes,NA
 pulses,puls,NA,NA,yes,NA
 total,total,NA,NA,yes,NA
 citrus,citrus,citrus,NA,yes,
-onion,onio,onion,Allium cepa,no,
-rubb,rubb,rubber,Hevea brasiliensis,no,
-toma,toma,tomato,Solanum lycopersicum,no,
+onion,NA,onio,Allium cepa,no,
+rubb,NA,rubb,Hevea brasiliensis,no,
+toma,NA,toma,Solanum lycopersicum,no,
