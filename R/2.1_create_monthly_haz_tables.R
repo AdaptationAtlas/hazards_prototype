@@ -9,6 +9,7 @@ packages <- c("arrow",
               "data.table", 
               "future",
               "future.apply",
+              "progressr",
               "exactextractr",
               "parallel",
               "pbapply")
@@ -71,9 +72,11 @@ FUN<-"mean"
 overwrite<-F # overwrite folder level extractions
 
 # Temporarily exclude problem folders until issues with input data are resolved ####
-exclude_dirs<-file.path(indices_dir,"ssp245_EC-Earth3_2021_2040","PTOT")
+#exclude_dirs<-file.path(indices_dir,"ssp245_EC-Earth3_2021_2040","PTOT")
+  
 
-data_ex<-rbindlist(lapply(1:nrow(folders),FUN=function(i){
+data_ex<-lapply(1:nrow(folders),FUN=function(i){
+    
       folders_ss<-paste0(folders$path[i],"/",hazards)
       
       # Exclude any folders with problem data
@@ -177,7 +180,9 @@ data_ex<-rbindlist(lapply(1:nrow(folders),FUN=function(i){
         data_ex
       })
       data<-rbindlist(data,use.names=T)
-   }),use.names=T)
+   })
+
+data_ex<-rbindlist(data_ex,use.names=T)
 
 data_ex[value>10000]
 
@@ -215,7 +220,7 @@ data_ex[value>10000]
   three_month_periods$annual<-1:12
   
   # 3.3) Summarize data by season #####
-  round_by<-2
+  round_by<-3
   data_ex_season <- rbindlist(pblapply(1:length(three_month_periods),FUN=function(i){
     m_period<-three_month_periods[[i]]
     data<-data_ex_ss[month %in% m_period]
@@ -285,7 +290,7 @@ data_ex[value>10000]
                                           mean_anomaly=mean(anomaly,na.rm=T)),
                                      by=list(admin0_name,admin1_name,scenario,timeframe,model,variable,season)]
   
-  # Add ensemble
+  # Calculate across all years in time sequence
   data_ex_season_ag_ens<-data_ex_season_ag[,list(mean_mean=mean(mean,na.rm=T),
                                                  min_mean=min(mean,na.rm=T),
                                                  max_mean=max(mean,na.rm=T),
