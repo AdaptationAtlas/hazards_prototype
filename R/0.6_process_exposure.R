@@ -60,6 +60,25 @@ ms_codes<-ms_codes[compound=="no"]
                           filename="crop_vop15_intd15",
                           ms_codes=ms_codes,
                           overwrite=overwrite)
+
+ # Create other spam layers
+ spam_combos<-data.table(expand_grid(variable=c("V-crop_vop15_intd15","H-crop_ha"),tech=c("TA-a","TI-i","TR-r")))
+ spam_combos[,code1:=unlist(tstrsplit(variable,"-",keep=2))][,code2:=unlist(tstrsplit(tech,"-",keep=2))]
+ spam_combos[,variable:=unlist(tstrsplit(variable,"-",keep=1))][,tech:=unlist(tstrsplit(tech,"-",keep=1))]
+ spam_combos[,file_name:=paste0(code1,"_",code2)]
+ spam_combos<-spam_combos[!(variable=="V" & tech=="TA")]
+ 
+ for(i in 1:nrow(spam_combos)){
+   cat(i,"/",nrow(spam_combos))
+  read_spam(variable=spam_combos$variable[i],
+             technology=spam_combos$tech[i],
+             mapspam_dir=mapspam_dir,
+             save_dir=exposure_dir,
+             base_rast=base_rast,
+             filename=spam_combos$file_name[i],
+             ms_codes=ms_codes,
+             overwrite=overwrite)
+   }
   
   # Extract  values by admin areas
   crop_vop_intd_adm<-admin_extract_wrap(data=crop_vop_intd,
@@ -70,26 +89,14 @@ ms_codes<-ms_codes[compound=="no"]
                                          Geographies=Geographies,
                                          overwrite=overwrite)
   # 0.2.1.1.2) US$ #########
-  
-    # !!! This sub-section needs updating after we change the usd values to 2015 and apply a different methodology ####
-    file_present<-any(grepl("SSA_Vusd17_TA.csv",list.files(mapspam_dir)))
-    if(!file_present){
-      print("MapSPAM usd17 files do not exist - please redownload the mapspam folder and/or create these")
-      # https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/fao_producer_prices.R
-      
+    file<-file.path(exposure_dir,"crop_vop15_cusd15.tif")
+    if(length(file)!=1){
+      warning("MapSPAM usd15 files do not exist - please redownload the mapspam folder and/or create these 0.45_create_crop_vop.R")
       crop_vop_usd<-NULL
       crop_vop_usd_adm<-NULL
       
     }else{
-      crop_vop_usd<-read_spam(variable="Vusd17",
-                                technology="TA",
-                                mapspam_dir=mapspam_dir,
-                                save_dir=exposure_dir,
-                                base_rast=base_rast,
-                                filename="crop_vop_usd",
-                                ms_codes=ms_codes,
-                                overwrite=overwrite)
-  
+      crop_vop_usd<-terra::rast(file)
       crop_vop_usd_adm<-admin_extract_wrap(data=crop_vop_usd,
                                                  save_dir=exposure_dir,
                                                  filename = "crop_vop15_cusd15",
@@ -97,7 +104,6 @@ ms_codes<-ms_codes[compound=="no"]
                                                  varname="vop_cusd",
                                                  Geographies=Geographies,
                                                  overwrite=overwrite)
-    
   }
   
 # 0.2.1.2) Crop Harvested Area #####
