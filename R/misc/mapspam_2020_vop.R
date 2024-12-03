@@ -34,10 +34,12 @@ names(geoboundaries)[2]<-"iso3"
 
 # 2) Download and Load mapspam data ####
   ## 2.1) Download (manual!) and unzip ####
-  # you will need to download the file below to the spam_dir directory manually from harvard dataverse, it does not seem possible to download using the api
+  # you will need to download the files below to the spam_dir directory manually from harvard dataverse, it does not seem possible to download using the api
   # https://dataverse.harvard.edu/api/access/datafile/10120890
-  zip_file<-list.files(spam_dir,"zip",full.names = T)
+  # https://dataverse.harvard.edu/file.xhtml?fileId=10120889&version=3.0
+  zip_files<-list.files(spam_dir,"zip",full.names = T)
   
+  for(zip_file in zip_files){
   # List files inside the zip archive
   files_in_zip <- unzip(zip_file, list = TRUE)$Name
   
@@ -51,40 +53,92 @@ names(geoboundaries)[2]<-"iso3"
     unzip(zip_file, exdir = spam_dir,junkpaths = T)
     cat("Files unzipped to:", spam_dir, "\n")
   }
+  }
   
-  ## 2.2) Load data #####
-  files<-list.files(spam_dir,".tif",full.names = T)
-  files<-grep("_A.tif",files,value=T)
-  spam_prod_raw<-terra::rast(files)
-  
-  # Mask to geoboundaries 
-  spam_prod_raw<-terra::crop(spam_prod_raw,geoboundaries)
+  ## 2.2) Prepare and load data #####
+
+  # Set base raster
   base_rast<-spam_prod_raw
   
   # Rasterize geoboundaries
   admin_rast<-terra::rasterize(geoboundaries, base_rast, field = "iso3")
-  
-  names(spam_prod_raw)<-unlist(tstrsplit(names(spam_prod_raw),"_",keep=5))
-  
   ms_codes<-data.table::fread(ms_codes_url)[,Code:=toupper(Code)][,Code_ifpri_2020:=toupper(Code_ifpri_2020)]
   ms_codes<-ms_codes[compound=="no" & !is.na(Code_ifpri_2020) & !is.na(Code)]
   
-  # update ifpri spam names to match ssa mapspam
-  update_names<-ms_codes[Code!=Code_ifpri_2020,.(Code,Code_ifpri_2020)]
-  names(spam_prod_raw)[names(spam_prod_raw) %in% update_names$Code_ifpri_2020]<-update_names$Code
+  # List spam files
+  files_raw<-list.files(spam_dir,".tif",full.names = T)
+  variables<-c("_H_","_P_")
   
-  spam_prod<-spam_prod_raw[[names(spam_prod_raw) %in%  ms_codes[,Code]]]
+  for(variable in variables){
+    cat("Running variable",variable,"\n")
+    # Create save paths
+    save_file_a<-file.path(spam_dir,paste0("global_crop",variable,"a.tif"))
+    save_file_i<-file.path(spam_dir,paste0("global_crop",variable,"i.tif"))
+    save_file_r<-file.path(spam_dir,paste0("global_crop",variable,"r.tif"))
+    
+    if(!file.exists(save_file_a)){
+      # Load data
+      files<-grep(variable,files_raw,value=T)
+      
+      files_a<-grep("_A.tif",files,value=T)
+      spam_prod_raw<-terra::rast(files_a)
+      
+      files_r<-grep("_R.tif",files,value=T)
+      spam_prod_raw_r<-terra::rast(files_r)
+      
+      files_i<-grep("_I.tif",files,value=T)
+      spam_prod_raw_i<-terra::rast(files_i)
+      
+      # Mask to geoboundaries 
+      spam_prod_raw<-terra::crop(spam_prod_raw,geoboundaries)
+      spam_prod_raw_r<-terra::crop(spam_prod_raw_r,geoboundaries)
+      spam_prod_raw_i<-terra::crop(spam_prod_raw_i,geoboundaries)
+      
+      names(spam_prod_raw)<-unlist(tstrsplit(names(spam_prod_raw),"_",keep=5))
+      names(spam_prod_raw_r)<-unlist(tstrsplit(names(spam_prod_raw_r),"_",keep=5))
+      names(spam_prod_raw_i)<-unlist(tstrsplit(names(spam_prod_raw_i),"_",keep=5))
+      
+      # update ifpri spam names to match ssa mapspam
+      names(spam_prod_raw)[ names(spam_prod_raw)=="COFF"]<-"ACOF"
+      names(spam_prod_raw_r)[ names(spam_prod_raw_r)=="COFF"]<-"ACOF"
+      names(spam_prod_raw_i)[ names(spam_prod_raw_i)=="COFF"]<-"ACOF"
+      
+      spam_prod<-spam_prod_raw[[names(spam_prod_raw) %in%  ms_codes[!is.na(Code),Code]]]
+      spam_prod_i<-spam_prod_raw_i[[names(spam_prod_raw_i) %in%  ms_codes[!is.na(Code),Code]]]
+      spam_prod_r<-spam_prod_raw_r[[names(spam_prod_raw_r) %in%  ms_codes[!is.na(Code),Code]]]
+      spam_prod_a<-spam_prod
+      
+      # Check data
+      if(F){
+      a<-spam_prod$SOYB
+      i<-spam_prod_i$SOYB
+      r<-spam_prod_r$SOYB
+      plot(c(a,sum(c(i,r),na.rm=T)))
+      }
+      
+      # Save data
+      writeRaster(spam_prod,save_file_a)
+      writeRaster(spam_prod_i,save_file_i)
+      writeRaster(spam_prod_r,save_file_r)
+    }
+  }
   
-  # Aggregate crops to match FAOstat
-  spam_prod$COFF<-spam_prod$ACOF+spam_prod$RCOF
-  spam_prod$ACOF<-NULL
-  spam_prod$RCOF<-NULL
+    ### 2.2.1) Load production data ######
+    spam_prod<-rast(save_file_a)
+    spam_prod_i<-rast(save_file_i)
+    spam_prod_r<-rast(save_file_r)
+  
+    # Aggregate crops to match FAOstat
+    spam_prod$COFF<-spam_prod$ACOF+spam_prod$RCOF
+    spam_prod$ACOF<-NULL
+    spam_prod$RCOF<-NULL
 
   ## 2.3) Mask to geoboundaries #####
   # mask to focal countries
   spam_prod<-terra::crop(spam_prod,geoboundaries)
-  base_rast<-spam_prod
-
+  spam_prod_i<-terra::crop(spam_prod_i,geoboundaries)
+  spam_prod_r<-terra::crop(spam_prod_r,geoboundaries)
+  
   ## 2.4) Extract spam totals by geoboundaries #####
   # Use terra::zonal to sum production values by administrative unit
   spam_prod_admin0_ex <- terra::zonal(spam_prod, admin_rast, fun = "sum", na.rm = TRUE)
@@ -92,7 +146,7 @@ names(geoboundaries)[2]<-"iso3"
   # Optionally, add administrative codes back to the result
   # Assuming `admin_rast` uses codes (e.g., iso3) as its values
   spam_prod_admin0_ex <- data.table::as.data.table(spam_prod_admin0_ex)
-  spam_prod_admin0<-melt(data.table(spam_prod_admin0),id.vars="iso3",variable.name = "Code",value.name="prod")
+  spam_prod_admin0<-melt(data.table(spam_prod_admin0_ex),id.vars="iso3",variable.name = "Code",value.name="prod")
   
   ## 2.5) map spam codes values to atlas #####
   spam2fao<-fread(spam2fao_url)[,short_spam2010:=toupper(short_spam2010)][short_spam2010 %in% names(spam_prod)]
@@ -227,7 +281,7 @@ target_year<-c(2013,2014,2015,2016,2017)
   names(final_vop_i_rast)<-names(spam_prod)
   
   # Multiply national VoP by cell proportion
-  spam_vop_i<-spam_prop*final_vop_i_rast
+  spam_vop_intd<-spam_prop*final_vop_i_rast
   
   # Split COFF in ACOF and RCOF
   coff<-spam_vop_i$COFF
@@ -239,8 +293,49 @@ target_year<-c(2013,2014,2015,2016,2017)
   rcof<-coff * rcof/arcof
   names(rcof)<-"RCOF"
   
-  spam_vop_i$RCOF<-rcof
-  spam_vop_i$ACOF<-acof
+  spam_vop_intd$RCOF<-rcof
+  spam_vop_intd$ACOF<-acof
+  spam_vop_intd<-spam_vop_i[[order(names(spam_vop_i))]]
+  spam_vop_intd$COFF<-NULL
   
-  terra::writeRaster(round(spam_vop_i*1000,0),file.path(spam_dir,"global_crop_vop15_int15.tif"),overwrite=T)
+  terra::writeRaster(round(spam_vop_intd*1000,0),file.path(spam_dir,"global_crop_vop15_int15_a.tif"),overwrite=T)
+  
+# 5) Split between rainfed and irrigated ####
+  spam_prod_i<-spam_prod_i[[order(names(spam_prod_i))]]
+  spam_prod_a<-spam_prod_a[[order(names(spam_prod_a))]]
+
+  spam_prod_i_p<-pbapply::pblapply(1:nlyr(spam_prod_i),FUN=function(i){
+    a<-spam_prod_i[[i]]
+    b<-spam_prod_a[[i]]
+    a[!is.na(values(a))]<-a[!is.na(values(a))]/b[!is.na(values(a))]
+    return(a)
+  })
+  spam_prod_i_p<-rast(spam_prod_i_p)
+  
+  spam_prod_r_p<-pbapply::pblapply(1:nlyr(spam_prod_a),FUN=function(i){
+    a<-spam_prod_a[[i]]
+    a[!is.na(values(a))]<-1
+    b<-spam_prod_i_p[[i]]
+    a[!is.na(values(b))]<-1-b[!is.na(values(b))]
+    return(a)
+  })
+  spam_prod_r_p<-rast(spam_prod_r_p)
+  
+  plot(c(spam_prod_i_p$SOYB,spam_prod_r_p$SOYB,sum(c(spam_prod_i_p$SOYB,spam_prod_r_p$SOYB),na.rm=T),spam_prod_a$SOYB))
+  
+  spam_vop_intd_i<-spam_vop_intd*spam_prod_i_p
+  spam_vop_intd_r<-spam_vop_intd*spam_prod_r_p  
+
+
+  terra::writeRaster(round(spam_vop_intd_i*1000,0),file.path(spam_dir,"global_crop_vop15_int15_i.tif"),overwrite=T)
+  terra::writeRaster(round(spam_vop_intd_r*1000,0),file.path(spam_dir,"global_crop_vop15_int15_r.tif"),overwrite=T)
+  
+  # Check data
+  a<-spam_vop_intd$SOYB
+  i<-spam_vop_intd_i$SOYB
+  r<-spam_vop_intd_r$SOYB
+  
+  # i + r should be virtually the same as a
+  plot(c(a,sum(c(i,r),na.rm=T)))
+  
   
