@@ -422,7 +422,12 @@ spam_vop_usd2015_FAOspam$pmil <- pmil_usd2015
 smil_usd2015 <- millet_usd2015 * smil / psmil
 spam_vop_usd2015_FAOspam$smil <- smil_usd2015
 
-writeRaster(spam_vop_usd2015_FAOspam, file.path(exposure_dir, "crop_vop15_cusd15.tif"))
+# Update names
+spam_vop_usd2015_FAOspam$coff<-NULL
+spam_vop_usd2015_FAOspam$mill<-NULL
+
+names(spam_vop_usd2015_FAOspam)<-ms_codes[match(names(spam_vop_usd2015_FAOspam),tolower(Code)),Fullname]
+writeRaster(spam_vop_usd2015_FAOspam, file.path(exposure_dir, "crop_vop15_cusd15.tif"),overwrite=T)
 
 #### 5 - Quality Control and data checks
 plot(spam_vop_usd2015_FAOspam)
