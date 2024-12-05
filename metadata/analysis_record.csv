@@ -1,11 +1,11 @@
-Period	Location	Completed
-Annual	cglabs	Y
-Jagermeyr	macbook	Y
-SOS_EOS_1	macbook	Y
-SOS_EOS_2	macbook	Y
-SOS_3_1	cglabs	Y
-SOS_3_2	cglabs	In Progress
-SOS_4_1	afrilab	Y
-SOS_4_2	afrilab	In Progress
-SOS_5_1	macbook	Y
-SOS_5_2	macbook	In Progress
+Period,Location,Completed,Name
+Annual,cglabs,Y,annual
+Jagermeyr,macbook,Y,jagermeyr
+SOS_EOS_1,macbook,Y,sos_primary_eos
+SOS_EOS_2,macbook,Y,sos_secondary_eos
+SOS_3_1,cglabs,Y,sos_primary_fixed_3
+SOS_3_2,cglabs,In Progress,sos_secondary_fixed_3
+SOS_4_1,afrilab,Y,sos_primary_fixed_4
+SOS_4_2,afrilab,In Progress,sos_secondary_fixed_4
+SOS_5_1,macbook,Y,sos_primary_fixed_5
+SOS_5_2,macbook,In Progress,sos_secondary_fixed_5
