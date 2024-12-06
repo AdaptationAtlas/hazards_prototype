@@ -406,34 +406,33 @@ spam_prop[is.infinite(spam_prop)] <- NA
 
 sorted_final_vop_rast <- final_vop_rast[[sort(names(final_vop_rast))]]
 subset_sort_spam_prop <- spam_prop[[toupper(names(sorted_final_vop_rast))]]
-spam_vop_usd2015_FAOspam <- sorted_final_vop_rast * subset_sort_spam_prop
+spam_vop_usd2015_FAO <- sorted_final_vop_rast * subset_sort_spam_prop
 
-coffee_usd2015 <- spam_vop_usd2015_FAOspam$coff
+coffee_usd2015 <- spam_vop_usd2015_FAO$coff
 arcof <- acof + rcof
 acof_usd2015 <- coffee_usd2015 * acof / arcof
-spam_vop_usd2015_FAOspam$acof <- acof_usd2015
+spam_vop_usd2015_FAO$acof <- acof_usd2015
 rcof_usd2015 <- coffee_usd2015 * rcof / arcof
-spam_vop_usd2015_FAOspam$rcof <- rcof_usd2015
+spam_vop_usd2015_FAO$rcof <- rcof_usd2015
 
-millet_usd2015 <- spam_vop_usd2015_FAOspam$mill
+millet_usd2015 <- spam_vop_usd2015_FAO$mill
 psmil <- pmil + smil
 pmil_usd2015 <- millet_usd2015 * pmil / psmil
-spam_vop_usd2015_FAOspam$pmil <- pmil_usd2015
+spam_vop_usd2015_FAO$pmil <- pmil_usd2015
 smil_usd2015 <- millet_usd2015 * smil / psmil
-spam_vop_usd2015_FAOspam$smil <- smil_usd2015
+spam_vop_usd2015_FAO$smil <- smil_usd2015
 
-# Update names
-spam_vop_usd2015_FAOspam$coff<-NULL
-spam_vop_usd2015_FAOspam$mill<-NULL
+spam_vop_usd2015_FAO <- spam_vop_usd2015_FAO * 1000 # convert from thousands USD
 
-names(spam_vop_usd2015_FAOspam)<-ms_codes[match(names(spam_vop_usd2015_FAOspam),tolower(Code)),Fullname]
-writeRaster(spam_vop_usd2015_FAOspam, file.path(exposure_dir, "crop_vop15_cusd15.tif"),overwrite=T)
+spam_vop_usd2015_FAO <- round(spam_vop_usd2015_FAO, 0)
+
+writeRaster(spam_vop_usd2015_FAOspam, file.path(mapspam_dir, "spam2020V1r2_SSA_Vusd15_TA.tif"))
 
 #### 5 - Quality Control and data checks
-plot(spam_vop_usd2015_FAOspam)
+plot(spam_vop_usd2015_FAO)
 
 # Compare against the other datasets
-country_totals <- round(exact_extract(spam_vop_usd2015_FAOspam, sf::st_as_sf(geobound_vect), fun = "sum"), 3)
+country_totals <- round(exact_extract(spam_vop_usd2015_FAO, sf::st_as_sf(geobound_vect), fun = "sum"), 3)
 
 country_totals <- cbind(geobound_vect, country_totals)
 
