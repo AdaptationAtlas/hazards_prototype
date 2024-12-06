@@ -425,14 +425,14 @@ View(results)
   spam_vop_usd2015_FAO$coff <- NULL
   spam_vop_usd2015_FAO$mill <- NULL
   
-  names(spam_vop_usd2015_FAO) <- ms_codes[match(names(spam_vop_usd2015_FAO),tolower(Code)), "Fullname"]
+  names(spam_vop_usd2015_FAO) <- ms_codes[match(names(spam_vop_usd2015_FAO),tolower(Code)), Fullname]
   
   spam_vop_usd2015_FAO <- spam_vop_usd2015_FAO * 1000 # convert from thousands USD
   
   spam_vop_usd2015_FAO <- round(spam_vop_usd2015_FAO, 0) 
   
   ### 4.4 Save results  #####
-writeRaster(spam_vop_usd2015_FAOspam, file.path(mapspam_dir, "spam2020V1r2_SSA_Vusd15_TA.tif"))
+writeRaster(spam_vop_usd2015_FAOspam, file.path(mapspam_dir, "spam2020V1r2_SSA_Vusd15_TA.tif"),overwrite=T)
 
 ## 5 - Quality Control and data checks  ####
 plot(spam_vop_usd2015_FAO)
