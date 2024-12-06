@@ -1,14 +1,14 @@
 # 0.1) Choose timeframe #####
 
 # Where are the different timeframes being analysed?
-read.csv("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/refs/heads/main/metadata/analysis_record.csv")
+(analysis_record<-fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/refs/heads/main/metadata/analysis_record.csv"))
 
 # Choose season calculation method
 timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
                      "sos_primary_fixed_3","sos_primary_fixed_4","sos_primary_fixed_5","sos_secondary_eos",
                      "sos_secondary_fixed_3","sos_secondary_fixed_4","sos_secondary_fixed_5")
 
-timeframe_choice_index<-1
+timeframe_choice_index<-2
 timeframe_choice <- timeframe_choices[timeframe_choice_index]
 cat("You selected:", timeframe_choice, "\n")
 
@@ -93,19 +93,23 @@ Cglabs<-F
 if(project_dir=="/home/jovyan/atlas/hazards_prototype"){
   working_dir<-"/home/jovyan/common_data/hazards_prototype"
   Cglabs<-T
+  timeframe_choices_local<-analysis_record[Location=="cglabs",Name]
 }
 
 # Local
 if(project_dir=="D:/rprojects/hazards_prototype"){
   working_dir<-"D:/common_data/hazards_prototype"
+  timeframe_choices_local<-analysis_record[Location=="macbook",Name]
 }
 
 if(project_dir=="C:/rprojects/hazards_prototype"){
   working_dir<-"C:/rprojects/common_data/hazards_prototype"
+  timeframe_choices_local<-analysis_record[Location=="macbook",Name]
 }
 
 if(project_dir=="/Users/pstewarda/Documents/rprojects/hazards_prototype"){
   working_dir<-"/Users/pstewarda/Documents/rprojects/common_data/hazards_prototype"
+  timeframe_choices_local<-analysis_record[Location=="macbook",Name]
 }
 
 # Afrilabs
@@ -113,6 +117,7 @@ Aflabs<-F
 if(project_dir=="/home/psteward/rprojects/hazards_prototype"){
   Aflabs<-T
   working_dir<-"/cluster01/workspace/atlas/hazards_prototype"
+  timeframe_choices_local<-analysis_record[Location=="afrilab",Name]
 }
 
 if(!dir.exists(working_dir)){
@@ -120,6 +125,9 @@ if(!dir.exists(working_dir)){
 }
 
 setwd(working_dir)
+
+
+
 
 # 2) Create directory structures ####
   # 2.1) Local directories #####
