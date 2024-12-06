@@ -43,7 +43,8 @@
        terra::writeRaster(data,filename = file,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"),overwrite=T)
   
       }
-    }
+  }
+  
   ctc_wrapper<-function(folder=NULL,files=NULL,worker_n=1){
     
     if(is.null(files)){
@@ -272,200 +273,223 @@
                      overwrite=F,
                      mode="public-read")
   
+  # Upload - boundaries
+  folder<-geo_dir
+  s3_bucket <- file.path(bucket_name_s3,"boundaries")
+  
+  files<-list.files(folder,"cgiar_countries",full.names = T)
+  
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=F,
+                     workers=1,
+                     mode="public-read")
+  
 # 2) Time sequence specific ####
-  # 2.1) Upload - hazard timeseries (parquets) ####
-  folder<-paste0("Data/hazard_timeseries/",timeframe_choice)
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_choice)
+  # Next task for enhanced generalization is to create folder vector and integrate into the loop (rather than have many sections)
+  overwrite<-T
+  worker_n<-15
+  convert2cog<-T
+  permission<-"public-read"
+  file_types<-"parquet"
+  file_types<-paste(paste0(file_types,"$"),collapse = "|")
+  
+  # Modify if you do not want to run all timeframes
+  timeframe_choices_local<-timeframe_choices_local[-1]
+  
+  # Timeframe loop
+  for(timeframe_c in timeframe_choices_local){
+    cat(timeframe_c,"\n")
+  
+  # 2.1) Upload - hazard timeseries ####
+  cat(timeframe_c,"2.1 hazard timeseries \n")
+  folder<-paste0("Data/hazard_timeseries/",timeframe_c)
+  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_c)
   
   # Local files
-  local_files<-list.files(folder,full.names = T)
-  
+  local_files<-list.files(folder,file_types,full.names = T)
+
   # Upload files
   upload_files_to_s3(files = local_files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F,
-                     workers=15,
-                     mode="public-read")
+                     overwrite=overwrite,
+                     workers=worker_n,
+                     convert2cog = convert2cog,
+                     mode=permission)
   
   # 2.2) Upload - hazard classified ####
-  folder<-paste0("Data/hazard_timeseries_class/",timeframe_choice)
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_class/",timeframe_choice)
+  cat(timeframe_c,"2.2 hazard classified \n")
+  folder<-paste0("Data/hazard_timeseries_class/",timeframe_c)
+  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_class/",timeframe_c)
   
   # Local files
-  local_files<-list.files(folder,full.names = T)
-  
-  if(F){
-  # Prepare tif data by converting to COG format
-  ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
-  }
+  local_files<-list.files(folder,file_types,full.names = T)
   
   # Upload files
   upload_files_to_s3(files = local_files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F,
-                     workers=4,
-                     mode="public-read")
+                     overwrite=overwrite,
+                     workers=worker_n,
+                     convert2cog=convert2cog,
+                     mode=permission)
   
   # 2.3) Upload - hazard timeseries mean ####
-  folder<-paste0("Data/hazard_timeseries_mean/",timeframe_choice)
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_mean/",timeframe_choice)
+  cat(timeframe_c,"2.3 hazard timeseries mean \n")
+  folder<-paste0("Data/hazard_timeseries_mean/",timeframe_c)
+  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_mean/",timeframe_c)
 
-  s3_dir_ls(s3_bucket)
-  
-    # Prepare tif data by converting to COG format
-  if(F){
-    ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
-  }
   # Upload files
-  files<-list.files(folder,full.names = T)
+  local_files<-list.files(folder,file_types,full.names = T)
   
-  upload_files_to_s3(files=files,
+  upload_files_to_s3(files=local_files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     workers=5,
-                     mode="public-read",
-                     overwrite=F)
+                     workers=worker_n,
+                     mode=permission,
+                     convert2cog = convert2cog,
+                     overwrite=overwrite)
   
   # 2.4) Upload - hazard_timeseries_risk ####
-  folder<-paste0("Data/hazard_timeseries_risk/",timeframe_choice)
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_risk/",timeframe_choice)
+  cat(timeframe_c,"2.4 hazard_timeseries_risk \n")
+  folder<-paste0("Data/hazard_timeseries_risk/",timeframe_c)
+  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_risk/",timeframe_c)
 
-  # Prepare tif data by converting to COG format
-  if(F){
-  ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
-  }
+  # Local files
+  local_files<-list.files(folder,file_types,full.names = T)
   
-  # Upload files
-  files<-list.files(folder,full.names = T)
-  
-  upload_files_to_s3(files=files,
+  upload_files_to_s3(files=local_files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     workers=5,
-                     mode="public-read",
-                     overwrite=F)
+                     workers=worker_n,
+                     convert2cog = convert_to_cog,
+                     mode=permission,
+                     overwrite=overwrite)
   
   # 2.5) Upload - hazard_timeseries_int ####
-  folder<-paste0("Data/hazard_timeseries_int/",timeframe_choice)
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_int/",timeframe_choice)
-
-  # Prepare tif data by converting to COG format
-  if(F){
-  ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
-  }
-  
-  s3_dir_ls("digital-atlas",prefix="risk_prototype/data/hazard_timeseries_int/jagermeyr")
-  s3_dir_delete("s3://digital-atlas/risk_prototype/data/hazard_timeseries_int/jagermeyr/NDWS-G15+NTx25-G7+NDWL0-G2")
+  cat(timeframe_c,"2.5 hazard_timeseries_int \n")
+  folder<-paste0("Data/hazard_timeseries_int/",timeframe_c)
+  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_int/",timeframe_c)
   
   # Upload files
-  local_folders<-list.dirs(folder)[-1]
+  local_folders<-list.dirs(folder)
+  local_folders<-local_folders[local_folders!=folder]
   for(i in 1:length(local_folders)){
     cat(i,"/",length(local_folders),"\n")
     FOLDER<-local_folders[i]
     S3_BUCKET<-gsub(folder,s3_bucket,FOLDER)
     
-    LOCAL_FILES<-paste0(basename(FOLDER),"/",list.files(FOLDER))
-    LOCAL_FILES<-file.path(folder,LOCAL_FILES[!LOCAL_FILES %in% s3_files])
+    LOCAL_FILES<-paste0(basename(FOLDER),"/",list.files(FOLDER,file_types))
     
     if(length(LOCAL_FILES)>0){
       upload_files_to_s3(files = LOCAL_FILES,
                          selected_bucket=S3_BUCKET,
                          max_attempts = 3,
-                         overwrite=T,
-                         mode="public-read",
-                         workers = 15)
+                         convert2cog = convert2cog,
+                         overwrite=overwrite,
+                         mode=permission,
+                         workers = worker_n)
     }
   }
   
   # 2.6) Upload - hazard_timeseries_risk sd ####
-  folder<-paste0("Data/hazard_timeseries_sd/",timeframe_choice)
+  cat(timeframe_c,"2.6 hazard_timeseries_risk sd \n")
+  folder<-paste0("Data/hazard_timeseries_sd/",timeframe_c)
   # select a bucket
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_sd/",timeframe_choice)
+  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_sd/",timeframe_c)
   
-  # Prepare tif data by converting to COG format
-  if(F){
-  ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
+  # Local files
+  local_files<-list.files(folder,file_types,full.names = T)
+  
+  # Upload files
+  if(length(local_files)>0){
+  upload_files_to_s3(files = local_files,
+                     selected_bucket=s3_bucket,
+                     convert2cog = convert2cog,
+                     overwrite=overwrite,
+                     mode=permission,
+                     workers = worker_n)
   }
   
-  # Upload files
-  upload_files_to_s3(folder = folder,
-                     selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite=F)
-  
   # 2.7) Upload - haz_risk ####
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_risk/",timeframe_choice)
-  folder<-paste0("Data/hazard_risk/",timeframe_choice)
+  cat(timeframe_c,"2.7 haz_risk \n")
+  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_risk",timeframe_c)
+  folder<-file.path("Data/hazard_risk",timeframe_c)
   
-  s3fs::s3_dir_ls(s3_bucket)
-  
-  files<-list.files(folder,"parquet$",full.names = T,recursive=T)
-  files<-grep("_adm_",files,value=T)
-  
+  # Local files
+  local_files<-list.files(folder,file_types,full.names = T)
+
   # Upload files
-  upload_files_to_s3(files =files,
+  upload_files_to_s3(files = local_files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=T,
-                     mode="public-read"
+                     convert2cog = convert2cog,
+                     overwrite=overwrite,
+                     mode=permission,
+                     workers = worker_n
                      )
   
   # 2.8) Upload - haz_vop_risk ####
-  folder<-file.path("Data/hazard_risk_vop/",timeframe_choice)
-  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_risk_vop/",timeframe_choice)
+  cat(timeframe_c,"2.8 haz_vop_risk \n")
   
-  # Prepare tif data by converting to COG format
-  if(F){
-    ctc_wrapper(folder=folder,worker_n=worker_n,delete=T,rename=T)
-  }
+  folder<-file.path("Data/hazard_risk_vop/",timeframe_c)
+  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_risk_vop/",timeframe_c)
   
-  if(F){
-  s3_files<-s3fs::s3_dir_ls(s3_bucket)
-  s3_files<-grep("[.]parquet",s3_files,value = T)
-  s3_file_delete(s3_files)
-  }
+  # Local files
+  local_files<-list.files(folder,file_types,full.names = T)
   
-  files<-list.files(folder,full.names = T)
-  files<-grep(".parquet",files,value=T)
-  
-  upload_files_to_s3(files = files,
+  upload_files_to_s3(files = local_files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F,
-                     mode="public-read",
-                     workers=10)
+                     convert2cog = convert2cog,
+                     overwrite=overwrite,
+                     mode=permission,
+                     workers = worker_n)
   
-  # 2.9) Upload - haz_vop17_risk ####
-  folder<-file.path("Data/hazard_risk_vop17/",timeframe_choice)
-  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_risk_vop17/",timeframe_choice)
-
-  files<-list.files(folder,full.names = T)
+  # 2.9) Upload - haz_vop_usd_risk ####
+  cat(timeframe_c,"2.9 haz_vop_usd_risk \n")
   
-  upload_files_to_s3(files = files,
+  folder<-file.path("Data/hazard_risk_vop_usd",timeframe_c)
+  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_usd",timeframe_c)
+  
+  # Local files
+  local_files<-list.files(folder,file_types,full.names = T)
+  
+  upload_files_to_s3(files = local_files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F,
-                     mode="public-read",
-                     workers=15)
-  
+                     convert2cog = convert2cog,
+                     overwrite=overwrite,
+                     mode=permission,
+                     workers = worker_n)
   
   # 2.10) Upload - haz_vop_risk_ac ####
-  s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_ac/",timeframe_choice)
-  folder<-paste0("Data/hazard_risk_vop_ac/",timeframe_choice)
+  if(F){
+    cat(timeframe_c,"2.10 haz_vop_risk_ac \n")
+    
+    
+  s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_ac/",timeframe_c)
+  folder<-paste0("Data/hazard_risk_vop_ac/",timeframe_c)
   
-  s3_dir_ls(s3_bucket)
-  s3fs::s3_dir_delete(s3_bucket)
+  local_files<-list.files(folder,full.names = T)
+  
+  if(upload_parquet_only){
+    local_files<-grep("parquet",local_files,value=T)
+  }
 
   # Upload files
   upload_files_to_s3(files=list.files(folder,".parquet",full.names = T),
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
-                     overwrite=F)
-  
-  #file<-grep("reduced",s3_dir_ls(s3_bucket),value=T)
-  #s3_file_download(file,new_path="haz_risk_vop_int_ac_reduced.parquet")
+                     convert2cog = convert2cog,
+                     overwrite=overwrite,
+                     mode=permission,
+                     workers = worker_n)
+  }
+
+  }
   
 # 3) ROI data ####
   s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/roi")

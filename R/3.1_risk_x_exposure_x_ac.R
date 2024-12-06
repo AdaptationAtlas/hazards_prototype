@@ -20,7 +20,7 @@ interaction<-T # set to F if you want to look at solo data
 # Load hazard risk x VoP data #####
 # Data is found in "s3://digital-atlas/risk_prototype/data/hazard_risk_vop/annual" for example
 
-haz_risk_vop_dir <- 'Data/hazard_risk_vop/annual/'
+haz_risk_vop_dir <- file.path('Data/hazard_risk_vop/',timeframe_choice)
 if(interaction==T){
   files<-list.files(haz_risk_vop_dir,"_adm_int",full.names = T)
 }else{

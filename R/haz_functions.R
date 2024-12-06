@@ -2501,6 +2501,49 @@ avloss <- function(cv, change, fixed = FALSE, reps = 10^6) {
   
   return(avloss)
 }
+#' Convert GeoTIFF to Cloud Optimized GeoTIFF (COG)
+#'
+#' This function checks if a given GeoTIFF file is in Cloud Optimized GeoTIFF (COG) format.
+#' If not, it converts the file to COG format using the `terra` and `gdalUtilities` packages.
+#'
+#' @param file A character string representing the file path to the GeoTIFF file to be checked and converted.
+#' 
+#' @details
+#' - The function first checks if the GeoTIFF file is already in COG format by searching for the "LAYOUT=COG" string in the output of `gdalinfo`.
+#' - If the file is not a COG, it is loaded into memory using `terra::rast` to ensure the raster data is processed.
+#' - The file is then rewritten in COG format using `terra::writeRaster` with appropriate GDAL options.
+#' - The function uses LZW compression and ensures overwriting if the file exists.
+#'
+#' @return The function performs its operations in-place and does not return a value. The input file is modified to COG format if necessary.
+#'
+#' @import terra
+#' @import gdalUtilities
+#'
+#' @examples
+#' # Example usage:
+#' # Convert a GeoTIFF file to COG format if not already in COG format
+#' convert_to_cog("path/to/input.tif")
+#'
+#' @export
+convert_to_cog <- function(file) {
+  
+  is_cog <- grepl("LAYOUT=COG", gdalUtilities::gdalinfo(file))
+  closeAllConnections()
+  
+  if (is_cog == FALSE) {
+    data <- terra::rast(file)
+    # Force into memory
+    data <- data + 0
+    
+    terra::writeRaster(
+      data,
+      filename = file,
+      filetype = 'COG',
+      gdal = c("COMPRESS=LZW", of = "COG"),
+      overwrite = TRUE
+    )
+  }
+}
 #' Make S3 Bucket Public
 #'
 #' This function sets the policy of an S3 bucket to allow public read access to specified folders or items.
@@ -2582,8 +2625,9 @@ makeObjectPublic <- function(s3_uri, bucket = "digital-atlas", directory = TRUE)
 #' @param new_only Logical. If TRUE, only uploads files that are not already present in the S3 bucket.
 #' @param max_attempts Integer. The maximum number of attempts to retry failed uploads. Default is 3.
 #' @param overwrite Logical. If TRUE, files in the S3 bucket are overwritten. If FALSE, skips already existing files.
-#' @param mode A character string specifying the S3 permissions for the uploaded files. Defaults to "private".
-#' @param directory Logical. If `mode` is "public-read", applies public access to the whole S3 directory. Default is TRUE.
+#' @param mode A character string specifying the S3 permissions for the uploaded files. Defaults to "private". If `mode` is "public-read", applies public access to the whole S3 directory.
+#' @param directory Logical. A value indicating if "/*" should be appended to the end of the path for globbing. Default is TRUE.
+#' @param convert2cog Logical. If TRUE any tif files will be resaved locally as COG geotiffs and uploaded to the S3 as such.
 #' @param workers Integer. The number of workers to use for parallel uploads. Default is 2.
 #'
 #' @return None. This function is called for its side effects of uploading files to S3.
@@ -2608,6 +2652,7 @@ upload_files_to_s3 <- function(files,
                                overwrite = FALSE,
                                mode = "private",
                                directory = TRUE,
+                               convert2cog=FALSE,
                                workers = 1) {
   
   s3 <- paws.storage::s3()
@@ -2642,6 +2687,14 @@ upload_files_to_s3 <- function(files,
   
   # Define the file upload function with retry and error handling
   upload_file <- function(i) {
+    
+    file_i<-files[i]
+    
+    # Convert not COG geotiff to COG format if convert2cog argument==T
+    if(grepl(".tif$",file_i) & convert2cog==T){
+      convert_2_cog(file_i)
+    }
+    
     tryCatch({
       attempt <- 1
       success <- FALSE
@@ -2650,7 +2703,7 @@ upload_files_to_s3 <- function(files,
         tryCatch({
           # Determine S3 file path
           if (is.null(s3_file_names)) {
-            s3_file_path <- paste0(selected_bucket, "/", basename(files[i]))
+            s3_file_path <- paste0(selected_bucket, "/", basename(file_i))
           } else {
             if (length(s3_file_names) != length(files)) {
               stop("s3 filenames provided are a different length than local files")
@@ -2662,7 +2715,7 @@ upload_files_to_s3 <- function(files,
           s3_file_exists(s3_file_path)
           s3_dir_ls(selected_bucket)
           
-          s3_file_upload(files[i], s3_file_path, overwrite = overwrite)
+          s3_file_upload(file_i, s3_file_path, overwrite = overwrite)
           
           # Check if the upload was successful
           file_check <- s3_file_exists(s3_file_path)
@@ -2676,7 +2729,7 @@ upload_files_to_s3 <- function(files,
             }
             progress()  # Update progress upon successful upload
           } else {
-            stop("File upload failed for: ", basename(files[i]))
+            stop("File upload failed for: ", basename(file_i))
           }
         }, error = function(e) {
           cat("\nError during upload of file:", basename(files[i]), "- Attempt:", attempt, "\nError Message: ", e$message, "\n")
@@ -2684,7 +2737,7 @@ upload_files_to_s3 <- function(files,
         
         attempt <- attempt + 1
         if (attempt > max_attempts && !success) {
-          cat("Failed to upload file after ", max_attempts, " attempts: ", basename(files[i]), "\n")
+          cat("Failed to upload file after ", max_attempts, " attempts: ", basename(file_i), "\n")
         }
       }
       
