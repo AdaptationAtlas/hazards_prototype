@@ -422,6 +422,11 @@ spam_vop_usd2015_FAO$pmil <- pmil_usd2015
 smil_usd2015 <- millet_usd2015 * smil / psmil
 spam_vop_usd2015_FAO$smil <- smil_usd2015
 
+spam_vop_usd2015_FAO$coff <- NULL
+spam_vop_usd2015_FAO$mill <- NULL
+
+names(spam_vop_usd2015_FAO) <- ms_codes[match(names(spam_vop_usd2015_FAO),tolower(Code)), "Fullname"]
+
 spam_vop_usd2015_FAO <- spam_vop_usd2015_FAO * 1000 # convert from thousands USD
 
 spam_vop_usd2015_FAO <- round(spam_vop_usd2015_FAO, 0)
