@@ -123,7 +123,7 @@ crop_choices<-unique(c(ms_codes[,sort(Fullname)],haz_class[,unique(crop)]))
       hpop<-terra::rast(file)
       hpop_admin<-arrow::read_parquet(file.path(exposure_dir,"hpop_adm_sum.parquet"))
       
-# 1) Extract hazard risk by admin ####
+# 1) Extract hazard freq by admin ####
     overwrite<-F
   # 1.1) Solo and interactions combined into a single file (not any hazard) #####
 files<-list.files(haz_risk_dir,".tif$",full.names = T)
@@ -425,8 +425,8 @@ arrow::write_parquet(haz_timeseries_tab,filename)
 # 4) Hazard risk x exposure ####
   # 4.0) Set-up ####
     overwrite<-F
-    do_vop<-T
-    do_vop_usd<-F
+    do_vop<-F
+    do_vop_usd<-T
     do_ha<-F
     do_n<-F
     
@@ -472,7 +472,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       unlink(grep(paste(livestock_choices,collapse = "|"),list.files(haz_risk_vop_dir,full.names = T),value=T))
     }
     
-  # 4.1) Multiply Hazard Risk by Exposure #####
+  # 4.1) Multiply Hazard Freq by Exposure #####
     # Note if you are finding the parallel processing is not working reload /reimport packages and functions.
     
      risk_x_exposure<-function(file,
@@ -536,8 +536,8 @@ arrow::write_parquet(haz_timeseries_tab,filename)
                                     save_dir=haz_risk_vop_dir,
                                     variable="vop",
                                     overwrite = overwrite,
-                                    crop_exposure = crop_vop_path,
-                                    livestock_exposure=livestock_vop_path,
+                                    crop_exposure_path = crop_vop_path,
+                                    livestock_exposure_path=livestock_vop_path,
                                     crop_choices=crop_choices)
         future::plan(sequential)
       }
@@ -549,8 +549,8 @@ arrow::write_parquet(haz_timeseries_tab,filename)
                                     save_dir=haz_risk_vop_usd_dir,
                                     variable="vop",
                                     overwrite = overwrite,
-                                    crop_exposure = crop_vop_usd_path,
-                                    livestock_exposure=livestock_vop_usd_path,
+                                    crop_exposure_path = crop_vop_usd_path,
+                                    livestock_exposure_path=livestock_vop_usd_path,
                                     crop_choices=crop_choices)
         future::plan(sequential)
       }
@@ -562,7 +562,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
                                     save_dir=haz_risk_ha_dir,
                                     variable="ha",
                                     overwrite = overwrite,
-                                    crop_exposure = crop_ha_path,
+                                    crop_exposure_path = crop_ha_path,
                                     crop_choices=crop_choices)
         future::plan(sequential)
       }
@@ -612,7 +612,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       
     }
     
-  # 4.2) Extract Risk x Exposure by Geography #####
+  # 4.2) Extract Freq x Exposure by Geography #####
 
     for(INT in c(T,F)){
       if(do_vop){
