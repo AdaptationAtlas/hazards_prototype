@@ -87,7 +87,7 @@
   
   # read in mapspam metadata
   ms_codes<-data.table::fread(ms_codes_url, showProgress = FALSE)[,Code:=toupper(Code)]
-  ms_codes<-ms_codes[compound=="no"]
+  ms_codes<-ms_codes[compound=="no" & !is.na(Code)]
   
   # read in ecocrop
   ecocrop<-fread(ecocrop_url, showProgress = FALSE)
