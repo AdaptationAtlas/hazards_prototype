@@ -562,6 +562,7 @@ target_year<-c(2015,2017)
   # Multiply national VoP by cell proportion
   glw_vop_i<-glw_prop*final_vop_i_rast
   
+  # 5.3) Save outputs #####
   terra::writeRaster(round(glw_vop_i*1000,0),file.path(ls_vop_dir,"livestock-vop-2015-intd15.tif"),overwrite=T)
   
  
