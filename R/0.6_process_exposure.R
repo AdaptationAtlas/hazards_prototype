@@ -89,7 +89,7 @@ ms_codes<-ms_codes[compound=="no"]
                                          Geographies=Geographies,
                                          overwrite=overwrite)
   # 0.2.1.1.2) US$ #########
-    file<-file.path(exposure_dir,"crop_vop15_cusd15.tif")
+    file <- file.path(mapspam_dir, "spam2020V1r2_SSA_Vusd15_TA.tif")
     if(length(file)!=1){
       warning("MapSPAM usd15 files do not exist - please redownload the mapspam folder and/or create these 0.45_create_crop_vop.R")
       crop_vop_usd<-NULL
@@ -97,6 +97,8 @@ ms_codes<-ms_codes[compound=="no"]
       
     }else{
       crop_vop_usd<-terra::rast(file)
+      names(spam_vop_usd2015_FAO) <- ms_codes[match(names(spam_vop_usd2015_FAO),tolower(Code)), Fullname]
+      writeRaster(crop_vop_usd, "crop_vop15_cusd15.tif")
       crop_vop_usd_adm<-admin_extract_wrap(data=crop_vop_usd,
                                                  save_dir=exposure_dir,
                                                  filename = "crop_vop15_cusd15",
