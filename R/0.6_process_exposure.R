@@ -69,7 +69,7 @@ ms_codes<-ms_codes[compound=="no"]
  spam_combos<-spam_combos[!(variable=="V" & tech=="TA")]
  
  for(i in 1:nrow(spam_combos)){
-   cat(i,"/",nrow(spam_combos))
+   cat("\r",i,"/",nrow(spam_combos))
   read_spam(variable=spam_combos$variable[i],
              technology=spam_combos$tech[i],
              mapspam_dir=mapspam_dir,
@@ -97,7 +97,6 @@ ms_codes<-ms_codes[compound=="no"]
       
     }else{
       crop_vop_usd<-terra::rast(file)
-      names(spam_vop_usd2015_FAO) <- ms_codes[match(names(spam_vop_usd2015_FAO),tolower(Code)), Fullname]
       writeRaster(crop_vop_usd, "crop_vop15_cusd15.tif")
       crop_vop_usd_adm<-admin_extract_wrap(data=crop_vop_usd,
                                                  save_dir=exposure_dir,
