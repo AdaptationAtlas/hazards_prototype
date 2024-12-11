@@ -62,7 +62,7 @@ ms_codes<-ms_codes[compound=="no"]
                           overwrite=overwrite)
 
  # Create other spam layers
- spam_combos<-data.table(expand_grid(variable=c("V-crop_vop15_intd15","H-crop_ha"),tech=c("TA-a","TI-i","TR-r")))
+ spam_combos<-data.table(expand.grid(variable=c("V-crop_vop15_intd15","H-crop_ha"),tech=c("TA-a","TI-i","TR-r")))
  spam_combos[,code1:=unlist(tstrsplit(variable,"-",keep=2))][,code2:=unlist(tstrsplit(tech,"-",keep=2))]
  spam_combos[,variable:=unlist(tstrsplit(variable,"-",keep=1))][,tech:=unlist(tstrsplit(tech,"-",keep=1))]
  spam_combos[,file_name:=paste0(code1,"_",code2)]
