@@ -1758,6 +1758,7 @@ restructure_parquet<-function(filename,save_dir,severity,overwrite=F,crops,lives
 #'
 #' @param severity_classes Data frame or list specifying the severity classes to process.
 #' @param interactions Logical; if TRUE, only considers files indicating hazard interactions.
+#' @param level Character string specifying the save name of admin levels (default = "adm").
 #' @param folder String specifying the directory containing raster files to be processed.
 #' @param overwrite Logical; if TRUE, existing Parquet files will be overwritten.
 #' @param rm_haz Vector of hazard names to be removed from the analysis.
@@ -1767,7 +1768,7 @@ restructure_parquet<-function(filename,save_dir,severity,overwrite=F,crops,lives
 #' haz_risk_exp_extract(severity_classes = df_severity, interactions = TRUE, folder = "/path/to/data", overwrite = FALSE, rm_haz = c("flood"), rm_crop = NULL)
 #' @export
 # Function to extract hazard risk and exposure data for specified severity classes and save in Parquet format.
-haz_risk_exp_extract <- function(severity_classes, interactions, folder, overwrite = F, rm_haz = NULL, rm_crop = NULL,Geographies) {
+haz_risk_exp_extract <- function(severity_classes, interactions,level="adm", folder, overwrite = F, rm_haz = NULL, rm_crop = NULL,Geographies) {
   
   # List all TIFF files in the specified folder.
   files <- list.files(folder, ".tif$", full.names = T)
@@ -1798,12 +1799,12 @@ haz_risk_exp_extract <- function(severity_classes, interactions, folder, overwri
     }
     
     # Define file paths for saving extracted data in Parquet format for admin levels 0, 1, and 2.
-    file0 <- paste0(folder, "/", SEV, "_adm0_", filename, ".parquet")
-    file1 <- gsub("_adm0_", "_adm1_", file0)
-    file2 <- gsub("_adm0_", "_adm2_", file0)
+    file0 <- paste0(folder, "/", SEV, "_",level,"0_", filename, ".parquet")
+    file1 <- paste0(folder, "/", SEV, "_",level,"1_", filename, ".parquet")
+    file2 <- paste0(folder, "/", SEV, "_",level,"2_", filename, ".parquet")
     
     # Save the extracted data to Parquet files if they do not exist or if overwrite is enabled.
-    if (!file.exists(file0) | overwrite == T) {
+    if ((!file.exists(file0) | overwrite == T) & "admin0" %in% names(Geographies)){
       cat("Risk x Exposure - admin extraction - adm0| severity:", SEV,"\n")
       flush.console()
       
@@ -1813,7 +1814,7 @@ haz_risk_exp_extract <- function(severity_classes, interactions, folder, overwri
       gc()
     }
     # Repeat for admin levels 1 and 2.
-    if (!file.exists(file1) | overwrite == T) {
+    if ((!file.exists(file1) | overwrite == T) & "admin1" %in% names(Geographies)) {
       cat("Risk x Exposure - admin extraction - adm1| severity:", SEV,"\n")
       
       data_ex <- admin_extract(data, Geographies["admin1"], FUN = "sum")
@@ -1822,7 +1823,7 @@ haz_risk_exp_extract <- function(severity_classes, interactions, folder, overwri
       gc()
     }
     
-    if (!file.exists(file2) | overwrite == T) {
+    if ((!file.exists(file2) | overwrite == T) & "admin2" %in% names(Geographies)) {
       cat("Risk x Exposure - admin extraction - adm2| severity:", SEV,"\n")
       
       data_ex <- admin_extract(data, Geographies["admin2"], FUN = "sum")
@@ -2653,7 +2654,7 @@ upload_files_to_s3 <- function(files,
                                mode = "private",
                                directory = TRUE,
                                convert2cog=FALSE,
-                               workers = 1) {
+                                                              workers = 1) {
   
   s3 <- paws.storage::s3()
   
