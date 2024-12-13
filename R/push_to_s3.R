@@ -561,6 +561,19 @@
                      mode="public-read")
   
   # 8) CHIRPS global CV (eia_climate_prioritization) ####
+  # pete macbook path
+  folder<-"/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/chirps_cv"
+  s3_bucket <-file.path("s3://digital-atlas/hazards/chirps_cv_global")
+  
+  # Local files
+  local_files<-list.files(folder,full.names = T)
+  
+  upload_files_to_s3(files = local_files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=overwrite,
+                     mode=permission,
+                     workers = worker_n)
   
   # 9) AgERA5 NTx global (eia_climate_prioritization) ####
   # cg_labs path
@@ -568,7 +581,7 @@
   s3_bucket <-file.path("s3://digital-atlas/hazards/agera5_ntx_global")
   
   # Local files
-  local_files<-list.files(folder,file_types,full.names = T)
+  local_files<-list.files(folder,full.names = T)
   
   upload_files_to_s3(files = local_files,
                      selected_bucket=s3_bucket,
