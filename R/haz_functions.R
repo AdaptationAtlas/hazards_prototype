@@ -2682,9 +2682,7 @@ upload_files_to_s3 <- function(files,
   }
   
   if (length(files) > 0) {
-    # Configure parallel processing
-    future::plan(multisession, workers = workers)
-    
+
 
     # Step 1: Convert files to COG if required
     tif_files<-grep(".tif$", files,value=T)
@@ -2700,6 +2698,8 @@ upload_files_to_s3 <- function(files,
           cat("\nError during COG conversion for file:", file, "\nError Message:", e$message, "\n")
         })
       }
+      # Configure parallel processing
+      future::plan(multisession, workers = workers)
       
       with_progress({
         progress <- progressr::progressor(along = seq_along(tif_files))
@@ -2757,12 +2757,17 @@ upload_files_to_s3 <- function(files,
       })
     }
     
+    # Configure parallel processing
+    future::plan(multisession, workers = workers)
+    
     # Progress tracking with progressr
     with_progress({
       progress <- progressr::progressor(along = seq_along(files))
       future.apply::future_lapply(seq_along(files), FUN = upload_file, future.seed = TRUE)
     })
   }
+  
+  plan(sequential)
   
   if (mode == "public-read") {
     makeObjectPublic(selected_bucket, directory = directory)
