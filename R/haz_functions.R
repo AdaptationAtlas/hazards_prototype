@@ -2526,7 +2526,7 @@ avloss <- function(cv, change, fixed = FALSE, reps = 10^6) {
 #' convert_to_cog("path/to/input.tif")
 #'
 #' @export
-convert_to_cog <- function(file) {
+convert_to_cog <- function(file,progress="none") {
   
   is_cog <- grepl("LAYOUT=COG", gdalUtilities::gdalinfo(file))
   closeAllConnections()
@@ -2541,7 +2541,8 @@ convert_to_cog <- function(file) {
       filename = file,
       filetype = 'COG',
       gdal = c("COMPRESS=LZW", of = "COG"),
-      overwrite = TRUE
+      overwrite = TRUE,
+      progress=progress
     )
   }
 }
@@ -2653,14 +2654,14 @@ upload_files_to_s3 <- function(files,
                                overwrite = FALSE,
                                mode = "private",
                                directory = TRUE,
-                               convert2cog=FALSE,
-                                                              workers = 1) {
+                               convert2cog = FALSE,
+                               workers = 1) {
   
   s3 <- paws.storage::s3()
   
   # Enable progressr handlers for progress tracking
   progressr::handlers(global = TRUE)
-  progressr::handlers("progress")  # Use a parallel-friendly handler
+  progressr::handlers("progress")
   
   # Ensure the S3 directory exists, create if not
   if (!s3_dir_exists(selected_bucket)) {
@@ -2674,90 +2675,95 @@ upload_files_to_s3 <- function(files,
   
   # If not overwriting, check for existing files in S3 and filter out
   if (!overwrite) {
-    # List existing files in S3 bucket
-    bucket_name<-unlist(tstrsplit(selected_bucket,"/",keep=3))
-    prefix<-paste0(tail(unlist(tstrsplit(selected_bucket,paste0(bucket_name,"/"))),1),"/")
-    files_s3 <- basename(s3fs::s3_dir_ls(bucket_name,prefix=prefix))
-    # Keep only new files that are not already in S3
+    bucket_name <- unlist(tstrsplit(selected_bucket, "/", keep = 3))
+    prefix <- paste0(tail(unlist(tstrsplit(selected_bucket, paste0(bucket_name, "/"))), 1), "/")
+    files_s3 <- basename(s3fs::s3_dir_ls(bucket_name, prefix = prefix))
     files <- files[!basename(files) %in% files_s3]
   }
   
-  if(length(files)>0){
-  # Configure parallel processing
-  future::plan(multisession, workers = workers)
-  
-  # Define the file upload function with retry and error handling
-  upload_file <- function(i) {
+  if (length(files) > 0) {
+    # Configure parallel processing
+    future::plan(multisession, workers = workers)
     
-    file_i<-files[i]
+
+    # Step 1: Convert files to COG if required
+    tif_files<-grep(".tif$", files,value=T)
     
-    # Convert not COG geotiff to COG format if convert2cog argument==T
-    if(grepl(".tif$",file_i) & convert2cog==T){
-      convert_2_cog(file_i)
-    }
-    
-    tryCatch({
-      attempt <- 1
-      success <- FALSE
+    if (length(tif_files)>0 & convert2cog) {
       
-      while (attempt <= max_attempts && !success) {
+      cat("Converting files to COG format...\n")
+      
+      convert_to_cog_parallel <- function(file) {
         tryCatch({
-          # Determine S3 file path
-          if (is.null(s3_file_names)) {
-            s3_file_path <- paste0(selected_bucket, "/", basename(file_i))
-          } else {
-            if (length(s3_file_names) != length(files)) {
-              stop("s3 filenames provided are a different length than local files")
-            }
-            s3_file_path <- paste0(selected_bucket, "/", s3_file_names[i])
-          }
-          
-          # Upload the file
-          s3_file_exists(s3_file_path)
-          s3_dir_ls(selected_bucket)
-          
-          s3_file_upload(file_i, s3_file_path, overwrite = overwrite)
-          
-          # Check if the upload was successful
-          file_check <- s3_file_exists(s3_file_path)
-          
-          if (file_check) {
-            success <- TRUE
-            
-            # Set permissions if needed
-            if (mode != "private") {
-              s3_file_chmod(path = s3_file_path, mode = mode)
-            }
-            progress()  # Update progress upon successful upload
-          } else {
-            stop("File upload failed for: ", basename(file_i))
-          }
+          convert_to_cog(file)
         }, error = function(e) {
-          cat("\nError during upload of file:", basename(files[i]), "- Attempt:", attempt, "\nError Message: ", e$message, "\n")
+          cat("\nError during COG conversion for file:", file, "\nError Message:", e$message, "\n")
         })
-        
-        attempt <- attempt + 1
-        if (attempt > max_attempts && !success) {
-          cat("Failed to upload file after ", max_attempts, " attempts: ", basename(file_i), "\n")
-        }
       }
       
-    }, error = function(e) {
-      cat("Error during file upload:", e$message, "\n")
+      with_progress({
+        progress <- progressr::progressor(along = seq_along(tif_files))
+        future.apply::future_lapply(tif_files, FUN = function(file) {
+          progress()
+          convert_to_cog_parallel(file)
+        }, future.seed = TRUE)
+      })
+    }
+    
+    # Step 2: Upload files to S3
+    # Define the file upload function with retry and error handling
+    upload_file <- function(i) {
+      file_i <- files[i]
+      
+      tryCatch({
+        attempt <- 1
+        success <- FALSE
+        
+        while (attempt <= max_attempts && !success) {
+          tryCatch({
+            if (is.null(s3_file_names)) {
+              s3_file_path <- paste0(selected_bucket, "/", basename(file_i))
+            } else {
+              if (length(s3_file_names) != length(files)) {
+                stop("s3 filenames provided are a different length than local files")
+              }
+              s3_file_path <- paste0(selected_bucket, "/", s3_file_names[i])
+            }
+            
+            s3_file_upload(file_i, s3_file_path, overwrite = overwrite)
+            file_check <- s3_file_exists(s3_file_path)
+            
+            if (file_check) {
+              success <- TRUE
+              
+              if (mode != "private") {
+                s3_file_chmod(path = s3_file_path, mode = mode)
+              }
+              progress()
+            } else {
+              stop("File upload failed for: ", basename(file_i))
+            }
+          }, error = function(e) {
+            cat("\nError during upload of file:", basename(files[i]), "- Attempt:", attempt, "\nError Message: ", e$message, "\n")
+          })
+          
+          attempt <- attempt + 1
+          if (attempt > max_attempts && !success) {
+            cat("Failed to upload file after ", max_attempts, " attempts: ", basename(file_i), "\n")
+          }
+        }
+      }, error = function(e) {
+        cat("Error during file upload:", e$message, "\n")
+      })
+    }
+    
+    # Progress tracking with progressr
+    with_progress({
+      progress <- progressr::progressor(along = seq_along(files))
+      future.apply::future_lapply(seq_along(files), FUN = upload_file, future.seed = TRUE)
     })
   }
   
-  # Progress tracking with progressr
-  with_progress({
-    # Initialize the progress bar
-    progress <- progressr::progressor(along = seq_along(files))
-    
-    # Parallelize file uploads using future.apply::future_lapply
-    future.apply::future_lapply(seq_along(files), FUN = upload_file, future.seed = TRUE)
-  })
-  }
-  
-  # If mode is "public-read", make the entire directory public
   if (mode == "public-read") {
     makeObjectPublic(selected_bucket, directory = directory)
   }
