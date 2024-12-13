@@ -263,8 +263,8 @@
   
   # 2.1) Upload - hazard timeseries ####
   cat(timeframe_c,"2.1 hazard timeseries \n")
-  folder<-paste0("Data/hazard_timeseries/",timeframe_c)
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe_c)
+  folder<-file.path("Data/hazard_timeseries",timeframe_c)
+  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_timeseries",timeframe_c)
   
   # Local files
   local_files<-list.files(folder,file_types,full.names = T)
@@ -280,8 +280,8 @@
   
   # 2.2) Upload - hazard classified ####
   cat(timeframe_c,"2.2 hazard classified \n")
-  folder<-paste0("Data/hazard_timeseries_class/",timeframe_c)
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_class/",timeframe_c)
+  folder<-file.path("Data/hazard_timeseries_class",timeframe_c)
+  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_timeseries_class",timeframe_c)
   
   # Local files
   local_files<-list.files(folder,file_types,full.names = T)
@@ -297,8 +297,8 @@
   
   # 2.3) Upload - hazard timeseries mean ####
   cat(timeframe_c,"2.3 hazard timeseries mean \n")
-  folder<-paste0("Data/hazard_timeseries_mean/",timeframe_c)
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_mean/",timeframe_c)
+  folder<-file.path("Data/hazard_timeseries_mean",timeframe_c)
+  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_timeseries_mean",timeframe_c)
 
   # Upload files
   local_files<-list.files(folder,file_types,full.names = T)
@@ -313,8 +313,8 @@
   
   # 2.4) Upload - hazard_timeseries_risk ####
   cat(timeframe_c,"2.4 hazard_timeseries_risk \n")
-  folder<-paste0("Data/hazard_timeseries_risk/",timeframe_c)
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_risk/",timeframe_c)
+  folder<-file.path("Data/hazard_timeseries_risk",timeframe_c)
+  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_timeseries_risk",timeframe_c)
 
   # Local files
   local_files<-list.files(folder,file_types,full.names = T)
@@ -329,8 +329,8 @@
   
   # 2.5) Upload - hazard_timeseries_int ####
   cat(timeframe_c,"2.5 hazard_timeseries_int \n")
-  folder<-paste0("Data/hazard_timeseries_int/",timeframe_c)
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_int/",timeframe_c)
+  folder<-file.path("Data/hazard_timeseries_int",timeframe_c)
+  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_timeseries_int",timeframe_c)
   
   # Upload files
   local_folders<-list.dirs(folder)
@@ -355,9 +355,9 @@
   
   # 2.6) Upload - hazard_timeseries_risk sd ####
   cat(timeframe_c,"2.6 hazard_timeseries_risk sd \n")
-  folder<-paste0("Data/hazard_timeseries_sd/",timeframe_c)
+  folder<-file.path("Data/hazard_timeseries_sd",timeframe_c)
   # select a bucket
-  s3_bucket <-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries_sd/",timeframe_c)
+  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_timeseries_sd",timeframe_c)
   
   # Local files
   local_files<-list.files(folder,file_types,full.names = T)
@@ -560,3 +560,19 @@
                      overwrite=T,
                      mode="public-read")
   
+  # 8) CHIRPS global CV (eia_climate_prioritization) ####
+  
+  # 9) AgERA5 NTx global (eia_climate_prioritization) ####
+  # cg_labs path
+  folder<-"/home/jovyan/common_data/EiA_pub"
+  s3_bucket <-file.path("s3://digital-atlas/hazards/agera5_ntx_global")
+  
+  # Local files
+  local_files<-list.files(folder,file_types,full.names = T)
+  
+  upload_files_to_s3(files = local_files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=overwrite,
+                     mode=permission,
+                     workers = worker_n)
