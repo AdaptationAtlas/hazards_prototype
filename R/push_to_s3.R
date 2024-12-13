@@ -27,49 +27,7 @@
   # 0.2) Set workers for parallel processing ####
   worker_n<-10
   
-  # 0.3) Create functions####
-  # Update tifs to cog format
-  convert_to_cog <- function(file) {
-    
-    is_cog<-grepl("LAYOUT=COG",gdalUtilities::gdalinfo(file))
-    closeAllConnections()
-    
-    if(is_cog==F){
-  
-        data<-terra::rast(file)
-        # Force into memory
-        data<-data+0
-        
-       terra::writeRaster(data,filename = file,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"),overwrite=T)
-  
-      }
-  }
-  
-  ctc_wrapper<-function(folder=NULL,files=NULL,worker_n=1){
-    
-    if(is.null(files)){
-      # List tif files in the folder
-      files_tif<-list.files(folder,".tif",full.names = T)
-    }else{
-      files_tif<-files
-    }
-  
-    if(worker_n>1){
-      # Update tifs to cog format
-      # Set up parallel backend
-      future::plan(multisession,workers=worker_n)  # Change to multicore on Unix/Linux
-      
-      # Apply the function to each file
-      future.apply::future_sapply(files_tif, convert_to_cog,future.packages = c("gdalUtilities","terra"),delete=delete,rename=rename)
-      
-      future::plan(sequential)
-      closeAllConnections()
-    }else{
-      pbapply::pbsapply(files_tif,convert_to_cog)
-    }
-  }
-  
-# 1) General ####
+ # 1) General ####
   # Upload - exposure ####
   s3_bucket <-"s3://digital-atlas/risk_prototype/data/exposure"
   folder<-"Data/exposure"
@@ -116,6 +74,7 @@
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=F,
+                     convert2cog = T,
                      mode="public-read")
   
   # Upload - metadata ####
@@ -434,11 +393,15 @@
   # 2.8) Upload - haz_vop_risk ####
   cat(timeframe_c,"2.8 haz_vop_risk \n")
   
-  folder<-file.path("Data/hazard_risk_vop/",timeframe_c)
-  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_risk_vop/",timeframe_c)
+  folder<-file.path("Data/hazard_risk_vop",timeframe_c)
+  s3_bucket <-file.path("s3://digital-atlas/risk_prototype/data/hazard_risk_vop",timeframe_c)
   
   # Local files
   local_files<-list.files(folder,file_types,full.names = T)
+  
+  #s3_files<-s3fs::s3_dir_ls(s3_bucket)
+  #s3_files<-grep(".tif",s3_files,value=T)
+  #s3_file_delete(s3_files)
   
   upload_files_to_s3(files = local_files,
                      selected_bucket=s3_bucket,
@@ -504,39 +467,7 @@
                      overwrite=T)
   
 # 4) Hazard_timeseries data (datasets from Julian's hazard workflow) ####
-  # 4.1) Upload - hazard_timeseries #####
-  for(i in 1:length(timeframe_choices)){
-    timeframe<-timeframe_choices[i]
-    cat("Uploading timeframe:",timeframe,"i =",i,"\n")
-    if(timeframe!="annual"){
-      local_dir<-paste0(indices_dir2,"/by_season/",timeframe_choice)
-    }else{
-      local_dir<-paste0(indices_dir2,"/by_year")
-    }
-    
-    s3_bucket<-paste0("s3://digital-atlas/risk_prototype/data/hazard_timeseries/",timeframe)
-    
-  # make sure the folder is set to the atlas_hazards/cmip6/indices server folder
-  folder<-indices_seasonal_dir
-  
-  # Updated hazards
-  files<-list.files(folder,"tif$",full.names = T)
-  # files<-grep("ENSEMBLEmean|ENSEMBLEsd|historic",files,value = T)
-  haz<-paste0(paste(paste0("NTx",20:50,"_mean"),collapse="|"),"|NDWL0_mean|NDWS_mean|PTOT_sum|TAVG_mean|HSH_max_max|HSH_mean_mean|THI_mean_mean|THI_max_max|TAI_mean")
-  files<-grep(haz,files,value=T)
-  
-  # Upload files
-  upload_files_to_s3(files=files,
-                     selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite=F,
-                     workers=worker_n,
-                     mode="public-read")
-  
-  }
-  
-
-# 5) !!!***TO DO***!!! raw data by season
+  # 4.1) Upload - hazard_timeseries
   # 4.2) Upload - hazard timeseries mean monthly #####
   folder<-haz_timeseries_monthly_dir
   s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month"
