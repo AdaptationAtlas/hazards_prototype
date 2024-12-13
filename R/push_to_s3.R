@@ -572,7 +572,7 @@
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=overwrite,
-                     mode=permission,
+                     mode="public-read",
                      workers = worker_n)
   
   # 9) AgERA5 NTx global (eia_climate_prioritization) ####
@@ -587,5 +587,6 @@
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=overwrite,
-                     mode=permission,
+                     mode="public-read",
                      workers = worker_n)
+  
