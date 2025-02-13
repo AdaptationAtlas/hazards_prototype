@@ -1,18 +1,4 @@
-# 0.1) Choose timeframe #####
-
-# Where are the different timeframes being analysed?
-(analysis_record<-fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/refs/heads/main/metadata/analysis_record.csv"))
-
-# Choose season calculation method
-timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
-                     "sos_primary_fixed_3","sos_primary_fixed_4","sos_primary_fixed_5","sos_secondary_eos",
-                     "sos_secondary_fixed_3","sos_secondary_fixed_4","sos_secondary_fixed_5")
-
-timeframe_choice_index<-2
-timeframe_choice <- timeframe_choices[timeframe_choice_index]
-cat("You selected:", timeframe_choice, "\n")
-
-# 0.2) Load packages and functions #####
+# 0.1) Load packages and functions #####
 
 # Install and load pacman if not already installed
 if (!require("pacman", character.only = TRUE)) {
@@ -33,6 +19,20 @@ pacman::p_load(char=packages)
 
 # Source functions used in this workflow
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+
+# 0.2) Choose timeframe #####
+
+# Where are the different timeframes being analysed?
+(analysis_record<-fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/refs/heads/main/metadata/analysis_record.csv"))
+
+# Choose season calculation method
+timeframe_choices<-c("annual","jagermeyr","sos_primary_eos",
+                     "sos_primary_fixed_3","sos_primary_fixed_4","sos_primary_fixed_5","sos_secondary_eos",
+                     "sos_secondary_fixed_3","sos_secondary_fixed_4","sos_secondary_fixed_5")
+
+timeframe_choice_index<-2
+timeframe_choice <- timeframe_choices[timeframe_choice_index]
+cat("You selected:", timeframe_choice, "\n")
 
 # 1) Setup workspace ####
 
@@ -650,4 +650,6 @@ setwd(working_dir)
   
   
   
+  
+
   
