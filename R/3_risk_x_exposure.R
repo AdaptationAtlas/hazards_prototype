@@ -425,8 +425,8 @@ arrow::write_parquet(haz_timeseries_tab,filename)
 # 4) Hazard risk x exposure ####
   # 4.0) Set-up ####
     overwrite<-F
-    do_vop<-F
-    do_vop_usd<-T
+    do_vop<-T
+    do_vop_usd<-F
     do_ha<-F
     do_n<-F
     
@@ -523,7 +523,11 @@ arrow::write_parquet(haz_timeseries_tab,filename)
         
         if(class(data_ex)=="SpatRaster"){
           names(data_ex)<-paste0(names(data_ex),"-",variable)
-          terra::writeRaster(data_ex,file=save_name,overwrite=T)
+          terra::writeRaster(data_ex,
+                             file=save_name,
+                             overwrite=T,
+                             filetype = 'COG',
+                             gdal = c("COMPRESS=LZW", of = "COG"))
         }
       }
       
