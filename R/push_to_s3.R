@@ -247,15 +247,16 @@
   
 # 2) Time sequence specific ####
   # Next task for enhanced generalization is to create folder vector and integrate into the loop (rather than have many sections)
-  overwrite<-T
+  overwrite<-F
   worker_n<-15
-  convert2cog<-T
+  convert2cog<-F # Currently generates an error when run in parallel
   permission<-"public-read"
-  file_types<-"parquet"
+  #file_types<-"parquet"
+  file_types<-"tif"
   file_types<-paste(paste0(file_types,"$"),collapse = "|")
   
   # Modify if you do not want to run all timeframes
-  timeframe_choices_local<-timeframe_choices_local[-1]
+  timeframe_choices_local<-timeframe_choices_local[1]
   
   # Timeframe loop
   for(timeframe_c in timeframe_choices_local){
@@ -419,7 +420,7 @@
   
   # Local files
   local_files<-list.files(folder,file_types,full.names = T)
-  
+
   upload_files_to_s3(files = local_files,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
@@ -560,22 +561,23 @@
                      overwrite=T,
                      mode="public-read")
   
-  # 8) CHIRPS global CV (eia_climate_prioritization) ####
-  # pete macbook path
-  folder<-"/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/chirps_cv"
-  s3_bucket <-file.path("s3://digital-atlas/hazards/chirps_cv_global")
-  
-  # Local files
-  local_files<-list.files(folder,full.names = T)
-  
-  upload_files_to_s3(files = local_files,
-                     selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite=overwrite,
-                     mode="public-read",
-                     workers = worker_n)
-  
-  # 9) AgERA5 NTx global (eia_climate_prioritization) ####
+# 8) CHIRPS global CV (eia_climate_prioritization) ####
+# pete macbook path
+folder<-"/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/chirps_cv"
+s3_bucket <-file.path("s3://digital-atlas/hazards/chirps_cv_global")
+
+# Local files
+local_files<-list.files(folder,full.names = T)
+
+upload_files_to_s3(files = local_files,
+                   selected_bucket=s3_bucket,
+                   max_attempts = 3,
+                   overwrite=T,
+                   mode="public-read",
+                   workers = worker_n)
+
+# 9) eia_climate_prioritization ####
+  # 9.1) ERA5 NTx global (eia_climate_prioritization) ####
   # cg_labs path
   folder<-"/home/jovyan/common_data/EiA_pub"
   s3_bucket <-file.path("s3://digital-atlas/hazards/agera5_ntx_global")
@@ -587,6 +589,68 @@
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=overwrite,
+                     mode="public-read",
+                     workers = worker_n)
+  
+  # 9.2) GDO drought indices (eia_climate_prioritization) ####
+  # cg_labs path
+  folder<-"/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/drought_observatory"
+  s3_bucket <-file.path("s3://digital-atlas/hazards/global_drought_observatory")
+  
+  # Local files
+  local_files<-list.files(folder,full.names = T)
+  
+  upload_files_to_s3(files = local_files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T,
+                     mode="public-read",
+                     workers = worker_n)
+  
+  # 9.3) GAEZ LGP (eia_climate_prioritization) ####
+  # cg_labs path
+  folder<-"/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/gaez"
+  s3_bucket <-"s3://digital-atlas/hazards/gaez_lgp"
+  
+  # Local files
+  local_files<-list.files(folder,full.names = T)
+  
+  upload_files_to_s3(files = local_files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T,
+                     mode="public-read",
+                     workers = worker_n)
+  
+  # 9.4) Spam (eia_climate_prioritization) #####
+  # cg_labs path
+  folder<-"/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/SPAM"
+  s3_bucket <-"s3://digital-atlas/exposure/mapspam/eia_climate_prioritization"
+  
+  # Local files
+  local_files<-list.files(folder,"tif$",full.names = T)
+  
+  upload_files_to_s3(files = local_files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T,
+                     mode="public-read",
+                     workers = worker_n)
+  
+  # 9.5) Countries (eia_climate_prioritization) #####
+  # cg_labs path
+  folder<-"/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/boundaries"
+  s3_bucket <-"s3://digital-atlas/boundaries/eia_climate_prioritization"
+  
+  s3_dir_ls(s3_bucket)
+  
+  # Local files
+  local_files<-list.files(folder,full.names = T)
+  
+  upload_files_to_s3(files = local_files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=T,
                      mode="public-read",
                      workers = worker_n)
   
