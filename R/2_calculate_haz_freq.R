@@ -89,6 +89,8 @@
   ms_codes<-data.table::fread(ms_codes_url, showProgress = FALSE)[,Code:=toupper(Code)]
   ms_codes<-ms_codes[compound=="no" & !is.na(Code)]
   
+  # 0.2.2.1) Generate hazard thresholds from ecocrop ######
+  
   # read in ecocrop
   ecocrop<-fread(ecocrop_url, showProgress = FALSE)
   ecocrop[,Temp_Abs_Min:=as.numeric(Temp_Abs_Min)
