@@ -425,9 +425,9 @@ arrow::write_parquet(haz_timeseries_tab,filename)
 # 4) Hazard risk x exposure ####
   # 4.0) Set-up ####
     overwrite<-F
-    do_vop<-T
+    do_vop<-F
     do_vop_usd<-F
-    do_ha<-F
+    do_ha<-T
     do_n<-F
     
     crop_vop_path<-crop_vop_file
@@ -648,7 +648,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       
       haz_risk_exp_extract(severity_classes,
                            interactions=INT,
-                           folder=haz_risk_vop_dir,
+                           folder=haz_risk_ha_dir,
                            overwrite=overwrite,
                            Geographies=Geographies,
                            rm_crop=NULL,
@@ -660,7 +660,7 @@ arrow::write_parquet(haz_timeseries_tab,filename)
       
         haz_risk_exp_extract(severity_classes,
                              interactions=INT,
-                             folder=haz_risk_vop_dir,
+                             folder=haz_risk_n_dir,
                              overwrite=overwrite,
                              Geographies=Geographies,
                              rm_crop=NULL,
