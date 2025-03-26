@@ -28,7 +28,7 @@
   worker_n<-10
   
  # 1) General ####
-  # Upload - exposure ####
+  ## Upload - exposure ####
   s3_bucket <-"s3://digital-atlas/risk_prototype/data/exposure"
   folder<-"Data/exposure"
   
@@ -77,7 +77,7 @@
                      convert2cog = T,
                      mode="public-read")
   
-  # Upload - metadata ####
+  ## Upload - metadata ####
   # select a folder
   folder<-"metadata"
   # select a bucket
@@ -126,7 +126,7 @@
                      selected_bucket=selected_bucket,
                      max_attempts = 3,
                      new_only=T)
-  # Upload - MapSPAM ####
+  ## Upload - MapSPAM ####
   folder<-mapspam_dir
   s3_bucket <- file.path("s3://digital-atlas/MapSpam/raw",basename(mapspam_dir))
   
@@ -138,7 +138,7 @@
                      overwrite=F,
                      mode="public-read")
   
-  # Upload - livestock_vop ####
+  ## Upload - livestock_vop ####
   folder<-ls_vop_dir
   s3_bucket <- "s3://digital-atlas/livestock_vop"
   
@@ -159,7 +159,7 @@
   index[,s3_path:=gsub("s3://digital-atlas","https://digital-atlas.s3.amazonaws.com",s3_path)]
   fwrite(index,file.path(folder,"index.csv"))
   
-  # Upload - livestock afr-highlands ####
+  ## Upload - livestock afr-highlands ####
   folder<-afr_highlands_dir
   s3_bucket <- "s3://digital-atlas/afr_highlands"
   
@@ -172,7 +172,7 @@
   s3_bucket <- "s3://digital-atlas/boundaries"
   s3_dir_ls(s3_bucket)
   
-  # Upload - human population ####
+  ## Upload - human population ####
   folder<-hpop_dir
   s3_bucket <- file.path(bucket_name_s3,"population/worldpop_2020")
   
@@ -184,7 +184,7 @@
                    overwrite=F,
                    mode="public-read")
 
-  # Upload - glps #####
+  ## Upload - glps #####
   folder<-glps_dir
   s3_bucket <- file.path(bucket_name_s3,basename(folder))
   
@@ -196,7 +196,7 @@
                      overwrite=F,
                      mode="public-read")
   
-  # Upload - cattle heatstress data #####
+  ## Upload - cattle heatstress data #####
   folder<-cattle_heatstress_dir
   s3_bucket <- file.path(bucket_name_s3,basename(folder))
   
@@ -208,7 +208,7 @@
                      overwrite=T,
                      mode="public-read")
   
-  # Upload - sos raster #####
+  ## Upload - sos raster #####
   folder<-sos_dir
   s3_bucket <- file.path(bucket_name_s3,basename(folder))
   
@@ -469,7 +469,7 @@
   
 # 4) Hazard_timeseries data (datasets from Julian's hazard workflow) ####
   # 4.1) Upload - hazard_timeseries
-  # 4.2) Upload - hazard timeseries mean monthly #####
+  ## 4.2) Upload - hazard timeseries mean monthly #####
   folder<-haz_timeseries_monthly_dir
   s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month"
   
@@ -484,7 +484,7 @@
   
   s3_dir_ls(s3_bucket)
   
-  # 4.3) Upload - ptot change #####
+  ## 4.3) Upload - ptot change #####
   folder<-haz_mean_ptot_dir
   s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month/ptot_change"
   
@@ -498,7 +498,7 @@
   
   s3_dir_ls(s3_bucket)
   
-  # 4.3) Upload - THI area vs severity #####
+  ## 4.3) Upload - THI area vs severity #####
   folder<-haz_mean_thi_dir
   s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month/thi_perc"
   
@@ -512,7 +512,7 @@
   
   
 # 5) Isimip ####
-  # 5.1) Upload - isimip timeseries mean #####
+  ## 5.1) Upload - isimip timeseries mean #####
   folder<-isimip_timeseries_mean_dir
   s3_bucket<-file.path(bucket_name_s3,"hazards",basename(folder),timeframe_choice)
   folder<-file.path(folder,timeframe_choice)
@@ -524,7 +524,7 @@
                      overwrite=T,
                      mode="public-read")
   
-  # 5.2) Upload - extracted data #####
+  ## 5.2) Upload - extracted data #####
   folder<-isimip_mean_dir
   s3_bucket<-file.path(bucket_name_s3,"hazards",basename(folder),timeframe_choice)
   folder<-file.path(folder,timeframe_choice)
@@ -577,7 +577,7 @@ upload_files_to_s3(files = local_files,
                    workers = worker_n)
 
 # 9) eia_climate_prioritization ####
-  # 9.1) ERA5 NTx global (eia_climate_prioritization) ####
+  ## 9.1) ERA5 NTx global (eia_climate_prioritization) ####
   # cg_labs path
   folder<-"/home/jovyan/common_data/EiA_pub"
   s3_bucket <-file.path("s3://digital-atlas/hazards/agera5_ntx_global")
@@ -592,7 +592,7 @@ upload_files_to_s3(files = local_files,
                      mode="public-read",
                      workers = worker_n)
   
-  # 9.2) GDO drought indices (eia_climate_prioritization) ####
+  ## 9.2) GDO drought indices (eia_climate_prioritization) ####
   # cg_labs path
   folder<-"/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/drought_observatory"
   s3_bucket <-file.path("s3://digital-atlas/hazards/global_drought_observatory")
@@ -607,7 +607,7 @@ upload_files_to_s3(files = local_files,
                      mode="public-read",
                      workers = worker_n)
   
-  # 9.3) GAEZ LGP (eia_climate_prioritization) ####
+  ## 9.3) GAEZ LGP (eia_climate_prioritization) ####
   # cg_labs path
   folder<-"/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/gaez"
   s3_bucket <-"s3://digital-atlas/hazards/gaez_lgp"
@@ -622,7 +622,7 @@ upload_files_to_s3(files = local_files,
                      mode="public-read",
                      workers = worker_n)
   
-  # 9.4) Spam (eia_climate_prioritization) #####
+  ## 9.4) Spam (eia_climate_prioritization) #####
   # cg_labs path
   folder<-"/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/SPAM"
   s3_bucket <-"s3://digital-atlas/exposure/mapspam/eia_climate_prioritization"
@@ -637,7 +637,7 @@ upload_files_to_s3(files = local_files,
                      mode="public-read",
                      workers = worker_n)
   
-  # 9.5) Countries (eia_climate_prioritization) #####
+  ## 9.5) Countries (eia_climate_prioritization) #####
   # cg_labs path
   folder<-"/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/boundaries"
   s3_bucket <-"s3://digital-atlas/boundaries/eia_climate_prioritization"
