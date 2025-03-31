@@ -1,4 +1,3 @@
-
 # 0) Introduction ####
 # This script configures an R environment for the hazards_prototype workflow by:
 #  1) Installing/Loading necessary packages (pacman, remotes, data.table, httr, s3fs, etc.).
