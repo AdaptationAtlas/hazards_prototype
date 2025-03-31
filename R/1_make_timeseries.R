@@ -62,8 +62,7 @@ output_dir <- indices_dir2
 # Plan for parallelization. Adjust 'workers' to suit your machine
 plan(multisession, workers = 10)
 
-# Suppose 'folders' is your vector of top-level folders
-# e.g. folders <- list.dirs("/some/path", recursive = FALSE)
+folders <- list.dirs(working_dir, recursive = FALSE)
 
 # Wrap the future_lapply call in a 'with_progress' block
 existing_files_list <- with_progress({
