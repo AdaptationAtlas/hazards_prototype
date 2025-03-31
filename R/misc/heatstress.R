@@ -147,7 +147,7 @@ gcms    <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-C
 ssps    <- c("ssp126", "ssp245", "ssp370", "ssp585")
 prds    <- c("2021_2040", "2041_2060", "2061_2080", "2081_2100")
 baseline_yrs <- 1995:2014                # Historical baseline period
-cores        <- floor(parallel::detectCores() * 0.5) # Cores for parallel processing
+cores        <- floor(parallel::detectCores() * 0.33) # Cores for parallel processing
 
 
 # 4) Prepare Historical CHIRTS Data ####
@@ -198,6 +198,9 @@ for (sce_climate in sce_climates) {
     plan(sequential)
     
   } else if (sce_climate == "future") {
+    
+    plan("multisession", workers = cores)
+    
     for (gcm in gcms) {
       for (ssp in ssps) {
         for (prd in prds) {
@@ -225,7 +228,6 @@ for (sce_climate in sce_climates) {
             cat("...processing combination =", gcm, "/ ssp=", ssp, "/ period=", prd, "\n")
             flush.console()
             
-            plan("multisession", workers = cores)
             handlers("progress")  # Set up progress handling
             
             with_progress({
@@ -238,20 +240,22 @@ for (sce_climate in sce_climates) {
                 unlink(tmpfls, recursive = TRUE, force = TRUE)
               })
             })
-            
-            plan(sequential)
             gc()
           }
         }
       }
     }
+    
+    plan(sequential)
+    future:::ClusterRegistry("stop")
+    
   } else {
     cat("select one of historical or future for sce_climate \n")
     flush.console()
   }
 }
 
-# 6) Check NTx Files Integrity
+# 6) Check NTx Files Integrity ####
 
 # This section verifies that each NTx tif file can be loaded using terra::rast.
 # It runs in parallel with a progress bar and uses tryCatch to record any files that 
@@ -264,8 +268,9 @@ ntx_files_hist <- list.files(hist_index_dir, pattern = "^NTx\\d+.*\\.tif$", recu
 ntx_files_future <- list.files(future_index_base, pattern = "^NTx\\d+.*\\.tif$", recursive = TRUE, full.names = TRUE)
 ntx_files <- c(ntx_files_hist, ntx_files_future)
 
-suppressMessages(library(progressr))
+plan("multisession", workers = cores)
 handlers("progress")
+
 
 with_progress({
   p <- progressor(along = ntx_files)
@@ -295,3 +300,6 @@ with_progress({
     }
   }
 })
+
+plan(sequential)
+future:::ClusterRegistry("stop")
