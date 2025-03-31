@@ -468,7 +468,8 @@
                      overwrite=T)
   
 # 4) Hazard_timeseries data (datasets from Julian's hazard workflow) ####
-  # 4.1) Upload - hazard_timeseries
+  ## 4.1) Upload - hazard_timeseries ####
+  
   ## 4.2) Upload - hazard timeseries mean monthly #####
   folder<-haz_timeseries_monthly_dir
   s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month"
@@ -482,7 +483,7 @@
                      mode="public-read",
                      workers=worker_n)
   
-  s3_dir_ls(s3_bucket)
+  s3_dir_ls("s3://digital-atlas/hazards")
   
   ## 4.3) Upload - ptot change #####
   folder<-haz_mean_ptot_dir
@@ -498,7 +499,7 @@
   
   s3_dir_ls(s3_bucket)
   
-  ## 4.3) Upload - THI area vs severity #####
+  ## 4.4) Upload - THI area vs severity #####
   folder<-haz_mean_thi_dir
   s3_bucket<-"s3://digital-atlas/hazards/hazard_timeseries_mean_month/thi_perc"
   
@@ -511,6 +512,8 @@
                      mode="public-read")
   
   
+  ## 4.5) Upload - NexGDDP ####
+  s3fs::dir_ls()
 # 5) Isimip ####
   ## 5.1) Upload - isimip timeseries mean #####
   folder<-isimip_timeseries_mean_dir
