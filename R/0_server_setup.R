@@ -424,13 +424,14 @@ s3 <- s3fs::S3FileSystem$new(anonymous = TRUE)
 
 ## 3.1) Geoboundaries #####
 update <- FALSE
+
 geo_files_s3 <- c(
   file.path(bucket_name_s3, "boundaries/atlas-region_admin0_harmonized.parquet"),
   file.path(bucket_name_s3, "boundaries/atlas-region_admin1_harmonized.parquet"),
   file.path(bucket_name_s3, "boundaries/atlas-region_admin2_harmonized.parquet")
 )
 
-geo_files_local <- file.path(geo_dir, basename(geo_files_s3))
+geo_files_local <- file.path(boundaries_dir, basename(geo_files_s3))
 names(geo_files_local) <- c("admin0", "admin1", "admin2")
 
 lapply(seq_along(geo_files_local), FUN = function(i) {
