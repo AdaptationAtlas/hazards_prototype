@@ -1231,141 +1231,138 @@ int_risk <- function(data, interaction_mask_vals, lyr_name){
 #' # This example assumes 'folders_x_hazards', 'model_names', and 'r_cal' are predefined.
 #' result <- hazard_stacker(1, folders_x_hazards, model_names, "yes", r_cal, "./output")
 #' @export
-hazard_stacker<-function(i,folders_x_hazards,haz_meta,model_names,use_crop_cal,r_cal_filepath,save_dir,overwrite=F){
+hazard_stacker <- function(i, folders_x_hazards, haz_meta, model_names, use_crop_cal, r_cal_filepath, save_dir, overwrite = F) {
   # Extract the specific hazard and scenario based on the index 'i'
-  variable<-as.character(folders_x_hazards$hazards[i])
-  scenario<-as.character(folders_x_hazards$folders[i])
-  folder<-as.character(folders_x_hazards$folder_path[i])
+  variable <- as.character(folders_x_hazards$hazards[i])
+  scenario <- as.character(folders_x_hazards$folders[i])
+  folder <- as.character(folders_x_hazards$folder_path[i])
   
   # List all hazard files for the given scenario and variable, excluding "AVAIL.tif"
-  haz_files<-list.files(folder,".tif",recursive=F,full.names = T)
-  haz_files<-haz_files[!grepl("AVAIL.tif",haz_files)]
+  haz_files <- list.files(folder, "\\.tif$", recursive = F, full.names = T)
+  haz_files <- haz_files[!grepl("AVAIL.tif", haz_files)]
   
-  # read in the crop calendar
-  r_cal<-terra::rast(r_cal_filepath)
+  # Read in the crop calendar
+  r_cal <- terra::rast(r_cal_filepath)
   
-  n<-0
-  
+  n <- 0
   # Attempt to reload files if the first attempt returns NA, up to 10 tries
-  while(is.na(haz_files[1]) & n<10){
-    cat("cc = ",use_crop_cal," | ",scenario,"-",variable,"\n")
-    cat("i=",i," | haz_files is returning NA | attempt = ",n,"\n")
-    haz_files<-list.files(paste0(scenario,"/",variable),".tif",recursive=F,full.names = T)
-    haz_files<-haz_files[!grepl("AVAIL.tif",haz_files)]
-    n<-n+1
+  while (is.na(haz_files[1]) & n < 10) {
+    cat("cc = ", use_crop_cal, " | ", scenario, "-", variable, "\n")
+    cat("i=", i, " | haz_files is returning NA | attempt = ", n, "\n")
+    haz_files <- list.files(paste0(scenario, "/", variable), "\\.tif$", recursive = F, full.names = T)
+    haz_files <- haz_files[!grepl("AVAIL.tif", haz_files)]
+    n <- n + 1
   }
   
   # Extract unique years from the file names
-  years<-unique(as.numeric(gsub(".tif","",unlist(tstrsplit(unlist(tail(tstrsplit(haz_files,"/"),1)),"-",keep=2)))))
+  years <- unique(as.numeric(gsub(".tif", "", unlist(tstrsplit(unlist(tail(tstrsplit(haz_files, "/"), 1)), "-", keep = 2)))))
   
   # Process files differently if they contain "mean" or other statistical terms
-  if(any(grepl("mean",haz_files))){
-    haz_files_mean<-grep("mean",haz_files,value=T)
-    haz_files_max<-grep("max",haz_files,value=T)
-    haz_files<-list(mean=haz_files_mean,max=haz_files_mean)
-  }else{
-    haz_files<-list(mean=haz_files)
+  if (any(grepl("mean", haz_files))) {
+    haz_files_mean <- grep("mean", haz_files, value = T)
+    haz_files_max <- grep("max", haz_files, value = T)
+    haz_files <- list(mean = haz_files_mean, max = haz_files_mean)
+  } else {
+    haz_files <- list(mean = haz_files)
   }
   
-  X<-""
-  for(k in 1:length(haz_files)){
+  X <- ""
+  for (k in 1:length(haz_files)) {
     
-    cat("i=",i,variable,scenario,"| k=",k,"/",length(haz_files),names(haz_files)[k],"\n")
-    variable2<-if(length(haz_files)>1){
-      paste0(variable,"_",names(haz_files)[k])
-    }else{
-      variable2<-variable
+    cat("i=", i, variable, scenario, " | k=", k, "/", length(haz_files), names(haz_files)[k], "\n")
+    variable2 <- if (length(haz_files) > 1) {
+      paste0(variable, "_", names(haz_files)[k])
+    } else {
+      variable
     }
     
     # Retrieve the statistical function (e.g., mean, max) for processing the hazard data
-    stat<-unique(as.character(unlist(haz_meta[variable.code==variable2,"function"])))
+    stat <- unique(as.character(unlist(haz_meta[variable.code == variable2, "function"])))
     
-    haz_files1<-haz_files[[k]]
+    haz_files1 <- haz_files[[k]]
     
     # Define the save name for the output raster
-    savename<-paste0(save_dir,"/",scenario,"_",variable2,"_",stat,".tif")
+    savename <- paste0(save_dir, "/", scenario, "_", variable2, "_", stat, ".tif")
     
-    # Skip processing if the file already exists
-    if(!file.exists(savename)|overwrite==T){
-      # Special handling for TAI hazard type
-      if(folders_x_hazards$hazards[i]=="TAI"){
-        # Display progress
-        cat('\r                                                                                                                                          ')
-        cat('\r',"cc =",use_crop_cal,"| fixed =",!use_eos,"|",scenario,"-",variable2,"-",stat)
+    # Skip processing if the file already exists unless overwrite is TRUE
+    if (!file.exists(savename) | overwrite == T) {
+      if (folders_x_hazards$hazards[i] == "TAI") {
+        # For TAI, process as before
+        cat('\r', "cc =", use_crop_cal, "| fixed =", !use_eos, "|", scenario, "-", variable2, "-", stat)
         flush.console()
         
-        haz_rast_years<-terra::rast(haz_files1)
-        names(haz_rast_years)<-years
+        haz_rast_years <- terra::rast(haz_files1)
+        names(haz_rast_years) <- years
         
         # Remove last year of data (to be compatible with monthly derived hazards)
-        haz_rast_years<-haz_rast_years[[1:(nlyr(haz_rast_years)-1)]]
+        haz_rast_years <- haz_rast_years[[1:(terra::nlyr(haz_rast_years) - 1)]]
         
-        haz_rast_years
-      }else{
+      } else {
+        # Load all months of hazard data and force into memory
+        haz_rast <- terra::rast(haz_files1)
+        haz_rast <- haz_rast + 0
         
-        # Load all months of hazard data
-        haz_rast<-terra::rast(haz_files1)
-        
-        # Force into memory (more efficient, less read operations)
-        haz_rast<-haz_rast+0
-        
-        # Remove problematic -9999 values from precipitation data
-        # Might be quicker as an ifelse
-        if(variable=="PTOT"){
-          haz_rast<-terra::classify(haz_rast, cbind(-Inf, 0, NA), right=FALSE)
+        # Remove problematic -9999 values for precipitation data
+        if (variable == "PTOT") {
+          haz_rast <- terra::classify(haz_rast, cbind(-Inf, 0, NA), right = FALSE)
         }
         
-        # Copy planting and harvest months
-        plant<-r_cal$planting_month
+        # Retrieve planting and harvest months from the crop calendar
+        plant <- r_cal$planting_month
         
-        if(use_crop_cal=="yes"){
-          harvest<-r_cal$maturity_month
-          # Where plant>harvest (e.g. plant = 11 harvest = 3) add 12 to harvest (e.g. plant = 11 harvest = 15)
-          harvest[plant[]>harvest[]]<-harvest[plant[]>harvest[]]+12
-        }else{
-          # Calculate harvest for the year following planting
-          harvest<-plant+11
+        if (use_crop_cal == "yes") {
+          harvest <- r_cal$maturity_month
+          # Adjust harvest if planting > harvest
+          harvest[plant[] > harvest[]] <- harvest[plant[] > harvest[]] + 12
+        } else {
+          harvest <- plant + 11
         }
         
-        plant_min<-min(plant[],na.rm=T)
-        harvest_max<-max(harvest[],na.rm=T)
+        plant_min <- min(plant[], na.rm = T)
+        harvest_max <- max(harvest[], na.rm = T)
         
-        # Loop through years, note the final year is removed in case the harvest date extends beyond the end of the dataset
-        haz_rast_years<-terra::rast(lapply(1:(length(years)-1),FUN=function(m){
-          # Display progress
-          cat('\r                                                                                                                                                                                  ')
-          cat('\r',"cc = ",use_crop_cal,"| fixed =",!use_eos," |season = ",season,"|",scenario,"-",variable2,"-",stat,"-",years[m]," | i = ",i)
+        # Process each year in parallel using future.apply
+        haz_rast_years_list <- future.apply::future_lapply(1:(length(years) - 1), FUN = function(m) {
+          # Print progress (retain original message; ensure 'season' is defined externally)
+          cat('\r', "cc = ", use_crop_cal, "| fixed =", !use_eos, " | season = ", season, " |", scenario, "-", variable2, "-", stat, "-", years[m], " | i = ", i)
           flush.console()
           
           # Subset haz_rast to increase efficiency
-          x = haz_rast[[(plant_min+12*(m-1)):(harvest_max+12*(m-1))]]
+          x <- haz_rast[[(plant_min + 12 * (m - 1)):(harvest_max + 12 * (m - 1))]]
           
-          haz_rast1<-terra::rapp(x,
-                                 first=plant,
-                                 last=harvest,
-                                 fun=if(stat=="sum"){sum}else{
-                                   if(stat=="max"){max}else{
-                                     if(stat=="mean"){mean}else{if(stat=="min"){min}else{stop("invalid stat function supplied")}}}},
-                                 na.rm=T)
-          
-          names(haz_rast1)<-years[m]
-          haz_rast1
-        }))
+          # Compute the summary statistic over the specified window
+          haz_rast1 <- terra::rapp(x,
+                                   first = plant,
+                                   last = harvest,
+                                   fun = if (stat == "sum") {
+                                     sum
+                                   } else if (stat == "max") {
+                                     max
+                                   } else if (stat == "mean") {
+                                     mean
+                                   } else if (stat == "min") {
+                                     min
+                                   } else {
+                                     stop("invalid stat function supplied")
+                                   },
+                                   na.rm = T)
+          names(haz_rast1) <- years[m]
+          return(haz_rast1)
+        })
+        haz_rast_years <- terra::rast(haz_rast_years_list)
       }
       # Write the processed raster to file
-      terra::writeRaster(haz_rast_years,savename,overwrite=T)
-      # Clean up the memory
-      rm(haz_rast_years,haz_rast)
+      terra::writeRaster(haz_rast_years, savename, overwrite = T)
+      # Clean up memory
+      rm(haz_rast_years, haz_rast)
       gc()
       cat("\n")
     }
-    X[k]<-savename
+    X[k] <- savename
   }
   
   X
-  
 }
-
 #' Read and Process MapSPAM Data
 #'
 #' This function reads agricultural variable data for a given technology from MapSPAM, processes it, and saves it as a raster file. If the file already exists, it can be optionally overwritten or simply read from disk.
