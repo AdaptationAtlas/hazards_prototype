@@ -57,12 +57,11 @@ working_dir <- indices_dir
 output_dir <- indices_dir2
 
 # 2.1) Summarize existing data #####
-
-
+if(F){
+  folders <- list.dirs(working_dir, recursive = FALSE)
+  
 # Plan for parallelization. Adjust 'workers' to suit your machine
 plan(multisession, workers = 10)
-
-folders <- list.dirs(working_dir, recursive = FALSE)
 
 # Wrap the future_lapply call in a 'with_progress' block
 existing_files_list <- with_progress({
@@ -86,7 +85,7 @@ existing_files <- existing_files[!grepl("ipynb_checkpoints", existing_files)]
 
 # Remove unwanted patterns from the file list
 existing_files <- existing_files[
-  !grepl("GSeason|THI/THI_MAX/|_AgERA5/|stats|daily|historical/HSM_NTx|AVAIL.tif|LongTermMean|/max_year|/mean_monthly|/mean_year|/median_monthly|/median_year",
+  !grepl("PRCPTOT-PTOT|PTOT-New-PTOT|PTOT-Updated-PTOT|GSeason|THI/THI_MAX/|_AgERA5/|stats|daily|historical/HSM_NTx|AVAIL.tif|LongTermMean|/max_year|/mean_monthly|/mean_year|/median_monthly|/median_year",
          existing_files)
 ]
 
@@ -141,6 +140,7 @@ fwrite(
   hazard_completion,
   file.path(working_dir, "indice_completion.csv")
 )
+}
 
 # 3) Set up workspace ####
 
@@ -148,7 +148,7 @@ fwrite(
 folders <- list.dirs(working_dir, recursive = FALSE)
 # Remove directories that are incomplete or unneeded for this analysis
 folders <- folders[!grepl("ENSEMBLE|ipyn|gadm0|hazard_comb|indices_seasonal", folders)]
-folders <- folders[!grepl("ssp126|ssp370|2061_2080|2081_2100", folders)] 
+#folders <- folders[!grepl("ssp126|ssp370|2061_2080|2081_2100", folders)] 
 folders <- basename(folders)
 
 # Extract the model names (assuming each folder has a structure like scenario_model_yearrange)
@@ -179,10 +179,13 @@ ggcmi_cc <- ggcmi_cc[[c("planting_month", "maturity_month")]]
 haz_meta <- unique(data.table::fread(haz_meta_url)[, c("variable.code", "function")])
 
 # Core hazard variables
-hazards <- c("HSH", "NDWL0", "NDWS", "NTx35", "NTx40", "PTOT", "TAI", "TAVG", "THI", "TMIN", "TMAX")
+hazards_heat <- c("HSH","NTx35", "NTx40", "TAVG", "THI", "TMIN", "TMAX")
+hazards_wet<- c("NDWL0", "NDWS", "PTOT", "TAI","NDD")
+
+hazards<-hazards_heat
 
 # If needed, add in more heat thresholds
-if (FALSE) {
+if (T) {
   hazards2 <- paste0("NTx", c(20:34, 36:39, 41:50))
   haz_meta <- rbind(
     haz_meta, 
@@ -191,43 +194,9 @@ if (FALSE) {
   hazards <- c(hazards, hazards2)
 }
 
-if (TRUE) {
-  # Example adding thresholds 30 through 50
-  hazards2 <- paste0("NTx", c(30:50))
-  haz_meta <- rbind(
-    haz_meta, 
-    data.table(variable.code = hazards2, `function` = "mean")
-  )
-  hazards <- c(hazards, hazards2)
-}
-
-## 4.1) Check hazards are complete ####
-# Optional code block to verify hazard completeness across folders
-if (FALSE) {
-  check_folders <- list.dirs(working_dir)
-  check_folders <- check_folders[!grepl("ipynb", check_folders)]
-  
-  exists <- rbindlist(pbapply::pblapply(hazards, FUN = function(H) {
-    subfolders <- grep(paste0("/", H, "$"), check_folders, value = TRUE)
-    result <- sapply(
-      subfolders,
-      FUN = function(x) { length(list.files(x)) },
-      USE.NAMES = TRUE
-    )
-    exists <- data.table(
-      do.call("cbind", tail(tstrsplit(grep(paste0("/", H, "$"), subfolders, value = TRUE), "/"), 2))
-    )
-    names(exists) <- c("scenario", "hazard")
-    exists[, nfiles := result]
-    exists
-  }))
-  exists <- dcast(exists, scenario ~ hazard, value.var = "nfiles")
-  print(exists)
-}
-
 # 5) Set analysis parameters ####
 # Number of workers/cores to use with future.apply
-worker_n <- 1
+worker_n <- 16
 
 # Logical toggles for whether or not to use a crop calendar approach,
 # and whether or not to use the start-of-season (sos) approach, 
@@ -260,6 +229,9 @@ folders_x_hazards <- data.table(
     hazards = hazards
   )
 )[, folder_path := file.path(working_dir, folders, hazards)]
+
+# Should existing data be overwritten (T) or skipped (F)
+overwrite=F
 
 # 6) Run Analysis loop ####
 # This loop runs over the different parameter configurations (whether or not to use crop calendars,
@@ -408,13 +380,16 @@ for (ii in 1:nrow(parameters)) {
               model_names       = model_names,
               use_crop_cal      = use_crop_cal,
               r_cal_filepath    = r_cal_filepath,
-              save_dir          = save_dir
+              save_dir          = save_dir,
+              overwrite=overwrite
             )
           }
         )
       })
       # After finishing, revert to sequential
       future::plan(sequential)
+      future:::ClusterRegistry("stop")
+      
       
     } else {
       # Single-core execution
@@ -428,7 +403,8 @@ for (ii in 1:nrow(parameters)) {
             model_names       = model_names,
             use_crop_cal      = use_crop_cal,
             r_cal_filepath    = r_cal_filepath,
-            save_dir          = save_dir
+            save_dir          = save_dir,
+            overwrite=overwrite
           )
         }
       )
@@ -564,5 +540,7 @@ for (ii in 1:nrow(parameters)) {
     
     # Return to sequential plan after ensembles
     future::plan(sequential)
+    future:::ClusterRegistry("stop")
+    
   }
 }
