@@ -1,0 +1,27 @@
+#!/bin/bash
+
+# ----------------------------------------------------------------------
+# Script: run_hazard_pipeline.sh
+# Purpose: Executes the climate hazard pipeline in sequence (setup + timeseries)
+# Environment: JupyterHub / RStudio Server (Linux, nohup-safe)
+# ----------------------------------------------------------------------
+
+# Define absolute paths to R scripts
+SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
+TIMESERIES_SCRIPT="$HOME/atlas/hazards_prototype/R/1_make_timeseries.R"
+
+# Define log file
+LOG_FILE="$HOME/atlas/hazards_prototype/logs/combined_run_$(date +%Y%m%d_%H%M%S).log"
+
+# Create log directory if it doesn't exist
+mkdir -p "$(dirname "$LOG_FILE")"
+
+# Echo start
+echo "Running hazard pipeline... Logs will be saved to:"
+echo "$LOG_FILE"
+
+# Run the scripts sequentially using Rscript + source
+nohup Rscript -e "source('$SETUP_SCRIPT'); source('$TIMESERIES_SCRIPT')" > "$LOG_FILE" 2>&1 &
+
+# Notify user of background process
+echo "Process started in background (PID $!). Use 'tail -f' to monitor output."

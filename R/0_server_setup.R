@@ -695,4 +695,6 @@ isimip_meta_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_pr
 
 # ---------------------------------------------------------------------------------------------
 # End of script
+cat("0_server_setup.R has completed successfully.\n")
+cat("CGLabs = ",Cglabs,"\n")
 # ---------------------------------------------------------------------------------------------
