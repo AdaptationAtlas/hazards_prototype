@@ -61,8 +61,8 @@ if(F){
   folders <- list.dirs(working_dir, recursive = FALSE)
   
 # Plan for parallelization. Adjust 'workers' to suit your machine
-plan(multisession, workers = 10)
-
+  set_parallel_plan(n_cores=10)
+  
 # Wrap the future_lapply call in a 'with_progress' block
 existing_files_list <- with_progress({
   # Initialize progressor with the number of steps (length of 'folders')
@@ -142,6 +142,60 @@ fwrite(
 )
 }
 
+# 2.2) Check file integrity ####
+# This section verifies that each tif file can be loaded using terra::rast.
+# It runs in parallel with a progress bar and uses tryCatch to record any files that 
+# cannot be loaded. Set 'delete_corrupt' to TRUE to automatically delete such files.
+
+if(F){
+delete_corrupt <- FALSE  # Change to TRUE to delete problematic files
+
+# Gather all files from historical and future directories
+files <- list.files(
+  working_dir, 
+  pattern = "^TMIN.*\\.tif$", 
+  recursive = TRUE, 
+  full.names = TRUE
+)
+
+set_parallel_plan(n_cores=worker_n)
+handlers("progress")
+
+
+with_progress({
+  p <- progressor(along = files)
+  
+  results <- furrr::future_map_dfr(files, function(f) {
+    res <- tryCatch({
+      # Try to load the raster
+      r <- terra::rast(f)
+      tibble::tibble(file = f, success = TRUE, error_message = NA_character_)
+    }, error = function(e) {
+      tibble::tibble(file = f, success = FALSE, error_message = as.character(e))
+    })
+    p()
+    res
+  })
+  
+  # Report results
+  failed_files <- results %>% dplyr::filter(success == FALSE)
+  cat("Checked", nrow(results), "files.\n")
+  cat(nrow(failed_files), "files could not be loaded.\n")
+  
+  if(nrow(failed_files) > 0) {
+    print(failed_files)
+    if(delete_corrupt) {
+      cat("Deleting problematic files...\n")
+      file.remove(failed_files$file)
+    }
+  }
+})
+
+plan(sequential)
+future:::ClusterRegistry("stop")
+}
+
+
 # 3) Set up workspace ####
 
 # List hazard folders (top-level)
@@ -184,6 +238,9 @@ hazards_wet<- c("NDWL0", "NDWS", "PTOT", "TAI","NDD")
 
 hazards<-hazards_heat
 
+# Temporarily remove TMIN (corrupt file?)
+hazards<-hazards[hazards!="TMIN"]
+
 # If needed, add in more heat thresholds
 if (T) {
   hazards2 <- paste0("NTx", c(20:34, 36:39, 41:50))
@@ -193,6 +250,8 @@ if (T) {
   )
   hazards <- c(hazards, hazards2)
 }
+
+cat("Timeseries hazards = ",hazards,"\n")
 
 # 5) Set analysis parameters ####
 # Number of workers/cores to use with future.apply
@@ -222,6 +281,9 @@ parameters <- data.table(
   subfolder_name = c(NA, "jagermeyr", "sos", "sos", "sos", "sos")
 )
 
+cat("Timeseries parameters = \n")
+print(parameters)
+
 # Create combinations of folders and hazards for iteration
 folders_x_hazards <- data.table(
   expand.grid(
@@ -230,8 +292,12 @@ folders_x_hazards <- data.table(
   )
 )[, folder_path := file.path(working_dir, folders, hazards)]
 
+cat("There are ",nrow(folders_x_hazards),"in the folder_x_hazards table.\n")
+
+
 # Should existing data be overwritten (T) or skipped (F)
 overwrite=F
+overwrite_ensemble=F
 
 # 6) Run Analysis loop ####
 # This loop runs over the different parameter configurations (whether or not to use crop calendars,
@@ -351,7 +417,7 @@ for (ii in 1:nrow(parameters)) {
     # -------------------------------------------------------------------------
     if (worker_n > 1) {
       # Use parallel processing if worker_n > 1
-      future::plan("multisession", workers = worker_n)
+      set_parallel_plan(n_cores=worker_n)
       progressr::handlers(global = TRUE)
       progressr::handlers("progress")
       
@@ -446,7 +512,7 @@ for (ii in 1:nrow(parameters)) {
     if (worker_n == 1) {
       future::plan("sequential")
     } else {
-      future::plan("multisession", workers = worker_n)
+      set_parallel_plan(n_cores=worker_n)
     }
     
     p <- progressr::with_progress({
@@ -492,7 +558,7 @@ for (ii in 1:nrow(parameters)) {
           savename_ensemble_sd   <- gsub("_ENSEMBLE_", "_ENSEMBLEsd_",   savename_ensemble)
           
           # Check if the ensemble files already exist (skip if so)
-          if (!file.exists(savename_ensemble_mean)) {
+          if (!file.exists(savename_ensemble_mean)|overwrite_ensemble) {
             # Read in all relevant model rasters
             rast_list <- lapply(haz_files_ss, function(X) {
               terra::rast(X)
