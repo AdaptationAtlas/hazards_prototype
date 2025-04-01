@@ -3008,3 +3008,30 @@ check_and_delete_bad_files <- function(files, delete_bad = TRUE, worker_n = 2) {
   
   return(bad_files)  # Return the list of bad files
 }
+#' Set Optimal Parallel Backend for Future Package
+#'
+#' Automatically selects the most appropriate parallel backend (`multicore` or `multisession`)
+#' for use with the **future** package depending on the host operating system, session type, and
+#' interactive context. This helps prevent known issues with `multicore` under interactive
+#' environments (e.g., RStudio) while maximizing performance in batch or terminal runs on Unix/Linux.
+#'
+#' @param n_cores Integer. Number of worker processes to use. Default is 16.
+#'
+#' @return Sets the plan globally using `future::plan()` and returns `invisible(NULL)`.
+#'
+#' @examples
+#' set_parallel_plan(8)
+#'
+#' @import future
+#' @export
+set_parallel_plan <- function(n_cores = 16) {
+  if (.Platform$OS.type == "unix" && interactive() == FALSE && Sys.getenv("RSTUDIO") == "") {
+    message(sprintf("Using multicore backend (%d workers).", n_cores))
+    future::plan(future::multicore, workers = n_cores)
+  } else {
+    message(sprintf("Using multisession backend (%d workers).", n_cores))
+    future::plan(future::multisession, workers = n_cores)
+  }
+  
+  invisible(NULL)
+}
