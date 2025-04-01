@@ -24,4 +24,4 @@ echo "$LOG_FILE"
 nohup Rscript -e "source('$SETUP_SCRIPT'); source('$TIMESERIES_SCRIPT')" > "$LOG_FILE" 2>&1 &
 
 # Notify user of background process
-echo "Process started in background (PID $!). Use 'tail -f' to monitor output."
+echo "Process started in background (PID $!). Use tail -f "$LOG_FILE" to monitor output."
