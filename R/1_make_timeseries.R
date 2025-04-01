@@ -158,7 +158,7 @@ files <- list.files(
   full.names = TRUE
 )
 
-set_parallel_plan(n_cores=worker_n)
+set_parallel_plan(n_cores=16)
 handlers("progress")
 
 
@@ -311,6 +311,7 @@ for (ii in 1:nrow(parameters)) {
   folder_name   <- parameters[ii, folder_name]
   subfolder_name <- parameters[ii, subfolder_name]
   
+  cat("parameter set",ii,"/",1:nrow(parameters),"\n")
   cat("use_crop_cal = ", use_crop_cal,
       " | use_sos_cc = ", use_sos_cc,
       " | use_eos = ",  use_eos,
@@ -507,6 +508,8 @@ for (ii in 1:nrow(parameters)) {
       stringsAsFactors = FALSE
     )
     
+    cat("Ensembling paramter set",ii,"scenarios x hazards x times = ",nrow(scen_haz_rim),"\n")
+    
     # Use foreach parallel approach for ensemble creation
     doFuture::registerDoFuture()
     if (worker_n == 1) {
@@ -519,7 +522,7 @@ for (ii in 1:nrow(parameters)) {
       # Progress bar for the ensemble step
       progress <- progressr::progressor(along = 1:nrow(scen_haz_time))
       
-      foreach(i = 1:nrow(scen_haz_time)) %dopar% {
+      n<-future_lapply(1:nrow(scen_haz_time), FUN=function(i){
         progress(sprintf(
           "Ensembling row %d/%d: %s, %s, %s",
           i,
@@ -601,12 +604,14 @@ for (ii in 1:nrow(parameters)) {
             gc()
           }
         }
-      }
+        return(i)
+      })
     })
     
     # Return to sequential plan after ensembles
     future::plan(sequential)
     future:::ClusterRegistry("stop")
     
+    cat("Ensembling of parameter set",ii,"complete\n")
   }
 }
