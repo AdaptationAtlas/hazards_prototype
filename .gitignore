@@ -3,3 +3,7 @@
 .RData
 .Ruserdata
 Data
+combined_run.log
+setup_output.log
+timeseries_output.log
+logs
