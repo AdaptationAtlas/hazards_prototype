@@ -45,6 +45,17 @@ pacman::p_load(
   progressr
 )
 
+set_parallel_plan <- function(n_cores,use_multisession=F) {
+  if (.Platform$OS.type == "unix" && interactive() == FALSE && Sys.getenv("RSTUDIO") == "" & !use_multisession) {
+    message(sprintf("Using multicore backend (%d workers).", n_cores))
+    future::plan(future::multicore, workers = n_cores)
+  } else {
+    message(sprintf("Using multisession backend (%d workers).", n_cores))
+    future::plan(future::multisession, workers = n_cores)
+  }
+  invisible(NULL)
+}
+
 # 2) Set directories ####
 # Directory where monthly timeseries data generated from 
 # https://github.com/AdaptationAtlas/hazards/tree/main is stored.
@@ -160,9 +171,6 @@ files <- list.files(
 
 set_parallel_plan(n_cores=16,use_multisession=T)
 handlers("progress")
-message("Future plan: ", future::plan())
-message("Available cores: ", future::availableCores())
-message("Max workers: ", future::nbrOfWorkers())
 
 with_progress({
   p <- progressor(along = files)
@@ -426,7 +434,7 @@ for (ii in 1:nrow(parameters)) {
     if (worker_n > 1) {
       # Use parallel processing if worker_n > 1
       set_parallel_plan(n_cores=worker_n,use_multisession=use_multisession)
-      message("Future plan: ", future::plan())
+      future::plan()
       message("Available cores: ", future::availableCores())
       message("Max workers: ", future::nbrOfWorkers())
       progressr::handlers(global = TRUE)
