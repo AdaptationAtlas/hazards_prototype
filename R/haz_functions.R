@@ -3032,6 +3032,5 @@ set_parallel_plan <- function(n_cores,use_multisession=F) {
     message(sprintf("Using multisession backend (%d workers).", n_cores))
     future::plan(future::multisession, workers = n_cores)
   }
-  
   invisible(NULL)
 }
