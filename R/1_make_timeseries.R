@@ -61,7 +61,7 @@ if(F){
   folders <- list.dirs(working_dir, recursive = FALSE)
   
 # Plan for parallelization. Adjust 'workers' to suit your machine
-  set_parallel_plan(n_cores=10)
+  set_parallel_plan(n_cores=10,use_multisession=T)
   
 # Wrap the future_lapply call in a 'with_progress' block
 existing_files_list <- with_progress({
@@ -158,9 +158,11 @@ files <- list.files(
   full.names = TRUE
 )
 
-set_parallel_plan(n_cores=16)
+set_parallel_plan(n_cores=16,use_multisession=T)
 handlers("progress")
-
+message("Future plan: ", future::plan())
+message("Available cores: ", future::availableCores())
+message("Max workers: ", future::nbrOfWorkers())
 
 with_progress({
   p <- progressor(along = files)
@@ -256,6 +258,9 @@ cat("Timeseries hazards = ",hazards,"\n")
 # 5) Set analysis parameters ####
 # Number of workers/cores to use with future.apply
 worker_n <- 16
+# Set to F for multicore when working from the terminal in unix system, however there does not
+# appear to any performance benefit, it fact seems to write outputs at a slower pace than mutlisession
+use_multisession<-T
 
 # Logical toggles for whether or not to use a crop calendar approach,
 # and whether or not to use the start-of-season (sos) approach, 
@@ -272,7 +277,7 @@ use_eos_choice <- c(FALSE, TRUE)
 season_lengths <- c(3, 4, 5)
 
 # Combine possible configurations in a data.table
-parameters <- data.table(
+parameters  <- data.table(
   use_crop_cal   = c("no", "yes", "yes", "yes", "yes", "yes"),
   use_sos_cc     = c(NA,   "no", "yes", "yes", "yes", "yes"),
   use_eos        = c(NA,   NA,   TRUE,  FALSE, FALSE, FALSE),
@@ -322,6 +327,8 @@ for (ii in 1:nrow(parameters)) {
   if (!dir.exists(save_dir1)) {
     dir.create(save_dir1, recursive = TRUE)
   }
+  
+  cat("parameter folder:",save_dir1,"\n")
   
   # If using crop calendars, we might have 1 or 2 seasons:
   # - if no start-of-season approach is used, we only do 1 loop
@@ -418,7 +425,10 @@ for (ii in 1:nrow(parameters)) {
     # -------------------------------------------------------------------------
     if (worker_n > 1) {
       # Use parallel processing if worker_n > 1
-      set_parallel_plan(n_cores=worker_n)
+      set_parallel_plan(n_cores=worker_n,use_multisession=use_multisession)
+      message("Future plan: ", future::plan())
+      message("Available cores: ", future::availableCores())
+      message("Max workers: ", future::nbrOfWorkers())
       progressr::handlers(global = TRUE)
       progressr::handlers("progress")
       
@@ -514,7 +524,7 @@ for (ii in 1:nrow(parameters)) {
     if (worker_n == 1) {
       future::plan("sequential")
     } else {
-      set_parallel_plan(n_cores=worker_n)
+      set_parallel_plan(n_cores=worker_n,use_multisession=use_multisession)
     }
     
     p <- progressr::with_progress({
