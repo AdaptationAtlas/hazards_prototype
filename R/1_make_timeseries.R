@@ -311,7 +311,7 @@ for (ii in 1:nrow(parameters)) {
   folder_name   <- parameters[ii, folder_name]
   subfolder_name <- parameters[ii, subfolder_name]
   
-  cat("parameter set",ii,"/",1:nrow(parameters),"\n")
+  cat("parameter set",ii,"/",nrow(parameters),"\n")
   cat("use_crop_cal = ", use_crop_cal,
       " | use_sos_cc = ", use_sos_cc,
       " | use_eos = ",  use_eos,
@@ -439,7 +439,6 @@ for (ii in 1:nrow(parameters)) {
               folders_x_hazards$hazards[i]
             ))
             
-            # hazard_stacker is a user-defined function assumed to be available
             hazard_stacker(
               i,
               folders_x_hazards  = folders_x_hazards,
@@ -508,7 +507,7 @@ for (ii in 1:nrow(parameters)) {
       stringsAsFactors = FALSE
     )
     
-    cat("Ensembling paramter set",ii,"scenarios x hazards x times = ",nrow(scen_haz_rim),"\n")
+    cat("Ensembling paramter set",ii,"scenarios x hazards x times = ",nrow(scen_haz_time),"\n")
     
     # Use foreach parallel approach for ensemble creation
     doFuture::registerDoFuture()
