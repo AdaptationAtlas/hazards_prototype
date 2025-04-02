@@ -3015,7 +3015,7 @@ check_and_delete_bad_files <- function(files, delete_bad = TRUE, worker_n = 2) {
 #' interactive context. This helps prevent known issues with `multicore` under interactive
 #' environments (e.g., RStudio) while maximizing performance in batch or terminal runs on Unix/Linux.
 #'
-#' @param n_cores Integer. Number of worker processes to use. Default is 16.
+#' @param n_cores Integer. Number of worker processes to use.
 #'
 #' @return Sets the plan globally using `future::plan()` and returns `invisible(NULL)`.
 #'
@@ -3024,8 +3024,8 @@ check_and_delete_bad_files <- function(files, delete_bad = TRUE, worker_n = 2) {
 #'
 #' @import future
 #' @export
-set_parallel_plan <- function(n_cores = 16) {
-  if (.Platform$OS.type == "unix" && interactive() == FALSE && Sys.getenv("RSTUDIO") == "") {
+set_parallel_plan <- function(n_cores,use_multisession=F) {
+  if (.Platform$OS.type == "unix" && interactive() == FALSE && Sys.getenv("RSTUDIO") == "" & !use_multisession) {
     message(sprintf("Using multicore backend (%d workers).", n_cores))
     future::plan(future::multicore, workers = n_cores)
   } else {
