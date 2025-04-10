@@ -23,14 +23,6 @@
 # 4. Combines the temperature and aridity classifications into a single raster, 
 #    matching the typology used in the Concern profiles.
 # 
-# 5. Outputs the combined raster for use in further climate risk and vulnerability assessments, 
-#    supporting analysis of crop suitability, climate exposure, and adaptive capacity across 
-#    Sub-Saharan Africa.
-# 
-# The final output can be used as a foundational layer in vulnerability profiles similar to 
-# Concern’s approach, aiding policymakers and practitioners in targeting climate adaptation 
-# interventions.
-#
 # IMPORTANT:
 # Please run **0_server_setup.R** before executing this script to ensure all required 
 # directories and configurations are initialized properly.
