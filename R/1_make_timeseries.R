@@ -45,17 +45,6 @@ pacman::p_load(
   progressr
 )
 
-set_parallel_plan <- function(n_cores,use_multisession=F) {
-  if (.Platform$OS.type == "unix" && interactive() == FALSE && Sys.getenv("RSTUDIO") == "" & !use_multisession) {
-    message(sprintf("Using multicore backend (%d workers).", n_cores))
-    future::plan(future::multicore, workers = n_cores)
-  } else {
-    message(sprintf("Using multisession backend (%d workers).", n_cores))
-    future::plan(future::multisession, workers = n_cores)
-  }
-  invisible(NULL)
-}
-
 # 2) Set directories ####
 # Directory where monthly timeseries data generated from 
 # https://github.com/AdaptationAtlas/hazards/tree/main is stored.
@@ -67,12 +56,12 @@ working_dir <- indices_dir
 # Where hazard time series outputs will be saved
 output_dir <- indices_dir2
 
-# 2.1) Summarize existing data #####
+  ## 2.1) Summarize existing data #####
 if(F){
   folders <- list.dirs(working_dir, recursive = FALSE)
   
 # Plan for parallelization. Adjust 'workers' to suit your machine
-  set_parallel_plan(n_cores=10,use_multisession=T)
+  set_parallel_plan(n_cores=10,use_multisession=F)
   
 # Wrap the future_lapply call in a 'with_progress' block
 existing_files_list <- with_progress({
@@ -87,6 +76,8 @@ existing_files_list <- with_progress({
     fs::dir_ls(path = folders[i], glob = "*tif", recurse = TRUE)
   })
 })
+
+  plan(sequential)
 
 # Combine into a single vector
 existing_files <- unlist(existing_files_list, use.names = FALSE)
@@ -146,14 +137,16 @@ hazard_completion <- dcast(
   value.var = "n_files"
 )
 
+hazard_completion[,c("PRCPTOT-PTOT","PTOT-New-PTOT","PTOT-Updated-PTOT"):=NULL]
+
 # Save hazard completeness info to CSV for reference
 fwrite(
   hazard_completion,
-  file.path(working_dir, "indice_completion.csv")
+  file.path(working_dir,paste0("indice_completion_",Sys.time(),".csv"))
 )
 }
 
-# 2.2) Check file integrity ####
+  ## 2.2) Check file integrity ####
 # This section verifies that each tif file can be loaded using terra::rast.
 # It runs in parallel with a progress bar and uses tryCatch to record any files that 
 # cannot be loaded. Set 'delete_corrupt' to TRUE to automatically delete such files.
@@ -164,7 +157,7 @@ delete_corrupt <- FALSE  # Change to TRUE to delete problematic files
 # Gather all files from historical and future directories
 files <- list.files(
   working_dir, 
-  pattern = "^TMIN.*\\.tif$", 
+  pattern = "^NDD.*\\.tif$", 
   recursive = TRUE, 
   full.names = TRUE
 )
@@ -218,11 +211,11 @@ folders <- basename(folders)
 # Extract the model names (assuming each folder has a structure like scenario_model_yearrange)
 model_names <- unique(unlist(tstrsplit(folders[!grepl("histor", folders)], "_", keep = 2)))
 
-## 3.1) Load sos raster #####
+  ## 3.1) Load sos raster #####
 # This raster contains the start of season (S1, S2) and end of season (E1, E2) for two possible seasons.
 sos_rast <- terra::rast(file.path(sos_dir, "sos.tif"))
 
-## 3.2) Load & process ggcmi crop calendar #####
+  ## 3.2) Load & process ggcmi crop calendar #####
 # The GGCMI crop calendar data (planting and maturity days).
 ggcmi_cc <- terra::rast(file.path(ggcmi_dir, "mai_rf_ggcmi_crop_calendar_phase3_v1.01.nc4"))
 # Crop the data to match base_rast extent, then resample to align cell size & origin
@@ -246,13 +239,17 @@ haz_meta <- unique(data.table::fread(haz_meta_url)[, c("variable.code", "functio
 hazards_heat <- c("HSH","NTx35", "NTx40", "TAVG", "THI", "TMIN", "TMAX")
 hazards_wet<- c("NDWL0", "NDWS", "PTOT", "TAI","NDD")
 
-hazards<-hazards_heat
+hazards<-hazards_wet
 
-# Temporarily remove TMIN (corrupt file?)
-hazards<-hazards[hazards!="TMIN"]
+# Temporarily remove NDWS from hazards while it is calculated
+hazards<-hazards[!grepl("NDW|NDD",hazards)]
+
+# Should existing data be overwritten (T) or skipped (F)
+overwrite=T
+overwrite_ensemble=T
 
 # If needed, add in more heat thresholds
-if (T) {
+if (F) {
   hazards2 <- paste0("NTx", c(20:34, 36:39, 41:50))
   haz_meta <- rbind(
     haz_meta, 
@@ -265,10 +262,9 @@ cat("Timeseries hazards = ",hazards,"\n")
 
 # 5) Set analysis parameters ####
 # Number of workers/cores to use with future.apply
-worker_n <- 16
-# Set to F for multicore when working from the terminal in unix system, however there does not
-# appear to any performance benefit, it fact seems to write outputs at a slower pace than mutlisession
-use_multisession<-T
+worker_n <-20
+# Set to F for multicore when working from the terminal in unix system
+use_multisession<-F
 
 # Logical toggles for whether or not to use a crop calendar approach,
 # and whether or not to use the start-of-season (sos) approach, 
@@ -305,12 +301,7 @@ folders_x_hazards <- data.table(
   )
 )[, folder_path := file.path(working_dir, folders, hazards)]
 
-cat("There are ",nrow(folders_x_hazards),"in the folder_x_hazards table.\n")
-
-
-# Should existing data be overwritten (T) or skipped (F)
-overwrite=F
-overwrite_ensemble=F
+cat("There are",nrow(folders_x_hazards),"rows in the folder_x_hazards table.\n")
 
 # 6) Run Analysis loop ####
 # This loop runs over the different parameter configurations (whether or not to use crop calendars,
@@ -324,19 +315,12 @@ for (ii in 1:nrow(parameters)) {
   folder_name   <- parameters[ii, folder_name]
   subfolder_name <- parameters[ii, subfolder_name]
   
-  cat("parameter set",ii,"/",nrow(parameters),"\n")
-  cat("use_crop_cal = ", use_crop_cal,
-      " | use_sos_cc = ", use_sos_cc,
-      " | use_eos = ",  use_eos,
-      " | season_length = ", season_length, "\n")
-  
+
   # Define a subdirectory for outputs associated with this parameter combo
   save_dir1 <- file.path(output_dir, folder_name)
   if (!dir.exists(save_dir1)) {
     dir.create(save_dir1, recursive = TRUE)
   }
-  
-  cat("parameter folder:",save_dir1,"\n")
   
   # If using crop calendars, we might have 1 or 2 seasons:
   # - if no start-of-season approach is used, we only do 1 loop
@@ -353,6 +337,14 @@ for (ii in 1:nrow(parameters)) {
   
   # Loop over the possible seasons (major/secondary) when using crop calendars
   for (season in 1:n_seasons) {
+    
+    cat("parameter set",ii,"/",nrow(parameters),"| season",season,"/",n_seasons,"\n")
+    cat("use_crop_cal = ", use_crop_cal,
+        " | use_sos_cc = ", use_sos_cc,
+        " | use_eos = ",  use_eos,
+        " | season_length = ", season_length, "\n")
+    
+    
     # Create the directory structure for each combination
     if (use_crop_cal == "yes") {
       if (use_sos_cc == "no") {
@@ -392,6 +384,8 @@ for (ii in 1:nrow(parameters)) {
       r_cal <- ggcmi_cc
       save_dir <- save_dir1
     }
+    
+    cat("Save path = ",save_dir,"\n")
     
     # If we are using the SOS approach, then we assign planting and maturity months 
     # from the sos_rast. We either rely on E1, E2 for end-of-season or fix the 
@@ -525,7 +519,7 @@ for (ii in 1:nrow(parameters)) {
       stringsAsFactors = FALSE
     )
     
-    cat("Ensembling paramter set",ii,"scenarios x hazards x times = ",nrow(scen_haz_time),"\n")
+    cat("Ensembling parameter set",ii,"scenarios x hazards x times = ",nrow(scen_haz_time),"| season",season,"/",n_seasons,"\n")
     
     # Use foreach parallel approach for ensemble creation
     doFuture::registerDoFuture()
@@ -628,7 +622,9 @@ for (ii in 1:nrow(parameters)) {
     # Return to sequential plan after ensembles
     future::plan(sequential)
     future:::ClusterRegistry("stop")
-    
+    gc()
     cat("Ensembling of parameter set",ii,"complete\n")
   }
 }
+
+cat("Time series extraction of hazards completed.")
