@@ -1239,7 +1239,7 @@ hazard_stacker <- function(i, folders_x_hazards, haz_meta, model_names, use_crop
   
   # List all hazard files for the given scenario and variable, excluding "AVAIL.tif"
   haz_files <- list.files(folder, "\\.tif$", recursive = F, full.names = T)
-  haz_files <- haz_files[!grepl("AVAIL.tif", haz_files)]
+  haz_files <- haz_files[!grepl("AVAIL", haz_files)]
   
   # Read in the crop calendar
   r_cal <- terra::rast(r_cal_filepath)
