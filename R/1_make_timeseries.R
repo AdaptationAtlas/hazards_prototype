@@ -51,7 +51,6 @@ pacman::p_load(
 # Note this is currently only available on cglabs, but we will be adding the ability 
 # to download these data from the s3.
 working_dir <- indices_dir
-# setwd(working_dir)  # Uncomment this if you need to explicitly set the working directory
 
 # Where hazard time series outputs will be saved
 output_dir <- indices_dir2
@@ -157,12 +156,12 @@ delete_corrupt <- FALSE  # Change to TRUE to delete problematic files
 # Gather all files from historical and future directories
 files <- list.files(
   working_dir, 
-  pattern = "^NDD.*\\.tif$", 
+  pattern = "^NDWS.*\\.tif$", 
   recursive = TRUE, 
   full.names = TRUE
 )
 
-set_parallel_plan(n_cores=16,use_multisession=T)
+set_parallel_plan(n_cores=16,use_multisession=F)
 handlers("progress")
 
 with_progress({
@@ -239,14 +238,7 @@ haz_meta <- unique(data.table::fread(haz_meta_url)[, c("variable.code", "functio
 hazards_heat <- c("HSH","NTx35", "NTx40", "TAVG", "THI", "TMIN", "TMAX")
 hazards_wet<- c("NDWL0", "NDWS", "PTOT", "TAI","NDD")
 
-hazards<-hazards_wet
-
-# Temporarily remove NDWS from hazards while it is calculated
-hazards<-hazards[!grepl("NDW|NDD",hazards)]
-
-# Should existing data be overwritten (T) or skipped (F)
-overwrite=T
-overwrite_ensemble=T
+hazards<-c(hazards_wet,hazards_heat)
 
 # If needed, add in more heat thresholds
 if (F) {
@@ -261,8 +253,12 @@ if (F) {
 cat("Timeseries hazards = ",hazards,"\n")
 
 # 5) Set analysis parameters ####
+# Should existing data be overwritten (T) or skipped (F)
+overwrite=T
+overwrite_ensemble=T
+
 # Number of workers/cores to use with future.apply
-worker_n <-20
+worker_n <-16
 # Set to F for multicore when working from the terminal in unix system
 use_multisession<-F
 
@@ -294,12 +290,11 @@ cat("Timeseries parameters = \n")
 print(parameters)
 
 # Create combinations of folders and hazards for iteration
-folders_x_hazards <- data.table(
-  expand.grid(
+folders_x_hazards <- expand.grid(
     folders = folders,
     hazards = hazards
   )
-)[, folder_path := file.path(working_dir, folders, hazards)]
+folders_x_hazards$folder_path<-file.path(working_dir, folders, hazards)
 
 cat("There are",nrow(folders_x_hazards),"rows in the folder_x_hazards table.\n")
 
@@ -628,3 +623,13 @@ for (ii in 1:nrow(parameters)) {
 }
 
 cat("Time series extraction of hazards completed.")
+
+# 7) Check integrity of results ####
+
+result<-check_tif_integrity (dir_path,
+                     recursive       = TRUE,
+                     pattern         = "*.tif",
+                     n_workers_files    = 10,
+                     n_workers_folders = 1,
+                     use_multisession = FALSE,
+                     delete_corrupt  = FALSE)
