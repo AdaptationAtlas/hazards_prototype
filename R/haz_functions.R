@@ -3034,3 +3034,277 @@ set_parallel_plan <- function(n_cores,use_multisession=F) {
   }
   invisible(NULL)
 }
+#' @title check_tif_integrity
+#'
+#' @description
+#' **check_tif_integrity()** scans a directory (optionally including
+#' sub‑directories) for GeoTIFF (`*.tif`) files and verifies that each file can
+#' be opened with **terra::rast()**.  
+#' The function
+#' \itemize{
+#'   \item lists candidate files with `list.files()`,
+#'   \item uses `future.apply` for parallel processing (backend selected via
+#'         `set_parallel_plan()` that already exists in your environment),
+#'   \item reports failures in a progress bar powered by **progressr**,
+#'   \item optionally deletes corrupted files.
+#' }
+#'
+#' @param dir_path   `character(1)` – root folder to scan.
+#' @param recursive  `logical(1)` – scan sub‑folders (`TRUE`, default) or only
+#'                   the top‑level directory (`FALSE`)?
+#' @param pattern    `character(1)` – glob for `list.files()`
+#'                   (default `"*.tif"` = all GeoTIFFs).
+#' @param n_workers_files  `integer(1)` – number of parallel workers passed to load files
+#'                   `set_parallel_plan()`; default is
+#'                   `future::availableCores() - 1L`.
+#' @param n_workers_folders  `integer(1)` – number of parallel workers passed to listing folders
+#'                   `set_parallel_plan()`; default is 1.'                   
+#' @param use_multisession `logical(1)` – forwarded to `set_parallel_plan()`
+#'                   to force a multisession backend even on Unix (default
+#'                   `FALSE`).
+#' @param delete_corrupt `logical(1)` – if `TRUE`, files that fail to load are
+#'                   removed from disk (default `FALSE`).
+#'
+#' @return A **data.table** with columns
+#' \describe{
+#'   \item{file}{full file path.}
+#'   \item{success}{`TRUE` if the file could be read by `terra::rast()`,
+#'                  `FALSE` otherwise.}
+#'   \item{error_message}{`character`, error text when `success == FALSE`,
+#'                        otherwise `NA`.}
+#' }
+#'
+#' @examples
+#' \dontrun{
+#' # Check all GeoTIFFs under "Data/GLW4" (including sub‑folders) using 6 workers
+#' res <- check_tif_integrity(
+#'   dir_path  = "Data/GLW4",
+#'   recursive = TRUE,
+#'   n_workers = 6
+#' )
+#'
+#' # Show corrupted files
+#' res[success == FALSE]
+#'
+#' # Re‑run and automatically delete bad files
+#' check_tif_integrity("Data/GLW4", delete_corrupt = TRUE)
+#' }
+#' @export
+check_tif_integrity <- function(dir_path,
+                                recursive       = TRUE,
+                                pattern         = "*.tif",
+                                n_workers_files = max(1L, future::availableCores() - 1L),
+                                n_workers_folders = 1,
+                                use_multisession = FALSE,
+                                delete_corrupt  = FALSE) {
+  
+  requireNamespace("data.table",    quietly = TRUE)
+  requireNamespace("future.apply",  quietly = TRUE)
+  requireNamespace("progressr",     quietly = TRUE)
+  requireNamespace("terra",         quietly = TRUE)
+  
+  # ---- 1.  Gather files ------------------------------------------------------
+  
+  files<-list_files_parallel (root_dir = dir_path,
+                              glob             = pattern,
+                              recurse          = recursive,
+                              n_workers        = n_workers_folders,
+                              use_multisession = use_multisession)
+  
+  if (length(files) == 0L) {
+    message("No files matched `pattern` in ", dir_path)
+    return(data.table::data.table(
+      file = character(),
+      success = logical(),
+      error_message = character()
+    ))
+  }
+  
+  # ---- 2.  Parallel plan + progressr setup ----------------------------------
+  
+  # Use helper already present in the environment
+  set_parallel_plan(n_cores = n_workers_files,
+                    use_multisession = use_multisession)
+  
+  progressr::handlers(global = TRUE)
+  progressr::handlers("progress")
+  
+  # ---- 3.  Integrity check ---------------------------------------------------
+  results <- progressr::with_progress({
+    p <- progressr::progressor(along = files)
+    
+    future.apply::future_lapply(files, function(f) {
+      res <- tryCatch({
+        terra::rast(f)  # attempt to open
+        data.table::data.table(file = f,
+                               success = TRUE,
+                               error_message = NA_character_)
+      }, error = function(e) {
+        data.table::data.table(file = f,
+                               success = FALSE,
+                               error_message = as.character(e))
+      })
+      p()
+      res
+    })
+  })
+  
+  plan(sequential)
+  
+  results <- data.table::rbindlist(results)
+  
+  # ---- 4.  Reporting + optional deletion ------------------------------------
+  n_failed <- results[success == FALSE, .N]
+  message("Checked ", nrow(results), " file(s); ", n_failed, " failed.")
+  
+  if (n_failed > 0L) {
+    print(results[success == FALSE])
+    if (isTRUE(delete_corrupt)) {
+      message("Deleting corrupted file(s)…")
+      file.remove(results[success == FALSE, file])
+    }
+  }
+  
+  return(results)
+}
+
+
+#' @title list_files_parallel
+#'
+#' @description
+#' Efficiently lists files (e.g. GeoTIFFs) from all *top‑level* sub‑folders of a
+#' given directory.  
+#' The function:
+#' \enumerate{
+#'   \item enumerates first‑level folders with `list.dirs(recursive = FALSE)`;
+#'   \item spawns a parallel backend via `set_parallel_plan()` (already loaded in
+#'         your environment);
+#'   \item uses `future_lapply()` to call **fs::dir_ls()** for each folder;
+#'   \item displays a live progress bar with **progressr**;
+#'   \item resets the future plan to sequential when finished.
+#' }
+#'
+#' @param root_dir          `character(1)` – directory whose *direct* sub‑folders
+#'                          are scanned.
+#' @param glob              `character(1)` – glob pattern passed to `fs::dir_ls`
+#'                          (default `"*tif"`).
+#' @param recurse           `logical(1)`  – recurse within each top‑level
+#'                          sub‑folder?  (Default `TRUE`.)
+#' @param n_workers         `integer(1)`  – number of parallel workers passed to
+#'                          `set_parallel_plan()` (default = 10).
+#' @param use_multisession  `logical(1)`  – forwarded to `set_parallel_plan()`
+#'                          to force a multisession backend even on Unix
+#'                          (default `FALSE`).
+#'
+#' @return `character` vector of full file paths that match `glob`.
+#' @export
+#'
+#' @examples
+#' \dontrun{
+#' tif_files <- list_files_parallel(
+#'   root_dir         = "/data/atlas_hazards",
+#'   glob             = "*tif",
+#'   recurse          = TRUE,
+#'   n_workers        = 8,
+#'   use_multisession = FALSE
+#' )
+#' }
+list_files_parallel <- function(root_dir,
+                                glob             = "*tif",
+                                recurse          = TRUE,
+                                leaf_only        = TRUE,
+                                n_workers        = 1,
+                                use_multisession = FALSE) {
+  
+  requireNamespace("fs",            quietly = TRUE)
+  requireNamespace("future.apply",  quietly = TRUE)
+  requireNamespace("progressr",     quietly = TRUE)
+  requireNamespace("pbapply",     quietly = TRUE)
+  
+  # ---- 1. list first‑level folders ------------------------------------------
+  if(leaf_only){
+    folders<-leaf_dirs(root_dir, recurse = recurse, full.names = TRUE)
+  }else{
+    folders<-list.dirs(root_dir, recursive = recurse, full.names = TRUE)
+  }
+  
+  folders<-folders[!grepl("ipynb_checkpoints",folders)]
+  if (length(folders) == 0L) {
+    warning("No sub‑folders found in ", root_dir)
+    return(character(0))
+  }
+  
+  # ---- 2. parallel plan & progress bar --------------------------------------
+  if(n_workers>1){
+    set_parallel_plan(n_cores = n_workers, use_multisession = use_multisession)
+    
+    progressr::handlers(global = TRUE)
+    progressr::handlers("progress")
+    
+    # ---- 3. parallel listing ---------------------------------------------------
+    files_nested <- progressr::with_progress({
+      p <- progressr::progressor(steps = length(folders))
+      
+      future.apply::future_lapply(seq_along(folders), function(i) {
+        p(sprintf("Processing folder %d of %d: %s",
+                  i, length(folders), folders[i]))
+        fs::dir_ls(path = folders[i], glob = glob, recurse = recurse)
+      })
+    })
+    
+    plan(sequential)
+  }else{
+    
+    files_nested<-pblapply(seq_along(folders), function(i) {
+      fs::dir_ls(path = folders[i], glob = glob, recurse = recurse)
+    })
+  }
+  
+  # ---- 4. flatten & return ---------------------------------------------------
+  unlist(files_nested, use.names = FALSE)
+}
+
+
+#' @title leaf_dirs
+#'
+#' @description
+#' Returns **only the leaf directories** (i.e., directories that do **not**
+#' contain any sub‑directories) beneath a specified root.  
+#' Internally, the function:
+#' \enumerate{
+#'   \item lists all directories via `list.dirs()`;
+#'   \item keeps a directory `d` only if no other listed directory has `d/`
+#'         as its prefix.
+#' }
+#'
+#' @param root_dir   `character(1)` – directory whose descendant folders are
+#'                   inspected.
+#' @param recursive  `logical(1)`  – passed to `list.dirs()`.  If `FALSE`,
+#'                   only the first level below `root_dir` is considered.
+#'                   Default `TRUE`.
+#' @param full.names `logical(1)`  – passed to `list.dirs()`.  Should full
+#'                   paths be returned?  Default `TRUE`.
+#'
+#' @return `character` vector of leaf‑directory paths (order inherited from
+#'         `list.dirs()`).
+#'
+#' @examples
+#' \dontrun{
+#' leaf_only <- leaf_dirs("/data/atlas_hazards", recursive = TRUE)
+#' }
+#' @export
+leaf_dirs <- function(root_dir, recurse = TRUE, full.names = TRUE) {
+  # All directories under root_dir (including root_dir itself)
+  dirs <- list.dirs(root_dir, recursive = recurse, full.names = full.names)
+  
+  # Keep a directory only if no other path starts with "dir/" (trailing slash!)
+  is_leaf <- vapply(dirs, function(d) {
+    # add trailing slash so "abc/def" isn't treated as a child of "abcde"
+    d_slash <- file.path(d, "")
+    # TRUE  if no other directory has d_slash as its prefix
+    !any(startsWith(file.path(dirs, ""), d_slash) & (dirs != d))
+  }, logical(1))
+  
+  dirs[is_leaf]
+}
+
