@@ -282,8 +282,7 @@ parameters  <- data.table(
   use_sos_cc     = c(NA,   "no", "yes", "yes", "yes", "yes"),
   use_eos        = c(NA,   NA,   TRUE,  FALSE, FALSE, FALSE),
   season_length  = c(NA,   NA,   NA,    3,     4,     5),
-  folder_name    = c("by_year", rep("by_season", 5)),
-  subfolder_name = c(NA, "jagermeyr", "sos", "sos", "sos", "sos")
+  subfolder_name = c("annual", "jagermeyr", "sos", "sos", "sos", "sos")
 )
 
 cat("Timeseries parameters = \n")
@@ -307,15 +306,7 @@ for (ii in 1:nrow(parameters)) {
   use_sos_cc    <- parameters[ii, use_sos_cc]
   use_eos       <- parameters[ii, use_eos]
   season_length <- parameters[ii, season_length]
-  folder_name   <- parameters[ii, folder_name]
   subfolder_name <- parameters[ii, subfolder_name]
-  
-
-  # Define a subdirectory for outputs associated with this parameter combo
-  save_dir1 <- file.path(output_dir, folder_name)
-  if (!dir.exists(save_dir1)) {
-    dir.create(save_dir1, recursive = TRUE)
-  }
   
   # If using crop calendars, we might have 1 or 2 seasons:
   # - if no start-of-season approach is used, we only do 1 loop
@@ -345,7 +336,7 @@ for (ii in 1:nrow(parameters)) {
       if (use_sos_cc == "no") {
         # We'll just use the standard GGCMI planting and maturity months
         r_cal <- ggcmi_cc
-        save_dir <- file.path(save_dir1, subfolder_name)
+        save_dir <- file.path(output_dir, subfolder_name)
         if (!dir.exists(save_dir)) {
           dir.create(save_dir, recursive = TRUE)
         }
@@ -364,7 +355,7 @@ for (ii in 1:nrow(parameters)) {
         
         # Save path for each season
         save_dir <- file.path(
-          save_dir1, 
+          output_dir, 
           paste0(
             subfolder_name, "_", 
             if (season == 1) { s1_name } else { s2_name }
