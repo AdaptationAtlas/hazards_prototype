@@ -47,12 +47,6 @@ timeframe_choices <- c(
   "sos_secondary_fixed_4",
   "sos_secondary_fixed_5"
 )
-
-# Select which index from the above vector to use
-timeframe_choice_index <- 2
-timeframe_choice <- timeframe_choices[timeframe_choice_index]
-cat("You selected:", timeframe_choice, "\n")
-
 # 1) Setup workspace ####
 # Increase download timeout (in seconds) to avoid timeouts during large data pulls
 options(timeout = 600)
@@ -217,21 +211,6 @@ for (key in non_timeframe_subdirs) {
 }
 
 ### 2.1.2) Inputs #####
-# Indices directory (raw monthly hazard data)
-if (Cglabs) {
-  # For cglabs users
-  indices_dir <- "/home/jovyan/common_data/atlas_hazards/cmip6/indices"
-  indices_dir2 <- "/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
-  
-  if (timeframe_choice != "annual") {
-    indices_seasonal_dir <- paste0(indices_dir2, "/by_season/", timeframe_choice)
-  } else {
-    indices_seasonal_dir <- paste0(indices_dir2, "/by_year")
-  }
-} else {
-  cat("Indice files are currently only available in CGlabs. Download functionality for the raw data is on the to-do list.\n",
-      "See https://github.com/AdaptationAtlas/hazards if you need to replicate monthly hazard data creation.\n")
-}
 
 # Create new entries in atlas_dirs$data_dir for various directories beyond hazard outputs
 atlas_dirs$data_dir$Boundaries         <- file.path(atlas_dirs$data_dir[[1]], "Boundaries")
