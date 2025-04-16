@@ -1176,18 +1176,11 @@ rast_class <- function(data, direction, threshold, minval = -99999, maxval = 999
   from <- c(minval, threshold)
   to <- c(threshold, maxval)
   
-  # Determine the new values after classification based on the direction
   if (direction %in% c("G", "g", ">")) {
-    becomes <- c(0, 1)
+    data <- terra::ifel(data > threshold, 1, 0)
+  } else if (direction %in% c("L", "l", "<")) {
+    data <- terra::ifel(data < threshold, 1, 0)
   }
-  
-  if (direction %in% c("L", "l", "<")) {
-    becomes <- c(1, 0)
-  }
-  
-  # Reclassify the raster data using terra's classify function
-  data <- terra::classify(data, data.frame(from = from, to = to, becomes = becomes))
-  
   return(data)
 }
 #' Calculate Interaction Risk
