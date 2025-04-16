@@ -477,7 +477,7 @@ double fast_sd(NumericVector x) {
     stop("Bad downloads were present run through the download section again")
   }
   }else{
-    haz_timeseries_dir<-file.path(indices_dir2,timeframe_choice)
+    haz_timeseries_dir<-indices_dir2
   }
   
   # 0.4) Summarize data availability #####
