@@ -6,6 +6,15 @@
 # Environment: JupyterHub / RStudio Server (Linux, nohup-safe)
 # ----------------------------------------------------------------------
 
+# List any existing screens using (if you need to shut this is described at the end of this code):
+screen -ls
+# Always check before running a new job to see if Rscripts are running
+ps aux | grep Rscript 
+
+
+# Start a new screen (if clean)
+screen -S hazards_job
+
 # Define absolute paths to R scripts
 SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
 TIMESERIES_SCRIPT="$HOME/atlas/hazards_prototype/R/1_make_timeseries.R"
@@ -25,3 +34,28 @@ nohup Rscript -e "source('$SETUP_SCRIPT'); source('$TIMESERIES_SCRIPT')" > "$LOG
 
 # Notify user of background process
 echo "Process started in background (PID $!). Use tail -f "$LOG_FILE" to monitor output."
+tail -f "$LOG_FILE"
+
+# ----------------------------------------------------------------------
+# If a session terminates and you want to restart the pipeline cleanly:
+
+# In the screen terminal window:
+    # If an R process is still running, stop it:
+    # q()  # or Ctrl + C
+
+# Then exit the shell:
+    # exit
+
+# Back in any terminal:
+ # screen -ls
+
+# You should see:
+# No Sockets found in /run/screen/S-jovyan.
+
+# Restart cleanly:
+# screen -S hazards_job
+
+# ----------------------------------------------------------------------
+# If you need to look at system resouce use install htop
+
+# sudo apt install htop
