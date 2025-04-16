@@ -156,134 +156,64 @@ atlas_dirs <- list()
 atlas_dirs$data_dir <- "Data"
 
 # Define subdirectories under 'data_dir'
-atlas_dirs$data_dir$hazard_timeseries         <- file.path(atlas_dirs$data_dir[[1]], "hazard_timeseries")
-atlas_dirs$data_dir$hazard_timeseries_s3      <- "s3://digital-atlas/risk_prototype/data/hazard_timeseries"
-atlas_dirs$data_dir$haz_timeseries_monthly    <- file.path(atlas_dirs$data_dir[[1]], "hazard_timeseries_mean_month")
-atlas_dirs$data_dir$haz_time_class            <- file.path(atlas_dirs$data_dir[[1]], "hazard_timeseries_class")
-atlas_dirs$data_dir$haz_time_risk             <- file.path(atlas_dirs$data_dir[[1]], "hazard_timeseries_risk")
-atlas_dirs$data_dir$haz_risk                  <- file.path(atlas_dirs$data_dir[[1]], "hazard_risk")
-atlas_dirs$data_dir$haz_mean                  <- file.path(atlas_dirs$data_dir[[1]], "hazard_timeseries_mean")
-atlas_dirs$data_dir$haz_sd                    <- file.path(atlas_dirs$data_dir[[1]], "hazard_timeseries_sd")
-atlas_dirs$data_dir$haz_time_int              <- file.path(atlas_dirs$data_dir[[1]], "hazard_timeseries_int")
-atlas_dirs$data_dir$haz_risk_vop_usd          <- file.path(atlas_dirs$data_dir[[1]], "hazard_risk_vop_usd")
-atlas_dirs$data_dir$haz_risk_vop              <- file.path(atlas_dirs$data_dir[[1]], "hazard_risk_vop")
-atlas_dirs$data_dir$haz_risk_ha               <- file.path(atlas_dirs$data_dir[[1]], "hazard_risk_ha")
-atlas_dirs$data_dir$haz_risk_n                <- file.path(atlas_dirs$data_dir[[1]], "hazard_risk_n")
-atlas_dirs$data_dir$haz_risk_vop_reduced      <- file.path(atlas_dirs$data_dir[[1]], "hazard_risk_vop_reduced")
+# List of all subdirectories to create under the root directory
+subdirs <- c(
+  "hazard_timeseries",
+  "hazard_timeseries_mean_month",
+  "hazard_timeseries_class",
+  "hazard_timeseries_risk",
+  "hazard_risk",
+  "hazard_timeseries_mean",
+  "hazard_timeseries_sd",
+  "hazard_timeseries_int",
+  "hazard_risk_vop_usd",
+  "hazard_risk_vop",
+  "hazard_risk_ha",
+  "hazard_risk_n",
+  "hazard_risk_vop_reduced",
+  "roi",
+  "exposure",
+  "isimip_timeseries",
+  "isimip_timeseries_mean",
+  "isimip_timeseries_sd",
+  "cropsuite_class",
+  "chirts_chirps_hist"
+)
 
-# Additional directories
-atlas_dirs$data_dir$roi                       <- file.path(atlas_dirs$data_dir[[1]], "roi")
-atlas_dirs$data_dir$exposure                  <- file.path(atlas_dirs$data_dir[[1]], "exposure")
-atlas_dirs$data_dir$isimip_timeseries         <- file.path(atlas_dirs$data_dir[[1]], "isimip_timeseries")
-atlas_dirs$data_dir$isimip_mean               <- file.path(atlas_dirs$data_dir[[1]], "isimip_timeseries_mean")
-atlas_dirs$data_dir$isimip_sd                 <- file.path(atlas_dirs$data_dir[[1]], "isimip_timeseries_sd")
-atlas_dirs$data_dir$cropsuite_class           <- file.path(atlas_dirs$data_dir[[1]], "cropsuite_class")
-atlas_dirs$data_dir$chirts_chirps             <- file.path(atlas_dirs$data_dir[[1]], "chirts_chirps_hist")
-
-# Now create or update these directories with the chosen timeframe (timeframe_choice).
-
-haz_timeseries_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries, timeframe_choice)
-if (!dir.exists(haz_timeseries_dir)) {
-  dir.create(haz_timeseries_dir, recursive = TRUE)
+# Assign paths for each subdir key
+for (subdir in subdirs) {
+  atlas_dirs$data_dir[[subdir]] <- file.path(atlas_dirs$data_dir[[1]], subdir)
 }
+atlas_dirs$data_dir$hazard_timeseries_s3 <- "s3://digital-atlas/risk_prototype/data/hazard_timeseries"
 
-haz_timeseries_s3_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_s3, timeframe_choice)
-# (This is an S3 path, so you typically wouldn't create it locally, but you can reference it in your code.)
+# Subset of subdirs that need timeframe subfolders
+timeframe_subdirs <- c(
+  "hazard_timeseries",
+  "hazard_timeseries_class",
+  "hazard_timeseries_risk",
+  "hazard_risk",
+  "hazard_timeseries_mean",
+  "hazard_timeseries_sd",
+  "hazard_timeseries_int",
+  "hazard_risk_vop_usd",
+  "hazard_risk_vop",
+  "hazard_risk_ha",
+  "hazard_risk_n",
+  "hazard_risk_vop_reduced"
+)
 
-haz_timeseries_monthly_dir <- atlas_dirs$data_dir$haz_timeseries_monthly
-if (!dir.exists(haz_timeseries_monthly_dir)) {
-  dir.create(haz_timeseries_monthly_dir, recursive = TRUE)
-}
+non_timeframe_subdirs<-subdirs[!subdirs %in% timeframe_subdirs]
 
-haz_time_class_dir <- file.path(atlas_dirs$data_dir$haz_time_class, timeframe_choice)
-if (!dir.exists(haz_time_class_dir)) {
-  dir.create(haz_time_class_dir, recursive = TRUE)
-}
+# Create non timeframe-based folders
+invisible(lapply(non_timeframe_subdirs, function(key) {
+  dir_path <- atlas_dirs$data_dir[[key]]
+  if (!dir.exists(dir_path)) dir.create(dir_path, recursive = TRUE)
+}))
 
-haz_time_risk_dir <- file.path(atlas_dirs$data_dir$haz_time_risk, timeframe_choice)
-if (!dir.exists(haz_time_risk_dir)) {
-  dir.create(haz_time_risk_dir, recursive = TRUE)
-}
-
-haz_risk_dir <- file.path(atlas_dirs$data_dir$haz_risk, timeframe_choice)
-if (!dir.exists(haz_risk_dir)) {
-  dir.create(haz_risk_dir, recursive = TRUE)
-}
-
-haz_mean_dir <- file.path(atlas_dirs$data_dir$haz_mean, timeframe_choice)
-if (!dir.exists(haz_mean_dir)) {
-  dir.create(haz_mean_dir, recursive = TRUE)
-}
-
-haz_sd_dir <- file.path(atlas_dirs$data_dir$haz_sd, timeframe_choice)
-if (!dir.exists(haz_sd_dir)) {
-  dir.create(haz_sd_dir, recursive = TRUE)
-}
-
-haz_time_int_dir <- file.path(atlas_dirs$data_dir$haz_time_int, timeframe_choice)
-if (!dir.exists(haz_time_int_dir)) {
-  dir.create(haz_time_int_dir, recursive = TRUE)
-}
-
-haz_risk_vop_usd_dir <- file.path(atlas_dirs$data_dir$haz_risk_vop_usd, timeframe_choice)
-if (!dir.exists(haz_risk_vop_usd_dir)) {
-  dir.create(haz_risk_vop_usd_dir, recursive = TRUE)
-}
-
-haz_risk_vop_dir <- file.path(atlas_dirs$data_dir$haz_risk_vop, timeframe_choice)
-if (!dir.exists(haz_risk_vop_dir)) {
-  dir.create(haz_risk_vop_dir, recursive = TRUE)
-}
-
-haz_risk_ha_dir <- file.path(atlas_dirs$data_dir$haz_risk_ha, timeframe_choice)
-if (!dir.exists(haz_risk_ha_dir)) {
-  dir.create(haz_risk_ha_dir, recursive = TRUE)
-}
-
-haz_risk_n_dir <- file.path(atlas_dirs$data_dir$haz_risk_n, timeframe_choice)
-if (!dir.exists(haz_risk_n_dir)) {
-  dir.create(haz_risk_n_dir, recursive = TRUE)
-}
-
-haz_risk_vop_reduced <- file.path(atlas_dirs$data_dir$haz_risk_vop_reduced, timeframe_choice)
-if (!dir.exists(haz_risk_vop_reduced)) {
-  dir.create(haz_risk_vop_reduced, recursive = TRUE)
-}
-
-# For directories that do not depend on 'timeframe_choice':
-roi_dir <- atlas_dirs$data_dir$roi
-if (!dir.exists(roi_dir)) {
-  dir.create(roi_dir, recursive = TRUE)
-}
-
-exposure_dir <- atlas_dirs$data_dir$exposure
-if (!dir.exists(exposure_dir)) {
-  dir.create(exposure_dir, recursive = TRUE)
-}
-
-isimip_timeseries_dir <- atlas_dirs$data_dir$isimip_timeseries
-if (!dir.exists(isimip_timeseries_dir)) {
-  dir.create(isimip_timeseries_dir, recursive = TRUE)
-}
-
-isimip_mean_dir <- atlas_dirs$data_dir$isimip_mean
-if (!dir.exists(isimip_mean_dir)) {
-  dir.create(isimip_mean_dir, recursive = TRUE)
-}
-
-isimip_sd_dir <- atlas_dirs$data_dir$isimip_sd
-if (!dir.exists(isimip_sd_dir)) {
-  dir.create(isimip_sd_dir, recursive = TRUE)
-}
-
-cropsuite_class_dir <- atlas_dirs$data_dir$cropsuite_class
-if (!dir.exists(cropsuite_class_dir)) {
-  dir.create(cropsuite_class_dir, recursive = TRUE)
-}
-
-chirts_chirps_dir <- atlas_dirs$data_dir$chirts_chirps
-if (!dir.exists(chirts_chirps_dir)) {
-  dir.create(chirts_chirps_dir, recursive = TRUE)
+# Create objects like roi_dir, exposure_dir, etc.
+for (key in non_timeframe_subdirs) {
+  var_name <- paste0(key, "_dir")
+  assign(var_name, atlas_dirs$data_dir[[key]])
 }
 
 ### 2.1.2) Inputs #####
