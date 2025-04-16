@@ -588,7 +588,13 @@ for (ii in 1:nrow(parameters)) {
             # Name the layers to match the original
             names(haz_rast) <- names(rast_list[[1]])
             # Write ensemble mean to disk
-            terra::writeRaster(haz_rast, savename_ensemble_mean, overwrite = TRUE)
+            terra::writeRaster(
+              haz_rast,
+              savename_ensemble_mean,
+              overwrite = TRUE,
+              filetype = "COG",
+              gdal = c("OVERVIEWS" = "NONE")
+              )
             
             # Calculate the per-layer standard deviation
             haz_rast <- terra::rast(lapply(
@@ -603,7 +609,13 @@ for (ii in 1:nrow(parameters)) {
             ))
             names(haz_rast) <- names(rast_list[[1]])
             # Write ensemble SD to disk
-            terra::writeRaster(haz_rast, savename_ensemble_sd, overwrite = TRUE)
+            terra::writeRaster(
+              haz_rast,
+              savename_ensemble_sd,
+              overwrite = TRUE,
+              filetype = "COG",
+              gdal = c("OVERVIEWS" = "NONE")
+              )
             
             # Housekeeping
             rm(haz_rast)

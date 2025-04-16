@@ -451,7 +451,7 @@ p<-with_progress({
                                threshold = Thresholds_U[i,threshold],
                                minval=-999999,
                                maxval=999999)
-        terra::writeRaster(data_class,filename = file,overwrite=T)
+        terra::writeRaster(data_class,filename = file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
       }
       
       # Display progress
@@ -507,7 +507,7 @@ p<-with_progress({
     if((!file.exists(file))|overwrite){
       data<-terra::rast(files[i])
       data<-terra::app(data,fun="mean",na.rm=T)
-      terra::writeRaster(data,filename = file,overwrite=T)
+      terra::writeRaster(data,filename = file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
     }
     
    
@@ -608,7 +608,7 @@ p<-with_progress({
         data<-terra::rast(file.path(haz_time_risk_dir,files))
         names(data)<-layer_names
         
-        terra::writeRaster(data,file=save_name,overwrite=T)
+        terra::writeRaster(data,file=save_name,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
       }
       
     }
@@ -660,10 +660,10 @@ p<-with_progress({
     if((!file.exists(file))|overwrite){
       data<-terra::rast(files[i])
       data<-terra::app(data,fun="mean",na.rm=T)
-      terra::writeRaster(data,filename = file,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"))
+      terra::writeRaster(data,filename = file,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
       
       data<-terra::app(data,fun="sd",na.rm=T)
-      terra::writeRaster(data,filename = file2,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG"))
+      terra::writeRaster(data,filename = file2,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
     }
     # Display progress
     progress(sprintf("File %d/%d", i, length(files)))
@@ -701,7 +701,7 @@ if(F){
    
    change<-terra::rast(change)
    
-   terra::writeRaster(change,filename=change_file)
+   terra::writeRaster(change,filename=change_file, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
    
   }
 }
@@ -881,14 +881,14 @@ if(F){
               data<-terra::mask(haz_sum,haz_sum,maskvalues=1:111,updatevalue=1)
               data<-terra::app(data,fun="mean",na.rm=T)
               names(data)<-paste0(Scenarios[l,combined],"-any")
-              terra::writeRaster(data,filename =  save_name_any,overwrite=T)
+              terra::writeRaster(data,filename =  save_name_any,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
             }
             
             # Interactions
             for(a in 1:nrow(combo_binary)){
               if(combo_binary[a,!file.exists(save_names)]|overwrite==T){
                 data<-int_risk(data=haz_sum,interaction_mask_vals = combo_binary[-a,value],lyr_name = combo_binary[a,lyr_names])
-                terra::writeRaster(data,filename = combo_binary[a,save_names],overwrite=T)
+                terra::writeRaster(data,filename = combo_binary[a,save_names],overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
               }
             }
            
@@ -987,7 +987,7 @@ if(F){
         stop(paste("i = ",i,"| j = ",j,"Duplicate layers present."))
         }
         
-        terra::writeRaster(data,filename = save_file,overwrite=T)
+        terra::writeRaster(data,filename = save_file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
       }
       }
       

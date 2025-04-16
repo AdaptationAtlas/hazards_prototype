@@ -203,7 +203,7 @@ if(F){
         if(!file.exists(save_name)){
           risk<-terra::rast(file)
           risk_masked<-risk*mask
-          terra::writeRaster(risk_masked,filename =save_name)
+          terra::writeRaster(risk_masked,filename =save_name,filetype = "COG",gdal = c("OVERVIEWS"="NONE"))
         }
       }
     }

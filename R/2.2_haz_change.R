@@ -126,8 +126,8 @@ if(!file.exists(save_file)|overwrite==T){
     names(diff)<-gsub(".tif","",basename(files_fut_ss))
     
   if(do_save){
-   terra::writeRaster(change,filename=save_file)
-   terra::writeRaster(diff,filename=gsub("_change","_diff",save_file))
+   terra::writeRaster(change,filename=save_file,filetype = "COG",gdal = c("OVERVIEWS"="NONE"))
+   terra::writeRaster(diff,filename=gsub("_change","_diff",save_file), filetype = "COG",gdal = c("OVERVIEWS"="NONE"))
   }
   
 }else{
