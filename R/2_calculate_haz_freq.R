@@ -15,7 +15,8 @@
                 "stringr", 
                 "stringi",
                 "httr",
-                "xml2")
+                "xml2",
+                "Rcpp")
   
   # This function will call packages first from the user library and second the system library
   # This can help overcome issues with the Afrilab server where the system library has outdated packages that 
@@ -42,23 +43,53 @@
   # Source functions from github
   source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
   
+  # Create C++ function for calculating sd and compile it
+  Rcpp::cppFunction('
+double fast_sd(NumericVector x) {
+  int n = x.size();
+  int n_valid = 0;
+  double sum = 0, sumsq = 0;
+
+  for (int i = 0; i < n; ++i) {
+    if (!NumericVector::is_na(x[i])) {
+      n_valid++;
+      sum += x[i];
+      sumsq += x[i] * x[i];
+    }
+  }
+
+  if (n_valid <= 1) return NA_REAL;
+
+  double mean = sum / n_valid;
+  return sqrt((sumsq - n_valid * mean * mean) / (n_valid - 1));
+}
+')
   # 0.2) Set up workspace #####
     # 0.2.1) Set number of workers ######
     worker_n<-parallel::detectCores()-1
-    cat("System workers -1 = ",worker_n)
-    worker_n<-10
+    cat("System workers -1 = ",worker_n,"\n")
+    worker_n<-20
+    cat("worker_n = ",worker_n,"\n")
     
-    # 0.2.2) Set other parameters ######
+    # For section 5 - interactions this can be RAM heavy so reduce number of workers
+    workers_int<- worker_n/2 
+    cat("worker_n (interactions) = ",worker_n,"\n")
+    
+    # 0.2.2) Set parameters ######
   # Set scenarios and time frames to analyse
-  Scenarios<-c("ssp245","ssp585")
-  Times<-c("2021_2040","2041_2060")
+  Scenarios<-c("ssp126","ssp245","ssp370","ssp585")
+  Times<-c("2021_2040","2041_2060","2061_2080","2081_2100")
   
   # Create combinations of scenarios and times
   Scenarios<-rbind(data.table(Scenario="historic",Time="historic"),data.table(expand.grid(Scenario=Scenarios,Time=Times)))
   Scenarios[,combined:=paste0(Scenario,"-",Time)]
   
-  # Set hazards to include in analysis
-  hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG") # NDD is not being used as it cannot be projected to future scenarios
+  cat("Scenarios x timeframes:",Scenarios$combined,"\n")
+  
+  # Master list of hazards to include
+  hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG") # NDD is not being used as it cannot be projected to future scenarios with delta method
+  
+  cat("Full hazards =",hazards,"\n")
   
   haz_meta<-data.table::fread(haz_meta_url, showProgress = FALSE)
   haz_meta[variable.code %in% hazards]
@@ -89,7 +120,60 @@
   ms_codes<-data.table::fread(ms_codes_url, showProgress = FALSE)[,Code:=toupper(Code)]
   ms_codes<-ms_codes[compound=="no" & !is.na(Code)]
   
-  # 0.2.2.1) Generate hazard thresholds from ecocrop ######
+    # 0.2.3) Set flow controls and overwrite parameters ####
+    run1<-T
+    overwrite1<-F
+    
+    run2<-F
+    overwrite2<-F
+    
+    run3<-F
+    overwrite3<-T
+    
+    run4<-F
+    run4.1<-F
+    overwrite4<-F
+    
+    run5.2<-F
+    run5.3<-F
+    overwrite5<-T
+    
+    cat("Control and overwrite settings:")
+    cat("run1 =",run1,"overwrite =",overwrite1,
+        "\nrun2 =",run2,"overwrite =",overwrite2,
+        "\nrun3 = ",run3,"overwrite =",overwrite3,
+        "\nrun4 =",run4,"overwrite =",overwrite4,
+        "\nrun5.2 =",run5.2,"overwrite =",overwrite5,
+        "\nrun5.3 = ",run5.3,"overwrite =",overwrite5)
+    
+    timeframes<-timeframe_choices
+      
+    # 0.2.4) Set hazard & hazard interaction variables ####
+    # Set variables that can be interacted for heat wet and dry
+    # Crops
+    #crop_heat<-c("NTx35","TAVG_G","NTxS")
+    crop_heat<-c("NTx35")
+    #crop_wet<-c("NDWL0","PTOT_G")
+    crop_wet<-"NDWL0"
+    #crop_dry<-c("PTOT_L","NDWS")
+    crop_dry<-"NDWS"
+    
+    # Animals
+    animal_heat<-c("THI_max") # THI_mean or THI_max can be used here (or both)
+    #animal_wet<-c("NDWL0","PTOT_G")
+    animal_wet<-"NDWL0"
+    # animal_dry<-c("PTOT_L","NDWS")
+    animal_dry<-"NDWS"
+    
+    cat("Crop interaction variables\nheat =",crop_heat,"\nwet =",crop_wet,"\ndry =",crop_dry,"\n")
+    cat("Animal interaction variables\nheat =",animal_heat,"\nwet =",animal_wet,"\ndry =",animal_dry,"\n")
+    
+    all_haz<-unique(c(crop_heat,crop_wet,crop_dry,animal_wet,animal_heat,animal_dry))
+    
+    cat("Chosen hazards =",all_haz,"\n")
+    
+    
+  # 0.2.2.1) Set hazard thresholds from ecocrop ######
   
   # read in ecocrop
   ecocrop<-fread(ecocrop_url, showProgress = FALSE)
@@ -110,7 +194,7 @@
       ecrop<-ecocrop[species==crops[j]]
       
       if(nrow(ecrop)>0){
-        print(paste0(i,"-",j," | ",crop_common,"/",crops[j]))
+        cat(i,"-",j," | ",crop_common,"/",crops[j],"                \r")
         
         # PTOT low
         ptot_low<-data.table(index_name="PTOT",
@@ -241,7 +325,10 @@
   # Set crops and livestock included in the analysis
   crop_choices<-c(fread(haz_class_url, showProgress = FALSE)[,unique(crop)],ms_codes[,sort(Fullname)])
   
-  # 0.3) Download hazard timeseries from s3 bucket ####
+  # 0.2.2.1) Set hazard thresholds using CCW crop climate profiles ####
+  
+  # 0.3) Download hazard timeseries from s3 bucket (if required) ####
+  if(!Cglabs){
   overwrite<-F
   workers_dl<-10
   # Specify the bucket name and the prefix (folder path)
@@ -290,13 +377,7 @@
         return(digest::digest(file = file_path, algo = "md5"))
       }
       
-    # Set up the future plan for parallel processing
-      if (worker_n == 1) {
-        future::plan("sequential")
-      } else {
-        future::plan("multisession", workers = worker_n)
-      }
-      
+      set_parallel_plan(n_cores=worker_n,use_multisession=F)
       
       # Enable progressr
       progressr::handlers(global = TRUE)
@@ -378,16 +459,29 @@
     future::plan(sequential)
     }
   
-    # 0.3.1) Check if files can load ######
-  files<-list.files(haz_timeseries_dir,".tif",full.names = T)
-  (bad_files<-check_and_delete_bad_files(files,delete_bad=T,worker_n=worker_n))
   
-  # If you finding files will not open delete them then run the download process again
-  if(length(bad_files)>0){
+    # 0.3.1) Check if downloaded files can load ######
+  files<-list.files(haz_timeseries_dir,".tif",full.names = T)
+  
+  result<-check_tif_integrity (dir_path=haz_timeseries_dir,
+                               recursive       = TRUE,
+                               pattern         = "*.tif",
+                               n_workers_files    = worker_n,
+                               n_workers_folders = 1,
+                               use_multisession = FALSE,
+                               delete_corrupt  = FALSE)
+  
+  
+ # If you finding files will not open delete them then run the download process again
+  if(sum(result$success==F)>0){
     stop("Bad downloads were present run through the download section again")
+  }
+  }else{
+    haz_timeseries_dir<-file.path(indices_dir2,timeframe_choice)
   }
   
   # 0.4) Summarize data availability #####
+  files<-list.files(haz_timeseries_dir,".tif$",full.names = T)
   file_summary<-basename(files)
   file_summary<-gsub("historical","historic_historic_1995_2014",file_summary)
   file_summary<-gsub("max_max","max-max",file_summary)
@@ -399,29 +493,36 @@
   colnames(file_summary)<-c("scenario","timeframe","y1","y2","variable","stat")
   file_summary[,timeframe:=paste0(y1,"-",y2)][,c("y1","y2"):=NULL][,stat:=gsub(".tif","",stat)]
   
-  dcast(file_summary,formula = scenario+timeframe~variable,fun.aggregate = length)
+  data_avail<-dcast(file_summary,formula = scenario+timeframe~variable,fun.aggregate = length)
+  cat("Files per variable x scenario x timeframe")
+  print(data_avail)
+  
+# X) Start timeframe loop ####
+for(timeframe in timeframes){
+  cat("Processing ",timeframe,"of",timeframes,"\n")
   
 # 1) Classify time series climate variables based on hazard thresholds ####
-
+  # Create output folder
+  haz_time_class_dir <- file.path(atlas_dirs$data_dir$haz_time_class, timeframe)
+  if (!dir.exists(haz_time_class_dir)) dir.create(haz_time_class_dir, recursive = TRUE)
+  
+if(run1){
+  cat(timeframe,"1) Classify time series climate variables based on hazard thresholds\n")
+  
 # Create a table of unique thresholds
-Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,code2,direction,threshold)][,index_name:=gsub("NTxM|NTxS|NTxE","NTx",index_name)])
-Thresholds_U[,code:=paste0(direction,threshold)
+Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,code2,direction,threshold)
+                               ][,index_name:=gsub("NTxM|NTxS|NTxE","NTx",index_name)])
+
+  Thresholds_U[,code:=paste0(direction,threshold)
 ][,code:=gsub("<","L",code)
 ][,code:=gsub(">","G",code)]
+  
+  # Subset to chosen hazards
+  Thresholds_U<-Thresholds_U[grepl(paste0(all_haz,collapse = "|"),index_name)]
 
 files<-list.files(haz_timeseries_dir,".tif",full.names = T)
-# Limite to ensemble or historical data (for individual models we would need to customize the layer name functions of some sections)
-# files<-grep("ENSEMBLEmean|historical",files,value=T)
 
-overwrite<-F
-n<-0
-
-registerDoFuture()
-if (worker_n == 1) {
-  future::plan("sequential")
-} else {
-  future::plan("multisession", workers = worker_n)
-}
+set_parallel_plan(n_cores=worker_n,use_multisession=F)
 
 # Enable progressr
 progressr::handlers(global = TRUE)
@@ -444,7 +545,7 @@ p<-with_progress({
   
       file<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),file.path(haz_time_class_dir,"/",tail(tstrsplit(files_ss[j],"/"),1)),fixed = T)
       
-      if((!file.exists(file))|overwrite){
+      if((!file.exists(file))|overwrite1){
         data<-terra::rast(files_ss[j])
         data_class<-rast_class(data=data,
                                direction = Thresholds_U[i,direction],
@@ -453,15 +554,13 @@ p<-with_progress({
                                maxval=999999)
         terra::writeRaster(data_class,filename = file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
       }
-      
-      # Display progress
     }
-
-    
   }
 })
 
 plan(sequential)
+
+cat(timeframe,"1) Classify time series climate variables based on hazard thresholds - Completed\n")
 
   # 1.1) Check results ######
   files<-list.files(haz_time_class_dir,"tif$",full.names = T,recursive=T)
@@ -472,21 +571,19 @@ plan(sequential)
   }
 
 
-# 2) Calculate risk across classified time series ####
+}
 
+# 2) Calculate risk across classified time series ####
+  # Create output folder
+  haz_time_risk_dir <- file.path(atlas_dirs$data_dir$haz_time_risk, timeframe)
+  if (!dir.exists(haz_time_risk_dir)) dir.create(haz_time_risk_dir, recursive = TRUE)
+  
+if(run2){
+cat(timeframe,"2) Calculate risk across classified time series","\n")
+  
 files<-list.files(haz_time_class_dir,full.names = T)
 
-# Limit to ensemble or historical data
-#files<-grep("ENSEMBLE|historical",files,value=T)
-
-overwrite<-F
-
-registerDoFuture()
-if (worker_n == 1) {
-  future::plan("sequential")
-} else {
-  future::plan("multisession", workers = worker_n)
-}
+set_parallel_plan(n_cores=worker_n,use_multisession=F)
 
 # Enable progressr
 progressr::handlers(global = TRUE)
@@ -504,24 +601,28 @@ p<-with_progress({
     
     file<-file.path(haz_time_risk_dir,basename(files[i]))
     
-    if((!file.exists(file))|overwrite){
+    if((!file.exists(file))|overwrite2){
       data<-terra::rast(files[i])
-      data<-terra::app(data,fun="mean",na.rm=T)
+      data <- terra::mean(data, na.rm = TRUE)    
       terra::writeRaster(data,filename = file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
     }
-    
-   
   }
 
 })
 plan(sequential)
 
+cat(timeframe,"2) Calculate risk across classified time series - Complete\n")
+
+}
 # 3) Create crop risk stacks####
+  if(run3){
+cat(timeframe,"3) Create crop risk stacks\n")
 
 # Create stacks of hazard x crop/animal x scenario x timeframe
 haz_class_files<-list.files(haz_time_class_dir,".tif$")
 
 # Subset to ensemble or historical
+# SEE NOTE BELOW!!!! ####
 # Note if you want to use models with this process then we will have to adjust the layer naming to accommodate a model name, suggest joining with the scenario with a non - or _ delimiter.
 haz_class_files<-grep("ENSEMBLEmean|historical",haz_class_files,value=T)
 haz_class_files2<-gsub("_max_max","max",haz_class_files)
@@ -554,12 +655,7 @@ sum(table(haz_class_files2)>1)
 overwrite<-T
 crops<-haz_class[,unique(crop)]
 
-registerDoFuture()
-if (worker_n == 1) {
-  future::plan("sequential")
-} else {
-  future::plan("multisession", workers = worker_n)
-}
+set_parallel_plan(n_cores=worker_n,use_multisession=F)
 
 # Enable progressr
 progressr::handlers(global = TRUE)
@@ -581,11 +677,9 @@ p<-with_progress({
       save_name<-file.path(haz_risk_dir,paste0(crop_focus,"-",tolower(severity_class),".tif"))
       
       # Display progress
-      cat('\r                                                                                                                     ')
-      cat('\r',"Crop:",i,crop_focus,"| severity:",j,severity_class)
-      flush.console()
-      
-      if(!file.exists(save_name)|overwrite==T){
+      cat("Crop:",i,crop_focus,"| severity:",j,severity_class,"               \r")
+
+      if(!file.exists(save_name)|overwrite3==T){
         
         haz_class_crop<-haz_class[crop==crop_focus & description == severity_class]
         
@@ -610,7 +704,6 @@ p<-with_progress({
         
         terra::writeRaster(data,file=save_name,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
       }
-      
     }
     
     # Display progress
@@ -622,8 +715,19 @@ p<-with_progress({
 
 plan(sequential)
 
+cat(timeframe,"3) Create crop risk stacks - Complete\n")
+}
 # 4) Calculate mean and sd across time series ####
-
+if(run4){
+  cat(timeframe,"4) Calculate mean and sd across time series\n")
+  
+  # Create output folder
+  haz_mean_dir <- file.path(atlas_dirs$data_dir$haz_mean, timeframe)
+  if (!dir.exists(haz_mean_dir)) dir.create(haz_mean_dir, recursive = TRUE)
+  
+  haz_sd_dir <- file.path(atlas_dirs$data_dir$haz_sd, timeframe)
+  if (!dir.exists(haz_sd_dir)) dir.create(haz_sd_dir, recursive = TRUE)
+  
 # List timeseries hazard files
 files<-list.files(haz_timeseries_dir,".tif",full.names = T)
 
@@ -633,15 +737,7 @@ files<-files[!grepl("ENSEMBLEsd",files)]
 # Limit to ensemble or historical data
 #files<-grep("ENSEMBLE|historical",files,value=T)
 
-overwrite<-F
-
-registerDoFuture()
-if (worker_n == 1) {
-  future::plan("sequential")
-} else {
-  future::plan("multisession", workers = worker_n)
-}
-
+set_parallel_plan(n_cores=worker_n,use_multisession=F)
 
 # Enable progressr
 progressr::handlers(global = TRUE)
@@ -657,12 +753,12 @@ p<-with_progress({
     file<-paste0(haz_mean_dir,"/",basename(files[i]))
     file2<-paste0(haz_sd_dir,"/",basename(files[i]))
     
-    if((!file.exists(file))|overwrite){
+    if((!file.exists(file))|overwrite4){
       data<-terra::rast(files[i])
-      data<-terra::app(data,fun="mean",na.rm=T)
+      data<-terra::mean(data,na.rm=T)
       terra::writeRaster(data,filename = file,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
       
-      data<-terra::app(data,fun="sd",na.rm=T)
+      data<-terra::app(data,fun=fast_sd,na.rm=T)
       terra::writeRaster(data,filename = file2,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
     }
     # Display progress
@@ -673,8 +769,10 @@ p<-with_progress({
 
 plan(sequential)
 
+cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
+
   # 4.1) Calculate change in mean values #####
-if(F){
+  if(F){
   files<-list.files(haz_mean_dir,".tif",full.names = T)
   files<-files[!grepl("change",files)]
   files_hist<-grep("historic",files,value = T)
@@ -706,15 +804,10 @@ if(F){
   }
 }
 
-
+}
 # 5) Interactions ####
   # 5.1) Set Interaction Variables ####
   # Crops
-  # Set variables that can be interacted for heat wet and dry
-  crop_heat<-c("NTx35","TAVG_G","NTxS")
-  crop_wet<-c("NDWL0","PTOT_G")
-  crop_dry<-c("PTOT_L","NDWS")
-  
   crop_choices2<-crop_choices[!grepl("_tropical|_highland|generic",crop_choices)]
   
   # Create a unique list of all the 3-way combinations required for the crops and severity classes selected
@@ -744,11 +837,6 @@ if(F){
   })))
   
   # Interactions - Animals
-  # Set variables that can be interacted for heat wet and dry
-  animal_heat<-c("THI_max") # THI_mean or THI_max can be used here (or both)
-  animal_wet<-c("NDWL0","PTOT_G")
-  animal_dry<-c("PTOT_L","NDWS")
-  
   livestock_choices<-crop_choices[grepl("_tropical|_highland",crop_choices)]
   
   # Create a unique list of all the 3-way combinations required for the crops and severity classes selected
@@ -774,8 +862,7 @@ if(F){
   
   # Restructure names of classified hazard files so they can be easily searched for scenario x timeframe x hazard x threshold
   haz_class_files<-list.files(haz_time_class_dir,full.names = T)
-  haz_class_files<-grep("ENSEMBLE|historical",haz_class_files,value=T)
-  
+
   haz_class_files2<-basename(haz_class_files)
   haz_class_files2<-gsub("_max_max","max",haz_class_files2)
   haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
@@ -791,22 +878,25 @@ if(F){
   haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
   
   # 5.2) Calculate interactions ####
+
   # At the moment this section handles moderate, severe and extreme hazards separately
   # Can we upgrade this? so instead of 1/0 classification we can merge the hazard severity class to have 3/2/1/0
   combinations[,code:=paste(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet)]
   combinations<-combinations[order(code)]
   
-  overwrite<-F
+  # Create output folder
+  haz_time_int_dir <- file.path(atlas_dirs$data_dir$haz_time_int, timeframe)
+  if (!dir.exists(haz_time_int_dir)) dir.create(haz_time_int_dir, recursive = TRUE)
   
-  registerDoFuture()
+  
+  if(run5.2){
+    cat("5.2) Calculate interactions\n")
+    
+    cat("Crop interaction variables\nheat =",crop_heat,"\nwet =",crop_wet,"\ndry =",crop_dry,"\n")
+    cat("Animal interaction variables\nheat =",animal_heat,"\nwet =",animal_wet,"\ndry =",animal_dry,"\n")
+    
   # Estimate the RAM available therefore the number of workers
-  workers_int<- floor(free_RAM()*0.6/10^6/5)
-  if(workers_int>worker_n){workers_int<-worker_n}
-  if (workers_int == 1) {
-    future::plan("sequential")
-  } else {
-    future::plan("multisession", workers = workers_int)
-  }
+  set_parallel_plan(n_cores=workers_int,use_multisession=F)
   
   # Enable progressr
   progressr::handlers(global = TRUE)
@@ -843,17 +933,15 @@ if(F){
          for(l in 1:nrow(Scenarios)){
            
            # Display progress
-           cat('\r                                                                                                                     ')
-           cat('\r',paste("Combination:",i,"/",nrow(combinations),"| Scenario:",l,"/",nrow(Scenarios)))
-           flush.console()
-           
+           cat(paste("Combination:",i,"/",nrow(combinations),"| Scenario:",l,"/",nrow(Scenarios)),"                   \r")
+
            
            combo_binary[,lyr_names:=paste0(Scenarios[l,combined],"-",combo_name)
                         ][,save_names:=file.path(folder,paste0(lyr_names,".tif"))]
            save_names<-combo_binary$save_names
            save_name_any<-file.path(folder,paste0(Scenarios[l,combined],"-any.tif"))
   
-           if(!all(file.exists(save_names))|!file.exists(save_name_any)|overwrite==T){
+           if(!all(file.exists(save_names))|!file.exists(save_name_any)|overwrite5==T){
             
             files<-sapply(combos,FUN=function(x){
               haz_class_files[grepl(paste0(x,".tif"),haz_class_files2) & 
@@ -877,9 +965,9 @@ if(F){
             names(haz_sum)<-names(haz[[1]])
 
             # Any haz
-            if(!file.exists(save_name_any)|overwrite==T){
+            if(!file.exists(save_name_any)|overwrite5==T){
               data<-terra::mask(haz_sum,haz_sum,maskvalues=1:111,updatevalue=1)
-              data<-terra::app(data,fun="mean",na.rm=T)
+              data<-terra::mean(data,na.rm=T)
               names(data)<-paste0(Scenarios[l,combined],"-any")
               terra::writeRaster(data,filename =  save_name_any,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
             }
@@ -894,10 +982,10 @@ if(F){
            
             rm(data,haz,haz_sum)
             gc()
-            }
-            }
-  }
-  })
+           }
+         }
+          }
+    })
     
   plan(sequential)
   
@@ -916,6 +1004,8 @@ if(F){
    print(n_length[n_length!=40])
  }
  
+ cat("5.2) Calculate interactions - Complete\n")
+ 
     # 5.2.1) Check results ######
  files<-list.files(haz_time_int_dir,"tif$",full.names = T,recursive=T)
  (bad_files<-check_and_delete_bad_files(files,delete_bad=F,worker_n=worker_n))
@@ -926,8 +1016,11 @@ if(F){
    stop("Bad files were present, run through this section again")
  }
  
+  }
   # 5.3) Per crop combine hazards into a single file #####
- overwrite<-F
+if(run5.3){
+  cat("5.3) Per crop combine hazards into a single file\n")
+  
   combinations_ca<-rbind(combinations_c,combinations_a)[,combo_name:=paste0(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet,crop,severity_class)
                                                         ][,folder:=paste0(haz_time_int_dir,"/",combo_name)
                                                           ][,severity_class:=tolower(severity_class)]
@@ -940,13 +1033,7 @@ if(F){
   
   combinations_crops<-combinations_ca[,unique(crop)]
   
-  doFuture::registerDoFuture()
-  if (worker_n == 1) {
-    future::plan("sequential")
-  } else {
-    future::plan("multisession", workers = worker_n)
-  }
-  
+  set_parallel_plan(n_cores=worker_n,use_multisession=F)
   
   # Enable progressr
   progressr::handlers(global = TRUE)
@@ -964,13 +1051,11 @@ if(F){
       for(j in 1:nrow(severity_classes)){
       
       # Display progress
-      #cat('\r                                                                                                                                                           ')
-      #cat('\r',paste("crop_choices:",i,"/",length(combinations_crops),"| Severity Class:",j,"/",nrow(severity_classes)))
-      #flush.console()
-      
+      #cat("crop_choices:",i,"/",length(combinations_crops),"| Severity Class:",j,"/",nrow(severity_classes),"              \r")
+
       save_file<-paste0(haz_risk_dir,"/",combinations_crops[i],"-",tolower(severity_classes$class[j]),"-int.tif")
 
-      if(!file.exists(save_file)|overwrite==T){
+      if(!file.exists(save_file)|overwrite5==T){
         subset<-combinations_ca[crop==combinations_crops[i] & severity_class==tolower(severity_classes$class[j])]
         
         data<-terra::rast(lapply(1:nrow(subset),FUN=function(k){
@@ -990,13 +1075,12 @@ if(F){
         terra::writeRaster(data,filename = save_file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
       }
       }
-      
-      
     }
-    
   })
 
   plan(sequential)
+  
+  cat("5.3) Per crop combine hazards into a single file - Complete\n")
   
    # 5.3.1) Check results ######
   files<-list.files(haz_risk_dir,"tif$",full.names = T)
@@ -1008,4 +1092,7 @@ if(F){
   }
   
   
+  
+}
+}
   
