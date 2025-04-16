@@ -480,23 +480,6 @@ double fast_sd(NumericVector x) {
     haz_timeseries_dir<-indices_dir2
   }
   
-  # 0.4) Summarize data availability #####
-  files<-list.files(haz_timeseries_dir,".tif$",full.names = T)
-  file_summary<-basename(files)
-  file_summary<-gsub("historical","historic_historic_1995_2014",file_summary)
-  file_summary<-gsub("max_max","max-max",file_summary)
-  file_summary<-gsub("mean_max","mean-max",file_summary)
-  file_summary<-gsub("max_mean","max-mean",file_summary)
-  file_summary<-gsub("mean_mean","mean-mean",file_summary)
-  
-  file_summary<-as.data.table(t(as.data.table(strsplit(file_summary,"_"))))
-  colnames(file_summary)<-c("scenario","timeframe","y1","y2","variable","stat")
-  file_summary[,timeframe:=paste0(y1,"-",y2)][,c("y1","y2"):=NULL][,stat:=gsub(".tif","",stat)]
-  
-  data_avail<-dcast(file_summary,formula = scenario+timeframe~variable,fun.aggregate = length)
-  cat("Files per variable x scenario x timeframe")
-  print(data_avail)
-  
 # X) Start timeframe loop ####
 for(timeframe in timeframes){
   cat("Processing ",timeframe,"of",timeframes,"\n")
