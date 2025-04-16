@@ -309,7 +309,7 @@ double fast_sd(NumericVector x) {
   
   # 0.2.2.1) Set hazard thresholds using CCW crop climate profiles ####
   
-  # 0.3) Download hazard timeseries from s3 bucket (if required) ####
+  # 0.3) ISSUE -  needs to be within timeframe loop? Download hazard timeseries from s3 bucket (if required) ####
   if(!Cglabs){
   overwrite<-F
   workers_dl<-10
@@ -458,18 +458,18 @@ double fast_sd(NumericVector x) {
   if(sum(result$success==F)>0){
     stop("Bad downloads were present run through the download section again")
   }
-  }else{
-    haz_timeseries_dir<-indices_dir2
   }
   
 # X) Start timeframe loop ####
 for(timeframe in timeframes){
   cat("Processing ",timeframe,"of",timeframes,"\n")
   
+  haz_timeseries_dir<-file.path(indices_dir2,timeframe)
+  cat("haz_timeseries_dir =",haz_timeseries_dir,"\n")
 # 1) Classify time series climate variables based on hazard thresholds ####
   # Create output folder
-  haz_time_class_dir <- file.path(atlas_dirs$data_dir$haz_time_class, timeframe)
-  if (!dir.exists(haz_time_class_dir)) dir.create(haz_time_class_dir, recursive = TRUE)
+  haz_time_class_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_class, timeframe)
+  if (!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir, recursive = TRUE)}
   
 if(run1){
   cat(timeframe,"1) Classify time series climate variables based on hazard thresholds\n")
@@ -496,31 +496,31 @@ progressr::handlers("progress")
 # Wrap the parallel processing in a with_progress call
 p<-with_progress({
   # Define the progress bar
-  progress <- progressr::progressor(along = 1:nrow(Thresholds_U))
+  prog <- progressr::progressor(along = 1:nrow(Thresholds_U))
   
-  foreach(i = 1:nrow(Thresholds_U), .packages = c("terra", "progressr")) %dopar% {
-    
-  #for(i in 1:nrow(Thresholds_U)){
+    invisible(future.apply::future_lapply(1:nrow(Thresholds_U),FUN=function(i){
+      #invisible(lapply(1:nrow(Thresholds_U),FUN=function(i){
+        
     index_name<-Thresholds_U[i,code2]
     files_ss<-grep(index_name,files,value=T)
-    progress(sprintf("Threshold %d/%d", i, nrow(Thresholds_U)))
+    prog(sprintf("Threshold %d/%d", i, nrow(Thresholds_U)))
     
     for(j in 1:length(files_ss)){
-    # cat(i,"-",j,"\n")
+     cat(i,"-",j,"\n")
   
-      file<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),file.path(haz_time_class_dir,"/",tail(tstrsplit(files_ss[j],"/"),1)),fixed = T)
+      file_name<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),file.path(haz_time_class_dir,tail(unlist(tstrsplit(files_ss[j],"/")),1)),fixed = T)
       
-      if((!file.exists(file))|overwrite1){
+      if((!file.exists(file_name))|overwrite1){
         data<-terra::rast(files_ss[j])
         data_class<-rast_class(data=data,
                                direction = Thresholds_U[i,direction],
                                threshold = Thresholds_U[i,threshold],
                                minval=-999999,
                                maxval=999999)
-        terra::writeRaster(data_class,filename = file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
+        terra::writeRaster(data_class,filename = file_name,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
       }
     }
-  }
+  }))
 })
 
 plan(sequential)
