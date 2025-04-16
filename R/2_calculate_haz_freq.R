@@ -1,4 +1,5 @@
 # Please run 0_server_setup.R before executing this script
+cat("Starting 2_calculate_haz_freq.R script/n")
 # 0) Set-up workspace ####
   # 0.1) Load R functions & packages ####
   
@@ -18,27 +19,7 @@
                 "xml2",
                 "Rcpp")
   
-  # This function will call packages first from the user library and second the system library
-  # This can help overcome issues with the Afrilab server where the system library has outdated packages that 
-  # require an contacting admin user to update
-  load_packages_prefer_user <- function(packages) {
-    user_lib <- Sys.getenv("R_LIBS_USER")
-    current_libs <- .libPaths()
-    
-    # Set user library as the first in the search path
-    .libPaths(c(user_lib, current_libs))
-    
-    # Load pacman package
-    library(pacman)
-    
-    # Install and load packages using pacman
-    pacman::p_load(char = packages)
-    
-    # Restore original library paths
-    .libPaths(current_libs)
-  }
-  
-  load_packages_prefer_user(packages)
+  pacman::p_load(packages,character.only=T)
   
   # Source functions from github
   source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
@@ -64,6 +45,7 @@ double fast_sd(NumericVector x) {
   return sqrt((sumsq - n_valid * mean * mean) / (n_valid - 1));
 }
 ')
+  
   # 0.2) Set up workspace #####
     # 0.2.1) Set number of workers ######
     worker_n<-parallel::detectCores()-1
