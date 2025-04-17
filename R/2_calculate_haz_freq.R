@@ -50,7 +50,7 @@ double fast_sd(NumericVector x) {
     # 0.2.1) Set number of workers ######
     worker_n<-parallel::detectCores()-1
     cat("System workers -1 = ",worker_n,"\n")
-    worker_n<-20
+    worker_n<-15
     cat("worker_n = ",worker_n,"\n")
     
     # For section 5 - interactions this can be RAM heavy so reduce number of workers
@@ -106,7 +106,7 @@ double fast_sd(NumericVector x) {
     run1<-T
     overwrite1<-F
     
-    run2<-F
+    run2<-T
     overwrite2<-F
     
     run3<-F
@@ -506,7 +506,7 @@ p<-with_progress({
     prog(sprintf("Threshold %d/%d", i, nrow(Thresholds_U)))
     
     for(j in 1:length(files_ss)){
-     cat(i,"-",j,"\n")
+     #cat(i,"-",j,"\n")
   
       file_name<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),file.path(haz_time_class_dir,tail(unlist(tstrsplit(files_ss[j],"/")),1)),fixed = T)
       
@@ -540,7 +540,7 @@ cat(timeframe,"1) Classify time series climate variables based on hazard thresho
 
 # 2) Calculate risk across classified time series ####
   # Create output folder
-  haz_time_risk_dir <- file.path(atlas_dirs$data_dir$haz_time_risk, timeframe)
+  haz_time_risk_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_risk, timeframe)
   if (!dir.exists(haz_time_risk_dir)) dir.create(haz_time_risk_dir, recursive = TRUE)
   
 if(run2){
