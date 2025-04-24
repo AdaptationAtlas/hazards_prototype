@@ -311,8 +311,8 @@ cat("Starting 2_calculate_haz_freq.R script/n")
   ## 0.3) Set flow controls and overwrite parameters ####
     run1<-T
     overwrite1<-F
-    worker_n1<-30
-    multisession1<-F
+    worker_n1<-20
+    multisession1<-T
     
     run2<-F
     overwrite2<-F
@@ -525,7 +525,27 @@ if(run1){
   
   set_parallel_plan(n_cores=worker_n1,use_multisession=multisession1)
   
-  # Enable progressr
+  # This is for debugging parallelization errors
+  globals_info <- future::getGlobalsAndPackages({
+    future_lapply(1:nrow(Thresholds_U), function(i) {
+      # Extract variables in a way that avoids closure capture issues
+      code2_value <- Thresholds_U[["code2"]][i]
+      direction_value <- Thresholds_U[["direction"]][i]
+      threshold_value <- Thresholds_U[["threshold"]][i]
+      
+      # Use them in a dummy operation
+      matching_files <- grep(code2_value, files, value = TRUE)
+      paste("Processed", code2_value, direction_value, threshold_value, "with", length(matching_files), "files")
+    })
+  })
+  
+  cat("Globals:\n")
+  str(globals_info$globals)
+  
+  cat("\nPackages:\n")
+  print(globals_info$packages)
+  
+    # Enable progressr
   progressr::handlers(global = TRUE)
   progressr::handlers("progress")
   
@@ -537,7 +557,7 @@ if(run1){
       invisible(future.apply::future_lapply(1:nrow(Thresholds_U),FUN=function(i){
         
         #invisible(lapply(1:nrow(Thresholds_U),FUN=function(i){
-      index_name<-Thresholds_U[i,code2]
+      index_name<-Thresholds_U[[i,"code2"]]
       files_ss<-grep(index_name,files,value=T)
       files_ss<-files_ss[!grepl("ENSEMBLEsd",files_ss)]
       prog(sprintf("Threshold %d/%d", i, nrow(Thresholds_U)))
@@ -545,7 +565,7 @@ if(run1){
       for(j in 1:length(files_ss)){
        #cat(i,"-",j,"\n")
     
-        file_name<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),file.path(haz_time_class_dir,basename(files_ss[j])),fixed = T)
+        file_name<-gsub(".tif",paste0("-",Thresholds_U[[i,"code"]],".tif"),file.path(haz_time_class_dir,basename(files_ss[j])),fixed = T)
         
         # Fix issues with file naming formulation
         file_name<-gsub("_max","-max",file_name)
@@ -562,11 +582,13 @@ if(run1){
         if((!file.exists(file_name))|overwrite1){
           data<-terra::rast(files_ss[j])
           data_class<-rast_class(data=data,
-                                 direction = Thresholds_U[i,direction],
-                                 threshold = Thresholds_U[i,threshold],
+                                 direction = Thresholds_U[[i,"direction"]],
+                                 threshold = Thresholds_U[[i,"threshold"]],
                                  minval=-999999,
                                  maxval=999999)
           terra::writeRaster(data_class,filename = file_name,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
+          rm(data,data_class)
+          gc()
         }
       }
     }))
