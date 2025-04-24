@@ -16,35 +16,12 @@ cat("Starting 2_calculate_haz_freq.R script/n")
                 "stringr", 
                 "stringi",
                 "httr",
-                "xml2",
-                "Rcpp")
+                "xml2")
   
   pacman::p_load(packages,character.only=T)
   
   # Source functions from github
   source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
-  
-  # Create C++ function for calculating sd and compile it
-  Rcpp::cppFunction('
-double fast_sd(NumericVector x) {
-  int n = x.size();
-  int n_valid = 0;
-  double sum = 0, sumsq = 0;
-
-  for (int i = 0; i < n; ++i) {
-    if (!NumericVector::is_na(x[i])) {
-      n_valid++;
-      sum += x[i];
-      sumsq += x[i] * x[i];
-    }
-  }
-
-  if (n_valid <= 1) return NA_REAL;
-
-  double mean = sum / n_valid;
-  return sqrt((sumsq - n_valid * mean * mean) / (n_valid - 1));
-}
-')
   
   ## 0.2) Set up workspace #####
     ### 0.2.1) Set number of workers ######
@@ -331,11 +308,13 @@ double fast_sd(NumericVector x) {
   combinations<-combinations[order(code)]
   
   
-    ### 0.2.3) Set flow controls and overwrite parameters ####
+  ## 0.3) Set flow controls and overwrite parameters ####
     run1<-T
     overwrite1<-F
+    worker_n1<-30
+    multisession1<-F
     
-    run2<-T
+    run2<-F
     overwrite2<-F
     
     run3<-F
@@ -350,7 +329,7 @@ double fast_sd(NumericVector x) {
     overwrite5<-T
     
     cat("Control and overwrite settings:")
-    cat("run1 =",run1,"overwrite =",overwrite1,
+    cat("run1 =",run1,"overwrite =",overwrite1,"workers1 =",worker_n1,"multisession1=",multisession1,
         "\nrun2 =",run2,"overwrite =",overwrite2,
         "\nrun3 = ",run3,"overwrite =",overwrite3,
         "\nrun4 =",run4,"overwrite =",overwrite4,
@@ -360,7 +339,7 @@ double fast_sd(NumericVector x) {
     timeframes<-timeframe_choices
       
 
-  # 0.3) Download hazard timeseries from s3 bucket (if required) ####
+  ## 0.4) Download hazard timeseries from s3 bucket (if required) ####
    # Dev Note: needs to be within timeframe loop? ####
    # Dev Note: subset to required hazards only ####
   if(!Cglabs){
@@ -527,15 +506,16 @@ for(timeframe in timeframes){
   Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,code2,direction,threshold)
                                  ][,index_name:=gsub("NTxM|NTxS|NTxE","NTx",index_name)])
   
-  Thresholds_U[,direction2:=direction][,direction2:=gsub("<","L",direction2)][,direction2:=gsub(">","G",direction2)]
-  
-  Thresholds_U[,code:=paste0(direction2,threshold),by=.I]
-  
-  Thresholds_U[,index_name2:=index_name][index_name2 %in% c("PTOT","TAVG"),index_name2:=paste0(index_name2,"_",direction2)]
+  Thresholds_U[,direction2:=direction
+               ][,direction2:=gsub("<","L",direction2)
+                 ][,direction2:=gsub(">","G",direction2)
+                   ][,code:=paste0(direction2,threshold),by=.I
+                     ][,index_name2:=index_name][index_name2 %in% c("PTOT","TAVG"),index_name2:=paste0(index_name2,"_",direction2)]
   
   # Subset to interaction hazards
   Thresholds_U<-Thresholds_U[grepl(paste(if(any(grepl("NTx",interaction_haz))){c("NTx",interaction_haz)}else{interaction_haz},collapse = "|"),index_name2)]
   
+
 if(run1){
   cat(timeframe,"1) Classify time series climate variables based on hazard thresholds\n")
   
@@ -543,7 +523,7 @@ if(run1){
   
   files<-list.files(haz_timeseries_dir,".tif",full.names = T)
   
-  set_parallel_plan(n_cores=worker_n,use_multisession=F)
+  set_parallel_plan(n_cores=worker_n1,use_multisession=multisession1)
   
   # Enable progressr
   progressr::handlers(global = TRUE)
@@ -555,6 +535,7 @@ if(run1){
     prog <- progressr::progressor(along = 1:nrow(Thresholds_U))
     
       invisible(future.apply::future_lapply(1:nrow(Thresholds_U),FUN=function(i){
+        
         #invisible(lapply(1:nrow(Thresholds_U),FUN=function(i){
       index_name<-Thresholds_U[i,code2]
       files_ss<-grep(index_name,files,value=T)
@@ -810,7 +791,7 @@ p<-with_progress({
       data<-terra::mean(data,na.rm=T)
       terra::writeRaster(data,filename = file,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
       
-      data<-terra::app(data,fun=fast_sd,na.rm=T)
+      data<-terra::app(data,fun=sd,na.rm=T)
       terra::writeRaster(data,filename = file2,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
     }
     # Display progress
