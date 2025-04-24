@@ -564,7 +564,7 @@ if(run1){
       for(j in 1:length(files_ss)){
        #cat(i,"-",j,"\n")
     
-        file_name<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),file.path(haz_time_class_dir,basename(files_ss[i])),fixed = T)
+        file_name<-gsub(".tif",paste0("-",Thresholds_U[i,code],".tif"),file.path(haz_time_class_dir,basename(files_ss[j])),fixed = T)
         
         # Fix issues with file naming formulation
         file_name<-gsub("_max","-max",file_name)
