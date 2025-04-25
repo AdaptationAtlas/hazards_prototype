@@ -333,12 +333,12 @@ worker_n <- 20
   bucket_name <- "http://digital-atlas.s3.amazonaws.com"
   bucket_name_s3 <- "s3://digital-atlas"
   
-
   atlas_dirs$s3_dir <- bucket_name_s3
   
   # Define subdirectories under 's3_dir'
   subdirs <- c(
-    "hazard_timeseries"
+    "hazard_timeseries",
+    "hazard_risk"
   )
   
   # Assign paths for each subdir key
