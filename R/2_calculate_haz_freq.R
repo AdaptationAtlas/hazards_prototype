@@ -83,7 +83,7 @@ cat("Starting 2_calculate_haz_freq.R script/n")
      #### 0.2.2.3) Create combinations of scenarios and hazards ####
       scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios)))[,Scenario:=as.character(Scenario)][,Time:=as.character(Time)]
       
-     #### 0.2.2.4) Set hazard thresholds from ecocrop ######
+     #### 0.2.2.4) Generate hazard thresholds from ecocrop ######
   
   # read in ecocrop
   ecocrop<-fread(ecocrop_url, showProgress = FALSE)
@@ -232,22 +232,22 @@ cat("Starting 2_calculate_haz_freq.R script/n")
   PropThreshold<-0.5
   PropTDir=">"
   
-     #### 0.2.2.5) !!TO DO!! Set hazard thresholds using CCW crop climate profiles ####
+     #### 0.2.2.5) !!TO DO!! Generate hazard thresholds using CCW crop climate profiles ####
   
      #### 0.2.2.6) Set hazard interactions ####
        ##### 0.2.2.6.1)  Set interactions ####
-  # Crop interactions (each row is a combination of heat, wet and dry variables)
-  crop_interactions<-data.table(heat_simple=c("NTx35","NTxS"),wet_simple=c("NDWL0","PTOT_G"),dry_simple=c("NDWS","PTOT_L"))
-  
-  # Animal interactions (each row is a combination of heat, wet and dry variables)
-  animal_interactions<-data.table(heat_simple=c("THI_max","THI_max"),wet_simple=c("NDWL0","PTOT_G"),dry_simple=c("NDWS","PTOT_L"))
-  
-  interaction_haz<-unique(c(unlist(crop_interactions),unlist(animal_interactions)))
-  
-  cat("Crop interaction variables\n")
-  print(crop_interactions)
-  cat("Animal interaction variables\n")
-  print(animal_interactions)
+      # Crop interactions (each row is a combination of heat, wet and dry variables)
+      crop_interactions<-data.table(heat_simple=c("NTx35","NTxS"),wet_simple=c("NDWL0","PTOT_G"),dry_simple=c("NDWS","PTOT_L"),fixed=c(T,F),type="crop")
+      
+      # Animal interactions (each row is a combination of heat, wet and dry variables)
+      animal_interactions<-data.table(heat_simple=c("THI_max","THI_max"),wet_simple=c("NDWL0","PTOT_G"),dry_simple=c("NDWS","PTOT_L"),fixed=c(T,F),type="animal")
+      
+      interaction_haz<-unique(c(unlist(crop_interactions),unlist(animal_interactions)))
+      
+      cat("Crop interaction variables\n")
+      print(crop_interactions)
+      cat("Animal interaction variables\n")
+      print(animal_interactions)
   
        ##### 0.2.2.6.2) Create crop/livestock specific hazard table for interactions ####
   # Crops
@@ -308,33 +308,65 @@ cat("Starting 2_calculate_haz_freq.R script/n")
   combinations<-combinations[order(code)]
   
   
+     #### 0.2.2.7) Create a table of unique hazard thresholds ####
+  Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,code2,direction,threshold)
+  ][,index_name:=gsub("NTxM|NTxS|NTxE","NTx",index_name)])
+  
+  Thresholds_U[,direction2:=direction
+  ][,direction2:=gsub("<","L",direction2)
+  ][,direction2:=gsub(">","G",direction2)
+  ][,code:=paste0(direction2,threshold),by=.I
+  ][,index_name2:=index_name][index_name2 %in% c("PTOT","TAVG"),index_name2:=paste0(index_name2,"_",direction2)]
+  
+  # Subset to interaction hazards
+  Thresholds_U<-Thresholds_U[grepl(paste(if(any(grepl("NTx",interaction_haz))){c("NTx",interaction_haz)}else{interaction_haz},collapse = "|"),index_name2)]
+  
   ## 0.3) Set flow controls and overwrite parameters ####
+  # Classify hazards
     run1<-T
     overwrite1<-F
     worker_n1<-20
     multisession1<-T
-    
+    upload1<-F # We do not recommend uploading these data to the S3, they are a large intermediate product
+    upload_overwrite1<-F # Deletes existing files and uploads new
+  # Calculate hazard risk freq
     run2<-F
+    worker_n2<-20
     overwrite2<-F
-    
+    multisession2<-T
+    upload2<-F
+    upload_delete2<-T # Deletes all existing files in s3
+    upload_overwrite2<-T # Overwrites existing files (does not delete anything)
+  # Make crop stacks for risk freq
     run3<-F
-    overwrite3<-T
-    
+    overwrite3<-F
+    worker_n3<-20
+    multisession3<-T
+    upload3<-F
+    upload_delete3<-T # Deletes all existing files in s3
+    upload_overwrite3<-T # Overwrites existing files (does not delete anything)
+  # Calculate hazard time series mean and sd
     run4<-F
-    run4.1<-F
+    run4.1<-F # Difference
     overwrite4<-F
-    
+    upload4<-F
+  # Calculate interactions
     run5.2<-F
     run5.3<-F
-    overwrite5<-T
+    overwrite5<-F
+    upload5<-F
+  # Set workers for uploads
+    worker_n_upload<-20
+    permission<-"public-read"
     
-    cat("Control and overwrite settings:")
-    cat("run1 =",run1,"overwrite =",overwrite1,"workers1 =",worker_n1,"multisession1=",multisession1,
-        "\nrun2 =",run2,"overwrite =",overwrite2,
-        "\nrun3 = ",run3,"overwrite =",overwrite3,
+    cat("Control and overwrite settings:\n")
+    cat("run1 =",run1,"overwrite =",overwrite1,"workers1 =",worker_n1,"multisession1=",multisession1,"upload1=",upload1,"upload_overwrite1=",upload_overwrite1,
+        "\nrun2 =",run2,"overwrite =",overwrite2,"workers2 =",worker_n2,"multisession2=",multisession2,"upload2=",upload2,"upload_overwrite2=",upload_overwrite2,"upload_delete2=",upload_delete2,
+        "\nrun3 = ",run3,"overwrite =",overwrite3,"workers3 =",worker_n3,"multisession3=",multisession3,"upload3=",upload3,"upload_overwrite3=",upload_overwrite3,"upload_delete3=",upload_delete3,
         "\nrun4 =",run4,"overwrite =",overwrite4,
         "\nrun5.2 =",run5.2,"overwrite =",overwrite5,
-        "\nrun5.3 = ",run5.3,"overwrite =",overwrite5)
+        "\nrun5.3 = ",run5.3,"overwrite =",overwrite5,
+        "\nupload worker n=",worker_n_upload,"\n")
     
     timeframes<-timeframe_choices
       
@@ -493,30 +525,23 @@ cat("Starting 2_calculate_haz_freq.R script/n")
   }
     
 # Start timeframe loop ####
-for(timeframe in timeframes){
-  cat("Processing ",timeframe,"of",timeframes,"\n")
+for(tx in 1:length(timeframes)){
+  timeframe<-timeframes(tx)
+  cat("Processing ",timeframe,tx,"/",length(timeframes),"\n")
   
   haz_timeseries_dir<-file.path(indices_dir2,timeframe)
   cat("haz_timeseries_dir =",haz_timeseries_dir,"\n")
-# 1) Classify time series climate variables based on hazard thresholds ####
-  # Create output folder
+  
+  # Create output folders
   haz_time_class_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_class, timeframe)
+  haz_time_risk_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_risk, timeframe)
+  haz_risk_dir <- file.path(atlas_dirs$data_dir$hazard_risk, timeframe)
+  haz_mean_dir <- file.path(atlas_dirs$data_dir$haz_mean, timeframe)
+  haz_time_int_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_int, timeframe)
   
-  # Create a table of unique thresholds
-  Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,code2,direction,threshold)
-                                 ][,index_name:=gsub("NTxM|NTxS|NTxE","NTx",index_name)])
+# 1) Classify time series climate variables based on hazard thresholds ####
   
-  Thresholds_U[,direction2:=direction
-               ][,direction2:=gsub("<","L",direction2)
-                 ][,direction2:=gsub(">","G",direction2)
-                   ][,code:=paste0(direction2,threshold),by=.I
-                     ][,index_name2:=index_name][index_name2 %in% c("PTOT","TAVG"),index_name2:=paste0(index_name2,"_",direction2)]
-  
-  # Subset to interaction hazards
-  Thresholds_U<-Thresholds_U[grepl(paste(if(any(grepl("NTx",interaction_haz))){c("NTx",interaction_haz)}else{interaction_haz},collapse = "|"),index_name2)]
-  
-
-if(run1){
+  if(run1){
   cat(timeframe,"1) Classify time series climate variables based on hazard thresholds\n")
   
   if (!dir.exists(haz_time_class_dir)){dir.create(haz_time_class_dir, recursive = TRUE)}
@@ -525,27 +550,7 @@ if(run1){
   
   set_parallel_plan(n_cores=worker_n1,use_multisession=multisession1)
   
-  # This is for debugging parallelization errors
-  globals_info <- future::getGlobalsAndPackages({
-    future_lapply(1:nrow(Thresholds_U), function(i) {
-      # Extract variables in a way that avoids closure capture issues
-      code2_value <- Thresholds_U[["code2"]][i]
-      direction_value <- Thresholds_U[["direction"]][i]
-      threshold_value <- Thresholds_U[["threshold"]][i]
-      
-      # Use them in a dummy operation
-      matching_files <- grep(code2_value, files, value = TRUE)
-      paste("Processed", code2_value, direction_value, threshold_value, "with", length(matching_files), "files")
-    })
-  })
-  
-  cat("Globals:\n")
-  str(globals_info$globals)
-  
-  cat("\nPackages:\n")
-  print(globals_info$packages)
-  
-    # Enable progressr
+  # Enable progressr
   progressr::handlers(global = TRUE)
   progressr::handlers("progress")
   
@@ -559,7 +564,7 @@ if(run1){
         #invisible(lapply(1:nrow(Thresholds_U),FUN=function(i){
       index_name<-Thresholds_U[[i,"code2"]]
       files_ss<-grep(index_name,files,value=T)
-      files_ss<-files_ss[!grepl("ENSEMBLEsd",files_ss)]
+      files_ss<-files_ss[!grepl("ENSEMBLE",files_ss)]
       prog(sprintf("Threshold %d/%d", i, nrow(Thresholds_U)))
       
       for(j in 1:length(files_ss)){
@@ -609,18 +614,16 @@ cat(timeframe,"1) Classify time series climate variables based on hazard thresho
 
 }
 
-# 2) Calculate risk across classified time series ####
-  # Create output folder
-  haz_time_risk_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_risk, timeframe)
-  
+# 2) Calculate hazard frequency across classified time series ####
+
 if(run2){
-cat(timeframe,"2) Calculate risk across classified time series","\n")
+cat(timeframe,"2) Calculate hazard frequency (0-1) across classified time series","\n")
   
   if (!dir.exists(haz_time_risk_dir)) dir.create(haz_time_risk_dir, recursive = TRUE)
   
 files<-list.files(haz_time_class_dir,full.names = T)
 
-set_parallel_plan(n_cores=worker_n,use_multisession=F)
+set_parallel_plan(n_cores=worker_n2,use_multisession=multisession2)
 
 # Enable progressr
 progressr::handlers(global = TRUE)
@@ -631,7 +634,7 @@ p<-with_progress({
   # Define the progress bar
   progress <- progressr::progressor(along = 1:length(files))
     
-  foreach(i = 1:length(files)) %dopar% {
+  invisible(future.apply::future_lapply(1:length(files),fun=function(i) {
     #for(i in 1:length(files)){
     # Display progress
     progress(sprintf("File %d/%d", i, length(files)))
@@ -642,8 +645,10 @@ p<-with_progress({
       data<-terra::rast(files[i])
       data <- terra::mean(data, na.rm = TRUE)    
       terra::writeRaster(data,filename = file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
+      rm(data)
+      gc()
     }
-  }
+  }))
 
 })
 plan(sequential)
@@ -651,61 +656,38 @@ plan(sequential)
 cat(timeframe,"2) Calculate risk across classified time series - Complete\n")
 
 }
-# 3) Create crop risk stacks####
-  # Create output folder
-  haz_risk_dir <- file.path(atlas_dirs$data_dir$hazard_risk, timeframe)
-  
+# 3) Create crop hazard frequency stacks####
+
   if(run3){
     
 cat(timeframe,"3) Create crop risk stacks\n")
     
 if (!dir.exists(haz_risk_dir)){dir.create(haz_risk_dir, recursive = TRUE)}
     
-
 # Create stacks of hazard x crop/animal x scenario x timeframe
-haz_class_files<-list.files(haz_time_class_dir,".tif$",full.names = T)
-
-# SEE NOTE BELOW!!!! ####
-  # Note if you want to use models with this process then we will have to adjust the layer naming to accommodate a model name, suggest joining with the scenario with a non - or _ delimiter.
-  # Alternatively we can make files per model or ensemble
-haz_class_files_ss<-haz_class_files[!grepl("ENSEMBLEsd",haz_class_files)]
-
-haz_class_files2<-gsub("_max_max","max",basename(haz_class_files_ss))
-haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
-haz_class_files2<-gsub("_max","",haz_class_files2)
-haz_class_files2<-gsub("_mean","",haz_class_files2)
-haz_class_files2<-gsub("_sum","",haz_class_files2)
-haz_class_files2<-gsub("max","-max",haz_class_files2)
-haz_class_files2<-gsub("mean","-mean",haz_class_files2)
-
-# Check names are unique
-sum(table(haz_class_files2)>1)
-
-haz_class_scenarios<-gsub("historical_","historic_historic_historic_",haz_class_files2)
-haz_class_scenarios<-gsub("2021_2040_","2021-2040_",haz_class_scenarios)
-haz_class_scenarios<-gsub("2041_2060_","2041-2060_",haz_class_scenarios)
-haz_class_scenarios<-gsub("2061_2080_","2061-2080_",haz_class_scenarios)
-haz_class_scenarios<-gsub("2081_2100_","2081-2100_",haz_class_scenarios)
-haz_class_scenarios<-gsub("ENSEMBLE_mean_","ENSEMBLE-",haz_class_scenarios)
+haz_freq_files<-list.files(haz_time_risk_dir,".tif$",full.names = T)
+haz_freq_files<-haz_freq_files[!grepl("ENSEMBLE",haz_freq_files)]
 
 # Split the file elements
-split_elements <- strsplit(haz_class_scenarios, "_")
-haz_class_file_tab <- rbindlist(lapply(split_elements, as.list))
-colnames(haz_class_file_tab)<-c("scenario","model","timeframe","hazard")
-haz_class_file_tab[,hazard:=gsub("[.]tif","",hazard)][,file:=haz_class_files_ss]
+split_elements <- strsplit(basename(haz_freq_files), "_")
+haz_freq_file_tab <- rbindlist(lapply(split_elements, as.list))
+colnames(haz_freq_file_tab)<-c("scenario","model","timeframe","hazard")
+haz_freq_file_tab[,hazard:=gsub("[.]tif","",hazard)
+                   ][,file:=haz_freq_files
+                     ][,hazard2:=unlist(tstrsplit(hazard,"-",keep=1))
+                       ][str_count(hazard,"-")>2,stat:=unlist(tstrsplit(hazard,"-",keep=2))
+                         ][!is.na(stat),hazard2:=paste0(hazard2,"-",stat)
+                           ][,hazard2:=paste0(hazard2,"-",tail(unlist(strsplit(hazard,"-")),1)),by=.I
+                             ][,layer_name:=paste(c(scenario,timeframe,hazard2),collapse="_"),by=.I]
 
-models<-haz_class_file_tab[,unique(model)]
-
-# Step 2: Extract the first and second parts
-#list1 <- sapply(split_elements, `[`, 1)
-#list2 <- sapply(split_elements, `[`, 2)
+models<-haz_freq_file_tab[,unique(model)]
 
 # Step 3: Paste corresponding elements
 #haz_class_scenarios <- mapply(paste, list1, list2, MoreArgs = list(sep = "-"))
 
 crops<-haz_class[,unique(crop)]
 
-set_parallel_plan(n_cores=worker_n,use_multisession=F)
+set_parallel_plan(n_cores=worker_n3,use_multisession=multisession3)
 
 # Enable progressr
 progressr::handlers(global = TRUE)
@@ -733,30 +715,23 @@ p<-with_progress({
 
       if(!file.exists(save_name)|overwrite3==T){
         
-        haz_crop_classes<-haz_class[crop==crop_focus & description == severity_class,gsub("[.]tif","",filename)]
-        files<-haz_class_file_tab[model==model_k & hazard %in% haz_crop_classes,file]
+        haz_crop_classes<-gsub("_","-",haz_class[crop==crop_focus & description == severity_class,gsub("[.]tif","",filename)])
+        files<-haz_freq_file_tab[model==model_k & hazard2 %in% haz_crop_classes,.(file,layer_name)]
         
-        if(length(files)<length(haz_crop_classes)){
+        if(length(files$file)<length(haz_crop_classes)){
           stop("Classified hazard files are missing in step 3.")
         }
         
-        layer_names<-unlist(lapply(1:length(files),FUN=function(k){
-          scen_name<-haz_class_scenarios[files[[k]]]
-          h_name<-haz_class_crop[k,haz_filename]
-          paste0(scen_name,"-",h_name)
-        }))
-        
-        files<-haz_class_files[unlist(files)]
-        
-        if(any(table(layer_names))>1){
+        if(any(table(files$layer_names))>1){
           stop("Non-unique layer names are present!")
         }
 
-        data<-terra::rast(file.path(haz_time_risk_dir,files))
-        names(data)<-layer_names
+        data<-terra::rast(files$file)
+        names(data)<-files$layer_name
         
         terra::writeRaster(data,file=save_name,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
-        
+        rm(data)
+        gc()
         }
       }
     }
@@ -777,20 +752,13 @@ if(run4){
   cat(timeframe,"4) Calculate mean and sd across time series\n")
   
   # Create output folder
-  haz_mean_dir <- file.path(atlas_dirs$data_dir$haz_mean, timeframe)
   if (!dir.exists(haz_mean_dir)) dir.create(haz_mean_dir, recursive = TRUE)
-  
-  haz_sd_dir <- file.path(atlas_dirs$data_dir$haz_sd, timeframe)
-  if (!dir.exists(haz_sd_dir)) dir.create(haz_sd_dir, recursive = TRUE)
-  
+
 # List timeseries hazard files
 files<-list.files(haz_timeseries_dir,".tif",full.names = T)
 
-# Remove annual sd estimates
-files<-files[!grepl("ENSEMBLEsd",files)]
-
-# Limit to ensemble or historical data
-#files<-grep("ENSEMBLE|historical",files,value=T)
+# Remove ensemble 
+files<-files[!grepl("ENSEMBLE",files)]
 
 set_parallel_plan(n_cores=worker_n,use_multisession=F)
 
@@ -805,19 +773,21 @@ p<-with_progress({
     
   foreach(i = 1:length(files)) %dopar% {
     
-    file<-paste0(haz_mean_dir,"/",basename(files[i]))
-    file2<-paste0(haz_sd_dir,"/",basename(files[i]))
-    
-    if((!file.exists(file))|overwrite4){
-      data<-terra::rast(files[i])
-      data<-terra::mean(data,na.rm=T)
-      terra::writeRaster(data,filename = file,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
-      
-      data<-terra::app(data,fun=sd,na.rm=T)
-      terra::writeRaster(data,filename = file2,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
-    }
     # Display progress
     progress(sprintf("File %d/%d", i, length(files)))
+    
+    file_mean<-paste0(haz_mean_dir,"/",gsub("[.]tif","_mean.tif",basename(files[i])))
+    file_sd<-paste0(haz_mean_dir,"/",gsub("[.]tif","_sd.tif",basename(files[i])))
+    
+    if((!file.exists(file_mean))|overwrite4){
+      data<-terra::rast(files[i])
+      data<-terra::mean(data,na.rm=T)
+      terra::writeRaster(data,filename = file_mean,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
+      
+      data<-terra::app(data,fun=sd,na.rm=T)
+      terra::writeRaster(data,filename = file_sd,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
+    }
+
   }
 
 })
@@ -826,7 +796,7 @@ plan(sequential)
 
 cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
 
-  # 4.1) Calculate change in mean values #####
+  # 4.1) (Disabled) Calculate change in mean values #####
   if(F){
   files<-list.files(haz_mean_dir,".tif",full.names = T)
   files<-files[!grepl("change",files)]
@@ -861,32 +831,37 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
 
 }
 # 5) Interactions ####
-  # 5.1) List and rename classified hazard rasters ####
+  ## 5.1) List and rename classified hazard rasters ####
  
   # Restructure names of classified hazard files so they can be easily searched for scenario x timeframe x hazard x threshold
   haz_class_files<-list.files(haz_time_class_dir,full.names = T)
 
   haz_class_files2<-basename(haz_class_files)
-  haz_class_files2<-gsub("_max_max","max",haz_class_files2)
-  haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
-  haz_class_files2<-gsub("_max","",haz_class_files2)
-  haz_class_files2<-gsub("_mean","",haz_class_files2)
-  haz_class_files2<-gsub("_sum","",haz_class_files2)
-  haz_class_files2<-gsub("max","_max",haz_class_files2)
-  haz_class_files2<-gsub("mean","_mean",haz_class_files2)
-  haz_class_files2<-gsub("historical_","historic-historic-",haz_class_files2)
-  haz_class_files2<-gsub("ssp245_ENSEMBLE_mean_","ssp245-",haz_class_files2)
-  haz_class_files2<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",haz_class_files2)
-  haz_class_files2<-gsub("2021_2040_","2021_2040-",haz_class_files2)
-  haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
   
-  # 5.2) Calculate interactions ####
+  #haz_class_files2<-gsub("_max_max","max",haz_class_files2)
+  #haz_class_files2<-gsub("_mean_mean","mean",haz_class_files2)
+  #haz_class_files2<-gsub("_max","",haz_class_files2)
+  #haz_class_files2<-gsub("_mean","",haz_class_files2)
+  #haz_class_files2<-gsub("_sum","",haz_class_files2)
+  #haz_class_files2<-gsub("max","_max",haz_class_files2)
+  #haz_class_files2<-gsub("mean","_mean",haz_class_files2)
+  #haz_class_files2<-gsub("historical_","historic-historic-",haz_class_files2)
+  #haz_class_files2<-gsub("ssp245_ENSEMBLE_mean_","ssp245-",haz_class_files2)
+  #haz_class_files2<-gsub("ssp585_ENSEMBLE_mean_","ssp585-",haz_class_files2)
+  #haz_class_files2<-gsub("2021_2040_","2021_2040-",haz_class_files2)
+  #haz_class_files2<-gsub("2041_2060_","2041_2060-",haz_class_files2)
+  
+  ## 5.2) Calculate interactions ####
 
   # Dev Note: At the moment this section handles moderate, severe and extreme hazards separately,
   #           Can we upgrade this? so instead of 1/0 classification we can merge the hazard severity class to have 3/2/1/0
 
+  # To Do:
+  # 1) Stack hazards instead of making folders
+  # 2) Incorporate model into stack name "model_haz1+haz2+haz3.tif"
+  
+  
   # Create output folder
-  haz_time_int_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_int, timeframe)
   if (!dir.exists(haz_time_int_dir)) dir.create(haz_time_int_dir, recursive = TRUE)
   
   
@@ -1015,7 +990,14 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
  }
  
   }
-  # 5.3) Per crop combine hazards into a single file #####
+    ### 5.2.1) !!!To Do!!! Calculate Ensemble ####
+  ## 5.3) Per crop combine hazards into a single file #####
+  
+  # To Do: 
+  # 1) Update workflow to use tif stacks
+  # 2) Interactions that are invariant across crops should only be calculated once
+  # 3) Split interactions into separate files rather than combining into one
+  
 if(run5.3){
   cat("5.3) Per crop combine hazards into a single file\n")
   
@@ -1094,3 +1076,86 @@ if(run5.3){
 }
 }
   
+    
+# 6) Upload outputs ####
+    # 6.1) (not implemented) Classified hazards ####
+    # 6.2) Hazard Freq ####
+    if(upload2){
+      cat("Uploading hazard frequency tifs\n")
+      cat("upload_overwrite2=",upload_overwrite2,"upload_delete2=",upload_delete2,"\n")
+      haz_risk_dir <- file.path(atlas_dirs$data_dir$hazard_risk, timeframe)
+      
+      for(tx in 1:length(timeframes)){
+
+        timeframe<-timeframes(tx)
+        cat(timeframe,tx,"/",length(timeframes),"\n")
+        
+        s3_bucket<-file.path(atlas_dirs$s3_dir$hazard_risk,timeframe)
+        cat("uploading to:",s3_bucket,"\n")
+        
+        if(upload_delete2){
+          cat("deleting existing tif files\n")
+          # List all files in the directory
+          all_files <- s3_ls(s3_bucket, recursive = TRUE)
+          
+          # Filter to only .tif files
+          tif_files <- all_files[grepl("[.]tif$", all_files)]
+          
+          # Delete them
+          s3_unlink(tif_files)
+          }
+        
+        # Local files
+        local_files<-list.files(haz_risk_dir,"[.]tif$",full.names = T)
+        
+        cat("uploading",length(local_files),"tif files\n")
+        
+        upload_files_to_s3(files=local_files,
+                           selected_bucket=s3_bucket,
+                           max_attempts = 3,
+                           workers=worker_n_upload,
+                           convert2cog = F,
+                           mode=permission,
+                           overwrite=upload_overwrite2)
+      }
+    }
+    # 6.3) Crop hazard frequency stacks ####
+    if(upload3){
+      cat("Uploading hazard frequency crop parquets\n")
+      cat("upload_overwrite3=",upload_overwrite3,"upload_delete3=",upload_delete3,"\n")
+      haz_risk_dir <- file.path(atlas_dirs$data_dir$hazard_risk, timeframe)
+      
+      for(tx in 1:length(timeframes)){
+        
+        timeframe<-timeframes(tx)
+        cat(timeframe,tx,"/",length(timeframes),"\n")
+        
+        s3_bucket<-file.path(atlas_dirs$s3_dir$hazard_risk,timeframe)
+        cat("uploading to:",s3_bucket,"\n")
+        
+        if(upload_delete3){
+          cat("deleting existing tif files\n")
+          # List all files in the directory
+          all_files <- s3_ls(s3_bucket, recursive = TRUE)
+          
+          # Filter to only .tif files
+          tif_files <- all_files[grepl("[.]parquet$", all_files)]
+          
+          # Delete them
+          s3_unlink(tif_files)
+        }
+        
+        # Local files
+        local_files<-list.files(haz_risk_dir,"[.]parquet$",full.names = T)
+        
+        cat("uploading",length(local_files),"parquet files\n")
+        
+        upload_files_to_s3(files=local_files,
+                           selected_bucket=s3_bucket,
+                           max_attempts = 3,
+                           workers=worker_n_upload,
+                           convert2cog = F,
+                           mode=permission,
+                           overwrite=upload_overwrite3)
+      }
+    }
