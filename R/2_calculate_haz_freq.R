@@ -949,7 +949,7 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
            # Display progress
            cat("Combination:",i,"/",nrow(combinations),"| Scenario x Model:",l,"/",nrow(scenarios_x_models),"                   \r")
 
-           combo_binary[,lyr_names:=paste0(scenarios_x_models[l,scen_x_time],"_",combo_name)]
+           combo_binary[,lyr_names:=paste0(scenarios_x_models[l,scen_mod_time],"_",combo_name)]
            save_file<-file.path(haz_time_int_dir,paste0(scenarios_x_models[l,scen_mod_time],"_",paste0(combos,collapse = "+"),".tif"))
   
            if(!file.exists(save_file)|overwrite5==T){
@@ -972,31 +972,28 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
             haz[["wet"]]<-haz[["wet"]]*100
             
             haz_sum<-terra::rast(lapply(1:nlyr(haz[[1]]),FUN=function(m){
-              sum(terra::rast(lapply(haz,"[[",m)),na.rm=T)
+              sum(terra::rast(lapply(haz,"[[",m)))
             }))
             
             names(haz_sum)<-names(haz[[1]])
 
             # Any haz
-            if(!file.exists(save_name_any)|overwrite5==T){
-              any_haz <- terra::ifel(haz_sum >= 1 & haz_sum <= 111, 1, NA)
-              any_haz<-terra::mean(any_haz,na.rm=T)
-              names(any_haz)<-paste0(scenarios_x_models[l,scen_x_time],"_any")
-            }
+            any_haz <- terra::ifel(haz_sum >= 1 & haz_sum <= 111, 1, 0)
+            any_haz_mean<-terra::mean(any_haz,na.rm=T)
+            names(any_haz_mean)<-paste0(scenarios_x_models[l,scen_mod_time],"_any")
             
-             # Interactions
+            # Interactions
             int<-terra::rast(pbapply::pblapply(1:nrow(combo_binary),FUN=function(a){
-              if(combo_binary[a,!file.exists(save_names)]|overwrite5==T){
+              if(!file.exists(save_name_any)|overwrite5==T){
                 data<-int_risk(data=haz_sum,interaction_mask_vals = combo_binary[-a,value],lyr_name = combo_binary[a,lyr_names])
               }
             }))
             
-            int_any<-c(any_haz,int)
+            int_any<-c(any_haz_mean,int)
             
             terra::writeRaster(int_any,filename =  save_file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
             
-            
-            rm(data,haz,haz_sum,int,any_haz,int_any)
+            rm(data,haz,haz_sum,int,any_haz,any_haz_mean,int_any)
             gc()
            }
          }
