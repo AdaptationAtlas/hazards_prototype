@@ -3084,25 +3084,26 @@ set_parallel_plan <- function(n_cores,use_multisession=F) {
 #' }
 #' @export
 check_tif_integrity <- function(dir_path,
-                                recursive       = TRUE,
-                                pattern         = "*.tif",
-                                n_workers_files = max(1L, future::availableCores() - 1L),
+                                recursive         = TRUE,
+                                pattern           = "*.tif",
+                                n_workers_files   = max(1L, future::availableCores() - 1L),
                                 n_workers_folders = 1,
-                                use_multisession = FALSE,
-                                delete_corrupt  = FALSE) {
+                                use_multisession  = FALSE,
+                                delete_corrupt    = FALSE) {
   
-  requireNamespace("data.table",    quietly = TRUE)
-  requireNamespace("future.apply",  quietly = TRUE)
-  requireNamespace("progressr",     quietly = TRUE)
-  requireNamespace("terra",         quietly = TRUE)
+  requireNamespace("data.table",   quietly = TRUE)
+  requireNamespace("future.apply", quietly = TRUE)
+  requireNamespace("progressr",    quietly = TRUE)
+  requireNamespace("terra",        quietly = TRUE)
   
-  # ---- 1.  Gather files ------------------------------------------------------
-  
-  files<-list_files_parallel (root_dir = dir_path,
-                              glob             = pattern,
-                              recurse          = recursive,
-                              n_workers        = n_workers_folders,
-                              use_multisession = use_multisession)
+  # ---- 1. Gather files ------------------------------------------------------
+  files <- list_files_parallel(
+    root_dir         = dir_path,
+    glob             = pattern,
+    recurse          = recursive,
+    n_workers        = n_workers_folders,
+    use_multisession = use_multisession
+  )
   
   if (length(files) == 0L) {
     message("No files matched `pattern` in ", dir_path)
@@ -3113,29 +3114,20 @@ check_tif_integrity <- function(dir_path,
     ))
   }
   
-  # ---- 2.  Parallel plan + progressr setup ----------------------------------
-  
-  # Use helper already present in the environment
-  set_parallel_plan(n_cores = n_workers_files,
-                    use_multisession = use_multisession)
-  
+  # ---- 2. Parallel plan + progressr setup -----------------------------------
+  set_parallel_plan(n_cores = n_workers_files, use_multisession = use_multisession)
   progressr::handlers(global = TRUE)
   progressr::handlers("progress")
   
-  # ---- 3.  Integrity check ---------------------------------------------------
+  # ---- 3. Integrity check ---------------------------------------------------
   results <- progressr::with_progress({
     p <- progressr::progressor(along = files)
-    
     future.apply::future_lapply(files, function(f) {
       res <- tryCatch({
-        terra::rast(f)  # attempt to open
-        data.table::data.table(file = f,
-                               success = TRUE,
-                               error_message = NA_character_)
+        terra::rast(f)
+        data.table::data.table(file = f, success = TRUE, error_message = NA_character_)
       }, error = function(e) {
-        data.table::data.table(file = f,
-                               success = FALSE,
-                               error_message = as.character(e))
+        data.table::data.table(file = f, success = FALSE, error_message = as.character(e))
       })
       p()
       res
@@ -3143,10 +3135,9 @@ check_tif_integrity <- function(dir_path,
   })
   
   plan(sequential)
-  
   results <- data.table::rbindlist(results)
   
-  # ---- 4.  Reporting + optional deletion ------------------------------------
+  # ---- 4. Report and optional delete ----------------------------------------
   n_failed <- results[success == FALSE, .N]
   message("Checked ", nrow(results), " file(s); ", n_failed, " failed.")
   
@@ -3160,7 +3151,6 @@ check_tif_integrity <- function(dir_path,
   
   return(results)
 }
-
 
 #' @title list_files_parallel
 #'
@@ -3205,58 +3195,52 @@ check_tif_integrity <- function(dir_path,
 list_files_parallel <- function(root_dir,
                                 glob             = "*tif",
                                 recurse          = TRUE,
-                                leaf_only        = TRUE,
                                 n_workers        = 1,
                                 use_multisession = FALSE) {
   
-  requireNamespace("fs",            quietly = TRUE)
-  requireNamespace("future.apply",  quietly = TRUE)
-  requireNamespace("progressr",     quietly = TRUE)
-  requireNamespace("pbapply",     quietly = TRUE)
+  requireNamespace("fs",           quietly = TRUE)
+  requireNamespace("future.apply", quietly = TRUE)
+  requireNamespace("progressr",    quietly = TRUE)
+  requireNamespace("pbapply",      quietly = TRUE)
   
-  # ---- 1. list first‑level folders ------------------------------------------
-  if(leaf_only){
-    folders<-leaf_dirs(root_dir, recurse = recurse, full.names = TRUE)
-  }else{
-    folders<-list.dirs(root_dir, recursive = recurse, full.names = TRUE)
+  # ---- 1. Check if root folder has files matching the glob ------------------
+  root_matches <- fs::dir_ls(path = root_dir, glob = glob, recurse = FALSE)
+  folders <- list.dirs(root_dir, recursive = recurse, full.names = TRUE)
+  
+  # Always include root folder if it has relevant files
+  if (length(root_matches) > 0L) {
+    folders <- unique(c(root_dir, folders))
   }
   
-  folders<-folders[!grepl("ipynb_checkpoints",folders)]
-  if (length(folders) == 0L) {
-    warning("No sub‑folders found in ", root_dir)
+  folders <- folders[!grepl("ipynb_checkpoints", folders)]
+  if (length(folders) == 0L & length(root_matches)==0) {
+    warning("No valid files found in ", root_dir)
     return(character(0))
   }
   
-  # ---- 2. parallel plan & progress bar --------------------------------------
-  if(n_workers>1){
+  # ---- 2. Parallel or sequential folder scan --------------------------------
+  if (n_workers > 1) {
     set_parallel_plan(n_cores = n_workers, use_multisession = use_multisession)
-    
     progressr::handlers(global = TRUE)
     progressr::handlers("progress")
     
-    # ---- 3. parallel listing ---------------------------------------------------
     files_nested <- progressr::with_progress({
       p <- progressr::progressor(steps = length(folders))
-      
       future.apply::future_lapply(seq_along(folders), function(i) {
-        p(sprintf("Processing folder %d of %d: %s",
-                  i, length(folders), folders[i]))
-        fs::dir_ls(path = folders[i], glob = glob, recurse = recurse)
+        p(sprintf("Scanning folder %d of %d: %s", i, length(folders), folders[i]))
+        fs::dir_ls(path = folders[i], glob = glob, recurse = FALSE)
       })
     })
     
     plan(sequential)
-  }else{
-    
-    files_nested<-pblapply(seq_along(folders), function(i) {
-      fs::dir_ls(path = folders[i], glob = glob, recurse = recurse)
+  } else {
+    files_nested <- pbapply::pblapply(seq_along(folders), function(i) {
+      fs::dir_ls(path = folders[i], glob = glob, recurse = FALSE)
     })
   }
   
-  # ---- 4. flatten & return ---------------------------------------------------
   unlist(files_nested, use.names = FALSE)
 }
-
 
 #' @title leaf_dirs
 #'
