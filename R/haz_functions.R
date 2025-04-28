@@ -3131,7 +3131,7 @@ check_tif_integrity <- function(dir_path,
       })
       p()
       res
-    })
+    },future.seed = TRUE )
   })
   
   plan(sequential)
@@ -3229,7 +3229,7 @@ list_files_parallel <- function(root_dir,
       future.apply::future_lapply(seq_along(folders), function(i) {
         p(sprintf("Scanning folder %d of %d: %s", i, length(folders), folders[i]))
         fs::dir_ls(path = folders[i], glob = glob, recurse = FALSE)
-      })
+      },future.seed = TRUE)
     })
     
     plan(sequential)
