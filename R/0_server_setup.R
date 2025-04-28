@@ -333,19 +333,20 @@ worker_n <- 20
   bucket_name <- "http://digital-atlas.s3.amazonaws.com"
   bucket_name_s3 <- "s3://digital-atlas"
   
-  atlas_dirs$s3_dir <- bucket_name_s3
+  atlas_dirs$s3_dir <- list(bucket_name_s3)
   
-  # Define subdirectories under 's3_dir'
+    # Define subdirectories under 's3_dir'
   subdirs <- c(
     "hazard_timeseries",
+    "haz_time_risk_dir",
     "hazard_risk"
   )
   
-  # Assign paths for each subdir key
-  for (subdir in subdirs) {
-    atlas_dirs$s3_dir[[subdir]] <- file.path(atlas_dirs$data_dir[[1]], subdir)
+  for (sub in subdirs) {
+    atlas_dirs$s3_dir[[sub]] <- 
+      file.path(atlas_dirs$s3_dir[[1]], sub)
   }
-  
+
   hazard_timeseries_s3 <- atlas_dirs$s3_dir$hazard_timeseries
   
   ### 2.2.2) Create an S3FileSystem object for anonymous read access #### 
