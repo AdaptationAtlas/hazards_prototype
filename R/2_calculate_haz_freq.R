@@ -324,7 +324,7 @@ cat("Starting 2_calculate_haz_freq.R script/n")
   
   ## 0.3) Set flow controls and overwrite parameters ####
   # Classify hazards
-    run1<-T
+    run1<-F
     overwrite1<-F
     worker_n1<-20
     multisession1<-T
@@ -340,7 +340,7 @@ cat("Starting 2_calculate_haz_freq.R script/n")
     upload_delete2<-T # Deletes all existing files in s3
     upload_overwrite2<-T # Overwrites existing files (does not delete anything)
   # Make crop stacks for risk freq
-    run3<-F
+    run3<-T
     check3<-T
     overwrite3<-F
     worker_n3<-20
@@ -362,8 +362,11 @@ cat("Starting 2_calculate_haz_freq.R script/n")
     worker_n_upload<-20
     permission<-"public-read"
     
+    timeframes<-timeframe_choices[1]
+    
     cat("Control and overwrite settings:\n")
-    cat("run1 =",run1,"overwrite =",overwrite1,"workers1 =",worker_n1,"multisession1=",multisession1,"upload1=",upload1,"upload_overwrite1=",upload_overwrite1,
+    cat("timeframes = ", timeframes,
+        "\nrun1 =",run1,"overwrite =",overwrite1,"workers1 =",worker_n1,"multisession1=",multisession1,"upload1=",upload1,"upload_overwrite1=",upload_overwrite1,
         "\nrun2 =",run2,"check2=",check2,"overwrite =",overwrite2,"workers2 =",worker_n2,"multisession2=",multisession2,"upload2=",upload2,"upload_overwrite2=",upload_overwrite2,"upload_delete2=",upload_delete2,
         "\nrun3 = ",run3,"check3=",check3,"overwrite =",overwrite3,"workers3 =",worker_n3,"multisession3=",multisession3,"upload3=",upload3,"upload_overwrite3=",upload_overwrite3,"upload_delete3=",upload_delete3,
         "\nrun4 =",run4,"overwrite =",overwrite4,
@@ -371,7 +374,7 @@ cat("Starting 2_calculate_haz_freq.R script/n")
         "\nrun5.3 = ",run5.3,"overwrite =",overwrite5,
         "\nupload worker n=",worker_n_upload,"permission=",permission,"\n")
     
-    timeframes<-timeframe_choices
+
 
   ## 0.4) Download hazard timeseries from s3 bucket (if required) ####
    # Dev Note: needs to be within timeframe loop? ####
@@ -528,7 +531,7 @@ cat("Starting 2_calculate_haz_freq.R script/n")
     
 # Start timeframe loop ####
 for(tx in 1:length(timeframes)){
-  timeframe<-timeframes(tx)
+  timeframe<-timeframes[tx]
   cat("Processing ",timeframe,tx,"/",length(timeframes),"\n")
   
   haz_timeseries_dir<-file.path(indices_dir2,timeframe)
@@ -636,7 +639,7 @@ p<-with_progress({
   # Define the progress bar
   progress <- progressr::progressor(along = 1:length(files))
     
-  invisible(future.apply::future_lapply(1:length(files),fun=function(i) {
+  invisible(future.apply::future_lapply(1:length(files),FUN=function(i) {
     #for(i in 1:length(files)){
     # Display progress
     progress(sprintf("File %d/%d", i, length(files)))
@@ -707,8 +710,13 @@ haz_freq_file_tab[,hazard:=gsub("[.]tif","",hazard)
 
 models<-haz_freq_file_tab[,unique(model)]
 
+
 # List crops (inc. livestock)
 crops<-haz_class[,unique(crop)]
+
+haz_class_df<-data.frame(haz_class)
+haz_freq_file_tab<-data.frame(haz_freq_file_tab)
+
 
 set_parallel_plan(n_cores=worker_n3,use_multisession=multisession3)
 
@@ -721,7 +729,7 @@ p<-with_progress({
   # Define the progress bar
   progress <- progressr::progressor(along = 1:length(crops))
   
-  invisible(future.apply::future_lapply(1:length(crops),fun=function(i){
+  invisible(future.apply::future_lapply(1:length(crops),FUN=function(i){
     # Display progress
     progress(sprintf("Crop %d/%d", i, length(crops)))
     
@@ -729,7 +737,7 @@ p<-with_progress({
     crop_focus<-crops[i]
     
     for(j in 1:nrow(severity_classes)){
-      severity_class<-severity_classes[j,class]
+      severity_class<-severity_classes[[j,"class"]]
       
       for(k in 1:length(models)){
       model_k<-models[k]
@@ -741,8 +749,13 @@ p<-with_progress({
 
       if(!file.exists(save_name)|overwrite3==T){
         
-        haz_crop_classes<-gsub("_","-",haz_class[crop==crop_focus & description == severity_class & index_name2 %in% interaction_haz,gsub("[.]tif","",filename)])
-        files<-haz_freq_file_tab[model==model_k & hazard2 %in% haz_crop_classes,.(file,layer_name)]
+        filename<-haz_class_df[haz_class$crop==crop_focus & 
+                                 haz_class$description == severity_class & 
+                                 haz_class$index_name2 %in% interaction_haz,"filename"]
+        haz_crop_classes<-gsub("_","-",gsub("[.]tif","",filename))
+        
+        files<-haz_freq_file_tab[haz_freq_file_tab$model==model_k & 
+                                   haz_freq_file_tab$hazard2 %in% haz_crop_classes,c("file","layer_name")]
         
         if(length(files$file)<length(haz_crop_classes)){
           stop("Classified hazard files are missing in step 3.\n","Crop: ",i,"/",length(crops)," ",crop_focus," | severity: ",j,"/",length(severity_classes$class)," ",severity_class,
@@ -1116,7 +1129,8 @@ if(run5.3){
   
 }
 }
-  
+
+cat("Script 2 -  timeframe loop completed.\n")  
     
 # 6) Upload outputs ####
     # 6.1) (not implemented) Classified hazards ####
