@@ -361,6 +361,7 @@ cat("Starting 2_calculate_haz_freq.R script/n")
   # Make crop stacks for risk freq
     run3<-T
     check3<-T
+    round3<-NULL
     overwrite3<-F
     worker_n3<-20
     multisession3<-T
@@ -375,10 +376,9 @@ cat("Starting 2_calculate_haz_freq.R script/n")
   # Calculate interactions
     run5.2<-F
     check5.2<-T
-    round5.2<-NULL
+    round5.2<-3
     do_ensemble5.2<-T
     run5.3<-F
-    round5.3<-NULL
     overwrite5<-F
     upload5<-F
   # Set workers & permission for uploads
@@ -391,13 +391,11 @@ cat("Starting 2_calculate_haz_freq.R script/n")
     cat("timeframes = ", timeframes,
         "\nrun1 =",run1,"overwrite =",overwrite1,"workers1 =",worker_n1,"multisession1=",multisession1,"upload1=",upload1,"upload_overwrite1=",upload_overwrite1,
         "\nrun2 =",run2,"check2=",check2,"overwrite =",overwrite2,"workers2 =",worker_n2,"multisession2=",multisession2,"upload2=",upload2,"upload_overwrite2=",upload_overwrite2,"upload_delete2=",upload_delete2,
-        "\nrun3 = ",run3,"check3=",check3,"overwrite =",overwrite3,"workers3 =",worker_n3,"multisession3=",multisession3,"upload3=",upload3,"upload_overwrite3=",upload_overwrite3,"upload_delete3=",upload_delete3,
+        "\nrun3 = ",run3,"round3=",round3,"check3=",check3,"overwrite =",overwrite3,"workers3 =",worker_n3,"multisession3=",multisession3,"upload3=",upload3,"upload_overwrite3=",upload_overwrite3,"upload_delete3=",upload_delete3,
         "\nrun4 =",run4,"overwrite =",overwrite4,
         "\nrun5.2 =",run5.2,"check5.2=",check5.2,"round5.2=",round5.2,"overwrite =",overwrite5,"do_ensemble5.2=",do_ensemble5.2,
-        "\nrun5.3 = ",run5.3,"round5.3=",round5.3,"overwrite =",overwrite5,
+        "\nrun5.3 = ",run5.3,"overwrite =",overwrite5,
         "\nupload worker n=",worker_n_upload,"permission=",permission,"\n")
-    
-
 
   ## 0.4) Download hazard timeseries from s3 bucket (if required) ####
    # Dev Note: needs to be within timeframe loop? ####
@@ -672,6 +670,9 @@ p<-with_progress({
     if((!file.exists(file))|overwrite2){
       data<-terra::rast(files[i])
       data <- terra::mean(data, na.rm = TRUE)    
+      if(!is.null(round3)){
+        data<-round(data,round3)
+      }
       terra::writeRaster(data,filename = file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
       rm(data)
       gc()
@@ -966,8 +967,8 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
   p<-with_progress({
     # Define the progress bar
     progress <- progressr::progressor(along = 1:nrow(combinations))
-  
-    invisible(future_apply::future.lapply(1:nrow(combinations), FUN=function(i){
+   
+    invisible(future.apply::future_lapply(1:nrow(combinations), FUN=function(i){
     
     # Display progress
     progress(sprintf("Combination %d/%d", i, nrow(combinations)))
@@ -999,7 +1000,7 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
            # Display progress
            cat("Combination:",i,"/",nrow(combinations),
                "| Scenario x Time:",l,"/",length(unique(scenarios_x_models$scen_x_time)),
-               "| Model:",k,"/",length(unique(scenarios_x_models$model)),"                   \r")
+               "| Model:",k,"/",length(unique(model_options)),"                   \r")
 
            combo_binary[,lyr_names:=paste0(scen_mod_time_choice,"_",combo_name)]
            save_file<-file.path(haz_time_int_dir,paste0(scen_mod_time_choice,"_",paste0(combos,collapse = "+"),".tif"))
@@ -1040,7 +1041,9 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
             
             int_any<-c(any_haz_mean,int)
             
+            if(!is.null(round5.2)){
             int_any<-round(int_any,round5.2)
+            }
             
             terra::writeRaster(int_any,filename =  save_file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
             
@@ -1059,21 +1062,26 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
                                                         scenarios_x_models$timeframe==time_choice,"scen_mod_time"]
              
              ensemble_files<-file.path(haz_time_int_dir,paste0(scen_mod_time_choice,"_",paste0(combos,collapse = "+"),".tif"))
-             save_file_mean<-file.path(paste0(scenario_choice,"-ENSEMBLEmean-",time_choice),paste0(scen_mod_time_choice,"_",paste0(combos,collapse = "+"),".tif"))
-             save_file_sd<-file.path(paste0(scenario_choice,"-ENSEMBLEsd-",time_choice),paste0(scen_mod_time_choice,"_",paste0(combos,collapse = "+"),".tif"))
+             save_file_mean<-file.path(haz_time_int_dir,paste0(scenario_choice,"_ENSEMBLEmean_",time_choice,"_",paste0(combos,collapse = "+"),".tif"))
+             save_file_sd<-file.path(haz_time_int_dir,paste0(scenario_choice,"_ENSEMBLEsd_",time_choice,"_",paste0(combos,collapse = "+"),".tif"))
              
              if(!file.exists(save_file_mean)|overwrite5){
                ensemble_stack <- lapply(ensemble_files,terra::rast) 
                
                ensemble_mean<-terra::rast(lapply(1:nlyr(ensemble_stack[[1]]),FUN=function(j){
                  ensemble_dat<-terra::rast(lapply(ensemble_stack,"[[",j)) 
-                 round(mean(ensemble_dat),round5.2)
+                 mean(ensemble_dat)
                }))
                
                ensemble_sd<-terra::rast(lapply(1:nlyr(ensemble_stack[[1]]),FUN=function(j){
                  ensemble_dat<-terra::rast(lapply(ensemble_stack,"[[",j)) 
-                 round(terra::app(ensemble_dat, fun = sd),round5.2)
+                 terra::app(ensemble_dat, fun = sd)
                }))
+               
+               if(!is.null(round5.2)){
+                 ensemble_mean<-round(ensemble_mean,round5.2)
+                 ensemble_sd<-round(ensemble_sd,round5.2)
+               }
                
                ensemble_names<-names(ensemble_stack[[1]])
                ensemble_names_mean<-gsub(paste0(model_options,collapse="|"),"ENSEMBLEmean",ensemble_names)
@@ -1089,9 +1097,8 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
                gc()
              }
            }
-         
-         }
-    }))
+           }
+          }))
     })
     
   plan(sequential)
@@ -1121,12 +1128,8 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
      error_file<-file.path(error_dir,paste0(timeframe,"_read-errors.csv"))
      fwrite(result,error_file)
    }
- 
-   
-   
  }
- 
-    }
+ }
   
   ## 5.3) Per crop combine hazards into a single file #####
   
@@ -1139,24 +1142,19 @@ if(run5.3){
   cat("5.3) Per crop, combine hazards into a single file\n")
   
   # Restructure names of classified hazard files so they can be easily searched for scenario x timeframe x hazard x threshold
-  haz_int_files<-list.files(haz_time_class_dir,full.names = T)
-  haz_int_files<-haz_int_files[!grepl("ENSEMBLE",haz_int_files)]
-  haz_int_files2<-basename(haz_int_files)
-  
+  haz_int_files<-list.files(haz_time_int_dir,full.names = T)
+
   # Split the file elements
   split_elements <- strsplit(basename(haz_int_files), "_")
   haz_int_file_tab <- rbindlist(lapply(split_elements, as.list))
   colnames(haz_int_file_tab)<-c("scenario","model","timeframe","hazard")
   haz_int_file_tab[,hazard:=gsub("[.]tif","",hazard)
-  ][,file:=haz_int_files
-  ][,hazard2:=unlist(tstrsplit(hazard,"-",keep=1))
-  ][str_count(hazard,"-")>2,stat:=unlist(tstrsplit(hazard,"-",keep=2))
-  ][!is.na(stat),hazard2:=paste0(hazard2,"-",stat)
-  ][,hazard2:=paste0(hazard2,"-",tail(unlist(strsplit(hazard,"-")),1)),by=.I
-  ][,layer_name:=paste(c(scenario,timeframe,hazard2),collapse="_"),by=.I]
+                   ][,file:=haz_int_files]
+                     #][,layer_name:=paste(c(scenario,timeframe,hazard2),collapse="_"),by=.I]
   
+  model_options<-haz_int_file_tab[,unique(model)]
   
-  model_options<-c(unique(scenarios_x_models[,"model"])
+  haz_int_file_tab<-data.frame(haz_int_file_tab)
   
   set_parallel_plan(n_cores=worker_n,use_multisession=F)
   
@@ -1182,17 +1180,21 @@ if(run5.3){
         # Display progress
         cat("crop_choice:",i,"/",length(combinations_crops),
             "| sev_choice:",j,"/",nrow(severity_classes),
-            "| model_choice:",k,"/",length(model_choice),"              \r")
+            "| model_choice:",k,"/",length(model_options),"              \r")
   
         save_file<-paste0(haz_risk_dir,"/",crop_choice,"_",sev_choice,"_",model_choice,"_int.tif")
   
         if(!file.exists(save_file)|overwrite5==T){
           subset<-combinations_ca[combinations_ca$crop==crop_choice & 
-                                    combinations_ca$severity_class==sev_choice]
+                                    combinations_ca$severity_class==sev_choice,]
           
           data<-terra::rast(lapply(1:nrow(subset),FUN=function(k){
-            files<-list.files(subset[k,folder],full.names = T)
+            
+            
+            files<-haz_int_file_tab[haz_int_file_tab$hazard %in% subset$combo_name_simple2[k],"file"]
             data<-terra::rast(files)
+            
+            # Dev note: THIS NAMING SECTION NEEDS TO BE UPDATED/CHECK ####
             names(data)<-paste0(names(data),"-",subset[k,combo_name_simple],"-",combinations_crops[i],"-",subset[k,severity_class])
             data
           }))
