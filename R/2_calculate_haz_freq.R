@@ -311,7 +311,6 @@ cat("Starting 2_calculate_haz_freq.R script/n")
        ##### 0.2.2.6.3) Per crop combine hazards into a single file ####
   
   combinations_ca<-rbind(combinations_c,combinations_a)[,combo_name:=paste0(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet,crop,severity_class)
-  ][,folder:=paste0(haz_time_int_dir,"/",combo_name)
   ][,severity_class:=tolower(severity_class)]
   
   combinations_ca[,heat1:=stringi::stri_replace_all_regex(heat,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,heat1:=unlist(tstrsplit(heat1,"-",keep=1))]
@@ -322,12 +321,12 @@ cat("Starting 2_calculate_haz_freq.R script/n")
   combinations_ca[,combo_name_simple2:=paste0(c(gsub("_","-",dry_simple[1]),
                                                gsub("_","-",heat_simple[1]),
                                                gsub("_","-",wet_simple[1])),collapse="+"),by=list(dry_simple,heat_simple,wet_simple)]
+ 
   combinations_ca[,combo_name_simple1:=paste0(c(dry_simple[1],heat_simple[1],wet_simple[1]),collapse="+"),by=list(dry_simple,heat_simple,wet_simple)]
   
-  combinations_crops<-combinations_ca[,unique(crop)]4
+  combinations_crops<-combinations_ca[,unique(crop)]
   
   combinations_ca<-data.frame(combinations_ca)
-  
   
      #### 0.2.2.7) Create a table of unique hazard thresholds ####
   Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,code2,direction,threshold)
@@ -376,10 +375,10 @@ cat("Starting 2_calculate_haz_freq.R script/n")
   # Calculate interactions
     run5.2<-F
     check5.2<-T
-    round5.2<-3
+    round5.2<-NULL
     do_ensemble5.2<-T
     run5.3<-F
-    round5.3<-3
+    round5.3<-NULL
     overwrite5<-F
     upload5<-F
   # Set workers & permission for uploads
@@ -555,7 +554,7 @@ cat("Starting 2_calculate_haz_freq.R script/n")
     
 # Start timeframe loop ####
 for(tx in 1:length(timeframes)){
-  tx<-timeframes[tx]
+  timeframe<-timeframes[tx]
   cat("Processing ",timeframe,tx,"/",length(timeframes),"\n")
   
   haz_timeseries_dir<-file.path(indices_dir2,timeframe)
@@ -1041,6 +1040,8 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
             
             int_any<-c(any_haz_mean,int)
             
+            int_any<-round(int_any,round5.2)
+            
             terra::writeRaster(int_any,filename =  save_file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
             
             rm(haz,haz_sum,int,any_haz,any_haz_mean,int_any)
@@ -1066,12 +1067,12 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
                
                ensemble_mean<-terra::rast(lapply(1:nlyr(ensemble_stack[[1]]),FUN=function(j){
                  ensemble_dat<-terra::rast(lapply(ensemble_stack,"[[",j)) 
-                 round(mean(ensemble_dat),3)
+                 round(mean(ensemble_dat),round5.2)
                }))
                
                ensemble_sd<-terra::rast(lapply(1:nlyr(ensemble_stack[[1]]),FUN=function(j){
                  ensemble_dat<-terra::rast(lapply(ensemble_stack,"[[",j)) 
-                 terra::app(ensemble_dat, fun = sd)
+                 round(terra::app(ensemble_dat, fun = sd),round5.2)
                }))
                
                ensemble_names<-names(ensemble_stack[[1]])
@@ -1081,8 +1082,8 @@ cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
                names(ensemble_mean)<-ensemble_names_mean
                names(ensemble_sd)<-ensemble_names_sd
                
-               terra::writeRaster(ensemble_mean,filename =  save_file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
-               terra::writeRaster(ensemble_sd,filename =  save_file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
+               terra::writeRaster(ensemble_mean,filename =  save_file_mean,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
+               terra::writeRaster(ensemble_sd,filename =  save_file_sd,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
                
                rm(ensemble_stack,ensemble_mean,ensemble_sd)
                gc()
