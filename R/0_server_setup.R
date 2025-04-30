@@ -145,6 +145,9 @@ worker_n <- 20
   
 # 2) Create directory structures ####
   ## 2.1) Local directories #####
+    library(jsonlite)
+    atlas_data <- read_json("metadata/data.json")
+
     ### 2.1.1) Outputs ######
     # Create a hierarchical list for top-level data directories
     atlas_dirs <- list()
@@ -222,7 +225,7 @@ worker_n <- 20
     }
     
     # Create new entries in atlas_dirs$data_dir for various directories beyond hazard outputs
-    atlas_dirs$data_dir$Boundaries         <- file.path(atlas_dirs$data_dir[[1]], "Boundaries")
+    atlas_dirs$data_dir$Boundaries         <- atlas_data$boundaries$alternate_paths$project
     atlas_dirs$data_dir$GLPS               <- file.path(atlas_dirs$data_dir[[1]], "GLPS")
     atlas_dirs$data_dir$cattle_heatstress  <- file.path(atlas_dirs$data_dir[[1]], "cattle_heatstress")
     atlas_dirs$data_dir$adaptive_capacity  <- file.path(atlas_dirs$data_dir[[1]], "adaptive_capacity")
@@ -358,11 +361,16 @@ worker_n <- 20
 
   ## 3.1) Geoboundaries #####
   update <- FALSE
-  
-  geo_files_s3 <- c(
-    file.path(bucket_name_s3, "boundaries/atlas-region_admin0_harmonized.parquet"),
-    file.path(bucket_name_s3, "boundaries/atlas-region_admin1_harmonized.parquet"),
-    file.path(bucket_name_s3, "boundaries/atlas-region_admin2_harmonized.parquet")
+
+  admin_levels <- atlas_data$boundaries$params$level
+  regions <- atlas_data$boundaries$params$region[[2]] # 1 = 'global', 2 = 'africa'
+
+  geo_files_s3 <- file.path(
+    bucket_name_s3,
+      glue(
+      atlas_data$boundaries$s3$path_pattern,
+      region = regions,
+      level = admin_levels)
   )
   
   geo_files_local <- file.path(boundaries_dir, basename(geo_files_s3))
