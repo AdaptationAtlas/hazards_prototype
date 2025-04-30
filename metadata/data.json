@@ -1,0 +1,54 @@
+{
+	"boundaries": {
+		"name": "Atlas Admin Boundaries",
+		"description": "Admin boundaries for the Atlas based on GAUL 2024. This includes admin 0, 1, and 2 levels.",
+		"s3": {
+			"bucket": "digital-atlas",
+			"prefix_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=analysis-ready/level={level}/",
+			"file_pattern": "atlas_gaul_a{level}_{region}.parquet"
+		},
+		"dimensions": {
+			"region": [
+				"global",
+				"africa"
+			],
+			"level": [
+				"0",
+				"1",
+				"2"
+			]
+		},
+		"alternate-paths": {
+			"project": "Data/boundaries/"
+		}
+	},
+	"mapspam_2020v1r2": {
+		"name": "Mapspam 2020v1r2",
+		"description": "",
+		"s3": {
+			"bucket": "digital-atlas",
+			"prefix_pattern": "digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/region={region}/processing=atlas-harmonized/variable={variable}/",
+			"file_pattern": "spam_{variable}.tif"
+		},
+		"dimensions": {
+			"region": [
+				"ssa",
+				"africa"
+			],
+			"variable": [
+				"harv-area_ha",
+				"vop_usd2015",
+				"vop_intld2015",
+				"yield_kgha"
+			],
+			"technology": [
+				"all",
+				"rf-all",
+				"irrigated"
+			]
+		},
+		"alternate-paths": {
+			"project": "Data/mapspam_2020v1r2/"
+		}
+	}
+}
