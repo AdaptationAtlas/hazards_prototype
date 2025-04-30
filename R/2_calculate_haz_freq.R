@@ -1,356 +1,347 @@
 # Please run 0_server_setup.R before executing this script
 cat("Starting 2_calculate_haz_freq.R script/n")
 # 0) Set-up workspace ####
-## 0.1) Load R functions & packages ####
-
-# List of packages to be loaded
-packages <- c("terra", 
-              "data.table", 
-              "future",
-              "future.apply",
-              "progressr",
-              "parallel",
-              "doFuture",
-              "httr",
-              "s3fs",
-              "stringr", 
-              "stringi",
-              "httr",
-              "xml2")
-
-pacman::p_load(packages,character.only=T)
-
-# Source functions from github
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
-
-## 0.2) Set up workspace #####
-### 0.2.1) Set number of workers ######
-worker_n<-parallel::detectCores()-1
-cat("System workers -1 = ",worker_n,"\n")
-worker_n<-15
-cat("worker_n = ",worker_n,"\n")
-
-# For section 5 - interactions this can be RAM heavy so reduce number of workers
-workers_int<- worker_n/2 
-cat("worker_n (interactions) = ",worker_n,"\n")
-
-### 0.2.2) Set parameters ######
-#### 0.2.2.1) Set scenarios,time frames & crops/livestock ####
-Scenarios<-c("ssp126","ssp245","ssp370","ssp585")
-Times<-c("2021_2040","2041_2060","2061_2080","2081_2100")
-
-# Create combinations of scenarios and times
-Scenarios<-rbind(data.table(Scenario="historic",Time="historic"),data.table(expand.grid(Scenario=Scenarios,Time=Times)))
-Scenarios[,combined:=paste0(Scenario,"-",Time)]
-
-cat("Scenarios x timeframes:",Scenarios$combined,"\n")
-
-# Load spam metadata
-ms_codes<-data.table::fread(ms_codes_url, showProgress = FALSE)[,Code:=toupper(Code)]
-ms_codes<-ms_codes[compound=="no" & !is.na(Code)]
-
-# Set crops and livestock included in the analysis (default is all the commodities in the spam metadata file)
-crop_choices<-c(fread(haz_class_url, showProgress = FALSE)[,unique(crop)],ms_codes[,sort(Fullname)])
-
-#### 0.2.2.2) Set master hazards ####
-
-hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG") # NDD is not being used as it cannot be projected to future scenarios with delta method
-
-cat("Full hazards =",hazards,"\n")
-
-haz_meta<-data.table::fread(file.path(project_dir,"metadata","haz_metadata.csv"))
-haz_meta[variable.code %in% hazards]
-haz_meta[,code2:=paste0(haz_meta$code,"_",haz_meta$`function`)]
-
-haz_class<-data.table::fread(haz_class_url, showProgress = FALSE)
-haz_class<-haz_class[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
-haz_classes<-unique(haz_class$description)
-
-# duplicate generic non-heat stress variables for livestock
-livestock<-livestock<-haz_class[grepl("cattle|goats|poultry|pigs|sheep",crop),unique(crop)]
-non_heat<-c("NTx40","NTx35","NDWS","TAI","NDWL0","PTOT") # NDD is not being used as it cannot be projected to future scenarios
-
-haz_class<-rbind(haz_class[crop=="generic"],
-                 rbindlist(lapply(1:length(livestock),FUN=function(i){
-                   rbind(haz_class[crop=="generic" & index_name %in% non_heat][,crop:=livestock[i]],haz_class[crop==livestock[i]])
-                 }))
-)
-
-# Pull out severity classes and associate impact scores
-severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
-setnames(severity_classes,"description","class")
-
-#### 0.2.2.3) Create combinations of scenarios and hazards ####
-scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios)))[,Scenario:=as.character(Scenario)][,Time:=as.character(Time)]
-
-#### 0.2.2.4) Generate hazard thresholds from ecocrop ######
-
-# read in ecocrop
-ecocrop<-fread(ecocrop_url, showProgress = FALSE)
-ecocrop[,Temp_Abs_Min:=as.numeric(Temp_Abs_Min)
-][,Temp_Abs_Max:=as.numeric(Temp_Abs_Max)
-][,Rain_Abs_Min:=as.numeric(Rain_Abs_Min)
-][,Rain_Abs_Max:=as.numeric(Rain_Abs_Max)]
-
-# Using the mapspam species transpose the ecocrop data into mod, severe and extreme hazards (match the format of the haz_class data.table)
-description<-c("Moderate","Severe","Extreme")
-ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
-  crop<-ms_codes[i,sci_name]
-  crop_common<-ms_codes[i,Fullname]
+  ## 0.1) Load R functions & packages ####
   
-  crops<-unlist(strsplit(crop,";"))
+  # List of packages to be loaded
+  packages <- c("terra", 
+                "data.table", 
+                "future",
+                "future.apply",
+                "progressr",
+                "parallel",
+                "doFuture",
+                "httr",
+                "s3fs",
+                "stringr", 
+                "stringi",
+                "httr",
+                "xml2")
   
-  ec_haz<-rbindlist(lapply(1:length(crops),FUN=function(j){
-    ecrop<-ecocrop[species==crops[j]]
+  pacman::p_load(packages,character.only=T)
+  
+  # Source functions from github
+  source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+  
+  ## 0.2) Set up workspace #####
+    ### 0.2.1) Set scenarios,time frames & crops/livestock ####
+    Scenarios<-c("ssp126","ssp245","ssp370","ssp585")
+    Times<-c("2021_2040","2041_2060","2061_2080","2081_2100")
     
-    if(nrow(ecrop)>0){
-      cat(i,"-",j," | ",crop_common,"/",crops[j],"                \r")
-      
-      # PTOT low
-      ptot_low<-data.table(index_name="PTOT",
-                           description=description,
-                           direction="<",
-                           crop=crop_common,
-                           threshold=c(
-                             unlist(ecrop$Rain_Opt_Min), # Moderate
-                             (unlist(ecrop$Rain_Abs_Min)+unlist(ecrop$Rain_Opt_Min))/2, # Severe
-                             unlist(ecrop$Rain_Abs_Min))) # Extreme
-      
-      # PTOT high
-      ptot_high<-data.table(index_name="PTOT",
-                            description=description,
-                            direction=">",
-                            crop=crop_common,
-                            threshold=c(
-                              unlist(ecrop$Rain_Opt_Max), # Moderate
-                              ceiling((unlist(ecrop$Rain_Opt_Max)+unlist(ecrop$Rain_Abs_Max))/2), # Severe
-                              unlist(ecrop$Rain_Abs_Max))) # Extreme
-      
-      # TAVG low
-      tavg_low<-data.table(index_name="TAVG",
-                           description=description,
-                           direction="<",
-                           crop=crop_common,
-                           threshold=c(
-                             unlist(ecrop$temp_opt_min), # Moderate
-                             (unlist(ecrop$temp_opt_min)+unlist(ecrop$Temp_Abs_Min))/2, # Severe
-                             unlist(ecrop$Temp_Abs_Min))) # Extreme
-      
-      # TAVG high
-      tavg_high<-data.table(index_name="TAVG",
-                            description=description,
-                            direction=">",
-                            crop=crop_common,
-                            threshold=c(
-                              unlist(ecrop$Temp_Opt_Max), # Moderate
-                              (unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2, # Severe
-                              unlist(ecrop$Temp_Abs_Max))) # Extreme
-      
-      # NTxCrop - moderate  (>optimum)
-      ntxcrop_m<-data.table(index_name=paste0("NTxM",ecrop$Temp_Opt_Max),
-                            description=description,
-                            direction=">",
-                            crop=crop_common,
-                            threshold=c(7, # Moderate
-                                        14, # Severe
-                                        21)) # Extreme
-      
-      # NTxCrop - severe  
-      ntxcrop_s<-data.table(index_name=paste0("NTxS",ceiling((unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2)),
-                            description=description,
-                            direction=">",
-                            crop=crop_common,
-                            threshold=c(7, # Moderate
-                                        14, # Severe
-                                        21)) # Extreme
-      
-      
-      # NTxCrop extreme (>absolute)
-      ntxcrop_e<-data.table(index_name=paste0("NTxE",ecrop$Temp_Abs_Max),
-                            description=description,
-                            direction=">",
-                            crop=crop_common,
-                            threshold=c(1, # Moderate
-                                        5, # Severe
-                                        10)) # Extreme
-      
-      rbind(ptot_low,ptot_high,tavg_low,tavg_high,ntxcrop_m,ntxcrop_s,ntxcrop_e)
-    }else{
-      print(paste0(i,"-",j," | ",crop, " - ERROR NO MATCH"))
-      NULL
-    }
-  }))
-  
-  # Average NTxM/S/E thresholds
-  ec_haz<-unique(ec_haz[grep("NTxS",index_name),index_name:=paste0("NTxS",ceiling(mean(as.numeric(substr(index_name,5,6)))))
-  ][grep("NTxM",index_name),index_name:=paste0("NTxM",ceiling(mean(as.numeric(substr(index_name,5,6)))))
-  ][grep("NTxE",index_name),index_name:=paste0("NTxE",ceiling(mean(as.numeric(substr(index_name,5,6)))))])
-  
-  # Average threholds where multiple crops exist for a mapspam commodity
-  ec_haz<-ec_haz[,list(threshold=mean(threshold,na.rm=T)),by=list(index_name,description,direction,crop)]
-  
-  ec_haz
-}))
-
-
-# Replicate generic hazards that are not TAVG or PTOT for each crop
-haz_class2<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
-  Y<-ec_haz[crop==ms_codes[i,Fullname]]
-  X<-haz_class[!index_name %in% ec_haz[,unique(index_name)]]
-  # Remove THI & HSH this is not for crops
-  X<-X[!grepl("THI|HSH",index_name)]
-  X$crop<-ms_codes[i,Fullname]
-  rbind(Y,X)
-}))
-
-haz_class<-rbind(haz_class,haz_class2)
-
-haz_class[,direction2:="G"
-][direction=="<",direction2:="L"
-][,index_name2:=index_name
-][index_name %in% c("TAVG","PTOT"),index_name2:=paste0(index_name,"_",direction2)
-][,index_name:=gsub("NTxE|NTxM|NTxS","NTx",index_name)
-][grep("NTxE",index_name2),index_name2:="NTxE"
-][grep("NTxM",index_name2),index_name2:="NTxM"
-][grep("NTxS",index_name2),index_name2:="NTxS"]
-
-haz_class<-unique(haz_class)
-
-# Add summary function description to haz_class
-haz_class<-merge(haz_class,unique(haz_meta[,c("variable.code","function")]),by.x="index_name",by.y="variable.code",all.x=T)
-haz_class[,code2:=paste0(index_name,"_",`function`)][,code2:=gsub("_G_|_L_","_",code2)]
-
-# Add hazard type to haz_class
-haz_class[,filename:=paste0(index_name,"-",direction2,threshold,".tif")]
-haz_class[,match_field:=code2][grepl("PTOT|TAVG",code2),match_field:=paste0(index_name2[1],"_",`function`[1]),by=code2]
-haz_class[,match_field:=unlist(match_field)]
-haz_class<-merge(haz_class,unique(haz_meta[,list(code2,type)]),by.y="code2",by.x="match_field",all.x=T)
-haz_class[,match_field:=NULL]
-haz_class[,haz_filename:=paste0(type,"-",index_name2,"-",crop,"-",description)]
-
-# Set analysis parameters
-PropThreshold<-0.5
-PropTDir=">"
-
-#### 0.2.2.5) !!TO DO!! Generate hazard thresholds using CCW crop climate profiles ####
-
-#### 0.2.2.6) Set hazard interactions ####
-##### 0.2.2.6.1)  Set interactions ####
-# Crop interactions (each row is a combination of heat, wet and dry variables)
-crop_interactions<-data.table(heat_simple=c("NTx35","NTxS"),wet_simple=c("NDWL0","PTOT_G"),dry_simple=c("NDWS","PTOT_L"),fixed=c(T,F),type="crop")
-
-# Animal interactions (each row is a combination of heat, wet and dry variables)
-animal_interactions<-data.table(heat_simple=c("THI_max","THI_max"),wet_simple=c("NDWL0","PTOT_G"),dry_simple=c("NDWS","PTOT_L"),fixed=c(T,F),type="animal")
-
-interaction_haz<-unique(c(unlist(crop_interactions),unlist(animal_interactions)))
-
-cat("Crop interaction variables\n")
-print(crop_interactions)
-cat("Animal interaction variables\n")
-print(animal_interactions)
-
-##### 0.2.2.6.2) Create crop/livestock specific hazard table for interactions ####
-# Crops
-crop_choices2<-crop_choices[!grepl("_tropical|_highland|generic",crop_choices)]
-
-# Create a unique list of all the 3-way combinations required for the crops and severity classes selected
-# Function to replace exact matches
-replace_exact_matches <- function(strings, old_values, new_values) {
-  replacement_map <- setNames(new_values, old_values)
-  return(replacement_map[strings])
-}
-
-combinations_c<-unique(rbindlist(lapply(1:length(crop_choices2),FUN=function(i){
-  crop_focus<-crop_choices2[i]
-  rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
-    severity_focus<-severity_classes$class[j]
-    X<-copy(crop_interactions)
-    haz_rename<-haz_class[crop==crop_focus & description==severity_focus,
-                          list(old=index_name2,new=gsub(".tif","",filename))]
+    # Create combinations of scenarios and times
+    Scenarios<-rbind(data.table(Scenario="historic",Time="historic"),data.table(expand.grid(Scenario=Scenarios,Time=Times)))
+    Scenarios[,combined:=paste0(Scenario,"-",Time)]
     
-    replace_exact_matches(X$heat,haz_rename$old, haz_rename$new)
+    cat("Scenarios x timeframes:",Scenarios$combined,"\n")
     
-    X[,heat:=replace_exact_matches(heat_simple,old_values=haz_rename$old,new_values = haz_rename$new)
-    ][,dry:=replace_exact_matches(dry_simple,old_values=haz_rename$old,new_values = haz_rename$new)
-    ][,wet:=replace_exact_matches(wet_simple,old_values=haz_rename$old,new_values = haz_rename$new)
-    ][,severity_class:=severity_focus
-    ][,crop:=crop_focus]
-    X
-  }))
-})))
-
-# Interactions - Animals
-livestock_choices<-crop_choices[grepl("_tropical|_highland",crop_choices)]
-
-# Create a unique list of all the 3-way combinations required for the crops and severity classes selected
-combinations_a<-unique(rbindlist(lapply(1:length(livestock_choices),FUN=function(i){
-  crop_focus<-livestock_choices[i]
-  result<-rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
-    severity_focus<-severity_classes$class[j]
-    X<-copy(animal_interactions)
-    haz_rename<-haz_class[crop==crop_focus & description==severity_focus,
-                          list(old=index_name2,new=gsub(".tif","",filename))]
+    # Load spam metadata
+    ms_codes<-data.table::fread(ms_codes_url, showProgress = FALSE)[,Code:=toupper(Code)]
+    ms_codes<-ms_codes[compound=="no" & !is.na(Code)]
     
-    X<-X[,heat:=replace_exact_matches(heat_simple,old_values=haz_rename$old,new_values = haz_rename$new)
-    ][,dry:=replace_exact_matches(dry_simple,old_values=haz_rename$old,new_values = haz_rename$new)
-    ][,wet:=replace_exact_matches(wet_simple,old_values=haz_rename$old,new_values = haz_rename$new)
-    ][,severity_class:=severity_focus
-    ][,crop:=crop_focus]
-    return(X)
-  }))
-  return(result)
-})))
+    # Set crops and livestock included in the analysis (default is all the commodities in the spam metadata file)
+    crop_choices<-c(fread(haz_class_url, showProgress = FALSE)[,unique(crop)],ms_codes[,sort(Fullname)])
+    
+    ### 0.2.2) Set master hazards ####
+    
+    hazards<-c("NTx40","NTx35","HSH_max","HSH_mean","THI_max","THI_mean","NDWS","TAI","NDWL0","PTOT","TAVG") # NDD is not being used as it cannot be projected to future scenarios with delta method
+    
+    cat("Full hazards =",hazards,"\n")
+    
+    haz_meta<-data.table::fread(file.path(project_dir,"metadata","haz_metadata.csv"))
+    haz_meta[variable.code %in% hazards]
+    haz_meta[,code2:=paste0(haz_meta$code,"_",haz_meta$`function`)]
+    
+    haz_class<-data.table::fread(haz_class_url, showProgress = FALSE)
+    haz_class<-haz_class[index_name %in% hazards,list(index_name,description,direction,crop,threshold)]
+    haz_classes<-unique(haz_class$description)
+    
+    # duplicate generic non-heat stress variables for livestock
+    livestock<-livestock<-haz_class[grepl("cattle|goats|poultry|pigs|sheep",crop),unique(crop)]
+    non_heat<-c("NTx40","NTx35","NDWS","TAI","NDWL0","PTOT") # NDD is not being used as it cannot be projected to future scenarios
+    
+    haz_class<-rbind(haz_class[crop=="generic"],
+                     rbindlist(lapply(1:length(livestock),FUN=function(i){
+                       rbind(haz_class[crop=="generic" & index_name %in% non_heat][,crop:=livestock[i]],haz_class[crop==livestock[i]])
+                     }))
+    )
+    
+    # Pull out severity classes and associate impact scores
+    severity_classes<-unique(fread(haz_class_url)[,list(description,value)])
+    setnames(severity_classes,"description","class")
+    
+    ### 0.2.3) Create combinations of scenarios and hazards ####
+    scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios)))[,Scenario:=as.character(Scenario)][,Time:=as.character(Time)]
+    
+    ### 0.2.4) Generate hazard thresholds from ecocrop ######
+    
+    # read in ecocrop
+    ecocrop<-fread(ecocrop_url, showProgress = FALSE)
+    ecocrop[,Temp_Abs_Min:=as.numeric(Temp_Abs_Min)
+    ][,Temp_Abs_Max:=as.numeric(Temp_Abs_Max)
+    ][,Rain_Abs_Min:=as.numeric(Rain_Abs_Min)
+    ][,Rain_Abs_Max:=as.numeric(Rain_Abs_Max)]
+    
+    # Using the mapspam species transpose the ecocrop data into mod, severe and extreme hazards (match the format of the haz_class data.table)
+    description<-c("Moderate","Severe","Extreme")
+    ec_haz<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
+      crop<-ms_codes[i,sci_name]
+      crop_common<-ms_codes[i,Fullname]
+      
+      crops<-unlist(strsplit(crop,";"))
+      
+      ec_haz<-rbindlist(lapply(1:length(crops),FUN=function(j){
+        ecrop<-ecocrop[species==crops[j]]
+        
+        if(nrow(ecrop)>0){
+          cat(i,"-",j," | ",crop_common,"/",crops[j],"                \r")
+          
+          # PTOT low
+          ptot_low<-data.table(index_name="PTOT",
+                               description=description,
+                               direction="<",
+                               crop=crop_common,
+                               threshold=c(
+                                 unlist(ecrop$Rain_Opt_Min), # Moderate
+                                 (unlist(ecrop$Rain_Abs_Min)+unlist(ecrop$Rain_Opt_Min))/2, # Severe
+                                 unlist(ecrop$Rain_Abs_Min))) # Extreme
+          
+          # PTOT high
+          ptot_high<-data.table(index_name="PTOT",
+                                description=description,
+                                direction=">",
+                                crop=crop_common,
+                                threshold=c(
+                                  unlist(ecrop$Rain_Opt_Max), # Moderate
+                                  ceiling((unlist(ecrop$Rain_Opt_Max)+unlist(ecrop$Rain_Abs_Max))/2), # Severe
+                                  unlist(ecrop$Rain_Abs_Max))) # Extreme
+          
+          # TAVG low
+          tavg_low<-data.table(index_name="TAVG",
+                               description=description,
+                               direction="<",
+                               crop=crop_common,
+                               threshold=c(
+                                 unlist(ecrop$temp_opt_min), # Moderate
+                                 (unlist(ecrop$temp_opt_min)+unlist(ecrop$Temp_Abs_Min))/2, # Severe
+                                 unlist(ecrop$Temp_Abs_Min))) # Extreme
+          
+          # TAVG high
+          tavg_high<-data.table(index_name="TAVG",
+                                description=description,
+                                direction=">",
+                                crop=crop_common,
+                                threshold=c(
+                                  unlist(ecrop$Temp_Opt_Max), # Moderate
+                                  (unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2, # Severe
+                                  unlist(ecrop$Temp_Abs_Max))) # Extreme
+          
+          # NTxCrop - moderate  (>optimum)
+          ntxcrop_m<-data.table(index_name=paste0("NTxM",ecrop$Temp_Opt_Max),
+                                description=description,
+                                direction=">",
+                                crop=crop_common,
+                                threshold=c(7, # Moderate
+                                            14, # Severe
+                                            21)) # Extreme
+          
+          # NTxCrop - severe  
+          ntxcrop_s<-data.table(index_name=paste0("NTxS",ceiling((unlist(ecrop$Temp_Opt_Max)+unlist(ecrop$Temp_Abs_Max))/2)),
+                                description=description,
+                                direction=">",
+                                crop=crop_common,
+                                threshold=c(7, # Moderate
+                                            14, # Severe
+                                            21)) # Extreme
+          
+          
+          # NTxCrop extreme (>absolute)
+          ntxcrop_e<-data.table(index_name=paste0("NTxE",ecrop$Temp_Abs_Max),
+                                description=description,
+                                direction=">",
+                                crop=crop_common,
+                                threshold=c(1, # Moderate
+                                            5, # Severe
+                                            10)) # Extreme
+          
+          rbind(ptot_low,ptot_high,tavg_low,tavg_high,ntxcrop_m,ntxcrop_s,ntxcrop_e)
+        }else{
+          print(paste0(i,"-",j," | ",crop, " - ERROR NO MATCH"))
+          NULL
+        }
+      }))
+      
+      # Average NTxM/S/E thresholds
+      ec_haz<-unique(ec_haz[grep("NTxS",index_name),index_name:=paste0("NTxS",ceiling(mean(as.numeric(substr(index_name,5,6)))))
+      ][grep("NTxM",index_name),index_name:=paste0("NTxM",ceiling(mean(as.numeric(substr(index_name,5,6)))))
+      ][grep("NTxE",index_name),index_name:=paste0("NTxE",ceiling(mean(as.numeric(substr(index_name,5,6)))))])
+      
+      # Average threholds where multiple crops exist for a mapspam commodity
+      ec_haz<-ec_haz[,list(threshold=mean(threshold,na.rm=T)),by=list(index_name,description,direction,crop)]
+      
+      ec_haz
+    }))
+    
+    
+    # Replicate generic hazards that are not TAVG or PTOT for each crop
+    haz_class2<-rbindlist(lapply(1:nrow(ms_codes),FUN=function(i){
+      Y<-ec_haz[crop==ms_codes[i,Fullname]]
+      X<-haz_class[!index_name %in% ec_haz[,unique(index_name)]]
+      # Remove THI & HSH this is not for crops
+      X<-X[!grepl("THI|HSH",index_name)]
+      X$crop<-ms_codes[i,Fullname]
+      rbind(Y,X)
+    }))
+    
+    haz_class<-rbind(haz_class,haz_class2)
+    
+    haz_class[,direction2:="G"
+    ][direction=="<",direction2:="L"
+    ][,index_name2:=index_name
+    ][index_name %in% c("TAVG","PTOT"),index_name2:=paste0(index_name,"_",direction2)
+    ][,index_name:=gsub("NTxE|NTxM|NTxS","NTx",index_name)
+    ][grep("NTxE",index_name2),index_name2:="NTxE"
+    ][grep("NTxM",index_name2),index_name2:="NTxM"
+    ][grep("NTxS",index_name2),index_name2:="NTxS"]
+    
+    haz_class<-unique(haz_class)
+    
+    # Add summary function description to haz_class
+    haz_class<-merge(haz_class,unique(haz_meta[,c("variable.code","function")]),by.x="index_name",by.y="variable.code",all.x=T)
+    haz_class[,code2:=paste0(index_name,"_",`function`)][,code2:=gsub("_G_|_L_","_",code2)]
+    
+    # Add hazard type to haz_class
+    haz_class[,filename:=paste0(index_name,"-",direction2,threshold,".tif")]
+    haz_class[,match_field:=code2][grepl("PTOT|TAVG",code2),match_field:=paste0(index_name2[1],"_",`function`[1]),by=code2]
+    haz_class[,match_field:=unlist(match_field)]
+    haz_class<-merge(haz_class,unique(haz_meta[,list(code2,type)]),by.y="code2",by.x="match_field",all.x=T)
+    haz_class[,match_field:=NULL]
+    haz_class[,haz_filename:=paste0(type,"-",index_name2,"-",crop,"-",description)]
+    
+    # Set analysis parameters
+    PropThreshold<-0.5
+    PropTDir=">"
+    
+    ### 0.2.5) !!TO DO!! Generate hazard thresholds using CCW crop climate profiles ####
+    
+    ### 0.2.6) Set hazard interactions ####
+      #### 0.2.6.1)  Set interactions ####
+    # Crop interactions (each row is a combination of heat, wet and dry variables)
+    crop_interactions<-data.table(heat_simple=c("NTx35","NTxS"),wet_simple=c("NDWL0","PTOT_G"),dry_simple=c("NDWS","PTOT_L"),fixed=c(T,F),type="crop")
+    
+    # Animal interactions (each row is a combination of heat, wet and dry variables)
+    animal_interactions<-data.table(heat_simple=c("THI_max","THI_max"),wet_simple=c("NDWL0","PTOT_G"),dry_simple=c("NDWS","PTOT_L"),fixed=c(T,F),type="animal")
+    
+    interaction_haz<-unique(c(unlist(crop_interactions),unlist(animal_interactions)))
+    
+    cat("Crop interaction variables\n")
+    print(crop_interactions)
+    cat("Animal interaction variables\n")
+    print(animal_interactions)
+    
+      #### 0.2.6.2) Create crop/livestock specific hazard table for interactions ####
+  # Crops
+  crop_choices2<-crop_choices[!grepl("_tropical|_highland|generic",crop_choices)]
+  
+  # Create a unique list of all the 3-way combinations required for the crops and severity classes selected
+  # Function to replace exact matches
+  replace_exact_matches <- function(strings, old_values, new_values) {
+    replacement_map <- setNames(new_values, old_values)
+    return(replacement_map[strings])
+  }
+  
+  combinations_c<-unique(rbindlist(lapply(1:length(crop_choices2),FUN=function(i){
+    crop_focus<-crop_choices2[i]
+    rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
+      severity_focus<-severity_classes$class[j]
+      X<-copy(crop_interactions)
+      haz_rename<-haz_class[crop==crop_focus & description==severity_focus,
+                            list(old=index_name2,new=gsub(".tif","",filename))]
+      
+      replace_exact_matches(X$heat,haz_rename$old, haz_rename$new)
+      
+      X[,heat:=replace_exact_matches(heat_simple,old_values=haz_rename$old,new_values = haz_rename$new)
+      ][,dry:=replace_exact_matches(dry_simple,old_values=haz_rename$old,new_values = haz_rename$new)
+      ][,wet:=replace_exact_matches(wet_simple,old_values=haz_rename$old,new_values = haz_rename$new)
+      ][,severity_class:=severity_focus
+      ][,crop:=crop_focus]
+      X
+    }))
+  })))
+  
+  # Interactions - Animals
+  livestock_choices<-crop_choices[grepl("_tropical|_highland",crop_choices)]
+  
+  # Create a unique list of all the 3-way combinations required for the crops and severity classes selected
+  combinations_a<-unique(rbindlist(lapply(1:length(livestock_choices),FUN=function(i){
+    crop_focus<-livestock_choices[i]
+    result<-rbindlist(lapply(1:length(severity_classes$class),FUN=function(j){
+      severity_focus<-severity_classes$class[j]
+      X<-copy(animal_interactions)
+      haz_rename<-haz_class[crop==crop_focus & description==severity_focus,
+                            list(old=index_name2,new=gsub(".tif","",filename))]
+      
+      X<-X[,heat:=replace_exact_matches(heat_simple,old_values=haz_rename$old,new_values = haz_rename$new)
+      ][,dry:=replace_exact_matches(dry_simple,old_values=haz_rename$old,new_values = haz_rename$new)
+      ][,wet:=replace_exact_matches(wet_simple,old_values=haz_rename$old,new_values = haz_rename$new)
+      ][,severity_class:=severity_focus
+      ][,crop:=crop_focus]
+      return(X)
+    }))
+    return(result)
+  })))
+  
+  # Join livestock and crop combinations
+  combinations<-unique(rbind(combinations_c,combinations_a)[,crop:=NULL])
+  
+  # Add code to combinations and order
+  combinations[,code:=paste(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet)]
+  combinations<-unique(combinations[order(code)])
+  
+      #### 0.2.6.3) Per crop combine hazards into a single file ####
+  
+  combinations_ca<-rbind(combinations_c,combinations_a)[,combo_name:=paste0(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet,crop,severity_class)
+  ][,severity_class:=tolower(severity_class)]
+  
+  combinations_ca[,heat1:=stringi::stri_replace_all_regex(heat,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,heat1:=unlist(tstrsplit(heat1,"-",keep=1))]
+  combinations_ca[,dry1:=stringi::stri_replace_all_regex(dry,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,dry1:=unlist(tstrsplit(dry1,"-",keep=1))]
+  combinations_ca[,wet1:=stringi::stri_replace_all_regex(wet,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,wet1:=unlist(tstrsplit(wet1,"-",keep=1))]
+  
+  combinations_ca[,combo_name1:=paste0(c(dry1[1],heat1[1],wet1[1]),collapse="+"),by=list(dry1,heat1,wet1)]
+  combinations_ca[,combo_name_simple2:=paste0(c(gsub("_","-",dry_simple[1]),
+                                                gsub("_","-",heat_simple[1]),
+                                                gsub("_","-",wet_simple[1])),collapse="+"),by=list(dry_simple,heat_simple,wet_simple)]
+  
+  combinations_ca[,combo_name_simple1:=paste0(c(dry_simple[1],heat_simple[1],wet_simple[1]),collapse="+"),by=list(dry_simple,heat_simple,wet_simple)]
+  
+  combinations_crops<-combinations_ca[,unique(crop)]
+  
+  combinations_ca<-data.frame(combinations_ca)
+  
+    ### 0.2.7) Create a table of unique hazard thresholds ####
+  Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,code2,direction,threshold)
+  ][,index_name:=gsub("NTxM|NTxS|NTxE","NTx",index_name)])
+  
+  Thresholds_U[,direction2:=direction
+  ][,direction2:=gsub("<","L",direction2)
+  ][,direction2:=gsub(">","G",direction2)
+  ][,code:=paste0(direction2,threshold),by=.I
+  ][,index_name2:=index_name][index_name2 %in% c("PTOT","TAVG"),index_name2:=paste0(index_name2,"_",direction2)]
+  
+  # Subset to interaction hazards
+  Thresholds_U<-Thresholds_U[grepl(paste(if(any(grepl("NTx",interaction_haz))){c("NTx",interaction_haz)}else{interaction_haz},collapse = "|"),index_name2)]
+  
+  ## 0.3) Set flow controls and overwrite parameters ####
 
-# Join livestock and crop combinations
-combinations<-unique(rbind(combinations_c,combinations_a)[,crop:=NULL])
-
-# Add code to combinations and order
-combinations[,code:=paste(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet)]
-combinations<-unique(combinations[order(code)])
-
-##### 0.2.2.6.3) Per crop combine hazards into a single file ####
-
-combinations_ca<-rbind(combinations_c,combinations_a)[,combo_name:=paste0(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet,crop,severity_class)
-][,severity_class:=tolower(severity_class)]
-
-combinations_ca[,heat1:=stringi::stri_replace_all_regex(heat,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,heat1:=unlist(tstrsplit(heat1,"-",keep=1))]
-combinations_ca[,dry1:=stringi::stri_replace_all_regex(dry,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,dry1:=unlist(tstrsplit(dry1,"-",keep=1))]
-combinations_ca[,wet1:=stringi::stri_replace_all_regex(wet,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,wet1:=unlist(tstrsplit(wet1,"-",keep=1))]
-
-combinations_ca[,combo_name1:=paste0(c(dry1[1],heat1[1],wet1[1]),collapse="+"),by=list(dry1,heat1,wet1)]
-combinations_ca[,combo_name_simple2:=paste0(c(gsub("_","-",dry_simple[1]),
-                                              gsub("_","-",heat_simple[1]),
-                                              gsub("_","-",wet_simple[1])),collapse="+"),by=list(dry_simple,heat_simple,wet_simple)]
-
-combinations_ca[,combo_name_simple1:=paste0(c(dry_simple[1],heat_simple[1],wet_simple[1]),collapse="+"),by=list(dry_simple,heat_simple,wet_simple)]
-
-combinations_crops<-combinations_ca[,unique(crop)]
-
-combinations_ca<-data.frame(combinations_ca)
-
-#### 0.2.2.7) Create a table of unique hazard thresholds ####
-Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,code2,direction,threshold)
-][,index_name:=gsub("NTxM|NTxS|NTxE","NTx",index_name)])
-
-Thresholds_U[,direction2:=direction
-][,direction2:=gsub("<","L",direction2)
-][,direction2:=gsub(">","G",direction2)
-][,code:=paste0(direction2,threshold),by=.I
-][,index_name2:=index_name][index_name2 %in% c("PTOT","TAVG"),index_name2:=paste0(index_name2,"_",direction2)]
-
-# Subset to interaction hazards
-Thresholds_U<-Thresholds_U[grepl(paste(if(any(grepl("NTx",interaction_haz))){c("NTx",interaction_haz)}else{interaction_haz},collapse = "|"),index_name2)]
-
-## 0.3) Set flow controls and overwrite parameters ####
-# Classify hazards
+### 0.3.1) Classify hazards ####
 run1<-F
 overwrite1<-F
 worker_n1<-20
 multisession1<-T
 upload1<-F # We do not recommend uploading these data to the S3, they are a large intermediate product
 upload_overwrite1<-F # Deletes existing files and uploads new
-# Calculate hazard risk freq
-run2<-T
+
+### 0.3.2) Calculate hazard risk freq ####
+run2<-F
 check2<-T
 round2<-NULL # set to integer if you wish to round results
 worker_n2<-20
@@ -359,8 +350,9 @@ multisession2<-T
 upload2<-F
 upload_delete2<-T # Deletes all existing files in s3
 upload_overwrite2<-T # Overwrites existing files (does not delete anything)
-# Make crop stacks for risk freq
-run3<-T
+
+### 0.3.3) Make crop stacks for risk freq ####
+run3<-F
 check3<-T
 overwrite3<-F
 worker_n3<-20
@@ -368,40 +360,51 @@ multisession3<-T
 upload3<-F
 upload_delete3<-T # Deletes all existing files in s3
 upload_overwrite3<-T # Overwrites existing files (does not delete anything)
-# Calculate hazard time series mean and sd
+
+### 0.3.4) Calculate hazard time series mean and sd ####
 run4<-F
 check4<-F
 run4.1<-F # Difference
 round4<-NULL # set to integer if you wish to round results
 overwrite4<-F
+worker_n4<-20
 upload4<-F
-# Calculate interactions
-run5.2<-F
+
+### 0.3.5) Calculate interactions ####
+overwrite5<-F
+
+# Interaction Tifs
+run5.2<-T
 check5.2<-T
 round5.2<-3
 do_ensemble5.2<-T
+worker_n5.2<-20
+
+# Interaction crop stacks
 run5.3<-F
-overwrite5<-F
+worker_n5.3<-20
 upload5<-F
-# Set workers & permission for uploads
+
+### 0.3.6) Set workers & permission for uploads ####
 worker_n_upload<-20
 permission<-"public-read"
 
+### 0.3.7) Choose timeframes to loop through ####
 timeframes<-timeframe_choices
 
 cat("Control and overwrite settings:\n")
 cat("timeframes = ", timeframes,
     "\nrun1 =",run1,"overwrite =",overwrite1,"workers1 =",worker_n1,"multisession1 =",multisession1,"upload1 =",upload1,"upload_overwrite1 =",upload_overwrite1,
     "\nrun2 =",run2,"round2 =",round2,"check2 =",check2,"overwrite =",overwrite2,"workers2 =",worker_n2,"multisession2=",multisession2,"upload2 =",upload2,"upload_overwrite2 =",upload_overwrite2,"upload_delete2 =",upload_delete2,
-    "\nrun3 = ",run3,"check3 =",check3,"overwrite =",overwrite3,"workers3 =",worker_n3,"multisession3 =",multisession3,"upload3=",upload3,"upload_overwrite3 =",upload_overwrite3,"upload_delete3 =",upload_delete3,
-    "\nrun4 =",run4,"round4 =",round4,"check 4 =",check4,"overwrite =",overwrite4,
-    "\nrun5.2 =",run5.2,"check5.2 =",check5.2,"round5.2 =",round5.2,"overwrite =",overwrite5,"do_ensemble5.2 =",do_ensemble5.2,
-    "\nrun5.3 = ",run5.3,"overwrite =",overwrite5,
+    "\nrun3 = ",run3,"check3 =",check3,"overwrite3 =",overwrite3,"workers3 =",worker_n3,"multisession3 =",multisession3,"upload3=",upload3,"upload_overwrite3 =",upload_overwrite3,"upload_delete3 =",upload_delete3,
+    "\nrun4 =",run4,"round4 =",round4,"check 4 =",check4,"overwrite4 =",overwrite4,"workers4 =",worker_n4,
+    "\nrun5.2 =",run5.2,"check5.2 =",check5.2,"round5.2 =",round5.2,"overwrite =",overwrite5,"workers5.2 =",worker_n5.2,"do_ensemble5.2 =",do_ensemble5.2,
+    "\nrun5.3 = ",run5.3,"overwrite5 =",overwrite5,"workers5.3 =",worker_n5.3,
     "\nupload worker n=",worker_n_upload,"permission =",permission,"\n")
 
-## 0.4) Download hazard timeseries from s3 bucket (if required) ####
-# Dev Note: needs to be within timeframe loop? ####
-# Dev Note: subset to required hazards only ####
+  ## 0.4) Download hazard timeseries from s3 bucket (if required) ####
+    # Dev Note: needs to be within timeframe loop? ####
+    # Dev Note: subset to required hazards only ####
 if(!Cglabs){
   overwrite<-F
   workers_dl<-10
@@ -534,7 +537,7 @@ if(!Cglabs){
   }
   
   
-  # 0.3.1) Check if downloaded files can load ######
+  # 0.4.1) Check if downloaded files can load ######
   files<-list.files(haz_timeseries_dir,".tif",full.names = T)
   
   result<-check_tif_integrity (dir_path=haz_timeseries_dir,
@@ -633,7 +636,7 @@ for(tx in 1:length(timeframes)){
     
     # 1.1) Check results ######
     files<-list.files(haz_time_class_dir,"tif$",full.names = T,recursive=T)
-    (bad_files<-check_and_delete_bad_files(files,delete_bad=T,worker_n=worker_n))
+    (bad_files<-check_and_delete_bad_files(files,delete_bad=T,worker_n=worker_n1))
     # If you finding files will not open delete them then run the download process again
     if(length(bad_files)>0){
       stop("Bad files were present, run through this section again")
@@ -848,7 +851,7 @@ for(tx in 1:length(timeframes)){
     # Remove ensemble 
     files<-files[!grepl("ENSEMBLE",files)]
     
-    set_parallel_plan(n_cores=worker_n,use_multisession=F)
+    set_parallel_plan(n_cores=worker_n4,use_multisession=F)
     
     # Enable progressr
     progressr::handlers(global = TRUE)
@@ -993,7 +996,7 @@ for(tx in 1:length(timeframes)){
     cat("5.2) Calculate interactions\n")
     
     # Estimate the RAM available therefore the number of workers
-    set_parallel_plan(n_cores=floor(workers_int),use_multisession=F)
+    set_parallel_plan(n_cores=floor(worker_n5.2),use_multisession=F)
     
     # Enable progressr
     progressr::handlers(global = TRUE)
@@ -1147,7 +1150,7 @@ for(tx in 1:length(timeframes)){
       result<-check_tif_integrity (dir_path = haz_time_int_dir,
                                    recursive = FALSE,
                                    pattern = "*.tif", # uses glob so make sure the * is present
-                                   n_workers_files = worker_n3,
+                                   n_workers_files = worker_n5.2,
                                    n_workers_folders = 1,
                                    use_multisession = multisession3,
                                    delete_corrupt  = FALSE)
@@ -1192,7 +1195,7 @@ for(tx in 1:length(timeframes)){
     
     haz_int_file_tab<-data.frame(haz_int_file_tab)
     
-    set_parallel_plan(n_cores=worker_n,use_multisession=F)
+    set_parallel_plan(n_cores=worker_n5.3,use_multisession=F)
     
     # Enable progressr
     progressr::handlers(global = TRUE)
@@ -1255,7 +1258,7 @@ for(tx in 1:length(timeframes)){
     
     # 5.3.1) Check results ######
     files<-list.files(haz_risk_dir,"tif$",full.names = T)
-    (bad_files<-check_and_delete_bad_files(files,delete_bad=T,worker_n=worker_n))
+    (bad_files<-check_and_delete_bad_files(files,delete_bad=T,worker_n=worker_n5.3))
     
     # If you finding files will not open delete them then run the download process again
     if(length(bad_files)>0){
@@ -1270,81 +1273,81 @@ for(tx in 1:length(timeframes)){
 cat("Script 2 -  timeframe loop completed.\n")  
 
 # 6) Upload outputs ####
-# 6.1) (not implemented) Classified hazards ####
-# 6.2) Hazard Freq ####
-if(upload2){
-  cat("Uploading hazard frequency tifs\n")
-  cat("upload_overwrite2=",upload_overwrite2,"upload_delete2=",upload_delete2,"permission=",permission,"\n")
-  haz_time_risk_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_risk, timeframe)
-  
-  for(tx in 1:length(timeframes)){
+  # 6.1) (not implemented) Classified hazards ####
+  # 6.2) Hazard Freq ####
+  if(upload2){
+    cat("Uploading hazard frequency tifs\n")
+    cat("upload_overwrite2=",upload_overwrite2,"upload_delete2=",upload_delete2,"permission=",permission,"\n")
+    haz_time_risk_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_risk, timeframe)
     
-    timeframe<-timeframes(tx)
-    cat(timeframe,tx,"/",length(timeframes),"\n")
-    
-    s3_bucket<-file.path(atlas_dirs$s3_dir$haz_time_risk_dir,timeframe)
-    cat("uploading to:",s3_bucket,"\n")
-    
-    if (upload_delete2) {
-      cat("Deleting existing .tif files using AWS CLI (fast method)\n")
+    for(tx in 1:length(timeframes)){
       
-      # Construct AWS CLI command
-      cmd <- sprintf("aws s3 rm %s --recursive --exclude '*' --include '*.tif'", s3_bucket)
+      timeframe<-timeframes(tx)
+      cat(timeframe,tx,"/",length(timeframes),"\n")
       
-      # Run it
-      system(cmd, intern = TRUE)
+      s3_bucket<-file.path(atlas_dirs$s3_dir$haz_time_risk_dir,timeframe)
+      cat("uploading to:",s3_bucket,"\n")
+      
+      if (upload_delete2) {
+        cat("Deleting existing .tif files using AWS CLI (fast method)\n")
+        
+        # Construct AWS CLI command
+        cmd <- sprintf("aws s3 rm %s --recursive --exclude '*' --include '*.tif'", s3_bucket)
+        
+        # Run it
+        system(cmd, intern = TRUE)
+      }
+      
+      # Local files
+      local_files<-list.files(haz_time_risk_dir,"[.]tif$",full.names = T)
+      
+      cat("uploading",length(local_files),"tif files\n")
+      
+      upload_files_to_s3(files=local_files,
+                         selected_bucket=s3_bucket,
+                         max_attempts = 3,
+                         workers=worker_n_upload,
+                         convert2cog = F,
+                         mode=permission,
+                         overwrite=upload_overwrite2)
     }
-    
-    # Local files
-    local_files<-list.files(haz_time_risk_dir,"[.]tif$",full.names = T)
-    
-    cat("uploading",length(local_files),"tif files\n")
-    
-    upload_files_to_s3(files=local_files,
-                       selected_bucket=s3_bucket,
-                       max_attempts = 3,
-                       workers=worker_n_upload,
-                       convert2cog = F,
-                       mode=permission,
-                       overwrite=upload_overwrite2)
   }
-}
-
-# 6.3) Crop hazard frequency stacks ####
-if(upload3){
-  cat("Uploading hazard frequency crop tifs\n")
-  cat("upload_overwrite3=",upload_overwrite3,"upload_delete3=",upload_delete3,"permission=",permission,"\n")
-  haz_risk_dir <- file.path(atlas_dirs$data_dir$hazard_risk, timeframe)
   
-  for(tx in 1:length(timeframes)){
+  # 6.3) Crop hazard frequency stacks ####
+  if(upload3){
+    cat("Uploading hazard frequency crop tifs\n")
+    cat("upload_overwrite3=",upload_overwrite3,"upload_delete3=",upload_delete3,"permission=",permission,"\n")
+    haz_risk_dir <- file.path(atlas_dirs$data_dir$hazard_risk, timeframe)
     
-    timeframe<-timeframes(tx)
-    cat(timeframe,tx,"/",length(timeframes),"\n")
-    
-    s3_bucket<-file.path(atlas_dirs$s3_dir$hazard_risk,timeframe)
-    cat("uploading to:",s3_bucket,"\n")
-    
-    if (upload_delete3) {
-      cat("Deleting existing .tif files using AWS CLI (fast method)\n")
+    for(tx in 1:length(timeframes)){
       
-      # Construct AWS CLI command
-      cmd <- sprintf("aws s3 rm %s --recursive --exclude '*' --include '*.tif'", s3_bucket)
+      timeframe<-timeframes(tx)
+      cat(timeframe,tx,"/",length(timeframes),"\n")
       
-      # Run it
-      system(cmd, intern = TRUE)
+      s3_bucket<-file.path(atlas_dirs$s3_dir$hazard_risk,timeframe)
+      cat("uploading to:",s3_bucket,"\n")
+      
+      if (upload_delete3) {
+        cat("Deleting existing .tif files using AWS CLI (fast method)\n")
+        
+        # Construct AWS CLI command
+        cmd <- sprintf("aws s3 rm %s --recursive --exclude '*' --include '*.tif'", s3_bucket)
+        
+        # Run it
+        system(cmd, intern = TRUE)
+      }
+      
+      # Local files
+      local_files<-list.files(haz_risk_dir,"[.]tif$",full.names = T)
+      
+      cat("uploading",length(local_files),"tif files\n")
+      
+      upload_files_to_s3(files=local_files,
+                         selected_bucket=s3_bucket,
+                         max_attempts = 3,
+                         workers=worker_n_upload,
+                         convert2cog = F,
+                         mode=permission,
+                         overwrite=upload_overwrite3)
     }
-    
-    # Local files
-    local_files<-list.files(haz_risk_dir,"[.]tif$",full.names = T)
-    
-    cat("uploading",length(local_files),"tif files\n")
-    
-    upload_files_to_s3(files=local_files,
-                       selected_bucket=s3_bucket,
-                       max_attempts = 3,
-                       workers=worker_n_upload,
-                       convert2cog = F,
-                       mode=permission,
-                       overwrite=upload_overwrite3)
   }
-}
