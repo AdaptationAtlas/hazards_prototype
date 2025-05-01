@@ -352,7 +352,7 @@ cat("Starting 2_calculate_haz_freq.R script/n")
     do_ensemble2<-T
     
     ### 0.3.3) Make crop stacks for risk freq ####
-    run3<-F
+    run3<-T
     check3<-T
     overwrite3<-F
     worker_n3<-20
@@ -365,15 +365,16 @@ cat("Starting 2_calculate_haz_freq.R script/n")
     run4<-F
     check4<-F
     run4.1<-F # Difference
-    round4<-NULL # set to integer if you wish to round results
+    round4<-3 # set to integer if you wish to round results
     overwrite4<-F
     worker_n4<-20
     upload4<-F
+    do_ensemble4<-T
     
     ### 0.3.5) Calculate interactions ####
     
     # Interaction Tifs
-    run5.2<-T
+    run5.2<-F
     check5.2<-T
     round5.2<-3
     overwrite5.2<-F
@@ -398,7 +399,7 @@ cat("Starting 2_calculate_haz_freq.R script/n")
         "\n\nrun1 =",run1,"overwrite =",overwrite1,"workers1 =",worker_n1,"multisession1 =",multisession1,"upload1 =",upload1,"upload_overwrite1 =",upload_overwrite1,
         "\n\nrun2 =",run2,"round2 =",round2,"check2 =",check2,"overwrite =",overwrite2,"workers2 =",worker_n2,"multisession2=",multisession2,"do_ensemble2=",do_ensemble2,"upload2 =",upload2,"upload_overwrite2 =",upload_overwrite2,"upload_delete2 =",upload_delete2,
         "\n\nrun3 = ",run3,"check3 =",check3,"overwrite3 =",overwrite3,"workers3 =",worker_n3,"multisession3 =",multisession3,"upload3=",upload3,"upload_overwrite3 =",upload_overwrite3,"upload_delete3 =",upload_delete3,
-        "\n\nrun4 =",run4,"round4 =",round4,"check 4 =",check4,"overwrite4 =",overwrite4,"workers4 =",worker_n4,
+        "\n\nrun4 =",run4,"round4 =",round4,"check 4 =",check4,"overwrite4 =",overwrite4,"workers4 =",worker_n4,"do_ensemble4 =",do_ensemble4,
         "\n\nrun5.2 =",run5.2,"check5.2 =",check5.2,"round5.2 =",round5.2,"overwrite5.2 =",overwrite5.2,"workers5.2 =",worker_n5.2,"do_ensemble5.2 =",do_ensemble5.2,
         "\n\nrun5.3 = ",run5.3,"overwrite5.3 =",overwrite5.3,"workers5.3 =",worker_n5.3,
         "\n\nupload worker n=",worker_n_upload,"permission =",permission,"\n")
@@ -568,7 +569,7 @@ for(tx in 1:length(timeframes)){
   haz_time_class_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_class, timeframe)
   haz_time_risk_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_risk, timeframe)
   haz_risk_dir <- file.path(atlas_dirs$data_dir$hazard_risk, timeframe)
-  haz_mean_dir <- file.path(atlas_dirs$data_dir$haz_mean, timeframe)
+  haz_mean_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_mean, timeframe)
   haz_time_int_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_int, timeframe)
   
   # 1) Classify time series climate variables based on hazard thresholds ####
@@ -781,6 +782,7 @@ for(tx in 1:length(timeframes)){
     cat(timeframe,"2.1) Ensembling hazard frequency - Complete\n")
     }
     
+    ## 2.2) Check file integrity #### 
     if(check2){
       cat(timeframe,"2) Checking file integrity\n")
       
@@ -936,8 +938,6 @@ for(tx in 1:length(timeframes)){
   }
   # 4) Calculate mean and sd across time series ####
   if(run4){
-    cat(timeframe,"4) Calculate mean and sd across time series\n")
-    
     # Create output folder
     if (!dir.exists(haz_mean_dir)) dir.create(haz_mean_dir, recursive = TRUE)
     
@@ -946,6 +946,8 @@ for(tx in 1:length(timeframes)){
     
     # Remove ensemble 
     files<-files[!grepl("ENSEMBLE",files)]
+    
+    cat(timeframe,"4) Calculate mean and sd across time series.\nProcessing n =",length(files),"files\n")
     
     set_parallel_plan(n_cores=worker_n4,use_multisession=F)
     
@@ -977,7 +979,9 @@ for(tx in 1:length(timeframes)){
           }
           
           terra::writeRaster(data_mean,filename = file_mean,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
-          terra::writeRaster(data,filename = file_sd,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
+          terra::writeRaster(data_sd,filename = file_sd,overwrite=T,filetype = 'COG',gdal=c("COMPRESS=LZW",of="COG", "OVERVIEWS"="NONE"))
+          
+          rm(data_mean,data_sd,data)
         }
         
       }
@@ -985,11 +989,102 @@ for(tx in 1:length(timeframes)){
     })
     
     plan(sequential)
-    
     cat(timeframe,"4) Calculate mean and sd across time series - Complete\n")
     
+    ## 4.1) Ensemble models ####
+    if(do_ensemble4){
+      cat(timeframe,"4.1) Ensembling timeseries mean  - Complete\n")
+      
+      # Create stacks of hazard x crop/animal x scenario x timeframe
+      files<-list.files(haz_mean_dir,".tif$",full.names = T)
+      files<-files[!grepl("ENSEMBLE|_sd.tif",haz_freq_files)]
+      
+      # Split the file elements
+      split_elements <- strsplit(basename(haz_freq_files), "_")
+      haz_freq_file_tab <- rbindlist(lapply(split_elements, as.list))
+      colnames(haz_freq_file_tab)<-c("scenario","model","timeframe","hazard")
+      haz_freq_file_tab[,hazard:=gsub("[.]tif","",hazard)
+      ][,file:=haz_freq_files
+      ][,hazard2:=unlist(tstrsplit(hazard,"-",keep=1))
+      ][str_count(hazard,"-")>2,stat:=unlist(tstrsplit(hazard,"-",keep=2))
+      ][!is.na(stat),hazard2:=paste0(hazard2,"-",stat)
+      ][,hazard2:=paste0(hazard2,"-",tail(unlist(strsplit(hazard,"-")),1)),by=.I
+      ][,layer_name:=paste(c(scenario,timeframe,hazard2),collapse="_"),by=.I]
+      
+      haz_freq_file_tab<-haz_freq_file_tab[model!="historic"]
+      
+      model_options<-haz_freq_file_tab[,unique(model)]
+      
+      haz_scen_mod<-data.frame(unique(haz_freq_file_tab[,.(hazard,scenario,timeframe)]))
+      haz_freq_file_tab<-data.frame(haz_freq_file_tab)
+      
+      set_parallel_plan(n_cores=worker_n2,use_multisession=multisession2)
+      
+      # Enable progressr
+      progressr::handlers(global = TRUE)
+      progressr::handlers("progress")
+      
+      # Wrap the parallel processing in a with_progress call
+      p<-with_progress({
+        # Define the progress bar
+        progress <- progressr::progressor(along = 1:nrow(haz_scen_mod))
+        
+        invisible(future.apply::future_lapply(1:nrow(haz_scen_mod),FUN=function(i){
+          
+          progress(sprintf("Haz x Scenario x Model %d/%d", i, nrow(haz_scen_mod)))
+          
+          haz_choice<-haz_scen_mod$hazard[i]
+          scenario_choice<-haz_scen_mod$scenario[i]
+          time_choice<-haz_scen_mod$timeframe[i]
+          
+          ensemble_files<-haz_freq_file_tab[haz_freq_file_tab$hazard==haz_choice & 
+                                              haz_freq_file_tab$scenario==scenario_choice & 
+                                              haz_freq_file_tab$timeframe==time_choice,"file"]
+          
+          save_file_mean<-file.path(haz_time_risk_dir,paste0(scenario_choice,"_ENSEMBLEmean_",time_choice,"_",haz_choice,".tif"))
+          save_file_sd<-file.path(haz_time_risk_dir,paste0(scenario_choice,"_ENSEMBLEsd_",time_choice,"_",haz_choice,".tif"))
+          
+          if(!file.exists(save_file_mean)|overwrite2){
+            ensemble_stack <- lapply(ensemble_files,terra::rast) 
+            
+            ensemble_mean<-terra::rast(lapply(1:nlyr(ensemble_stack[[1]]),FUN=function(j){
+              ensemble_dat<-terra::rast(lapply(ensemble_stack,"[[",j)) 
+              mean(ensemble_dat)
+            }))
+            
+            ensemble_sd<-terra::rast(lapply(1:nlyr(ensemble_stack[[1]]),FUN=function(j){
+              ensemble_dat<-terra::rast(lapply(ensemble_stack,"[[",j)) 
+              terra::app(ensemble_dat, fun = sd)
+            }))
+            
+            if(!is.null(round2)){
+              ensemble_mean<-round(ensemble_mean,round2)
+              ensemble_sd<-round(ensemble_sd,round2)
+            }
+            
+            ensemble_names<-names(ensemble_stack[[1]])
+            ensemble_names_mean<-gsub(paste0(model_options,collapse="|"),"ENSEMBLEmean",ensemble_names)
+            ensemble_names_sd<-gsub(paste0(model_options,collapse="|"),"ENSEMBLEsd",ensemble_names)
+            
+            names(ensemble_mean)<-ensemble_names_mean
+            names(ensemble_sd)<-ensemble_names_sd
+            
+            terra::writeRaster(ensemble_mean,filename =  save_file_mean,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
+            terra::writeRaster(ensemble_sd,filename =  save_file_sd,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
+            
+            rm(ensemble_stack,ensemble_mean,ensemble_sd)
+            gc()
+          }
+        }))
+      })
+      plan(sequential)
+      
+      cat(timeframe,"4.1) Ensembling timeseries mean - Complete\n")
+    }
+    
+    ## 4.2) Check integrity ####
     if(check4){
-      cat(timeframe,"4) Checking file integrity\n")
+      cat(timeframe,"4.2) Checking file integrity\n")
       
       result<-check_tif_integrity (dir_path = haz_mean_dir,
                                    recursive = FALSE,
@@ -1012,7 +1107,7 @@ for(tx in 1:length(timeframes)){
         fwrite(result,error_file)
       }
       
-      cat(timeframe,"4) File integrity check complete\n")
+      cat(timeframe,"4.2) File integrity check complete\n")
     }
     
     # 4.1) (Disabled) Calculate change in mean values #####
