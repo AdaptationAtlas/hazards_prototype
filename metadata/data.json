@@ -4,7 +4,7 @@
 		"description": "Admin boundaries for the Atlas based on GAUL 2024. This includes admin 0, 1, and 2 levels.",
 		"s3": {
 			"bucket": "digital-atlas",
-			"path_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=analysis-ready/level={level}/atlas_gaul_a{level}_{region}.parquet"
+			"path_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=analysis-ready/level=adm{level}/atlas_gaul_a{level}_{region}.parquet"
 		},
 		"params": {
 			"region": [

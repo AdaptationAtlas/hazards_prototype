@@ -22,7 +22,7 @@
   }
   
   # List of packages to be installed/loaded via pacman
-  packages <- c("remotes", "data.table", "httr", "s3fs", "xml2", "paws.storage", "rvest")
+  packages <- c("remotes", "data.table", "httr", "s3fs", "xml2", "paws.storage", "rvest", "glue","jsonlite")
   
   # Use pacman to install and load the packages
   pacman::p_load(char = packages)
@@ -145,8 +145,7 @@ worker_n <- 20
   
 # 2) Create directory structures ####
   ## 2.1) Local directories #####
-    library(jsonlite)
-    atlas_data <- read_json("metadata/data.json")
+    atlas_data <- read_json(file.path(project_dir, "metadata/data.json"))
 
     ### 2.1.1) Outputs ######
     # Create a hierarchical list for top-level data directories
