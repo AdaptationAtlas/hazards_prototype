@@ -234,7 +234,7 @@ worker_n <- 20
     atlas_dirs$data_dir$livestock_vop      <- file.path(atlas_dirs$data_dir[[1]], "livestock_vop")
     atlas_dirs$data_dir$afr_highlands      <- file.path(atlas_dirs$data_dir[[1]], "afr_highlands")
     atlas_dirs$data_dir$fao                <- file.path(atlas_dirs$data_dir[[1]], "fao")
-    atlas_dirs$data_dir$mapspam_2020v1r2   <- file.path(atlas_dirs$data_dir[[1]], "mapspam/2020V1r2_SSA")
+    atlas_dirs$data_dir$mapspam_2020v1r2   <- atlas_data$mapspam_2020v1r2$alternate_paths$project
     atlas_dirs$data_dir$sos                <- file.path(atlas_dirs$data_dir[[1]], "sos")
     atlas_dirs$data_dir$ggcmi              <- file.path(atlas_dirs$data_dir[[1]], "ggcmi")
     atlas_dirs$data_dir$hydrobasins        <- file.path(atlas_dirs$data_dir[[1]], "hydrobasins")
@@ -379,17 +379,17 @@ worker_n <- 20
     file <- geo_files_local[i]
     # Download each file from S3 if it doesn't exist locally or if update=TRUE
     if (!file.exists(file) | update == TRUE) {
-      s3$file_download(geo_files_s3[i], file)
+      s3$file_download(geo_files_s3[i], file, overwrite = update)
     }
   })
   
   ## 3.2) Mapspam #####
   update <- FALSE
   # Construct the S3 folder path
-  folder_path <- file.path("MapSpam/raw", basename(mapspam_dir))
+  folder_path <- atlas_data$mapspam_2020v1r2$s3$path_pattern
   
   # List .csv files from the specified S3 bucket location
-  files_s3 <- s3$dir_ls(file.path(bucket_name_s3, folder_path))
+  files_s3 <- s3$dir_ls(file.path(bucket_name_s3, folder_path), recurse = TRUE)
   files_s3 <- files_s3[grepl(".csv", files_s3) & !grepl("index", files_s3)]
   files_local <- gsub(file.path(bucket_name_s3, folder_path), paste0(mapspam_dir, "/"), files_s3)
   

@@ -26,27 +26,10 @@
 		"description": "",
 		"s3": {
 			"bucket": "digital-atlas",
-			"path_pattern": "digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/region={region}/processing=atlas-harmonized/variable={variable}/spam_{variable}_{tech}.tif"
-		},
-		"params": {
-			"region": [
-				"ssa",
-				"africa"
-			],
-			"variable": [
-				"harv-area_ha",
-				"vop_usd2015",
-				"vop_intld2015",
-				"yield_kgha"
-			],
-			"tech": [
-				"all",
-				"rf-all",
-				"irrigated"
-			]
+			"path_pattern": "domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=raw/"
 		},
 		"alternate_paths": {
-			"project": "Data/mapspam_2020v1r2"
+			"project": "Data/mapspam/2020V1r2_SSA/"
 		}
 	}
 }
