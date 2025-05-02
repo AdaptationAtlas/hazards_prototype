@@ -1199,10 +1199,10 @@ rast_class <- function(data, direction, threshold, minval = -99999, maxval = 999
 #' print(result)
 #' @import terra
 #' @export
-int_risk <- function(data, interaction_mask_vals, lyr_name){
+int_risk <- function(data, interaction_mask_vals, lyr_name,na.rm=T){
   data <- terra::mask(data, data, maskvalues=interaction_mask_vals, updatevalue=0)
   data <- terra::classify(data, data.table(from=1, to=999999, becomes=1))
-  data <- terra::app(data, fun="mean", na.rm=TRUE)
+  data <- terra::app(data, fun="mean", na.rm=na.rm)
   names(data) <- lyr_name
   return(data)
 }
