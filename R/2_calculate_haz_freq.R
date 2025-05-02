@@ -362,7 +362,7 @@ cat("Starting 2_calculate_haz_freq.R script/n")
     do_ensemble2<-T
     
     ### 0.3.3) Make crop stacks for risk freq ####
-    run3<-T
+    run3<-F
     check3<-T
     overwrite3<-F
     worker_n3<-20
@@ -386,7 +386,7 @@ cat("Starting 2_calculate_haz_freq.R script/n")
     ### 0.3.5) Calculate interactions ####
     
     # Interaction Tifs
-    run5.2<-F
+    run5.2<-T
     check5.2<-T
     round5.2<-3
     overwrite5.2<-F
@@ -408,13 +408,13 @@ cat("Starting 2_calculate_haz_freq.R script/n")
     permission<-"public-read"
     
     ### 0.3.7) Choose timeframes to loop through ####
-    timeframes<-timeframe_choices[1]
+    timeframes<-timeframe_choices
     
     cat("Control and overwrite settings:\n")
     cat("timeframes = ", timeframes,
-        "\n\nrun1 =",run1,"overwrite =",overwrite1,"workers1 =",worker_n1,"multisession1 =",multisession1,"upload1 =",upload1,"upload_overwrite1 =",upload_overwrite1,
-        "\n\nrun2 =",run2,"round2 =",round2,"check2 =",check2,"overwrite =",overwrite2,"workers2 =",worker_n2,"multisession2=",multisession2,"do_ensemble2=",do_ensemble2,"upload2 =",upload2,"upload_overwrite2 =",upload_overwrite2,"upload_delete2 =",upload_delete2,
-        "\n\nrun3 = ",run3,"check3 =",check3,"overwrite3 =",overwrite3,"workers3 =",worker_n3,"multisession3 =",multisession3,"upload3=",upload3,"upload_overwrite3 =",upload_overwrite3,"upload_delete3 =",upload_delete3,
+        "\n\nrun1 =",run1,"overwrite1 =",overwrite1,"workers1 =",worker_n1,"multisession1 =",multisession1,"upload1 =",upload1,"upload_overwrite1 =",upload_overwrite1,
+        "\n\nrun2 =",run2,"round2 =",round2,"check2 =",check2,"overwrite =",overwrite2,"workers2 =",worker_n2,"multisession2= ",multisession2,"do_ensemble2=",do_ensemble2,"upload2 =",upload2,"upload_overwrite2 =",upload_overwrite2,"upload_delete2 =",upload_delete2,
+        "\n\nrun3 = ",run3,"check3 =",check3,"overwrite3 =",overwrite3,"workers3 =",worker_n3,"multisession3 =",multisession3,"upload3= ",upload3,"upload_overwrite3 =",upload_overwrite3,"upload_delete3 =",upload_delete3,
         "\n\nrun4 =",run4,"round4 =",round4,"check 4 =",check4,"overwrite4 =",overwrite4,"workers4 =",worker_n4,"multisession4 =",multisession4,"do_ensemble4 =",do_ensemble4,
         "\n\nrun5.2 =",run5.2,"check5.2 =",check5.2,"round5.2 =",round5.2,"overwrite5.2 =",overwrite5.2,"workers5.2 =",worker_n5.2,"multisession5.2 =",multisession5.2,"do_ensemble5.2 =",do_ensemble5.2,
         "\n\nrun5.3 =",run5.3,"check5.3 =",check5.3,"round5.3 =",round5.3,"overwrite5.3 =",overwrite5.3,"workers5.3 =",worker_n5.3,"multisession5.3 =",multisession5.3,
@@ -573,7 +573,7 @@ if(!Cglabs){
   }
 }
 
-# Start timeframe loop ####
+# ***Start timeframe loop*** ####
 for(tx in 1:length(timeframes)){
   timeframe<-timeframes[tx]
   cat("Processing ",timeframe,tx,"/",length(timeframes),"\n")
@@ -858,8 +858,8 @@ for(tx in 1:length(timeframes)){
     
     haz_class_df<-data.frame(haz_class)
 
-    haz_freq_file_tab<-merge(haz_freq_file_tab,type[,c("hazard2","type","index_name2")],by="hazard2",all.x=T,sort=F)
-    haz_freq_file_tab[,index_name2:=gsub("_","-",index_name2)]
+  #  haz_freq_file_tab<-merge(haz_freq_file_tab,type[,c("hazard2","type","index_name2")],by="hazard2",all.x=T,sort=F)
+  #  haz_freq_file_tab[,index_name2:=gsub("_","-",index_name2)]
     haz_freq_file_tab<-data.frame(haz_freq_file_tab)
     
     set_parallel_plan(n_cores=worker_n3,use_multisession=multisession3)
@@ -893,9 +893,9 @@ for(tx in 1:length(timeframes)){
             
             if(!file.exists(save_name)|overwrite3==T){
               
-              haz_class_df_subset<-haz_class_df[haz_class$crop==crop_focus & 
-                                       haz_class$description == severity_class & 
-                                       haz_class$index_name2 %in% interaction_haz,c("type","filename","index_name2")]
+              haz_class_df_subset<-haz_class_df[haz_class_df$crop==crop_focus & 
+                                       haz_class_df$description == severity_class & 
+                                       haz_class_df$index_name2 %in% interaction_haz,c("type","filename","index_name2")]
               haz_crop_classes<-unique(gsub("_","-",gsub("[.]tif","",haz_class_df_subset$filename)))
               
               files<-haz_freq_file_tab[haz_freq_file_tab$model==model_k & 
@@ -912,7 +912,7 @@ for(tx in 1:length(timeframes)){
               #  "ssp126_ENSEMBLEsd_2021-2040_any_PTOT-L+NTxS+PTOT-G_barley_moderate"   
               # Need to add "common name" for hazard
               
-              haz_class_df_subset$hazard2<-gsub(".tif","",haz_class_df_subset$filename)
+              haz_class_df_subset$hazard2<-gsub("_","-",gsub(".tif","",haz_class_df_subset$filename))
               haz_class_df_subset$filename<-NULL
               haz_class_df_subset$index_name2<-gsub("_","-",haz_class_df_subset$index_name2)
               
@@ -1260,7 +1260,7 @@ for(tx in 1:length(timeframes)){
         
         for(l in 1:nrow(scenarios_x_models)){
           
-          scenario_choice<-strsplit[l]
+          scenario_choice<-scenarios_x_models$scenario[l]
           time_choice<-scenarios_x_models$timeframe[l]
           model_choice<-scenarios_x_models$model[l]
           scen_mod_time_choice<-scenarios_x_models$scen_mod_time[l]
