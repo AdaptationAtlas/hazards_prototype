@@ -391,6 +391,7 @@ cat("Starting 2_calculate_haz_freq.R script/n")
     upload5<-F
     multisession5.3<-T
     check5.3<-T
+    round5.3<-NULL
     
     ### 0.3.6) Set workers & permission for uploads ####
     worker_n_upload<-20
@@ -406,8 +407,8 @@ cat("Starting 2_calculate_haz_freq.R script/n")
         "\n\nrun3 = ",run3,"check3 =",check3,"overwrite3 =",overwrite3,"workers3 =",worker_n3,"multisession3 =",multisession3,"upload3=",upload3,"upload_overwrite3 =",upload_overwrite3,"upload_delete3 =",upload_delete3,
         "\n\nrun4 =",run4,"round4 =",round4,"check 4 =",check4,"overwrite4 =",overwrite4,"workers4 =",worker_n4,"multisession4 =",multisession4,"do_ensemble4 =",do_ensemble4,
         "\n\nrun5.2 =",run5.2,"check5.2 =",check5.2,"round5.2 =",round5.2,"overwrite5.2 =",overwrite5.2,"workers5.2 =",worker_n5.2,"multisession5.2 =",multisession5.2,"do_ensemble5.2 =",do_ensemble5.2,
-        "\n\nrun5.3 = ",run5.3,"check5.3 =",check5.3,"overwrite5.3 =",overwrite5.3,"workers5.3 =",worker_n5.3,"multisession5.3 =",multisession5.3,
-        "\n\nupload workers n = ",worker_n_upload," upload permission = ",permission,"\n\n")
+        "\n\nrun5.3 =",run5.3,"check5.3 =",check5.3,"round5.3 =",round5.3,"overwrite5.3 =",overwrite5.3,"workers5.3 =",worker_n5.3,"multisession5.3 =",multisession5.3,
+        "\n\nupload workers n =",worker_n_upload," upload permission =",permission,"\n\n")
     
   ## 0.4) Download hazard timeseries from s3 bucket (if required) ####
     # Dev Note: needs to be within timeframe loop? ####
@@ -1401,25 +1402,26 @@ for(tx in 1:length(timeframes)){
       
       future.apply::future_lapply(1:length(combinations_crops),FUN=function(i){
         progress(sprintf("Crop %d/%d", i, length(combinations_crops)))
-        #  for(i in 1:length(combinations_crops)){
-        crop_choice<-combinations_crops[i]
+        #lapply(1:length(combinations_crops),FUN=function(i){
+          crop_choice<-combinations_crops[i]
         for(j in 1:nrow(severity_classes)){
           sev_choice<-tolower(severity_classes$class[j])
           
           for(m in 1:length(model_options)){
             model_choice<-model_options[m]
             
-            # Display progress
-            cat("crop_choice:",i,"/",length(combinations_crops),
-                "| sev_choice:",j,"/",nrow(severity_classes),
-                "| model_choice:",m,"/",length(model_options),"              \r")
-            
             subset<-combinations_ca[combinations_ca$crop==crop_choice & 
                                       combinations_ca$severity_class==sev_choice,]
               
-              data<-terra::rast(lapply(1:nrow(subset),FUN=function(k){
+              invisible(lapply(1:nrow(subset),FUN=function(k){
                 combo_name<-subset$combo_name[k]
                 combo_simple2<-subset$combo_name_simple2[k]
+                
+                # Display progress
+                cat("crop_choice (i):",i,"/",length(combinations_crops),
+                    "| sev_choice (j):",j,"/",nrow(severity_classes),
+                    "| model_choice (m):",m,"/",length(model_options),
+                    "| subset (k):",k,"/",nrow(subset),"              \r")
                 
                 save_file<-file.path(haz_risk_dir,paste0(gsub("_","-",crop_choice),"_",model_choice,"_",sev_choice,"_",combo_simple2,"_int.tif"))
                 
@@ -1443,11 +1445,14 @@ for(tx in 1:length(timeframes)){
                 }
 
                 data<-terra::rast(files)
+                
+                if(!is.null(round5.3)){
+                  data<-round(data,round5.3)
+                }
 
                 # Add combination, crop and severity to layer name
                 names(data)<-paste0(names(data),"_",combo_simple2,"_",crop_choice,"_",sev_choice)
-                data
-     
+                
                 # Check for any duplicate layers
                 x<-table(names(data))
 
@@ -1456,8 +1461,13 @@ for(tx in 1:length(timeframes)){
                 }
                 
                 terra::writeRaster(data,filename = save_file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
+                
                 }
+                
+                
+                
               }))
+              
           }
         }
       })
