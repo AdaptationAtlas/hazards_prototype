@@ -293,6 +293,11 @@ worker_n <- 20
       dir.create(mapspam_dir, recursive = TRUE)
     }
     
+    mapspam_pro_dir <- "Data/mapspam/2020V1r2_SSA/processed"
+    if (!dir.exists(mapspam_pro_dir)) {
+      dir.create(mapspam_pro_dir, recursive = TRUE)
+    }
+    
     sos_dir <- atlas_dirs$data_dir$sos
     if (!dir.exists(sos_dir)) {
       dir.create(sos_dir, recursive = TRUE)
@@ -381,8 +386,29 @@ worker_n <- 20
   })
   
   ## 3.2) Mapspam #####
-  ### 3.2.1) Raw data ####
   update <- FALSE
+  ### 3.2.1) Processed data ####
+  # Construct the S3 folder path
+  folder_path <- "domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=atlas-harmonized/"
+  
+  # List .csv files from the specified S3 bucket location
+  files_s3 <- s3$dir_ls(file.path(bucket_name_s3, folder_path), recurse = TRUE)
+  files_local <- gsub(file.path(bucket_name_s3, folder_path), paste0(mapspam_pro_dir, "/"), files_s3)
+  
+  # Download files if missing or if update=TRUE
+  for (i in seq_along(files_local)) {
+    cat("3.2.1) Downloading mapspam processed files",i,"/",length(files_local),"     \r")
+    file <- files_local[i]
+    save_dir<-dirname(file)
+    if(!dir.exists(save_dir)){
+      dir.create(save_dir,recursive=T)
+    }
+    if (!file.exists(file) | update == TRUE) {
+      s3$file_download(files_s3[i], file, overwrite = TRUE)
+    }
+  }
+  
+  ### 3.2.2) Raw data ####
   # Construct the S3 folder path
   folder_path <- atlas_data$mapspam_2020v1r2$s3$path_pattern
   
@@ -393,6 +419,7 @@ worker_n <- 20
   
   # Download files if missing or if update=TRUE
   for (i in seq_along(files_local)) {
+    cat("3.2.2) Downloading mapspam raw files",i,"/",length(files_local),"     \r")
     file <- files_local[i]
     if (!file.exists(file) | update == TRUE) {
       s3$file_download(files_s3[i], file, overwrite = TRUE)
