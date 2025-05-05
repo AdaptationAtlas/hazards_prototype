@@ -6,35 +6,21 @@ source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/
 # List of packages to be loaded
 packages <- c("terra", 
               "data.table",
-              "exactextractr")
+              "exactextractr",
+              "arrow",
+              "geoarrow")
 
-# This function will call packages first from the user library and second the system library
-# This can help overcome issues with the Afrilab server where the system library has outdated packages that 
-# require an contacting admin user to update
-load_packages_prefer_user <- function(packages) {
-  user_lib <- Sys.getenv("R_LIBS_USER")
-  current_libs <- .libPaths()
-  
-  # Set user library as the first in the search path
-  .libPaths(c(user_lib, current_libs))
-  
-  # Load pacman package
-  library(pacman)
-  
-  # Install and load packages using pacman
-  pacman::p_load(char = packages)
-  
-  # Restore original library paths
-  .libPaths(current_libs)
-}
 
-load_packages_prefer_user(packages)
+pacman::p_load(packages,character.only=T)
 
 # b) Load functions & wrappers ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
 
 # 0) Load and prepare admin vectors and exposure rasters, extract exposure by admin ####
+  # 0.0) Base rast ####
+  base_rast <- terra::rast(base_rast_path)
+
 # 0.1) Geographies #####
 Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
   file<-geo_files_local[i]
@@ -44,7 +30,7 @@ Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
 })
 names(Geographies)<-names(geo_files_local)
 # 0.2) Exposure variables ####
-overwrite<-F
+overwrite<-T
 # 0.2.1) Crops (MapSPAM) #####
 # read in mapspam metadata
 ms_codes<-data.table::fread(ms_codes_url, showProgress = FALSE)[,Code:=toupper(Code)]
@@ -52,6 +38,9 @@ ms_codes<-ms_codes[compound=="no"]
 # 0.2.1.1) Crop VoP (Value of production) ######
   # 0.2.1.1.1) I$ #########
   # To generalize it might be better to just supply a filename for the mapspam
+  # Dev Note: Why is this combination separate from the loop that follows?
+  var<-"V"
+  tech<-"TA"
   crop_vop_intd<-read_spam(variable="V",
                           technology="TA",
                           mapspam_dir=mapspam_dir,
@@ -60,6 +49,15 @@ ms_codes<-ms_codes[compound=="no"]
                           filename="crop_vop15_intd15",
                           ms_codes=ms_codes,
                           overwrite=overwrite)
+
+attr_info <- list(
+  source = atlas_data$mapspam_2020v1r2$name,
+  date_created = Sys.time(),
+  notes = paste("A raster stack of crop value of production in 2015 international dollars created using the R/haz_functions/read_spam function and tabular vop data created by the R/0.45_create_crop_vop.R script.",
+                "variable = ",var, " & technology =",tech)
+)
+
+write_json(attr_info, file.path(exposure_dir,"crop_vop15_intd15.tif.json"), pretty = TRUE)
 
  # Create other spam layers
  spam_combos<-data.table(expand.grid(variable=c("V-crop_vop15_intd15","H-crop_ha"),tech=c("TA-a","TI-i","TR-r")))
@@ -70,14 +68,37 @@ ms_codes<-ms_codes[compound=="no"]
  
  for(i in 1:nrow(spam_combos)){
    cat("\r",i,"/",nrow(spam_combos))
-  read_spam(variable=spam_combos$variable[i],
-             technology=spam_combos$tech[i],
+   
+   var<-spam_combos$variable[i]
+   tech<-spam_combos$tech[i]
+   spam_file<-spam_combos$file_name[i]
+   
+  read_spam(variable=var,
+             technology=tech,
              mapspam_dir=mapspam_dir,
              save_dir=exposure_dir,
              base_rast=base_rast,
-             filename=spam_combos$file_name[i],
+             filename=spam_file,
              ms_codes=ms_codes,
              overwrite=overwrite)
+  
+  if(var=="H"){
+    var_desc<-"harvested area in ha per pixel"
+  }
+  
+  if(var=="V"){
+    var_desc<-"value of production in 2015 international dollars (calculated using the R/0.45_create_crop_vop.R script)"
+  }
+  
+  attr_info <- list(
+    source = atlas_data$mapspam_2020v1r2$name,
+    date_created = Sys.time(),
+    notes = paste0("A raster stack of ",var_desc," created using the R/haz_functions/read_spam function and tabular mapspam data.",
+                  "variable = ",var, " & technology =",tech)
+  )
+
+  write_json(attr_info, file.path(exposure_dir,paste0(spam_file,".tif.json")), pretty = TRUE)
+  
    }
   
   # Extract  values by admin areas
