@@ -31,9 +31,6 @@
   source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
   
   # 0.2) Set timeframes #####
-  # Load a record of timeframes from an external CSV
-  (analysis_record <- fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/refs/heads/main/metadata/analysis_record.csv"))
-  
   # Possible timeframe calculations, e.g., "annual", "sos_primary_fixed_3", etc.
   timeframe_choices <- c(
     "annual",
@@ -241,7 +238,7 @@ worker_n <- 20
     atlas_dirs$data_dir$solution_tables    <- file.path(atlas_dirs$data_dir[[1]], "solution_tables")
     
     # Now create (if not present) each of these directories locally
-    boundaries_dir <- atlas_dirs$data_dir$Boundaries
+    boundaries_dir <- sub("/$", "",atlas_dirs$data_dir$Boundaries)
     if (!dir.exists(boundaries_dir)) {
       dir.create(boundaries_dir, recursive = TRUE)
     }
@@ -291,7 +288,7 @@ worker_n <- 20
       dir.create(fao_dir, recursive = TRUE)
     }
     
-    mapspam_dir <- atlas_dirs$data_dir$mapspam_2020v1r2
+    mapspam_dir <- sub("/$", "",atlas_dirs$data_dir$mapspam_2020v1r2)
     if (!dir.exists(mapspam_dir)) {
       dir.create(mapspam_dir, recursive = TRUE)
     }
