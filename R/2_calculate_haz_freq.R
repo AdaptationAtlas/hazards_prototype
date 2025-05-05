@@ -576,7 +576,9 @@ if(!Cglabs){
 # ***Start timeframe loop*** ####
 for(tx in 1:length(timeframes)){
   timeframe<-timeframes[tx]
-  cat("Processing ",timeframe,tx,"/",length(timeframes),"\n")
+  
+  cat("Processing", timeframe, tx, "/", length(timeframes),
+      ". Started at time:",format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
   
   haz_timeseries_dir<-file.path(indices_dir2,timeframe)
   cat("haz_timeseries_dir =",haz_timeseries_dir,"\n")
@@ -1207,6 +1209,7 @@ for(tx in 1:length(timeframes)){
   ][,scen_x_time:=paste0(scenario,"_",timeframe)
   ][,scen_mod_time:=paste0(scenario,"_",model,"_",timeframe)])
   
+  model_options<-scenarios_x_models[,unique(model)]
   scenarios_x_models<-data.frame(scenarios_x_models)
   
 
