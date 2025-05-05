@@ -1,0 +1,35 @@
+{
+	"boundaries": {
+		"name": "Atlas Admin Boundaries",
+		"description": "Admin boundaries for the Atlas based on GAUL 2024. This includes admin 0, 1, and 2 levels.",
+		"s3": {
+			"bucket": "digital-atlas",
+			"path_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=analysis-ready/level=adm{level}/atlas_gaul_a{level}_{region}.parquet"
+		},
+		"params": {
+			"region": [
+				"global",
+				"africa"
+			],
+			"level": [
+				"0",
+				"1",
+				"2"
+			]
+		},
+		"alternate_paths": {
+			"project": "Data/boundaries/"
+		}
+	},
+	"mapspam_2020v1r2": {
+		"name": "Mapspam 2020v1r2",
+		"description": "",
+		"s3": {
+			"bucket": "digital-atlas",
+			"path_pattern": "domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=raw/"
+		},
+		"alternate_paths": {
+			"project": "Data/mapspam/2020V1r2_SSA/"
+		}
+	}
+}

@@ -22,7 +22,7 @@
   }
   
   # List of packages to be installed/loaded via pacman
-  packages <- c("remotes", "data.table", "httr", "s3fs", "xml2", "paws.storage", "rvest")
+  packages <- c("remotes", "data.table", "httr", "s3fs", "xml2", "paws.storage", "rvest", "glue","jsonlite")
   
   # Use pacman to install and load the packages
   pacman::p_load(char = packages)
@@ -145,6 +145,8 @@ worker_n <- 20
   
 # 2) Create directory structures ####
   ## 2.1) Local directories #####
+    atlas_data <- read_json(file.path(project_dir, "metadata/data.json"))
+
     ### 2.1.1) Outputs ######
     # Create a hierarchical list for top-level data directories
     atlas_dirs <- list()
@@ -222,7 +224,7 @@ worker_n <- 20
     }
     
     # Create new entries in atlas_dirs$data_dir for various directories beyond hazard outputs
-    atlas_dirs$data_dir$Boundaries         <- file.path(atlas_dirs$data_dir[[1]], "Boundaries")
+    atlas_dirs$data_dir$Boundaries         <- atlas_data$boundaries$alternate_paths$project
     atlas_dirs$data_dir$GLPS               <- file.path(atlas_dirs$data_dir[[1]], "GLPS")
     atlas_dirs$data_dir$cattle_heatstress  <- file.path(atlas_dirs$data_dir[[1]], "cattle_heatstress")
     atlas_dirs$data_dir$adaptive_capacity  <- file.path(atlas_dirs$data_dir[[1]], "adaptive_capacity")
@@ -232,7 +234,7 @@ worker_n <- 20
     atlas_dirs$data_dir$livestock_vop      <- file.path(atlas_dirs$data_dir[[1]], "livestock_vop")
     atlas_dirs$data_dir$afr_highlands      <- file.path(atlas_dirs$data_dir[[1]], "afr_highlands")
     atlas_dirs$data_dir$fao                <- file.path(atlas_dirs$data_dir[[1]], "fao")
-    atlas_dirs$data_dir$mapspam_2020v1r2   <- file.path(atlas_dirs$data_dir[[1]], "mapspam/2020V1r2_SSA")
+    atlas_dirs$data_dir$mapspam_2020v1r2   <- atlas_data$mapspam_2020v1r2$alternate_paths$project
     atlas_dirs$data_dir$sos                <- file.path(atlas_dirs$data_dir[[1]], "sos")
     atlas_dirs$data_dir$ggcmi              <- file.path(atlas_dirs$data_dir[[1]], "ggcmi")
     atlas_dirs$data_dir$hydrobasins        <- file.path(atlas_dirs$data_dir[[1]], "hydrobasins")
@@ -358,11 +360,16 @@ worker_n <- 20
 
   ## 3.1) Geoboundaries #####
   update <- FALSE
-  
-  geo_files_s3 <- c(
-    file.path(bucket_name_s3, "boundaries/atlas-region_admin0_harmonized.parquet"),
-    file.path(bucket_name_s3, "boundaries/atlas-region_admin1_harmonized.parquet"),
-    file.path(bucket_name_s3, "boundaries/atlas-region_admin2_harmonized.parquet")
+
+  admin_levels <- atlas_data$boundaries$params$level
+  regions <- atlas_data$boundaries$params$region[[2]] # 1 = 'global', 2 = 'africa'
+
+  geo_files_s3 <- file.path(
+    bucket_name_s3,
+      glue(
+      atlas_data$boundaries$s3$path_pattern,
+      region = regions,
+      level = admin_levels)
   )
   
   geo_files_local <- file.path(boundaries_dir, basename(geo_files_s3))
@@ -372,17 +379,17 @@ worker_n <- 20
     file <- geo_files_local[i]
     # Download each file from S3 if it doesn't exist locally or if update=TRUE
     if (!file.exists(file) | update == TRUE) {
-      s3$file_download(geo_files_s3[i], file)
+      s3$file_download(geo_files_s3[i], file, overwrite = update)
     }
   })
   
   ## 3.2) Mapspam #####
   update <- FALSE
   # Construct the S3 folder path
-  folder_path <- file.path("MapSpam/raw", basename(mapspam_dir))
+  folder_path <- atlas_data$mapspam_2020v1r2$s3$path_pattern
   
   # List .csv files from the specified S3 bucket location
-  files_s3 <- s3$dir_ls(file.path(bucket_name_s3, folder_path))
+  files_s3 <- s3$dir_ls(file.path(bucket_name_s3, folder_path), recurse = TRUE)
   files_s3 <- files_s3[grepl(".csv", files_s3) & !grepl("index", files_s3)]
   files_local <- gsub(file.path(bucket_name_s3, folder_path), paste0(mapspam_dir, "/"), files_s3)
   
