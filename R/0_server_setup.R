@@ -221,7 +221,7 @@ worker_n <- 20
     }
     
     # Create new entries in atlas_dirs$data_dir for various directories beyond hazard outputs
-    atlas_dirs$data_dir$Boundaries         <- atlas_data$boundaries$alternate_paths$project
+    # atlas_dirs$data_dir$Boundaries         <- atlas_data$boundaries$alternate_paths$project # Created directly
     atlas_dirs$data_dir$GLPS               <- file.path(atlas_dirs$data_dir[[1]], "GLPS")
     atlas_dirs$data_dir$cattle_heatstress  <- file.path(atlas_dirs$data_dir[[1]], "cattle_heatstress")
     atlas_dirs$data_dir$adaptive_capacity  <- file.path(atlas_dirs$data_dir[[1]], "adaptive_capacity")
@@ -231,14 +231,14 @@ worker_n <- 20
     atlas_dirs$data_dir$livestock_vop      <- file.path(atlas_dirs$data_dir[[1]], "livestock_vop")
     atlas_dirs$data_dir$afr_highlands      <- file.path(atlas_dirs$data_dir[[1]], "afr_highlands")
     atlas_dirs$data_dir$fao                <- file.path(atlas_dirs$data_dir[[1]], "fao")
-    atlas_dirs$data_dir$mapspam_2020v1r2   <- atlas_data$mapspam_2020v1r2$alternate_paths$project
+    # atlas_dirs$data_dir$mapspam_2020v1r2   <- atlas_data$mapspam_2020v1r2$alternate_paths$project # folder object mapspam_dir created directly from atlas_data
     atlas_dirs$data_dir$sos                <- file.path(atlas_dirs$data_dir[[1]], "sos")
     atlas_dirs$data_dir$ggcmi              <- file.path(atlas_dirs$data_dir[[1]], "ggcmi")
     atlas_dirs$data_dir$hydrobasins        <- file.path(atlas_dirs$data_dir[[1]], "hydrobasins")
     atlas_dirs$data_dir$solution_tables    <- file.path(atlas_dirs$data_dir[[1]], "solution_tables")
     
     # Now create (if not present) each of these directories locally
-    boundaries_dir <- sub("/$", "",atlas_dirs$data_dir$Boundaries)
+    boundaries_dir <- sub("/$", "",atlas_data$boundaries$alternate_paths$project)
     if (!dir.exists(boundaries_dir)) {
       dir.create(boundaries_dir, recursive = TRUE)
     }
@@ -288,7 +288,7 @@ worker_n <- 20
       dir.create(fao_dir, recursive = TRUE)
     }
     
-    mapspam_dir <- sub("/$", "",atlas_dirs$data_dir$mapspam_2020v1r2)
+    mapspam_dir <- sub("/$", "",atlas_data$mapspam_2020v1r2$alternate_paths$project)
     if (!dir.exists(mapspam_dir)) {
       dir.create(mapspam_dir, recursive = TRUE)
     }
@@ -381,6 +381,7 @@ worker_n <- 20
   })
   
   ## 3.2) Mapspam #####
+  ### 3.2.1) Raw data ####
   update <- FALSE
   # Construct the S3 folder path
   folder_path <- atlas_data$mapspam_2020v1r2$s3$path_pattern
