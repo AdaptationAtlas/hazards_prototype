@@ -1596,11 +1596,11 @@ admin_extract_wrap <- function(data,
           data_ex_sub[, variable := gsub(paste0(FUN, "."), "", variable[1], fixed = T), by = variable
                       ][, variable:= gsub(".", " ", variable, fixed = T)
                         ][,stat:=FUN]
-          
-          if(!is.null(var_name)){
+          }
+        
+        if(!is.null(var_name)){
           setnames(data_ex_sub,"variable",var_name)
-          }
-          }
+        }
         
         data_ex_sub
       }), fill = T)
