@@ -1375,7 +1375,7 @@ hazard_stacker <- function(i, folders_x_hazards, haz_meta, model_names, use_crop
 #' ms_codes <- data.frame(Code = c("maize"), Fullname = c("Maize"))
 #' data <- read_spam("production", "HighYield", "/path/to/mapspam", "/path/to/save", base_rast, "maize_highyield", ms_codes, TRUE)
 #' @export
-read_spam <- function(variable, technology, mapspam_dir, save_dir, base_rast, filename, ms_codes, overwrite,do_group=F) {
+read_spam <- function(variable, technology, mapspam_dir, save_dir, base_rast, filename, ms_codes,overwrite,do_group=F) {
   # Construct the filename for the output raster file.
   ms_file <- paste0(save_dir, "/", filename, ".tif")
   
@@ -1449,11 +1449,11 @@ admin_extract <- function(data, Geographies, FUN = "sum", max_cells_in_memory = 
   if ("admin0" %in% names(Geographies)) {
     if(!is.null(FUN)){
       # Perform exact extraction of data for admin0 level, appending relevant columns and applying the specified function (e.g., mean).
-      data0 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin0), fun = FUN, append_cols = c("admin_name", "admin0_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
+      data0 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin0), fun = FUN, append_cols = c( "admin0_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
       # Merge the extracted data with admin0 geographical metadata.
       data0 <- terra::merge(Geographies$admin0, data0)
     }else{
-      data0 <-rbindlist(exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin0), fun = FUN, include_cols = c("admin_name", "admin0_name", "iso3"), max_cells_in_memory = max_cells_in_memory) )
+      data0 <-rbindlist(exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin0), fun = FUN, include_cols = c("admin0_name", "iso3"), max_cells_in_memory = max_cells_in_memory) )
     }
     
     # Add the merged data frame to the output list under the admin0 key.
@@ -1463,10 +1463,10 @@ admin_extract <- function(data, Geographies, FUN = "sum", max_cells_in_memory = 
   # Repeat the process for administrative level 1 data if present.
   if ("admin1" %in% names(Geographies)) {
     if(!is.null(FUN)){
-      data1 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin1), fun = FUN, append_cols = c("admin_name", "admin0_name", "admin1_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
+      data1 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin1), fun = FUN, append_cols = c("admin0_name", "admin1_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
       data1 <- terra::merge(Geographies$admin1, data1)
     }else{
-      data1 <- rbindlist(exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin1), fun = FUN, include_cols = c("admin_name", "admin0_name", "admin1_name", "iso3"), max_cells_in_memory = max_cells_in_memory))
+      data1 <- rbindlist(exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin1), fun = FUN, include_cols = c("admin0_name", "admin1_name", "iso3"), max_cells_in_memory = max_cells_in_memory))
     }
     output$admin1 <- data1
   }
@@ -1474,10 +1474,10 @@ admin_extract <- function(data, Geographies, FUN = "sum", max_cells_in_memory = 
   # Repeat the process for administrative level 2 data if present.
   if ("admin2" %in% names(Geographies)) {
     if(!is.null(FUN)){
-      data2 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin2), fun = FUN, append_cols = c("admin_name", "admin0_name", "admin1_name", "admin2_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
+      data2 <- exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin2), fun = FUN, append_cols = c("admin0_name", "admin1_name", "admin2_name", "iso3"), max_cells_in_memory = max_cells_in_memory)
       data2 <- terra::merge(Geographies$admin2, data2)
     }else{
-      data2 <- rbindlist(exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin2), fun = FUN, include_cols = c("admin_name", "admin0_name", "admin1_name", "admin2_name", "iso3"), max_cells_in_memory = max_cells_in_memory))
+      data2 <- rbindlist(exactextractr::exact_extract(data, sf::st_as_sf(Geographies$admin2), fun = FUN, include_cols = c("admin0_name", "admin1_name", "admin2_name", "iso3"), max_cells_in_memory = max_cells_in_memory))
       
     }
     output$admin2 <- data2
@@ -1495,80 +1495,131 @@ admin_extract <- function(data, Geographies, FUN = "sum", max_cells_in_memory = 
 #' @param save_dir Directory where output Parquet files will be saved.
 #' @param filename Base name for the output Parquet files.
 #' @param FUN Aggregation function to apply during data extraction (e.g., "sum").
-#' @param varname Name of the variable being processed, to be added to the output data.
+#' @param append_vals A named character vector specifying metadata columns to be added to a
+#'   `data.table`. The names of the vector elements define the column names, and the
+#'   corresponding values define the constant value assigned to all rows in that column.
+#'   This is commonly used to append metadata such as measurement units, variable labels,
+#'   or processing tags.
+#'
+#'   For example:
+#'   ```
+#'   append_vals <- c(exposure = "harv-area", unit = "ha", tech = NA)
+#'   ```
+#'   Will add the following columns:
+#'   - `exposure` with value `"harv-area"`
+#'   - `unit` with value `"ha"`
+#'   - `tech` with value `NA`
+#' @param var_name A character vector to replace the default name of the 'variable' field (derived from the input raster layer names).
+#' @param round Number of decimal places to round extracted values by (when `FUN` is not `NULL`).
 #' @param Geographies List containing `spatvect` or `sf` objects for each administrative level to be processed.
 #' @param overwrite Logical; if TRUE, existing Parquet files will be overwritten.
+#' @param keep_int Logical; if TRUE intermediate steps are saved as parquet files.
 #' @return A data.table object containing the processed and formatted data from all administrative levels.
 #' @examples
 #' # Assuming 'data' is a raster layer, 'Geographies' is a list of sf objects, and other parameters are set:
 #' processed_data <- admin_extract_wrap(data, "/path/to/save", "my_data", "sum", "my_variable", Geographies, FALSE)
 #' @export
-admin_extract_wrap <- function(data, save_dir, filename, FUN = "sum", varname, Geographies, overwrite = F,modify_colnames=T) {
+admin_extract_wrap <- function(data, 
+                               save_dir,
+                               filename,
+                               FUN = "sum",
+                               append_vals=NULL,
+                               round=NULL,
+                               Geographies,
+                               overwrite = F,
+                               var_name = "crop",
+                               modify_colnames=T,
+                               keep_int=T) {
   library(geoarrow)
   # Define a mapping of administrative level names to short codes.
   levels <- c(admin0 = "adm0", admin1 = "adm1", admin2 = "adm2")
   
   # Create filenames for saving the output based on administrative level and aggregation function.
   file <- paste0(save_dir, "/", filename, "_adm_", FUN, ".parquet")
+  
+  if(keep_int){
   file0 <- gsub("_adm_", "_adm0_", file)
   file1 <- gsub("_adm_", "_adm1_", file)
   file2 <- gsub("_adm_", "_adm2_", file)
+  }
+  
+  data_names<-names(data)
+  geo_names<-unique(unlist(lapply(Geographies,names)))
+  
+  if(any(data_names %in% geo_names)){
+    stop("Layer names of input raster stack (data) should not be identical to field names of
+         Geographies vector.",data_names[data_names %in% geo_names])    
+  }
   
   # Check if any of the files don't exist or if overwrite is enabled. If so, proceed with data extraction.
-  if (!file.exists(file) | !file.exists(file1) | overwrite == T) {
+  if (!file.exists(file) | overwrite == T) {
     # Extract data for all specified administrative levels.
     data_ex <- admin_extract(data, Geographies, FUN = FUN)
     
     if(!is.null(FUN)){
       # Save the extracted data for each administrative level as a Parquet file.
-      if("admin0" %in% names(Geographies)){
+      if("admin0" %in% names(Geographies) & keep_int){
         arrow::write_parquet(sf::st_as_sf(data_ex$admin0), file0)
       }
-      if("admin1" %in% names(Geographies)){
+      if("admin1" %in% names(Geographies) & keep_int){
         arrow::write_parquet(sf::st_as_sf(data_ex$admin1), file1)
       }
       
-      if("admin2" %in% names(Geographies)){ 
+      if("admin2" %in% names(Geographies) & keep_int){ 
         arrow::write_parquet( sf::st_as_sf(data_ex$admin2), file2)
       }
       
       # Process the extracted data to format it for analysis or further processing.
       data_ex <- rbindlist(lapply(1:length(levels), FUN = function(i) {
         level <- levels[i]
-        print(level)
-        
+
         # Convert the data to a data.table and remove specific columns.
-        data <- data.table(data.frame(data_ex[[names(level)]]))
-        data <- data[, !c("admin_name", "iso3")]
-        
+        data_ex_sub <- data.table(data.frame(data_ex[[names(level)]]))
+
         # Determine the administrative level being processed and adjust the data accordingly.
         admin <- "admin0_name"
         if (level %in% c("adm1", "adm2")) {
           admin <- c(admin, "admin1_name")
-          data <- suppressWarnings(data[, !"a1_a0"])
         }
         
         if (level == "adm2") {
           admin <- c(admin, "admin2_name")
-          data <- suppressWarnings(data[, !"a2_a1_a0"])
         }
         
         # Adjust column names and reshape the data.
-        colnames(data) <- gsub("_nam$", "_name", colnames(data))
-        data <- data.table(melt(data, id.vars = admin))
-        
+       # colnames(data) <- gsub("_nam$", "_name", colnames(data))
+        id_vars<-names(data_ex_sub)[names(data_ex_sub) %in% geo_names]
+        data_ex_sub <- data.table(melt(data_ex_sub, id.vars = id_vars))
+
         if(modify_colnames){
           # Add and modify columns to include crop type and exposure information.
-          data[, crop := gsub(paste0(FUN, "."), "", variable[1], fixed = T), by = variable
-          ][, crop := gsub(".", " ", crop, fixed = T)]
-          data[, exposure := varname]
-          data[, variable := NULL]
-        }
+          data_ex_sub[, variable := gsub(paste0(FUN, "."), "", variable[1], fixed = T), by = variable
+                      ][, variable:= gsub(".", " ", variable, fixed = T)
+                        ][,stat:=FUN]
+          
+          if(!is.null(var_name)){
+          setnames(data_ex_sub,"variable",var_name)
+          }
+          }
         
-        data
+        data_ex_sub
       }), fill = T)
     }else{
-      data_ex<-rbindlist(data_ex[c(3,2,1)],fill = T)[, !c("admin_name", "iso3")]
+      data_ex<-rbindlist(data_ex[c(3,2,1)],fill = T)
+    }
+    
+    if(!is.null(append_vals)){
+      for(j in 1:length(append_vals)){
+        col_name <- names(append_vals)[j]
+        col_value <- append_vals[j]
+        
+        data_ex[[col_name]] <- col_value
+      }
+    }
+    
+  
+    if(!is.null(round) & !is.null(FUN)){
+      data_ex[, value := round(value,2)]
     }
     
     # Save the processed data to a single Parquet file.
