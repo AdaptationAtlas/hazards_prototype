@@ -402,7 +402,7 @@ View(results)
   # Replace infinite values with NA
   spam_prop[is.infinite(spam_prop)] <- NA
   
-  ### 4.3 Now calcualte the per cell vop using proportion and FAO values  #####
+  ### 4.3 Now calculate the per cell vop using proportion and FAO values  #####
   
   sorted_final_vop_rast <- final_vop_rast[[sort(names(final_vop_rast))]]
   subset_sort_spam_prop <- spam_prop[[toupper(names(sorted_final_vop_rast))]]
