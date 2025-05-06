@@ -8,7 +8,8 @@ packages <- c("terra",
               "data.table",
               "exactextractr",
               "arrow",
-              "geoarrow")
+              "geoarrow",
+              "pbapply")
 
 
 pacman::p_load(packages,character.only=T)
@@ -18,10 +19,10 @@ source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/
 
 
 # 0) Load and prepare admin vectors and exposure rasters, extract exposure by admin ####
-  # 0.0) Base rast ####
+  ## 0.0) Base rast ####
   base_rast <- terra::rast(base_rast_path)
 
-# 0.1) Geographies #####
+## 0.1) Geographies #####
 Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
   file<-geo_files_local[i]
   data<-arrow::open_dataset(file)
@@ -29,158 +30,87 @@ Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
   data
 })
 names(Geographies)<-names(geo_files_local)
-# 0.2) Exposure variables ####
+# 1) Crop (MapSPAM) extraction by vector boundaries #####
 overwrite<-T
-# 0.2.1) Crops (MapSPAM) #####
-# read in mapspam metadata
-ms_codes<-data.table::fread(ms_codes_url, showProgress = FALSE)[,Code:=toupper(Code)]
-ms_codes<-ms_codes[compound=="no"]
-# 0.2.1.1) Crop VoP (Value of production) ######
-  # 0.2.1.1.1) I$ #########
-  # To generalize it might be better to just supply a filename for the mapspam
-  # Dev Note: Why is this combination separate from the loop that follows?
-  var<-"V"
-  tech<-"TA"
-  crop_vop_intd<-read_spam(variable="V",
-                          technology="TA",
-                          mapspam_dir=mapspam_dir,
-                          save_dir=exposure_dir,
-                          base_rast=base_rast,
-                          filename="crop_vop15_intd15",
-                          ms_codes=ms_codes,
-                          overwrite=overwrite)
+version_spam<-1
+source_year_spam<-list(census=2015,values=2015)
 
-attr_info <- list(
-  source = atlas_data$mapspam_2020v1r2$name,
-  date_created = Sys.time(),
-  notes = paste("A raster stack of crop value of production in 2015 international dollars created using the R/haz_functions/read_spam function and tabular vop data created by the R/0.45_create_crop_vop.R script.",
-                "variable = ",var, " & technology =",tech)
-)
-
-write_json(attr_info, file.path(exposure_dir,"crop_vop15_intd15.tif.json"), pretty = TRUE)
-
- # Create other spam layers
- spam_combos<-data.table(expand.grid(variable=c("V-crop_vop15_intd15","H-crop_ha"),tech=c("TA-a","TI-i","TR-r")))
- spam_combos[,code1:=unlist(tstrsplit(variable,"-",keep=2))][,code2:=unlist(tstrsplit(tech,"-",keep=2))]
- spam_combos[,variable:=unlist(tstrsplit(variable,"-",keep=1))][,tech:=unlist(tstrsplit(tech,"-",keep=1))]
- spam_combos[,file_name:=paste0(code1,"_",code2)]
- spam_combos<-spam_combos[!(variable=="V" & tech=="TA")]
- 
- for(i in 1:nrow(spam_combos)){
-   cat("\r",i,"/",nrow(spam_combos))
-   
-   var<-spam_combos$variable[i]
-   tech<-spam_combos$tech[i]
-   spam_file<-spam_combos$file_name[i]
-   
-  read_spam(variable=var,
-             technology=tech,
-             mapspam_dir=mapspam_dir,
-             save_dir=exposure_dir,
-             base_rast=base_rast,
-             filename=spam_file,
-             ms_codes=ms_codes,
-             overwrite=overwrite)
+files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
+spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
+  cat("Extracting file",i,"/",length(files),basename(files[i]),"\n")
+  file<-files[i]
+  file_base<-gsub(".tif","",basename(file))
+  var<-unlist(tstrsplit(basename(file),"_",keep=2))
+  unit<-unlist(tstrsplit(basename(file),"_",keep=3))
+  tech<-gsub(".tif","",unlist(tstrsplit(basename(file),"_",keep=4)))
   
-  if(var=="H"){
-    var_desc<-"harvested area in ha per pixel"
+  if(var=="yield"){
+    stat<-"mean"
+  }else{
+    stat<-"sum"
   }
   
-  if(var=="V"){
-    var_desc<-"value of production in 2015 international dollars (calculated using the R/0.45_create_crop_vop.R script)"
-  }
+  data<-terra::rast(file)
   
-  attr_info <- list(
-    source = atlas_data$mapspam_2020v1r2$name,
-    date_created = Sys.time(),
-    notes = paste0("A raster stack of ",var_desc," created using the R/haz_functions/read_spam function and tabular mapspam data.",
-                  "variable = ",var, " & technology =",tech)
-  )
-
-  write_json(attr_info, file.path(exposure_dir,paste0(spam_file,".tif.json")), pretty = TRUE)
+  result<-admin_extract_wrap(data=data,
+                             save_dir=dirname(file),
+                             filename =file_base,
+                             FUN=stat,
+                             append_vals=c(exposure=var,unit=unit,tech=tech),
+                             var_name="crop",
+                             keep_int=F,
+                             round=1,
+                             Geographies=Geographies,
+                             overwrite=overwrite)
   
-   }
+  attr_file<-file.path(dirname(file),paste0(file_base,"_adm_",stat,".parquet.json"))
   
-  # Extract  values by admin areas
-  crop_vop_intd_adm<-admin_extract_wrap(data=crop_vop_intd,
-                                         save_dir=exposure_dir,
-                                         filename = "crop_vop15_intd15",
-                                         FUN="sum",
-                                         varname="vop",
-                                         Geographies=Geographies,
-                                         overwrite=overwrite)
-  # 0.2.1.1.2) US$ #########
-    file <- file.path(mapspam_dir, "spam2020V1r2_SSA_Vusd15_TA.tif")
-    if(length(file)!=1){
-      warning("MapSPAM usd15 files do not exist - please redownload the mapspam folder and/or create these 0.45_create_crop_vop.R")
-      crop_vop_usd<-NULL
-      crop_vop_usd_adm<-NULL
-      
+  if(file.exists(attr_file)){
+    attr_dat<-jsonlite::read_json(attr_file)
+    date_created<-unlist(attr_dat$date_created)
+    version_attr<-unlist(attr_dat$version)
+    if(overwrite|version_attr!=version_spam){
+      date_created<-Sys.time()
+      update_attr_flag<-T
     }else{
-      crop_vop_usd<-terra::rast(file)
-      writeRaster(crop_vop_usd, "crop_vop15_cusd15.tif")
-      crop_vop_usd_adm<-admin_extract_wrap(data=crop_vop_usd,
-                                                 save_dir=exposure_dir,
-                                                 filename = "crop_vop15_cusd15",
-                                                 FUN="sum",
-                                                 varname="vop_cusd",
-                                                 Geographies=Geographies,
-                                                 overwrite=overwrite)
+      update_attr_flag<-F
+    }
+  }else{
+    update_attr_flag<-T
+    date_created<-Sys.time()
+  }
+
+  if(update_attr_flag){
+  attr_info <- list(
+    source = list(input_raster=atlas_data$mapspam_2020v1r2$name,extraction_vect=atlas_data$boundaries$name),
+    source_year = list(input_raster=source_year_spam),
+    date_created = date_created,
+    version = version_spam,
+    parent_script = "R/0.6_process_exposure.R",
+    variable = var,
+    unit = unit,
+    technology = tech,
+    stat=stat,
+    notes = paste0("A table of mapspam crop values (",var,") extracted by boundary vectors then summarized (fun = ",FUN,").")
+  )
+  
+  write_json(attr_info, attr_file, pretty = TRUE)
   }
   
-# 0.2.1.2) Crop Harvested Area #####
-
-crop_ha<-read_spam(variable="H",
-                       technology="TA",
-                       mapspam_dir=mapspam_dir,
-                       save_dir=exposure_dir,
-                       base_rast=base_rast,
-                       filename="crop_ha",
-                       ms_codes=ms_codes,
-                       overwrite=overwrite)
-
-# 2.1.2.1) Extraction of values by admin areas
-crop_ha_adm<-admin_extract_wrap(data=crop_ha,
-                                save_dir=exposure_dir,
-                                filename = "crop_ha",
-                                FUN="sum",
-                                varname="ha",
-                                Geographies=Geographies,
-                                overwrite=overwrite)
-
-# 0.2.1.3) Create Crop Masks ######
-# Need to use mapspam physical area
-mask_file<-paste0(commodity_mask_dir,"/crop_masks.tif")
-
-if(!file.exists(mask_file)|overwrite==T){
-  file<-list.files(mapspam_dir,"SSA_H_TA.csv",full.names = T)
-  file<-file[!grepl("_gr_",file)]
-  pa<-fread(file)
-  crops<-tolower(ms_codes$Code)
-  ms_fields<-c("x","y",grep(paste0(crops,collapse = "|"),colnames(pa),value=T))
-  pa<-rast(pa[,..ms_fields],type="xyz",crs="EPSG:4326")
-  names(pa)<-gsub("_a","",names(pa))
-  names(pa)<-ms_codes[match(names(pa),tolower(ms_codes$Code)),Fullname]
-  # convert to value/area 
-  crop_pa<-pa/terra::cellSize(pa,unit="ha")
-  # resample  data
-  crop_pa<-terra::resample(crop_pa,base_rast)
-  crop_pa_tot<-crop_pa*cellSize(crop_pa,unit="ha")
+  return(result)
   
-  # Areas with >0.01% harvested area = crop mask
-  crop_pa_prop<-crop_pa_tot/cellSize(crop_pa_tot,unit="ha")
-  crop_mask<-terra::classify(crop_pa_prop,  data.frame(from=c(0,0.001),to=c(0.001,2),becomes=c(0,1)))
-  terra::writeRaster(crop_mask,filename=mask_file,overwrite=T)
-}else{
-  crop_mask<-terra::rast(mask_file)
-}
+}))
 
-# 0.2.2) Livestock #####
-  # 0.2.2.1) Livestock Mask #####
-  mask_ls_file<-paste0(commodity_mask_dir,"/livestock_masks.tif")
+## 2) Livestock (GLW) #####
+overwrite<-F
+version_glw<-1
+source_year_glw<-list(census=2020,values=2015)
+
+  # 2.1) Livestock Mask #####
+  mask_ls_file<-paste0(glw_int_dir,"/livestock_masks.tif")
   
   if(!file.exists(mask_ls_file)|overwrite==T){
-    
+    glw_files<-list.files(glw_dir,"_Da.tif$",full.names=T)
     glw<-terra::rast(glw_files)
     names(glw)<-names(glw_names)
     
@@ -220,9 +150,9 @@ if(!file.exists(mask_file)|overwrite==T){
     livestock_mask_high<-livestock_mask[[grep("highland",names(livestock_mask))]]
     livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
   }
-  # 0.2.2.2) Livestock Numbers (GLW) ######
-  livestock_no_file<-paste0(exposure_dir,"/livestock_no.tif")
-  shoat_prop_file<-paste0(glw_dir,"/shoat_prop.tif")
+  # 2.2) Livestock Numbers ######
+  livestock_no_file<-paste0(glw_pro_dir,"/livestock_number_number.tif")
+  shoat_prop_file<-paste0(glw_int_dir,"/shoat_prop.tif")
   
   if(!file.exists(livestock_no_file)|overwrite==T){
     
@@ -259,70 +189,97 @@ if(!file.exists(mask_file)|overwrite==T){
     livestock_no<-terra::rast(livestock_no_file)
   }
   
-  # 2.2.1.1) Extraction of values by admin areas
-  livestock_no_tot_adm<-admin_extract_wrap(data=livestock_no,
-                                           save_dir=exposure_dir,
-                                           filename = "livestock_no",
-                                           FUN="sum",
-                                           varname="number",
-                                           Geographies=Geographies,
-                                           overwrite=overwrite)
+  # 2.3) Extraction by vector boundaries ####
   
-  # 0.2.2.3) Livestock VoP ######
-    # You must have run 0.4_fao_producer_prices_livestock.R for the section to work
-    # 0.2.2.3.1) I$ ######## 
-    livestock_vop_intd_file<-file.path(exposure_dir,"livestock-vop15-intd15-processed.tif")
-    
-    if(!file.exists(livestock_vop_intd_file)|overwrite==T){
-      
-      livestock_vop_intd<-terra::rast(file.path(ls_vop_dir,"livestock-vop-2015-intd15.tif"))
-    
-      # Split vop by highland vs lowland
-      livestock_vop_intd<-split_livestock(data=livestock_vop_intd,livestock_mask_high,livestock_mask_low)
-      terra::writeRaster(livestock_vop_intd,filename = livestock_vop_intd_file,overwrite=T)
-    }else{
-      livestock_vop_intd<-terra::rast(livestock_vop_intd_file)
-    }
-    
-    livestock_vop_intd_adm<-admin_extract_wrap(data=livestock_vop_intd,
-                                          save_dir=exposure_dir,
-                                          filename = "livestock_vop15_intd15",
-                                          FUN="sum",
-                                          varname="vop",
-                                          Geographies=Geographies,
-                                          overwrite=overwrite)
-    
-    # 0.2.2.3.2) US$ ########
-    livestock_vop_usd_file<-paste0(exposure_dir,"/livestock-vop15-cusd15-processed.tif")
-    
-    if(!file.exists(livestock_vop_usd_file)){
-      data<-terra::rast(paste0(ls_vop_dir,"/livestock-vop-2015-cusd15.tif"))
-      
-      livestock_vop_usd<-split_livestock(data=data,livestock_mask_high,livestock_mask_low)
-      terra::writeRaster(livestock_vop_usd,filename = livestock_vop_usd_file,overwrite=T)
-    }else{
-      livestock_vop_usd<-terra::rast(livestock_vop_usd_file)
-    }
-    
-    livestock_vop_usd_adm<-admin_extract_wrap(data=livestock_vop_usd,
-                                              save_dir=exposure_dir,
-                                              filename = "livestock_vop15_cusd15",
-                                              FUN="sum",
-                                              varname="vop_cusd",
-                                              Geographies=Geographies,
-                                              overwrite=overwrite)
+  files<-list.files(glw_pro_dir,".tif$",recursive=T,full.names=T)
+  glw_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
+    cat("Extracting file",i,"/",length(files),basename(files[i]),"\n")
+    file<-files[i]
+    file_base<-gsub(".tif","",basename(file))
+    var<-unlist(tstrsplit(basename(file),"_",keep=2))
+    unit<-gsub(".tif","",unlist(tstrsplit(basename(file),"_",keep=3)))
+    tech<-NA
 
+    stat<-"sum"
+    
+    data<-terra::rast(file)
+    
+    result<-admin_extract_wrap(data=data,
+                               save_dir=dirname(file),
+                               filename =file_base,
+                               FUN=stat,
+                               append_vals=c(exposure=var,unit=unit,tech=tech),
+                               var_name="crop",
+                               keep_int=F,
+                               round=1,
+                               Geographies=Geographies,
+                               overwrite=overwrite)
+    
+    attr_file<-file.path(dirname(file),paste0(file_base,"_adm_",stat,".parquet.json"))
+    
+    if(file.exists(attr_file)){
+      attr_dat<-jsonlite::read_json(attr_file)
+      date_created<-unlist(attr_dat$date_created)
+      version_attr<-unlist(attr_dat$version)
+      if(overwrite|version_attr!=version_glw){
+        date_created<-Sys.time()
+        update_attr_flag<-T
+      }else{
+        update_attr_flag<-F
+      }
+    }else{
+      update_attr_flag<-T
+      date_created<-Sys.time()
+    }
+    
+    if(update_attr_flag){
+      attr_info <- list(
+        source = list(input_raster="GLW4",extraction_vect=atlas_data$boundaries$name),
+        source_year = list(input_raster=source_year_glw),
+        date_created = date_created,
+        version = version_glw,
+        parent_script = "R/0.6_process_exposure.R",
+        variable = var,
+        unit = unit,
+        technology = tech,
+        stat=stat,
+        notes = paste0("A table of glw livestock values (",var,") extracted by boundary vectors then summarized (fun = ",FUN,"). Note this analysis uses density adjusted (da) GLW values.")
+      )
+      
+      write_json(attr_info, attr_file, pretty = TRUE)
+    }
+    
+    return(result)
+    
+  }))
+  
 # 0.2.3) Combine exposure totals by admin areas ####
 file<-paste0(exposure_dir,"/exposure_adm_sum.parquet")
+version<-1
+
 if(!file.exists(file)|overwrite==T){
   exposure_adm_sum_tab<-rbind(
-    crop_vop_intd_adm,
-    crop_vop_usd_adm,
-    crop_ha_adm,
-    livestock_vop_intd_adm,
-    livestock_vop_usd_adm,
-    livestock_no_tot_adm
+    spam_extracted,
+    glw_extracted
   )
+
+    attr_info <- list(
+      source = list(input_raster1=atlas_data$mapspam_2020v1r2$name,
+                    input_raster2="GLW4",
+                    extraction_vect=atlas_data$boundaries$name),
+      source_year = list(input_raster1=source_year_spam,input_raster2=source_year_glw),
+      date_created = date_created,
+      version = version,
+      parent_script = "R/0.6_process_exposure.R",
+      variable = exposure_adm_sum_tab[,unique(exposure)],
+      unit = exposure_adm_sum_tab[,unique(unit)],
+      technology = exposure_adm_sum_tab[,unique(tech)],
+      stat=stat,
+      notes = paste0("A table of mapspam crop values (",var,") extracted by boundary vectors then summarized (fun = ",FUN,").")
+    )
+    
+    write_json(attr_info, attr_file, pretty = TRUE)
+    
   arrow::write_parquet(exposure_adm_sum_tab,file)
 }
 
@@ -353,7 +310,7 @@ if(!file.exists(file)|overwrite==T){
 
 # 0.2.4) Population ######
 
-file<-paste0(exposure_dir,"/hpop.tif")
+file<-paste0(hpop_int_dir,"/hpop_atlas.tif")
 if(!file.exists(file)){
   local_files<-list.files(hpop_dir,".tif",full.names = T)
   hpop<-terra::rast(local_files)
@@ -374,10 +331,72 @@ if(!file.exists(file)){
 }
 
 # 0.2.4.1) Extraction of hpop by admin areas ####
-hpop_admin<-admin_extract_wrap(data=hpop,
-                               save_dir=exposure_dir,
-                               filename = "hpop",
-                               FUN="sum",
-                               varname="number",
-                               Geographies=Geographies,
-                               overwrite=overwrite)
+files<-list.files(hpop_dir,".tif$",recursive=F,full.names=T)
+version_hpop<-1
+hpop_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
+  cat("Extracting file",i,"/",length(files),basename(files[i]),"\n")
+  file<-files[i]
+  file_base<-gsub(".tif","",basename(file))
+  var<-gsub(".tif","",unlist(tstrsplit(basename(file),"_",keep=2)))
+  unit<-"number"
+  tech<-gsub(".tif","",unlist(tstrsplit(basename(file),"_",keep=1)))
+  
+  stat<-"sum"
+  
+  data<-terra::rast(file)
+  
+  result<-admin_extract_wrap(data=data,
+                             save_dir=dirname(file),
+                             filename =file_base,
+                             FUN=stat,
+                             append_vals=c(exposure=var,unit=unit,tech=tech),
+                             var_name="stat",
+                             keep_int=F,
+                             round=1,
+                             modify_colnames=F,
+                             Geographies=Geographies,
+                             overwrite=overwrite)
+  
+  
+  attr_file<-file.path(dirname(file),paste0(file_base,"_adm_",stat,".parquet.json"))
+  
+  if(file.exists(attr_file)){
+    attr_dat<-jsonlite::read_json(attr_file)
+    date_created<-unlist(attr_dat$date_created)
+    version_attr<-unlist(attr_dat$version)
+    if(overwrite|version_attr!=version_hpop){
+      date_created<-Sys.time()
+      update_attr_flag<-T
+    }else{
+      update_attr_flag<-F
+    }
+  }else{
+    update_attr_flag<-T
+    date_created<-Sys.time()
+  }
+  
+  if(update_attr_flag){
+    attr_info <- list(
+      source = list(input_raster=atlas_data$mapspam_2020v1r2$name,extraction_vect=atlas_data$boundaries$name),
+      source_year = list(input_raster=source_year),
+      date_created = date_created,
+      version = version_hpop,
+      parent_script = "R/0.6_process_exposure.R",
+      variable = var,
+      unit = unit,
+      technology = tech,
+      stat=stat,
+      notes = paste0("A table of glw livestock values (",var,") extracted by boundary vectors then summarized (fun = ",FUN,"). Note this analysis uses density adjusted (da) GLW values.")
+    )
+    
+    write_json(attr_info, attr_file, pretty = TRUE)
+  }
+  
+  return(result)
+  
+}))
+
+file<-paste0(exposure_dir,"/hpop_adm_sum.parquet")
+if(!file.exists(file)|overwrite==T){
+  arrow::write_parquet(hpop_extracted,file)
+}
