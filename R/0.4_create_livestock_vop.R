@@ -484,10 +484,7 @@ target_year<-c(2015,2017)
   
   # Multiply national VoP by cell proportion
   glw_vop<-glw_prop*final_vop_rast
-  
-  terra::writeRaster(round(glw_vop*1000,0),file.path(ls_vop_dir,"livestock-vop-2015-cusd15.tif"),overwrite=T)
-  
-    # 5.2) I$ ####
+      # 5.2) I$ ####
   final_vop_i<-copy(prod_value_i)
   setnames(final_vop_i,focal_year,"value")
   
@@ -563,10 +560,9 @@ target_year<-c(2015,2017)
   glw_vop_i<-glw_prop*final_vop_i_rast
   
   # 5.3) Save outputs #####
-  terra::writeRaster(round(glw_vop_i*1000,0),file.path(ls_vop_dir,"livestock-vop-2015-intd15.tif"),overwrite=T)
+  terra::writeRaster(round(glw_vop_i*1000,0),file.path(glw_pro_dir,"livestock_vop_intld15.tif"),overwrite=T)
+  terra::writeRaster(round(glw_vop*1000,0),file.path(glw_pro_dir,"livestock_vop_usd2015.tif"),overwrite=T)
   
- 
-
   # 6) QAQC: Extract by admin0 and compare back to FAOstat ####
   
   # GLW3 distributed data
