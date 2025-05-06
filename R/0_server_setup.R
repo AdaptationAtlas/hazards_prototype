@@ -226,7 +226,7 @@ worker_n <- 20
     atlas_dirs$data_dir$cattle_heatstress  <- file.path(atlas_dirs$data_dir[[1]], "cattle_heatstress")
     atlas_dirs$data_dir$adaptive_capacity  <- file.path(atlas_dirs$data_dir[[1]], "adaptive_capacity")
     atlas_dirs$data_dir$atlas_pop          <- file.path(atlas_dirs$data_dir[[1]], "atlas_pop")
-    atlas_dirs$data_dir$commodity_masks    <- file.path(atlas_dirs$data_dir[[1]], "commodity_masks")
+   # atlas_dirs$data_dir$commodity_masks    <- file.path(atlas_dirs$data_dir[[1]], "commodity_masks")
     atlas_dirs$data_dir$GLW4               <- file.path(atlas_dirs$data_dir[[1]], "GLW4")
     atlas_dirs$data_dir$livestock_vop      <- file.path(atlas_dirs$data_dir[[1]], "livestock_vop")
     atlas_dirs$data_dir$afr_highlands      <- file.path(atlas_dirs$data_dir[[1]], "afr_highlands")
@@ -263,20 +263,40 @@ worker_n <- 20
       dir.create(hpop_dir, recursive = TRUE)
     }
     
-    commodity_mask_dir <- atlas_dirs$data_dir$commodity_masks
-    if (!dir.exists(commodity_mask_dir)) {
-      dir.create(commodity_mask_dir, recursive = TRUE)
+    hpop_int_dir <- file.path(hpop_dir,"intermediate")
+    if (!dir.exists(hpop_int_dir)) {
+      dir.create(hpop_int_dir, recursive = TRUE)
     }
+    
+    hpop_pro_dir <- file.path(hpop_dir,"processed")
+    if (!dir.exists(hpop_pro_dir)) {
+      dir.create(hpop_pro_dir, recursive = TRUE)
+    }
+    
+   # commodity_mask_dir <- atlas_dirs$data_dir$commodity_masks
+  #  if (!dir.exists(commodity_mask_dir)) {
+  #    dir.create(commodity_mask_dir, recursive = TRUE)
+   # }
     
     glw_dir <- atlas_dirs$data_dir$GLW4
     if (!dir.exists(glw_dir)) {
       dir.create(glw_dir, recursive = TRUE)
     }
     
-    ls_vop_dir <- atlas_dirs$data_dir$livestock_vop
-    if (!dir.exists(ls_vop_dir)) {
-      dir.create(ls_vop_dir, recursive = TRUE)
+    glw_pro_dir <- file.path(glw_dir,"processed")
+    if (!dir.exists(glw_pro_dir)) {
+      dir.create(glw_pro_dir, recursive = TRUE)
     }
+    
+    glw_int_dir <- file.path(glw_dir,"intermediate")
+    if (!dir.exists(glw_int_dir)) {
+      dir.create(glw_int_dir, recursive = TRUE)
+    }
+
+    #ls_vop_dir <- atlas_dirs$data_dir$livestock_vop
+    #if (!dir.exists(ls_vop_dir)) {
+    #  dir.create(ls_vop_dir, recursive = TRUE)
+    #}
     
     afr_highlands_dir <- atlas_dirs$data_dir$afr_highlands
     if (!dir.exists(afr_highlands_dir)) {
@@ -534,7 +554,9 @@ worker_n <- 20
     s3$file_download(file.path(bucket_name_s3, "afr_highlands/afr-highlands.asc"), afr_highlands_file, overwrite = TRUE)
   }
   
-  ## 3.7) Livestock vop #####
+  ## 3.7) (Depreciated) Livestock vop #####
+  # Now housed under processsing/intermediate in GLW
+  if(F){
   update <- FALSE
   folder_path <- "livestock_vop/"
   files_s3 <- s3$dir_ls(file.path(bucket_name_s3, folder_path))
@@ -547,7 +569,7 @@ worker_n <- 20
       s3$file_download(files_s3[i], file)
     }
   }
-  
+  }
   ## 3.8) Human population #####
   folder_path <- "population/worldpop_2020/"
   files_s3 <- s3$dir_ls(file.path(bucket_name_s3, folder_path))
