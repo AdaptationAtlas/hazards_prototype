@@ -31,11 +31,14 @@ Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
 })
 names(Geographies)<-names(geo_files_local)
 # 1) Crop (MapSPAM) extraction by vector boundaries #####
-overwrite<-T
+overwrite_spam<-T
 version_spam<-1
 source_year_spam<-list(census=2015,values=2015)
 
 files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
+files<-files[!grepl("yield",files)]
+# Remove yield (one reason for this is that stat<-"mean" returns NA and needs debugging)
+
 spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   cat("Extracting file",i,"/",length(files),basename(files[i]),"\n")
   file<-files[i]
@@ -45,7 +48,8 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   tech<-gsub(".tif","",unlist(tstrsplit(basename(file),"_",keep=4)))
   
   if(var=="yield"){
-    stat<-"mean"
+    stop("Use of stat == mean currently returns NA values. Remove yield from input data or debug error.")
+      stat<-"mean"
   }else{
     stat<-"sum"
   }
@@ -61,7 +65,7 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
                              keep_int=F,
                              round=1,
                              Geographies=Geographies,
-                             overwrite=overwrite)
+                             overwrite=overwrite_spam)
   
   attr_file<-file.path(dirname(file),paste0(file_base,"_adm_",stat,".parquet.json"))
   
@@ -69,7 +73,7 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
     attr_dat<-jsonlite::read_json(attr_file)
     date_created<-unlist(attr_dat$date_created)
     version_attr<-unlist(attr_dat$version)
-    if(overwrite|version_attr!=version_spam){
+    if(overwrite_spam|version_attr!=version_spam){
       date_created<-Sys.time()
       update_attr_flag<-T
     }else{
@@ -101,15 +105,15 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   
 }))
 
-## 2) Livestock (GLW) #####
-overwrite<-F
+# 2) Livestock (GLW) #####
+overwrite_glw<-T
 version_glw<-1
 source_year_glw<-list(census=2020,values=2015)
 
-  # 2.1) Livestock Mask #####
+  ## 2.1) Livestock Mask #####
   mask_ls_file<-paste0(glw_int_dir,"/livestock_masks.tif")
   
-  if(!file.exists(mask_ls_file)|overwrite==T){
+  if(!file.exists(mask_ls_file)|overwrite_glw==T){
     glw_files<-list.files(glw_dir,"_Da.tif$",full.names=T)
     glw<-terra::rast(glw_files)
     names(glw)<-names(glw_names)
@@ -150,11 +154,11 @@ source_year_glw<-list(census=2020,values=2015)
     livestock_mask_high<-livestock_mask[[grep("highland",names(livestock_mask))]]
     livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
   }
-  # 2.2) Livestock Numbers ######
+  ## 2.2) Livestock Numbers ######
   livestock_no_file<-paste0(glw_pro_dir,"/livestock_number_number.tif")
   shoat_prop_file<-paste0(glw_int_dir,"/shoat_prop.tif")
   
-  if(!file.exists(livestock_no_file)|overwrite==T){
+  if(!file.exists(livestock_no_file)|overwrite_glw==T){
     
     ls_files<-list.files(glw_dir,"_Da.tif",full.names = T)
     
@@ -189,7 +193,7 @@ source_year_glw<-list(census=2020,values=2015)
     livestock_no<-terra::rast(livestock_no_file)
   }
   
-  # 2.3) Extraction by vector boundaries ####
+  ## 2.3) Extraction by vector boundaries ####
   
   files<-list.files(glw_pro_dir,".tif$",recursive=T,full.names=T)
   glw_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
@@ -213,7 +217,7 @@ source_year_glw<-list(census=2020,values=2015)
                                keep_int=F,
                                round=1,
                                Geographies=Geographies,
-                               overwrite=overwrite)
+                               overwrite=overwrite_glw)
     
     attr_file<-file.path(dirname(file),paste0(file_base,"_adm_",stat,".parquet.json"))
     
@@ -221,7 +225,7 @@ source_year_glw<-list(census=2020,values=2015)
       attr_dat<-jsonlite::read_json(attr_file)
       date_created<-unlist(attr_dat$date_created)
       version_attr<-unlist(attr_dat$version)
-      if(overwrite|version_attr!=version_glw){
+      if(overwrite_glw|version_attr!=version_glw){
         date_created<-Sys.time()
         update_attr_flag<-T
       }else{
@@ -253,15 +257,24 @@ source_year_glw<-list(census=2020,values=2015)
     
   }))
   
-# 0.2.3) Combine exposure totals by admin areas ####
+# 3) Combine exposure totals by admin areas ####
 file<-paste0(exposure_dir,"/exposure_adm_sum.parquet")
-version<-1
 
-if(!file.exists(file)|overwrite==T){
+if(!file.exists(file)|overwrite_glw|overwrite_spam){
   exposure_adm_sum_tab<-rbind(
     spam_extracted,
     glw_extracted
   )
+  
+  # Make values integer to save space
+  exposure_adm_sum_tab[,value:=as.integer(value)]
+  
+  # Drop unneeded cols
+  exposure_adm_sum_tab<-exposure_adm_sum_tab[,!c("un_subregion","un_a0_en","un_a0_fr","un_a0_es","currency_code",
+                           "currency_name","agg_n","stat")]
+  
+  # Order to optimize parquet performance
+  exposure_adm_sum_tab<-exposure_adm_sum_tab[order(iso3,admin0_name,admin1_name,admin2_name,crop)]
 
     attr_info <- list(
       source = list(input_raster1=atlas_data$mapspam_2020v1r2$name,
@@ -269,49 +282,27 @@ if(!file.exists(file)|overwrite==T){
                     extraction_vect=atlas_data$boundaries$name),
       source_year = list(input_raster1=source_year_spam,input_raster2=source_year_glw),
       date_created = date_created,
-      version = version,
+      version = list(input_version1=version_spam,input_version2=version_glw),
       parent_script = "R/0.6_process_exposure.R",
       variable = exposure_adm_sum_tab[,unique(exposure)],
       unit = exposure_adm_sum_tab[,unique(unit)],
       technology = exposure_adm_sum_tab[,unique(tech)],
       stat=stat,
-      notes = paste0("A table of mapspam crop values (",var,") extracted by boundary vectors then summarized (fun = ",FUN,").")
+      notes = paste0("A merged table of all mapspam crop x technology and glw livestock values extracted by boundary vectors then summarized.")
     )
+    
+    attr_file<-paste0(file,".json")
     
     write_json(attr_info, attr_file, pretty = TRUE)
     
-  arrow::write_parquet(exposure_adm_sum_tab,file)
+    arrow::write_parquet(exposure_adm_sum_tab,file)
 }
 
-# Create a table for total values 
-file<-file.path(exposure_dir,"admin0_totals")
-
-if(!file.exists(file)|overwrite==T){
-  # Load raw mapspam
-  file<-list.files(mapspam_dir,paste0("V", "_", "TA", ".csv"),full.names=T)
-  file<-file[!grepl("_gr_",file)]
-  data <- fread(file)
-  
-  crop_columns<-grep("_a$",colnames(data),value=T)
-  
-  # Calculating the sum for each crop within each iso3 group.
-  vop_adm0_total <- data[, .(total_crops = sum(unlist(.SD))), by = .(iso3), .SDcols = crop_columns]
-  
-  vop_adm0_total<-merge(vop_adm0_total,Geographies$admin0[,c("iso3","admin0_name")])
-  
-  # Add livestock
-  vop_adm0_total<-merge(vop_adm0_total,livestock_vop_intd_adm[is.na(admin1_name),list(total_livestock=sum(value)),by=admin0_name],by="admin0_name")
-  
-  # Grand total
-  vop_adm0_total<-vop_adm0_total[,total:=total_crops+total_livestock][,exposure:="vop"]
-  
-  fwrite(vop_adm0_total,file.path(exposure_dir,"admin0_totals.csv"))
-}
-
-# 0.2.4) Population ######
-
+# 4) Population ######
+overwrite_pop<-F
+  ## 4.1) Harmonize to atlas base raster ####
 file<-paste0(hpop_int_dir,"/hpop_atlas.tif")
-if(!file.exists(file)){
+if(!file.exists(file)|overwrite_pop){
   local_files<-list.files(hpop_dir,".tif",full.names = T)
   hpop<-terra::rast(local_files)
   hpop<-terra::crop(hpop,Geographies)
@@ -326,20 +317,21 @@ if(!file.exists(file)){
   hpop<-hpop*cellSize(hpop,unit="ha")
   
   terra::writeRaster(hpop,filename =file,overwrite=T)
-}else{
-  hpop<-terra::rast(file)
 }
 
-# 0.2.4.1) Extraction of hpop by admin areas ####
-files<-list.files(hpop_dir,".tif$",recursive=F,full.names=T)
+## 4.2) Extraction by vector boundaries ####
 version_hpop<-1
+file<-paste0(exposure_dir,"/hpop_adm_sum.parquet")
+  
+if(!file.exists(file)|overwrite==T){  
+files<-list.files(hpop_dir,".tif$",recursive=F,full.names=T)
 hpop_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   cat("Extracting file",i,"/",length(files),basename(files[i]),"\n")
   file<-files[i]
   file_base<-gsub(".tif","",basename(file))
   var<-gsub(".tif","",unlist(tstrsplit(basename(file),"_",keep=2)))
   unit<-"number"
-  tech<-gsub(".tif","",unlist(tstrsplit(basename(file),"_",keep=1)))
+  type<-gsub(".tif","",unlist(tstrsplit(basename(file),"_",keep=1)))
   
   stat<-"sum"
   
@@ -349,7 +341,7 @@ hpop_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
                              save_dir=dirname(file),
                              filename =file_base,
                              FUN=stat,
-                             append_vals=c(exposure=var,unit=unit,tech=tech),
+                             append_vals=c(exposure=var,unit=unit,type=type),
                              var_name="stat",
                              keep_int=F,
                              round=1,
@@ -384,7 +376,7 @@ hpop_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
       parent_script = "R/0.6_process_exposure.R",
       variable = var,
       unit = unit,
-      technology = tech,
+      type = type,
       stat=stat,
       notes = paste0("A table of glw livestock values (",var,") extracted by boundary vectors then summarized (fun = ",FUN,"). Note this analysis uses density adjusted (da) GLW values.")
     )
@@ -396,7 +388,34 @@ hpop_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   
 }))
 
-file<-paste0(exposure_dir,"/hpop_adm_sum.parquet")
-if(!file.exists(file)|overwrite==T){
-  arrow::write_parquet(hpop_extracted,file)
+# Make values integer to save space
+hpop_extracted[,value:=as.integer(value)]
+
+# Drop unneeded cols
+hpop_extracted<-hpop_extracted[,!c("un_subregion","un_a0_en","un_a0_fr","un_a0_es","currency_code",
+                                               "currency_name","agg_n","stat")]
+
+# Order to optimize parquet performance
+hpop_extracted<-hpop_extracted[order(iso3,admin0_name,admin1_name,admin2_name)]
+
+arrow::write_parquet(hpop_extracted,file)
+
+attr_file<-paste0(file,".json")
+
+attr_info <- list(
+  source = list(input_raster="TO BE ADDED",
+                extraction_vect=atlas_data$boundaries$name),
+  source_year = list(input_raster="TO BE ADDED"),
+  date_created = date_created,
+  version = list(input_version=version_hpop),
+  parent_script = "R/0.6_process_exposure.R",
+  variable = exposure_adm_sum_tab[,unique(exposure)],
+  unit = exposure_adm_sum_tab[,unique(unit)],
+  type = exposure_adm_sum_tab[,unique(tech)],
+  stat=stat,
+  notes = paste0("Human population extracted by boundary vectors then summed")
+)
+
+write_json(attr_info, attr_file, pretty = TRUE)
+
 }
