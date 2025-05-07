@@ -105,23 +105,19 @@ worker_n <- 20
     # cglabs environment
     working_dir <- "/home/jovyan/common_data/hazards_prototype"
     Cglabs <- TRUE
-    timeframe_choices_local <- analysis_record[Location == "cglabs", Name]
   }
   
   # Local environment on Windows or Mac
   if (project_dir == "D:/rprojects/hazards_prototype") {
     working_dir <- "D:/common_data/hazards_prototype"
-    timeframe_choices_local <- analysis_record[Location == "macbook", Name]
   }
   
   if (project_dir == "C:/rprojects/hazards_prototype") {
     working_dir <- "C:/rprojects/common_data/hazards_prototype"
-    timeframe_choices_local <- analysis_record[Location == "macbook", Name]
   }
   
   if (project_dir == "/Users/pstewarda/Documents/rprojects/hazards_prototype") {
     working_dir <- "/Users/pstewarda/Documents/rprojects/common_data/hazards_prototype"
-    timeframe_choices_local <- analysis_record[Location == "macbook", Name]
   }
   
   # Afrilabs environment
@@ -129,7 +125,6 @@ worker_n <- 20
   if (project_dir == "/home/psteward/rprojects/hazards_prototype") {
     Aflabs <- TRUE
     working_dir <- "/cluster01/workspace/atlas/hazards_prototype"
-    timeframe_choices_local <- analysis_record[Location == "afrilab", Name]
   }
   
   # Create working_dir if needed
@@ -242,6 +237,12 @@ worker_n <- 20
     if (!dir.exists(boundaries_dir)) {
       dir.create(boundaries_dir, recursive = TRUE)
     }
+    
+    boundaries_int_dir <- paste0(boundaries_dir,"intermediate")
+    if (!dir.exists(boundaries_int_dir)) {
+      dir.create(boundaries_int_dir, recursive = TRUE)
+    }
+    
     
     glps_dir <- atlas_dirs$data_dir$GLPS
     if (!dir.exists(glps_dir)) {
