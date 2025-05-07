@@ -31,7 +31,7 @@ Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
 })
 names(Geographies)<-names(geo_files_local)
 # 1) Crop (MapSPAM) extraction by vector boundaries #####
-overwrite_spam<-T
+overwrite_spam<-F
 version_spam<-1
 source_year_spam<-list(census=2015,values=2015)
 
@@ -403,9 +403,9 @@ arrow::write_parquet(hpop_extracted,file)
 attr_file<-paste0(file,".json")
 
 attr_info <- list(
-  source = list(input_raster="TO BE ADDED",
+  source = list(input_raster="Worldpop",
                 extraction_vect=atlas_data$boundaries$name),
-  source_year = list(input_raster="TO BE ADDED"),
+  source_year = list(input_raster="2020"),
   date_created = date_created,
   version = list(input_version=version_hpop),
   parent_script = "R/0.6_process_exposure.R",
