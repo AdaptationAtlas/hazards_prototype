@@ -8,6 +8,7 @@ packages <- c("terra",
               "exactextractr",
               "s3fs",
               "sf",
+              "dplyr",
               "geoarrow", 
               "arrow",
               "sfarrow", 
@@ -68,7 +69,7 @@ if(F){
 #### Load datasets (non hazards)
 
 # 0) Load and prepare admin vectors and exposure rasters, extract exposure by admin ####
-## 0.1) Geographies #####
+  ## 0.1) Geographies #####
 Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
   file<-geo_files_local[i]
   data<-arrow::open_dataset(file)
@@ -103,65 +104,65 @@ boundaries_index<-lapply(1:length(Geographies),FUN=function(i){
 
 names(boundaries_index)<-names(Geographies)
 
-## 0.2) Exposure variables ####
-overwrite<-F
-### 0.2.1) Crops (MapSPAM) #####
-#### 0.2.1.1) Crop VoP (Value of production) ######
-# To generalize it might be better to just supply a filename for the mapspam
-files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
-crop_vop_file<-grep("vop_intld15_all",files,value=T)
-cat("0.2.1.1) Using crop vop intd file:",basename(crop_vop_file),"\n")
-
-crop_vop_tot<-terra::rast(crop_vop_file)
-#crop_vop_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_intd15_adm_sum.parquet"))
-
-crop_vop_usd_file<-grep("vop_usd2015_all",files,value=T)
-cat("0.2.1.1) Using crop vop usd file:",basename(crop_vop_usd_file),"\n")
-
-crop_vop_usd15_tot<-terra::rast(crop_vop_usd_file)
-#crop_vop_usd15_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_cusd15_adm_sum.parquet"))
-
-#### 0.2.1.2) Crop Harvested Area #####
-crop_ha_file<-grep("harv-area_ha_all",files,value=T)
-crop_ha_tot<-terra::rast(crop_ha_file)
-cat("0.2.1.2) Using crop harvested area file:",basename(crop_ha_file),"\n")
-#crop_ha_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_ha_adm_sum.parquet"))
-### 0.2.2) Livestock #####
-# x) (Legacy) Livestock Mask #####
-# mask_ls_file<-paste0(glw_int_dir,"/livestock_masks.tif")
-#livestock_mask<-terra::rast(mask_ls_file)
-#livestock_mask_high<-livestock_mask[[grep("highland",names(livestock_mask))]]
-#livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
-
-#### 0.2.2.1) Livestock Numbers (GLW) ######
-livestock_no_file<-file.path(glw_pro_dir,"/livestock_number_number.tif")
-livestock_no<-terra::rast(livestock_no_file)
-#livestock_no_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_no_adm_sum.parquet"))
-cat("0.2.2.1) Using livestock number file:",basename(livestock_no_file),"\n")
-
-#### 0.2.2.2) Livestock VoP ######
-livestock_vop_file<-file.path(glw_pro_dir,"/livestock_vop_intld2015.tif")
-livestock_vop<-terra::rast(livestock_vop_file)
-#livestock_vop_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_vop15_intd15_adm_sum.parquet"))
-cat("0.2.2.2) Using livestock vop intd file:",basename(livestock_vop_file),"\n")
-
-livestock_vop_usd_file<-file.path(glw_pro_dir,"livestock_vop_usd2015.tif")
-livestock_vop_usd<-terra::rast(livestock_vop_usd_file)
-#livestock_vop_usd_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_vop15_cusd15_adm_sum.parquet"))
-cat("0.2.2.2) Using livestock vop usd file:",basename(livestock_vop_usd_file),"\n")
-
+  ## 0.2) Exposure variables ####
+  overwrite<-F
+    ### 0.2.1) Crops (MapSPAM) #####
+      #### 0.2.1.1) Crop VoP (Value of production) ######
+      # To generalize it might be better to just supply a filename for the mapspam
+      files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
+      crop_vop_file<-grep("vop_intld15_all",files,value=T)
+      cat("0.2.1.1) Using crop vop intd file:",basename(crop_vop_file),"\n")
+      
+      crop_vop_tot<-terra::rast(crop_vop_file)
+      #crop_vop_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_intd15_adm_sum.parquet"))
+      
+      crop_vop_usd_file<-grep("vop_usd2015_all",files,value=T)
+      cat("0.2.1.1) Using crop vop usd file:",basename(crop_vop_usd_file),"\n")
+      
+      crop_vop_usd15_tot<-terra::rast(crop_vop_usd_file)
+      #crop_vop_usd15_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_cusd15_adm_sum.parquet"))
+      
+      #### 0.2.1.2) Crop Harvested Area #####
+      crop_ha_file<-grep("harv-area_ha_all",files,value=T)
+      crop_ha_tot<-terra::rast(crop_ha_file)
+      cat("0.2.1.2) Using crop harvested area file:",basename(crop_ha_file),"\n")
+      #crop_ha_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_ha_adm_sum.parquet"))
+    ### 0.2.2) Livestock #####
+      # x) (Legacy) Livestock Mask #####
+      # mask_ls_file<-paste0(glw_int_dir,"/livestock_masks.tif")
+      #livestock_mask<-terra::rast(mask_ls_file)
+      #livestock_mask_high<-livestock_mask[[grep("highland",names(livestock_mask))]]
+      #livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
+      
+      #### 0.2.2.1) Livestock Numbers (GLW) ######
+      livestock_no_file<-file.path(glw_pro_dir,"/livestock_number_number.tif")
+      livestock_no<-terra::rast(livestock_no_file)
+      #livestock_no_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_no_adm_sum.parquet"))
+      cat("0.2.2.1) Using livestock number file:",basename(livestock_no_file),"\n")
+      
+      #### 0.2.2.2) Livestock VoP ######
+      livestock_vop_file<-file.path(glw_pro_dir,"/livestock_vop_intld2015.tif")
+      livestock_vop<-terra::rast(livestock_vop_file)
+      #livestock_vop_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_vop15_intd15_adm_sum.parquet"))
+      cat("0.2.2.2) Using livestock vop intd file:",basename(livestock_vop_file),"\n")
+      
+      livestock_vop_usd_file<-file.path(glw_pro_dir,"livestock_vop_usd2015.tif")
+      livestock_vop_usd<-terra::rast(livestock_vop_usd_file)
+      #livestock_vop_usd_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_vop15_cusd15_adm_sum.parquet"))
+      cat("0.2.2.2) Using livestock vop usd file:",basename(livestock_vop_usd_file),"\n")
+      
 # Controls ####
 # 1 Hazard frequency ####
-run1<-T
+run1<-F
 overwrite1<-F
-worker_n1<-10
+worker_n1<-5
 multisession1<-T
 round1<-3
 version1<-2
 # 2 ####
-run2<-F
-overwrite2<-F
-worker_n2<-10
+run2<-T
+overwrite2<-T
+worker_n2<-5
 multisession2<-T
 round2<-2
 version2<-2
@@ -174,7 +175,7 @@ run4<-F
 for(tx in 1:length(timeframe_choices)){
   timeframe<-timeframe_choices[tx]
   
-  cat("Processing", timeframe, tx, "/", length(timeframes),
+  cat("Processing", timeframe, tx, "/", length(timeframe_choices),
       "started at time:",format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
   
   haz_timeseries_dir<-file.path(indices_dir2,timeframe)
@@ -283,7 +284,8 @@ for(tx in 1:length(timeframe_choices)){
             
             # Optimize ordering
             if(!is.null(order)){
-              result_long <- result_long[do.call(order, result_long[, ..order_by])]
+              #result_long <- result_long[do.call(order, result_long[, ..order_by])]
+              result_long <- result_long %>% arrange(across(all_of(order_by)))
             }
             
             arrow::write_parquet(result_long,save_file)
