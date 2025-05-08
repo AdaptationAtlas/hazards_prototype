@@ -161,7 +161,7 @@ round1<-3
 version1<-2
 # 2 ####
 run2<-T
-overwrite2<-T
+overwrite2<-F
 worker_n2<-5
 multisession2<-T
 round2<-2
@@ -372,9 +372,9 @@ for(tx in 1:length(timeframe_choices)){
       prog <- progressr::progressor(along = 1:length(ms_options))
       
       invisible(
-        future.apply::future_lapply(1:length(model_options),FUN=function(i){
+        future.apply::future_lapply(1:length(ms_options),FUN=function(i){
           m_choice<-ms_options[i]
-          prog(sprintf("Processing %s (%d of %d)", m_choice, i, length(model_options)))
+          prog(sprintf("Processing %s (%d of %d)", m_choice, i, length(ms_options)))
           
           save_file<-file.path(haz_mean_dir,paste0("haz-means_adm_",unlist(tstrsplit(m_choice,"_",keep=1)),".parquet"))
           
@@ -389,7 +389,7 @@ for(tx in 1:length(timeframe_choices)){
             }
             
             result<-rbindlist(lapply(1:length(boundaries_zonal),FUN=function(k){
-              cat("Model x stat", i,"/", length(model_options),m_choice," - extracting boundary",k,"raster layers = ",nlyr(rast_data),"        \r")
+              cat("Model x stat", i,"/", length(ms_options),m_choice," - extracting boundary",k,"raster layers = ",nlyr(rast_data),"        \r")
               
               boundary_choice<-boundaries_zonal[[k]]
               zonal_rast<-terra::rast(boundary_choice)
