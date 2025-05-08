@@ -284,7 +284,6 @@ for(tx in 1:length(timeframe_choices)){
             
             # Optimize ordering
             if(!is.null(order)){
-              #result_long <- result_long[do.call(order, result_long[, ..order_by])]
               result_long <- result_long %>% arrange(across(all_of(order_by)))
             }
             
@@ -336,7 +335,6 @@ for(tx in 1:length(timeframe_choices)){
   }
   
   # 2) Extract hazard means and sd by admin ####
-  ## Dev Note - units for each hazard are missing ####
   if(run2){
     
     cat(timeframe,"2) Extract hazard means and sd by admin\n")
@@ -422,7 +420,7 @@ for(tx in 1:length(timeframe_choices)){
             
             # Optimize ordering
             if(!is.null(order)){
-              result_long <- result_long[do.call(order, result_long[, ..order_by])]
+              result_long <- result_long %>% arrange(across(all_of(order_by)))
             }
             
             arrow::write_parquet(result_long,save_file)
