@@ -13,7 +13,7 @@
 #
 #   - R/0_server_setup.R
 #   - R/0.6_process_exposure.R
-#   - R/1_make_timeseries.R (optional; required if time series are not precomputed)
+#   - R/1_make_timeseries.R
 #   - R/2_calculate_haz_freq.R
 #
 # Main operations:
@@ -33,6 +33,7 @@
 # - Progress bars and error catching are built in via `progressr` and `check_tif_integrity()`.
 # - Designed for high-performance batch processing of multi-model, multi-scenario climate data.
 #
+cat("Starting 3_freq_x_exposure.R script/n")
 # a) Install and load packages ####
 packages <- c("terra", 
               "data.table", 
@@ -293,7 +294,7 @@ multisession1<-T
 round1<-3
 version1<-2
   # e.2) Hazard means ####
-run2<-T
+run2<-F
 overwrite2<-F
 worker_n2<-5
 multisession2<-T
@@ -492,7 +493,7 @@ for(tx in 1:length(timeframe_choices)){
   # 2) Extract hazard means and sd by admin ####
   if(run2){
     
-    cat(timeframe,"2) Extract hazard means and sd by admin\n")2
+    cat(timeframe,"2) Extract hazard means and sd by admin\n")
     cat("run2=",run2,
         "\noverwrite2=",overwrite2,
         "\nworker_n2=",worker_n2,

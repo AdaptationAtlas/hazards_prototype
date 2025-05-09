@@ -1,4 +1,49 @@
-# Please run 0_server_setup.R before executing this script
+#### Climate Hazard Frequency Classification and Interaction Stacking
+#
+# Script: R/2_calculate_haz_freq.R
+# Author: Dr. Peter R. Steward (p.steward@cgiar.org)
+# Organization: Alliance of Bioversity International and the International Center for Tropical Agriculture (CIAT)
+# Project: Africa Agriculture Adaptation Atlas (AAAA)
+#
+# Description:
+# This script classifies and processes time series climate hazard rasters using
+# crop- and livestock-specific thresholds, then computes hazard frequency (0–1)
+# and interaction layers across scenarios, models, and timeframes.
+#
+# Key functions include:
+#   1. Classify each time series layer into binary exceedance rasters based on 
+#      crop/livestock-specific thresholds from Ecocrop and hazard metadata.
+#   2. Calculate per-pixel hazard frequency (mean of exceedance) for each
+#      classified raster.
+#   3. Ensemble hazard frequencies across GCMs.
+#   4. Stack hazard layers into crop- or livestock-specific frequency bundles.
+#   5. Create 3-way hazard interaction layers (heat × wet × dry) for all 
+#      relevant combinations of crops, severity classes, and models.
+#   6. Merge per-hazard interaction stacks into crop-specific outputs.
+#
+# Inputs:
+#   - Hazard time series rasters (historical and projected)
+#   - Ecocrop and MapSPAM crop metadata
+#   - Hazard classification and interaction definitions
+#
+# Outputs:
+#   - Classified hazard rasters by threshold
+#   - Per-pixel hazard frequencies and ensemble summaries
+#   - Multi-layer risk stacks per crop and model
+#   - Raster layers for 3-way interactions across severity classes
+#
+# Usage:
+#   This script must be run **after**:
+#     - R/0_server_setup.R
+#     - R/1_make_timeseries.R
+#   It is recommended to run only selected steps (e.g., classification, frequency)
+#   based on control flags (`run1`, `run2`, etc.) and system resources.
+#
+# Notes:
+# - Rasters are written as Cloud Optimized GeoTIFFs (COGs)
+# - Parallel processing and progress bars are enabled using `future`, `progressr`
+# - Intermediate raster integrity is validated before proceeding to next stages
+################################################################################
 cat("Starting 2_calculate_haz_freq.R script/n")
 # 0) Set-up workspace ####
 ## 0.1) Load R functions & packages ####
@@ -385,7 +430,7 @@ multisession4<-T
 ### 0.3.5) Calculate interactions ####
 
 # Interaction Tifs
-run5.2<-T
+run5.2<-F
 check5.2<-T
 round5.2<-3
 overwrite5.2<-F
@@ -394,8 +439,8 @@ worker_n5.2<-20
 multisession5.2<-T
 
 # Interaction crop stacks
-run5.3<-F
-worker_n5.3<-20
+run5.3<-T
+worker_n5.3<-15
 overwrite5.3<-F
 upload5<-F
 multisession5.3<-T
@@ -1460,8 +1505,8 @@ for(tx in 1:length(timeframes)){
                          ", but n = ",length(files))
                   }
                 }else{
-                  if(length(files)!=length(timeframe_options)){
-                    stop("5.3) there should be ",length(timeframe_options)," interaction stacks for historic timeframe"
+                  if(length(files)<length(timeframe_options)){
+                    stop("5.3) there should be ",length(timeframe_options)," interaction stacks"
                          ," | i = ",i,"/",crop_choice," | j  = ",j,"/",sev_choice," | m = ",m,"/",model_choice,
                          ", but n = ",length(files))
                   }
