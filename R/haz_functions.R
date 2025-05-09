@@ -3335,4 +3335,24 @@ leaf_dirs <- function(root_dir, recurse = TRUE, full.names = TRUE) {
   
   dirs[is_leaf]
 }
-
+#' Ensure a Directory Exists
+#'
+#' Constructs a file path from one or more components and ensures that
+#' the corresponding directory exists. If it does not exist, it is created,
+#' including any necessary parent directories.
+#'
+#' @param ... Character vectors specifying path components, passed to [file.path()].
+#' @return A character string representing the full, created path.
+#' @examples
+#' \dontrun{
+#'   # Create and return "data/intermediate" if it doesn't exist
+#'   int_dir <- ensure_dir("data", "intermediate")
+#' }
+#' @export
+ensure_dir <- function(...) {
+  dir_path <- file.path(...)
+  if (!dir.exists(dir_path)) {
+    dir.create(dir_path, recursive = TRUE)
+  }
+  return(dir_path)
+}
