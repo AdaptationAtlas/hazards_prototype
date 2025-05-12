@@ -2,9 +2,16 @@
 	"boundaries": {
 		"name": "Atlas Admin Boundaries",
 		"description": "Admin boundaries for the Atlas based on GAUL 2024. This includes admin 0, 1, and 2 levels.",
+		"methods": "",
+		"notes": "",
+		"source": {
+			"github": "",
+			"url": "",
+			"citation": ""
+		},
 		"s3": {
 			"bucket": "digital-atlas",
-			"path_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=analysis-ready/level=adm{level}/atlas_gaul_a{level}_{region}.parquet"
+			"path_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=analysis-ready/level=adm{level}/atlas_gaul24_a{level}.parquet"
 		},
 		"params": {
 			"region": [
@@ -19,7 +26,43 @@
 		},
 		"alternate_paths": {
 			"project": "Data/boundaries/"
-		}
+		},
+		"derived_from": [
+			"",
+			""
+		]
+	},
+	"raster_boundaries": {
+		"name": "Rasterized Atlas Admin Boundaries",
+		"description": "Admin boundaries for the Atlas based on GAUL 2024. This includes admin 0, 1, and 2 levels. These have been rasterized to meet the resolution requirements of the Adaptation Atlas (0.05 degrees) and are useful for zonal extractions.",
+		"methods": "Rasterized the raw GAUL 2024 boundaries. This includes all conflicted boundaries, but waterbodies have been removed.",
+		"notes": "",
+		"source": {
+			"github": "",
+			"url": "",
+			"citation": ""
+		},
+		"s3": {
+			"bucket": "digital-atlas",
+			"path_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=rasterized/level=adm{level}/gaul24_a{level}_res-05.tif"
+		},
+		"params": {
+			"region": [
+				"africa"
+			],
+			"level": [
+				"0",
+				"1",
+				"2"
+			]
+		},
+		"alternate_paths": {
+			"project": "Data/boundaries/"
+		},
+		"derived_from": [
+			"boundaries",
+			""
+		]
 	},
 	"mapspam_2020v1r2": {
 		"name": "Mapspam 2020v1r2",
@@ -31,5 +74,37 @@
 		"alternate_paths": {
 			"project": "Data/mapspam/2020V1r2_SSA/"
 		}
+	},
+	"haz_risk_exposure": {
+		"name": "Atlas Admin Boundaries",
+		"description": "Admin boundaries for the Atlas based on GAUL 2024. This includes admin 0, 1, and 2 levels.",
+		"methods": "",
+		"source": {
+			"github": "",
+			"url": "",
+			"citation": ""
+		},
+		"s3": {
+			"bucket": "digital-atlas",
+			"path_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=hazard_risk_vop/period=gccmi/severity=severe/atlas_gaul_a{level}_{region}.parquet"
+		},
+		"params": {
+			"region": [
+				"global",
+				"africa"
+			],
+			"level": [
+				"0",
+				"1",
+				"2"
+			]
+		},
+		"alternate_paths": {
+			"project": "Data/boundaries/"
+		},
+		"derived_from": [
+			"",
+			""
+		]
 	}
 }
