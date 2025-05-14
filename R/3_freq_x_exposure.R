@@ -110,25 +110,42 @@ risk_x_exposure<-function(file,
                           livestock_exposure_path=NULL,
                           crop_choices,
                           verbose=F){
+  
   if(verbose){cat(file,"\n")}
   
+  if(!dir.exists(save_dir)){
+    dir.create(save_dir,recursive=T)
+  }
+  
   data<-terra::rast(file)
-  crop<-unlist(data.table::tstrsplit(basename(file),"-",keep=1))
+  crop<-unlist(data.table::tstrsplit(basename(file),"_",keep=1))
   save_name<-file.path(save_dir,gsub(".tif",paste0("_",variable,".tif"),basename(file)))
   
   if(!file.exists(save_name)|overwrite==T){
     
     if(!is.null(crop_exposure_path)){
       crop_exposure<-terra::rast(crop_exposure_path)
+      names(crop_exposure)<-gsub("_| ","-",names(crop_exposure))
+      names(crop_exposure)[names(crop_exposure)=="generic"]<-"generic-crop"
     }
+    
     
     if(!is.null(livestock_exposure_path)){
       livestock_exposure<-terra::rast(livestock_exposure_path)
+      names(livestock_exposure)<-gsub("_| ","-",names(livestock_exposure))
+    }
+    
+    if(!crop %in% names(crop_exposure) & crop!="generic-crop" & crop %in% crop_choices){
+      stop("Commodity ",crop," not found in layer names of ",basename(crop_exposure_path))
+    }
+    
+    if(!crop %in% names(livestock_exposure) & !crop %in% crop_choices){
+      stop("Commodity ",crop," not found in layer names of ",basename(livestock_exposure))
     }
     
     # vop
-    if(crop!="generic"){
-      if(crop %in% crop_choices & variable!="n"){
+    if(crop!="generic-crop"){
+      if(crop %in% crop_choices & !variable %in% c("n","head_n")){
         exposure<-crop_exposure[[crop]]
         data_ex<-data*exposure
       }else{
@@ -139,25 +156,41 @@ risk_x_exposure<-function(file,
           data_ex<-NA
         }
       }
+      
+      if(class(data_ex)=="SpatRaster"){
+        names(data_ex)<-paste0(names(data_ex),"_",variable)
+        terra::writeRaster(data_ex,
+                           file=save_name,
+                           overwrite=T,
+                           filetype = 'COG',
+                           gdal = c("COMPRESS=LZW", of = "COG"))
+      }
+      
     }else{
-      if(variable!="n"){
-        exposure<-sum(crop_exposure)
-        data_ex<-data*exposure
-      }else{
-        data_ex<-NA
+      if(!variable %in% c("n","head_n")){
+        # Here we need to loop through all exposure values and total
+        crop_choices<-crop_choices
+        for(crop_choice in crop_choices){
+        if(crop_choice=="generic-crop"){  
+          exposure<-sum(crop_exposure)
+          save_name2<-save_name
+        }else{
+          exposure<-crop_exposure[[crop_choice]]
+          save_name2<-gsub("generic-crop",crop_choice,save_name)
+        }
+          data_ex<-data*exposure
+          
+          names(data_ex)<-paste0(names(data_ex),"_",variable)
+          terra::writeRaster(data_ex,
+                             file=save_name2,
+                             overwrite=T,
+                             filetype = 'COG',
+                             gdal = c("COMPRESS=LZW", of = "COG"))
+          
+        }
       }
     }
-    
-    if(class(data_ex)=="SpatRaster"){
-      names(data_ex)<-paste0(names(data_ex),"_",variable)
-      terra::writeRaster(data_ex,
-                         file=save_name,
-                         overwrite=T,
-                         filetype = 'COG',
-                         gdal = c("COMPRESS=LZW", of = "COG"))
-    }
   }
-  
 }
 
 # c) (depreciated?) Set up workspace ####
@@ -203,130 +236,136 @@ if(F){
 #### Load datasets (non hazards)
 
 # d) Load and prepare admin vectors and exposure rasters, extract exposure by admin ####
-  ## d.1) Geographies #####
-  Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
-    file<-geo_files_local[i]
-    data<-arrow::open_dataset(file)
-    data <- data |> sf::st_as_sf() |> terra::vect()
-    data$zone_id<-1:length(data)
-    data
-  })
-  names(Geographies)<-names(geo_files_local)
-  
-  base_rast<-terra::rast(base_rast_path)+0
-  
-  boundaries_zonal<-lapply(1:length(Geographies),FUN=function(i){
-    file_path<-file.path(boundaries_int_dir,paste0(names(Geographies)[i],"_zonal.tif"))
-    if(!file.exists(file_path)){
-      zones<-Geographies[[i]]
-      zone_rast <- rasterize(
-        x      = zones, 
-        y      = base_rast, 
-        field  = "zone_id", 
-        background = NA,    # cells not covered by any polygon become NA
-        touches    = TRUE   # optional: count cells touched by polygon boundaries
-      )
-      terra::writeRaster(zone_rast,file_path,overwrite=T)
-    }
-    file_path
-  })
-  names(boundaries_zonal)<-names(Geographies)
-  
-  boundaries_index<-lapply(1:length(Geographies),FUN=function(i){
-    data.frame(Geographies[[i]])[,c("iso3","admin0_name","admin1_name","admin2_name","zone_id")]
-  })
-  
-  names(boundaries_index)<-names(Geographies)
-  
-  ## d.2) Exposure variables ####
-  overwrite<-F
-    ### d.2.1) Crops (MapSPAM) #####
-      #### d.2.1.1) Crop VoP (Value of production) ######
-    # To generalize it might be better to just supply a filename for the mapspam
-    files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
-    crop_vop_file<-grep("vop_intld15_all",files,value=T)
-    cat("0.2.1.1) Using crop vop intd file:",basename(crop_vop_file),"\n")
-    
-    crop_vop_tot<-terra::rast(crop_vop_file)
-    #crop_vop_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_intd15_adm_sum.parquet"))
-    
-    crop_vop_usd_file<-grep("vop_usd2015_all",files,value=T)
-    cat("0.2.1.1) Using crop vop usd file:",basename(crop_vop_usd_file),"\n")
-    
-    crop_vop_usd15_tot<-terra::rast(crop_vop_usd_file)
-    #crop_vop_usd15_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_cusd15_adm_sum.parquet"))
-    
-      #### d.2.1.2) Crop Harvested Area #####
-    crop_ha_file<-grep("harv-area_ha_all",files,value=T)
-    crop_ha_tot<-terra::rast(crop_ha_file)
-    cat("0.2.1.2) Using crop harvested area file:",basename(crop_ha_file),"\n")
-    #crop_ha_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_ha_adm_sum.parquet"))
-  ### d.2.2) Livestock #####
-  # x) (Legacy) Livestock Mask #####
-  # mask_ls_file<-paste0(glw_int_dir,"/livestock_masks.tif")
-  #livestock_mask<-terra::rast(mask_ls_file)
-  #livestock_mask_high<-livestock_mask[[grep("highland",names(livestock_mask))]]
-  #livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
-  
-    #### d.2.2.1) Livestock Numbers (GLW) ######
-  livestock_no_file<-file.path(glw_pro_dir,"/livestock_number_number.tif")
-  livestock_no<-terra::rast(livestock_no_file)
-  #livestock_no_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_no_adm_sum.parquet"))
-  cat("0.2.2.1) Using livestock number file:",basename(livestock_no_file),"\n")
-  
-    #### d.2.2.2) Livestock VoP ######
-  livestock_vop_file<-file.path(glw_pro_dir,"/livestock_vop_intld2015.tif")
-  livestock_vop<-terra::rast(livestock_vop_file)
-  #livestock_vop_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_vop15_intd15_adm_sum.parquet"))
-  cat("0.2.2.2) Using livestock vop intd file:",basename(livestock_vop_file),"\n")
-  
-  livestock_vop_usd_file<-file.path(glw_pro_dir,"livestock_vop_usd2015.tif")
-  livestock_vop_usd<-terra::rast(livestock_vop_usd_file)
-  #livestock_vop_usd_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_vop15_cusd15_adm_sum.parquet"))
-  cat("0.2.2.2) Using livestock vop usd file:",basename(livestock_vop_usd_file),"\n")
-  
+## d.1) Geographies #####
+Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
+  file<-geo_files_local[i]
+  data<-arrow::open_dataset(file)
+  data <- data |> sf::st_as_sf() |> terra::vect()
+  data$zone_id<-1:length(data)
+  data
+})
+names(Geographies)<-names(geo_files_local)
+
+base_rast<-terra::rast(base_rast_path)+0
+
+boundaries_zonal<-lapply(1:length(Geographies),FUN=function(i){
+  file_path<-file.path(boundaries_int_dir,paste0(names(Geographies)[i],"_zonal.tif"))
+  if(!file.exists(file_path)){
+    zones<-Geographies[[i]]
+    zone_rast <- rasterize(
+      x      = zones, 
+      y      = base_rast, 
+      field  = "zone_id", 
+      background = NA,    # cells not covered by any polygon become NA
+      touches    = TRUE   # optional: count cells touched by polygon boundaries
+    )
+    terra::writeRaster(zone_rast,file_path,overwrite=T)
+  }
+  file_path
+})
+names(boundaries_zonal)<-names(Geographies)
+
+boundaries_index<-lapply(1:length(Geographies),FUN=function(i){
+  data.frame(Geographies[[i]])[,c("iso3","admin0_name","admin1_name","admin2_name","zone_id")]
+})
+
+names(boundaries_index)<-names(Geographies)
+
+## d.2) Exposure variables ####
+overwrite<-F
+### d.2.1) Crops (MapSPAM) #####
+#### d.2.1.1) Crop VoP (Value of production) ######
+# To generalize it might be better to just supply a filename for the mapspam
+files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
+crop_vop_file<-grep("vop_intld15_all",files,value=T)
+cat("0.2.1.1) Using crop vop intd file:",basename(crop_vop_file),"\n")
+
+crop_vop_tot<-terra::rast(crop_vop_file)
+#crop_vop_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_intd15_adm_sum.parquet"))
+
+crop_vop_usd_file<-grep("vop_usd2015_all",files,value=T)
+cat("0.2.1.1) Using crop vop usd file:",basename(crop_vop_usd_file),"\n")
+
+crop_vop_usd15_tot<-terra::rast(crop_vop_usd_file)
+#crop_vop_usd15_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_cusd15_adm_sum.parquet"))
+
+#### d.2.1.2) Crop Harvested Area #####
+crop_ha_file<-grep("harv-area_ha_all",files,value=T)
+crop_ha_tot<-terra::rast(crop_ha_file)
+cat("0.2.1.2) Using crop harvested area file:",basename(crop_ha_file),"\n")
+#crop_ha_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_ha_adm_sum.parquet"))
+### d.2.2) Livestock #####
+# x) (Legacy) Livestock Mask #####
+# mask_ls_file<-paste0(glw_int_dir,"/livestock_masks.tif")
+#livestock_mask<-terra::rast(mask_ls_file)
+#livestock_mask_high<-livestock_mask[[grep("highland",names(livestock_mask))]]
+#livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
+
+#### d.2.2.1) Livestock Numbers (GLW) ######
+livestock_no_file<-file.path(glw_pro_dir,"/livestock_number_number.tif")
+livestock_no<-terra::rast(livestock_no_file)
+#livestock_no_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_no_adm_sum.parquet"))
+cat("0.2.2.1) Using livestock number file:",basename(livestock_no_file),"\n")
+
+#### d.2.2.2) Livestock VoP ######
+livestock_vop_file<-file.path(glw_pro_dir,"/livestock_vop_intld2015.tif")
+livestock_vop<-terra::rast(livestock_vop_file)
+#livestock_vop_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_vop15_intd15_adm_sum.parquet"))
+cat("0.2.2.2) Using livestock vop intd file:",basename(livestock_vop_file),"\n")
+
+livestock_vop_usd_file<-file.path(glw_pro_dir,"livestock_vop_usd2015.tif")
+livestock_vop_usd<-terra::rast(livestock_vop_usd_file)
+#livestock_vop_usd_tot_adm<-arrow::read_parquet(file.path(exposure_dir,"livestock_vop15_cusd15_adm_sum.parquet"))
+cat("0.2.2.2) Using livestock vop usd file:",basename(livestock_vop_usd_file),"\n")
+
 # e) Controls ####
-  # e.1) Hazard frequency ####
-run1<-T
+# e.1) Hazard frequency ####
+run1<-F
 overwrite1<-F
 worker_n1<-5
 multisession1<-T
 round1<-3
 version1<-2
-  # e.2) Hazard means ####
+# e.2) Hazard means ####
 run2<-F
 overwrite2<-F
 worker_n2<-5
 multisession2<-T
 round2<-2
 version2<-2
-  # e.3) (To Do!) Hazard timeseries ####
+# e.3) (To Do!) Hazard timeseries ####
 run3<-F
 overwrite3<-F
 worker_n3<-5
 multisession3<-T
 round3<-2
 version3<-1
-  # e.4) (In Progress!) Hazard x exposure ####
-run4.1<-F
+# e.4) Hazard x exposure ####
+run4.1<-T
 run4.2<-F
-worker_n4<-20
+worker_n4.1<-15
+worker_n4.2<-20
 worker_n4_check<-20
 multisession4<-T
 round4<-2
 version4<-1
 
 overwrite4<-F
-do_vop<-F
-do_vop_usd<-F
+do_vop<-T
+vop_name<-"vop_intld15"
+do_vop_usd<-T
+vop_usd_name<-"vop_usd15"
 do_ha<-T
+ha_name<-"harv-area_ha"
 do_n<-F
+n_name<-"head_n"
+prod_name<-"prod_t"
 check4.1<-T
 
 # Start timeframe loop ####
 for(tx in 1:length(timeframe_choices)){
   timeframe<-timeframe_choices[tx]
-  
+  cat("---------------------------------------------------------------------------------------\n")
   cat("Processing", timeframe, tx, "/", length(timeframe_choices),
       "started at time:",format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
   
@@ -339,9 +378,7 @@ for(tx in 1:length(timeframe_choices)){
   haz_risk_dir <- file.path(atlas_dirs$data_dir$hazard_risk, timeframe)
   haz_mean_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_mean, timeframe)
   haz_time_int_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_int, timeframe)
-  
   haz_risk_int_dir <- ensure_dir(haz_risk_dir, "intermediate")
-  
   
   # 1) Extract hazard freq by admin ####
   if(run1){
@@ -351,7 +388,7 @@ for(tx in 1:length(timeframe_choices)){
         "\nworker_n1=",worker_n1,
         "\nmultisession1=",multisession1,
         "\nround1=",round1,
-        "\nversion1=",version1
+        "\nversion1=",version1,"\n"
     )
     
     files<-data.table(file=list.files(haz_risk_dir,".tif$",full.names = T))
@@ -499,7 +536,7 @@ for(tx in 1:length(timeframe_choices)){
         "\nworker_n2=",worker_n2,
         "\nmultisession2=",multisession2,
         "\nround2=",round2,
-        "\nversion2=",version2
+        "\nversion2=",version2,"\n"
     )
     
     files<-data.table(file=list.files(haz_mean_dir,".tif$",full.names = T))
@@ -756,7 +793,7 @@ for(tx in 1:length(timeframe_choices)){
     arrow::write_parquet(haz_timeseries_tab,filename)
   }
   
-  # 4) **To Do**Hazard risk x exposure ####
+  # 4) Hazard risk x exposure ####
   if(run4.1|run4.2){
     
     cat(timeframe,"4) Hazard risk x exposure \n")
@@ -765,7 +802,8 @@ for(tx in 1:length(timeframe_choices)){
         "\nrun4=",run4.1,
         "\nrun4=",run4.2,
         "\noverwrite4=",overwrite4,
-        "\nworker_n4=",worker_n4,
+        "\nworker_n4.1=",worker_n4.1,
+        "\nworker_n4.2=",worker_n4.2,
         "\nmultisession4=",multisession4,
         "\nround4=",round4,
         "\nversion4=",version4,
@@ -773,56 +811,67 @@ for(tx in 1:length(timeframe_choices)){
         "\ndo_vop_usd=",do_vop_usd,
         "\ndo_ha=",do_ha,
         "\ndo_n=",do_n,
-        "\ncheck4.1=",check4.1
+        "\nvop_name",vop_name,
+        "\nvop_usd_name",vop_usd_name,
+        "\nn_name",n_name,
+        "\nha_name",ha_name,
+        "\ncheck4.1=",check4.1,"\n"
     )
     
-    # 4.0) Set-up ####
+    cat("4) Exposure filepaths:",
+        "\ncrop_vop_file=",crop_vop_file,
+        "\ncrop_vop_usd_file=",crop_vop_usd_file,
+        "\ncrop_ha_file=",crop_ha_file,
+        "\nlivestock_vop_file=",livestock_vop_file,
+        "\nlivestock_vop_usd_file=",livestock_vop_usd_file,
+        "\nlivestock_no_file=",livestock_no_file,"\n")
     
-    ls_files<-list.files(glw_pro_dir,".tif$",recursive=T,full.names=T)
-    spam_files<-files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
+    ## 4.0) Set-up ####
     
-    crop_vop_path<-crop_vop_file
-    crop_vop_usd_path<-crop_vop_usd_file
-    crop_ha_path<-crop_ha_file
+    ## 4.1) Multiply Hazard Freq by Exposure #####
+    # ISSUE - WE NEED TO INTERSECT "generic-crop" with all the spam crop ###
+    # exposure values and total.
     
-    livestock_vop_path<-livestock_vop_file
-    livestock_vop_usd_path<-livestock_vop_usd_file
-    livestock_no_path<-livestock_no_file
     
-    cat("4) Exposure filepaths",
-        "\ncrop_vop_path=",crop_vop_path,
-        "\ncrop_vop_usd_path=",crop_vop_usd_path,
-        "\ncrop_ha_path=",crop_ha_path,
-        "\nlivestock_vop_path=",livestock_vop_path,
-        "\nlivestock_vop_usd_path=",livestock_vop_usd_path,
-        "\nlivestock_no_path=",livestock_no_path)
-    
-    # Crop choices only 
-    crop_choices<-crop_choices[!grepl("_tropical|_highland",crop_choices)]
-    
-    # List files
-    files<-list.files(haz_risk_dir,".tif$",full.names = T)
-    
-    # 4.1) Multiply Hazard Freq by Exposure #####
     if(run4.1){
       cat(timeframe,"4.1) Intersecting hazard risk x exposure \n")
       
+      # List files
+      files<-list.files(haz_risk_dir,".tif$",full.names = T)
+      crop_choices<-unique(unlist(tstrsplit(basename(files),"_",keep=1)))
+      crop_choices<-crop_choices[!grepl("cattle|sheep|goats|pigs|poultry",crop_choices)]
+
       freq_exp_dirs<-list()
       
       if(do_vop){
         cat(timeframe,"4.1.1) Intersecting hazard risk x exposure - vop-intdlr \n")
-        haz_risk_vop_dir <- file.path(atlas_dirs$data_dir$haz_risk_vop, timeframe)
+        haz_risk_vop_dir <- file.path(atlas_dirs$data_dir$hazard_risk_vop, timeframe)
         freq_exp_dirs$haz_risk_vop_dir<-haz_risk_vop_dir
         
-        set_parallel_plan(n_cores=worker_n4,use_multisession=multisession4)
-        future.apply::future_lapply(files,
-                                    risk_x_exposure,             
-                                    save_dir=haz_risk_vop_dir,
-                                    variable="vop",
-                                    overwrite = overwrite4,
-                                    crop_exposure_path = crop_vop_path,
-                                    livestock_exposure_path=livestock_vop_path,
-                                    crop_choices=crop_choices)
+        # Setup parallel plan
+        set_parallel_plan(n_cores = worker_n4.1, use_multisession = multisession4)
+        
+        # Enable progressr handlers
+        progressr::handlers(global = TRUE)
+        progressr::handlers("progress")  # or "txtprogressbar", "cli", etc.
+        
+        p <- with_progress({
+          prog <- progressr::progressor(along = files)
+          
+          future.apply::future_lapply(files, function(f) {
+            prog(sprintf("Processing: %s", basename(f)))
+            
+            risk_x_exposure(file = f,
+                            save_dir = haz_risk_vop_dir,
+                            variable = vop_name,
+                            overwrite = overwrite4,
+                            crop_exposure_path = crop_vop_file,
+                            livestock_exposure_path = livestock_vop_file,
+                            crop_choices = crop_choices)
+          })
+        })
+        
+        # Reset plan to sequential
         future::plan(sequential)
         
         cat(timeframe,"4.1.1) Intersecting hazard risk x exposure - vop-intdlr - Complete \n")
@@ -834,16 +883,31 @@ for(tx in 1:length(timeframe_choices)){
         haz_risk_vop_usd_dir <- file.path(atlas_dirs$data_dir$haz_risk_vop_usd, timeframe)
         freq_exp_dirs$haz_risk_vop_usd_dir<-haz_risk_vop_usd_dir
         
-        set_parallel_plan(n_cores=worker_n4,use_multisession=multisession4)
-        future.apply::future_lapply(files,
-                                    risk_x_exposure,             
-                                    save_dir=haz_risk_vop_usd_dir,
-                                    variable="vop",
-                                    overwrite = overwrite4,
-                                    crop_exposure_path = crop_vop_usd_path,
-                                    livestock_exposure_path=livestock_vop_usd_path,
-                                    crop_choices=crop_choices)
+        
+        # Setup parallel plan
+        set_parallel_plan(n_cores = worker_n4, use_multisession = multisession4)
+        
+        # Enable progressr handlers
+        progressr::handlers(global = TRUE)
+        progressr::handlers("progress")  # or "txtprogressbar", "cli", etc.
+        
+        p <- with_progress({
+          prog <- progressr::progressor(along = files)
+          
+          future.apply::future_lapply(files, function(f) {
+            prog(sprintf("Processing: %s", basename(f)))
+            risk_x_exposure(file = f,
+                            save_dir = haz_risk_vop_usd_dir,
+                            variable = vop_usd_name,
+                            overwrite = overwrite4,
+                            crop_exposure_path = crop_vop_usd_file,
+                            livestock_exposure_path = livestock_vop_usd_file,
+                            crop_choices = crop_choices)
+          })
+        })
+        
         future::plan(sequential)
+        
         cat(timeframe,"4.1.2) Intersecting hazard risk x exposure - vop-usd - Complete\n")
       }
       
@@ -854,13 +918,25 @@ for(tx in 1:length(timeframe_choices)){
         freq_exp_dirs$haz_risk_ha_dir<-haz_risk_ha_dir
         
         set_parallel_plan(n_cores=worker_n4,use_multisession=multisession4)
-        future.apply::future_lapply(files,
-                                    risk_x_exposure,             
-                                    save_dir=haz_risk_ha_dir,
-                                    variable="ha",
-                                    overwrite = overwrite4,
-                                    crop_exposure_path = crop_ha_path,
-                                    crop_choices=crop_choices)
+        
+        # Enable progressr handlers
+        progressr::handlers(global = TRUE)
+        progressr::handlers("progress")  # or "txtprogressbar", "cli", etc.
+        
+        p <- with_progress({
+          prog <- progressr::progressor(along = files)
+          
+          future.apply::future_lapply(files, function(f) {
+            prog(sprintf("Processing: %s", basename(f)))
+            risk_x_exposure(file = f,
+                            save_dir = haz_risk_ha_dir,
+                            variable = ha_name,
+                            overwrite = overwrite4,
+                            crop_exposure_path = crop_ha_file,
+                            crop_choices = crop_choices)
+          })
+        })
+        
         future::plan(sequential)
         cat(timeframe,"4.1.4) Intersecting hazard risk x exposure - harv-area \n")
       }
@@ -872,13 +948,26 @@ for(tx in 1:length(timeframe_choices)){
         freq_exp_dirs$haz_risk_n_dir<-haz_risk_n_dir
         
         set_parallel_plan(n_cores=worker_n4,use_multisession=multisession4)
-        future.apply::future_lapply(files,
-                                    risk_x_exposure,             
-                                    save_dir=haz_risk_n_dir,
-                                    variable="n",
-                                    overwrite = overwrite4,
-                                    livestock_exposure=livestock_no_path,
-                                    crop_choices=crop_choices)
+        
+        # Enable progressr handlers
+        progressr::handlers(global = TRUE)
+        progressr::handlers("progress")  # or "txtprogressbar", "cli", etc.
+        
+        # Use with_progress and progressor
+        p <- with_progress({
+          prog <- progressr::progressor(along = files)
+          
+          future.apply::future_lapply(files, function(f) {
+            prog(sprintf("Processing: %s", basename(f)))
+            risk_x_exposure(file = f,
+                            save_dir = haz_risk_n_dir,
+                            variable = n_name,
+                            overwrite = overwrite4,
+                            livestock_exposure_path = livestock_no_file,
+                            crop_choices = crop_choices)
+          })
+        })
+        
         future::plan(sequential)
         
         cat(timeframe,"4.1.4) Intersecting hazard risk x exposure - harv-area - Complete\n")
@@ -952,168 +1041,195 @@ for(tx in 1:length(timeframe_choices)){
       }
     }
     
-    # 4.2) Extract Freq x Exposure by Geography #####
-    # Dev Note: This section can be revised to match zonal extraction in section 1 ####
+    ## 4.2) Extract Freq x Exposure by Geography #####
     if(do4.2){
       
-      for(INT in c(T,F)){
-        if(do_vop){
-          cat("Interaction =",INT,"variable = vop\n")
-          
-          haz_risk_exp_extract(severity_classes,
-                               interactions=INT,
-                               folder=haz_risk_vop_dir,
-                               overwrite=overwrite,
-                               Geographies=Geographies,
-                               rm_crop=NULL,
-                               rm_haz=NULL)
-        }
-        
-        if(do_vop_usd){
-          cat("Interaction =",INT,"variable = vop_usd\n")
-          
-          haz_risk_exp_extract(severity_classes,
-                               interactions=INT,
-                               folder=haz_risk_vop_usd_dir,
-                               overwrite=overwrite,
-                               Geographies=Geographies,
-                               rm_crop=NULL,
-                               rm_haz=NULL)
-        }
-        
-        if(do_ha){
-          cat("Interaction =",INT,"variable = ha\n")
-          
-          haz_risk_exp_extract(severity_classes,
-                               interactions=INT,
-                               folder=haz_risk_ha_dir,
-                               overwrite=overwrite,
-                               Geographies=Geographies,
-                               rm_crop=NULL,
-                               rm_haz=NULL)
-        }
-        
-        if(do_n){
-          cat("Interaction =",INT,"variable = n\n")
-          
-          haz_risk_exp_extract(severity_classes,
-                               interactions=INT,
-                               folder=haz_risk_n_dir,
-                               overwrite=overwrite,
-                               Geographies=Geographies,
-                               rm_crop=NULL,
-                               rm_haz=NULL)
-        }
+      cat(timeframe,"4.2) Extract Freq x Exposure by Geography\n")
+      to_do_list<-list()
+      
+      if(do_vop){
+        haz_risk_vop_dir <- file.path(atlas_dirs$data_dir$hazard_risk_vop, timeframe)
+        to_do_list$vop<-list(variable=vop_name,folder=haz_risk_vop_dir)
       }
       
-      # 4.2.1) Check results #####
-      if(F){
-        admin0<-"Nigeria"
-        crop_focus<-"potato"
-        
-        vop<-arrow::read_parquet(list.files("Data/exposure","crop_vop_adm_sum",full.names = T))
-        (vop_val<-vop[admin0_name==admin0 & is.na(admin1_name) & crop==crop_focus,value])
-        
-        # Check resulting files
-        (file<-list.files(haz_risk_vop_dir,"moderate_adm0_int",full.names = T))
-        data<-sfarrow::st_read_parquet(file)
-        dat_names<-c(names(data)[1:3],grep("ssp585.2021_2040.any.NDWS.NTxS.PTOT_G.potato.moderate",names(data),value=T))
-        data<-data.table(data[dat_names])
-        # This number should not exceed 1
-        data[admin0_name==admin0,4]/vop_val
+      if(do_vop_usd){
+        haz_risk_vop_usd_dir <- file.path(atlas_dirs$data_dir$haz_risk_vop_usd, timeframe)
+        to_do_list$vop_usd<-list(variable=vop_usd_name,folder=haz_risk_vop_usd_dir)
       }
       
-    }
-    # 4.3) (Legacy) Restructure Extracted Data ####
-    levels<-c(admin0="adm0",admin1="adm1",admin2="adm2")
-    
-    for(SEV in tolower(severity_classes$class)){
-      for(INT in c(T,F)){
-        if(do_vop==T){
-          cat(SEV,"- interaction =",INT,"variable = vop\n")
-          recode_restructure_wrap(folder=haz_risk_vop_dir,
-                                  file="adm",
-                                  crops=crop_choices,
-                                  livestock=livestock_choices,
-                                  exposure_var="vop",
-                                  severity=SEV,
-                                  overwrite=overwrite,
-                                  levels=levels,
-                                  interaction=INT,
-                                  hazards=haz_meta[,unique(type)])
-        }
-        
-        if(do_vop_usd==T){
-          cat(SEV,"- interaction =",INT,"variable = vop_usd\n")
-          # Vop
-          recode_restructure_wrap(folder=haz_risk_vop_usd_dir,
-                                  file="adm",
-                                  crops=crop_choices,
-                                  livestock=livestock_choices,
-                                  exposure_var="vop",
-                                  severity=SEV,
-                                  overwrite=overwrite,
-                                  levels=levels,
-                                  interaction=INT,
-                                  hazards=haz_meta[,unique(type)])
-        }
-        
-        # Harvested area
-        if(do_ha==T){
-          cat(SEV,"- interaction =",INT,"variable = do_ha\n")
-          recode_restructure_wrap(folder=haz_risk_ha_dir,
-                                  file="adm",
-                                  crops=crop_choices,
-                                  livestock=livestock_choices,
-                                  exposure_var="ha",
-                                  severity=SEV,
-                                  overwrite=overwrite,
-                                  levels=levels,
-                                  interaction=INT,
-                                  hazards=haz_meta[,unique(type)])
-        }
-        
-        # Numbers
-        if(do_n==T){
-          cat(SEV,"- interaction =",INT,"variable = do_n\n")
-          recode_restructure_wrap(folder=haz_risk_n_dir,
-                                  file="adm",
-                                  crops=crop_choices,
-                                  livestock=livestock_choices,
-                                  exposure_var="number",
-                                  severity=SEV,
-                                  overwrite=overwrite,
-                                  levels=levels,
-                                  interaction=INT,
-                                  hazards=haz_meta[,unique(type)])
-        }
+      if(do_ha){
+        haz_risk_ha_dir <- file.path(atlas_dirs$data_dir$haz_risk_ha, timeframe)
+        to_do_list$do_ha<-list(variable=ha_name,folder=haz_risk_ha_dir)
       }
       
+      if(do_n){
+        haz_risk_n_dir <- file.path(atlas_dirs$data_dir$haz_risk_n, timeframe)
+        to_do_list$do_n<-list(variable=n_name,folder=haz_risk_n_dir)
+      }
+      
+      for(v in 1:length(to_do_list)){
+        
+        folder<-to_do_list[[v]]$folder
+        variable<-to_do_list[[v]]$variable
+        
+        cat(timeframe,"4.2) Variable = ",variable,v,"/",length(to_do_list),"--",folder,"\n")
+        
+        overwrite<-overwrite4
+        round<-round4
+        worker_n<-worker_n4.2
+        id_vars<-c("iso3","admin0_name","admin1_name","admin2_name")
+        split_delim<-"_"
+        split_colnames<-c("scenario", "model", "timeframe", "hazard", "hazard_vars", "crop", "severity","exposure_var","exposure_unit")
+        extract_stat<-"mean"
+        order_by<-c("iso3","admin0_name","admin1_name","admin2_name","crop")
+        multisession<-multisession4
+        extract_stat<-"mean"
+        attr_parent_script<-"3/3_freq_x_exposure.R - section 1"
+        attr_value_variable<-"haz-freq x exposure"
+        attr_unit<-unlist(tstrsplit(variable,"_",keep=2))
+        attr_notes<-paste0("A table of hazard occurence (a proportion 0-1 as the average of of a binary timeseries of 0/1 present/absent hazard) multiplied by exposure (",
+                           variable,
+                           ") extracted by rasterized boundary data then summarized (fun = ",extract_stat,").")
+        
+        
+        files<-list.files(folder,".tif$",full.names = T)
+        
+        files_solo<-data.table(file=files[!grepl("_int_",files)])
+        files_int<-data.table(file=files[grepl("_int_",files)])
+        
+        files_solo[, c("crop","model","severity","exposure_var","exposure_unit") := tstrsplit(basename(file)[1], "_", keep=1:5,fixed = TRUE), by = file
+        ][,exposure_unit:=gsub(".tif","",exposure_unit)
+        ][,hazard_vars:=NA
+        ][,type:="solo"]
+        
+        
+        files_int[, c("crop","model","severity","hazard_vars","type","exposure_var","exposure_unit") := tstrsplit(basename(file)[1], "_", keep=1:7,fixed = TRUE), by = file
+        ][,exposure_unit:=gsub(".tif","",exposure_unit)]
+        
+        files<-rbindlist(list(files_solo,files_int),use.names=T)
+        
+        files[,group:=paste0("haz-freq-exp_",variable,"_",model,"_",type,"_adm_",severity)]
+        
+        group<-files[,unique(group)]
+        
+        cat(timeframe,"4.2) Extracting",length(group),"groups \n")
+        
+        if(length(group)<worker_n){
+          worker_n<-length(group)
+        }
+        
+        files<-data.frame(files)
+        
+        set_parallel_plan(n_cores=worker_n,use_multisession=multisession)
+        
+        # Enable progressr
+        progressr::handlers(global = TRUE)
+        progressr::handlers("progress")
+        
+        # Wrap the parallel processing in a with_progress call
+        p<-with_progress({
+          # Define the progress bar
+          prog <- progressr::progressor(along = 1:length(group))
+          
+          invisible(
+            future.apply::future_lapply(1:length(group),FUN=function(i){
+              mts_choice<-group[i]
+              prog(sprintf("Processing %s (%d of %d)", mts_choice, i, length(group)))
+              
+              save_file<-file.path(folder,paste0(mts_choice,".parquet"))
+              
+              if(!file.exists(save_file)|overwrite){
+                
+                file_choices<-files$file[files$group==mts_choice]
+                
+                rast_data<-terra::rast(file_choices)
+                
+                if(any(table(names(rast_data))>1)){
+                  stop("duplicate layer names present")
+                }
+                
+                result<-rbindlist(lapply(1:length(boundaries_zonal),FUN=function(k){
+                  cat("Group", i,"/", length(group),mts_choice," - extracting boundary",k,"        \r")
+                  
+                  boundary_choice<-boundaries_zonal[[k]]
+                  zonal_rast<-terra::rast(boundary_choice)
+                  
+                  dat<- zonal(
+                    x   = rast_data, 
+                    z   = zonal_rast, 
+                    fun = extract_stat, 
+                    na.rm = TRUE
+                  ) 
+                  
+                  dat<-merge(dat,boundaries_index[[k]],by="zone_id",all.x=T,sort=F)
+                  dat$zone_id<-NULL
+                  return(dat)
+                }))
+                
+                result_long<-data.table::melt(result, id.vars = id_vars)
+                
+                # Optional rounding
+                if (!is.null(round)) {
+                  result_long[, value := round(value, round)]
+                }
+                
+                # Clean and split variable column
+                result_long[, c(split_colnames) := tstrsplit(variable[1], split_delim, fixed = TRUE), by = variable]
+                result_long[, variable := NULL]
+                
+                # Optimize ordering
+                if(!is.null(order)){
+                  result_long <- result_long %>% arrange(across(all_of(order_by)))
+                }
+                
+                arrow::write_parquet(result_long,save_file)
+                
+                # Add attributes
+                attr_file<-paste0(save_file,".json")
+                
+                filters<-lapply(split_colnames,FUN=function(split_col){
+                  unique(unlist(result_long[,split_col,with=F]))
+                })
+                names(filters)<-split_colnames
+                
+                attr_info <- list(
+                  source = list(input_raster=file_choices,extraction_rast=atlas_data$boundaries$name),
+                  extraction_method = "zonal",
+                  geo_filters = id_vars,
+                  season_type=timeframe,
+                  filters=filters,
+                  format=".parquet",
+                  date_created = Sys.time(),
+                  version = version1,
+                  parent_script = attr_parent_script,
+                  value_variable = attr_value_variable,
+                  unit = attr_unit,
+                  extract_stat=extract_stat,
+                  notes = attr_notes
+                )
+                
+                write_json(attr_info, attr_file, pretty = TRUE)
+                
+                rm(rast_data,result,result_long)
+                gc()
+                
+              }
+              
+            })
+          )
+        })
+        
+        plan(sequential)
+        
+        cat(timeframe,"4.2) Variable = ",variable,v,"/",length(to_do_list),"- Complete \n")
+      }
+      
+      cat(timeframe,"4.2) Extract Freq x Exposure by Geography - Complete\n")
     }
-    
-    # 4.3.1) (Legacy) Check results #####
-    if(F){
-      # Check results
-      (file<-list.files(haz_risk_vop_dir,"moderate_adm_int",full.names = T))
-      
-      vop<-arrow::read_parquet(list.files("Data/exposure","crop_vop_adm_sum",full.names = T))
-      data<-arrow::read_parquet(file)
-      
-      admin0<-"Nigeria"
-      crop_focus<-"potato"
-      
-      # The numbers should never exceed 1
-      (vop_val<-vop[admin0_name==admin0 & is.na(admin1_name) & crop==crop_focus,value])
-      data[admin0_name==admin0 & is.na(admin1_name) & crop==crop_focus & hazard=="any",value]/vop_val
-      
-      print(head(data))
-      print(data[,unique(hazard)])
-      print(data[,unique(hazard_vars)])
-      print(data[,unique(crop)])
-      
-    }
-    
-    cat(timeframe,"4) Hazard risk x exposure - Complete \n")2
   }
   
+  cat("Processing Complete", timeframe, tx, "/", length(timeframe_choices),
+      "ended at time:",format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
 }
+
+cat("Exited timeframe loop - script complete /n")
