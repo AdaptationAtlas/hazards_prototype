@@ -1487,7 +1487,7 @@ admin_extract <- function(data, Geographies, FUN = "sum", max_cells_in_memory = 
   return(output)
 }
 
-#' Wrap Spatial Data Extraction and Save as Parquet
+#' Wrap Spatial Data Extraction and Save as Parquet (Depreciated)
 #'
 #' This function wraps around the `admin_extract` function to perform spatial data extraction for specified administrative levels. It processes and formats the extracted data, then saves it as Parquet files. If specified files already exist, they can be optionally overwritten or read directly.
 #'
@@ -1692,7 +1692,7 @@ admin_extract_wrap2 <- function(files, save_dir, filename, severity, overwrite =
   }
 }
 
-#' Restructure and Save Parquet Data Files by Severity
+#' Restructure and Save Parquet Data Files by Severity (Depreciated)
 #'
 #' For given severity levels, this function restructures spatial data stored in Parquet files by combining and refining it based on crops, livestock, scenarios, and hazards. It outputs restructured data into new Parquet files, supporting optional overwrite of existing files.
 #'
@@ -1793,7 +1793,7 @@ restructure_parquet<-function(filename,save_dir,severity,overwrite=F,crops,lives
   
 }
 
-#' Extract Hazard Risk and Exposure Data and Save to Parquet
+#' Extract Hazard Risk and Exposure Data and Save to Parquet (Depreciated)
 #'
 #' For given severity classes, this function extracts hazard risk and exposure data from raster files, optionally focusing on interactions or solo hazards. It allows for filtering out specific hazards or crops and saves the processed data in Parquet format for different administrative levels.
 #'
@@ -1962,7 +1962,7 @@ recode_restructure<-function(data,crops,livestock,Scenarios,exposure_var,severit
   return(data)
 }
 
-#' Recode and Restructure Data from Parquet Files
+#' Recode and Restructure Data from Parquet Files (Depreciated)
 #'
 #' Reads, recodes, and restructures data from Parquet files based on specified interactions, severity, administrative levels, crops, livestock, and hazards. The function saves the restructured data into a new Parquet file.
 #'
