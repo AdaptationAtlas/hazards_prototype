@@ -14,8 +14,22 @@ _Repository_: https://github.com/AdaptationAtlas/hazards_prototype
 - Scripts 2 and 3 are now modular and can be controlled via in-script flags:
   - [Script 2 – calculate_haz_freq.R](https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/2_calculate_haz_freq.R)
   - [Script 3 – freq_x_exposure.R](https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/3_freq_x_exposure.R)
-- Scripts are launched using `Rscript` from terminal (not interactively).
+- Scripts are launched using `Rscript` from terminal (not Rstudio).
 - Upload logic to S3 still needs to be implemented in Scripts 2 and 3. File structure should follow `metadata/data.json`.
+- Extractions now use zonal rather than vector based extractions.
+- Remaining steps:
+  - Intersecting hazard frequency with exposure (now running for intdlr, usd and harv-area)
+  - Extraction of hazard frequency x vop (code is already updated for zonal)
+  - Haz_mean_month parquets, section 3 of script 3 - not updated yet. Do we use these files for anything?   
+
+### Generic Hazard Simplification
+
+- **Previously**, generic hazards were duplicated across all crop-specific raster stacks, even though the hazard values were identical.
+- **Now**, this has been simplified: **only the `generic-crop` contains the generic hazard layers**.
+- In **Script 3 – Section 4**, when hazard frequency is intersected with exposure:
+  - The **generic hazard frequency** layer is intersected with **each crop's exposure** values.
+  - The `generic-crop` entry is intersected with the **total production value**.
+- These are the only files retained from this step.
 
 ---
 
@@ -130,10 +144,13 @@ ssp245_ACCESS-ESM1-5_2041-2060_PTOT-sum-L1700.tif
 ## 4) To-Do / Next Steps
 
 - [ ] Add S3 upload logic to Scripts 2 and 3
-- [ ] Confirm S3 inclusion for:
-  - `hazard_timeseries_int`
-  - `hazard_timeseries_risk`
-- [ ] Auto-link parquet `.json` docs to data registry
-- [ ] Validate presence of all expected GCM × SSP × timeframe combos
+  - Confirm S3 inclusion for:
+    - `hazard_timeseries_int`
+    - `hazard_timeseries_risk`
+  - Do not include `hazard_timeseries_class`
+- [ ] Review .json documentation and see if this can be used to document the dataset
+- [ ] Update script 0.6 (exposure extractions) to use zonal extractions
+- [ ] Review and update script 2.1
+
 
 ---
