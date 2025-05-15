@@ -46,7 +46,7 @@ glw<-terra::mask(glw,geoboundaries)
   glw_admin0<-terra::extract(glw,geoboundaries,fun="sum",na.rm=T)
   glw_admin0$iso3<-geoboundaries$iso3
   glw_admin0$ID<-NULL
-  glw_admin0<-melt(glw_admin0,id.vars="iso3",variable.name = "glw3_name",value.name="glw3_no")
+  glw_admin0<-melt(data.table(glw_admin0),id.vars="iso3",variable.name = "glw3_name",value.name="glw3_no")
   
   # 2.3) map GLW values to atlas #####
   glw2atlas<-list(poultry=grep("poultry",names(lps2fao ),value=T),
@@ -60,6 +60,51 @@ glw<-terra::mask(glw,geoboundaries)
     atlas_name = unlist(glw2atlas, use.names = FALSE)
   )
 
+  # 2.4) Load high/low mask
+  mask_ls_file<-paste0(glw_int_dir,"/livestock_masks.tif")
+  overwrite_glw<-F
+  if(!file.exists(mask_ls_file)|overwrite_glw==T){
+    glw_files<-list.files(glw_dir,"_Da.tif$",full.names=T)
+    glw<-terra::rast(glw_files)
+    names(glw)<-names(glw_names)
+    
+    glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
+    
+    lus<-c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1)
+    lus<-c(lus,sum(lus,na.rm=T))
+    names(lus)<-c("cattle","poultry","goats","pigs","sheep","total")
+    lus<-terra::mask(terra::crop(lus,Geographies$admin0),Geographies$admin0)
+    
+    # resample to 0.05
+    lu_density<-lus/terra::cellSize(lus,unit="ha")
+    lu_density<-terra::resample(lu_density,base_rast)
+    
+    # Classify into binary mask
+    livestock_mask <- terra::ifel(lu_density > 0, 1, 0)
+    
+    # Split mask by highland vs tropical areas
+    
+    # Load highland mask
+    highlands<-terra::rast(afr_highlands_file)
+    highlands<-terra::resample(highlands,base_rast,method="near")
+    
+    livestock_mask_high<-livestock_mask*highlands
+    names(livestock_mask_high)<-paste0( names(livestock_mask_high),"_highland")
+    
+    lowlands<-classify(highlands,data.frame(from=c(0,1),to=c(1,0)))
+    livestock_mask_low<-livestock_mask*lowlands
+    names(livestock_mask_low)<-paste0( names(livestock_mask_low),"_tropical")
+    
+    livestock_mask<-c(livestock_mask_high,livestock_mask_low)
+    
+    terra::writeRaster(livestock_mask,filename=mask_ls_file,overwrite=T)
+    
+  }else{
+    livestock_mask<-terra::rast(mask_ls_file)
+    livestock_mask_high<-livestock_mask[[grep("highland",names(livestock_mask))]]
+    livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
+  }
+  
 # 3) Load FAOstat data ####
 remove_countries<- c("Ethiopia PDR","Sudan (former)","Cabo Verde","Comoros","Mauritius","R\xe9union","Seychelles")
 atlas_iso3<-geoboundaries$iso3
@@ -143,7 +188,7 @@ target_year<-c(2015,2017)
     
     prod_price[!is.na(mean),.N]
     
-    prod_price<-add_nearby(data=prod_price,group_field="atlas_name",value_field = "mean",neighbors=african_neighbors,regions)
+    prod_price<-add_nearby(data=prod_price,group_field="atlas_name",value_field = "mean",neighbors=african_neighbors,regions=regions)
     
   # 3.3) Production #####
     prod_file<-file.path(fao_dir,"Production_Crops_Livestock_E_Africa_NOFLAG.csv")
@@ -435,116 +480,116 @@ target_year<-c(2015,2017)
        
           
 # 5) Distribute vop to GLW4 livestock ####
-    # 5.1) US$ ####
-    # We will use reported value or substitute using world prices (vop_hybrid2)
-  focal_year<-"Y2015"
-  final_vop<-copy(prod_value_usd)
-  setnames(final_vop,focal_year,"value")
-    
-  final_vop<-final_vop[,list(iso3,atlas_name,value,VoP_hybrid2)]
-  final_vop<-merge(final_vop,glw2atlas,all.x=T,by="atlas_name")
-  setnames(final_vop,"VoP_hybrid2","VoP")
+  # 5.1) US$ ####
+  # We will use reported value or substitute using world prices (vop_hybrid2)
+focal_year<-"Y2015"
+final_vop<-copy(prod_value_usd)
+setnames(final_vop,focal_year,"value")
   
-  # use value if present otherwise substitute the estimate numbers
-  final_vop[is.na(value),value:=VoP][,VoP:=NULL]
-  
-  # Where there is missing data explore how many animals are in these areas
-  final_vop_merge<-merge(final_vop,glw_admin0,all.x=T,by=c("iso3","glw3_name"))
-  final_vop_merge[is.na(value) & !grepl("goat_milk|sheep_milk",atlas_name)]
-  
-  # Sum values for glw classes
-  # Sum values for glw classes
-  final_vop <- final_vop[, .(
-    value = if (all(is.na(value))) as.numeric(NA) else sum(value, na.rm = TRUE)
-  ), by = .(glw3_name, iso3)]  
-  
-  final_vop_cast<-dcast(final_vop,iso3~glw3_name)
-  
-  # Convert value to vector then raster
-  final_vop_vect<-geoboundaries
-  final_vop_vect<-merge(final_vop_vect,final_vop_cast,all.x=T)
-  
-  final_vop_rast<-terra::rast(lapply(unique(glw2atlas$glw3_name),FUN=function(NAME){
-    terra::rasterize(final_vop_vect,base_rast,field=NAME)
-  }))
-  names(final_vop_rast)<-unique(glw2atlas$glw3_name)
-  
-  # Convert glw3 pixels to proportion of national total
-  glw_admin0_cast<-dcast(glw_admin0,iso3~glw3_name,value.var="glw3_no")
-  glw_vect<-geoboundaries
-  glw_vect<-merge(glw_vect,glw_admin0_cast,all.x=T,by="iso3")
-  
-  glw_rast<-terra::rast(lapply(unique(glw2atlas$glw3_name),FUN=function(NAME){
-    terra::rasterize(glw_vect,base_rast,field=NAME)
-  }))
-  
-  names(glw_rast)<-unique(glw2atlas$glw3_name)
-  
-  glw_prop<-glw/glw_rast
-  
-  # Multiply national VoP by cell proportion
-  glw_vop<-glw_prop*final_vop_rast
-      # 5.2) I$ ####
-  final_vop_i<-copy(prod_value_i)
-  setnames(final_vop_i,focal_year,"value")
-  
-  final_vop_i<-final_vop_i[,list(iso3,atlas_name,value)]
-  final_vop_i<-merge(final_vop_i,glw2atlas,all.x=T,by="atlas_name")
-  
-  final_vop_i[is.na(value)]
-  
-  # Sum values for glw classes
-  final_vop_i<-final_vop_i[, .(NAs=sum(is.na(value)),value = sum(value,na.rm=T)), by = .(glw3_name, iso3)]
-  
-  # These values have missing data when summing (ignoring goat and sheep milk) and will be set to NA
-  final_vop_i[NAs>0 & !glw3_name %in% c("goats","sheep")]
-  final_vop_i[NAs>0 & !glw3_name %in% c("goats","sheep"),value:=NA]
-  
-      # 5.2.1) Explore if we can convert cusd values from faostat or estimated from production x price data to get missing $I data ######
-  # Merge in missing values from cusd table
-  setnames(final_vop,"value","cusd")
-  final_vop_i<-merge(final_vop_i,final_vop,all.x=T)
-  
-  # Add xrat & ppp ratio to convert cusd to isud
-  final_vop_i<-merge(final_vop_i,ppp_xrat,all.x=T,by="iso3")
-  
-  # Our calculaute for I$ does not give expected results, they are much higher than the faostat int dollar rates
-  final_vop_i[,intd:=cusd*xrat/ppp]
-  
-  # We will have to work out implied rates without understanding what the FAO methodology is
-  final_vop_i<-final_vop_i[,.(iso3,glw3_name,value)]
+final_vop<-final_vop[,list(iso3,atlas_name,value,VoP_hybrid2)]
+final_vop<-merge(final_vop,glw2atlas,all.x=T,by="atlas_name")
+setnames(final_vop,"VoP_hybrid2","VoP")
 
-  # Prepare cusd values  
-  final_vop_cusd<-copy(prod_value_usd)
-  setnames(final_vop_cusd,focal_year,"cusd15")
-  
-  final_vop_cusd<-final_vop_cusd[,list(iso3,atlas_name,cusd15)]
-  final_vop_cusd<-merge(final_vop_cusd,glw2atlas,all.x=T,by="atlas_name")
-  
-  # Prepare iusd values
-  final_vop_intd<-copy(prod_value_i)
-  setnames(final_vop_intd,focal_year,"value")
-  
-  final_vop_intd<-final_vop_intd[,list(iso3,atlas_name,value)]
-  final_vop_intd<-merge(final_vop_intd,glw2atlas,all.x=T,by="atlas_name")
-  
-  # Merge I$ and US$
-  final_vop_merge<-merge(final_vop_intd,final_vop_cusd,by=c("iso3","atlas_name","glw3_name"),all.x=T)
-  
-  final_vop_merge[,implied_cf:=cusd15/value]
-  
-  # It appears the FAOstat PPP values are commodity specific, for example they vary between cattle meat and milk in burundi.
-  final_vop_merge[!is.na(implied_cf)]
-  
-  # Data is missing for some countries x commodities:
-  final_vop_merge[is.na(value) & !grepl("milk",atlas_name)]
-  
-  # Most of these countries are data deficient in 2015, only eritre has some information on what the implied PPP might be
-  ppp_missing<-final_vop_merge[is.na(value) & !grepl("milk",atlas_name),unique(iso3)]
-  final_vop_merge[iso3 %in% ppp_missing]
-  
-      # !!!TO DO!!! see if the missing ppp cf values can be inputed from other years #####
-      # 5.2.2) Distribute $I data we do have to GLW4 ######
+# use value if present otherwise substitute the estimate numbers
+final_vop[is.na(value),value:=VoP][,VoP:=NULL]
+
+# Where there is missing data explore how many animals are in these areas
+final_vop_merge<-merge(final_vop,glw_admin0,all.x=T,by=c("iso3","glw3_name"))
+final_vop_merge[is.na(value) & !grepl("goat_milk|sheep_milk",atlas_name)]
+
+# Sum values for glw classes
+# Sum values for glw classes
+final_vop <- final_vop[, .(
+  value = if (all(is.na(value))) as.numeric(NA) else sum(value, na.rm = TRUE)
+), by = .(glw3_name, iso3)]  
+
+final_vop_cast<-dcast(final_vop,iso3~glw3_name)
+
+# Convert value to vector then raster
+final_vop_vect<-geoboundaries
+final_vop_vect<-merge(final_vop_vect,final_vop_cast,all.x=T)
+
+final_vop_rast<-terra::rast(lapply(unique(glw2atlas$glw3_name),FUN=function(NAME){
+  terra::rasterize(final_vop_vect,base_rast,field=NAME)
+}))
+names(final_vop_rast)<-unique(glw2atlas$glw3_name)
+
+# Convert glw3 pixels to proportion of national total
+glw_admin0_cast<-dcast(glw_admin0,iso3~glw3_name,value.var="glw3_no")
+glw_vect<-geoboundaries
+glw_vect<-merge(glw_vect,glw_admin0_cast,all.x=T,by="iso3")
+
+glw_rast<-terra::rast(lapply(unique(glw2atlas$glw3_name),FUN=function(NAME){
+  terra::rasterize(glw_vect,base_rast,field=NAME)
+}))
+
+names(glw_rast)<-unique(glw2atlas$glw3_name)
+
+glw_prop<-glw/glw_rast
+
+# Multiply national VoP by cell proportion
+glw_vop<-glw_prop*final_vop_rast
+  # 5.2) I$ ####
+final_vop_i<-copy(prod_value_i)
+setnames(final_vop_i,focal_year,"value")
+
+final_vop_i<-final_vop_i[,list(iso3,atlas_name,value)]
+final_vop_i<-merge(final_vop_i,glw2atlas,all.x=T,by="atlas_name")
+
+final_vop_i[is.na(value)]
+
+# Sum values for glw classes
+final_vop_i<-final_vop_i[, .(NAs=sum(is.na(value)),value = sum(value,na.rm=T)), by = .(glw3_name, iso3)]
+
+# These values have missing data when summing (ignoring goat and sheep milk) and will be set to NA
+final_vop_i[NAs>0 & !glw3_name %in% c("goats","sheep")]
+final_vop_i[NAs>0 & !glw3_name %in% c("goats","sheep"),value:=NA]
+
+    # 5.2.1) Explore if we can convert cusd values from faostat or estimated from production x price data to get missing $I data ######
+# Merge in missing values from cusd table
+setnames(final_vop,"value","cusd")
+final_vop_i<-merge(final_vop_i,final_vop,all.x=T)
+
+# Add xrat & ppp ratio to convert cusd to isud
+final_vop_i<-merge(final_vop_i,ppp_xrat,all.x=T,by="iso3")
+
+# Our calculaute for I$ does not give expected results, they are much higher than the faostat int dollar rates
+final_vop_i[,intd:=cusd*xrat/ppp]
+
+# We will have to work out implied rates without understanding what the FAO methodology is
+final_vop_i<-final_vop_i[,.(iso3,glw3_name,value)]
+
+# Prepare cusd values  
+final_vop_cusd<-copy(prod_value_usd)
+setnames(final_vop_cusd,focal_year,"cusd15")
+
+final_vop_cusd<-final_vop_cusd[,list(iso3,atlas_name,cusd15)]
+final_vop_cusd<-merge(final_vop_cusd,glw2atlas,all.x=T,by="atlas_name")
+
+# Prepare iusd values
+final_vop_intd<-copy(prod_value_i)
+setnames(final_vop_intd,focal_year,"value")
+
+final_vop_intd<-final_vop_intd[,list(iso3,atlas_name,value)]
+final_vop_intd<-merge(final_vop_intd,glw2atlas,all.x=T,by="atlas_name")
+
+# Merge I$ and US$
+final_vop_merge<-merge(final_vop_intd,final_vop_cusd,by=c("iso3","atlas_name","glw3_name"),all.x=T)
+
+final_vop_merge[,implied_cf:=cusd15/value]
+
+# It appears the FAOstat PPP values are commodity specific, for example they vary between cattle meat and milk in burundi.
+final_vop_merge[!is.na(implied_cf)]
+
+# Data is missing for some countries x commodities:
+final_vop_merge[is.na(value) & !grepl("milk",atlas_name)]
+
+# Most of these countries are data deficient in 2015, only eritre has some information on what the implied PPP might be
+ppp_missing<-final_vop_merge[is.na(value) & !grepl("milk",atlas_name),unique(iso3)]
+final_vop_merge[iso3 %in% ppp_missing]
+
+    # !!!TO DO!!! see if the missing ppp cf values can be inputed from other years #####
+    # 5.2.2) Distribute $I data we do have to GLW4 ######
   final_vop_i_cast<-dcast(final_vop_i,iso3~glw3_name)
   
   # Convert value to vector then raster
@@ -559,11 +604,53 @@ target_year<-c(2015,2017)
   # Multiply national VoP by cell proportion
   glw_vop_i<-glw_prop*final_vop_i_rast
   
-  # 5.3) Save outputs #####
-  terra::writeRaster(round(glw_vop_i*1000,0),file.path(glw_pro_dir,"livestock_vop_intld15.tif"),overwrite=T)
-  terra::writeRaster(round(glw_vop*1000,0),file.path(glw_pro_dir,"livestock_vop_usd2015.tif"),overwrite=T)
+  # 5.3) Split between highland and tropical zones ####
+  glw_vop_i_split<-split_livestock(data=glw_vop_i,livestock_mask_high,livestock_mask_low)
+  glw_vop_usd_split<-split_livestock(data=glw_vop,livestock_mask_high,livestock_mask_low)
   
-  # 6) QAQC: Extract by admin0 and compare back to FAOstat ####
+  # 5.3) Save outputs #####
+  terra::writeRaster(round(glw_vop_i_split*1000,0),file.path(glw_pro_dir,"livestock_vop_intld2015.tif"),overwrite=T)
+  terra::writeRaster(round(glw_vop_usd_split*1000,0),file.path(glw_pro_dir,"livestock_vop_usd2015.tif"),overwrite=T)
+  
+## 6) Livestock Numbers ######
+  livestock_no_file<-paste0(glw_pro_dir,"/livestock_number_number.tif")
+  shoat_prop_file<-paste0(glw_int_dir,"/shoat_prop.tif")
+  overwrite_glw<-F
+  
+  if(!file.exists(livestock_no_file)|overwrite_glw==T){
+    
+    ls_files<-list.files(glw_dir,"_Da.tif",full.names = T)
+    
+    glw<-terra::rast(glw_files)
+    names(glw)<-names(glw_names)
+    
+    glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
+    
+    TLU<-sum(c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1))
+    
+    livestock_no<-c(glw$cattle,glw$poultry,glw$goats,glw$pigs,glw$sheep,TLU)
+    names(livestock_no)[nlyr(livestock_no)]<-"total"
+    livestock_no<-terra::mask(terra::crop(livestock_no,Geographies$admin0),Geographies$admin0)
+    
+    # resample to 0.05
+    livestock_density<-livestock_no/terra::cellSize(livestock_no,unit="ha")
+    livestock_density<-terra::resample(livestock_density,base_rast)
+    livestock_no<-livestock_density*cellSize(livestock_density,unit="ha")
+    
+    # Pull out sheep and goat proportions for use in vop calculations before highland/tropical splitting
+    sheep_prop<-livestock_no$sheep/(livestock_no$goats +livestock_no$sheep)
+    goat_prop<-livestock_no$goats/(livestock_no$goats +livestock_no$sheep)
+    
+    terra::writeRaster(terra::rast(c(sheep_prop=sheep_prop,goat_prop=goat_prop)),filename = shoat_prop_file,overwrite=T)
+    
+    # Split livestock between highland and tropical
+    livestock_no<-split_livestock(data=livestock_no,livestock_mask_high,livestock_mask_low)
+    
+    terra::writeRaster(livestock_no,filename = livestock_no_file,overwrite=T)
+  }
+  
+  
+# 7) QAQC: Extract by admin0 and compare back to FAOstat ####
   
   # GLW3 distributed data
   data<-glw_vop
