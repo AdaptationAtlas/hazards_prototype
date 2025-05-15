@@ -2458,6 +2458,13 @@ avg_regions <- function(iso3, crop, regions, data, value_field) {
 #' print(enhanced_data)
 add_nearby <- function(data, value_field,group_field="atlas_name", neighbors, regions) {
   setnames(data,group_field,"group")
+  
+  iso3_missing<-data[!iso3 %in% unique(unlist(regions)),unique(iso3)]
+  
+  if(length(iso3_missing)>0){
+    stop("iso3 country code(s) present in data (",iso3_missing,") not present in regions.")
+  }
+  
   # Calculate and add the mean value from neighbors
   data[, mean_neighbors := avg_neighbors(iso3 = iso3,
                                          crop = group,
@@ -2466,9 +2473,9 @@ add_nearby <- function(data, value_field,group_field="atlas_name", neighbors, re
                                          value_field = value_field),
        by = list(iso3, group)]
   
-  # Calculate and add the mean value from the same region
-  data[, mean_region := avg_regions(iso3 = iso3,
-                                    crop = group,
+
+  data[, mean_region := avg_regions(iso3 = iso3[1],
+                                    crop = group[1],
                                     regions = regions,
                                     data = copy(data),
                                     value_field = value_field),
