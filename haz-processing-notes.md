@@ -31,9 +31,7 @@ _Repository_: https://github.com/AdaptationAtlas/hazards_prototype
   - The `generic-crop` entry is intersected with the **total production value**.
 - These are the only files retained from this step.
 
----
-
-## 2) Conventions and Structure
+## Conventions and Structure
 
 - File names use `_` to separate logical components and `-` only for compound terms (e.g. `generic-crop`).
 - Model names (e.g. `ACCESS-ESM1-5`) are included in all filenames.
@@ -42,6 +40,146 @@ _Repository_: https://github.com/AdaptationAtlas/hazards_prototype
 - Parquet values are sorted and rounded to reduce file size and improve performance.
 
 ---
+
+## 2) Exposure and Value Datasets
+
+This section describes the processed exposure datasets used in hazard × exposure intersections. All files are stored in subdirectories under `Data/`, organized by data source.
+
+---
+
+### 2.1 Processed Livestock Data – GLW4
+
+**Folder:** `Data/GLW4/processed/`
+
+#### 📂 Raster files
+
+| Filename                                                   | Description                                 | Raster Layers (names)                      |
+|------------------------------------------------------------|---------------------------------------------|--------------------------------------------|
+| `livestock_number_number.tif`                              | Tropical & highland livestock counts        | `cattle_tropical`, `sheep_highland`, etc.  |
+| `livestock_vop_intld2015.tif`                              | VOP in 2015 international dollars           | Same layer structure as above              |
+| `livestock_vop_usd2015.tif`                                | VOP in 2015 USD                             | Same layer structure as above              |
+
+Each raster includes 12 layers:
+
+- **Tropical breeds:** `cattle_tropical`, `sheep_tropical`, `goats_tropical`, `pigs_tropical`, `poultry_tropical`, `total_tropical`
+- **Highland breeds:** `cattle_highland`, `sheep_highland`, `goats_highland`, `pigs_highland`, `poultry_highland`, `total_highland`
+
+#### 📂 Parquet summary tables
+
+| Filename                                                   | Description                                |
+|------------------------------------------------------------|--------------------------------------------|
+| `livestock_number_number_adm_sum.parquet`                  | Administrative sum of livestock numbers    |
+| `livestock_vop_intld2015_adm_sum.parquet`                  | Admin-level sum of VOP (int'l dollars)     |
+| `livestock_vop_usd2015_adm_sum.parquet`                    | Admin-level sum of VOP (USD)               |
+
+Each `.parquet` file contains these fields:
+
+| Column         | Description                               |
+|----------------|-------------------------------------------|
+| `iso3`         | Country ISO-3 code                        |
+| `admin0_name`  | Country name                              |
+| `admin1_name`  | Admin 1 region                            |
+| `admin2_name`  | Admin 2 district (if available)           |
+| `crop`         | Livestock type (e.g., `cattle_tropical`)  |
+| `value`        | Count or value of production              |
+| `exposure`     | `vop` or `number`
+| `unit`         | `number`, `usd`, or `intld`               |
+| `stat`         | Aggregation type (usually `sum`)          |
+| `tech`         | Not used in livestock (set as `NA`)       |
+
+---
+
+### 2.2 Processed Crop Data – MapSPAM 2020 (SSA only)
+
+**Folder:** `Data/mapspam/2020V1r2_SSA/processed/`
+
+#### 📂 Raster files
+
+Organized into folders by variable:
+
+| Variable Folder                    | Contents                                 |
+|-----------------------------------|------------------------------------------|
+| `variable=harv-area_ha/`          | Harvested area rasters                   |
+| `variable=phys-area_ha/`          | Physical area rasters                    |
+| `variable=prod_t/`                | Production (tonnes) rasters              |
+| `variable=yield_kgha/`            | Yield rasters (kg/ha)                    |
+| `variable=vop_intld15/`           | VOP (international dollars 2015) rasters|
+| `variable=vop_usd2015/`           | VOP (USD 2015) rasters                   |
+
+Each variable includes files like:
+
+```
+spam_<variable>_<input>.tif
+```
+
+Where `<input>` is one of:
+
+- `all`, `irr`, `rf-all`, `rf-highinput`, `rf-lowinput`, `rf-subsistence`
+
+Each raster contains 40+ crop-specific layers, including:
+
+- `wheat`, `maize`, `cassava`, `soybean`, `groundnut`, `arabica coffee`, `vegetables`, etc.
+
+Use `terra::names(rast(file))` to inspect crop layers.
+
+#### 📂 Parquet summary tables
+
+Each raster variable includes multiple `.parquet` files with administrative aggregation. These are stored in folders like:
+
+```
+Data/mapspam/2020V1r2_SSA/processed/variable=harv-area_ha/
+```
+
+Example filenames:
+
+- `spam_harv-area_ha_all_adm_sum.parquet`
+- `spam_vop_usd2015_rf-lowinput_adm_sum.parquet`
+
+Each `.parquet` file includes:
+
+| Column         | Description                                 |
+|----------------|---------------------------------------------|
+| `iso3`         | ISO-3 code                                  |
+| `admin0_name`  | Country                                     |
+| `admin1_name`  | Region                                      |
+| `admin2_name`  | District                                    |
+| `crop`         | Crop name (e.g., `maize`, `tea`)            |
+| `value`        | Harvest area / production / VOP             |
+| `exposure`     | Exposure type (e.g., `harv-area`, `prod_t`) |
+| `unit`         | `ha`, `t`, `usd`, etc.                      |
+| `stat`         | Aggregation method (usually `sum`)          |
+| `tech`         | Technology level (e.g., `all`, `irr`)       |
+
+---
+
+### 2.3 Unified Exposure Tables
+
+**Folder:** `Data/exposure/`
+
+These harmonized files combine exposure information across both MapSPAM and GLW sources for hazard-risk overlays.
+
+| Filename                                | Description                                 |
+|-----------------------------------------|---------------------------------------------|
+| `exposure_adm_sum.parquet`              | All crop × exposure × tech combinations     |
+| `hpop_adm_sum.parquet`                  | Human population exposure (GPW-derived)     |
+
+Schema for `exposure_adm_sum.parquet`:
+
+| Column         | Description                        |
+|----------------|------------------------------------|
+| `iso3`         | ISO-3 country code                 |
+| `admin0_name`  | Country                            |
+| `admin1_name`  | Region                             |
+| `admin2_name`  | District                           |
+| `crop`         | Crop or `generic-crop`             |
+| `value`        | Exposure value                     |
+| `exposure`     | e.g., `harv-area`, `prod_t`        |
+| `unit`         | `ha`, `t`, `usd`, `number`         |
+| `tech`         | e.g., `all`, `irr`, `rf-lowinput`  |
+
+---
+
+Let me know if you'd like to generate an automated index for all files or if Brayden needs a CSV of these folder structures.
 
 ## 3) Folder Summaries
 
