@@ -1,5 +1,6 @@
 # Please run 0_server_setup.R before executing this script
-# For generate livestock vop you will need to run script 0.4 first
+# To generate livestock vop you will need to run script 0.4
+# To generate crop vop you will need to run script 0.45
 # a) Load R functions & packages ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
@@ -105,95 +106,14 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   
 }))
 
-# 2) Livestock (GLW) #####
-overwrite_glw<-T
+# 2) Livestock (GLW) extraction by vector boundaries #####
 version_glw<-1
 source_year_glw<-list(census=2020,values=2015)
 
-  ## 2.1) Livestock Mask #####
-  mask_ls_file<-paste0(glw_int_dir,"/livestock_masks.tif")
-  
-  if(!file.exists(mask_ls_file)|overwrite_glw==T){
-    glw_files<-list.files(glw_dir,"_Da.tif$",full.names=T)
-    glw<-terra::rast(glw_files)
-    names(glw)<-names(glw_names)
-    
-    glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
-    
-    lus<-c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1)
-    lus<-c(lus,sum(lus,na.rm=T))
-    names(lus)<-c("cattle","poultry","goats","pigs","sheep","total")
-    lus<-terra::mask(terra::crop(lus,Geographies$admin0),Geographies$admin0)
-    
-    # resample to 0.05
-    lu_density<-lus/terra::cellSize(lus,unit="ha")
-    lu_density<-terra::resample(lu_density,base_rast)
-    
-    # Classify into binary mask
-    livestock_mask <- terra::ifel(lu_density > 0, 1, 0)
-    
-    # Split mask by highland vs tropical areas
-    
-    # Load highland mask
-    highlands<-terra::rast(afr_highlands_file)
-    highlands<-terra::resample(highlands,base_rast,method="near")
-    
-    livestock_mask_high<-livestock_mask*highlands
-    names(livestock_mask_high)<-paste0( names(livestock_mask_high),"_highland")
-    
-    lowlands<-classify(highlands,data.frame(from=c(0,1),to=c(1,0)))
-    livestock_mask_low<-livestock_mask*lowlands
-    names(livestock_mask_low)<-paste0( names(livestock_mask_low),"_tropical")
-    
-    livestock_mask<-c(livestock_mask_high,livestock_mask_low)
-    
-    terra::writeRaster(livestock_mask,filename=mask_ls_file,overwrite=T)
-    
-  }else{
-    livestock_mask<-terra::rast(mask_ls_file)
-    livestock_mask_high<-livestock_mask[[grep("highland",names(livestock_mask))]]
-    livestock_mask_low<-livestock_mask[[!grepl("highland",names(livestock_mask))]]
-  }
-  ## 2.2) Livestock Numbers ######
   livestock_no_file<-paste0(glw_pro_dir,"/livestock_number_number.tif")
-  shoat_prop_file<-paste0(glw_int_dir,"/shoat_prop.tif")
-  
-  if(!file.exists(livestock_no_file)|overwrite_glw==T){
-    
-    ls_files<-list.files(glw_dir,"_Da.tif",full.names = T)
-    
-    glw<-terra::rast(glw_files)
-    names(glw)<-names(glw_names)
-    
-    glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
-    
-    TLU<-sum(c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1))
-    
-    livestock_no<-c(glw$cattle,glw$poultry,glw$goats,glw$pigs,glw$sheep,TLU)
-    names(livestock_no)[nlyr(livestock_no)]<-"total"
-    livestock_no<-terra::mask(terra::crop(livestock_no,Geographies$admin0),Geographies$admin0)
-    
-    # resample to 0.05
-    livestock_density<-livestock_no/terra::cellSize(livestock_no,unit="ha")
-    livestock_density<-terra::resample(livestock_density,base_rast)
-    livestock_no<-livestock_density*cellSize(livestock_density,unit="ha")
-    
-    # Pull out sheep and goat proportions for use in vop calculations before highland/tropical splitting
-    sheep_prop<-livestock_no$sheep/(livestock_no$goats +livestock_no$sheep)
-    goat_prop<-livestock_no$goats/(livestock_no$goats +livestock_no$sheep)
-    
-    terra::writeRaster(terra::rast(c(sheep_prop=sheep_prop,goat_prop=goat_prop)),filename = shoat_prop_file,overwrite=T)
-    
-    # Split livestock between highland and tropical
-    livestock_no<-split_livestock(data=livestock_no,livestock_mask_high,livestock_mask_low)
-    
-    terra::writeRaster(livestock_no,filename = livestock_no_file,overwrite=T)
-    
-  }else{
-    livestock_no<-terra::rast(livestock_no_file)
+  if(!file.exists(livestock_no_file)){
+    stop("Run script 0.4_create_livestock_exposure.R")
   }
-  
-  ## 2.3) Extraction by vector boundaries ####
   
   files<-list.files(glw_pro_dir,".tif$",recursive=T,full.names=T)
   glw_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
@@ -247,7 +167,7 @@ source_year_glw<-list(census=2020,values=2015)
         unit = unit,
         technology = tech,
         stat=stat,
-        notes = paste0("A table of glw livestock values (",var,") extracted by boundary vectors then summarized (fun = ",FUN,"). Note this analysis uses density adjusted (da) GLW values.")
+        notes = paste0("A table of glw livestock values (",var,") extracted by boundary vectors then summarized (fun = ",stat,"). Note this analysis uses density adjusted (da) GLW values.")
       )
       
       write_json(attr_info, attr_file, pretty = TRUE)
