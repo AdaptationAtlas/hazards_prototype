@@ -140,7 +140,7 @@ risk_x_exposure<-function(file,
     }
     
     if(!crop %in% names(livestock_exposure) & !crop %in% crop_choices){
-      stop("Commodity ",crop," not found in layer names of ",basename(livestock_exposure))
+      stop("Commodity ",crop," not found in layer names of ",basename(livestock_exposure_path))
     }
     
     # vop
@@ -164,6 +164,9 @@ risk_x_exposure<-function(file,
                            overwrite=T,
                            filetype = 'COG',
                            gdal = c("COMPRESS=LZW", of = "COG"))
+        
+        rm(data,data_ex,exposure)
+        gc()
       }
       
     }else{
@@ -188,6 +191,8 @@ risk_x_exposure<-function(file,
                              gdal = c("COMPRESS=LZW", of = "COG"))
           
         }
+        rm(data,data_ex,exposure)
+        gc()
       }
     }
   }
@@ -343,7 +348,7 @@ version3<-1
 # e.4) Hazard x exposure ####
 run4.1<-T
 run4.2<-F
-worker_n4.1<-15
+worker_n4.1<-20
 worker_n4.2<-20
 worker_n4_check<-20
 multisession4<-T
@@ -829,10 +834,7 @@ for(tx in 1:length(timeframe_choices)){
     ## 4.0) Set-up ####
     
     ## 4.1) Multiply Hazard Freq by Exposure #####
-    # ISSUE - WE NEED TO INTERSECT "generic-crop" with all the spam crop ###
-    # exposure values and total.
-    
-    
+
     if(run4.1){
       cat(timeframe,"4.1) Intersecting hazard risk x exposure \n")
       
@@ -867,7 +869,8 @@ for(tx in 1:length(timeframe_choices)){
                             overwrite = overwrite4,
                             crop_exposure_path = crop_vop_file,
                             livestock_exposure_path = livestock_vop_file,
-                            crop_choices = crop_choices)
+                            crop_choices = crop_choices,
+                            verbose = T)
           })
         })
         
