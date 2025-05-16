@@ -2334,7 +2334,7 @@ regions <- list(
   Southern_Africa = c("BWA", "LSO", "NAM", "SWZ", "ZAF", "ZMB", "ZWE","MOZ"),
   West_Africa = c("BEN", "BFA", "CPV", "CIV", "GMB", "GHA", "GIN", "GNB", "LBR", "MLI", "MRT", "NER", "NGA", "SEN", "SLE", "TGO"),
   Central_Africa = c("AGO", "CMR", "CAF", "TCD", "COD", "COG", "GNQ", "GAB", "STP"),
-  North_Africa = c("DZA", "EGY", "LBY", "MAR", "SDN", "TUN")
+  North_Africa = c("DZA", "EGY", "LBY", "MAR", "SDN", "TUN","ESH")
 )
 
 #' Map LPS names to FAOstat
@@ -3075,15 +3075,13 @@ check_and_delete_bad_files <- function(files, delete_bad = TRUE, worker_n = 2) {
 #'
 #' @import future
 #' @export
-set_parallel_plan <- function(n_cores,use_multisession=F) {
-  if (.Platform$OS.type == "unix" && interactive() == FALSE && Sys.getenv("RSTUDIO") == "" & !use_multisession) {
-    message(sprintf("Using multicore backend (%d workers).", n_cores))
-    future::plan(future::multicore, workers = n_cores)
-  } else {
-    message(sprintf("Using multisession backend (%d workers).", n_cores))
+set_parallel_plan <- function(n_cores, use_multisession = TRUE) {
+  future::plan(future::sequential) 
+  if (use_multisession) {
     future::plan(future::multisession, workers = n_cores)
+  } else {
+    future::plan(future::multicore, workers = n_cores)
   }
-  invisible(NULL)
 }
 #' @title check_tif_integrity
 #'
