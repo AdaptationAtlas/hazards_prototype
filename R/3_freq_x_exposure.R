@@ -193,7 +193,7 @@ risk_x_exposure<-function(file,
             data_ex<-round(data_ex,round_n)
           }
           
-          names(data_ex)<-paste0(names(data_ex),"_",variable)
+          names(data_ex)<-paste0(gsub("generic-crop",crop_choice,names(data_ex)),"_",variable)
           terra::writeRaster(data_ex,
                              file=save_name2,
                              overwrite=T,
@@ -349,7 +349,7 @@ if(F){
   version3<-1
   # e.4) Hazard x exposure ####
   run4.1<-T
-  run4.2<-F
+  run4.2<-T
   worker_n4.1<-15
   worker_n4.2<-20
   worker_n4_check<-20
@@ -358,7 +358,7 @@ if(F){
   version4<-1
   
   overwrite4<-F
-  do_vop<-F
+  do_vop<-T
   round_vop<-0
   vop_name<-"vop_intld15"
   do_vop_usd<-T
