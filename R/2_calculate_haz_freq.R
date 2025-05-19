@@ -245,8 +245,6 @@ haz_class<-rbind(haz_class,haz_class2)
 haz_class[crop=="generic",crop:="generic_crop"
 ][,crop:=gsub(" |_","-",crop)]
 
-
-
 haz_class[,direction2:="G"
 ][direction=="<",direction2:="L"
 ][,index_name2:=index_name
@@ -281,7 +279,18 @@ crop_interactions<-data.table(heat_simple=c("NTx35","NTxS"),wet_simple=c("NDWL0"
 # Animal interactions (each row is a combination of heat, wet and dry variables)
 animal_interactions<-data.table(heat_simple=c("THI_max","THI_max"),wet_simple=c("NDWL0","PTOT_G"),dry_simple=c("NDWS","PTOT_L"),fixed=c(F,F),type="animal")
 
-interaction_haz<-unique(c(unlist(crop_interactions),unlist(animal_interactions)))
+interaction_haz<-unique(c(unlist(crop_interactions[,.(heat_simple,wet_simple,dry_simple)]),
+                          unlist(animal_interactions[,.(heat_simple,wet_simple,dry_simple)])))
+
+interaction_haz_fixed<-unique(c(unlist(crop_interactions[fixed==T,.(heat_simple,wet_simple,dry_simple)]),
+                          unlist(animal_interactions[fixed==T,.(heat_simple,wet_simple,dry_simple)])))
+
+interaction_haz_free<-unique(c(unlist(crop_interactions[fixed==F,.(heat_simple,wet_simple,dry_simple)]),
+                                unlist(animal_interactions[fixed==F,.(heat_simple,wet_simple,dry_simple)])))
+
+if(any(interaction_haz_fixed %in% interaction_haz_free)){
+  stop("The system has not been tested with the same hazards used in both fixed (does not vary by crop, fixed =T) vs crop specific (fixed=F) combinations. This may lead to issues when assembling crop risk stacks for solo hazards (simplified hazard names could end up being duplicated for different thresholds in fixed vs crop specific scenarios). ")
+}
 
 cat("Crop interaction variables\n")
 print(crop_interactions)
@@ -386,84 +395,84 @@ Thresholds_U[,direction2:=direction
 Thresholds_U<-Thresholds_U[grepl(paste(if(any(grepl("NTx",interaction_haz))){c("NTx",interaction_haz)}else{interaction_haz},collapse = "|"),index_name2)]
 
 ## 0.3) Set flow controls and overwrite parameters ####
-### 0.3.1) Classify hazards ####
-run1<-F
-overwrite1<-F
-worker_n1<-20
-multisession1<-T
-upload1<-F # We do not recommend uploading these data to the S3, they are a large intermediate product
-upload_overwrite1<-F # Deletes existing files and uploads new
-
-### 0.3.2) Calculate hazard risk freq ####
-run2<-F
-check2<-T
-round2<-NULL # set to integer if you wish to round results
-worker_n2<-20
-overwrite2<-F
-multisession2<-T
-upload2<-F
-upload_delete2<-T # Deletes all existing files in s3
-upload_overwrite2<-T # Overwrites existing files (does not delete anything)
-do_ensemble2<-T
-
-### 0.3.3) Make crop stacks for risk freq ####
-run3<-F
-check3<-T
-overwrite3<-F
-worker_n3<-20
-multisession3<-T
-upload3<-F
-upload_delete3<-T # Deletes all existing files in s3
-upload_overwrite3<-T # Overwrites existing files (does not delete anything)
-
-### 0.3.4) Calculate hazard time series mean and sd ####
-run4<-F
-check4<-F
-run4.1<-F # Difference (currently not updated, keep as F)
-round4<-3 # set to integer if you wish to round results
-overwrite4<-F
-worker_n4<-15
-upload4<-F
-do_ensemble4<-T
-multisession4<-T
-
-### 0.3.5) Calculate interactions ####
-
-# Interaction Tifs
-run5.2<-F
-check5.2<-T
-round5.2<-3
-overwrite5.2<-F
-do_ensemble5.2<-T
-worker_n5.2<-20
-multisession5.2<-T
-
-# Interaction crop stacks
-run5.3<-T
-worker_n5.3<-15
-overwrite5.3<-F
-upload5<-F
-multisession5.3<-T
-check5.3<-T
-round5.3<-NULL
-
-### 0.3.6) Set workers & permission for uploads ####
-worker_n_upload<-20
-permission<-"public-read"
-
-### 0.3.7) Choose timeframes to loop through ####
-timeframes<-timeframe_choices
-
-cat("Control and overwrite settings:\n")
-cat("timeframes = ", timeframes,
-    "\n\nrun1 =",run1,"overwrite1 =",overwrite1,"workers1 =",worker_n1,"multisession1 =",multisession1,"upload1 =",upload1,"upload_overwrite1 =",upload_overwrite1,
-    "\n\nrun2 =",run2,"round2 =",round2,"check2 =",check2,"overwrite =",overwrite2,"workers2 =",worker_n2,"multisession2= ",multisession2,"do_ensemble2=",do_ensemble2,"upload2 =",upload2,"upload_overwrite2 =",upload_overwrite2,"upload_delete2 =",upload_delete2,
-    "\n\nrun3 = ",run3,"check3 =",check3,"overwrite3 =",overwrite3,"workers3 =",worker_n3,"multisession3 =",multisession3,"upload3= ",upload3,"upload_overwrite3 =",upload_overwrite3,"upload_delete3 =",upload_delete3,
-    "\n\nrun4 =",run4,"round4 =",round4,"check 4 =",check4,"overwrite4 =",overwrite4,"workers4 =",worker_n4,"multisession4 =",multisession4,"do_ensemble4 =",do_ensemble4,
-    "\n\nrun5.2 =",run5.2,"check5.2 =",check5.2,"round5.2 =",round5.2,"overwrite5.2 =",overwrite5.2,"workers5.2 =",worker_n5.2,"multisession5.2 =",multisession5.2,"do_ensemble5.2 =",do_ensemble5.2,
-    "\n\nrun5.3 =",run5.3,"check5.3 =",check5.3,"round5.3 =",round5.3,"overwrite5.3 =",overwrite5.3,"workers5.3 =",worker_n5.3,"multisession5.3 =",multisession5.3,
-    "\n\nupload workers n =",worker_n_upload," upload permission =",permission,"\n\n")
-
+  ### 0.3.1) Classify hazards ####
+  run1<-F
+  overwrite1<-F
+  worker_n1<-20
+  multisession1<-T
+  upload1<-F # We do not recommend uploading these data to the S3, they are a large intermediate product
+  upload_overwrite1<-F # Deletes existing files and uploads new
+  
+  ### 0.3.2) Calculate hazard risk freq ####
+  run2<-F
+  check2<-T
+  round2<-NULL # set to integer if you wish to round results
+  worker_n2<-20
+  overwrite2<-F
+  multisession2<-T
+  upload2<-F
+  upload_delete2<-T # Deletes all existing files in s3
+  upload_overwrite2<-T # Overwrites existing files (does not delete anything)
+  do_ensemble2<-T
+  
+  ### 0.3.3) Make crop stacks for risk freq ####
+  run3<-F
+  check3<-T
+  overwrite3<-F
+  worker_n3<-20
+  multisession3<-T
+  upload3<-F
+  upload_delete3<-T # Deletes all existing files in s3
+  upload_overwrite3<-T # Overwrites existing files (does not delete anything)
+  
+  ### 0.3.4) Calculate hazard time series mean and sd ####
+  run4<-F
+  check4<-F
+  run4.1<-F # Difference (currently not updated, keep as F)
+  round4<-3 # set to integer if you wish to round results
+  overwrite4<-F
+  worker_n4<-15
+  upload4<-F
+  do_ensemble4<-T
+  multisession4<-T
+  
+  ### 0.3.5) Calculate interactions ####
+  
+  # Interaction Tifs
+  run5.2<-F
+  check5.2<-T
+  round5.2<-3
+  overwrite5.2<-F
+  do_ensemble5.2<-T
+  worker_n5.2<-20
+  multisession5.2<-T
+  
+  # Interaction crop stacks
+  run5.3<-T
+  worker_n5.3<-15
+  overwrite5.3<-F
+  upload5<-F
+  multisession5.3<-T
+  check5.3<-T
+  round5.3<-NULL
+  
+  ### 0.3.6) Set workers & permission for uploads ####
+  worker_n_upload<-20
+  permission<-"public-read"
+  
+  ### 0.3.7) Choose timeframes to loop through ####
+  timeframes<-timeframe_choices
+  
+  cat("Control and overwrite settings:\n")
+  cat("timeframes = ", timeframes,
+      "\n\nrun1 =",run1,"overwrite1 =",overwrite1,"workers1 =",worker_n1,"multisession1 =",multisession1,"upload1 =",upload1,"upload_overwrite1 =",upload_overwrite1,
+      "\n\nrun2 =",run2,"round2 =",round2,"check2 =",check2,"overwrite =",overwrite2,"workers2 =",worker_n2,"multisession2= ",multisession2,"do_ensemble2=",do_ensemble2,"upload2 =",upload2,"upload_overwrite2 =",upload_overwrite2,"upload_delete2 =",upload_delete2,
+      "\n\nrun3 = ",run3,"check3 =",check3,"overwrite3 =",overwrite3,"workers3 =",worker_n3,"multisession3 =",multisession3,"upload3= ",upload3,"upload_overwrite3 =",upload_overwrite3,"upload_delete3 =",upload_delete3,
+      "\n\nrun4 =",run4,"round4 =",round4,"check 4 =",check4,"overwrite4 =",overwrite4,"workers4 =",worker_n4,"multisession4 =",multisession4,"do_ensemble4 =",do_ensemble4,
+      "\n\nrun5.2 =",run5.2,"check5.2 =",check5.2,"round5.2 =",round5.2,"overwrite5.2 =",overwrite5.2,"workers5.2 =",worker_n5.2,"multisession5.2 =",multisession5.2,"do_ensemble5.2 =",do_ensemble5.2,
+      "\n\nrun5.3 =",run5.3,"check5.3 =",check5.3,"round5.3 =",round5.3,"overwrite5.3 =",overwrite5.3,"workers5.3 =",worker_n5.3,"multisession5.3 =",multisession5.3,
+      "\n\nupload workers n =",worker_n_upload," upload permission =",permission,"\n\n")
+  
 ## 0.4) Download hazard timeseries from s3 bucket (if required) ####
 # Dev Note: needs to be within timeframe loop? ####
 # Dev Note: subset to required hazards only ####
@@ -902,8 +911,14 @@ for(tx in 1:length(timeframes)){
     # List crops (inc. livestock)
     crops<-haz_class[,unique(crop)]
     
+    # combinations_ca
+    dat<-combinations_ca[,.(heat_simple,dry_simple,wet_simple,crop,severity_class)]
+    
+    # Limit generic crop to only have fixed hazards
+    haz_class[crop=="generic-crop"]
     haz_class_df<-data.frame(haz_class)
     
+
     #  haz_freq_file_tab<-merge(haz_freq_file_tab,type[,c("hazard2","type","index_name2")],by="hazard2",all.x=T,sort=F)
     #  haz_freq_file_tab[,index_name2:=gsub("_","-",index_name2)]
     haz_freq_file_tab<-data.frame(haz_freq_file_tab)
@@ -941,7 +956,7 @@ for(tx in 1:length(timeframes)){
               
               haz_class_df_subset<-haz_class_df[haz_class_df$crop==crop_focus & 
                                                   haz_class_df$description == sev_choice & 
-                                                  haz_class_df$index_name2 %in% interaction_haz,c("type","filename","index_name2")]
+                                                  haz_class_df$index_name2 %in% if(crop_focus!="generic-crop"){interaction_haz_fixed}else{interaction_haz_free},c("type","filename","index_name2")]
               haz_crop_classes<-unique(gsub("_","-",gsub("[.]tif","",haz_class_df_subset$filename)))
               
               files<-haz_freq_file_tab[haz_freq_file_tab$model==model_k & 
