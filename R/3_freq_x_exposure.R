@@ -119,11 +119,11 @@ risk_x_exposure<-function(file,
     dir.create(save_dir,recursive=T)
   }
   
-  data<-terra::rast(file)
   crop<-unlist(data.table::tstrsplit(basename(file),"_",keep=1))
   save_name<-file.path(save_dir,gsub(".tif",paste0("_",variable,".tif"),basename(file)))
   
   if(!file.exists(save_name)|overwrite==T){
+    data<-terra::rast(file)
     
     if(!is.null(crop_exposure_path)){
       crop_exposure<-terra::rast(crop_exposure_path)
@@ -198,9 +198,11 @@ risk_x_exposure<-function(file,
                              file=save_name2,
                              overwrite=T,
                              filetype = 'COG',
-                             gdal = c("COMPRESS=ZSTD", "of=COG", paste0("datatype=", dtype)))          
+                             gdal = c("COMPRESS=ZSTD", "of=COG", paste0("datatype=", dtype)))     
+          rm(data_ex,exposure)
+          gc()
         }
-        rm(data,data_ex,exposure)
+        rm(data)
         gc()
       }
     }
