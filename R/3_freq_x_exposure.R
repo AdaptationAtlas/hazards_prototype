@@ -145,8 +145,6 @@ risk_x_exposure<-function(file,
       stop("Commodity ",crop," not found in layer names of ",basename(livestock_exposure_path))
     }
     
-    dtype <- if (!is.null(round_n) && round_n == 0) "INT2S" else "FLT4S"
-    
     # vop
     if(crop!="generic-crop"){
       if(crop %in% crop_choices & !variable %in% c("n","head_n")){
@@ -170,7 +168,7 @@ risk_x_exposure<-function(file,
                            file=save_name,
                            overwrite=T,
                            filetype = 'COG',
-                           gdal = c("COMPRESS=ZSTD", "of=COG", paste0("datatype=", dtype)))        
+                           gdal = c("COMPRESS=ZSTD", "of=COG"))        
         rm(data,data_ex,exposure,livestock_exposure,crop_exposure)
         gc()
       }
@@ -350,8 +348,8 @@ if(F){
   # e.4) Hazard x exposure ####
   run4.1<-T
   run4.2<-T
-  worker_n4.1<-15
-  worker_n4.2<-20
+  worker_n4.1<-10
+  worker_n4.2<-10
   worker_n4_check<-20
   multisession4<-T
   round4<-2
