@@ -115,15 +115,11 @@ risk_x_exposure<-function(file,
   
   if(verbose){cat(file,"\n")}
   
-  if(!dir.exists(save_dir)){
-    dir.create(save_dir,recursive=T)
-  }
-  
-  crop<-unlist(data.table::tstrsplit(basename(file),"_",keep=1))
   save_name<-file.path(save_dir,gsub(".tif",paste0("_",variable,".tif"),basename(file)))
   
   if(!file.exists(save_name)|overwrite==T){
     data<-terra::rast(file)
+    crop<-unlist(data.table::tstrsplit(basename(file),"_",keep=1))
     
     if(!is.null(crop_exposure_path)){
       crop_exposure<-terra::rast(crop_exposure_path)
@@ -176,7 +172,6 @@ risk_x_exposure<-function(file,
     }else{
       if(!variable %in% c("n","head_n")){
         # Here we need to loop through all exposure values and total
-        crop_choices<-crop_choices
         for(crop_choice in crop_choices){
         if(crop_choice=="generic-crop"){  
           exposure<-sum(crop_exposure)
@@ -196,7 +191,7 @@ risk_x_exposure<-function(file,
                              file=save_name2,
                              overwrite=T,
                              filetype = 'COG',
-                             gdal = c("COMPRESS=ZSTD", "of=COG", paste0("datatype=", dtype)))     
+                             gdal = c("COMPRESS=ZSTD", "of=COG"))     
           rm(data_ex,exposure)
           gc()
         }
@@ -348,8 +343,8 @@ if(F){
   # e.4) Hazard x exposure ####
   run4.1<-T
   run4.2<-T
-  worker_n4.1<-10
-  worker_n4.2<-10
+  worker_n4.1<-15
+  worker_n4.2<-15
   worker_n4_check<-20
   multisession4<-T
   round4<-2
@@ -824,7 +819,7 @@ for(tx in 1:length(timeframe_choices)){
     to_do_list<-list()
     
     if(do_vop){
-      haz_risk_vop_dir <- file.path(atlas_dirs$data_dir$hazard_risk_vop, timeframe)
+      haz_risk_vop_dir <- ensure_dir(atlas_dirs$data_dir$hazard_risk_vop, timeframe)
       to_do_list$vop<-list(variable=vop_name,
                            folder=haz_risk_vop_dir,
                            source_dir=haz_risk_dir,
@@ -834,7 +829,7 @@ for(tx in 1:length(timeframe_choices)){
     }
     
     if(do_vop_usd){
-      haz_risk_vop_usd_dir <- file.path(atlas_dirs$data_dir$hazard_risk_vop_usd, timeframe)
+      haz_risk_vop_usd_dir <- ensure_dir(atlas_dirs$data_dir$hazard_risk_vop_usd, timeframe)
       to_do_list$vop_usd<-list(variable=vop_usd_name,
                                folder=haz_risk_vop_usd_dir,
                                source_dir=haz_risk_dir,
@@ -844,7 +839,7 @@ for(tx in 1:length(timeframe_choices)){
     }
     
     if(do_ha){
-      haz_risk_ha_dir <- file.path(atlas_dirs$data_dir$hazard_risk_ha, timeframe)
+      haz_risk_ha_dir <- ensure_dir(atlas_dirs$data_dir$hazard_risk_ha, timeframe)
       to_do_list$do_ha<-list(variable=ha_name,
                              folder=haz_risk_ha_dir,
                              source_dir=haz_risk_dir,
@@ -854,7 +849,7 @@ for(tx in 1:length(timeframe_choices)){
     }
     
     if(do_n){
-      haz_risk_n_dir <- file.path(atlas_dirs$data_dir$hazard_risk_n, timeframe)
+      haz_risk_n_dir <- ensure_dir(atlas_dirs$data_dir$hazard_risk_n, timeframe)
       to_do_list$do_n<-list(variable=n_name,folder=haz_risk_n_dir,
                             source_dir=haz_risk_dir,
                             crop_exposure_file=NULL,
@@ -961,7 +956,7 @@ for(tx in 1:length(timeframe_choices)){
         failed_files <- purrr::compact(p)  # failed attempts will return their path
         if (length(failed_files) > 0) {
           error_file <- file.path(to_do_list[[i]]$folder, paste0("failed_risk_x_exposure_", to_do_list[[i]]$variable, ".txt"))
-          writeLines(failed_files, error_file)
+          writeLines(unlist(failed_files), error_file)
           warning(sprintf("Some files failed after retrying. See '%s'", error_file))
         }
         
