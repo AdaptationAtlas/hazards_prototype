@@ -341,10 +341,10 @@ if(F){
   round3<-2
   version3<-1
   # e.4) Hazard x exposure ####
-  run4.1<-T
+  run4.1<-F
   run4.2<-T
-  worker_n4.1<-15
-  worker_n4.2<-15
+  worker_n4.1<-7
+  worker_n4.2<-7
   worker_n4_check<-20
   multisession4<-T
   round4<-2
@@ -1018,10 +1018,9 @@ for(tx in 1:length(timeframe_choices)){
         id_vars<-c("iso3","admin0_name","admin1_name","admin2_name")
         split_delim<-"_"
         split_colnames<-c("scenario", "model", "timeframe", "hazard", "hazard_vars", "crop", "severity","exposure_var","exposure_unit")
-        extract_stat<-"mean"
+        extract_stat<-"sum"
         order_by<-c("iso3","admin0_name","admin1_name","admin2_name","crop")
         multisession<-multisession4
-        extract_stat<-"mean"
         attr_parent_script<-"3/3_freq_x_exposure.R - section 1"
         attr_value_variable<-"haz-freq x exposure"
         attr_unit<-unlist(tstrsplit(variable,"_",keep=2))
@@ -1072,6 +1071,7 @@ for(tx in 1:length(timeframe_choices)){
           
           invisible(
             future.apply::future_lapply(1:length(group),FUN=function(i){
+             # lapply(1:length(group),FUN=function(i){
               mts_choice<-group[i]
               prog(sprintf("Processing %s (%d of %d)", mts_choice, i, length(group)))
               
@@ -1102,6 +1102,8 @@ for(tx in 1:length(timeframe_choices)){
                   
                   dat<-merge(dat,boundaries_index[[k]],by="zone_id",all.x=T,sort=F)
                   dat$zone_id<-NULL
+                  rm(boundary_choice)
+                  gc()
                   return(dat)
                 }))
                 
