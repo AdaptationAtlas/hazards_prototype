@@ -1058,108 +1058,106 @@ for(tx in 1:length(timeframe_choices)){
         files<-data.frame(files)
         
         
-          set_parallel_plan(n_cores=worker_n,use_multisession=multisession)
+        files <- data.frame(files)
+        
+        set_parallel_plan(n_cores = worker_n, use_multisession = multisession)
         
         # Enable progressr
+        options(progressr.enable = TRUE)
+        options(progressr.clear = FALSE)
+        options(progressr.interval = 0.2)
         progressr::handlers(global = TRUE)
         progressr::handlers("progress")
         
-        # Wrap the parallel processing in a with_progress call
-        p<-with_progress({
-          # Define the progress bar
-          prog <- progressr::progressor(along = 1:length(group))
+        p <- with_progress({
+          prog <- progressr::progressor(steps = length(group))
           
-          invisible(
-            future.apply::future_lapply(1:length(group),FUN=function(i){
-             # lapply(1:length(group),FUN=function(i){
-              mts_choice<-group[i]
-              prog(sprintf("Processing %s (%d of %d)", mts_choice, i, length(group)))
+          furrr::future_map(1:length(group), function(i) {
+            mts_choice <- group[i]
+            prog(sprintf("Processing %s (%d of %d)", mts_choice, i, length(group)))
+            
+            save_file <- file.path(folder, paste0(mts_choice, ".parquet"))
+            
+            if (!file.exists(save_file) | overwrite) {
+              file_choices <- files$file[files$group == mts_choice]
+              rast_data <- terra::rast(file_choices)
               
-              save_file<-file.path(folder,paste0(mts_choice,".parquet"))
-              
-              if(!file.exists(save_file)|overwrite){
-                
-                file_choices<-files$file[files$group==mts_choice]
-                
-                rast_data<-terra::rast(file_choices)
-                
-                if(any(table(names(rast_data))>1)){
-                  stop("duplicate layer names present")
-                }
-                
-                result<-rbindlist(lapply(1:length(boundaries_zonal),FUN=function(k){
-                  cat("Group", i,"/", length(group),mts_choice," - extracting boundary",k,"        \r")
-                  
-                  boundary_choice<-boundaries_zonal[[k]]
-                  zonal_rast<-terra::rast(boundary_choice)
-                  
-                  dat<- zonal(
-                    x   = rast_data, 
-                    z   = zonal_rast, 
-                    fun = extract_stat, 
-                    na.rm = TRUE
-                  ) 
-                  
-                  dat<-merge(dat,boundaries_index[[k]],by="zone_id",all.x=T,sort=F)
-                  dat$zone_id<-NULL
-                  rm(boundary_choice)
-                  gc()
-                  return(dat)
-                }))
-                
-                result_long<-data.table::melt(result, id.vars = id_vars)
-                
-                # Optional rounding
-                if (!is.null(round)) {
-                  result_long[, value := round(value, round)]
-                }
-                
-                # Clean and split variable column
-                result_long[, c(split_colnames) := tstrsplit(variable[1], split_delim, fixed = TRUE), by = variable]
-                result_long[, variable := NULL]
-                
-                # Optimize ordering
-                if(!is.null(order)){
-                  result_long <- result_long %>% arrange(across(all_of(order_by)))
-                }
-                
-                arrow::write_parquet(result_long,save_file)
-                
-                # Add attributes
-                attr_file<-paste0(save_file,".json")
-                
-                filters<-lapply(split_colnames,FUN=function(split_col){
-                  unique(unlist(result_long[,split_col,with=F]))
-                })
-                names(filters)<-split_colnames
-                
-                attr_info <- list(
-                  source = list(input_raster=file_choices,extraction_rast=atlas_data$boundaries$name),
-                  extraction_method = "zonal",
-                  geo_filters = id_vars,
-                  season_type=timeframe,
-                  filters=filters,
-                  format=".parquet",
-                  date_created = Sys.time(),
-                  version = version1,
-                  parent_script = attr_parent_script,
-                  value_variable = attr_value_variable,
-                  unit = attr_unit,
-                  extract_stat=extract_stat,
-                  notes = attr_notes
-                )
-                
-                write_json(attr_info, attr_file, pretty = TRUE)
-                
-                rm(rast_data,result,result_long)
-                gc()
-                
+              if (any(table(names(rast_data)) > 1)) {
+                stop("duplicate layer names present")
               }
               
-            })
-          )
+              result <- rbindlist(lapply(1:length(boundaries_zonal), function(k) {
+                cat("Group", i, "/", length(group), mts_choice, " - extracting boundary", k, "        \r")
+                
+                boundary_choice <- boundaries_zonal[[k]]
+                zonal_rast <- terra::rast(boundary_choice)
+                
+                dat <- zonal(
+                  x = rast_data,
+                  z = zonal_rast,
+                  fun = extract_stat,
+                  na.rm = TRUE
+                )
+                
+                dat <- merge(dat, boundaries_index[[k]], by = "zone_id", all.x = TRUE, sort = FALSE)
+                dat$zone_id <- NULL
+                rm(boundary_choice)
+                gc()
+                return(dat)
+              }))
+              
+              result_long <- data.table::melt(result, id.vars = id_vars)
+              
+              # Optional rounding
+              if (!is.null(round)) {
+                result_long[, value := round(value, round)]
+              }
+              
+              # Clean and split variable column
+              result_long[, c(split_colnames) := tstrsplit(variable[1], split_delim, fixed = TRUE), by = variable]
+              result_long[, variable := NULL]
+              
+              # Optimize ordering
+              if (!is.null(order)) {
+                result_long <- result_long %>% arrange(across(all_of(order_by)))
+              }
+              
+              arrow::write_parquet(result_long, save_file)
+              
+              # Add attributes
+              attr_file <- paste0(save_file, ".json")
+              
+              filters <- lapply(split_colnames, function(split_col) {
+                unique(unlist(result_long[, split_col, with = FALSE]))
+              })
+              names(filters) <- split_colnames
+              
+              attr_info <- list(
+                source = list(input_raster = file_choices, extraction_rast = atlas_data$boundaries$name),
+                extraction_method = "zonal",
+                geo_filters = id_vars,
+                season_type = timeframe,
+                filters = filters,
+                format = ".parquet",
+                date_created = Sys.time(),
+                version = version1,
+                parent_script = attr_parent_script,
+                value_variable = attr_value_variable,
+                unit = attr_unit,
+                extract_stat = extract_stat,
+                notes = attr_notes
+              )
+              
+              write_json(attr_info, attr_file, pretty = TRUE)
+              
+              rm(rast_data, result, result_long)
+              gc()
+            }
+            NULL
+          }, .options = furrr::furrr_options(scheduling = Inf))
         })
         
+        plan(sequential)
         plan(sequential)
         
         cat(timeframe,"4.2) Variable = ",variable,v,"/",length(to_do_list),"- Complete \n")
