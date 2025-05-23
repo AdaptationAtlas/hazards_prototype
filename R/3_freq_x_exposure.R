@@ -343,6 +343,8 @@ if(F){
   # e.4) Hazard x exposure ####
   run4.1<-F
   run4.2<-T
+  ensemble_only4.1<-T
+  ensemble_only4.2<-T
   worker_n4.1<-7
   worker_n4.2<-7
   worker_n4_check<-20
@@ -674,6 +676,8 @@ for(tx in 1:length(timeframe_choices)){
   
   # 3) **To Do**Extract hazard timeseries by admin ####
   if(run3){
+    # This needs to be hazard x season (annual, jagermeyr etc.) extracted by boundaries
+    # Can include all models and timeframes?
     
     # Check original format
     file_o<-file.choose()
@@ -868,7 +872,11 @@ for(tx in 1:length(timeframe_choices)){
       
       # List files (can use the first element of the to_do_list only as the haz freq files are always the same)
       files<-list.files(to_do_list[[1]]$source_dir,".tif$",full.names = T)
+      
       files<-files[!grepl("ENSEMBLEsd",files)]
+      if(ensemble_only4.1){
+        files<-grep("ENSEMBLE",files,value=T)
+      }
       crop_choices<-unique(unlist(tstrsplit(basename(files),"_",keep=1)))
       # Exclude crops, the vector will serve to identify if we should be using crop or livestock exposure for the hazard data supplied
       crop_choices<-crop_choices[!grepl("cattle|sheep|goats|pigs|poultry",crop_choices)]
@@ -1030,6 +1038,10 @@ for(tx in 1:length(timeframe_choices)){
         
         
         files<-list.files(folder,".tif$",full.names = T)
+        
+        if(ensemble_only4.2){
+          files<-grep("ENSEMBLE",files,value=T)
+        }
         
         files_solo<-data.table(file=files[!grepl("_int_",files)])
         files_int<-data.table(file=files[grepl("_int_",files)])
