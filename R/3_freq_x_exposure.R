@@ -343,6 +343,8 @@ if(F){
   # e.4) Hazard x exposure ####
   run4.1<-F
   run4.2<-T
+  do_ensemble_sd4.1<-T
+  do_ensemble_sd4.2<-T
   ensemble_only4.1<-T
   ensemble_only4.2<-T
   worker_n4.1<-7
@@ -873,7 +875,10 @@ for(tx in 1:length(timeframe_choices)){
       # List files (can use the first element of the to_do_list only as the haz freq files are always the same)
       files<-list.files(to_do_list[[1]]$source_dir,".tif$",full.names = T)
       
-      files<-files[!grepl("ENSEMBLEsd",files)]
+      if(!do_ensemble_sd4.1){
+        files<-files[!grepl("ENSEMBLEsd",files)]
+      }
+      
       if(ensemble_only4.1){
         files<-grep("ENSEMBLE",files,value=T)
       }
@@ -984,7 +989,7 @@ for(tx in 1:length(timeframe_choices)){
                                        n_workers_files = worker_n4_check,
                                        n_workers_folders = 1,
                                        use_multisession = multisession4,
-                                       delete_corrupt  = FALSE)
+                                       delete_corrupt  = TRUE)
           result<-result[success==F]
           
           if(nrow(result)>0){
@@ -1038,6 +1043,10 @@ for(tx in 1:length(timeframe_choices)){
         
         
         files<-list.files(folder,".tif$",full.names = T)
+        
+        if(!do_ensemble_sd4.2){
+          files<-files[!grepl("ENSEMBLEsd",files)]
+        }
         
         if(ensemble_only4.2){
           files<-grep("ENSEMBLE",files,value=T)
@@ -1169,7 +1178,6 @@ for(tx in 1:length(timeframe_choices)){
           }, .options = furrr::furrr_options(scheduling = Inf))
         })
         
-        plan(sequential)
         plan(sequential)
         
         cat(timeframe,"4.2) Variable = ",variable,v,"/",length(to_do_list),"- Complete \n")
