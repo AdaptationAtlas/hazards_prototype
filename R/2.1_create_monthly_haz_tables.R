@@ -104,6 +104,10 @@ p_load(char=packages)
   worker_n2<-20
   overwrite2<-F
   round3.1<-3
+  round3.3<-3
+  
+  ## Final data ####
+  round_final<-1
   
 # 2) Extract hazard folders by admin boundaries ####
   ## 2.1) List hazard folders ####
@@ -131,6 +135,7 @@ p_load(char=packages)
   split_colnames<-c("scenario","timeframe","model","hazard", "year", "month")
   extract_stat<-"mean"
   order_by<-c("iso3","admin0_name","admin1_name","admin2_name")
+  order_by2<-c("admin0_name", "admin1_name", "season","hazard", "scenario", "timeframe")
   
   ## 2.3) Define the extraction function ####
   extract_hazard <- function(i, folders, hazards, output_dir, overwrite, round_dp, extract_stat,
@@ -325,6 +330,15 @@ p_load(char=packages)
   
   monthly_files<-file.path(output_dir,paste0("haz_monthly_adm_mean_",timeframes,".parquet"))
   
+  # Check for missing values
+  data<-arrow::read_parquet(monthly_files[1])
+  missing<-data[value==-Inf|is.infinite(value)|is.na(value)|is.null(value),.(hazard=paste(unique(hazard),collapse=",")),by=.(admin0_name,admin1_name)]
+  
+  if(nrow(missing)>0){
+    warning("These hazards x admin areas are missing data")
+    print(missing)
+  }
+  
   
 # 3) Summarize annually or 3 month windows ####
 ## 3.0) Create 3 month windows #####
@@ -393,6 +407,10 @@ lapply(monthly_files,FUN=function(month_file){
     })
 
   data_ex_season<-rbindlist(data_ex_season)
+  
+  if (!is.null(order_by2)){ 
+    setorderv(data, order_by2)
+  }
 
   arrow::write_parquet(data_ex_season,save_file)
   
@@ -406,9 +424,9 @@ lapply(monthly_files,FUN=function(month_file){
   
   jsonlite::write_json(
     list(
-      source = list(input_raster = files_ss, extraction_rast = atlas_data$boundaries$name),
+      source = list(input_table = save_file, extraction_rast = atlas_data$boundaries$name),
       extraction_method = "zonal",
-      geo_filters = json_dat$geo_filters,
+      geo_filters = grep("admin",colnames(data_ex_season),value=T),
       season_type = NA,
       filters =  filters,
       format = ".parquet",
@@ -429,83 +447,167 @@ monthly3_files<-gsub("_monthly_","_3months_",monthly_files)
 
 cat("3.1) Seasonal hazard calculation - Complete \n")
 
-
 ## 3.2) Add historical mean ####
 cat("3.2) Adding historical means \n")
 
-data_ex_season_hist<-lapply(baselines,FUN=function(baseline){
-    data<-arrow::read_parquet(grep(paste0("_",baseline,"_"),monthly3_files,value=T))
-    data<-data[,.(baseline_mean=mean(value,na.rm=T)),by=.(admin0_name,admin1_name,variable,season)]
+data_ex_season_hist<-rbindlist(lapply(baselines,FUN=function(baseline){
+    data<-data.table(arrow::read_parquet(grep(paste0("_",baseline,"[.]"),monthly3_files,value=T)))
+    data<-data[,.(value=round(mean(value,na.rm=T),round3.1)),by=.(admin0_name,admin1_name,hazard,season)]
+    data[,baseline:=baseline]
     data
+}))
+
+data_ex_season_hist<-dcast(data_ex_season_hist,admin0_name+admin1_name+hazard+season~baseline)
+colnames(data_ex_season_hist)<-gsub("historic","baseline",colnames(data_ex_season_hist))
+colnames(data_ex_season_hist)[grepl("baseline",colnames(data_ex_season_hist))]<-paste0(colnames(data_ex_season_hist)[grepl("baseline",colnames(data_ex_season_hist))],"_mean")
+baseline_cols<-colnames(data_ex_season_hist)[grepl("baseline",colnames(data_ex_season_hist))]
+anomaly_cols<-gsub("baseline","anomaly",baseline_cols)
+
+fut_monthly3_files<-monthly3_files[!grepl("historic",monthly3_files)]
+
+data_ex_season<-pblapply(fut_monthly3_files,FUN=function(file){
+
+  data<-data.table(arrow::read_parquet(file))
+  data<-merge(data,data_ex_season_hist,all.x=T)
+    
+  data[, (anomaly_cols) := lapply(.SD, function(x) value-x), .SDcols = baseline_cols]
+  data
 })
 
-data_ex_season[,baseline_mean:=round(mean(value[scenario=="historical" & timeframe=="historical"]),round_by),
-               by=list(admin0_name,admin1_name,variable,season)
-][,anomaly:=round(value-baseline_mean,round_by)]
+names(data_ex_season)<-basename(fut_monthly3_files)
 
 cat("3.2) Adding historical means  - Complete \n")
 
-
-# Check -Inf values (Annobón is a tiny island missed by CHIRTS)
-unique(data_ex_season[value==-Inf|is.infinite(value)|is.na(value)|is.null(value),list(admin0_name,admin1_name,variable)])
-
 # Remove non-finite values
-data_ex_season<-data_ex_season[is.finite(value)]
+# data_ex_season<-data_ex_season[is.finite(value)]
 
-# 3.3) Calculate ensembled statistics #####
-data_ex_season_ens<-data_ex_season[,list(mean=mean(value,na.rm=T),
-                                         max=max(value,na.rm=T),
-                                         min=min(value,na.rm=T),
-                                         sd=sd(value,na.rm=T),
-                                         mean_anomaly=mean(anomaly,na.rm=T),
-                                         max_anomaly=max(anomaly,na.rm=T),
-                                         min_anomaly=min(anomaly,na.rm=T),
-                                         sd_anomaly=sd(anomaly,na.rm=T),
-                                         n_models=length(unique(model))),
-                                   by=list(admin0_name,admin1_name,scenario,timeframe,year,variable,season)]
+## 3.3) Calculate ensembled statistics #####
+### Dev note: In future iterations the baseline name creation should be automated ####
+baselines
+baseline_names<-c("1995-2014","AgERA5 1981-2022")
 
+data_ex_season_ens<-pblapply(1:length(data_ex_season),FUN=function(i){
+  data<-copy(data_ex_season[[i]])
+  save_file<-file.path(out_dir,names(data_ex_season)[i])
+  models<-data[,paste0(sort(unique(model)),collapse=",")]
+  data_vals<-data[,list(mean=mean(value,na.rm=T),
+                        max=max(value,na.rm=T),
+                        min=min(value,na.rm=T),
+                        sd=sd(value,na.rm=T)),
+                  by=list(admin0_name,admin1_name,scenario,timeframe,year,hazard,season)]
+  
+  num_cols<-c("mean","min","max","sd")
+  data_vals[, (num_cols) := lapply(.SD, round, digits = round_final), .SDcols = num_cols]
+  data_vals[,hazard:=gsub("_mean|_max","",hazard)]
+  
+  data_anomaly<-lapply(1:length(anomaly_cols),FUN=function(j){
+    anomaly_col<-anomaly_cols[j]
+    save_file2<-gsub(".parquet",paste0("_",gsub("_mean","",anomaly_col),"_ensemble_seasons.parquet"),save_file)
+    save_file3<-gsub(".parquet",paste0("_",gsub("_mean","",anomaly_col),"_ensemble.parquet"),save_file)
+    
+    if(!file.exists(save_file2)|overwrite2){
+    setnames(data,anomaly_col,"target")
+    data_anomaly<-data[,list(mean_anomaly=mean(target,na.rm=T),
+                       max_anomaly=max(target,na.rm=T),
+                       min_anomaly=min(target,na.rm=T),
+                       sd_anomaly=sd(target,na.rm=T)),
+                 by=list(admin0_name,admin1_name,scenario,timeframe,year,hazard,season)]
+    
+    data_anomaly<-data_anomaly[,!c("admin0_name","admin1_name","scenario","timeframe","year","hazard","season")]
+    data_anomaly<-round(data_anomaly,round_final)
+    
+    data_anomaly<-cbind(data_vals,data_anomaly)
+    data_anomaly[,models:=models]
 
-data_ex_season_ens<-data_ex_season_ens[!n_models %in% c(2:4)][!(n_models==1 & timeframe!="historical")]
+    data_ag<-data[,list(mean=mean(value,na.rm=T),
+                        mean_anomaly=mean(target,na.rm=T)),
+                  by=list(admin0_name,admin1_name,scenario,timeframe,model,hazard,season)]
+    
+    data_ag_ens<-data_ag[,list(mean_mean=mean(mean,na.rm=T),
+                                        min_mean=min(mean,na.rm=T),
+                                        max_mean=max(mean,na.rm=T),
+                                        median_mean=median(mean,na.rm=T),
+                                        mean_anomaly=mean(mean_anomaly,na.rm=T),
+                                        max_anomaly=max(mean_anomaly,na.rm=T),
+                                        min_anomaly=min(mean_anomaly,na.rm=T),
+                                        sd_anomaly=sd(mean_anomaly,na.rm=T)),
+                                  by=list(admin0_name,admin1_name,scenario,timeframe,hazard,season)]
+    data_ag_ens[,models:=models]
+    
+    num_cols <- names(data_ag_ens)[sapply(data_ag_ens, is.numeric)]
+    data_ag_ens[, (num_cols) := lapply(.SD, round, digits = round_final), .SDcols = num_cols]
+    
 
-data_ex_season_ens[scenario=="historical",c("max","min","max_anomaly","min_anomaly","sd_anomaly","n_models"):=NA]
+    if (!is.null(order_by2)){ 
+      setorderv(data_anomaly, order_by2)
+      setorderv(data_ag_ens, order_by2)
+    }
+    
+    arrow::write_parquet(data_anomaly,save_file2)
+    
+    data_json<-jsonlite::read_json(file.path(output_dir,paste0(save_file,".json")),simplifyVector=T)
+    
+    files<-data_json
+    
+    filters<-list(scenario=data_anomaly[,unique(scenario)],
+                  timeframe=data_anomaly[,unique(timeframe)],
+                  year=data_anomaly[,unique(year)],
+                  hazard=data_anomaly[,unique(hazard)],
+                  season=data_anomaly[,unique(season)])
+    
+    write_json(list(
+      source = list(input_table = data_json$input_table, extraction_rast = atlas_data$boundaries$name),
+      extraction_method = "zonal",
+      geo_filters =  grep("admin",colnames(data_anomaly),value=T),
+      season_type = "3-month windows or annual",
+      filters = filters,
+      format = ".parquet",
+      date_created = Sys.time(),
+      version = version1,
+      parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.3",
+      value_variable = "hazard mean, max, min, sd, mean_anomaly, max_anomaly, min_anomaly, sd_anomaly",
+      unit = haz_meta[variable.code %in% data_anomaly[,unique(hazard)], base_unit],
+      extract_stat = extract_stat,
+      baseline=baseline_names[j],
+      models = models,
+      notes =  paste0("Monthly hazard values extracted by admin areas and summarized using ", extract_stat, 
+                      ". Values then combined across 3 or 12 month sequences (season col) using sum or mean depending on the hazard type. ",
+                      " Descriptive statistics from an ensemble (GCMs are listed in the models col) are presented for both the timeframe x scenario value and it's difference from baseline (anomaly).")
+    ), paste0(save_file2, ".json"), pretty = TRUE)
+    
+    
+    arrow::write_parquet(data_ag_ens,save_file3)
+    
+    filters$year<-NULL
+    write_json(list(
+      source = list(input_table = data_json$input_table, extraction_rast = atlas_data$boundaries$name),
+      extraction_method = "zonal",
+      geo_filters =  grep("admin",colnames(data_anomaly),value=T),
+      season_type = "3-month windows or annual",
+      filters = filters,
+      format = ".parquet",
+      date_created = Sys.time(),
+      version = version1,
+      parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.3",
+      value_variable = "hazard mean, max, min, sd, mean_anomaly, max_anomaly, min_anomaly, sd_anomaly",
+      unit = haz_meta[variable.code %in% data_anomaly[,unique(hazard)], base_unit],
+      extract_stat = extract_stat,
+      baseline=baseline_names[j],
+      models = models,
+      notes =  paste0("Monthly hazard values extracted by admin areas and summarized using ", extract_stat, 
+                      ". Values then combined across 3 or 12 month sequences (season col) using sum or mean depending on the hazard type. ",
+                      ". Next values and anomalies are averaged across the years in the time series. ",
+                      " Finally descriptive statistics from an ensemble (GCMs are listed in the models col) are calculated for both the timeframe x scenario value and it's difference from baseline (anomaly).")
+    ), paste0(save_file3, ".json"), pretty = TRUE)
+    
+    data[,target:=NULL]
+    
+    }
+  })
 
-data_ex_season_ens[,variable:=gsub("_mean|_max","",variable)]
+})
 
-numeric_cols <- c("mean","max","min","sd","max_anomaly","mean_anomaly","min_anomaly","sd_anomaly")
-data_ex_season_ens[, (numeric_cols) := lapply(.SD, round,1), .SDcols = numeric_cols]
-
-data_ex_season_ens<- data_ex_season_ens[order(admin0_name, admin1_name, season,variable, scenario, timeframe)]
-
-# 3.4.1) Calculate differences between baseline and future
-data_ex_season_ag<-data_ex_season[,list(mean=mean(value,na.rm=T),
-                                        mean_anomaly=mean(anomaly,na.rm=T)),
-                                  by=list(admin0_name,admin1_name,scenario,timeframe,model,variable,season)]
-
-# Calculate across all years in time sequence
-data_ex_season_ag_ens<-data_ex_season_ag[,list(mean_mean=mean(mean,na.rm=T),
-                                               min_mean=min(mean,na.rm=T),
-                                               max_mean=max(mean,na.rm=T),
-                                               median_mean=median(mean,na.rm=T),
-                                               mean_anomaly=mean(mean_anomaly,na.rm=T),
-                                               max_anomaly=max(mean_anomaly,na.rm=T),
-                                               min_anomaly=min(mean_anomaly,na.rm=T),
-                                               sd_anomaly=sd(mean_anomaly,na.rm=T),
-                                               n_models=length(unique(model))),
-                                         by=list(admin0_name,admin1_name,scenario,timeframe,variable,season)]
-
-
-# 3.5) Save output #####
-arrow::write_parquet(data_ex_season_ens[,!c("sd","sd_anomaly")],file.path(output_dir,gsub(".parquet","_ensembled.parquet",file_name)))
-
-data_ex_season_ag[, c("mean","mean_anomaly") := lapply(.SD, round, 1), .SDcols = c("mean","mean_anomaly")]
-arrow::write_parquet(data_ex_season_ag,file.path(output_dir,gsub(".parquet","_season-agg.parquet",file_name)))
-
-numeric_cols <- names(data_ex_season_ag_ens)[sapply(data_ex_season_ag_ens, is.numeric)]
-numeric_cols<-numeric_cols[numeric_cols!="n_models"]
-data_ex_season_ag_ens[, (numeric_cols) := lapply(.SD, round, 1), .SDcols = numeric_cols]
-arrow::write_parquet(data_ex_season_ag_ens,file.path(output_dir,gsub(".parquet","_season-agg_ens.parquet",file_name)))
-
-# 3.6) Calculate trends #####
+# 3.4) TO DO: Calculate trends #####
 # This involves running >10^6 linear models to look at trends, so the process is designed to run in parallel
 
 # Filter out rows with NA/NaN/Inf in 'value' or 'year' before fitting the model
