@@ -36,10 +36,6 @@
 -   Scripts are launched using `Rscript` from terminal (not Rstudio).
 -   Upload logic to S3 still needs to be implemented in Scripts 2 and 3. File structure should follow `metadata/data.json`.
 -   Extractions now use zonal rather than vector based extractions.
--   Remaining steps:
-    -   Intersecting hazard frequency with exposure (now running for intdlr, usd and harv-area)
-    -   Extraction of hazard frequency x vop (code is already updated for zonal)
-    -   Haz_mean_month parquets, section 3 of script 3 - not updated yet. Do we use these files for anything?
 
 ### Generic Hazard Simplification {#generic-hazard-simplification}
 
@@ -360,12 +356,12 @@ Metrics calculated include: - slope, intercept, confidence intervals, p-values, 
 
 | Table Name Suffix | Description | Example Filename |
 |------------------------|------------------------|------------------------|
-| `_seasons.parquet` | Monthly values (or seasonal sums) for each model, year, and scenario. Includes anomalies vs baseline. | `haz_3months_adm_mean_rcp45_anomaly-1995_seasons.parquet` |
-| `_ensemble_seasons.parquet` | Same as above but ensembled across GCMs. Includes inter-model stats (mean, min, max, SD). | `haz_3months_adm_mean_rcp45_anomaly-1995_ensemble_seasons.parquet` |
-| `_ensemble.parquet` | Seasonal or annual values averaged over the entire time period. Represents long-term averages per GCM. | `haz_3months_adm_mean_rcp45_anomaly-1995_ensemble.parquet` |
-| `_trends.parquet` | Sen’s slope trend results per GCM per location. Includes slope, intercept, p-value, confidence interval. | `haz_3months_adm_mean_rcp45_anomaly-1995_trends.parquet` |
-| `_trends_ensemble.parquet` | Trend results averaged across GCMs. | `haz_3months_adm_mean_rcp45_anomaly-1995_trends_ensemble.parquet` |
-| `_trends_ensemble_minimal.parquet` | Filtered ensemble trend outputs for specific hazards and stats of interest. | `haz_3months_adm_mean_rcp45_anomaly-1995_trends_ensemble_minimal.parquet` |
+| `_seasons.parquet` | Monthly values (or seasonal sums) for each model, year, and scenario. Includes anomalies vs baseline. | `haz_3months_adm_mean_2061-2080_anomaly-historic_seasons.parquet` |
+| `_ensemble_seasons.parquet` | Same as above but ensembled across GCMs. Includes inter-model stats (mean, min, max, SD). | `haz_3months_adm_mean_2061-2080_anomaly-historic_ensemble_seasons.parquet` |
+| `_ensemble.parquet` | Seasonal or annual values averaged over the entire time period. Represents long-term averages per GCM. | `haz_3months_adm_mean_2061-2080_anomaly-historic_ensemble.parquet` |
+| `_trends.parquet` | Sen’s slope trend results per GCM per location. Includes slope, intercept, p-value, confidence interval. | `haz_3months_adm_mean_2061-2080_anomaly-historic_trends.parquet` |
+| `_trends_ensemble.parquet` | Trend results averaged across GCMs. | `haz_3months_adm_mean_2061-2080_anomaly-historic_trends_ensemble.parquet` |
+| `_trends_ensemble_minimal.parquet` | Filtered ensemble trend outputs for specific hazards and stats of interest. | `haz_3months_adm_mean_r2061-2080_anomaly-historic_trends_ensemble_minimal.parquet` |
 
 #### Core Fields in All Tables
 
@@ -373,14 +369,14 @@ Metrics calculated include: - slope, intercept, confidence intervals, p-values, 
 |------------------------------------|------------------------------------|
 | `admin0_name` | Country name |
 | `admin1_name` | First-level administrative unit |
-| `scenario` | Emissions scenario (e.g., rcp45, ssp126) |
-| `timeframe` | Future period label (e.g., 2030s, 2050s) |
-| `model` | Climate model name (e.g., GFDL, MPI-ESM1-2-HR); omitted in ensemble tables |
-| `hazard` | Hazard variable (e.g., PTOT, TAVG, HSH-max) |
-| `season` | 3-month window or annual label (e.g., `MAM`, `Annual`) |
-| `baseline_name` | Name of the baseline used for computing anomalies (e.g., `1995`, `1981-2010`) |
-| `value` | Monthly or seasonal hazard statistic (mean/sum depending on hazard) |
-| `anomaly` | Difference between `value` and historical baseline |
+| `scenario` | Emissions scenario (e.g., `ssp245`, `ssp126`) |
+| `timeframe` | Future period label (e.g., `2021-2040`, `2041-2060`) |
+| `model` | Climate model name (e.g., `MPI-ESM1-2-HR`); omitted in ensemble tables |
+| `hazard` | Hazard variable (e.g., `PTOT`, `TAVG`, `HSH-max`) |
+| `season` | 3-month window or annual label (e.g., `MAM`,`JFM`, `Annual`) |
+| `baseline_name` | Name of the baseline used for computing anomalies (e.g., `1995-2014`, `1981-2024`) |
+| `value` | Usually the monthly or seasonal hazard statistic (mean/sum depending on hazard) |
+| `anomaly` | Difference between `value` and historical baseline average|
 
 Additional fields in ensemble and trend tables include:
 
