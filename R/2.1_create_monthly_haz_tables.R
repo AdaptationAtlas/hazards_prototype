@@ -719,7 +719,7 @@ p_load(char=packages)
 # This involves running >10^6 linear models to look at trends, so the process is designed to run in parallel
 cat("3.4) Trend calculation\n")
 
-lapply(1:nrow(file_combos),FUN=function(i){
+invisible(lapply(1:nrow(file_combos),FUN=function(i){
   data_file<-file_combos$save_file[i]
 
   file_base<-gsub("_seasons","",data_file)
@@ -947,6 +947,6 @@ lapply(1:nrow(file_combos),FUN=function(i){
   ), paste0(save_file3, ".json"), pretty = TRUE)
     }
 
-  })
+  }))
 
 cat("3.4) Trend calculations - Complete\n")
