@@ -1,56 +1,56 @@
-Fullname,Code,Code_ifpri_2020,sci_name,compound,cropsuite_name
-arabica coffee,acof,coff,Coffea arabica,no,coffeearabica
-banana,bana,bana,Musa acuminata,no,banana
-barley,barl,barl,Hordeum vulgare,no,barley
-bean,bean,bean,Phaseolus vulgaris,no,beans
-cassava,cass,cass,Manihot esculenta,no,cassava
-chickpea,chic,chic,Cicer arietinum,no,chickpea
-coconut,cnut,cnut,Cocos nucifera,no,coconut
-cocoa,coco,coco,Theobroma cacao,no,cocoa
-coffee,coff,NA,Coffea ,yes,NA
-cotton,cott,cott,Gossypium hirsutum,no,cotton
-cowpea,cowp,cowp,Vigna unguiculata,no,cowpea
-fruit,fruit,NA,NA,yes,NA
-groundnut,grou,grou,Arachis hypogaea,no,groundnut
-lentil,lent,lent,Lens culinaris,no,NA
-maize,maiz,maiz,Zea mays,no,maize
-millet,mill,mill,NA,yes,NA
-other cereals,ocer,ocer,NA,yes,NA
-other fibre crops,ofib,ofib,NA,yes,NA
-oil crops,oilc,NA,NA,yes,NA
-oilpalm,oilp,oilp,Elaeis guineensis,no,oilpalm
-other oil crops,ooil,ooil,NA,yes,NA
-other pulses,opul,opul,NA,yes,NA
-other roots,orts,orts,NA,yes,NA
-pigeonpea,pige,pige,Cajanus cajan,no,NA
-plantain,plnt,plnt,Musa acuminata x balbisiana;Musa balbisiana,no,NA
-pearl millet,pmil,pmil,Pennisetum glaucum,no,millet
-potato,pota,pota,Solanum tuberosum,no,potato
-rapeseed,rape,rape,Brassica napus,no,rapeseed
-robusta coffee,rcof,rcof,Coffea canephora,no,coffeerobusta
-rest of crops,rest,rest,NA,yes,NA
-rice,rice,rice,Oryza sativa,no,rice
-roots,root,NA,NA,yes,NA
-sesameseed,sesa,sesa,Sesamum indicum,no,sesame
-small millet,smil,NA,Eleusine coracana ssp. coracana,no,NA
-sorghum,sorg,sorg,Sorghum bicolor,no,sorghum
-soybean,soyb,soyb,Glycine max,no,soy
-sugarbeet,sugb,sugb,Beta vulgaris,no,NA
-sugarcane,sugc,sugc,Saccharum officinarum,no,sugarcane
-sunflower,sunf,sunf,Helianthus annuus,no,sunflower
-sweet potato,swpo,swpo,Ipomoea batatas,no,sweetpotato
-tea,teas,teas,Camellia sinensis,no,tea
-temperate fruit,temf,temf,NA,yes,NA
-tobacco,toba,toba,Nicotiana tabacum,no,tobacco
-tropical fruit,trof,trof,NA,yes,NA
-vegetables,vege,vege,NA,yes,NA
-wheat,whea,whea,Triticum aestivum,no,wheat
-yams,yams,yams,Dioscorea rotundata,no,yam
-banana and plantain,banpl,NA,NA,yes,NA
-cereals,cere,NA,NA,yes,NA
-pulses,puls,NA,NA,yes,NA
-total,total,NA,NA,yes,NA
-citrus,citrus,citrus,NA,yes,citrus
-onion,NA,onio,Allium cepa,no,onion
-rubber,NA,rubb,Hevea brasiliensis,no,rubber
-tomatoes,NA,toma,Solanum lycopersicum,no,tomato
+Fullname,Code,Code_ifpri_2020,sci_name,compound,cropsuite_name,long_season
+arabica coffee,acof,coff,Coffea arabica,no,coffeearabica,TRUE
+banana,bana,bana,Musa acuminata,no,banana,TRUE
+barley,barl,barl,Hordeum vulgare,no,barley,FALSE
+bean,bean,bean,Phaseolus vulgaris,no,beans,FALSE
+cassava,cass,cass,Manihot esculenta,no,cassava,TRUE
+chickpea,chic,chic,Cicer arietinum,no,chickpea,FALSE
+coconut,cnut,cnut,Cocos nucifera,no,coconut,TRUE
+cocoa,coco,coco,Theobroma cacao,no,cocoa,TRUE
+coffee,coff,NA,Coffea ,yes,NA,NA
+cotton,cott,cott,Gossypium hirsutum,no,cotton,FALSE
+cowpea,cowp,cowp,Vigna unguiculata,no,cowpea,FALSE
+fruit,fruit,NA,NA,yes,NA,NA
+groundnut,grou,grou,Arachis hypogaea,no,groundnut,FALSE
+lentil,lent,lent,Lens culinaris,no,NA,FALSE
+maize,maiz,maiz,Zea mays,no,maize,FALSE
+millet,mill,mill,NA,yes,NA,FALSE
+other cereals,ocer,ocer,NA,yes,NA,NA
+other fibre crops,ofib,ofib,NA,yes,NA,NA
+oil crops,oilc,NA,NA,yes,NA,NA
+oilpalm,oilp,oilp,Elaeis guineensis,no,oilpalm,TRUE
+other oil crops,ooil,ooil,NA,yes,NA,NA
+other pulses,opul,opul,NA,yes,NA,NA
+other roots,orts,orts,NA,yes,NA,NA
+pigeonpea,pige,pige,Cajanus cajan,no,NA,FALSE
+plantain,plnt,plnt,Musa acuminata x balbisiana;Musa balbisiana,no,NA,TRUE
+pearl millet,pmil,pmil,Pennisetum glaucum,no,millet,FALSE
+potato,pota,pota,Solanum tuberosum,no,potato,FALSE
+rapeseed,rape,rape,Brassica napus,no,rapeseed,FALSE
+robusta coffee,rcof,rcof,Coffea canephora,no,coffeerobusta,TRUE
+rest of crops,rest,rest,NA,yes,NA,NA
+rice,rice,rice,Oryza sativa,no,rice,FALSE
+roots,root,NA,NA,yes,NA,NA
+sesameseed,sesa,sesa,Sesamum indicum,no,sesame,FALSE
+small millet,smil,NA,Eleusine coracana ssp. coracana,no,NA,FALSE
+sorghum,sorg,sorg,Sorghum bicolor,no,sorghum,FALSE
+soybean,soyb,soyb,Glycine max,no,soy,FALSE
+sugarbeet,sugb,sugb,Beta vulgaris,no,NA,FALSE
+sugarcane,sugc,sugc,Saccharum officinarum,no,sugarcane,TRUE
+sunflower,sunf,sunf,Helianthus annuus,no,sunflower,FALSE
+sweet potato,swpo,swpo,Ipomoea batatas,no,sweetpotato,FALSE
+tea,teas,teas,Camellia sinensis,no,tea,TRUE
+temperate fruit,temf,temf,NA,yes,NA,NA
+tobacco,toba,toba,Nicotiana tabacum,no,tobacco,FALSE
+tropical fruit,trof,trof,NA,yes,NA,NA
+vegetables,vege,vege,NA,yes,NA,NA
+wheat,whea,whea,Triticum aestivum,no,wheat,FALSE
+yams,yams,yams,Dioscorea rotundata,no,yam,FALSE
+banana and plantain,banpl,NA,NA,yes,NA,NA
+cereals,cere,NA,NA,yes,NA,NA
+pulses,puls,NA,NA,yes,NA,NA
+total,total,NA,NA,yes,NA,NA
+citrus,citrus,citrus,NA,yes,citrus,TRUE
+onion,NA,onio,Allium cepa,no,onion,FALSE
+rubber,NA,rubb,Hevea brasiliensis,no,rubber,TRUE
+tomatoes,NA,toma,Solanum lycopersicum,no,tomato,FALSE
