@@ -243,17 +243,19 @@ cat("Starting 2_calculate_haz_freq.R script/n")
       #### 0.2.2.4) Update fields in haz_class table ####
 
 haz_class[crop=="generic",crop:="generic_crop"
-][,crop:=gsub(" |_","-",crop)]
+  ][,crop:=gsub(" |_","-",crop)]
 
 haz_class[,direction2:="G"
-][direction=="<",direction2:="L"
-][,index_name2:=index_name
-][index_name %in% c("TAVG","PTOT"),index_name2:=paste0(index_name,"_",direction2)
-][,index_name:=gsub("NTxE|NTxM|NTxS","NTx",index_name)
-][grep("NTxE",index_name2),index_name2:="NTxE"
-][grep("NTxM",index_name2),index_name2:="NTxM"
-][grep("NTxS",index_name2),index_name2:="NTxS"]
+  ][direction=="<",direction2:="L"
+    ][,index_name2:=index_name]
 
+haz_class[index_name %in% c("TAVG","PTOT"),index_name2:=paste0(index_name,"_",direction2)]
+
+haz_class[grepl("NTxE",index_name),index_name2:="NTxE"]
+haz_class[grepl("NTxM",index_name),index_name2:="NTxM"]
+haz_class[grepl("NTxS",index_name),index_name2:="NTxS"]
+
+haz_class[,index_name:=gsub("NTxE|NTxM|NTxS","NTx",index_name)]
 haz_class<-unique(haz_class)
 
 # Add summary function description to haz_class
@@ -269,6 +271,10 @@ haz_class<-merge(haz_class,unique(haz_meta[,list(code2,type)]),by.y="code2",by.x
 haz_class[,match_field:=NULL]
 haz_class[,haz_filename:=paste0(type,"-",index_name2,"-",crop,"-",description)]
 
+      #### 0.2.2.5) Get crops for seasonal calculations (annual crops) ####
+      spam_meta<-data.table::fread(file.path(project_dir,"metadata","SpamCodes.csv"))
+      short_crops<-spam_meta[long_season==F,Fullname]
+      short_crops<-gsub(" ","-",short_crops)
     ### 0.2.3) Create combinations of scenarios and hazards ####
 scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios)))[,Scenario:=as.character(Scenario)][,Time:=as.character(Time)]
     ### 0.2.4) Set hazard interactions ####
@@ -351,13 +357,11 @@ scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios
           haz_rename<-haz_class[crop==crop_focus & description==severity_focus,
                                 list(old=index_name2,new=gsub("_","-",gsub(".tif","",filename)))]
           
-          replace_exact_matches(X$heat,haz_rename$old, haz_rename$new)
-          
-          X[,heat:=replace_exact_matches(heat_simple,old_values=haz_rename$old,new_values = haz_rename$new)
-          ][,dry:=replace_exact_matches(dry_simple,old_values=haz_rename$old,new_values = haz_rename$new)
-          ][,wet:=replace_exact_matches(wet_simple,old_values=haz_rename$old,new_values = haz_rename$new)
-          ][,severity_class:=severity_focus
-          ][,crop:=crop_focus]
+          X[,heat:=replace_exact_matches(heat_simple,old_values=haz_rename$old,new_values = haz_rename$new)]
+          X[,dry:=replace_exact_matches(dry_simple,old_values=haz_rename$old,new_values = haz_rename$new)]
+          X[,wet:=replace_exact_matches(wet_simple,old_values=haz_rename$old,new_values = haz_rename$new)]
+          X[,severity_class:=severity_focus]
+          X[,crop:=crop_focus]
           X
         }))
       })))
@@ -375,11 +379,11 @@ scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios
           haz_rename<-haz_class[crop==crop_focus & description==severity_focus,
                                 list(old=index_name2,new=gsub("_","-",gsub(".tif","",filename)))]
           
-          X<-X[,heat:=replace_exact_matches(heat_simple,old_values=haz_rename$old,new_values = haz_rename$new)
-          ][,dry:=replace_exact_matches(dry_simple,old_values=haz_rename$old,new_values = haz_rename$new)
-          ][,wet:=replace_exact_matches(wet_simple,old_values=haz_rename$old,new_values = haz_rename$new)
-          ][,severity_class:=severity_focus
-          ][,crop:=crop_focus]
+          X<-X[,heat:=replace_exact_matches(heat_simple,old_values=haz_rename$old,new_values = haz_rename$new)]
+          X[,dry:=replace_exact_matches(dry_simple,old_values=haz_rename$old,new_values = haz_rename$new)]
+          X[,wet:=replace_exact_matches(wet_simple,old_values=haz_rename$old,new_values = haz_rename$new)]
+          X[,severity_class:=severity_focus]
+          X[,crop:=crop_focus]
           return(X)
         }))
         return(result)
@@ -388,10 +392,15 @@ scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios
       
       # Join livestock and crop combinations
       combinations<-unique(rbind(combinations_c,combinations_a)[,crop:=NULL])
+      combinations_ss<-unique(combinations_c[crop %in% short_crops][,crop:=NULL])
       
       # Add code to combinations and order
       combinations[,code:=paste(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet)]
       combinations<-unique(combinations[order(code)])
+      
+      combinations_ss[,code:=paste(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet)]
+      combinations_ss<-unique(combinations_ss[order(code)])
+      
       
       #### 0.2.4.3) Merge crop and animal combinations ####
       
@@ -413,6 +422,25 @@ scenarios_x_hazards<-data.table(Scenarios,Hazard=rep(hazards,each=nrow(Scenarios
       
       combinations_ca<-data.frame(combinations_ca)
       
+      # For short season crops only
+      combinations_ca_ss<-combinations_c[crop %in% short_crops][,combo_name:=paste0(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet,crop,severity_class)
+      ][,severity_class:=tolower(severity_class)]
+      
+      combinations_ca_ss[,heat1:=stringi::stri_replace_all_regex(heat,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,heat1:=unlist(tstrsplit(heat1,"-",keep=1))]
+      combinations_ca_ss[,dry1:=stringi::stri_replace_all_regex(dry,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,dry1:=unlist(tstrsplit(dry1,"-",keep=1))]
+      combinations_ca_ss[,wet1:=stringi::stri_replace_all_regex(wet,pattern=haz_meta[,gsub("_","-",code)],replacement=haz_meta[,paste0(code,"-")],vectorise_all = F)][,wet1:=unlist(tstrsplit(wet1,"-",keep=1))]
+      
+      combinations_ca_ss[,combo_name1:=paste0(c(dry1[1],heat1[1],wet1[1]),collapse="+"),by=list(dry1,heat1,wet1)]
+      combinations_ca_ss[,combo_name_simple2:=paste0(c(gsub("_","-",dry_simple[1]),
+                                                    gsub("_","-",heat_simple[1]),
+                                                    gsub("_","-",wet_simple[1])),collapse="+"),by=list(dry_simple,heat_simple,wet_simple)]
+      
+      combinations_ca_ss[,combo_name_simple1:=paste0(c(dry_simple[1],heat_simple[1],wet_simple[1]),collapse="+"),by=list(dry_simple,heat_simple,wet_simple)]
+      
+      combinations_crops_ss<-combinations_ca_ss[,unique(crop)]
+      
+      combinations_ca_ss<-data.frame(combinations_ca_ss)
+      
     ### 0.2.5) Create a table of unique hazard thresholds ####
 Thresholds_U<-unique(haz_class[description!="No significant stress",list(index_name,code2,direction,threshold)
 ][,index_name:=gsub("NTxM|NTxS|NTxE","NTx",index_name)])
@@ -426,6 +454,19 @@ Thresholds_U[,direction2:=direction
 # Subset to interaction hazards
 Thresholds_U<-Thresholds_U[grepl(paste(if(any(grepl("NTx",interaction_haz))){c("NTx",interaction_haz)}else{interaction_haz},collapse = "|"),index_name2)]
 
+# Do the same for annual crops only
+Thresholds_U_ss<-unique(haz_class[crop %in% short_crops & description!="No significant stress",list(index_name,code2,direction,threshold)
+][,index_name:=gsub("NTxM|NTxS|NTxE","NTx",index_name)])
+
+Thresholds_U_ss[,direction2:=direction
+][,direction2:=gsub("<","L",direction2)
+][,direction2:=gsub(">","G",direction2)
+][,code:=paste0(direction2,threshold),by=.I
+][,index_name2:=index_name][index_name2 %in% c("PTOT","TAVG"),index_name2:=paste0(index_name2,"_",direction2)]
+
+# Subset to interaction hazards
+Thresholds_U_ss<-Thresholds_U_ss[grepl(paste(if(any(grepl("NTx",interaction_haz))){c("NTx",interaction_haz)}else{interaction_haz},collapse = "|"),index_name2)]
+
 ## 0.3) Set flow controls and overwrite parameters ####
   ### 0.3.1) Classify hazards ####
   run1<-F
@@ -434,6 +475,7 @@ Thresholds_U<-Thresholds_U[grepl(paste(if(any(grepl("NTx",interaction_haz))){c("
   multisession1<-T
   upload1<-F # We do not recommend uploading these data to the S3, they are a large intermediate product
   upload_overwrite1<-F # Deletes existing files and uploads new
+  annual_season_subset<-T # When seasonal data is being analysed (other than GCCMI crop calendar) should only annual crops be run?
   
   ### 0.3.2) Calculate hazard risk freq ####
   run2<-F
@@ -493,7 +535,7 @@ Thresholds_U<-Thresholds_U[grepl(paste(if(any(grepl("NTx",interaction_haz))){c("
   permission<-"public-read"
   
   ### 0.3.7) Choose timeframes to loop through ####
-  timeframes<-timeframe_choices[7:10]
+  timeframes<-basename(list.dirs(indices_dir2,recursive=F))
   
   cat("Control and overwrite settings:\n")
   cat("timeframes = ", timeframes,
@@ -684,6 +726,12 @@ for(tx in 1:length(timeframes)){
     
     files<-list.files(haz_timeseries_dir,".tif",full.names = T)
     
+    if(annual_season_subset==T & grepl("sos",timeframe)){
+      thresholds<-copy(Thresholds_U)
+    }else{
+      thresholds<-copy(Thresholds_U_ss)
+    }
+    
     set_parallel_plan(n_cores=worker_n1,use_multisession=multisession1)
     
     # Enable progressr
@@ -693,20 +741,20 @@ for(tx in 1:length(timeframes)){
     # Wrap the parallel processing in a with_progress call
     p<-with_progress({
       # Define the progress bar
-      prog <- progressr::progressor(along = 1:nrow(Thresholds_U))
+      prog <- progressr::progressor(along = 1:nrow(thresholds))
       
-      invisible(future.apply::future_lapply(1:nrow(Thresholds_U),FUN=function(i){
+      invisible(future.apply::future_lapply(1:nrow(thresholds),FUN=function(i){
         
-        #invisible(lapply(1:nrow(Thresholds_U),FUN=function(i){
-        index_name<-Thresholds_U[[i,"code2"]]
+        #invisible(lapply(1:nrow(thresholds),FUN=function(i){
+        index_name<-thresholds[[i,"code2"]]
         files_ss<-grep(index_name,files,value=T)
         files_ss<-files_ss[!grepl("ENSEMBLE",files_ss)]
-        prog(sprintf("Threshold %d/%d", i, nrow(Thresholds_U)))
+        prog(sprintf("Threshold %d/%d", i, nrow(thresholds)))
         
         for(j in 1:length(files_ss)){
           #cat(i,"-",j,"\n")
           
-          file_name<-gsub(".tif",paste0("-",Thresholds_U[[i,"code"]],".tif"),file.path(haz_time_class_dir,basename(files_ss[j])),fixed = T)
+          file_name<-gsub(".tif",paste0("-",thresholds[[i,"code"]],".tif"),file.path(haz_time_class_dir,basename(files_ss[j])),fixed = T)
           
           # Fix issues with file naming formulation
           file_name<-gsub("_max","-max",file_name)
@@ -723,8 +771,8 @@ for(tx in 1:length(timeframes)){
           if((!file.exists(file_name))|overwrite1){
             data<-terra::rast(files_ss[j])
             data_class<-rast_class(data=data,
-                                   direction = Thresholds_U[[i,"direction"]],
-                                   threshold = Thresholds_U[[i,"threshold"]],
+                                   direction = thresholds[[i,"direction"]],
+                                   threshold = thresholds[[i,"threshold"]],
                                    minval=-999999,
                                    maxval=999999)
             terra::writeRaster(data_class,filename = file_name,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
@@ -943,16 +991,15 @@ for(tx in 1:length(timeframes)){
     # List crops (inc. livestock)
     crops<-haz_class[,unique(crop)]
     
+    if(annual_season_subset==T & grepl("sos",timeframe)){
+      crops<-crops[crops %in% short_crops]
+    }
+    
     # combinations_ca
     dat<-combinations_ca[,.(heat_simple,dry_simple,wet_simple,crop,severity_class)]
     
-    # Limit generic crop to only have fixed hazards
-    haz_class[crop=="generic-crop"]
     haz_class_df<-data.frame(haz_class)
     
-
-    #  haz_freq_file_tab<-merge(haz_freq_file_tab,type[,c("hazard2","type","index_name2")],by="hazard2",all.x=T,sort=F)
-    #  haz_freq_file_tab[,index_name2:=gsub("_","-",index_name2)]
     haz_freq_file_tab<-data.frame(haz_freq_file_tab)
     
     set_parallel_plan(n_cores=worker_n3,use_multisession=multisession3)
@@ -1320,6 +1367,12 @@ for(tx in 1:length(timeframes)){
   if(run5.2){
     cat("5.2) Calculate interactions\n")
     
+    if(annual_season_subset==T & grepl("sos",timeframe)){
+    combinations_choice<-combinations_ss
+    }else{
+      combinations_choice<-combinations
+    }
+    
     # Estimate the RAM available therefore the number of workers
     set_parallel_plan(n_cores=floor(worker_n5.2),use_multisession=multisession5.2)
     
@@ -1330,14 +1383,14 @@ for(tx in 1:length(timeframes)){
     # Wrap the parallel processing in a with_progress call
     p<-with_progress({
       # Define the progress bar
-      progress <- progressr::progressor(along = 1:nrow(combinations))
+      progress <- progressr::progressor(along = 1:nrow(combinations_choice))
       
-      invisible(future.apply::future_lapply(1:nrow(combinations), FUN=function(i){
+      invisible(future.apply::future_lapply(1:nrow(combinations_choice), FUN=function(i){
         
         # Display progress
-        progress(sprintf("Combination %d/%d", i, nrow(combinations)))
+        progress(sprintf("Combination %d/%d", i, nrow(combinations_choice)))
         
-        combos<-gsub("_","-",unlist(combinations[i,list(dry,heat,wet)]))
+        combos<-gsub("_","-",unlist(combinations_choice[i,list(dry,heat,wet)]))
         grep_vals<-paste0(paste0(combos,".tif"),collapse = "|")
         
         combo_names<-c(names(combos),
@@ -1356,7 +1409,7 @@ for(tx in 1:length(timeframes)){
           scen_mod_time_choice<-scenarios_x_models$scen_mod_time[l]
           
           # Display progress
-          cat("Combination:",i,"/",nrow(combinations),
+          cat("Combination:",i,"/",nrow(combinations_choice),
               "| Scenario x Time x model:",l,"/",nrow(scenarios_x_models),"                   \r")
           
           combo_binary[,lyr_names:=paste0(scen_mod_time_choice,"_",combo_name)]
@@ -1411,7 +1464,7 @@ for(tx in 1:length(timeframes)){
           # Ensemble models
           if(scenario_choice!="historic" & do_ensemble5.2){
             
-            cat("Calculating Ensemble:",i,"/",nrow(combinations),
+            cat("Calculating Ensemble:",i,"/",nrow(combinations_choice),
                 "| Scenario x Time:",l,"/",length(unique(scenarios_x_models$scen_x_time)),"                    \r")
             
             ensemble_files<-file.path(haz_time_int_dir,paste0(scen_mod_time_choice,"_",paste0(combos,collapse = "+"),".tif"))
@@ -1504,6 +1557,14 @@ for(tx in 1:length(timeframes)){
     
     haz_int_file_tab<-data.frame(haz_int_file_tab)
     
+    if(annual_season_subset==T & grepl("sos",timeframe)){
+      combinations_crops_choice<-combinations_crops_ss
+      combinations_ca_choice<-combinations_ca_ss
+    }else{
+      combinations_crops_choice<-combinations_crops
+      combinations_ca_choice<-combinations_ca
+    }
+    
     set_parallel_plan(n_cores=worker_n5.3,use_multisession=multisession5.3)
     
     # Enable progressr
@@ -1513,20 +1574,20 @@ for(tx in 1:length(timeframes)){
     # Wrap the parallel processing in a with_progress call
     p<-with_progress({
       # Define the progress bar
-      progress <- progressr::progressor(along = 1:length(combinations_crops))
+      progress <- progressr::progressor(along = 1:length(combinations_crops_choice))
       
-      future.apply::future_lapply(1:length(combinations_crops),FUN=function(i){
-        progress(sprintf("Crop %d/%d", i, length(combinations_crops)))
+      future.apply::future_lapply(1:length(combinations_crops_choice),FUN=function(i){
+        progress(sprintf("Crop %d/%d", i, length(combinations_crops_choice)))
         #lapply(1:length(combinations_crops),FUN=function(i){
-        crop_choice<-combinations_crops[i]
+        crop_choice<-combinations_crops_choice[i]
         for(j in 1:nrow(severity_classes)){
           sev_choice<-tolower(severity_classes$class[j])
           
           for(m in 1:length(model_options)){
             model_choice<-model_options[m]
             
-            subset<-combinations_ca[combinations_ca$crop==crop_choice & 
-                                      combinations_ca$severity_class==sev_choice,]
+            subset<-combinations_ca[combinations_ca_choice$crop==crop_choice & 
+                                      combinations_ca_choice$severity_class==sev_choice,]
             
             invisible(lapply(1:nrow(subset),FUN=function(k){
               combo_name<-subset$combo_name[k]
@@ -1624,6 +1685,8 @@ for(tx in 1:length(timeframes)){
 
 cat("Script 2 -  timeframe loop completed.\n")  
 
+# Not Run (Brayden has handled this elsewhere?) ####
+if(F){
 # 6) Upload outputs ####
 # 6.1) (not implemented) Classified hazards ####
 # 6.2) Hazard Freq ####
@@ -1702,4 +1765,5 @@ if(upload3){
                        mode=permission,
                        overwrite=upload_overwrite3)
   }
+}
 }
