@@ -1,10 +1,11 @@
-#!/bin/bash
-
 # ----------------------------------------------------------------------
 # Script: run_hazard_pipeline.sh
 # Purpose: Executes the climate hazard pipeline in sequence (setup + timeseries)
 # Environment: JupyterHub / RStudio Server (Linux, nohup-safe)
 # ----------------------------------------------------------------------
+
+# Install htop
+sudo apt install htop
 
 # List any existing screens using (if you need to shut this is described at the end of this code):
 screen -ls
@@ -18,6 +19,9 @@ screen -S hazards_job
 # Define absolute paths to R scripts
 SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
 TIMESERIES_SCRIPT="$HOME/atlas/hazards_prototype/R/1_make_timeseries.R"
+HAZFREQ_SCRIPT="$HOME/atlas/hazards_prototype/R/2_calculate_haz_freq.R"
+EXTRACT_SCRIPT="$HOME/atlas/hazards_prototype/R/3_freq_x_exposure.R"
+KILL_SCRIPT="$HOME/atlas/hazards_prototype/scripts/kill.R"
 
 # Define log file
 LOG_FILE="$HOME/atlas/hazards_prototype/logs/combined_run_$(date +%Y%m%d_%H%M%S).log"
@@ -32,9 +36,18 @@ echo "$LOG_FILE"
 # Run the scripts sequentially using Rscript + source
 nohup Rscript -e "source('$SETUP_SCRIPT'); source('$TIMESERIES_SCRIPT')" > "$LOG_FILE" 2>&1 &
 
+# Run the scripts sequentially using Rscript + source
+nohup Rscript -e "source('$SETUP_SCRIPT'); source('$HAZFREQ_SCRIPT')" > "$LOG_FILE" 2>&1 &
+
+# Run the scripts sequentially using Rscript + source
+nohup Rscript -e "source('$SETUP_SCRIPT'); source('$EXTRACT_SCRIPT')" > "$LOG_FILE" 2>&1 &
+
 # Notify user of background process
 echo "Process started in background (PID $!). Use tail -f "$LOG_FILE" to monitor output."
 tail -f "$LOG_FILE"
+
+# If running multisession and workers are zombies that will not die try
+pkill -9 -f rsession
 
 # ----------------------------------------------------------------------
 # If a session terminates and you want to restart the pipeline cleanly:
