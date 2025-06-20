@@ -37,7 +37,7 @@ cat("Starting 3_freq_x_exposure.R script/n")
 # a) Install and load packages ####
 packages <- c("terra", 
               "data.table", 
-              "exactextractr",
+           #   "exactextractr",
               "s3fs",
               "sf",
               "dplyr",
@@ -125,12 +125,16 @@ risk_x_exposure<-function(file,
       crop_exposure<-terra::rast(crop_exposure_path)
       names(crop_exposure)<-gsub("_| ","-",names(crop_exposure))
       names(crop_exposure)[names(crop_exposure)=="generic"]<-"generic-crop"
+    }else{
+      crop_exposure<-NULL
     }
     
     
     if(!is.null(livestock_exposure_path)){
       livestock_exposure<-terra::rast(livestock_exposure_path)
       names(livestock_exposure)<-gsub("_| ","-",names(livestock_exposure))
+    }else{
+      livestock_exposure<-NULL
     }
     
     if(!crop %in% names(crop_exposure) & crop!="generic-crop" & crop %in% crop_choices){
@@ -280,6 +284,10 @@ if(F){
   
   names(boundaries_index)<-names(Geographies)
   
+  ### d1.1) Limit to admin2 only ####
+  boundaries_zonal<-boundaries_zonal["admin2"]
+  boundaries_index<-boundaries_index["admin2"]
+  
   ## d.2) Exposure variables ####
   overwrite<-F
     ### d.2.1) Crops (MapSPAM) #####
@@ -341,7 +349,7 @@ if(F){
   round3<-2
   version3<-1
   # e.4) Hazard x exposure ####
-  run4.1<-F
+  run4.1<-T
   run4.2<-T
   do_ensemble_sd4.1<-T
   do_ensemble_sd4.2<-T
@@ -355,13 +363,13 @@ if(F){
   version4<-1
   
   overwrite4<-F
-  do_vop<-T
+  do_vop<-F
   round_vop<-0
   vop_name<-"vop_intld15"
-  do_vop_usd<-T
+  do_vop_usd<-F
   round_vop_usd<-0
   vop_usd_name<-"vop_usd15"
-  do_ha<-F
+  do_ha<-T
   round_ha<-0
   ha_name<-"harv-area_ha"
   do_n<-F
@@ -374,6 +382,7 @@ if(F){
 for(tx in 1:length(timeframe_choices)){
   timeframe<-timeframe_choices[tx]
   cat("---------------------------------------------------------------------------------------\n")
+  sys_start_time<-Sys.time()
   cat("Processing", timeframe, tx, "/", length(timeframe_choices),
       "started at time:",format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
   
@@ -676,7 +685,7 @@ for(tx in 1:length(timeframe_choices)){
     
   }
   
-  # 3) **To Do**Extract hazard timeseries by admin ####
+  # 3) **To Do**Extract hazard timeseries by admin (covered in script 2.1?) ####
   if(run3){
     # This needs to be hazard x season (annual, jagermeyr etc.) extracted by boundaries
     # Can include all models and timeframes?
@@ -1188,7 +1197,9 @@ for(tx in 1:length(timeframe_choices)){
   }
   
   cat("Processing Complete", timeframe, tx, "/", length(timeframe_choices),
-      "ended at time:",format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n")
+      "ended at time:",format(Sys.time(), "%Y-%m-%d %H:%M:%S"), 
+      "\n total time:",Sys.time()-sys_start_time,"\n")
+  
 }
 
 cat("Exited timeframe loop - script complete /n")
