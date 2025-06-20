@@ -478,7 +478,8 @@ Thresholds_U_ss<-Thresholds_U_ss[grepl(paste(if(any(grepl("NTx",interaction_haz)
   annual_season_subset<-T # When seasonal data is being analysed (other than GCCMI crop calendar) should only annual crops be run?
   
   ### 0.3.2) Calculate hazard risk freq ####
-  run2<-F
+  run2<-T
+  run2_main<-F # Set to F if you only want to run the ensemble step (setting ensemble to T)
   check2<-T
   round2<-NULL # set to integer if you wish to round results
   worker_n2<-20
@@ -513,7 +514,8 @@ Thresholds_U_ss<-Thresholds_U_ss[grepl(paste(if(any(grepl("NTx",interaction_haz)
   ### 0.3.5) Calculate interactions ####
   
   # Interaction Tifs
-  run5.2<-F
+  run5.2<-T
+  do5.2_main<-F # Set to F if you only want to run the ensembling step
   check5.2<-T
   round5.2<-3
   overwrite5.2<-F
@@ -808,6 +810,7 @@ for(tx in 1:length(timeframes)){
     files<-list.files(haz_time_class_dir,full.names = T)
     file<-files[!grepl("ENSEMBLE",files)]
     
+    if(run2_main){
     set_parallel_plan(n_cores=worker_n2,use_multisession=multisession2)
     
     # Enable progressr
@@ -841,7 +844,8 @@ for(tx in 1:length(timeframes)){
     })
     plan(sequential)
     cat(timeframe,"2) Calculate hazard frequency across classified time series - Complete\n")
-    
+    }
+  
     # 2.1) Ensemble models ####
     if(do_ensemble2){
       cat(timeframe,"2.1) Ensembling hazard frequency  - Complete\n")
@@ -896,24 +900,28 @@ for(tx in 1:length(timeframes)){
           save_file_sd<-file.path(haz_time_risk_dir,paste0(scenario_choice,"_ENSEMBLEsd_",time_choice,"_",haz_choice,".tif"))
           
           if(!file.exists(save_file_mean)|overwrite2){
-            ensemble_stack <- lapply(ensemble_files,terra::rast) 
+            ensemble_stack<-terra::rast(ensemble_files)
+            ensemble_mean<-mean(ensemble_stack)
+            ensemble_sd<-app(ensemble_stack,fun=sd)
             
-            ensemble_mean<-terra::rast(lapply(1:nlyr(ensemble_stack[[1]]),FUN=function(j){
-              ensemble_dat<-terra::rast(lapply(ensemble_stack,"[[",j)) 
-              mean(ensemble_dat)
-            }))
+           # ensemble_stack <- lapply(ensemble_files,terra::rast) 
             
-            ensemble_sd<-terra::rast(lapply(1:nlyr(ensemble_stack[[1]]),FUN=function(j){
-              ensemble_dat<-terra::rast(lapply(ensemble_stack,"[[",j)) 
-              terra::app(ensemble_dat, fun = sd)
-            }))
+            #ensemble_mean<-terra::rast(lapply(1:nlyr(ensemble_stack[[1]]),FUN=function(j){
+            #  ensemble_dat<-terra::rast(lapply(ensemble_stack,"[[",j)) 
+            #  mean(ensemble_dat)
+            #}))
+            
+            #ensemble_sd<-terra::rast(lapply(1:nlyr(ensemble_stack[[1]]),FUN=function(j){
+            #  ensemble_dat<-terra::rast(lapply(ensemble_stack,"[[",j)) 
+            #  terra::app(ensemble_dat, fun = sd)
+            #}))
             
             if(!is.null(round2)){
               ensemble_mean<-round(ensemble_mean,round2)
               ensemble_sd<-round(ensemble_sd,round2)
             }
             
-            ensemble_names<-names(ensemble_stack[[1]])
+            ensemble_names<-gsub(".tif","",basename(ensemble_files[1]))
             ensemble_names_mean<-gsub(paste0(model_options,collapse="|"),"ENSEMBLEmean",ensemble_names)
             ensemble_names_sd<-gsub(paste0(model_options,collapse="|"),"ENSEMBLEsd",ensemble_names)
             
@@ -1401,71 +1409,81 @@ for(tx in 1:length(timeframes)){
         ][grep(names(combos)[2],combo_name),value:=value+10
         ][grep(names(combos)[3],combo_name),value:=value+100]
         
-        for(l in 1:nrow(scenarios_x_models)){
-          
-          scenario_choice<-scenarios_x_models$scenario[l]
-          time_choice<-scenarios_x_models$timeframe[l]
-          model_choice<-scenarios_x_models$model[l]
-          scen_mod_time_choice<-scenarios_x_models$scen_mod_time[l]
-          
-          # Display progress
-          cat("Combination:",i,"/",nrow(combinations_choice),
-              "| Scenario x Time x model:",l,"/",nrow(scenarios_x_models),"                   \r")
-          
-          combo_binary[,lyr_names:=paste0(scen_mod_time_choice,"_",combo_name)]
-          save_file<-file.path(haz_time_int_dir,paste0(scen_mod_time_choice,"_",paste0(combos,collapse = "+"),".tif"))
-          
-          if(!file.exists(save_file)|overwrite5.2==T){
+        if(do5.2_main){
+          for(l in 1:nrow(scenarios_x_models)){
             
-            files<-haz_class_file_tab[haz_class_file_tab$timeframe==time_choice &       
-                                        haz_class_file_tab$scenario==scenario_choice &
-                                        haz_class_file_tab$model == model_choice,]
-            files<-files[match(combos,files$hazard2),"file"]
+            scenario_choice<-scenarios_x_models$scenario[l]
+            time_choice<-scenarios_x_models$timeframe[l]
+            model_choice<-scenarios_x_models$model[l]
+            scen_mod_time_choice<-scenarios_x_models$scen_mod_time[l]
             
-            if(length(files)!=3){
-              stop("Issue with classified hazard files, 3 files not found.")
+            # Display progress
+            cat("Combination:",i,"/",nrow(combinations_choice),
+                "| Scenario x Time x model:",l,"/",nrow(scenarios_x_models),"                   \r")
+            
+            combo_binary[,lyr_names:=paste0(scen_mod_time_choice,"_",combo_name)]
+            save_file<-file.path(haz_time_int_dir,paste0(scen_mod_time_choice,"_",paste0(combos,collapse = "+"),".tif"))
+            
+            if(!file.exists(save_file)|overwrite5.2==T){
+              
+              files<-haz_class_file_tab[haz_class_file_tab$timeframe==time_choice &       
+                                          haz_class_file_tab$scenario==scenario_choice &
+                                          haz_class_file_tab$model == model_choice,]
+              files<-files[match(combos,files$hazard2),"file"]
+              
+              if(length(files)!=3){
+                stop("Issue with classified hazard files, 3 files not found.")
+              }
+              
+              haz<-lapply(files,rast)
+              names(haz)<-names(combos)
+              
+              # Multiply risk probability to create a binary value when summed
+              haz[["heat"]]<-haz[["heat"]]*10
+              haz[["wet"]]<-haz[["wet"]]*100
+              
+              haz_sum<-terra::rast(lapply(1:nlyr(haz[[1]]),FUN=function(m){
+                sum(terra::rast(lapply(haz,"[[",m)))
+              }))
+              
+              names(haz_sum)<-names(haz[[1]])
+              
+              # Any haz
+              any_haz <- terra::ifel(haz_sum >= 1 & haz_sum <= 999999, 1, 0)
+              any_haz_mean<-terra::mean(any_haz,na.rm=T)
+              names(any_haz_mean)<-paste0(scen_mod_time_choice,"_any")
+              
+              # Interactions
+              int<-terra::rast(lapply(1:nrow(combo_binary),FUN=function(a){
+                data<-int_risk(data=haz_sum,interaction_mask_vals = combo_binary[-a,value],lyr_name = combo_binary[a,lyr_names])
+              }))
+              
+              int_any<-c(any_haz_mean,int)
+              
+              if(!is.null(round5.2)){
+                int_any<-round(int_any,round5.2)
+              }
+              
+              terra::writeRaster(int_any,filename =  save_file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
+              
+              rm(haz,haz_sum,int,any_haz,any_haz_mean,int_any)
+              gc()
             }
-            
-            haz<-lapply(files,rast)
-            names(haz)<-names(combos)
-            
-            # Multiply risk probability to create a binary value when summed
-            haz[["heat"]]<-haz[["heat"]]*10
-            haz[["wet"]]<-haz[["wet"]]*100
-            
-            haz_sum<-terra::rast(lapply(1:nlyr(haz[[1]]),FUN=function(m){
-              sum(terra::rast(lapply(haz,"[[",m)))
-            }))
-            
-            names(haz_sum)<-names(haz[[1]])
-            
-            # Any haz
-            any_haz <- terra::ifel(haz_sum >= 1 & haz_sum <= 999999, 1, 0)
-            any_haz_mean<-terra::mean(any_haz,na.rm=T)
-            names(any_haz_mean)<-paste0(scen_mod_time_choice,"_any")
-            
-            # Interactions
-            int<-terra::rast(lapply(1:nrow(combo_binary),FUN=function(a){
-              data<-int_risk(data=haz_sum,interaction_mask_vals = combo_binary[-a,value],lyr_name = combo_binary[a,lyr_names])
-            }))
-            
-            int_any<-c(any_haz_mean,int)
-            
-            if(!is.null(round5.2)){
-              int_any<-round(int_any,round5.2)
-            }
-            
-            terra::writeRaster(int_any,filename =  save_file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
-            
-            rm(haz,haz_sum,int,any_haz,any_haz_mean,int_any)
-            gc()
           }
+        }
+        
+        # Ensemble models
+        if(scenario_choice!="historic" & do_ensemble5.2){
+          scenarios<-scenarios_x_models
+          scenarios$model<-NULL
+          scenarios<-unique(scenarios)
           
-          # Ensemble models
-          if(scenario_choice!="historic" & do_ensemble5.2){
-            
+          for(l in 1:nrow(scenarios)){
             cat("Calculating Ensemble:",i,"/",nrow(combinations_choice),
-                "| Scenario x Time:",l,"/",length(unique(scenarios_x_models$scen_x_time)),"                    \r")
+                "| Scenario:",l,"/",length(unique(scenarios$scen_x_time)),"                    \r")
+            
+            scen_time_choice<-scenarios$scen_x_time[l]
+            scen_mod_time_choice<-scenarios_x_models[scenarios_x_models$scen_x_time==scen_time_choice,"scen_mod_time"]
             
             ensemble_files<-file.path(haz_time_int_dir,paste0(scen_mod_time_choice,"_",paste0(combos,collapse = "+"),".tif"))
             save_file_mean<-file.path(haz_time_int_dir,paste0(scenario_choice,"_ENSEMBLEmean_",time_choice,"_",paste0(combos,collapse = "+"),".tif"))
@@ -1501,9 +1519,10 @@ for(tx in 1:length(timeframes)){
               
               rm(ensemble_stack,ensemble_mean,ensemble_sd)
               gc()
-            }
+           }
           }
         }
+        
       }))
     })
     
