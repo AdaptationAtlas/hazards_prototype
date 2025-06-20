@@ -848,7 +848,7 @@ for(tx in 1:length(timeframes)){
   
     # 2.1) Ensemble models ####
     if(do_ensemble2){
-      cat(timeframe,"2.1) Ensembling hazard frequency  - Complete\n")
+      cat(timeframe,"2.1) Ensembling hazard frequency\n")
       
       # Create stacks of hazard x crop/animal x scenario x timeframe
       haz_freq_files<-list.files(haz_time_risk_dir,".tif$",full.names = T)
@@ -1482,6 +1482,8 @@ for(tx in 1:length(timeframes)){
             cat("Calculating Ensemble:",i,"/",nrow(combinations_choice),
                 "| Scenario:",l,"/",length(unique(scenarios$scen_x_time)),"                    \r")
             
+            scenario_choice<-scenarios$scenario[l]
+            time_choice<-scenarios$timeframe[l]
             scen_time_choice<-scenarios$scen_x_time[l]
             scen_mod_time_choice<-scenarios_x_models[scenarios_x_models$scen_x_time==scen_time_choice,"scen_mod_time"]
             
