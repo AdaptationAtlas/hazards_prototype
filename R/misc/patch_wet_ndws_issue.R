@@ -1,15 +1,17 @@
 cat("Running patch to fix wet ndws issue\n")
 
+p_load(terra,arrow,future.apply,future,progressr)
+
 patch_dirs<-c(atlas_dirs$data_dir$hazard_risk,
               atlas_dirs$data_dir$hazard_risk_vop,
               atlas_dirs$data_dir$hazard_risk_vop_usd)
 
-for(i in length(patch_dirs)){
+for(i in 1:length(patch_dirs)){
   cat("Patching ",patch_dirs[i],"\n")
   
-  dir1<-file.path(patch_dirs[i],timeframe_choices)
+  dir1<-file.path(patch_dirs[i],timeframe_choices[1:2])
   
-  tifs<-list.files(dir1,"tif",full.names=T)
+  tifs<-list.files(dir1,"tif$",full.names=T)
   tifs<-tifs[!grepl("[+]",tifs)]
   tifs<-tifs[grepl("highland|tropical|generic",tifs)]
   
@@ -43,6 +45,8 @@ for(i in length(patch_dirs)){
                            filetype = 'COG',
                            gdal = c("COMPRESS=ZSTD"))     
         }
+        rm(rdat)
+        gc()
    })
    )
   
@@ -50,7 +54,7 @@ for(i in length(patch_dirs)){
   
   plan(sequential)
   
-  cat("Patching ",patch_dirs[j],"- parquets \n")
+  cat("Patching ",patch_dirs[i],"- parquets \n")
   set_parallel_plan(n_cores=10,use_multisession=T)
   
   # Enable progressr
