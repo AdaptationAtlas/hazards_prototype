@@ -34,30 +34,29 @@
   # Possible timeframe calculations, e.g., "annual", "sos_primary_fixed_3", etc.
   timeframe_choices <- c(
     "annual",
-    "jagermeyr",
-    "sos_primary_eos",
-    "sos_primary_fixed_3",
-    "sos_primary_fixed_4",
-    "sos_primary_fixed_5",
-    "sos_secondary_eos",
-    "sos_secondary_fixed_3",
-    "sos_secondary_fixed_4",
-    "sos_secondary_fixed_5"
+    "jagermeyr"
+    #"sos_primary_eos",
+    #"sos_primary_fixed_3",
+    #"sos_primary_fixed_4",
+    #"sos_primary_fixed_5",
+    #"sos_secondary_eos",
+    #"sos_secondary_fixed_3",
+    #"sos_secondary_fixed_4",
+    #"sos_secondary_fixed_5"
   )
   
 # 1) Setup workspace ####
 # Increase download timeout (in seconds) to avoid timeouts during large data pulls
 options(timeout = 600)
 
-# Increase GDAL cache size for faster raster processing
-terra::gdalCache(60000)
-
 # Detect available CPU cores, check approximate free RAM (in MB)
+if(F){
 parallel::detectCores()
 terra::free_RAM() / 10^6
-
-# Set how many workers to spawn in parallel processes (if used later in the script)
-worker_n <- 20
+}
+  
+# Increase GDAL cache size for faster raster processing
+terra::gdalCache(60000)
 
   ## 1.1) Record R-project location #####
   # Function to add or update an environment variable in the .Renviron file
