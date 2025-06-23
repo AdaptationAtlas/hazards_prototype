@@ -254,7 +254,8 @@ if(F){
     file<-geo_files_local[i]
     data<-arrow::open_dataset(file)
     data <- data |> sf::st_as_sf() |> terra::vect()
-    data$zone_id<-1:length(data)
+    data$zone_id <- ifelse(!is.na(data$gaul2_code), data$gaul2_code,
+      ifelse(!is.na(data$gaul1_code), data$gaul1_code, data$gaul0_code))        
     data
   })
   names(Geographies)<-names(geo_files_local)
@@ -279,14 +280,17 @@ if(F){
   names(boundaries_zonal)<-names(Geographies)
   
   boundaries_index<-lapply(1:length(Geographies),FUN=function(i){
-    data.frame(Geographies[[i]])[,c("iso3","admin0_name","admin1_name","admin2_name","zone_id")]
+    data.frame(Geographies[[i]])[,c("iso3","admin0_name","admin1_name","admin2_name","zone_id", "gaul0_code", "gaul1_code", "gaul2_code")]
   })
   
   names(boundaries_index)<-names(Geographies)
   
   ### d1.1) Limit to admin2 only ####
-  boundaries_zonal<-boundaries_zonal["admin2"]
-  boundaries_index<-boundaries_index["admin2"]
+  # boundaries_zonal<-boundaries_zonal["admin2"]
+  # boundaries_index<-boundaries_index["admin2"]
+
+  ### d1.2) Read in metadata to calculate mean
+  ## TODO: Abandoning for now as to caluclate the mean from admin 2 aggregation we need cell counts for every level as weights.
   
   ## d.2) Exposure variables ####
   overwrite<-F
@@ -425,12 +429,11 @@ for(tx in 1:length(timeframe_choices)){
     
     files<-data.frame(files)
     
-    id_vars<-c("iso3","admin0_name","admin1_name","admin2_name")
+    id_vars<-c("iso3","admin0_name","admin1_name","admin2_name", "gaul0_code", "gaul1_code", "gaul2_code")
     split_delim<-"_"
     split_colnames<-c("scenario", "model", "timeframe", "hazard", "hazard_vars", "crop", "severity")
     extract_stat<-"mean"
     order_by<-c("iso3","admin0_name","admin1_name","admin2_name","crop")
-    
     
     set_parallel_plan(n_cores=worker_n1,use_multisession=multisession1)
     
@@ -478,7 +481,6 @@ for(tx in 1:length(timeframe_choices)){
               dat<-merge(dat,boundaries_index[[k]],by="zone_id",all.x=T,sort=F)
               dat$zone_id<-NULL
               return(dat)
-              
             }))
             
             result_long<-data.table::melt(result, id.vars = id_vars)
@@ -568,7 +570,7 @@ for(tx in 1:length(timeframe_choices)){
     
     files<-data.frame(files)
     
-    id_vars<-c("iso3","admin0_name","admin1_name","admin2_name")
+    id_vars<-c("iso3","admin0_name","admin1_name","admin2_name", "gaul0_code", "gaul1_code", "gaul2_code")
     split_delim<-"_"
     split_colnames<-c("scenario", "model", "timeframe", "hazard","stat")
     extract_stat<-"mean"
@@ -670,7 +672,7 @@ for(tx in 1:length(timeframe_choices)){
             write_json(attr_info, attr_file, pretty = TRUE)
             
             
-            rm(rast_data,result,result_long)
+            rm(rast_data, result, result_long)
             gc()
             
           }
@@ -1037,7 +1039,7 @@ for(tx in 1:length(timeframe_choices)){
         overwrite<-overwrite4
         round<-round4
         worker_n<-worker_n4.2
-        id_vars<-c("iso3","admin0_name","admin1_name","admin2_name")
+        id_vars<-c("iso3","admin0_name","admin1_name","admin2_name","gaul0_code","gaul1_code","gaul2_code")
         split_delim<-"_"
         split_colnames<-c("scenario", "model", "timeframe", "hazard", "hazard_vars", "crop", "severity","exposure_var","exposure_unit")
         extract_stat<-"sum"
@@ -1087,9 +1089,6 @@ for(tx in 1:length(timeframe_choices)){
         
         files<-data.frame(files)
         
-        
-        files <- data.frame(files)
-        
         set_parallel_plan(n_cores = worker_n, use_multisession = multisession)
         
         # Enable progressr
@@ -1137,28 +1136,46 @@ for(tx in 1:length(timeframe_choices)){
               }))
               
               result_long <- data.table::melt(result, id.vars = id_vars)
-              
-              # Optional rounding
-              if (!is.null(round)) {
-                result_long[, value := round(value, round)]
-              }
-              
+
               # Clean and split variable column
               result_long[, c(split_colnames) := tstrsplit(variable[1], split_delim, fixed = TRUE), by = variable]
               result_long[, variable := NULL]
+
+              # agg_admin1 <- result_long[,
+              #   .(value = sum(value, na.rm = TRUE)),
+              #   by = setdiff(names(result_all), c("value", "admin2_name", "gaul2_code"))
+              # ]
+              # agg_admin1$admin2_name <- NA
+              # agg_admin1$gaul2_code <- NA
+              #
+              # agg_admin0 <- result_long[,
+              #   .(value = sum(value, na.rm = TRUE)),
+              #   by = setdiff(names(result_all), c("value", "admin1_name", "admin2_name", "gaul2_code", "gaul1_code"))
+              # ]
+              # agg_admin0$admin2_name <- NA
+              # agg_admin0$gaul2_code <- NA
+              # agg_admin0$admin1_name <- NA
+              # agg_admin0$gaul1_code <- NA
+              #
+              # rbind(result_long, rbind(agg_admin1, agg_admin0, fill = T), fill = T)
+
+              # Optional rounding
+              if (!is.null(round)) {
+                result_long_admin[, value := round(value, round)]
+              }
               
               # Optimize ordering
               if (!is.null(order)) {
-                result_long <- result_long %>% arrange(across(all_of(order_by)))
+                result_long_admin_all <- result_long_admin_all %>% arrange(across(all_of(order_by)))
               }
               
-              arrow::write_parquet(result_long, save_file)
+              arrow::write_parquet(result_long_admin_all, save_file)
               
               # Add attributes
               attr_file <- paste0(save_file, ".json")
               
               filters <- lapply(split_colnames, function(split_col) {
-                unique(unlist(result_long[, split_col, with = FALSE]))
+                unique(unlist(result_long_admin_all[, split_col, with = FALSE]))
               })
               names(filters) <- split_colnames
               
@@ -1180,7 +1197,7 @@ for(tx in 1:length(timeframe_choices)){
               
               write_json(attr_info, attr_file, pretty = TRUE)
               
-              rm(rast_data, result, result_long)
+              rm(rast_data, result, result_long, agg_admin1, agg_admin0, result_long_admin_all)
               gc()
             }
             NULL

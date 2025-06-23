@@ -53,7 +53,8 @@ p_load(char=packages)
     file<-geo_files_local[i]
     data<-arrow::open_dataset(file)
     data <- data |> sf::st_as_sf() |> terra::vect()
-    data$zone_id<-1:length(data)
+    data$zone_id <- ifelse(!is.na(data$gaul2_code), data$gaul2_code,
+      ifelse(!is.na(data$gaul1_code), data$gaul1_code, data$gaul0_code))    
     data
   })
   
@@ -80,7 +81,7 @@ p_load(char=packages)
   names(boundaries_zonal)<-names(Geographies)
   
   boundaries_index<-lapply(1:length(Geographies),FUN=function(i){
-    data.frame(Geographies[[i]])[,c("iso3","admin0_name","admin1_name","admin2_name","zone_id")]
+    data.frame(Geographies[[i]])[,c("iso3","admin0_name","admin1_name","admin2_name","zone_id","gaul0_code","gaul1_code","gaul2_code")]
   })
   
   names(boundaries_index)<-names(Geographies)
@@ -132,11 +133,11 @@ p_load(char=packages)
   ## 2.2) Set parameters ####  
   levels<-c(admin0="adm0",admin1="adm1") #,admin2="adm2")
   
-  id_vars<-c("iso3","admin0_name","admin1_name","admin2_name")
+  id_vars<-c("iso3","admin0_name","admin1_name","admin2_name", "gaul0_code", "gaul1_code", "gaul2_code")
   split_delim<-"_"
   split_colnames<-c("scenario","timeframe","model","hazard", "year", "month")
   extract_stat<-"mean"
-  order_by<-c("iso3","admin0_name","admin1_name","admin2_name")
+  order_by<-c("iso3","admin0_name","admin1_name","admin2_name", "gaul0_code", "gaul1_code", "gaul2_code")
   order_by2<-c("admin0_name", "admin1_name", "season","hazard", "scenario", "timeframe")
   
   ## 2.3) Define the extraction function ####

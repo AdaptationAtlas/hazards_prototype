@@ -8,26 +8,29 @@ valid_timeframes <- c("annual", "jagermeyr", "sos_primary_eos", "")
 args <- commandArgs(trailingOnly = TRUE)
 
 if (length(args) > 0) {
-  if (length(args) < 5) {
-    stop("Usage: Rscript upload_to_s3.R <timeframe> <intld> <usd> <ha> <glw4> [workers]")
+  if (length(args) < 7) {
+    stop(
+      "Usage: Rscript upload_to_s3.R <timeframe> <intld> <usd> <ha> <glw4> <tif> <parquet> [workers]"
+    )
   }
-
-  TIMEFRAME <- args[[1]]
-  if (!TIMEFRAME %in% valid_timeframes) {
-    stop("Invalid timeframe. Must be one of: ", paste(valid_timeframes, collapse = ", "))
-  }
+}
 
 # Use CLI args if provided
-if (length(args) >= 5) {
+if (length(args) >= 7) {
   TIMEFRAME <- args[[1]]
   if (!TIMEFRAME %in% valid_timeframes) {
-    stop("Invalid timeframe. Must be one of: ", paste(valid_timeframes, collapse = ", "))
+    stop(
+      "Invalid timeframe. Must be one of: ",
+      paste(valid_timeframes, collapse = ", ")
+    )
   }
   UPLOAD_HAZ_EXPOSURE_VOP_INTLD <- as.logical(args[[2]])
   UPLOAD_HAZ_EXPOSURE_VOP_USD <- as.logical(args[[3]])
   UPLOAD_HAZ_EXPOSURE_HA <- as.logical(args[[4]])
   UPLOAD_GLW4_EXPOSURE <- as.logical(args[[5]])
-  PARALLEL_WORKERS <- as.integer(args[[6]] %||% 10)
+  UPLOAD_TIF <- as.logical(args[[6]])
+  UPLOAD_PARQUET <- as.logical(args[[7]])
+  PARALLEL_WORKERS <- as.integer(args[[8]] %||% 10)
 } else {
   PARALLEL_WORKERS <- 10
   TIMEFRAME <- "annual"
@@ -35,6 +38,8 @@ if (length(args) >= 5) {
   UPLOAD_HAZ_EXPOSURE_VOP_USD <- TRUE
   UPLOAD_HAZ_EXPOSURE_HA <- FALSE
   UPLOAD_GLW4_EXPOSURE <- TRUE
+  UPLOAD_TIF <- TRUE
+  UPLOAD_PARQUET <- TRUE
 }
 
 # Check if AWS credentials are set
@@ -64,7 +69,7 @@ parse_filename <- function(x, variable = NULL) {
       commodity = file_split[1],
       gcm = file_split[2],
       severity = file_split[3],
-      interaction = ifelse(len == 7, file_split[4], "none"),
+      interaction = ifelse(len == 7, file_split[4], "solo"),
       var = variable
     )
   }
@@ -72,7 +77,7 @@ parse_filename <- function(x, variable = NULL) {
 }
 
 build_s3_path <- function(parse_result) {
-  vapply(
+  lapply(
     parse_result,
     \(x) {
       sprintf(
@@ -84,30 +89,57 @@ build_s3_path <- function(parse_result) {
         x$interaction,
         x$commodity
       )
-    },
-    character(1)
+    }
   )
 }
 
 ## -- Upload haz X exposure X vop USD -- ##
 if (UPLOAD_HAZ_EXPOSURE_VOP_USD) {
-  uploader_haz_exp_usd <- AtlasDataManageR::S3DirUploader$new(
-    upload_id = "haz_exp_vop_usd",
-    local_dir = paste0("Data/hazard_risk_vop_usd/", TIMEFRAME),
-    s3_dir = "domain=hazard_exposure",
-    bucket = "digital-atlas",
-    file_pattern = ".tif",
-    filter_fn = filter_PTOT,
-    name_fn = \(x) {
-      x_base <- basename(x)
-      split <- parse_filename(x_base, variable = "vop_usd15")
-      return(build_s3_path(split))
-    },
-    public = TRUE,
-    recursive = FALSE
-  )
-  uploader_haz_exp_usd$upload_files_parallel(PARALLEL_WORKERS)
-  uploader_haz_exp_usd$save_report()
+  vop_usd_var <- "vop_usd15"
+  if (UPLOAD_TIF) {
+    uploader_haz_exp_usd <- AtlasDataManageR::S3DirUploader$new(
+      upload_id = "haz-exp_vop-usd_tif",
+      local_dir = paste0("Data/hazard_risk_vop_usd/", TIMEFRAME),
+      s3_dir = "domain=hazard_exposure",
+      bucket = "digital-atlas",
+      file_pattern = ".tif",
+      filter_fn = filter_PTOT,
+      name_fn = \(x) {
+        x_base <- basename(x)
+        split <- parse_filename(x_base, variable = vop_usd_var)
+        return(build_s3_path(split))
+      },
+      public = TRUE,
+      recursive = FALSE
+    )
+    uploader_haz_exp_usd$upload_files_parallel(PARALLEL_WORKERS)
+    uploader_haz_exp_usd$save_report()
+  }
+  if (UPLOAD_PARQUET) {
+    uploader_haz_exp_usd_parquet <- AtlasDataManageR::S3DirUploader$new(
+      upload_id = "haz-exp_vop-usd_parquet",
+      local_dir = paste0("Data/hazard_risk_vop_usd/", TIMEFRAME),
+      s3_dir = "domain=hazard_exposure",
+      bucket = "digital-atlas",
+      file_pattern = ".parquet$",
+      name_fn = \(x) {
+        x_base <- tools::file_path_sans_ext(basename(x))
+        split <- strsplit(x_base, "_")
+        names <- lapply(split, \(x) {
+          sprintf(
+            "source=atlas_cmip6/region=ssa/processing=hazard-risk-exposure/variable=%s/period=%s/model=%s/severity=%s/%s.parquet",
+            vop_usd_var,
+            TIMEFRAME,
+            x[4],
+            x[7],
+            ifelse(x[5] == "int", "interaction", "solo")
+          )
+        })
+      }
+    )
+    uploader_haz_exp_usd_parquet$upload_files_parallel(PARALLEL_WORKERS)
+    uploader_haz_exp_usd_parquet$save_report()
+  }
 }
 
 ## -- Upload haz X exposure X vop international dollar-- ##

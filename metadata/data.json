@@ -1,110 +1,122 @@
 {
-	"boundaries": {
-		"name": "Atlas Admin Boundaries",
-		"description": "Admin boundaries for the Atlas based on GAUL 2024. This includes admin 0, 1, and 2 levels.",
-		"methods": "",
-		"notes": "",
-		"source": {
-			"github": "",
-			"url": "",
-			"citation": ""
-		},
-		"s3": {
-			"bucket": "digital-atlas",
-			"path_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=analysis-ready/level=adm{level}/atlas_gaul24_a{level}.parquet"
-		},
-		"params": {
-			"region": [
-				"global",
-				"africa"
-			],
-			"level": [
-				"0",
-				"1",
-				"2"
-			]
-		},
-		"alternate_paths": {
-			"project": "Data/boundaries/"
-		},
-		"derived_from": [
-			"",
-			""
-		]
-	},
-	"raster_boundaries": {
-		"name": "Rasterized Atlas Admin Boundaries",
-		"description": "Admin boundaries for the Atlas based on GAUL 2024. This includes admin 0, 1, and 2 levels. These have been rasterized to meet the resolution requirements of the Adaptation Atlas (0.05 degrees) and are useful for zonal extractions.",
-		"methods": "Rasterized the raw GAUL 2024 boundaries. This includes all conflicted boundaries, but waterbodies have been removed.",
-		"notes": "",
-		"source": {
-			"github": "",
-			"url": "",
-			"citation": ""
-		},
-		"s3": {
-			"bucket": "digital-atlas",
-			"path_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=rasterized/level=adm{level}/gaul24_a{level}_res-05.tif"
-		},
-		"params": {
-			"region": [
-				"africa"
-			],
-			"level": [
-				"0",
-				"1",
-				"2"
-			]
-		},
-		"alternate_paths": {
-			"project": "Data/boundaries/"
-		},
-		"derived_from": [
-			"boundaries",
-			""
-		]
-	},
-	"mapspam_2020v1r2": {
-		"name": "Mapspam 2020v1r2",
-		"description": "",
-		"s3": {
-			"bucket": "digital-atlas",
-			"path_pattern": "domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=raw/"
-		},
-		"alternate_paths": {
-			"project": "Data/mapspam/2020V1r2_SSA/"
-		}
-	},
-	"haz_risk_exposure": {
-		"name": "Atlas Admin Boundaries",
-		"description": "Admin boundaries for the Atlas based on GAUL 2024. This includes admin 0, 1, and 2 levels.",
-		"methods": "",
-		"source": {
-			"github": "",
-			"url": "",
-			"citation": ""
-		},
-		"s3": {
-			"bucket": "digital-atlas",
-			"path_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=hazard_risk_vop/period=gccmi/severity=severe/atlas_gaul_a{level}_{region}.parquet"
-		},
-		"params": {
-			"region": [
-				"global",
-				"africa"
-			],
-			"level": [
-				"0",
-				"1",
-				"2"
-			]
-		},
-		"alternate_paths": {
-			"project": "Data/boundaries/"
-		},
-		"derived_from": [
-			"",
-			""
-		]
-	}
+  "boundaries": {
+    "name": "Atlas Admin Boundaries",
+    "description": "Admin boundaries for the Atlas based on GAUL 2024. This includes admin 0, 1, and 2 levels.",
+    "methods": "",
+    "notes": "",
+    "source": {
+      "github": "",
+      "url": "",
+      "citation": ""
+    },
+    "s3": {
+      "bucket": "digital-atlas",
+      "path_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=analysis-ready/level=adm{level}/atlas_gaul24_a{level}_{region}.parquet"
+    },
+    "params": {
+      "region": [
+        "global",
+        "africa"
+      ],
+      "level": [
+        "0",
+        "1",
+        "2"
+      ]
+    },
+    "alternate_paths": {
+      "project": "Data/boundaries/"
+    },
+    "derived_from": [
+      "",
+      ""
+    ]
+  },
+  "raster_boundaries": {
+    "name": "Rasterized Atlas Admin Boundaries",
+    "description": "Admin boundaries for the Atlas based on GAUL 2024. This includes admin 0, 1, and 2 levels. These have been rasterized to meet the resolution requirements of the Adaptation Atlas (0.05 degrees) and are useful for zonal extractions.",
+    "methods": "Rasterized the raw GAUL 2024 boundaries. This includes all conflicted boundaries, but waterbodies have been removed.",
+    "notes": "",
+    "source": {
+      "github": "",
+      "url": "",
+      "citation": ""
+    },
+    "s3": {
+      "bucket": "digital-atlas",
+      "path_pattern": "domain=boundaries/type=admin/source=gaul2024/region={region}/processing=rasterized/level=adm{level}/gaul24_a{level}_res-05.tif"
+    },
+    "params": {
+      "region": [
+        "africa"
+      ],
+      "level": [
+        "0",
+        "1",
+        "2"
+      ]
+    },
+    "alternate_paths": {
+      "project": "Data/boundaries/"
+    },
+    "derived_from": [
+      "boundaries",
+      ""
+    ]
+  },
+  "mapspam_2020v1r2": {
+    "name": "Mapspam 2020v1r2",
+    "description": "",
+    "s3": {
+      "bucket": "digital-atlas",
+      "path_pattern": "domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=raw/"
+    },
+    "alternate_paths": {
+      "project": "Data/mapspam/2020V1r2_SSA/"
+    }
+  },
+  "hazard_risk_X": {
+    "name": "Hazard Risk VOP",
+    "s3": {
+      "bucket": "digital-atlas",
+      "path_pattern": "domain=hazard_impact/source={source}/region=ssa/time={time}/processing=hazard-risk/variable={variable}/model={model}/severity={severity}/"
+    },
+    "alternate_paths": {
+      "project": "Data/hazard_risk_{variableLocal}/{time}/"
+    },
+    "params": {
+      "source": [
+        "atlas_cmip6"
+      ],
+      "time": [
+        "annual",
+        "jagermeyr",
+        "sos_primary_eos",
+        "sos_primary_fixed_3",
+        "sos_primary_fixed_4",
+        "sos_primary_fixed_5",
+        "sos_secondary_eos",
+        "sos_secondary_fixed_3",
+        "sos_secondary_fixed_4",
+        "sos_secondary_fixed_5"
+      ],
+      "variable": [
+        "vop_intld15",
+        "ha",
+        "vop_usd15",
+        "number"
+      ],
+      "variableLocal": [
+        "vop",
+        "ha",
+        "vop_usd",
+        "n"
+      ],
+      "severity": [
+        "moderate",
+        "severe",
+        "extreme"
+      ]
+    }
+  }
 }
