@@ -1472,10 +1472,9 @@ for(tx in 1:length(timeframes)){
           }
         }
         
-        # Ensemble models
-        if(scenario_choice!="historic" & do_ensemble5.2){
           scenarios<-scenarios_x_models
           scenarios$model<-NULL
+          scenarios$scen_mod_time<-NULL
           scenarios<-unique(scenarios)
           
           for(l in 1:nrow(scenarios)){
@@ -1483,6 +1482,10 @@ for(tx in 1:length(timeframes)){
                 "| Scenario:",l,"/",length(unique(scenarios$scen_x_time)),"                    \r")
             
             scenario_choice<-scenarios$scenario[l]
+            
+            # Ensemble models
+            if(scenario_choice!="historic" & do_ensemble5.2){
+              
             time_choice<-scenarios$timeframe[l]
             scen_time_choice<-scenarios$scen_x_time[l]
             scen_mod_time_choice<-scenarios_x_models[scenarios_x_models$scen_x_time==scen_time_choice,"scen_mod_time"]
