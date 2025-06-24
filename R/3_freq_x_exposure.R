@@ -1145,14 +1145,14 @@ for(tx in 1:length(timeframe_choices)){
 
               agg_admin1 <- result_long[,
                 .(value = sum(value, na.rm = TRUE)),
-                by = setdiff(names(result_all), c("value", "admin2_name", "gaul2_code"))
+                by = setdiff(names(result_long), c("value", "admin2_name", "gaul2_code"))
               ]
               agg_admin1$admin2_name <- NA
               agg_admin1$gaul2_code <- NA
 
               agg_admin0 <- result_long[,
                 .(value = sum(value, na.rm = TRUE)),
-                by = setdiff(names(result_all), c("value", "admin1_name", "admin2_name", "gaul2_code", "gaul1_code"))
+                by = setdiff(names(result_long), c("value", "admin1_name", "admin2_name", "gaul2_code", "gaul1_code"))
               ]
               agg_admin0$admin2_name <- NA
               agg_admin0$gaul2_code <- NA
