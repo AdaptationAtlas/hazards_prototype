@@ -1161,21 +1161,21 @@ for(tx in 1:length(timeframe_choices)){
 
               # Optional rounding
               if (!is.null(round)) {
-                result_long_admin[, value := round(value, round)]
+                result_long[, value := round(value, round)]
               }
               
               # Optimize ordering
               if (!is.null(order)) {
-                result_long_admin_all <- result_long_admin_all %>% arrange(across(all_of(order_by)))
+                result_long <- result_long %>% arrange(across(all_of(order_by)))
               }
               
-              arrow::write_parquet(result_long_admin_all, save_file)
+              arrow::write_parquet(result_long, save_file)
               
               # Add attributes
               attr_file <- paste0(save_file, ".json")
               
               filters <- lapply(split_colnames, function(split_col) {
-                unique(unlist(result_long_admin_all[, split_col, with = FALSE]))
+                unique(unlist(result_long[, split_col, with = FALSE]))
               })
               names(filters) <- split_colnames
               
@@ -1197,7 +1197,7 @@ for(tx in 1:length(timeframe_choices)){
               
               write_json(attr_info, attr_file, pretty = TRUE)
               
-              rm(rast_data, result, result_long, agg_admin1, agg_admin0, result_long_admin_all)
+              rm(rast_data, result, result_long, agg_admin1)
               gc()
             }
             NULL
