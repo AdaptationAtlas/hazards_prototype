@@ -1026,6 +1026,8 @@ for(tx in 1:length(timeframe_choices)){
     
     ## 4.2) Extract Freq x Exposure by Geography #####
     if(run4.2){
+      boundaries_zonal<-boundaries_zonal["admin2"]
+      boundaries_index<-boundaries_index["admin2"]
       
       cat(timeframe,"4.2) Extract Freq x Exposure by Geography\n")
      
@@ -1141,41 +1143,41 @@ for(tx in 1:length(timeframe_choices)){
               result_long[, c(split_colnames) := tstrsplit(variable[1], split_delim, fixed = TRUE), by = variable]
               result_long[, variable := NULL]
 
-              # agg_admin1 <- result_long[,
-              #   .(value = sum(value, na.rm = TRUE)),
-              #   by = setdiff(names(result_all), c("value", "admin2_name", "gaul2_code"))
-              # ]
-              # agg_admin1$admin2_name <- NA
-              # agg_admin1$gaul2_code <- NA
-              #
-              # agg_admin0 <- result_long[,
-              #   .(value = sum(value, na.rm = TRUE)),
-              #   by = setdiff(names(result_all), c("value", "admin1_name", "admin2_name", "gaul2_code", "gaul1_code"))
-              # ]
-              # agg_admin0$admin2_name <- NA
-              # agg_admin0$gaul2_code <- NA
-              # agg_admin0$admin1_name <- NA
-              # agg_admin0$gaul1_code <- NA
-              #
-              # rbind(result_long, rbind(agg_admin1, agg_admin0, fill = T), fill = T)
+              agg_admin1 <- result_long[,
+                .(value = sum(value, na.rm = TRUE)),
+                by = setdiff(names(result_all), c("value", "admin2_name", "gaul2_code"))
+              ]
+              agg_admin1$admin2_name <- NA
+              agg_admin1$gaul2_code <- NA
+
+              agg_admin0 <- result_long[,
+                .(value = sum(value, na.rm = TRUE)),
+                by = setdiff(names(result_all), c("value", "admin1_name", "admin2_name", "gaul2_code", "gaul1_code"))
+              ]
+              agg_admin0$admin2_name <- NA
+              agg_admin0$gaul2_code <- NA
+              agg_admin0$admin1_name <- NA
+              agg_admin0$gaul1_code <- NA
+
+              result_long_adm012 <- rbind(result_long, rbind(agg_admin1, agg_admin0, fill = T), fill = T)
 
               # Optional rounding
               if (!is.null(round)) {
-                result_long[, value := round(value, round)]
+                result_long_adm012[, value := round(value, round)]
               }
               
               # Optimize ordering
               if (!is.null(order)) {
-                result_long <- result_long %>% arrange(across(all_of(order_by)))
+                result_long_adm012 <- result_long_adm012 %>% arrange(across(all_of(order_by)))
               }
               
-              arrow::write_parquet(result_long, save_file)
+              arrow::write_parquet(result_long_adm012, save_file)
               
               # Add attributes
               attr_file <- paste0(save_file, ".json")
               
               filters <- lapply(split_colnames, function(split_col) {
-                unique(unlist(result_long[, split_col, with = FALSE]))
+                unique(unlist(result_long_adm012[, split_col, with = FALSE]))
               })
               names(filters) <- split_colnames
               
@@ -1197,7 +1199,7 @@ for(tx in 1:length(timeframe_choices)){
               
               write_json(attr_info, attr_file, pretty = TRUE)
               
-              rm(rast_data, result, result_long, agg_admin1)
+              rm(rast_data, result, result_long, agg_admin1, agg_admin0, result_long_adm012)
               gc()
             }
             NULL
