@@ -250,6 +250,8 @@ if(F){
 
 # d) Load and prepare admin vectors and exposure rasters, extract exposure by admin ####
   ## d.1) Geographies #####
+  overwrite_boundary_zones<-T
+
   Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
     file<-geo_files_local[i]
     data<-arrow::open_dataset(file)
@@ -264,7 +266,7 @@ if(F){
   
   boundaries_zonal<-lapply(1:length(Geographies),FUN=function(i){
     file_path<-file.path(boundaries_int_dir,paste0(names(Geographies)[i],"_zonal.tif"))
-    if(!file.exists(file_path)){
+    if(!file.exists(file_path)|overwrite_boundary_zones==T){
       zones<-Geographies[[i]]
       zone_rast <- rasterize(
         x      = zones, 
@@ -367,13 +369,13 @@ if(F){
   version4<-1
   
   overwrite4<-F
-  do_vop<-F
+  do_vop<-T
   round_vop<-0
   vop_name<-"vop_intld15"
-  do_vop_usd<-F
+  do_vop_usd<-T
   round_vop_usd<-0
   vop_usd_name<-"vop_usd15"
-  do_ha<-T
+  do_ha<-F
   round_ha<-0
   ha_name<-"harv-area_ha"
   do_n<-F
@@ -1026,9 +1028,7 @@ for(tx in 1:length(timeframe_choices)){
     
     ## 4.2) Extract Freq x Exposure by Geography #####
     if(run4.2){
-      boundaries_zonal<-boundaries_zonal["admin2"]
-      boundaries_index<-boundaries_index["admin2"]
-      
+   
       cat(timeframe,"4.2) Extract Freq x Exposure by Geography\n")
      
       for(v in 1:length(to_do_list)){
@@ -1065,19 +1065,21 @@ for(tx in 1:length(timeframe_choices)){
           files<-grep("ENSEMBLE",files,value=T)
         }
         
-        files_solo<-data.table(file=files[!grepl("_int_",files)])
+       # files_solo<-data.table(file=files[!grepl("_int_",files)])
         files_int<-data.table(file=files[grepl("_int_",files)])
         
-        files_solo[, c("crop","model","severity","exposure_var","exposure_unit") := tstrsplit(basename(file)[1], "_", keep=1:5,fixed = TRUE), by = file
-        ][,exposure_unit:=gsub(".tif","",exposure_unit)
-        ][,hazard_vars:=NA
-        ][,type:="solo"]
+        #files_solo[, c("crop","model","severity","exposure_var","exposure_unit") := tstrsplit(basename(file)[1], "_", keep=1:5,fixed = TRUE), by = file
+        #][,exposure_unit:=gsub(".tif","",exposure_unit)
+        #][,hazard_vars:=NA
+        #][,type:="solo"]
         
         
         files_int[, c("crop","model","severity","hazard_vars","type","exposure_var","exposure_unit") := tstrsplit(basename(file)[1], "_", keep=1:7,fixed = TRUE), by = file
         ][,exposure_unit:=gsub(".tif","",exposure_unit)]
         
-        files<-rbindlist(list(files_solo,files_int),use.names=T)
+      #  files<-rbindlist(list(files_solo,files_int),use.names=T)
+        
+        files<-files_int
         
         files[,group:=paste0("haz-freq-exp_",variable,"_",model,"_",type,"_adm_",severity)]
         
@@ -1117,10 +1119,10 @@ for(tx in 1:length(timeframe_choices)){
                 stop("duplicate layer names present")
               }
               
-              result <- rbindlist(lapply(1:length(boundaries_zonal), function(k) {
-                cat("Group", i, "/", length(group), mts_choice, " - extracting boundary", k, "        \r")
+              
+                # cat("Group", i, "/", length(group), mts_choice, " - extracting boundary        \r")
                 
-                boundary_choice <- boundaries_zonal[[k]]
+                boundary_choice <- boundaries_zonal$admin2
                 zonal_rast <- terra::rast(boundary_choice)
                 
                 dat <- zonal(
@@ -1130,29 +1132,26 @@ for(tx in 1:length(timeframe_choices)){
                   na.rm = TRUE
                 )
                 
-                dat <- merge(dat, boundaries_index[[k]], by = "zone_id", all.x = TRUE, sort = FALSE)
-                dat$zone_id <- NULL
-                rm(boundary_choice)
-                gc()
-                return(dat)
-              }))
-              
-              result_long <- data.table::melt(result, id.vars = id_vars)
 
+                dat <- merge(dat, boundaries_index$admin2, by = "zone_id", all.x = TRUE, sort = FALSE)
+                dat$zone_id <- NULL
+       
+              result_long <- data.table::melt(data.table(dat), id.vars = id_vars)
+              
               # Clean and split variable column
               result_long[, c(split_colnames) := tstrsplit(variable[1], split_delim, fixed = TRUE), by = variable]
               result_long[, variable := NULL]
 
               agg_admin1 <- result_long[,
                 .(value = sum(value, na.rm = TRUE)),
-                by = setdiff(names(result_all), c("value", "admin2_name", "gaul2_code"))
+                by = setdiff(names(result_long), c("value", "admin2_name", "gaul2_code"))
               ]
               agg_admin1$admin2_name <- NA
               agg_admin1$gaul2_code <- NA
 
               agg_admin0 <- result_long[,
                 .(value = sum(value, na.rm = TRUE)),
-                by = setdiff(names(result_all), c("value", "admin1_name", "admin2_name", "gaul2_code", "gaul1_code"))
+                by = setdiff(names(result_long), c("value", "admin1_name", "admin2_name", "gaul2_code", "gaul1_code"))
               ]
               agg_admin0$admin2_name <- NA
               agg_admin0$gaul2_code <- NA
@@ -1177,8 +1176,8 @@ for(tx in 1:length(timeframe_choices)){
               attr_file <- paste0(save_file, ".json")
               
               filters <- lapply(split_colnames, function(split_col) {
-                unique(unlist(result_long_adm012[, split_col, with = FALSE]))
-              })
+                unique(result_long_adm012[[split_col]])
+                })
               names(filters) <- split_colnames
               
               attr_info <- list(
@@ -1199,7 +1198,7 @@ for(tx in 1:length(timeframe_choices)){
               
               write_json(attr_info, attr_file, pretty = TRUE)
               
-              rm(rast_data, result, result_long, agg_admin1, agg_admin0, result_long_adm012)
+              rm(dat,zonal_rast,rast_data,result_long, agg_admin1, agg_admin0, result_long_adm012)
               gc()
             }
             NULL
