@@ -37,7 +37,7 @@ cat("Starting 3_freq_x_exposure.R script/n")
 # a) Install and load packages ####
 packages <- c("terra", 
               "data.table", 
-           #   "exactextractr",
+              #   "exactextractr",
               "s3fs",
               "sf",
               "dplyr",
@@ -177,13 +177,13 @@ risk_x_exposure<-function(file,
       if(!variable %in% c("n","head_n")){
         # Here we need to loop through all exposure values and total
         for(crop_choice in crop_choices){
-        if(crop_choice=="generic-crop"){  
-          exposure<-sum(crop_exposure)
-          save_name2<-save_name
-        }else{
-          exposure<-crop_exposure[[crop_choice]]
-          save_name2<-gsub("generic-crop",crop_choice,save_name)
-        }
+          if(crop_choice=="generic-crop"){  
+            exposure<-sum(crop_exposure)
+            save_name2<-save_name
+          }else{
+            exposure<-crop_exposure[[crop_choice]]
+            save_name2<-gsub("generic-crop",crop_choice,save_name)
+          }
           data_ex<-data*exposure
           
           if(!is.null(round_n)){
@@ -249,141 +249,141 @@ if(F){
 #### Load datasets (non hazards)
 
 # d) Load and prepare admin vectors and exposure rasters, extract exposure by admin ####
-  ## d.1) Geographies #####
-  overwrite_boundary_zones<-T
+## d.1) Geographies #####
+overwrite_boundary_zones<-T
 
-  Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
-    file<-geo_files_local[i]
-    data<-arrow::open_dataset(file)
-    data <- data |> sf::st_as_sf() |> terra::vect()
-    data$zone_id <- ifelse(!is.na(data$gaul2_code), data$gaul2_code,
-      ifelse(!is.na(data$gaul1_code), data$gaul1_code, data$gaul0_code))        
-    data
-  })
-  names(Geographies)<-names(geo_files_local)
-  
-  base_rast<-terra::rast(base_rast_path)+0
-  
-  boundaries_zonal<-lapply(1:length(Geographies),FUN=function(i){
-    file_path<-file.path(boundaries_int_dir,paste0(names(Geographies)[i],"_zonal.tif"))
-    if(!file.exists(file_path)|overwrite_boundary_zones==T){
-      zones<-Geographies[[i]]
-      zone_rast <- rasterize(
-        x      = zones, 
-        y      = base_rast, 
-        field  = "zone_id", 
-        background = NA,    # cells not covered by any polygon become NA
-        touches    = TRUE   # optional: count cells touched by polygon boundaries
-      )
-      terra::writeRaster(zone_rast,file_path,overwrite=T)
-    }
-    file_path
-  })
-  names(boundaries_zonal)<-names(Geographies)
-  
-  boundaries_index<-lapply(1:length(Geographies),FUN=function(i){
-    data.frame(Geographies[[i]])[,c("iso3","admin0_name","admin1_name","admin2_name","zone_id", "gaul0_code", "gaul1_code", "gaul2_code")]
-  })
-  
-  names(boundaries_index)<-names(Geographies)
-  
-  ### d1.1) Limit to admin2 only ####
-  # boundaries_zonal<-boundaries_zonal["admin2"]
-  # boundaries_index<-boundaries_index["admin2"]
+Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
+  file<-geo_files_local[i]
+  data<-arrow::open_dataset(file)
+  data <- data |> sf::st_as_sf() |> terra::vect()
+  data$zone_id <- ifelse(!is.na(data$gaul2_code), data$gaul2_code,
+                         ifelse(!is.na(data$gaul1_code), data$gaul1_code, data$gaul0_code))        
+  data
+})
+names(Geographies)<-names(geo_files_local)
 
-  ### d1.2) Read in metadata to calculate mean
-  ## TODO: Abandoning for now as to caluclate the mean from admin 2 aggregation we need cell counts for every level as weights.
-  
-  ## d.2) Exposure variables ####
-  overwrite<-F
-    ### d.2.1) Crops (MapSPAM) #####
-      #### d.2.1.1) Crop VoP (Value of production) ######
-      # To generalize it might be better to just supply a filename for the mapspam
-      files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
-      crop_vop_file<-grep("vop_intld15_all",files,value=T)
-      cat("0.2.1.1) Using crop vop intd file:",basename(crop_vop_file),"\n")
-      
-      crop_vop_tot<-terra::rast(crop_vop_file)
-      #crop_vop_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_intd15_adm_sum.parquet"))
-      
-      crop_vop_usd_file<-grep("vop_usd2015_all",files,value=T)
-      cat("0.2.1.1) Using crop vop usd file:",basename(crop_vop_usd_file),"\n")
-      
-      crop_vop_usd15_tot<-terra::rast(crop_vop_usd_file)
-      #crop_vop_usd15_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_cusd15_adm_sum.parquet"))
-      
-      #### d.2.1.2) Crop Harvested Area #####
-      crop_ha_file<-grep("harv-area_ha_all",files,value=T)
-      crop_ha_tot<-terra::rast(crop_ha_file)
-      cat("0.2.1.2) Using crop harvested area file:",basename(crop_ha_file),"\n")
-      #crop_ha_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_ha_adm_sum.parquet"))
-    ### d.2.2) Livestock #####
-      #### d.2.2.1) Livestock Numbers (GLW) ######
-      livestock_no_file<-file.path(glw_pro_dir,"/livestock_number_number.tif")
-      livestock_no<-terra::rast(livestock_no_file)
-      cat("0.2.2.1) Using livestock number file:",basename(livestock_no_file),"\n")
-      
-      #### d.2.2.2) Livestock VoP ######
-      livestock_vop_file<-file.path(glw_pro_dir,"/livestock_vop_intld2015.tif")
-      livestock_vop<-terra::rast(livestock_vop_file)
-      cat("0.2.2.2) Using livestock vop intd file:",basename(livestock_vop_file),"\n")
-      
-      livestock_vop_usd_file<-file.path(glw_pro_dir,"livestock_vop_usd2015.tif")
-      livestock_vop_usd<-terra::rast(livestock_vop_usd_file)
-      cat("0.2.2.2) Using livestock vop usd file:",basename(livestock_vop_usd_file),"\n")
-      
+base_rast<-terra::rast(base_rast_path)+0
+
+boundaries_zonal<-lapply(1:length(Geographies),FUN=function(i){
+  file_path<-file.path(boundaries_int_dir,paste0(names(Geographies)[i],"_zonal.tif"))
+  if(!file.exists(file_path)|overwrite_boundary_zones==T){
+    zones<-Geographies[[i]]
+    zone_rast <- rasterize(
+      x      = zones, 
+      y      = base_rast, 
+      field  = "zone_id", 
+      background = NA,    # cells not covered by any polygon become NA
+      touches    = TRUE   # optional: count cells touched by polygon boundaries
+    )
+    terra::writeRaster(zone_rast,file_path,overwrite=T)
+  }
+  file_path
+})
+names(boundaries_zonal)<-names(Geographies)
+
+boundaries_index<-lapply(1:length(Geographies),FUN=function(i){
+  data.frame(Geographies[[i]])[,c("iso3","admin0_name","admin1_name","admin2_name","zone_id", "gaul0_code", "gaul1_code", "gaul2_code")]
+})
+
+names(boundaries_index)<-names(Geographies)
+
+### d1.1) Limit to admin2 only ####
+# boundaries_zonal<-boundaries_zonal["admin2"]
+# boundaries_index<-boundaries_index["admin2"]
+
+### d1.2) Read in metadata to calculate mean
+## TODO: Abandoning for now as to caluclate the mean from admin 2 aggregation we need cell counts for every level as weights.
+
+## d.2) Exposure variables ####
+overwrite<-F
+### d.2.1) Crops (MapSPAM) #####
+#### d.2.1.1) Crop VoP (Value of production) ######
+# To generalize it might be better to just supply a filename for the mapspam
+files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
+crop_vop_file<-grep("vop_intld15_all",files,value=T)
+cat("0.2.1.1) Using crop vop intd file:",basename(crop_vop_file),"\n")
+
+crop_vop_tot<-terra::rast(crop_vop_file)
+#crop_vop_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_intd15_adm_sum.parquet"))
+
+crop_vop_usd_file<-grep("vop_usd2015_all",files,value=T)
+cat("0.2.1.1) Using crop vop usd file:",basename(crop_vop_usd_file),"\n")
+
+crop_vop_usd15_tot<-terra::rast(crop_vop_usd_file)
+#crop_vop_usd15_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_cusd15_adm_sum.parquet"))
+
+#### d.2.1.2) Crop Harvested Area #####
+crop_ha_file<-grep("harv-area_ha_all",files,value=T)
+crop_ha_tot<-terra::rast(crop_ha_file)
+cat("0.2.1.2) Using crop harvested area file:",basename(crop_ha_file),"\n")
+#crop_ha_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_ha_adm_sum.parquet"))
+### d.2.2) Livestock #####
+#### d.2.2.1) Livestock Numbers (GLW) ######
+livestock_no_file<-file.path(glw_pro_dir,"/livestock_number_number.tif")
+livestock_no<-terra::rast(livestock_no_file)
+cat("0.2.2.1) Using livestock number file:",basename(livestock_no_file),"\n")
+
+#### d.2.2.2) Livestock VoP ######
+livestock_vop_file<-file.path(glw_pro_dir,"/livestock_vop_intld2015.tif")
+livestock_vop<-terra::rast(livestock_vop_file)
+cat("0.2.2.2) Using livestock vop intd file:",basename(livestock_vop_file),"\n")
+
+livestock_vop_usd_file<-file.path(glw_pro_dir,"livestock_vop_usd2015.tif")
+livestock_vop_usd<-terra::rast(livestock_vop_usd_file)
+cat("0.2.2.2) Using livestock vop usd file:",basename(livestock_vop_usd_file),"\n")
+
 # e) Controls ####
-  # e.1) Hazard frequency ####
-  run1<-F
-  overwrite1<-F
-  worker_n1<-5
-  multisession1<-T
-  round1<-3
-  version1<-2
-  # e.2) Hazard means ####
-  run2<-F
-  overwrite2<-F
-  worker_n2<-5
-  multisession2<-T
-  round2<-2
-  version2<-2
-  # e.3) (To Do!) Hazard timeseries ####
-  run3<-F
-  overwrite3<-F
-  worker_n3<-5
-  multisession3<-T
-  round3<-2
-  version3<-1
-  # e.4) Hazard x exposure ####
-  run4.1<-T
-  run4.2<-T
-  do_ensemble_sd4.1<-T
-  do_ensemble_sd4.2<-T
-  ensemble_only4.1<-T
-  ensemble_only4.2<-T
-  worker_n4.1<-7
-  worker_n4.2<-7
-  worker_n4_check<-20
-  multisession4<-T
-  round4<-2
-  version4<-1
-  
-  overwrite4<-F
-  do_vop<-T
-  round_vop<-0
-  vop_name<-"vop_intld15"
-  do_vop_usd<-T
-  round_vop_usd<-0
-  vop_usd_name<-"vop_usd15"
-  do_ha<-T
-  round_ha<-0
-  ha_name<-"harv-area_ha"
-  do_n<-F
-  round_n<-0
-  n_name<-"head_n"
-  prod_name<-"prod_t"
-  check4.1<-T
-  
+# e.1) Hazard frequency ####
+run1<-F
+overwrite1<-F
+worker_n1<-5
+multisession1<-T
+round1<-3
+version1<-2
+# e.2) Hazard means ####
+run2<-F
+overwrite2<-F
+worker_n2<-5
+multisession2<-T
+round2<-2
+version2<-2
+# e.3) (To Do!) Hazard timeseries ####
+run3<-F
+overwrite3<-F
+worker_n3<-5
+multisession3<-T
+round3<-2
+version3<-1
+# e.4) Hazard x exposure ####
+run4.1<-T
+run4.2<-T
+do_ensemble_sd4.1<-T
+do_ensemble_sd4.2<-T
+ensemble_only4.1<-T
+ensemble_only4.2<-T
+worker_n4.1<-7
+worker_n4.2<-7
+worker_n4_check<-20
+multisession4<-T
+round4<-2
+version4<-1
+
+overwrite4<-F
+do_vop<-T
+round_vop<-0
+vop_name<-"vop_intld15"
+do_vop_usd<-T
+round_vop_usd<-0
+vop_usd_name<-"vop_usd15"
+do_ha<-T
+round_ha<-0
+ha_name<-"harv-area_ha"
+do_n<-F
+round_n<-0
+n_name<-"head_n"
+prod_name<-"prod_t"
+check4.1<-T
+
 # Start timeframe loop ####
 for(tx in 1:length(timeframe_choices)){
   timeframe<-timeframe_choices[tx]
@@ -832,7 +832,7 @@ for(tx in 1:length(timeframe_choices)){
         "\ncheck4.1=",check4.1,"\n"
     )
     
-
+    
     ## 4.0) Set-up ####
     
     to_do_list<-list()
@@ -881,7 +881,7 @@ for(tx in 1:length(timeframe_choices)){
     
     
     ## 4.1) Multiply Hazard Freq by Exposure #####
-
+    
     if(run4.1){
       cat(timeframe,"4.1) Intersecting hazard risk x exposure \n")
       
@@ -893,12 +893,12 @@ for(tx in 1:length(timeframe_choices)){
       }
       
       if(ensemble_only4.1){
-        files<-grep("ENSEMBLE",files,value=T)
+        files<-grep("ENSEMBLE|historic",files,value=T)
       }
       crop_choices<-unique(unlist(tstrsplit(basename(files),"_",keep=1)))
       # Exclude crops, the vector will serve to identify if we should be using crop or livestock exposure for the hazard data supplied
       crop_choices<-crop_choices[!grepl("cattle|sheep|goats|pigs|poultry",crop_choices)]
-
+      
       # 1. Define retry-safe wrapper
       retry_risk_x_exposure <- function(f, 
                                         save_dir,
@@ -945,9 +945,9 @@ for(tx in 1:length(timeframe_choices)){
         }
         return(as.character(f))
       }
-     for(i in 1:length(to_do_list)){
+      for(i in 1:length(to_do_list)){
         cat(timeframe,"4.1.1) Intersecting hazard risk x exposure - ",to_do_list[[i]]$variable," \n")
-
+        
         # Setup parallel plan
         set_parallel_plan(n_cores = worker_n4.1, use_multisession = multisession4)
         
@@ -962,20 +962,20 @@ for(tx in 1:length(timeframe_choices)){
         
         with_progress({
           prog <- progressor(steps = length(files))
-        
-            p<-furrr::future_map(files,
-                              ~ retry_risk_x_exposure(.x, 
-                                                      save_dir= to_do_list[[i]]$folder,
-                                                      variable = to_do_list[[i]]$variable,
-                                                      overwrite = overwrite4,
-                                                      crop_exposure_path = to_do_list[[i]]$crop_exposure_file,
-                                                      livestock_exposure_path = to_do_list[[i]]$livestock_exposure_file,
-                                                      crop_choices = crop_choices,
-                                                      round_n = to_do_list[[i]]$round_n,
-                                                      prog = prog),
-                              .options = furrr::furrr_options(scheduling = Inf))
-        })
           
+          p<-furrr::future_map(files,
+                               ~ retry_risk_x_exposure(.x, 
+                                                       save_dir= to_do_list[[i]]$folder,
+                                                       variable = to_do_list[[i]]$variable,
+                                                       overwrite = overwrite4,
+                                                       crop_exposure_path = to_do_list[[i]]$crop_exposure_file,
+                                                       livestock_exposure_path = to_do_list[[i]]$livestock_exposure_file,
+                                                       crop_choices = crop_choices,
+                                                       round_n = to_do_list[[i]]$round_n,
+                                                       prog = prog),
+                               .options = furrr::furrr_options(scheduling = Inf))
+        })
+        
         # Reset plan to sequential
         future::plan(sequential)
         
@@ -988,7 +988,7 @@ for(tx in 1:length(timeframe_choices)){
         
         cat(timeframe,"4.1.1) Intersecting hazard risk x exposure - ",to_do_list[[i]]$variable," - Complete \n")
       }
-
+      
       # 4.1.1) Check results ######
       if(check4.1){
         
@@ -1023,14 +1023,14 @@ for(tx in 1:length(timeframe_choices)){
       }
       
       cat(timeframe,"4.1) Intersecting hazard risk x exposure - Complete \n")
-
+      
     }
     
     ## 4.2) Extract Freq x Exposure by Geography #####
     if(run4.2){
-   
+      
       cat(timeframe,"4.2) Extract Freq x Exposure by Geography\n")
-     
+      
       for(v in 1:length(to_do_list)){
         
         folder<-to_do_list[[v]]$folder
@@ -1065,7 +1065,7 @@ for(tx in 1:length(timeframe_choices)){
           files<-grep("ENSEMBLE|historic",files,value=T)
         }
         
-       # files_solo<-data.table(file=files[!grepl("_int_",files)])
+        # files_solo<-data.table(file=files[!grepl("_int_",files)])
         files_int<-data.table(file=files[grepl("_int_",files)])
         
         # Removed the calculation of solo hazards as these can be constructed from the interactions
@@ -1078,7 +1078,7 @@ for(tx in 1:length(timeframe_choices)){
         files_int[, c("crop","model","severity","hazard_vars","type","exposure_var","exposure_unit") := tstrsplit(basename(file)[1], "_", keep=1:7,fixed = TRUE), by = file
         ][,exposure_unit:=gsub(".tif","",exposure_unit)]
         
-      #  files<-rbindlist(list(files_solo,files_int),use.names=T)
+        #  files<-rbindlist(list(files_solo,files_int),use.names=T)
         
         files<-files_int
         
@@ -1144,46 +1144,46 @@ for(tx in 1:length(timeframe_choices)){
               }
               
               
-                # cat("Group", i, "/", length(group), mts_choice, " - extracting boundary        \r")
-                
-                boundary_choice <- boundaries_zonal$admin2
-                zonal_rast <- terra::rast(boundary_choice)
-                
-                dat <- zonal(
-                  x = rast_data,
-                  z = zonal_rast,
-                  fun = extract_stat,
-                  na.rm = TRUE
-                )
-                
-
-                dat <- merge(dat, boundaries_index$admin2, by = "zone_id", all.x = TRUE, sort = FALSE)
-                dat$zone_id <- NULL
-       
+              # cat("Group", i, "/", length(group), mts_choice, " - extracting boundary        \r")
+              
+              boundary_choice <- boundaries_zonal$admin2
+              zonal_rast <- terra::rast(boundary_choice)
+              
+              dat <- zonal(
+                x = rast_data,
+                z = zonal_rast,
+                fun = extract_stat,
+                na.rm = TRUE
+              )
+              
+              
+              dat <- merge(dat, boundaries_index$admin2, by = "zone_id", all.x = TRUE, sort = FALSE)
+              dat$zone_id <- NULL
+              
               result_long <- data.table::melt(data.table(dat), id.vars = id_vars)
               
               # Clean and split variable column
               result_long[, c(split_colnames) := tstrsplit(variable[1], split_delim, fixed = TRUE), by = variable]
               result_long[, variable := NULL]
-
+              
               agg_admin1 <- result_long[,
-                .(value = sum(value, na.rm = TRUE)),
-                by = setdiff(names(result_long), c("value", "admin2_name", "gaul2_code"))
+                                        .(value = sum(value, na.rm = TRUE)),
+                                        by = setdiff(names(result_long), c("value", "admin2_name", "gaul2_code"))
               ]
               agg_admin1$admin2_name <- NA
               agg_admin1$gaul2_code <- NA
-
+              
               agg_admin0 <- result_long[,
-                .(value = sum(value, na.rm = TRUE)),
-                by = setdiff(names(result_long), c("value", "admin1_name", "admin2_name", "gaul2_code", "gaul1_code"))
+                                        .(value = sum(value, na.rm = TRUE)),
+                                        by = setdiff(names(result_long), c("value", "admin1_name", "admin2_name", "gaul2_code", "gaul1_code"))
               ]
               agg_admin0$admin2_name <- NA
               agg_admin0$gaul2_code <- NA
               agg_admin0$admin1_name <- NA
               agg_admin0$gaul1_code <- NA
-
+              
               result_long_adm012 <- rbind(result_long, rbind(agg_admin1, agg_admin0, fill = T), fill = T)
-
+              
               # Optional rounding
               if (!is.null(round)) {
                 result_long_adm012[, value := round(value, round)]
@@ -1201,7 +1201,7 @@ for(tx in 1:length(timeframe_choices)){
               
               filters <- lapply(split_colnames, function(split_col) {
                 unique(result_long_adm012[[split_col]])
-                })
+              })
               names(filters) <- split_colnames
               
               attr_info <- list(
@@ -1236,9 +1236,9 @@ for(tx in 1:length(timeframe_choices)){
         if(do_ensemble_sd4.2){
           cat(timeframe,"4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table.\n")
           en_files_mean<-list.files(folder,"ENSEMBLEmean.*parquet$",full.names = T)
-          en_files_both<-gsub("ENSEMBLEmean","ENSEMBLE",en_files_mean)
-          for(g in 1:length(en_files_both)){
-            save_file<-en_files_both[g]
+          
+          for(g in 1:length(en_files_mean)){
+            save_file<-gsub("ENSEMBLEmean","ENSEMBLE",en_files_mean[g])
             if(!file.exists(save_file)|overwrite4==T){
               cat(timeframe,"4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File =",basename(save_file),"     \n")
               
@@ -1246,6 +1246,10 @@ for(tx in 1:length(timeframe_choices)){
               en_mean<-arrow::read_parquet(en_files_mean[g])
               en_sd<-arrow::read_parquet(gsub("ENSEMBLEmean","ENSEMBLEsd",en_files_mean[g]),
                                          col_select = c("value","gaul2_code","hazard"))
+              
+              if(en_mean[,.N]!=en_sd[,.N]){
+                stop(timeframe," 4.2.1 - row lengths differ between ensemble mean and sd")
+              }
               
               if((sum(en_mean$gaul2_code != en_sd$gaul2_code,na.rm=T) + sum(en_mean$hazard != en_sd$hazard,na.rm=T))>0){
                 stop(timeframe," 4.2.1 - mismatch in row order between ensemble mean and sd")
@@ -1273,7 +1277,7 @@ for(tx in 1:length(timeframe_choices)){
           }
           cat(timeframe,"4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table - Complete.\n")
         }
-          
+        
         
         cat(timeframe,"4.2) Variable = ",variable,v,"/",length(to_do_list),"- Complete \n")
       }
