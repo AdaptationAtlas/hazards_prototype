@@ -375,7 +375,7 @@ if(F){
   do_vop_usd<-T
   round_vop_usd<-0
   vop_usd_name<-"vop_usd15"
-  do_ha<-F
+  do_ha<-T
   round_ha<-0
   ha_name<-"harv-area_ha"
   do_n<-F
@@ -1062,12 +1062,13 @@ for(tx in 1:length(timeframe_choices)){
         }
         
         if(ensemble_only4.2){
-          files<-grep("ENSEMBLE",files,value=T)
+          files<-grep("ENSEMBLE|historic",files,value=T)
         }
         
        # files_solo<-data.table(file=files[!grepl("_int_",files)])
         files_int<-data.table(file=files[grepl("_int_",files)])
         
+        # Removed the calculation of solo hazards as these can be constructed from the interactions
         #files_solo[, c("crop","model","severity","exposure_var","exposure_unit") := tstrsplit(basename(file)[1], "_", keep=1:5,fixed = TRUE), by = file
         #][,exposure_unit:=gsub(".tif","",exposure_unit)
         #][,hazard_vars:=NA
@@ -1092,6 +1093,29 @@ for(tx in 1:length(timeframe_choices)){
         }
         
         files<-data.frame(files)
+        
+        
+        # Create fields descriptions for use in attributes json
+        field_descriptions <- list(
+          iso3             = "ISO3 country code (3-letter code based on ISO 3166-1 alpha-3)",
+          admin0_name      = "Name of the country (first-level administrative unit)",
+          admin1_name      = "Name of the subnational region (second-level administrative unit)",
+          admin2_name      = "Name of the third-level administrative unit, if available",
+          gaul0_code       = "GAUL (Global Administrative Unit Layers) code for admin0 (country level)",
+          gaul1_code       = "GAUL code for admin1 (subnational region), if available",
+          gaul2_code       = "GAUL code for admin2 (district or equivalent), if available",
+          value            = "Hazard frequency (0-1) x exposure value.",
+          scenario         = "Emissions scenario (e.g., ssp126 = SSP1-2.6, ssp585 = SSP5-8.5)",
+          model            = "Climate model name (e.g., ENSEMBLEmean or individual GCMs)",
+          timeframe        = "Future period being analyzed (e.g., 2021–2040, 2081–2100)",
+          hazard           = "Compound hazard grouping (e.g., 'dry+heat+wet' reflects the combined occurrence)",
+          hazard_vars      = "Hazard variables used in the compound calculation (e.g., NDWS+NTx35+NDWL0)",
+          crop             = "Crop or livestock associated with the exposure (e.g., arabica-coffee, yams)",
+          severity         = "Hazard severity threshold (e.g., extreme)",
+          exposure_var     = "Type of exposure being assessed (e.g., vop = value of production)",
+          exposure_unit    = "Unit of measurement for the exposure (e.g., intld15 = 2015 international dollars)"
+        )
+        
         
         set_parallel_plan(n_cores = worker_n, use_multisession = multisession)
         
@@ -1185,6 +1209,7 @@ for(tx in 1:length(timeframe_choices)){
                 extraction_method = "zonal",
                 geo_filters = id_vars,
                 season_type = timeframe,
+                field_descriptions = field_descriptions,
                 filters = filters,
                 format = ".parquet",
                 date_created = Sys.time(),
@@ -1207,8 +1232,52 @@ for(tx in 1:length(timeframe_choices)){
         
         plan(sequential)
         
+        # 4.2.1) Merge ENSEMBLEmean and ENSEMBLEsd
+        if(do_ensemble_sd4.2){
+          cat(timeframe,"4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table.\n")
+          en_files_mean<-list.files(folder,"ENSEMBLEmean.*parquet$",full.names = T)
+          en_files_both<-gsub("ENSEMBLEmean","ENSEMBLE",en_files_mean)
+          for(g in 1:length(en_files_both)){
+            save_file<-en_files_both[g]
+            if(!file.exists(save_file)|overwrite4==T){
+              cat(timeframe,"4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File =",basename(save_file),"     \n")
+              
+              # In the mean and sd files should be in exactly the same order so a simple assign should work
+              en_mean<-arrow::read_parquet(en_files_mean[g])
+              en_sd<-arrow::read_parquet(gsub("ENSEMBLEmean","ENSEMBLEsd",en_files_mean[g]),
+                                         col_select = c("value","gaul2_code","hazard"))
+              
+              if((sum(en_mean$gaul2_code != en_sd$gaul2_code,na.rm=T) + sum(en_mean$hazard != en_sd$hazard,na.rm=T))>0){
+                stop(timeframe," 4.2.1 - mismatch in row order between ensemble mean and sd")
+              }
+              
+              en_mean$value_sd<-en_sd$value
+              en_mean$model<-"ENSEMBLE"
+              arrow::write_parquet(en_mean,save_file)
+              
+              attr_info<-jsonlite::read_json(paste0(en_files_mean[g],".json"),simplifyVector=T)
+              
+              attr_info$value_variable<-c(value = "sum of mean_haz_freq_across_GCMS x exposure (ENSEMBLEmean)",value_sd = "sum of sd_haz_freq_across_GCMS x exposure (ENSEMBLEsd)")
+              attr_info$model<-"ENSEMBLE"
+              if(is.null(attr_info$field_descriptions)){
+                attr_info$field_descriptions<-field_descriptions
+              }
+              attr_info$field_descriptions$value_sd <- "Standard deviation across GCMs."
+              
+              jsonlite::write_json(attr_info,paste0(save_file,".json"))
+              
+              rm(en_sd,en_mean,attr_info)
+              gc()
+              
+            }
+          }
+          cat(timeframe,"4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table - Complete.\n")
+        }
+          
+        
         cat(timeframe,"4.2) Variable = ",variable,v,"/",length(to_do_list),"- Complete \n")
       }
+      
       
       cat(timeframe,"4.2) Extract Freq x Exposure by Geography - Complete\n")
     }
