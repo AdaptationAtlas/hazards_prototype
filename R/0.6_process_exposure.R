@@ -19,11 +19,11 @@ pacman::p_load(packages,character.only=T)
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
 
-# 0) Load and prepare admin vectors and exposure rasters, extract exposure by admin ####
+# 0) Load and prepare admin rasters ####
   ## 0.0) Base rast ####
   base_rast <- terra::rast(base_rast_path)
 
-## 0.1) Geographies #####
+  ## 0.1) Geographies #####
 overwrite_boundary_zones<-T
 
 Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
@@ -304,9 +304,13 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
     # Fix unit issue
     exposure_adm_sum_tab[unit==c("intld2015"),unit:="intld15"]
     exposure_adm_sum_tab[unit==c("usd2015"),unit:="usd15"]
+    exposure_adm_sum_tab[,crop:=gsub("_| ","-",crop)]
     
     arrow::write_parquet(exposure_adm_sum_tab,file)
 }
+  
+  arrow::read_parquet(file)[,unique(unit)]
+  
 
 # 4) Population ######
 overwrite_pop<-T
