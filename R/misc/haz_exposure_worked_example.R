@@ -250,16 +250,16 @@ haz_s2<-haz_s3q(path = if(user_selections$comparison_scen2$scenario=="historic")
 if(nrow(haz_s1)!=nrow(haz_s2)){
   warning("Number of rows in scenario 1",nrow(haz_s1),"does not match scenario 2",nrow(haz_s2))
 }
-  
-  # Merge scenarios into a single table
+  # Rename fields
   setnames(haz_s1,c("value","value_sd"),c("value1","value_sd1"),skip_absent=T)
   setnames(haz_s2,c("value","value_sd"),c("value2","value_sd2"),skip_absent=T)
   haz_s1[,scenario1:=paste(unique(c(scenario,timeframe)),collapse="-")][,c("scenario","timeframe"):=NULL]
   haz_s2[,scenario2:=paste(unique(c(scenario,timeframe)),collapse="-")][,c("scenario","timeframe"):=NULL]
 
+  # Merge scenarios into a single table ####
   haz_merge<-cbind(haz_s1,haz_s2[,.(scenario2,value2,value_sd2)])
   
-  # Add 1 only, 2 only, 3 only hazard categories
+  # Add 1 only, 2 only, 3 only hazard categories ####
   agg_cols <- c("severity","scenario1","scenario2","admin0_name", "admin1_name", "admin2_name", "crop", "hazard")
   
   num_cols <- names(haz_merge)[
@@ -275,7 +275,7 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
   
   haz123<-rbind(haz1,haz2,haz3)
   
-  # Sum values for the new categories
+  # Sum values for the new categories ####
   haz123 <- haz123[, lapply(.SD, sum, na.rm = TRUE), by = agg_cols, .SDcols = num_cols]
   
   # Bind to the main dataset
@@ -294,16 +294,16 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
   # Sum values for the new categories
   dhw<-rbind(dry,heat,wet)
   
-  # Sum values for the new categories
+  # Sum values for the new categories ####
   dhw <- dhw[, lapply(.SD, sum, na.rm = TRUE), by = agg_cols, .SDcols = num_cols]
   
   # Bind to the main dataset
   haz_merge<-rbind(haz_merge,dhw)
   
-  # Merge in total exposure values (i.e. the total value of production or harvested areas)
+  # Merge in total exposure values (i.e. the total value of production or harvested areas) ####
   haz_merge<-merge(haz_merge,exp_tot,by=c("admin0_name","admin1_name","admin2_name","crop"),all.x=T,sort=F)
   
-  # Calculate no hazard
+  # Calculate no hazard ####
   no_haz<-haz_merge[hazard=="any"]
   no_haz[,value1:=value_tot-value1
          ][,value_sd1:=((value_tot-value1)/value1)*value_sd1
@@ -313,7 +313,7 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
 
   haz_merge<-rbind(haz_merge,no_haz)
   
-  # Add totals
+  # Add totals ####
   # Grand total across all geos and crops
   agg_cols <- c("severity","scenario1","scenario2","admin0_name", "admin1_name", "admin2_name", "crop", "hazard")
   
@@ -333,16 +333,20 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
   # Bind back grouped data
   haz_merge<-rbind(haz_merge,haz_tot,haz_tot_geo)
   
-  # Calculate difference
-  haz_merge[,diff:=value2-value1] 
+  # Calculate difference ####
+  haz_merge[,diff:=value2-value1]
   
-  # Calulate % exposure to hazards
+  # Calulate % exposure to hazards ####
   ci_95 <- function(mean, sd, n) {
     error <- qt(0.975, df = n - 1) * sd / sqrt(n)
     lower <- mean - error
     upper <- mean + error
     return(data.table(lower = lower, upper = upper))
   }
+  
+  # enforce sd being all NA if scenario is historic
+  haz_merge[scenario1=="historic",value_sd1:=NA]
+  haz_merge[scenario2=="historic",value_sd2:=NA]
   
     haz_merge[,perc1:=round(100*value1/value_tot,2)
               ][,perc_sd1:=round(100*value_sd1/value_tot,2)
@@ -362,6 +366,7 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
   haz_merge[hazard=="wet",hazard:="wet (only)"]
   haz_merge[hazard=="dry",hazard:="dry (only)"]
   
+  # Plots ####
   # Q1: Upset plot
   
   # Q2: Crops>Hazards
