@@ -301,6 +301,10 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
     
     write_json(attr_info, attr_file, pretty = TRUE)
     
+    # Fix unit issue
+    exposure_adm_sum_tab[unit==c("intld2015"),unit:="intld15"]
+    exposure_adm_sum_tab[unit==c("usd2015"),unit:="usd15"]
+    
     arrow::write_parquet(exposure_adm_sum_tab,file)
 }
 
@@ -325,7 +329,7 @@ if(!file.exists(hpop_file)|overwrite_pop==T){
   terra::writeRaster(hpop,filename =hpop_file,overwrite=T)
 }
 
-## 4.2) Extraction ####
+  ## 4.2) Extraction ####
 version_hpop<-1
 file<-paste0(exposure_dir,"/hpop_adm_sum.parquet")
 
