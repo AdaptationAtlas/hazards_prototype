@@ -67,9 +67,9 @@ version_spam<-1
 source_year_spam<-list(census=2015,values=2015)
 
 files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
-files<-files[!grepl("yield",files)]
+
 # Remove yield (one reason for this is that stat<-"mean" returns NA and needs debugging)
-library(data.table)
+files<-files[!grepl("yield",files)]
 
 
 field_descriptions <- data.table::data.table(
@@ -105,9 +105,9 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   cat("Extracting file",i,"/",length(files),basename(files[i]),"\n")
   file<-files[i]
   file_base<-gsub(".tif","",basename(file))
-  var<-unlist(tstrsplit(basename(file),"_",keep=2))
-  unit<-unlist(tstrsplit(basename(file),"_",keep=3))
-  tech<-gsub(".tif","",unlist(tstrsplit(basename(file),"_",keep=4)))
+  var<-unlist(tstrsplit(file_base,"_",keep=2))
+  unit<-unlist(tstrsplit(file_base,"_",keep=3))
+  tech<-unlist(tstrsplit(file_base,"_",keep=4))
   
   if(var=="yield"){
     stop("Use of stat == mean currently returns NA values. Remove yield from input data or debug error.")
@@ -178,16 +178,17 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
 
 # 2) Livestock (GLW) extraction by vector boundaries #####
 version_glw<-1
+overwrite_glw<-F
 source_year_glw<-list(census=2020,values=2015)
 
-  livestock_no_file<-paste0(glw_pro_dir,"/livestock_number_number.tif")
-  if(!file.exists(livestock_no_file)){
-    stop("Run script 0.4_create_livestock_exposure.R")
-  }
-  
-  files<-list.files(glw_pro_dir,".tif$",recursive=T,full.names=T)
-  
-  glw_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
+livestock_no_file<-paste0(glw_pro_dir,"/livestock_number_number.tif")
+if(!file.exists(livestock_no_file)){
+  stop("Run script 0.4_create_livestock_exposure.R")
+}
+
+files<-list.files(glw_pro_dir,".tif$",recursive=T,full.names=T)
+
+glw_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
     cat("Extracting file",i,"/",length(files),basename(files[i]),"\n")
     file<-files[i]
     file_base<-gsub(".tif","",basename(file))
@@ -266,9 +267,6 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
     spam_extracted,
     glw_extracted
   )
-  
-  # Make values integer to save space
-  exposure_adm_sum_tab[,value:=as.integer(value)]
   
   # Order to optimize parquet performance
   exposure_adm_sum_tab<-exposure_adm_sum_tab[order(iso3,admin0_name,admin1_name,admin2_name,exposure,unit,tech,crop)]
@@ -371,9 +369,6 @@ if(!file.exists(file)|overwrite_pop==T){
   field_descriptions2<-rbind(field_descriptions2,data.table(field_name = "type",
                                        type = "character",
                                        description = "Type of population measure, rural, urban or total."))
-  
-  # Make values integer to save space
-  hpop_extracted[,value:=as.integer(value)]
   
   # Order to optimize parquet performance
   hpop_extracted<-hpop_extracted[order(iso3,admin0_name,admin1_name,admin2_name)]
