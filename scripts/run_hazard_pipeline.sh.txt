@@ -34,7 +34,7 @@ mkdir -p "$(dirname "$LOG_FILE")"
 echo "Running hazard pipeline... Logs will be saved to:"
 echo "$LOG_FILE"
 
-# Run the scripts sequentially using Rscript + source
+# Run the scripts sequentially using Rscript + source - TIMESERIES_SCRIPT
 nohup Rscript -e "source('$SETUP_SCRIPT'); source('$TIMESERIES_SCRIPT')" > "$LOG_FILE" 2>&1 &
 
 # Run the scripts sequentially using Rscript + source - HAZFREQ_SCRIPT
