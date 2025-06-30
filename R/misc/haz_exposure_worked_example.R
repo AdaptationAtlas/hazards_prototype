@@ -132,13 +132,15 @@ haz_s3q<-function(path,crops,admin0,admin1,admin2,timeframe,scenario,hazard_vars
   con <- dbConnect(duckdb::duckdb())
    on.exit(dbDisconnect(con, shutdown = TRUE))
 
-  if(timeframe=="historic"){
+  if(timeframe[1]=="historic"){
     select_cols<-select_cols[select_cols!="value_sd"]
   }
   
   # Construct SQL filters
   sql_crop <- paste(sprintf("'%s'", crops), collapse = ", ")
   sql_admin0 <- paste(sprintf("'%s'", admin0), collapse = ", ")
+  sql_timeframe <- paste(sprintf("'%s'", timeframe), collapse = ", ")
+  sql_scenario <- paste(sprintf("'%s'", scenario), collapse = ", ")
   sql_select_cols <- paste(select_cols, collapse = ", ")  
   
   # NULL admin1/admin2 means `IS NULL` in SQL
@@ -163,8 +165,8 @@ haz_s3q<-function(path,crops,admin0,admin1,admin2,timeframe,scenario,hazard_vars
       AND admin0_name IN (%s)
       AND %s
       AND %s
-      AND timeframe = '%s'
-      AND scenario = '%s'
+      AND timeframe IN (%s)
+      AND scenario IN (%s)
       AND hazard_vars = '%s'
   ", 
                    sql_select_cols,
@@ -173,8 +175,8 @@ haz_s3q<-function(path,crops,admin0,admin1,admin2,timeframe,scenario,hazard_vars
                    sql_admin0,
                    sql_admin1,
                    sql_admin2,
-                   timeframe,
-                   scenario,
+                   sql_timeframe,
+                   sql_scenario,
                    hazard_vars
   )
   
@@ -184,7 +186,7 @@ haz_s3q<-function(path,crops,admin0,admin1,admin2,timeframe,scenario,hazard_vars
   # In contested areas sometimes mean admin0/admin1 units are split, sum results over split areas to merge them with parent country
   agg_cols <- setdiff(select_cols, c("value", "value_sd"))
 
-    if(timeframe=="historic"){
+    if(timeframe[1]=="historic"){
    result<-result[,.(value=sum(value,na.rm=T)),by=agg_cols]
    result[,value_sd:=NA_real_]
   }else{
@@ -265,7 +267,7 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
   # Sum values for the new categories
   dhw<-rbind(dry,heat,wet)
   
-  # Sum values for the new categories ####
+  # Sum values for the new categories
   dhw <- dhw[, lapply(.SD, sum, na.rm = TRUE), by = agg_cols, .SDcols = num_cols]
   
   # Bind to the main dataset
@@ -577,7 +579,7 @@ B
   if(is_compound==T){
     result<-result+geom_bar(stat="identity",colour="grey20",size=0.2)
   }else{
-    result<-result+geom_col(position = position_dodge(width = 0.9)) 
+    result<-result+geom_col(position = position_dodge(width = 0.9),colour="grey20",size=0.2) 
   }
   
   if(plotly){
@@ -662,48 +664,131 @@ B
                 plot_title=haz_merge$scenario1[1])
   
   # Q3: Hazards>Crops ####
-  n_crops<-8
+  n_grps<-8
   
-  val_cols<-c(scenario1="value1",scenario2="value2",diff="diff")
-  y_axis<-"hazard"
-  group<-"crop"
-  all_cols<-c(val_cols,y_axis,group)
+  yaxis_lab <- user_selections$unit
   
-  plot_dat<-haz_merge[hazard %in% compound_set_full & admin0_name=="all" & crop!="all",all_cols,with=F]
-  setnames(plot_dat,c(val_cols,y_axis,group),c(names(val_cols),"y_axis","group"))
+  plot3_fun<-function(plot_dat,
+                      scenario_cols,
+                      facet_var,
+                      stack_var,
+                      stack_var_order,
+                      plot_title=NULL,
+                      yaxis_lab,
+                      n_grps,
+                      plotly=F){
+  
+    all_cols<-c(scenario_cols,facet_var,stack_var)
+  
+    plot_dat<-plot_dat[,all_cols,with=F]
+    
+  setnames(plot_dat,c(scenario_cols,facet_var,stack_var),c(names(val_cols),"facet_var","group"))
 
   group_sel <- plot_dat[, .(tot = sum(scenario1)), by = group][
-      order(-tot), group][1:8]
+      order(-tot), group][1:n_grps]
   
   plot_dat[!group %in% group_sel,group:="other"]
   
   plot_dat<-plot_dat[,.(scenario1=sum(scenario1,na.rm=T),
              scenario2=sum(scenario2,na.rm =T),
-             diff=sum(diff,na.rm=T)),by=.(y_axis,group)]
+             diff=sum(diff,na.rm=T)),by=.(facet_var,group)]
 
-  plot_dat<-melt(plot_dat,id.vars = c("y_axis","group"))  
+  plot_dat<-melt(plot_dat,id.vars = c("facet_var","group"),variable.name = "scenario")  
+  diff_tot<-plot_dat[scenario == "diff",
+               .(value = sum(value, na.rm = TRUE)),
+               by = facet_var
+               ][, `:=`(scenario = "Δ",          
+                        group = "Δ")]
+  plot_dat<-plot_dat[scenario!="diff"]
   
-  plot_dat[ , y_axis := factor(y_axis, levels = compound_set_full)]
-  
-    ggplot(plot_dat,
-                 aes(x = variable,
-                     y = value,
-                     fill = group)) +   
-    geom_bar(stat="identity",colour="grey20",size=0.2) +
-    scale_y_continuous(labels = label_number(scale_cut = cut_short_scale())) +
-    facet_grid(~y_axis) +    
-    theme_minimal(base_size = 12) +
-    theme(panel.grid = element_blank())
-  
-    
-    labs(x = lab,
-         y = NULL,
-         title = plot_title,
-         fill = "Hazard") +                 # legend title
-  
-  
+  plot_dat<-rbindlist(list(plot_dat,diff_tot),use.names = T,fill=T)
 
-  # Q4: Geographies
+  # give each bar its own x-position:
+  plot_dat[ , facet_var := factor(facet_var, levels = stack_var_order)]
+  
+  grp_levels <- setdiff(unique(plot_dat$group), "Δ")
+  n_grp     <- length(grp_levels)
+  base_cols <- pal_brewer(palette="Set3")(n_grp)
+  grp_pal  <- setNames(base_cols[seq_len(n_grp)], grp_levels)
+  pal_comb  <- c(grp_pal, `Δ` = "grey20")
+  
+  plot_dat[,slab:=scenario
+           ][scenario=="scenario1",slab:="S1"
+             ][scenario=="scenario2",slab:="S2"
+               ][,slab:=factor(slab,levels=c("S1","S2","Δ"))]
+  
+  nice_num <- function(x, acc = 0.1) {
+    lab <- label_number(scale_cut = cut_short_scale(), accuracy = acc)
+    sign <- ifelse(x < 0, "−", "")           # U+2212 for a true minus sign
+    out  <- lab(abs(x))                      # format the magnitude
+    paste0(sign, out)
+  }
+  plot_dat[, tooltip := sprintf(
+    "Hazard: %s<br>Scenario: %s<br>Crop: %s<br>Value: %s",
+    facet_var, slab, group,nice_num(value)
+  ),by=.I]
+  
+  g<-ggplot(plot_dat,
+         aes(x = slab,
+             y = value, 
+             fill = group,
+             text = tooltip)) +
+    geom_col(position = "stack",colour="grey20",size=0.2,width=1) +          # stacked bars
+    scale_x_discrete(expand = c(0, 0)) +               # no left/right padding
+    facet_grid(~ facet_var,
+               labeller = labeller(                    # <- new
+                 facet_var = label_wrap_gen(8)
+               )) +  # 1 row of facets
+    scale_fill_manual(values = pal_comb, name = NULL) +
+    scale_y_continuous(                                   # optional: short scale
+      labels = label_number(scale_cut = cut_short_scale())) +
+    labs(x = NULL, y = yaxis_lab, fill = stack_var,title=plot_title) +
+    theme_minimal() +
+    theme(
+      strip.text.x = element_text(size = 9, face = "bold"),
+      panel.grid.major.x = element_blank(),
+      panel.grid.minor.x = element_blank()
+    )
+  
+  if(plotly){
+    g<-ggplotly(g,tooltip = "text")
+  }
+  return(g)
+  
+  }
+  
+  q3<-plot3_fun(plot_dat=haz_merge[hazard %in% compound_set_full & admin0_name=="all" & crop!="all"],
+            scenario_cols=c(scenario1="value1",scenario2="value2",diff="diff"),
+            facet_var="hazard",
+            stack_var="crop",
+            stack_var_order = compound_set_full,
+            plot_title=NULL,
+            yaxis_lab=user_selections$unit,
+            n_grps=n_grps,
+            plotly=T)
+  
+  q3simple<-plot3_fun(plot_dat=haz_merge[hazard %in% c(solo_set,compound_set_simple) & admin0_name=="all" & crop!="all"],
+                scenario_cols=c(scenario1="value1",scenario2="value2",diff="diff"),
+                facet_var="hazard",
+                stack_var="crop",
+                stack_var_order = unique(c(solo_set,compound_set_simple)),
+                plot_title=NULL,
+                yaxis_lab=user_selections$unit,
+                n_grps=n_grps,
+                plotly=T)
+  
+  
+  #  
+  q3p<-plot3_fun(plot_dat=haz_merge[hazard %in% compound_set_full & admin0_name=="all" & crop!="all"],
+                scenario_cols=c(scenario1="perc1",scenario2="perc2",diff="perc_diff"),
+                facet_var="hazard",
+                stack_var="crop",
+                plot_title=NULL,
+                yaxis_lab="%",
+                n_grps=n_grps,
+                plotly=T)
+  
+  # Q4: Geographies ####
   q2_s1<-q2_fun(plot_dat=haz_merge[admin0_name!="all" & crop=="all" & hazard %in% compound_set_full],
                 exp_lab = user_selections$unit,
                 n_y.groups=show_n,
@@ -714,8 +799,103 @@ B
                 plot_title=haz_merge$scenario1[1])
   
   
-  # Q5: Variability   
   
+  # Q5: Variability   ####
+
+  haz_s1_all<-haz_s3q(path = haz_exp_hist_path,
+                  crops = user_selections$crop,
+                  admin0 = user_selections$admin0,
+                  admin1 = user_selections$admin1,
+                  admin2 = user_selections$admin2,
+                  timeframe =  "historic",
+                  scenario =  "historic",
+                  hazard_vars = user_selections$interaction,
+                  select_cols = select_cols)  
+  
+  haz_s2_all<-haz_s3q(path = haz_exp_ens_path,
+                  crops = user_selections$crop,
+                  admin0 = user_selections$admin0,
+                  admin1 = user_selections$admin1,
+                  admin2 = user_selections$admin2,
+                  timeframe =  timeframes,
+                  scenario =  scenarios,
+                  hazard_vars = user_selections$interaction,
+                  select_cols = select_cols)  
+  
+
+  haz_merge2<-rbind(haz_s1_all,haz_s2_all)
+  
+  haz_merge2<-haz_s12_all[,.(value=sum(value,na.rm=T),value_sd=sum(value_sd,na.rm=T)),by=.(severity,scenario,timeframe,hazard)]
+  
+  heat<-haz_merge2[grep("heat",hazard)]
+  heat[,hazard:="heat (any)"]
+  
+  wet<-haz_merge2[grep("wet",hazard)]
+  wet[,hazard:="wet (any)"]
+  
+  dry<-haz_merge2[grep("dry",hazard)]
+  dry[,hazard:="dry (any)"]
+  
+  # Sum values for the new categories
+  dhw<-rbind(dry,heat,wet)
+  
+  # Sum values for the new categories
+  num_cols<-c("value","value_sd")
+  dhw <- dhw[, lapply(.SD, sum, na.rm = TRUE), by = .(severity,scenario,timeframe,hazard), .SDcols = num_cols]
+  
+  # Bind to the main dataset
+  haz_merge2<-rbind(haz_merge2,dhw)
+  
+  
+  # enforce sd being all NA if scenario is historic
+  haz_merge2[scenario=="historic",value_sd:=NA]
+  
+  # Calc 95% CIs
+  haz_merge2[,c("value_low","value_high"):=ci_95(value,value_sd,5),by=.I]
+
+  # Make timeframes numeric
+  haz_merge2[timeframe=="historic",year:=mean(c(2014,1995))-0.5
+             ][timeframe!="historic",year:=mean(as.numeric(unlist(strsplit(timeframe,"-"))))-0.5,by=timeframe]
+  
+
+  dodge <- position_dodge(width = 0.6)    
+  
+  hline_dat <- haz_merge2[hazard %in% solo_set & scenario == "historic",
+                          .(yintercept = value),  
+                          by = hazard]            # <- facet variable
+  
+  ggplot(haz_merge2[hazard %in% solo_set],
+         aes(x = factor(year),                # discrete x for tidy spacing
+             y = value,
+             colour = scenario)) +            # colour distinguishes scenarios
+    geom_errorbar(
+      aes(ymin = value_low, ymax = value_high),
+      position  = dodge,
+      width     = 0,                        # clean vertical bar, no “cap”
+      linewidth = 0.4
+    ) +
+    geom_point(
+      position = dodge,
+      size     = 2.4
+    ) +
+    geom_hline(data = hline_dat,
+               aes(yintercept = yintercept),
+               colour = "grey40", linetype = "dashed") +
+    facet_grid(hazard ~ .,scales="free_y") +                  # ← vertical facets
+    scale_colour_brewer(palette = "Dark2", name = "Scenario") +
+    scale_y_continuous(                                   # optional: short scale
+      labels = label_number(scale_cut = cut_short_scale())) +
+    labs(
+      x = "Year",
+      y = "Value"
+    ) +
+    theme_minimal(base_size = 11) +
+    theme(
+      panel.grid.major.x = element_blank(),
+      axis.text.x        = element_text(angle = 45, hjust = 1),
+      strip.text.y       = element_text(face = "bold")  # facet labels
+    )
+
   
   # Duckdb connection to admin vector geoparquet table ####
   
