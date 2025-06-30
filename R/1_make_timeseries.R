@@ -214,27 +214,28 @@ model_names <- unique(unlist(tstrsplit(folders[!grepl("histor", folders)], "_", 
 # DEV NOTE: THE SOS DATA NEEDS REPLACING WITH SOMETHING BETTER
 # This raster contains the start of season (S1, S2) and end of season (E1, E2) for two possible seasons.
 # sos_rast <- terra::rast(file.path(sos_dir, "sos.tif"))
-
-# Cropsuite is one option:
-# atlas_dirs$data_dir$sos_cropsuite
-# ~R/misc/sos_cropsuite.R
-# However there are issues with coverage of the second season for countries like Kenya
-sos_rast_julien<-rast(file.path(atlas_dirs$data_dir$sos_cropsuite,"seasons_median.tif"))
-
-# vectorised converter
-doy2month <- function(v, yr) {
-  ok      <- !is.na(v)
-  res     <- rep(NA_integer_, length(v))
-  res[ok] <- as.integer(format(as.Date(v[ok] - 1,
-                                       origin = sprintf("%d-01-01", yr)), "%m"))
-  res
+if(F){
+  # Cropsuite is one option:
+  # atlas_dirs$data_dir$sos_cropsuite
+  # ~R/misc/sos_cropsuite.R
+  # However there are issues with coverage of the second season for countries like Kenya
+  sos_rast_julien<-rast(file.path(atlas_dirs$data_dir$sos_cropsuite,"seasons_median.tif"))
+  
+  # vectorised converter
+  doy2month <- function(v, yr) {
+    ok      <- !is.na(v)
+    res     <- rep(NA_integer_, length(v))
+    res[ok] <- as.integer(format(as.Date(v[ok] - 1,
+                                         origin = sprintf("%d-01-01", yr)), "%m"))
+    res
+  }
+  
+  # apply layer by layer
+  sos_rast<-rast(lapply(1:nlyr(sos_rast_julien),function(i){
+    app(sos_rast_julien[[i]], fun = doy2month, yr =2010)
+  }))
+  names(sos_rast)<-c("S1","S2")
 }
-
-# apply layer by layer
-sos_rast<-rast(lapply(1:nlyr(sos_rast_julien),function(i){
-  app(sos_rast_julien[[i]], fun = doy2month, yr =2010)
-}))
-names(sos_rast)<-c("S1","S2")
 
   ## 3.2) Load & process ggcmi crop calendar #####
 # The GGCMI crop calendar data (planting and maturity days).
@@ -307,6 +308,7 @@ parameters  <- data.table(
   subfolder_name = c("annual", "jagermeyr", "sos", "sos", "sos", "sos")
 )
 
+# Subset to annual & jagermeyr (until viable sos dataset found) ####
 # Remove use_eos option
 parameters<-parameters[use_eos!=T|is.na(use_eos)]
 
