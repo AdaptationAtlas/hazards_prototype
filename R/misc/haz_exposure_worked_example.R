@@ -37,42 +37,13 @@ user_selections<-list(severity="severe",
                       comparison_scen2=c(scenario=tstrsplit("ssp585_2041-2060","_",keep=1),
                                          timeframe=tstrsplit("ssp585_2041-2060","_",keep=2)),
                       admin0 = "Kenya",
-                      admin1 = NULL,
+                      admin1 =  c("Machakos","Kilifi","Kiambu","Kajiado","Busia","Siaya","Makueni","Narok","Turkana","Samburu","Kwale"),
                       admin2 = NULL,
                       crop = crops)
 
 user_selections$variable<-paste0(user_selections$exposure,"_",user_selections$unit)
 
-# Duckdb connection to admin vector geoparquet table ####
-
-# Load admin vector
-admin_0_file<-"s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=simplified/level=adm0/atlas_gaul24_a0_africa_simple-midres.parquet"
-admin_1_file<-"s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=simplified/level=adm0/atlas_gaul24_a1_africa_simple-midres.parquet"
-admin_2_file<-"s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=simplified/level=adm0/atlas_gaul24_a2_africa_simple-midres.parquet"
-
-# Connect and load extensions
-con <- dbConnect(duckdb())
-dbExecute(con, "INSTALL httpfs; LOAD httpfs;")
-dbExecute(con, "INSTALL spatial; LOAD spatial;")  # Required for geometry columns
-
-# Extract only WKT version of geometry
-query <- paste0("
-  SELECT admin0_name, ST_AsText(geometry) AS wkt_geom
-  FROM '", admin_0_file, "'
-  WHERE admin0_name = '",user_selection$admin0,"'
-")
-
-admin_df <- dbGetQuery(con, query)
-
-# Convert to sf using WKT
-geo_selection <- vect(st_as_sf(admin_df, wkt = "wkt_geom", crs = 4326))
-plot(geo_selection)
-
-# Define area of interest in raster CRS (e.g. WGS84 lon/lat) 
-aoi <- ext(geo_selection) 
-
- 
-# Access total exposure ####
+  # Access total exposure ####
 # This will be merged with the hazard exposure data so that we can calculate relative exposure
 exp_file<-"s3://digital-atlas/domain=exposure/type=combined/source=glw4+spam2020v1r2_ssa/region=ssa/gaul24_adm0-1-2_exposure.parquet"
 
@@ -432,45 +403,41 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
   # Q1: Upset plot ####
   
   # Bonus points if error_bars can be added
-  q1_dat<-data[admin0_name=="all" & hazard %in% compound_set_full]
 
-  
   up_plot<-function(data,val_col,exp_lab,plot_title,val_alt=NULL){
   
-  q1_dat<-data
-  
-  q1_dat[, dry  := grepl("\\bdry\\b",  hazard)]
-  q1_dat[, heat := grepl("\\bheat\\b", hazard)]
-  q1_dat[, wet  := grepl("\\bwet\\b",  hazard)]
+  data[, dry  := grepl("\\bdry\\b",  hazard)]
+  data[, heat := grepl("\\bheat\\b", hazard)]
+  data[, wet  := grepl("\\bwet\\b",  hazard)]
 
   # Convert logicals to hazard list column
-  q1_dat[, hazards := apply(.SD, 1, function(row) names(row)[as.logical(row)]), .SDcols = c("dry", "heat", "wet")]
+  data[, hazards := apply(.SD, 1, function(row) names(row)[as.logical(row)]), .SDcols = c("dry", "heat", "wet")]
 
-  setnames(q1_dat,val_col,"value")
-  
-  if(!is.null(val_alt)){
-    q1_dat[,valx:=value]
+  if(is.null(val_alt)){
+    data[,valx:=data[[val_col]]]
   }else{
-    q1_dat[,valx:=val_alt,with=F]
+    data[,valx:=data[[val_alt]]]
   }
   
-  if(q1_dat[,max(valx)>10^9]){
-    q1_dat[,value:=value/10^9]
+  setnames(data,val_col,"value")
+  
+  if(data[,max(valx)>10^9]){
+    data[,value:=value/10^9]
     lab<-paste0("Exposure B ",exp_lab)
     }else{
-  if(q1_dat[,max(valx)>10^6]){
-    q1_dat[,value:=value/10^6]
+  if(data[,max(valx)>10^6]){
+    data[,value:=value/10^6]
     lab<-paste0("Exposure M ",exp_lab)
   }else{
-    if(q1_dat[,max(valx)>10^3]){
-      q1_dat[,value:=value/10^3]
+    if(data[,max(valx)>10^3]){
+      data[,value:=value/10^3]
       lab<-paste0("Exposure k ",exp_lab)
     }else{
       lab<-paste0("Exposure ",exp_lab)
     }}}
   
   # Use ggupset to make upset ploy
-  p_up<-ggplot(q1_dat, aes(x = hazards, y = value)) +
+  p_up<-ggplot(data, aes(x = hazards, y = value)) +
     geom_col(fill = "grey40") +
     geom_text(aes(label = scales::comma(value)), vjust = -0.3, size = 3) +
     scale_x_upset(order_by = NULL) +
@@ -492,7 +459,7 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
   
   single_totals <- data.table(
     set      = haz_cols,
-    exposure = sapply(haz_cols, \(s) q1_dat[get(s) == TRUE, sum(value, na.rm = TRUE)])
+    exposure = sapply(haz_cols, \(s) data[get(s) == TRUE, sum(value, na.rm = TRUE)])
   )[order(set)]  
   
   # Need to ensure order of bars is the same as the upset plot, it works in this example but needs further testing
@@ -511,7 +478,7 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
       axis.title = element_blank(),
       panel.grid = element_blank(),
       panel.background = element_blank(),
-      plot.margin        = margin(t = 0, r = 0, b = 0, l = 0)  
+      plot.margin = margin(t = 0, r = 0, b = 0, l = 0)  
     )
     
     # Assemble plots using patchwork
@@ -546,15 +513,15 @@ B
   s2_lab<-haz_merge$scenario2[1]
   diff_lab<-paste0("Δ ",haz_merge$scenario2[1]," minus ",plot_title=haz_merge$scenario1[1])
   
-  up_s1<-up_plot(data=q1_dat,val_col = "value1",exp_lab=user_selections$unit,plot_title=s1_lab) 
-  up_s2<-up_plot(data=q1_dat,val_col = "value2",exp_lab=user_selections$unit,plot_title=s2_lab)
+  up_s1<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],val_col = "value1",exp_lab=user_selections$unit,plot_title=s1_lab) 
+  up_s2<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],val_col = "value2",exp_lab=user_selections$unit,plot_title=s2_lab)
   # An issue with difference is that the unit changes from B to M, we might want to set an override where the unit selection can be derived from
   # a different column
-  up_diff<-up_plot(data=q1_dat,val_col = "diff",exp_lab=user_selections$unit,plot_title=diff_lab)
+  up_diff<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],val_col = "diff",exp_lab=user_selections$unit,plot_title=diff_lab)
   
-  up_s1p<-up_plot(data=q1_dat,val_col = "perc1",exp_lab="%",plot_title=s1_lab) 
-  up_s2p<-up_plot(data=q1_dat,val_col = "perc2",exp_lab="%",plot_title=s2_lab) 
-  up_diffp<-up_plot(data=q1_dat,val_col = "perc_diff",exp_lab="%",plot_title=diff_lab) 
+  up_s1p<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],val_col = "perc1",exp_lab="%",plot_title=s1_lab) 
+  up_s2p<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],val_col = "perc2",exp_lab="%",plot_title=s2_lab) 
+  up_diffp<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],val_col = "perc_diff",exp_lab="%",plot_title=diff_lab) 
   
       
   # Q2: Crops>Hazards ####
@@ -586,7 +553,7 @@ B
     plot_dat<-plot_dat[y_axis %in% y_order]
   }
   
-  plot_dat[ , y_axis := factor(y_axis, levels = rev(yorder))]
+  plot_dat[ , y_axis := factor(y_axis, levels = rev(y_order))]
   plot_dat[ , hazardf := factor(hazard, levels = haz_levels)]
   
   result<-ggplot(plot_dat,
@@ -620,15 +587,15 @@ B
   
   }
   
-  # n_crops to show
-  n_crops<-15
-  if(n_crops>length(user_selections$crop)){
-    n_crops<-length(user_selections$crop)
+  # show_n to show
+  show_n<-15
+  if(show_n>length(user_selections$crop)){
+    show_n<-length(user_selections$crop)
   }
   
   q2_s1<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_full],
          exp_lab = user_selections$unit,
-         n_y.groups=n_crops,
+         n_y.groups=show_n,
          val_col="value1",
          haz_levels = compound_set_full,
          cols_fill = cols_fill,
@@ -636,7 +603,7 @@ B
   
   q2_s2<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_full],
                 exp_lab = user_selections$unit,
-                n_y.groups=n_crops,
+                n_y.groups=show_n,
                 val_col="value2",
                 haz_levels = compound_set_full,
                 cols_fill = cols_fill,
@@ -644,7 +611,7 @@ B
   
   q2_diff<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_full],
                 exp_lab = user_selections$unit,
-                n_y.groups=n_crops,
+                n_y.groups=show_n,
                 val_col="diff",
                 haz_levels = compound_set_full,
                 cols_fill = cols_fill,
@@ -653,7 +620,7 @@ B
   q2_s1p<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_full],
                 palette="Set 1",
                 exp_lab = "%",
-                n_crops=n_crops,
+                show_n=show_n,
                 val_col="perc1",
                 haz_levels = compound_set_full,
                 cols_fill = cols_fill,
@@ -661,7 +628,7 @@ B
   
   q2_s2p<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_full],
                 exp_lab = user_selections$unit,
-                n_y.groups=n_crops,
+                n_y.groups=show_n,
                 val_col="perc2",
                 haz_levels = compound_set_full,
                 cols_fill = cols_fill,
@@ -669,7 +636,7 @@ B
   
   q2_diffp<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_full],
                   exp_lab = user_selections$unit,
-                  n_y.groups=n_crops,
+                  n_y.groups=show_n,
                   val_col="perc_diff",
                   haz_levels = compound_set_full,
                   cols_fill = cols_fill,
@@ -678,7 +645,7 @@ B
   # Simple versions ofcompound plot
   q2_s1<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_simple],
                 exp_lab = user_selections$unit,
-                n_y.groups=n_crops,
+                n_y.groups=show_n,
                 val_col="value1",
                 haz_levels = compound_set_simple,
                 cols_fill = cols_fill_simple,
@@ -687,21 +654,99 @@ B
   # Non compound plot
   q2_s1nc<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% solo_set],
                 exp_lab = user_selections$unit,
-                n_y.groups=n_crops,
+                n_y.groups=show_n,
                 val_col="value1",
                 is_compound=F,
                 haz_levels = solo_set,
                 cols_fill = cols_fill_solo,
                 plot_title=haz_merge$scenario1[1])
   
-  # Q3: Hazards>Crops
+  # Q3: Hazards>Crops ####
+  n_crops<-8
   
+  val_cols<-c(scenario1="value1",scenario2="value2",diff="diff")
+  y_axis<-"hazard"
+  group<-"crop"
+  all_cols<-c(val_cols,y_axis,group)
+  
+  plot_dat<-haz_merge[hazard %in% compound_set_full & admin0_name=="all" & crop!="all",all_cols,with=F]
+  setnames(plot_dat,c(val_cols,y_axis,group),c(names(val_cols),"y_axis","group"))
+
+  group_sel <- plot_dat[, .(tot = sum(scenario1)), by = group][
+      order(-tot), group][1:8]
+  
+  plot_dat[!group %in% group_sel,group:="other"]
+  
+  plot_dat<-plot_dat[,.(scenario1=sum(scenario1,na.rm=T),
+             scenario2=sum(scenario2,na.rm =T),
+             diff=sum(diff,na.rm=T)),by=.(y_axis,group)]
+
+  plot_dat<-melt(plot_dat,id.vars = c("y_axis","group"))  
+  
+  plot_dat[ , y_axis := factor(y_axis, levels = compound_set_full)]
+  
+    ggplot(plot_dat,
+                 aes(x = variable,
+                     y = value,
+                     fill = group)) +   
+    geom_bar(stat="identity",colour="grey20",size=0.2) +
+    scale_y_continuous(labels = label_number(scale_cut = cut_short_scale())) +
+    facet_grid(~y_axis) +    
+    theme_minimal(base_size = 12) +
+    theme(panel.grid = element_blank())
+  
+    
+    labs(x = lab,
+         y = NULL,
+         title = plot_title,
+         fill = "Hazard") +                 # legend title
+  
+  
+
   # Q4: Geographies
+  q2_s1<-q2_fun(plot_dat=haz_merge[admin0_name!="all" & crop=="all" & hazard %in% compound_set_full],
+                exp_lab = user_selections$unit,
+                n_y.groups=show_n,
+                val_col="value1",
+                y_axis = "admin1_name",
+                haz_levels = compound_set_full,
+                cols_fill = cols_fill,
+                plot_title=haz_merge$scenario1[1])
+  
   
   # Q5: Variability   
   
   
-
+  # Duckdb connection to admin vector geoparquet table ####
+  
+  # Load admin vector
+  admin_0_file<-"s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=simplified/level=adm0/atlas_gaul24_a0_africa_simple-midres.parquet"
+  admin_1_file<-"s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=simplified/level=adm0/atlas_gaul24_a1_africa_simple-midres.parquet"
+  admin_2_file<-"s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=simplified/level=adm0/atlas_gaul24_a2_africa_simple-midres.parquet"
+  
+  # Connect and load extensions
+  con <- dbConnect(duckdb())
+  dbExecute(con, "INSTALL httpfs; LOAD httpfs;")
+  dbExecute(con, "INSTALL spatial; LOAD spatial;")  # Required for geometry columns
+  
+  # Extract only WKT version of geometry
+  query <- paste0("
+  SELECT admin0_name, ST_AsText(geometry) AS wkt_geom
+  FROM '", admin_0_file, "'
+  WHERE admin0_name = '",user_selection$admin0,"'
+")
+  
+  admin_df <- dbGetQuery(con, query)
+  
+  # Convert to sf using WKT
+  geo_selection <- vect(st_as_sf(admin_df, wkt = "wkt_geom", crs = 4326))
+  plot(geo_selection)
+  
+  # Define area of interest in raster CRS (e.g. WGS84 lon/lat) 
+  aoi <- ext(geo_selection) 
+  
+  
+  
 # COG tif plotting ####
   s3_crop_tif_paths<-data.table(expand.grid(model=c("historic","ENSEMBLEmean","ENSEMBLEsd"),
                                             severity=c("moderate","extreme","severe"),
