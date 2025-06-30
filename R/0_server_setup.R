@@ -45,16 +45,14 @@
     #"sos_secondary_fixed_5"
   )
   
+  # 0.3) CHOOSE CLIMATE DATA SOURCE ####
+  # nexgddp or atlas_delta
+  climdat_source<-"atlas_delta"
+  cat("Climate data source = ",climdat_source,"\n")
 # 1) Setup workspace ####
 # Increase download timeout (in seconds) to avoid timeouts during large data pulls
 options(timeout = 600)
 
-# Detect available CPU cores, check approximate free RAM (in MB)
-if(F){
-parallel::detectCores()
-terra::free_RAM() / 10^6
-}
-  
 # Increase GDAL cache size for faster raster processing
 terra::gdalCache(60000)
 
@@ -102,7 +100,13 @@ terra::gdalCache(60000)
   Cglabs <- FALSE
   if (project_dir == "/home/jovyan/atlas/hazards_prototype") {
     # cglabs environment
+    if(climdat_source=="atlas_delta"){
     working_dir <- "/home/jovyan/common_data/hazards_prototype"
+    }
+    
+    if(climdat_source=="nexgddp"){
+      working_dir <- "/home/jovyan/common_data/nex-gddp-cimp6_hazards"
+    }
     Cglabs <- TRUE
   }
   
@@ -206,9 +210,18 @@ terra::gdalCache(60000)
     ### 2.1.2) Inputs #####
     # Indices directory (raw monthly hazard data)
     if (Cglabs) {
-      # For cglabs users
+      if(climdat_source=="atlas_delta"){
+        # For cglabs users
       indices_dir <- "/home/jovyan/common_data/atlas_hazards/cmip6/indices"
       indices_dir2 <- "/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
+      }
+      
+      if(climdat_source=="nexgddp"){
+        # For cglabs users
+        indices_dir <- "/home/jovyan/common_data/nex-gddp-cimp6_indices"
+        indices_dir2 <- "/home/jovyan/common_data/nex-gddp-cimp6_indices-seasonal"
+      }
+      
     } else {
       cat("Indice files are currently only available in CGlabs. Download functionality for the raw data is on the to-do list.\n",
           "See https://github.com/AdaptationAtlas/hazards if you need to replicate monthly hazard data creation.\n")
@@ -686,5 +699,5 @@ terra::gdalCache(60000)
   # End of script
   cat("0_server_setup.R has completed successfully.\n")
   cat("CGLabs = ",Cglabs,"\n")
-# ---------------------------------------------------------------------------------------------
+  #  ---------------------------------------------------------------------------------------------
 
