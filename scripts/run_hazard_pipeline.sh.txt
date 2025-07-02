@@ -16,15 +16,22 @@ ps aux | grep Rscript
 # Start a new screen (if clean)
 screen -S hazards_job
 
-# Define absolute paths to R scripts
+# Define absolute paths to R scripts - AfriLabs
+SETUP_SCRIPT="$HOME/rprojects/hazards_prototype/R/0_server_setup.R"
+TIMESERIES_SCRIPT="$HOME/rprojects/hazards_prototype/R/1_make_timeseries.R"
+HAZFREQ_SCRIPT="$HOME/rprojects/hazards_prototype/R/2_calculate_haz_freq.R"
+EXTRACT_SCRIPT="$HOME/rprojects/hazards_prototype/R/3_freq_x_exposure.R"
+PATCH_SCRIPT="$HOME/rprojects/hazards_prototype/R/misc/patch_wet_ndws_issue.R"
+KILL_SCRIPT="$HOME/rprojects/hazards_prototype/scripts/kill.R"
+LOG_FILE="$HOME/rprojects/hazards_prototype/logs/combined_run_$(date +%Y%m%d_%H%M%S).log"
+
+# Define absolute paths to R scripts - CGlabs
 SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
 TIMESERIES_SCRIPT="$HOME/atlas/hazards_prototype/R/1_make_timeseries.R"
 HAZFREQ_SCRIPT="$HOME/atlas/hazards_prototype/R/2_calculate_haz_freq.R"
 EXTRACT_SCRIPT="$HOME/atlas/hazards_prototype/R/3_freq_x_exposure.R"
 PATCH_SCRIPT="$HOME/atlas/hazards_prototype/R/misc/patch_wet_ndws_issue.R"
 KILL_SCRIPT="$HOME/atlas/hazards_prototype/scripts/kill.R"
-
-# Define log file
 LOG_FILE="$HOME/atlas/hazards_prototype/logs/combined_run_$(date +%Y%m%d_%H%M%S).log"
 
 # Create log directory if it doesn't exist
