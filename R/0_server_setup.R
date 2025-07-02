@@ -47,7 +47,7 @@
   
   # 0.3) CHOOSE CLIMATE DATA SOURCE ####
   # nexgddp or atlas_delta
-  climdat_source<-"atlas_delta"
+  climdat_source<-"nexgddp"
   cat("Climate data source = ",climdat_source,"\n")
 # 1) Setup workspace ####
 # Increase download timeout (in seconds) to avoid timeouts during large data pulls
@@ -218,7 +218,7 @@ terra::gdalCache(60000)
       
       if(climdat_source=="nexgddp"){
         # For cglabs users
-        indices_dir <- "/home/jovyan/common_data/nex-gddp-cimp6_indices"
+        indices_dir <- "/home/jovyan/common_data/nex-gddp-cmip6_indices"
         indices_dir2 <- "/home/jovyan/common_data/nex-gddp-cimp6_indices-seasonal"
       }
       
@@ -460,10 +460,14 @@ terra::gdalCache(60000)
   }
   
   ## 3.3) Base Raster #####
+  if(climdat_source=="atlas_delta"){
   # Load a reference/base raster used for resampling or extent alignment
   base_rast_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
   base_rast <- terra::rast(base_rast_url)
   base_rast_path <- file.path(project_dir, "metadata", "base_raster.tif")
+  }else{
+    base_rast<-terra::rast(file.path(indices_dir,"ssp126_ACCESS-CM2/NDD/NDD-2021-01.tif"))
+  }
   # Typically you might save this locally if you need repeated use.
   
   ## 3.4) GLW #####
