@@ -1,30 +1,16 @@
-# Install and load packages ####
-load_and_install_packages <- function(packages) {
-  for (package in packages) {
-    if (!require(package, character.only = TRUE)) {
-      install.packages(package)
-      library(package, character.only = TRUE)
-    }
-  }
-}
-
 # List of packages to be loaded
-packages <- c("data.table", 
-              "s3fs",
-              "arrow",
-              "FinCal",
-              "ggplot2",
-              "treemap")
+pacman::p_load(data.table, 
+              s3fs,
+              arrow,
+              jrvFinance,
+              ggplot2,
+              treemap)
 
-# Call the function to install and load packages
-load_and_install_packages(packages)
 
 # Create functions ####
 
-
 # Generate a test dataset to validate functions
 #cashflows<-data_sum[adoption==0.02 & prod_impact==1 & cis_impact==0.05 & discount_rate==4,project_benefit-project_cost]
-
 
 # Create a function to calculate internal rate of return
 
@@ -45,6 +31,7 @@ irr_wrap <- function(cashflow) {
   })
 }
 
+# Continuous compounding npv function (not used)
 npv_wrap <- function(cashflows,discount_rate) {
   sapply(1:length(cashflows), FUN = function(i) {
     
@@ -61,66 +48,93 @@ npv_wrap <- function(cashflows,discount_rate) {
   })
 }
 
-# 1) Load precooked roi data ####
-file<-"Data/roi/roi_data.parquet"
-
-if(!file.exists(file)){
-  if(!dir.exists(dirname(file))){
-    dir.create(dirname(file),recursive = T)
-  }
-  
-  s3_file <-"s3://digital-atlas/risk_prototype/data/roi/roi_data.parquet"
-  s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
+# Single NPV calculation (Discrete compounding)
+npv_discrete <- function(cashflows, discount_rate) {
+  periods <- seq_along(cashflows) - 1  # Year 0 is not discounted
+  sum(cashflows / (1 + discount_rate)^periods)
 }
 
+# Cumulative NPV (year-by-year) calculation
+npv_discrete_cum <- function(cashflows, discount_rate) {
+  sapply(seq_along(cashflows), function(i) {
+    npv_discrete(cashflows[1:i], discount_rate)
+  })
+}
+
+# Mirr function
+mirr <- function(cashflows, finance_rate, reinvest_rate) {
+  n <- length(cashflows) - 1
+  inflows <- ifelse(cashflows > 0, cashflows, 0)
+  outflows <- ifelse(cashflows < 0, cashflows, 0)
+  
+  # Future value of inflows (compounded to end)
+  FV_inflows <- sum(inflows * (1 + reinvest_rate)^(n - seq_along(cashflows) + 1))
+  
+  # Present value of outflows (discounted to start)
+  PV_outflows <- sum(outflows / (1 + finance_rate)^(seq_along(cashflows) - 1))
+  
+  if (PV_outflows == 0 || FV_inflows <= 0) return(NA_real_)
+  
+  return((FV_inflows / abs(PV_outflows))^(1 / n) - 1)
+}
+
+mirr_wrap <- function(cashflows, finance_rate = 0.08, reinvest_rate = 0.08) {
+  sapply(seq_along(cashflows), function(i) {
+    tryCatch({
+      mirr(cashflows[1:i], finance_rate, reinvest_rate)
+    }, error = function(e) NA_real_)
+  })
+}
+
+# Cumulative adoption function
+add_cumulative_adoption <- function(dt, annual_rate = 0.01, colname = "cum_adoption") {
+  stopifnot("year" %in% names(dt))
+  stopifnot(all(dt$year == sort(dt$year)))  # assumes ordered years
+  
+  dt <- copy(dt)  # avoid modifying original
+  
+  # Get unique years
+  years <- sort(unique(dt$year))
+  n_years <- length(years)
+  
+  # Calculate cumulative adoption over time (recursive)
+  cum <- numeric(n_years)
+  for (i in seq_len(n_years)) {
+    if (i == 1) {
+      cum[i] <- annual_rate
+    } else {
+      cum[i] <- cum[i - 1] + (1 - cum[i - 1]) * annual_rate
+    }
+  }
+  
+  # Add to table by year
+  dt[, (colname) := cum[match(year, years)]]
+  
+  return(dt)
+}
+
+# 1) Load precooked roi data ####
+file<-file.path(atlas_dirs$data_dir$roi,"roi_data_v2.parquet")
 data_benefit<-arrow::read_parquet(file)
 
   # 1.1) Load value of production data #####
 
-# Crops
-file<-"Data/exposure/crop_vop_usd17_adm_sum.parquet"
-
-if(!file.exists(file)){
-  if(!dir.exists(dirname(file))){
-    dir.create(dirname(file),recursive = T)
-  }
+  # Crops
+  file<-file.path(atlas_dirs$data_dir$exposure,"exposure_adm_sum.parquet")
   
-  s3_file <-"s3://digital-atlas/risk_prototype/data/exposure/crop_vop_usd17_adm_sum.parquet"
-  s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
-}
-
-data_vop_usd17<-arrow::read_parquet(file)
-
-# Livestock
-file<-"Data/exposure/livestock_vop_usd17_adm_sum.parquet"
-
-if(!file.exists(file)){
-  if(!dir.exists(dirname(file))){
-    dir.create(dirname(file),recursive = T)
-  }
-  
-  s3_file <-"s3://digital-atlas/risk_prototype/data/exposure/livestock_vop_usd17_adm_sum.parquet"
-  s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
-}
-
-data_vop_usd17_ls<-arrow::read_parquet(file)
-data_vop_usd17_ls<-data_vop_usd17_ls[!grepl("total",crop)]
-
-# Combine crops and livestock
-data_vop_usd17<-rbind(data_vop_usd17,data_vop_usd17_ls)
-
-  # 1.2) Load adoption data ####
-  file<-"Data/roi/adoption_rates_perc.parquet"
-  
-  if(!file.exists(file)){
-    if(!dir.exists(dirname(file))){
-      dir.create(dirname(file),recursive = T)
-    }
+  data_vop_usd17<-data.table(arrow::read_parquet(file))
+  data_vop_usd17<-data_vop_usd17[,exposure:=paste0(exposure,"_",unit)
+    ][is.na(admin2_name) & (tech=="all"|is.na(tech))
+    ][,c("admin2_name","unit","tech"):=NULL
+    ][exposure %in% c("vop_usd15")]
     
-    s3_file <-"s3://digital-atlas/risk_prototype/data/roi/adoption_rates_perc.parquet"
-    s3fs::s3_file_download(path=s3_file,new_path = file,overwrite = T)
-  }
+    # Combine highland and lowland cattle
+  data_vop_usd17<-data_vop_usd17[,crop:=gsub("-tropical|-highland","",crop)][,list(value=sum(value,na.rm=T)),by=list(admin0_name,admin1_name,crop,exposure)]
+    
+  data_vop_usd17<-data_vop_usd17[!grepl("other-|rest-of|temperate-fruit|tropical-fruit|vegetables",crop)]
   
+  # 1.2) Load adoption data ####
+  file<-file.path(atlas_dirs$data_dir$roi,"adoption_rates_perc.parquet")
   data_adoption<-arrow::read_parquet(file)
   
 # 2) User sets up project  ####
@@ -135,7 +149,6 @@ data_vop_usd17<-rbind(data_vop_usd17,data_vop_usd17_ls)
                        ][,value_Musd:=round(value/10^6,0)
                          ][order(value,decreasing=T)
                            ][,list(admin0_name,crop,value_Musd)
-                             ][,crop:=gsub("_"," ",crop)
                                ][,crop:=paste0(crop," $",value_Musd,"M")]
     
 
@@ -159,14 +172,10 @@ data_vop_usd17<-rbind(data_vop_usd17,data_vop_usd17_ls)
             title = "Treemap of Crop Values",
             type="color",
             fontsize.title = 18)
-    
         
-        # 2.2.2) Choose crops ####
+    # 2.2.2) Choose crops ####
     crops_choice<-c("maize")
-    
     data_vop_usd17[admin0_name %in% admin0_choice & is.na(admin1_name) & crop %in% crops_choice,paste0("total crop value ($M) = ",round(sum(value)/10^6,1))]
-    
- 
     
   # 2.3) Cost #####
   project_cost<-50*10^6
@@ -180,8 +189,7 @@ data_vop_usd17<-rbind(data_vop_usd17,data_vop_usd17_ls)
   adoption_rate_choice<-0.01
   
   # 2.5.1) Show adoption ####
-   data_adoption[adoption==adoption_rate_choice,list(year,adoption_perc)
-                 ][year<=project_years]
+   data_adoption[adoption==adoption_rate_choice & year<=project_years]
 
   # 2.6) Discount rate ####
   discount_rate<-0.08
@@ -199,7 +207,7 @@ data_vop_usd17<-rbind(data_vop_usd17,data_vop_usd17_ls)
                           cis_impact == cis_impact_choice &
                           year %in% 1:project_years]
   
-  # 3.2) Sum benefits #####
+  # 3.2) Sum benefits across commodities #####
   data_ss<-data_ss[,list(project_benefit=sum(project_benefit,na.rm=T)),by=list(adoption,prod_impact,cis_impact,bcr,year)]
   
   # 3.3) Re-sort dataset so that years are in order, this is required for irr calculations #####
@@ -230,23 +238,124 @@ data_vop_usd17<-rbind(data_vop_usd17,data_vop_usd17_ls)
   # 4.1) Calculate IRR ####
   data_ss[,irr:=as.numeric(irr_wrap(cashflow = cashflow))]
   
+  # Discounted IRR (MIRR) ####
+  data_ss[, mirr := mirr_wrap(cashflow, finance_rate = discount_rate, reinvest_rate = discount_rate)]
+  
   # 4.3) Calculate NPV ####
-  data_ss[,npv:=npv_wrap(cashflow = cashflow,discount_rate = discount_rate)] 
+  data_ss[,npv:=npv_discrete_cum(cashflows = cashflow,discount_rate = discount_rate)]
 
   # 4.3) Calculate BCR ####
-  data_ss[,project_bcr:=npv/cost_cum]
-
+  data_ss[, discounted_cost_cum := npv_discrete_cum(cost, discount_rate)]
+  data_ss[, discounted_benefit_cum := npv_discrete_cum(project_benefit, discount_rate)]
+  data_ss[, discounted_bcr := discounted_benefit_cum / discounted_cost_cum]
+  
+  # 4.4) Add cumulative adoption ####
+  data_ss<-add_cumulative_adoption(data_ss,annual_rate=adoption_rate_choice)
+  
   print(data_ss)
   
-  c(
-  data_ss[nrow(data_ss),paste0("IRR = ",round(irr*100,2),"%")],
-  data_ss[nrow(data_ss),paste0("NPV = $",round(npv/10^6,2),"M")],
-  data_ss[nrow(data_ss),paste0("BCR = ",round(project_bcr,2))]
+  cat(
+  "End of project ( year",project_years,"):\n",
+  "cost =",project_cost,"\n",
+  "discount rate = ",discount_rate,"\n",
+  data_ss[nrow(data_ss),paste0("IRR = ",round(irr*100,2),"%")],"\n",
+  data_ss[nrow(data_ss),paste0("MIRR = ",round(mirr*100,2),"%")],"\n",
+  data_ss[nrow(data_ss),paste0("NPV = $",round(npv/10^6,2),"M")],"\n",
+  data_ss[nrow(data_ss),paste0("BCR = ",round(discounted_bcr,2))]
   )
   
-  write.table(data_ss,"clipboard",sep="/t",row.names = F)
+  data_ss
   
-
+  # Plot results
+  # Base plot style
+  theme_lineplot <- theme_minimal(base_size = 14) +
+    theme(panel.grid.minor = element_blank(),
+          legend.position = "bottom")
+  
+ 
+  
+  # IRR and MIRR over time
+  ggplot(data_ss) +
+    geom_line(aes(x = year, y = irr, color = "IRR"), size = 1.1) +
+    geom_line(aes(x = year, y = mirr, color = "MIRR"), size = 1.1) +
+    scale_color_manual(values = c("IRR" = "purple", "MIRR" = "orange")) +
+    labs(title = "Internal Rates of Return (IRR & MIRR)",
+         x = "Year", y = "Rate", color = "Metric") +
+    theme_lineplot
+  
+  
+  # BCR
+  
+  # Define scaling constants manually
+  bcr_range <- range(data_ss$discounted_bcr, na.rm = TRUE)
+  benefit_range <- range(data_ss$project_benefit_cum, na.rm = TRUE)
+  
+  # Calculate rescale factor
+  scale_factor <- diff(benefit_range) / diff(bcr_range)
+  
+  # Shift bcr so it visually aligns
+  data_ss[, bcr_scaled := discounted_bcr * scale_factor]
+  data_ss[, adoption_scaled := cum_adoption * scale_factor]
+  
+  ggplot(data_ss, aes(x = year)) +
+    # Bars for cumulative adoption
+    geom_col(aes(y = adoption_scaled, fill = "Cumulative Adoption"), alpha = 0.3, width = 0.8) +
+    
+    # Lines for benefits and BCR
+    geom_line(aes(y = project_benefit_cum, color = "Cumulative Benefit"), size = 1.1) +
+    geom_line(aes(y = discounted_benefit_cum, color = "Discounted Benefit"), size = 1.1) +
+    geom_line(aes(y = discounted_cost_cum, color = "Discounted Cost"), size = 1.1) +
+    geom_line(aes(y = bcr_scaled, color = "Discounted BCR"), size = 1.1, linetype = "dashed") +
+    
+    # Horizontal reference lines
+    geom_hline(yintercept = project_cost, linetype = "dotted", color = "black", size = 0.8) +
+    geom_hline(yintercept = 1 * scale_factor, linetype = "dashed", color = "gray40", size = 0.8) +
+    
+    # Labels for horizontal lines
+    annotate("text", 
+             x = 0, 
+             y = project_cost, 
+             label = "Total Project Cost", 
+             vjust = -0.8, hjust = 0, size = 4.2, fontface = "italic") +
+    annotate("text", 
+             x = max(data_ss$year), 
+             y = 1 * scale_factor, 
+             label = "BCR = 1 (Break-even)", 
+             vjust = -0.8, hjust = 1, size = 4.2, fontface = "italic", color = "gray40") +
+    
+    # Axes and scales
+    scale_y_continuous(
+      name = "Cost & Benefit (USD)",
+      sec.axis = sec_axis(~ . / scale_factor,
+                          name = "Benefit-Cost Ratio / Adoption")
+    ) +
+    scale_color_manual(
+      name = "Line Metrics",
+      values = c("Cumulative Benefit" = "darkgreen",
+                 "Discounted Benefit" = "purple",
+                 "Discounted Cost" = "red",
+                 "Discounted BCR" = "steelblue")
+    ) +
+    scale_fill_manual(
+      name = "Bar Metric",
+      values = c("Cumulative Adoption" = "gray60")
+    ) +
+    
+    # Labels and themes
+    labs(title = "Project Returns and Adoption Over Time",
+         x = "Year") +
+    theme_minimal(base_size = 14) +
+    theme(
+      legend.position = "bottom",
+      legend.box = "vertical",
+      legend.title = element_text(size = 11),
+      legend.text = element_text(size = 10)
+    ) +
+    guides(
+      color = guide_legend(order = 1),
+      fill = guide_legend(order = 2)
+    )
+    
   
 # 5) Misc - Example of Adoption rate % table ####
 ad_rate<-data.table(value=1,adoption=seq(0.0025,0.03,0.0025))
@@ -279,18 +388,18 @@ label_positions <- ad_rate[, .(value = max(value)), by = .(adoption, year)]
 label_positions <- label_positions[year == max(year), ]
 label_positions[,adoption:=as.numeric(as.character(adoption))][,adoption:=paste0(100*adoption,"%")]
 
-ggplot(ad_rate, aes(x = year, y = value, group = adoption, color = adoption, linetype = adoption)) +
+ggplot(ad_rate, aes(x = year, y = 100*value, group = adoption, color = adoption, linetype = adoption)) +
   geom_line() +
   geom_point() +
   scale_x_continuous(name = "Year", breaks = unique(ad_rate$year)) +  # Show each year on the x-axis
-  scale_y_continuous(name = "Proportion Adopted") +
+  scale_y_continuous(name = "% Adopted") +
   labs(title = "Adoption Rate Over Time", subtitle = "Different rates of adoption across years") +
   theme_minimal() +
   theme(axis.line.x = element_line(color = "black", linewidth = 0.5),  # Add x-axis line
         axis.line.y = element_line(color = "black", linewidth = 0.5), # Add y-axis line
         plot.margin = margin(0,1.5,0,0,"cm"),
         legend.position = "none") + 
-  geom_text(data = label_positions, aes(label = adoption, y = value ), hjust = -0.2, vjust = -0, color="black", show.legend = FALSE) # Adjust label positions
+  geom_text(data = label_positions, aes(label = adoption, y = 100*value ), hjust = -0.2, vjust = -0, color="black", show.legend = FALSE) # Adjust label positions
 
 # Assuming ad_rate is your data.frame or data.table
 ad_rate[,adoption_perc:=100*as.numeric(as.character(adoption))]
