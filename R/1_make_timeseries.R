@@ -60,7 +60,7 @@ if(F){
   folders <- list.dirs(working_dir, recursive = FALSE)
   
 # Plan for parallelization. Adjust 'workers' to suit your machine
-  set_parallel_plan(n_cores=10,use_multisession=F)
+  set_parallel_plan(n_cores=10,use_multisession=T)
   
 # Wrap the future_lapply call in a 'with_progress' block
 existing_files_list <- with_progress({
@@ -145,6 +145,16 @@ fwrite(
 )
 }
 
+hazard_completion[,c("scenario","model"):=tstrsplit(scenario,"_")]
+
+dcast(hazard_completion[,.(model,scenario,`NDD-NDD`)],model~scenario)
+dcast(hazard_completion[,.(model,scenario,`PTOT-PTOT`)],model~scenario)
+dcast(hazard_completion[,.(model,scenario,`TAI-TAI`)],model~scenario)
+dcast(hazard_completion[,.(model,scenario,`TMAX-TMAX`)],model~scenario)
+dcast(hazard_completion[,.(model,scenario,`TMIN-TMIN`)],model~scenario)
+dcast(hazard_completion[,.(model,scenario,`NDWL0-NDWL0`)],model~scenario)
+dcast(hazard_completion[,.(model,scenario,`NDWS-NDWS`)],model~scenario)
+
   ## 2.2) Check file integrity ####
 # This section verifies that each tif file can be loaded using terra::rast.
 # It runs in parallel with a progress bar and uses tryCatch to record any files that 
@@ -156,7 +166,7 @@ delete_corrupt <- FALSE  # Change to TRUE to delete problematic files
 # Gather all files from historical and future directories
 files <- list.files(
   working_dir, 
-  pattern = "^NDWS.*\\.tif$", 
+  pattern = ".tif$", 
   recursive = TRUE, 
   full.names = TRUE
 )
@@ -257,28 +267,35 @@ ggcmi_cc <- ggcmi_cc[[c("planting_month", "maturity_month")]]
 # Load hazard metadata (e.g., for each variable.code, an associated function like "sum" or "mean")
 haz_meta <- unique(data.table::fread(haz_meta_url)[, c("variable.code", "function")])
 
-# Core hazard variables
+#  Core hazard variables
 hazards_heat <- c("HSH","NTx35", "NTx40", "TAVG", "THI", "TMIN", "TMAX")
 hazards_wet<- c("NDWL0", "NDWS", "PTOT", "TAI","NDD")
-
 hazards<-c(hazards_wet,hazards_heat)
 
-# If needed, add in more heat thresholds
-if (F) {
-  hazards2 <- paste0("NTx", c(20:34, 36:39, 41:50))
-  haz_meta <- rbind(
-    haz_meta, 
-    data.table(variable.code = hazards2, `function` = "mean")
-  )
-  hazards <- c(hazards, hazards2)
+if(grepl("gddp",working_dir)){
+  hazards<-hazards[!hazards %in% c("NTx40","NTx35","HSH","THI","TAVG")]
+  hazards<-c(hazards,"NTX30","NTX35")
+    }else{
+  # If needed, add in more heat thresholds
+  if (F) {
+    hazards2 <- paste0("NTx", c(20:34, 36:39, 41:50))
+    haz_meta <- rbind(
+      haz_meta, 
+      data.table(variable.code = hazards2, `function` = "mean")
+    )
+    hazards <- c(hazards, hazards2)
+  }
 }
 
 cat("Timeseries hazards = ",hazards,"\n")
 
 # 5) Set analysis parameters ####
+# Create ensembles?
+do_ensemble<-F
+
 # Should existing data be overwritten (T) or skipped (F)
-overwrite=T
-overwrite_ensemble=T
+overwrite<-T
+overwrite_ensemble<-T
 
 # Number of workers/cores to use with future.apply
 worker_n <-16
@@ -310,7 +327,7 @@ parameters  <- data.table(
 
 # Subset to annual & jagermeyr (until viable sos dataset found) ####
 # Remove use_eos option
-parameters<-parameters[use_eos!=T|is.na(use_eos)]
+parameters<-parameters[use_sos_cc!="yes"|is.na(use_sos_cc)]
 
 cat("Timeseries parameters = \n")
 print(parameters)
@@ -320,7 +337,14 @@ folders_x_hazards <- expand.grid(
     folders = folders,
     hazards = hazards
   )
+
 folders_x_hazards$folder_path<-file.path(working_dir, folders, hazards)
+
+# Check paths exist, exclude GCMS with missing folders
+folders_x_hazards$folder_exists<-dir.exists(folders_x_hazards$folder_path)
+incomplete<-unique(unlist(tstrsplit(folders_x_hazards[folders_x_hazards$folder_exists==F,"folders"],"_",keep=2)))
+
+folders_x_hazards<-folders_x_hazards[!grepl(paste(incomplete,collapse="|"),folders),]
 
 cat("There are",nrow(folders_x_hazards),"rows in the folder_x_hazards table.\n")
 
@@ -364,9 +388,6 @@ for (ii in 1:nrow(parameters)) {
         # We'll just use the standard GGCMI planting and maturity months
         r_cal <- ggcmi_cc
         save_dir <- file.path(output_dir, subfolder_name)
-        if (!dir.exists(save_dir)) {
-          dir.create(save_dir, recursive = TRUE)
-        }
       } else {
         # If using start-of-season from the sos_rast
         s1_name <- if (use_eos == TRUE) {
@@ -388,16 +409,17 @@ for (ii in 1:nrow(parameters)) {
             if (season == 1) { s1_name } else { s2_name }
           )
         )
-        if (!dir.exists(save_dir)) {
-          dir.create(save_dir, recursive = TRUE)
-        }
       }
     } else {
       # No crop calendar usage => we do everything in one pass
       r_cal <- ggcmi_cc
-      save_dir <- save_dir1
+      save_dir <- file.path(output_dir, subfolder_name)
+      }
+
+    if (!dir.exists(save_dir)) {
+      dir.create(save_dir, recursive = TRUE)
     }
-    
+        
     cat("Save path = ",save_dir,"\n")
     
     # If we are using the SOS approach, then we assign planting and maturity months 
@@ -442,8 +464,8 @@ for (ii in 1:nrow(parameters)) {
       # Use parallel processing if worker_n > 1
       set_parallel_plan(n_cores=worker_n,use_multisession=use_multisession)
       future::plan()
-      message("Available cores: ", future::availableCores())
-      message("Max workers: ", future::nbrOfWorkers())
+      cat("Available cores: ", future::availableCores(),"\n")
+      cat("Selected number of workers: ", future::nbrOfWorkers(),"\n")
       progressr::handlers(global = TRUE)
       progressr::handlers("progress")
       
@@ -501,6 +523,8 @@ for (ii in 1:nrow(parameters)) {
       )
     }
     
+    
+    if(do_ensemble){
     # -------------------------------------------------------------------------
     # 7) Create ensembles (mean, SD) across all models for each scenario/time 
     # combination. This looks for .tif outputs, groups them, and produces 
@@ -531,7 +555,7 @@ for (ii in 1:nrow(parameters)) {
       time     = time,
       stringsAsFactors = FALSE
     )
-    
+
     cat("Ensembling parameter set",ii,"scenarios x hazards x times = ",nrow(scen_haz_time),"| season",season,"/",n_seasons,"\n")
     
     # Use foreach parallel approach for ensemble creation
@@ -572,7 +596,8 @@ for (ii in 1:nrow(parameters)) {
         var_unique <- unique(var)
         
         # For each subvariable, generate ensemble mean & SD
-        for (p in seq_along(var_unique)) {
+
+          for (p in seq_along(var_unique)) {
           haz_files_ss <- haz_files[var == var_unique[p]]
           # Replace the model part of the name with "ENSEMBLE"
           savename_ensemble <- gsub(
@@ -640,6 +665,7 @@ for (ii in 1:nrow(parameters)) {
             gc()
           }
         }
+        
         return(i)
       })
     })
@@ -651,7 +677,7 @@ for (ii in 1:nrow(parameters)) {
     cat("Ensembling of parameter set",ii,"complete\n")
   }
 }
-
+}
 cat("Time series extraction of hazards completed.")
 
 # 7) Check integrity of results ####
