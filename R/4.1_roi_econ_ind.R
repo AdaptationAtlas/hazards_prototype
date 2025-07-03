@@ -256,7 +256,7 @@ data_benefit<-arrow::read_parquet(file)
   
   cat(
   "End of project ( year",project_years,"):\n",
-  "cost =",project_cost,"\n",
+  paste0("cost = ",round(project_cost/10^6,2),"M"),"\n",
   "discount rate = ",discount_rate,"\n",
   data_ss[nrow(data_ss),paste0("IRR = ",round(irr*100,2),"%")],"\n",
   data_ss[nrow(data_ss),paste0("MIRR = ",round(mirr*100,2),"%")],"\n",
@@ -272,20 +272,8 @@ data_benefit<-arrow::read_parquet(file)
     theme(panel.grid.minor = element_blank(),
           legend.position = "bottom")
   
- 
-  
-  # IRR and MIRR over time
-  ggplot(data_ss) +
-    geom_line(aes(x = year, y = irr, color = "IRR"), size = 1.1) +
-    geom_line(aes(x = year, y = mirr, color = "MIRR"), size = 1.1) +
-    scale_color_manual(values = c("IRR" = "purple", "MIRR" = "orange")) +
-    labs(title = "Internal Rates of Return (IRR & MIRR)",
-         x = "Year", y = "Rate", color = "Metric") +
-    theme_lineplot
-  
-  
-  # BCR
-  
+
+  # BCR=
   # Define scaling constants manually
   bcr_range <- range(data_ss$discounted_bcr, na.rm = TRUE)
   benefit_range <- range(data_ss$project_benefit_cum, na.rm = TRUE)
@@ -302,7 +290,7 @@ data_benefit<-arrow::read_parquet(file)
     geom_col(aes(y = adoption_scaled, fill = "Cumulative Adoption"), alpha = 0.3, width = 0.8) +
     
     # Lines for benefits and BCR
-    geom_line(aes(y = project_benefit_cum, color = "Cumulative Benefit"), size = 1.1) +
+    geom_line(aes(y = npv, color = "NPV"), size = 1.1) +
     geom_line(aes(y = discounted_benefit_cum, color = "Discounted Benefit"), size = 1.1) +
     geom_line(aes(y = discounted_cost_cum, color = "Discounted Cost"), size = 1.1) +
     geom_line(aes(y = bcr_scaled, color = "Discounted BCR"), size = 1.1, linetype = "dashed") +
@@ -331,10 +319,10 @@ data_benefit<-arrow::read_parquet(file)
     ) +
     scale_color_manual(
       name = "Line Metrics",
-      values = c("Cumulative Benefit" = "darkgreen",
-                 "Discounted Benefit" = "purple",
+      values = c("Discounted Benefit" = "purple",
                  "Discounted Cost" = "red",
-                 "Discounted BCR" = "steelblue")
+                 "Discounted BCR" = "steelblue",
+                 "NPV" = "green")
     ) +
     scale_fill_manual(
       name = "Bar Metric",

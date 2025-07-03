@@ -2,21 +2,11 @@
 # https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/fao_producer_prices.R
 # https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/fao_producer_prices_livestock.R
 
-# Install and load packages ####
-load_and_install_packages <- function(packages) {
-  for (package in packages) {
-    if (!require(package, character.only = TRUE)) {
-      install.packages(package)
-      library(package, character.only = TRUE)
-    }
-  }
-}
-
 # List of packages to be loaded
-packages <- c("countrycode", 
-              "data.table", 
-              "pbapply",
-              "terra")
+pacman::p_load(countrycode, 
+              data.table, 
+              pbapply,
+              terra)
 
 # Call the function to install and load packages
 load_and_install_packages(packages)
