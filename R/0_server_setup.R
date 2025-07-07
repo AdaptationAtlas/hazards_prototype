@@ -9,7 +9,7 @@
 # Once this script completes, your workspace is ready for more detailed hazards analysis. 
 # The workflow is dependent on the outputs of the https://github.com/AdaptationAtlas/hazards pipeline
 
-  # 0.1) Load packages and functions #####
+  ## 0.1) Load packages and functions #####
   # Install and load pacman if not already installed
   if (!require("pacman", character.only = TRUE)) {
     install.packages("pacman")
@@ -30,7 +30,7 @@
   # Source additional functions used in this workflow from GitHub
   source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
   
-  # 0.2) Set timeframes #####
+  ## 0.2) Set timeframes #####
   # Possible timeframe calculations, e.g., "annual", "sos_primary_fixed_3", etc.
   timeframe_choices <- c(
     "annual",
@@ -45,18 +45,10 @@
     #"sos_secondary_fixed_5"
   )
   
-  # 0.3) CHOOSE CLIMATE DATA SOURCE ####
+  ## 0.3) Set climate date source ####
   # nexgddp or atlas_delta
   climdat_source<-"nexgddp"
-  cat("Climate data source = ",climdat_source,"\n")
-# 1) Setup workspace ####
-# Increase download timeout (in seconds) to avoid timeouts during large data pulls
-options(timeout = 600)
-
-# Increase GDAL cache size for faster raster processing
-terra::gdalCache(60000)
-
-  ## 1.1) Record R-project location #####
+  ## 0.3) Record R-project location #####
   # Function to add or update an environment variable in the .Renviron file
   set_env_variable <- function(var_name, var_value, renviron_file = "~/.Renviron") {
     # Read the .Renviron file if it exists
@@ -96,12 +88,12 @@ terra::gdalCache(60000)
   # Confirm project_dir was set
   (project_dir <- Sys.getenv("project_dir"))
   
-  ## 1.2) Change working directory according to compute facility #####
+  ## 0.4) Change working directory according to compute facility #####
   Cglabs <- FALSE
   if (project_dir == "/home/jovyan/atlas/hazards_prototype") {
     # cglabs environment
     if(climdat_source=="atlas_delta"){
-    working_dir <- "/home/jovyan/common_data/hazards_prototype"
+      working_dir <- "/home/jovyan/common_data/hazards_prototype"
     }
     
     if(climdat_source=="nexgddp"){
@@ -138,6 +130,47 @@ terra::gdalCache(60000)
   # Set the working directory
   setwd(working_dir)
   
+  ## 0.5) Indices directory (raw monthly hazard data) ####
+  if (Cglabs) {
+    if(climdat_source=="atlas_delta"){
+      # For cglabs users
+      indices_dir <- "/home/jovyan/common_data/atlas_hazards/cmip6/indices"
+      indices_dir2 <- "/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
+    }
+    
+    if(climdat_source=="nexgddp"){
+      # For cglabs users
+      indices_dir <- "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices"
+      indices_dir2 <- "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices_seasonal"
+    }
+    
+  } else {
+    cat("Indice files are currently only available in CGlabs. Download functionality for the raw data is on the to-do list.\n",
+        "See https://github.com/AdaptationAtlas/hazards if you need to replicate monthly hazard data creation.\n")
+  }
+  
+  
+  cat("Climate data source = ",climdat_source,"\n")
+  
+  ## 0.6) Base Raster ####
+    if(climdat_source=="atlas_delta"){
+      # Load a reference/base raster used for resampling or extent alignment
+      base_rast_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
+      base_rast <- terra::rast(base_rast_url)
+      base_rast_path <- file.path(project_dir, "metadata", "base_raster.tif")
+    }else{
+      base_rast_path<-file.path(indices_dir,"ssp126_ACCESS-ESM1-5_2021_2040/NDD/NDD-2021-01.tif")
+      base_rast<-terra::rast(base_rast_path)
+    }
+  
+# 1) Setup workspace ####
+# Increase download timeout (in seconds) to avoid timeouts during large data pulls
+options(timeout = 600)
+
+# Increase GDAL cache size for faster raster processing
+terra::gdalCache(60000)
+
+
 # 2) Create directory structures ####
   ## 2.1) Local directories #####
     atlas_data <- read_json(file.path(project_dir, "metadata/data.json"))
@@ -208,25 +241,7 @@ terra::gdalCache(60000)
     }
     
     ### 2.1.2) Inputs #####
-    # Indices directory (raw monthly hazard data)
-    if (Cglabs) {
-      if(climdat_source=="atlas_delta"){
-        # For cglabs users
-      indices_dir <- "/home/jovyan/common_data/atlas_hazards/cmip6/indices"
-      indices_dir2 <- "/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
-      }
-      
-      if(climdat_source=="nexgddp"){
-        # For cglabs users
-        indices_dir <- "/home/jovyan/common_data/nex-gddp-cmip6_indices"
-        indices_dir2 <- "/home/jovyan/common_data/nex-gddp-cimp6_indices-seasonal"
-      }
-      
-    } else {
-      cat("Indice files are currently only available in CGlabs. Download functionality for the raw data is on the to-do list.\n",
-          "See https://github.com/AdaptationAtlas/hazards if you need to replicate monthly hazard data creation.\n")
-    }
-    
+
     # Create new entries in atlas_dirs$data_dir for various directories beyond hazard outputs
     # atlas_dirs$data_dir$Boundaries         <- atlas_data$boundaries$alternate_paths$project # Created directly
     atlas_dirs$data_dir$GLPS               <- file.path(atlas_dirs$data_dir[[1]], "GLPS")
@@ -458,17 +473,6 @@ terra::gdalCache(60000)
       s3$file_download(files_s3[i], file, overwrite = TRUE)
     }
   }
-  
-  ## 3.3) Base Raster #####
-  if(climdat_source=="atlas_delta"){
-  # Load a reference/base raster used for resampling or extent alignment
-  base_rast_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
-  base_rast <- terra::rast(base_rast_url)
-  base_rast_path <- file.path(project_dir, "metadata", "base_raster.tif")
-  }else{
-    base_rast<-terra::rast(file.path(indices_dir,"ssp126_ACCESS-CM2/NDD/NDD-2021-01.tif"))
-  }
-  # Typically you might save this locally if you need repeated use.
   
   ## 3.4) GLW #####
   update <- FALSE
