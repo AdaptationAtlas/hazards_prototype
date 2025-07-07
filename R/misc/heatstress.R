@@ -3,6 +3,8 @@
 # By: H. Achicanoy & P. Steward
 # April 2024
 
+cat("Running script R/misc/heatstress.R \n")
+
 # 0) Directory Setup ####
 root_dir            <- "/home/jovyan/common_data"  # Base directory for common data storage
 ref_raster_path     <- file.path(root_dir, "atlas_hazards", "roi", "africa.tif")
@@ -11,7 +13,19 @@ chirts_path_africa  <- file.path(root_dir, "chirts_africa", "Tmax")
 hist_index_dir      <- file.path(root_dir, "atlas_hazards", "cmip6", "indices", "historical")
 future_chirts_base  <- file.path(root_dir, "chirts_cmip6_africa")
 future_index_base   <- file.path(root_dir, "atlas_hazards", "cmip6", "indices")
+do_historical<-T
+gcms    <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
+nexgddp<-F
 
+# If nex-gddp
+nexgddp<-T
+ref_raster_path     <- file.path(indices_dir,"ssp126_ACCESS-ESM1-5_2021_2040/NDD/NDD-2021-01.tif")
+future_chirts_base   <- file.path(root_dir, "nex-gddp-cmip6_raw/tasmax")
+future_index_base   <- file.path(root_dir, "atlas_nex-gddp_hazards", "cmip6", "indices")
+do_historical<-F
+gcms<-basename(list.dirs(file.path(future_chirts_base,"ssp126"))[-1])
+
+# NEED TO MODIFY FUNCTOINS TO USE THE Nex-gddp file/folder structure
 
 # 1) R Options and Environment Setup ####
 options(warn = -1, scipen = 999)
@@ -35,11 +49,13 @@ suppressMessages(pacman::p_load(tidyverse, terra, gtools, lubridate, future, fur
 #' @return No return value. Raster files are written to disk.
 #' @import terra lubridate purrr
 #' @export
-calc_ntx <- function(tx_pth, yr, mn, thr = 40, out_dir, verbose = FALSE) {
+calc_ntx <- function(tx_pth, yr, mn, thr = 40, out_dir, verbose = FALSE,nexgddp=F,overwrite=F) {
   thr <- as.numeric(thr)
   outfile <- paste0(out_dir, "/NTx", thr, "/NTx", thr, "-", yr, "-", mn, ".tif")
-  thr <- thr[!file.exists(outfile)]
-  outfile <- outfile[!file.exists(outfile)]
+  if(overwrite==F){
+    thr <- thr[!file.exists(outfile)]
+    outfile <- outfile[!file.exists(outfile)]
+  }
   
   if (length(outfile) > 0) {
     # Create required directories
@@ -52,11 +68,33 @@ calc_ntx <- function(tx_pth, yr, mn, thr = 40, out_dir, verbose = FALSE) {
                by   = "day")
     
     # Construct file paths for daily maximum temperature data
-    fls <- paste0(tx_pth, "/", yr, "/Tmax.", gsub(pattern = "-", replacement = ".", x = dts, fixed = TRUE), ".tif")
-    fls <- fls[file.exists(fls)]
+    if(nexgddp){
+      fls <- list.files(tx_pth,paste0(yr,".nc"),full.names = T)
+      # !!! Need to subset to corresponding month
+      tmx <- terra::rast(fls)
+      
+      # Extract time values from the raster
+      dates <- time(tmx)
+      
+      # Convert to months
+      month_vals <- as.integer(format(dates, "%m"))
+      
+      # Identify which layers belong to month `mn`
+      selected_layers <- which(month_vals == as.integer(mn))
+      
+      # Subset the SpatRaster
+      tmx <- tmx[[selected_layers]]
+      
+      # Convert from K ro celcius
+      tmx<-tmx- 273.15
+      
+    }else{
+      fls <- paste0(tx_pth, "/", yr, "/Tmax.", gsub(pattern = "-", replacement = ".", x = dts, fixed = TRUE), ".tif")
+      fls <- fls[file.exists(fls)]
+      tmx <- terra::rast(fls)
+    }
     
-    # Read and preprocess maximum temperature data
-    tmx <- terra::rast(fls)
+
     tmx <- classify(tmx, rcl = cbind(-9999, NA))
     
     # Loop through thresholds and compute NTx
@@ -65,7 +103,9 @@ calc_ntx <- function(tx_pth, yr, mn, thr = 40, out_dir, verbose = FALSE) {
         cat("...processing n=", length(outfile), "files for yr=", yr, "/ mn=", mn, "/ thr=", thr[j], "\n")
       }
       ntxval <- sum(classify(tmx, matrix(c(-Inf, thr[j], 0, thr[j], Inf, 1), ncol = 3, byrow = TRUE)), na.rm = TRUE)
-      terra::writeRaster(ntxval, filename = outfile[j], overwrite = TRUE)
+      terra::writeRaster(ntxval, filename = outfile[j], overwrite = TRUE,
+                         filetype = 'COG',
+                         gdal = c("COMPRESS=ZSTD", "of=COG"))
     }
     
     # Clean up memory
@@ -73,7 +113,6 @@ calc_ntx <- function(tx_pth, yr, mn, thr = 40, out_dir, verbose = FALSE) {
     gc(verbose = FALSE, full = TRUE, reset = TRUE)
   }
 }
-
 
 #' Process a Raster File by Cropping and Masking
 #'
@@ -143,25 +182,40 @@ thresholds   <- 20:50                   # NTx thresholds to calculate
 sce_climates <- c("historical", "future") # Scenario types: historical and future
 
 # Future climate data parameters
-gcms    <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
 ssps    <- c("ssp126", "ssp245", "ssp370", "ssp585")
 prds    <- c("2021_2040", "2041_2060", "2061_2080", "2081_2100")
 baseline_yrs <- 1995:2014                # Historical baseline period
 cores        <- floor(parallel::detectCores() * 0.33) # Cores for parallel processing
 
-
 # 4) Prepare Historical CHIRTS Data ####
-tx_pth_hist <- chirts_path_hist
-tx_pth_hist_af <- chirts_path_africa
-
-if (!dir.exists(tx_pth_hist_af)) {
-  process_raster_wrap(old_path = tx_pth_hist,
-                      new_path = tx_pth_hist_af,
-                      cores = cores,
-                      mask = ref)
+if(do_historical){
+  tx_pth_hist <- chirts_path_hist
+  tx_pth_hist_af <- chirts_path_africa
+  
+  if (!dir.exists(tx_pth_hist_af)) {
+    process_raster_wrap(old_path = tx_pth_hist,
+                        new_path = tx_pth_hist_af,
+                        cores = cores,
+                        mask = ref)
+  }
+  
+  tx_pth_hist <- tx_pth_hist_af
+  sce_climates <- c("historical", "future") # Scenario types: historical and future
+}else{
+  sce_climates <- "future"
 }
 
-tx_pth_hist <- tx_pth_hist_af
+cat("Parameters:",
+    "\n nexgddp =",nexgddp,
+    "\n ref_raster_path =",ref_raster_path,
+    "\n future_chirts_base =",future_chirts_base,
+    "\n future_index_base =",future_index_base,
+    "\n do_historical =",do_historical,
+    "\n gcms = ",gcms,
+    "\n ssps =",ssps,
+    "\n prds =",prds,
+    "\n cores =",cores,
+    "\n sce_climates =",sce_climates)
 
 # 5) Perform Calculations for Historical and Future Scenarios ####
 for (sce_climate in sce_climates) {
@@ -212,7 +266,11 @@ for (sce_climate in sce_climates) {
           names(stp) <- c("yrs", "mns")
           stp <- stp %>% arrange(yrs, mns) %>% as.data.frame()
           
-          tx_pth <- file.path(future_chirts_base, paste0("Tmax_", gcm, "_", ssp, "_", prd))
+          if(nexgddp){
+            tx_pth <- file.path(future_chirts_base,ssp,gcm)
+          }else{
+            tx_pth <- file.path(future_chirts_base, paste0("Tmax_", gcm, "_", ssp, "_", prd))
+          }
           out_dir <- file.path(future_index_base, cmb)
           
           # Check for existing output files
@@ -235,7 +293,7 @@ for (sce_climate in sce_climates) {
               
               1:nrow(stp) %>% furrr::future_map(.f = function(i) {
                 p(message = paste("Processing row", i, "of", nrow(stp)))
-                suppressMessages(calc_ntx(tx_pth = tx_pth, yr = stp$yrs[i], mn = stp$mns[i], thr = thresholds, out_dir = out_dir))
+                suppressMessages(calc_ntx(tx_pth = tx_pth, yr = stp$yrs[i], mn = stp$mns[i], thr = thresholds, out_dir = out_dir,nexgddp=nexgddp))
                 tmpfls <- list.files(tempdir(), full.names = TRUE)
                 unlink(tmpfls, recursive = TRUE, force = TRUE)
               })
