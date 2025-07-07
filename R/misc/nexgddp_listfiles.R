@@ -1,3 +1,5 @@
+require(data.table)
+
 fls <- system("aws s3 ls s3://nex-gddp-cmip6/ --no-sign-request --recursive", intern = TRUE)
 nms <- strsplit(fls, split = '/') |> purrr::map(6) |> unlist()
 
