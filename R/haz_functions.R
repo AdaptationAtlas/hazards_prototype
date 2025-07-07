@@ -1281,7 +1281,7 @@ hazard_stacker <- function(i, folders_x_hazards, haz_meta, model_names, use_crop
     if (!file.exists(savename) | overwrite == T) {
       if (folders_x_hazards$hazards[i] == "TAI") {
         # For TAI, process as before
-        cat('\r', "cc =", use_crop_cal, "| fixed =", !use_eos, "|", scenario, "-", variable2, "-", stat)
+        cat('\r', "cc =", use_crop_cal, "| fixed =", !use_eos, "|", scenario, "-", variable2, "-", stat,"\n")
         flush.console()
         
         haz_rast_years <- terra::rast(haz_files1)
@@ -1317,7 +1317,7 @@ hazard_stacker <- function(i, folders_x_hazards, haz_meta, model_names, use_crop
         # Process each year in parallel using future.apply
         haz_rast_years_list <- future.apply::future_lapply(1:(length(years) - 1), FUN = function(m) {
           # Print progress (retain original message; ensure 'season' is defined externally)
-          cat('\r', "cc = ", use_crop_cal, "| fixed =", !use_eos, " | season = ", season, " |", scenario, "-", variable2, "-", stat, "-", years[m], " | i = ", i)
+          cat('\r', "cc = ", use_crop_cal, "| fixed =", !use_eos, " | season = ", season, " |", scenario, "-", variable2, "-", stat, "-", years[m], " | i = ", i,"\n")
           flush.console()
           
           # Subset haz_rast to increase efficiency
