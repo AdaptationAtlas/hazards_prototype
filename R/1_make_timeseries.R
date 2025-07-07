@@ -143,7 +143,7 @@ fwrite(
   hazard_completion,
   file.path(working_dir,paste0("indice_completion_",Sys.time(),".csv"))
 )
-}
+
 
 hazard_completion[,c("scenario","model"):=tstrsplit(scenario,"_")]
 
@@ -154,6 +154,7 @@ dcast(hazard_completion[,.(model,scenario,`TMAX-TMAX`)],model~scenario)
 dcast(hazard_completion[,.(model,scenario,`TMIN-TMIN`)],model~scenario)
 dcast(hazard_completion[,.(model,scenario,`NDWL0-NDWL0`)],model~scenario)
 dcast(hazard_completion[,.(model,scenario,`NDWS-NDWS`)],model~scenario)
+}
 
   ## 2.2) Check file integrity ####
 # This section verifies that each tif file can be loaded using terra::rast.
@@ -217,6 +218,10 @@ folders <- folders[!grepl("ENSEMBLE|ipyn|gadm0|hazard_comb|indices_seasonal", fo
 #folders <- folders[!grepl("ssp126|ssp370|2061_2080|2081_2100", folders)] 
 folders <- basename(folders)
 
+# Temporarily limit folders to 5 atlas gcms ####
+gcms    <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
+folders<-grep(paste(gcms,collapse="|"),folders,value=T)
+
 # Extract the model names (assuming each folder has a structure like scenario_model_yearrange)
 model_names <- unique(unlist(tstrsplit(folders[!grepl("histor", folders)], "_", keep = 2)))
 
@@ -273,8 +278,8 @@ hazards_wet<- c("NDWL0", "NDWS", "PTOT", "TAI","NDD")
 hazards<-c(hazards_wet,hazards_heat)
 
 if(grepl("gddp",working_dir)){
-  hazards<-hazards[!hazards %in% c("NTx40","NTx35","HSH","THI","TAVG")]
-  hazards<-c(hazards,"NTX30","NTX35")
+  hazards<-hazards[!hazards %in% c("NTx40","HSH","THI","TAVG")]
+  hazards<-c(hazards,"NTx30")
     }else{
   # If needed, add in more heat thresholds
   if (F) {
@@ -294,7 +299,7 @@ cat("Timeseries hazards = ",hazards,"\n")
 do_ensemble<-F
 
 # Should existing data be overwritten (T) or skipped (F)
-overwrite<-T
+overwrite<-F
 overwrite_ensemble<-T
 
 # Number of workers/cores to use with future.apply
@@ -325,7 +330,7 @@ parameters  <- data.table(
   subfolder_name = c("annual", "jagermeyr", "sos", "sos", "sos", "sos")
 )
 
-# Subset to annual & jagermeyr (until viable sos dataset found) ####
+  # Subset to annual & jagermeyr (until viable sos dataset found) ####
 # Remove use_eos option
 parameters<-parameters[use_sos_cc!="yes"|is.na(use_sos_cc)]
 
@@ -335,16 +340,23 @@ print(parameters)
 # Create combinations of folders and hazards for iteration
 folders_x_hazards <- expand.grid(
     folders = folders,
-    hazards = hazards
+    hazards = hazards,
+    stringAsFactors = F
   )
 
-folders_x_hazards$folder_path<-file.path(working_dir, folders, hazards)
+folders_x_hazards$folder_path<-file.path(working_dir, folders_x_hazards$folders, folders_x_hazards$hazards)
 
 # Check paths exist, exclude GCMS with missing folders
 folders_x_hazards$folder_exists<-dir.exists(folders_x_hazards$folder_path)
-incomplete<-unique(unlist(tstrsplit(folders_x_hazards[folders_x_hazards$folder_exists==F,"folders"],"_",keep=2)))
+folders_x_hazards$file_n<-sapply(folders_x_hazards$folder_path,function(i){length(list.files(i,".tif$"))})
 
-folders_x_hazards<-folders_x_hazards[!grepl(paste(incomplete,collapse="|"),folders),]
+# Check for inconsitent file_n
+incomplete<-folders_x_hazards[!folders_x_hazards$file_n %in% c(20,240),]
+
+if(nrow(incomplete)>0){
+  stop("Check file completeness before continuing")
+}
+
 
 cat("There are",nrow(folders_x_hazards),"rows in the folder_x_hazards table.\n")
 
@@ -462,7 +474,7 @@ for (ii in 1:nrow(parameters)) {
     # -------------------------------------------------------------------------
     if (worker_n > 1) {
       # Use parallel processing if worker_n > 1
-      set_parallel_plan(n_cores=worker_n,use_multisession=use_multisession)
+      set_parallel_plan(n_cores=worker_n,use_multisession=T)
       future::plan()
       cat("Available cores: ", future::availableCores(),"\n")
       cat("Selected number of workers: ", future::nbrOfWorkers(),"\n")
