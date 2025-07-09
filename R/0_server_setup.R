@@ -47,7 +47,7 @@
   
   ## 0.3) Set climate date source ####
   # nexgddp or atlas_delta
-  climdat_source<-"nexgddp"
+  climdat_source<-"atlas_delta"
   ## 0.3) Record R-project location #####
   # Function to add or update an environment variable in the .Renviron file
   set_env_variable <- function(var_name, var_value, renviron_file = "~/.Renviron") {
@@ -504,69 +504,69 @@ terra::gdalCache(60000)
   ## 3.5) Fao stat #####
     ### 3.5.1) Deflators ######
     update <- FALSE
-    def_file <- paste0(fao_dir, "/Deflators_E_All_Data_(Normalized).csv")
-    
-    if (!file.exists(def_file) | update == TRUE) {
-      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Deflators_E_All_Data_(Normalized).zip"
-      zip_file_path <- file.path(fao_dir, basename(url))
+      def_file <- paste0(fao_dir, "/Deflators_E_All_Data_(Normalized).csv")
       
-      download.file(url, zip_file_path, mode = "wb")
-      unzip(zip_file_path, exdir = fao_dir)
-      unlink(zip_file_path)
-    }
-    
-    ### 3.5.2) Producer prices ######
-    fao_econ_file <- file.path(fao_dir, "Prices_E_Africa_NOFLAG.csv")
-    if (!file.exists(fao_econ_file)) {
-      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip"
-      zip_file_path <- file.path(fao_dir, "Prices_E_Africa.zip")
+      if (!file.exists(def_file) | update == TRUE) {
+        url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Deflators_E_All_Data_(Normalized).zip"
+        zip_file_path <- file.path(fao_dir, basename(url))
+        
+        download.file(url, zip_file_path, mode = "wb")
+        unzip(zip_file_path, exdir = fao_dir)
+        unlink(zip_file_path)
+      }
       
-      download.file(url, zip_file_path, mode = "wb")
-      unzip(zip_file_path, exdir = fao_dir)
-      unlink(zip_file_path)
-    }
-    
-    ### 3.5.3) Production ######
-    prod_file <- file.path(fao_dir, "Production_Crops_Livestock_E_Africa_NOFLAG.csv")
-    if (!file.exists(prod_file)) {
-      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip"
-      zip_file_path <- file.path(fao_dir, "Production_E_Africa.zip")
+      ### 3.5.2) Producer prices ######
+      fao_econ_file <- file.path(fao_dir, "Prices_E_Africa_NOFLAG.csv")
+      if (!file.exists(fao_econ_file) | update == TRUE) {
+        url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip"
+        zip_file_path <- file.path(fao_dir, "Prices_E_Africa.zip")
+        
+        download.file(url, zip_file_path, mode = "wb")
+        unzip(zip_file_path, exdir = fao_dir)
+        unlink(zip_file_path)
+      }
       
-      download.file(url, zip_file_path, mode = "wb")
-      unzip(zip_file_path, exdir = fao_dir)
-      unlink(zip_file_path)
-    }
-    
-    prod_file_world <- file.path(fao_dir, "Production_Crops_Livestock_E_All_Area_Groups.csv")
-    if (!file.exists(prod_file_world)) {
-      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_All_Area_Groups.zip"
-      zip_file_path <- file.path(fao_dir, "Production_Crops_Livestock_E_All_Area_Groups.zip")
+      ### 3.5.3) Production ######
+      prod_file <- file.path(fao_dir, "Production_Crops_Livestock_E_Africa_NOFLAG.csv")
+      if (!file.exists(prod_file) | update == TRUE) {
+        url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip"
+        zip_file_path <- file.path(fao_dir, "Production_E_Africa.zip")
+        
+        download.file(url, zip_file_path, mode = "wb")
+        unzip(zip_file_path, exdir = fao_dir)
+        unlink(zip_file_path)
+      }
       
-      download.file(url, zip_file_path, mode = "wb")
-      unzip(zip_file_path, exdir = fao_dir)
-      unlink(zip_file_path)
-    }
-    
-    ### 3.5.4) Value of production #####
-    vop_file <- file.path(fao_dir, "Value_of_Production_E_Africa.csv")
-    if (!file.exists(vop_file)) {
-      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip"
-      zip_file_path <- file.path(fao_dir, "Value_of_Production_E_Africa.zip")
+      prod_file_world <- file.path(fao_dir, "Production_Crops_Livestock_E_All_Area_Groups.csv")
+      if (!file.exists(prod_file_world) | update == TRUE) {
+        url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_All_Area_Groups.zip"
+        zip_file_path <- file.path(fao_dir, "Production_Crops_Livestock_E_All_Area_Groups.zip")
+        
+        download.file(url, zip_file_path, mode = "wb")
+        unzip(zip_file_path, exdir = fao_dir)
+        unlink(zip_file_path)
+      }
       
-      download.file(url, zip_file_path, mode = "wb")
-      unzip(zip_file_path, exdir = fao_dir)
-      unlink(zip_file_path)
-    }
-    
-    vop_file_world <- file.path(fao_dir, "Value_of_Production_E_All_Area_Groups.csv")
-    if (!file.exists(vop_file_world)) {
-      url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_All_Area_Groups.zip"
-      zip_file_path <- file.path(fao_dir, "Value_of_Production_E_All_Area_Groups.zip")
+      ### 3.5.4) Value of production #####
+      vop_file <- file.path(fao_dir, "Value_of_Production_E_Africa.csv")
+      if (!file.exists(vop_file) | update == TRUE) {
+        url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip"
+        zip_file_path <- file.path(fao_dir, "Value_of_Production_E_Africa.zip")
+        
+        download.file(url, zip_file_path, mode = "wb")
+        unzip(zip_file_path, exdir = fao_dir)
+        unlink(zip_file_path)
+      }
       
-      download.file(url, zip_file_path, mode = "wb")
-      unzip(zip_file_path, exdir = fao_dir)
-      unlink(zip_file_path)
-    }
+      vop_file_world <- file.path(fao_dir, "Value_of_Production_E_All_Area_Groups.csv")
+      if (!file.exists(vop_file_world) | update == TRUE) {
+        url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_All_Area_Groups.zip"
+        zip_file_path <- file.path(fao_dir, "Value_of_Production_E_All_Area_Groups.zip")
+        
+        download.file(url, zip_file_path, mode = "wb")
+        unzip(zip_file_path, exdir = fao_dir)
+        unlink(zip_file_path)
+      }
     
   ## 3.6) Highlands map #####
   update <- FALSE
