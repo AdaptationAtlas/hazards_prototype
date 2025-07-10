@@ -1,6 +1,10 @@
+# Is this script redundant?
+# fao_producer_prices_2017.csv not used 0.5,4,4.1?
+
 # Please run 0_server_setup.R before executing this script
 # 0) Install and load packages ####
 pacman::p_load(data.table,countrycode,terra)
+source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
 # Load SPAM production data ####
 file<-list.files(mapspam_dir,"SSA_P_TA.csv",full.names = T)
@@ -120,63 +124,7 @@ prod<-fread(file)
   
   # Check for missing 2017 values
   prod_price[is.na(mean)]
-  
-  # Create list of neighbouring countries ####
-  african_neighbors <- list(
-    DZA = c("TUN", "LBY", "NER", "ESH", "MRT", "MLI", "MAR"),
-    AGO = c("COG", "COD", "ZMB", "NAM"),
-    BEN = c("BFA", "NER", "NGA", "TGO"),
-    BWA = c("ZMB", "ZWE", "NAM", "ZAF"),
-    BFA = c("MLI", "NER", "BEN", "TGO", "GHA", "CIV"),
-    BDI = c("COD", "RWA", "TZA"),
-    CPV = c(),
-    CMR = c("NGA", "TCD", "CAF", "COG", "GAB", "GNQ"),
-    CAF = c("TCD", "SDN", "COD", "COG", "CMR"),
-    TCD = c("LBY", "SDN", "CAF", "CMR", "NGA", "NER"),
-    COM = c(),
-    COG = c("GAB", "CMR", "CAF", "COD", "AGO"),
-    COD = c("CAF", "SSD", "UGA", "RWA", "BDI", "TZA", "ZMB", "AGO", "COG"),
-    CIV = c("LBR", "GIN", "MLI", "BFA", "GHA"),
-    DJI = c("ERI", "ETH", "SOM"),
-    EGY = c("LBY", "SDN", "ISR", "PSE"),
-    GNQ = c("CMR", "GAB"),
-    ERI = c("ETH", "SDN", "DJI"),
-    SWZ = c("MOZ", "ZAF"),
-    ETH = c("ERI", "DJI", "SOM", "KEN", "SSD", "SDN"),
-    GAB = c("CMR", "GNQ", "COG"),
-    GMB = c("SEN"),
-    GHA = c("CIV", "BFA", "TGO"),
-    GIN = c("LBR", "SLE", "CIV", "MLI", "SEN"),
-    GNB = c("SEN", "GIN"),
-    KEN = c("ETH", "SOM", "SSD", "UGA", "TZA"),
-    LSO = c("ZAF"),
-    LBR = c("GIN", "CIV", "SLE"),
-    LBY = c("TUN", "DZA", "NER", "TCD", "SDN", "EGY"),
-    MDG = c(),
-    MWI = c("MOZ", "TZA", "ZMB"),
-    MLI = c("DZA", "NER", "BFA", "CIV", "GIN", "SEN", "MRT"),
-    MRT = c("DZA", "ESH", "SEN", "MLI"),
-    MAR = c("DZA", "ESH", "ESP"),
-    MOZ = c("ZAF", "SWZ", "ZWE", "ZMB", "MWI", "TZA"),
-    NAM = c("AGO", "BWA", "ZAF", "ZMB"),
-    NER = c("DZA", "LBY", "TCD", "NGA", "BEN", "BFA", "MLI"),
-    NGA = c("BEN", "CMR", "TCD", "NER"),
-    RWA = c("BDI", "COD", "TZA", "UGA"),
-    STP = c(),
-    SEN = c("GMB", "GIN", "GNB", "MLI", "MRT"),
-    SYC = c(),
-    SLE = c("GIN", "LBR"),
-    SOM = c("ETH", "DJI", "KEN"),
-    ZAF = c("NAM", "BWA", "ZWE", "MOZ", "SWZ", "LSO"),
-    SSD = c("CAF", "COD", "ETH", "KEN", "UGA"),
-    SDN = c("EGY", "ERI", "ETH", "SSD", "CAF", "TCD", "LBY"),
-    TZA = c("KEN", "UGA", "RWA", "BDI", "COD", "ZMB", "MWI", "MOZ"),
-    TGO = c("BEN", "BFA", "GHA"),
-    TUN = c("DZA", "LBY"),
-    UGA = c("KEN", "SSD", "COD", "RWA", "TZA"),
-    ZMB = c("AGO", "COD", "MWI", "MOZ", "NAM", "TZA", "ZWE"),
-    ZWE = c("BWA", "MOZ", "ZAF", "ZMB")
-  )
+
   
   # Fill in gaps with mean of neighbours ####
   avg_neighbours<-function(iso3,crop,neighbours,prod_price){
@@ -194,14 +142,6 @@ prod<-fread(file)
   # Check for remaining gaps
   prod_price[is.na(mean) & is.na(mean_neighbours)]
   
-  # Create list of regions ####
-  regions <- list(
-    East_Africa = c("BDI", "COM", "DJI", "ERI", "ETH", "KEN", "MDG", "MUS", "MWI", "RWA", "SYC", "SOM", "SSD", "TZA", "UGA"),
-    Southern_Africa = c("BWA", "LSO", "NAM", "SWZ", "ZAF", "ZMB", "ZWE","MOZ"),
-    West_Africa = c("BEN", "BFA", "CPV", "CIV", "GMB", "GHA", "GIN", "GNB", "LBR", "MLI", "MRT", "NER", "NGA", "SEN", "SLE", "TGO"),
-    Central_Africa = c("AGO", "CMR", "CAF", "TCD", "COD", "COG", "GNQ", "GAB", "STP"),
-    North_Africa = c("DZA", "EGY", "LBY", "MAR", "SDN", "TUN")
-  )
   # Check if any countries not represented in regions
   if(F){
     X<-prod_price[,unique(iso3)]
