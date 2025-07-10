@@ -24,9 +24,7 @@
 #
 # Dependencies:
 # Run these scripts before executing this one:
-# 1. fao_producer_prices.R
-# 2. fao_producer_prices_livestock.R
-# 3. fao_production_cv.R
+# 1. 0.6_process_exposure.R
 #   Available at: https://github.com/AdaptationAtlas/hazards_prototype
 #
 # ======================================================================
