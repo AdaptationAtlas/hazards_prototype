@@ -34,6 +34,8 @@
 #
 # Please run 0_server_setup.R before executing this script
 
+cat("Started Script 1 - Time series extraction of hazards\n")
+
 # 1) Load R functions & packages ####
 # Using pacman::p_load for convenient loading of multiple packages, including data.table and progressr.
 pacman::p_load(
@@ -253,20 +255,20 @@ if(F){
 }
 
   ## 3.2) Load & process ggcmi crop calendar #####
-# The GGCMI crop calendar data (planting and maturity days).
-ggcmi_cc <- terra::rast(file.path(ggcmi_dir, "mai_rf_ggcmi_crop_calendar_phase3_v1.01.nc4"))
-# Crop the data to match base_rast extent, then resample to align cell size & origin
-ggcmi_cc <- terra::crop(ggcmi_cc, base_rast)
-ggcmi_cc <- terra::resample(ggcmi_cc, base_rast, method = "near")
-# Convert planting & maturity day-of-year to month-of-year
-ggcmi_cc$planting_month <- as.numeric(
-  format(as.Date(ggcmi_cc$planting_day[], origin = as.Date("2024-01-01")), "%m")
-)
-ggcmi_cc$maturity_month <- as.numeric(
-  format(as.Date(ggcmi_cc$maturity_day[], origin = as.Date("2024-01-01")), "%m")
-)
-# Keep just the planting_month and maturity_month layers
-ggcmi_cc <- ggcmi_cc[[c("planting_month", "maturity_month")]]
+  # The GGCMI crop calendar data (planting and maturity days).
+  ggcmi_cc <- terra::rast(file.path(ggcmi_dir, "mai_rf_ggcmi_crop_calendar_phase3_v1.01.nc4"))
+  # Crop the data to match base_rast extent, then resample to align cell size & origin
+  ggcmi_cc <- terra::crop(ggcmi_cc, base_rast)
+  ggcmi_cc <- terra::resample(ggcmi_cc, base_rast, method = "near")
+  # Convert planting & maturity day-of-year to month-of-year
+  ggcmi_cc$planting_month <- as.numeric(
+    format(as.Date(ggcmi_cc$planting_day[], origin = as.Date("2024-01-01")), "%m")
+  )
+  ggcmi_cc$maturity_month <- as.numeric(
+    format(as.Date(ggcmi_cc$maturity_day[], origin = as.Date("2024-01-01")), "%m")
+  )
+  # Keep just the planting_month and maturity_month layers
+  ggcmi_cc <- ggcmi_cc[[c("planting_month", "maturity_month")]]
 
 # 4) Choose hazards #####
 # Load hazard metadata (e.g., for each variable.code, an associated function like "sum" or "mean")
