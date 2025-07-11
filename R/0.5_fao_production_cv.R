@@ -6,10 +6,13 @@
 pacman::p_load(countrycode, 
               data.table, 
               pbapply,
-              terra)
+              terra,
+              arrow,
+              geoarrow,
+              sp)
 
 # Call the function to install and load packages
-load_and_install_packages(packages)
+source(file.path(project_dir,"R/haz_functions.R"))
 
 # Create functions ####
 transform_fao<-function(data,element,exclude_units,lps2fao,spam2fao,remove_countries,keep_years,add_missing=T){
@@ -74,72 +77,7 @@ transform_fao<-function(data,element,exclude_units,lps2fao,spam2fao,remove_count
   
   return(data)
 }
-fill_gaps<-function(data){
-  # Create list of neighboring countries ####
-  neighbors <- list(
-    DZA = c("TUN", "LBY", "NER", "ESH", "MRT", "MLI", "MAR"),
-    AGO = c("COG", "COD", "ZMB", "NAM"),
-    BEN = c("BFA", "NER", "NGA", "TGO"),
-    BWA = c("ZMB", "ZWE", "NAM", "ZAF"),
-    BFA = c("MLI", "NER", "BEN", "TGO", "GHA", "CIV"),
-    BDI = c("COD", "RWA", "TZA"),
-    CPV = c(),
-    CMR = c("NGA", "TCD", "CAF", "COG", "GAB", "GNQ"),
-    CAF = c("TCD", "SDN", "COD", "COG", "CMR"),
-    TCD = c("LBY", "SDN", "CAF", "CMR", "NGA", "NER"),
-    COM = c(),
-    COG = c("GAB", "CMR", "CAF", "COD", "AGO"),
-    COD = c("CAF", "SSD", "UGA", "RWA", "BDI", "TZA", "ZMB", "AGO", "COG"),
-    CIV = c("LBR", "GIN", "MLI", "BFA", "GHA"),
-    DJI = c("ERI", "ETH", "SOM"),
-    EGY = c("LBY", "SDN", "ISR", "PSE"),
-    GNQ = c("CMR", "GAB"),
-    ERI = c("ETH", "SDN", "DJI"),
-    SWZ = c("MOZ", "ZAF"),
-    ETH = c("ERI", "DJI", "SOM", "KEN", "SSD", "SDN"),
-    GAB = c("CMR", "GNQ", "COG"),
-    GMB = c("SEN"),
-    GHA = c("CIV", "BFA", "TGO"),
-    GIN = c("LBR", "SLE", "CIV", "MLI", "SEN"),
-    GNB = c("SEN", "GIN"),
-    KEN = c("ETH", "SOM", "SSD", "UGA", "TZA"),
-    LSO = c("ZAF"),
-    LBR = c("GIN", "CIV", "SLE"),
-    LBY = c("TUN", "DZA", "NER", "TCD", "SDN", "EGY"),
-    MDG = c(),
-    MWI = c("MOZ", "TZA", "ZMB"),
-    MLI = c("DZA", "NER", "BFA", "CIV", "GIN", "SEN", "MRT"),
-    MRT = c("DZA", "ESH", "SEN", "MLI"),
-    MAR = c("DZA", "ESH", "ESP"),
-    MOZ = c("ZAF", "SWZ", "ZWE", "ZMB", "MWI", "TZA"),
-    NAM = c("AGO", "BWA", "ZAF", "ZMB"),
-    NER = c("DZA", "LBY", "TCD", "NGA", "BEN", "BFA", "MLI"),
-    NGA = c("BEN", "CMR", "TCD", "NER"),
-    RWA = c("BDI", "COD", "TZA", "UGA"),
-    STP = c(),
-    SEN = c("GMB", "GIN", "GNB", "MLI", "MRT"),
-    SYC = c(),
-    SLE = c("GIN", "LBR"),
-    SOM = c("ETH", "DJI", "KEN"),
-    ZAF = c("NAM", "BWA", "ZWE", "MOZ", "SWZ", "LSO"),
-    SSD = c("CAF", "COD", "ETH", "KEN", "UGA"),
-    SDN = c("EGY", "ERI", "ETH", "SSD", "CAF", "TCD", "LBY"),
-    TZA = c("KEN", "UGA", "RWA", "BDI", "COD", "ZMB", "MWI", "MOZ"),
-    TGO = c("BEN", "BFA", "GHA"),
-    TUN = c("DZA", "LBY"),
-    UGA = c("KEN", "SSD", "COD", "RWA", "TZA"),
-    ZMB = c("AGO", "COD", "MWI", "MOZ", "NAM", "TZA", "ZWE"),
-    ZWE = c("BWA", "MOZ", "ZAF", "ZMB")
-  )
-  
-  # Create list of regions ####
-  regions <- list(
-    East_Africa = c("BDI", "COM", "DJI", "ERI", "ETH", "KEN", "MDG", "MUS", "MWI", "RWA", "SYC", "SOM", "SSD", "TZA", "UGA"),
-    Southern_Africa = c("BWA", "LSO", "NAM", "SWZ", "ZAF", "ZMB", "ZWE","MOZ"),
-    West_Africa = c("BEN", "BFA", "CPV", "CIV", "GMB", "GHA", "GIN", "GNB", "LBR", "MLI", "MRT", "NER", "NGA", "SEN", "SLE", "TGO"),
-    Central_Africa = c("AGO", "CMR", "CAF", "TCD", "COD", "COG", "GNQ", "GAB", "STP"),
-    North_Africa = c("DZA", "EGY", "LBY", "MAR", "SDN", "TUN")
-  )
+fill_gaps<-function(data,neighbors,regions){
   # Fill in gaps with mean of neighbors ####
   avg_neighbors<-function(data,crop_focus,iso3_focus,neighbors){
     neighbors_focal<-neighbors[[iso3_focus]]
@@ -208,7 +146,13 @@ calc_cv<-function(data,detrend=T,rm.na=T,min_data=10,prob_req=0.05,rsq_req=0.1){
 
 # Setup workspace ####
 # Load geoboundaries
-geoboundaries<-terra::vect(geo_files_local[1])
+
+file<-geo_files_local[["admin0"]]
+geoboundaries<-arrow::open_dataset(file)
+geoboundaries <- geoboundaries |> sf::st_as_sf() |> terra::vect()
+geoboundaries$zone_id <- ifelse(!is.na(geoboundaries$gaul2_code), geoboundaries$gaul2_code,
+                         ifelse(!is.na(geoboundaries$gaul1_code), geoboundaries$gaul1_code, geoboundaries$gaul0_code))        
+
 atlas_iso3<-geoboundaries$iso3
 
 # Load base raster for resampling
@@ -220,10 +164,9 @@ if(!file.exists(base_raster)){
 
 base_rast<-terra::mask(terra::rast(base_raster),geoboundaries)
 
-
 # Load SPAM codes ####
 ms_codes<-data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[,Code:=toupper(Code)]
-crops<-tolower(ms_codes[compound=="no",Code])
+crops<-tolower(ms_codes[compound=="no" & !is.na(Code),Code])
 
 # Load file for translation of spam to fao stat names/codes ####
 spam2fao<-fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv")
@@ -252,7 +195,7 @@ data_file<-file.path(fao_dir,"Production_Crops_Livestock_E_Africa_NOFLAG.csv")
 
 # Set countries to remove and years to keep
 remove_countries<- c("Ethiopia PDR","Sudan (former)","Cabo Verde","Comoros","Mauritius","R\xe9union","Seychelles")
-keep_years<-paste0("Y",2000:2022)
+keep_years<-paste0("Y",2000:2023)
 
 yield<-transform_fao(data=fread(data_file),
                      element="Yield",
@@ -276,7 +219,6 @@ data<-rbind(yield,prod)
 
 # Set zero values to NAs 
 data[value==0,value:=NA]
-
 
 # Look for issues in the data ####
 if(F){
@@ -318,13 +260,16 @@ data<-cv[,value:=cv_detrended_prod][,list(iso3,atlas_name,value)]
 setnames(data,"atlas_name","crop")
 
 # Gap filling ####
-data<-fill_gaps(data)
+data<-fill_gaps(data,
+                neighbors=african_neighbors,
+                regions=regions)
 
 data[,value_filled:=value
      ][is.na(value_filled),value_filled:=mean_neighbors
        ][is.na(value_filled),value_filled:=mean_region
          ][is.na(value_filled),value_filled:=mean_continent]
 
+data<-merge(data,unique(data.frame(geoboundaries)[,c("iso3","admin0_name")]),by="iso3",all.x=T)
 
 fwrite(data,file=file.path(fao_dir,"faostat_prod_cv.csv"))
 
