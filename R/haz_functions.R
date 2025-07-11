@@ -1275,7 +1275,7 @@ hazard_stacker <- function(i, folders_x_hazards, haz_meta, model_names, use_crop
     haz_files1 <- haz_files[[k]]
     
     # Define the save name for the output raster
-    savename <- paste0(save_dir, "/", scenario, "_", variable2, "_", stat, ".tif")
+    savename <- file.path(save_dir, "/",paste0(scenario, "_", variable2, "_", stat, ".tif"))
     
     # Skip processing if the file already exists unless overwrite is TRUE
     if (!file.exists(savename) | overwrite == T) {
