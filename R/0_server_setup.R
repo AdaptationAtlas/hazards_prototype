@@ -48,6 +48,8 @@
   ## 0.3) Set climate date source ####
   # nexgddp or atlas_delta
   climdat_source<-"atlas_delta"
+  climdat_source<-"nexgddp"
+  
   ## 0.3) Record R-project location #####
   # Function to add or update an environment variable in the .Renviron file
   set_env_variable <- function(var_name, var_value, renviron_file = "~/.Renviron") {
@@ -520,6 +522,16 @@ terra::gdalCache(60000)
       if (!file.exists(fao_econ_file) | update == TRUE) {
         url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip"
         zip_file_path <- file.path(fao_dir, "Prices_E_Africa.zip")
+        
+        download.file(url, zip_file_path, mode = "wb")
+        unzip(zip_file_path, exdir = fao_dir)
+        unlink(zip_file_path)
+      }
+      
+      fao_econ_file_world <- file.path(fao_dir, "Prices_E_All_Data_(Normalized).csv")
+      if (!file.exists(fao_econ_file_world) | update == TRUE) {
+        url <- "https://bulks-faostat.fao.org/production/Prices_E_All_Data_(Normalized).zip"
+        zip_file_path <- file.path(fao_dir, basename(url))
         
         download.file(url, zip_file_path, mode = "wb")
         unzip(zip_file_path, exdir = fao_dir)
