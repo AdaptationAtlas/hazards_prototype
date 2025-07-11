@@ -275,20 +275,23 @@ target_year<-c(2014:2023)
     
     prod<-melt(prod,id.vars=c("iso3","atlas_name"),value.name = "production_t",variable.name = "year")
 
-  ## 3.4) Deflators ####
-    deflators<-fread(def_file, encoding = "Latin-1")
-    deflators<-deflators[Item=="Value Added Deflator (Agriculture, forestry and fishery)" & Unit=="USD"]
-    
-    # Convert Area Code (M49) to ISO3 codes and filter by atlas_iso3 countries
-    deflators[, M49 := as.numeric(gsub("[']", "", `Area Code (M49)`))]
-    deflators[, iso3 := countrycode(sourcevar = M49, origin = "un", destination = "iso3c")]
-    deflators <- deflators[iso3 %in% atlas_iso3]
-    
-    # Remove specified countries
-    deflators <- deflators[!Area %in% remove_countries,.(iso3,Year,Value)]
-    setnames(deflators,c("Value","Year"),c("deflator_usd","year"))
+  ## 3.4) Not Run: Deflators ####
+    if(F){
+      deflators<-fread(def_file, encoding = "Latin-1")
+      deflators<-deflators[Item=="Value Added Deflator (Agriculture, forestry and fishery)" & Unit=="USD"]
+      
+      # Convert Area Code (M49) to ISO3 codes and filter by atlas_iso3 countries
+      deflators[, M49 := as.numeric(gsub("[']", "", `Area Code (M49)`))]
+      deflators[, iso3 := countrycode(sourcevar = M49, origin = "un", destination = "iso3c")]
+      deflators <- deflators[iso3 %in% atlas_iso3]
+      
+      # Remove specified countries
+      deflators <- deflators[!Area %in% remove_countries,.(iso3,Year,Value)]
+      setnames(deflators,c("Value","Year"),c("deflator_usd","year"))
+    }
 
-  ## 3.5) PPP ####
+  ## 3.5) Not Run: PPP ####
+    if(F){
     indicators <- data.table(wb_search(pattern = "PPP"))
     print(indicators[grepl("conversion",indicator) & grepl("PP",indicator_id),indicator])
     
@@ -312,15 +315,17 @@ target_year<-c(2014:2023)
     ppp_xrat<-merge(ppp,xrat,all.x=T)
     
     ppp_xrat[iso3=="ZWE",xrat:=1]
-    
+    }
     
   ## 3.6) Merge datasets ####
     prod_merge<-merge(prod_value_usd,prod_value_i,all.x=T)
     prod_merge<-merge(prod_merge,prod_price,all.x=T)
     prod_merge<-merge(prod_merge,prod,all.x=T)
     prod_merge[,year:=as.integer(gsub("Y","",year))]
-    prod_merge<-merge(prod_merge,deflators,by=c("iso3","year"),all.x=T)
-    prod_merge<-merge(prod_merge,ppp_xrat,by=c("iso3","year"),all.x=T)
+    
+    # Not Run
+    # prod_merge<-merge(prod_merge,deflators,by=c("iso3","year"),all.x=T)
+    # prod_merge<-merge(prod_merge,ppp_xrat,by=c("iso3","year"),all.x=T)
 
 # 4) Infer missing value from production and price data ####
    ## 4.1) Nominal usd ####
@@ -370,7 +375,7 @@ target_year<-c(2014:2023)
    
    names(intd_2015)<-paste0("intld15-",gsub("y","",names(year_sets)))
    
-   # Not Run: Converting iusd2015 to nominal usd (not used - unrealistic) ####
+   ## 4.3) Not Run: Converting iusd2015 to nominal usd (not used - unrealistic) ####
    # We have investigated this approach and it yields very low production values compared to 
    # national statistics in Kenya (for example, <50% of the reported value)
    if(F){
