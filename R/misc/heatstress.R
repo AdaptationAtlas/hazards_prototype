@@ -18,12 +18,14 @@ gcms    <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-C
 nexgddp<-F
 
 # If nex-gddp
-nexgddp<-T
-ref_raster_path     <- file.path(indices_dir,"ssp126_ACCESS-ESM1-5_2021_2040/NDD/NDD-2021-01.tif")
-future_chirts_base   <- file.path(root_dir, "nex-gddp-cmip6_raw/tasmax")
-future_index_base   <- file.path(root_dir, "atlas_nex-gddp_hazards", "cmip6", "indices")
-do_historical<-F
-gcms<-basename(list.dirs(file.path(future_chirts_base,"ssp126"))[-1])
+if(climdat_source=="nexgddp"){
+  nexgddp<-T
+  ref_raster_path     <- file.path(indices_dir,"ssp126_ACCESS-ESM1-5_2021_2040/NDD/NDD-2021-01.tif")
+  future_chirts_base   <- file.path(root_dir, "nex-gddp-cmip6_raw/tasmax")
+  future_index_base   <- file.path(root_dir, "atlas_nex-gddp_hazards", "cmip6", "indices")
+  do_historical<-F
+  gcms<-basename(list.dirs(file.path(future_chirts_base,"ssp126"))[-1])
+}
 
 # NEED TO MODIFY FUNCTOINS TO USE THE Nex-gddp file/folder structure
 
@@ -69,7 +71,7 @@ calc_ntx <- function(tx_pth, yr, mn, thr = 40, out_dir, verbose = FALSE,nexgddp=
     
     # Construct file paths for daily maximum temperature data
     if(nexgddp){
-      fls <- list.files(tx_pth,paste0(yr,".nc"),full.names = T)
+      fls <- list.files(tx_pth,paste0(yr,".nc|",yr,"_v1.1.nc"),full.names = T)
       # !!! Need to subset to corresponding month
       tmx <- terra::rast(fls)
       
