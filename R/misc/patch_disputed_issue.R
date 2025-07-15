@@ -21,6 +21,7 @@ conflict_ds[,
 # Also drop any Admin 0 id as we will merge it back into both countries
 conflict_ds_filter <- conflict_ds[group_size == 3]
 conflict_ds_filter[, .SD[.N], by = group_id] # THIS SHOULD BE THE RESULT BRAYDEN!
+conflict_ds_filter[, c("group_id", "group_size") := NULL]
 
 # conflict_ds_filter[, c("iso3", "admin0_name", "group_size") := NULL]
 #
@@ -46,6 +47,7 @@ no_conflict_adm2_ds[,
 ][, group_size := .N, by = dup_group]
 
 no_duplicates <- subset(no_conflict_adm2_ds, group_size == 1)
+no_duplicates[, c("dup_group", "group_size") := NULL]
 
 dups <- subset(no_conflict_adm2_ds, group_size == 2)
 # conviently, due to how the tables are merged, the second value is always the correct one...
@@ -56,3 +58,33 @@ correct_rows[, c("dup_group", "group_size") := NULL]
 # total result length should be 16801344 for admin 2
 # total result admin 2 no conflict: 16778016
 # total result: 18820512
+
+# Combine all
+result_admin_dupes <- rbind(no_duplicates, correct_rows)
+result_all <- rbind(result_admin_dupes, conflict_ds_filter)
+
+agg_admin1 <- result_all[,
+  .(value = sum(value, na.rm = TRUE)),
+  by = setdiff(names(result_all), c("value", "admin2_name"))
+]
+
+agg_admin0 <- result_all[,
+  .(value = sum(value, na.rm = TRUE)),
+  by = setdiff(names(result_all), c("value", "admin1_name", "admin2_name"))
+]
+
+result_long <- rbind(
+  result_all,
+  rbind(agg_admin1, agg_admin0, fill = T),
+  fill = T
+)
+
+
+sum(
+  subset(agg_admin0, iso3 == "AGO" & crop == "maize", select = "value"),
+  na.rm = T
+) ==
+  sum(
+    subset(result_all, iso3 == "AGO" & crop == "maize", select = "value"),
+    na.rm = T
+  )

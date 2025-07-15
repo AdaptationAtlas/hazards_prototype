@@ -1,3 +1,8 @@
+library(futures)
+library(terra)
+library(progressr)
+library(data.table)
+
 cat("Running patch to fix wet ndws issue\n")
 
 p_load(terra,arrow,future.apply,future,progressr)
@@ -27,7 +32,7 @@ for(i in 1:length(patch_dirs)){
   progressr::handlers("progress")
   
   # Wrap the parallel processing in a with_progress call
-  p<-with_progress({
+  p<-progressr::with_progress({
     # Define the progress bar
     prog <- progressr::progressor(along = 1:length(tifs))
     
@@ -35,7 +40,7 @@ for(i in 1:length(patch_dirs)){
       future.apply::future_lapply(1:length(tifs),FUN=function(j){
         #    cat(j,"/",length(tids),"       \r")
         file<-tifs[j]
-        rdat<-rast(file)
+        rdat<-terra::rast(file)
         if(any(grepl("wet_NDWS",names(rdat)))){
         names(rdat)<-gsub("wet_NDWS","dry_NDWS",names(rdat))
         rdat<-rdat+0
@@ -70,11 +75,11 @@ for(i in 1:length(patch_dirs)){
       future.apply::future_lapply(1:length(parquets),FUN=function(j){
       #  cat(j,"/",length(parquets),"       \r")
         file<-parquets[j]
-        dat<-read_parquet(file)
-        dat<-data.table(dat)
+        dat<-arrow::read_parquet(file)
+        dat<-data.table::data.table(dat)
         if(dat[hazard=="wet" & hazard_vars=="NDWS",.N>0]){
           dat[hazard=="wet" & hazard_vars=="NDWS",hazard:="dry"]
-          write_parquet(dat,file)     
+          arrow::write_parquet(dat,file)     
         }
       })
     )

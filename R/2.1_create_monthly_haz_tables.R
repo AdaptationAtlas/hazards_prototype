@@ -391,7 +391,7 @@ p_load(char=packages)
         m_period <- three_month_periods[[j]]
         season_name <- names(three_month_periods)[j]
         dt <- copy(data_ex_ss)[month %in% m_period]
-        setorder(dt, year, month)
+        setorder(dt, year)
       
       dt[, seq := find_consecutive_pattern(seq = month, pattern = m_period),
            by = .(admin0_name, admin1_name, gaul0_code, model, scenario, timeframe, hazard)]
