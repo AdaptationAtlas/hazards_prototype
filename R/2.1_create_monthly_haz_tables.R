@@ -29,9 +29,13 @@ p_load(char=packages)
     dir.create(output_int_dir)
   }
   
-  
   ## 1.2) Set hazards to include in analysis #####
-  hazards<-c("HSH_max","TMAX","TAVG","NDWL0","NDWS","NTx35","NTx40","PTOT","THI_max") # NDD is not being used as it cannot be projected to future scenarios
+  if(climdat_source=="atlas_delta"){
+    hazards<-c("HSH_max","TMAX","TAVG","NDWL0","NDWS","NTx35","NTx40","PTOT","THI_max") # NDD is not being used as it cannot be projected to future scenarios
+  }else{
+    # NTx40 temporarily exclude while pipeline completes ####
+    hazards<-c("HSH_max","TMAX","TAVG","NDWL0","NDWS","NTx35","PTOT","THI_max","NDD") 
+  }
   cat("Working with hazards =",hazards,"\n")
   file_name<-"all_hazards.parquet"
   
@@ -126,9 +130,15 @@ p_load(char=packages)
   ][,path_new:=file.path(output_dir,paste0(scenario,"_",model,"_",timeframe)),by=.I
   ][,path_new:=gsub("historical","historic",path_new)]
   
+  
+  ## Temporarily subset folders in nex-gddp ####
+  gcms    <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
+  folders<-folders[model %in% gcms]
+  
   folders<-data.frame(folders)
   
-  cat("Folders included =",folders$path,"\n")
+  cat("Folders included =",paste0(unique(folders$path),collapse="\n"),"\n")
+  
   
   ## 2.2) Set parameters ####  
   levels<-c(admin0="adm0",admin1="adm1") #,admin2="adm2")
@@ -143,11 +153,13 @@ p_load(char=packages)
   ## 2.3) Define the extraction function ####
   extract_hazard <- function(i, folders, hazards, output_dir, overwrite, round_dp, extract_stat,
                              boundaries_zonal, boundaries_index, id_vars, split_colnames,
-                             order_by, haz_meta, version, extraction_rast, levels) {
+                             order_by, haz_meta, version, extraction_rast, levels,base_rast_path) {
     
     folders_ss <- paste0(folders$path[i], "/", hazards)
+    base_rast<-terra::rast(base_rast_path)
     
      invisible(purrr::map(hazards, function(hazard) {
+      cat(dirname(folders_ss[1]),hazard,"\n")
       folders_ss_focus <- gsub("_max|_mean", "", paste0(folders$path[i], "/", hazard))
       h_var <- unlist(tail(tstrsplit(hazard, "_"), 1))
       
@@ -163,6 +175,9 @@ p_load(char=packages)
         
         if (length(files) != 0) {
           rast_data <- terra::rast(files)
+          
+          rast_data<-mask(rast_data,base_rast)
+        
           if (hazard == "PTOT") rast_data[rast_data < 0] <- NA
           
           rast_names <- data.table(base_name = gsub(".tif", "", basename(files)))
@@ -176,7 +191,8 @@ p_load(char=packages)
           result <- rbindlist(purrr::map2(boundaries_zonal, boundaries_index, function(zonal_rast, idx) {
             zonal_r <- terra::rast(zonal_rast)
             dat <- zonal(rast_data, zonal_r, fun = extract_stat, na.rm = TRUE)
-            dat <- merge(dat, idx, by = "zone_id", all.x = TRUE, sort = FALSE)[, zone_id := NULL]
+            dat <- merge(dat, idx, by = "zone_id", all.x = TRUE, sort = FALSE)
+            dat$zone_id<-NULL
             dat
           }))
           
@@ -184,7 +200,7 @@ p_load(char=packages)
           if (!is.null(round_dp)) result_long[, value := round(value, round_dp)]
           result_long[, (split_colnames) := tstrsplit(variable, "_", fixed = TRUE)]
           result_long[, variable := NULL]
-          if (!is.null(order_by)) result_long <- result_long[order(do.call(order, .SD)), .SDcols = order_by]
+          result_long <- result_long[do.call(order, result_long[, ..order_by])]
           
           arrow::write_parquet(result_long, save_file)
           write_json(list(
@@ -198,12 +214,12 @@ p_load(char=packages)
             version = version1,
             parent_script = "R/2.1_create_monthly_haz_tables.R - section 2",
             value_variable = unique(result_long$hazard),
-            unit = haz_meta[variable.code == hazard, base_unit],
+            unit = haz_meta[haz_meta$variable.code == hazard, "base_unit"],
             extract_stat = extract_stat,
             notes = paste0("Monthly hazard values extracted by admin areas summarized using ", extract_stat, ".")
           ), paste0(save_file, ".json"), pretty = TRUE)
           
-          rm(result,rast_stack)
+          rm(result,rast_data)
           gc()
           
           return(result_long)
@@ -212,7 +228,6 @@ p_load(char=packages)
     }))
     
   }
-  
   
   ## 2.4) Run parallel extraction ####
   # Set parallel plan
@@ -229,6 +244,7 @@ p_load(char=packages)
     results <- furrr::future_map(1:nrow(folders), function(i) {
       prog(sprintf("Processing folder %d of %d", i, nrow(folders)))
       extract_hazard(i, 
+                     base_rast_path = base_rast_path,
                      folders = folders, 
                      hazards = hazards,
                      output_dir = output_int_dir, 
