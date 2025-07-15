@@ -1,0 +1,6 @@
+fao_item,fao_item_code,spam_code,spam_fullname,deflator_mean,deflator_low,deflator_high,region_basis,rationale,period
+"Coffee, green",656,coff,coffee,0.55,0.5,0.6,Ethiopia (East Africa),Farmers receive ~50% of FOB price; outsourced processing and high costs.,2020-2025
+Sugar cane,156,sugc,sugarcane,0.5,0.5,0.6,Kenya (East Africa),Official formula sets farm-gate price at 50% of net sugar price.,2020-2025
+Cocoa beans,661,coco,cocoa,0.7,0.7,0.85,Cote d'Ivoire & Ghana (West Africa),Policy floor ensures ~70% of export price to farmers; LID raised share to ~85%.,2020-2025
+Tea leaves,667,teas,tea,0.18,0.15,0.2,Kenya (East Africa),Green leaf paid at ~16% of auction price due to processing losses and marketing.,2020-2025
+Unmanufactured tobacco,826,toba,tobacco,0.2,0.18,0.2,Malawi (Southern Africa),Farmers receive ~18% of export value due to auction deductions and fees.,2020-2025
