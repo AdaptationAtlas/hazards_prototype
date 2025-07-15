@@ -36,7 +36,8 @@
 
 cat("Started Script 1 - Time series extraction of hazards\n")
 
-# 1) Load R functions & packages ####
+# 1) Setup #### 
+  ## 1.1) Load R functions & packages ####
 # Using pacman::p_load for convenient loading of multiple packages, including data.table and progressr.
 pacman::p_load(
   terra,
@@ -47,7 +48,7 @@ pacman::p_load(
   progressr
 )
 
-# 2) Set directories ####
+  ## 1.2) Set directories ####
 # Directory where monthly timeseries data generated from 
 # https://github.com/AdaptationAtlas/hazards/tree/main is stored.
 # Note this is currently only available on cglabs, but we will be adding the ability 
@@ -57,7 +58,7 @@ working_dir <- indices_dir
 # Where hazard time series outputs will be saved
 output_dir <- indices_dir2
 
-  ## 2.1) Summarize existing data #####
+# 2) Summarize existing data #####
 if(F){
   folders <- list.dirs(working_dir, recursive = FALSE)
   
@@ -158,58 +159,56 @@ dcast(hazard_completion[,.(model,scenario,`NDWL0-NDWL0`)],model~scenario)
 dcast(hazard_completion[,.(model,scenario,`NDWS-NDWS`)],model~scenario)
 }
 
-  ## 2.2) Check file integrity ####
-# This section verifies that each tif file can be loaded using terra::rast.
-# It runs in parallel with a progress bar and uses tryCatch to record any files that 
-# cannot be loaded. Set 'delete_corrupt' to TRUE to automatically delete such files.
-
-if(F){
-delete_corrupt <- FALSE  # Change to TRUE to delete problematic files
-
-# Gather all files from historical and future directories
-files <- list.files(
-  working_dir, 
-  pattern = ".tif$", 
-  recursive = TRUE, 
-  full.names = TRUE
-)
-
-set_parallel_plan(n_cores=16,use_multisession=F)
-handlers("progress")
-
-with_progress({
-  p <- progressor(along = files)
+  ## 2.1) Check file integrity ####
+  # This section verifies that each tif file can be loaded using terra::rast.
+  # It runs in parallel with a progress bar and uses tryCatch to record any files that 
+  # cannot be loaded. Set 'delete_corrupt' to TRUE to automatically delete such files.
+  if(F){
+  delete_corrupt <- FALSE  # Change to TRUE to delete problematic files
   
-  results <- furrr::future_map_dfr(files, function(f) {
-    res <- tryCatch({
-      # Try to load the raster
-      r <- terra::rast(f)
-      tibble::tibble(file = f, success = TRUE, error_message = NA_character_)
-    }, error = function(e) {
-      tibble::tibble(file = f, success = FALSE, error_message = as.character(e))
+  # Gather all files from historical and future directories
+  files <- list.files(
+    working_dir, 
+    pattern = ".tif$", 
+    recursive = TRUE, 
+    full.names = TRUE
+  )
+  
+  set_parallel_plan(n_cores=16,use_multisession=F)
+  handlers("progress")
+  
+  with_progress({
+    p <- progressor(along = files)
+    
+    results <- furrr::future_map_dfr(files, function(f) {
+      res <- tryCatch({
+        # Try to load the raster
+        r <- terra::rast(f)
+        tibble::tibble(file = f, success = TRUE, error_message = NA_character_)
+      }, error = function(e) {
+        tibble::tibble(file = f, success = FALSE, error_message = as.character(e))
+      })
+      p()
+      res
     })
-    p()
-    res
+    
+    # Report results
+    failed_files <- results %>% dplyr::filter(success == FALSE)
+    cat("Checked", nrow(results), "files.\n")
+    cat(nrow(failed_files), "files could not be loaded.\n")
+    
+    if(nrow(failed_files) > 0) {
+      print(failed_files)
+      if(delete_corrupt) {
+        cat("Deleting problematic files...\n")
+        file.remove(failed_files$file)
+      }
+    }
   })
   
-  # Report results
-  failed_files <- results %>% dplyr::filter(success == FALSE)
-  cat("Checked", nrow(results), "files.\n")
-  cat(nrow(failed_files), "files could not be loaded.\n")
-  
-  if(nrow(failed_files) > 0) {
-    print(failed_files)
-    if(delete_corrupt) {
-      cat("Deleting problematic files...\n")
-      file.remove(failed_files$file)
-    }
+  plan(sequential)
+  future:::ClusterRegistry("stop")
   }
-})
-
-plan(sequential)
-future:::ClusterRegistry("stop")
-}
-
 
 # 3) Set up workspace ####
 
@@ -280,20 +279,23 @@ hazards_wet<- c("NDWL0", "NDWS", "PTOT", "TAI","NDD")
 hazards<-c(hazards_wet,hazards_heat)
 
 if(grepl("gddp",working_dir)){
-  hazards<-hazards[!hazards %in% c("NTx40","HSH","THI","TAVG")]
+  hazards<-hazards[!hazards %in% c("HSH","THI","TAVG")]
   hazards<-c(hazards,"NTx30")
+  hazards2 <- paste0("NTx", c(20:34, 36:39, 41:50)) 
     }else{
-  # If needed, add in more heat thresholds
-  if (F) {
-    hazards2 <- paste0("NTx", c(20:34, 36:39, 41:50))
+      hazards2 <- paste0("NTx", c(20:29,31:34, 36:50))
+    }
+
+  # Add in more heat thresholds to meta-data
     haz_meta <- rbind(
       haz_meta, 
       data.table(variable.code = hazards2, `function` = "mean")
     )
-    hazards <- c(hazards, hazards2)
-  }
-}
-
+    
+    # Use these controls if we just want to process the additional NTx hazards or the NTx hazards only
+    #hazards <- c(hazards, hazards2)
+    hazards<-hazards2
+  
 cat("Timeseries hazards = ",hazards,"\n")
 
 # 5) Set analysis parameters ####
