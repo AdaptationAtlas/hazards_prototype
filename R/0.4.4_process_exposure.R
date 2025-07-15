@@ -1,6 +1,5 @@
 # Please run 0_server_setup.R before executing this script
-# To generate livestock vop you will need to run script 0.4
-# To generate crop vop you will need to run script 0.45
+# To generate crop & livestock vop you will need to run scripts 0.4.1 & 0.4.2
 # a) Load R functions & packages ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
@@ -67,10 +66,9 @@ version_spam<-1
 source_year_spam<-list(census=2015,values=2015)
 
 files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
-
+files<-grep("variable",files,value=T)
 # Remove yield (one reason for this is that stat<-"mean" returns NA and needs debugging)
 files<-files[!grepl("yield",files)]
-
 
 field_descriptions <- data.table::data.table(
   field_name = c(
@@ -99,7 +97,6 @@ field_descriptions <- data.table::data.table(
     "MapSPAM production system category (e.g., 'all', 'rainfed'); not applicable for livestock."
   )
 )
-
 
 spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   cat("Extracting file",i,"/",length(files),basename(files[i]),"\n")
@@ -137,7 +134,6 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   })
   names(filters) <- filter_colnames
   
-  
   if(file.exists(attr_file)){
     attr_dat<-jsonlite::read_json(attr_file)
     date_created<-unlist(attr_dat$date_created)
@@ -166,7 +162,7 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
     unit = unit,
     technology = tech,
     stat=stat,
-    notes = paste0("A table of mapspam crop values (",var,") extracted by boundary vectors then summarized (fun = ",FUN,").")
+    notes = paste0("A table of mapspam crop values (",var,") extracted by boundary vectors then summarized (fun = ",stat,").")
   )
   
   write_json(attr_info, attr_file, pretty = TRUE)
@@ -259,6 +255,7 @@ glw_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   }))
   
 # 3) Combine exposure totals by admin areas ####
+  # 3.1) Original recipe ####
 file<-paste0(exposure_dir,"/exposure_adm_sum.parquet")
 
 if(!file.exists(file)|overwrite_glw|overwrite_spam){
@@ -267,6 +264,9 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
     spam_extracted,
     glw_extracted
   )
+  
+  # Subset units
+  exposure_adm_sum_tab<-exposure_adm_sum_tab[!grepl("-",unit)]
   
   # Order to optimize parquet performance
   exposure_adm_sum_tab<-exposure_adm_sum_tab[order(iso3,admin0_name,admin1_name,admin2_name,exposure,unit,tech,crop)]
@@ -308,8 +308,56 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
 }
   
   arrow::read_parquet(file)[,unique(unit)]
-  
 
+  # 3.2) Specific data for economic returns notebook ####
+  
+  file<-paste0(exposure_dir,"/vop_nominal-usd-2021_adm_sum.parquet")
+  
+  if(!file.exists(file)|overwrite_glw|overwrite_spam){
+      
+      exposure_adm_sum_tab<-rbind(
+        spam_extracted,
+        glw_extracted
+      )
+      
+      # Subset units
+      exposure_adm_sum_tab<-exposure_adm_sum_tab[unit=="nominal-usd-2021"]
+      
+      # Order to optimize parquet performance
+      exposure_adm_sum_tab<-exposure_adm_sum_tab[order(iso3,admin0_name,admin1_name,admin2_name,exposure,unit,tech,crop)]
+      
+      filter_colnames<-c("crop","stat","exposure","unit","tech")
+      filters <- lapply(filter_colnames, function(split_col) {
+        unique(exposure_adm_sum_tab[[split_col]])
+      })
+      names(filters) <- filter_colnames
+      
+      attr_info <- list(
+        source = list(input_raster1=atlas_data$mapspam_2020v1r2$name,
+                      input_raster2="GLW4",
+                      extraction_vect=atlas_data$boundaries$name),
+        source_year = list(input_raster1=source_year_spam,input_raster2=source_year_glw),
+        date_created = Sys.time(),
+        field_descriptions = field_descriptions,
+        filters = filters,
+        version = list(input_version1=version_spam,input_version2=version_glw),
+        parent_script = "R/0.6_process_exposure.R",
+        variable = exposure_adm_sum_tab[,unique(exposure)],
+        unit = exposure_adm_sum_tab[,unique(unit)],
+        technology = exposure_adm_sum_tab[,unique(tech)],
+        stat=stat,
+        notes = paste0("A merged table of all mapspam crop x technology and glw livestock values extracted by boundary vectors then summarized.")
+      )
+      
+      attr_file<-paste0(file,".json")
+      
+      write_json(attr_info, attr_file, pretty = TRUE)
+      
+      exposure_adm_sum_tab[,crop:=gsub("_| ","-",crop)]
+      
+      arrow::write_parquet(exposure_adm_sum_tab,file)
+    }
+  
 # 4) Population ######
 overwrite_pop<-T
   ## 4.1) Harmonize to atlas base raster ####
