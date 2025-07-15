@@ -156,12 +156,20 @@
   
   ## 0.6) Base Raster ####
     if(climdat_source=="atlas_delta"){
+      ## DEV NOTE - NEED TO UPDATE WITH MASKED BASE RAST ###
       # Load a reference/base raster used for resampling or extent alignment
       base_rast_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
       base_rast <- terra::rast(base_rast_url)
       base_rast_path <- file.path(project_dir, "metadata", "base_raster.tif")
     }else{
-      base_rast_path<-file.path(indices_dir,"ssp126_ACCESS-ESM1-5_2021_2040/NDD/NDD-2021-01.tif")
+      base_rast_path<-"Data/base_rast.tif"
+      
+      if(!file.exists(base_rast_path)){
+        target_ext <- ext(-180, 180, -50, 50)
+        base_rast<-terra::rast("/home/jovyan/common_data/nex-gddp-cmip6/pr/ssp126/ACCESS-CM2/pr_2021-01-01.tif")
+        base_rast_cropped <- crop(base_rast, target_ext)
+        terra::writeRaster(base_rast_cropped,base_rast_path,overwrite=T)
+      }
       base_rast<-terra::rast(base_rast_path)
     }
   
