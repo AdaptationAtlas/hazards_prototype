@@ -1,0 +1,398 @@
+[33m090a915[m[33m ([m[1;36mHEAD -> [m[1;32mmain[m[33m)[m cropsuite added
+[33m4adc3b1[m script development completed
+[33m0f4db9f[m cropsuite names added
+[33mac1e888[m sos, isimip added google drive junk removed
+[33m940e9ce[m ntx extract in script 2 accepted
+[33m0091ff7[m script completed
+[33m231dfe6[m isimip added, cropsuite added
+[33m934b77b[m baseline updated
+[33m3575668[m cropsuite extraction script created
+[33m0fa624d[m list bottom directory function added
+[33m7ce1f8f[m isimip water variable metadata added
+[33m79e9e2d[m ensembling updated
+[33m758a09d[m function to summarize isimip files by cropping seasons added
+[33mf58c77a[m sos calendar creation moved out, jagermeyer renamed to ggcmi
+[33m2cf82e0[m script created to summarize isimip variables by season
+[33mb6111f3[m sos and isimip added
+[33m8123f43[m sos_raster creation moved out of script 1
+[33me6e2a93[m file_index added
+[33md4cf898[m phils dmi comments added
+[33maedcb42[m progress bar removed
+[33m073e8f6[m download process created and refined
+[33m5671d94[m dev updates
+[33m4c72890[m testing gtp api calls
+[33m938874e[m creation of script to get isimip data
+[33me00cd5f[m s3_dir_ls -> s3$ls_dr
+[33m23de188[m script completed
+[33mc85bfb6[m livestock heat stress added
+[33m79ae1bb[m function creation is now in function script, push for livestock heatstress files added
+[33mf833079[m downloads removed
+[33m514af4c[m line added
+[33m2b5b513[m line removed
+[33me1c3579[m s3 functions added, cat calls updated
+[33m0959473[m package management updated, dead code removed
+[33m8c66016[m timeframe choice now interactive
+[33mc961ade[m description edits
+[33md839a81[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33mf83dfa6[m section 4 simplified
+[33m8182dac[m dev updates
+[33medc0a6b[m exactextractr removed, now available on cran
+[33m1a251b1[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33m7bc407c[m function update to filter out certain values, liek ENSEMBLESD
+[33m5bd0b62[m package loading updated to deal with afrilab issues
+[33m22fdfba[m path issue for download corrected
+[33mf390bd7[m dev updates
+[33m0ac0b54[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33ma8633e1[m dir.create added for all download datasets
+[33m444fbff[m operation moved inside loop
+[33m9952729[m issue with NTxM etc. and multiple mapspam crops corrected
+[33mb58a1c5[m fao producer price added to downloads
+[33m9efc015[m data management updated to make use of 0 set up script.
+[33m0a94c72[m logic issue in mapspam function fixed
+[33med0f6bd[m libraries added to function calls
+[33mfea6c6a[m logic added for if using cglabs or not
+[33mb5a45bc[m working directory selection automated for selected paths.
+[33m5825712[m new hazards added
+[33mb2b768e[m ntx added
+[33m4ad1d3a[m crops heat stress added
+[33m16c4d7c[m set folder permissions removed, this only works for the entire bucket
+[33m9df875a[m file renamed
+[33m6f96f6f[m time frame highlighted
+[33m90c3070[m new datasets added
+[33ma4f8ee5[m models now included in calculations
+[33me7c0143[m dev
+[33mf1213cf[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33me76180b[m pop download removed
+[33m766cf5c[m script developed
+[33me0068e5[m human pop added mapspam index removed
+[33ma76caa0[m unused geoboundary lines removed
+[33me0af680[m Updated to include anomalies
+[33mb928045[m geographies switched to parquet files
+[33mc7f41fc[m http links replaced with s3 links due to missing bytes issue
+[33mab67a9a[m sequence naming function corrected.
+[33m0e316bb[m missing ntx40 added
+[33mf2daf91[m duplicate function removed
+[33m7698db2[m more annotation added and s3fs package removed
+[33m5c84d83[m Progress tracker added to section 5.3
+[33m4f5d4cd[m project dir now only set if the object does not exist in the environment
+[33md85ce20[m Problems with combination generation in step 5 are now fixed.
+[33m1bdb890[m package registration added for foreach and progressr bars fixed
+[33m2946a7c[m update to server setup
+[33m5430cc0[m junk line removed
+[33mbd52f6e[m edits in attempt to fix interactions progressr issue
+[33mb762d75[m download of timeseries data parallelized progress bars for downloads suppressed
+[33m279a608[m pacman issues addressed
+[33mb6f4164[m heading hashes added
+[33m7de1b07[m NTxS/E/M cascaded to interactions and parallel progress reporting updated.
+[33m2f805b9[m Dev updates
+[33m2e3abeb[m atlas bucket path added
+[33m93d78d2[m data paths added issue with loading of exactextractr package fixed
+[33m60fbf6f[m more httr calls added
+[33maf29192[m httr calls added
+[33m3071a8a[m httr package added to pacman list
+[33ma73b806[m missing packages added
+[33m0bd51b2[m workflow sequence numbers updated
+[33m69779b6[m updates for NTx multiple thresholds
+[33m04b41ad[m Updated generate time period ensemble stats
+[33m1087207[m Add files via upload
+[33m32b4e38[m directories & data downloads moved to server setup script
+[33m70c5899[m directories & data downloads moved to server setup script
+[33md1b02c3[m directories & data downloads moved to server setup script
+[33m7435b1e[m directories & data downloads moved to server setup script
+[33m90b674b[m directories & data downloads moved to server setup script
+[33m146c22a[m directories & data downloads moved to server setup script
+[33m847e115[m directories & data downloads moved to server setup script
+[33mc7a0574[m directories & data downloads moved to server setup script
+[33mc6e4c58[m directories moved to server setup script
+[33m9caee4b[m indexes added
+[33m28348b8[m parameter mismatch fixed
+[33m078bba8[m read_mapspam function updated to deal with "_gr_" files
+[33m9e67c7b[m updates
+[33m8688619[m edits to progress reporting
+[33m2a0fe7c[m debugging
+[33mfc0915c[m continued debugging
+[33mf206e0c[m debugging issue with hazard_stacker function
+[33m7fa68bf[m completed
+[33m1dd7439[m hsh and thi min/max issue dealt with, TAI removed
+[33m4dd678c[m monthly extraction created
+[33m2bdcc77[m updates
+[33mc9322a0[m updates
+[33m3581315[m updates
+[33m966049e[m updates
+[33m3288710[m updates
+[33mc2f1b05[m updates
+[33m3067db0[m updates to NTxcalc script
+[33m526a17e[m av_loss function added
+[33m9836e6b[m UK to US english
+[33m62c5f9a[m llps to faostat mappings added
+[33m31bf5ab[m lists documentation updated
+[33m333463e[m fao stat functions added
+[33m1b8096c[m repeated tasks organized into functions wrappers created
+[33m32dc7a4[m mode added to s3upload ability to change s3 filenames from basenames added
+[33mf8d25e1[m totals removed from livestock data geoboundaries locations updated
+[33m672ce8d[m adoption added (rural pop and perc)
+[33mb10ed4a[m adoption added
+[33m83426a6[m Indicator calculations simplified and cashflow modified to include 0 year.
+[33m5b2b42d[m moving things around
+[33m789f8ad[m superficial edits
+[33ma80194f[m old avloss function removed
+[33mc4c5e05[m livestock vop bug fixed
+[33mf87087c[m Missing lines from no hazard calculation added.
+[33mee185e4[m adding data.table(merge to merge operations, seems to have been some change in the way merge works
+[33m2f25a98[m tasks added
+[33m32695cc[m non function check identical function removed
+[33m6e31d2c[m Updates to ROI scripts, avloss function improved
+[33m0bb9407[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33m16babb5[m error in 0.2.3 name fixed
+[33mdc2a69a[m Update fao_production_cv.R
+[33mfb66a70[m to do list updated
+[33mcd97e93[m barplot check added
+[33mac43566[m parallel processing edits
+[33m730bbc3[m livestock bug fixed, improvements to stacked bar plot
+[33m61c1596[m timeseries parquets added
+[33me3add4b[m minor improvements
+[33m989c008[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33mb76723b[m ensemble sd added to timeseries upload
+[33md38c837[m Update README.md
+[33m7cf7362[m Update README.md
+[33mfdb6ec9[m Update README.md
+[33ma4b8168[m Update README.md
+[33mc91a8d8[m renumbering of sections, unused sections removed
+[33m9710545[m Update README.md
+[33m094e5fa[m minor edits
+[33me089fb6[m tidying up
+[33m9d05d72[m googledrive upload added
+[33m8c09885[m temporary bug fixes removed
+[33md7661b9[m interactions added
+[33m2dfc55b[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33m47037fd[m package removed
+[33mdf10672[m Update README.md
+[33mba7dc14[m Update README.md
+[33m5e75b6e[m Update README.md
+[33mfc4216f[m Update README.md
+[33me53f12b[m Update README.md
+[33m8ff178a[m Update README.md
+[33m95361d2[m renaming
+[33m93a4eae[m south asia update
+[33mff9c22d[m Update to include sout asia and remove junk
+[33m77714be[m script structure updated
+[33m73564a9[m package loader added
+[33m8c8381f[m functions moved
+[33m1cfcdc1[m functions moved from script 2
+[33m7c63d3a[m File renaming
+[33mc428bdd[m Tidying of script 0 for github release
+[33m86754ef[m previous bug was not a bug!
+[33macdae60[m strange bug in 5.2 where scenarios were not being picked.
+[33m9d92364[m rm_st option added
+[33md1d2d91[m THI removed from combo choices
+[33mff62d50[m vop ac file splitting
+[33m314aa34[m qaqc dev
+[33m182f255[m TAVG bug fixed
+[33mf9b2ce6[m timeseries choice separated out
+[33mead5a6b[m hazard classification and risk quarto
+[33m6874e9a[m NDD removed from script 2
+[33m98da324[m adding total exposure
+[33md9eede0[m Junk removed
+[33m9c78f7f[m check if identical option added to upload function
+[33m80537e5[m dev edits
+[33m2144878[m checks for interaction calculation completeness added
+[33m5ca0c09[m text removed
+[33m9e7c4b5[m indexing bug fix in interaction file exists checks
+[33mc6001b4[m tidying up
+[33m2e9b46a[m dry, wet, heat now included in solo crop risk bundles
+[33m8442672[m Updates
+[33m2d94836[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33m66c5c0a[m improve to deal with different function calculation methods
+[33m70fdb72[m rapp efficiency improvements
+[33m4f321e2[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33m28b9b58[m hazard timeseries added
+[33mb946abc[m junk lines removed
+[33me4e3ef0[m Faulty npv function corrected
+[33m2186eea[m n removed from cat
+[33me1faad0[m change in summary hazards
+[33md442f28[m debugging hack removed
+[33m2f724d8[m vop17 added to e5.2
+[33m5dc23ab[m old economic indicator script removed and replaced
+[33mf171fc3[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33m3ed47ef[m roi added
+[33mf10c7d8[m restructure_parquet function updated to deal with new hazard name convention (haz_risk)
+[33m9583556[m minor change
+[33m90cb8fa[m forever dealing with inconsistencies in naming
+[33mdc35c89[m vop17 x risk added to section 5.1
+[33m5fe611c[m years updated, redundant line removed
+[33m5958452[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33mc31a7e6[m overwrite updated
+[33m09cc7b2[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33mc66f581[m Updates
+[33m46848d6[m function not required deleted
+[33m7220485[m Script to allow variable cost schedule and start of return data created.
+[33m9da9581[m Bug fix to deal with  very large numbers in spp245 2020_2040 PTOT data.
+[33mbb6b13a[m int_risk function moved from script 1 to functions
+[33m82d7f8c[m haz_class function moved from script 1
+[33m2398872[m var renaming bug fixed
+[33ma7ca062[m update
+[33mb7ce1a9[m updates
+[33m473e4ec[m development
+[33m6fbeefb[m bug fixings
+[33me7cb833[m script to extract data for spam 2010 added
+[33mb978ab3[m udpates
+[33m9c31ad0[m organization improved
+[33mcfb6c6c[m dev updates
+[33mde8d788[m checks and balances
+[33m5a809e8[m Tinkering with file renaming hacks
+[33m3715923[m generic and time-series specific data separated
+[33mf82ad92[m edits to deal with differences between naming of solo and interaction hazards
+[33m2ba2827[m updates to deal with new naming structure of interactions
+[33m08fb22c[m Roi matured
+[33m5f41661[m spam long names corrected
+[33mb657a28[m dross removed
+[33m46c11a1[m fao_cv script enhanced with detrending and gap filling.
+[33m6f74369[m line break removed
+[33mdaadba6[m minor
+[33mc17e217[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33md5d568b[m edits to renaming fix
+[33m326c4df[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33mb3fc53d[m Naming issue fixed - crop was missing
+[33ma499f23[m file naming issue temporary fix
+[33m7a935eb[m dev updates
+[33m5c77a8e[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33mbb30f2d[m file naming conventions updated
+[33mf1e384d[m issues with file naming between solo and hazard interaction stacks fixed
+[33m39e05ab[m Updates
+[33mb333fd1[m structural improvements in action sequence
+[33m09fc0f4[m Interactiobs by crop drastically modified
+[33m9f06365[m naming of any file corrected
+[33me1bb7f3[m bug fixes to new functionality
+[33mcb5ad51[m script to work out production cv from faostat data
+[33m83fadf9[m workers moved to server setup
+[33m4e4c5a3[m phil's old method added
+[33m224354a[m major edits to interaction calculations, now all solo and interactions are calculated independently and saved separately.
+[33m65d3e8c[m code added
+[33mb186e7f[m hazard class added to meta-data
+[33m2463fea[m Bug due to . rather than [.] gsub fixed that was creating errors in hazards names from soybean being split on .bean.
+[33m6cf4583[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33m7ca4d3b[m afr_highlands added
+[33mb3815ab[m stop added for missing mapspam vop data
+[33mce8c612[m line delted
+[33m77df334[m overwrite = T is required for S3 directory downloads
+[33mf9270dd[m local directory setting removed from setup
+[33mb01199d[m afr_highlands now downloaded from S3
+[33m4e45639[m populations data generalized to S3 download
+[33mce49aa3[m hazard mean section updated to new file naming structure and workflow generalization improved.
+[33mb25ef95[m ensembleSD removed from timeseries mean calculations
+[33m1d65589[m development tweaks
+[33m0ed58c7[m dev edits
+[33m6657ab2[m roi tool development
+[33m07e32fe[m on-going development
+[33mf879e0d[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33mf7b346c[m development updates and new scripts added
+[33m2298bd6[m Merge pull request #2 from bjyberg/main
+[33mac4e854[m increased resolution again after running some checks - Likoma island was wrong, but fixed with the increased resolution. Tested with a resolution down to 0.004 with no changes, so it seems 0.007 is the sweet spot between accuracy and performance.
+[33mf062091[m Force high resolution base raster to fix issue with mode shift across admin boundaries
+[33m949728d[m x
+[33mce760c5[m dodgy values removed
+[33m0ce8843[m risk x exp x ac simplification moved to 2.1
+[33m265f7fc[m hazard x exposure restructuring wrapper function created
+[33mf8c1f73[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33m2d4f4c6[m haz_mean section updated
+[33mcb8e505[m line deleted
+[33mfd2e588[m mapspam updated
+[33m2eccb3d[m population added to ac
+[33m29f2b22[m non spam countries removed
+[33mbc27eca[m edit
+[33m0d7763d[m geoboundaries_locaiton no longer required
+[33m1a3a0ec[m more folders added
+[33me422593[m numbering updated
+[33me97fc89[m defaults updated
+[33m7d1fcd4[m geographies now pulled from s3
+[33mf5038b7[m combining haz risk, exposure and ac
+[33m7d89899[m package loading updated
+[33m26a6716[m Missing counter added
+[33m9e453a9[m severity class restrictions removed
+[33mac5ba09[m severity class limit removed.
+[33mf73e0f3[m .tif -> .tif$ in grep to prevent issues with aux files
+[33mec81e00[m order edits
+[33m33edf72[m admin_extract_wrap save_dir bug fixed, Geographies object added as argument to wrappers
+[33m962ba5a[m admin_extract_wrap2 applied further
+[33madbb3dd[m junk removed
+[33m2b0ecdd[m bug fixed
+[33ma76b845[m check for non-unique file names added
+[33mb0a5b34[m functions moved to start of script
+[33m9f9687c[m single hazard risk layer naming problem resolved
+[33m79d686e[m exposure added
+[33me4a724f[m edits
+[33m27f4a69[m admin extraction wrapper created and implemented in script
+[33m3ed1ded[m feather switched to parquet
+[33mb0c60f4[m spam lookup moved to git
+[33mbbbff27[m fao producer princes script added
+[33mfa78b70[m mapspam to fao mappings
+[33mdda7138[m file check added fro hpop x admin area feather
+[33m3e3f2c7[m Package loading updated and timeframe for hazard calculation argument move to server setup
+[33mc955b08[m updated so folder pointers are from server setup script
+[33mc947dbe[m hazard stack locations added
+[33mff440de[m Removed any individual model files from analysis
+[33m6709a63[m hpop added to server setup
+[33m95ad734[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33mdb8ee53[m cosmetic edits
+[33mbd8efbc[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33m5d1a09d[m return null removed
+[33m82db6b5[m continued generalization of script
+[33m03072a9[m updates to workflow structure to allow generalization across different systems
+[33mf4cee1c[m base raster added to meta-data
+[33ma5573e9[m Updates
+[33mfb53718[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33mdd62995[m functions created to streamline process, process harmonized
+[33m9e22c28[m updates to structure and debugging
+[33m6b4b26e[m improvements
+[33m2b539e6[m Script efficiency and design impovements
+[33m5d75fc2[m updates
+[33m73c5085[m updates
+[33m49762c2[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33m7a662dc[m key removed
+[33mb10148c[m cred removed
+[33me0ae4e7[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33m8ad73e1[m updates
+[33m1dfd3c5[m ecocrop RData removed
+[33mc0e00a2[m ecocrop csv added.
+[33m0475bd3[m ecocrop added
+[33m506ce13[m updates
+[33m2c85ef0[m metadata files uploaded
+[33mb30212c[m Haz_vop_risk bugs fixed
+[33m32b5d69[m Updates to existing scripts: In particular interaction of risk calculated at the timeseries level in the 1. Calculate Risks script
+[33mb235d33[m old scripts moved to archive
+[33m1f5631a[m Updates
+[33mc93402e[m development updates
+[33mb2faf96[m Updates
+[33m20d1c44[m misc updates
+[33m489e699[m haz mean x admin extraction added
+[33m6c39dc6[m admin extractions separated
+[33m6cec8bd[m make timeseries script imported from server
+[33md645102[m updates
+[33mee78810[m updates
+[33mb2721d9[m hazard weightings, for use with indices, now redundant?
+[33m426d2c4[m deleted
+[33me7987b7[m Intersection of risk and exposure
+[33m763ac88[m Various updates including processed geoboundaries
+[33mf7ced1f[m Haz prototype started
+[33m8c92be6[m Merge branch 'main' of https://github.com/AdaptationAtlas/hazards_prototype
+[33mc39cead[m Livestock and interactions added
+[33mc9fa436[m Merge pull request #1 from bjyberg/main
+[33md3c361e[m Merge branch 'main' into main
+[33m1ae2a49[m Junk fields removed
+[33mbc30247[m Bug fixes for admin aggregation
+[33m0680e5c[m Update process_geoboundaries.R
+[33mfd203f1[m Hopeful fix for boundaries
+[33m137fa7e[m geoboundaries
+[33md615532[m Updates
+[33m1c3dfe9[m progress
+[33m48b0d01[m updates
+[33m1e8f5f8[m removed
+[33m855bdeb[m now pulls functions from github
+[33m77b47e7[m renamed
+[33mdeb4d94[m renamed
+[33m32d9035[m script updates
+[33m5c858b4[m geoboundaries function added
+[33m0562b21[m integration of hazard index system
+[33m7bb6aa8[m hazard functions updated
+[33m8514cb9[m updates
+[33md55398c[m Initial commit
