@@ -24,8 +24,8 @@ load_and_install_packages <- function(packages) {
 packages <- c("arrow",
               "geoarrow",
               "sf",
-              "terra", 
-              "data.table", 
+              "terra",
+              "data.table",
               "doFuture",
               "future.apply",
               "exactextractr",
@@ -34,43 +34,6 @@ packages <- c("arrow",
 
 # Call the function to install and load packages
 load_and_install_packages(packages)
-
-merge_admin_extract<-function(data_ex) {
-  
-  # Define a mapping of administrative level names to short codes.
-  levels <- c(admin0 = "adm0", admin1 = "adm1", admin2 = "adm2")
-
-  # Process the extracted data to format it for analysis or further processing.
-  data_ex <- rbindlist(lapply(1:length(levels), FUN = function(i) {
-    level <- levels[i]
-    
-    # Convert the data to a data.table and remove specific columns.
-    data <- data.table(data.frame(data_ex[[names(level)]]))
-    data <- data[, !c("admin_name", "iso3")]
-    
-    # Determine the administrative level being processed and adjust the data accordingly.
-    admin <- "admin0_name"
-    if (level %in% c("adm1", "adm2")) {
-      admin <- c(admin, "admin1_name")
-      data <- suppressWarnings(data[, !"a1_a0"])
-    }
-    
-    if (level == "adm2") {
-      admin <- c(admin, "admin2_name")
-      data <- suppressWarnings(data[, !"a2_a1_a0"])
-    }
-    
-    # Adjust column names and reshape the data.
-    colnames(data) <- gsub("_nam$", "_name", colnames(data))
-    data <- data.table(melt(data, id.vars = admin))
-    
-    data
-  }), fill = T)
-  
-  
-  # Return the processed or read data.
-  return(data_ex)
-}
 
   # 0.1) Set up workspace #####
 haz_class<-fread(haz_class_url)
@@ -84,12 +47,42 @@ Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
   file<-geo_files_local[i]
   data<-arrow::open_dataset(file)
   data <- data |> sf::st_as_sf() |> terra::vect()
+  data$zone_id <- ifelse(
+    !is.na(data$gaul2_code),
+    data$gaul2_code,
+    ifelse(!is.na(data$gaul1_code), data$gaul1_code, data$gaul0_code))
   data
 })
 names(Geographies)<-names(geo_files_local)
+Geographies <- Geographies[1:2] # Subset for Climate Rational NB
+
+boundaries_zonal <- lapply(1:length(Geographies), FUN = function(i) {
+  file_path <- file.path(
+    boundaries_int_dir,
+    paste0(names(Geographies)[i], "_zonal.tif")
+  )
+  file_path
+})
+names(boundaries_zonal) <- names(Geographies)
+
+boundaries_index <- lapply(1:length(Geographies), FUN = function(i) {
+  data.frame(Geographies[[i]])[, c(
+    "iso3",
+    "admin0_name",
+    "admin1_name",
+    "admin2_name",
+    "zone_id",
+    "gaul0_code",
+    "gaul1_code",
+    "gaul2_code"
+  )]
+})
+
+names(boundaries_index) <- names(Geographies)
 
 # 1) % area of precipitation increase or decrease by admin vect ####
 # Create save folder
+haz_mean_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_mean, timeframe)
 haz_mean_ptot_dir<-file.path(haz_mean_dir,"ptot_perc")
 if(!dir.exists(haz_mean_ptot_dir)){
   dir.create(haz_mean_ptot_dir)
@@ -114,10 +107,11 @@ overwrite<-T
 if(!file.exists(save_file)|overwrite==T){
   
 
-    var<-gsub("historical_","",tail(tstrsplit(file_hist,"/"),1))
+    var<-gsub("historic_","",unlist(tail(tstrsplit(files_hist,"/"),1)))[[1]]
+    # var <- paste0(var, collapse = "|")
     files_fut_ss<-grep(var,files_fut,value=T)
     future<-terra::rast(files_fut_ss)
-    past<-terra::rast(file_hist)
+    past<-terra::rast(files_hist[[1]])
     
     diff<-future-past
     change<-round(100*(diff)/past,1)
@@ -137,46 +131,61 @@ if(!file.exists(save_file)|overwrite==T){
 
 
 # Increasing area
-change_inc<-terra::classify(change,rcl=data.frame(from=c(-999999999,5),to=c(5,99999999999),becomes=c(0,1)))
+change_inc<-terra::classify(change,rcl=data.frame(from=c(-Inf,5),to=c(5,Inf),becomes=c(0,1)))
 change_inc<-change_inc*base_cellsize
 # Decreasing area
-change_dec<-terra::classify(change,rcl=data.frame(from=c(-999999999,-5),to=c(-5,99999999999),becomes=c(1,0)))
+change_dec<-terra::classify(change,rcl=data.frame(from=c(-Inf,-5),to=c(-5,Inf),becomes=c(1,0)))
 change_dec<-change_dec*base_cellsize
 
 # Sum areas by admin vectors
-base_areas<-admin_extract(base_cellsize,
-              Geographies = Geographies,
-              FUN = "sum")
-
-change_inc<-admin_extract(change_inc,
-                          Geographies = Geographies,
-                          FUN = "sum")
-
-change_dec<-admin_extract(change_dec,
-                          Geographies = Geographies,
-                          FUN = "sum")
-
-diff<-admin_extract(diff,
-                    Geographies = Geographies,
-                    FUN = "mean")
-
-# Tabulate data
-change_inc<-merge_admin_extract(change_inc)[,direction:="increase_5"]
-change_dec<-merge_admin_extract(change_dec)[,direction:="decrease_5"]
-
-base_areas<-merge_admin_extract(base_areas)[,direction:="total"]
+base_areas<-admin_extract(
+              base_cellsize,
+              boundaries_zonal,
+              boundaries_index,
+              FUN = "sum")[,direction:="total"]
 setnames(base_areas,"value","total")
 
-diff<-merge_admin_extract(diff)
+change_inc<-admin_extract(change_inc,
+                          boundaries_zonal,
+                          boundaries_index,
+                          FUN = "sum")[,direction:="decrease_5"]
+
+change_dec<-admin_extract(change_dec,
+                          boundaries_zonal,
+                          boundaries_index,
+                          FUN = "sum")[,direction:="increase_5"]
+
+diff<-admin_extract(diff,
+                    boundaries_zonal,
+                    boundaries_index,
+                    FUN = "sum")
+
+# # Tabulate data
+# change_inc<-merge_admin_extract(change_inc)[,direction:="increase_5"]
+# change_dec<-merge_admin_extract(change_dec)[,direction:="decrease_5"]
+# 
+# base_areas<-merge_admin_extract(base_areas)[,direction:="total"]
+# setnames(base_areas,"value","total")
+# 
+# diff<-merge_admin_extract(diff)
 
 # Work out percentage change
+admin <- c(
+  "admin0_name",
+  "admin1_name",
+  "admin2_name",
+  "gaul0_code",
+  "gaul1_code",
+  "gaul2_code",
+  "iso3"
+)
 change<-rbind(change_inc,change_dec)
-change<-merge(change,base_areas[,list(admin0_name,admin1_name,admin2_name,total)],all.x=T)
+change<-merge(change,base_areas[,c(..admin, "total")],all.x=T)
 change[,value:=round(100*value/total,1)][,total:=NULL]
 
 # Wrangle variable name
 var_names<-change$variable
-var_names<-gsub("sum.|_PTOT_sum","",var_names)
+var_names<-gsub("sum.|_PTOT-sum_mean","",var_names)
 var_names<-gsub("1_2","1-2",var_names)
 var_names<-do.call("cbind",tstrsplit(var_names,"_"))
 colnames(var_names)<-c("scenario","model","timeframe")
@@ -188,11 +197,11 @@ diff<-cbind(diff,var_names)[,variable:="PTOT"][,stat:="diff"]
 # Generate ensemble data from models
 change_ens<-change[!grepl("ENSEMBLE",model)]
 change_ens<-change_ens[,list(mean=mean(value,na.rm=T),min=min(value,na.rm=T),max=max(value,na.rm=T),sd=sd(value,na.rm=T)),
-                       by=list(admin0_name,admin1_name,admin2_name,scenario,timeframe,direction,variable,stat)]
+                       by=c(admin,"scenario","timeframe","direction","variable","stat")]
 
 diff_ens<-diff[!grepl("ENSEMBLE",model)]
 diff_ens<-diff_ens[,list(mean=mean(value,na.rm=T),min=min(value,na.rm=T),max=max(value,na.rm=T),sd=sd(value,na.rm=T)),
-                       by=list(admin0_name,admin1_name,admin2_name,scenario,timeframe,variable,stat)]
+                       by=c(admin,"scenario","timeframe","variable","stat")]
 
 # save results
 arrow::write_parquet(change,file.path(haz_mean_ptot_dir,"ptot_change_by_model.parquet"))
@@ -204,19 +213,20 @@ arrow::write_parquet(diff_ens,file.path(haz_mean_ptot_dir,"ptot_diff_ensemble.pa
 # 2) % area of severe or extreme crop or livestock heat stress ####
   # 2.1) Livestock #####
   # set save location
+haz_time_risk_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_risk, timeframe)
   haz_mean_thi_dir<-file.path(haz_mean_dir,"thi_perc")
   if(!dir.exists(haz_mean_thi_dir)){
     dir.create(haz_mean_thi_dir)
   }
   
   # list data files
-  files<-list.files(haz_time_risk_dir,"THI_max",full.names =T)
+  files<-list.files(haz_time_risk_dir,"THI-max.*\\.tif$",full.names =T)
   
   # get severity thresholds
   cat_thresholds<-haz_class[index_name=="THI_max" & 
                               description %in% c("Severe","Extreme") & 
                               crop  %in% c("cattle_highland","cattle_tropical"),list(index_name,crop,description,threshold)
-                            ][,code:=paste0("THI_max_max-G",threshold)]
+                            ][,code:=paste0("THI-max-max-G",threshold)]
   
   # get highland/lowland mask
   highlands<-terra::rast(afr_highlands_file)
@@ -228,12 +238,10 @@ arrow::write_parquet(diff_ens,file.path(haz_mean_ptot_dir,"ptot_diff_ensemble.pa
     files_ss<-grep(cat_thresholds[i,code],files,value=T)
     data<-terra::rast(files_ss)
     
-    # Apply highland/lowland mask
-    if(cat_thresholds[i,grepl("tropical",crop)]){
-      data<-data*tropical
-    }else{
-      data<-data*highlands
-    }
+    mask <- if (cat_thresholds[i, grepl("tropical", crop)]) tropical else highlands
+    
+    # Apply mask
+    data <- data * mask
     
     names(data)<-paste0(gsub(".tif","",basename(files_ss)),"_",cat_thresholds[i,tolower(description)])
     
@@ -251,28 +259,29 @@ arrow::write_parquet(diff_ens,file.path(haz_mean_ptot_dir,"ptot_diff_ensemble.pa
   
   # Extract by admin area
   base_areas<-admin_extract(base_cellsize,
-                            Geographies = Geographies,
+                            boundaries_zonal,
+                            boundaries_index,
                             FUN = "sum")
   
   data<-admin_extract(data,
-                      Geographies = Geographies,
+                      boundaries_zonal,
+                      boundaries_index,
                       FUN = "sum")
   
   # Tabulate data
-  data<-merge_admin_extract(data)
-  base_areas<-merge_admin_extract(base_areas)
+  # data<-merge_admin_extract(data)
+  # base_areas<-merge_admin_extract(base_areas)
   setnames(base_areas,"value","total")
   
   # Work out percentage change
-  data<-merge(data,base_areas[,list(admin0_name,admin1_name,admin2_name,total)],all.x=T)
+  data<-merge(data,base_areas[,c(..admin,"total")],all.x=T)
   data[,value:=round(100*value/total,1)][,total:=NULL]
   
   # Wrangle variable name
   var_names<-data$variable
-  var_names<-gsub("sum.|_THI_max_max","",var_names)
+  var_names<-gsub("sum.|_THI-max-max","",var_names)
   var_names<-gsub("1_2","1-2",var_names)
   var_names<-gsub(".G","_",var_names)
-  var_names<-gsub("historical","historical_historical_historical",var_names)
   var_names<-do.call("cbind",tstrsplit(var_names,"_"))[,c(1:3,5)]
   colnames(var_names)<-c("scenario","model","timeframe","severity")
   
@@ -283,7 +292,7 @@ arrow::write_parquet(diff_ens,file.path(haz_mean_ptot_dir,"ptot_diff_ensemble.pa
                        min=min(value,na.rm=T),
                        max=max(value,na.rm=T),
                        sd=round(sd(value,na.rm=T),1)),
-                         by=list(admin0_name,admin1_name,admin2_name,scenario,timeframe,variable,severity,variable,crop)]
+                         by=c(admin,"scenario","timeframe","variable","severity","crop")]
   
   arrow::write_parquet(data,file.path(haz_mean_thi_dir,"thi_perc_area_by_model.parquet"))
   arrow::write_parquet(data_ens,file.path(haz_mean_thi_dir,"thi_perc_area_ensemble.parquet"))
@@ -310,7 +319,7 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
   crop_focus<-as.character(choices$crop[j])
 
   # list data files
-  files<-list.files(haz_time_risk_dir,haz,full.names =T)
+  files<-list.files(haz_time_risk_dir,paste0(haz, ".*\\.tif$"),full.names =T)
   files<-files[!grepl("ENSEMBLE",files)]
 
   
@@ -318,7 +327,7 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
   cat_thresholds<-haz_class[index_name==haz & 
                               description %in% sev_classes & 
                               crop  %in% crop_focus,list(index_name,crop,description,threshold)
-  ][,code:=paste0(haz,"_mean-G",threshold)] # mean-G -> this needs to be generalized
+  ][,code:=paste0(haz,"-mean-G",threshold)] # mean-G -> this needs to be generalized
   
   data<-terra::rast(lapply(1:length(sev_classes),FUN=function(i){
     files_ss<-grep(cat_thresholds[description==sev_classes[i],code],files,value=T)
@@ -331,30 +340,28 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
   
   # Extract by admin area
   base_areas<-admin_extract(base_cellsize,
-                            Geographies = Geographies,
+                            boundaries_zonal,
+                            boundaries_index,
                             FUN = "sum")
   
   data<-admin_extract(data,
-                      Geographies = Geographies,
-                      FUN = "sum",
-                      max_cells_in_memory = 3*10^8)
+                      boundaries_zonal,
+                      boundaries_index,
+                      FUN = "sum")
   
-  # Tabulate data
-  data<-merge_admin_extract(data)
   setnames(data,"value","area")
-  base_areas<-merge_admin_extract(base_areas)
   setnames(base_areas,"value","total_area")
   
   # Work out percentage change
-  data<-merge(data,base_areas[,list(admin0_name,admin1_name,admin2_name,total_area)],all.x=T)
+  data<-merge(data,base_areas[,c(..admin,"total_area")],all.x=T)
   data[,perc:=round(100*area/total_area,1)]
   
   # Wrangle variable name
   var_names<-data$variable
-  var_names<-gsub(paste0("sum.|_",haz,"_mean"),"",var_names) # _mean needs to be generalized
+  var_names<-gsub(paste0("sum.|_",haz,"-mean"),"",var_names) # _mean needs to be generalized
   var_names<-gsub("1_2","1-2",var_names)
   var_names<-gsub(".G","_",var_names) # .G needs to be generalized
-  var_names<-gsub("historical","historical_historical_historical",var_names)
+  # var_names<-gsub("historical","historical_historical_historical",var_names)
   var_names<-do.call("cbind",tstrsplit(var_names,"_"))[,c(1:3,5)]
   colnames(var_names)<-c("scenario","model","timeframe","severity")
   
@@ -368,11 +375,11 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
   data_ens<-data
   setnames(data_ens,"perc","value")
 
-  data_ens<-data[,list(mean=mean(value,na.rm=T),
+  data_ens<-data_ens[,list(mean=mean(value,na.rm=T),
                        min=min(value,na.rm=T),
                        max=max(value,na.rm=T),
                        sd=round(sd(value,na.rm=T),1)),
-                 by=list(admin0_name,admin1_name,admin2_name,scenario,timeframe,hazard,severity,crop)
+                 by=c(admin,"scenario","timeframe","hazard","severity","crop")
                  ][,variable:="perc_area"]
 
 
@@ -397,7 +404,7 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
     crop_focus<-as.character(choices$crop[j])
     
     # list data files
-    files<-list.files(haz_time_risk_dir,haz,full.names =T)
+    files<-list.files(haz_time_risk_dir,paste0(haz, ".*\\.tif$"), full.names =T)
     files<-files[!grepl("ENSEMBLE",files)]
     
     # get stat
@@ -407,7 +414,7 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
     cat_thresholds<-haz_class[index_name==haz & 
                                 description %in% sev_classes & 
                                 crop  %in% crop_focus,list(index_name,crop,description,threshold,direction2)
-    ][,code:=paste0(haz,"_",stat,"-",direction2,threshold)]
+    ][,code:=paste0(haz,"-",stat,"-",direction2,threshold)]
     
     data<-terra::rast(lapply(1:length(sev_classes),FUN=function(i){
       files_ss<-grep(cat_thresholds[description==sev_classes[i],code],files,value=T)
@@ -417,19 +424,16 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
     }))
     
     data<-admin_extract(data,
-                        Geographies = Geographies,
-                        FUN = extract_fun,
-                        max_cells_in_memory = 3*10^8)
-    
-    # Tabulate data
-    data<-merge_admin_extract(data)
+                        boundaries_zonal,
+                        boundaries_index,
+                        FUN = extract_fun)
 
     # Wrangle variable name
     var_names<-data$variable
-    var_names<-gsub(paste0(extract_fun,".|_",haz,"_",stat),"",var_names)
+    var_names<-gsub(paste0(extract_fun,".|_",haz,"-",stat),"",var_names)
     var_names<-gsub("1_2","1-2",var_names)
     var_names<-gsub(paste0(".",cat_thresholds[1,direction2]),"_",var_names)
-    var_names<-gsub("historical","historical_historical_historical",var_names)
+    # var_names<-gsub("historical","historical_historical_historical",var_names)
     var_names<-do.call("cbind",tstrsplit(var_names,"_"))[,c(1:3,5)]
     colnames(var_names)<-c("scenario","model","timeframe","severity")
     
@@ -438,7 +442,7 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
     data
     
   }))
-  
+  haz_timeseries_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_class, timeframe)
   years_hist<-terra::nlyr(terra::rast(list.files(haz_timeseries_dir,"hist",full.names =T)[1]))
   years_scen<-terra::nlyr(terra::rast(list.files(haz_timeseries_dir,"ssp245",full.names =T)[1]))
   
@@ -458,7 +462,7 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
                        min=min(value,na.rm=T),
                        max=max(value,na.rm=T),
                        sd=round(sd(value,na.rm=T),1)),
-                 by=list(admin0_name,admin1_name,admin2_name,scenario,timeframe,hazard,hazard_user,severity,crop,variable)]
+                 by=c(admin,"scenario","timeframe","hazard","hazard_user","severity","crop","variable")]
   
   data_ens[scenario=="historical",c("min","max","sd"):=NA]
   
@@ -469,8 +473,4 @@ data<-rbindlist(lapply(1:length(choices),FUN=function(j){
   
   arrow::write_parquet(data,file.path(haz_time_risk_stats_dir,"haz_freq.parquet"))
   arrow::write_parquet(data_ens,file.path(haz_time_risk_stats_dir,"haz_freq_ensemble.parquet"))
-  
-  
-    
-  
   
