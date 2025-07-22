@@ -147,23 +147,14 @@ chirts_path_africa  <- file.path(root_dir, "chirts_africa", "Tmax")
 hist_index_dir      <- file.path(root_dir, "atlas_hazards", "cmip6", "indices", "historical")
 future_chirts_base  <- file.path(root_dir, "chirts_cmip6_africa")
 future_index_base   <- file.path(root_dir, "atlas_hazards", "cmip6", "indices")
-do_historical<-T
-gcms    <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
-nexgddp<-F
-bbox<-NULL
+
 
 # If nex-gddp
 if(climdat_source=="nexgddp"){
-  nexgddp<-T
   ref_raster_path     <- file.path(indices_dir,"ssp126_ACCESS-ESM1-5_2021_2040/NDD/NDD-2021-01.tif")
   future_chirts_base   <- file.path(root_dir, "nex-gddp-cmip6/tasmax")
   future_index_base   <- file.path(root_dir, "atlas_nex-gddp_hazards", "cmip6", "indices")
-  do_historical<-F
-  gcms<-basename(list.dirs(file.path(future_chirts_base,"ssp126"),recursive = F)[-1])
-  bbox<- c(-180, 180, -50, 50)
 }
-
-overwrite<-T
 
 # 2) R Options and Environment Setup ####
 options(warn = -1, scipen = 999)
@@ -176,11 +167,27 @@ ref <- terra::rast(ref_raster_path)
 thresholds   <- 20:50                   # NTx thresholds to calculate
 sce_climates <- c("historical", "future") # Scenario types: historical and future
 
-# Future climate data parameters
 ssps    <- c("ssp126", "ssp245", "ssp370", "ssp585")
 prds    <- c("2021_2040", "2041_2060", "2061_2080", "2081_2100")
 baseline_yrs <- 1995:2014                # Historical baseline period
-cores        <- floor(parallel::detectCores() * 0.33) # Cores for parallel processing
+gcms<- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
+
+bbox<-NULL
+do_historical<-T
+nexgddp<-F
+
+if(climdat_source=="nexgddp"){
+  nexgddp<-T
+  gcms_nexgddp<-basename(list.dirs(file.path(future_chirts_base,"ssp126"),recursive = F)[-1])
+  gcms<-c(gcms,gcms_nexgddp[!gcms_nexgddp %in% gcms])
+  do_historical<-F
+  bbox<- c(-180, 180, -50, 50)
+}
+
+cores<- ceiling(length(thresholds)/2) # Cores for parallel processing
+
+## 3.1) Overwrite existing data? ####
+overwrite<-T
 
 # 4) Prepare Historical CHIRTS Data ####
 if(do_historical){
