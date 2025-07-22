@@ -58,6 +58,8 @@ working_dir <- indices_dir
 # Where hazard time series outputs will be saved
 output_dir <- indices_dir2
 
+  ## 1.3) Load base rast ####
+base_rast<-terra::rast(base_rast_path)
 # 2) Summarize existing data #####
 if(F){
   folders <- list.dirs(working_dir, recursive = FALSE)
@@ -221,6 +223,7 @@ folders <- basename(folders)
 
 # Temporarily limit folders to 5 atlas gcms ####
 gcms    <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
+
 folders<-grep(paste(gcms,collapse="|"),folders,value=T)
 
 # Extract the model names (assuming each folder has a structure like scenario_model_yearrange)
@@ -281,9 +284,9 @@ hazards<-c(hazards_wet,hazards_heat)
 if(grepl("gddp",working_dir)){
   hazards<-hazards[!hazards %in% c("HSH","THI","TAVG")]
   hazards<-c(hazards,"NTx30")
-  hazards2 <- paste0("NTx", c(20:34, 36:39, 41:50)) 
-    }else{
-      hazards2 <- paste0("NTx", c(20:29,31:34, 36:50))
+  hazards2 <- paste0("NTx", c(20:29,31:34, 36:50))
+  }else{
+    hazards2 <- paste0("NTx", c(20:34, 36:39, 41:50)) 
     }
 
   # Add in more heat thresholds to meta-data
@@ -295,6 +298,7 @@ if(grepl("gddp",working_dir)){
     # Use these controls if we just want to process the additional NTx hazards or the NTx hazards only
     #hazards <- c(hazards, hazards2)
     hazards<-hazards2
+    hazards<-"NTx40"
   
 cat("Timeseries hazards = ",hazards,"\n")
 
@@ -697,7 +701,7 @@ for (ii in 1:nrow(parameters)) {
 cat("Time series extraction of hazards completed.")
 
 # 7) Check integrity of results ####
-
+if(F){
 result<-check_tif_integrity (dir_path,
                      recursive       = TRUE,
                      pattern         = "*.tif",
@@ -705,3 +709,4 @@ result<-check_tif_integrity (dir_path,
                      n_workers_folders = 1,
                      use_multisession = FALSE,
                      delete_corrupt  = FALSE)
+}
