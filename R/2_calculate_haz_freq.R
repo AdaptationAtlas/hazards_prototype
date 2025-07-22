@@ -103,7 +103,8 @@ non_heat<-c("NTx40","NTx35","NDWS","TAI","NDWL0","PTOT") # NDD is not being used
 
 haz_class<-rbind(haz_class[crop=="generic"],
                  rbindlist(lapply(1:length(livestock),FUN=function(i){
-                   rbind(haz_class[crop=="generic" & index_name %in% non_heat][,crop:=livestock[i]],haz_class[crop==livestock[i]])
+                   rbind(haz_class[crop=="generic" & index_name %in% non_heat
+                                   ][,crop:=livestock[i]],haz_class[crop==livestock[i]])
                  }))
 )
 
@@ -238,7 +239,8 @@ if(replicate_generic_hazards){
 }else{
   haz_class2<-copy(ec_haz)
 }
-haz_class<-rbind(haz_class,haz_class2)
+
+haz_class<-rbind(haz_class[,!"direction2"],haz_class2)
 
 #### 0.2.2.4) Update fields in haz_class table ####
 
@@ -403,7 +405,6 @@ combinations_ss<-unique(combinations_ss[order(code)])
 
 
 #### 0.2.4.3) Merge crop and animal combinations ####
-
 combinations_ca<-rbind(combinations_c,combinations_a)[,combo_name:=paste0(c(dry,heat,wet),collapse="+"),by=list(dry,heat,wet,crop,severity_class)
 ][,severity_class:=tolower(severity_class)]
 
@@ -467,17 +468,18 @@ Thresholds_U_ss[,direction2:=direction
 # Subset to interaction hazards
 Thresholds_U_ss<-Thresholds_U_ss[grepl(paste(if(any(grepl("NTx",interaction_haz))){c("NTx",interaction_haz)}else{interaction_haz},collapse = "|"),index_name2)]
 
+# ---------------------------------------------------------------####
 ## 0.3) Set flow controls and overwrite parameters ####
 ### 0.3.1) Classify hazards ####
-run1<-F
+run1<-T
 overwrite1<-F
 worker_n1<-20
 multisession1<-T
 annual_season_subset<-T # When seasonal data is being analysed (other than GCCMI crop calendar) should only annual crops be run?
 
 ### 0.3.2) Calculate hazard risk freq ####
-run2<-F
-run2_main<-F # Set to F if you only want to run the ensemble step only (setting do_ensemble2 to T)
+run2<-T
+run2_main<-T # Set to F if you only want to run the ensemble step only (setting do_ensemble2 to T)
 check2<-T
 round2<-NULL # set to integer if you wish to round results
 worker_n2<-20
@@ -486,7 +488,7 @@ multisession2<-T
 do_ensemble2<-T
 
 ### 0.3.3) Make crop stacks for risk freq ####
-run3<-T
+run3<-F
 check3<-T
 overwrite3<-F
 worker_n3<-20
@@ -523,10 +525,6 @@ multisession5.3<-T
 check5.3<-T
 round5.3<-NULL
 
-### 0.3.6) Set workers & permission for uploads ####
-worker_n_upload<-20
-permission<-"public-read"
-
 ### 0.3.7) Choose timeframes to loop through ####
 if(exists("indices_dir2")){
   timeframes<-basename(list.dirs(indices_dir2,recursive=F))
@@ -540,9 +538,9 @@ cat("timeframes = ", timeframes,
     "\n\nrun2 =",run2,"round2 =",round2,"check2 =",check2,"overwrite =",overwrite2,"workers2 =",worker_n2,"multisession2= ",multisession2,"do_ensemble2=",do_ensemble2,
     "\n\nrun4 =",run4,"round4 =",round4,"check 4 =",check4,"overwrite4 =",overwrite4,"workers4 =",worker_n4,"multisession4 =",multisession4,"do_ensemble4 =",do_ensemble4,
     "\n\nrun5.2 =",run5.2,"check5.2 =",check5.2,"round5.2 =",round5.2,"overwrite5.2 =",overwrite5.2,"workers5.2 =",worker_n5.2,"multisession5.2 =",multisession5.2,"do_ensemble5.2 =",do_ensemble5.2,
-    "\n\nrun5.3 =",run5.3,"check5.3 =",check5.3,"round5.3 =",round5.3,"overwrite5.3 =",overwrite5.3,"workers5.3 =",worker_n5.3,"multisession5.3 =",multisession5.3,
-    "\n\nupload workers n =",worker_n_upload," upload permission =",permission,"\n\n")
+    "\n\nrun5.3 =",run5.3,"check5.3 =",check5.3,"round5.3 =",round5.3,"overwrite5.3 =",overwrite5.3,"workers5.3 =",worker_n5.3,"multisession5.3 =",multisession5.3,"\n\n")
 
+# ---------------------------------------------------------------####
 # ***Start timeframe loop*** ####
 for(tx in 1:length(timeframes)){
   timeframe<-timeframes[tx]
@@ -575,6 +573,9 @@ for(tx in 1:length(timeframes)){
       thresholds<-copy(Thresholds_U_ss)
     }
     
+    cat("timeframe 1) Classifying these hazards:\n")
+    print(thresholds)
+    
     set_parallel_plan(n_cores=worker_n1,use_multisession=multisession1)
     
     # Enable progressr
@@ -586,16 +587,20 @@ for(tx in 1:length(timeframes)){
       # Define the progress bar
       prog <- progressr::progressor(along = 1:nrow(thresholds))
       
-      invisible(future.apply::future_lapply(1:nrow(thresholds),FUN=function(i){
-        
-        #invisible(lapply(1:nrow(thresholds),FUN=function(i){
+      future.apply::future_lapply(1:nrow(thresholds),FUN=function(i){
+      #  lapply(1:nrow(thresholds),FUN=function(i){
         index_name<-thresholds[[i,"code2"]]
         files_ss<-grep(index_name,files,value=T)
         files_ss<-files_ss[!grepl("ENSEMBLE",files_ss)]
+        
+        if(length(files_ss)==0){
+          warning(paste0("No files present for ",index_name,"\n"))
+        }
+        
         prog(sprintf("Threshold %d/%d", i, nrow(thresholds)))
         
         for(j in 1:length(files_ss)){
-          #cat(i,"-",j,"\n")
+       #   cat(i,"-",j,"\n")
           
           file_name<-gsub(".tif",paste0("-",thresholds[[i,"code"]],".tif"),file.path(haz_time_class_dir,basename(files_ss[j])),fixed = T)
           
@@ -623,7 +628,7 @@ for(tx in 1:length(timeframes)){
             gc()
           }
         }
-      }))
+      })
     })
     
     plan(sequential)
@@ -702,7 +707,11 @@ for(tx in 1:length(timeframes)){
       haz_freq_file_tab[,hazard:=gsub("[.]tif","",hazard)]
       haz_freq_file_tab[,file:=haz_freq_files]
       haz_freq_file_tab[,hazard2:=unlist(tstrsplit(hazard,"-",keep=1))]
-      haz_freq_file_tab[str_count(hazard,"-")>2,stat:=unlist(tstrsplit(hazard,"-",keep=2))]
+      if(haz_freq_file_tab[,any(str_count(hazard,"-")>2)]){
+        haz_freq_file_tab[str_count(hazard,"-")>2,stat:=unlist(tstrsplit(hazard,"-",keep=2))]
+      }else{
+        haz_freq_file_tab[,stat:=NA]
+      }
       haz_freq_file_tab[!is.na(stat),hazard2:=paste0(hazard2,"-",stat)]
       haz_freq_file_tab[,hazard2:=paste0(hazard2[1],"-",tail(unlist(strsplit(hazard[1],"-")),1)),by=.(hazard,hazard2)]
       haz_freq_file_tab[,layer_name:=paste(c(scenario[1],timeframe[1],hazard2[1]),collapse="_"),by=.(scenario,timeframe,hazard2)]
@@ -1552,8 +1561,13 @@ for(tx in 1:length(timeframes)){
 
 cat("Script 2 -  timeframe loop completed.\n")  
 
-# Not Run (Brayden has handled this elsewhere?) ####
+# ---------------------------------------------------------------####
+# Uploads - Not Run (Brayden has handled this elsewhere?) ####
 if(F){
+  ### 0.3.6) Set workers & permission for uploads ####
+  worker_n_upload<-20
+  permission<-"public-read"
+  
   # 6) Upload outputs ####
   # 6.1) (not implemented) Classified hazards ####
   # 6.2) Hazard Freq ####
