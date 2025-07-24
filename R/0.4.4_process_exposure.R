@@ -63,7 +63,7 @@ names(boundaries_index)<-names(Geographies)
 # 1) Crop (MapSPAM) extraction by vector boundaries #####
 overwrite_spam<-F
 version_spam<-1
-source_year_spam<-list(census=2015,values=2015)
+source_year_spam<-list(spam_year=2020,fao_price="varies")
 
 files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
 files<-grep("variable",files,value=T)
@@ -173,9 +173,8 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
 }))
 
 # 2) Livestock (GLW) extraction by vector boundaries #####
-version_glw<-1
+version_glw<-"glw4-2020_atlasv1"
 overwrite_glw<-F
-source_year_glw<-list(census=2020,values=2015)
 
 livestock_no_file<-paste0(glw_pro_dir,"/livestock_number_number.tif")
 if(!file.exists(livestock_no_file)){
@@ -187,6 +186,13 @@ files<-list.files(glw_pro_dir,".tif$",recursive=T,full.names=T)
 glw_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
     cat("Extracting file",i,"/",length(files),basename(files[i]),"\n")
     file<-files[i]
+    
+    if(grepl("number",file)){
+      source_year_glw<-list(glw=2020)
+    }else{
+      source_year_glw<-list(glw=2020,faostat_vop=gsub(".tif","",tail(unlist(strsplit(basename(file),"-")),1)))
+    }
+    
     file_base<-gsub(".tif","",basename(file))
     var<-unlist(tstrsplit(basename(file),"_",keep=2))
     unit<-gsub(".tif","",unlist(tstrsplit(basename(file),"_",keep=3)))
@@ -256,7 +262,7 @@ glw_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   
 # 3) Combine exposure totals by admin areas ####
   # 3.1) Original recipe ####
-file<-paste0(exposure_dir,"/exposure_adm_sum.parquet")
+file<-paste0(exposure_dir,"/exposure_adm_sum_spam20-20_glw420-20.parquet")
 
 if(!file.exists(file)|overwrite_glw|overwrite_spam){
   
@@ -266,7 +272,11 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
   )
   
   # Subset units
-  exposure_adm_sum_tab<-exposure_adm_sum_tab[!grepl("-",unit)]
+  exposure_adm_sum_tab[,unique(unit)]
+  units<-c(number="number",ha="ha",t="t",usd="nominal-usd-2020",intld15="intld15-2020",intld15="intld15")
+  exposure_adm_sum_tab<-exposure_adm_sum_tab[unit %in% units]
+  
+  
   
   # Order to optimize parquet performance
   exposure_adm_sum_tab<-exposure_adm_sum_tab[order(iso3,admin0_name,admin1_name,admin2_name,exposure,unit,tech,crop)]
@@ -280,9 +290,9 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
   
     attr_info <- list(
       source = list(input_raster1=atlas_data$mapspam_2020v1r2$name,
-                    input_raster2="GLW4",
+                    input_raster2="GLW4-2020",
                     extraction_vect=atlas_data$boundaries$name),
-      source_year = list(input_raster1=source_year_spam,input_raster2=source_year_glw),
+      source_year = list(input_raster1=c(spam_year=2020,fao_vop="see unit"),input_raster2=c(glw_year=2020,fao_price="see unit")),
       date_created = Sys.time(),
       field_descriptions = field_descriptions,
       filters = filters,
@@ -299,19 +309,20 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
     
     write_json(attr_info, attr_file, pretty = TRUE)
     
-    # Fix unit issue
-    exposure_adm_sum_tab[unit==c("intld2015"),unit:="intld15"]
-    exposure_adm_sum_tab[unit==c("usd2015"),unit:="usd15"]
+    # Harmonize unit naming
+    for(k in 1:length(units)){
+      exposure_adm_sum_tab[unit==units[k],unit:=names(units)[k]]
+    }
+
     exposure_adm_sum_tab[,crop:=gsub("_| ","-",crop)]
     
     arrow::write_parquet(exposure_adm_sum_tab,file)
 }
   
-  arrow::read_parquet(file)[,unique(unit)]
-
+  
   # 3.2) Specific data for economic returns notebook ####
   
-  file<-paste0(exposure_dir,"/vop_nominal-usd-2021_adm_sum.parquet")
+  file<-paste0(exposure_dir,"/vop_nominal-usd-2021_adm_sum_spam20_glw420.parquet")
   
   if(!file.exists(file)|overwrite_glw|overwrite_spam){
       
@@ -336,7 +347,7 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
         source = list(input_raster1=atlas_data$mapspam_2020v1r2$name,
                       input_raster2="GLW4",
                       extraction_vect=atlas_data$boundaries$name),
-        source_year = list(input_raster1=source_year_spam,input_raster2=source_year_glw),
+        source_year = list(input_raster1=c(spam_year=2020,fao_vop=2021),input_raster2=c(glw_year=2020,fao_price=2021)),
         date_created = Sys.time(),
         field_descriptions = field_descriptions,
         filters = filters,
