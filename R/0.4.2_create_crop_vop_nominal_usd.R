@@ -220,7 +220,7 @@ names(prod_rast)<-spam_files$tech
 ## 3) Infer missing prices ####
 # Ok so now we want to estimate a sensible nominal value in usd from the most recent data available
 # We will use production amount and price to get this as conversion of iusd15 to nominal usd seems to give unrealistically low values
-year_sets<-list(y2021=2019:2023,y2015=2014:2016)
+year_sets<-list(y2021=2019:2023,y2015=2014:2016,y2020=2019:2020)
 
 price_usd_list<-lapply(1:length(year_sets),function(i){
   ymin<-min(year_sets[[i]])
@@ -230,8 +230,8 @@ price_usd_list<-lapply(1:length(year_sets),function(i){
                                                            production_t=median(production_t,na.rm=T)),
                                 .(atlas_name,iso3)]
   
-  # Values are often missing, is there a value from a longer 10y time series?
-  price_any<-prod_merge[year %in% (ymin-5):2023,.(price_median=median(price_usd,na.rm=T),
+  # Values are often missing, is there a value from a longer time series?
+  price_any<-prod_merge[year %in% (ymin-5):ymax,.(price_median=median(price_usd,na.rm=T),
                                               price_min=min(price_usd,na.rm=T),
                                               price_max=max(price_usd,na.rm=T),
                                               price_tail=tail(price_usd[!is.na(price_usd)],1),
