@@ -25,6 +25,7 @@
 # Dependencies:
 # Run these scripts before executing this one:
 # 1. 0.6_process_exposure.R
+# 3. 0.5_fao_production_cv.R 
 #   Available at: https://github.com/AdaptationAtlas/hazards_prototype
 #
 # ======================================================================
@@ -76,13 +77,12 @@ if(F){
 
 # 1) Load data ####
   ## 1.1) Crops - MapSPAM ####
-    file<-file.path(atlas_dirs$data_dir$exposure,"exposure_adm_sum.parquet")
+    file<-file.path(atlas_dirs$data_dir$exposure,"vop_nominal-usd-2021_adm_sum_spam20_glw420.parquet")
 
     exposure<-data.table(arrow::read_parquet(file))
     exposure<-exposure[,exposure:=paste0(exposure,"_",unit)
                        ][is.na(admin2_name) & (tech=="all"|is.na(tech))
-                         ][,c("admin2_name","unit","tech"):=NULL
-                          ][exposure %in% c("vop_usd15","vop_intld15","prod_t")]
+                         ][,c("admin2_name","unit","tech"):=NULL]
     
   # Combine highland and lowland cattle
     exposure<-exposure[,crop:=gsub("-tropical|-highland","",crop)][,list(value=sum(value,na.rm=T)),by=list(admin0_name,admin1_name,crop,exposure)]
