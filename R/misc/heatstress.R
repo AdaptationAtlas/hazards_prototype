@@ -23,7 +23,15 @@ suppressMessages(pacman::p_load(tidyverse, terra, gtools, lubridate, future, fur
 #' @return No return value. Raster files are written to disk.
 #' @import terra lubridate purrr
 #' @export
-calc_ntx <- function(tx_pth, yr, mn, thr = 40, out_dir, verbose = FALSE,nexgddp=F,overwrite=F,bbox=NULL) {
+calc_ntx <- function(tx_pth, 
+                     yr, 
+                     mn, 
+                     thr = 40, 
+                     out_dir, 
+                     verbose = FALSE,
+                     nexgddp=F,
+                     overwrite=F,
+                     crop_box=NULL) {
   thr <- as.numeric(thr)
   outfile <- paste0(out_dir, "/NTx", thr, "/NTx", thr, "-", yr, "-", mn, ".tif")
   if(overwrite==F){
@@ -55,9 +63,9 @@ calc_ntx <- function(tx_pth, yr, mn, thr = 40, out_dir, verbose = FALSE,nexgddp=
     fls <- fls[f_exists]
     tmx <- terra::rast(fls)
     
-    if(!is.null(bbox)){
-      bbox<-terra::ext(bbox)
-      tmx <- crop(tmx, bbox)
+    if(!is.null(crop_box)){
+      crop_box<-terra::ext(crop_box)
+      tmx <- crop(tmx, crop_box)
     }
     
     tmx <- classify(tmx, rcl = cbind(-9999, NA))
@@ -172,16 +180,17 @@ prds    <- c("2021_2040", "2041_2060", "2061_2080", "2081_2100")
 baseline_yrs <- 1995:2014                # Historical baseline period
 gcms<- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
 
-bbox<-NULL
-do_historical<-T
-nexgddp<-F
-
 if(climdat_source=="nexgddp"){
   nexgddp<-T
   gcms_nexgddp<-basename(list.dirs(file.path(future_chirts_base,"ssp126"),recursive = F)[-1])
-  gcms<-c(gcms,gcms_nexgddp[!gcms_nexgddp %in% gcms])
+  # Temporaily exlcude 5 delta gcms (extent already fixed)
+  gcms<-gcms_nexgddp[!gcms_nexgddp %in% gcms]
   do_historical<-F
-  bbox<- c(-180, 180, -50, 50)
+  crop_box<- c(-180, 180, -50, 50)
+}else{
+  nexgddp<-F
+  do_historical<-T
+  crop_box<-NULL
 }
 
 cores<- ceiling(length(thresholds)/2) # Cores for parallel processing
@@ -209,6 +218,7 @@ if(do_historical){
 
 cat("Parameters:",
     "\n nexgddp =",nexgddp,
+    "\n crop_box =",crop_box,
     "\n ref_raster_path =",ref_raster_path,
     "\n future_chirts_base =",future_chirts_base,
     "\n future_index_base =",future_index_base,
@@ -242,11 +252,11 @@ for (sce_climate in sce_climates) {
     }
     
     lapply(1:nrow(stp), FUN = function(i) {
-      calc_ntx(tx_pth = tx_pth, yr = stp$yrs[i], mn = stp$mns[i], thr = thresholds, out_dir = out_dir,bbox=bbox)
+      calc_ntx(tx_pth = tx_pth, yr = stp$yrs[i], mn = stp$mns[i], thr = thresholds, out_dir = out_dir,crop_box=crop_box)
     })
     
     1:nrow(stp) %>% furrr::future_map(.f = function(i) {
-      calc_ntx(tx_pth = tx_pth, yr = stp$yrs[i], mn = stp$mns[i], thr = thresholds, out_dir = out_dir,bbox=bbox)
+      calc_ntx(tx_pth = tx_pth, yr = stp$yrs[i], mn = stp$mns[i], thr = thresholds, out_dir = out_dir,crop_box=crop_box)
       tmpfls <- list.files(tempdir(), full.names = TRUE)
       unlink(tmpfls, recursive = TRUE, force = TRUE)
     })
@@ -301,7 +311,7 @@ for (sce_climate in sce_climates) {
                                           thr = thresholds, 
                                           out_dir = out_dir,
                                           nexgddp=nexgddp,
-                                          bbox=bbox,
+                                          crop_box=crop_box,
                                           overwrite=overwrite))
                 tmpfls <- list.files(tempdir(), full.names = TRUE)
                 unlink(tmpfls, recursive = TRUE, force = TRUE)
@@ -337,7 +347,6 @@ ntx_files <- c(ntx_files_hist, ntx_files_future)
 
 plan("multisession", workers = cores)
 handlers("progress")
-
 
 with_progress({
   p <- progressor(along = ntx_files)
