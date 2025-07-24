@@ -495,10 +495,10 @@ worker_n3<-20
 multisession3<-T
 
 ### 0.3.4) Calculate hazard time series mean and sd ####
-run4<-F
-check4<-F
+run4<-T
+check4<-T
 run4.1<-F # Difference (currently not updated, keep as F)
-round4<-3 # set to integer if you wish to round results
+round4<-3
 overwrite4<-F
 worker_n4<-15
 do_ensemble4<-T
@@ -525,7 +525,7 @@ multisession5.3<-T
 check5.3<-T
 round5.3<-NULL
 
-### 0.3.7) Choose timeframes to loop through ####
+### 0.3.6) Choose timeframes to loop through ####
 if(exists("indices_dir2")){
   timeframes<-basename(list.dirs(indices_dir2,recursive=F))
 }else{
@@ -1187,9 +1187,15 @@ for(tx in 1:length(timeframes)){
   colnames(haz_class_file_tab)<-c("scenario","model","timeframe","hazard")
   haz_class_file_tab[,hazard:=gsub("[.]tif","",hazard)
   ][,file:=haz_class_files
-  ][,hazard2:=unlist(tstrsplit(hazard,"-",keep=1))
-  ][str_count(hazard,"-")>2,stat:=unlist(tstrsplit(hazard,"-",keep=2))
-  ][!is.na(stat),hazard2:=paste0(hazard2,"-",stat)
+  ][,hazard2:=unlist(tstrsplit(hazard,"-",keep=1))]
+  
+  if(haz_class_file_tab[,any(str_count(hazard,"-")>2)]){
+    haz_class_file_tab[,stat:=unlist(tstrsplit(hazard,"-",keep=2))]
+    }else{
+      haz_class_file_tab[,stat:=NA]
+    }
+  
+  haz_class_file_tab[!is.na(stat),hazard2:=paste0(hazard2,"-",stat)
   ][,hazard2:=paste0(hazard2,"-",tail(unlist(strsplit(hazard,"-")),1)),by=.I
   ][,layer_name:=paste(c(scenario,timeframe,hazard2),collapse="_"),by=.I]
   
