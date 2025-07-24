@@ -31,7 +31,7 @@
 # 9. QA/QC: Compare gridded results to national FAOSTAT values.
 
 # Input Datasets:
-# - GLW4 livestock distribution (5 species, 2015; FAO)
+# - GLW4 livestock distribution (5 species, 2015 or 2020; FAO)
 # - FAOSTAT Production, Prices, Value of Production CSVs (various)
 # - World Bank PPP & XRAT indicators (wbstats)
 # - Atlas standard raster template
@@ -69,6 +69,20 @@ geoboundaries <- geoboundaries |> sf::st_as_sf() |> terra::vect()
 geoboundaries <- aggregate(geoboundaries, "iso3")  
 
 # 2) Load GLW4 data ####
+
+# 2.0.1) Run - 2020 #### 
+glw_dir<-atlas_dirs$data_dir$GLW4_2020
+glw_int_dir<-glw2020_int_dir
+glw_pro_dir<-glw2020_pro_dir
+dataset_name<-"glw4-2020"
+
+glw_files<-list.files(glw_dir,".tif$",full.names = T)
+glw<-terra::rast(glw_files)
+names(glw)<-unlist(tstrsplit(names(glw),"_",keep=1))
+glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
+
+# 2.0.2) Not Run - 2015 #### 
+if(F){
 # Note that GLW4 data is for the year 2015
 # file suffix _da =  dysymmetric, unit = total animals per pixel
 glw_names<-c(poultry="Ch",sheep="Sh",pigs="Pg",horses="Ho",goats="Gt",ducks="Dk",buffalo="Bf",cattle="Ct")
@@ -78,6 +92,7 @@ glw_files <- file.path(atlas_dirs$data_dir$GLW4,paste0("5_",glw_names,"_2015_Da.
 glw<-terra::rast(glw_files)
 names(glw)<-names(glw_names)
 glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
+}
 
   ## 2.1) Resample & mask to atlas area #####
 #### units are absolute number of animals per pixel
@@ -112,16 +127,16 @@ glw<-terra::mask(glw,geoboundaries)
   mask_ls_file<-paste0(glw_int_dir,"/livestock_masks.tif")
   overwrite_glw<-F
   if(!file.exists(mask_ls_file)|overwrite_glw==T){
-    glw_files<-list.files(glw_dir,"_Da.tif$",full.names=T)
     glw<-terra::rast(glw_files)
-    names(glw)<-names(glw_names)
+    #names(glw)<-names(glw_names)
+    names(glw)<-unlist(tstrsplit(names(glw),"_",keep=1))
     
     glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
     
     lus<-c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1)
     lus<-c(lus,sum(lus,na.rm=T))
     names(lus)<-c("cattle","poultry","goats","pigs","sheep","total")
-    lus<-terra::mask(terra::crop(lus,Geographies$admin0),Geographies$admin0)
+    lus<-terra::mask(terra::crop(lus,geoboundaries),geoboundaries)
     
     # resample to 0.05
     lu_density<-lus/terra::cellSize(lus,unit="ha")
@@ -331,14 +346,29 @@ target_year<-c(2014:2023)
    ## 4.1) Nominal usd ####
    # Ok so now we want to estimate a sensible nominal value in usd from the most recent data available
    # We will use production amount and price to get this as conversion of iusd15 to nominal usd seems to give unrealistically low values
-   year_sets<-list(y2021=2019:2023,y2015=2014:2016)
+   year_sets<-list(y2021=2019:2023,y2015=2014:2016,y2020=2019:2020)
    
    nominal_usd<-lapply(1:length(year_sets),function(i){
+     
+     ymin<-min(year_sets[[i]])
+     ymax<-max(year_sets[[i]])
+     
      prod_merge_recent<-prod_merge[year %in% year_sets[[i]],.(price_usd=median(price_usd,na.rm=T),
                                                             production_t=median(production_t,na.rm=T)),
                                    .(atlas_name,iso3)]
      
      prod_merge_recent<-add_nearby(data=prod_merge_recent,group_field="atlas_name",value_field = "price_usd",neighbors=african_neighbors,regions=regions)
+     
+     # Values are often missing, is there a value from a longer time series?
+     price_any<-prod_merge[year %in% (ymin-5):ymax,.(price_median=median(price_usd,na.rm=T),
+                                                     price_min=min(price_usd,na.rm=T),
+                                                     price_max=max(price_usd,na.rm=T),
+                                                     price_tail=tail(price_usd[!is.na(price_usd)],1),
+                                                     price_n=sum(!is.na(price_usd))),
+                           .(atlas_name,iso3)]
+     
+     # Merge median price from longer time-series
+     prod_merge_recent<-merge(prod_merge_recent,price_any[,.(price_median,iso3,atlas_name)],all.x=T)
      
      prod_price_global_recent<-prod_price_global[year %in% year_sets[[i]],.(price_usd_global=median(price_usd,na.rm=T)),.(atlas_name)]
      
@@ -348,18 +378,20 @@ target_year<-c(2014:2023)
      unique(prod_merge_recent[,.(atlas_name,price_usd_continent,price_usd_global)])
      
      prod_merge_recent[,price_usd_final:=price_usd
+                       ][is.na(price_usd_final),price_usd_final:=price_median
                        ][is.na(price_usd_final),price_usd_final:=price_usd_neighbors
                        ][is.na(price_usd_final),price_usd_final:=price_usd_region
                          # Goat and sheep milk are very low value in FAOstat for Africa, we will use the global median for these instead
                          ][atlas_name %in% c("goat_milk","sheep_milk"),price_usd_final:=price_usd_global
                            ][is.na(price_usd_final),price_usd_final:=price_usd_continent
+                           ][is.na(price_usd_final),price_usd_final:=price_usd_global
                              ][,vop_usd_nominal:=production_t*price_usd_global
                                ][,year:=names(year_sets)[i]]
      
      prod_merge_recent
    })
    
-   names(nominal_usd)<-paste0("nominal-usd-",gsub("y","",names(year_sets)))
+   names(nominal_usd)<-paste0(dataset_name,"_vop_nominal-usd-",gsub("y","",names(year_sets)))
    
    ## 4.2) iusd2015 ####
    intd_2015<-lapply(1:length(year_sets),function(i){
@@ -373,7 +405,7 @@ target_year<-c(2014:2023)
       prod_merge_recent
    })
    
-   names(intd_2015)<-paste0("intld15-",gsub("y","",names(year_sets)))
+   names(intd_2015)<-paste0(dataset_name,"_vop_intld15-",gsub("y","",names(year_sets)))
    
    ## 4.3) Not Run: Converting iusd2015 to nominal usd (not used - unrealistic) ####
    # We have investigated this approach and it yields very low production values compared to 
@@ -408,7 +440,7 @@ target_year<-c(2014:2023)
 for(i in 1:length(vop_list)){
   
   # Unit is t x usd/t = usd or 1000 intdlr x 1000 there should be no need for any unit conversions (e.g. x 1000)
-  final_vop<-vop_list[[i]]
+  final_vop<-copy(vop_list[[i]])
   setnames(final_vop,"vop_usd_nominal","value")
     
   final_vop<-final_vop[,list(iso3,atlas_name,value)]
@@ -417,6 +449,11 @@ for(i in 1:length(vop_list)){
   # Where there is missing data explore how many animals are in these areas
   final_vop_merge<-merge(final_vop,glw_admin0,all.x=T,by=c("iso3","glw3_name"))
   final_vop_merge[is.na(value) & !grepl("goat_milk|sheep_milk",atlas_name)]
+  final_vop_merge[,variable:=paste0("vop_",names(vop_list)[i])]
+  
+  vop_save_file<-file.path(glw_pro_dir,"fao_vop",paste0(names(vop_list)[i],"-prices-used.csv"))
+  ensure_dir(dirname(vop_save_file))
+  fwrite(final_vop_merge,vop_save_file)
   
   # Sum values for glw classes
   final_vop <- final_vop[, .(
@@ -439,31 +476,30 @@ for(i in 1:length(vop_list)){
   
   # Split between highland and tropical zones
   glw_vop_usd_split<-split_livestock(data=glw_vop,livestock_mask_high,livestock_mask_low)
-  save_file<-file.path(glw_pro_dir,paste0("livestock_vop_",names(vop_list)[i],".tif"))
+  unit<-gsub(paste0(dataset_name,"_"),"",names(vop_list)[i])
+  save_file<-file.path(glw_pro_dir,paste0("variable=",unit),paste0(names(vop_list)[i],".tif"))
+  ensure_dir(dirname(save_file))
   terra::writeRaster(round(glw_vop_usd_split,0),save_file,overwrite=T)
 }
   
-## 6) Livestock Numbers ######
+# 6) Livestock Numbers ######
   livestock_no_file<-paste0(glw_pro_dir,"/livestock_number_number.tif")
   shoat_prop_file<-paste0(glw_int_dir,"/shoat_prop.tif")
   overwrite_glw<-F
   
   if(!file.exists(livestock_no_file)|overwrite_glw==T){
     
-    ls_files<-list.files(glw_dir,"_Da.tif",full.names = T)
-    
     glw<-terra::rast(glw_files)
-    names(glw)<-names(glw_names)
+    names(glw)<-unlist(tstrsplit(names(glw),"_",keep=1))
     
-    glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
+    livestock_no<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
     
     TLU<-sum(c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1))
     
-    livestock_no<-c(glw$cattle,glw$poultry,glw$goats,glw$pigs,glw$sheep,TLU)
-    names(livestock_no)[nlyr(livestock_no)]<-"total"
-    livestock_no<-terra::mask(terra::crop(livestock_no,Geographies$admin0),Geographies$admin0)
+    livestock_no$total<-TLU
+    livestock_no<-terra::mask(terra::crop(livestock_no,geoboundaries),geoboundaries)
     
-    # resample to 0.05
+    # resample to base_rast
     livestock_density<-livestock_no/terra::cellSize(livestock_no,unit="ha")
     livestock_density<-terra::resample(livestock_density,base_rast)
     livestock_no<-livestock_density*cellSize(livestock_density,unit="ha")
@@ -472,7 +508,8 @@ for(i in 1:length(vop_list)){
     sheep_prop<-livestock_no$sheep/(livestock_no$goats +livestock_no$sheep)
     goat_prop<-livestock_no$goats/(livestock_no$goats +livestock_no$sheep)
     
-    terra::writeRaster(terra::rast(c(sheep_prop=sheep_prop,goat_prop=goat_prop)),filename = shoat_prop_file,overwrite=T)
+    terra::writeRaster(terra::rast(c(sheep_prop=sheep_prop,goat_prop=goat_prop)),
+                       filename = shoat_prop_file,overwrite=T)
     
     # Split livestock between highland and tropical
     livestock_no<-split_livestock(data=livestock_no,livestock_mask_high,livestock_mask_low)
@@ -485,7 +522,7 @@ for(i in 1:length(vop_list)){
   if(F){
   # This section needs updating  
     
-  # GLW3 distributed data
+  # GLW distributed data
   data<-glw_vop
   
   qa_rasterizer<-function(data,base_rast,geoboundaries,glw2atlas){
