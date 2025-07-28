@@ -182,7 +182,7 @@ gcms<- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0
 
 if(climdat_source=="nexgddp"){
   nexgddp<-T
-  gcms_nexgddp<-basename(list.dirs(file.path(future_chirts_base,"ssp126"),recursive = F)[-1])
+  gcms_nexgddp<-basename(list.dirs(file.path(future_chirts_base,"ssp126"),recursive = F))
   # Temporaily exlcude 5 delta gcms (extent already fixed)
   gcms<-gcms_nexgddp[!gcms_nexgddp %in% gcms]
   do_historical<-F
