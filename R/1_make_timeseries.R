@@ -48,6 +48,10 @@ pacman::p_load(
   progressr
 )
 
+# Source additional functions used in this workflow from GitHub
+source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+
+
   ## 1.2) Set directories ####
 # Directory where monthly timeseries data generated from 
 # https://github.com/AdaptationAtlas/hazards/tree/main is stored.
@@ -223,9 +227,9 @@ folders <- basename(folders)
 
 # Temporarily limit folders to 5 atlas gcms ####
 gcms    <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
-
-folders<-grep(paste(gcms,collapse="|"),folders,value=T)
-
+folders<-folders[!grepl(paste(gcms,collapse="|"),folders)]
+# Corrupt data in KACE NDD exclude until resolved.
+folders<-folders[!grepl("KACE",folders)]
 # Extract the model names (assuming each folder has a structure like scenario_model_yearrange)
 model_names <- unique(unlist(tstrsplit(folders[!grepl("histor", folders)], "_", keep = 2)))
 
@@ -296,9 +300,8 @@ if(grepl("gddp",working_dir)){
     )
     
     # Use these controls if we just want to process the additional NTx hazards or the NTx hazards only
-    #hazards <- c(hazards, hazards2)
-    hazards<-hazards2
-    hazards<-"NTx40"
+    hazards <- c(hazards, hazards2)
+    #hazards<-hazards2
   
 cat("Timeseries hazards = ",hazards,"\n")
 
@@ -311,7 +314,7 @@ overwrite<-F
 overwrite_ensemble<-T
 
 # Number of workers/cores to use with future.apply
-worker_n <-16
+worker_n <-1
 # Set to F for multicore when working from the terminal in unix system
 use_multisession<-F
 
@@ -354,9 +357,17 @@ folders_x_hazards <- expand.grid(
 
 folders_x_hazards$folder_path<-file.path(working_dir, folders_x_hazards$folders, folders_x_hazards$hazards)
 
-# Check paths exist, exclude GCMS with missing folders
+## 5.1) Check paths exist, exclude GCMS with missing folders ####
 folders_x_hazards$folder_exists<-dir.exists(folders_x_hazards$folder_path)
-folders_x_hazards$file_n<-sapply(folders_x_hazards$folder_path,function(i){length(list.files(i,".tif$"))})
+
+folders_x_hazards$file_n <- vapply(
+  folders_x_hazards$folder_path,
+  function(d) {
+    if (!dir_exists(d)) return(0L)
+    length(dir_ls(d, recurse = FALSE, glob = "*.tif"))
+  },
+  integer(1)
+)
 
 # Check for inconsitent file_n
 incomplete<-folders_x_hazards[!folders_x_hazards$file_n %in% c(20,240),]
@@ -480,6 +491,12 @@ for (ii in 1:nrow(parameters)) {
     # Run hazard_stacker function (not shown in snippet) to compute seasonal 
     # or yearly hazard metrics, passing in the relevant parameters.
     # -------------------------------------------------------------------------
+    
+    # If experiencing mem errors,set mem_reprot to T and check the p output table.
+    # The mem_before/mem_after pairs let you quantify exactly whether your writes are leaking VSIMEM buffers over time.
+    # Use the mem_Δ column (filtered to run == TRUE) to tell “yes, we have a leak” (positive drift) vs. “no leak” (zero drift).
+    # From there, you know if you need to adjust your COG settings or simply restart the R process more frequently.
+    
     if (worker_n > 1) {
       # Use parallel processing if worker_n > 1
       set_parallel_plan(n_cores=worker_n,use_multisession=T)
@@ -537,7 +554,8 @@ for (ii in 1:nrow(parameters)) {
             use_crop_cal      = use_crop_cal,
             r_cal_filepath    = r_cal_filepath,
             save_dir          = save_dir,
-            overwrite=overwrite
+            overwrite=overwrite,
+            mem_report = F
           )
         }
       )
