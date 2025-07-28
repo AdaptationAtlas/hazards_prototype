@@ -1211,6 +1211,40 @@ int_risk <- function(data, interaction_mask_vals, lyr_name,na.rm=T){
 #' This function processes raster files for a specified climate hazard and scenario. It stacks or aggregates multiple years of data, 
 #' handles missing values, and computes summary statistics (mean, max, etc.) as specified. It's designed to work within a larger 
 #' workflow for analyzing climate-related risks to agriculture.
+#' 
+#' Note that the output number of years/seasons for any monthly timeseries provided are 
+#' one else than the input years as the final year/season is not calculated.
+#' This is because when using a crop calendar to indicate the start of the season the final season length
+#' will usually exceed the end of the data in the timeseries provided.
+#'
+#'# Memory usage report columns:
+# i         : iteration index (row in folders_x_hazards)
+# mem_before: RSS (KB) just before writeRaster() is called
+# mem_after : RSS (KB) immediately after writeRaster() + gc()
+# mem_Δ      : mem_after - mem_before, change in RSS during the write
+# run       : TRUE if writeRaster() actually ran (file did not exist), FALSE if skipped
+#
+# How to interpret mem_Δ (for rows where run == TRUE):
+# - Consistently positive mem_Δ: GDAL’s /vsimem/ buffers are accumulating → memory leak
+# - mem_Δ ≈ 0 (or sometimes negative): no leak; memory is being reclaimed
+#
+# Suggested workflow:
+# 1) Collect all single-row outputs into a data.frame, e.g.:
+#      results <- do.call(rbind, lapply(seq_len(n), hazard_stacker, …))
+# 2) Inspect drift:
+#      leaking <- results$mem_Δ[results$run]
+#      mean(leaking); summary(leaking)
+# 3) Visualize:
+#      plot(results$i[results$run], leaking,
+#           xlab="Iteration", ylab="Δ RSS (KB)",
+#           main="Memory Δ per writeRaster()")
+#      abline(h=0, lty=2)
+# 4) If leak detected (positive trend):
+#      • Reduce COG block/overview sizes so each write uses less memory
+#      • Or restart R (or run in separate Rscript calls) to clear VSIMEM between batches
+# 5) If no leak but error persists:
+#      • Peak allocation too large → lower GDAL_CACHEMAX before starting R
+#      • Or use smaller BLOCKXSIZE/BLOCKYSIZE in writeRaster()
 #'
 #' @param i Integer, the index of the hazard and scenario combination to process.
 #' @param folders_x_hazards A data table containing the mapping of folders to hazard variables.
@@ -1219,12 +1253,31 @@ int_risk <- function(data, interaction_mask_vals, lyr_name,na.rm=T){
 #' @param r_cal_filepath File path of crop calendar raster (the calendar needs two layers named planting_month and maturity_month each containing values 1:12).
 #' @param save_dir Character, the directory where processed raster files will be saved.
 #' @param overwrite Logical, should existing files be replaced?
+#' @param mem_report Logical, return a memory use report for each iteration of i?
 #' @return A character vector of filenames for the processed and saved raster files.
 #' @examples
 #' # This example assumes 'folders_x_hazards', 'model_names', and 'r_cal' are predefined.
 #' result <- hazard_stacker(1, folders_x_hazards, model_names, "yes", r_cal, "./output")
 #' @export
-hazard_stacker <- function(i, folders_x_hazards, haz_meta, model_names, use_crop_cal, r_cal_filepath, save_dir, overwrite = F) {
+hazard_stacker <- function(i, 
+                           folders_x_hazards,
+                           haz_meta, 
+                           model_names, 
+                           use_crop_cal, 
+                           r_cal_filepath, 
+                           save_dir, 
+                           overwrite = F,
+                           mem_report=F) {
+ if(mem_report){
+  get_rss_kb <- function(){
+    pid <- Sys.getpid()
+    as.numeric(
+      system(sprintf("awk '/VmRSS/ {print $2}' /proc/%d/status", pid),
+             intern = TRUE)
+    )
+  }
+ }
+  
   # Extract the specific hazard and scenario based on the index 'i'
   variable <- as.character(folders_x_hazards$hazards[i])
   scenario <- as.character(folders_x_hazards$folders[i])
@@ -1275,10 +1328,15 @@ hazard_stacker <- function(i, folders_x_hazards, haz_meta, model_names, use_crop
     haz_files1 <- haz_files[[k]]
     
     # Define the save name for the output raster
-    savename <- file.path(save_dir, "/",paste0(scenario, "_", variable2, "_", stat, ".tif"))
+    savename <- file.path(save_dir,paste0(scenario, "_", variable2, "_", stat, ".tif"))
     
     # Skip processing if the file already exists unless overwrite is TRUE
     if (!file.exists(savename) | overwrite == T) {
+      if(mem_report){
+      # measure before write
+      mem_before <- get_rss_kb()
+      }
+      
       if (folders_x_hazards$hazards[i] == "TAI") {
         # For TAI, process as before
         cat('\r', "cc =", use_crop_cal, "| fixed =", !use_eos, "|", scenario, "-", variable2, "-", stat,"\n")
@@ -1287,7 +1345,8 @@ hazard_stacker <- function(i, folders_x_hazards, haz_meta, model_names, use_crop
         haz_rast_years <- terra::rast(haz_files1)
         names(haz_rast_years) <- years
         
-        # Remove last year of data (to be compatible with monthly derived hazards)
+        # Remove last year of data
+        # This needs to be done otherwise the final season can overlap the year end where we have no data
         haz_rast_years <- haz_rast_years[[1:(terra::nlyr(haz_rast_years) - 1)]]
         
       } else {
@@ -1345,16 +1404,39 @@ hazard_stacker <- function(i, folders_x_hazards, haz_meta, model_names, use_crop
         haz_rast_years <- terra::rast(haz_rast_years_list)
       }
       # Write the processed raster to file
-      terra::writeRaster(haz_rast_years, savename, overwrite = T, filetype = "COG",gdal = c("OVERVIEWS"="NONE"))
+      terra::writeRaster(haz_rast_years,
+                         savename,
+                         overwrite = T, 
+                         filetype = "COG",
+                         gdal = c("OVERVIEWS"="NONE"))
+      
       # Clean up memory
       rm(haz_rast_years, haz_rast)
       gc()
+      
+      if(mem_report){
+      mem_after <- get_rss_kb()
+      
+     X<-data.frame(
+        i=i, mem_before=mem_before, mem_after=mem_after, mem_Δ=mem_after - mem_before,run=T
+      )
+      }else{
+        X<-"Run"
+      }
+      
       cat("\n")
+    }else{
+      if(mem_report){
+      X<-data.frame(
+        i=i, mem_before=NA, mem_after=NA, mem_Δ= NA,run=F
+      )
+      }else{
+        X<-"Exists"
+      }
     }
-    X[k] <- savename
   }
   
-  X
+  return(X)
 }
 #' Read and Process MapSPAM Data
 #'
