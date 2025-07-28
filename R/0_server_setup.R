@@ -178,7 +178,7 @@
 options(timeout = 600)
 
 # Increase GDAL cache size for faster raster processing
-terra::gdalCache(60000)
+# terra::gdalCache(60000)
 
 
 # 2) Create directory structures ####
