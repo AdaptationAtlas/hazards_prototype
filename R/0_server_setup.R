@@ -16,9 +16,12 @@
     library(pacman)
   }
   
-  # Use the isciences version of exactextractr, not the CRAN version
-  if (!require("exactextractr")) {
-    remotes::install_github("isciences/exactextractr")
+  # Use of exactextractr is being depreciated in favour of zonal extractions, this package will be removed in future
+  if(F){
+    # Use the isciences version of exactextractr, not the CRAN version
+    if (!require("exactextractr")) {
+      remotes::install_github("isciences/exactextractr")
+    }
   }
   
   # List of packages to be installed/loaded via pacman
