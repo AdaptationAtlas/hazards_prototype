@@ -35,6 +35,7 @@
 # Please run 0_server_setup.R before executing this script
 
 cat("Started Script 1 - Time series extraction of hazards\n")
+cat("Script 1 - using timeframes: ",timeframe_choices,"\n")
 
 # 1) Setup #### 
   ## 1.1) Load R functions & packages ####
@@ -229,7 +230,7 @@ folders <- basename(folders)
 gcms    <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
 folders<-folders[!grepl(paste(gcms,collapse="|"),folders)]
 # Corrupt data in KACE NDD exclude until resolved.
-folders<-folders[!grepl("KACE",folders)]
+# folders<-folders[!grepl("KACE",folders)]
 # Extract the model names (assuming each folder has a structure like scenario_model_yearrange)
 model_names <- unique(unlist(tstrsplit(folders[!grepl("histor", folders)], "_", keep = 2)))
 
@@ -286,7 +287,7 @@ hazards_wet<- c("NDWL0", "NDWS", "PTOT", "TAI","NDD")
 hazards<-c(hazards_wet,hazards_heat)
 
 if(grepl("gddp",working_dir)){
-  hazards<-hazards[!hazards %in% c("HSH","THI","TAVG")]
+  hazards<-hazards[!hazards %in% c("HSH","THI")]
   hazards<-c(hazards,"NTx30")
   hazards2 <- paste0("NTx", c(20:29,31:34, 36:50))
   }else{
@@ -314,7 +315,7 @@ overwrite<-F
 overwrite_ensemble<-T
 
 # Number of workers/cores to use with future.apply
-worker_n <-1
+worker_n <-16
 # Set to F for multicore when working from the terminal in unix system
 use_multisession<-F
 
