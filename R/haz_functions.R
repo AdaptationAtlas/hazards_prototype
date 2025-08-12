@@ -3199,7 +3199,7 @@ check_tif_integrity <- function(dir_path,
     p <- progressr::progressor(along = files)
     future.apply::future_lapply(files, function(f) {
       res <- tryCatch({
-        terra::rast(f)
+        terra::rast(f)+0
         data.table::data.table(file = f, success = TRUE, error_message = NA_character_)
       }, error = function(e) {
         data.table::data.table(file = f, success = FALSE, error_message = as.character(e))
