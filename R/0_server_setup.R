@@ -157,15 +157,19 @@
   
   cat("Climate data source = ",climdat_source,"\n")
   
+  ### 0.5.1) Load atlas_data json ####
+  atlas_data <- read_json(file.path(project_dir, "metadata/data.json"),simplifyVector = T)
+
   ## 0.6) Base Raster ####
+
     if(climdat_source=="atlas_delta"){
       ## DEV NOTE - NEED TO UPDATE WITH MASKED BASE RAST ###
       # Load a reference/base raster used for resampling or extent alignment
-      base_rast_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
-      base_rast <- terra::rast(base_rast_url)
-      base_rast_path <- file.path(project_dir, "metadata", "base_raster.tif")
+      base_rast_url <- atlas_data$base_rast$atlas_delta$url
+      base_rast_path <- atlas_data$base_rast$atlas_delta$local_path   
     }else{
-      base_rast_path<-"Data/base_rast.tif"
+      base_rast_url <- atlas_data$base_rast$nexgddp$url
+      base_rast_path <- atlas_data$base_rast$nexgddp$local_path
       
       if(!file.exists(base_rast_path)){
         target_ext <- ext(-180, 180, -50, 50)
@@ -173,8 +177,9 @@
         base_rast_cropped <- crop(base_rast, target_ext)
         terra::writeRaster(base_rast_cropped,base_rast_path,overwrite=T)
       }
-      base_rast<-terra::rast(base_rast_path)
     }
+  
+  base_rast <- terra::rast(base_rast_path)
   
 # 1) Setup workspace ####
 # Increase download timeout (in seconds) to avoid timeouts during large data pulls
@@ -186,7 +191,6 @@ options(timeout = 600)
 
 # 2) Create directory structures ####
   ## 2.1) Local directories #####
-    atlas_data <- read_json(file.path(project_dir, "metadata/data.json"))
 
     ### 2.1.1) Outputs ######
     # Create a hierarchical list for top-level data directories
@@ -263,6 +267,7 @@ options(timeout = 600)
     atlas_dirs$data_dir$atlas_pop          <- file.path(atlas_dirs$data_dir[[1]], "atlas_pop")
    # atlas_dirs$data_dir$commodity_masks    <- file.path(atlas_dirs$data_dir[[1]], "commodity_masks")
     atlas_dirs$data_dir$GLW4               <- file.path(atlas_dirs$data_dir[[1]], "GLW4")
+    atlas_dirs$data_dir$GLW4_2020          <- file.path(atlas_dirs$data_dir[[1]], "GLW4_2020")
     atlas_dirs$data_dir$livestock_vop      <- file.path(atlas_dirs$data_dir[[1]], "livestock_vop")
     atlas_dirs$data_dir$afr_highlands      <- file.path(atlas_dirs$data_dir[[1]], "afr_highlands")
     atlas_dirs$data_dir$fao                <- file.path(atlas_dirs$data_dir[[1]], "fao")
@@ -333,6 +338,11 @@ options(timeout = 600)
     if (!dir.exists(glw_int_dir)) {
       dir.create(glw_int_dir, recursive = TRUE)
     }
+    
+    glw2020_dir <-ensure_dir(atlas_dirs$data_dir$GLW4_2020)
+    glw2020_pro_dir <- ensure_dir(glw2020_dir,"processed")
+    glw2020_int_dir <- ensure_dir(glw2020_dir,"intermediate")
+
 
     #ls_vop_dir <- atlas_dirs$data_dir$livestock_vop
     #if (!dir.exists(ls_vop_dir)) {
@@ -422,6 +432,7 @@ options(timeout = 600)
 # The 'update' flag can be toggled if you want to force a re-download.
 
   ## 3.1) Geoboundaries #####
+  
   update <- FALSE
 
   admin_levels <- atlas_data$boundaries$params$level
@@ -436,10 +447,32 @@ options(timeout = 600)
   )
   
   geo_files_local <- file.path(boundaries_dir, basename(geo_files_s3))
-  names(geo_files_local) <- c("admin0", "admin1", "admin2")
+  names(geo_files_local) <- c("admin0"  ### 3.1.1) Africa ####
+, "admin1", "admin2")
   
   lapply(seq_along(geo_files_local), FUN = function(i) {
     file <- geo_files_local[i]
+    # Download each file from S3 if it doesn't exist locally or if update=TRUE
+    if (!file.exists(file) | update == TRUE) {
+      s3$file_download(geo_files_s3[i], file, overwrite = update)
+    }
+  })
+  
+  ### 3.1.2) Global ####
+  update <- FALSE
+
+  geo_files_s3<-gsub("=analysis-ready","=raw",geo_files_s3)
+  geo_files_s3<-gsub("=africa","=global",geo_files_s3)
+  geo_files_s3<-gsub("/atlas_","/",geo_files_s3)
+  geo_files_s3<-gsub("_africa.parquet",".parquet",geo_files_s3)
+  geo_files_s3<-gsub("gaul24_","gaul_",geo_files_s3)
+  
+  geo_files_local_g <- file.path(boundaries_dir,"region=global", basename(geo_files_s3))
+  names(geo_files_local_g) <- c("admin0", "admin1", "admin2")
+  ensure_dir(dirname(geo_files_local_g[1]))
+  
+  lapply(seq_along(geo_files_local_g), FUN = function(i) {
+    file <- geo_files_local_g[i]
     # Download each file from S3 if it doesn't exist locally or if update=TRUE
     if (!file.exists(file) | update == TRUE) {
       s3$file_download(geo_files_s3[i], file, overwrite = update)
@@ -452,7 +485,7 @@ options(timeout = 600)
   # Construct the S3 folder path
   folder_path <- "domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=atlas-harmonized/"
   
-  # List .csv files from the specified S3 bucket location
+  # List files from the specified S3 bucket location
   files_s3 <- s3$dir_ls(file.path(bucket_name_s3, folder_path), recurse = TRUE)
   files_local <- gsub(file.path(bucket_name_s3, folder_path), paste0(mapspam_pro_dir, "/"), files_s3)
   
@@ -488,22 +521,25 @@ options(timeout = 600)
   }
   
   ## 3.4) GLW #####
+  ### 3.4.1) 2015 ####
   update <- FALSE
   # Download Global Livestock Density (GLW4) if missing
-  glw_names <- c(
-    poultry = "Ch", sheep = "Sh", pigs = "Pg", horses = "Ho",
-    goats = "Gt", ducks = "Dk", buffalo = "Bf", cattle = "Ct"
+
+  glw_urls <- c(
+    Ch_2020_Da.tif = "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.CHK.tif", 
+    Sh_2020_Da.tif = "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.SHP.tif", 
+    Pg_2020_Da.tif = "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.PGS.tif", 
+    Gt_2020_Da.tif = "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.GTS.tif", 
+    Bf_2020_Da.tif = "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.BFL.tif", 
+    Ct_2020_Da.tif = "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.CTL.tif"
   )
-  glw_codes <- c(
-    poultry = 6786792, sheep = 6769626, pigs = 6769654, horses = 6769681,
-    goats = 6769696, ducks = 6769700, buffalo = 6770179, cattle = 6769711
-  )
-  glw_files <- file.path(glw_dir, paste0("5_", glw_names, "_2015_Da.tif"))
+  
+  glw_files <- file.path(glw2020_dir, names(glw_urls))
   
   for (i in seq_along(glw_files)) {
     glw_file <- glw_files[i]
     if (!file.exists(glw_file) | update == TRUE) {
-      api_url <- paste0("https://dataverse.harvard.edu/api/access/datafile/", glw_codes[i])
+      api_url <-glw_urls[i]
       # Download directly from the Dataverse API
       response <- httr::GET(url = api_url, httr::write_disk(glw_file, overwrite = TRUE))
       if (httr::status_code(response) == 200) {
@@ -513,6 +549,8 @@ options(timeout = 600)
       }
     }
   }
+  
+  ### 3.4.2) 2020 ####
   
   ## 3.5) Fao stat #####
     ### 3.5.1) Deflators ######
