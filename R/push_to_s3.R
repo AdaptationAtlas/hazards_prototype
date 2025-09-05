@@ -127,124 +127,157 @@
                      max_attempts = 3,
                      new_only=T)
   ## Upload - MapSPAM ####
-  folder<-mapspam_dir
-  s3_bucket <- file.path("s3://digital-atlas/MapSpam/raw",basename(mapspam_dir))
+  
+  s3_path<-file.path("s3:/",atlas_data$mapspam_2020v1r2$s3[1],gsub("=raw","=processed",atlas_data$mapspam_2020v1r2$s3[2]))
+  
+  ## Vop - intld15-21
+  variable<-"vop_intld15-2021"
+  folder<-file.path(mapspam_pro_dir,paste0("variable=",variable))
+  s3_bucket <- paste0(s3_path,paste0("variable=",variable))
   
   files<-list.files(folder,full.names = T)
   
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
+                     workers=1,
+                     max_attempts = 3,
+                     overwrite=F,
+                     mode="public-read")
+  
+  ## Vop - nominal-usd21
+  variable<-"vop_nominal-usd-2021"
+  folder<-file.path(mapspam_pro_dir,paste0("variable=",variable))
+  s3_bucket <- paste0(s3_path,paste0("variable=",variable))
+  
+  files<-list.files(folder,full.names = T)
+  
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     workers=1,
                      max_attempts = 3,
                      overwrite=F,
                      mode="public-read")
   
   ## Upload - livestock_vop ####
-  folder<-ls_vop_dir
-  s3_bucket <- "s3://digital-atlas/livestock_vop"
+  s3_path<-file.path("s3:/",atlas_data$glw4_2020$s3$bucket,gsub("=raw","=processed",atlas_data$glw4_2020$s3$path_pattern))
   
-  s3_dir_ls(s3_bucket)
-  
-  # Prepare tif data by converting to COG format
-  #ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
-  files<-list.files(folder,".tif$",full.names = T)
-  
-  upload_files_to_s3(files = files,
-                     selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite=F,
-                     mode="public-read")
-  
-  # You will need to run the function above again with overwrite=F to add the index
-  index<-data.table(s3_path=s3_dir_ls(s3_bucket))[!grepl("index.csv",s3_path)]
-  index[,s3_path:=gsub("s3://digital-atlas","https://digital-atlas.s3.amazonaws.com",s3_path)]
-  fwrite(index,file.path(folder,"index.csv"))
-  
-  ## Upload - livestock afr-highlands ####
-  folder<-afr_highlands_dir
-  s3_bucket <- "s3://digital-atlas/afr_highlands"
-  
-  upload_files_to_s3(folder = folder,
-                     selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite=T,
-                     mode="public-read")
-  # Geographies
-  s3_bucket <- "s3://digital-atlas/boundaries"
-  s3_dir_ls(s3_bucket)
-  
-  ## Upload - human population ####
-  folder<-hpop_dir
-  s3_bucket <- file.path(bucket_name_s3,"population/worldpop_2020")
-  
-  files<-list.files(folder,".tif$",full.names = T)
-  
-  upload_files_to_s3(files = files,
-                   selected_bucket=s3_bucket,
-                   max_attempts = 3,
-                   overwrite=F,
-                   mode="public-read")
-
-  ## Upload - glps #####
-  folder<-glps_dir
-  s3_bucket <- file.path(bucket_name_s3,basename(folder))
-  
-  files<-list.files(folder,".tif$",full.names = T)
-  
-  upload_files_to_s3(files = files,
-                     selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite=F,
-                     mode="public-read")
-  
-  ## Upload - cattle heatstress data #####
-  folder<-cattle_heatstress_dir
-  s3_bucket <- file.path(bucket_name_s3,basename(folder))
+  ## Vop - intld15-21
+  variable<-"vop_intld15-2021"
+  folder<-file.path(glw2020_pro_dir,paste0("variable=",variable))
+  s3_bucket <- paste0(s3_path,paste0("variable=",variable))
   
   files<-list.files(folder,full.names = T)
   
   upload_files_to_s3(files = files,
                      selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite=T,
-                     mode="public-read")
-  
-  ## Upload - sos raster #####
-  folder<-sos_dir
-  s3_bucket <- file.path(bucket_name_s3,basename(folder))
-  
-  files<-list.files(folder,full.names = T)
-  
-  upload_files_to_s3(files = files,
-                     selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite=F,
-                     mode="public-read")
-
-  # Upload - solutions
-  folder<-solution_tables_dir
-  s3_bucket <- file.path(bucket_name_s3,basename(folder))
-  
-  files<-list.files(folder,".csv$",full.names = T)
-  
-  upload_files_to_s3(files = files,
-                     selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite=F,
-                     mode="public-read")
-  
-  # Upload - boundaries
-  folder<-geo_dir
-  s3_bucket <- file.path(bucket_name_s3,"boundaries")
-  
-  files<-list.files(folder,"cgiar_countries",full.names = T)
-  
-  upload_files_to_s3(files = files,
-                     selected_bucket=s3_bucket,
-                     max_attempts = 3,
-                     overwrite=F,
                      workers=1,
+                     max_attempts = 3,
+                     overwrite=F,
                      mode="public-read")
   
+  ## Vop - nominal-usd21
+  variable<-"vop_nominal-usd-2021"
+  folder<-file.path(glw2020_pro_dir,paste0("variable=",variable))
+  s3_bucket <- paste0(s3_path,paste0("variable=",variable))
+  
+  files<-list.files(folder,full.names = T)
+  
+  upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     workers=1,
+                     max_attempts = 3,
+                     overwrite=F,
+                     mode="public-read")
+  
+  ## Not Run (Legacy):
+  if(F){
+    ## Upload - livestock afr-highlands ####
+    folder<-afr_highlands_dir
+    s3_bucket <- "s3://digital-atlas/afr_highlands"
+    
+    upload_files_to_s3(folder = folder,
+                       selected_bucket=s3_bucket,
+                       max_attempts = 3,
+                       overwrite=T,
+                       mode="public-read")
+    # Geographies
+    s3_bucket <- "s3://digital-atlas/boundaries"
+    s3_dir_ls(s3_bucket)
+    
+    ## Upload - human population ####
+    folder<-hpop_dir
+    s3_bucket <- file.path(bucket_name_s3,"population/worldpop_2020")
+    
+    files<-list.files(folder,".tif$",full.names = T)
+    
+    upload_files_to_s3(files = files,
+                     selected_bucket=s3_bucket,
+                     max_attempts = 3,
+                     overwrite=F,
+                     mode="public-read")
+  
+    ## Upload - glps #####
+    folder<-glps_dir
+    s3_bucket <- file.path(bucket_name_s3,basename(folder))
+    
+    files<-list.files(folder,".tif$",full.names = T)
+    
+    upload_files_to_s3(files = files,
+                       selected_bucket=s3_bucket,
+                       max_attempts = 3,
+                       overwrite=F,
+                       mode="public-read")
+    
+    ## Upload - cattle heatstress data #####
+    folder<-cattle_heatstress_dir
+    s3_bucket <- file.path(bucket_name_s3,basename(folder))
+    
+    files<-list.files(folder,full.names = T)
+    
+    upload_files_to_s3(files = files,
+                       selected_bucket=s3_bucket,
+                       max_attempts = 3,
+                       overwrite=T,
+                       mode="public-read")
+    
+    ## Upload - sos raster #####
+    folder<-sos_dir
+    s3_bucket <- file.path(bucket_name_s3,basename(folder))
+    
+    files<-list.files(folder,full.names = T)
+    
+    upload_files_to_s3(files = files,
+                       selected_bucket=s3_bucket,
+                       max_attempts = 3,
+                       overwrite=F,
+                       mode="public-read")
+  
+    # Upload - solutions
+    folder<-solution_tables_dir
+    s3_bucket <- file.path(bucket_name_s3,basename(folder))
+    
+    files<-list.files(folder,".csv$",full.names = T)
+    
+    upload_files_to_s3(files = files,
+                       selected_bucket=s3_bucket,
+                       max_attempts = 3,
+                       overwrite=F,
+                       mode="public-read")
+    
+    # Upload - boundaries
+    folder<-geo_dir
+    s3_bucket <- file.path(bucket_name_s3,"boundaries")
+    
+    files<-list.files(folder,"cgiar_countries",full.names = T)
+    
+    upload_files_to_s3(files = files,
+                       selected_bucket=s3_bucket,
+                       max_attempts = 3,
+                       overwrite=F,
+                       workers=1,
+                       mode="public-read")
+    
+  }
 # 2) Time sequence specific ####
   # Next task for enhanced generalization is to create folder vector and integrate into the loop (rather than have many sections)
   overwrite<-F
