@@ -1,7 +1,6 @@
 # Please run 0_server_setup.R before executing this script
 # To generate crop & livestock vop you will need to run scripts 0.4.1 & 0.4.2
 # a) Load R functions & packages ####
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
 # List of packages to be loaded
 packages <- c("terra", 
@@ -20,50 +19,48 @@ source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/
 
 # 0) Load and prepare admin rasters ####
   ## 0.0) Base rast ####
-  base_rast <- terra::rast(base_rast_path)
+  base_rast <- terra::rast(atlas_data$base_rast$atlas_delta$local_path)+0
 
-  ## 0.1) Geographies #####
-overwrite_boundary_zones<-T
-
-Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
-  file<-geo_files_local[i]
-  data<-arrow::open_dataset(file)
-  data <- data |> sf::st_as_sf() |> terra::vect()
-  data$zone_id <- ifelse(!is.na(data$gaul2_code), data$gaul2_code,
-                         ifelse(!is.na(data$gaul1_code), data$gaul1_code, data$gaul0_code))        
-  data
-})
-names(Geographies)<-names(geo_files_local)
-
-base_rast<-terra::rast(base_rast_path)+0
-
-boundaries_zonal<-lapply(1:length(Geographies),FUN=function(i){
-  file_path<-file.path(boundaries_int_dir,paste0(names(Geographies)[i],"_zonal.tif"))
-  if(!file.exists(file_path)|overwrite_boundary_zones==T){
-    zones<-Geographies[[i]]
-    zone_rast <- rasterize(
-      x      = zones, 
-      y      = base_rast, 
-      field  = "zone_id", 
-      background = NA,    # cells not covered by any polygon become NA
-      touches    = TRUE   # optional: count cells touched by polygon boundaries
-    )
-    terra::writeRaster(zone_rast,file_path,overwrite=T)
-  }
-  file_path
-})
-names(boundaries_zonal)<-names(Geographies)
-
-boundaries_index<-lapply(1:length(Geographies),FUN=function(i){
-  data.frame(Geographies[[i]])[,c("iso3","admin0_name","admin1_name","admin2_name","zone_id", "gaul0_code", "gaul1_code", "gaul2_code")]
-})
-
-names(boundaries_index)<-names(Geographies)
+    ## 0.1) Geographies #####
+  overwrite_boundary_zones<-T
+  
+  Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
+    file<-geo_files_local[i]
+    data<-arrow::open_dataset(file)
+    data <- data |> sf::st_as_sf() |> terra::vect()
+    data$zone_id <- ifelse(!is.na(data$gaul2_code), data$gaul2_code,
+                           ifelse(!is.na(data$gaul1_code), data$gaul1_code, data$gaul0_code))        
+    data
+  })
+  names(Geographies)<-names(geo_files_local)
+  
+  boundaries_zonal<-lapply(1:length(Geographies),FUN=function(i){
+    file_path<-file.path(boundaries_int_dir,paste0(names(Geographies)[i],"_zonal.tif"))
+    if(!file.exists(file_path)|overwrite_boundary_zones==T){
+      zones<-Geographies[[i]]
+      zone_rast <- rasterize(
+        x      = zones, 
+        y      = base_rast, 
+        field  = "zone_id", 
+        background = NA,    # cells not covered by any polygon become NA
+        touches    = TRUE   # optional: count cells touched by polygon boundaries
+      )
+      terra::writeRaster(zone_rast,file_path,overwrite=T)
+    }
+    file_path
+  })
+  names(boundaries_zonal)<-names(Geographies)
+  
+  boundaries_index<-lapply(1:length(Geographies),FUN=function(i){
+    data.frame(Geographies[[i]])[,c("iso3","admin0_name","admin1_name","admin2_name","zone_id", "gaul0_code", "gaul1_code", "gaul2_code")]
+  })
+  
+  names(boundaries_index)<-names(Geographies)
 
 # 1) Crop (MapSPAM) extraction by vector boundaries #####
 overwrite_spam<-F
 version_spam<-1
-source_year_spam<-list(spam_year=2020,fao_price="varies")
+source_year_spam<-list(spam_year=2020,fao_year="2021 (2019-2023)")
 
 files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
 files<-grep("variable",files,value=T)
@@ -157,7 +154,7 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
     field_descriptions = field_descriptions,
     filters = filters,
     version = version_spam,
-    parent_script = "R/0.6_process_exposure.R",
+    parent_script = "R/0.4.4_process_exposure.R",
     variable = var,
     unit = unit,
     technology = tech,
@@ -176,12 +173,13 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
 version_glw<-"glw4-2020_atlasv1"
 overwrite_glw<-F
 
-livestock_no_file<-paste0(glw_pro_dir,"/livestock_number_number.tif")
-if(!file.exists(livestock_no_file)){
+
+livestock_no_file<-list.files(file.path(glw2020_pro_dir,"variable=number_number"),"number_number.tif",full.names = T)
+if(length(livestock_no_file)!=1){
   stop("Run script 0.4_create_livestock_exposure.R")
 }
 
-files<-list.files(glw_pro_dir,".tif$",recursive=T,full.names=T)
+files<-list.files(glw2020_pro_dir,".tif$",recursive=T,full.names=T)
 
 glw_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
     cat("Extracting file",i,"/",length(files),basename(files[i]),"\n")
@@ -262,7 +260,7 @@ glw_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   
 # 3) Combine exposure totals by admin areas ####
   # 3.1) Original recipe ####
-file<-paste0(exposure_dir,"/exposure_adm_sum_spam20-20_glw420-20.parquet")
+file<-paste0(exposure_dir,"/exposure_adm_sum_spam20-21_glw420-21.parquet")
 
 if(!file.exists(file)|overwrite_glw|overwrite_spam){
   
@@ -273,10 +271,12 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
   
   # Subset units
   exposure_adm_sum_tab[,unique(unit)]
-  units<-c(number="number",ha="ha",t="t",usd="nominal-usd-2020",intld15="intld15-2020",intld15="intld15")
+  units<-c(number="number",
+           ha="ha",
+           t="t",
+           usd="nominal-usd-2021",
+           intld15="intld15-2021")
   exposure_adm_sum_tab<-exposure_adm_sum_tab[unit %in% units]
-  
-  
   
   # Order to optimize parquet performance
   exposure_adm_sum_tab<-exposure_adm_sum_tab[order(iso3,admin0_name,admin1_name,admin2_name,exposure,unit,tech,crop)]
@@ -292,12 +292,13 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
       source = list(input_raster1=atlas_data$mapspam_2020v1r2$name,
                     input_raster2="GLW4-2020",
                     extraction_vect=atlas_data$boundaries$name),
-      source_year = list(input_raster1=c(spam_year=2020,fao_vop="see unit"),input_raster2=c(glw_year=2020,fao_price="see unit")),
+      source_year = list(input_raster1=list(census_year=2020,fao_value_year=2021),
+                         input_raster2=list(census_year=2020,fao_value_year=2021)),
       date_created = Sys.time(),
       field_descriptions = field_descriptions,
       filters = filters,
       version = list(input_version1=version_spam,input_version2=version_glw),
-      parent_script = "R/0.6_process_exposure.R",
+      parent_script = "R/0.4.4_process_exposure.R",
       variable = exposure_adm_sum_tab[,unique(exposure)],
       unit = exposure_adm_sum_tab[,unique(unit)],
       technology = exposure_adm_sum_tab[,unique(tech)],
@@ -310,6 +311,8 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
     write_json(attr_info, attr_file, pretty = TRUE)
     
     # Harmonize unit naming
+    exposure_adm_sum_tab[,unit_full:=unit]
+    
     for(k in 1:length(units)){
       exposure_adm_sum_tab[unit==units[k],unit:=names(units)[k]]
     }
@@ -444,7 +447,7 @@ if(!file.exists(file)|overwrite_pop==T){
     field_descriptions = field_descriptions2,
     filters = filters,
     version = list(input_version=version_hpop),
-    parent_script = "R/0.6_process_exposure.R",
+    parent_script = "R/0.4.4_process_exposure.R",
     variable = exposure_adm_sum_tab[,unique(exposure)],
     unit = exposure_adm_sum_tab[,unique(unit)],
     type = exposure_adm_sum_tab[,unique(tech)],
