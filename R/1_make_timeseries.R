@@ -223,14 +223,8 @@ dcast(hazard_completion[,.(model,scenario,`NDWS-NDWS`)],model~scenario)
 folders <- list.dirs(working_dir, recursive = FALSE)
 # Remove directories that are incomplete or unneeded for this analysis
 folders <- folders[!grepl("ENSEMBLE|ipyn|gadm0|hazard_comb|indices_seasonal", folders)]
-#folders <- folders[!grepl("ssp126|ssp370|2061_2080|2081_2100", folders)] 
 folders <- basename(folders)
 
-# Temporarily limit folders to 5 atlas gcms ####
-gcms    <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
-folders<-folders[!grepl(paste(gcms,collapse="|"),folders)]
-# Corrupt data in KACE NDD exclude until resolved.
-# folders<-folders[!grepl("KACE",folders)]
 # Extract the model names (assuming each folder has a structure like scenario_model_yearrange)
 model_names <- unique(unlist(tstrsplit(folders[!grepl("histor", folders)], "_", keep = 2)))
 
@@ -287,7 +281,7 @@ hazards_wet<- c("NDWL0", "NDWS", "PTOT", "TAI","NDD")
 hazards<-c(hazards_wet,hazards_heat)
 
 if(grepl("gddp",working_dir)){
-  hazards<-hazards[!hazards %in% c("HSH","THI")]
+  #hazards<-hazards[!hazards %in% c("HSH","THI")]
   hazards<-c(hazards,"NTx30")
   hazards2 <- paste0("NTx", c(20:29,31:34, 36:50))
   }else{
@@ -301,8 +295,7 @@ if(grepl("gddp",working_dir)){
     )
     
     # Use these controls if we just want to process the additional NTx hazards or the NTx hazards only
-    hazards <- c(hazards, hazards2)
-    #hazards<-hazards2
+    hazards <- unique(c(hazards, hazards2))
   
 cat("Timeseries hazards = ",hazards,"\n")
 
@@ -358,8 +351,8 @@ folders_x_hazards <- expand.grid(
 
 folders_x_hazards$folder_path<-file.path(working_dir, folders_x_hazards$folders, folders_x_hazards$hazards)
 
-## 5.1) Check paths exist, exclude GCMS with missing folders ####
-folders_x_hazards$folder_exists<-dir.exists(folders_x_hazards$folder_path)
+  ## 5.1) Check paths exist, exclude GCMS with missing folders ####
+folders_x_hazards$folder_exists<-fs::dir_exists(folders_x_hazards$folder_path)
 
 folders_x_hazards$file_n <- vapply(
   folders_x_hazards$folder_path,
@@ -371,7 +364,7 @@ folders_x_hazards$file_n <- vapply(
 )
 
 # Check for inconsitent file_n
-incomplete<-folders_x_hazards[!folders_x_hazards$file_n %in% c(20,240),]
+incomplete<-folders_x_hazards[!folders_x_hazards$file_n %in% c(20,240,480),]
 
 if(nrow(incomplete)>0){
   stop("Check file completeness before continuing")
@@ -379,6 +372,11 @@ if(nrow(incomplete)>0){
 
 
 cat("There are",nrow(folders_x_hazards),"rows in the folder_x_hazards table.\n")
+
+#folders_x_hazards<-data.table(folders_x_hazards)
+#folders_x_hazards[hazards %in% c("TAVG","HSH","THI")]
+#folders_x_hazards<-folders_x_hazards[grep("historic",folders)]
+folders_x_hazards<-data.frame(folders_x_hazards)
 
 # 6) Run Analysis loop ####
 # This loop runs over the different parameter configurations (whether or not to use crop calendars,
@@ -717,15 +715,30 @@ for (ii in 1:nrow(parameters)) {
   }
 }
 }
-cat("Time series extraction of hazards completed.")
 
 # 7) Check integrity of results ####
-if(F){
-result<-check_tif_integrity (dir_path,
+if(T){
+  for (ii in 1:nrow(parameters)) {
+    cat("Time series extraction of hazards - Checking integrity of output files.",ii,"/",nrow(parameters), "\n")
+    
+    subfolder_name <- parameters[ii, subfolder_name]
+    
+    result<-check_tif_integrity (dir_path = file.path(output_dir,subfolder_name),
                      recursive       = TRUE,
                      pattern         = "*.tif",
                      n_workers_files    = 10,
                      n_workers_folders = 1,
-                     use_multisession = FALSE,
+                     use_multisession = T,
                      delete_corrupt  = FALSE)
+    
+    result<-result[success!=T]
+    
+    if(nrow(result)>0){
+      warning(paste0(subfolder_name," has corrupt outputs:\n"))
+      print(result)        
+    }
+  }
+  cat("Time series extraction of hazards - Checking integrity of output files.",ii,"/",nrow(parameters), " - Complete\n")
 }
+
+cat("Time series extraction of hazards completed.")
