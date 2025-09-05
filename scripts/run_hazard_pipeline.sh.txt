@@ -12,8 +12,7 @@ screen -ls
 # Always check before running a new job to see if Rscripts are running
 ps aux | grep Rscript 
 
-
-# Start a new screen (if clean)
+=# Start a new screen (if clean)
 screen -S hazards_job
 
 # Define absolute paths to R scripts - AfriLabs
@@ -31,6 +30,7 @@ TIMESERIES_SCRIPT="$HOME/atlas/hazards_prototype/R/1_make_timeseries.R"
 HAZFREQ_SCRIPT="$HOME/atlas/hazards_prototype/R/2_calculate_haz_freq.R"
 EXTRACT_SCRIPT="$HOME/atlas/hazards_prototype/R/3_freq_x_exposure.R"
 PATCH_SCRIPT="$HOME/atlas/hazards_prototype/R/misc/patch_wet_ndws_issue.R"
+NTx_SCRIPT="$HOME/atlas/hazards_prototype/R/misc/heatstress.R"
 KILL_SCRIPT="$HOME/atlas/hazards_prototype/scripts/kill.R"
 LOG_FILE="$HOME/atlas/hazards_prototype/logs/combined_run_$(date +%Y%m%d_%H%M%S).log"
 
@@ -52,6 +52,9 @@ nohup Rscript -e "source('$SETUP_SCRIPT'); source('$EXTRACT_SCRIPT')" > "$LOG_FI
 
 # Run the scripts sequentially using Rscript + source - PATCH_SCRIPT
 nohup Rscript -e "source('$SETUP_SCRIPT'); source('$PATCH_SCRIPT')" > "$LOG_FILE" 2>&1 &
+
+# Run the scripts sequentially using Rscript + source - NTx_SCRIPT
+nohup Rscript -e "source('$SETUP_SCRIPT'); source('$NTx_SCRIPT')" > "$LOG_FILE" 2>&1 &
 
 # Notify user of background process
 echo "Process started in background (PID $!). Use tail -f "$LOG_FILE" to monitor output."
