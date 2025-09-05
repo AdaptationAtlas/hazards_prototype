@@ -60,7 +60,7 @@ source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/
 options(scipen=999)
 
 # b) Load base raster ####
-base_rast<-terra::rast(base_rast_path)
+base_rast<-terra::rast(atlas_data$base_rast$atlas_delta$local_path)
 
 # 1) Load geographies ####
 file<-geo_files_local[1]
@@ -69,31 +69,34 @@ geoboundaries <- geoboundaries |> sf::st_as_sf() |> terra::vect()
 geoboundaries <- aggregate(geoboundaries, "iso3")  
 
 # 2) Load GLW4 data ####
+glw_codes<-c(poultry="Ch",sheep="Sh",pigs="Pg",horses="Ho",goats="Gt",ducks="Dk",buffalo="Bf",cattle="Ct")
 
-# 2.0.1) Run - 2020 #### 
-glw_dir<-atlas_dirs$data_dir$GLW4_2020
-glw_int_dir<-glw2020_int_dir
-glw_pro_dir<-glw2020_pro_dir
-dataset_name<-"glw4-2020"
-
-glw_files<-list.files(glw_dir,".tif$",full.names = T)
-glw<-terra::rast(glw_files)
-names(glw)<-unlist(tstrsplit(names(glw),"_",keep=1))
-glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
-
-# 2.0.2) Not Run - 2015 #### 
-if(F){
-# Note that GLW4 data is for the year 2015
-# file suffix _da =  dysymmetric, unit = total animals per pixel
-glw_names<-c(poultry="Ch",sheep="Sh",pigs="Pg",horses="Ho",goats="Gt",ducks="Dk",buffalo="Bf",cattle="Ct")
-glw_codes<-c(poultry=6786792,sheep=6769626,pigs=6769654,horses=6769681,goats=6769696,ducks=6769700,buffalo=6770179,cattle=6769711)
-
-glw_files <- file.path(atlas_dirs$data_dir$GLW4,paste0("5_",glw_names,"_2015_Da.tif"))
-glw<-terra::rast(glw_files)
-names(glw)<-names(glw_names)
-glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
-}
-
+  ## 2.0.1) Run - 2020 #### 
+  glw_dir<-atlas_dirs$data_dir$GLW4_2020
+  glw_int_dir<-glw2020_int_dir
+  glw_pro_dir<-glw2020_pro_dir
+  dataset_name<-"glw4-2020"
+  
+  glw_files<-list.files(glw_dir,".tif$",full.names = T)
+  glw<-terra::rast(glw_files)
+  glw_names<-unlist(tstrsplit(names(glw),"_",keep=1))
+  glw_names<-names(glw_codes)[match(glw_names,glw_codes)]
+  names(glw)<-glw_names
+  glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
+  
+  ## 2.0.2) Not Run - 2015 #### 
+  if(F){
+  # Note that GLW4 data is for the year 2015
+  # file suffix _da =  dysymmetric, unit = total animals per pixel
+  
+  glw_codes<-c(poultry=6786792,sheep=6769626,pigs=6769654,horses=6769681,goats=6769696,ducks=6769700,buffalo=6770179,cattle=6769711)
+  
+  glw_files <- file.path(atlas_dirs$data_dir$GLW4,paste0("5_",glw_names,"_2015_Da.tif"))
+  glw<-terra::rast(glw_files)
+  names(glw)<-names(glw_names)
+  glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
+  }
+  
   ## 2.1) Resample & mask to atlas area #####
 #### units are absolute number of animals per pixel
 # convert to density
@@ -123,16 +126,10 @@ glw<-terra::mask(glw,geoboundaries)
     atlas_name = unlist(glw2atlas, use.names = FALSE)
   )
 
-  # 2.4) Load high/low mask
+  # 2.4) Load high/low mask ####
   mask_ls_file<-paste0(glw_int_dir,"/livestock_masks.tif")
   overwrite_glw<-F
   if(!file.exists(mask_ls_file)|overwrite_glw==T){
-    glw<-terra::rast(glw_files)
-    #names(glw)<-names(glw_names)
-    names(glw)<-unlist(tstrsplit(names(glw),"_",keep=1))
-    
-    glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
-    
     lus<-c(glw$cattle*0.7,glw$poultry*0.01,glw$goats*0.1,glw$pigs*0.2,glw$sheep*0.1)
     lus<-c(lus,sum(lus,na.rm=T))
     names(lus)<-c("cattle","poultry","goats","pigs","sheep","total")
@@ -483,14 +480,18 @@ for(i in 1:length(vop_list)){
 }
   
 # 6) Livestock Numbers ######
-  livestock_no_file<-paste0(glw_pro_dir,"/livestock_number_number.tif")
-  shoat_prop_file<-paste0(glw_int_dir,"/shoat_prop.tif")
+  livestock_no_file<-file.path(glw_pro_dir,"variable=number",paste0(dataset_name,"_number_number.tif"))
+  shoat_prop_file<-file.path(glw_int_dir,"shoat_prop.tif")
   overwrite_glw<-F
   
   if(!file.exists(livestock_no_file)|overwrite_glw==T){
     
     glw<-terra::rast(glw_files)
     names(glw)<-unlist(tstrsplit(names(glw),"_",keep=1))
+    glw_names<-unlist(tstrsplit(names(glw),"_",keep=1))
+    glw_names<-names(glw_codes)[match(glw_names,glw_codes)]
+    names(glw)<-glw_names
+    glw<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
     
     livestock_no<-glw[[c("poultry","sheep","pigs","goats","cattle")]]
     
