@@ -30,12 +30,8 @@ p_load(char=packages)
   }
   
   ## 1.2) Set hazards to include in analysis #####
-  if(climdat_source=="atlas_delta"){
-    hazards<-c("HSH_max","TMAX","TAVG","NDWL0","NDWS","NTx35","NTx40","PTOT","THI_max") # NDD is not being used as it cannot be projected to future scenarios
-  }else{
-    # NTx40 temporarily exclude while pipeline completes ####
-    hazards<-c("HSH_max","TMAX","TAVG","NDWL0","NDWS","NTx35","PTOT","THI_max","NDD") 
-  }
+  hazards<-c("HSH_max","TMAX","TAVG","NDWL0","NDWS","NTx35","NTx40","PTOT","THI_max")
+
   cat("Working with hazards =",hazards,"\n")
   file_name<-"all_hazards.parquet"
   
@@ -52,24 +48,22 @@ p_load(char=packages)
   
   ## 1.4) Load admin boundaries #####
   # This is limited to admin1 (admin2 is possible but we generate huge files that go beyond the 2gb recommended size for a parquet file, so the data would need to split into chunks)
-  Geographies<-lapply(1:2,FUN=function(i){
-    #Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
+  ## d.1) Geographies #####
+  overwrite_boundary_zones<-T
+  
+  Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
     file<-geo_files_local[i]
     data<-arrow::open_dataset(file)
     data <- data |> sf::st_as_sf() |> terra::vect()
     data$zone_id <- ifelse(!is.na(data$gaul2_code), data$gaul2_code,
-      ifelse(!is.na(data$gaul1_code), data$gaul1_code, data$gaul0_code))    
+                           ifelse(!is.na(data$gaul1_code), data$gaul1_code, data$gaul0_code))        
     data
   })
-  
-  #names(Geographies)<-names(geo_files_local)
-  names(Geographies)<-names(geo_files_local)[1:2]
-  
-  base_rast<-terra::rast(base_rast_path)+0
+  names(Geographies)<-names(geo_files_local)
   
   boundaries_zonal<-lapply(1:length(Geographies),FUN=function(i){
     file_path<-file.path(boundaries_int_dir,paste0(names(Geographies)[i],"_zonal.tif"))
-    if(!file.exists(file_path)){
+    if(!file.exists(file_path)|overwrite_boundary_zones==T){
       zones<-Geographies[[i]]
       zone_rast <- rasterize(
         x      = zones, 
@@ -78,6 +72,13 @@ p_load(char=packages)
         background = NA,    # cells not covered by any polygon become NA
         touches    = TRUE   # optional: count cells touched by polygon boundaries
       )
+      
+      # Crop to Africa
+      if(climdat_source=="nexgddp"){
+        base_rast_delta<-terra::rast(atlas_data$base_rast$atlas_delta$local_path)
+        zone_rast<-terra::crop(zone_rast,base_rast_delta)
+      }
+      
       terra::writeRaster(zone_rast,file_path,overwrite=T)
     }
     file_path
@@ -85,10 +86,11 @@ p_load(char=packages)
   names(boundaries_zonal)<-names(Geographies)
   
   boundaries_index<-lapply(1:length(Geographies),FUN=function(i){
-    data.frame(Geographies[[i]])[,c("iso3","admin0_name","admin1_name","admin2_name","zone_id","gaul0_code","gaul1_code","gaul2_code")]
+    data.frame(Geographies[[i]])[,c("iso3","admin0_name","admin1_name","admin2_name","zone_id", "gaul0_code", "gaul1_code", "gaul2_code")]
   })
   
   names(boundaries_index)<-names(Geographies)
+  
   
   ## 1.5) Load hazard meta-data #####
   haz_meta<-data.table::fread(haz_meta_url, showProgress = FALSE)
@@ -109,9 +111,11 @@ p_load(char=packages)
     ### Section 3 - Summarization of monthly hazards ####
     worker_n2<-20
     overwrite2<-F
+    rm_admin2<-T
     round3.1<-3
     round3.3<-3
     round3.4<-3
+    remove_suspect_vals<-T
     
     ### Final data ####
   round_final<-1
@@ -123,17 +127,22 @@ p_load(char=packages)
   folders<-folders[grepl(paste0(Scenarios$Scenario,collapse="|"),folders) & grepl(paste0(Scenarios$Time,collapse="|"),folders)]
   
   folders<-data.table(path=folders)
-  folders[,scenario:=unlist(tstrsplit(basename(path),"_",keep=1))
-  ][!grepl("historical",scenario),model:=unlist(tstrsplit(basename(path),"_",keep=2))
-  ][!grepl("historical",scenario),timeframe:=paste0(unlist(tstrsplit(basename(path),"_",keep=3:4)),collapse="-"),by=path
-  ][grepl("historical",scenario),c("timeframe","model"):=scenario
-  ][,path_new:=file.path(output_dir,paste0(scenario,"_",model,"_",timeframe)),by=.I
-  ][,path_new:=gsub("historical","historic",path_new)]
   
+  if(climdat_source=="atlas_delta"){
+    folders[,scenario:=unlist(tstrsplit(basename(path),"_",keep=1))
+    ][!grepl("historical",scenario),model:=unlist(tstrsplit(basename(path),"_",keep=2))
+    ][!grepl("historical",scenario),timeframe:=paste0(unlist(tstrsplit(basename(path),"_",keep=3:4)),collapse="-"),by=path
+    ][grepl("historical",scenario),c("timeframe","model"):=scenario
+    ][,path_new:=file.path(output_dir,paste0(scenario,"_",model,"_",timeframe)),by=.I
+    ][,path_new:=gsub("historical","historic",path_new)]
+  }else{
+    folders[,scenario:=unlist(tstrsplit(basename(path),"_",keep=1))
+            ][,model:=unlist(tstrsplit(basename(path),"_",keep=2))
+              ][,timeframe:=paste0(unlist(tstrsplit(basename(path),"_",keep=3:4)),collapse="-"),by=path
+                ][,path_new:=file.path(output_dir,paste0(scenario,"_",model,"_",timeframe)),by=.I
+                  ][,path_new:=gsub("historical","historic",path_new)]
+  }
   
-  ## Temporarily subset folders in nex-gddp ####
-  gcms    <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
-  folders<-folders[model %in% gcms]
   
   folders<-data.frame(folders)
   
@@ -153,20 +162,20 @@ p_load(char=packages)
   ## 2.3) Define the extraction function ####
   extract_hazard <- function(i, folders, hazards, output_dir, overwrite, round_dp, extract_stat,
                              boundaries_zonal, boundaries_index, id_vars, split_colnames,
-                             order_by, haz_meta, version, extraction_rast, levels,base_rast_path) {
+                             order_by, haz_meta, version, extraction_rast, levels,base_rast_path, max_rain=3000) {
     
     folders_ss <- paste0(folders$path[i], "/", hazards)
-    base_rast<-terra::rast(base_rast_path)
+    base_rast<-terra::rast(boundaries_zonal[[1]])
     
      invisible(purrr::map(hazards, function(hazard) {
       cat(dirname(folders_ss[1]),hazard,"\n")
-      folders_ss_focus <- gsub("_max|_mean", "", paste0(folders$path[i], "/", hazard))
+      folders_ss_focus <- gsub("_max|_mean", "", file.path(folders$path[i], hazard))
       h_var <- unlist(tail(tstrsplit(hazard, "_"), 1))
       
       filename <- paste0(basename(folders$path_new[i]), "_", gsub("_", "-", hazard), "_", extract_stat, ".parquet")
       save_file <- file.path(output_dir, filename)
       
-      if (!file.exists(save_file) || overwrite) {
+      if (!file.exists(save_file) | overwrite) {
         files <- list.files(folders_ss_focus, ".tif$", full.names = TRUE)
         files <- files[!grepl("AVAIL", files)]
         if (h_var %in% c("mean", "max")) {
@@ -176,9 +185,11 @@ p_load(char=packages)
         if (length(files) != 0) {
           rast_data <- terra::rast(files)
           
-          rast_data<-mask(rast_data,base_rast)
+          # Align extents of boundary layer to cliamte data layer (important for nexgddp which covers a wider geographic scope)
+          rast_data<-mask(crop(rast_data,base_rast),base_rast)
         
           if (hazard == "PTOT") rast_data[rast_data < 0] <- NA
+          if (hazard == "PTOT") rast_data[rast_data > max_rain] <- NA
           
           rast_names <- data.table(base_name = gsub(".tif", "", basename(files)))
           rast_names[, c("year", "month") := tstrsplit(base_name, "-", keep = 2:3)]
@@ -190,7 +201,8 @@ p_load(char=packages)
           
           result <- rbindlist(purrr::map2(boundaries_zonal, boundaries_index, function(zonal_rast, idx) {
             zonal_r <- terra::rast(zonal_rast)
-            dat <- zonal(rast_data, zonal_r, fun = extract_stat, na.rm = TRUE)
+            dat <- terra::crop(rast_data,zonal_r)
+            dat <- zonal(dat, zonal_r, fun = extract_stat, na.rm = TRUE)
             dat <- merge(dat, idx, by = "zone_id", all.x = TRUE, sort = FALSE)
             dat$zone_id<-NULL
             dat
@@ -216,7 +228,9 @@ p_load(char=packages)
             value_variable = unique(result_long$hazard),
             unit = haz_meta[haz_meta$variable.code == hazard, "base_unit"],
             extract_stat = extract_stat,
-            notes = paste0("Monthly hazard values extracted by admin areas summarized using ", extract_stat, ".")
+            notes = paste0("Monthly hazard values extracted by admin areas summarized using ", extract_stat, ". Pixels with monthly rainfall values > ",max_rain,
+                           " or < 0 mm are set to NA, this is to minimise the impacts of artifacts from bias-correction/downscaling processes."
+                           )
           ), paste0(save_file, ".json"), pretty = TRUE)
           
           rm(result,rast_data)
@@ -244,7 +258,7 @@ p_load(char=packages)
     results <- furrr::future_map(1:nrow(folders), function(i) {
       prog(sprintf("Processing folder %d of %d", i, nrow(folders)))
       extract_hazard(i, 
-                     base_rast_path = base_rast_path,
+                     base_rast_path = atlas_data$base_rast$atlas_delta$local_path,
                      folders = folders, 
                      hazards = hazards,
                      output_dir = output_int_dir, 
@@ -270,11 +284,17 @@ p_load(char=packages)
                                 ][,stat:=gsub(".parquet","",stat)]
   
   timeframes<-files[,unique(timeframe)]
-  baselines<-files[grep("historic",scenario),unique(scenario)]
-  names(baselines)<-c("1995-2014","AgERA5 1981-2022")
   
-  futures<-files[!grepl("historic",timeframe),unique(timeframe)]
+  if(climdat_source=="atlas_delta"){
+    baselines<-files[grep("historic",scenario),unique(scenario)]
+    names(baselines)<-c("1995-2014","AgERA5 1981-2022")
+    futures<-files[!grepl("historic",timeframe),unique(timeframe)]
+  }else{
+    baselines<-files[grep("historic",scenario),unique(scenario)]
+    futures<-files[!grepl("historic",scenario),unique(timeframe)]
+  }
   
+
   problem_data<-lapply(1:length(timeframes),FUN=function(i){
     timeframe_choice<-timeframes[i]
     save_path<-file.path(output_dir,paste0("haz_monthly_adm_mean_",timeframe_choice,".parquet"))
@@ -315,12 +335,12 @@ p_load(char=packages)
     arrow::write_parquet(data,save_path)
     
     json_dat<-jsonlite::read_json(paste0(files_ss[1],".json"),simplifyVector=T)
-    filters<-list(scenario=data_ex_season[,unique(scenario)],
-                  model=data_ex_season[,unique(model)],
-                  timeframe=data_ex_season[,unique(timeframe)],
-                  year=data_ex_season[,unique(year)],
-                  hazard=data_ex_season[,unique(hazard)],
-                  month=data_ex_season[,unique(month)])
+    filters<-list(scenario=data[,unique(scenario)],
+                  model=data[,unique(model)],
+                  timeframe=data[,unique(timeframe)],
+                  year=data[,unique(year)],
+                  hazard=data[,unique(hazard)],
+                  month=data[,unique(month)])
     
     jsonlite::write_json(
       list(
@@ -339,7 +359,6 @@ p_load(char=packages)
       notes = paste0("Monthly hazard values extracted and summarized using ", extract_stat, "."),
       problem_data = check
     ), paste0(save_path, ".json"), pretty = TRUE)
-    }
     
     if(nrow(check)>0){
       return(check)
@@ -347,19 +366,21 @@ p_load(char=packages)
       return(NULL)
     }
     
+    }
+    
+
+    
   })
   
   monthly_files<-file.path(output_dir,paste0("haz_monthly_adm_mean_",timeframes,".parquet"))
   
   # Check for missing values
   data<-arrow::read_parquet(monthly_files[1])
-  missing<-data[value==-Inf|is.infinite(value)|is.na(value)|is.null(value),.(hazard=paste(unique(hazard),collapse=",")),by=.(admin0_name,admin1_name)]
+  missing<-data[value==-Inf|is.infinite(value)|is.na(value)|is.null(value),.(admin0_name,admin1_name,scenario,timeframe,model,hazard,year,month)]
   
-  if(nrow(missing)>0){
-    warning("These hazards x admin areas are missing data")
-    print(missing)
-  }
-  
+
+  # When using 0.25 resolution small admin1 areas < 400km2 are not included.
+  missing[,.(missing_month_n=.N),by=.(model,hazard,scenario,timeframe,admin0_name,admin1_name)][order(missing_month_n,decreasing=T)]
   
 # 3) Summarize annually or 3 month windows ####
   ## 3.0) Create 3 month windows #####
@@ -388,41 +409,79 @@ p_load(char=packages)
   three_month_periods$annual<-1:12
   
   ## 3.1) Seasonal hazard calculation ####
+  rm(data)
+  gc()
+  
   cat("3.1) Seasonal hazard calculation \n")
   
-  id_vars <- c("admin0_name", "admin1_name", "scenario", "model", "timeframe", "year", "hazard","suspect_value_flag")
+  id_vars <- c("admin0_name", "admin1_name", "scenario", "model", "timeframe", "year", "hazard")
   
-  lapply(monthly_files,FUN=function(month_file){
+  set_parallel_plan(n_cores = length(monthly_files), use_multisession = TRUE)
+
+
+  lapply(1:length(monthly_files),FUN=function(i){
+    month_file<-monthly_files[i]
     save_file<-gsub("_monthly_","_3months_",month_file)
     
     if(!file.exists(save_file)|overwrite2){
     cat("3.1) Seasonal summarization: ",basename(month_file), "\n")
-    data_ex_ss<-arrow::read_parquet(month_file)
-    vars<-data_ex_ss[,unique(vars)]
+    data_ex_ss<-arrow::read_parquet(month_file,col_select=c(id_vars,"admin2_name","month","suspect_value_flag","value"))
+    
+    if(rm_admin2){
+      data_ex_ss<-data_ex_ss[is.na(admin2_name)]
+    }
   
-    data_ex_season <- lapply(1:length(three_month_periods), function(j) {
-        
+    
+    if("vars" %in% colnames(data_ex_ss)){
+      vars<-data_ex_ss[,unique(vars)]
+    }else{
+      vars<-data_ex_ss[,unique(hazard)]
+    }
+    
+    if(remove_suspect_vals){
+      data_ex_ss<-data_ex_ss[suspect_value_flag==F]
+    }
+    
+    data_ex_ss[,suspect_value_flag:=NULL]
+    
+    data_ex_season<-furrr::future_map(1:length(three_month_periods), function(j){
+    # data_ex_season <- lapply(1:length(three_month_periods), function(j) { 
+      
         m_period <- three_month_periods[[j]]
-        dt <- copy(data_ex_ss)[month %in% m_period]
+        season_name<-names(three_month_periods)[j]
+        
+        cat("3.1) Seasonal summarization: ",basename(month_file), j,season_name,"         \r")
+        
+        dt <- data_ex_ss[month %in% m_period]
         
         dt[, seq := find_consecutive_pattern(seq = month, pattern = m_period),
            by = .(admin0_name, admin1_name, model, scenario, timeframe, hazard)]
-        
+      
         dt <- dt[!is.na(seq)]
         dt[, year := year[1], by = .(admin0_name, admin1_name, model, scenario, timeframe, hazard, seq)]
         dt[, seq := NULL]
         
-        data_season <- rbindlist(lapply(vars, function(VAR) {
+        data_season <- rbindlist(lapply(1:length(vars), function(k) {
+          VAR<-vars[k]
+          cat("3.1) Seasonal summarization: ",basename(month_file), j,season_name,VAR,"         \r")
+          
+          
           func_name <- unique(haz_meta$`function`[haz_meta$variable.code == gsub("-","_",VAR)])
           func <- get(func_name, mode = "function", envir = parent.frame())
           
-          dt[hazard == VAR, .(
+          result<-dt[hazard == VAR, .(
             value = round(func(value, na.rm = TRUE), round3.1),
             n_value = .N
           ), by = id_vars][, season := season_name]
+          
+          return(result)
+          
         }), use.names = TRUE, fill = TRUE)
         
-        cat("Completed: ", names(three_month_periods)[j]," ",j,"/",length(three_month_periods),"      \r")
+        rm(dt)
+        gc()
+        
+        cat("Completed: ",basename(month_file), season_name," ",j,"/",length(three_month_periods),"      \n")
         data_season
       })
   
@@ -457,11 +516,14 @@ p_load(char=packages)
         unit = haz_meta[variable.code %in% data[,unique(hazard)], .(variable.code,base_unit)],
         extract_stat = json_dat$extract_stat,
         notes = paste0("Monthly hazard values extracted by admin areas and summarized using ", extract_stat, ". Values then combined across 3 or 12 month sequences using sum or mean depending on the hazard type."),
-        problem_data = data_ex_season[suspect_value_flag==T]
+        flagged_data_removed = suspect_value_flag,
       ), paste0(save_file, ".json"), pretty = TRUE)
     
     }
-  })
+
+    })
+
+  plan(sequential)
   
   monthly3_files<-gsub("_monthly_","_3months_",monthly_files)
   
