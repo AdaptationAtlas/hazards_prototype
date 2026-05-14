@@ -1,8 +1,8 @@
 
-pacman::p_load(terra,duckdb,geoarrow,arrow,sf,ggupset,ggplot2)
+pacman::p_load(terra,duckdb,geoarrow,arrow,sf,ggupset,ggplot2,colorspace,patchwork,scales,plotly)
 options(scipen = 999)
 
-# Set choice/meta-data vectors ####
+# 1) Set choice/meta-data vectors ####
 
 # mapping of spam codes to full crop names
 ms_codes_url<-"https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv"
@@ -26,7 +26,7 @@ variables<-c("vop_intld15","vop_usd15")
 periods<-c("annual","jagermeyr")
 interactions<-c("NDWS+NTx35+NDWL0","NDWS+THI-max+NDWL0")
 
-# Simulated user selections ####
+# 2) Simulated user selections ####
 user_selections<-list(severity="severe",
                       unit = "usd15",
                       exposure = "vop",
@@ -39,13 +39,18 @@ user_selections<-list(severity="severe",
                       admin0 = "Kenya",
                       admin1 =  c("Machakos","Kilifi","Kiambu","Kajiado","Busia","Siaya","Makueni","Narok","Turkana","Samburu","Kwale"),
                       admin2 = NULL,
-                      crop = crops)
+                      crop = crops,
+                      relative=F,
+                      difference=F,
+                      simplify_compound=F,
+                      compound=T)
 
 user_selections$variable<-paste0(user_selections$exposure,"_",user_selections$unit)
 
-  # Access total exposure ####
+# 3) Download data ####
+  ## 3.1) Download total exposure ####
 # This will be merged with the hazard exposure data so that we can calculate relative exposure
-exp_file<-"s3://digital-atlas/domain=exposure/type=combined/source=glw4+spam2020v1r2_ssa/region=ssa/gaul24_adm0-1-2_exposure.parquet"
+exp_file<-"s3://digital-atlas/domain=exposure/type=combined/source=glw4+spam2020v1r2_ssa/region=ssa/processing=aggregated/gaul24_adm0-1-2_exposure.parquet"
 
 # Construct SQL filters
 # No crop filter (download all for the selected geographies so user crop selections do not trigger new downloads)
@@ -99,7 +104,7 @@ setnames(exp_tot,"value","value_tot")
 
 
 
-  # Access Hazard exposure ####
+  ## 3.2) Download hazard exposure ####
 s3_parquet_paths<-data.table(expand.grid(model=models,
                                          severity=severities,
                                          variable=variables,
@@ -200,39 +205,47 @@ haz_s3q<-function(path,crops,admin0,admin1,admin2,timeframe,scenario,hazard_vars
 
 select_cols <- c("severity","scenario","timeframe","admin0_name", "admin1_name", "admin2_name", "crop", "hazard","value", "value_sd")
 
-haz_s1<-haz_s3q(path = if(user_selections$comparison_scen1$scenario=="historic"){haz_exp_hist_path}else{haz_exp_ens_path},
+s1_tim<-system.time(haz_s1_all<-haz_s3q(path = if(user_selections$comparison_scen1$scenario=="historic"){haz_exp_hist_path}else{haz_exp_ens_path},
                       crops = user_selections$crop,
                       admin0 = user_selections$admin0,
                       admin1 = user_selections$admin1,
                       admin2 = user_selections$admin2,
-                      timeframe =  user_selections$comparison_scen1$timeframe,
-                      scenario =  user_selections$comparison_scen1$scenario,
+                      timeframe = if(user_selections$comparison_scen1$scenario=="historic"){"historic"}else{timeframes},
+                      scenario =  if(user_selections$comparison_scen1$scenario=="historic"){"historic"}else{scenarios},
                       hazard_vars = user_selections$interaction,
-                      select_cols = select_cols)  
+                      select_cols = select_cols))
 
-haz_s2<-haz_s3q(path = if(user_selections$comparison_scen2$scenario=="historic"){haz_exp_hist_path}else{haz_exp_ens_path},
+s2_tim<-system.time(haz_s2_all<-haz_s3q(path = if(user_selections$comparison_scen2$scenario=="historic"){haz_exp_hist_path}else{haz_exp_ens_path},
                     crops = user_selections$crop,
                     admin0 = user_selections$admin0,
                     admin1 = user_selections$admin1,
                     admin2 = user_selections$admin2,
-                    timeframe =  user_selections$comparison_scen2$timeframe,
-                    scenario =  user_selections$comparison_scen2$scenario,
+                timeframe = if(user_selections$comparison_scen2$scenario=="historic"){"historic"}else{timeframes},
+                scenario =  if(user_selections$comparison_scen2$scenario=="historic"){"historic"}else{scenarios},
                     hazard_vars = user_selections$interaction,
-                    select_cols = select_cols)
+                    select_cols = select_cols))
 
-if(nrow(haz_s1)!=nrow(haz_s2)){
-  warning("Number of rows in scenario 1",nrow(haz_s1),"does not match scenario 2",nrow(haz_s2))
-}
-  # Rename fields
+cat("download time for s1 (elapsed) = ",s1_tim[["elapsed"]]," nrow = ",nrow(haz_s1_all))
+cat("download time for s2 (elapsed) = ",s2_tim[["elapsed"]]," nrow = ",nrow(haz_s2_all))
+
+# 4) Process data ####
+  ## 4.1) Subset to selected scenario and timeframe ####
+  haz_s1<-haz_s1_all[scenario == user_selections$comparison_scen1$scenario & timeframe == user_selections$comparison_scen1$timeframe]
+  haz_s2<-haz_s2_all[scenario == user_selections$comparison_scen2$scenario & timeframe == user_selections$comparison_scen2$timeframe]
+  
+  if(nrow(haz_s1)!=nrow(haz_s2)){
+    warning("Number of rows in scenario 1",nrow(haz_s1),"does not match scenario 2",nrow(haz_s2))
+  }
+  ## 4.2) Rename fields ####
   setnames(haz_s1,c("value","value_sd"),c("value1","value_sd1"),skip_absent=T)
   setnames(haz_s2,c("value","value_sd"),c("value2","value_sd2"),skip_absent=T)
   haz_s1[,scenario1:=paste(unique(c(scenario,timeframe)),collapse="-")][,c("scenario","timeframe"):=NULL]
   haz_s2[,scenario2:=paste(unique(c(scenario,timeframe)),collapse="-")][,c("scenario","timeframe"):=NULL]
 
-  # Merge scenarios into a single table ####
+  ## 4.3) Merge scenarios into a single table ####
   haz_merge<-cbind(haz_s1,haz_s2[,.(scenario2,value2,value_sd2)])
   
-  # Add 1 only, 2 only, 3 only hazard categories ####
+  ## 4.4) Add 1 only, 2 only, 3 only hazard categories ####
   agg_cols <- c("severity","scenario1","scenario2","admin0_name", "admin1_name", "admin2_name", "crop", "hazard")
   
   num_cols <- names(haz_merge)[
@@ -248,13 +261,13 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
   
   haz123<-rbind(haz1,haz2,haz3)
   
-  # Sum values for the new categories ####
+  ## 4.5) Sum values for the new categories ####
   haz123 <- haz123[, lapply(.SD, sum, na.rm = TRUE), by = agg_cols, .SDcols = num_cols]
   
   # Bind to the main dataset
   haz_merge<-rbind(haz_merge,haz123)
   
-  # Add any heat, any wet, and any dry ####
+  ## 4.6) Add any heat, any wet, and any dry ####
   heat<-haz_merge[grep("heat",hazard)]
   heat[,hazard:="heat (any)"]
   
@@ -273,10 +286,10 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
   # Bind to the main dataset
   haz_merge<-rbind(haz_merge,dhw)
   
-  # Merge in total exposure values (i.e. the total value of production or harvested areas) ####
+  ## 4.7) Merge in total exposure values (i.e. the total value of production or harvested areas) ####
   haz_merge<-merge(haz_merge,exp_tot,by=c("admin0_name","admin1_name","admin2_name","crop"),all.x=T,sort=F)
   
-  # Calculate no hazard ####
+  ## 4.8) Calculate no hazard ####
   no_haz<-haz_merge[hazard=="any"]
   no_haz[,value1:=value_tot-value1
          ][,value_sd1:=((value_tot-value1)/value1)*value_sd1
@@ -286,7 +299,7 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
 
   haz_merge<-rbind(haz_merge,no_haz)
   
-  # Add totals ####
+  ## 4.9) Add totals ####
   # Grand total across all geos and crops
   agg_cols <- c("severity","scenario1","scenario2","admin0_name", "admin1_name", "admin2_name", "crop", "hazard")
   
@@ -311,10 +324,10 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
   # Bind back grouped data
   haz_merge<-rbindlist(list(haz_merge,haz_tot,haz_tot_geo,haz_tot_crop),use.names=T)
   
-  # Calculate difference ####
+  ## 4.10) Calculate difference ####
   haz_merge[,diff:=value2-value1]
   
-  # Calculate relative exposure & errors ####
+  ## 4.11) Calculate relative exposure & errors ####
   ci_95 <- function(mean, sd, n) {
     error <- qt(0.975, df = n - 1) * sd / sqrt(n)
     lower <- mean - error
@@ -339,7 +352,7 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
   haz_merge[,c("value2_low","value2_high"):=ci_95(value2,value_sd2,5),by=.I]
   haz_merge[,c("perc2_low","perc2_high"):=round(ci_95(perc2,perc_sd2,5),2),by=.I]
   
-  # Rename hazard labels and create hazard sets ####
+  ## 4.12) Rename hazard labels and create hazard sets ####
   haz_merge[hazard=="heat",hazard:="heat (only)"]
   haz_merge[hazard=="wet",hazard:="wet (only)"]
   haz_merge[hazard=="dry",hazard:="dry (only)"]
@@ -350,7 +363,7 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
   compound_set_simple<-c("no hazard","1 hazard","2 hazards","3 hazards")
   solo_set<-c("no hazard","dry (any)","heat (any)","wet (any)","any")
   
-  # Create palettes
+  ## 4.13) Create palettes ####
   # Build a pallete 
   mix_hex <- function(col1, col2, p = 0.5) {
     stopifnot(is.numeric(p), p >= 0, p <= 1)
@@ -401,8 +414,62 @@ if(nrow(haz_s1)!=nrow(haz_s2)){
       base_hues["wet"], .67),-0.5)
   )
   
-  # Plots ####
-  # Q1: Upset plot ####
+# 5) Plots ####
+  # 5.0) Create values for user selections ####
+  
+  s1_lab<-haz_merge$scenario1[1]
+  s2_lab<-haz_merge$scenario2[1]
+  diff_lab<-paste0("Δ ",haz_merge$scenario2[1]," minus ",plot_title=haz_merge$scenario1[1])
+  
+  if(user_selections$relative==F & user_selections$difference==F){
+    scenario_cols<-c(scenario1="value1",scenario2="value2",diff="diff")
+    val_col1<-"value1"
+    val_col2<-"value2"
+    unit_name<-user_selections$unit
+  }
+  
+  if(user_selections$relative==T & user_selections$difference==F){
+    scenario_cols<-c(scenario1="perc1",scenario2="perc2",diff="perc_diff")
+    val_col1<-"perc1"
+    val_col2<-"perc2" 
+    unit_name<-"%"
+  }
+  
+  if(user_selections$relative==F & user_selections$difference==T){
+    scenario_cols<-c(scenario1="value1",scenario2="value2",diff="diff")
+    val_col1<-"diff"
+    unit_name<-user_selections$unit
+  }
+  
+  if(user_selections$relative==T & user_selections$difference==T){
+    scenario_cols<-c(scenario1="perc1",scenario2="perc2",diff="perc_diff")
+    val_col1<-"perc_diff"
+    unit_name<-"%"
+  }
+  
+  # show_n to show
+  show_n<-15
+  if(show_n>length(user_selections$crop)){
+    show_n_final<-length(user_selections$crop)
+  }else{
+    show_n_final<-show_n
+  }
+  
+  if(user_selections$compound==T){
+    if(user_selections$simplify_compound==T){
+      haz_set = compound_set_simple
+      haz_pal = cols_fill_simple
+    }else{
+      haz_set = compound_set_full
+      haz_pal = cols_fill
+    }
+  }else{
+    haz_set = solo_set
+    haz_pal = cols_fill_solo
+  }
+  
+  
+  # 5.1) Q1: Upset plot ####
   
   # Bonus points if error_bars can be added
 
@@ -511,22 +578,39 @@ B
     
     return(final_plot)
   }
-  s1_lab<-haz_merge$scenario1[1]
-  s2_lab<-haz_merge$scenario2[1]
-  diff_lab<-paste0("Δ ",haz_merge$scenario2[1]," minus ",plot_title=haz_merge$scenario1[1])
+
+  if(user_selections$difference==F){
+    up_s1<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],
+                   val_col = val_col1,
+                   exp_lab=unit_name,
+                   plot_title=s1_lab) 
+    
+    up_s2<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],
+                   val_col = val_col2,
+                   exp_lab=unit_name,
+                   plot_title=s2_lab)
+    
+    q1_plot <- patchwork::wrap_plots(
+      up_s1,
+      up_s2,
+      ncol = 2,          # 2 side-by-side
+      nrow = 1
+    )
+    q1_plot
+  }
   
-  up_s1<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],val_col = "value1",exp_lab=user_selections$unit,plot_title=s1_lab) 
-  up_s2<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],val_col = "value2",exp_lab=user_selections$unit,plot_title=s2_lab)
-  # An issue with difference is that the unit changes from B to M, we might want to set an override where the unit selection can be derived from
-  # a different column
-  up_diff<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],val_col = "diff",exp_lab=user_selections$unit,plot_title=diff_lab)
+  if(user_selections$difference==T){
+    q1_plot<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],
+                   val_col = val_col1,
+                   exp_lab=unit_name,
+                   plot_title=diff_lab) 
+  }
+
   
-  up_s1p<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],val_col = "perc1",exp_lab="%",plot_title=s1_lab) 
-  up_s2p<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],val_col = "perc2",exp_lab="%",plot_title=s2_lab) 
-  up_diffp<-up_plot(data=haz_merge[admin0_name=="all" & crop=="all" & hazard %in% compound_set_full],val_col = "perc_diff",exp_lab="%",plot_title=diff_lab) 
+  plot(q1_plot)
   
       
-  # Q2: Crops>Hazards ####
+  # 5.2) Q2: Crops>Hazards ####
 
   q2_fun<-function(plot_dat,
                    exp_lab,
@@ -569,7 +653,7 @@ B
     scale_fill_manual(values = cols_fill,
                       breaks  = haz_levels,     # keep the legend in that order
                       drop    = FALSE) +  
-    labs(x = lab,
+    labs(x = exp_lab,
          y = NULL,
          title = plot_title,
          fill = "Hazard") +                 # legend title
@@ -577,9 +661,9 @@ B
     theme(panel.grid.major.y = element_blank())
   
   if(is_compound==T){
-    result<-result+geom_bar(stat="identity",colour="grey20",size=0.2)
+    result<-result+geom_bar(stat="identity",colour="grey20",linewidth=0.2)
   }else{
-    result<-result+geom_col(position = position_dodge(width = 0.9),colour="grey20",size=0.2) 
+    result<-result+geom_col(position = position_dodge(width = 0.9),colour="grey20",linewidth=0.2) 
   }
   
   if(plotly){
@@ -589,83 +673,67 @@ B
   
   }
   
-  # show_n to show
-  show_n<-15
-  if(show_n>length(user_selections$crop)){
-    show_n<-length(user_selections$crop)
+  if(user_selections$difference==F){
+    
+    q2_s1<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% haz_set],
+                  exp_lab = unit_name,
+                  n_y.groups=show_n_final,
+                  val_col=val_col1,
+                  haz_levels = haz_set,
+                  cols_fill = haz_pal,
+                  is_compound = user_selections$compound,
+                  plot_title=s1_lab)
+    
+    q2_s2<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% haz_set],
+                  exp_lab = unit_name,
+                  n_y.groups=show_n_final,
+                  val_col=val_col2,
+                  haz_levels = haz_set,
+                  cols_fill = haz_pal,
+                  is_compound = user_selections$compound,
+                  plot_title=s2_lab)
+    
+    for (i in seq_along(q2_s1$x$data)) {
+      q2_s1$x$data[[i]]$showlegend <- FALSE
+    }
+    
+    # Strip internal titles
+    q2_s1$x$layout$title <- NULL
+    q2_s2$x$layout$title <- NULL
+    
+    q2_plot <- subplot(q2_s1, q2_s2, nrows = 1, shareX = FALSE, shareY = TRUE, titleX = T, titleY = F) %>%
+      layout(
+        annotations = list(
+          list(
+            text = s1_lab,  # Title for q2_s1
+            x = 0.22, y = 1.05, xref = "paper", yref = "paper",
+            showarrow = FALSE, font = list(size = 14)
+          ),
+          list(
+            text = s2_lab,  # Title for q2_s2
+            x = 0.78, y = 1.05, xref = "paper", yref = "paper",
+            showarrow = FALSE, font = list(size = 14)
+          )
+        ),
+        margin = list(t = 80)
+      )    
   }
   
-  q2_s1<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_full],
-         exp_lab = user_selections$unit,
-         n_y.groups=show_n,
-         val_col="value1",
-         haz_levels = compound_set_full,
-         cols_fill = cols_fill,
-         plot_title=haz_merge$scenario1[1])
+  if(user_selections$difference==T){
+    q2_plot<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% haz_set],
+                  exp_lab = unit_name,
+                  n_y.groups=show_n_final,
+                  val_col=val_col1,
+                  haz_levels = haz_set,
+                  cols_fill = haz_pal,
+                  is_compound = user_selections$compound,
+                  plot_title=diff_lab)
+  }
   
-  q2_s2<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_full],
-                exp_lab = user_selections$unit,
-                n_y.groups=show_n,
-                val_col="value2",
-                haz_levels = compound_set_full,
-                cols_fill = cols_fill,
-                plot_title=haz_merge$scenario2[1])
+  q2_plot
   
-  q2_diff<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_full],
-                exp_lab = user_selections$unit,
-                n_y.groups=show_n,
-                val_col="diff",
-                haz_levels = compound_set_full,
-                cols_fill = cols_fill,
-                plot_title=haz_merge$scenario2[1])
-  
-  q2_s1p<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_full],
-                palette="Set 1",
-                exp_lab = "%",
-                show_n=show_n,
-                val_col="perc1",
-                haz_levels = compound_set_full,
-                cols_fill = cols_fill,
-                plot_title=haz_merge$scenario1[1])
-  
-  q2_s2p<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_full],
-                exp_lab = user_selections$unit,
-                n_y.groups=show_n,
-                val_col="perc2",
-                haz_levels = compound_set_full,
-                cols_fill = cols_fill,
-                plot_title=haz_merge$scenario2[1])
-  
-  q2_diffp<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_full],
-                  exp_lab = user_selections$unit,
-                  n_y.groups=show_n,
-                  val_col="perc_diff",
-                  haz_levels = compound_set_full,
-                  cols_fill = cols_fill,
-                  plot_title=haz_merge$scenario2[1])
-  
-  # Simple versions ofcompound plot
-  q2_s1<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% compound_set_simple],
-                exp_lab = user_selections$unit,
-                n_y.groups=show_n,
-                val_col="value1",
-                haz_levels = compound_set_simple,
-                cols_fill = cols_fill_simple,
-                plot_title=haz_merge$scenario1[1])
-  
-  # Non compound plot
-  q2_s1nc<-q2_fun(plot_dat=haz_merge[admin0_name=="all" & crop!="all" & hazard %in% solo_set],
-                exp_lab = user_selections$unit,
-                n_y.groups=show_n,
-                val_col="value1",
-                is_compound=F,
-                haz_levels = solo_set,
-                cols_fill = cols_fill_solo,
-                plot_title=haz_merge$scenario1[1])
-  
-  # Q3: Hazards>Crops ####
+  # 5.3) Q3: Hazards>Crops ####
   n_grps<-8
-  
   yaxis_lab <- user_selections$unit
   
   plot3_fun<-function(plot_dat,
@@ -682,7 +750,7 @@ B
   
     plot_dat<-plot_dat[,all_cols,with=F]
     
-  setnames(plot_dat,c(scenario_cols,facet_var,stack_var),c(names(val_cols),"facet_var","group"))
+  setnames(plot_dat,c(scenario_cols,facet_var,stack_var),c(names(scenario_cols),"facet_var","group"))
 
   group_sel <- plot_dat[, .(tot = sum(scenario1)), by = group][
       order(-tot), group][1:n_grps]
@@ -757,72 +825,82 @@ B
   
   }
   
-  q3<-plot3_fun(plot_dat=haz_merge[hazard %in% compound_set_full & admin0_name=="all" & crop!="all"],
-            scenario_cols=c(scenario1="value1",scenario2="value2",diff="diff"),
-            facet_var="hazard",
-            stack_var="crop",
-            stack_var_order = compound_set_full,
-            plot_title=NULL,
-            yaxis_lab=user_selections$unit,
-            n_grps=n_grps,
-            plotly=T)
+    q3_plot<-plot3_fun(plot_dat=haz_merge[hazard %in% haz_set & admin0_name=="all" & crop!="all"],
+                  scenario_cols=scenario_cols,
+                  facet_var="hazard",
+                  stack_var="crop",
+                  stack_var_order = haz_set,
+                  plot_title=NULL,
+                  yaxis_lab=unit_name,
+                  n_grps=n_grps,
+                  plotly=T)
+    
+  # 5.4) Q4: Geographies ####
+    q4_data<-haz_merge[admin0_name!="all" & crop=="all" & hazard %in% haz_set]
+    
+    if(user_selections$difference==F){
+      q4_s1<-q2_fun(plot_dat=copy(q4_data),
+                    exp_lab = unit_name,
+                    n_y.groups=show_n_final,
+                    val_col=val_col1,
+                    haz_levels = haz_set,
+                    cols_fill = haz_pal,
+                    y_axis = "admin1_name",
+                    is_compound = user_selections$compound,
+                    plot_title=s1_lab)
+      
+      q4_s2<-q2_fun(plot_dat=copy(q4_data),
+                    exp_lab = unit_name,
+                    n_y.groups=show_n_final,
+                    val_col=val_col2,
+                    haz_levels = haz_set,
+                    cols_fill = haz_pal,
+                    y_axis = "admin1_name",
+                    is_compound = user_selections$compound,
+                    plot_title=s2_lab)
+      
+      for (i in seq_along(q2_s1$x$data)) {
+        q2_s1$x$data[[i]]$showlegend <- FALSE
+      }
+      
+      # Strip internal titles
+      q2_s1$x$layout$title <- NULL
+      q2_s2$x$layout$title <- NULL
+      
+      q2_plot <- subplot(q2_s1, q2_s2, nrows = 1, shareX = FALSE, shareY = TRUE, titleX = T, titleY = F) %>%
+        layout(
+          annotations = list(
+            list(
+              text = s1_lab,  # Title for q2_s1
+              x = 0.22, y = 1.05, xref = "paper", yref = "paper",
+              showarrow = FALSE, font = list(size = 14)
+            ),
+            list(
+              text = s2_lab,  # Title for q2_s2
+              x = 0.78, y = 1.05, xref = "paper", yref = "paper",
+              showarrow = FALSE, font = list(size = 14)
+            )
+          ),
+          margin = list(t = 80)
+        )    
+    }
+    
+    if(user_selections$difference==T){
+      q4_plot<-q2_fun(plot_dat=copy(q4_data),
+                      exp_lab = unit_name,
+                      n_y.groups=show_n_final,
+                      val_col=val_col1,
+                      haz_levels = haz_set,
+                      cols_fill = haz_pal,
+                      y_axis = "admin1_name",
+                      is_compound = user_selections$compound,
+                      plot_title=diff_lab)
+    }
+    
+    
+    q4_plot
   
-  q3simple<-plot3_fun(plot_dat=haz_merge[hazard %in% c(solo_set,compound_set_simple) & admin0_name=="all" & crop!="all"],
-                scenario_cols=c(scenario1="value1",scenario2="value2",diff="diff"),
-                facet_var="hazard",
-                stack_var="crop",
-                stack_var_order = unique(c(solo_set,compound_set_simple)),
-                plot_title=NULL,
-                yaxis_lab=user_selections$unit,
-                n_grps=n_grps,
-                plotly=T)
-  
-  
-  #  
-  q3p<-plot3_fun(plot_dat=haz_merge[hazard %in% compound_set_full & admin0_name=="all" & crop!="all"],
-                scenario_cols=c(scenario1="perc1",scenario2="perc2",diff="perc_diff"),
-                facet_var="hazard",
-                stack_var="crop",
-                plot_title=NULL,
-                yaxis_lab="%",
-                n_grps=n_grps,
-                plotly=T)
-  
-  # Q4: Geographies ####
-  q2_s1<-q2_fun(plot_dat=haz_merge[admin0_name!="all" & crop=="all" & hazard %in% compound_set_full],
-                exp_lab = user_selections$unit,
-                n_y.groups=show_n,
-                val_col="value1",
-                y_axis = "admin1_name",
-                haz_levels = compound_set_full,
-                cols_fill = cols_fill,
-                plot_title=haz_merge$scenario1[1])
-  
-  
-  
-  # Q5: Variability   ####
-
-  haz_s1_all<-haz_s3q(path = haz_exp_hist_path,
-                  crops = user_selections$crop,
-                  admin0 = user_selections$admin0,
-                  admin1 = user_selections$admin1,
-                  admin2 = user_selections$admin2,
-                  timeframe =  "historic",
-                  scenario =  "historic",
-                  hazard_vars = user_selections$interaction,
-                  select_cols = select_cols)  
-  
-  haz_s2_all<-haz_s3q(path = haz_exp_ens_path,
-                  crops = user_selections$crop,
-                  admin0 = user_selections$admin0,
-                  admin1 = user_selections$admin1,
-                  admin2 = user_selections$admin2,
-                  timeframe =  timeframes,
-                  scenario =  scenarios,
-                  hazard_vars = user_selections$interaction,
-                  select_cols = select_cols)  
-  
-
+  # 5.5) Q5: Variability   ####
   haz_merge2<-rbind(haz_s1_all,haz_s2_all)
   
   haz_merge2<-haz_s12_all[,.(value=sum(value,na.rm=T),value_sd=sum(value_sd,na.rm=T)),by=.(severity,scenario,timeframe,hazard)]
@@ -846,7 +924,6 @@ B
   # Bind to the main dataset
   haz_merge2<-rbind(haz_merge2,dhw)
   
-  
   # enforce sd being all NA if scenario is historic
   haz_merge2[scenario=="historic",value_sd:=NA]
   
@@ -857,14 +934,13 @@ B
   haz_merge2[timeframe=="historic",year:=mean(c(2014,1995))-0.5
              ][timeframe!="historic",year:=mean(as.numeric(unlist(strsplit(timeframe,"-"))))-0.5,by=timeframe]
   
-
   dodge <- position_dodge(width = 0.6)    
   
   hline_dat <- haz_merge2[hazard %in% solo_set & scenario == "historic",
                           .(yintercept = value),  
                           by = hazard]            # <- facet variable
   
-  ggplot(haz_merge2[hazard %in% solo_set],
+  q5_plot<-ggplot(haz_merge2[hazard %in% solo_set],
          aes(x = factor(year),                # discrete x for tidy spacing
              y = value,
              colour = scenario)) +            # colour distinguishes scenarios
@@ -896,8 +972,9 @@ B
       strip.text.y       = element_text(face = "bold")  # facet labels
     )
 
+  q5_plot
   
-  # Duckdb connection to admin vector geoparquet table ####
+# 6) Duckdb connection to admin vector geoparquet table ####
   
   # Load admin vector
   admin_0_file<-"s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=simplified/level=adm0/atlas_gaul24_a0_africa_simple-midres.parquet"
@@ -926,8 +1003,7 @@ B
   aoi <- ext(geo_selection) 
   
   
-  
-# COG tif plotting ####
+  # 7) COG tif plotting ####
   s3_crop_tif_paths<-data.table(expand.grid(model=c("historic","ENSEMBLEmean","ENSEMBLEsd"),
                                             severity=c("moderate","extreme","severe"),
                                             variable=c("vop_intld15","vop_usd15"),
