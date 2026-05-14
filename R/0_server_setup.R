@@ -183,10 +183,10 @@ terra::gdalCache(60000)
 
 
 # 2) Create directory structures ####
-## 2.1) Local directories #####
+# 2.1) Local directories #####
 atlas_data <- read_json(file.path(project_dir, "metadata/data.json"))
 
-### 2.1.1) Outputs ######
+# 2.1.1) Outputs ######
 # Create a hierarchical list for top-level data directories
 atlas_dirs <- list()
 atlas_dirs$data_dir <- "Data"
@@ -251,7 +251,7 @@ for (key in non_timeframe_subdirs) {
   assign(var_name, atlas_dirs$data_dir[[key]])
 }
 
-### 2.1.2) Inputs #####
+# 2.1.2) Inputs ######
 
 # Create new entries in atlas_dirs$data_dir for various directories beyond hazard outputs
 # atlas_dirs$data_dir$Boundaries         <- atlas_data$boundaries$alternate_paths$project # Created directly
@@ -280,7 +280,6 @@ boundaries_int_dir <- paste0(boundaries_dir, "intermediate")
 if (!dir.exists(boundaries_int_dir)) {
   dir.create(boundaries_int_dir, recursive = TRUE)
 }
-
 
 glps_dir <- atlas_dirs$data_dir$GLPS
 if (!dir.exists(glps_dir)) {
@@ -391,8 +390,8 @@ if (Cglabs) {
   }
 }
 
-## 2.2) Cloud directories (Atlas s3 bucket) #####
-### 2.2.1) Set S3 directory structure ####
+# 2.2) Cloud directories (Atlas s3 bucket) #####
+# 2.2.1) Set S3 directory structure ######
 bucket_name <- "http://digital-atlas.s3.amazonaws.com"
 bucket_name_s3 <- "s3://digital-atlas"
 
@@ -412,7 +411,7 @@ for (sub in subdirs) {
 
 hazard_timeseries_s3 <- atlas_dirs$s3_dir$hazard_timeseries
 
-### 2.2.2) Create an S3FileSystem object for anonymous read access ####
+# 2.2.2) Create an S3FileSystem object for anonymous read access ######
 s3 <- s3fs::S3FileSystem$new(anonymous = TRUE)
 
 # 3) Download data ####
@@ -513,9 +512,9 @@ for (i in seq_along(glw_files)) {
   }
 }
 
-## 3.5) Fao stat #####
+## 3.5) FAOSTAT #####
+update <- TRUE
 ### 3.5.1) Deflators ######
-update <- FALSE
 def_file <- paste0(fao_dir, "/Deflators_E_All_Data_(Normalized).csv")
 
 if (!file.exists(def_file) | update == TRUE) {
