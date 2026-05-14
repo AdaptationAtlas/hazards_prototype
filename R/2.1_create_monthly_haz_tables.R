@@ -1,5 +1,50 @@
-# Please run 0_server_setup.R before executing this script
-# Note this script will only work on CGlabs server or if a folder containing the hazard_indices calculated in the https://github.com/AdaptationAtlas/hazards workflow are present
+# 0) Introduction ####
+# This script is part of the Africa Agriculture Adaptation Atlas (AAAA) data pipeline, 
+# developed by Alliance of Bioversity International & CIAT. Authors: Pete Steward & 
+# Brayden Youngberg.
+#
+# Purpose:
+# This script extracts, processes, and summarizes monthly climate hazard data 
+# produced by the Atlas hazards workflow (https://github.com/AdaptationAtlas/hazards). 
+# It converts raw hazard raster outputs into tabular datasets aggregated at 
+# administrative levels (adm0, adm1), suitable for downstream analysis, visualization, 
+# and integration into Atlas notebooks.
+#
+# Key Processes:
+# 1. **Hazard Extraction** – Identify and read in hazard raster files (e.g., TMAX, PTOT, THI).  
+#    Extract zonal statistics by admin boundaries, clean extreme values, and write to 
+#    parquet tables with JSON metadata.
+# 2. **Monthly → Seasonal Aggregation** – Combine monthly hazards into rolling 3-month 
+#    and annual windows using hazard-specific functions (mean, sum, max).  
+#    Remove suspect values flagged during extraction.
+# 3. **Baseline Comparison** – Calculate anomalies by subtracting historical baseline 
+#    values (e.g., 1995–2014) from future scenarios (SSPs).  
+# 4. **Ensembling** – Aggregate across GCMs to generate ensemble means, min/max, SD, 
+#    and spread statistics.  
+# 5. **Trend Analysis** – Fit temporal trends (Theil–Sen estimator, Mann–Kendall test) 
+#    to hazard values and anomalies, saving both model-specific and ensembled results.
+#
+# Inputs:
+# - Hazard raster indices generated in the hazards workflow, stored under `indices_dir`.  
+# - Administrative boundary datasets (adm0, adm1; optionally adm2).  
+# - Hazard metadata (`haz_meta_url`) defining variables, units, and functions.  
+#
+# Outputs:
+# - Monthly, seasonal, anomaly, ensemble, and trend hazard datasets in parquet format.  
+# - Companion JSON metadata files describing source rasters, filters, units, and methods.  
+#
+# Features:
+# - Parallel processing (via `furrr` + `progressr`) for large-scale zonal extraction.  
+# - Automatic QC to filter unrealistic values (e.g., rainfall > 3000 mm/month).  
+# - Modular structure for reproducibility and transparency.  
+#
+# Note:
+# - Requires prior execution of `0_server_setup.R` to configure paths and environment.  
+# - Designed for CGlabs server or systems with access to Atlas hazard indices folders.  
+#
+# Once completed, this script produces the foundational hazard time-series tables 
+# used across Adaptation Atlas analyses and notebooks (e.g., climate risk assessment, 
+# climate rationale development, solution targeting).
 
 cat("Starting 2.1_create_monthly_haz_tables.R/n")
 
@@ -48,8 +93,9 @@ p_load(char=packages)
   
   ## 1.4) Load admin boundaries #####
   # This is limited to admin1 (admin2 is possible but we generate huge files that go beyond the 2gb recommended size for a parquet file, so the data would need to split into chunks)
-  ## d.1) Geographies #####
   overwrite_boundary_zones<-T
+  
+  base_rast<-terra::rast(atlas_data$base_rast$atlas_delta$local_path)
   
   Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
     file<-geo_files_local[i]
@@ -74,10 +120,10 @@ p_load(char=packages)
       )
       
       # Crop to Africa
-      if(climdat_source=="nexgddp"){
-        base_rast_delta<-terra::rast(atlas_data$base_rast$atlas_delta$local_path)
-        zone_rast<-terra::crop(zone_rast,base_rast_delta)
-      }
+      # if(climdat_source=="nexgddp"){
+      #   base_rast_delta<-terra::rast(atlas_data$base_rast$atlas_delta$local_path)
+      #  zone_rast<-terra::crop(zone_rast,base_rast_delta)
+      # }
       
       terra::writeRaster(zone_rast,file_path,overwrite=T)
     }
@@ -91,36 +137,44 @@ p_load(char=packages)
   
   names(boundaries_index)<-names(Geographies)
   
-  
   ## 1.5) Load hazard meta-data #####
   haz_meta<-data.table::fread(haz_meta_url, showProgress = FALSE)
   
   ## 1.6) Controls ####
     
-    ### Section 2 - Extraction of monthly hazards by admin areas ####
+    rm_admin2<-T # We can attempt to do at admin2, but section 3 becomes extremely slow
+  
+    ### Section 2 
+    run2<-T
     round1<-1
     version1<-1
     worker_n1<-5
-    overwrite1<-F # overwrite folder level extractions
+    overwrite1<-T # overwrite folder level extractions
   
     # Data QC checks
-    max_rain<-3000 # Max acceptable value for monthly rainfall 
+    max_rain<-3000 # Max acceptable value for monthly rainfall (if above this raster values are set to NA)
     min_haz<--10 # Min acceptable value for any hazards (some temperatures can be negative)
     exclude_flagged<-F # Exclude combinations of admin x timeframe x scenario x model x hazard that contain any bad values?
     
-    ### Section 3 - Summarization of monthly hazards ####
+    ### Section 3
+    run3<-F
     worker_n2<-20
     overwrite2<-F
-    rm_admin2<-T
     round3.1<-3
     round3.3<-3
     round3.4<-3
     remove_suspect_vals<-T
     
-    ### Final data ####
-  round_final<-1
+    ### Final data
+    round_final<-1
   
 # 2) Extract hazard folders by admin boundaries ####
+    if(rm_admin2){
+      boundaries_zonal<-boundaries_zonal[1:2]
+      boundaries_index<-boundaries_index[1:2]
+    }
+    
+    if(run2){
   ## 2.1) List hazard folders ####
   folders<-list.dirs(indices_dir,recursive=F,full.names = T)
   folders<-folders[!grepl("ENSEMBLE|ipyn|gadm0|hazard_comb|indices_seasonal",folders)]
@@ -162,7 +216,8 @@ p_load(char=packages)
   ## 2.3) Define the extraction function ####
   extract_hazard <- function(i, folders, hazards, output_dir, overwrite, round_dp, extract_stat,
                              boundaries_zonal, boundaries_index, id_vars, split_colnames,
-                             order_by, haz_meta, version, extraction_rast, levels,base_rast_path, max_rain=3000) {
+                             order_by, haz_meta, version, extraction_rast, levels,
+                             base_rast_path, max_rain=3000) {
     
     folders_ss <- paste0(folders$path[i], "/", hazards)
     base_rast<-terra::rast(boundaries_zonal[[1]])
@@ -185,8 +240,14 @@ p_load(char=packages)
         if (length(files) != 0) {
           rast_data <- terra::rast(files)
           
+          rast_data<-terra::crop(rast_data,base_rast)
+          
+          if(ext(rast_data)!=ext(base_rast)){
+            rast_data<-terra::resample(rast_data,base_rast)
+          }
+          
           # Align extents of boundary layer to cliamte data layer (important for nexgddp which covers a wider geographic scope)
-          rast_data<-mask(crop(rast_data,base_rast),base_rast)
+          rast_data<-terra::mask(rast_data,base_rast)
         
           if (hazard == "PTOT") rast_data[rast_data < 0] <- NA
           if (hazard == "PTOT") rast_data[rast_data > max_rain] <- NA
@@ -290,7 +351,7 @@ p_load(char=packages)
     names(baselines)<-c("1995-2014","AgERA5 1981-2022")
     futures<-files[!grepl("historic",timeframe),unique(timeframe)]
   }else{
-    baselines<-files[grep("historic",scenario),unique(scenario)]
+    baselines<-files[grep("historic",scenario),unique(timeframe)]
     futures<-files[!grepl("historic",scenario),unique(timeframe)]
   }
   
@@ -375,14 +436,17 @@ p_load(char=packages)
   monthly_files<-file.path(output_dir,paste0("haz_monthly_adm_mean_",timeframes,".parquet"))
   
   # Check for missing values
+  if(F){
   data<-arrow::read_parquet(monthly_files[1])
   missing<-data[value==-Inf|is.infinite(value)|is.na(value)|is.null(value),.(admin0_name,admin1_name,scenario,timeframe,model,hazard,year,month)]
-  
 
   # When using 0.25 resolution small admin1 areas < 400km2 are not included.
   missing[,.(missing_month_n=.N),by=.(model,hazard,scenario,timeframe,admin0_name,admin1_name)][order(missing_month_n,decreasing=T)]
+  }
   
+    }
 # 3) Summarize annually or 3 month windows ####
+    if(run3){
   ## 3.0) Create 3 month windows #####
   # Define month abbreviations
   month_abbr <- c("J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D")
@@ -409,16 +473,17 @@ p_load(char=packages)
   three_month_periods$annual<-1:12
   
   ## 3.1) Seasonal hazard calculation ####
-  rm(data)
+  rm(data,problem_data,results,missing)
   gc()
   
   cat("3.1) Seasonal hazard calculation \n")
   
   id_vars <- c("admin0_name", "admin1_name", "scenario", "model", "timeframe", "year", "hazard")
   
-  set_parallel_plan(n_cores = length(monthly_files), use_multisession = TRUE)
-
-
+  # Workers seem to need 13.1 gb each so limit their number!
+  options(future.globals.maxSize = 13.2 * 1024^3)  # 13.2 GB
+  workers_3.1<-5
+  
   lapply(1:length(monthly_files),FUN=function(i){
     month_file<-monthly_files[i]
     save_file<-gsub("_monthly_","_3months_",month_file)
@@ -431,7 +496,6 @@ p_load(char=packages)
       data_ex_ss<-data_ex_ss[is.na(admin2_name)]
     }
   
-    
     if("vars" %in% colnames(data_ex_ss)){
       vars<-data_ex_ss[,unique(vars)]
     }else{
@@ -444,11 +508,27 @@ p_load(char=packages)
     
     data_ex_ss[,suspect_value_flag:=NULL]
     
-    data_ex_season<-furrr::future_map(1:length(three_month_periods), function(j){
-    # data_ex_season <- lapply(1:length(three_month_periods), function(j) { 
+    temp_dir<-ensure_dir(file.path(output_int_dir,gsub(".parquet","",basename(month_file))))
+    files_3m<-file.path(temp_dir,paste0(names(three_month_periods),".parquet"))
+    names(files_3m)<-names(three_month_periods)
+    
+    gc()
+    
+    if(overwrite2==F){
+      files_3m_todo<-files_3m[!file.exists(files_3m)]  
+    }
+    
+    ob_size<-object.size(data_ex_ss)
+    cat("Size of data_ex_ss = ",ob_size/10^9," GB\n")
+    cat("Parallization will need >",length(monthly_files)*ob_size/10^9," GB\n")
+    cat(system("free -h"))
+    
+    set_parallel_plan(n_cores = workers_3.1, use_multisession = TRUE)
+    result<-furrr::future_map(1:length(files_3m_todo), function(j){
+    #result <- lapply(1:length(files_3m_todo), function(j) { 
       
-        m_period <- three_month_periods[[j]]
-        season_name<-names(three_month_periods)[j]
+        season_name<-names(files_3m_todo)[j]
+        m_period<-three_month_periods[[season_name]]
         
         cat("3.1) Seasonal summarization: ",basename(month_file), j,season_name,"         \r")
         
@@ -477,54 +557,69 @@ p_load(char=packages)
           return(result)
           
         }), use.names = TRUE, fill = TRUE)
-        
-        rm(dt)
+        arrow::write_parquet(data_season,files_3m_todo[j])
+      
+        rm(dt,data_season)
         gc()
         
         cat("Completed: ",basename(month_file), season_name," ",j,"/",length(three_month_periods),"      \n")
-        data_season
+        return(season_name)
       })
-  
-    data_ex_season<-rbindlist(data_ex_season)
+    plan(sequential) 
+    
+    rm(data_ex_ss)
+    gc()
+    
+    result<-rbindlist(lapply(files_3m,read_parquet))
     
     if (!is.null(order_by2)){ 
-      setorderv(data, order_by2)
+      setorderv(result, order_by2)
     }
   
-    arrow::write_parquet(data_ex_season,save_file)
+    arrow::write_parquet(result,save_file)
     
-    json_dat<-jsonlite::read_json(paste0(month_file,".json"),simplifyVector=T)
-    filters<-list(scenario=data_ex_season[,unique(scenario)],
-                  model=data_ex_season[,unique(model)],
-                  timeframe=data_ex_season[,unique(timeframe)],
-                  year=data_ex_season[,unique(year)],
-                  hazard=data_ex_season[,unique(hazard)],
-                  season=data_ex_season[,unique(season)])
+    json_file<-paste0(month_file,".json")
+    if(file.exists(json_file)){
+      json_dat<-jsonlite::read_json(json_file,simplifyVector=T)
+      extract_stat_val<-json_dat$extract_stat
+      json_dat_val<-json_dat$version
+    }else{
+      extract_stat_val<-NA
+      json_dat_val<-NA
+    }
+    
+    filters<-list(scenario=result[,unique(scenario)],
+                  model=result[,unique(model)],
+                  timeframe=result[,unique(timeframe)],
+                  year=result[,unique(year)],
+                  hazard=result[,unique(hazard)],
+                  season=result[,unique(season)])
     
     jsonlite::write_json(
       list(
         source = list(input_table = save_file, extraction_rast = atlas_data$boundaries$name),
         extraction_method = "zonal",
-        geo_filters = grep("admin",colnames(data_ex_season),value=T),
+        geo_filters = grep("admin",colnames(result),value=T),
         season_type = NA,
         filters =  filters,
         format = ".parquet",
         date_created = Sys.time(),
-        version = json_dat$version,
+        version = json_dat_val,
         parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.1",
         value_variable = "hazard value",
-        unit = haz_meta[variable.code %in% data[,unique(hazard)], .(variable.code,base_unit)],
-        extract_stat = json_dat$extract_stat,
+        unit = haz_meta[variable.code %in% result[,unique(hazard)], .(variable.code,base_unit)],
+        extract_stat = extract_stat_val,
         notes = paste0("Monthly hazard values extracted by admin areas and summarized using ", extract_stat, ". Values then combined across 3 or 12 month sequences using sum or mean depending on the hazard type."),
-        flagged_data_removed = suspect_value_flag,
+        flagged_data_removed = remove_suspect_vals
       ), paste0(save_file, ".json"), pretty = TRUE)
+    
+    rm(result)
+    gc()
     
     }
 
     })
 
-  plan(sequential)
-  
   monthly3_files<-gsub("_monthly_","_3months_",monthly_files)
   
   cat("3.1) Seasonal hazard calculation - Complete \n")
@@ -533,9 +628,15 @@ p_load(char=packages)
   cat("3.2) Adding historical means \n")
   
   # baseline averages
+  
   data_ex_hist<-lapply(baselines,FUN=function(baseline){
-      data<-data.table(arrow::read_parquet(grep(paste0("_",baseline,"[.]"),monthly3_files,value=T)))
-      data<-data[,.(baseline_value=round(mean(value,na.rm=T),round3.1)),by=.(admin0_name,admin1_name,hazard,season)]
+      file<-grep(paste0("_",baseline,"[.]"),monthly3_files,value=T)
+      data<-data.table(arrow::read_parquet(file))
+      if(climdat_source=="atlas_delta"){
+        data<-data[,.(baseline_value=round(mean(value,na.rm=T),round3.1)),by=.(admin0_name,admin1_name,hazard,season)]
+      }else{
+        data<-data[,.(baseline_value=round(mean(value,na.rm=T),round3.1)),by=.(admin0_name,admin1_name,model,hazard,season)]
+       }
       data[,baseline_name:=baseline]
       data
   })
@@ -543,7 +644,7 @@ p_load(char=packages)
   names(data_ex_hist)<-baselines
   
   # Combinations
-  fut_monthly3_files<-monthly3_files[!grepl("historic",monthly3_files)]
+  fut_monthly3_files<-monthly3_files[!grepl(paste(baselines,collapse="|"),monthly3_files)]
 
   file_combos<-data.table(rbind(
     expand.grid(data=fut_monthly3_files,baseline=baselines,stringsAsFactors = F),
@@ -565,7 +666,6 @@ p_load(char=packages)
     cat("3.2) Calculating anomalies for ",i,"/",nrow(file_combos),basename(save_file),"\n")
       
     baseline<-file_combos$baseline[i]
-    baseline_name<-names(baselines)[baselines==baseline]
     data<-data.table(arrow::read_parquet(file_combos$data[i]))
     data<-merge(data,data_ex_hist[[baseline]],all.x=T)
     data[, anomaly:=value-baseline_value]
@@ -573,7 +673,13 @@ p_load(char=packages)
     
     arrow::write_parquet(data,save_file)
     
-    data_json<-jsonlite::read_json(file.path(output_dir,paste0(basename(file_combos$data[i]),".json")),simplifyVector=T)
+    json_file<-file.path(output_dir,paste0(basename(file_combos$data[i]),".json"))
+    if(file.exists(json_file)){
+      data_json<-jsonlite::read_json(json_file,simplifyVector=T)
+      input_table_val<-data_json$input_raster
+    }else{
+      input_table_val<-NA
+    }
     
     filters<-list(scenario=data[,unique(scenario)],
                   timeframe=data[,unique(timeframe)],
@@ -599,7 +705,7 @@ p_load(char=packages)
     )
     
     write_json(list(
-      source = list(input_table = data_json$input_raster, extraction_rast = atlas_data$boundaries$name),
+      source = list(input_table = input_table_val, extraction_rast = atlas_data$boundaries$name),
       extraction_method = "zonal",
       geo_filters =  grep("admin",colnames(data),value=T),
       season_type = "3-month windows or annual",
@@ -612,8 +718,8 @@ p_load(char=packages)
       field_descriptions = field_descriptions,
       unit = unique(haz_meta[variable.code %in% data[,unique(hazard)], base_unit]),
       extract_stat = extract_stat,
-      baseline=baseline_names[j],
-      models = models,
+      baseline=baseline,
+      models = filters$model,
       notes =  paste0(
         "This file contains model-specific climate hazard data extracted for subnational administrative units (admin0_name, admin1_name), ",
         "organized by scenario, timeframe, hazard type, season, year, and GCM (model). ",
@@ -627,7 +733,6 @@ p_load(char=packages)
     ), paste0(save_file, ".json"), pretty = TRUE)
     
     }
-    
     
   }))
 
@@ -645,6 +750,8 @@ p_load(char=packages)
     save_file<-file_combos$save_file[i]
     save_file2<-file_combos$save_file2[i]
     save_file3<-file_combos$save_file3[i]
+    
+    baseline_name<-file_combos$baseline[i]
     
     cat("3.3) Calculating ensemble stats for ",i,"/",nrow(file_combos),basename(save_file),"\n")
     
@@ -697,7 +804,20 @@ p_load(char=packages)
       
       arrow::write_parquet(data_anomaly_ens,save_file2)
       
-      filters$model<-NULL
+      json_file<-file.path(output_dir,paste0(basename(file_combos$data[i]),".json"))
+      if(file.exists(json_file)){
+        data_json<-jsonlite::read_json(json_file,simplifyVector=T)
+        input_raster_val<-data_json$input_raster
+      }else{
+        input_raster_val<-NA
+      }
+      
+      
+      filters<-list(scenario=data_anomaly_ens[,unique(scenario)],
+                    timeframe=data_anomaly_ens[,unique(timeframe)],
+                    year=data_anomaly_ens[,unique(year)],
+                    hazard=data_anomaly_ens[,unique(hazard)],
+                    season=data_anomaly_ens[,unique(season)])
       
       field_descriptions = list(
         admin0_name     = "Name of the country (first-level administrative unit)",
@@ -721,7 +841,7 @@ p_load(char=packages)
       )
       
       write_json(list(
-        source = list(input_table = data_json$input_raster, extraction_rast = atlas_data$boundaries$name),
+        source = list(input_table = input_raster_val, extraction_rast = atlas_data$boundaries$name),
         extraction_method = "zonal",
         geo_filters =  grep("admin",colnames(data_anomaly_ens),value=T),
         season_type = "3-month windows or annual",
@@ -734,7 +854,7 @@ p_load(char=packages)
         field_descriptions = field_descriptions,
         unit = unique(haz_meta[variable.code %in% data_anomaly_ens[,unique(hazard)], base_unit]),
         extract_stat = extract_stat,
-        baseline=baseline_names[j],
+        baseline=baseline_name,
         models = models,
         notes =  paste0(  "This file contains ensembled summaries of monthly climate hazard values and their anomalies, ",
                           "extracted for subnational administrative units (admin0_name, admin1_name) and grouped by scenario, timeframe, season, and hazard type. ",
@@ -771,7 +891,7 @@ p_load(char=packages)
       )    
       
       write_json(list(
-        source = list(input_table = data_json$input_raster, extraction_rast = atlas_data$boundaries$name),
+        source = list(input_table = input_raster_val, extraction_rast = atlas_data$boundaries$name),
         extraction_method = "zonal",
         geo_filters =  grep("admin",colnames(data_anomaly),value=T),
         season_type = "3-month windows or annual",
@@ -784,7 +904,7 @@ p_load(char=packages)
         field_descriptions = field_descriptions,
         unit = haz_meta[variable.code %in% data_anomaly[,unique(hazard)], base_unit],
         extract_stat = extract_stat,
-        anomaly_baseline=baseline_names[j],
+        anomaly_baseline=baseline_name,
         models = models,
         notes = "This file presents ensemble summary statistics for climate hazard indicators and their anomalies, aggregated by subnational administrative units (admin0_name, admin1_name), scenario, timeframe, hazard, and season. Monthly hazard values were extracted using the selected spatial summary method (e.g., mean or sum) and grouped into rolling 3-month or annual periods based on the ‘season’ column. The resulting values and anomalies (relative to a historical baseline) were then averaged across all years within the specified timeframe for each GCM. These multi-year averages were used to calculate ensemble statistics across models (listed in the ‘models’ column), including the mean, min, max, and median for values, and mean, min, max, and standard deviation for anomalies. The file is designed to support high-level climate risk analysis, scenario comparison, and adaptation planning."
       ), paste0(save_file3, ".json"), pretty = TRUE)
@@ -805,6 +925,8 @@ invisible(lapply(1:nrow(file_combos),FUN=function(i){
   save_file<-gsub(".parquet","_trends.parquet",file_base)
   save_file2<-gsub(".parquet","_trends_ensemble.parquet",file_base)
   save_file3<-gsub(".parquet","_trends_ensemble_minimal.parquet",file_base)
+  baseline_name<-file_combos$baseline[i]
+  
   
   cat("3.4) Trends - Processing",i,"/",nrow(file_combos),basename(data_file),"\n")
   
@@ -911,7 +1033,7 @@ invisible(lapply(1:nrow(file_combos),FUN=function(i){
     parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.4",
     unit = unique(haz_meta[variable.code %in% data_ex_trend_stats[,unique(hazard)], .(variable.code,base_unit)]),
     extract_stat = extract_stat,
-    anomaly_baseline=baseline_names[j],
+    anomaly_baseline=baseline_name,
     notes =  paste0(
       "This file contains climate hazard summary statistics extracted from monthly raster data, ",
       "aggregated by subnational administrative units (admin0_name, admin1_name). Values were first ",
@@ -964,7 +1086,7 @@ invisible(lapply(1:nrow(file_combos),FUN=function(i){
     parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.7.1",
     unit = unique(haz_meta[variable.code %in% data_ex_trend_stats_ens[, unique(hazard)], .(variable.code, base_unit)]),
     extract_stat = extract_stat,
-    anomaly_baseline = baseline_names[j],
+    anomaly_baseline = baseline_name,
     notes = paste0(
       "This file contains ensemble-level summaries of trend statistics derived from seasonal hazard values, ",
       "aggregated by subnational administrative units. Each row corresponds to a single trend metric (e.g., Sen's slope, decadal change) ",
@@ -1014,7 +1136,7 @@ invisible(lapply(1:nrow(file_combos),FUN=function(i){
     parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.7.1",
     unit = unique(haz_meta[variable.code %in% data_ex_trend_stats_ens_simple[, unique(hazard)], .(variable.code, base_unit)]),
     extract_stat = extract_stat,
-    anomaly_baseline = baseline_names[j],
+    anomaly_baseline = baseline_name,
     notes = paste0(
       "This simplified file contains a filtered subset of ensemble-level climate trend summaries for key hazards ",
       "(precipitation total [PTOT], average temperature [TAVG], and maximum temperature [TMAX]). ",
@@ -1029,3 +1151,4 @@ invisible(lapply(1:nrow(file_combos),FUN=function(i){
   }))
 
 cat("3.4) Trend calculations - Complete\n")
+}
