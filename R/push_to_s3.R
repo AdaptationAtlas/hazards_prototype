@@ -374,7 +374,7 @@ for (timeframe_c in timeframe_choices_local) {
   # Upload files
   local_folders <- list.dirs(folder)
   local_folders <- local_folders[local_folders != folder]
-  for (i in 1:length(local_folders)) {
+  for (i in seq_along(local_folders)) {
     cat(i, "/", length(local_folders), "\n")
     FOLDER <- local_folders[i]
     S3_BUCKET <- gsub(folder, s3_bucket, FOLDER)
