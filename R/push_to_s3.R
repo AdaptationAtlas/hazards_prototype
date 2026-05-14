@@ -38,14 +38,15 @@
   #ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
   
   files<-list.files(folder,full.names = T)
-  files<-grep("exposure_adm_sum.parquet$",files,value=T)
-  
+
   # Upload files
   upload_files_to_s3(files = files,
+                     s3_file_names = s3_file_names,
                      selected_bucket=s3_bucket,
                      max_attempts = 3,
                      overwrite=T,
-                     mode="public-read")
+                     mode="public-read",
+                     worker=1)
   
   # Processed livestock data parquets
   s3_bucket<-"s3://digital-atlas/exposure/livestock/processed"
