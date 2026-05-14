@@ -39,23 +39,23 @@ s3_dir_ls(s3_bucket)
 # Prepare tif data by converting to COG format
 # ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
 
-files <- list.files(folder, full.names = T)
-files <- grep("exposure_adm_sum.parquet$", files, value = T)
+files <- list.files(folder, full.names = TRUE)
+files <- grep("exposure_adm_sum.parquet$", files, value = TRUE)
 
 # Upload files
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read"
 )
 
 # Processed livestock data parquets
 s3_bucket <- "s3://digital-atlas/exposure/livestock/processed"
 
-files <- list.files(folder, "livestock_vop", full.names = T)
-files <- grep("parquet$", files, value = T)
+files <- list.files(folder, "livestock_vop", full.names = TRUE)
+files <- grep("parquet$", files, value = TRUE)
 s3_file_names <- gsub("_sum", "", basename(files))
 
 upload_files_to_s3(
@@ -63,13 +63,13 @@ upload_files_to_s3(
   s3_file_names = s3_file_names,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read"
 )
 
 # Processed livestock data tifs
-files <- list.files(folder, "livestock_vop", full.names = T)
-files <- grep("tif$", files, value = T)
+files <- list.files(folder, "livestock_vop", full.names = TRUE)
+files <- grep("tif$", files, value = TRUE)
 
 ctc_wrapper(files = files)
 
@@ -80,8 +80,8 @@ upload_files_to_s3(
   s3_file_names = s3_file_names,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = F,
-  convert2cog = T,
+  overwrite = FALSE,
+  convert2cog = TRUE,
   mode = "public-read"
 )
 
@@ -91,14 +91,14 @@ folder <- "metadata"
 # select a bucket
 s3_bucket <- "s3://digital-atlas/risk_prototype/data/metadata"
 
-ctc_wrapper(folder = folder, worker_n = 1, delete = T, rename = T)
+ctc_wrapper(folder = folder, worker_n = 1, delete = TRUE, rename = TRUE)
 
 # Upload files
 upload_files_to_s3(
   folder = folder,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = F
+  overwrite = FALSE
 )
 
 # Upload - hazard_mean
@@ -118,7 +118,7 @@ folder <- paste0("Data/hazard_risk_vop/", timeframe_choice)
 
 # Prepare tif data by converting to COG format
 # List tif files in the folder
-files_tif <- list.files(folder, ".tif", full.names = T)
+files_tif <- list.files(folder, ".tif", full.names = TRUE)
 # Remove any COGs from the tif list
 files_tif <- files_tif[!grepl("_COG.tif", files_tif)]
 
@@ -126,7 +126,7 @@ files_tif <- files_tif[!grepl("_COG.tif", files_tif)]
 plan(multisession, workers = 10) # Change to multicore on Unix/Linux
 
 # Apply the function to each file
-future_sapply(files_tif, convert_to_cog, future.packages = c("gdalUtilities", "terra"), delete = T, rename = T)
+future_sapply(files_tif, convert_to_cog, future.packages = c("gdalUtilities", "terra"), delete = TRUE, rename = TRUE)
 
 plan(sequential)
 closeAllConnections()
@@ -136,19 +136,19 @@ upload_files_to_s3(
   files = list.files(folder, pattern = "\\.tif$", full.names = TRUE),
   selected_bucket = selected_bucket,
   max_attempts = 3,
-  new_only = T
+  new_only = TRUE
 )
 ## Upload - MapSPAM ####
 folder <- mapspam_dir
 s3_bucket <- file.path("s3://digital-atlas/MapSpam/raw", basename(mapspam_dir))
 
-files <- list.files(folder, full.names = T)
+files <- list.files(folder, full.names = TRUE)
 
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = F,
+  overwrite = FALSE,
   mode = "public-read"
 )
 
@@ -160,13 +160,13 @@ s3_dir_ls(s3_bucket)
 
 # Prepare tif data by converting to COG format
 # ctc_wrapper(folder=folder,worker_n=1,delete=T,rename=T)
-files <- list.files(folder, ".tif$", full.names = T)
+files <- list.files(folder, ".tif$", full.names = TRUE)
 
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = F,
+  overwrite = FALSE,
   mode = "public-read"
 )
 
@@ -183,7 +183,7 @@ upload_files_to_s3(
   folder = folder,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read"
 )
 # Geographies
@@ -194,13 +194,13 @@ s3_dir_ls(s3_bucket)
 folder <- hpop_dir
 s3_bucket <- file.path(bucket_name_s3, "population/worldpop_2020")
 
-files <- list.files(folder, ".tif$", full.names = T)
+files <- list.files(folder, ".tif$", full.names = TRUE)
 
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = F,
+  overwrite = FALSE,
   mode = "public-read"
 )
 
@@ -208,13 +208,13 @@ upload_files_to_s3(
 folder <- glps_dir
 s3_bucket <- file.path(bucket_name_s3, basename(folder))
 
-files <- list.files(folder, ".tif$", full.names = T)
+files <- list.files(folder, ".tif$", full.names = TRUE)
 
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = F,
+  overwrite = FALSE,
   mode = "public-read"
 )
 
@@ -222,13 +222,13 @@ upload_files_to_s3(
 folder <- cattle_heatstress_dir
 s3_bucket <- file.path(bucket_name_s3, basename(folder))
 
-files <- list.files(folder, full.names = T)
+files <- list.files(folder, full.names = TRUE)
 
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read"
 )
 
@@ -236,13 +236,13 @@ upload_files_to_s3(
 folder <- sos_dir
 s3_bucket <- file.path(bucket_name_s3, basename(folder))
 
-files <- list.files(folder, full.names = T)
+files <- list.files(folder, full.names = TRUE)
 
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = F,
+  overwrite = FALSE,
   mode = "public-read"
 )
 
@@ -250,13 +250,13 @@ upload_files_to_s3(
 folder <- solution_tables_dir
 s3_bucket <- file.path(bucket_name_s3, basename(folder))
 
-files <- list.files(folder, ".csv$", full.names = T)
+files <- list.files(folder, ".csv$", full.names = TRUE)
 
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = F,
+  overwrite = FALSE,
   mode = "public-read"
 )
 
@@ -264,22 +264,22 @@ upload_files_to_s3(
 folder <- geo_dir
 s3_bucket <- file.path(bucket_name_s3, "boundaries")
 
-files <- list.files(folder, "cgiar_countries", full.names = T)
+files <- list.files(folder, "cgiar_countries", full.names = TRUE)
 
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = F,
+  overwrite = FALSE,
   workers = 1,
   mode = "public-read"
 )
 
 # 2) Time sequence specific ####
 # Next task for enhanced generalization is to create folder vector and integrate into the loop (rather than have many sections)
-overwrite <- F
+overwrite <- FALSE
 worker_n <- 15
-convert2cog <- F # Currently generates an error when run in parallel
+convert2cog <- FALSE # Currently generates an error when run in parallel
 permission <- "public-read"
 # file_types<-"parquet"
 file_types <- "tif"
@@ -298,7 +298,7 @@ for (timeframe_c in timeframe_choices_local) {
   s3_bucket <- file.path("s3://digital-atlas/risk_prototype/data/hazard_timeseries", timeframe_c)
 
   # Local files
-  local_files <- list.files(folder, file_types, full.names = T)
+  local_files <- list.files(folder, file_types, full.names = TRUE)
 
   # Upload files
   upload_files_to_s3(
@@ -317,7 +317,7 @@ for (timeframe_c in timeframe_choices_local) {
   s3_bucket <- file.path("s3://digital-atlas/risk_prototype/data/hazard_timeseries_class", timeframe_c)
 
   # Local files
-  local_files <- list.files(folder, file_types, full.names = T)
+  local_files <- list.files(folder, file_types, full.names = TRUE)
 
   # Upload files
   upload_files_to_s3(
@@ -336,7 +336,7 @@ for (timeframe_c in timeframe_choices_local) {
   s3_bucket <- file.path("s3://digital-atlas/risk_prototype/data/hazard_timeseries_mean", timeframe_c)
 
   # Upload files
-  local_files <- list.files(folder, file_types, full.names = T)
+  local_files <- list.files(folder, file_types, full.names = TRUE)
 
   upload_files_to_s3(
     files = local_files,
@@ -354,7 +354,7 @@ for (timeframe_c in timeframe_choices_local) {
   s3_bucket <- file.path("s3://digital-atlas/risk_prototype/data/hazard_timeseries_risk", timeframe_c)
 
   # Local files
-  local_files <- list.files(folder, file_types, full.names = T)
+  local_files <- list.files(folder, file_types, full.names = TRUE)
 
   upload_files_to_s3(
     files = local_files,
@@ -401,7 +401,7 @@ for (timeframe_c in timeframe_choices_local) {
   s3_bucket <- file.path("s3://digital-atlas/risk_prototype/data/hazard_timeseries_sd", timeframe_c)
 
   # Local files
-  local_files <- list.files(folder, file_types, full.names = T)
+  local_files <- list.files(folder, file_types, full.names = TRUE)
 
   # Upload files
   if (length(local_files) > 0) {
@@ -421,7 +421,7 @@ for (timeframe_c in timeframe_choices_local) {
   folder <- file.path("Data/hazard_risk", timeframe_c)
 
   # Local files
-  local_files <- list.files(folder, file_types, full.names = T)
+  local_files <- list.files(folder, file_types, full.names = TRUE)
 
   # Upload files
   upload_files_to_s3(
@@ -441,7 +441,7 @@ for (timeframe_c in timeframe_choices_local) {
   s3_bucket <- file.path("s3://digital-atlas/risk_prototype/data/hazard_risk_vop", timeframe_c)
 
   # Local files
-  local_files <- list.files(folder, file_types, full.names = T)
+  local_files <- list.files(folder, file_types, full.names = TRUE)
 
   # s3_files<-s3fs::s3_dir_ls(s3_bucket)
   # s3_files<-grep(".tif",s3_files,value=T)
@@ -464,7 +464,7 @@ for (timeframe_c in timeframe_choices_local) {
   s3_bucket <- file.path("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_usd", timeframe_c)
 
   # Local files
-  local_files <- list.files(folder, file_types, full.names = T)
+  local_files <- list.files(folder, file_types, full.names = TRUE)
 
   upload_files_to_s3(
     files = local_files,
@@ -477,22 +477,22 @@ for (timeframe_c in timeframe_choices_local) {
   )
 
   # 2.10) Upload - haz_vop_risk_ac ####
-  if (F) {
+  if (FALSE) {
     cat(timeframe_c, "2.10 haz_vop_risk_ac \n")
 
 
     s3_bucket <- paste0("s3://digital-atlas/risk_prototype/data/hazard_risk_vop_ac/", timeframe_c)
     folder <- paste0("Data/hazard_risk_vop_ac/", timeframe_c)
 
-    local_files <- list.files(folder, full.names = T)
+    local_files <- list.files(folder, full.names = TRUE)
 
     if (upload_parquet_only) {
-      local_files <- grep("parquet", local_files, value = T)
+      local_files <- grep("parquet", local_files, value = TRUE)
     }
 
     # Upload files
     upload_files_to_s3(
-      files = list.files(folder, ".parquet", full.names = T),
+      files = list.files(folder, ".parquet", full.names = TRUE),
       selected_bucket = s3_bucket,
       max_attempts = 3,
       convert2cog = convert2cog,
@@ -511,10 +511,10 @@ s3_dir_ls(s3_bucket)
 
 # Upload files
 upload_files_to_s3(
-  files = list.files(folder, ".parquet$", full.names = T),
+  files = list.files(folder, ".parquet$", full.names = TRUE),
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T
+  overwrite = TRUE
 )
 
 # 4) Hazard_timeseries data (datasets from Julian's hazard workflow) ####
@@ -524,13 +524,13 @@ upload_files_to_s3(
 folder <- haz_timeseries_monthly_dir
 s3_bucket <- "s3://digital-atlas/hazards/hazard_timeseries_mean_month"
 
-files <- list.files(folder, "parquet", full.names = T)
+files <- list.files(folder, "parquet", full.names = TRUE)
 
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = F,
+  overwrite = FALSE,
   mode = "public-read",
   workers = worker_n
 )
@@ -541,13 +541,13 @@ s3_dir_ls("s3://digital-atlas/hazards")
 folder <- haz_mean_ptot_dir
 s3_bucket <- "s3://digital-atlas/hazards/hazard_timeseries_mean_month/ptot_change"
 
-files <- list.files(folder, "parquet$", full.names = T)
+files <- list.files(folder, "parquet$", full.names = TRUE)
 
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read"
 )
 
@@ -557,13 +557,13 @@ s3_dir_ls(s3_bucket)
 folder <- haz_mean_thi_dir
 s3_bucket <- "s3://digital-atlas/hazards/hazard_timeseries_mean_month/thi_perc"
 
-files <- list.files(folder, "parquet$", full.names = T)
+files <- list.files(folder, "parquet$", full.names = TRUE)
 
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read"
 )
 
@@ -576,12 +576,12 @@ folder <- isimip_timeseries_mean_dir
 s3_bucket <- file.path(bucket_name_s3, "hazards", basename(folder), timeframe_choice)
 folder <- file.path(folder, timeframe_choice)
 
-files <- list.files(folder, ".parquet", full.names = T)
+files <- list.files(folder, ".parquet", full.names = TRUE)
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read"
 )
 
@@ -590,13 +590,13 @@ folder <- isimip_mean_dir
 s3_bucket <- file.path(bucket_name_s3, "hazards", basename(folder), timeframe_choice)
 folder <- file.path(folder, timeframe_choice)
 
-files <- list.files(folder, "_adm_", full.names = T)
+files <- list.files(folder, "_adm_", full.names = TRUE)
 
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read"
 )
 # 6) CropSuite ####
@@ -604,12 +604,12 @@ s3_bucket <- file.path(bucket_name_s3, "productivity", "CropSuite", "processed")
 
 folder <- cropsuite_class_dir
 
-files <- list.files(folder, "_adm_", full.names = T)
+files <- list.files(folder, "_adm_", full.names = TRUE)
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read"
 )
 s3$dir_ls(s3_bucket)
@@ -619,12 +619,12 @@ s3_bucket <- file.path(bucket_name_s3, "hazards", "chirps_chirts")
 
 folder <- chirts_chirps_dir
 
-files <- list.files(folder, ".parquet", full.names = T)
+files <- list.files(folder, ".parquet", full.names = TRUE)
 upload_files_to_s3(
   files = files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read"
 )
 
@@ -634,13 +634,13 @@ folder <- "/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/
 s3_bucket <- file.path("s3://digital-atlas/hazards/chirps_cv_global")
 
 # Local files
-local_files <- list.files(folder, full.names = T)
+local_files <- list.files(folder, full.names = TRUE)
 
 upload_files_to_s3(
   files = local_files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read",
   workers = worker_n
 )
@@ -652,7 +652,7 @@ folder <- "/home/jovyan/common_data/EiA_pub"
 s3_bucket <- file.path("s3://digital-atlas/hazards/agera5_ntx_global")
 
 # Local files
-local_files <- list.files(folder, full.names = T)
+local_files <- list.files(folder, full.names = TRUE)
 
 upload_files_to_s3(
   files = local_files,
@@ -669,13 +669,13 @@ folder <- "/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/
 s3_bucket <- file.path("s3://digital-atlas/hazards/global_drought_observatory")
 
 # Local files
-local_files <- list.files(folder, full.names = T)
+local_files <- list.files(folder, full.names = TRUE)
 
 upload_files_to_s3(
   files = local_files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read",
   workers = worker_n
 )
@@ -686,13 +686,13 @@ folder <- "/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/
 s3_bucket <- "s3://digital-atlas/hazards/gaez_lgp"
 
 # Local files
-local_files <- list.files(folder, full.names = T)
+local_files <- list.files(folder, full.names = TRUE)
 
 upload_files_to_s3(
   files = local_files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read",
   workers = worker_n
 )
@@ -703,13 +703,13 @@ folder <- "/Users/pstewarda/Documents/rprojects/climate_prioritization/raw_data/
 s3_bucket <- "s3://digital-atlas/exposure/mapspam/eia_climate_prioritization"
 
 # Local files
-local_files <- list.files(folder, "tif$", full.names = T)
+local_files <- list.files(folder, "tif$", full.names = TRUE)
 
 upload_files_to_s3(
   files = local_files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read",
   workers = worker_n
 )
@@ -722,13 +722,13 @@ s3_bucket <- "s3://digital-atlas/boundaries/eia_climate_prioritization"
 s3_dir_ls(s3_bucket)
 
 # Local files
-local_files <- list.files(folder, full.names = T)
+local_files <- list.files(folder, full.names = TRUE)
 
 upload_files_to_s3(
   files = local_files,
   selected_bucket = s3_bucket,
   max_attempts = 3,
-  overwrite = T,
+  overwrite = TRUE,
   mode = "public-read",
   workers = worker_n
 )
