@@ -3321,7 +3321,7 @@ list_files_parallel <- function(root_dir,
 #'
 #' @description
 #' Returns **only the leaf directories** (i.e., directories that do **not**
-#' contain any sub‑directories) beneath a specified root.  
+#' contain any sub‑directories) beneath a specified root.
 #' Internally, the function:
 #' \enumerate{
 #'   \item lists all directories via `list.dirs()`;
@@ -3379,4 +3379,128 @@ ensure_dir <- function(...) {
     dir.create(dir_path, recursive = TRUE)
   }
   return(dir_path)
+}
+
+#' Add data from disputed boundaries to Admin 0 data for each country.
+#'
+#' @param data A data frame with columns of 'admin0_name', 'admin1_name', 'iso3, 'gaul0_code'.
+#' @param columns A character vector of column names to aggregate.
+#' @param fun A function to aggregate the data to each country. One of 'sum', 'mean', 'min', 'max'. Mean is weighted
+#'
+#' @return A data frame with columns of 'admin0_name', 'iso3', 'gaul0_code', and 'value'
+#'
+#' @requires data.table
+#'
+#' @export
+
+aggregate_disputedRegions <- function(data, columns, fun) {
+  disputed_weights <- data.frame(
+    # Also in metadata/disputed_areas.csv
+    disputed_gaul0 = c(100, 100, 110, 110, 133, 133, 135, 135),
+    disputed_name = c(
+      # not used anywhere but helpful context
+      "Abyei",
+      "Abyei",
+      "Bīr Ṭawīl",
+      "Bīr Ṭawīl",
+      "Hala'Ib",
+      "Hala'Ib",
+      "Ilemi",
+      "Ilemi"
+    ),
+    claimant_iso3 = c("SSD", "SDN", "EGY", "SDN", "EGY", "SDN", "KEN", "SSD"),
+    claimant_gaul0 = c(160, 161, 120, 161, 120, 161, 137, 160),
+    disputed_ncells = c(334, 334, 68, 68, 631, 631, 108, 108),
+    claimant_ncells = c(20644, 62399, 35570, 62399, 35570, 62399, 18793, 20644),
+    stringsAsFactors = FALSE
+  )
+
+  weight_lookup <- c(
+    setNames(disputed_weights$claimant_ncells, disputed_weights$claimant_gaul0),
+    setNames(disputed_weights$disputed_ncells, disputed_weights$disputed_gaul0)
+  )
+
+  disputed_codes <- unique(c(
+    disputed_weights$disputed_gaul0,
+    disputed_weights$claimant_gaul0
+  ))
+
+  # TODO: Make admin 1 name optional in the df
+  disputed_data <- subset(
+    data,
+    gaul0_code %in% disputed_codes & is.na(admin1_name)
+  )
+
+  if (nrow(disputed_data) == 0) {
+    # If no disputed regions, its either vector extracted or fixed already -> return
+    return(data)
+  }
+
+  clean_data <- subset(
+    data,
+    !gaul0_code %in% disputed_codes | !is.na(admin1_name)
+  )
+
+  exclude_cols <- c(
+    # Only group by the admin0 columns & ISO3
+    "admin1_name",
+    "admin2_name",
+    "gaul0_code", # do not group by this as this is the id to be merged
+    "gaul1_code", # possibly not needed as no differences
+    "gaul2_code",
+    columns # The aggregation columns
+  )
+
+  group_cols <- setdiff(names(data), exclude_cols) # group by everything but above and agg columns
+
+  data.table::setDT(disputed_data)
+  if (fun == "sum") {
+    agg <- disputed_data[,
+      lapply(.SD, function(x) sum(x, na.rm = TRUE)),
+      by = group_cols,
+      .SDcols = columns
+    ]
+  } else if (fun == "mean") {
+    # Always weighted mean
+    disputed_data$weight <- weight_lookup[as.character(
+      disputed_data$gaul0_code
+    )]
+    agg <- disputed_data[,
+      lapply(.SD, function(x) {
+        weighted.mean(x, w = weight, na.rm = TRUE)
+      }),
+      by = group_cols,
+      .SDcols = columns
+    ]
+  } else if (fun == "min") {
+    agg <- disputed_data[,
+      lapply(.SD, function(x) min(x, na.rm = TRUE)),
+      by = group_cols,
+      .SDcols = columns
+    ]
+  } else if (fun == "max") {
+    agg <- disputed_data[,
+      lapply(.SD, function(x) max(x, na.rm = TRUE)),
+      by = group_cols,
+      .SDcols = columns
+    ]
+  } else {
+    stop("fun must be one of: 'sum', 'mean', 'min', 'max'")
+  }
+
+  agg$gaul0_code <- disputed_weights[
+    match(agg$iso3, disputed_weights$claimant_iso3),
+    "claimant_gaul0"
+  ]
+
+  missing_cols <- names(clean_data)[!(names(clean_data) %in% names(agg))]
+
+  agg[, missing_cols] <- NA
+
+  all_results <- rbind(clean_data, agg)[order(
+    admin0_name,
+    fifelse(is.na(admin1_name), "", admin1_name),
+    fifelse(is.na(admin2_name), "", admin2_name)
+  )]
+  return(all_results)
 }
