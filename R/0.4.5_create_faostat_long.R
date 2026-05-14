@@ -270,7 +270,11 @@ commodity_clean_map <- c(
 hits <- match(fao_long$commodity, names(commodity_clean_map))
 fao_long[!is.na(hits), commodity := unname(commodity_clean_map[hits[!is.na(hits)]])]
 
-setcolorder(fao_long, c("iso3", "item_code", "commodity", "atlas_name", "year", "variable", "unit", "value"))
+# Drop item_code from the output schema (was only needed internally for
+# spam2fao joins and spice aggregation).
+fao_long[, item_code := NULL]
+
+setcolorder(fao_long, c("iso3", "commodity", "atlas_name", "year", "variable", "unit", "value"))
 setorder(fao_long, iso3, variable, commodity, year)
 
 # Write parquet with build manifest as key/value metadata ####
@@ -328,21 +332,27 @@ build_meta <- list(
   commodity_rename = paste(
     "FAO Item strings rewritten to friendlier names where useful (e.g.",
     "'Meat of cattle with the bone, fresh or chilled (indigenous)' ->",
-    "'Cattle meat'). Original FAO Item recoverable via item_code."
+    "'Cattle meat')."
   ),
   atlas_name_rule = paste(
-    "atlas_name is the SPAM2010 short crop code (item_code ->",
-    "spam2fao$code_fao -> short_spam2010, multiple SPAM names joined",
-    "with '|') OR the atlas livestock label via lps2fao; NA if no mapping."
+    "atlas_name is the SPAM2010 short crop code (via spam2fao;",
+    "multiple SPAM names for one FAO item joined with '|') OR the",
+    "atlas livestock label via lps2fao; NA if no mapping."
   ),
   rows        = as.character(nrow(fao_long)),
   countries   = as.character(uniqueN(fao_long$iso3)),
   commodities = as.character(uniqueN(fao_long$commodity)),
   year_range  = paste(range(fao_long$year), collapse = "-")
 )
+# Factor-encode repeated string columns so Arrow stores them as dictionary
+# types (smaller files, no behaviour change apart from columns coming back
+# as factors when read with arrow::read_parquet).
+factor_cols <- c("iso3", "commodity", "atlas_name", "variable", "unit")
+fao_long[, (factor_cols) := lapply(.SD, as.factor), .SDcols = factor_cols]
+
 tbl <- arrow::arrow_table(fao_long)
 tbl <- tbl$ReplaceSchemaMetadata(build_meta)
-arrow::write_parquet(tbl, out_file)
+arrow::write_parquet(tbl, out_file, compression = "zstd", compression_level = 9)
 
 cat(
   "Wrote", nrow(fao_long), "rows to", out_file, "\n",
