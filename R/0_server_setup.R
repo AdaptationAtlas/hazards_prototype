@@ -9,7 +9,7 @@
 # Once this script completes, your workspace is ready for more detailed hazards analysis.
 # The workflow is dependent on the outputs of the https://github.com/AdaptationAtlas/hazards pipeline
 
-## 0.1) Load packages and functions #####
+# 0.1) Load packages and functions #####
 # Install and load pacman if not already installed
 if (!require("pacman", character.only = TRUE)) {
   install.packages("pacman")
@@ -22,7 +22,7 @@ if (!require("exactextractr")) {
 }
 
 # List of packages to be installed/loaded via pacman
-packages <- c("remotes", "data.table", "httr", "s3fs", "xml2", "paws.storage", "rvest", "glue", "jsonlite")
+packages <- c("remotes", "data.table", "httr", "s3fs", "xml2", "paws.storage", "rvest", "glue", "jsonlite","terra")
 
 # Use pacman to install and load the packages
 pacman::p_load(char = packages)
@@ -30,7 +30,7 @@ pacman::p_load(char = packages)
 # Source additional functions used in this workflow from GitHub
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
-## 0.2) Set timeframes #####
+# 0.2) Set timeframes #####
 # Possible timeframe calculations, e.g., "annual", "sos_primary_fixed_3", etc.
 timeframe_choices <- c(
   "annual",
@@ -45,12 +45,12 @@ timeframe_choices <- c(
   # "sos_secondary_fixed_5"
 )
 
-## 0.3) Set climate date source ####
+# 0.3) Set climate date source ####
 # nexgddp or atlas_delta
 climdat_source <- "atlas_delta"
 climdat_source <- "nexgddp"
 
-## 0.3) Record R-project location #####
+# 0.3) Record R-project location #####
 # Function to add or update an environment variable in the .Renviron file
 set_env_variable <- function(var_name, var_value, renviron_file = "~/.Renviron") {
   # Read the .Renviron file if it exists
@@ -90,7 +90,7 @@ if (!nzchar(Sys.getenv("project_dir"))) {
 # Confirm project_dir was set
 (project_dir <- Sys.getenv("project_dir"))
 
-## 0.4) Change working directory according to compute facility #####
+# 0.4) Change working directory according to compute facility #####
 Cglabs <- FALSE
 if (project_dir == "/home/jovyan/atlas/hazards_prototype") {
   # cglabs environment
@@ -132,7 +132,7 @@ if (!dir.exists(working_dir)) {
 # Set the working directory
 setwd(working_dir)
 
-## 0.5) Indices directory (raw monthly hazard data) ####
+# 0.5) Indices directory (raw monthly hazard data) ####
 if (Cglabs) {
   if (climdat_source == "atlas_delta") {
     # For cglabs users
@@ -151,11 +151,9 @@ if (Cglabs) {
     "See https://github.com/AdaptationAtlas/hazards if you need to replicate monthly hazard data creation.\n"
   )
 }
-
-
 cat("Climate data source = ", climdat_source, "\n")
 
-## 0.6) Base Raster ####
+# 0.6) Base Raster ####
 if (climdat_source == "atlas_delta") {
   ## DEV NOTE - NEED TO UPDATE WITH MASKED BASE RAST ###
   # Load a reference/base raster used for resampling or extent alignment
@@ -169,7 +167,7 @@ if (climdat_source == "atlas_delta") {
     target_ext <- ext(-180, 180, -50, 50)
     base_rast <- terra::rast("/home/jovyan/common_data/nex-gddp-cmip6/pr/ssp126/ACCESS-CM2/pr_2021-01-01.tif")
     base_rast_cropped <- crop(base_rast, target_ext)
-    terra::writeRaster(base_rast_cropped, base_rast_path, overwrite = T)
+    terra::writeRaster(base_rast_cropped, base_rast_path, overwrite = TRUE)
   }
   base_rast <- terra::rast(base_rast_path)
 }
@@ -180,8 +178,6 @@ options(timeout = 600)
 
 # Increase GDAL cache size for faster raster processing
 terra::gdalCache(60000)
-
-
 # 2) Create directory structures ####
 # 2.1) Local directories #####
 atlas_data <- read_json(file.path(project_dir, "metadata/data.json"))
@@ -460,9 +456,9 @@ for (i in seq_along(files_local)) {
   file <- files_local[i]
   save_dir <- dirname(file)
   if (!dir.exists(save_dir)) {
-    dir.create(save_dir, recursive = T)
+    dir.create(save_dir, recursive = TRUE)
   }
-  if (!file.exists(file) | update == TRUE) {
+  if (!file.exists(file) || update == TRUE) {
     s3$file_download(files_s3[i], file, overwrite = TRUE)
   }
 }
@@ -480,7 +476,7 @@ files_local <- gsub(file.path(bucket_name_s3, folder_path), paste0(mapspam_dir, 
 for (i in seq_along(files_local)) {
   cat("3.2.2) Downloading mapspam raw files", i, "/", length(files_local), "     \r")
   file <- files_local[i]
-  if (!file.exists(file) | update == TRUE) {
+  if (!file.exists(file) || update == TRUE) {
     s3$file_download(files_s3[i], file, overwrite = TRUE)
   }
 }
@@ -500,7 +496,7 @@ glw_files <- file.path(glw_dir, paste0("5_", glw_names, "_2015_Da.tif"))
 
 for (i in seq_along(glw_files)) {
   glw_file <- glw_files[i]
-  if (!file.exists(glw_file) | update == TRUE) {
+  if (!file.exists(glw_file) || update == TRUE) {
     api_url <- paste0("https://dataverse.harvard.edu/api/access/datafile/", glw_codes[i])
     # Download directly from the Dataverse API
     response <- httr::GET(url = api_url, httr::write_disk(glw_file, overwrite = TRUE))
@@ -517,7 +513,7 @@ update <- TRUE
 ### 3.5.1) Deflators ######
 def_file <- paste0(fao_dir, "/Deflators_E_All_Data_(Normalized).csv")
 
-if (!file.exists(def_file) | update == TRUE) {
+if (!file.exists(def_file) || update == TRUE) {
   url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Deflators_E_All_Data_(Normalized).zip"
   zip_file_path <- file.path(fao_dir, basename(url))
 
@@ -528,7 +524,7 @@ if (!file.exists(def_file) | update == TRUE) {
 
 ### 3.5.2) Producer prices ######
 fao_econ_file <- file.path(fao_dir, "Prices_E_Africa_NOFLAG.csv")
-if (!file.exists(fao_econ_file) | update == TRUE) {
+if (!file.exists(fao_econ_file) || update == TRUE) {
   url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip"
   zip_file_path <- file.path(fao_dir, "Prices_E_Africa.zip")
 
@@ -538,7 +534,7 @@ if (!file.exists(fao_econ_file) | update == TRUE) {
 }
 
 fao_econ_file_world <- file.path(fao_dir, "Prices_E_All_Data_(Normalized).csv")
-if (!file.exists(fao_econ_file_world) | update == TRUE) {
+if (!file.exists(fao_econ_file_world) || update == TRUE) {
   url <- "https://bulks-faostat.fao.org/production/Prices_E_All_Data_(Normalized).zip"
   zip_file_path <- file.path(fao_dir, basename(url))
 
@@ -549,7 +545,7 @@ if (!file.exists(fao_econ_file_world) | update == TRUE) {
 
 ### 3.5.3) Production ######
 prod_file <- file.path(fao_dir, "Production_Crops_Livestock_E_Africa_NOFLAG.csv")
-if (!file.exists(prod_file) | update == TRUE) {
+if (!file.exists(prod_file) || update == TRUE) {
   url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip"
   zip_file_path <- file.path(fao_dir, "Production_E_Africa.zip")
 
@@ -559,7 +555,7 @@ if (!file.exists(prod_file) | update == TRUE) {
 }
 
 prod_file_world <- file.path(fao_dir, "Production_Crops_Livestock_E_All_Area_Groups.csv")
-if (!file.exists(prod_file_world) | update == TRUE) {
+if (!file.exists(prod_file_world) || update == TRUE) {
   url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_All_Area_Groups.zip"
   zip_file_path <- file.path(fao_dir, "Production_Crops_Livestock_E_All_Area_Groups.zip")
 
@@ -570,7 +566,7 @@ if (!file.exists(prod_file_world) | update == TRUE) {
 
 ### 3.5.4) Value of production #####
 vop_file <- file.path(fao_dir, "Value_of_Production_E_Africa.csv")
-if (!file.exists(vop_file) | update == TRUE) {
+if (!file.exists(vop_file) || update == TRUE) {
   url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip"
   zip_file_path <- file.path(fao_dir, "Value_of_Production_E_Africa.zip")
 
@@ -580,7 +576,7 @@ if (!file.exists(vop_file) | update == TRUE) {
 }
 
 vop_file_world <- file.path(fao_dir, "Value_of_Production_E_All_Area_Groups.csv")
-if (!file.exists(vop_file_world) | update == TRUE) {
+if (!file.exists(vop_file_world) || update == TRUE) {
   url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_All_Area_Groups.zip"
   zip_file_path <- file.path(fao_dir, "Value_of_Production_E_All_Area_Groups.zip")
 
@@ -592,7 +588,7 @@ if (!file.exists(vop_file_world) | update == TRUE) {
 ## 3.6) Highlands map #####
 update <- FALSE
 afr_highlands_file <- file.path(afr_highlands_dir, "afr-highlands.asc")
-if (!file.exists(afr_highlands_file) | update == TRUE) {
+if (!file.exists(afr_highlands_file) || update == TRUE) {
   s3$file_download(file.path(bucket_name_s3, "afr_highlands/afr-highlands.asc"), afr_highlands_file, overwrite = TRUE)
 }
 
@@ -604,7 +600,7 @@ files_local <- gsub(file.path(bucket_name_s3, folder_path), paste0(hpop_dir, "/"
 
 for (i in seq_along(files_local)) {
   file <- files_local[i]
-  if (!file.exists(file) | update == TRUE) {
+  if (!file.exists(file) || update == TRUE) {
     s3$file_download(files_s3[i], file)
   }
 }
@@ -616,7 +612,7 @@ files_local <- file.path(local_dir, basename(files_s3))
 
 for (i in seq_along(files_local)) {
   file <- files_local[i]
-  if (!file.exists(file) | update == TRUE) {
+  if (!file.exists(file) || update == TRUE) {
     s3$file_download(files_s3[i], file)
   }
 }
@@ -628,7 +624,7 @@ files_local <- file.path(local_dir, basename(files_s3))
 
 for (i in seq_along(files_local)) {
   file <- files_local[i]
-  if (!file.exists(file) | update == TRUE) {
+  if (!file.exists(file) || update == TRUE) {
     s3$file_download(files_s3[i], file)
   }
 }
@@ -640,7 +636,7 @@ files_local <- file.path(local_dir, basename(files_s3))
 
 for (i in seq_along(files_local)) {
   file <- files_local[i]
-  if (!file.exists(file) | update == TRUE) {
+  if (!file.exists(file) || update == TRUE) {
     s3$file_download(files_s3[i], file)
   }
 }
@@ -652,9 +648,9 @@ if (length(list.files(ggcmi_dir)) != 40) {
   url <- "https://www.pik-potsdam.de/~jonasjae/GGCMI_Phase3_crop_calendar"
   webpage <- rvest::read_html(url)
 
-  file_links <- webpage %>%
-    rvest::html_nodes("a") %>%
-    rvest::html_attr("href") %>%
+  file_links <- webpage |>
+    rvest::html_nodes("a") |>
+    rvest::html_attr("href") |>
     grep("\\.nc4$", ., value = TRUE) # Only keep .nc4 files
 
   file_links <- file.path(url, file_links)
@@ -662,7 +658,7 @@ if (length(list.files(ggcmi_dir)) != 40) {
   for (i in seq_along(file_links)) {
     cat(sprintf("\rDownloading GGCMI file %d/%d", i, length(file_links)))
     file <- file.path(ggcmi_dir, basename(file_links[i]))
-    if (!file.exists(file) | update == TRUE) {
+    if (!file.exists(file) || update == TRUE) {
       download.file(file_links[i], file)
     }
   }
@@ -686,7 +682,7 @@ files_local <- file.path(local_dir, basename(files_s3))
 
 for (i in seq_along(files_local)) {
   file <- files_local[i]
-  if (!file.exists(file) | update == TRUE) {
+  if (!file.exists(file) || update == TRUE) {
     s3$file_download(files_s3[i], file)
   }
 }
