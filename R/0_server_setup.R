@@ -164,12 +164,25 @@ if (climdat_source == "atlas_delta") {
   base_rast_path <- "Data/base_rast.tif"
 
   if (!file.exists(base_rast_path)) {
-    target_ext <- ext(-180, 180, -50, 50)
-    base_rast <- terra::rast("/home/jovyan/common_data/nex-gddp-cmip6/pr/ssp126/ACCESS-CM2/pr_2021-01-01.tif")
-    base_rast_cropped <- crop(base_rast, target_ext)
-    terra::writeRaster(base_rast_cropped, base_rast_path, overwrite = TRUE)
+    if (Cglabs) {
+      # Derive the nexgddp base raster from the canonical CGlabs source.
+      target_ext <- ext(-180, 180, -50, 50)
+      base_rast <- terra::rast("/home/jovyan/common_data/nex-gddp-cmip6/pr/ssp126/ACCESS-CM2/pr_2021-01-01.tif")
+      base_rast_cropped <- crop(base_rast, target_ext)
+      terra::writeRaster(base_rast_cropped, base_rast_path, overwrite = TRUE)
+      base_rast <- terra::rast(base_rast_path)
+    } else {
+      message(
+        "nexgddp base_rast.tif not present at '", base_rast_path,
+        "' and not running on CGlabs - skipping base_rast load. ",
+        "Scripts that need a nexgddp base raster (e.g. 1_make_timeseries.R) ",
+        "will need it staged manually."
+      )
+      base_rast <- NULL
+    }
+  } else {
+    base_rast <- terra::rast(base_rast_path)
   }
-  base_rast <- terra::rast(base_rast_path)
 }
 
 # 1) Setup workspace ####
