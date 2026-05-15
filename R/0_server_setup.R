@@ -427,7 +427,7 @@ s3 <- s3fs::S3FileSystem$new(anonymous = TRUE)
 # Each subsection downloads data if it does not already exist locally.
 # The 'update' flag can be toggled if you want to force a re-download.
 
-## 3.1) Geoboundaries #####
+# 3.1) Geoboundaries #####
 update <- FALSE
 
 admin_levels <- atlas_data$boundaries$params$level
@@ -453,9 +453,9 @@ lapply(seq_along(geo_files_local), FUN = function(i) {
   }
 })
 
-## 3.2) Mapspam #####
+# 3.2) Mapspam #####
 update <- FALSE
-### 3.2.1) Processed data ####
+# 3.2.1) Processed data ####
 # Construct the S3 folder path
 folder_path <- "domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=atlas-harmonized/"
 
@@ -476,7 +476,7 @@ for (i in seq_along(files_local)) {
   }
 }
 
-### 3.2.2) Raw data ####
+# 3.2.2) Raw data ####
 # Construct the S3 folder path
 folder_path <- atlas_data$mapspam_2020v1r2$s3$path_pattern
 
@@ -494,7 +494,7 @@ for (i in seq_along(files_local)) {
   }
 }
 
-## 3.4) GLW #####
+# 3.4) GLW #####
 update <- FALSE
 # Download Global Livestock Density (GLW4) if missing
 glw_names <- c(
@@ -521,9 +521,9 @@ for (i in seq_along(glw_files)) {
   }
 }
 
-## 3.5) FAOSTAT #####
-update <- TRUE
-### 3.5.1) Deflators ######
+# 3.5) FAOSTAT #####
+update <- FLASE
+# 3.5.1) Deflators ######
 def_file <- paste0(fao_dir, "/Deflators_E_All_Data_(Normalized).csv")
 
 if (!file.exists(def_file) || update == TRUE) {
@@ -535,7 +535,7 @@ if (!file.exists(def_file) || update == TRUE) {
   unlink(zip_file_path)
 }
 
-### 3.5.2) Producer prices ######
+# 3.5.2) Producer prices ######
 fao_econ_file <- file.path(fao_dir, "Prices_E_Africa_NOFLAG.csv")
 if (!file.exists(fao_econ_file) || update == TRUE) {
   url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip"
@@ -556,7 +556,7 @@ if (!file.exists(fao_econ_file_world) || update == TRUE) {
   unlink(zip_file_path)
 }
 
-### 3.5.3) Production ######
+# 3.5.3) Production ######
 prod_file <- file.path(fao_dir, "Production_Crops_Livestock_E_Africa_NOFLAG.csv")
 if (!file.exists(prod_file) || update == TRUE) {
   url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip"
@@ -577,7 +577,7 @@ if (!file.exists(prod_file_world) || update == TRUE) {
   unlink(zip_file_path)
 }
 
-### 3.5.4) Value of production #####
+# 3.5.4) Value of production #####
 vop_file <- file.path(fao_dir, "Value_of_Production_E_Africa.csv")
 if (!file.exists(vop_file) || update == TRUE) {
   url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip"
@@ -598,14 +598,14 @@ if (!file.exists(vop_file_world) || update == TRUE) {
   unlink(zip_file_path)
 }
 
-## 3.6) Highlands map #####
+# 3.6) Highlands map #####
 update <- FALSE
 afr_highlands_file <- file.path(afr_highlands_dir, "afr-highlands.asc")
 if (!file.exists(afr_highlands_file) || update == TRUE) {
   s3$file_download(file.path(bucket_name_s3, "afr_highlands/afr-highlands.asc"), afr_highlands_file, overwrite = TRUE)
 }
 
-## 3.8) Human population #####
+# 3.8) Human population #####
 folder_path <- "population/worldpop_2020/"
 files_s3 <- s3$dir_ls(file.path(bucket_name_s3, folder_path))
 files_s3 <- files_s3[grepl("pop.tif", files_s3)]
@@ -618,7 +618,7 @@ for (i in seq_along(files_local)) {
   }
 }
 
-## 3.9) GLPS #####
+# 3.9) GLPS #####
 local_dir <- glps_dir
 files_s3 <- s3$dir_ls(file.path(bucket_name_s3, basename(local_dir)))
 files_local <- file.path(local_dir, basename(files_s3))
@@ -630,7 +630,7 @@ for (i in seq_along(files_local)) {
   }
 }
 
-## 3.10) Cattle heatstress #####
+# 3.10) Cattle heatstress #####
 local_dir <- cattle_heatstress_dir
 files_s3 <- s3$dir_ls(file.path(bucket_name_s3, basename(local_dir)))
 files_local <- file.path(local_dir, basename(files_s3))
@@ -642,7 +642,7 @@ for (i in seq_along(files_local)) {
   }
 }
 
-## 3.11) SOS #####
+# 3.11) SOS #####
 local_dir <- sos_dir
 files_s3 <- s3$dir_ls(file.path(bucket_name_s3, basename(local_dir)))
 files_local <- file.path(local_dir, basename(files_s3))
@@ -654,7 +654,7 @@ for (i in seq_along(files_local)) {
   }
 }
 
-## 3.12) GGCMI crop calendars #####
+# 3.12) GGCMI crop calendars #####
 update <- FALSE
 # If folder has fewer than ~40 files, re-check for updates
 if (length(list.files(ggcmi_dir)) != 40) {
@@ -677,7 +677,7 @@ if (length(list.files(ggcmi_dir)) != 40) {
   }
 }
 
-## 3.13) Hydrobasins #####
+# 3.13) Hydrobasins #####
 # Download wmo basin boundaries in JSON format
 if (!file.exists(file.path(hydrobasins_dir, "wmobb_rivnets_Q00_01.json"))) {
   url <- "https://grdc.bafg.de/downloads/wmobb_json.zip"
@@ -687,7 +687,7 @@ if (!file.exists(file.path(hydrobasins_dir, "wmobb_rivnets_Q00_01.json"))) {
   unlink(local_path)
 }
 
-## 3.14) Solution tables #####
+# 3.14) Solution tables #####
 update <- FALSE
 local_dir <- solution_tables_dir
 files_s3 <- s3$dir_ls(file.path(bucket_name_s3, basename(local_dir)))
@@ -701,20 +701,20 @@ for (i in seq_along(files_local)) {
 }
 
 # 4) Set data URLs ####
-## 4.1) hazard class #####
+# 4.1) hazard class #####
 haz_class_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
 
-## 4.2) hazard metadata #####
+# 4.2) hazard metadata #####
 haz_meta_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv"
 
-## 4.3) mapspam codes #####
+# 4.3) mapspam codes #####
 ms_codes_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv"
 spam2fao_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv"
 
-## 4.4) ecocrop ####
+# 4.4) ecocrop ####
 ecocrop_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/ecocrop.csv"
 
-## 4.5) isimip metadata #####
+# 4.5) isimip metadata #####
 isimip_meta_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/isimip_water_var_metadata.csv"
 
 # ---------------------------------------------------------------------------------------------
