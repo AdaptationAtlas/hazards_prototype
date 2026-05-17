@@ -309,66 +309,90 @@ if (mode == "--smoke") {
 }
 log_step(sprintf("Final monthly index: %d rows", nrow(common)))
 
-# 5) Compute Hargreaves PET and CWB stacks ####
-
-log_step("Loading input stacks (lazy)")
-ptot_stk <- terra::rast(common$PTOT)
-tmax_stk <- terra::rast(common$TMAX)
-tmin_stk <- terra::rast(common$TMIN)
-tavg_stk <- terra::rast(common$TAVG)
-
-if (mode == "--smoke") {
-  bb <- terra::ext(smoke_bbox)
-  log_step(sprintf(
-    "Cropping to smoke bbox: lon [%.2f, %.2f] lat [%.2f, %.2f]",
-    smoke_bbox["xmin"], smoke_bbox["xmax"], smoke_bbox["ymin"], smoke_bbox["ymax"]
-  ))
-  ptot_stk <- terra::crop(ptot_stk, bb)
-  tmax_stk <- terra::crop(tmax_stk, bb)
-  tmin_stk <- terra::crop(tmin_stk, bb)
-  tavg_stk <- terra::crop(tavg_stk, bb)
-}
-
-ra_stk <- build_ra_raster(ptot_stk[[1]])
-
-log_step(sprintf("Computing monthly Hargreaves PET for %d months", nrow(common)))
-t_pet <- Sys.time()
-pet_layers <- vector("list", nrow(common))
-for (i in seq_len(nrow(common))) {
-  m <- common$month[i]
-  y <- common$year[i]
-  n <- days_in_month(y, m)
-  pet_layers[[i]] <- collect_warnings(
-    hargreaves_pet_month(tmax_stk[[i]], tmin_stk[[i]], tavg_stk[[i]], ra_stk[[m]], n),
-    label = sprintf("PET %04d-%02d", y, m)
-  )
-  if (i %% 60L == 0L || i == nrow(common)) {
-    log_step(sprintf(
-      "  PET %d/%d (%04d-%02d) [%.1fs elapsed]",
-      i, nrow(common), y, m, as.numeric(Sys.time() - t_pet, units = "secs")
-    ))
-  }
-}
-pet_stk <- terra::rast(pet_layers)
-log_step(sprintf(
-  "PET stack: %d layers, range %.2f..%.2f mm/month",
-  terra::nlyr(pet_stk),
-  terra::global(pet_stk, "min", na.rm = TRUE)[1, 1],
-  terra::global(pet_stk, "max", na.rm = TRUE)[1, 1]
-))
-
-log_step("Computing climatic water balance CWB = PTOT - PET")
-cwb_stk <- ptot_stk - pet_stk
-log_step(sprintf(
-  "  CWB range: %.2f..%.2f mm/month",
-  terra::global(cwb_stk, "min", na.rm = TRUE)[1, 1],
-  terra::global(cwb_stk, "max", na.rm = TRUE)[1, 1]
-))
-
-# 6) Run SPEI per scale ####
+# 5) Decide which scales need computing (idempotent skip) ####
 
 scales_run <- if (mode == "--smoke") scales_smoke else scales_full
 ts_start <- c(common$year[1], common$month[1])
+
+#' For a given scale, return the vector of expected output paths.
+expected_spei_paths <- function(scale, common, hist_dir) {
+  out_dir <- file.path(hist_dir, sprintf("SPEI-%02d", scale))
+  file.path(out_dir, sprintf("SPEI-%02d-%04d-%02d.tif", scale, common$year, common$month))
+}
+
+log_step("Checking existing SPEI outputs per scale")
+scales_to_compute <- integer()
+for (scale in scales_run) {
+  expected <- expected_spei_paths(scale, common, chirts_chirps_hist_dir)
+  present <- file.exists(expected) & file.size(expected) > 100L
+  if (all(present)) {
+    log_step(sprintf("  scale %d: all %d outputs present - will skip", scale, length(expected)))
+  } else {
+    log_step(sprintf("  scale %d: %d/%d missing - will compute",
+      scale, sum(!present), length(expected)))
+    scales_to_compute <- c(scales_to_compute, scale)
+  }
+}
+
+# 6) Compute Hargreaves PET and CWB stacks (only if anything needs computing) ####
+
+if (length(scales_to_compute) > 0L) {
+  log_step("Loading input stacks (lazy)")
+  ptot_stk <- terra::rast(common$PTOT)
+  tmax_stk <- terra::rast(common$TMAX)
+  tmin_stk <- terra::rast(common$TMIN)
+  tavg_stk <- terra::rast(common$TAVG)
+
+  if (mode == "--smoke") {
+    bb <- terra::ext(smoke_bbox)
+    log_step(sprintf(
+      "Cropping to smoke bbox: lon [%.2f, %.2f] lat [%.2f, %.2f]",
+      smoke_bbox["xmin"], smoke_bbox["xmax"], smoke_bbox["ymin"], smoke_bbox["ymax"]
+    ))
+    ptot_stk <- terra::crop(ptot_stk, bb)
+    tmax_stk <- terra::crop(tmax_stk, bb)
+    tmin_stk <- terra::crop(tmin_stk, bb)
+    tavg_stk <- terra::crop(tavg_stk, bb)
+  }
+
+  ra_stk <- build_ra_raster(ptot_stk[[1]])
+
+  log_step(sprintf("Computing monthly Hargreaves PET for %d months", nrow(common)))
+  t_pet <- Sys.time()
+  pet_layers <- vector("list", nrow(common))
+  for (i in seq_len(nrow(common))) {
+    m <- common$month[i]
+    y <- common$year[i]
+    n <- days_in_month(y, m)
+    pet_layers[[i]] <- collect_warnings(
+      hargreaves_pet_month(tmax_stk[[i]], tmin_stk[[i]], tavg_stk[[i]], ra_stk[[m]], n),
+      label = sprintf("PET %04d-%02d", y, m)
+    )
+    if (i %% 60L == 0L || i == nrow(common)) {
+      log_step(sprintf(
+        "  PET %d/%d (%04d-%02d) [%.1fs elapsed]",
+        i, nrow(common), y, m, as.numeric(Sys.time() - t_pet, units = "secs")
+      ))
+    }
+  }
+  pet_stk <- terra::rast(pet_layers)
+  log_step(sprintf(
+    "PET stack: %d layers, range %.2f..%.2f mm/month",
+    terra::nlyr(pet_stk),
+    terra::global(pet_stk, "min", na.rm = TRUE)[1, 1],
+    terra::global(pet_stk, "max", na.rm = TRUE)[1, 1]
+  ))
+
+  log_step("Computing climatic water balance CWB = PTOT - PET")
+  cwb_stk <- ptot_stk - pet_stk
+  log_step(sprintf(
+    "  CWB range: %.2f..%.2f mm/month",
+    terra::global(cwb_stk, "min", na.rm = TRUE)[1, 1],
+    terra::global(cwb_stk, "max", na.rm = TRUE)[1, 1]
+  ))
+} else {
+  log_step("All scales already complete - skipping PET / CWB compute entirely")
+}
 
 cwb_starts_in_ref <- common$year[1] < ref_start_ym[1] ||
   (common$year[1] == ref_start_ym[1] && common$month[1] <= ref_start_ym[2])
@@ -384,10 +408,16 @@ if (!(cwb_starts_in_ref && cwb_ends_after_ref)) {
 
 written_paths <- character()
 for (scale in scales_run) {
-  log_step(sprintf("=== SPEI scale = %d ===", scale))
   out_dir <- file.path(chirts_chirps_hist_dir, sprintf("SPEI-%02d", scale))
   if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
+  if (!(scale %in% scales_to_compute)) {
+    log_step(sprintf("=== SPEI scale = %d (already complete, skipping compute) ===", scale))
+    written_paths <- c(written_paths, expected_spei_paths(scale, common, chirts_chirps_hist_dir))
+    next
+  }
+
+  log_step(sprintf("=== SPEI scale = %d ===", scale))
   t_scale <- Sys.time()
   spei_fn <- make_spei_fn(scale, ts_start, ref_start_ym, ref_end_ym)
   spei_stk <- collect_warnings(
