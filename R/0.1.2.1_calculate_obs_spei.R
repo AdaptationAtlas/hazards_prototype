@@ -479,17 +479,22 @@ if (mode == "--smoke") {
     pass <- FALSE
   }
 
-  # Check 3: SPEI distribution over the reference period ~ N(0,1).
+  # Check 3: per-pixel SPEI distribution over the reference period ~ N(0,1).
+  # SPEI is standardized PER PIXEL, so the temporal ref-period mean per pixel
+  # should be ~ 0 and temporal SD ~ 1. The previous check used spatial stats
+  # at one date (terra::global on a single layer) which is meaningless here.
   ref_files <- out_files[as.integer(sub("^.*-(\\d{4})-\\d{2}\\.tif$", "\\1", basename(out_files))) %in%
     ref_start_ym[1]:ref_end_ym[1]]
   if (length(ref_files) >= 24L) {
     ref_stk <- terra::rast(ref_files)
-    ref_mean <- terra::global(ref_stk, "mean", na.rm = TRUE)[1, 1]
-    ref_sd <- terra::global(ref_stk, "sd", na.rm = TRUE)[1, 1]
+    per_pixel_mean <- terra::app(ref_stk, mean, na.rm = TRUE)
+    per_pixel_sd <- terra::app(ref_stk, sd, na.rm = TRUE)
+    ref_mean <- terra::global(per_pixel_mean, "mean", na.rm = TRUE)[1, 1]
+    ref_sd <- terra::global(per_pixel_sd, "mean", na.rm = TRUE)[1, 1]
     if (abs(ref_mean) < 0.15 && abs(ref_sd - 1) < 0.20) {
-      cat(sprintf("[OK] 3. Reference SPEI ~ N(0,1): mean=%.3f sd=%.3f.\n", ref_mean, ref_sd))
+      cat(sprintf("[OK] 3. Per-pixel ref SPEI ~ N(0,1): mean=%.3f sd=%.3f.\n", ref_mean, ref_sd))
     } else {
-      cat(sprintf("[FAIL] 3. Reference SPEI distribution off: mean=%.3f sd=%.3f.\n", ref_mean, ref_sd))
+      cat(sprintf("[FAIL] 3. Per-pixel ref SPEI distribution off: mean=%.3f sd=%.3f.\n", ref_mean, ref_sd))
       pass <- FALSE
     }
   } else {
