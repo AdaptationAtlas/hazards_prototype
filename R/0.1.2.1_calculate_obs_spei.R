@@ -562,14 +562,20 @@ if (mode == "--smoke") {
     pass <- FALSE
   }
 
-  # Check 5: PET range plausible (Africa monthly PET ~ 30..400 mm).
-  pet_min <- terra::global(pet_stk, "min", na.rm = TRUE)[1, 1]
-  pet_max <- terra::global(pet_stk, "max", na.rm = TRUE)[1, 1]
-  if (pet_min >= 0 && pet_max < 600) {
-    cat(sprintf("[OK] 5. PET range plausible: %.1f .. %.1f mm/month.\n", pet_min, pet_max))
+  # Check 5: PET range plausible (Africa monthly PET ~ 30..400 mm). Only
+  # available when PET was actually built this run; idempotent re-runs that
+  # skip the compute path won't have pet_stk in scope.
+  if (exists("pet_stk", inherits = FALSE)) {
+    pet_min <- terra::global(pet_stk, "min", na.rm = TRUE)[1, 1]
+    pet_max <- terra::global(pet_stk, "max", na.rm = TRUE)[1, 1]
+    if (pet_min >= 0 && pet_max < 600) {
+      cat(sprintf("[OK] 5. PET range plausible: %.1f .. %.1f mm/month.\n", pet_min, pet_max))
+    } else {
+      cat(sprintf("[FAIL] 5. PET range suspicious: %.1f .. %.1f mm/month.\n", pet_min, pet_max))
+      pass <- FALSE
+    }
   } else {
-    cat(sprintf("[FAIL] 5. PET range suspicious: %.1f .. %.1f mm/month.\n", pet_min, pet_max))
-    pass <- FALSE
+    cat("[SKIP] 5. PET range check skipped (compute path skipped this run).\n")
   }
 
   # Check 6: PNG validation plot.
