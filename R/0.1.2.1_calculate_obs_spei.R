@@ -70,8 +70,14 @@ bootstrap_minimal <- function() {
   )
 
   project_dir <- if (nzchar(Sys.getenv("project_dir"))) Sys.getenv("project_dir") else getwd()
-  working_dir <- switch(project_dir,
-    "/home/jovyan/atlas/hazards_prototype" = "/home/jovyan/common_data/hazards_prototype",
+  # Candidate working_dirs per machine. On CGlabs the same project_dir feeds
+  # two climdat_source paths (atlas_delta vs nexgddp); pick whichever already
+  # has chirts_chirps_hist/PTOT/ on disk.
+  candidates <- switch(project_dir,
+    "/home/jovyan/atlas/hazards_prototype" = c(
+      "/home/jovyan/common_data/nex-gddp-cimp6_hazards",
+      "/home/jovyan/common_data/hazards_prototype"
+    ),
     "D:/rprojects/hazards_prototype" = "D:/common_data/hazards_prototype",
     "C:/rprojects/hazards_prototype" = "C:/rprojects/common_data/hazards_prototype",
     "/Users/pstewarda/Documents/rprojects/hazards_prototype" =
@@ -79,6 +85,11 @@ bootstrap_minimal <- function() {
     "/home/psteward/rprojects/hazards_prototype" = "/cluster01/workspace/atlas/hazards_prototype",
     stop(glue::glue("Unknown project_dir '{project_dir}'. Add a mapping to bootstrap_minimal()."))
   )
+  has_data <- vapply(candidates, function(p) {
+    dir.exists(file.path(p, "Data", "chirts_chirps_hist", "PTOT"))
+  }, logical(1))
+  working_dir <- if (any(has_data)) candidates[has_data][1] else candidates[1]
+  log_step(sprintf("  selected working_dir: %s", working_dir))
   if (!dir.exists(working_dir)) dir.create(working_dir, recursive = TRUE)
   setwd(working_dir)
 
