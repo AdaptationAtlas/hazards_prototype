@@ -481,17 +481,33 @@ if (mode == "--smoke") {
 
   # Check 3: per-pixel SPEI distribution over the reference period ~ N(0,1).
   # SPEI is standardized PER PIXEL, so the temporal ref-period mean per pixel
-  # should be ~ 0 and temporal SD ~ 1. The previous check used spatial stats
-  # at one date (terra::global on a single layer) which is meaningless here.
+  # should be ~ 0 and temporal SD ~ 1. Filter !is.finite() before averaging:
+  # SPEI::spei() can legitimately emit +-Inf for pixel-months at the tails of
+  # the fitted log-logistic distribution; those values should not poison
+  # the aggregate.
   ref_files <- out_files[as.integer(sub("^.*-(\\d{4})-\\d{2}\\.tif$", "\\1", basename(out_files))) %in%
     ref_start_ym[1]:ref_end_ym[1]]
   if (length(ref_files) >= 24L) {
     ref_stk <- terra::rast(ref_files)
-    per_pixel_mean <- terra::app(ref_stk, mean, na.rm = TRUE)
-    per_pixel_sd <- terra::app(ref_stk, sd, na.rm = TRUE)
+    finite_mean <- function(x) {
+      x <- x[is.finite(x)]
+      if (length(x) == 0L) return(NA_real_)
+      mean(x)
+    }
+    finite_sd <- function(x) {
+      x <- x[is.finite(x)]
+      if (length(x) < 2L) return(NA_real_)
+      sd(x)
+    }
+    per_pixel_mean <- terra::app(ref_stk, finite_mean)
+    per_pixel_sd <- terra::app(ref_stk, finite_sd)
     ref_mean <- terra::global(per_pixel_mean, "mean", na.rm = TRUE)[1, 1]
     ref_sd <- terra::global(per_pixel_sd, "mean", na.rm = TRUE)[1, 1]
-    if (abs(ref_mean) < 0.15 && abs(ref_sd - 1) < 0.20) {
+    inf_cells <- terra::global(ref_stk, function(x) sum(is.infinite(x)), na.rm = FALSE)[1, 1]
+    inf_pct <- 100 * inf_cells / (terra::nlyr(ref_stk) * terra::ncell(ref_stk))
+    cat(sprintf("    Inf cells in ref-period stack: %d (%.4f%% of cell-months)\n", inf_cells, inf_pct))
+    if (is.finite(ref_mean) && is.finite(ref_sd) &&
+      abs(ref_mean) < 0.15 && abs(ref_sd - 1) < 0.20) {
       cat(sprintf("[OK] 3. Per-pixel ref SPEI ~ N(0,1): mean=%.3f sd=%.3f.\n", ref_mean, ref_sd))
     } else {
       cat(sprintf("[FAIL] 3. Per-pixel ref SPEI distribution off: mean=%.3f sd=%.3f.\n", ref_mean, ref_sd))
