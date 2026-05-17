@@ -233,26 +233,38 @@ hargreaves_pet_month <- function(tmax, tmin, tavg, ra_m, n_days) {
   pet_day * n_days
 }
 
-#' Compute SPEI for one pixel's time series. Returns a vector of same length.
-#' Wraps SPEI::spei() with guards on all-NA / short series.
-spei_for_pixel <- function(x, scale, ts_start, ref_start, ref_end) {
-  if (sum(!is.na(x)) < (scale + 24L)) {
-    return(rep(NA_real_, length(x)))
+#' Build a fully self-contained per-pixel SPEI closure. terra::app(cores = N)
+#' spawns PSOCK workers that don't see the parent's global env, so the
+#' function passed to app() must carry its own captured args AND its own
+#' package handle. force() resolves the args eagerly into the closure env;
+#' SPEI is loaded inside the closure on first call per worker.
+make_spei_fn <- function(scale, ts_start, ref_start, ref_end) {
+  force(scale)
+  force(ts_start)
+  force(ref_start)
+  force(ref_end)
+  function(x) {
+    if (sum(!is.na(x)) < (scale + 24L)) {
+      return(rep(NA_real_, length(x)))
+    }
+    if (!"SPEI" %in% loadedNamespaces()) {
+      requireNamespace("SPEI", quietly = TRUE)
+    }
+    ts_x <- stats::ts(x, start = ts_start, frequency = 12L)
+    out <- tryCatch(
+      suppressWarnings(
+        SPEI::spei(ts_x,
+          scale = scale, ref.start = ref_start, ref.end = ref_end,
+          na.rm = TRUE, verbose = FALSE
+        )
+      ),
+      error = function(e) NULL
+    )
+    if (is.null(out)) {
+      return(rep(NA_real_, length(x)))
+    }
+    as.numeric(out$fitted)
   }
-  ts_x <- stats::ts(x, start = ts_start, frequency = 12L)
-  out <- tryCatch(
-    suppressWarnings(
-      SPEI::spei(ts_x,
-        scale = scale, ref.start = ref_start, ref.end = ref_end,
-        na.rm = TRUE, verbose = FALSE
-      )
-    ),
-    error = function(e) NULL
-  )
-  if (is.null(out)) {
-    return(rep(NA_real_, length(x)))
-  }
-  as.numeric(out$fitted)
 }
 
 # 4) Build aligned monthly stacks for PTOT / TMAX / TMIN / TAVG ####
@@ -377,12 +389,9 @@ for (scale in scales_run) {
   if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
   t_scale <- Sys.time()
+  spei_fn <- make_spei_fn(scale, ts_start, ref_start_ym, ref_end_ym)
   spei_stk <- collect_warnings(
-    terra::app(
-      cwb_stk,
-      fun   = function(x) spei_for_pixel(x, scale, ts_start, ref_start_ym, ref_end_ym),
-      cores = n_cores_spei
-    ),
+    terra::app(cwb_stk, fun = spei_fn, cores = n_cores_spei),
     label = sprintf("SPEI-%02d app", scale)
   )
   log_step(sprintf("  SPEI computed in %.1fs", as.numeric(Sys.time() - t_scale, units = "secs")))
