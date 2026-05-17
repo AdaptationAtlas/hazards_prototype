@@ -503,7 +503,8 @@ if (mode == "--smoke") {
     per_pixel_sd <- terra::app(ref_stk, finite_sd)
     ref_mean <- terra::global(per_pixel_mean, "mean", na.rm = TRUE)[1, 1]
     ref_sd <- terra::global(per_pixel_sd, "mean", na.rm = TRUE)[1, 1]
-    inf_cells <- terra::global(ref_stk, function(x) sum(is.infinite(x)), na.rm = FALSE)[1, 1]
+    per_pixel_inf <- terra::app(ref_stk, function(x) sum(is.infinite(x)))
+    inf_cells <- terra::global(per_pixel_inf, "sum", na.rm = TRUE)[1, 1]
     inf_pct <- 100 * inf_cells / (terra::nlyr(ref_stk) * terra::ncell(ref_stk))
     cat(sprintf("    Inf cells in ref-period stack: %d (%.4f%% of cell-months)\n", inf_cells, inf_pct))
     if (is.finite(ref_mean) && is.finite(ref_sd) &&
