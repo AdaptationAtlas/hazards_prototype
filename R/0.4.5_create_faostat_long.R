@@ -1,6 +1,7 @@
 # Build a long-form parquet of raw FAOSTAT values (Africa) covering production,
-# yield, and 2014-16 constant USD / I$ value of production. Run 0_server_setup.R
-# first (defines `fao_dir`). Variables whose source CSV is missing are skipped.
+# yield, 2014-16 constant USD / I$ value of production, and export quantity +
+# value. Run 0_server_setup.R first (defines `fao_dir`). Variables whose source
+# CSV is missing are skipped.
 
 pacman::p_load(data.table, arrow, countrycode)
 
@@ -94,6 +95,18 @@ sources <- list(
   vop_intd15 = list(
     file    = file.path(fao_dir, "Value_of_Production_E_Africa.csv"),
     element = "Gross Production Value (constant 2014-2016 thousand I$)"
+  ),
+  # Trade domain. Element strings are FAOSTAT-canonical lowercase. Each
+  # element string covers multiple element codes (one per unit, e.g. "Export
+  # quantity" covers tonnes + head counts); the `unit` column preserves the
+  # distinction downstream, same as for production.
+  export_quantity = list(
+    file    = file.path(fao_dir, "Trade_CropsLivestock_E_Africa_NOFLAG.csv"),
+    element = "Export quantity"
+  ),
+  export_value = list(
+    file    = file.path(fao_dir, "Trade_CropsLivestock_E_Africa_NOFLAG.csv"),
+    element = "Export value"
   )
 )
 
@@ -281,10 +294,10 @@ setorder(fao_long, iso3, variable, commodity, year)
 out_file <- file.path(fao_dir, "faostat_long.parquet")
 build_meta <- list(
   description = paste(
-    "FAOSTAT long-form table for Africa: production, yield, and 2014-16",
-    "constant USD / I$ value of production."
+    "FAOSTAT long-form table for Africa: production, yield, 2014-16",
+    "constant USD / I$ value of production, and export quantity + value."
   ),
-  source = "FAOSTAT bulk downloads: Production_Crops_Livestock, Value_of_Production.",
+  source = "FAOSTAT bulk downloads: Production_Crops_Livestock, Value_of_Production, Trade_CropsLivestock.",
   source_files = paste(
     unique(vapply(sources, function(s) basename(s$file), character(1))),
     collapse = "; "
