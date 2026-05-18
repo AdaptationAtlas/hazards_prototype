@@ -383,14 +383,26 @@ for (level in levels_run) {
 
   # Parallel across the 9 variables. terra SpatRaster handles can't cross
   # fork boundaries safely (C++ pointers); each worker opens its own copy
-  # of the cached zonal raster on disk.
+  # of the cached zonal raster on disk. Backend selection: multicore (fork,
+  # default on Linux, fast) or multisession (PSOCK, slower start but more
+  # stable when fork + terra/GDAL state is flaky).
+  backend <- parse_cli_flag(args, "backend", "character")
+  if (is.null(backend)) {
+    backend <- if (.Platform$OS.type == "unix" &&
+      !grepl("darwin", R.version$os, ignore.case = TRUE)) "multicore" else "multisession"
+  }
   if (workers > 1L) {
-    future::plan(future::multicore, workers = workers)
+    if (backend == "multicore") {
+      future::plan(future::multicore, workers = workers)
+    } else {
+      future::plan(future::multisession, workers = workers)
+    }
   } else {
     future::plan(future::sequential)
+    backend <- "sequential"
   }
-  log_step(sprintf("  parallel extract across %d variables, %d workers",
-    length(variables_full), workers))
+  log_step(sprintf("  parallel extract across %d variables, %d workers (%s)",
+    length(variables_full), workers, backend))
 
   smoke_yrs <- if (mode == "--smoke") smoke_n_years else NULL
   results <- furrr::future_map(seq_along(variables_full), function(j) {
