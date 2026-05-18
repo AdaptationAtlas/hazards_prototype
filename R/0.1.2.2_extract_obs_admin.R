@@ -168,13 +168,15 @@ if (!file.exists(obs_base_rast_path)) {
 }
 
 # geo_files_local is set by 0_server_setup.R (--full path); when running
-# --smoke we resolve admin paths directly via boundaries_dir + filename.
+# --smoke we resolve admin paths directly via boundaries_dir. The atlas
+# naming convention is atlas_gaul24_a{0,1,2}_{region}.parquet (see
+# R/0_server_setup.R), so the level token is _a0_ / _a1_ / _a2_.
 if (!exists("geo_files_local", inherits = TRUE)) {
   boundaries_dir <- file.path("Data", "boundaries")
-  # Look for any *adm0*, *adm1*, *adm2* parquet under boundaries_dir.
   geo_files_local <- list.files(
     boundaries_dir,
-    pattern = "(adm0|adm1|adm2).*\\.parquet$", full.names = TRUE
+    pattern = "_a[0-2]_[^/]*\\.parquet$",
+    full.names = TRUE
   )
   if (length(geo_files_local) == 0L) {
     stop(glue::glue(
@@ -182,12 +184,8 @@ if (!exists("geo_files_local", inherits = TRUE)) {
       "Run R/0_server_setup.R or stage atlas_gaul24_a*.parquet manually."
     ))
   }
-  names(geo_files_local) <- gsub(
-    ".*(adm[0-2]).*", "\\1",
-    tolower(basename(geo_files_local))
-  )
-  # Standardise to admin0/1/2.
-  names(geo_files_local) <- sub("^adm", "admin", names(geo_files_local))
+  level_tag <- sub(".*_a([0-2])_.*", "\\1", basename(geo_files_local))
+  names(geo_files_local) <- paste0("admin", level_tag)
 }
 
 # Where the cached zonal rasters live (one per admin level, aligned to obs).
