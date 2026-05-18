@@ -40,9 +40,10 @@
 #             coverage. Runs five inline sanity checks: file written, schema
 #             matches spec, expected row count, no all-NA admin x variable
 #             combinations, parquet round-trips. ~minute on CGlabs.
-#   --full    All three admin levels, all variables, all months. adm2 will
-#             be the heavy step (~25k zones x 544 months x 9 variables).
-#             Intended for the Afrilabs / CGlabs server.
+#   --full    adm0 + adm1 by default (set include_adm2 <- TRUE near the top
+#             to also produce adm2, which is ~25k zones x 544 months x 9
+#             variables and near the 2 GB parquet ceiling). Intended for
+#             the Afrilabs / CGlabs server.
 #   (none)    Print usage and exit 1.
 #
 # Please run 0_server_setup.R before --full so geo_files_local is populated;
@@ -144,7 +145,14 @@ variables_full <- c(
   "PTOT", "TMAX", "TMIN", "TAVG",
   "SPEI-01", "SPEI-03", "SPEI-06", "SPEI-12", "SPEI-24"
 )
-admin_levels_full <- c("admin0", "admin1", "admin2")
+
+# Admin2 is the heavy step (~25k zones x 544 months x 9 variables, parquet
+# size near the 2 GB recommended ceiling). Off by default; flip to TRUE when
+# you want the subnational district output.
+include_adm2 <- FALSE
+
+admin_levels_full <- c("admin0", "admin1")
+if (isTRUE(include_adm2)) admin_levels_full <- c(admin_levels_full, "admin2")
 admin_levels_smoke <- c("admin0")
 smoke_n_years <- 5L
 
