@@ -149,7 +149,7 @@ cog_gdal_opts <- c(
   "OVERVIEWS=NONE",
   "BLOCKSIZE=512"
 )
-source("R/observational/_helpers.R")
+source(file.path(project_dir, "R", "observational", "_helpers.R"))
 # terra::app per-pixel SPEI fit streams blocks; memory footprint per worker is
 # modest. 2 GB / worker is conservative for full Africa.
 per_worker_gb <- 2

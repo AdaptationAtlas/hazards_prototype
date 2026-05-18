@@ -568,7 +568,7 @@ if (mode == "--full") {
   cat("Downloads pending:", nrow(to_do), "\n\n")
 
   # 6.3) Download / process loop (one parallel pass).
-  source("R/observational/_helpers.R")
+  source(file.path(project_dir, "R", "observational", "_helpers.R"))
   # Downloads are I/O-bound; per-worker RAM is small (~0.5 GB raster work area).
   per_worker_gb_dl <- 0.5
   n_dl <- resolve_workers(args, per_worker_gb = per_worker_gb_dl, max_workers = 16L)

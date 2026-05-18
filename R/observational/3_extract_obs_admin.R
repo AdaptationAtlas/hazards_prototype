@@ -138,12 +138,12 @@ if (mode == "--smoke") {
     "Parallel flags (script parallelises across the 9 variables per admin level):\n",
     sep = ""
   )
-  source("R/observational/_helpers.R")
+  source(file.path(project_dir, "R", "observational", "_helpers.R"))
   cat(parallel_flags_usage(), "\n", sep = "")
   quit(status = 1)
 }
 
-source("R/observational/_helpers.R")
+source(file.path(project_dir, "R", "observational", "_helpers.R"))
 pacman::p_load(future, future.apply, furrr)
 
 # Each per-variable extract loads a 544-layer raster stack into memory for
