@@ -1,6 +1,6 @@
 # 0) Introduction ####
 # Zonal-aggregate the monthly observational stack written by
-# R/observational/0.1.2_get_chirps_chirts.R + R/observational/0.1.2.1_calculate_obs_spei.R from pixel
+# R/observational/1_get_chirps_chirts.R + R/observational/2_calculate_obs_spei.R from pixel
 # rasters to admin polygons (adm0, adm1, adm2). Produces one combined long
 # parquet per admin level covering all nine observational variables:
 #   PTOT, TMAX, TMIN, TAVG, SPEI-01, SPEI-03, SPEI-06, SPEI-12, SPEI-24
@@ -101,7 +101,7 @@ bootstrap_minimal <- function() {
 
   chirts_chirps_hist_dir <- file.path("Data", "chirts_chirps_hist")
   if (!dir.exists(chirts_chirps_hist_dir)) {
-    stop("Run R/observational/0.1.2_get_chirps_chirts.R --full before computing admin extract.")
+    stop("Run R/observational/1_get_chirps_chirts.R --full before computing admin extract.")
   }
 
   terra::gdalCache(60000)
@@ -125,14 +125,14 @@ if (mode == "--smoke") {
   pacman::p_load(terra, data.table, glue, jsonlite, arrow, sf, geoarrow, fs)
   chirts_chirps_hist_dir <- atlas_dirs$data_dir$chirts_chirps_hist
   if (!dir.exists(chirts_chirps_hist_dir)) {
-    stop("Run R/observational/0.1.2_get_chirps_chirts.R --full before computing admin extract.")
+    stop("Run R/observational/1_get_chirps_chirts.R --full before computing admin extract.")
   }
 } else {
   cat(
     "Usage:\n",
-    "  Rscript R/observational/0.1.2.2_extract_obs_admin.R --smoke\n",
+    "  Rscript R/observational/3_extract_obs_admin.R --smoke\n",
     "      adm0 only, all 9 variables, last 5 years of coverage.\n",
-    "  Rscript R/observational/0.1.2.2_extract_obs_admin.R --full\n",
+    "  Rscript R/observational/3_extract_obs_admin.R --full\n",
     "      All admin levels (0/1/2), all variables, all months.\n",
     sep = ""
   )
@@ -160,11 +160,11 @@ admin_dir <- file.path(chirts_chirps_hist_dir, "admin")
 if (!dir.exists(admin_dir)) dir.create(admin_dir, recursive = TRUE)
 
 # Use the obs base raster as the alignment template for zonal rasters. It
-# was built by R/observational/0.1.2_get_chirps_chirts.R into the project repo's metadata/.
+# was built by R/observational/1_get_chirps_chirts.R into the project repo's metadata/.
 # bootstrap_minimal switched cwd to working_dir, so go back via project_dir.
 obs_base_rast_path <- file.path(project_dir, "metadata", "base_raster_obs.tif")
 if (!file.exists(obs_base_rast_path)) {
-  stop(glue::glue("obs_base_rast not found at {obs_base_rast_path} - run 0.1.2_get_chirps_chirts.R first."))
+  stop(glue::glue("obs_base_rast not found at {obs_base_rast_path} - run 1_get_chirps_chirts.R first."))
 }
 
 # geo_files_local is set by 0_server_setup.R (--full path); when running
@@ -410,7 +410,7 @@ for (level in levels_run) {
       "Monthly observational climate aggregated to %s (mean and sd of pixel values within each polygon).",
       level
     ),
-    source = "R/observational/0.1.2.2_extract_obs_admin.R against Data/chirts_chirps_hist/{PTOT,TMAX,TMIN,TAVG,SPEI-*}/*.tif",
+    source = "R/observational/3_extract_obs_admin.R against Data/chirts_chirps_hist/{PTOT,TMAX,TMIN,TAVG,SPEI-*}/*.tif",
     obs_base_rast = obs_base_rast_path,
     variables = paste(variables_full, collapse = ", "),
     admin_level = level,
@@ -423,7 +423,7 @@ for (level in levels_run) {
     ),
     aggregation = "spatial mean and sd of pixel values within polygon (terra::zonal)",
     build_time = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
-    build_script = "R/observational/0.1.2.2_extract_obs_admin.R"
+    build_script = "R/observational/3_extract_obs_admin.R"
   ))
   arrow::write_parquet(tbl, out_path, compression = "zstd", compression_level = 9)
   log_step(sprintf("  wrote %s (%.1f MB)", out_path, file.info(out_path)$size / 1024 / 1024))
@@ -439,7 +439,7 @@ for (level in levels_run) {
     n_rows = nrow(combined),
     year_range = c(min(combined$year), max(combined$year)),
     build_time = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
-    parent_script = "R/observational/0.1.2.2_extract_obs_admin.R"
+    parent_script = "R/observational/3_extract_obs_admin.R"
   ), path = paste0(out_path, ".json"), pretty = TRUE, auto_unbox = TRUE)
 }
 

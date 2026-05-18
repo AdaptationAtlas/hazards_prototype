@@ -1,7 +1,7 @@
 # 0) Introduction ####
 # Compute monthly SPEI (Standardized Precipitation Evapotranspiration Index)
 # at pixel level over the CHIRPS / CHIRTS-ERA5 observational stack written by
-# R/observational/0.1.2_get_chirps_chirts.R. SPEI is produced at scales 1, 3, 6, 12, 24,
+# R/observational/1_get_chirps_chirts.R. SPEI is produced at scales 1, 3, 6, 12, 24,
 # fit on the 1991-2020 reference period.
 #
 # Pipeline:
@@ -14,7 +14,7 @@
 #      SPEI::spei() pixel-wise with the 1991-2020 reference period; write one
 #      COG per (scale, year, month) into Data/chirts_chirps_hist/SPEI-{NN}/.
 #
-# Inputs (already on disk after R/observational/0.1.2_get_chirps_chirts.R --full):
+# Inputs (already on disk after R/observational/1_get_chirps_chirts.R --full):
 #   Data/chirts_chirps_hist/{PTOT,TMAX,TMIN,TAVG}/{VAR}-YYYY-MM.tif
 #
 # Outputs:
@@ -95,7 +95,7 @@ bootstrap_minimal <- function() {
 
   chirts_chirps_hist_dir <- file.path("Data", "chirts_chirps_hist")
   if (!dir.exists(chirts_chirps_hist_dir)) {
-    stop("Run R/observational/0.1.2_get_chirps_chirts.R --full before computing SPEI.")
+    stop("Run R/observational/1_get_chirps_chirts.R --full before computing SPEI.")
   }
 
   terra::gdalCache(60000)
@@ -120,14 +120,14 @@ if (mode == "--smoke") {
   pacman::p_load(terra, data.table, glue, jsonlite, fs, future, future.apply, progressr, SPEI)
   chirts_chirps_hist_dir <- atlas_dirs$data_dir$chirts_chirps_hist
   if (!dir.exists(chirts_chirps_hist_dir)) {
-    stop("Run R/observational/0.1.2_get_chirps_chirts.R --full before computing SPEI.")
+    stop("Run R/observational/1_get_chirps_chirts.R --full before computing SPEI.")
   }
 } else {
   cat(
     "Usage:\n",
-    "  Rscript R/observational/0.1.2.1_calculate_obs_spei.R --smoke\n",
+    "  Rscript R/observational/2_calculate_obs_spei.R --smoke\n",
     "      Single scale (3), Kenya bbox, 1985-2020. Quick correctness check.\n",
-    "  Rscript R/observational/0.1.2.1_calculate_obs_spei.R --full\n",
+    "  Rscript R/observational/2_calculate_obs_spei.R --full\n",
     "      All scales (1/3/6/12/24), full Africa, every available month.\n",
     sep = ""
   )
@@ -466,7 +466,7 @@ for (scale in scales_run) {
       common$year[nrow(common)], common$month[nrow(common)]
     ),
     format = "Cloud-Optimized GeoTIFF (DEFLATE PREDICTOR=2 BLOCKSIZE=512)",
-    parent_script = "R/observational/0.1.2.1_calculate_obs_spei.R",
+    parent_script = "R/observational/2_calculate_obs_spei.R",
     date_created = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
     notes = "Pixel-level SPEI from CHIRPS v3 + CHIRTS-ERA5 monthly stack."
   ), path = file.path(out_dir, "_metadata.json"), pretty = TRUE, auto_unbox = TRUE)

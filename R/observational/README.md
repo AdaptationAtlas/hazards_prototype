@@ -23,22 +23,22 @@ detached `nohup … > log.txt 2>&1 &` shows progress live in `tail -f log.txt`.
 | `PTOT` | CHIRPS v3 monthly Africa | mm/month | 1981-01 → present | Station-merged satellite precipitation. |
 | `TMAX` | CHIRTS-ERA5 monthly | °C | 1980-01 → present | ERA5-blended monthly maximum temperature. |
 | `TMIN` | CHIRTS-ERA5 monthly | °C | 1980-01 → present | ERA5-blended monthly minimum temperature. |
-| `TAVG` | derived `(TMAX + TMIN) / 2` | °C | 1980-01 → present | Computed by `0.1.2`. |
+| `TAVG` | derived `(TMAX + TMIN) / 2` | °C | 1980-01 → present | Computed by script 1. |
 | `SPEI-01 / 03 / 06 / 12 / 24` | derived | dimensionless | 1981-01 → present | Standardized Precipitation Evapotranspiration Index. Hargreaves PET (FAO-56) → CWB = P − PET → SPEI::spei() with log-Logistic / ub-pwm distribution fit on the 1991-2020 reference period. |
 
 Everything lives at the **native CHIRPS 0.05° grid**, extent Africa
 (−20°..55° lon, −40°..40° lat). The grid template is
 `metadata/base_raster_obs.tif`, committed to the repo (40 KB) and built once
-by `0.1.2` on first smoke run.
+by script 1 on first smoke run.
 
 ## Pipeline narrative
 
 ```
-                  raw .tif on CHC                           on-disk outputs
-                  ────────────────                          ───────────────
+                  raw .tif on CHC                              on-disk outputs
+                  ────────────────                             ───────────────
 
  ┌──────────────────────────────────┐
- │ 0.1.2_get_chirps_chirts.R        │  scrape CHC directory,
+ │ 1_get_chirps_chirts.R            │  scrape CHC directory,
  │                                  │  download monthly tifs,         Data/chirts_chirps_hist/
  │                                  │  sentinel-mask, crop+resample,  ├── PTOT/   PTOT-YYYY-MM.tif (+ _metadata.json)
  │                                  │  write COGs                     ├── TMAX/   TMAX-YYYY-MM.tif
@@ -49,7 +49,7 @@ by `0.1.2` on first smoke run.
                   │
                   ▼
  ┌──────────────────────────────────┐
- │ 0.1.2.1_calculate_obs_spei.R     │  Hargreaves PET (FAO-56)        Data/chirts_chirps_hist/
+ │ 2_calculate_obs_spei.R           │  Hargreaves PET (FAO-56)        Data/chirts_chirps_hist/
  │                                  │  CWB = PTOT − PET               ├── SPEI-01/  SPEI-01-YYYY-MM.tif
  │                                  │  SPEI::spei() per pixel,        ├── SPEI-03/  ...
  │                                  │  fit ref period 1991-2020       ├── SPEI-06/
@@ -59,7 +59,7 @@ by `0.1.2` on first smoke run.
                   │
                   ▼
  ┌──────────────────────────────────┐
- │ 0.1.2.2_extract_obs_admin.R      │  zonal mean + sd per polygon    Data/chirts_chirps_hist/admin/
+ │ 3_extract_obs_admin.R            │  zonal mean + sd per polygon    Data/chirts_chirps_hist/admin/
  │                                  │  for all 9 variables            ├── obs_monthly_adm0.parquet  (long: monthly)
  │                                  │  admin0 + admin1 by default     └── obs_monthly_adm1.parquet
  │                                  │  (admin2 opt-in flag)
@@ -67,18 +67,18 @@ by `0.1.2` on first smoke run.
                   │
                   ▼
  ┌──────────────────────────────────┐
- │ 0.1.2.3_aggregate_obs_admin_     │  collapse months within each    Data/chirts_chirps_hist/admin/
- │ periods.R                        │  period to one value/year using ├── obs_periods_adm0.parquet  (long: annual+seasonal)
+ │ 4_aggregate_obs_admin_periods.R  │  collapse months within each    Data/chirts_chirps_hist/admin/
+ │                                  │  period to one value/year using ├── obs_periods_adm0.parquet  (long: annual+seasonal)
  │                                  │  the variable's natural rule    └── obs_periods_adm1.parquet
  │                                  │  PTOT=sum, TMAX=max, TMIN=min,
  │                                  │  TAVG / SPEI=mean
  └──────────────────────────────────┘
 
  ┌──────────────────────────────────┐
- │ 0.1.2.4_make_obs_map_            │  step A: per-year aggregate     Data/chirts_chirps_hist/maps/
- │ climatologies.R                  │          (within-window agg)    └── {variable}/
- │ (parallel branch, reads same     │  step B: per-pixel mean/min/        ├── {VAR}_{period}_{clim}_mean.tif
- │  monthly tifs as 0.1.2.2)        │          max/sd across years        ├── {VAR}_{period}_{clim}_min.tif
+ │ 5_make_obs_map_climatologies.R   │  step A: per-year aggregate     Data/chirts_chirps_hist/maps/
+ │ (parallel branch, reads same     │          (within-window agg)    └── {variable}/
+ │  monthly tifs as script 3)       │  step B: per-pixel mean/min/        ├── {VAR}_{period}_{clim}_mean.tif
+ │                                  │          max/sd across years        ├── {VAR}_{period}_{clim}_min.tif
  │                                  │                                     ├── {VAR}_{period}_{clim}_max.tif
  │                                  │  9 vars × 13 periods ×              └── {VAR}_{period}_{clim}_sd.tif
  │                                  │  3 clim windows × 4 stats           (1,404 COGs)
@@ -130,16 +130,16 @@ etc.) so smoke runs in seconds.
 
 ```sh
 # In order. Each --smoke is fast; each --full is heavy.
-Rscript R/observational/0.1.2_get_chirps_chirts.R               --smoke
-Rscript R/observational/0.1.2_get_chirps_chirts.R               --full   # ~30-60 min, ~10 GB
-Rscript R/observational/0.1.2.1_calculate_obs_spei.R            --smoke
-Rscript R/observational/0.1.2.1_calculate_obs_spei.R            --full   # ~1-2 h
-Rscript R/observational/0.1.2.2_extract_obs_admin.R             --smoke
-Rscript R/observational/0.1.2.2_extract_obs_admin.R             --full   # ~15-30 min
-Rscript R/observational/0.1.2.3_aggregate_obs_admin_periods.R   --smoke
-Rscript R/observational/0.1.2.3_aggregate_obs_admin_periods.R   --full   # <5 min
-Rscript R/observational/0.1.2.4_make_obs_map_climatologies.R    --smoke
-Rscript R/observational/0.1.2.4_make_obs_map_climatologies.R    --full   # ~1-2 h
+Rscript R/observational/1_get_chirps_chirts.R               --smoke
+Rscript R/observational/1_get_chirps_chirts.R               --full   # ~30-60 min, ~10 GB
+Rscript R/observational/2_calculate_obs_spei.R            --smoke
+Rscript R/observational/2_calculate_obs_spei.R            --full   # ~1-2 h
+Rscript R/observational/3_extract_obs_admin.R             --smoke
+Rscript R/observational/3_extract_obs_admin.R             --full   # ~15-30 min
+Rscript R/observational/4_aggregate_obs_admin_periods.R   --smoke
+Rscript R/observational/4_aggregate_obs_admin_periods.R   --full   # <5 min
+Rscript R/observational/5_make_obs_map_climatologies.R    --smoke
+Rscript R/observational/5_make_obs_map_climatologies.R    --full   # ~1-2 h
 ```
 
 Each `--smoke` runs inline verification checks (file present, schema,
@@ -149,7 +149,7 @@ distribution, range, COG integrity, PNG round-trip) and exits 0/1. Don't run
 For long-running `--full` jobs, detach and tail:
 
 ```sh
-nohup Rscript R/observational/0.1.2.4_make_obs_map_climatologies.R --full > /tmp/clim.log 2>&1 &
+nohup Rscript R/observational/5_make_obs_map_climatologies.R --full > /tmp/clim.log 2>&1 &
 disown
 tail -f /tmp/clim.log
 ```
@@ -194,8 +194,8 @@ Filename encodes the four dimensions:
 - 0_server_setup.R sets `project_dir`, `working_dir`, atlas_dirs, the GAUL
   boundary file list, and the lazy CRAN mirror. `--full` modes source it;
   `--smoke` modes don't.
-- `metadata/base_raster_obs.tif` is committed and used by `0.1.2.2` and
-  `0.1.2.4` for grid alignment.
+- `metadata/base_raster_obs.tif` is committed and used by script 3 and
+  script 5 for grid alignment.
 - R packages: `terra`, `data.table`, `arrow`, `httr2`, `rvest`, `SPEI`,
   `jsonlite`, `glue`, `future`, `future.apply`, `furrr`, `progressr`,
   `digest`, `fs`, `sf`, `geoarrow`, `pacman`. Auto-installed via `pacman`
@@ -207,7 +207,7 @@ Filename encodes the four dimensions:
   exits in seconds; the `--smoke` verification block exercises the existing
   outputs without recomputing.
 - **OS-aware parallel.** Where parallelism is used (`terra::app(cores=N)` in
-  `0.1.2.1`, `furrr::future_map` in `0.1.2`), Linux runs forked `multicore`
+  script 2, `furrr::future_map` in script 1), Linux runs forked `multicore`
   workers; Mac / Windows fall back to `multisession`.
 - **Path resolution on CGlabs.** `0_server_setup.R` resolves `working_dir`
   from `project_dir` plus `climdat_source` ("atlas_delta" vs "nexgddp").
@@ -216,7 +216,7 @@ Filename encodes the four dimensions:
   up the same on-disk state regardless of which `climdat_source` is set in
   the global session.
 - **Inf handling.** SPEI can emit `±Inf` at the tails. The downstream scripts
-  (`0.1.2.2`, `0.1.2.4`) mask Inf to NA before zonal / climatology
+  (script 3, script 5) mask Inf to NA before zonal / climatology
   aggregations so a single tail pixel doesn't poison a whole polygon or
   climatology layer. The raw SPEI COGs themselves retain Inf as the
   faithful output of `SPEI::spei()`.
@@ -224,9 +224,9 @@ Filename encodes the four dimensions:
 ## Status as of this commit
 
 - All 5 scripts: built, styler-clean, 0 lints, on `develop`.
-- `0.1.2` and `0.1.2.1`: smoke + full have been run on CGlabs successfully.
-- `0.1.2.2`: smoke + full have been run on CGlabs successfully.
-- `0.1.2.3` and `0.1.2.4`: smoke + full pending on CGlabs.
+- script 1 and script 2: smoke + full have been run on CGlabs successfully.
+- script 3: smoke + full have been run on CGlabs successfully.
+- script 4 and script 5: smoke + full pending on CGlabs.
 
 Next dispatches (out of scope here): S3 publishing of these artefacts;
 notebook consumption in `atlas_notebooks`.

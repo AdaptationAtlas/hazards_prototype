@@ -1,6 +1,6 @@
 # 0) Introduction ####
 # Aggregate the monthly admin-level observational parquet
-# (obs_monthly_adm{0,1}.parquet from R/observational/0.1.2.2_extract_obs_admin.R) into a
+# (obs_monthly_adm{0,1}.parquet from R/observational/3_extract_obs_admin.R) into a
 # single combined annual + 3-month-seasonal parquet per admin level:
 #
 #   Data/chirts_chirps_hist/admin/obs_periods_adm{0,1}.parquet
@@ -96,9 +96,9 @@ if (mode == "--smoke") {
 } else {
   cat(
     "Usage:\n",
-    "  Rscript R/observational/0.1.2.3_aggregate_obs_admin_periods.R --smoke\n",
+    "  Rscript R/observational/4_aggregate_obs_admin_periods.R --smoke\n",
     "      adm0 only; verification checks; exit 0/1.\n",
-    "  Rscript R/observational/0.1.2.3_aggregate_obs_admin_periods.R --full\n",
+    "  Rscript R/observational/4_aggregate_obs_admin_periods.R --full\n",
     "      adm0 + adm1.\n",
     sep = ""
   )
@@ -212,7 +212,7 @@ for (lvl in levels_run) {
   out_path <- file.path(admin_dir, sprintf("obs_periods_%s.parquet", lvl))
 
   if (!file.exists(in_path)) {
-    stop(glue::glue("Missing input: {in_path}. Run R/observational/0.1.2.2_extract_obs_admin.R first."))
+    stop(glue::glue("Missing input: {in_path}. Run R/observational/3_extract_obs_admin.R first."))
   }
   if (file.exists(out_path) && file.size(out_path) > 100L) {
     log_step(sprintf(
@@ -273,7 +273,7 @@ for (lvl in levels_run) {
       "Annual + 12 3-month-seasonal observational aggregates per %s polygon.", lvl
     ),
     source = sprintf(
-      "R/observational/0.1.2.3_aggregate_obs_admin_periods.R from %s", basename(in_path)
+      "R/observational/4_aggregate_obs_admin_periods.R from %s", basename(in_path)
     ),
     aggregation_rule = paste(
       sprintf("%s=%s", names(agg_rule), unlist(agg_rule)),
@@ -282,7 +282,7 @@ for (lvl in levels_run) {
     periods = paste(names(seasons), collapse = ", "),
     n_rows = as.character(nrow(combined)),
     build_time = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
-    build_script = "R/observational/0.1.2.3_aggregate_obs_admin_periods.R"
+    build_script = "R/observational/4_aggregate_obs_admin_periods.R"
   ))
   arrow::write_parquet(tbl, out_path, compression = "zstd", compression_level = 9)
   log_step(sprintf(
@@ -298,7 +298,7 @@ for (lvl in levels_run) {
     aggregation_rule = agg_rule,
     n_rows = nrow(combined),
     build_time = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
-    parent_script = "R/observational/0.1.2.3_aggregate_obs_admin_periods.R"
+    parent_script = "R/observational/4_aggregate_obs_admin_periods.R"
   ), path = paste0(out_path, ".json"), pretty = TRUE, auto_unbox = TRUE)
 }
 
