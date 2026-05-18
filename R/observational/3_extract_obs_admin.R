@@ -146,9 +146,13 @@ if (mode == "--smoke") {
 source(file.path(project_dir, "R", "observational", "_helpers.R"))
 pacman::p_load(future, future.apply, furrr)
 
-# Each per-variable extract loads a 544-layer raster stack into memory for
-# two zonal passes (mean, sd). Empirical RSS ~ 30 GB / worker on adm1.
-per_worker_gb <- 30
+# Per-worker peak RSS observed on CGlabs adm1 was ~50 GB - that's a
+# property of the workload (terra::zonal over a 544-layer 0.05deg Africa
+# stack + two stats), not the environment. Worker count auto-scales from
+# the cgroup-aware free-RAM detected by system_resources(). Override with
+# --workers, --mem-fraction, or --mem-budget at the CLI. Capped at the
+# number of variables (no point running more workers than tasks).
+per_worker_gb <- 50
 workers <- resolve_workers(args, per_worker_gb = per_worker_gb, max_workers = 9L)
 print_resource_banner(workers, per_worker_gb, label = "extract")
 
