@@ -292,32 +292,49 @@ resolve_clim_years <- function(clim_bounds, available_years) {
 # 4) Main loop ####
 
 written <- character()
-for (var in variables_run) {
+# Parallelism setup: workload scales nicely across variables - each handles
+# its own (periods x climwindows x stats) sequentially. Per-worker peak RSS
+# observed ~10 GB. Worker count auto-scales from cgroup-aware free RAM.
+source(file.path(project_dir, "R", "observational", "_helpers.R"))
+pacman::p_load(future, future.apply, furrr)
+
+overwrite <- parse_overwrite_flag(args)
+if (overwrite) log_step("--overwrite set: existing outputs will be rebuilt")
+
+per_worker_gb <- 10
+workers <- resolve_workers(args, per_worker_gb = per_worker_gb,
+                           max_workers = length(variables_run))
+print_resource_banner(workers, per_worker_gb, label = "climatology")
+
+backend <- parse_cli_flag(args, "backend", "character")
+if (is.null(backend)) {
+  backend <- if (.Platform$OS.type == "unix" &&
+    !grepl("darwin", R.version$os, ignore.case = TRUE)) "multicore" else "multisession"
+}
+
+#' Compute all (period x climwindow x stat) COGs for one variable. Returns
+#' the vector of output paths written. Self-contained so it serialises
+#' cleanly to PSOCK workers when --backend multisession is used.
+process_variable <- function(var) {
   out_var_dir <- file.path(maps_dir, var)
   if (!dir.exists(out_var_dir)) dir.create(out_var_dir, recursive = TRUE)
-
   files <- list_var_files(var)
   available_years <- sort(unique(files$year))
+  written_local <- character()
 
   for (clim_name in names(climatologies_run)) {
     bounds <- resolve_clim_years(climatologies_run[[clim_name]], available_years)
     log_step(sprintf("=== %s / %s (%d-%d) ===", var, clim_name, bounds[1], bounds[2]))
-
     for (period in periods_run) {
-      # Check if all 4 outputs already exist; skip the heavy compute if so.
       expected <- file.path(
         out_var_dir,
-        sprintf(
-          "%s_%s_%s_%s.tif", var, period, clim_name,
-          c("mean", "min", "max", "sd")
-        )
+        sprintf("%s_%s_%s_%s.tif", var, period, clim_name,
+                c("mean", "min", "max", "sd"))
       )
-      if (all(file.exists(expected)) && all(file.size(expected) > 100L)) {
-        log_step(sprintf(
-          "  %s / %s: all 4 stats present, skipping",
-          var, period
-        ))
-        written <- c(written, expected)
+      if (!overwrite && all(file.exists(expected)) &&
+          all(file.size(expected) > 100L)) {
+        log_step(sprintf("  %s / %s: all 4 stats present, skipping", var, period))
+        written_local <- c(written_local, expected)
         next
       }
 
@@ -325,37 +342,28 @@ for (var in variables_run) {
       bbox <- if (mode == "--smoke") smoke_bbox else NULL
       yearly_stk <- yearly_summary_stack(var, period, bounds[1], bounds[2], bbox = bbox)
       if (is.null(yearly_stk) || terra::nlyr(yearly_stk) < 3L) {
-        log_step(sprintf(
-          "  %s / %s: insufficient yearly summaries (%s); skipping",
+        log_step(sprintf("  %s / %s: insufficient yearly summaries (%s); skipping",
           var, period,
-          if (is.null(yearly_stk)) "0" else terra::nlyr(yearly_stk)
-        ))
+          if (is.null(yearly_stk)) "0" else terra::nlyr(yearly_stk)))
         next
       }
 
       stats_stk <- reduce_to_stats(yearly_stk)
-
       for (k in seq_len(4)) {
         stat_name <- c("mean", "min", "max", "sd")[k]
-        out_path <- file.path(
-          out_var_dir,
-          sprintf("%s_%s_%s_%s.tif", var, period, clim_name, stat_name)
-        )
+        out_path <- file.path(out_var_dir,
+          sprintf("%s_%s_%s_%s.tif", var, period, clim_name, stat_name))
         collect_warnings(
-          terra::writeRaster(
-            stats_stk[[k]], out_path,
-            overwrite = TRUE, filetype = "COG", gdal = cog_gdal_opts
-          ),
+          terra::writeRaster(stats_stk[[k]], out_path,
+            overwrite = TRUE, filetype = "COG", gdal = cog_gdal_opts),
           label = sprintf("write %s", basename(out_path))
         )
-        written <- c(written, out_path)
+        written_local <- c(written_local, out_path)
       }
 
-      log_step(sprintf(
-        "  %s / %s (n_years=%d) -> 4 COGs in %.1fs",
+      log_step(sprintf("  %s / %s (n_years=%d) -> 4 COGs in %.1fs",
         var, period, terra::nlyr(yearly_stk),
-        as.numeric(Sys.time() - t0, units = "secs")
-      ))
+        as.numeric(Sys.time() - t0, units = "secs")))
     }
   }
 
@@ -367,10 +375,9 @@ for (var in variables_run) {
       across_year_stats = c("mean", "min", "max", "sd"),
       climatologies = lapply(names(climatologies_run), function(n) {
         b <- climatologies_run[[n]]
-        list(
-          name = n, start = if (is.na(b[1])) "min_available" else b[1],
-          end = if (is.na(b[2])) "max_available" else b[2]
-        )
+        list(name = n,
+             start = if (is.na(b[1])) "min_available" else b[1],
+             end   = if (is.na(b[2])) "max_available" else b[2])
       }),
       periods = periods_run,
       inf_handling = "+-Inf masked to NA before any reducer",
@@ -381,7 +388,29 @@ for (var in variables_run) {
     path = file.path(out_var_dir, "_metadata.json"),
     pretty = TRUE, auto_unbox = TRUE
   )
+  written_local
 }
+
+# Dispatch
+if (workers > 1L) {
+  if (backend == "multicore") {
+    future::plan(future::multicore, workers = workers)
+  } else {
+    future::plan(future::multisession, workers = workers)
+  }
+} else {
+  future::plan(future::sequential)
+  backend <- "sequential"
+}
+log_step(sprintf(
+  "parallel climatology across %d variables, %d workers (%s)",
+  length(variables_run), workers, backend
+))
+
+results <- furrr::future_map(variables_run, process_variable,
+  .options = furrr::furrr_options(seed = TRUE))
+future::plan(future::sequential)
+written <- c(written, unlist(results))
 
 # 5) Smoke verification ####
 
