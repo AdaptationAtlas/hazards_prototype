@@ -2,8 +2,8 @@
 # Produce per-pixel climatology COGs for the observational stack so the
 # notebook can render maps without doing on-the-fly rasterstats.
 #
-# Inputs (already on disk after R/0.1.2_get_chirps_chirts.R and
-# R/0.1.2.1_calculate_obs_spei.R --full):
+# Inputs (already on disk after R/observational/0.1.2_get_chirps_chirts.R and
+# R/observational/0.1.2.1_calculate_obs_spei.R --full):
 #   Data/chirts_chirps_hist/{PTOT,TMAX,TMIN,TAVG,SPEI-01,03,06,12,24}/*.tif
 #
 # Outputs:
@@ -117,9 +117,9 @@ if (mode == "--smoke") {
 } else {
   cat(
     "Usage:\n",
-    "  Rscript R/0.1.2.4_make_obs_map_climatologies.R --smoke\n",
+    "  Rscript R/observational/0.1.2.4_make_obs_map_climatologies.R --smoke\n",
     "      PTOT, annual + JFM + JJA, 1991-2020 climatology, Kenya bbox.\n",
-    "  Rscript R/0.1.2.4_make_obs_map_climatologies.R --full\n",
+    "  Rscript R/observational/0.1.2.4_make_obs_map_climatologies.R --full\n",
     "      All 9 vars x 13 periods x 3 climatologies x 4 stats = 1,404 COGs.\n",
     sep = ""
   )
@@ -376,7 +376,7 @@ for (var in variables_run) {
       inf_handling = "+-Inf masked to NA before any reducer",
       format = "Cloud-Optimized GeoTIFF (DEFLATE PREDICTOR=2 BLOCKSIZE=512)",
       build_time = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
-      parent_script = "R/0.1.2.4_make_obs_map_climatologies.R"
+      parent_script = "R/observational/0.1.2.4_make_obs_map_climatologies.R"
     ),
     path = file.path(out_var_dir, "_metadata.json"),
     pretty = TRUE, auto_unbox = TRUE
