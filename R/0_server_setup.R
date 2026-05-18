@@ -598,6 +598,29 @@ if (!file.exists(vop_file_world) || update == TRUE) {
   unlink(zip_file_path)
 }
 
+# 3.5.5) Trade (Crops & Livestock) #####
+# Note: FAOSTAT's canonical filename uses 'CropsLivestock' (no underscore),
+# unlike 'Crops_Livestock' in §3.5.3. Match the upstream spelling.
+trade_file <- file.path(fao_dir, "Trade_CropsLivestock_E_Africa_NOFLAG.csv")
+if (!file.exists(trade_file) || update == TRUE) {
+  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Trade_CropsLivestock_E_Africa.zip"
+  zip_file_path <- file.path(fao_dir, "Trade_CropsLivestock_E_Africa.zip")
+
+  download.file(url, zip_file_path, mode = "wb")
+  unzip(zip_file_path, exdir = fao_dir)
+  unlink(zip_file_path)
+}
+
+trade_file_world <- file.path(fao_dir, "Trade_CropsLivestock_E_All_Area_Groups.csv")
+if (!file.exists(trade_file_world) || update == TRUE) {
+  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Trade_CropsLivestock_E_All_Area_Groups.zip"
+  zip_file_path <- file.path(fao_dir, "Trade_CropsLivestock_E_All_Area_Groups.zip")
+
+  download.file(url, zip_file_path, mode = "wb")
+  unzip(zip_file_path, exdir = fao_dir)
+  unlink(zip_file_path)
+}
+
 # 3.6) Highlands map #####
 update <- FALSE
 afr_highlands_file <- file.path(afr_highlands_dir, "afr-highlands.asc")
