@@ -568,7 +568,11 @@ if (mode == "--full") {
   cat("Downloads pending:", nrow(to_do), "\n\n")
 
   # 6.3) Download / process loop (one parallel pass).
-  n_dl <- if (on_linux_server) 8L else 5L
+  source("R/observational/_helpers.R")
+  # Downloads are I/O-bound; per-worker RAM is small (~0.5 GB raster work area).
+  per_worker_gb_dl <- 0.5
+  n_dl <- resolve_workers(args, per_worker_gb = per_worker_gb_dl, max_workers = 16L)
+  print_resource_banner(n_dl, per_worker_gb_dl, label = "download")
   set_parallel_plan(n_cores = n_dl, use_multisession = !on_linux_server)
   progressr::handlers("progress")
 

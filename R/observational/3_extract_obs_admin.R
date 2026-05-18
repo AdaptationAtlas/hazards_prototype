@@ -130,14 +130,27 @@ if (mode == "--smoke") {
 } else {
   cat(
     "Usage:\n",
-    "  Rscript R/observational/3_extract_obs_admin.R --smoke\n",
+    "  Rscript R/observational/3_extract_obs_admin.R --smoke [parallel flags]\n",
     "      adm0 only, all 9 variables, last 5 years of coverage.\n",
-    "  Rscript R/observational/3_extract_obs_admin.R --full\n",
+    "  Rscript R/observational/3_extract_obs_admin.R --full  [parallel flags]\n",
     "      All admin levels (0/1/2), all variables, all months.\n",
+    "\n",
+    "Parallel flags (script parallelises across the 9 variables per admin level):\n",
     sep = ""
   )
+  source("R/observational/_helpers.R")
+  cat(parallel_flags_usage(), "\n", sep = "")
   quit(status = 1)
 }
+
+source("R/observational/_helpers.R")
+pacman::p_load(future, future.apply, furrr)
+
+# Each per-variable extract loads a 544-layer raster stack into memory for
+# two zonal passes (mean, sd). Empirical RSS ~ 30 GB / worker on adm1.
+per_worker_gb <- 30
+workers <- resolve_workers(args, per_worker_gb = per_worker_gb, max_workers = 9L)
+print_resource_banner(workers, per_worker_gb, label = "extract")
 
 # 2) Configuration ####
 
@@ -360,23 +373,41 @@ for (level in levels_run) {
   log_step(sprintf("=== Admin level: %s ===", level))
   geo <- load_admin(level)
   zonal_rast <- get_zonal_rast(level, geo, obs_base)
+  zonal_rast_path <- file.path(
+    boundaries_int_dir_local, sprintf("%s_obs_zonal.tif", level)
+  )
   idx <- build_boundaries_index(geo)
 
-  per_var <- vector("list", length(variables_full))
-  for (j in seq_along(variables_full)) {
+  # Parallel across the 9 variables. terra SpatRaster handles can't cross
+  # fork boundaries safely (C++ pointers); each worker opens its own copy
+  # of the cached zonal raster on disk.
+  if (workers > 1L) {
+    future::plan(future::multicore, workers = workers)
+  } else {
+    future::plan(future::sequential)
+  }
+  log_step(sprintf("  parallel extract across %d variables, %d workers",
+    length(variables_full), workers))
+
+  smoke_yrs <- if (mode == "--smoke") smoke_n_years else NULL
+  results <- furrr::future_map(seq_along(variables_full), function(j) {
     var <- variables_full[j]
     t0 <- Sys.time()
-    long_var <- extract_var_zonal(
-      var, zonal_rast,
-      n_years = if (mode == "--smoke") smoke_n_years else NULL
+    zr <- terra::rast(zonal_rast_path)
+    long_var <- extract_var_zonal(var, zr, n_years = smoke_yrs)
+    list(
+      j = j, var = var, n_rows = nrow(long_var),
+      elapsed = as.numeric(Sys.time() - t0, units = "secs"),
+      data = long_var
     )
-    log_step(sprintf(
-      "  [%d/%d] %s: %d rows in %.1fs",
-      j, length(variables_full), var, nrow(long_var),
-      as.numeric(Sys.time() - t0, units = "secs")
-    ))
-    per_var[[j]] <- long_var
+  }, .options = furrr::furrr_options(seed = TRUE))
+  future::plan(future::sequential)
+
+  for (r in results) {
+    log_step(sprintf("  [%d/%d] %s: %d rows in %.1fs",
+      r$j, length(variables_full), r$var, r$n_rows, r$elapsed))
   }
+  per_var <- lapply(results, `[[`, "data")
   combined <- data.table::rbindlist(per_var, use.names = TRUE)
   log_step(sprintf("  merging admin metadata onto %d rows", nrow(combined)))
   combined <- merge(combined, idx, by = "zone_id", all.x = TRUE)

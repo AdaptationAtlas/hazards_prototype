@@ -149,8 +149,13 @@ cog_gdal_opts <- c(
   "OVERVIEWS=NONE",
   "BLOCKSIZE=512"
 )
-n_cores_pet <- if (mode == "--smoke") 4L else 8L
-n_cores_spei <- if (mode == "--smoke") 4L else 12L
+source("R/observational/_helpers.R")
+# terra::app per-pixel SPEI fit streams blocks; memory footprint per worker is
+# modest. 2 GB / worker is conservative for full Africa.
+per_worker_gb <- 2
+n_cores_spei <- resolve_workers(args, per_worker_gb = per_worker_gb, max_workers = 16L)
+n_cores_pet  <- n_cores_spei
+print_resource_banner(n_cores_spei, per_worker_gb, label = "spei")
 
 # Mid-month day-of-year for monthly mean Ra (FAO-56 Tab. A2.2 approximation).
 mid_month_doy <- c(15L, 46L, 75L, 105L, 135L, 162L, 198L, 228L, 258L, 288L, 318L, 344L)
