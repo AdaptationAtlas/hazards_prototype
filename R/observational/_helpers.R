@@ -119,6 +119,12 @@ parallel_flags_usage <- function() {
     "  --workers N         explicit worker count (overrides auto-detect)",
     "  --cpu-fraction X    use X fraction of logical cores (default 0.5)",
     "  --mem-fraction X    use X fraction of free RAM     (default 0.5)",
+    "  --overwrite         rebuild outputs even when already present on disk",
     sep = "\n"
   )
+}
+
+#' Returns TRUE if --overwrite appears anywhere in args (boolean flag, no value).
+parse_overwrite_flag <- function(args) {
+  isTRUE("--overwrite" %in% args)
 }

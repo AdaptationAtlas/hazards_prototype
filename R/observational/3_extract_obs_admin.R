@@ -359,12 +359,15 @@ levels_run <- if (mode == "--smoke") admin_levels_smoke else admin_levels_full
 obs_base <- terra::rast(obs_base_rast_path)
 
 written <- character()
+overwrite <- parse_overwrite_flag(args)
+if (overwrite) log_step("--overwrite set: existing outputs will be rebuilt")
+
 for (level in levels_run) {
   out_path <- file.path(admin_dir, sprintf("obs_monthly_%s.parquet", sub("admin", "adm", level)))
-  if (file.exists(out_path) && file.size(out_path) > 100L) {
+  if (!overwrite && file.exists(out_path) && file.size(out_path) > 100L) {
     log_step(sprintf(
-      "=== %s: parquet already present, skipping (delete %s to rebuild)",
-      level, basename(out_path)
+      "=== %s: parquet already present, skipping (use --overwrite to rebuild)",
+      level
     ))
     written <- c(written, out_path)
     next
