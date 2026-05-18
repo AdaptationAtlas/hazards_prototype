@@ -246,13 +246,16 @@ get_zonal_rast <- function(level, geo, obs_base) {
 }
 
 #' Build the per-zone metadata data.table (zone_id + admin names + gaul codes).
+#' Deduplicates on zone_id so multi-feature countries (e.g. mainland + offshore
+#' islands sharing one gaul code) don't explode the downstream merge.
 build_boundaries_index <- function(geo) {
   cols <- c(
     "iso3", "admin0_name", "admin1_name", "admin2_name", "zone_id",
     "gaul0_code", "gaul1_code", "gaul2_code"
   )
   present_cols <- intersect(cols, names(data.frame(geo)))
-  data.table::as.data.table(data.frame(geo)[, present_cols, drop = FALSE])
+  dt <- data.table::as.data.table(data.frame(geo)[, present_cols, drop = FALSE])
+  unique(dt, by = "zone_id")
 }
 
 #' List the monthly TIFs for one variable and return a data.table of paths.
