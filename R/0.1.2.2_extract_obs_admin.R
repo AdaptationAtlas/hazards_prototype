@@ -296,6 +296,15 @@ extract_var_zonal <- function(var, zonal_rast, n_years = NULL) {
   stk <- terra::rast(files)
   names(stk) <- sub("\\.tif$", "", basename(files))
 
+  # SPEI's log-logistic fit can produce +-Inf at the distribution tails for a
+  # tiny fraction of pixel-months. Inf propagates through mean() and sd(),
+  # contaminating any admin polygon containing a tail pixel. Mask to NA so
+  # na.rm=TRUE in zonal can drop them. No-op for PTOT / TMAX / TMIN / TAVG.
+  stk <- collect_warnings(
+    terra::ifel(is.infinite(stk), NA, stk),
+    label = sprintf("Inf mask %s", var)
+  )
+
   z_mean <- collect_warnings(
     terra::zonal(stk, zonal_rast, fun = "mean", na.rm = TRUE),
     label = sprintf("zonal mean %s", var)
@@ -467,20 +476,23 @@ if (mode == "--smoke") {
     pass <- FALSE
   }
 
-  # Check 3: row count plausible.
-  n_countries <- uniqueN(back$iso3)
+  # Check 3: row count plausible. For admin0 the natural unit is the gaul0
+  # zone (n_zones > n_iso3 in practice - territories share iso3 with main
+  # country but get their own gaul0_code).
+  zone_cols <- intersect(c("gaul2_code", "gaul1_code", "gaul0_code"), names(back))
+  n_zones <- uniqueN(back[, zone_cols, with = FALSE])
   n_vars <- uniqueN(back$variable)
   n_months <- uniqueN(back[, .(year, month)])
-  expected_rows <- n_countries * n_vars * n_months
+  expected_rows <- n_zones * n_vars * n_months
   if (abs(nrow(back) - expected_rows) / expected_rows < 0.05) {
     cat(sprintf(
-      "[OK] 3. Row count %d ~= countries x vars x months = %d x %d x %d = %d.\n",
-      nrow(back), n_countries, n_vars, n_months, expected_rows
+      "[OK] 3. Row count %d ~= zones x vars x months = %d x %d x %d = %d.\n",
+      nrow(back), n_zones, n_vars, n_months, expected_rows
     ))
   } else {
     cat(sprintf(
-      "[FAIL] 3. Row count %d differs from expected %d.\n",
-      nrow(back), expected_rows
+      "[FAIL] 3. Row count %d differs from expected %d (zones=%d vars=%d months=%d).\n",
+      nrow(back), expected_rows, n_zones, n_vars, n_months
     ))
     pass <- FALSE
   }
