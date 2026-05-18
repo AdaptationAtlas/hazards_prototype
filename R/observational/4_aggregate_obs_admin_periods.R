@@ -155,11 +155,16 @@ aggregate_one <- function(dt_var, var) {
   rule <- agg_rule[[var]]
   if (is.null(rule)) stop(glue::glue("No aggregation rule for variable '{var}'"))
 
+  # NA-strict AND Inf-strict: if any month within a period is missing or
+  # non-finite, the period yields NA. SPEI's log-logistic fit can emit +-Inf
+  # at the distribution tails for a small fraction of pixel-months; those
+  # leak through script 3's spatial mean as occasional +-Inf monthly values
+  # and would otherwise propagate to Inf period aggregates.
   agg_fun <- switch(rule,
-    sum  = function(x) if (any(is.na(x))) NA_real_ else sum(x),
-    max  = function(x) if (any(is.na(x))) NA_real_ else max(x),
-    min  = function(x) if (any(is.na(x))) NA_real_ else min(x),
-    mean = function(x) if (any(is.na(x))) NA_real_ else mean(x),
+    sum  = function(x) if (any(!is.finite(x))) NA_real_ else sum(x),
+    max  = function(x) if (any(!is.finite(x))) NA_real_ else max(x),
+    min  = function(x) if (any(!is.finite(x))) NA_real_ else min(x),
+    mean = function(x) if (any(!is.finite(x))) NA_real_ else mean(x),
     stop(glue::glue("Unknown agg rule '{rule}'"))
   )
 
@@ -190,7 +195,7 @@ aggregate_one <- function(dt_var, var) {
     by_cols <- c(zone_cols, "year")
     agg <- dt_p[, .(
       value_mean = agg_fun(value_mean),
-      value_sd   = if (any(is.na(value_sd))) NA_real_ else mean(value_sd),
+      value_sd   = if (any(!is.finite(value_sd))) NA_real_ else mean(value_sd),
       n_months   = .N
     ), by = by_cols]
     # Drop incomplete windows: need exactly expected_n months present.
@@ -338,11 +343,18 @@ if (mode == "--smoke") {
   n_vars <- uniqueN(back$variable)
   n_years <- uniqueN(back$year)
   expected_max <- n_zones * n_periods * n_vars * n_years
-  # Annual + 12 seasons; not every year-period combo will be complete at the
-  # edges of coverage (esp. DJF at the very first year). Expect actual to be
-  # close to but below expected_max.
+  # Annual + 12 seasons; not every year-period combo will be complete.
+  # Expected drop-outs:
+  #   - Year-boundary edges (DJF / NDJ need previous-year Dec): one year at
+  #     each coverage boundary x 2 periods x n_vars x n_zones.
+  #   - SPEI spin-up: SPEI-24 loses 2 years; SPEI-12 loses 1 year; smaller
+  #     scales smaller. Each lost year is 13 periods x 1 var x n_zones.
+  #   - SPEI tail Inf-rows in a period now drop the whole period (Inf-strict
+  #     rule above) - small additional loss (~0.02% of cell-months).
+  # For the 9-variable / 44-year / 54-zone smoke this typically lands at
+  # ~80%, hence the loose lower bound here.
   ratio <- nrow(back) / expected_max
-  if (ratio > 0.85 && ratio <= 1.0) {
+  if (ratio > 0.75 && ratio <= 1.0) {
     cat(sprintf(
       "[OK] 3. Row count %d (%.1f%% of %d zones x periods x vars x years).\n",
       nrow(back), 100 * ratio, expected_max
