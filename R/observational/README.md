@@ -10,8 +10,9 @@ Climate Rationale notebook reads for the observational track:
 - **annual + seasonal** parquet (one row per zone × year × period × variable)
 - **per-pixel climatology COGs** for map rendering (mean / min / max / sd over
   three reference windows, 13 calendar periods, all variables)
+- **public S3 publish** of the admin parquets + climatology COGs + base raster
 
-Five scripts in this folder, designed to run in order. Each is idempotent
+Six scripts in this folder, designed to run in order. Each is idempotent
 (skip-if-present at output level), each has a `--smoke` and a `--full` mode,
 each prints progress with `[HH:MM:SS]` timestamps that flush immediately so a
 detached `nohup … > log.txt 2>&1 &` shows progress live in `tail -f log.txt`.
@@ -83,6 +84,16 @@ by script 1 on first smoke run.
  │                                  │  9 vars × 13 periods ×              └── {VAR}_{period}_{clim}_sd.tif
  │                                  │  3 clim windows × 4 stats           (1,404 COGs)
  └──────────────────────────────────┘
+                  │
+                  ▼
+ ┌──────────────────────────────────┐
+ │ 6_publish_obs_to_s3.R            │  AtlasDataManageR::S3DirUploader  s3://digital-atlas/
+ │ (reads outputs of 3, 4, 5 +      │  Hive-partitioned layout          ├── domain=climate/.../processing=admin-monthly/
+ │  metadata/base_raster_obs.tif)   │                                   ├── domain=climate/.../processing=admin-periods/
+ │                                  │  Tier 1: admin parquets + base    ├── domain=climate/.../processing=climatology/
+ │                                  │  Tier 2: 1,404 climatology COGs   │   variable=.../period=.../clim=.../stat=...
+ │                                  │  Tier 3: out of scope             └── domain=boundaries/.../processing=base-raster/
+ └──────────────────────────────────┘
 ```
 
 ## Key concepts
@@ -106,13 +117,13 @@ filenames):
 | `TAVG` | mean | Average daily mean temperature |
 | `SPEI-*` | mean | SPEI is already standardised; arithmetic mean of standard scores |
 
-**Climatology windows** (for the map COGs, `_{clim}_` token):
+**Climatology windows** (for the map COGs, `_{clim}_` token in the filename):
 
-| Name | Years | Source |
-|---|---|---|
-| `atlas` | 1995-2014 | CMIP6 historical baseline used elsewhere in this pipeline |
-| `wmo`   | 1991-2020 | WMO / IPCC AR6 reference period (also the SPEI fit window) |
-| `full`  | 1981 → latest | Every available year |
+| On-disk label | Years | S3 partition value (script 6) | Source |
+|---|---|---|---|
+| `1995-2014` | 1995-2014 | `atlas_1995-2014` | CMIP6 historical baseline used elsewhere in this pipeline |
+| `1991-2020` | 1991-2020 | `wmo_1991-2020` | WMO / IPCC AR6 reference period (also the SPEI fit window) |
+| `full`      | 1981 → latest | `full_record` | Every available year |
 
 **Standardization details (SPEI):** log-logistic distribution per pixel,
 unbiased PWM fit, **reference period 1991-2020 hard-coded**. Tail pixel-months
@@ -140,6 +151,9 @@ Rscript R/observational/4_aggregate_obs_admin_periods.R   --smoke
 Rscript R/observational/4_aggregate_obs_admin_periods.R   --full   # <5 min
 Rscript R/observational/5_make_obs_map_climatologies.R    --smoke
 Rscript R/observational/5_make_obs_map_climatologies.R    --full   # ~1-2 h
+Rscript R/observational/6_publish_obs_to_s3.R              --dry-run
+Rscript R/observational/6_publish_obs_to_s3.R              --smoke
+Rscript R/observational/6_publish_obs_to_s3.R              --full   # ~10-30 min
 ```
 
 Each `--smoke` runs inline verification checks (file present, schema,
@@ -156,15 +170,16 @@ tail -f /tmp/clim.log
 
 ### Parallelism & resource control
 
-Scripts **1, 2, 3** accept three CLI flags for tuning parallelism. Script 4
-runs in seconds and doesn't need any. Script 5 is currently sequential — a
-follow-on commit will parallelize it across variables.
+Scripts **1, 2, 3, 5, 6** accept the standard parallel flags. Script 4 runs
+in seconds and doesn't need any.
 
 | Flag | Default | Meaning |
 |---|---|---|
 | `--workers N` | (auto) | Explicit worker count. Overrides everything else. |
 | `--cpu-fraction X` | `0.5` | Fraction of logical cores to use. |
 | `--mem-fraction X` | `0.5` | Fraction of free RAM to use. |
+| `--mem-budget G` | (auto) | Explicit memory budget in GB. Overrides `--mem-fraction`. |
+| `--overwrite` | off | Rebuild outputs even when already on disk (scripts 3, 5, 6). |
 
 Auto-resolution: `min(cpu_fraction × cores, mem_fraction × free_RAM /
 per_worker_gb)`, clamped to each script's `max_workers`. Each script encodes
@@ -174,7 +189,9 @@ its own peak per-worker RAM estimate:
 |---|---|---|
 | 1 — download | ~0.5 GB | I/O-bound; small raster work area |
 | 2 — SPEI | ~2 GB | `terra::app` streams blocks |
-| 3 — admin extract | ~30 GB | Holds a 544-layer raster stack in memory for zonal passes |
+| 3 — admin extract | ~50 GB | Holds a 544-layer raster stack in memory for zonal passes |
+| 5 — climatology | ~10 GB | One worker per variable; terra streams the per-year reductions |
+| 6 — publish to S3 | ~0.2 GB | I/O-bound; small in-memory upload buffers |
 
 At startup each script prints a banner so you can verify the resolved config
 before the heavy work begins:
@@ -239,12 +256,79 @@ variable's rule (PTOT=sum, TMAX=max, TMIN=min, others=mean across months).
 ### Climatology COGs (`maps/{variable}/{var}_{period}_{clim}_{stat}.tif`)
 
 Per-pixel value. Float32 COG, DEFLATE / PREDICTOR=2 / BLOCKSIZE=512.
-Filename encodes the four dimensions:
+Filename is 4 underscore-tokens encoding the four dimensions:
 
 - `{variable}`: `PTOT`, `TMAX`, ..., `SPEI-24`
 - `{period}`: `annual`, `JFM`, ..., `DJF`
-- `{clim}`: `atlas_1995-2014`, `wmo_1991-2020`, `full_1981-<latest>`
+- `{clim}`: `1995-2014`, `1991-2020`, `full` (script 6 re-labels these to
+  `atlas_1995-2014` / `wmo_1991-2020` / `full_record` when publishing to S3)
 - `{stat}`: `mean`, `min`, `max`, `sd`
+
+Example: `PTOT_annual_1991-2020_mean.tif`, `SPEI-03_NDJ_full_sd.tif`.
+
+## Script 6 — publish to S3
+
+Publishes the analysis-ready artefacts from scripts 3, 4, 5 + the base raster
+to the public `digital-atlas` bucket using the Hive-partitioned layout that's
+canonical for newer Atlas datasets (FAOSTAT, hazard × exposure, GLW4). Built
+on `AtlasDataManageR::S3DirUploader`, so it reuses the same uploader Brayden
+uses for hazard × exposure outputs.
+
+**S3 path table:**
+
+```
+Tier 1 — admin parquets + base raster (5 files)
+
+  s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/
+    processing=admin-monthly/variable=adm{0,1}_obs.parquet
+    processing=admin-periods/variable=adm{0,1}_obs.parquet
+
+  s3://digital-atlas/domain=boundaries/type=raster/source=chirps-grid/region=africa/
+    processing=base-raster/base_raster_obs.tif
+
+Tier 2 — climatology COGs (1,404 files)
+
+  s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/
+    processing=climatology/
+      variable={PTOT|TMAX|TMIN|TAVG|SPEI-01|SPEI-03|SPEI-06|SPEI-12|SPEI-24}/
+      period={annual|JFM|...|DJF}/
+      clim={atlas_1995-2014|wmo_1991-2020|full_record}/
+      stat={mean|min|max|sd}/
+      {VAR}_{period}_{clim}_{stat}.tif
+```
+
+Per-pixel monthly + SPEI COGs (Tier 3, ~13,500 files, ~50 GB) are **not**
+published — they stay on Afrilabs/CGlabs only. Revisit if a downstream
+consumer materialises.
+
+**Run modes:**
+
+| Mode | Effect |
+|---|---|
+| `--dry-run` | No network. Walks local files and writes `Data/chirts_chirps_hist/_publish_dry_run.csv` with `(tier, upload_id, local_path, size, s3_uri)` rows. Lets you eyeball every target path before committing to an upload. |
+| `--smoke` | Uploads exactly one file (`obs_monthly_adm0.parquet`) and runs four inline checks: arrow round-trip, S3 listing, anonymous-read ACL, audit report. **Stop here, surface to a human reviewer before `--full`.** |
+| `--full` | Uploads every file in the selected tier(s). Idempotent (default `overwrite = FALSE` skips files already on S3). |
+
+**Flags:**
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--tier {1\|2\|all}` | `all` | Restrict to Tier 1 only (admin + base raster, fast), Tier 2 only (climatology COGs, the bulk of the bytes), or both. `--smoke` always means Tier 1. |
+| `--overwrite` | off | Re-upload files already on S3. |
+| `--workers N` | (auto) | Explicit worker count for parallel upload. |
+| `--cpu-fraction X`, `--mem-fraction X`, `--mem-budget G` | (auto) | Auto-resolution helpers; uploads are I/O-bound so per-worker RAM is ~0.2 GB and the cap is ~16 workers. |
+
+**Verification protocol:**
+
+1. `Rscript R/observational/6_publish_obs_to_s3.R --dry-run` and inspect the CSV.
+2. `Rscript R/observational/6_publish_obs_to_s3.R --smoke` and confirm all 4 checks pass.
+3. **Stop. Show the smoke URI + check results to a reviewer before running `--full`.**
+4. After approval: `Rscript R/observational/6_publish_obs_to_s3.R --full`.
+
+**AWS credentials:** required for `--smoke` and `--full`. The script checks
+for `AWS_ACCESS_KEY_ID` + `AWS_SECRET_ACCESS_KEY` env vars OR
+`~/.aws/credentials` at startup and exits with a clear message if both are
+missing. `--dry-run` skips this check.
 
 ## Dependencies
 
@@ -256,6 +340,10 @@ Filename encodes the four dimensions:
 - R packages: `terra`, `data.table`, `arrow`, `httr2`, `rvest`, `SPEI`,
   `jsonlite`, `glue`, `future`, `future.apply`, `furrr`, `progressr`,
   `digest`, `fs`, `sf`, `geoarrow`, `pacman`. Auto-installed via `pacman`
+  on first run.
+- Script 6 additionally needs `AtlasDataManageR`
+  (`github.com/AdaptationAtlas/data-management/R/AtlasDataManageR`) and
+  `s3fs`. AtlasDataManageR is auto-installed via `remotes::install_github`
   on first run.
 
 ## Operational notes
@@ -280,10 +368,12 @@ Filename encodes the four dimensions:
 
 ## Status as of this commit
 
-- All 5 scripts: built, styler-clean, 0 lints, on `develop`.
-- script 1 and script 2: smoke + full have been run on CGlabs successfully.
-- script 3: smoke + full have been run on CGlabs successfully.
-- script 4 and script 5: smoke + full pending on CGlabs.
+- All 6 scripts: built, styler-clean, 0 lints.
+- Scripts 1, 2, 3: smoke + full have been run on CGlabs successfully.
+- Scripts 4, 5: smoke + full pending on CGlabs.
+- Script 6: drafted on `feat/observational-publish-to-s3`; needs `--dry-run`
+  + `--smoke` verification on CGlabs before `--full` runs.
 
-Next dispatches (out of scope here): S3 publishing of these artefacts;
-notebook consumption in `atlas_notebooks`.
+Next dispatches (out of scope here): notebook consumption in
+`atlas_notebooks` (CR-062 Phase A) — unblocked once script 6 `--full` lands
+the S3 paths.
