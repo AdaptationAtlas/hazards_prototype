@@ -154,6 +154,63 @@ disown
 tail -f /tmp/clim.log
 ```
 
+### Parallelism & resource control
+
+Scripts **1, 2, 3** accept three CLI flags for tuning parallelism. Script 4
+runs in seconds and doesn't need any. Script 5 is currently sequential — a
+follow-on commit will parallelize it across variables.
+
+| Flag | Default | Meaning |
+|---|---|---|
+| `--workers N` | (auto) | Explicit worker count. Overrides everything else. |
+| `--cpu-fraction X` | `0.5` | Fraction of logical cores to use. |
+| `--mem-fraction X` | `0.5` | Fraction of free RAM to use. |
+
+Auto-resolution: `min(cpu_fraction × cores, mem_fraction × free_RAM /
+per_worker_gb)`, clamped to each script's `max_workers`. Each script encodes
+its own peak per-worker RAM estimate:
+
+| Script | per-worker RAM | Why |
+|---|---|---|
+| 1 — download | ~0.5 GB | I/O-bound; small raster work area |
+| 2 — SPEI | ~2 GB | `terra::app` streams blocks |
+| 3 — admin extract | ~30 GB | Holds a 544-layer raster stack in memory for zonal passes |
+
+At startup each script prints a banner so you can verify the resolved config
+before the heavy work begins:
+
+```
+[extract] workers=6  per_worker_gb~30.0  cores=40/40 (logical/physical)  RAM=320.4 free / 377.0 total GB
+```
+
+Examples:
+
+```sh
+# Defaults: scales to 50% of cores, 50% of free RAM, takes the min.
+Rscript R/observational/3_extract_obs_admin.R --full
+
+# Pin a specific worker count.
+Rscript R/observational/3_extract_obs_admin.R --full --workers 8
+
+# Be polite on a shared node — use 25% of cores.
+Rscript R/observational/3_extract_obs_admin.R --full --cpu-fraction 0.25
+
+# Use 80% of cores AND 80% of free RAM (worker count = min of the two).
+Rscript R/observational/2_calculate_obs_spei.R  --full --cpu-fraction 0.8 --mem-fraction 0.8
+```
+
+To inspect what's actually running while a script executes:
+
+```sh
+htop -p $(pgrep -f "3_extract_obs_admin")
+ps -o pid,user,rss,vsz,pcpu,pmem,comm -p $(pgrep -f "3_extract_obs_admin")
+```
+
+The main R process at ~100% CPU is the parent; child R processes at 0% CPU
+are forked workers (Linux) sharing memory via copy-on-write. RAM accounting
+in `ps`/`htop` over-counts shared pages — true incremental cost per worker is
+much less than the parent's RSS.
+
 ## Output schemas
 
 ### Monthly admin parquet (`obs_monthly_adm{0,1}.parquet`)
