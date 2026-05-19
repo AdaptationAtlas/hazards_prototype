@@ -387,6 +387,22 @@ if (file.exists(mapping_path)) {
                         commodity_class = character())
 }
 
+# type + parent_raw columns ####
+# Annotate every kept row with raw/processed type + (for processed) the FAO
+# Item string of its raw parent. NA parent_raw on raw rows. Driven by the
+# same metadata/faostat_processed_to_raw.csv used by the gate above; the
+# values here are read pre-rename so they match the FAO-canonical Item
+# names, not the commodity_clean_map shortened forms. Downstream notebooks
+# can group processed rows back to their raw parent by joining on
+# parent_raw -> commodity within their own filter scope.
+fao_long[, parent_raw := mapping$parent_raw_item[match(commodity, mapping$processed_item)]]
+fao_long[is.na(parent_raw) | !nzchar(parent_raw), parent_raw := NA_character_]
+fao_long[, type := ifelse(is.na(parent_raw), "raw", "processed")]
+cat(sprintf(
+  "type column: %d raw rows, %d processed rows.\n",
+  sum(fao_long$type == "raw"), sum(fao_long$type == "processed")
+))
+
 # Friendly commodity names ####
 # Original FAO Item strings are still reconstructable via item_code.
 commodity_clean_map <- c(
@@ -461,7 +477,10 @@ fao_long[!is.na(hits), commodity := unname(commodity_clean_map[hits[!is.na(hits)
 # spam2fao joins and spice aggregation).
 fao_long[, item_code := NULL]
 
-setcolorder(fao_long, c("iso3", "commodity", "atlas_name", "year", "variable", "unit", "value"))
+setcolorder(fao_long, c(
+  "iso3", "commodity", "atlas_name", "type", "parent_raw",
+  "year", "variable", "unit", "value"
+))
 setorder(fao_long, iso3, variable, commodity, year)
 
 # Write parquet with build manifest as key/value metadata ####
