@@ -330,6 +330,63 @@ cat(sprintf(
   nrow(fao_long), rows_before, 100 * nrow(fao_long) / rows_before
 ))
 
+# Parent-mapping gate for processed exports ####
+# Drop processed-export rows whose RAW parent commodity didn't pass the
+# production-anchored keep_prod set for the same country. Stops re-exports
+# of imported raw materials (e.g. wheat flour from a non-wheat-producing
+# country) from polluting the "climate exposure" view.
+#
+# Applies ONLY to processed export rows. Raw exports, imports (any form),
+# and all production rows are unaffected -- importing wheat flour IS real
+# climate exposure for the importer; refining your own raw cocoa beans is
+# real production for the exporter.
+#
+# No-op if the mapping CSV is missing or empty.
+mapping_path <- file.path(project_dir, "metadata", "faostat_processed_to_raw.csv")
+processed_export_vars <- c("export_quantity", "export_value")
+if (file.exists(mapping_path)) {
+  mapping <- fread(mapping_path)
+  mapping <- mapping[!is.na(parent_raw_item) & nzchar(parent_raw_item)]
+
+  processed_mask <- fao_long$variable %in% processed_export_vars &
+    fao_long$commodity %in% mapping$processed_item
+  n_before <- sum(processed_mask)
+
+  if (n_before > 0L) {
+    processed_rows <- fao_long[processed_mask]
+    processed_rows <- merge(
+      processed_rows,
+      mapping[, list(commodity = processed_item, parent_raw_item)],
+      by = "commodity", all.x = TRUE
+    )
+    keep_processed <- processed_rows[
+      keep_prod[, list(iso3, parent_raw_item = commodity)],
+      on = c("iso3", "parent_raw_item"),
+      nomatch = NULL
+    ]
+    keep_processed[, parent_raw_item := NULL]
+    fao_long <- rbindlist(
+      list(fao_long[!processed_mask], keep_processed),
+      use.names = TRUE, fill = TRUE
+    )
+    cat(sprintf(
+      "Parent-mapping gate: kept %d / %d processed-export rows (%.1f%%); dropped %d rows.\n",
+      nrow(keep_processed), n_before,
+      100 * nrow(keep_processed) / max(1L, n_before),
+      n_before - nrow(keep_processed)
+    ))
+  } else {
+    cat("Parent-mapping gate: no processed-export rows present; nothing to gate.\n")
+  }
+} else {
+  cat(sprintf(
+    "Parent-mapping gate: %s not found - skipping gate.\n",
+    mapping_path
+  ))
+  mapping <- data.table(processed_item = character(), parent_raw_item = character(),
+                        commodity_class = character())
+}
+
 # Friendly commodity names ####
 # Original FAO Item strings are still reconstructable via item_code.
 commodity_clean_map <- c(
