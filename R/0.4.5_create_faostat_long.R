@@ -629,6 +629,58 @@ setcolorder(fao_long, c(
 ))
 setorder(fao_long, iso3, variable, commodity, year)
 
+# Build-time sanity + integrity checks ####
+
+# Yield sanity check: FAOSTAT QCL yield for crops is reported in hg/ha
+# (= 100 g / ha). Typical African Maize yields are 10,000 - 100,000 hg/ha
+# (= 1 - 10 t/ha). Halts the build if the median is outside this range -
+# catches the kg/ha vs hg/ha unit trap before a bad parquet ships.
+yield_check <- fao_long[
+  variable == "yield" & commodity == "Maize" & year >= max(year) - 5,
+  list(median_yield = median(value, na.rm = TRUE), unit = first(unit))
+]
+expected_low_hgha <- 10000L
+expected_high_hgha <- 100000L
+if (nrow(yield_check) == 0L ||
+    is.na(yield_check$median_yield) ||
+    yield_check$median_yield < expected_low_hgha ||
+    yield_check$median_yield > expected_high_hgha) {
+  stop(sprintf(
+    paste0("Yield sanity check FAILED: median Maize yield = %.0f %s (expected ",
+           "%d - %d hg/ha for African crops). Possible unit error (hg/ha vs kg/ha)."),
+    yield_check$median_yield, yield_check$unit,
+    expected_low_hgha, expected_high_hgha
+  ))
+}
+cat(sprintf(
+  "Yield sanity OK: median Maize yield = %.0f %s (last 5 yrs, expected %d - %d hg/ha).\n",
+  yield_check$median_yield, yield_check$unit, expected_low_hgha, expected_high_hgha
+))
+
+# Cross-domain integrity check: surfaces commodity-name drift between
+# production (QCL) and trade (TM) rows. Logs (iso3, commodity) cells that
+# exist in only one domain to a CSV next to the parquet. Doesn't halt the
+# build; catches the next cattle-meat-style mismatch for follow-up curation.
+prod_items <- unique(fao_long[variable == "production", list(iso3, commodity)])
+trade_items <- unique(fao_long[
+  variable %in% c("export_value", "import_value"),
+  list(iso3, commodity)
+])
+production_only <- fsetdiff(prod_items, trade_items, all = FALSE)
+trade_only <- fsetdiff(trade_items, prod_items, all = FALSE)
+mismatch_path <- file.path(fao_dir, "integrity_check_mismatches.csv")
+fwrite(
+  rbind(
+    production_only[, side := "production_only"],
+    trade_only[, side := "trade_only"]
+  ),
+  mismatch_path
+)
+cat(sprintf(
+  "Integrity check: wrote %d production-only + %d trade-only (iso3, commodity) cells to %s\n",
+  nrow(production_only), nrow(trade_only), mismatch_path
+))
+
 # Write parquet with build manifest as key/value metadata ####
 out_file <- file.path(fao_dir, "faostat_long.parquet")
 build_meta <- list(
