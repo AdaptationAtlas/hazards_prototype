@@ -631,30 +631,30 @@ setorder(fao_long, iso3, variable, commodity, year)
 
 # Build-time sanity + integrity checks ####
 
-# Yield sanity check: FAOSTAT QCL yield for crops is reported in hg/ha
-# (= 100 g / ha). Typical African Maize yields are 10,000 - 100,000 hg/ha
-# (= 1 - 10 t/ha). Halts the build if the median is outside this range -
-# catches the kg/ha vs hg/ha unit trap before a bad parquet ships.
+# Yield sanity check: FAOSTAT QCL Yield values in our extract are in kg/ha.
+# Typical African Maize yields are 1,000 - 10,000 kg/ha (1 - 10 t/ha). Halts
+# the build if the median is outside this range - catches a 10x unit error
+# (e.g. an hg/ha source slipping in unconverted) before a bad parquet ships.
 yield_check <- fao_long[
   variable == "yield" & commodity == "Maize" & year >= max(year) - 5,
   list(median_yield = median(value, na.rm = TRUE), unit = first(unit))
 ]
-expected_low_hgha <- 10000L
-expected_high_hgha <- 100000L
+expected_low <- 1000L
+expected_high <- 10000L
 if (nrow(yield_check) == 0L ||
     is.na(yield_check$median_yield) ||
-    yield_check$median_yield < expected_low_hgha ||
-    yield_check$median_yield > expected_high_hgha) {
+    yield_check$median_yield < expected_low ||
+    yield_check$median_yield > expected_high) {
   stop(sprintf(
     paste0("Yield sanity check FAILED: median Maize yield = %.0f %s (expected ",
-           "%d - %d hg/ha for African crops). Possible unit error (hg/ha vs kg/ha)."),
+           "%d - %d kg/ha for African crops). Possible unit error (hg/ha vs kg/ha)."),
     yield_check$median_yield, yield_check$unit,
-    expected_low_hgha, expected_high_hgha
+    expected_low, expected_high
   ))
 }
 cat(sprintf(
-  "Yield sanity OK: median Maize yield = %.0f %s (last 5 yrs, expected %d - %d hg/ha).\n",
-  yield_check$median_yield, yield_check$unit, expected_low_hgha, expected_high_hgha
+  "Yield sanity OK: median Maize yield = %.0f %s (last 5 yrs, expected %d - %d kg/ha).\n",
+  yield_check$median_yield, yield_check$unit, expected_low, expected_high
 ))
 
 # Cross-domain integrity check: surfaces commodity-name drift between
@@ -684,19 +684,43 @@ cat(sprintf(
 # Write parquet with build manifest as key/value metadata ####
 out_file <- file.path(fao_dir, "faostat_long.parquet")
 build_meta <- list(
+  schema_version = "v4",
   description = paste(
     "FAOSTAT long-form table for Africa: production, yield, 2014-16",
     "constant USD / I$ value of production, export quantity + value,",
-    "and import quantity + value."
+    "import quantity + value, and deflated export_value_usd15 +",
+    "import_value_usd15 (constant 2014-2016 USD). Adds type,",
+    "parent_raw, commodity_class columns and an Other row per",
+    "(iso3, year, variable, type) bundling sub-threshold commodities."
   ),
-  source = "FAOSTAT bulk downloads: Production_Crops_Livestock, Value_of_Production, Trade_CropsLivestock.",
+  schema_columns = paste(
+    "iso3 | commodity | atlas_name | type {raw, processed} |",
+    "parent_raw (FAO Item of raw parent for processed items; NA otherwise) |",
+    "commodity_class {crop, livestock, byproduct} | year | variable | unit | value"
+  ),
+  source = paste(
+    "FAOSTAT bulk downloads: Production_Crops_Livestock, Value_of_Production,",
+    "Trade_CropsLivestock, Deflators."
+  ),
   source_files = paste(
-    unique(vapply(sources, function(s) basename(s$file), character(1))),
+    unique(c(
+      vapply(sources, function(s) basename(s$file), character(1)),
+      "Deflators_E_All_Data_(Normalized).csv"
+    )),
     collapse = "; "
   ),
   variables = paste(
     sprintf("%s = %s", names(sources), vapply(sources, function(s) s$element, character(1))),
+    " | export_value_usd15 = export_value * (anchor 2014-2016 / GDP-Deflator-USD-2015-prices)",
+    " | import_value_usd15 = same deflator applied to import_value",
     collapse = " | "
+  ),
+  deflator = paste(
+    "FAOSTAT Deflators_E_All_Data_(Normalized).csv,",
+    "Item Code 22024 'GDP Deflator', Element 'Value US$, 2015 prices' (code 6179).",
+    "Per-Reporter country: anchor = mean(deflator over 2014-2016);",
+    "deflator_to_usd15 = anchor / deflator_value_year;",
+    "nominal trade value * deflator_to_usd15 = constant 2014-2016 USD."
   ),
   build_script = "R/0.4.5_create_faostat_long.R",
   build_time = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
@@ -704,9 +728,16 @@ build_meta <- list(
     "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/",
     "main/metadata/SPAM2010_FAO_crops.csv"
   ),
+  processed_to_raw_mapping = paste(
+    "metadata/faostat_processed_to_raw.csv (committed in the repo) provides",
+    "the processed_item -> parent_raw_item + commodity_class lookup used by",
+    "the parent-mapping gate, the type column, and the commodity_class column."
+  ),
   meat_variant = paste(
-    "Indigenous (live-trade-adjusted) variants kept;",
-    "non-indigenous duplicates dropped."
+    "Indigenous (live-trade-adjusted) variants kept for vop_*;",
+    "non-indigenous variants kept for trade rows (physical meat flows).",
+    "Pre-rename collapses both variants to the same canonical commodity",
+    "name so they join cleanly across QV / QCL / TM."
   ),
   spice_combine = paste(
     "Anise / Cinnamon / Cloves / Nutmeg / Pepper (Piper) / Ginger / Vanilla",
@@ -728,11 +759,40 @@ build_meta <- list(
   ),
   filter_relevance = sprintf(
     paste(
-      "Per (iso3, commodity), mean vop_intd15 over the last %d calendar",
-      "years (%d-%d) must exceed %g of the country's summed mean across",
-      "commodities; decision applies to all four variables."
+      "Union-of-three relative filter: for each (iso3, commodity), the mean",
+      "over the most recent %d calendar years of vop_intd15 OR export_value",
+      "OR import_value must exceed %g of the country's summed mean for that",
+      "variable; passing any one signal keeps all variable rows for the pair.",
+      "Each variable uses its own per-variable max-year window."
     ),
-    intd_window_years, min(window), max(window), intd_share_threshold
+    intd_window_years, intd_share_threshold
+  ),
+  parent_mapping_gate = paste(
+    "After the union filter, processed-export rows (export_quantity,",
+    "export_value, export_value_usd15) are gated against keep_prod: the row",
+    "survives only if its parent_raw_item also passes the production",
+    "(vop_intd15) filter for the same country. Stops re-exports of imported",
+    "raw materials from polluting the climate-exposure view. Imports +",
+    "raw exports + production rows are not gated."
+  ),
+  other_aggregation = paste(
+    "Commodities dropped by the union filter are bundled into a single",
+    "'Other' row per (iso3, year, variable, type) over summable variables",
+    "(production, vop_usd15, vop_intd15, export_quantity, export_value,",
+    "export_value_usd15, import_quantity, import_value, import_value_usd15).",
+    "Yield is excluded (heterogeneous yields can't sum). Other rows have",
+    "atlas_name = NA, parent_raw = NA, commodity_class = NA; their type",
+    "tag preserves the raw vs processed split."
+  ),
+  yield_sanity_check = paste(
+    "Build-time assertion: median Maize yield over the last 5 years must",
+    "be in [1000, 10000] kg/ha. Halts the build on failure - catches the",
+    "hg/ha vs kg/ha unit trap."
+  ),
+  integrity_check = paste(
+    "Build writes integrity_check_mismatches.csv listing (iso3, commodity)",
+    "cells present in only one of production / trade. Reviewed offline;",
+    "surprises feed back into commodity_clean_map + the mapping CSV."
   ),
   commodity_rename = paste(
     "FAO Item strings rewritten to friendlier names where useful (e.g.",
@@ -752,7 +812,8 @@ build_meta <- list(
 # Factor-encode repeated string columns so Arrow stores them as dictionary
 # types (smaller files, no behaviour change apart from columns coming back
 # as factors when read with arrow::read_parquet).
-factor_cols <- c("iso3", "commodity", "atlas_name", "variable", "unit")
+factor_cols <- c("iso3", "commodity", "atlas_name", "type", "commodity_class",
+                 "variable", "unit")
 fao_long[, (factor_cols) := lapply(.SD, as.factor), .SDcols = factor_cols]
 
 tbl <- arrow::arrow_table(fao_long)
