@@ -281,25 +281,53 @@ fao_long[!is.na(meat_hits),
   commodity := unname(meat_canonical_rename[meat_hits[!is.na(meat_hits)]])
 ]
 
-vop_intd <- fao_long[variable == "vop_intd15"]
-if (nrow(vop_intd) == 0) {
-  stop("No vop_intd15 rows available for the relevance filter.")
+# Union-of-three relative filter. Replaces the prior single-rule
+# 0.25%-of-vop_intd15 filter. A commodity is kept for a country if it
+# passes the relative threshold on ANY of the three signals: production
+# value (vop_intd15), export value, or import value. Each signal uses its
+# own most-recent `intd_window_years` calendar years so trade variables
+# with shorter histories aren't penalised. Resolves CR-064 (d) — small
+# producers with meaningful trade flows (e.g. Angola coffee) survive.
+share_threshold <- intd_share_threshold
+window_years <- intd_window_years
+keep_for <- function(dt, variable_name) {
+  v <- dt[variable == variable_name & value > 0]
+  if (nrow(v) == 0L) {
+    return(data.table(iso3 = character(), commodity = character()))
+  }
+  max_y <- max(v$year)
+  win <- (max_y - window_years + 1L):max_y
+  means <- v[year %in% win,
+    list(mean_v = mean(value)),
+    by = list(iso3, commodity)
+  ]
+  means[, country_total := sum(mean_v), by = iso3]
+  means[mean_v > share_threshold * country_total, list(iso3, commodity)]
 }
-max_year <- max(vop_intd$year)
-window <- (max_year - intd_window_years + 1L):max_year
-intd_means <- vop_intd[year %in% window,
-  list(mean_intd = mean(value)),
-  by = list(iso3, commodity)
-]
-intd_means[, country_total := sum(mean_intd), by = iso3]
-keep_groups <- intd_means[mean_intd > intd_share_threshold * country_total,
-  list(iso3, commodity)
-]
+keep_prod <- keep_for(fao_long, "vop_intd15")
+keep_exports <- keep_for(fao_long, "export_value")
+keep_imports <- keep_for(fao_long, "import_value")
+keep_groups <- unique(rbindlist(list(keep_prod, keep_exports, keep_imports)))
 fao_long <- fao_long[keep_groups, on = c("iso3", "commodity")]
 cat(sprintf(
-  "Filter: kept %d / %d rows (%.1f%%); window = %d-%d, share > %g\n",
-  nrow(fao_long), rows_before, 100 * nrow(fao_long) / rows_before,
-  min(window), max(window), intd_share_threshold
+  "Filter (production vop_intd15): kept %d (iso3, commodity) pairs across %d countries.\n",
+  nrow(keep_prod), uniqueN(keep_prod$iso3)
+))
+cat(sprintf(
+  "Filter (export_value):          kept %d pairs across %d countries.\n",
+  nrow(keep_exports), uniqueN(keep_exports$iso3)
+))
+cat(sprintf(
+  "Filter (import_value):          kept %d pairs across %d countries.\n",
+  nrow(keep_imports), uniqueN(keep_imports$iso3)
+))
+cat(sprintf(
+  "Filter (union of 3, window = last %d yr, share > %g): kept %d pairs across %d countries.\n",
+  window_years, share_threshold, nrow(keep_groups), uniqueN(keep_groups$iso3)
+))
+cat(sprintf(
+  "Long-table rows after filter: %d / %d (%.1f%%).\n",
+  nrow(fao_long), rows_before, 100 * nrow(fao_long) / rows_before
 ))
 
 # Friendly commodity names ####
