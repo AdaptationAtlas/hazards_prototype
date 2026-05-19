@@ -192,6 +192,51 @@ if (nrow(fao_long) == 0) {
   stop("No FAOSTAT source files found in ", fao_dir, " — run 0_server_setup.R section 3.5 first.")
 }
 
+# Trade-value deflation ####
+# Append export_value_usd15 and import_value_usd15: nominal *_value rows
+# deflated to 2014-2016 constant USD basis, so they're directly comparable
+# with vop_usd15. Uses FAOSTAT GDP Deflator (Item Code 22024, Element
+# "Value US$, 2015 prices", index 2015 = 100) per Reporter country.
+# Anchor = country's mean deflator over 2014-2016; deflator_to_usd15 =
+# anchor / value_year. Multiplying nominal by that factor maps to the
+# anchor-period basis.
+#
+# Original nominal export_value / import_value rows are KEPT alongside
+# for backward compatibility.
+deflators_file <- file.path(fao_dir, "Deflators_E_All_Data_(Normalized).csv")
+if (file.exists(deflators_file)) {
+  defl <- fread(deflators_file,
+    select = c("Area Code (M49)", "Item Code", "Element", "Year", "Value")
+  )
+  defl <- defl[`Item Code` == 22024L & Element == "Value US$, 2015 prices"]
+  defl[, m49 := as.integer(gsub("[']", "", `Area Code (M49)`))]
+  defl[, iso3 := countrycode(m49, origin = "un", destination = "iso3c", warn = FALSE)]
+  defl <- defl[!is.na(iso3) & !is.na(Value) & Value > 0]
+  defl_anchor <- defl[Year %in% 2014:2016, list(anchor = mean(Value)), by = iso3]
+  defl <- merge(defl, defl_anchor, by = "iso3")
+  defl[, deflator_to_usd15 := anchor / Value]
+  defl <- defl[, list(iso3, year = Year, deflator_to_usd15)]
+
+  trade_nominal <- fao_long[variable %in% c("export_value", "import_value")]
+  trade_def <- merge(trade_nominal, defl, by = c("iso3", "year"), all.x = TRUE)
+  trade_def <- trade_def[!is.na(deflator_to_usd15)]
+  trade_def[, value := value * deflator_to_usd15]
+  trade_def[, variable := paste0(variable, "_usd15")]
+  trade_def[, unit := "Thousand US$ (constant 2014-2016)"]
+  trade_def[, deflator_to_usd15 := NULL]
+  fao_long <- rbindlist(list(fao_long, trade_def), use.names = TRUE, fill = TRUE)
+  cat(sprintf(
+    "Deflation: appended %d export_value_usd15 + %d import_value_usd15 rows (anchor 2014-2016).\n",
+    sum(trade_def$variable == "export_value_usd15"),
+    sum(trade_def$variable == "import_value_usd15")
+  ))
+} else {
+  cat(sprintf(
+    "Deflation: %s not found - skipping; trade values stay nominal.\n",
+    deflators_file
+  ))
+}
+
 # Attach atlas_name (SPAM short crop name OR atlas livestock name).
 # Where one FAO Item Code maps to multiple SPAM short names (e.g. coffee, millet),
 # concatenate them with '|' so the long table stays one row per FAO record.
@@ -348,7 +393,7 @@ cat(sprintf(
 #
 # No-op if the mapping CSV is missing or empty.
 mapping_path <- file.path(project_dir, "metadata", "faostat_processed_to_raw.csv")
-processed_export_vars <- c("export_quantity", "export_value")
+processed_export_vars <- c("export_quantity", "export_value", "export_value_usd15")
 if (file.exists(mapping_path)) {
   mapping <- fread(mapping_path)
   mapping <- mapping[!is.na(parent_raw_item) & nzchar(parent_raw_item)]
@@ -451,7 +496,8 @@ if (nrow(dropped_rows) > 0L) {
 
   summable_vars <- c(
     "production", "vop_usd15", "vop_intd15",
-    "export_quantity", "export_value", "import_quantity", "import_value"
+    "export_quantity", "export_value", "export_value_usd15",
+    "import_quantity", "import_value", "import_value_usd15"
   )
 
   other_rows <- dropped_rows[
