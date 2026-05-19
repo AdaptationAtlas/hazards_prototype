@@ -308,6 +308,11 @@ keep_prod <- keep_for(fao_long, "vop_intd15")
 keep_exports <- keep_for(fao_long, "export_value")
 keep_imports <- keep_for(fao_long, "import_value")
 keep_groups <- unique(rbindlist(list(keep_prod, keep_exports, keep_imports)))
+# Anti-join captures rows whose (iso3, commodity) is NOT in keep_groups. Used
+# by the "Other" aggregation downstream to roll dropped commodities into a
+# residual bundle per (iso3, year, variable, type) so a country's totals
+# stay reconcilable.
+dropped_rows <- fao_long[!keep_groups, on = c("iso3", "commodity")]
 fao_long <- fao_long[keep_groups, on = c("iso3", "commodity")]
 cat(sprintf(
   "Filter (production vop_intd15): kept %d (iso3, commodity) pairs across %d countries.\n",
@@ -428,6 +433,75 @@ cat(sprintf(
                 fao_long[, .N, by = commodity_class][order(-N)]$N),
         collapse = ", ")
 ))
+
+# "Other" aggregation ####
+# Bundle commodities dropped by the union-of-3 filter into a single "Other"
+# row per (iso3, year, variable, type). Lets the notebook reconcile the
+# kept-commodities total to the country's national total. Yield is excluded
+# because heterogeneous yields can't sum.
+#
+# Other rows carry their own explicit type / parent_raw / commodity_class
+# values (set in the by-aggregate below) and are appended AFTER the type
+# and commodity_class blocks above, so those blocks never see "Other" as a
+# commodity and won't overwrite its metadata.
+if (nrow(dropped_rows) > 0L) {
+  dropped_rows[, parent_raw := mapping$parent_raw_item[match(commodity, mapping$processed_item)]]
+  dropped_rows[!nzchar(parent_raw), parent_raw := NA_character_]
+  dropped_rows[, type := ifelse(is.na(parent_raw), "raw", "processed")]
+
+  summable_vars <- c(
+    "production", "vop_usd15", "vop_intd15",
+    "export_quantity", "export_value", "import_quantity", "import_value"
+  )
+
+  other_rows <- dropped_rows[
+    variable %in% summable_vars,
+    list(
+      commodity = "Other",
+      atlas_name = NA_character_,
+      parent_raw = NA_character_,
+      commodity_class = NA_character_,
+      unit = first(unit),
+      value = sum(value, na.rm = TRUE)
+    ),
+    by = list(iso3, year, variable, type)
+  ]
+  other_rows <- other_rows[is.finite(value) & value > 0]
+
+  if (nrow(other_rows) > 0L) {
+    intd_share <- merge(
+      other_rows[variable == "vop_intd15", list(other_intd = sum(value)),
+        by = list(iso3, type)
+      ],
+      fao_long[variable == "vop_intd15", list(kept_intd = sum(value)),
+        by = list(iso3)
+      ],
+      by = "iso3", all.x = TRUE
+    )
+    intd_share[, pct := 100 * other_intd / pmax(kept_intd + other_intd, 1)]
+    intd_share <- intd_share[order(-pct)]
+    cat("Other aggregation: top 10 (iso3, type) by Other share of vop_intd15:\n")
+    print(intd_share[1:min(10L, .N)])
+    high_share <- intd_share[pct > 30]
+    if (nrow(high_share) > 0L) {
+      cat(sprintf(
+        paste0("WARNING: %d (iso3, type) cells have Other > 30%% of vop_intd15 ",
+               "- filter may be too aggressive.\n"),
+        nrow(high_share)
+      ))
+    }
+  }
+
+  fao_long <- rbindlist(list(fao_long, other_rows), use.names = TRUE, fill = TRUE)
+  cat(sprintf(
+    "Other aggregation: appended %d Other rows (%d raw + %d processed) across summable variables.\n",
+    nrow(other_rows),
+    sum(other_rows$type == "raw"),
+    sum(other_rows$type == "processed")
+  ))
+} else {
+  cat("Other aggregation: no dropped rows (filter kept everything); skipping.\n")
+}
 
 # Friendly commodity names ####
 # Original FAO Item strings are still reconstructable via item_code.
