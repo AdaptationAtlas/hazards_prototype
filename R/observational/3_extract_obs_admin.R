@@ -295,10 +295,28 @@ parse_ym_from_layer <- function(lyr) {
   list(year = yy, month = mm)
 }
 
+#' Worker-side logger. With future::multicore (forked) the child's stdout
+#' reaches the parent so this lands in the nohup log; with multisession
+#' (PSOCK) it doesn't, and the lines surface only at sink-flush. Either
+#' way the prefix carries the PID + var so multiple workers can be
+#' grep'd apart in a single log file.
+worker_log <- function(pid, var, msg) {
+  cat(sprintf("[%s][pid %d][%s] %s\n",
+              format(Sys.time(), "%H:%M:%S"), pid, var, msg))
+  flush.console()
+}
+
 #' Zonal-extract one variable's full monthly stack: returns a long data.table
-#' with (zone_id, year, month, value_mean, value_sd). Two terra::zonal passes
-#' for mean and sd, merged on zone_id + layer.
-extract_var_zonal <- function(var, zonal_rast, n_years = NULL) {
+#' with (zone_id, year, month, value_mean, value_sd). Processes layers in
+#' chunks (default ~5 years) and runs the mean + sd zonal pass on each chunk
+#' so a worker's progress is visible in the log instead of going silent for
+#' minutes-to-hours per variable. Chunk size has negligible perf impact
+#' because terra is internally block-streamed anyway.
+extract_var_zonal <- function(var, zonal_rast, n_years = NULL,
+                              chunk_layers = 60L) {
+  pid <- Sys.getpid()
+  worker_log(pid, var, "start")
+
   files <- list_var_files(var)$path
   if (!is.null(n_years)) {
     # Smoke filter: keep only the most recent n_years.
@@ -310,6 +328,8 @@ extract_var_zonal <- function(var, zonal_rast, n_years = NULL) {
   if (length(files) == 0L) {
     stop(glue::glue("No files for {var} after filtering"))
   }
+  worker_log(pid, var, sprintf("%d monthly tifs to process", length(files)))
+
   stk <- terra::rast(files)
   names(stk) <- sub("\\.tif$", "", basename(files))
 
@@ -321,21 +341,53 @@ extract_var_zonal <- function(var, zonal_rast, n_years = NULL) {
     terra::ifel(is.infinite(stk), NA, stk),
     label = sprintf("Inf mask %s", var)
   )
+  worker_log(pid, var, "Inf-mask applied (lazy; materialised in zonal)")
 
-  z_mean <- collect_warnings(
-    terra::zonal(stk, zonal_rast, fun = "mean", na.rm = TRUE),
-    label = sprintf("zonal mean %s", var)
+  n_layers <- terra::nlyr(stk)
+  n_chunks <- as.integer(ceiling(n_layers / chunk_layers))
+  z_mean_list <- vector("list", n_chunks)
+  z_sd_list   <- vector("list", n_chunks)
+
+  for (k in seq_len(n_chunks)) {
+    i_lo <- (k - 1L) * chunk_layers + 1L
+    i_hi <- min(k * chunk_layers, n_layers)
+    chunk <- stk[[i_lo:i_hi]]
+    t_chunk <- Sys.time()
+    z_mean_list[[k]] <- collect_warnings(
+      terra::zonal(chunk, zonal_rast, fun = "mean", na.rm = TRUE),
+      label = sprintf("zonal mean %s chunk %d", var, k)
+    )
+    z_sd_list[[k]] <- collect_warnings(
+      terra::zonal(chunk, zonal_rast, fun = "sd", na.rm = TRUE),
+      label = sprintf("zonal sd %s chunk %d", var, k)
+    )
+    worker_log(pid, var, sprintf(
+      "zonal chunk %d/%d (layers %d-%d) done in %.1fs",
+      k, n_chunks, i_lo, i_hi,
+      as.numeric(Sys.time() - t_chunk, units = "secs")
+    ))
+  }
+
+  # Merge chunks back into a wide (zone x layer) table per stat. First column
+  # of each chunk is the zone_id; remaining columns are layer-named values.
+  zone_col <- names(z_mean_list[[1]])[1]
+  zone_ids <- z_mean_list[[1]][[zone_col]]
+  z_mean <- cbind(
+    setNames(data.frame(zone_ids), zone_col),
+    do.call(cbind, lapply(z_mean_list, function(x) x[, -1L, drop = FALSE]))
   )
-  z_sd <- collect_warnings(
-    terra::zonal(stk, zonal_rast, fun = "sd", na.rm = TRUE),
-    label = sprintf("zonal sd %s", var)
+  z_sd <- cbind(
+    setNames(data.frame(zone_ids), zone_col),
+    do.call(cbind, lapply(z_sd_list, function(x) x[, -1L, drop = FALSE]))
   )
   z_mean <- data.table::as.data.table(z_mean)
   z_sd <- data.table::as.data.table(z_sd)
-  zone_col <- names(z_mean)[1]
   data.table::setnames(z_mean, zone_col, "zone_id")
   data.table::setnames(z_sd, zone_col, "zone_id")
 
+  worker_log(pid, var, sprintf(
+    "melting + merging %d zones x %d layers", nrow(z_mean), n_layers
+  ))
   long_mean <- data.table::melt(
     z_mean,
     id.vars = "zone_id",
@@ -354,6 +406,7 @@ extract_var_zonal <- function(var, zonal_rast, n_years = NULL) {
   out[, month := ym$month]
   out[, variable := var]
   out[, lyr := NULL]
+  worker_log(pid, var, sprintf("done (%d rows)", nrow(out)))
   out[]
 }
 
@@ -407,20 +460,57 @@ for (level in levels_run) {
   }
   log_step(sprintf("  parallel extract across %d variables, %d workers (%s)",
     length(variables_full), workers, backend))
+  log_step(sprintf("  dispatching variables: %s",
+                   paste(variables_full, collapse = ", ")))
+  log_step("  worker progress lines below have prefix [HH:MM:SS][pid N][VAR];")
+  log_step("  grep the log for a single PID or VAR to follow one worker.")
 
   smoke_yrs <- if (mode == "--smoke") smoke_n_years else NULL
   results <- furrr::future_map(seq_along(variables_full), function(j) {
     var <- variables_full[j]
     t0 <- Sys.time()
-    zr <- terra::rast(zonal_rast_path)
-    long_var <- extract_var_zonal(var, zr, n_years = smoke_yrs)
-    list(
-      j = j, var = var, n_rows = nrow(long_var),
-      elapsed = as.numeric(Sys.time() - t0, units = "secs"),
-      data = long_var
+    out <- tryCatch(
+      {
+        zr <- terra::rast(zonal_rast_path)
+        long_var <- extract_var_zonal(var, zr, n_years = smoke_yrs)
+        list(
+          j = j, var = var, n_rows = nrow(long_var),
+          elapsed = as.numeric(Sys.time() - t0, units = "secs"),
+          data = long_var, error = NULL
+        )
+      },
+      error = function(e) {
+        # Surface traceback to the log so the parent doesn't just see "future
+        # error" with no context. Workers can't always propagate sys.calls()
+        # cleanly back across the fork boundary; capture what we can.
+        msg <- conditionMessage(e)
+        tb <- paste(capture.output(traceback()), collapse = "\n")
+        cat(sprintf("[%s][pid %d][%s] WORKER ERROR: %s\n%s\n",
+                    format(Sys.time(), "%H:%M:%S"),
+                    Sys.getpid(), var, msg, tb))
+        flush.console()
+        list(
+          j = j, var = var, n_rows = 0L,
+          elapsed = as.numeric(Sys.time() - t0, units = "secs"),
+          data = NULL, error = msg
+        )
+      }
     )
+    out
   }, .options = furrr::furrr_options(seed = TRUE))
   future::plan(future::sequential)
+
+  # Surface any errors from workers BEFORE the per-variable summary.
+  errs <- Filter(function(r) !is.null(r$error), results)
+  if (length(errs) > 0L) {
+    log_step(sprintf("  %d worker(s) errored:", length(errs)))
+    for (r in errs) {
+      log_step(sprintf("    [FAIL] %s: %s (after %.1fs)",
+                       r$var, r$error, r$elapsed))
+    }
+    stop(sprintf("Aborting %s: %d of %d workers failed.",
+                 level, length(errs), length(results)))
+  }
 
   for (r in results) {
     log_step(sprintf("  [%d/%d] %s: %d rows in %.1fs",

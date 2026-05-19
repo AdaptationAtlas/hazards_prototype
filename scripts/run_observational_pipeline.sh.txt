@@ -1,0 +1,192 @@
+# ----------------------------------------------------------------------
+# Script: run_observational_pipeline.sh
+# Purpose: Run the observational pipeline (R/observational/3..6) in
+#          sequence under nohup + screen so progress is visible via
+#          tail -f and a disconnected session can reattach.
+# Environment: JupyterHub / RStudio Server (Linux, nohup-safe)
+#
+# Pipeline stage map:
+#   3_extract_obs_admin.R           zonal extract -> obs_monthly_adm{0,1}.parquet
+#   4_aggregate_obs_admin_periods.R months -> 13 periods -> obs_periods_adm{0,1}
+#   5_make_obs_map_climatologies.R  per-pixel climatology COGs (1,404 files)
+#   6_publish_obs_to_s3.R           publish to s3://digital-atlas/... (smoke first!)
+#
+# Run modes per script: --smoke (~minutes, inline checks) and --full
+# (~minutes to hours). Smoke first, then full.
+# ----------------------------------------------------------------------
+
+# Install htop (one-off; safe to re-run).
+sudo apt install htop
+
+# Always check for an existing screen / running Rscript before starting.
+screen -ls
+ps aux | grep Rscript | grep -v grep
+
+
+# ----------------------------------------------------------------------
+# Start a fresh screen for the observational pipeline.
+# ----------------------------------------------------------------------
+screen -S obs_pipeline
+
+
+# ----------------------------------------------------------------------
+# Define absolute paths.
+# ----------------------------------------------------------------------
+
+# --- AfriLabs ---
+SETUP_SCRIPT="$HOME/rprojects/hazards_prototype/R/0_server_setup.R"
+EXTRACT_SCRIPT="$HOME/rprojects/hazards_prototype/R/observational/3_extract_obs_admin.R"
+PERIODS_SCRIPT="$HOME/rprojects/hazards_prototype/R/observational/4_aggregate_obs_admin_periods.R"
+MAPS_SCRIPT="$HOME/rprojects/hazards_prototype/R/observational/5_make_obs_map_climatologies.R"
+PUBLISH_SCRIPT="$HOME/rprojects/hazards_prototype/R/observational/6_publish_obs_to_s3.R"
+LOG_DIR="$HOME/rprojects/hazards_prototype/logs"
+
+# --- CGlabs ---
+SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
+EXTRACT_SCRIPT="$HOME/atlas/hazards_prototype/R/observational/3_extract_obs_admin.R"
+PERIODS_SCRIPT="$HOME/atlas/hazards_prototype/R/observational/4_aggregate_obs_admin_periods.R"
+MAPS_SCRIPT="$HOME/atlas/hazards_prototype/R/observational/5_make_obs_map_climatologies.R"
+PUBLISH_SCRIPT="$HOME/atlas/hazards_prototype/R/observational/6_publish_obs_to_s3.R"
+LOG_DIR="$HOME/atlas/hazards_prototype/logs"
+
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+
+
+# ----------------------------------------------------------------------
+# STEP 3 - admin extract (the long one — adm0 then adm1)
+# ----------------------------------------------------------------------
+# The script auto-detects available RAM but you can pin it explicitly with
+# --mem-budget G (overrides --mem-fraction). Recommended for the CGlabs
+# container: --mem-budget 250.
+# Worker telemetry: lines prefixed [HH:MM:SS][pid N][VAR] tell you exactly
+# which worker is on which variable / chunk. grep "pid 12345" log.txt to
+# isolate one worker.
+#
+# Smoke first.
+LOG_FILE="$LOG_DIR/obs_3_smoke_${STAMP}.log"
+echo "Smoke step 3 -> $LOG_FILE"
+nohup Rscript "$EXTRACT_SCRIPT" --smoke > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+# (Ctrl-C the tail when the smoke finishes; the Rscript itself has exited.)
+
+# Full (only after smoke passes).
+LOG_FILE="$LOG_DIR/obs_3_full_${STAMP}.log"
+echo "Full step 3 -> $LOG_FILE"
+nohup Rscript "$EXTRACT_SCRIPT" --full --mem-budget 250 > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+
+# ----------------------------------------------------------------------
+# STEP 4 - period aggregation (fast, <5 min)
+# ----------------------------------------------------------------------
+LOG_FILE="$LOG_DIR/obs_4_smoke_${STAMP}.log"
+echo "Smoke step 4 -> $LOG_FILE"
+nohup Rscript "$PERIODS_SCRIPT" --smoke > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+LOG_FILE="$LOG_DIR/obs_4_full_${STAMP}.log"
+echo "Full step 4 -> $LOG_FILE"
+nohup Rscript "$PERIODS_SCRIPT" --full > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+
+# ----------------------------------------------------------------------
+# STEP 5 - climatology COGs (1,404 files, ~1-2 h with parallel workers)
+# ----------------------------------------------------------------------
+LOG_FILE="$LOG_DIR/obs_5_smoke_${STAMP}.log"
+echo "Smoke step 5 -> $LOG_FILE"
+nohup Rscript "$MAPS_SCRIPT" --smoke > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+LOG_FILE="$LOG_DIR/obs_5_full_${STAMP}.log"
+echo "Full step 5 -> $LOG_FILE"
+nohup Rscript "$MAPS_SCRIPT" --full --mem-budget 250 > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+
+# ----------------------------------------------------------------------
+# STEP 6 - publish to S3
+# ----------------------------------------------------------------------
+# Three phases: --dry-run (no AWS), --smoke (uploads 1 file + 4 inline
+# checks), --full (uploads everything). STOP after --smoke and surface to
+# a reviewer before running --full.
+LOG_FILE="$LOG_DIR/obs_6_dryrun_${STAMP}.log"
+echo "Dry-run step 6 -> $LOG_FILE"
+nohup Rscript "$PUBLISH_SCRIPT" --dry-run > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+LOG_FILE="$LOG_DIR/obs_6_smoke_${STAMP}.log"
+echo "Smoke step 6 -> $LOG_FILE"
+nohup Rscript "$PUBLISH_SCRIPT" --smoke > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+# STOP HERE. Eyeball the smoke output; surface to a reviewer.
+# Only after approval:
+LOG_FILE="$LOG_DIR/obs_6_full_${STAMP}.log"
+echo "Full step 6 -> $LOG_FILE"
+nohup Rscript "$PUBLISH_SCRIPT" --full > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+
+# ----------------------------------------------------------------------
+# Monitoring + recovery
+# ----------------------------------------------------------------------
+
+# What's running RIGHT NOW under your user?
+ps -o pid,etime,pcpu,pmem,comm -u $(whoami) | head -20
+pgrep -af Rscript
+
+# Live RAM + per-worker view (replace 7415 with one of the PIDs above).
+htop -p $(pgrep -f 3_extract_obs_admin | paste -sd, -)
+
+# Did anything OOM in the last 2 hours?
+dmesg --since "2 hours ago" 2>/dev/null | grep -i -E "oom|killed" || \
+  sudo dmesg | grep -i -E "oom|killed" | tail -20
+
+# Per-worker progress (script 3 emits worker-tagged lines):
+grep -E "\[pid [0-9]+\]" "$LOG_FILE" | tail -30
+
+# Follow ONE worker (replace PID):
+grep "pid 12345" "$LOG_FILE"
+
+# Did adm0 / adm1 land?
+ls -la $HOME/atlas/hazards_prototype/Data/chirts_chirps_hist/admin/ \
+  2>/dev/null || ls -la $HOME/rprojects/hazards_prototype/Data/chirts_chirps_hist/admin/
+
+# Maps progress (script 5 writes one variable subdir at a time):
+ls -la $HOME/atlas/hazards_prototype/Data/chirts_chirps_hist/maps/ \
+  2>/dev/null || ls -la $HOME/rprojects/hazards_prototype/Data/chirts_chirps_hist/maps/
+
+
+# ----------------------------------------------------------------------
+# Cleanup / restart
+# ----------------------------------------------------------------------
+
+# Stop ALL R workers under your user (use only if zombies / hangs).
+pkill -9 -f Rscript
+
+# If multisession workers are zombies that won't die:
+pkill -9 -f rsession
+
+# Restart the screen cleanly:
+# In the screen window:    q()  or  Ctrl-C   then   exit
+# Back in any terminal:    screen -ls    (should be empty)
+# Restart:                 screen -S obs_pipeline
+
+
+# ----------------------------------------------------------------------
+# Detach + reattach
+# ----------------------------------------------------------------------
+# Detach (leave running):  Ctrl-A then D
+# Reattach later:          screen -r obs_pipeline
+# Or list / pick:          screen -ls   then   screen -r <socket-id>
