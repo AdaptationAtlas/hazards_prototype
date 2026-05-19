@@ -1,7 +1,7 @@
 # Build a long-form parquet of raw FAOSTAT values (Africa) covering production,
-# yield, 2014-16 constant USD / I$ value of production, and export quantity +
-# value. Run 0_server_setup.R first (defines `fao_dir`). Variables whose source
-# CSV is missing are skipped.
+# yield, 2014-16 constant USD / I$ value of production, export quantity + value,
+# and import quantity + value. Run 0_server_setup.R first (defines `fao_dir`).
+# Variables whose source CSV is missing are skipped.
 
 pacman::p_load(data.table, arrow, countrycode)
 
@@ -19,7 +19,7 @@ s3_file_name <- "variable=adm0_faostat.parquet"
 
 # Commodity exclusions (regex, case-insensitive): drop FAO aggregate rollups,
 # residual "other" / n.e.c. catchalls, and a curated list of items not used by
-# the atlas workflow.
+# the atlas workflow. Applied to all variables.
 exclude_patterns <- c(
   # Aggregate rollups (sums of constituent items)
   "^Agriculture$", "^Beef and Buffalo Meat, primary$", "^Cereals, primary$",
@@ -39,9 +39,10 @@ exclude_patterns <- c(
   "^Skim Milk & Buttermilk", "^Skim milk", "^Yoghurt$", "^Whole milk powder$",
   "^Whole milk, condensed$", "^Whole milk, evaporated$",
   "^Evaporated & Condensed Milk$", "whey",
-  # Meats (specific items + non-indigenous variants of kept species)
+  # Meat species dropped entirely from the atlas scope (no indigenous variant
+  # in any domain). Cattle / sheep / goat / pig / chicken / buffalo / horse
+  # are handled by vop_only_exclude_patterns below.
   "^Meat of asses", "^Meat of ducks", "^Meat of geese", "^Game meat",
-  "^Meat of .*fresh or chilled$", "^Horse meat, fresh or chilled$",
   # Plant products (specific items)
   "^Oilcrops, ", "^Coir,", "^Chicory roots$", "^Jute,",
   "^Oil of maize$", "^Pyrethrum", "^Hop cones$", "^Peppermint",
@@ -53,6 +54,22 @@ exclude_patterns <- c(
   # Misc
   "^Molasses$", "^Mushrooms"
 )
+
+# Non-trade exclusions: applied to production, yield, and vop_* rows only.
+# FAOSTAT's non-indigenous meat items (e.g. "Meat of cattle with the bone,
+# fresh or chilled") are raw-slaughter quantities that INCLUDE imported live
+# animals slaughtered domestically. The indigenous variant (suffix "...
+# (indigenous)") is live-trade-adjusted and is the right read for "national
+# production" / "value of production from country X's livestock". The
+# indigenous variant exists only in QV; for QCL (production / yield) we drop
+# the non-indigenous variant entirely - cattle / sheep / goat / pig / chicken
+# / buffalo will show VoP rows but no production-tonnes or yield rows. For
+# the TM trade rows, the non-indigenous variant IS the physical meat traded
+# (there is no indigenous trade variant in FAOSTAT) - keep those rows.
+non_trade_meat_excludes <- c(
+  "^Meat of .*fresh or chilled$", "^Horse meat, fresh or chilled$"
+)
+trade_vars <- c("export_quantity", "export_value", "import_quantity", "import_value")
 
 # Spice items to combine into a single "Spices, combined" commodity ####
 # Production and VoP are summed; yield is production-weighted across items.
@@ -66,15 +83,27 @@ spam2fao <- fread(
   "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv"
 )
 
+# Atlas livestock-name -> FAOSTAT Item-name lookup. For meats we list BOTH
+# the indigenous variant (lives in QV only) and the non-indigenous variant
+# (lives in QCL + TM). Duplicate atlas keys are intentional - match() still
+# returns the first matching index, and names()[idx] returns the canonical
+# atlas name. After commodity_clean_map runs further down, both variants
+# rename to the same canonical commodity name ("Cattle meat" etc.), so they
+# join cleanly across domains.
 lps2fao <- c(
   cattle_meat  = "Meat of cattle with the bone, fresh or chilled (indigenous)",
+  cattle_meat  = "Meat of cattle with the bone, fresh or chilled",
   cattle_milk  = "Raw milk of cattle",
   pig_meat     = "Meat of pig with the bone, fresh or chilled (indigenous)",
+  pig_meat     = "Meat of pig with the bone, fresh or chilled",
   poultry_eggs = "Hen eggs in shell, fresh",
   poultry_meat = "Meat of chickens, fresh or chilled (indigenous)",
+  poultry_meat = "Meat of chickens, fresh or chilled",
   sheep_meat   = "Meat of sheep, fresh or chilled (indigenous)",
+  sheep_meat   = "Meat of sheep, fresh or chilled",
   sheep_milk   = "Raw milk of sheep",
   goat_meat    = "Meat of goat, fresh or chilled (indigenous)",
+  goat_meat    = "Meat of goat, fresh or chilled",
   goat_milk    = "Raw milk of goats"
 )
 
@@ -99,7 +128,11 @@ sources <- list(
   # Trade domain. Element strings are FAOSTAT-canonical lowercase. Each
   # element string covers multiple element codes (one per unit, e.g. "Export
   # quantity" covers tonnes + head counts); the `unit` column preserves the
-  # distinction downstream, same as for production.
+  # distinction downstream, same as for production. Imports surfaced here too
+  # so the notebook can frame the "dependence on imports" narrative; reach is
+  # limited to commodities the country also produces (production-anchored
+  # filter), so pure-import commodities (e.g. wheat in non-wheat-producing
+  # countries) won't appear without a future filter relaxation.
   export_quantity = list(
     file    = file.path(fao_dir, "Trade_CropsLivestock_E_Africa_NOFLAG.csv"),
     element = "Export quantity"
@@ -107,6 +140,14 @@ sources <- list(
   export_value = list(
     file    = file.path(fao_dir, "Trade_CropsLivestock_E_Africa_NOFLAG.csv"),
     element = "Export value"
+  ),
+  import_quantity = list(
+    file    = file.path(fao_dir, "Trade_CropsLivestock_E_Africa_NOFLAG.csv"),
+    element = "Import quantity"
+  ),
+  import_value = list(
+    file    = file.path(fao_dir, "Trade_CropsLivestock_E_Africa_NOFLAG.csv"),
+    element = "Import value"
   )
 )
 
@@ -165,10 +206,22 @@ fao_long[!is.na(ls_idx), atlas_name := names(lps2fao)[ls_idx[!is.na(ls_idx)]]]
 rows_before <- nrow(fao_long)
 exclude_regex <- paste(exclude_patterns, collapse = "|")
 excluded_mask <- grepl(exclude_regex, fao_long$commodity, ignore.case = TRUE)
-dropped_commodities <- sort(unique(fao_long$commodity[excluded_mask]))
+
+# Drop non-indigenous meat variants from all non-trade variables. For QV
+# (vop_*) FAOSTAT publishes both variants; we keep only the indigenous one.
+# For QCL (production / yield) only the non-indigenous variant exists, so
+# this drop is total - those species end up with VoP rows but no production
+# tonnes / yield rows, by design. Trade rows (export_* / import_*) keep the
+# non-indigenous variant because it IS the physical meat traded; there is no
+# indigenous-trade variant in FAOSTAT.
+meat_regex <- paste(non_trade_meat_excludes, collapse = "|")
+meat_excluded_mask <- grepl(meat_regex, fao_long$commodity, ignore.case = TRUE) &
+  !(fao_long$variable %in% trade_vars)
+
+dropped_commodities <- sort(unique(fao_long$commodity[excluded_mask | meat_excluded_mask]))
 cat("Excluding", length(dropped_commodities), "commodities by name:\n")
 cat(paste0("  - ", dropped_commodities, collapse = "\n"), "\n")
-fao_long <- fao_long[!excluded_mask]
+fao_long <- fao_long[!(excluded_mask | meat_excluded_mask)]
 fao_long <- fao_long[value > 0]
 
 # Combine spices into a single synthetic commodity ####
@@ -198,6 +251,36 @@ if (nrow(spices)) {
   cat("Combined", uniqueN(spices$commodity), "spice items ->",
     nrow(spices_combined), "'Spices, combined' rows\n")
 }
+
+# Pre-rename meat-species items to the canonical commodity name before the
+# production-anchored filter below. QV uses the "(indigenous)" suffix; TM uses
+# the bare "fresh or chilled" string. Without this pre-rename the filter
+# (which keys on commodity) treats the two as different commodities and drops
+# the TM trade rows for cattle / sheep / goat / pig / chicken / buffalo /
+# horse because no (iso3, non-indigenous-name) tuple exists in keep_groups.
+# The commodity_clean_map at the bottom of the script does the same rename;
+# applying it here too makes the rename idempotent.
+meat_canonical_rename <- c(
+  "Meat of buffalo, fresh or chilled"                           = "Buffalo meat",
+  "Meat of buffalo, fresh or chilled (indigenous)"              = "Buffalo meat",
+  "Meat of cattle with the bone, fresh or chilled"              = "Cattle meat",
+  "Meat of cattle with the bone, fresh or chilled (indigenous)" = "Cattle meat",
+  "Meat of chickens, fresh or chilled"                          = "Chicken meat",
+  "Meat of chickens, fresh or chilled (indigenous)"             = "Chicken meat",
+  "Meat of goat, fresh or chilled"                              = "Goat meat",
+  "Meat of goat, fresh or chilled (indigenous)"                 = "Goat meat",
+  "Meat of pig with the bone, fresh or chilled"                 = "Pig meat",
+  "Meat of pig with the bone, fresh or chilled (indigenous)"    = "Pig meat",
+  "Meat of sheep, fresh or chilled"                             = "Sheep meat",
+  "Meat of sheep, fresh or chilled (indigenous)"                = "Sheep meat",
+  "Horse meat, fresh or chilled"                                = "Horse meat",
+  "Horse meat, fresh or chilled (indigenous)"                   = "Horse meat"
+)
+meat_hits <- match(fao_long$commodity, names(meat_canonical_rename))
+fao_long[!is.na(meat_hits),
+  commodity := unname(meat_canonical_rename[meat_hits[!is.na(meat_hits)]])
+]
+
 vop_intd <- fao_long[variable == "vop_intd15"]
 if (nrow(vop_intd) == 0) {
   stop("No vop_intd15 rows available for the relevance filter.")
@@ -251,13 +334,19 @@ commodity_clean_map <- c(
   "Lettuce and chicory"                                          = "Lettuce",
   "Maize (corn)"                                                 = "Maize",
   "Meat of buffalo, fresh or chilled (indigenous)"               = "Buffalo meat",
+  "Meat of buffalo, fresh or chilled"                            = "Buffalo meat",
   "Meat of camels, fresh or chilled (indigenous)"                = "Camel meat",
   "Meat of cattle with the bone, fresh or chilled (indigenous)"  = "Cattle meat",
+  "Meat of cattle with the bone, fresh or chilled"               = "Cattle meat",
   "Meat of chickens, fresh or chilled (indigenous)"              = "Chicken meat",
+  "Meat of chickens, fresh or chilled"                           = "Chicken meat",
   "Meat of goat, fresh or chilled (indigenous)"                  = "Goat meat",
+  "Meat of goat, fresh or chilled"                               = "Goat meat",
   "Meat of pig with the bone, fresh or chilled (indigenous)"     = "Pig meat",
+  "Meat of pig with the bone, fresh or chilled"                  = "Pig meat",
   "Meat of rabbits and hares, fresh or chilled (indigenous)"     = "Rabbit and hare meat",
   "Meat of sheep, fresh or chilled (indigenous)"                 = "Sheep meat",
+  "Meat of sheep, fresh or chilled"                              = "Sheep meat",
   "Meat of turkeys, fresh or chilled (indigenous)"               = "Turkey meat",
   "Melonseed"                                                    = "Melon seed",
   "Natural rubber in primary forms"                              = "Natural rubber",
@@ -295,7 +384,8 @@ out_file <- file.path(fao_dir, "faostat_long.parquet")
 build_meta <- list(
   description = paste(
     "FAOSTAT long-form table for Africa: production, yield, 2014-16",
-    "constant USD / I$ value of production, and export quantity + value."
+    "constant USD / I$ value of production, export quantity + value,",
+    "and import quantity + value."
   ),
   source = "FAOSTAT bulk downloads: Production_Crops_Livestock, Value_of_Production, Trade_CropsLivestock.",
   source_files = paste(
