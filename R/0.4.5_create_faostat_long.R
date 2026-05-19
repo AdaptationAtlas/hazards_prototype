@@ -403,6 +403,32 @@ cat(sprintf(
   sum(fao_long$type == "raw"), sum(fao_long$type == "processed")
 ))
 
+# commodity_class column ####
+# {"crop", "livestock", "byproduct"} per the mapping CSV. Looked up by
+# matching the (pre-rename) commodity name against mapping$processed_item.
+# Items without a class default to "crop" with a build-time warning so the
+# long tail can be curated in the CSV.
+fao_long[, commodity_class := mapping$commodity_class[match(commodity, mapping$processed_item)]]
+fao_long[!nzchar(commodity_class), commodity_class := NA_character_]
+unclassified <- fao_long[is.na(commodity_class), unique(commodity)]
+if (length(unclassified) > 0L) {
+  cat(sprintf(
+    paste0("WARNING: commodity_class not set for %d commodities ",
+           "- defaulting to 'crop'. ",
+           "Curate metadata/faostat_processed_to_raw.csv:\n"),
+    length(unclassified)
+  ))
+  cat(paste0("  - ", unclassified, collapse = "\n"), "\n")
+  fao_long[is.na(commodity_class), commodity_class := "crop"]
+}
+cat(sprintf(
+  "commodity_class column: %s\n",
+  paste(sprintf("%s=%d",
+                fao_long[, .N, by = commodity_class][order(-N)]$commodity_class,
+                fao_long[, .N, by = commodity_class][order(-N)]$N),
+        collapse = ", ")
+))
+
 # Friendly commodity names ####
 # Original FAO Item strings are still reconstructable via item_code.
 commodity_clean_map <- c(
@@ -478,7 +504,7 @@ fao_long[!is.na(hits), commodity := unname(commodity_clean_map[hits[!is.na(hits)
 fao_long[, item_code := NULL]
 
 setcolorder(fao_long, c(
-  "iso3", "commodity", "atlas_name", "type", "parent_raw",
+  "iso3", "commodity", "atlas_name", "type", "parent_raw", "commodity_class",
   "year", "variable", "unit", "value"
 ))
 setorder(fao_long, iso3, variable, commodity, year)
