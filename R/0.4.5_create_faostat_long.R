@@ -40,8 +40,17 @@ exclude_patterns <- c(
   "^Meat and Meat Preparations$", "^Dairy Products, milk equivalent$",
   "^Fodder and Feeding Stuff$", "^Non-edible Crude Materials$",
   "^Alcoholic Beverages$", "^Beverages$", "^Tobacco$",
-  # Residual "other" / n.e.c. catchalls
-  "^Other ", "n\\.e\\.c\\.",
+  # FBS / SUA meat-equivalent rollups (TM-only items 2071 / 2073 / 2074).
+  # Bovine Meat = Cattle + Buffalo; Pigmeat (meat equivalent) = pig + prep'ns;
+  # Poultry Meat = Chicken + Turkey + Duck + Goose. Including alongside the
+  # per-species rows would double-count, so we drop the aggregates.
+  "^Bovine Meat$", " \\(meat equivalent\\)$", "^Poultry Meat$",
+  # Non-alcoholic / non-edible trade rollups that previously slipped past.
+  "^Non-alcoholic Beverages$", "^Non-edible Fats and Oils$",
+  # Residual "other" / n.e.c. / n.e.s. catchalls. The plain "nes" variant
+  # (no periods) is not caught by the n.e.c. regex, so use a word-boundary
+  # match to drop items like "Cake, oilseeds nes" and "Crude Materials nes".
+  "^Other ", "n\\.e\\.c\\.", "\\bnes\\b",
   # Animal fats, offal, hides
   "^Edible offal", ", unrendered$", "^Fat of ", "^Pig fat, rendered$",
   "^Raw hides and skins", "^Tallow$",

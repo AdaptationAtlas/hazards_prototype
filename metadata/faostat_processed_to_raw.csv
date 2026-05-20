@@ -3,11 +3,11 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,include
 15,Wheat,,,crop,TRUE
 16,Wheat and meslin flour,,,crop,TRUE
 17,Bran of wheat,15,Wheat,byproduct,TRUE
-18,"Uncooked pasta, not stuffed or otherwise prepared",,,crop,TRUE
+18,"Uncooked pasta, not stuffed or otherwise prepared",,,crop,FALSE
 19,Germ of wheat,,,crop,TRUE
 20,Bread,,,crop,TRUE
 21,Bulgur,,,crop,TRUE
-22,Pastry,,,crop,TRUE
+22,Pastry,,,crop,FALSE
 27,Rice,,,crop,TRUE
 28,Husked rice,,,crop,TRUE
 29,"Rice, milled (husked)",,,crop,TRUE
@@ -56,7 +56,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,include
 104,Flour of mixed grain,103,Mixed grain,byproduct,TRUE
 105,Bran of mixed grain,103,Mixed grain,byproduct,TRUE
 109,Infant food,,,crop,TRUE
-110,"Communion wafers, empty cachets of a kind suitable for pharmaceutical use, sealing wafers, rice paper and similar products.",,,crop,TRUE
+110,"Communion wafers, empty cachets of a kind suitable for pharmaceutical use, sealing wafers, rice paper and similar products.",,,crop,FALSE
 113,Cereal preparations,,,livestock,FALSE
 114,Mixes and doughs for the preparation of bakers' wares,,,livestock,FALSE
 115,"Food preparations of flour, meal or malt extract",,,livestock,FALSE
@@ -83,7 +83,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,include
 168,Sugar confectionery,,,crop,TRUE
 169,Beet pulp,,,crop,TRUE
 170,Bagasse,,,crop,TRUE
-172,Glucose and dextrose,,,crop,TRUE
+172,Glucose and dextrose,,,crop,FALSE
 173,Lactose,,,crop,TRUE
 175,Isoglucose,,,crop,TRUE
 176,"Beans, dry",,,crop,TRUE
@@ -170,7 +170,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,include
 335,Cake of linseed,333,Linseed,byproduct,TRUE
 336,Hempseed,,,crop,TRUE
 341,"Cake, oilseeds nes",,,crop,TRUE
-343,"Flours and meals of oil seeds or oleaginous fruits, except those of mustard",,,crop,TRUE
+343,"Flours and meals of oil seeds or oleaginous fruits, except those of mustard",,,crop,FALSE
 358,Cabbages,,,crop,TRUE
 366,Artichokes,,,crop,TRUE
 367,Asparagus,,,crop,TRUE
@@ -201,10 +201,10 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,include
 451,Canned mushrooms,,,crop,TRUE
 461,Locust beans (carobs),,,crop,TRUE
 469,"Vegetables, dehydrated",,,crop,TRUE
-471,"Vegetables, pulses and potatoes, preserved by vinegar or acetic acid",,,crop,TRUE
-472,Vegetables preserved nes (o/t vinegar),,,crop,TRUE
+471,"Vegetables, pulses and potatoes, preserved by vinegar or acetic acid",,,crop,FALSE
+472,Vegetables preserved nes (o/t vinegar),,,crop,FALSE
 473,Vegetables frozen,,,crop,TRUE
-475,Vegetables preserved (frozen),,,crop,TRUE
+475,Vegetables preserved (frozen),,,crop,FALSE
 476,Homogenized vegetable preparations,,,livestock,FALSE
 486,Bananas,,,crop,TRUE
 489,Plantains and cooking bananas,,,crop,TRUE
@@ -242,7 +242,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,include
 561,Raisins,,,crop,TRUE
 562,Grape juice,509,Grapefruit juice,byproduct,TRUE
 563,Must of grape,,,crop,TRUE
-565,Vermouth and other wine of fresh grapes flavoured with plats or aromatic substances,,,crop,TRUE
+565,Vermouth and other wine of fresh grapes flavoured with plats or aromatic substances,,,crop,FALSE
 567,Watermelons,,,crop,TRUE
 568,Cantaloupes and other melons,,,crop,TRUE
 569,Figs,,,crop,TRUE
@@ -271,7 +271,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,include
 647,Beets for fodder,,,crop,TRUE
 649,Swedes for fodder,,,crop,TRUE
 653,Food wastes,,,crop,TRUE
-654,Brewing or distilling dregs and waste,,,crop,TRUE
+654,Brewing or distilling dregs and waste,,,crop,FALSE
 655,Vegetables and roots fodder,,,crop,TRUE
 656,"Coffee, green",,,crop,TRUE
 657,"Coffee, decaffeinated or roasted",656,"Coffee, green",byproduct,TRUE
@@ -283,7 +283,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,include
 663,Cocoa husks and shells,,,crop,TRUE
 664,"Cocoa butter, fat and oil",,,livestock,FALSE
 665,Cocoa powder and cake,661,Cocoa beans,byproduct,TRUE
-666,Chocolate products nes,661,Cocoa beans,byproduct,TRUE
+666,Chocolate products nes,661,Cocoa beans,byproduct,FALSE
 667,Tea leaves,,,crop,TRUE
 671,Maté leaves,,,crop,TRUE
 672,"Extracts, essences and concentrates of tea or mate, and preparations with a basis thereof or with a basis of tea or maté",,,livestock,FALSE
@@ -316,10 +316,10 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,include
 836,Natural rubber in primary forms,,,crop,TRUE
 837,Natural rubber in other forms,,,crop,TRUE
 839,"Balata, gutta-percha, guayule, chicle and similar natural gums in primary forms or in plates, sheets or strip",,,crop,TRUE
-840,"Feed, compound, cattle",,,crop,TRUE
+840,"Feed, compound, cattle",,,crop,FALSE
 841,"Feed, compound, poultry",,,crop,TRUE
 842,"Feed, compound, pigs",,,crop,TRUE
-843,"Dog or cat food, put up for retail sale",,,crop,TRUE
+843,"Dog or cat food, put up for retail sale",,,crop,FALSE
 846,Gluten feed and meal,,,crop,TRUE
 850,Feed supplements,,,crop,TRUE
 852,"Feed, other concentrates nes",,,crop,TRUE
