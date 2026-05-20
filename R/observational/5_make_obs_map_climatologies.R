@@ -408,7 +408,10 @@ log_step(sprintf(
 ))
 
 results <- furrr::future_map(variables_run, process_variable,
-  .options = furrr::furrr_options(seed = TRUE))
+  # stdout = FALSE so worker cat() lines stream to the parent's stdout
+  # (and thus to the nohup log) in real time, rather than being captured
+  # in memory and only released when future_map() returns.
+  .options = furrr::furrr_options(seed = TRUE, stdout = FALSE))
 future::plan(future::sequential)
 written <- c(written, unlist(results))
 
@@ -549,3 +552,6 @@ if (length(warnings_collected$entries) > 0L) {
   tab <- sort(table(sub(":.*$", "", warnings_collected$entries)), decreasing = TRUE)
   for (nm in names(tab)) cat(sprintf("  %5d  %s\n", tab[[nm]], nm))
 }
+# Final flush so the wrap-up summary lands in the log file even if R exits
+# right after this (otherwise the buffered final lines can be lost).
+flush.console()

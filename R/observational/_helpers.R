@@ -37,6 +37,12 @@ system_resources <- function() {
   }
   cgroup_total_gb <- if (is.finite(cgroup_max_bytes)) cgroup_max_bytes / 1024^3 else NA_real_
 
+  # cgroup v1's memory.limit_in_bytes returns a giant sentinel (~9.2 EB =
+  # 2^63 - 1 rounded to page size) when no limit is set, instead of the
+  # cgroup v2 string "max". Treat any cgroup_total absurdly larger than the
+  # host total as "unset" - otherwise the resource banner shows billions of
+  # free GB and the mem-budget heuristic picks an unrealistic worker count.
+
   cgroup_used_bytes <- read_first_number("/sys/fs/cgroup/memory.current")
   if (is.na(cgroup_used_bytes)) {
     cgroup_used_bytes <- read_first_number("/sys/fs/cgroup/memory/memory.usage_in_bytes")
@@ -60,6 +66,16 @@ system_resources <- function() {
                     error = function(e) NA, warning = function(w) NA)
     if (length(out) && !is.na(out[1])) host_total_gb <- as.numeric(out[1]) / 1024^3
     host_avail_gb <- host_total_gb
+  }
+
+  # Sanity-clamp the cgroup numbers. cgroup v1 unset limits show up as
+  # giant sentinels (~9.2 EB rather than NA); if cgroup_total exceeds host
+  # by an unrealistic factor, treat cgroup as effectively unset so the
+  # downstream free / total logic falls back to host values.
+  if (!is.na(cgroup_total_gb) && !is.na(host_total_gb) &&
+      cgroup_total_gb > host_total_gb * 1.5) {
+    cgroup_total_gb <- NA_real_
+    cgroup_used_gb <- NA_real_
   }
 
   # Effective budget = tightest of (cgroup limit, host total).

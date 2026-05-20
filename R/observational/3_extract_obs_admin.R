@@ -497,7 +497,10 @@ for (level in levels_run) {
       }
     )
     out
-  }, .options = furrr::furrr_options(seed = TRUE))
+  # stdout = FALSE so worker cat() lines stream to the parent's stdout
+  # (and thus to the nohup log) in real time, rather than being captured
+  # in memory and only released when future_map() returns.
+  }, .options = furrr::furrr_options(seed = TRUE, stdout = FALSE))
   future::plan(future::sequential)
 
   # Surface any errors from workers BEFORE the per-variable summary.
