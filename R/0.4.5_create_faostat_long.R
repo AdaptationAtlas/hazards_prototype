@@ -11,9 +11,10 @@ pacman::p_load(data.table, arrow, countrycode)
 intd_share_threshold <- 0.0025
 intd_window_years <- 5
 
-# Set TRUE to upload the parquet to S3 after building.
+# Set TRUE to upload the parquet + mapping CSV to S3 after building.
 # Requires 0_server_setup.R to have been sourced (loads upload_files_to_s3).
-upload_to_s3 <- TRUE
+# Default OFF after v5 refactor; flip to TRUE manually when ready to republish.
+upload_to_s3 <- FALSE
 s3_bucket    <- "s3://digital-atlas/domain=socioeconomic/type=production/source=faostat/region=ssa"
 s3_file_name <- "variable=adm0_faostat.parquet"
 
@@ -29,6 +30,16 @@ exclude_patterns <- c(
   "^Milk, Total$", "^Non Food$", "^Pulses, Total$", "^Roots and Tubers, Total$",
   "^Sheep and Goat Meat$", "^Sugar Crops Primary$", "^Treenuts, Total$",
   "^Vegetables and Fruit Primary$", "^Vegetables Primary$",
+  # Trade-domain rollups surfaced by the cross-domain integrity check.
+  # These are cross-commodity sums (SITC-style classes), not real items.
+  "^Cereals$", "^Cereals and Preparations$", "^Crops and livestock products$",
+  "^Fats and Oils \\(excluding Butter\\)$", "^Food Excluding Fish$",
+  "^Fruit and Vegetables$", "^Total Merchandise Trade$",
+  "^Vegetable Oil and Fat$", "^Non-food$", "^Cereal preparations total$",
+  "^Sugar and Honey$", "^Dairy Products and Eggs$", "^Dairy Products$",
+  "^Meat and Meat Preparations$", "^Dairy Products, milk equivalent$",
+  "^Fodder and Feeding Stuff$", "^Non-edible Crude Materials$",
+  "^Alcoholic Beverages$", "^Beverages$", "^Tobacco$",
   # Residual "other" / n.e.c. catchalls
   "^Other ", "n\\.e\\.c\\.",
   # Animal fats, offal, hides
@@ -191,6 +202,28 @@ fao_long <- rbindlist(long_list, use.names = TRUE, fill = TRUE)
 if (nrow(fao_long) == 0) {
   stop("No FAOSTAT source files found in ", fao_dir, " — run 0_server_setup.R section 3.5 first.")
 }
+
+# Load processed-to-raw mapping (Item-Code keyed) and apply include filter ####
+# The mapping CSV is committed to the repo and keyed on FAO Item Code (the
+# stable identifier that survives commodity_clean_map renames). Rows with
+# include = FALSE are heuristically-processed items whose parent_raw could not
+# be resolved at generation time; they stay in the CSV as an audit trail but
+# are dropped from the parquet build. Synthetic rows added later (Spices
+# combined, Other) have item_code = NA and are not affected by this filter.
+mapping_path <- file.path(project_dir, "metadata", "faostat_processed_to_raw.csv")
+if (!file.exists(mapping_path)) {
+  stop("Mapping CSV not found: ", mapping_path,
+       " — regenerate via R/misc/generate_faostat_processed_to_raw.R first.")
+}
+mapping <- fread(mapping_path)
+mapping_active <- mapping[include == TRUE]
+n_before_include <- nrow(fao_long)
+fao_long <- fao_long[is.na(item_code) | item_code %in% mapping_active$item_code]
+cat(sprintf(
+  "Mapping include filter: dropped %d rows (%.1f%%) for include = FALSE items.\n",
+  n_before_include - nrow(fao_long),
+  100 * (n_before_include - nrow(fao_long)) / n_before_include
+))
 
 # Trade-value deflation ####
 # Append export_value_usd15 and import_value_usd15: nominal *_value rows
@@ -391,75 +424,69 @@ cat(sprintf(
 # climate exposure for the importer; refining your own raw cocoa beans is
 # real production for the exporter.
 #
-# No-op if the mapping CSV is missing or empty.
-mapping_path <- file.path(project_dir, "metadata", "faostat_processed_to_raw.csv")
+# v5: joins are item-code-keyed throughout, so they're stable against the
+# commodity_clean_map renames downstream. keep_prod is commodity-level (after
+# meat canonical rename) so we first map it back to (iso3, item_code) via
+# the actual vop_intd15 rows to get the join key the mapping CSV exposes.
 processed_export_vars <- c("export_quantity", "export_value", "export_value_usd15")
-if (file.exists(mapping_path)) {
-  mapping <- fread(mapping_path)
-  mapping <- mapping[!is.na(parent_raw_item) & nzchar(parent_raw_item)]
+prod_codes_lookup <- unique(fao_long[
+  variable == "vop_intd15" & value > 0,
+  list(iso3, commodity, item_code)
+])
+keep_prod_item_codes <- unique(
+  merge(prod_codes_lookup, keep_prod,
+        by = c("iso3", "commodity"))[, list(iso3, item_code)]
+)
 
-  processed_mask <- fao_long$variable %in% processed_export_vars &
-    fao_long$commodity %in% mapping$processed_item
-  n_before <- sum(processed_mask)
+mapping_processed <- mapping_active[!is.na(parent_raw_item_code)]
+processed_mask <- fao_long$variable %in% processed_export_vars &
+  fao_long$item_code %in% mapping_processed$item_code
+n_before_gate <- sum(processed_mask)
 
-  if (n_before > 0L) {
-    processed_rows <- fao_long[processed_mask]
-    processed_rows <- merge(
-      processed_rows,
-      mapping[, list(commodity = processed_item, parent_raw_item)],
-      by = "commodity", all.x = TRUE
-    )
-    keep_processed <- processed_rows[
-      keep_prod[, list(iso3, parent_raw_item = commodity)],
-      on = c("iso3", "parent_raw_item"),
-      nomatch = NULL
-    ]
-    keep_processed[, parent_raw_item := NULL]
-    fao_long <- rbindlist(
-      list(fao_long[!processed_mask], keep_processed),
-      use.names = TRUE, fill = TRUE
-    )
-    cat(sprintf(
-      "Parent-mapping gate: kept %d / %d processed-export rows (%.1f%%); dropped %d rows.\n",
-      nrow(keep_processed), n_before,
-      100 * nrow(keep_processed) / max(1L, n_before),
-      n_before - nrow(keep_processed)
-    ))
-  } else {
-    cat("Parent-mapping gate: no processed-export rows present; nothing to gate.\n")
-  }
-} else {
+if (n_before_gate > 0L) {
+  processed_rows <- fao_long[processed_mask]
+  processed_rows <- merge(
+    processed_rows,
+    mapping_processed[, list(item_code, parent_raw_item_code)],
+    by = "item_code", all.x = TRUE
+  )
+  keep_processed <- processed_rows[
+    keep_prod_item_codes[, list(iso3, parent_raw_item_code = item_code)],
+    on = c("iso3", "parent_raw_item_code"),
+    nomatch = NULL
+  ]
+  keep_processed[, parent_raw_item_code := NULL]
+  fao_long <- rbindlist(
+    list(fao_long[!processed_mask], keep_processed),
+    use.names = TRUE, fill = TRUE
+  )
   cat(sprintf(
-    "Parent-mapping gate: %s not found - skipping gate.\n",
-    mapping_path
+    "Parent-mapping gate: kept %d / %d processed-export rows (%.1f%%); dropped %d rows.\n",
+    nrow(keep_processed), n_before_gate,
+    100 * nrow(keep_processed) / max(1L, n_before_gate),
+    n_before_gate - nrow(keep_processed)
   ))
-  mapping <- data.table(processed_item = character(), parent_raw_item = character(),
-                        commodity_class = character())
+} else {
+  cat("Parent-mapping gate: no processed-export rows present; nothing to gate.\n")
 }
 
-# type + parent_raw columns ####
-# Annotate every kept row with raw/processed type + (for processed) the FAO
-# Item string of its raw parent. NA parent_raw on raw rows. Driven by the
-# same metadata/faostat_processed_to_raw.csv used by the gate above; the
-# values here are read pre-rename so they match the FAO-canonical Item
-# names, not the commodity_clean_map shortened forms. Downstream notebooks
-# can group processed rows back to their raw parent by joining on
-# parent_raw -> commodity within their own filter scope.
-fao_long[, parent_raw := mapping$parent_raw_item[match(commodity, mapping$processed_item)]]
-fao_long[is.na(parent_raw) | !nzchar(parent_raw), parent_raw := NA_character_]
-fao_long[, type := ifelse(is.na(parent_raw), "raw", "processed")]
-cat(sprintf(
-  "type column: %d raw rows, %d processed rows.\n",
-  sum(fao_long$type == "raw"), sum(fao_long$type == "processed")
-))
-
-# commodity_class column ####
-# {"crop", "livestock", "byproduct"} per the mapping CSV. Looked up by
-# matching the (pre-rename) commodity name against mapping$processed_item.
-# Items without a class default to "crop" with a build-time warning so the
-# long tail can be curated in the CSV.
-fao_long[, commodity_class := mapping$commodity_class[match(commodity, mapping$processed_item)]]
+# type + parent_raw + parent_raw_item_code + commodity_class columns ####
+# Annotate every kept row with raw/processed type, parent_raw (FAO Item
+# string), parent_raw_item_code (stable identifier), and commodity_class.
+# Mapping lookup is keyed on item_code so it survives the commodity_clean_map
+# rename downstream. parent_raw / parent_raw_item_code are NA on raw rows;
+# type = "raw" when parent_raw_item_code is NA, "processed" otherwise.
+mi <- match(fao_long$item_code, mapping_active$item_code)
+fao_long[, parent_raw           := mapping_active$parent_raw_item[mi]]
+fao_long[, parent_raw_item_code := mapping_active$parent_raw_item_code[mi]]
+fao_long[, commodity_class      := mapping_active$commodity_class[mi]]
+fao_long[!nzchar(parent_raw), parent_raw := NA_character_]
 fao_long[!nzchar(commodity_class), commodity_class := NA_character_]
+fao_long[, type := ifelse(is.na(parent_raw_item_code), "raw", "processed")]
+
+# Items with no mapping hit (NA item_code on the row, or item_code not in
+# mapping_active) default to commodity_class = "crop"; the include filter
+# upstream guarantees this only fires for synthetic rows in steady state.
 unclassified <- fao_long[is.na(commodity_class), unique(commodity)]
 if (length(unclassified) > 0L) {
   cat(sprintf(
@@ -472,12 +499,35 @@ if (length(unclassified) > 0L) {
   fao_long[is.na(commodity_class), commodity_class := "crop"]
 }
 cat(sprintf(
+  "type column: %d raw rows, %d processed rows.\n",
+  sum(fao_long$type == "raw"), sum(fao_long$type == "processed")
+))
+cat(sprintf(
   "commodity_class column: %s\n",
   paste(sprintf("%s=%d",
                 fao_long[, .N, by = commodity_class][order(-N)]$commodity_class,
                 fao_long[, .N, by = commodity_class][order(-N)]$N),
         collapse = ", ")
 ))
+
+# Schema invariant I-2: production / yield rows must have type = "raw".
+# FAOSTAT QCL covers primary commodities only, so violations are a tripwire
+# against accidental scope drift, not a heavy filter. If this fires the FAO
+# source schema may have shifted and the mapping CSV needs follow-up.
+violations <- fao_long[
+  variable %in% c("production", "yield") & type != "raw",
+  unique(.SD), .SDcols = c("iso3", "item_code", "commodity", "variable", "type")
+]
+if (nrow(violations) > 0L) {
+  cat(sprintf(
+    "WARNING: %d production/yield rows have type != 'raw'. Dropping them.\n",
+    nrow(violations)
+  ))
+  print(head(violations, 10))
+  fao_long <- fao_long[!(variable %in% c("production", "yield") & type != "raw")]
+} else {
+  cat("Invariant I-2 OK: all production/yield rows have type = 'raw'.\n")
+}
 
 # "Other" aggregation ####
 # Bundle commodities dropped by the union-of-3 filter into a single "Other"
@@ -490,9 +540,11 @@ cat(sprintf(
 # and commodity_class blocks above, so those blocks never see "Other" as a
 # commodity and won't overwrite its metadata.
 if (nrow(dropped_rows) > 0L) {
-  dropped_rows[, parent_raw := mapping$parent_raw_item[match(commodity, mapping$processed_item)]]
+  di <- match(dropped_rows$item_code, mapping_active$item_code)
+  dropped_rows[, parent_raw_item_code := mapping_active$parent_raw_item_code[di]]
+  dropped_rows[, parent_raw           := mapping_active$parent_raw_item[di]]
   dropped_rows[!nzchar(parent_raw), parent_raw := NA_character_]
-  dropped_rows[, type := ifelse(is.na(parent_raw), "raw", "processed")]
+  dropped_rows[, type := ifelse(is.na(parent_raw_item_code), "raw", "processed")]
 
   summable_vars <- c(
     "production", "vop_usd15", "vop_intd15",
@@ -500,12 +552,21 @@ if (nrow(dropped_rows) > 0L) {
     "import_quantity", "import_value", "import_value_usd15"
   )
 
-  other_rows <- dropped_rows[
+  # Invariant I-2 extends to the Other bundle: exclude (production / yield)
+  # rows on processed commodities so the synthetic Other rows never violate
+  # the rule that production/yield must be type = "raw".
+  dropped_rows_for_other <- dropped_rows[
+    !(variable %in% c("production", "yield") & type != "raw")
+  ]
+
+  other_rows <- dropped_rows_for_other[
     variable %in% summable_vars,
     list(
+      item_code = NA_integer_,
       commodity = "Other",
       atlas_name = NA_character_,
       parent_raw = NA_character_,
+      parent_raw_item_code = NA_integer_,
       commodity_class = NA_character_,
       unit = first(unit),
       value = sum(value, na.rm = TRUE)
@@ -619,12 +680,12 @@ commodity_clean_map <- c(
 hits <- match(fao_long$commodity, names(commodity_clean_map))
 fao_long[!is.na(hits), commodity := unname(commodity_clean_map[hits[!is.na(hits)]])]
 
-# Drop item_code from the output schema (was only needed internally for
-# spam2fao joins and spice aggregation).
-fao_long[, item_code := NULL]
-
+# Keep item_code as a parquet column (v5). Stable FAOSTAT identifier; gives
+# downstream consumers a robust join key against other FAO bulks. NA on
+# synthetic "Spices, combined" and "Other" rows.
 setcolorder(fao_long, c(
-  "iso3", "commodity", "atlas_name", "type", "parent_raw", "commodity_class",
+  "iso3", "item_code", "commodity", "atlas_name", "type",
+  "parent_raw", "parent_raw_item_code", "commodity_class",
   "year", "variable", "unit", "value"
 ))
 setorder(fao_long, iso3, variable, commodity, year)
@@ -661,6 +722,17 @@ cat(sprintf(
 # production (QCL) and trade (TM) rows. Logs (iso3, commodity) cells that
 # exist in only one domain to a CSV next to the parquet. Doesn't halt the
 # build; catches the next cattle-meat-style mismatch for follow-up curation.
+#
+# v5: adds a `reason` column. Meat commodities are present in trade but
+# absent in production by design (the non-indigenous variant carries the
+# trade flow, the indigenous variant carries production but is dropped from
+# trade by FAOSTAT) - labelled "meat-by-design" so a reviewer can ignore
+# them. Everything else is labelled "review".
+meat_by_design <- c(
+  "Cattle meat", "Sheep meat", "Goat meat", "Pig meat", "Chicken meat",
+  "Buffalo meat", "Camel meat", "Horse meat",
+  "Rabbit and hare meat", "Turkey meat"
+)
 prod_items <- unique(fao_long[variable == "production", list(iso3, commodity)])
 trade_items <- unique(fao_long[
   variable %in% c("export_value", "import_value"),
@@ -668,11 +740,16 @@ trade_items <- unique(fao_long[
 ])
 production_only <- fsetdiff(prod_items, trade_items, all = FALSE)
 trade_only <- fsetdiff(trade_items, prod_items, all = FALSE)
+production_only[, `:=`(side = "production_only", reason = "review")]
+trade_only[, `:=`(
+  side = "trade_only",
+  reason = ifelse(commodity %in% meat_by_design, "meat-by-design", "review")
+)]
 mismatch_path <- file.path(fao_dir, "integrity_check_mismatches.csv")
 fwrite(
   rbind(
-    production_only[, side := "production_only"],
-    trade_only[, side := "trade_only"]
+    production_only[, list(iso3, commodity, side, reason)],
+    trade_only[, list(iso3, commodity, side, reason)]
   ),
   mismatch_path
 )
@@ -680,23 +757,52 @@ cat(sprintf(
   "Integrity check: wrote %d production-only + %d trade-only (iso3, commodity) cells to %s\n",
   nrow(production_only), nrow(trade_only), mismatch_path
 ))
+cat(sprintf(
+  "  reason breakdown: review=%d, meat-by-design=%d\n",
+  sum(production_only$reason == "review") + sum(trade_only$reason == "review"),
+  sum(trade_only$reason == "meat-by-design")
+))
 
 # Write parquet with build manifest as key/value metadata ####
 out_file <- file.path(fao_dir, "faostat_long.parquet")
 build_meta <- list(
-  schema_version = "v4",
+  schema_version = "v5",
   description = paste(
     "FAOSTAT long-form table for Africa: production, yield, 2014-16",
     "constant USD / I$ value of production, export quantity + value,",
-    "import quantity + value, and deflated export_value_usd15 +",
+    "import quantity + value, deflated export_value_usd15 +",
     "import_value_usd15 (constant 2014-2016 USD). Adds type,",
-    "parent_raw, commodity_class columns and an Other row per",
-    "(iso3, year, variable, type) bundling sub-threshold commodities."
+    "parent_raw, parent_raw_item_code, commodity_class, item_code columns",
+    "and an Other row per (iso3, year, variable, type) bundling",
+    "sub-threshold commodities.",
+    "v5: switched commodity_class + parent_raw lookups to FAO Item-Code",
+    "keys (fixes the prior commodity_clean_map / mapping CSV string-mismatch",
+    "where 16 livestock species defaulted to crop class); added 16 livestock",
+    "entries to the mapping CSV; added ~20 aggregate-rollup exclude patterns;",
+    "added 'reason' column to integrity_check_mismatches.csv; surfaced",
+    "item_code as a new parquet column; introduced 'include' column in the",
+    "mapping CSV with strict no-parent = no-inclusion semantics for",
+    "heuristically-processed items; enforced production/yield = 'raw' at",
+    "build time."
   ),
   schema_columns = paste(
-    "iso3 | commodity | atlas_name | type {raw, processed} |",
+    "iso3 | item_code | commodity | atlas_name | type {raw, processed} |",
     "parent_raw (FAO Item of raw parent for processed items; NA otherwise) |",
+    "parent_raw_item_code (FAO Item Code of raw parent; NA for raw items) |",
     "commodity_class {crop, livestock, byproduct} | year | variable | unit | value"
+  ),
+  aggregation_rules = paste(
+    "Aggregation by parent_raw_item_code (or parent_raw) is valid for",
+    "value-type variables ONLY: vop_usd15, vop_intd15, export_value,",
+    "export_value_usd15, import_value, import_value_usd15. Do NOT aggregate",
+    "across (raw, processed) for production, yield, export_quantity,",
+    "import_quantity - the units do not combine meaningfully across",
+    "transformation states (1 t cocoa beans + 1 t cocoa butter is",
+    "physically meaningless)."
+  ),
+  mapping_csv = paste(
+    "metadata/faostat_processed_to_raw.csv (Item-Code keyed; also published",
+    "to S3 alongside the parquet for methodology reference)."
   ),
   source = paste(
     "FAOSTAT bulk downloads: Production_Crops_Livestock, Value_of_Production,",
@@ -730,8 +836,12 @@ build_meta <- list(
   ),
   processed_to_raw_mapping = paste(
     "metadata/faostat_processed_to_raw.csv (committed in the repo) provides",
-    "the processed_item -> parent_raw_item + commodity_class lookup used by",
-    "the parent-mapping gate, the type column, and the commodity_class column."
+    "the item_code -> (parent_raw_item_code, parent_raw_item, commodity_class)",
+    "lookup used by the parent-mapping gate, the type column, and the",
+    "commodity_class column. Includes an 'include' bool column: rows with",
+    "include = FALSE are heuristically-processed items whose parent could not",
+    "be resolved at generation time; they are filtered out of the parquet",
+    "build but stay in the CSV as an audit trail."
   ),
   meat_variant = paste(
     "Indigenous (live-trade-adjusted) variants kept for vop_*;",
@@ -770,10 +880,12 @@ build_meta <- list(
   parent_mapping_gate = paste(
     "After the union filter, processed-export rows (export_quantity,",
     "export_value, export_value_usd15) are gated against keep_prod: the row",
-    "survives only if its parent_raw_item also passes the production",
-    "(vop_intd15) filter for the same country. Stops re-exports of imported",
-    "raw materials from polluting the climate-exposure view. Imports +",
-    "raw exports + production rows are not gated."
+    "survives only if its parent_raw_item_code is in the (iso3, item_code)",
+    "set of commodities that passed the production (vop_intd15) filter for",
+    "the same country. v5 keys the join on FAO Item Codes throughout so",
+    "commodity_clean_map renames downstream cannot break it. Stops re-",
+    "exports of imported raw materials from polluting the climate-exposure",
+    "view. Imports + raw exports + production rows are not gated."
   ),
   other_aggregation = paste(
     "Commodities dropped by the union filter are bundled into a single",
@@ -781,8 +893,9 @@ build_meta <- list(
     "(production, vop_usd15, vop_intd15, export_quantity, export_value,",
     "export_value_usd15, import_quantity, import_value, import_value_usd15).",
     "Yield is excluded (heterogeneous yields can't sum). Other rows have",
-    "atlas_name = NA, parent_raw = NA, commodity_class = NA; their type",
-    "tag preserves the raw vs processed split."
+    "item_code = NA, atlas_name = NA, parent_raw = NA, parent_raw_item_code",
+    "= NA, commodity_class = NA; their type tag preserves the raw vs",
+    "processed split."
   ),
   yield_sanity_check = paste(
     "Build-time assertion: median Maize yield over the last 5 years must",
@@ -791,8 +904,12 @@ build_meta <- list(
   ),
   integrity_check = paste(
     "Build writes integrity_check_mismatches.csv listing (iso3, commodity)",
-    "cells present in only one of production / trade. Reviewed offline;",
-    "surprises feed back into commodity_clean_map + the mapping CSV."
+    "cells present in only one of production / trade, with a `reason`",
+    "column: 'meat-by-design' for cattle / sheep / goat / pig / chicken /",
+    "buffalo / camel / horse / rabbit / turkey meat (where the indigenous",
+    "production variant and the non-indigenous trade variant collapse to",
+    "the same commodity), 'review' for everything else. Reviewer eyeballs",
+    "reason='review' rows for follow-up curation."
   ),
   commodity_rename = paste(
     "FAO Item strings rewritten to friendlier names where useful (e.g.",
@@ -831,18 +948,24 @@ cat(
 )
 
 # Optional S3 upload ####
+# Uploads BOTH the parquet and the Item-Code-keyed mapping CSV. The CSV
+# travels alongside the parquet as methodology reference: downstream users
+# can reconstruct the raw / processed / commodity_class lookup without
+# cloning the repo.
 if (isTRUE(upload_to_s3)) {
   pacman::p_load(s3fs, paws.storage, progressr, progress, future, future.apply)
   if (!exists("upload_files_to_s3", mode = "function")) {
     stop("upload_files_to_s3() not found - run 0_server_setup.R first.")
   }
   upload_files_to_s3(
-    files           = out_file,
-    s3_file_names   = s3_file_name,
+    files           = c(out_file, mapping_path),
+    s3_file_names   = c(s3_file_name, "faostat_processed_to_raw.csv"),
     selected_bucket = s3_bucket,
     max_attempts    = 3,
     overwrite       = TRUE,
     mode            = "public-read"
   )
-  cat("Uploaded to", file.path(s3_bucket, s3_file_name), "\n")
+  cat("Uploaded to", s3_bucket, ":\n",
+      "  -", s3_file_name, "\n",
+      "  - faostat_processed_to_raw.csv\n")
 }
