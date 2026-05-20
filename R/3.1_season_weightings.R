@@ -91,7 +91,6 @@ for(e in 1:nrow(exposure_dirs)){
   setnames(spam_ex_s2,"variable","crop")
 
   for(s in 1:nrow(season_pairs)){
-    s<-1
     season_name<-season_pairs$name[s]
     save_dir<-ensure_dir(file.path(exp_dir,season_name))
     
