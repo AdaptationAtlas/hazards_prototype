@@ -420,7 +420,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 1146,"Skins, rabbit",,,livestock,"Skins, rabbit",FALSE
 1173,Meat meal,,,crop,Meat meal,FALSE
 1181,Bees,,,crop,Honey,TRUE
-1187,Silk waste,,,crop,Silk waste,TRUE
+1187,Silk waste,,,crop,Silk waste,FALSE
 1195,"Skins, furs",,,livestock,"Skins, furs",FALSE
 1214,"Hides, wet salted nes",,,livestock,"Hides, wet salted nes",FALSE
 1215,"Hides nes, dry salted",,,livestock,"Hides nes, dry salted",FALSE
