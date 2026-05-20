@@ -15,6 +15,11 @@
 #
 # Usage (from project_dir):
 #   Rscript R/checks/68_categorisation_stage1.R
+#
+# To override the classified-raster directory (e.g. if 0_server_setup.R's
+# climdat_source resolves to a working_dir that doesn't have the data):
+#   Rscript R/checks/68_categorisation_stage1.R \
+#     --class-dir /home/jovyan/common_data/hazards_prototype/Data/hazard_timeseries_class
 
 project_dir <- if (nzchar(Sys.getenv("project_dir"))) {
   Sys.getenv("project_dir")
@@ -32,10 +37,36 @@ cat("\n=== CR-068 Stage 1 probe — categorisation asymmetry ===\n")
 cat(sprintf("  project_dir = %s\n", project_dir))
 cat(sprintf("  Cglabs      = %s\n", isTRUE(Cglabs)))
 
-class_dir <- atlas_dirs$data_dir$hazard_timeseries_class
+# --class-dir override (in case climdat_source picked the wrong tree)
+args_all <- commandArgs(trailingOnly = TRUE)
+class_dir_override <- {
+  i <- match("--class-dir", args_all)
+  if (!is.na(i) && i < length(args_all)) args_all[i + 1L] else NA_character_
+}
+
+class_dir <- if (!is.na(class_dir_override)) {
+  class_dir_override
+} else {
+  atlas_dirs$data_dir$hazard_timeseries_class
+}
 if (is.null(class_dir) || !dir.exists(class_dir)) {
-  stop("hazard_timeseries_class dir not resolvable; ",
-       "0_server_setup.R must populate atlas_dirs first.")
+  # Try the sibling working_dir (atlas_delta <-> nexgddp swap) before giving up
+  candidates <- c(
+    "/home/jovyan/common_data/hazards_prototype/Data/hazard_timeseries_class",
+    "/home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_timeseries_class"
+  )
+  hit <- candidates[dir.exists(candidates)]
+  if (length(hit) > 0L) {
+    class_dir <- hit[1]
+    cat(sprintf("  (resolved class_dir from candidate fallback: %s)\n", class_dir))
+  } else {
+    cat("\nERROR: hazard_timeseries_class dir not found at:\n")
+    cat(sprintf("  - %s (resolved from atlas_dirs)\n",
+                atlas_dirs$data_dir$hazard_timeseries_class))
+    cat("  - CGlabs candidates:\n")
+    cat(paste0("    ", candidates), sep = "\n")
+    stop("Run R/2_calculate_haz_freq.R Step 1 first, OR pass --class-dir <path>.")
+  }
 }
 cat(sprintf("  class_dir   = %s\n\n", class_dir))
 
