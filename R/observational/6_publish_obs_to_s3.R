@@ -172,7 +172,19 @@ do_tier1 <- mode == "--smoke" || tier_arg %in% c("1", "all")
 do_tier2 <- mode != "--smoke" && tier_arg %in% c("2", "all")
 
 overwrite <- parse_overwrite_flag(args)
-if (overwrite && mode == "--full") log_step("--overwrite set: existing S3 objects will be overwritten")
+# AtlasDataManageR 0.0.0.9000 (currently installed) does NOT expose an
+# `overwrite` arg on either S3DirUploader$new() or upload_files_parallel().
+# The flag is parsed for forward-compatibility but emits a warning so the
+# user knows it's not honoured at the package level. If you need true
+# re-upload semantics, delete the target S3 keys first with the AWS CLI.
+if (overwrite) {
+  log_step(paste(
+    "WARNING: --overwrite is not honoured by AtlasDataManageR 0.0.0.9000",
+    "(no overwrite arg on S3DirUploader). Upload will follow the package",
+    "default (typically: skip-if-exists). Delete S3 keys manually if you",
+    "need a forced re-upload."
+  ))
+}
 
 # Upload workers are I/O-bound; per-worker RAM is small.
 per_worker_gb <- 0.2
@@ -369,9 +381,11 @@ walk_spec <- function(spec) {
   )
 }
 
-#' Build an S3DirUploader for one spec. Passes --overwrite through as the
-#' constructor's `overwrite` arg; AtlasDataManageR's default is FALSE (skip
-#' files already on S3), which gives free idempotency on re-runs.
+#' Build an S3DirUploader for one spec.
+#' AtlasDataManageR 0.0.0.9000 does not expose an `overwrite` arg; behaviour
+#' falls back to the package default (typically skip-if-exists, which gives
+#' free idempotency on re-runs). See the `--overwrite` warning emitted up
+#' near the CLI parsing block for forced-overwrite workarounds.
 build_uploader <- function(spec) {
   AtlasDataManageR::S3DirUploader$new(
     upload_id    = spec$upload_id,
@@ -381,8 +395,7 @@ build_uploader <- function(spec) {
     file_pattern = spec$file_pattern,
     name_fn      = spec$name_fn,
     public       = TRUE,
-    recursive    = spec$recursive,
-    overwrite    = overwrite
+    recursive    = spec$recursive
   )
 }
 
