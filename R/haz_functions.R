@@ -1489,14 +1489,19 @@ read_spam <- function(variable, technology, mapspam_dir, save_dir, base_rast, fi
     names(data) <- gsub("_a$|_h$|_i$|_l$|_r$|_s$", "", names(data))
     names(data) <- ms_codes[match(names(data), tolower(ms_codes$Code)), Fullname]
     
-    # Convert the raster values from total values to values per hectare, based on cell size.
-    data <- data / terra::cellSize(data, unit="ha")
-    
-    # Resample the raster data to match the resolution and extent of the base_rast.
-    data <- terra::resample(data, base_rast)
-    
-    # Convert the resampled values back to total values by multiplying by the new cell size.
-    data <- data * cellSize(data, unit="ha")
+    # v9: mass-conserving resample via method="sum". The prior
+    # density-divide / bilinear / density-back pattern leaked country-level
+    # mass (see R/checks/9_mass_conservation_check.R and issue #9).
+    .spam_src_mass <- terra::global(data, "sum", na.rm = TRUE)[, 1]
+    data <- terra::resample(data, base_rast, method = "sum")
+    .spam_dst_mass <- terra::global(data, "sum", na.rm = TRUE)[, 1]
+    .spam_ratio <- .spam_dst_mass / .spam_src_mass
+    if (any(abs(.spam_ratio - 1) > 0.005, na.rm = TRUE)) {
+      warning(sprintf(
+        "[read_spam] mass not conserved on resample: %s",
+        paste(sprintf("%s=%.4f", names(data), .spam_ratio), collapse = ", ")
+      ))
+    }
     
     # Save the processed raster data to a file.
     terra::writeRaster(data, filename=ms_file, overwrite=T, filetype = "COG",gdal = c("OVERVIEWS"="NONE")) 

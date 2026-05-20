@@ -378,14 +378,20 @@ if(!file.exists(hpop_file)|overwrite_pop==T){
   hpop<-terra::rast(local_files)
   hpop<-terra::crop(hpop,rast(boundaries_zonal[[1]]))
   
-  # Convert hpop to density
-  hpop<-hpop/cellSize(hpop,unit="ha")
-  
-  # Resample to base raster
-  hpop<-terra::resample(hpop,rast(boundaries_zonal[[1]]))
-  
-  # Convert back to number per cell
-  hpop<-hpop*cellSize(hpop,unit="ha")
+  # v9: mass-conserving resample via method="sum". The prior
+  # density / bilinear / density-back pattern leaked ~7.9% mass at country
+  # totals for hpop (AGO probe; see R/checks/9_mass_conservation_check.R
+  # and issue #9).
+  .hpop_src_mass <- terra::global(hpop, "sum", na.rm = TRUE)[, 1]
+  hpop <- terra::resample(hpop, rast(boundaries_zonal[[1]]), method = "sum")
+  .hpop_dst_mass <- terra::global(hpop, "sum", na.rm = TRUE)[, 1]
+  .hpop_ratio <- .hpop_dst_mass / .hpop_src_mass
+  if (any(abs(.hpop_ratio - 1) > 0.005, na.rm = TRUE)) {
+    warning(sprintf(
+      "[0.4.4] mass not conserved on hpop resample: %s",
+      paste(sprintf("%s=%.4f", names(hpop), .hpop_ratio), collapse = ", ")
+    ))
+  }
   
   terra::writeRaster(hpop,filename =hpop_file,overwrite=T)
 }

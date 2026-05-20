@@ -98,12 +98,20 @@ if (FALSE) {
 
 ## 2.1) Resample & mask to atlas area #####
 #### units are absolute number of animals per pixel
-# convert to density
-glw <- glw / terra::cellSize(glw, unit = "ha")
-# resample to the atlas base raster
-glw <- terra::resample(glw, base_rast)
-# convert back to numbers per pixel
-glw <- glw * terra::cellSize(glw, unit = "ha")
+# v9: mass-conserving resample via method="sum". The previous
+# density / bilinear-resample / density-back pattern leaked ~3.6% mass
+# at country totals (probe in R/checks/9_mass_conservation_check.R,
+# issue #9) because bilinear smears values across destination cells.
+.glw_src_mass <- terra::global(glw, "sum", na.rm = TRUE)[, 1]
+glw <- terra::resample(glw, base_rast, method = "sum")
+.glw_dst_mass <- terra::global(glw, "sum", na.rm = TRUE)[, 1]
+.glw_ratio <- .glw_dst_mass / .glw_src_mass
+if (any(abs(.glw_ratio - 1) > 0.005, na.rm = TRUE)) {
+  warning(sprintf(
+    "[0.4.1] mass not conserved on GLW resample: %s",
+    paste(sprintf("%s=%.4f", names(glw), .glw_ratio), collapse = ", ")
+  ))
+}
 # mask to focal countries
 glw <- terra::mask(glw, geoboundaries)
 
@@ -142,12 +150,14 @@ if (!file.exists(mask_ls_file) || overwrite_glw == TRUE) {
   names(lus) <- c("cattle", "poultry", "goats", "pigs", "sheep", "total")
   lus <- terra::mask(terra::crop(lus, geoboundaries), geoboundaries)
 
-  # resample to 0.05
-  lu_density <- lus / terra::cellSize(lus, unit = "ha")
-  lu_density <- terra::resample(lu_density, base_rast)
+  # resample to atlas grid (v9: mass-conserving via method="sum"; the prior
+  # density-divide / bilinear path smeared livestock into pixels that were
+  # originally empty, so the > 0 binary mask was overly generous spatially.
+  # See issue #9 + R/checks/9_mass_conservation_check.R).
+  lu_resampled <- terra::resample(lus, base_rast, method = "sum")
 
   # Classify into binary mask
-  livestock_mask <- terra::ifel(lu_density > 0, 1, 0)
+  livestock_mask <- terra::ifel(lu_resampled > 0, 1, 0)
 
   # Split mask by highland vs tropical areas
 
@@ -511,10 +521,18 @@ if (!file.exists(livestock_no_file) || overwrite_glw == TRUE) {
   livestock_no$total <- TLU
   livestock_no <- terra::mask(terra::crop(livestock_no, geoboundaries), geoboundaries)
 
-  # resample to base_rast
-  livestock_density <- livestock_no / terra::cellSize(livestock_no, unit = "ha")
-  livestock_density <- terra::resample(livestock_density, base_rast)
-  livestock_no <- livestock_density * cellSize(livestock_density, unit = "ha")
+  # resample to base_rast (v9: mass-conserving via method="sum"; see issue #9
+  # + R/checks/9_mass_conservation_check.R).
+  .lvno_src_mass <- terra::global(livestock_no, "sum", na.rm = TRUE)[, 1]
+  livestock_no <- terra::resample(livestock_no, base_rast, method = "sum")
+  .lvno_dst_mass <- terra::global(livestock_no, "sum", na.rm = TRUE)[, 1]
+  .lvno_ratio <- .lvno_dst_mass / .lvno_src_mass
+  if (any(abs(.lvno_ratio - 1) > 0.005, na.rm = TRUE)) {
+    warning(sprintf(
+      "[0.4.1] mass not conserved on livestock_no resample: %s",
+      paste(sprintf("%s=%.4f", names(livestock_no), .lvno_ratio), collapse = ", ")
+    ))
+  }
 
   # Pull out sheep and goat proportions for use in vop calculations before highland/tropical splitting
   sheep_prop <- livestock_no$sheep / (livestock_no$goats + livestock_no$sheep)
