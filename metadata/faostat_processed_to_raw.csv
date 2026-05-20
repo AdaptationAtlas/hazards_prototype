@@ -1,11 +1,11 @@
 item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_group,include
-10,Total Merchandise Trade,,,crop,Total Merchandise Trade,TRUE
+10,Total Merchandise Trade,,,crop,Total Merchandise Trade,FALSE
 15,Wheat,,,crop,Wheat,TRUE
 16,Wheat and meslin flour,15,Wheat,byproduct,Wheat,TRUE
 17,Bran of wheat,15,Wheat,byproduct,Wheat,TRUE
 18,"Uncooked pasta, not stuffed or otherwise prepared",,,crop,"Uncooked pasta, not stuffed or otherwise prepared",FALSE
 19,Germ of wheat,15,Wheat,byproduct,Wheat,TRUE
-20,Bread,,,crop,Bread,TRUE
+20,Bread,,,crop,Bread,FALSE
 21,Bulgur,15,Wheat,byproduct,Wheat,TRUE
 22,Pastry,,,crop,Pastry,FALSE
 27,Rice,,,crop,Rice,TRUE
@@ -18,14 +18,14 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 36,Oil of rice bran,,,byproduct,Oil of rice bran,FALSE
 37,Cake of rice bran,,,byproduct,Cake of rice bran,FALSE
 38,Flour of rice,27,Rice,byproduct,Rice,TRUE
-39,Rice-fermented beverages,,,crop,Rice-fermented beverages,TRUE
-41,Breakfast cereals,,,crop,Breakfast cereals,TRUE
+39,Rice-fermented beverages,27,Rice,byproduct,Rice,TRUE
+41,Breakfast cereals,,,crop,Breakfast cereals,FALSE
 44,Barley,,,crop,Barley,TRUE
 45,Pot barley,44,Barley,byproduct,Barley,TRUE
 46,"Barley, pearled",44,Barley,byproduct,Barley,TRUE
 47,Bran of barley,44,Barley,byproduct,Barley,TRUE
 48,Barley flour and grits,44,Barley,byproduct,Barley,TRUE
-49,"Malt, whether or not roasted",,,crop,"Malt, whether or not roasted",TRUE
+49,"Malt, whether or not roasted",44,Barley,byproduct,Barley,TRUE
 50,Malt extract,44,Barley,byproduct,Barley,TRUE
 56,Maize (corn),,,crop,Maize,TRUE
 57,Germ of maize,56,Maize,byproduct,Maize,TRUE
@@ -36,7 +36,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 72,Flour of rye,71,Rye,byproduct,Rye,TRUE
 73,Bran of rye,71,Rye,byproduct,Rye,TRUE
 75,Oats,,,crop,Oats,TRUE
-76,"Oats, rolled",,,crop,"Oats, rolled",TRUE
+76,"Oats, rolled",75,Oats,byproduct,Oats,TRUE
 79,Millet,,,crop,Millet,TRUE
 80,Flour of millet,79,Millet,byproduct,Millet,TRUE
 81,Bran of millet,79,Millet,byproduct,Millet,TRUE
@@ -55,37 +55,37 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 103,Mixed grain,,,crop,Mixed grain,TRUE
 104,Flour of mixed grain,103,Mixed grain,byproduct,Mixed grain,TRUE
 105,Bran of mixed grain,103,Mixed grain,byproduct,Mixed grain,TRUE
-109,Infant food,,,crop,Infant food,TRUE
+109,Infant food,,,crop,Infant food,FALSE
 110,"Communion wafers, empty cachets of a kind suitable for pharmaceutical use, sealing wafers, rice paper and similar products.",,,crop,"Communion wafers, empty cachets of a kind suitable for pharmaceutical use, sealing wafers, rice paper and similar products.",FALSE
 113,Cereal preparations,,,livestock,Cereal preparations,FALSE
 114,Mixes and doughs for the preparation of bakers' wares,,,livestock,Mixes and doughs for the preparation of bakers' wares,FALSE
 115,"Food preparations of flour, meal or malt extract",,,livestock,"Food preparations of flour, meal or malt extract",FALSE
 116,Potatoes,,,crop,Potatoes,TRUE
-117,"Flour, meal, powder, flakes, granules and pellets of potatoes",,,crop,"Flour, meal, powder, flakes, granules and pellets of potatoes",TRUE
+117,"Flour, meal, powder, flakes, granules and pellets of potatoes",116,Potatoes,byproduct,Potatoes,TRUE
 118,"Potatoes, frozen",,,crop,Potatoes,TRUE
 120,Potato offals,,,livestock,Potato offals,FALSE
-121,Tapioca of potatoes,,,crop,Tapioca of potatoes,TRUE
+121,Tapioca of potatoes,116,Potatoes,byproduct,Potatoes,TRUE
 122,Sweet potatoes,,,crop,Sweet potatoes,TRUE
 125,"Cassava, fresh",,,crop,Cassava,TRUE
 126,Flour of cassava,125,"Cassava, fresh",byproduct,Cassava,TRUE
-127,Tapioca of cassava,,,crop,Tapioca of cassava,TRUE
+127,Tapioca of cassava,125,"Cassava, fresh",byproduct,Cassava,TRUE
 128,"Cassava, dry",,,crop,Cassava,TRUE
-129,Starch of cassava,,,crop,Starch of cassava,TRUE
+129,Starch of cassava,125,"Cassava, fresh",byproduct,Cassava,TRUE
 135,Yautia,,,crop,Yautia,TRUE
 136,Taro,,,crop,Taro,TRUE
 137,Yams,,,crop,Yams,TRUE
 156,Sugar cane,,,crop,Sugar cane,TRUE
 157,Sugar beet,,,crop,Sugar beet,TRUE
-160,"Refined cane or beet sugar, in solid form, containing added flavouring or colouring matter; maple sugar and maple syrup",,,crop,"Refined cane or beet sugar, in solid form, containing added flavouring or colouring matter; maple sugar and maple syrup",TRUE
-162,Raw cane or beet sugar (centrifugal only),,,crop,Raw cane or beet sugar (centrifugal only),TRUE
+160,"Refined cane or beet sugar, in solid form, containing added flavouring or colouring matter; maple sugar and maple syrup",,,crop,"Refined cane or beet sugar, in solid form, containing added flavouring or colouring matter; maple sugar and maple syrup",FALSE
+162,Raw cane or beet sugar (centrifugal only),,,crop,Raw cane or beet sugar (centrifugal only),FALSE
 163,"Cane sugar, non-centrifugal",156,Sugar cane,byproduct,Sugar cane,TRUE
 164,Refined sugar,156,Sugar cane,byproduct,Sugar cane,TRUE
-168,Sugar confectionery,,,crop,Sugar confectionery,TRUE
-169,Beet pulp,,,crop,Beet pulp,TRUE
-170,Bagasse,,,crop,Bagasse,TRUE
+168,Sugar confectionery,,,crop,Sugar confectionery,FALSE
+169,Beet pulp,157,Sugar beet,byproduct,Sugar beet,TRUE
+170,Bagasse,156,Sugar cane,byproduct,Sugar cane,TRUE
 172,Glucose and dextrose,,,crop,Glucose and dextrose,FALSE
 173,Lactose,,,crop,Lactose,TRUE
-175,Isoglucose,,,crop,Isoglucose,TRUE
+175,Isoglucose,,,crop,Isoglucose,FALSE
 176,"Beans, dry",,,crop,Beans,TRUE
 181,"Broad beans and horse beans, dry",,,crop,"Broad beans, dry",TRUE
 187,"Peas, dry",,,crop,Peas,TRUE
@@ -110,47 +110,47 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 231,"Almonds, shelled",221,"Almonds, in shell",byproduct,Almonds,TRUE
 232,"Walnuts, shelled",222,"Walnuts, in shell",byproduct,Walnuts,TRUE
 233,"Hazelnuts, shelled",225,"Hazelnuts, in shell",byproduct,Hazelnuts,TRUE
-235,Prepared nuts,,,crop,Prepared nuts,TRUE
+235,Prepared nuts,,,crop,Prepared nuts,FALSE
 236,Soya beans,,,crop,Soybeans,TRUE
-237,Soya bean oil,,,crop,Soya bean oil,TRUE
+237,Soya bean oil,236,Soya beans,byproduct,Soybeans,TRUE
 238,Cake of soya beans,236,Soya beans,byproduct,Soybeans,TRUE
-239,Soya sauce,,,crop,Soya sauce,TRUE
-240,Soya paste,,,crop,Soya paste,TRUE
+239,Soya sauce,236,Soya beans,byproduct,Soybeans,TRUE
+240,Soya paste,236,Soya beans,byproduct,Soybeans,TRUE
 242,"Groundnuts, excluding shelled",,,crop,Groundnuts,TRUE
 243,"Groundnuts, shelled",242,"Groundnuts, excluding shelled",byproduct,Groundnuts,TRUE
-244,Groundnut oil,,,crop,Groundnut oil,TRUE
+244,Groundnut oil,242,"Groundnuts, excluding shelled",byproduct,Groundnuts,TRUE
 245,Cake of groundnuts,242,"Groundnuts, excluding shelled",byproduct,Groundnuts,TRUE
-246,Prepared groundnuts,,,crop,Prepared groundnuts,TRUE
+246,Prepared groundnuts,242,"Groundnuts, excluding shelled",byproduct,Groundnuts,TRUE
 247,Peanut butter,,,livestock,Peanut butter,FALSE
 249,"Coconuts, in shell",,,crop,Coconuts,TRUE
-250,"Coconuts, desiccated",,,crop,"Coconuts, desiccated",TRUE
+250,"Coconuts, desiccated",249,"Coconuts, in shell",byproduct,Coconuts,TRUE
 251,Copra,,,crop,Copra,TRUE
-252,Coconut oil,,,crop,Coconut oil,TRUE
+252,Coconut oil,249,"Coconuts, in shell",byproduct,Coconuts,TRUE
 253,Cake of copra,251,Copra,byproduct,Copra,TRUE
 254,Oil palm fruit,,,crop,Oil palm fruit,TRUE
 256,Palm kernels,,,crop,Palm kernels,TRUE
-257,Palm oil,,,crop,Palm oil,TRUE
+257,Palm oil,254,Oil palm fruit,byproduct,Oil palm fruit,TRUE
 258,Oil of palm kernel,256,Palm kernels,byproduct,Palm kernels,TRUE
 259,Cake of palm kernel,256,Palm kernels,byproduct,Palm kernels,TRUE
 260,Olives,,,crop,Olives,TRUE
-261,Olive oil,,,crop,Olive oil,TRUE
-262,Olives preserved,,,crop,Olives preserved,TRUE
+261,Olive oil,260,Olives,byproduct,Olives,TRUE
+262,Olives preserved,260,Olives,byproduct,Olives,TRUE
 263,Karite nuts (sheanuts),,,crop,Shea nuts,TRUE
 265,Castor oil seeds,,,crop,Castor oil seeds,TRUE
 266,Oil of castor beans,,,byproduct,Oil of castor beans,FALSE
 267,Sunflower seed,,,crop,Sunflower seed,TRUE
-268,"Sunflower-seed oil, crude",268,"Sunflower-seed oil, crude",byproduct,"Sunflower-seed oil, crude",TRUE
+268,"Sunflower-seed oil, crude",267,Sunflower seed,byproduct,Sunflower seed,TRUE
 269,Cake of sunflower seed,267,Sunflower seed,byproduct,Sunflower seed,TRUE
 270,Rape or colza seed,,,crop,Rapeseed,TRUE
 271,"Rapeseed or canola oil, crude",271,"Rapeseed or canola oil, crude",byproduct,"Rapeseed or canola oil, crude",TRUE
-272,Cake of rapeseed,271,"Rapeseed or canola oil, crude",byproduct,"Rapeseed or canola oil, crude",TRUE
+272,Cake of rapeseed,271,"Rapeseed or canola oil, crude",byproduct,Cake of rapeseed,TRUE
 273,Olive residues,,,crop,Olive residues,TRUE
 274,Oil of olive residues,273,Olive residues,byproduct,Olive residues,TRUE
 275,Tung nuts,,,crop,Tung nuts,TRUE
 276,Oil of tung nuts,275,Tung nuts,byproduct,Tung nuts,TRUE
 278,Jojoba oil,,,crop,Jojoba oil,TRUE
 280,Safflower seed,,,crop,Safflower seed,TRUE
-281,"Safflower-seed oil, crude",281,"Safflower-seed oil, crude",byproduct,"Safflower-seed oil, crude",TRUE
+281,"Safflower-seed oil, crude",280,Safflower seed,byproduct,Safflower seed,TRUE
 282,Cake of safflowerseed,,,byproduct,Cake of safflowerseed,FALSE
 289,Sesame seed,,,crop,Sesame seed,TRUE
 290,Oil of sesame seed,289,Sesame seed,byproduct,Sesame seed,TRUE
@@ -162,13 +162,13 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 296,Poppy seed,,,crop,Poppy seed,TRUE
 299,Melonseed,,,crop,Melon seed,TRUE
 328,"Seed cotton, unginned",,,crop,Cotton,TRUE
-329,Cotton seed,,,crop,Cotton seed,TRUE
-331,Cottonseed oil,,,crop,Cottonseed oil,TRUE
-332,Cake of cottonseed,331,Cottonseed oil,byproduct,Cottonseed oil,TRUE
+329,Cotton seed,328,"Seed cotton, unginned",byproduct,Cotton,TRUE
+331,Cottonseed oil,328,"Seed cotton, unginned",byproduct,Cotton,TRUE
+332,Cake of cottonseed,331,Cottonseed oil,byproduct,Cotton,TRUE
 333,Linseed,,,crop,Linseed,TRUE
 334,Oil of linseed,333,Linseed,byproduct,Linseed,TRUE
 335,Cake of linseed,333,Linseed,byproduct,Linseed,TRUE
-336,Hempseed,,,crop,Hempseed,TRUE
+336,Hempseed,,,crop,Hemp,TRUE
 341,"Cake, oilseeds nes",,,crop,"Cake, oilseeds nes",TRUE
 343,"Flours and meals of oil seeds or oleaginous fruits, except those of mustard",,,crop,"Flours and meals of oil seeds or oleaginous fruits, except those of mustard",FALSE
 358,Cabbages,,,crop,Cabbage,TRUE
@@ -176,11 +176,11 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 367,Asparagus,,,crop,Asparagus,TRUE
 372,Lettuce and chicory,,,crop,Lettuce,TRUE
 373,Spinach,,,crop,Spinach,TRUE
-378,Cassava leaves,,,crop,Cassava,TRUE
+378,Cassava leaves,,,crop,Cassava leaves,TRUE
 388,Tomatoes,,,crop,Tomatoes,TRUE
 390,Tomato juice,388,Tomatoes,byproduct,Tomatoes,TRUE
-391,Paste of tomatoes,,,crop,Paste of tomatoes,TRUE
-392,"Tomatoes, peeled (o/t vinegar)",,,crop,"Tomatoes, peeled (o/t vinegar)",TRUE
+391,Paste of tomatoes,388,Tomatoes,byproduct,Tomatoes,TRUE
+392,"Tomatoes, peeled (o/t vinegar)",388,Tomatoes,byproduct,Tomatoes,TRUE
 393,Cauliflowers and broccoli,,,crop,Cauliflower and broccoli,TRUE
 394,"Pumpkins, squash and gourds",,,crop,Pumpkins and squash,TRUE
 397,Cucumbers and gherkins,,,crop,Cucumbers and gherkins,TRUE
@@ -195,15 +195,15 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 426,Carrots and turnips,,,crop,Carrots and turnips,TRUE
 430,Okra,,,crop,Okra,TRUE
 446,Green corn (maize),,,crop,Sweet corn,TRUE
-447,"Sweet corn, frozen",,,crop,Sweet corn,TRUE
-448,"Sweet corn, prepared or preserved",,,crop,"Sweet corn, prepared or preserved",TRUE
+447,"Sweet corn, frozen",446,Green corn (maize),byproduct,Sweet corn,TRUE
+448,"Sweet corn, prepared or preserved",446,Green corn (maize),byproduct,Sweet corn,TRUE
 450,Dried mushrooms,,,crop,Dried mushrooms,TRUE
 451,Canned mushrooms,,,crop,Canned mushrooms,TRUE
 461,Locust beans (carobs),,,crop,Locust beans (carobs),TRUE
-469,"Vegetables, dehydrated",,,crop,"Vegetables, dehydrated",TRUE
+469,"Vegetables, dehydrated",,,crop,"Vegetables, dehydrated",FALSE
 471,"Vegetables, pulses and potatoes, preserved by vinegar or acetic acid",,,crop,"Vegetables, pulses and potatoes, preserved by vinegar or acetic acid",FALSE
 472,Vegetables preserved nes (o/t vinegar),,,crop,Vegetables preserved nes (o/t vinegar),FALSE
-473,Vegetables frozen,,,crop,Vegetables frozen,TRUE
+473,Vegetables frozen,,,crop,Vegetables frozen,FALSE
 475,Vegetables preserved (frozen),,,crop,Vegetables preserved (frozen),FALSE
 476,Homogenized vegetable preparations,,,livestock,Homogenized vegetable preparations,FALSE
 486,Bananas,,,crop,Bananas,TRUE
@@ -212,15 +212,15 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 491,Orange juice,490,Oranges,byproduct,Oranges,TRUE
 492,"Orange juice, concentrated",,,byproduct,"Orange juice, concentrated",FALSE
 495,"Tangerines, mandarins, clementines",,,crop,Tangerines and mandarins,TRUE
-496,Juice of tangerine,,,crop,Juice of tangerine,TRUE
+496,Juice of tangerine,495,"Tangerines, mandarins, clementines",byproduct,Tangerines and mandarins,TRUE
 497,Lemons and limes,,,crop,Lemons and limes,TRUE
-498,Juice of lemon,,,crop,Juice of lemon,TRUE
+498,Juice of lemon,497,Lemons and limes,byproduct,Lemons and limes,TRUE
 499,"Lemon juice, concentrated",,,byproduct,"Lemon juice, concentrated",FALSE
 507,Pomelos and grapefruits,,,crop,Pomelos and grapefruits,TRUE
 509,Grapefruit juice,509,Grapefruit juice,byproduct,Grapefruit juice,TRUE
 510,"Grapefruit juice, concentrated",,,byproduct,"Grapefruit juice, concentrated",FALSE
 515,Apples,,,crop,Apples,TRUE
-517,Cider and other fermented beverages,,,crop,Cider and other fermented beverages,TRUE
+517,Cider and other fermented beverages,,,crop,Cider and other fermented beverages,FALSE
 518,Apple juice,515,Apples,byproduct,Apples,TRUE
 519,"Apple juice, concentrated",,,byproduct,"Apple juice, concentrated",FALSE
 521,Pears,,,crop,Pears,TRUE
@@ -239,9 +239,9 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 552,Blueberries,,,crop,Blueberries,TRUE
 554,Cranberries,,,crop,Cranberries,TRUE
 560,Grapes,,,crop,Grapes,TRUE
-561,Raisins,,,crop,Raisins,TRUE
-562,Grape juice,509,Grapefruit juice,byproduct,Grapefruit juice,TRUE
-563,Must of grape,,,crop,Must of grape,TRUE
+561,Raisins,560,Grapes,byproduct,Grapes,TRUE
+562,Grape juice,509,Grapefruit juice,byproduct,Grape juice,TRUE
+563,Must of grape,560,Grapes,byproduct,Grapes,TRUE
 565,Vermouth and other wine of fresh grapes flavoured with plats or aromatic substances,,,crop,Vermouth and other wine of fresh grapes flavoured with plats or aromatic substances,FALSE
 567,Watermelons,,,crop,Watermelons,TRUE
 568,Cantaloupes and other melons,,,crop,Melons,TRUE
@@ -250,29 +250,29 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 571,"Mangoes, guavas and mangosteens",,,crop,"Mangoes, guavas and mangosteens",TRUE
 572,Avocados,,,crop,Avocados,TRUE
 574,Pineapples,,,crop,Pineapples,TRUE
-575,"Pineapples, otherwise prepared or preserved",,,crop,"Pineapples, otherwise prepared or preserved",TRUE
+575,"Pineapples, otherwise prepared or preserved",574,Pineapples,byproduct,Pineapples,TRUE
 576,Pineapple juice,574,Pineapples,byproduct,Pineapples,TRUE
 577,Dates,,,crop,Dates,TRUE
-580,"Juice of pineapples, concentrated",580,"Juice of pineapples, concentrated",byproduct,"Juice of pineapples, concentrated",TRUE
-583,Juice of mango,,,crop,Juice of mango,TRUE
-584,Mango pulp,,,crop,Mango pulp,TRUE
+580,"Juice of pineapples, concentrated",574,Pineapples,byproduct,Pineapples,TRUE
+583,Juice of mango,571,"Mangoes, guavas and mangosteens",byproduct,"Mangoes, guavas and mangosteens",TRUE
+584,Mango pulp,571,"Mangoes, guavas and mangosteens",byproduct,"Mangoes, guavas and mangosteens",TRUE
 587,Persimmons,,,crop,Persimmons,TRUE
 591,Cashewapple,,,crop,Cashew apple,TRUE
 592,Kiwi fruit,,,crop,Kiwi fruit,TRUE
 600,Papayas,,,crop,Papayas,TRUE
 624,Flour of fruits,,,byproduct,Flour of fruits,FALSE
-625,"Fruit, nuts, peel, sugar preserved",,,crop,"Fruit, nuts, peel, sugar preserved",TRUE
-626,"Homogenized cooked fruit, prepared",,,crop,"Homogenized cooked fruit, prepared",TRUE
-628,"Pulp, waste of fruit for feed",,,crop,"Pulp, waste of fruit for feed",TRUE
-634,"Undenatured ethyl alcohol of an alcoholic strength by volume of less than 80% vol; spirits, liqueurs and other spirituous beverages",,,crop,"Undenatured ethyl alcohol of an alcoholic strength by volume of less than 80% vol; spirits, liqueurs and other spirituous beverages",TRUE
-635,"Cereal straw, husks, unprepared, ground, pressed, or in the form of pellets",,,crop,"Cereal straw, husks, unprepared, ground, pressed, or in the form of pellets",TRUE
-636,"Forage and silage, maize",,,crop,"Forage and silage, maize",TRUE
-641,"Forage and silage, alfalfa",,,crop,"Forage and silage, alfalfa",TRUE
-647,Beets for fodder,,,crop,Beets for fodder,TRUE
-649,Swedes for fodder,,,crop,Swedes for fodder,TRUE
-653,Food wastes,,,crop,Food wastes,TRUE
+625,"Fruit, nuts, peel, sugar preserved",,,crop,"Fruit, nuts, peel, sugar preserved",FALSE
+626,"Homogenized cooked fruit, prepared",,,crop,"Homogenized cooked fruit, prepared",FALSE
+628,"Pulp, waste of fruit for feed",,,crop,"Pulp, waste of fruit for feed",FALSE
+634,"Undenatured ethyl alcohol of an alcoholic strength by volume of less than 80% vol; spirits, liqueurs and other spirituous beverages",,,crop,"Undenatured ethyl alcohol of an alcoholic strength by volume of less than 80% vol; spirits, liqueurs and other spirituous beverages",FALSE
+635,"Cereal straw, husks, unprepared, ground, pressed, or in the form of pellets",,,crop,"Cereal straw, husks, unprepared, ground, pressed, or in the form of pellets",FALSE
+636,"Forage and silage, maize",,,crop,"Forage and silage, maize",FALSE
+641,"Forage and silage, alfalfa",,,crop,"Forage and silage, alfalfa",FALSE
+647,Beets for fodder,,,crop,Beets for fodder,FALSE
+649,Swedes for fodder,,,crop,Swedes for fodder,FALSE
+653,Food wastes,,,crop,Food wastes,FALSE
 654,Brewing or distilling dregs and waste,,,crop,Brewing or distilling dregs and waste,FALSE
-655,Vegetables and roots fodder,,,crop,Vegetables and roots fodder,TRUE
+655,Vegetables and roots fodder,,,crop,Vegetables and roots fodder,FALSE
 656,"Coffee, green",,,crop,Coffee,TRUE
 657,"Coffee, decaffeinated or roasted",656,"Coffee, green",byproduct,Coffee,TRUE
 658,Coffee substitutes,656,"Coffee, green",byproduct,Coffee,TRUE
@@ -280,14 +280,14 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 660,Coffee husks and skins,,,livestock,Coffee husks and skins,FALSE
 661,Cocoa beans,,,crop,Cocoa,TRUE
 662,Cocoa paste not defatted,661,Cocoa beans,byproduct,Cocoa,TRUE
-663,Cocoa husks and shells,,,crop,Cocoa husks and shells,TRUE
+663,Cocoa husks and shells,661,Cocoa beans,byproduct,Cocoa,TRUE
 664,"Cocoa butter, fat and oil",,,livestock,"Cocoa butter, fat and oil",FALSE
 665,Cocoa powder and cake,661,Cocoa beans,byproduct,Cocoa,TRUE
 666,Chocolate products nes,661,Cocoa beans,byproduct,Cocoa,FALSE
 667,Tea leaves,,,crop,Tea,TRUE
 671,Maté leaves,,,crop,Maté leaves,TRUE
 672,"Extracts, essences and concentrates of tea or mate, and preparations with a basis thereof or with a basis of tea or maté",,,livestock,"Extracts, essences and concentrates of tea or mate, and preparations with a basis thereof or with a basis of tea or maté",FALSE
-675,"Green tea (not fermented), black tea (fermented) and partly fermented tea, in immediate packings of a content not exceeding 3 kg",,,crop,"Green tea (not fermented), black tea (fermented) and partly fermented tea, in immediate packings of a content not exceeding 3 kg",TRUE
+675,"Green tea (not fermented), black tea (fermented) and partly fermented tea, in immediate packings of a content not exceeding 3 kg",667,Tea leaves,byproduct,Tea,TRUE
 687,"Pepper (Piper spp.), raw",,,crop,Spices,TRUE
 689,"Chillies and peppers, dry (Capsicum spp., Pimenta spp.), raw",,,crop,"Chillies and peppers, dry",TRUE
 692,"Vanilla, raw",,,crop,Spices,TRUE
@@ -298,39 +298,39 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 720,"Ginger, raw",,,crop,Spices,TRUE
 737,Oil of citronella,,,byproduct,Oil of citronella,FALSE
 767,"Cotton lint, ginned",,,crop,Cotton,TRUE
-768,"Cotton, carded or combed",,,crop,"Cotton, carded or combed",TRUE
+768,"Cotton, carded or combed",328,"Seed cotton, unginned",byproduct,Cotton,TRUE
 769,Cotton waste,,,crop,Cotton waste,TRUE
 770,Cotton linters,,,crop,Cotton,TRUE
-771,"Flax, raw or retted",,,crop,"Flax, raw or retted",TRUE
-773,"Flax, processed but not spun",,,crop,"Flax, processed but not spun",TRUE
-774,"Flax, tow and waste",,,crop,"Flax, tow and waste",TRUE
-777,"True hemp, raw or retted",,,crop,"True hemp, raw or retted",TRUE
-778,"Kapok fibre, raw",,,crop,Kapok fibre,TRUE
-782,"Kenaf, and other textile bast fibres, raw or retted",,,crop,"Kenaf, and other textile bast fibres, raw or retted",TRUE
-788,"Ramie, raw or retted",,,crop,"Ramie, raw or retted",TRUE
+771,"Flax, raw or retted",,,crop,Flax,TRUE
+773,"Flax, processed but not spun",771,"Flax, raw or retted",byproduct,Flax,TRUE
+774,"Flax, tow and waste",771,"Flax, raw or retted",byproduct,Flax,TRUE
+777,"True hemp, raw or retted",,,crop,Hemp,TRUE
+778,"Kapok fibre, raw",,,crop,Kapok,TRUE
+782,"Kenaf, and other textile bast fibres, raw or retted",,,crop,Kenaf,TRUE
+788,"Ramie, raw or retted",,,crop,Ramie,TRUE
 789,"Sisal, raw",,,crop,Sisal,TRUE
 809,"Abaca, manila hemp, raw",,,crop,Abaca,TRUE
 826,Unmanufactured tobacco,,,crop,Tobacco,TRUE
-828,Cigarettes,,,crop,Cigarettes,TRUE
-829,Cigars and cheroots,,,crop,Cigars and cheroots,TRUE
+828,Cigarettes,826,Unmanufactured tobacco,byproduct,Tobacco,TRUE
+829,Cigars and cheroots,826,Unmanufactured tobacco,byproduct,Tobacco,TRUE
 836,Natural rubber in primary forms,,,crop,Natural rubber,TRUE
-837,Natural rubber in other forms,,,crop,Natural rubber in other forms,TRUE
-839,"Balata, gutta-percha, guayule, chicle and similar natural gums in primary forms or in plates, sheets or strip",,,crop,"Balata, gutta-percha, guayule, chicle and similar natural gums in primary forms or in plates, sheets or strip",TRUE
+837,Natural rubber in other forms,836,Natural rubber in primary forms,byproduct,Natural rubber,TRUE
+839,"Balata, gutta-percha, guayule, chicle and similar natural gums in primary forms or in plates, sheets or strip",,,crop,"Balata, gutta-percha, guayule, chicle and similar natural gums in primary forms or in plates, sheets or strip",FALSE
 840,"Feed, compound, cattle",,,crop,"Feed, compound, cattle",FALSE
-841,"Feed, compound, poultry",,,crop,"Feed, compound, poultry",TRUE
-842,"Feed, compound, pigs",,,crop,"Feed, compound, pigs",TRUE
+841,"Feed, compound, poultry",,,crop,"Feed, compound, poultry",FALSE
+842,"Feed, compound, pigs",,,crop,"Feed, compound, pigs",FALSE
 843,"Dog or cat food, put up for retail sale",,,crop,"Dog or cat food, put up for retail sale",FALSE
-846,Gluten feed and meal,,,crop,Gluten feed and meal,TRUE
-850,Feed supplements,,,crop,Feed supplements,TRUE
+846,Gluten feed and meal,,,crop,Gluten feed and meal,FALSE
+850,Feed supplements,,,crop,Feed supplements,FALSE
 852,"Feed, other concentrates nes",,,crop,"Feed, other concentrates nes",TRUE
-853,Vitamins,,,crop,Vitamins,TRUE
-855,Feed minerals,,,crop,Feed minerals,TRUE
-857,"Hay, non-leguminous",,,crop,"Hay, non-leguminous",TRUE
-862,Lucerne (alfalfa) meal and pellets,,,crop,Lucerne (alfalfa) meal and pellets,TRUE
+853,Vitamins,,,crop,Vitamins,FALSE
+855,Feed minerals,,,crop,Feed minerals,FALSE
+857,"Hay, non-leguminous",,,crop,"Hay, non-leguminous",FALSE
+862,Lucerne (alfalfa) meal and pellets,,,crop,Lucerne (alfalfa) meal and pellets,FALSE
 866,Cattle,,,livestock,Cattle meat,TRUE
 867,"Meat of cattle with the bone, fresh or chilled",,,livestock,Cattle meat,TRUE
 870,"Meat of cattle boneless, fresh or chilled",,,livestock,Cattle meat,TRUE
-871,"Cattle, butcher fat",,,crop,"Cattle, butcher fat",TRUE
+871,"Cattle, butcher fat",944,"Meat of cattle with the bone, fresh or chilled (indigenous)",byproduct,Cattle meat,TRUE
 872,"Bovine meat, salted, dried or smoked",944,"Meat of cattle with the bone, fresh or chilled (indigenous)",livestock,Cattle meat,TRUE
 873,"Extracts and juices of meat, fish, crustaceans, molluscs or other aquatic invertebrates",,,byproduct,"Extracts and juices of meat, fish, crustaceans, molluscs or other aquatic invertebrates",FALSE
 874,"Sausages and similar products of meat, offal or blood of beef and veal",,,livestock,"Sausages and similar products of meat, offal or blood of beef and veal",FALSE
@@ -340,7 +340,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 882,Raw milk of cattle,,,livestock,Cattle milk,TRUE
 892,"Yoghurt, with additives",,,livestock,"Yoghurt, with additives",FALSE
 907,Processed cheese,,,livestock,Processed cheese,FALSE
-908,Reconstituted milk,,,crop,Reconstituted milk,TRUE
+908,Reconstituted milk,,,crop,Reconstituted milk,FALSE
 910,Ice cream and other edible ice,,,livestock,Ice cream and other edible ice,FALSE
 920,"Hides, wet-salted of cattle",944,"Meat of cattle with the bone, fresh or chilled (indigenous)",livestock,Cattle meat,TRUE
 921,"Hides, cattle, dry salted",,,livestock,"Hides, cattle, dry salted",FALSE
@@ -380,7 +380,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 1035,"Meat of pig with the bone, fresh or chilled",,,livestock,Pig meat,TRUE
 1038,"Meat of pig boneless, fresh or chilled",,,livestock,Pig meat,TRUE
 1039,"Pig meat, cuts, salted, dried or smoked (bacon and ham)",1055,"Meat of pig with the bone, fresh or chilled (indigenous)",livestock,Pig meat,TRUE
-1040,"Pig, butcher fat",,,crop,"Pig, butcher fat",TRUE
+1040,"Pig, butcher fat",1055,"Meat of pig with the bone, fresh or chilled (indigenous)",byproduct,Pig meat,TRUE
 1041,"Sausages and similar products of meat, offal or blood of pig",1055,"Meat of pig with the bone, fresh or chilled (indigenous)",livestock,Pig meat,TRUE
 1042,Pig meat preparations,1055,"Meat of pig with the bone, fresh or chilled (indigenous)",livestock,Pig meat,TRUE
 1045,"Skins, pig, wet salted",,,livestock,"Skins, pig, wet salted",FALSE
@@ -407,7 +407,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 1104,"Hides, dry-salted of horses",,,livestock,"Hides, dry-salted of horses",FALSE
 1105,"Hides, horse nes",,,livestock,"Hides, horse nes",FALSE
 1107,Asses,,,livestock,Ass meat,TRUE
-1110,Mules and hinnies,,,crop,Mules and hinnies,TRUE
+1110,Mules and hinnies,,,crop,Mules and hinnies,FALSE
 1120,"Horse meat, fresh or chilled (indigenous)",,,livestock,Horse meat,TRUE
 1126,Camels,,,livestock,Camel meat,TRUE
 1127,"Meat of camels, fresh or chilled",,,livestock,Camel meat,TRUE
@@ -418,61 +418,61 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 1141,"Meat of rabbits and hares, fresh or chilled",,,livestock,Rabbit and hare meat,TRUE
 1144,"Meat of rabbits and hares, fresh or chilled (indigenous)",,,livestock,Rabbit and hare meat,TRUE
 1146,"Skins, rabbit",,,livestock,"Skins, rabbit",FALSE
-1173,Meat meal,,,crop,Meat meal,TRUE
+1173,Meat meal,,,crop,Meat meal,FALSE
 1181,Bees,,,crop,Honey,TRUE
 1187,Silk waste,,,crop,Silk waste,TRUE
 1195,"Skins, furs",,,livestock,"Skins, furs",FALSE
 1214,"Hides, wet salted nes",,,livestock,"Hides, wet salted nes",FALSE
 1215,"Hides nes, dry salted",,,livestock,"Hides nes, dry salted",FALSE
-1217,Leather used & waste,,,crop,Leather used & waste,TRUE
+1217,Leather used & waste,,,crop,Leather used & waste,FALSE
 1219,"Hair, coarse nes",,,livestock,Hair,FALSE
-1221,Lard stearine and lard oil,,,crop,Lard stearine and lard oil,TRUE
-1222,Degras,,,crop,Degras,TRUE
-1241,Liquid margarine,,,crop,Liquid margarine,TRUE
+1221,Lard stearine and lard oil,1055,"Meat of pig with the bone, fresh or chilled (indigenous)",byproduct,Pig meat,TRUE
+1222,Degras,,,crop,Degras,FALSE
+1241,Liquid margarine,,,crop,Liquid margarine,FALSE
 1259,"Feed, food waste preparations",,,livestock,"Feed, food waste preparations",FALSE
 1274,"Animal or vegetable fats and oils and their fractions, chemically modified, except those hydrogenated, inter-esterified, re-esterified or elaidinized; inedible mixtures or preparations of animal or vegetable fats or oils",,,livestock,"Animal or vegetable fats and oils and their fractions, chemically modified, except those hydrogenated, inter-esterified, re-esterified or elaidinized; inedible mixtures or preparations of animal or vegetable fats or oils",FALSE
-1275,hydrogenated oils and fats,,,crop,hydrogenated oils and fats,TRUE
-1276,Industrial monocarboxylic fatty acids; acid oils from refining,,,crop,Industrial monocarboxylic fatty acids; acid oils from refining,TRUE
-1277,Residues of fatty substances,,,crop,Residues of fatty substances,TRUE
-1295,Spermaceti,,,crop,Spermaceti,TRUE
-1296,"Vegetable waxes (other than triglycerides), whether or not refined or coloured",,,crop,"Vegetable waxes (other than triglycerides), whether or not refined or coloured",TRUE
-1719,Roots and Tubers,,,crop,Roots and Tubers,TRUE
-1734,Vegetables,,,crop,Vegetables,TRUE
-1746,Cattle and Buffaloes,,,livestock,Cattle and Buffaloes,TRUE
-1749,Sheep and Goats,,,livestock,Sheep and Goats,TRUE
-1756,Live Animals,,,crop,Live Animals,TRUE
-1773,Nuts,,,crop,Nuts,TRUE
-1782,Eggs,,,crop,Eggs,TRUE
-1788,Vegetable Oil and Fat,,,crop,Vegetable Oil and Fat,TRUE
-1802,Fruit,,,crop,Fruit,TRUE
+1275,hydrogenated oils and fats,,,crop,hydrogenated oils and fats,FALSE
+1276,Industrial monocarboxylic fatty acids; acid oils from refining,,,crop,Industrial monocarboxylic fatty acids; acid oils from refining,FALSE
+1277,Residues of fatty substances,,,crop,Residues of fatty substances,FALSE
+1295,Spermaceti,,,crop,Spermaceti,FALSE
+1296,"Vegetable waxes (other than triglycerides), whether or not refined or coloured",,,crop,"Vegetable waxes (other than triglycerides), whether or not refined or coloured",FALSE
+1719,Roots and Tubers,,,crop,Roots and Tubers,FALSE
+1734,Vegetables,,,crop,Vegetables,FALSE
+1746,Cattle and Buffaloes,,,livestock,Cattle and Buffaloes,FALSE
+1749,Sheep and Goats,,,livestock,Sheep and Goats,FALSE
+1756,Live Animals,,,crop,Live Animals,FALSE
+1773,Nuts,,,crop,Nuts,FALSE
+1782,Eggs,,,crop,Eggs,FALSE
+1788,Vegetable Oil and Fat,,,crop,Vegetable Oil and Fat,FALSE
+1802,Fruit,,,crop,Fruit,FALSE
 1844,Fats and Oils (excluding Butter),,,livestock,Fats and Oils (excluding Butter),FALSE
-1845,Non-edible Crude Materials,,,crop,Non-edible Crude Materials,TRUE
-1846,Non-edible Fats and Oils,,,crop,Non-edible Fats and Oils,TRUE
-1847,Non-food,,,crop,Non-food,TRUE
-1881,"Dairy Products, milk equivalent",,,crop,"Dairy Products, milk equivalent",TRUE
-1882,Crops and livestock products,,,crop,Crops and livestock products,TRUE
+1845,Non-edible Crude Materials,,,crop,Non-edible Crude Materials,FALSE
+1846,Non-edible Fats and Oils,,,crop,Non-edible Fats and Oils,FALSE
+1847,Non-food,,,crop,Non-food,FALSE
+1881,"Dairy Products, milk equivalent",,,crop,"Dairy Products, milk equivalent",FALSE
+1882,Crops and livestock products,,,crop,Crops and livestock products,FALSE
 1885,Meat and Meat Preparations,,,livestock,Meat and Meat Preparations,FALSE
-1886,Dairy Products and Eggs,,,crop,Dairy Products and Eggs,TRUE
-1887,Dairy Products,,,crop,Dairy Products,TRUE
+1886,Dairy Products and Eggs,,,crop,Dairy Products and Eggs,FALSE
+1887,Dairy Products,,,crop,Dairy Products,FALSE
 1888,Cereals and Preparations,,,livestock,Cereals and Preparations,FALSE
-1889,Fruit and Vegetables,,,crop,Fruit and Vegetables,TRUE
-1890,Sugar and Honey,,,crop,Sugar and Honey,TRUE
-1892,Fodder and Feeding Stuff,,,crop,Fodder and Feeding Stuff,TRUE
-1895,Beverages,,,crop,Beverages,TRUE
+1889,Fruit and Vegetables,,,crop,Fruit and Vegetables,FALSE
+1890,Sugar and Honey,,,crop,Sugar and Honey,FALSE
+1892,Fodder and Feeding Stuff,,,crop,Fodder and Feeding Stuff,FALSE
+1895,Beverages,,,crop,Beverages,FALSE
 1896,Tobacco,,,crop,Tobacco,TRUE
 1898,Hides and skins,,,livestock,Hides and skins,FALSE
-1899,Oilseeds,,,crop,Oilseeds,TRUE
-1900,Natural Rubber,,,crop,Natural Rubber,TRUE
-1901,Textile Fibres,,,crop,Textile Fibres,TRUE
+1899,Oilseeds,,,crop,Oilseeds,FALSE
+1900,Natural Rubber,,,crop,Natural Rubber,FALSE
+1901,Textile Fibres,,,crop,Textile Fibres,FALSE
 1902,Crude Materials nes,,,crop,Crude Materials nes,TRUE
-1907,Alcoholic Beverages,,,crop,Alcoholic Beverages,TRUE
-1908,Non-alcoholic Beverages,,,crop,Non-alcoholic Beverages,TRUE
+1907,Alcoholic Beverages,,,crop,Alcoholic Beverages,FALSE
+1908,Non-alcoholic Beverages,,,crop,Non-alcoholic Beverages,FALSE
 1941,Cereal preparations total,,,livestock,Cereal preparations total,FALSE
-1944,Cereals,,,crop,Cereals,TRUE
+1944,Cereals,,,crop,Cereals,FALSE
 1954,Pulses,,,crop,Pulses,TRUE
 1975,Animal Fats and Oils (excl. Butter),,,livestock,Animal Fats and Oils (excl. Butter),FALSE
-1982,Food Excluding Fish,,,crop,Food Excluding Fish,TRUE
-2029,Poultry Birds,,,livestock,Poultry Birds,TRUE
-2071,Bovine Meat,,,crop,Bovine Meat,TRUE
-2073,Pigmeat (meat equivalent),,,crop,Pigmeat (meat equivalent),TRUE
-2074,Poultry Meat,,,crop,Poultry Meat,TRUE
+1982,Food Excluding Fish,,,crop,Food Excluding Fish,FALSE
+2029,Poultry Birds,,,livestock,Poultry Birds,FALSE
+2071,Bovine Meat,,,crop,Bovine Meat,FALSE
+2073,Pigmeat (meat equivalent),,,crop,Pigmeat (meat equivalent),FALSE
+2074,Poultry Meat,,,crop,Poultry Meat,FALSE
