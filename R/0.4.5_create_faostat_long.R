@@ -489,9 +489,14 @@ mi <- match(fao_long$item_code, mapping_active$item_code)
 fao_long[, parent_raw           := mapping_active$parent_raw_item[mi]]
 fao_long[, parent_raw_item_code := mapping_active$parent_raw_item_code[mi]]
 fao_long[, commodity_class      := mapping_active$commodity_class[mi]]
+fao_long[, commodity_group      := mapping_active$commodity_group[mi]]
 fao_long[!nzchar(parent_raw), parent_raw := NA_character_]
 fao_long[!nzchar(commodity_class), commodity_class := NA_character_]
+fao_long[!nzchar(commodity_group), commodity_group := NA_character_]
 fao_long[, type := ifelse(is.na(parent_raw_item_code), "raw", "processed")]
+# Synthetic-row defaults for commodity_group (item_code is NA so the mapping
+# lookup misses; set the group explicitly so the wide-form pivot has a key).
+fao_long[commodity == "Spices, combined", commodity_group := "Spices"]
 
 # Items with no mapping hit (NA item_code on the row, or item_code not in
 # mapping_active) default to commodity_class = "crop"; the include filter
@@ -552,7 +557,9 @@ if (nrow(dropped_rows) > 0L) {
   di <- match(dropped_rows$item_code, mapping_active$item_code)
   dropped_rows[, parent_raw_item_code := mapping_active$parent_raw_item_code[di]]
   dropped_rows[, parent_raw           := mapping_active$parent_raw_item[di]]
-  dropped_rows[!nzchar(parent_raw), parent_raw := NA_character_]
+  dropped_rows[, commodity_group      := mapping_active$commodity_group[di]]
+  dropped_rows[!nzchar(parent_raw),     parent_raw     := NA_character_]
+  dropped_rows[!nzchar(commodity_group), commodity_group := NA_character_]
   dropped_rows[, type := ifelse(is.na(parent_raw_item_code), "raw", "processed")]
 
   summable_vars <- c(
@@ -577,6 +584,7 @@ if (nrow(dropped_rows) > 0L) {
       parent_raw = NA_character_,
       parent_raw_item_code = NA_integer_,
       commodity_class = NA_character_,
+      commodity_group = "Other",
       unit = first(unit),
       value = sum(value, na.rm = TRUE)
     ),
@@ -693,7 +701,7 @@ fao_long[!is.na(hits), commodity := unname(commodity_clean_map[hits[!is.na(hits)
 # downstream consumers a robust join key against other FAO bulks. NA on
 # synthetic "Spices, combined" and "Other" rows.
 setcolorder(fao_long, c(
-  "iso3", "item_code", "commodity", "atlas_name", "type",
+  "iso3", "item_code", "commodity", "commodity_group", "atlas_name", "type",
   "parent_raw", "parent_raw_item_code", "commodity_class",
   "year", "variable", "unit", "value"
 ))
@@ -795,10 +803,14 @@ build_meta <- list(
     "build time."
   ),
   schema_columns = paste(
-    "iso3 | item_code | commodity | atlas_name | type {raw, processed} |",
-    "parent_raw (FAO Item of raw parent for processed items; NA otherwise) |",
-    "parent_raw_item_code (FAO Item Code of raw parent; NA for raw items) |",
-    "commodity_class {crop, livestock, byproduct} | year | variable | unit | value"
+    "iso3 | item_code | commodity | commodity_group (simplified name; raw and",
+    "all derived rows share the same group, preserving meat / milk distinction",
+    "for livestock; e.g. Cattle meat + Cattle hides + Bovine meat dried -> ",
+    "'Cattle meat', Raw milk of cattle -> 'Cattle milk') | atlas_name |",
+    "type {raw, processed} | parent_raw (FAO Item of raw parent for processed",
+    "items; NA otherwise) | parent_raw_item_code (FAO Item Code of raw parent;",
+    "NA for raw items) | commodity_class {crop, livestock, byproduct} | year |",
+    "variable | unit | value"
   ),
   aggregation_rules = paste(
     "Aggregation by parent_raw_item_code (or parent_raw) is valid for",
@@ -938,8 +950,8 @@ build_meta <- list(
 # Factor-encode repeated string columns so Arrow stores them as dictionary
 # types (smaller files, no behaviour change apart from columns coming back
 # as factors when read with arrow::read_parquet).
-factor_cols <- c("iso3", "commodity", "atlas_name", "type", "commodity_class",
-                 "variable", "unit")
+factor_cols <- c("iso3", "commodity", "commodity_group", "atlas_name",
+                 "type", "commodity_class", "variable", "unit")
 fao_long[, (factor_cols) := lapply(.SD, as.factor), .SDcols = factor_cols]
 
 tbl <- arrow::arrow_table(fao_long)
