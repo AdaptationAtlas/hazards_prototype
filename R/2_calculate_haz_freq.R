@@ -67,6 +67,11 @@ packages <- c(
 
 pacman::p_load(packages, character.only = TRUE)
 
+# v9: bump GDAL block-cache budget so the heavy raster I/O in stages 1-5
+# doesn't spill to disk. Observational pipeline uses the same 60000 MB
+# budget; CGlabs has the RAM headroom (~360 GB) easily.
+terra::gdalCache(60000)
+
 # Source functions from github
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 

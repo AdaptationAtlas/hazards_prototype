@@ -1,6 +1,39 @@
+# =============================================================================
+# Helper library for the hazards_prototype pipeline
+#
+# Sourced by every numbered pipeline script (0_server_setup.R, 0.4.x,
+# 1_make_timeseries.R, 2_calculate_haz_freq.R, 3_freq_x_exposure.R,
+# 3.1_season_weightings.R, and the observational scripts under R/observational/).
+# Pure functions only — no top-level side effects. Loaded both locally
+# (`source("R/haz_functions.R")`) and from GitHub via:
+#   source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+#
+# Function categories (search by name to locate; not all listed):
+#   * Threshold / classification: ThreshFun, classify_haz, ...
+#   * MapSPAM ingestion:          read_spam
+#   * Boundary + zonal extract:   admin_extract, admin_extract_wrap,
+#                                  rasterize_admin_boundaries, ...
+#   * FAOSTAT prep + gap fill:    prepare_fao_data, add_nearby,
+#                                  split_livestock, ...
+#   * Hazard x exposure:          risk_x_exposure (per-file worker for
+#                                  3_freq_x_exposure.R Stage 4.1)
+#   * Hazard category parsing:    parse_hazard_filename (called by
+#                                  3_freq_x_exposure.R when populating
+#                                  the long parquet schema)
+#   * Parallel plan helper:       set_parallel_plan
+#   * I/O helpers:                ensure_dir, check_tif_integrity,
+#                                  check_and_delete_bad_files
+#
+# Resample-method note (issue #9, May 2026): every density / bilinear /
+# density-back resample pattern was migrated to terra::resample(method =
+# "sum") in 0.4.1, 0.4.4, and read_spam() below. The pattern is no longer
+# mass-leaking. Wrappers added a ±0.005 ratio assertion that warns if any
+# future caller reintroduces a non-conservative resample.
+# =============================================================================
+
 #' Threshold Function
 #'
-#' This function calculates the fraction of elements in \code{Data} that are 
+#' This function calculates the fraction of elements in \code{Data} that are
 #' either greater or less than a specified threshold value.
 #'
 #' @param Data A numeric vector.

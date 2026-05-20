@@ -4,15 +4,24 @@
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
 # List of packages to be loaded
-packages <- c("terra", 
+packages <- c("terra",
               "data.table",
               "exactextractr",
               "arrow",
               "geoarrow",
-              "pbapply")
+              "pbapply",
+              "future",
+              "future.apply",
+              "furrr",
+              "progressr")
 
 
 pacman::p_load(packages,character.only=T)
+
+# v9: bump GDAL block-cache budget so MapSPAM + GLW extraction doesn't
+# spill to disk under parallel load. Same 60000 MB budget used by the
+# observational pipeline.
+terra::gdalCache(60000)
 
 # b) Load functions & wrappers ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
@@ -98,33 +107,38 @@ field_descriptions <- data.table::data.table(
   )
 )
 
-spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
-  cat("Extracting file",i,"/",length(files),basename(files[i]),"\n")
-  file<-files[i]
-  file_base<-gsub(".tif","",basename(file))
-  var<-unlist(tstrsplit(file_base,"_",keep=2))
-  unit<-unlist(tstrsplit(file_base,"_",keep=3))
-  tech<-unlist(tstrsplit(file_base,"_",keep=4))
-  
-  if(var=="yield"){
+# v9: parallelize MapSPAM extraction across files. Each file -> own
+# admin_extract_wrap call -> own output parquet + attr JSON. No
+# contention. Conservative 8 workers to keep RAM headroom for the
+# zonal vector raster.
+spam_workers <- min(8L, length(files))
+set_parallel_plan(n_cores = spam_workers, use_multisession = TRUE)
+spam_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
+  file <- files[i]
+  file_base <- gsub(".tif", "", basename(file))
+  var <- unlist(tstrsplit(file_base, "_", keep = 2))
+  unit <- unlist(tstrsplit(file_base, "_", keep = 3))
+  tech <- unlist(tstrsplit(file_base, "_", keep = 4))
+
+  if (var == "yield") {
     stop("Use of stat == mean currently returns NA values. Remove yield from input data or debug error.")
-      stat<-"mean"
-  }else{
-    stat<-"sum"
+    stat <- "mean"
+  } else {
+    stat <- "sum"
   }
-  
-  data<-terra::rast(file)
-  
-  result<-admin_extract_wrap(data=data,
-                             save_dir=dirname(file),
-                             filename =file_base,
-                             FUN=stat,
-                             append_vals=c(exposure=var,unit=unit,tech=tech),
-                             var_name="crop",
-                             round=1,
-                             boundaries_zonal=boundaries_zonal,
-                             boundaries_index=boundaries_index,
-                             overwrite=overwrite_spam)
+
+  data <- terra::rast(file)
+
+  result <- admin_extract_wrap(data = data,
+                               save_dir = dirname(file),
+                               filename = file_base,
+                               FUN = stat,
+                               append_vals = c(exposure = var, unit = unit, tech = tech),
+                               var_name = "crop",
+                               round = 1,
+                               boundaries_zonal = boundaries_zonal,
+                               boundaries_index = boundaries_index,
+                               overwrite = overwrite_spam)
   
   attr_file<-file.path(dirname(file),paste0(file_base,"_adm_",stat,".parquet.json"))
   
@@ -169,8 +183,9 @@ spam_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
   }
   
   return(result)
-  
-}))
+
+}, .options = furrr::furrr_options(seed = TRUE, stdout = FALSE)))
+future::plan(future::sequential)
 
 # 2) Livestock (GLW) extraction by vector boundaries #####
 version_glw<-"glw4-2020_atlasv1"
@@ -183,9 +198,11 @@ if(!file.exists(livestock_no_file)){
 
 files<-list.files(glw_pro_dir,".tif$",recursive=T,full.names=T)
 
-glw_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
-    cat("Extracting file",i,"/",length(files),basename(files[i]),"\n")
-    file<-files[i]
+# v9: parallel GLW extraction, mirroring the MapSPAM block above.
+glw_workers <- min(8L, length(files))
+set_parallel_plan(n_cores = glw_workers, use_multisession = TRUE)
+glw_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
+    file <- files[i]
     
     if(grepl("number",file)){
       source_year_glw<-list(glw=2020)
@@ -257,8 +274,9 @@ glw_extracted<-rbindlist(lapply(1:length(files),FUN=function(i){
     }
     
     return(result)
-    
-  }))
+
+  }, .options = furrr::furrr_options(seed = TRUE, stdout = FALSE)))
+future::plan(future::sequential)
   
 # 3) Combine exposure totals by admin areas ####
   # 3.1) Original recipe ####

@@ -58,6 +58,11 @@ packages <- c(
 pacman::p_load(char = packages)
 # If you are experiencing issues with the admin_extract functions, delete the exactextractr package and use this version:  remotes::install_github("isciences/exactextractr")
 
+# v9: bump GDAL block-cache budget so the heavy raster I/O in stages 4.1
+# and 4.2 doesn't spill to disk. Observational pipeline uses the same
+# 60000 budget; CGlabs has the RAM headroom (~360 GB) easily.
+terra::gdalCache(60000)
+
 # b) Load/create functions & wrappers ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
@@ -363,14 +368,18 @@ multisession3 <- TRUE
 round3 <- 2
 version3 <- 1
 # e.4) Hazard x exposure ####
+# v9: worker counts bumped 7 -> 16. CGlabs has 40 logical cores; the prior
+# `7` was a conservative laptop default that left 80 % of CPU idle on the
+# server. If running on a machine with fewer cores, drop these manually
+# (or in a follow-up, derive them from parallel::detectCores()).
 run4.1 <- TRUE
 run4.2 <- TRUE
 do_ensemble_sd4.1 <- TRUE
 do_ensemble_sd4.2 <- TRUE
 ensemble_only4.1 <- TRUE
 ensemble_only4.2 <- TRUE
-worker_n4.1 <- 7
-worker_n4.2 <- 7
+worker_n4.1 <- 16
+worker_n4.2 <- 16
 worker_n4_check <- 20
 multisession4 <- TRUE
 round4 <- 2
@@ -479,11 +488,14 @@ for (tx in seq_along(timeframe_choices)) {
               boundary_choice <- boundaries_zonal[[k]]
               zonal_rast <- terra::rast(boundary_choice)
 
+              # v9: terra >= 1.7 supports multithreaded zonal; safe with
+              # older versions too (extra arg is silently dropped).
               dat <- zonal(
                 x = rast_data,
                 z = zonal_rast,
                 fun = extract_stat,
-                na.rm = TRUE
+                na.rm = TRUE,
+                threads = TRUE
               )
 
               dat <- merge(dat, boundaries_index[[k]], by = "zone_id", all.x = TRUE, sort = FALSE)
@@ -616,11 +628,14 @@ for (tx in seq_along(timeframe_choices)) {
               boundary_choice <- boundaries_zonal[[k]]
               zonal_rast <- terra::rast(boundary_choice)
 
+              # v9: terra >= 1.7 supports multithreaded zonal; safe with
+              # older versions too (extra arg is silently dropped).
               dat <- zonal(
                 x = rast_data,
                 z = zonal_rast,
                 fun = extract_stat,
-                na.rm = TRUE
+                na.rm = TRUE,
+                threads = TRUE
               )
 
               dat <- merge(dat, boundaries_index[[k]], by = "zone_id", all.x = TRUE, sort = FALSE)
@@ -803,7 +818,7 @@ for (tx in seq_along(timeframe_choices)) {
 
       data <- merge(data, unique(variable), all.x = TRUE)[, variable := NULL]
 
-      data
+      return(data)
     }), fill = TRUE)
 
     haz_timeseries_tab <- haz_timeseries_tab[, .(admin0_name, admin1_name, admin2_name, scenario, model, timeframe, hazard, hazard_stat, year, value)]
@@ -953,7 +968,7 @@ for (tx in seq_along(timeframe_choices)) {
           )
           Sys.sleep(sleep_sec)
         }
-        as.character(f)
+        return(as.character(f))
       }
       for (i in seq_along(to_do_list)) {
         cat(timeframe, "4.1.1) Intersecting hazard risk x exposure - ", to_do_list[[i]]$variable, " \n")
@@ -973,6 +988,11 @@ for (tx in seq_along(timeframe_choices)) {
         with_progress({
           prog <- progressor(steps = length(files))
 
+          # v9: scheduling=Inf forced static load-balancing (each worker
+          # got 1/Nth of files up-front and idled if their batch finished
+          # early). Default scheduling lets workers grab tasks as they
+          # complete, evening out runtime when some files are heavier
+          # than others.
           p <- furrr::future_map(files,
             ~ retry_risk_x_exposure(.x,
               save_dir = to_do_list[[i]]$folder,
@@ -984,7 +1004,7 @@ for (tx in seq_along(timeframe_choices)) {
               round_n = to_do_list[[i]]$round_n,
               prog = prog
             ),
-            .options = furrr::furrr_options(scheduling = Inf)
+            .options = furrr::furrr_options(seed = TRUE, stdout = FALSE)
           )
         })
 
@@ -1160,11 +1180,14 @@ for (tx in seq_along(timeframe_choices)) {
               boundary_choice <- boundaries_zonal$admin2
               zonal_rast <- terra::rast(boundary_choice)
 
+              # v9: terra >= 1.7 supports multithreaded zonal; safe with
+              # older versions too (extra arg is silently dropped).
               dat <- zonal(
                 x = rast_data,
                 z = zonal_rast,
                 fun = extract_stat,
-                na.rm = TRUE
+                na.rm = TRUE,
+                threads = TRUE
               )
 
 
@@ -1238,7 +1261,9 @@ for (tx in seq_along(timeframe_choices)) {
               gc()
             }
             NULL
-          }, .options = furrr::furrr_options(scheduling = Inf))
+          # v9: same scheduling fix as Stage 4.1 — default lets workers
+          # grab tasks dynamically instead of static 1/Nth slices.
+          }, .options = furrr::furrr_options(seed = TRUE, stdout = FALSE))
         })
 
         plan(sequential)

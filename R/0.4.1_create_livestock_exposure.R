@@ -59,6 +59,11 @@ pacman::p_load(terra, data.table, httr, countrycode, wbstats, arrow, geoarrow, g
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 options(scipen = 999)
 
+# v9: bump GDAL block-cache budget so the resample / mask / aggregate
+# chain doesn't spill to disk. Observational + 0.4.4 use the same
+# 60000 MB budget; CGlabs has the RAM headroom (~360 GB) easily.
+terra::gdalCache(60000)
+
 # b) Load base raster ####
 base_rast <- terra::rast(base_rast_path)
 
