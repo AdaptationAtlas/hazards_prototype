@@ -465,13 +465,13 @@ files_local <- gsub(file.path(bucket_name_s3, folder_path), paste0(mapspam_pro_d
 
 # Download files if missing or if update=TRUE
 for (i in seq_along(files_local)) {
-  cat("3.2.1) Downloading mapspam processed files", i, "/", length(files_local), "     \r")
   file <- files_local[i]
   save_dir <- dirname(file)
   if (!dir.exists(save_dir)) {
     dir.create(save_dir, recursive = TRUE)
   }
   if (!file.exists(file) || update == TRUE) {
+    cat("3.2.1) Downloading mapspam processed files", i, "/", length(files_local), "     \r")
     s3$file_download(files_s3[i], file, overwrite = TRUE)
   }
 }
@@ -487,9 +487,9 @@ files_local <- gsub(file.path(bucket_name_s3, folder_path), paste0(mapspam_dir, 
 
 # Download files if missing or if update=TRUE
 for (i in seq_along(files_local)) {
-  cat("3.2.2) Downloading mapspam raw files", i, "/", length(files_local), "     \r")
   file <- files_local[i]
   if (!file.exists(file) || update == TRUE) {
+    cat("3.2.2) Downloading mapspam raw files", i, "/", length(files_local), "     \r")
     s3$file_download(files_s3[i], file, overwrite = TRUE)
   }
 }
@@ -522,7 +522,7 @@ for (i in seq_along(glw_files)) {
 }
 
 # 3.5) FAOSTAT #####
-update <- FLASE
+update <- FALSE
 # 3.5.1) Deflators ######
 def_file <- paste0(fao_dir, "/Deflators_E_All_Data_(Normalized).csv")
 
