@@ -22,13 +22,20 @@ project_dir <- if (nzchar(Sys.getenv("project_dir"))) {
 }
 setwd(project_dir)
 source("R/0_server_setup.R")
-# 0_server_setup.R now exposes: working_dir, base_rast, base_rast_path,
-# geoboundaries (SpatVector, iso3-aggregated), glw_dir, hpop_dir,
+# 0_server_setup.R exposes: working_dir, base_rast, base_rast_path,
+# geo_files_local (admin0/admin1/admin2 parquets), glw_dir, hpop_dir,
 # boundaries_dir, atlas_dirs, Cglabs, ...
+# geoboundaries itself is NOT exported by 0_server_setup — each pipeline
+# script builds it from geo_files_local[1] (the admin0 parquet) using
+# the same incantation. Replicate here.
 
 suppressPackageStartupMessages({
-  pacman::p_load(terra, data.table, jsonlite)
+  pacman::p_load(terra, data.table, jsonlite, arrow, geoarrow, sf)
 })
+
+geoboundaries <- arrow::read_parquet(geo_files_local[1])
+geoboundaries <- geoboundaries |> sf::st_as_sf() |> terra::vect()
+geoboundaries <- terra::aggregate(geoboundaries, "iso3")
 
 # ----- CLI ---------------------------------------------------------------
 args <- commandArgs(trailingOnly = TRUE)
@@ -89,7 +96,8 @@ if (file.exists(glw_file)) {
   src_glw <- terra::crop(src_glw, geoboundaries)
   results$glw_cattle <- probe_one(src_glw, "GLW cattle", countries,
                                    base_rast, geoboundaries)
-  print(results$glw_cattle); cat("\n")
+  print(results$glw_cattle)
+  cat("\n")
 } else {
   cat("[1] GLW cattle SKIPPED — not at", glw_file, "\n\n")
 }
@@ -104,7 +112,8 @@ if (length(hpop_files) > 0L) {
   src_hpop <- terra::crop(src_hpop, geoboundaries)
   results$hpop <- probe_one(src_hpop, "Worldpop hpop", countries,
                              base_rast, geoboundaries)
-  print(results$hpop); cat("\n")
+  print(results$hpop)
+  cat("\n")
 } else {
   cat("[2] Worldpop hpop SKIPPED — no .tif under", hpop_dir, "\n\n")
 }
