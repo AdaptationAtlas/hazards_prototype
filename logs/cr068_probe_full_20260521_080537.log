@@ -1,0 +1,39 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+
+======================================================================
+[08:06:05][pid 29119] ==== CR-068 Stage 1 probe — categorisation asymmetry ====
+======================================================================
+
+[08:06:05][pid 29119] project_dir = /home/jovyan/atlas/hazards_prototype
+[08:06:05][pid 29119] Cglabs      = TRUE
+[08:06:05][pid 29119] --countries = AGO
+[08:06:05][pid 29119] --sample N  = ALL files
+[08:06:05][pid 29119] aoi has 1 feature(s); ext = 11.73, 24.09, -18.04, -4.39
+  class_dir   = Data/hazard_timeseries_class
+  int_dir     = Data/hazard_timeseries_int
+
+
+======================================================================
+[08:06:05][pid 29119] ==== Section A — class-layer per-pixel hazard means ====
+======================================================================
+
+[08:06:09][pid 29119] found 112056 class rasters before sampling
+[08:06:09][pid 29119] after --sample: 112056 files to scan
+[08:06:09][pid 29119] START  Section A — read + global() per file
+[08:06:09][pid 29119]   [class A] 1 / 112056  historic_ACCESS-CM2_1995-2014_NDWL0-mean-G2.tif
+[08:18:58][pid 29119]   [class A] 5603 / 112056  ssp126_CMCC-ESM2_2021-2040_NTx42-mean-G5.tif
+[08:32:01][pid 29119]   [class A] 11205 / 112056  ssp126_KACE-1-0-G_2061-2080_THI-max-max-G72.tif
+[08:44:09][pid 29119]   [class A] 16807 / 112056  ssp245_ACCESS-CM2_2041-2060_NTx47-mean-G1.tif
+[08:56:10][pid 29119]   [class A] 22409 / 112056  ssp245_INM-CM5-0_2021-2040_NTx29-mean-G21.tif
+[09:11:58][pid 29119]   [class A] 28011 / 112056  ssp245_NorESM2-LM_2061-2080_PTOT-sum-G650.tif
+[09:27:53][pid 29119]   [class A] 33613 / 112056  ssp370_EC-Earth3-Veg-LR_2041-2060_NTx38-mean-G1.tif
+[09:39:40][pid 29119]   [class A] 39215 / 112056  ssp370_MPI-ESM1-2-HR_2081-2100_THI-max-max-G79.tif
+[09:51:55][pid 29119]   [class A] 44817 / 112056  ssp585_CanESM5_2061-2080_PTOT-sum-G1600.tif
+[10:04:03][pid 29119]   [class A] 50419 / 112056  ssp585_KACE-1-0-G_2041-2060_NTx32-mean-G1.tif
+[10:16:19][pid 29119]   [class A] 56021 / 112056  ssp585_TaiESM1_2081-2100_PTOT-sum-L1200.tif
