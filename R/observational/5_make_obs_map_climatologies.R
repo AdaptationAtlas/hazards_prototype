@@ -299,25 +299,81 @@ reduce_to_stats <- function(yearly_stk) {
   out
 }
 
-#' Post-process a freshly-written COG to populate real STATISTICS_MEAN /
-#' STATISTICS_STDDEV (CR-076 part 2). terra::writeRaster(filetype = "COG")
-#' copies min/max from the source raster but writes -9999 sentinels for
-#' mean / stddev because GDAL's COG driver does NOT compute them during
-#' creation. `gdalinfo -stats` forces a full-pass scan and writes the
-#' real values into the .aux.xml sidecar; downstream readers (including
-#' the notebook's geotiff.js client) pick them up via the standard
-#' PAM lookup. Adds one extra full read per file — small cost relative
-#' to the per-COG bake time.
+#' Post-process a freshly-written COG to embed real STATISTICS_MEAN /
+#' STATISTICS_STDDEV in TIFF band metadata (CR-076 part 2).
+#'
+#' terra::writeRaster(filetype = "COG") writes STATISTICS_MEAN /
+#' STATISTICS_STDDEV = -9999 sentinels into embedded TIFF band
+#' metadata. Naive `gdalinfo -stats` will NOT overwrite these — GDAL
+#' treats the existing -9999s as authoritative and refuses to recompute.
+#' `gdal_edit.py -unsetstats` refuses on a COG (would break layout).
+#'
+#' Verified recipe (2026-05-21 diagnostic on CGlabs):
+#'   1) gdal_translate COG -> plain GTiff (carries -9999 metadata).
+#'   2) gdal_edit.py -unsetstats on the plain GTiff (allowed; no COG
+#'      layout protection on plain GTiff).
+#'   3) gdal_translate plain GTiff -> COG with -stats (source has no
+#'      embedded stats now, so the fresh mean/stddev land in band
+#'      metadata + TIFF tags).
+#'   4) file.rename() for an atomic in-place swap; cleanup via on.exit.
+#'
+#' Cost ~3-5 s per file (3 GDAL passes), roughly doubles total bake
+#' time vs a single-pass writeRaster — but produces COGs that report
+#' real stats to downstream consumers (auto colour-ramp defaults,
+#' geotiff.js clients). A future optimization could plumb stats in
+#' during writeRaster itself via a custom GDAL writer that calls
+#' band.SetMetadataItem() before close, eliminating the round-trip.
 compute_cog_stats <- function(path) {
-  if (!nzchar(Sys.which("gdalinfo"))) {
-    return(invisible(NULL))   # GDAL CLI not on PATH; silently skip.
+  if (!nzchar(Sys.which("gdal_translate")) ||
+      !nzchar(Sys.which("gdal_edit.py"))) {
+    warning("gdal_translate or gdal_edit.py missing; ",
+            "skipping stats embed for ", basename(path))
+    return(invisible(NULL))
   }
-  res <- suppressWarnings(system2("gdalinfo",
-    args = c("-stats", "-mm", shQuote(path)),
-    stdout = FALSE, stderr = FALSE))
-  if (res != 0L) {
-    warning(sprintf("gdalinfo -stats failed (rc=%d) for %s",
-                    res, basename(path)))
+  s1 <- paste0(path, ".s1.tif")   # plain GTiff intermediate
+  s3 <- paste0(path, ".s3.tif")   # fresh COG with stats
+  on.exit(unlink(c(s1, paste0(s1, ".aux.xml"),
+                   s3, paste0(s3, ".aux.xml"))), add = TRUE)
+
+  # Step 1: COG -> plain GTiff (inherits -9999 metadata)
+  rc1 <- system2("gdal_translate",
+    c("-q", "-of", "GTiff", shQuote(path), shQuote(s1)),
+    stdout = FALSE, stderr = FALSE)
+  if (rc1 != 0L || !file.exists(s1)) {
+    warning("compute_cog_stats step1 failed for ", basename(path))
+    return(invisible(NULL))
+  }
+
+  # Step 2: strip embedded -9999 stats from plain GTiff
+  rc2 <- system2("gdal_edit.py", c("-unsetstats", shQuote(s1)),
+    stdout = FALSE, stderr = FALSE)
+  if (rc2 != 0L) {
+    warning("compute_cog_stats step2 (unsetstats) failed for ",
+            basename(path))
+    return(invisible(NULL))
+  }
+
+  # Step 3: clean source -> COG with -stats (embeds real mean/stddev)
+  rc3 <- system2("gdal_translate", c(
+    "-q", "-of", "COG",
+    "-co", "COMPRESS=DEFLATE",
+    "-co", "PREDICTOR=2",
+    "-co", "BLOCKSIZE=512",
+    "-co", "OVERVIEWS=AUTO",
+    "-co", "OVERVIEW_RESAMPLING=AVERAGE",
+    "-stats",
+    shQuote(s1), shQuote(s3)),
+    stdout = FALSE, stderr = FALSE)
+  if (rc3 != 0L || !file.exists(s3)) {
+    warning("compute_cog_stats step3 (re-COG with stats) failed for ",
+            basename(path))
+    return(invisible(NULL))
+  }
+
+  # Atomic in-place swap. file.rename within same filesystem is atomic.
+  ok <- file.rename(s3, path)
+  if (!ok) {
+    warning("compute_cog_stats: rename failed for ", basename(path))
   }
   invisible(NULL)
 }
