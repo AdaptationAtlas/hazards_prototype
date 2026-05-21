@@ -1,0 +1,19 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+project_dir          : /home/jovyan/atlas/hazards_prototype 
+working_dir          : /home/jovyan/common_data/nex-gddp-cimp6_hazards 
+input dir            : Data/chirts_chirps_hist 
+output dir           : Data/chirts_chirps_hist/maps 
+mode                 : --full 
+variables            : PTOT, TMAX, TMIN, TAVG, SPEI-01, SPEI-03, SPEI-06, SPEI-12, SPEI-24 
+periods              : annual, JFM, FMA, MAM, AMJ, MJJ, JJA, JAS, ASO, SON, OND, NDJ, DJF 
+climatology windows  : 1995-2014, 1991-2020, full 
+
+[12:02:46] --overwrite set: existing outputs will be rebuilt
+[climatology] workers=9  per_worker_gb~10.0  cores=40/40 (logical/physical)  RAM=361.1 free / 376.5 total GB  budget=90.0 GB
+[12:02:46] parallel climatology across 9 variables, 9 workers (multicore)

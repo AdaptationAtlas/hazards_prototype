@@ -1,0 +1,122 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+
+======================================================================
+[12:13:11][pid 32273] ==== CR-068 Stage 2 — walk upstream ====
+======================================================================
+
+[12:13:11][pid 32273] project_dir = /home/jovyan/atlas/hazards_prototype
+[12:13:11][pid 32273] Cglabs      = TRUE
+[12:13:11][pid 32273] countries   = AGO
+
+======================================================================
+[12:13:11][pid 32273] ==== Section A — NDWS source TIF inspection (historic vs ssp245) ====
+======================================================================
+
+[12:13:11][pid 32273] mean_dir = Data/hazard_timeseries_mean
+
+======================================================================
+[12:13:11][pid 32273] ==== Section A.historic ====
+======================================================================
+
+[12:13:11][pid 32273] (skipping — Data/hazard_timeseries_mean/historic does not exist)
+
+======================================================================
+[12:13:11][pid 32273] ==== Section A.ssp245 ====
+======================================================================
+
+[12:13:11][pid 32273] (skipping — Data/hazard_timeseries_mean/ssp245 does not exist)
+
+======================================================================
+[12:13:11][pid 32273] ==== Section B — NDWS classified TIF inspection (historic vs ssp245) ====
+======================================================================
+
+[12:13:11][pid 32273] class_dir = Data/hazard_timeseries_class
+
+======================================================================
+[12:13:11][pid 32273] ==== Section B.historic ====
+======================================================================
+
+[12:13:13][pid 32273] inspecting: historic_ACCESS-CM2_1995-2014_NDWS-mean-G15.tif
+[12:13:13][pid 32273]   layers = 19
+[12:13:13][pid 32273]   per-pixel summary (binary 0/1 expected):
+     min mean max
+1995   1    1   1
+1996   1    1   1
+1997   1    1   1
+1998   1    1   1
+1999   1    1   1
+2000   1    1   1
+2001   1    1   1
+2002   1    1   1
+2003   1    1   1
+2004   1    1   1
+2005   1    1   1
+2006   1    1   1
+2007   1    1   1
+2008   1    1   1
+2009   1    1   1
+2010   1    1   1
+2011   1    1   1
+2012   1    1   1
+2013   1    1   1
+[12:13:14][pid 32273]   global mean (pixel × time fraction flagged) = 1.0000
+
+======================================================================
+[12:13:14][pid 32273] ==== Section B.ssp245 ====
+======================================================================
+
+[12:13:14][pid 32273] inspecting: ssp245_ACCESS-CM2_2021-2040_NDWS-mean-G15.tif
+[12:13:15][pid 32273]   layers = 19
+[12:13:15][pid 32273]   per-pixel summary (binary 0/1 expected):
+     min      mean max
+2021   0 0.9738339   1
+2022   0 0.9988623   1
+2023   1 1.0000000   1
+2024   0 0.9954494   1
+2025   1 1.0000000   1
+2026   0 0.9965870   1
+2027   1 1.0000000   1
+2028   0 0.9926052   1
+2029   0 0.9994312   1
+2030   1 1.0000000   1
+2031   0 0.9960182   1
+2032   0 0.9687144   1
+2033   1 1.0000000   1
+2034   0 0.9994312   1
+2035   1 1.0000000   1
+2036   1 1.0000000   1
+2037   0 0.9670080   1
+2038   1 1.0000000   1
+2039   1 1.0000000   1
+[12:13:15][pid 32273]   global mean (pixel × time fraction flagged) = 0.9941
+Warning messages:
+1: [mask] CRS do not match 
+2: [mask] CRS do not match 
+
+======================================================================
+[12:13:15][pid 32273] ==== Section C — per-directory collision audit (the L654 rename concern) ====
+======================================================================
+
+[12:13:17][pid 32273] dirs with same-name files: 0
+[12:13:17][pid 32273]   no same-directory collisions found — Stage 1's 'collisions'
+[12:13:17][pid 32273]   were cross-subdir basename matches (benign)
+[12:13:18][pid 32273] Wrote report to /home/jovyan/atlas/hazards_prototype/metadata/checks/68_categorisation_stage2.json
+
+======================================================================
+[12:13:18][pid 32273] ==== STOP — Stage 2 report ====
+======================================================================
+
+[12:13:18][pid 32273] Read the per-pixel summary + is_binary / is_daycount diagnostics
+[12:13:18][pid 32273] above to determine where the saturation enters the pipeline:
+[12:13:18][pid 32273]   - is_daycount = TRUE && historic > future : Step 1 classifier
+[12:13:18][pid 32273]     threshold likely wrong, OR raw NDWS values are saturated.
+[12:13:18][pid 32273]   - is_binary = TRUE                          : classifier ran
+[12:13:18][pid 32273]     twice OR raw timeseries already encodes binary 0/1.
+[12:13:18][pid 32273]   - non-physical values                       : bug is upstream
+[12:13:18][pid 32273]     in R/1_make_timeseries.R historic-scenario read path.
