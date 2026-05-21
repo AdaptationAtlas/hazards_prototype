@@ -34,7 +34,10 @@ project_dir <- if (nzchar(Sys.getenv("project_dir"))) {
 }
 setwd(project_dir)
 source("R/0_server_setup.R")
-source("R/checks/_helpers.R")
+# 0_server_setup.R calls setwd(working_dir) — switch to a working_dir
+# under /home/jovyan/common_data/*. Source the helper by absolute path
+# so it doesn't fall through to the now-cwd.
+source(file.path(project_dir, "R/checks/_helpers.R"))
 
 suppressPackageStartupMessages({
   pacman::p_load(terra, data.table, jsonlite, duckdb, DBI)

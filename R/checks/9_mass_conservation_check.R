@@ -22,7 +22,9 @@ project_dir <- if (nzchar(Sys.getenv("project_dir"))) {
 }
 setwd(project_dir)
 source("R/0_server_setup.R")
-source("R/checks/_helpers.R")
+# 0_server_setup.R calls setwd(working_dir) — source the helper by
+# absolute path so it doesn't try to resolve against the new cwd.
+source(file.path(project_dir, "R/checks/_helpers.R"))
 # 0_server_setup.R exposes: working_dir, base_rast, base_rast_path,
 # geo_files_local (admin0/admin1/admin2 parquets), glw_dir, hpop_dir,
 # boundaries_dir, atlas_dirs, Cglabs, ...
