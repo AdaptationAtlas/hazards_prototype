@@ -151,9 +151,7 @@ mask_ls_file <- paste0(glw_int_dir, "/livestock_masks.tif")
 overwrite_glw <- FALSE
 if (!file.exists(mask_ls_file) || overwrite_glw == TRUE) {
   glw <- terra::rast(glw_files)
-  # names(glw)<-names(glw_names)
-  names(glw) <- unlist(tstrsplit(names(glw), "_", keep = 1))
-
+  names(glw) <- glw_short_to_long[unlist(tstrsplit(names(glw), "_", keep = 1))]
   glw <- glw[[c("poultry", "sheep", "pigs", "goats", "cattle")]]
 
   lus <- c(glw$cattle * 0.7, glw$poultry * 0.01, glw$goats * 0.1, glw$pigs * 0.2, glw$sheep * 0.1)
@@ -201,6 +199,13 @@ glw_rast <- terra::rast(lapply(unique(glw2atlas$glw3_name), FUN = function(NAME)
 }))
 
 names(glw_rast) <- unique(glw2atlas$glw3_name)
+
+# The mask block above may have reloaded glw at native GLW4 extent.
+# Re-align to base_rast (mass-conserving) so the per-pixel ratio works.
+if (!terra::compareGeom(glw, base_rast, stopOnError = FALSE)) {
+  glw <- terra::resample(glw, base_rast, method = "sum")
+  glw <- terra::mask(glw, geoboundaries)
+}
 
 glw_prop <- glw / glw_rast
 
@@ -523,8 +528,7 @@ overwrite_glw <- FALSE
 
 if (!file.exists(livestock_no_file) || overwrite_glw == TRUE) {
   glw <- terra::rast(glw_files)
-  names(glw) <- unlist(tstrsplit(names(glw), "_", keep = 1))
-
+  names(glw) <- glw_short_to_long[unlist(tstrsplit(names(glw), "_", keep = 1))]
   livestock_no <- glw[[c("poultry", "sheep", "pigs", "goats", "cattle")]]
 
   TLU <- sum(c(glw$cattle * 0.7, glw$poultry * 0.01, glw$goats * 0.1, glw$pigs * 0.2, glw$sheep * 0.1))
