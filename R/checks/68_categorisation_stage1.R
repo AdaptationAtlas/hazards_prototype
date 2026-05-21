@@ -40,8 +40,74 @@ source("R/0_server_setup.R")
 source(file.path(project_dir, "R/checks/_helpers.R"))
 
 suppressPackageStartupMessages({
-  pacman::p_load(terra, data.table, jsonlite, duckdb, DBI)
+  pacman::p_load(terra, data.table, jsonlite, duckdb, DBI,
+                 future, future.apply, furrr, progressr)
 })
+
+# Per-file scan with windowed-read + global() mean. Pulled out as a
+# top-level function so future_map workers can call it (closures over
+# .GlobalEnv don't always serialize cleanly across multisession).
+scan_one_class <- function(f, aoi_wrap) {
+  tryCatch({
+    aoi_local <- terra::unwrap(aoi_wrap)
+    r <- terra::rast(f)
+    r <- window_to_aoi(r, aoi_local)
+    parts <- strsplit(basename(f), "_")[[1]]
+    m <- as.numeric(terra::global(terra::mean(r), "mean", na.rm = TRUE)[, 1])
+    data.table(
+      scenario   = parts[1],
+      model      = parts[2],
+      timeframe  = parts[3],
+      hazard     = sub("\\.tif$", "", paste(parts[-(1:3)], collapse = "_")),
+      n_layers   = terra::nlyr(r),
+      mean_value = m,
+      file       = basename(f),
+      status     = if (is.nan(m) || is.na(m)) "nan" else "ok"
+    )
+  }, error = function(e) {
+    parts <- strsplit(basename(f), "_")[[1]]
+    data.table(
+      scenario   = if (length(parts) >= 1) parts[1] else NA_character_,
+      model      = if (length(parts) >= 2) parts[2] else NA_character_,
+      timeframe  = if (length(parts) >= 3) parts[3] else NA_character_,
+      hazard     = if (length(parts) >= 4)
+                     sub("\\.tif$", "", paste(parts[-(1:3)], collapse = "_"))
+                   else NA_character_,
+      n_layers   = NA_integer_,
+      mean_value = NA_real_,
+      file       = basename(f),
+      status     = paste0("err: ", conditionMessage(e))
+    )
+  })
+}
+
+scan_one_int <- function(f, aoi_wrap) {
+  tryCatch({
+    aoi_local <- terra::unwrap(aoi_wrap)
+    r <- terra::rast(f)
+    r <- window_to_aoi(r, aoi_local)
+    parts <- strsplit(basename(f), "_")[[1]]
+    m <- as.numeric(terra::global(terra::mean(r), "mean", na.rm = TRUE)[, 1])
+    data.table(
+      scenario   = parts[1],
+      model      = parts[2],
+      timeframe  = parts[3],
+      combo      = sub("\\.tif$", "", paste(parts[-(1:3)], collapse = "_")),
+      n_layers   = terra::nlyr(r),
+      mean_value = m,
+      file       = basename(f),
+      status     = if (is.nan(m) || is.na(m)) "nan" else "ok"
+    )
+  }, error = function(e) {
+    parts <- strsplit(basename(f), "_")[[1]]
+    data.table(
+      scenario = parts[1], model = parts[2], timeframe = parts[3],
+      combo = NA_character_, n_layers = NA_integer_,
+      mean_value = NA_real_, file = basename(f),
+      status = paste0("err: ", conditionMessage(e))
+    )
+  })
+}
 
 # Reconstruct geoboundaries (0_server_setup.R does not export it).
 geoboundaries <- arrow::read_parquet(geo_files_local[1]) |>
@@ -63,13 +129,19 @@ get_arg <- function(name) {
 countries_arg <- get_arg("countries")
 countries_iso <- if (is.na(countries_arg)) NULL else strsplit(countries_arg, ",")[[1]]
 sample_n      <- as.integer(parse_cli(args_all, "sample", "integer", default = NA_integer_))
+n_workers     <- as.integer(parse_cli(args_all, "workers", "integer", default = 1L))
 log_step("--countries = %s", if (is.null(countries_iso)) "ALL (full extent — slow)"
          else paste(countries_iso, collapse = ","))
 log_step("--sample N  = %s", if (is.na(sample_n)) "ALL files" else sample_n)
+log_step("--workers   = %d (1 = sequential)", n_workers)
 
 aoi <- countries_aoi(geoboundaries, countries_iso)
 log_step("aoi has %d feature(s); ext = %s",
          length(aoi), paste(round(as.vector(terra::ext(aoi)), 2), collapse = ", "))
+
+# terra SpatVector objects don't survive multisession serialization;
+# wrap once and pass the PackedSpatVector to each worker.
+aoi_wrap <- terra::wrap(aoi)
 
 # ----- Resolve class_dir + int_dir (try resolved path then fallbacks) ----
 resolve_dir <- function(label, resolved, candidates) {
@@ -129,51 +201,57 @@ if (!is.na(class_dir)) {
     log_step("No matching rasters found under class_dir — skipping Section A")
   } else {
     sample <- log_timer({
-      n_total <- length(files_a)
-      progress_every <- max(1L, n_total %/% 20L)  # ~5 % increments
-      rbindlist(lapply(seq_along(files_a), function(i) {
-        f <- files_a[i]
-        if (i %% progress_every == 1L || i == n_total) {
-          log_step("  [class A] %d / %d  %s", i, n_total, basename(f))
-        }
-        tryCatch({
-          r <- terra::rast(f)
-          r <- window_to_aoi(r, aoi)
-          parts <- strsplit(basename(f), "_")[[1]]
-          data.table(
-            scenario   = parts[1],
-            model      = parts[2],
-            timeframe  = parts[3],
-            hazard     = sub("\\.tif$", "", paste(parts[-(1:3)], collapse = "_")),
-            n_layers   = terra::nlyr(r),
-            mean_value = as.numeric(
-              terra::global(terra::mean(r), "mean", na.rm = TRUE)[, 1]),
-            file       = basename(f)
-          )
-        }, error = function(e) {
-          log_step("  WARN reading %s: %s", basename(f), conditionMessage(e))
-          NULL
-        })
-      }))
+      if (n_workers > 1L) {
+        log_step("parallel scan with %d workers (terra::wrap'd AOI)", n_workers)
+        future::plan(future::multisession, workers = n_workers)
+        on.exit(future::plan(future::sequential), add = TRUE)
+        rbindlist(furrr::future_map(files_a, scan_one_class,
+                                    aoi_wrap = aoi_wrap,
+                                    .options = furrr::furrr_options(
+                                      seed = TRUE, stdout = FALSE)),
+                  fill = TRUE)
+      } else {
+        n_total <- length(files_a)
+        progress_every <- max(1L, n_total %/% 20L)
+        rbindlist(lapply(seq_along(files_a), function(i) {
+          f <- files_a[i]
+          if (i %% progress_every == 1L || i == n_total) {
+            log_step("  [class A] %d / %d  %s", i, n_total, basename(f))
+          }
+          scan_one_class(f, aoi_wrap)
+        }), fill = TRUE)
+      }
     }, label = "Section A — read + global() per file")
 
-    setorder(sample, hazard, scenario, timeframe)
-    log_step("scanned %d classified rasters successfully", nrow(sample))
+    # Drop NaN/error rows from the aggregate but report the tally.
+    n_total_a    <- nrow(sample)
+    n_nan_a      <- sum(sample$status == "nan", na.rm = TRUE)
+    n_err_a      <- sum(grepl("^err", sample$status), na.rm = TRUE)
+    sample_ok    <- sample[status == "ok"]
+    log_step("scanned %d class rasters: %d ok | %d NaN | %d errors",
+             n_total_a, nrow(sample_ok), n_nan_a, n_err_a)
+    if (n_err_a > 0L) {
+      log_step("first 5 error messages:")
+      print(unique(sample[grepl("^err", status), .(file, status)])[1:min(5L, .N)])
+    }
 
-    agg_a <- sample[, list(
+    setorder(sample_ok, hazard, scenario, timeframe)
+    agg_a <- sample_ok[, list(
       n_files  = .N,
       mean_avg = mean(mean_value, na.rm = TRUE),
       mean_min = min(mean_value, na.rm = TRUE),
       mean_max = max(mean_value, na.rm = TRUE)
     ), by = list(scenario, timeframe, hazard)]
     setorder(agg_a, hazard, scenario, timeframe)
-    cat("\n  Mean hazard fraction by (scenario, timeframe, hazard):\n")
-    print(agg_a)
+    cat("\n  Mean hazard fraction by (scenario, timeframe, hazard) — top 30:\n")
+    print(agg_a[order(-mean_avg)][1:min(30L, .N)])
     cat("\n  Saturated (mean > 0.7) — Candidate 1 evidence:\n")
     print(agg_a[mean_avg > 0.7])
     cat("\n  Near-zero (mean < 0.005) — Candidate 2 evidence:\n")
     print(agg_a[mean_avg < 0.005])
-    results$class_means <- agg_a
+    results$class_means   <- agg_a
+    results$class_status  <- list(total = n_total_a, ok = nrow(sample_ok),
+                                  nan = n_nan_a, err = n_err_a)
   }
 } else {
   log_step("[A] SKIPPED — class_dir not available")
@@ -255,34 +333,36 @@ if (!is.na(int_dir)) {
   log_step("after --sample: %d files to scan", length(int_files))
 
   if (length(int_files) > 0L) {
-    int_sample <- log_timer({
-      n_total <- length(int_files)
-      progress_every <- max(1L, n_total %/% 20L)
-      rbindlist(lapply(seq_along(int_files), function(i) {
-        f <- int_files[i]
-        if (i %% progress_every == 1L || i == n_total) {
-          log_step("  [int E] %d / %d  %s", i, n_total, basename(f))
-        }
-        parts <- strsplit(basename(f), "_")[[1]]
-        tryCatch({
-          r <- terra::rast(f)
-          r <- window_to_aoi(r, aoi)
-          data.table(
-            scenario   = parts[1],
-            model      = parts[2],
-            timeframe  = parts[3],
-            combo      = sub("\\.tif$", "", paste(parts[-(1:3)], collapse = "_")),
-            n_layers   = terra::nlyr(r),
-            mean_value = as.numeric(
-              terra::global(terra::mean(r), "mean", na.rm = TRUE)[, 1]),
-            file       = basename(f)
-          )
-        }, error = function(e) {
-          log_step("  WARN reading %s: %s", basename(f), conditionMessage(e))
-          NULL
-        })
-      }), fill = TRUE)
+    int_sample_raw <- log_timer({
+      if (n_workers > 1L) {
+        log_step("parallel scan with %d workers (terra::wrap'd AOI)", n_workers)
+        future::plan(future::multisession, workers = n_workers)
+        on.exit(future::plan(future::sequential), add = TRUE)
+        rbindlist(furrr::future_map(int_files, scan_one_int,
+                                    aoi_wrap = aoi_wrap,
+                                    .options = furrr::furrr_options(
+                                      seed = TRUE, stdout = FALSE)),
+                  fill = TRUE)
+      } else {
+        n_total <- length(int_files)
+        progress_every <- max(1L, n_total %/% 20L)
+        rbindlist(lapply(seq_along(int_files), function(i) {
+          f <- int_files[i]
+          if (i %% progress_every == 1L || i == n_total) {
+            log_step("  [int E] %d / %d  %s", i, n_total, basename(f))
+          }
+          scan_one_int(f, aoi_wrap)
+        }), fill = TRUE)
+      }
     }, label = "Section E — read + global() per file")
+
+    # Drop NaN/error rows from the aggregate but keep the tally
+    n_total_e <- nrow(int_sample_raw)
+    n_nan_e   <- sum(int_sample_raw$status == "nan", na.rm = TRUE)
+    n_err_e   <- sum(grepl("^err", int_sample_raw$status), na.rm = TRUE)
+    int_sample <- int_sample_raw[status == "ok"]
+    log_step("scanned %d int rasters: %d ok | %d NaN | %d errors",
+             n_total_e, nrow(int_sample), n_nan_e, n_err_e)
 
     if (!is.null(int_sample) && nrow(int_sample) > 0L) {
       setorder(int_sample, combo, scenario, timeframe)
