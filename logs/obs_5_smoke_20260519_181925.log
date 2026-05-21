@@ -1,0 +1,30 @@
+nohup: ignoring input
+[04:09:12] bootstrap_minimal: resolving project / working dirs
+[04:09:17]   selected working_dir: /home/jovyan/common_data/nex-gddp-cimp6_hazards
+project_dir          : /home/jovyan/atlas/hazards_prototype 
+working_dir          : /home/jovyan/common_data/nex-gddp-cimp6_hazards 
+input dir            : Data/chirts_chirps_hist 
+output dir           : Data/chirts_chirps_hist/maps 
+mode                 : --smoke 
+variables            : PTOT 
+periods              : annual, JFM, JJA 
+climatology windows  : 1991-2020 
+
+[climatology] workers=1  per_worker_gb~10.0  cores=40/40 (logical/physical)  RAM=8589934578.3 free / 376.5 total GB [cgroup=8589934592.0 / host=376.5 GB]  budget=10.0 GB
+[04:09:18] parallel climatology across 1 variables, 1 workers (sequential)
+[04:09:19] === PTOT / 1991-2020 (1991-2020) ===
+[04:09:34]   PTOT / annual (n_years=30) -> 4 COGs in 15.1s
+[04:09:37]   PTOT / JFM (n_years=30) -> 4 COGs in 3.7s
+[04:09:41]   PTOT / JJA (n_years=30) -> 4 COGs in 4.0s
+[04:09:41] === VERIFICATION CHECKS ===
+[OK] 1. All 12 expected COGs present.
+[OK] 2. COG integrity: 6 / 6 sampled files parse cleanly.
+[OK] 3. annual / JFM PTOT ratio = 4.83 (plausible for Kenya).
+[OK] 4. PTOT annual SD range: 68.37 .. 832.55 mm.
+[OK] 5. min <= mean <= max holds across all pixels.
+[OK] 6. PNG round-trip: Data/chirts_chirps_hist/maps/_map_smoke_PTOT_annual_mean.png (70 KB).
+
+=== WARNINGS COLLECTED: 0 ===
+(no warnings)
+
+=== SMOKE TEST PASSED - STOPPING (do NOT run --full from here) ===

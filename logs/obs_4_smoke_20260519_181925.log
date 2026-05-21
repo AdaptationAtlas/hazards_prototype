@@ -1,0 +1,48 @@
+nohup: ignoring input
+[04:04:50] bootstrap_minimal: resolving project / working dirs
+[04:04:51]   selected working_dir: /home/jovyan/common_data/nex-gddp-cimp6_hazards
+project_dir  : /home/jovyan/atlas/hazards_prototype 
+working_dir  : /home/jovyan/common_data/nex-gddp-cimp6_hazards 
+input/output : Data/chirts_chirps_hist/admin 
+mode         : --smoke 
+admin levels : adm0 
+
+[04:04:51] === adm0: obs_periods_adm0.parquet already present, skipping (delete to rebuild)
+[04:04:51] === VERIFICATION CHECKS ===
+[OK] 1. Parquet written: Data/chirts_chirps_hist/admin/obs_periods_adm0.parquet (0.4 MB)
+[OK] 2. All 13 periods present.
+[OK] 3. Row count 27189 (81.5% of 33345 zones x periods x vars x years).
+[OK] 4. No (variable x period) combinations are entirely NA.
+[OK] 5. Sample value ranges (annual, JFM, JJA):
+    variable period          min          max
+      <fctr> <fctr>        <num>        <num>
+ 1:     PTOT annual  3.448452968 3108.9414910
+ 2:     TMAX annual 24.071084330   45.3284581
+ 3:     TMIN annual -1.966767888   27.5483510
+ 4:     TAVG annual 12.928419942   32.8923449
+ 5:  SPEI-01 annual -0.657402986    0.6726716
+ 6:  SPEI-03 annual -1.103640094    1.0559652
+ 7:  SPEI-06 annual -1.169091828    1.3857660
+ 8:  SPEI-12 annual -1.611919035    1.7576067
+ 9:  SPEI-24 annual -1.971685208    1.6717028
+10:     PTOT    JFM  0.005799472 1087.1540361
+11:     TMAX    JFM 20.347590793   42.8179292
+12:     TMIN    JFM  5.749071088   30.5231111
+13:     TAVG    JFM 13.276162635   32.7273259
+14:  SPEI-01    JFM -1.730614071    1.1931537
+15:  SPEI-03    JFM -2.251927259    1.4216863
+16:  SPEI-06    JFM -1.628274551    1.7858585
+17:  SPEI-12    JFM -1.974918860    1.8768920
+18:  SPEI-24    JFM -2.424786611    1.9789067
+19:     PTOT    JJA  0.169596984 1647.2685828
+20:     TMAX    JJA 16.667665292   45.3284581
+21:     TMIN    JJA -1.966767888   31.2168301
+22:     TAVG    JJA  7.270767778   37.6065379
+23:  SPEI-01    JJA -1.694024669    1.2953270
+24:  SPEI-03    JJA -1.409867284    1.4615723
+25:  SPEI-06    JJA -1.701255271    2.1005883
+26:  SPEI-12    JJA -2.315296077    2.0441813
+27:  SPEI-24    JJA -2.272739170    1.7628118
+    variable period          min          max
+
+=== SMOKE TEST PASSED ===

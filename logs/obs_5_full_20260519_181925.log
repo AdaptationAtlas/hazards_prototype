@@ -1,0 +1,399 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+3.2.1) Downloading mapspam processed files 1 / 48      3.2.1) Downloading mapspam processed files 2 / 48      3.2.1) Downloading mapspam processed files 3 / 48      3.2.1) Downloading mapspam processed files 4 / 48      3.2.1) Downloading mapspam processed files 5 / 48      3.2.1) Downloading mapspam processed files 6 / 48      3.2.1) Downloading mapspam processed files 7 / 48      3.2.1) Downloading mapspam processed files 8 / 48      3.2.1) Downloading mapspam processed files 9 / 48      3.2.1) Downloading mapspam processed files 10 / 48      3.2.1) Downloading mapspam processed files 11 / 48      3.2.1) Downloading mapspam processed files 12 / 48      3.2.1) Downloading mapspam processed files 13 / 48      3.2.1) Downloading mapspam processed files 14 / 48      3.2.1) Downloading mapspam processed files 15 / 48      3.2.1) Downloading mapspam processed files 16 / 48      3.2.1) Downloading mapspam processed files 17 / 48      3.2.1) Downloading mapspam processed files 18 / 48      3.2.1) Downloading mapspam processed files 19 / 48      3.2.1) Downloading mapspam processed files 20 / 48      3.2.1) Downloading mapspam processed files 21 / 48      3.2.1) Downloading mapspam processed files 22 / 48      3.2.1) Downloading mapspam processed files 23 / 48      3.2.1) Downloading mapspam processed files 24 / 48      3.2.1) Downloading mapspam processed files 25 / 48      3.2.1) Downloading mapspam processed files 26 / 48      3.2.1) Downloading mapspam processed files 27 / 48      3.2.1) Downloading mapspam processed files 28 / 48      3.2.1) Downloading mapspam processed files 29 / 48      3.2.1) Downloading mapspam processed files 30 / 48      3.2.1) Downloading mapspam processed files 31 / 48      3.2.1) Downloading mapspam processed files 32 / 48      3.2.1) Downloading mapspam processed files 33 / 48      3.2.1) Downloading mapspam processed files 34 / 48      3.2.1) Downloading mapspam processed files 35 / 48      3.2.1) Downloading mapspam processed files 36 / 48      3.2.1) Downloading mapspam processed files 37 / 48      3.2.1) Downloading mapspam processed files 38 / 48      3.2.1) Downloading mapspam processed files 39 / 48      3.2.1) Downloading mapspam processed files 40 / 48      3.2.1) Downloading mapspam processed files 41 / 48      3.2.1) Downloading mapspam processed files 42 / 48      3.2.1) Downloading mapspam processed files 43 / 48      3.2.1) Downloading mapspam processed files 44 / 48      3.2.1) Downloading mapspam processed files 45 / 48      3.2.1) Downloading mapspam processed files 46 / 48      3.2.1) Downloading mapspam processed files 47 / 48      3.2.1) Downloading mapspam processed files 48 / 48      3.2.2) Downloading mapspam raw files 1 / 30      3.2.2) Downloading mapspam raw files 2 / 30      3.2.2) Downloading mapspam raw files 3 / 30      3.2.2) Downloading mapspam raw files 4 / 30      3.2.2) Downloading mapspam raw files 5 / 30      3.2.2) Downloading mapspam raw files 6 / 30      3.2.2) Downloading mapspam raw files 7 / 30      3.2.2) Downloading mapspam raw files 8 / 30      3.2.2) Downloading mapspam raw files 9 / 30      3.2.2) Downloading mapspam raw files 10 / 30      3.2.2) Downloading mapspam raw files 11 / 30      3.2.2) Downloading mapspam raw files 12 / 30      3.2.2) Downloading mapspam raw files 13 / 30      3.2.2) Downloading mapspam raw files 14 / 30      3.2.2) Downloading mapspam raw files 15 / 30      3.2.2) Downloading mapspam raw files 16 / 30      3.2.2) Downloading mapspam raw files 17 / 30      3.2.2) Downloading mapspam raw files 18 / 30      3.2.2) Downloading mapspam raw files 19 / 30      3.2.2) Downloading mapspam raw files 20 / 30      3.2.2) Downloading mapspam raw files 21 / 30      3.2.2) Downloading mapspam raw files 22 / 30      3.2.2) Downloading mapspam raw files 23 / 30      3.2.2) Downloading mapspam raw files 24 / 30      3.2.2) Downloading mapspam raw files 25 / 30      3.2.2) Downloading mapspam raw files 26 / 30      3.2.2) Downloading mapspam raw files 27 / 30      3.2.2) Downloading mapspam raw files 28 / 30      3.2.2) Downloading mapspam raw files 29 / 30      3.2.2) Downloading mapspam raw files 30 / 30      0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+project_dir          : /home/jovyan/atlas/hazards_prototype 
+working_dir          : /home/jovyan/common_data/nex-gddp-cimp6_hazards 
+input dir            : Data/chirts_chirps_hist 
+output dir           : Data/chirts_chirps_hist/maps 
+mode                 : --full 
+variables            : PTOT, TMAX, TMIN, TAVG, SPEI-01, SPEI-03, SPEI-06, SPEI-12, SPEI-24 
+periods              : annual, JFM, FMA, MAM, AMJ, MJJ, JJA, JAS, ASO, SON, OND, NDJ, DJF 
+climatology windows  : 1995-2014, 1991-2020, full 
+
+[climatology] workers=9  per_worker_gb~10.0  cores=40/40 (logical/physical)  RAM=8589934577.9 free / 376.5 total GB [cgroup=8589934592.0 / host=376.5 GB]  budget=90.0 GB
+[04:16:28] parallel climatology across 9 variables, 9 workers (multicore)
+[04:16:29] === PTOT / 1995-2014 (1995-2014) ===
+[04:19:25]   PTOT / annual (n_years=20) -> 4 COGs in 175.5s
+[04:20:49]   PTOT / JFM (n_years=20) -> 4 COGs in 84.0s
+[04:22:08]   PTOT / FMA (n_years=20) -> 4 COGs in 79.5s
+[04:23:24]   PTOT / MAM (n_years=20) -> 4 COGs in 75.3s
+[04:24:38]   PTOT / AMJ (n_years=20) -> 4 COGs in 74.6s
+[04:25:51]   PTOT / MJJ (n_years=20) -> 4 COGs in 73.1s
+[04:27:06]   PTOT / JJA (n_years=20) -> 4 COGs in 74.1s
+[04:28:18]   PTOT / JAS (n_years=20) -> 4 COGs in 72.2s
+[04:29:33]   PTOT / ASO (n_years=20) -> 4 COGs in 75.5s
+[04:30:51]   PTOT / SON (n_years=20) -> 4 COGs in 77.6s
+[04:32:08]   PTOT / OND (n_years=20) -> 4 COGs in 77.0s
+[04:33:22]   PTOT / NDJ (n_years=20) -> 4 COGs in 74.3s
+[04:34:40]   PTOT / DJF (n_years=20) -> 4 COGs in 78.2s
+[04:34:40] === PTOT / 1991-2020 (1991-2020) ===
+[04:34:40]   PTOT / annual: all 4 stats present, skipping
+[04:34:40]   PTOT / JFM: all 4 stats present, skipping
+[04:36:15]   PTOT / FMA (n_years=30) -> 4 COGs in 95.0s
+[04:37:39]   PTOT / MAM (n_years=30) -> 4 COGs in 83.5s
+[04:39:04]   PTOT / AMJ (n_years=30) -> 4 COGs in 85.2s
+[04:40:25]   PTOT / MJJ (n_years=30) -> 4 COGs in 80.3s
+[04:40:25]   PTOT / JJA: all 4 stats present, skipping
+[04:41:49]   PTOT / JAS (n_years=30) -> 4 COGs in 84.2s
+[04:43:13]   PTOT / ASO (n_years=30) -> 4 COGs in 83.8s
+[04:44:34]   PTOT / SON (n_years=30) -> 4 COGs in 81.4s
+[04:45:56]   PTOT / OND (n_years=30) -> 4 COGs in 82.0s
+[04:47:23]   PTOT / NDJ (n_years=30) -> 4 COGs in 86.8s
+[04:48:45]   PTOT / DJF (n_years=30) -> 4 COGs in 82.6s
+[04:48:45] === PTOT / full (1981-2026) ===
+[04:53:12]   PTOT / annual (n_years=45) -> 4 COGs in 266.6s
+[04:54:50]   PTOT / JFM (n_years=46) -> 4 COGs in 97.5s
+[04:56:35]   PTOT / FMA (n_years=46) -> 4 COGs in 105.1s
+[04:58:16]   PTOT / MAM (n_years=45) -> 4 COGs in 101.1s
+[04:59:58]   PTOT / AMJ (n_years=45) -> 4 COGs in 101.9s
+[05:01:41]   PTOT / MJJ (n_years=45) -> 4 COGs in 103.6s
+[05:03:22]   PTOT / JJA (n_years=45) -> 4 COGs in 100.9s
+[05:05:07]   PTOT / JAS (n_years=45) -> 4 COGs in 104.4s
+[05:06:45]   PTOT / ASO (n_years=45) -> 4 COGs in 98.6s
+[05:08:28]   PTOT / SON (n_years=45) -> 4 COGs in 103.0s
+[05:10:11]   PTOT / OND (n_years=45) -> 4 COGs in 102.9s
+[05:11:50]   PTOT / NDJ (n_years=44) -> 4 COGs in 98.5s
+[05:13:34]   PTOT / DJF (n_years=45) -> 4 COGs in 104.1s
+[04:16:29] === TMAX / 1995-2014 (1995-2014) ===
+[04:19:17]   TMAX / annual (n_years=20) -> 4 COGs in 167.9s
+[04:20:39]   TMAX / JFM (n_years=20) -> 4 COGs in 81.6s
+[04:21:58]   TMAX / FMA (n_years=20) -> 4 COGs in 79.5s
+[04:23:14]   TMAX / MAM (n_years=20) -> 4 COGs in 75.2s
+[04:24:30]   TMAX / AMJ (n_years=20) -> 4 COGs in 76.9s
+[04:25:44]   TMAX / MJJ (n_years=20) -> 4 COGs in 73.5s
+[04:26:59]   TMAX / JJA (n_years=20) -> 4 COGs in 74.7s
+[04:28:12]   TMAX / JAS (n_years=20) -> 4 COGs in 73.6s
+[04:29:25]   TMAX / ASO (n_years=20) -> 4 COGs in 72.8s
+[04:30:37]   TMAX / SON (n_years=20) -> 4 COGs in 72.3s
+[04:31:50]   TMAX / OND (n_years=20) -> 4 COGs in 72.7s
+[04:33:05]   TMAX / NDJ (n_years=20) -> 4 COGs in 74.7s
+[04:34:18]   TMAX / DJF (n_years=20) -> 4 COGs in 73.3s
+[04:34:18] === TMAX / 1991-2020 (1991-2020) ===
+[04:37:46]   TMAX / annual (n_years=30) -> 4 COGs in 208.2s
+[04:39:12]   TMAX / JFM (n_years=30) -> 4 COGs in 85.6s
+[04:40:39]   TMAX / FMA (n_years=30) -> 4 COGs in 86.4s
+[04:42:03]   TMAX / MAM (n_years=30) -> 4 COGs in 84.0s
+[04:43:25]   TMAX / AMJ (n_years=30) -> 4 COGs in 82.3s
+[04:44:43]   TMAX / MJJ (n_years=30) -> 4 COGs in 77.8s
+[04:46:01]   TMAX / JJA (n_years=30) -> 4 COGs in 78.4s
+[04:47:23]   TMAX / JAS (n_years=30) -> 4 COGs in 82.0s
+[04:48:47]   TMAX / ASO (n_years=30) -> 4 COGs in 84.3s
+[04:50:13]   TMAX / SON (n_years=30) -> 4 COGs in 85.7s
+[04:51:38]   TMAX / OND (n_years=30) -> 4 COGs in 85.4s
+[04:53:01]   TMAX / NDJ (n_years=30) -> 4 COGs in 82.4s
+[04:54:23]   TMAX / DJF (n_years=30) -> 4 COGs in 82.0s
+[04:54:23] === TMAX / full (1980-2026) ===
+[04:58:57]   TMAX / annual (n_years=46) -> 4 COGs in 274.4s
+[05:00:43]   TMAX / JFM (n_years=47) -> 4 COGs in 105.3s
+[05:02:25]   TMAX / FMA (n_years=47) -> 4 COGs in 102.2s
+[05:04:07]   TMAX / MAM (n_years=46) -> 4 COGs in 102.4s
+[05:05:51]   TMAX / AMJ (n_years=46) -> 4 COGs in 104.3s
+[05:07:31]   TMAX / MJJ (n_years=46) -> 4 COGs in 99.7s
+[05:09:18]   TMAX / JJA (n_years=46) -> 4 COGs in 107.1s
+[05:10:59]   TMAX / JAS (n_years=46) -> 4 COGs in 101.2s
+[05:12:45]   TMAX / ASO (n_years=46) -> 4 COGs in 106.0s
+[05:14:23]   TMAX / SON (n_years=46) -> 4 COGs in 97.2s
+[05:16:08]   TMAX / OND (n_years=46) -> 4 COGs in 105.6s
+[05:17:45]   TMAX / NDJ (n_years=45) -> 4 COGs in 97.0s
+[05:19:29]   TMAX / DJF (n_years=46) -> 4 COGs in 103.4s
+[04:16:29] === TMIN / 1995-2014 (1995-2014) ===
+[04:19:18]   TMIN / annual (n_years=20) -> 4 COGs in 168.6s
+[04:20:41]   TMIN / JFM (n_years=20) -> 4 COGs in 82.6s
+[04:22:03]   TMIN / FMA (n_years=20) -> 4 COGs in 82.1s
+[04:23:22]   TMIN / MAM (n_years=20) -> 4 COGs in 79.4s
+[04:24:43]   TMIN / AMJ (n_years=20) -> 4 COGs in 80.7s
+[04:26:05]   TMIN / MJJ (n_years=20) -> 4 COGs in 82.5s
+[04:27:21]   TMIN / JJA (n_years=20) -> 4 COGs in 76.1s
+[04:28:37]   TMIN / JAS (n_years=20) -> 4 COGs in 75.6s
+[04:29:51]   TMIN / ASO (n_years=20) -> 4 COGs in 74.0s
+[04:31:01]   TMIN / SON (n_years=20) -> 4 COGs in 70.0s
+[04:32:15]   TMIN / OND (n_years=20) -> 4 COGs in 74.1s
+[04:33:28]   TMIN / NDJ (n_years=20) -> 4 COGs in 72.8s
+[04:34:41]   TMIN / DJF (n_years=20) -> 4 COGs in 72.9s
+[04:34:41] === TMIN / 1991-2020 (1991-2020) ===
+[04:37:55]   TMIN / annual (n_years=30) -> 4 COGs in 194.6s
+[04:39:17]   TMIN / JFM (n_years=30) -> 4 COGs in 81.5s
+[04:40:43]   TMIN / FMA (n_years=30) -> 4 COGs in 85.7s
+[04:42:05]   TMIN / MAM (n_years=30) -> 4 COGs in 82.6s
+[04:43:26]   TMIN / AMJ (n_years=30) -> 4 COGs in 81.3s
+[04:44:52]   TMIN / MJJ (n_years=30) -> 4 COGs in 85.4s
+[04:46:17]   TMIN / JJA (n_years=30) -> 4 COGs in 85.1s
+[04:47:40]   TMIN / JAS (n_years=30) -> 4 COGs in 83.2s
+[04:49:04]   TMIN / ASO (n_years=30) -> 4 COGs in 84.3s
+[04:50:28]   TMIN / SON (n_years=30) -> 4 COGs in 83.9s
+[04:51:53]   TMIN / OND (n_years=30) -> 4 COGs in 84.6s
+[04:53:16]   TMIN / NDJ (n_years=30) -> 4 COGs in 83.5s
+[04:54:42]   TMIN / DJF (n_years=30) -> 4 COGs in 85.3s
+[04:54:42] === TMIN / full (1980-2026) ===
+[04:59:28]   TMIN / annual (n_years=46) -> 4 COGs in 286.8s
+[05:01:19]   TMIN / JFM (n_years=47) -> 4 COGs in 110.7s
+[05:03:00]   TMIN / FMA (n_years=47) -> 4 COGs in 100.5s
+[05:04:37]   TMIN / MAM (n_years=46) -> 4 COGs in 97.2s
+[05:06:20]   TMIN / AMJ (n_years=46) -> 4 COGs in 103.6s
+[05:08:11]   TMIN / MJJ (n_years=46) -> 4 COGs in 110.5s
+[05:10:08]   TMIN / JJA (n_years=46) -> 4 COGs in 116.9s
+[05:12:05]   TMIN / JAS (n_years=46) -> 4 COGs in 117.4s
+[05:13:56]   TMIN / ASO (n_years=46) -> 4 COGs in 110.7s
+[05:15:41]   TMIN / SON (n_years=46) -> 4 COGs in 105.0s
+[05:17:27]   TMIN / OND (n_years=46) -> 4 COGs in 105.8s
+[05:19:15]   TMIN / NDJ (n_years=45) -> 4 COGs in 108.4s
+[05:21:00]   TMIN / DJF (n_years=46) -> 4 COGs in 104.5s
+[04:16:29] === TAVG / 1995-2014 (1995-2014) ===
+[04:19:22]   TAVG / annual (n_years=20) -> 4 COGs in 173.0s
+[04:20:44]   TAVG / JFM (n_years=20) -> 4 COGs in 81.8s
+[04:22:02]   TAVG / FMA (n_years=20) -> 4 COGs in 77.5s
+[04:23:18]   TAVG / MAM (n_years=20) -> 4 COGs in 76.2s
+[04:24:30]   TAVG / AMJ (n_years=20) -> 4 COGs in 72.3s
+[04:25:43]   TAVG / MJJ (n_years=20) -> 4 COGs in 72.7s
+[04:27:00]   TAVG / JJA (n_years=20) -> 4 COGs in 77.0s
+[04:28:16]   TAVG / JAS (n_years=20) -> 4 COGs in 75.8s
+[04:29:33]   TAVG / ASO (n_years=20) -> 4 COGs in 76.9s
+[04:30:46]   TAVG / SON (n_years=20) -> 4 COGs in 73.5s
+[04:32:00]   TAVG / OND (n_years=20) -> 4 COGs in 74.2s
+[04:33:14]   TAVG / NDJ (n_years=20) -> 4 COGs in 74.0s
+[04:34:31]   TAVG / DJF (n_years=20) -> 4 COGs in 77.1s
+[04:34:31] === TAVG / 1991-2020 (1991-2020) ===
+[04:38:06]   TAVG / annual (n_years=30) -> 4 COGs in 214.3s
+[04:39:35]   TAVG / JFM (n_years=30) -> 4 COGs in 89.1s
+[04:41:01]   TAVG / FMA (n_years=30) -> 4 COGs in 86.2s
+[04:42:25]   TAVG / MAM (n_years=30) -> 4 COGs in 83.8s
+[04:43:48]   TAVG / AMJ (n_years=30) -> 4 COGs in 83.2s
+[04:45:12]   TAVG / MJJ (n_years=30) -> 4 COGs in 84.0s
+[04:46:36]   TAVG / JJA (n_years=30) -> 4 COGs in 84.2s
+[04:48:00]   TAVG / JAS (n_years=30) -> 4 COGs in 84.0s
+[04:49:26]   TAVG / ASO (n_years=30) -> 4 COGs in 85.4s
+[04:50:50]   TAVG / SON (n_years=30) -> 4 COGs in 84.7s
+[04:52:14]   TAVG / OND (n_years=30) -> 4 COGs in 83.8s
+[04:53:38]   TAVG / NDJ (n_years=30) -> 4 COGs in 83.9s
+[04:55:02]   TAVG / DJF (n_years=30) -> 4 COGs in 83.6s
+[04:55:02] === TAVG / full (1980-2026) ===
+[04:59:30]   TAVG / annual (n_years=46) -> 4 COGs in 268.4s
+[05:01:12]   TAVG / JFM (n_years=47) -> 4 COGs in 101.5s
+[05:02:59]   TAVG / FMA (n_years=47) -> 4 COGs in 106.8s
+[05:04:39]   TAVG / MAM (n_years=46) -> 4 COGs in 100.9s
+[05:06:29]   TAVG / AMJ (n_years=46) -> 4 COGs in 109.6s
+[05:08:07]   TAVG / MJJ (n_years=46) -> 4 COGs in 98.1s
+[05:09:53]   TAVG / JJA (n_years=46) -> 4 COGs in 106.2s
+[05:11:39]   TAVG / JAS (n_years=46) -> 4 COGs in 105.8s
+[05:13:24]   TAVG / ASO (n_years=46) -> 4 COGs in 105.2s
+[05:15:02]   TAVG / SON (n_years=46) -> 4 COGs in 97.4s
+[05:16:43]   TAVG / OND (n_years=46) -> 4 COGs in 101.1s
+[05:18:20]   TAVG / NDJ (n_years=45) -> 4 COGs in 97.7s
+[05:19:49]   TAVG / DJF (n_years=46) -> 4 COGs in 88.7s
+[04:16:29] === SPEI-01 / 1995-2014 (1995-2014) ===
+[04:19:29]   SPEI-01 / annual (n_years=20) -> 4 COGs in 179.9s
+[04:21:02]   SPEI-01 / JFM (n_years=20) -> 4 COGs in 92.5s
+[04:22:28]   SPEI-01 / FMA (n_years=20) -> 4 COGs in 86.0s
+[04:23:50]   SPEI-01 / MAM (n_years=20) -> 4 COGs in 82.1s
+[04:25:11]   SPEI-01 / AMJ (n_years=20) -> 4 COGs in 80.9s
+[04:26:32]   SPEI-01 / MJJ (n_years=20) -> 4 COGs in 81.5s
+[04:27:51]   SPEI-01 / JJA (n_years=20) -> 4 COGs in 78.8s
+[04:29:14]   SPEI-01 / JAS (n_years=20) -> 4 COGs in 83.4s
+[04:30:35]   SPEI-01 / ASO (n_years=20) -> 4 COGs in 80.3s
+[04:31:57]   SPEI-01 / SON (n_years=20) -> 4 COGs in 82.1s
+[04:33:17]   SPEI-01 / OND (n_years=20) -> 4 COGs in 79.9s
+[04:34:37]   SPEI-01 / NDJ (n_years=20) -> 4 COGs in 80.1s
+[04:35:56]   SPEI-01 / DJF (n_years=20) -> 4 COGs in 78.6s
+[04:35:56] === SPEI-01 / 1991-2020 (1991-2020) ===
+[04:39:35]   SPEI-01 / annual (n_years=30) -> 4 COGs in 219.1s
+[04:41:05]   SPEI-01 / JFM (n_years=30) -> 4 COGs in 90.6s
+[04:42:36]   SPEI-01 / FMA (n_years=30) -> 4 COGs in 90.6s
+[04:44:09]   SPEI-01 / MAM (n_years=30) -> 4 COGs in 93.3s
+[04:45:43]   SPEI-01 / AMJ (n_years=30) -> 4 COGs in 93.3s
+[04:47:16]   SPEI-01 / MJJ (n_years=30) -> 4 COGs in 93.2s
+[04:48:51]   SPEI-01 / JJA (n_years=30) -> 4 COGs in 95.2s
+[04:50:21]   SPEI-01 / JAS (n_years=30) -> 4 COGs in 90.3s
+[04:51:54]   SPEI-01 / ASO (n_years=30) -> 4 COGs in 92.4s
+[04:53:27]   SPEI-01 / SON (n_years=30) -> 4 COGs in 93.5s
+[04:54:59]   SPEI-01 / OND (n_years=30) -> 4 COGs in 91.9s
+[04:56:34]   SPEI-01 / NDJ (n_years=30) -> 4 COGs in 94.5s
+[04:58:17]   SPEI-01 / DJF (n_years=30) -> 4 COGs in 103.4s
+[04:58:17] === SPEI-01 / full (1981-2026) ===
+[05:03:35]   SPEI-01 / annual (n_years=45) -> 4 COGs in 318.3s
+[05:05:28]   SPEI-01 / JFM (n_years=46) -> 4 COGs in 112.7s
+[05:07:21]   SPEI-01 / FMA (n_years=46) -> 4 COGs in 113.1s
+[05:09:12]   SPEI-01 / MAM (n_years=45) -> 4 COGs in 110.6s
+[05:11:08]   SPEI-01 / AMJ (n_years=45) -> 4 COGs in 115.9s
+[05:12:56]   SPEI-01 / MJJ (n_years=45) -> 4 COGs in 108.9s
+[05:14:51]   SPEI-01 / JJA (n_years=45) -> 4 COGs in 114.5s
+[05:16:39]   SPEI-01 / JAS (n_years=45) -> 4 COGs in 108.2s
+[05:18:38]   SPEI-01 / ASO (n_years=45) -> 4 COGs in 118.4s
+[05:20:21]   SPEI-01 / SON (n_years=45) -> 4 COGs in 102.9s
+[05:22:03]   SPEI-01 / OND (n_years=45) -> 4 COGs in 102.6s
+[05:23:32]   SPEI-01 / NDJ (n_years=44) -> 4 COGs in 88.6s
+[05:25:15]   SPEI-01 / DJF (n_years=45) -> 4 COGs in 103.3s
+[04:16:29] === SPEI-03 / 1995-2014 (1995-2014) ===
+[04:19:35]   SPEI-03 / annual (n_years=20) -> 4 COGs in 185.6s
+[04:21:00]   SPEI-03 / JFM (n_years=20) -> 4 COGs in 85.5s
+[04:22:23]   SPEI-03 / FMA (n_years=20) -> 4 COGs in 82.7s
+[04:23:40]   SPEI-03 / MAM (n_years=20) -> 4 COGs in 76.9s
+[04:24:55]   SPEI-03 / AMJ (n_years=20) -> 4 COGs in 74.8s
+[04:26:09]   SPEI-03 / MJJ (n_years=20) -> 4 COGs in 73.9s
+[04:27:16]   SPEI-03 / JJA (n_years=20) -> 4 COGs in 67.4s
+[04:28:32]   SPEI-03 / JAS (n_years=20) -> 4 COGs in 75.7s
+[04:29:45]   SPEI-03 / ASO (n_years=20) -> 4 COGs in 73.1s
+[04:30:57]   SPEI-03 / SON (n_years=20) -> 4 COGs in 71.8s
+[04:32:08]   SPEI-03 / OND (n_years=20) -> 4 COGs in 70.8s
+[04:33:19]   SPEI-03 / NDJ (n_years=20) -> 4 COGs in 71.1s
+[04:34:31]   SPEI-03 / DJF (n_years=20) -> 4 COGs in 72.4s
+[04:34:31] === SPEI-03 / 1991-2020 (1991-2020) ===
+[04:38:00]   SPEI-03 / annual (n_years=30) -> 4 COGs in 209.1s
+[04:39:23]   SPEI-03 / JFM (n_years=30) -> 4 COGs in 82.5s
+[04:40:45]   SPEI-03 / FMA (n_years=30) -> 4 COGs in 82.0s
+[04:42:08]   SPEI-03 / MAM (n_years=30) -> 4 COGs in 82.9s
+[04:43:32]   SPEI-03 / AMJ (n_years=30) -> 4 COGs in 84.8s
+[04:44:55]   SPEI-03 / MJJ (n_years=30) -> 4 COGs in 82.3s
+[04:46:17]   SPEI-03 / JJA (n_years=30) -> 4 COGs in 82.2s
+[04:47:41]   SPEI-03 / JAS (n_years=30) -> 4 COGs in 84.3s
+[04:49:06]   SPEI-03 / ASO (n_years=30) -> 4 COGs in 84.7s
+[04:50:29]   SPEI-03 / SON (n_years=30) -> 4 COGs in 83.5s
+[04:51:53]   SPEI-03 / OND (n_years=30) -> 4 COGs in 83.7s
+[04:53:13]   SPEI-03 / NDJ (n_years=30) -> 4 COGs in 79.7s
+[04:54:36]   SPEI-03 / DJF (n_years=30) -> 4 COGs in 83.0s
+[04:54:36] === SPEI-03 / full (1981-2026) ===
+[04:59:25]   SPEI-03 / annual (n_years=45) -> 4 COGs in 289.6s
+[05:01:06]   SPEI-03 / JFM (n_years=46) -> 4 COGs in 101.1s
+[05:02:49]   SPEI-03 / FMA (n_years=46) -> 4 COGs in 102.8s
+[05:04:28]   SPEI-03 / MAM (n_years=45) -> 4 COGs in 98.8s
+[05:06:11]   SPEI-03 / AMJ (n_years=45) -> 4 COGs in 103.2s
+[05:07:51]   SPEI-03 / MJJ (n_years=45) -> 4 COGs in 99.8s
+[05:09:31]   SPEI-03 / JJA (n_years=45) -> 4 COGs in 99.4s
+[05:11:14]   SPEI-03 / JAS (n_years=45) -> 4 COGs in 103.2s
+[05:12:55]   SPEI-03 / ASO (n_years=45) -> 4 COGs in 101.4s
+[05:14:36]   SPEI-03 / SON (n_years=45) -> 4 COGs in 100.6s
+[05:16:16]   SPEI-03 / OND (n_years=45) -> 4 COGs in 99.9s
+[05:17:55]   SPEI-03 / NDJ (n_years=44) -> 4 COGs in 99.1s
+[05:19:30]   SPEI-03 / DJF (n_years=45) -> 4 COGs in 95.0s
+[04:16:30] === SPEI-06 / 1995-2014 (1995-2014) ===
+[04:19:16]   SPEI-06 / annual (n_years=20) -> 4 COGs in 166.2s
+[04:20:38]   SPEI-06 / JFM (n_years=20) -> 4 COGs in 82.7s
+[04:22:00]   SPEI-06 / FMA (n_years=20) -> 4 COGs in 81.3s
+[04:23:13]   SPEI-06 / MAM (n_years=20) -> 4 COGs in 72.8s
+[04:24:28]   SPEI-06 / AMJ (n_years=20) -> 4 COGs in 75.9s
+[04:25:40]   SPEI-06 / MJJ (n_years=20) -> 4 COGs in 71.8s
+[04:26:52]   SPEI-06 / JJA (n_years=20) -> 4 COGs in 71.5s
+[04:28:04]   SPEI-06 / JAS (n_years=20) -> 4 COGs in 72.5s
+[04:29:16]   SPEI-06 / ASO (n_years=20) -> 4 COGs in 72.1s
+[04:30:31]   SPEI-06 / SON (n_years=20) -> 4 COGs in 74.5s
+[04:31:43]   SPEI-06 / OND (n_years=20) -> 4 COGs in 72.4s
+[04:32:56]   SPEI-06 / NDJ (n_years=20) -> 4 COGs in 72.9s
+[04:34:09]   SPEI-06 / DJF (n_years=20) -> 4 COGs in 72.6s
+[04:34:09] === SPEI-06 / 1991-2020 (1991-2020) ===
+[04:37:31]   SPEI-06 / annual (n_years=30) -> 4 COGs in 202.7s
+[04:38:55]   SPEI-06 / JFM (n_years=30) -> 4 COGs in 83.1s
+[04:40:18]   SPEI-06 / FMA (n_years=30) -> 4 COGs in 83.6s
+[04:41:41]   SPEI-06 / MAM (n_years=30) -> 4 COGs in 83.2s
+[04:43:05]   SPEI-06 / AMJ (n_years=30) -> 4 COGs in 84.1s
+[04:44:29]   SPEI-06 / MJJ (n_years=30) -> 4 COGs in 84.0s
+[04:45:55]   SPEI-06 / JJA (n_years=30) -> 4 COGs in 85.0s
+[04:47:16]   SPEI-06 / JAS (n_years=30) -> 4 COGs in 81.9s
+[04:48:38]   SPEI-06 / ASO (n_years=30) -> 4 COGs in 81.7s
+[04:50:00]   SPEI-06 / SON (n_years=30) -> 4 COGs in 81.4s
+[04:51:24]   SPEI-06 / OND (n_years=30) -> 4 COGs in 84.4s
+[04:52:46]   SPEI-06 / NDJ (n_years=30) -> 4 COGs in 82.4s
+[04:54:08]   SPEI-06 / DJF (n_years=30) -> 4 COGs in 82.0s
+[04:54:08] === SPEI-06 / full (1981-2026) ===
+[04:58:43]   SPEI-06 / annual (n_years=45) -> 4 COGs in 274.3s
+[05:00:26]   SPEI-06 / JFM (n_years=46) -> 4 COGs in 103.3s
+[05:02:04]   SPEI-06 / FMA (n_years=46) -> 4 COGs in 97.6s
+[05:03:42]   SPEI-06 / MAM (n_years=45) -> 4 COGs in 98.4s
+[05:05:20]   SPEI-06 / AMJ (n_years=45) -> 4 COGs in 97.5s
+[05:06:57]   SPEI-06 / MJJ (n_years=45) -> 4 COGs in 97.7s
+[05:08:36]   SPEI-06 / JJA (n_years=45) -> 4 COGs in 99.1s
+[05:10:15]   SPEI-06 / JAS (n_years=45) -> 4 COGs in 98.2s
+[05:11:54]   SPEI-06 / ASO (n_years=45) -> 4 COGs in 99.7s
+[05:13:30]   SPEI-06 / SON (n_years=45) -> 4 COGs in 95.9s
+[05:15:08]   SPEI-06 / OND (n_years=45) -> 4 COGs in 98.0s
+[05:16:42]   SPEI-06 / NDJ (n_years=44) -> 4 COGs in 94.1s
+[05:18:23]   SPEI-06 / DJF (n_years=45) -> 4 COGs in 100.5s
+[04:16:30] === SPEI-12 / 1995-2014 (1995-2014) ===
+[04:19:28]   SPEI-12 / annual (n_years=20) -> 4 COGs in 178.3s
+[04:20:52]   SPEI-12 / JFM (n_years=20) -> 4 COGs in 84.4s
+[04:22:14]   SPEI-12 / FMA (n_years=20) -> 4 COGs in 82.1s
+[04:23:32]   SPEI-12 / MAM (n_years=20) -> 4 COGs in 77.3s
+[04:24:47]   SPEI-12 / AMJ (n_years=20) -> 4 COGs in 75.9s
+[04:26:02]   SPEI-12 / MJJ (n_years=20) -> 4 COGs in 74.6s
+[04:27:19]   SPEI-12 / JJA (n_years=20) -> 4 COGs in 76.9s
+[04:28:35]   SPEI-12 / JAS (n_years=20) -> 4 COGs in 76.3s
+[04:29:51]   SPEI-12 / ASO (n_years=20) -> 4 COGs in 75.7s
+[04:31:07]   SPEI-12 / SON (n_years=20) -> 4 COGs in 76.0s
+[04:32:22]   SPEI-12 / OND (n_years=20) -> 4 COGs in 75.5s
+[04:33:38]   SPEI-12 / NDJ (n_years=20) -> 4 COGs in 75.8s
+[04:34:52]   SPEI-12 / DJF (n_years=20) -> 4 COGs in 73.4s
+[04:34:52] === SPEI-12 / 1991-2020 (1991-2020) ===
+[04:38:28]   SPEI-12 / annual (n_years=30) -> 4 COGs in 216.5s
+[04:39:53]   SPEI-12 / JFM (n_years=30) -> 4 COGs in 84.5s
+[04:41:20]   SPEI-12 / FMA (n_years=30) -> 4 COGs in 87.1s
+[04:42:40]   SPEI-12 / MAM (n_years=30) -> 4 COGs in 80.3s
+[04:44:09]   SPEI-12 / AMJ (n_years=30) -> 4 COGs in 88.6s
+[04:45:30]   SPEI-12 / MJJ (n_years=30) -> 4 COGs in 81.4s
+[04:46:54]   SPEI-12 / JJA (n_years=30) -> 4 COGs in 84.1s
+[04:48:19]   SPEI-12 / JAS (n_years=30) -> 4 COGs in 84.4s
+[04:49:49]   SPEI-12 / ASO (n_years=30) -> 4 COGs in 90.6s
+[04:51:12]   SPEI-12 / SON (n_years=30) -> 4 COGs in 82.3s
+[04:52:33]   SPEI-12 / OND (n_years=30) -> 4 COGs in 81.5s
+[04:54:00]   SPEI-12 / NDJ (n_years=30) -> 4 COGs in 87.4s
+[04:55:25]   SPEI-12 / DJF (n_years=30) -> 4 COGs in 84.3s
+[04:55:25] === SPEI-12 / full (1981-2026) ===
+[05:00:15]   SPEI-12 / annual (n_years=45) -> 4 COGs in 290.2s
+[05:01:58]   SPEI-12 / JFM (n_years=46) -> 4 COGs in 102.7s
+[05:03:41]   SPEI-12 / FMA (n_years=46) -> 4 COGs in 103.5s
+[05:05:23]   SPEI-12 / MAM (n_years=45) -> 4 COGs in 101.7s
+[05:07:02]   SPEI-12 / AMJ (n_years=45) -> 4 COGs in 98.8s
+[05:08:38]   SPEI-12 / MJJ (n_years=45) -> 4 COGs in 96.1s
+[05:10:12]   SPEI-12 / JJA (n_years=45) -> 4 COGs in 94.0s
+[05:11:49]   SPEI-12 / JAS (n_years=45) -> 4 COGs in 96.9s
+[05:13:27]   SPEI-12 / ASO (n_years=45) -> 4 COGs in 98.4s
+[05:15:03]   SPEI-12 / SON (n_years=45) -> 4 COGs in 96.1s
+[05:16:36]   SPEI-12 / OND (n_years=45) -> 4 COGs in 93.1s
+[05:18:20]   SPEI-12 / NDJ (n_years=44) -> 4 COGs in 104.3s
+[05:19:52]   SPEI-12 / DJF (n_years=45) -> 4 COGs in 91.8s
+[04:16:30] === SPEI-24 / 1995-2014 (1995-2014) ===
+[04:19:15]   SPEI-24 / annual (n_years=20) -> 4 COGs in 165.8s
+[04:20:40]   SPEI-24 / JFM (n_years=20) -> 4 COGs in 84.4s
+[04:21:57]   SPEI-24 / FMA (n_years=20) -> 4 COGs in 77.5s
+[04:23:11]   SPEI-24 / MAM (n_years=20) -> 4 COGs in 73.3s
+[04:24:21]   SPEI-24 / AMJ (n_years=20) -> 4 COGs in 70.1s
+[04:25:33]   SPEI-24 / MJJ (n_years=20) -> 4 COGs in 72.1s
+[04:26:45]   SPEI-24 / JJA (n_years=20) -> 4 COGs in 72.5s
+[04:27:59]   SPEI-24 / JAS (n_years=20) -> 4 COGs in 73.8s
+[04:29:09]   SPEI-24 / ASO (n_years=20) -> 4 COGs in 69.7s
+[04:30:21]   SPEI-24 / SON (n_years=20) -> 4 COGs in 72.4s
+[04:31:33]   SPEI-24 / OND (n_years=20) -> 4 COGs in 71.3s
+[04:32:43]   SPEI-24 / NDJ (n_years=20) -> 4 COGs in 69.9s
+[04:33:52]   SPEI-24 / DJF (n_years=20) -> 4 COGs in 69.5s
+[04:33:52] === SPEI-24 / 1991-2020 (1991-2020) ===
+[04:37:10]   SPEI-24 / annual (n_years=30) -> 4 COGs in 198.3s
+[04:38:33]   SPEI-24 / JFM (n_years=30) -> 4 COGs in 82.8s
+[04:39:57]   SPEI-24 / FMA (n_years=30) -> 4 COGs in 83.7s
+[04:41:23]   SPEI-24 / MAM (n_years=30) -> 4 COGs in 86.4s
+[04:42:48]   SPEI-24 / AMJ (n_years=30) -> 4 COGs in 84.5s
+[04:44:09]   SPEI-24 / MJJ (n_years=30) -> 4 COGs in 81.6s
+[04:45:37]   SPEI-24 / JJA (n_years=30) -> 4 COGs in 88.0s
+[04:47:00]   SPEI-24 / JAS (n_years=30) -> 4 COGs in 82.8s
+[04:48:24]   SPEI-24 / ASO (n_years=30) -> 4 COGs in 83.5s
+[04:49:45]   SPEI-24 / SON (n_years=30) -> 4 COGs in 81.5s
+[04:51:08]   SPEI-24 / OND (n_years=30) -> 4 COGs in 82.6s
+[04:52:33]   SPEI-24 / NDJ (n_years=30) -> 4 COGs in 85.6s
+[04:53:56]   SPEI-24 / DJF (n_years=30) -> 4 COGs in 82.6s
+[04:53:56] === SPEI-24 / full (1981-2026) ===
+[04:58:31]   SPEI-24 / annual (n_years=45) -> 4 COGs in 275.2s
+[05:00:15]   SPEI-24 / JFM (n_years=46) -> 4 COGs in 103.4s
+[05:01:56]   SPEI-24 / FMA (n_years=46) -> 4 COGs in 101.4s
+[05:03:37]   SPEI-24 / MAM (n_years=45) -> 4 COGs in 100.7s
+[05:05:15]   SPEI-24 / AMJ (n_years=45) -> 4 COGs in 97.9s
+[05:06:53]   SPEI-24 / MJJ (n_years=45) -> 4 COGs in 98.2s
+[05:08:31]   SPEI-24 / JJA (n_years=45) -> 4 COGs in 98.2s
+[05:10:09]   SPEI-24 / JAS (n_years=45) -> 4 COGs in 98.0s
+[05:11:47]   SPEI-24 / ASO (n_years=45) -> 4 COGs in 97.6s
+[05:13:25]   SPEI-24 / SON (n_years=45) -> 4 COGs in 98.2s
+[05:14:56]   SPEI-24 / OND (n_years=45) -> 4 COGs in 91.3s
+[05:16:31]   SPEI-24 / NDJ (n_years=44) -> 4 COGs in 95.1s
+[05:18:04]   SPEI-24 / DJF (n_years=45) -> 4 COGs in 93.0s
+[05:25:15] Full build complete. 1404 COGs written.
+
+Warnings collected: 0 

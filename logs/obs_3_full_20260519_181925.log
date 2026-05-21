@@ -1,0 +1,177 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+3.2.1) Downloading mapspam processed files 1 / 48      3.2.1) Downloading mapspam processed files 2 / 48      3.2.1) Downloading mapspam processed files 3 / 48      3.2.1) Downloading mapspam processed files 4 / 48      3.2.1) Downloading mapspam processed files 5 / 48      3.2.1) Downloading mapspam processed files 6 / 48      3.2.1) Downloading mapspam processed files 7 / 48      3.2.1) Downloading mapspam processed files 8 / 48      3.2.1) Downloading mapspam processed files 9 / 48      3.2.1) Downloading mapspam processed files 10 / 48      3.2.1) Downloading mapspam processed files 11 / 48      3.2.1) Downloading mapspam processed files 12 / 48      3.2.1) Downloading mapspam processed files 13 / 48      3.2.1) Downloading mapspam processed files 14 / 48      3.2.1) Downloading mapspam processed files 15 / 48      3.2.1) Downloading mapspam processed files 16 / 48      3.2.1) Downloading mapspam processed files 17 / 48      3.2.1) Downloading mapspam processed files 18 / 48      3.2.1) Downloading mapspam processed files 19 / 48      3.2.1) Downloading mapspam processed files 20 / 48      3.2.1) Downloading mapspam processed files 21 / 48      3.2.1) Downloading mapspam processed files 22 / 48      3.2.1) Downloading mapspam processed files 23 / 48      3.2.1) Downloading mapspam processed files 24 / 48      3.2.1) Downloading mapspam processed files 25 / 48      3.2.1) Downloading mapspam processed files 26 / 48      3.2.1) Downloading mapspam processed files 27 / 48      3.2.1) Downloading mapspam processed files 28 / 48      3.2.1) Downloading mapspam processed files 29 / 48      3.2.1) Downloading mapspam processed files 30 / 48      3.2.1) Downloading mapspam processed files 31 / 48      3.2.1) Downloading mapspam processed files 32 / 48      3.2.1) Downloading mapspam processed files 33 / 48      3.2.1) Downloading mapspam processed files 34 / 48      3.2.1) Downloading mapspam processed files 35 / 48      3.2.1) Downloading mapspam processed files 36 / 48      3.2.1) Downloading mapspam processed files 37 / 48      3.2.1) Downloading mapspam processed files 38 / 48      3.2.1) Downloading mapspam processed files 39 / 48      3.2.1) Downloading mapspam processed files 40 / 48      3.2.1) Downloading mapspam processed files 41 / 48      3.2.1) Downloading mapspam processed files 42 / 48      3.2.1) Downloading mapspam processed files 43 / 48      3.2.1) Downloading mapspam processed files 44 / 48      3.2.1) Downloading mapspam processed files 45 / 48      3.2.1) Downloading mapspam processed files 46 / 48      3.2.1) Downloading mapspam processed files 47 / 48      3.2.1) Downloading mapspam processed files 48 / 48      3.2.2) Downloading mapspam raw files 1 / 30      3.2.2) Downloading mapspam raw files 2 / 30      3.2.2) Downloading mapspam raw files 3 / 30      3.2.2) Downloading mapspam raw files 4 / 30      3.2.2) Downloading mapspam raw files 5 / 30      3.2.2) Downloading mapspam raw files 6 / 30      3.2.2) Downloading mapspam raw files 7 / 30      3.2.2) Downloading mapspam raw files 8 / 30      3.2.2) Downloading mapspam raw files 9 / 30      3.2.2) Downloading mapspam raw files 10 / 30      3.2.2) Downloading mapspam raw files 11 / 30      3.2.2) Downloading mapspam raw files 12 / 30      3.2.2) Downloading mapspam raw files 13 / 30      3.2.2) Downloading mapspam raw files 14 / 30      3.2.2) Downloading mapspam raw files 15 / 30      3.2.2) Downloading mapspam raw files 16 / 30      3.2.2) Downloading mapspam raw files 17 / 30      3.2.2) Downloading mapspam raw files 18 / 30      3.2.2) Downloading mapspam raw files 19 / 30      3.2.2) Downloading mapspam raw files 20 / 30      3.2.2) Downloading mapspam raw files 21 / 30      3.2.2) Downloading mapspam raw files 22 / 30      3.2.2) Downloading mapspam raw files 23 / 30      3.2.2) Downloading mapspam raw files 24 / 30      3.2.2) Downloading mapspam raw files 25 / 30      3.2.2) Downloading mapspam raw files 26 / 30      3.2.2) Downloading mapspam raw files 27 / 30      3.2.2) Downloading mapspam raw files 28 / 30      3.2.2) Downloading mapspam raw files 29 / 30      3.2.2) Downloading mapspam raw files 30 / 30      0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+[extract] workers=5  per_worker_gb~50.0  cores=40/40 (logical/physical)  RAM=8589934578.2 free / 376.5 total GB [cgroup=8589934592.0 / host=376.5 GB]  budget=250.0 GB
+project_dir            : /home/jovyan/atlas/hazards_prototype 
+working_dir            : /home/jovyan/common_data/nex-gddp-cimp6_hazards 
+input dir              : Data/chirts_chirps_hist 
+output dir             : Data/chirts_chirps_hist/admin 
+obs_base_rast_path     : /home/jovyan/atlas/hazards_prototype/metadata/base_raster_obs.tif 
+boundaries_int_dir     : Data/boundariesintermediate 
+mode                   : --full 
+admin levels           : admin0, admin1 
+variables              : PTOT, TMAX, TMIN, TAVG, SPEI-01, SPEI-03, SPEI-06, SPEI-12, SPEI-24 
+
+[18:19:37] === Admin level: admin0 ===
+[18:19:37]   loading admin geometry: admin0 -> Data/boundaries/atlas_gaul24_a0_africa.parquet
+[18:19:42]   cached zonal raster: Data/boundariesintermediate/admin0_obs_zonal.tif
+[18:19:42]   parallel extract across 9 variables, 5 workers (multicore)
+[18:19:42]   dispatching variables: PTOT, TMAX, TMIN, TAVG, SPEI-01, SPEI-03, SPEI-06, SPEI-12, SPEI-24
+[18:19:42]   worker progress lines below have prefix [HH:MM:SS][pid N][VAR];
+[18:19:42]   grep the log for a single PID or VAR to follow one worker.
+[18:19:43][pid 9940][PTOT] start
+[18:19:43][pid 9940][PTOT] 544 monthly tifs to process
+|---------|---------|---------|---------|=========================================                                          [18:25:20][pid 9940][PTOT] Inf-mask applied (lazy; materialised in zonal)
+[19:00:24][pid 9940][PTOT] zonal chunk 1/10 (layers 1-60) done in 2104.6s
+[19:35:12][pid 9940][PTOT] zonal chunk 2/10 (layers 61-120) done in 2087.7s
+[20:09:17][pid 9940][PTOT] zonal chunk 3/10 (layers 121-180) done in 2044.6s
+[20:44:07][pid 9940][PTOT] zonal chunk 4/10 (layers 181-240) done in 2090.1s
+[21:18:58][pid 9940][PTOT] zonal chunk 5/10 (layers 241-300) done in 2090.9s
+[21:53:34][pid 9940][PTOT] zonal chunk 6/10 (layers 301-360) done in 2076.3s
+[22:28:34][pid 9940][PTOT] zonal chunk 7/10 (layers 361-420) done in 2100.3s
+[23:03:20][pid 9940][PTOT] zonal chunk 8/10 (layers 421-480) done in 2085.2s
+[23:37:30][pid 9940][PTOT] zonal chunk 9/10 (layers 481-540) done in 2050.6s
+[23:40:10][pid 9940][PTOT] zonal chunk 10/10 (layers 541-544) done in 160.2s
+[23:40:10][pid 9940][PTOT] melting + merging 57 zones x 544 layers
+[23:40:11][pid 9940][PTOT] done (31008 rows)
+[23:40:11][pid 9940][TMAX] start
+[23:40:11][pid 9940][TMAX] 556 monthly tifs to process
+[23:44:39][pid 9940][TMAX] Inf-mask applied (lazy; materialised in zonal)
+[23:46:44][pid 9940][TMAX] zonal chunk 1/10 (layers 1-60) done in 122.7s
+[23:48:55][pid 9940][TMAX] zonal chunk 2/10 (layers 61-120) done in 129.6s
+[23:51:05][pid 9940][TMAX] zonal chunk 3/10 (layers 121-180) done in 128.3s
+[23:53:16][pid 9940][TMAX] zonal chunk 4/10 (layers 181-240) done in 128.0s
+[23:55:20][pid 9940][TMAX] zonal chunk 5/10 (layers 241-300) done in 122.6s
+[23:57:28][pid 9940][TMAX] zonal chunk 6/10 (layers 301-360) done in 125.5s
+[23:59:39][pid 9940][TMAX] zonal chunk 7/10 (layers 361-420) done in 128.7s
+[00:01:42][pid 9940][TMAX] zonal chunk 8/10 (layers 421-480) done in 120.3s
+[00:03:54][pid 9940][TMAX] zonal chunk 9/10 (layers 481-540) done in 130.1s
+[00:04:28][pid 9940][TMAX] zonal chunk 10/10 (layers 541-556) done in 33.1s
+[00:04:28][pid 9940][TMAX] melting + merging 57 zones x 556 layers
+[00:04:28][pid 9940][TMAX] done (31692 rows)
+[18:19:43][pid 9941][TMIN] start
+[18:19:43][pid 9941][TMIN] 556 monthly tifs to process
+|---------|---------|---------|---------|=========================================                                          [18:25:05][pid 9941][TMIN] Inf-mask applied (lazy; materialised in zonal)
+[18:54:23][pid 9941][TMIN] zonal chunk 1/10 (layers 1-60) done in 1758.0s
+[19:23:22][pid 9941][TMIN] zonal chunk 2/10 (layers 61-120) done in 1738.9s
+[19:53:07][pid 9941][TMIN] zonal chunk 3/10 (layers 121-180) done in 1785.0s
+[20:22:47][pid 9941][TMIN] zonal chunk 4/10 (layers 181-240) done in 1779.7s
+[20:52:00][pid 9941][TMIN] zonal chunk 5/10 (layers 241-300) done in 1753.4s
+[21:21:38][pid 9941][TMIN] zonal chunk 6/10 (layers 301-360) done in 1777.6s
+[21:50:56][pid 9941][TMIN] zonal chunk 7/10 (layers 361-420) done in 1758.0s
+[22:20:59][pid 9941][TMIN] zonal chunk 8/10 (layers 421-480) done in 1803.2s
+[22:50:40][pid 9941][TMIN] zonal chunk 9/10 (layers 481-540) done in 1780.8s
+[22:58:43][pid 9941][TMIN] zonal chunk 10/10 (layers 541-556) done in 483.4s
+[22:58:43][pid 9941][TMIN] melting + merging 57 zones x 556 layers
+[22:58:44][pid 9941][TMIN] done (31692 rows)
+[22:58:44][pid 9941][TAVG] start
+[22:58:44][pid 9941][TAVG] 556 monthly tifs to process
+[23:02:32][pid 9941][TAVG] Inf-mask applied (lazy; materialised in zonal)
+[23:04:36][pid 9941][TAVG] zonal chunk 1/10 (layers 1-60) done in 122.9s
+[23:06:27][pid 9941][TAVG] zonal chunk 2/10 (layers 61-120) done in 109.4s
+[23:08:22][pid 9941][TAVG] zonal chunk 3/10 (layers 121-180) done in 113.4s
+[23:10:17][pid 9941][TAVG] zonal chunk 4/10 (layers 181-240) done in 114.1s
+[23:12:09][pid 9941][TAVG] zonal chunk 5/10 (layers 241-300) done in 110.8s
+[23:14:02][pid 9941][TAVG] zonal chunk 6/10 (layers 301-360) done in 111.6s
+[23:16:04][pid 9941][TAVG] zonal chunk 7/10 (layers 361-420) done in 120.5s
+[23:18:10][pid 9941][TAVG] zonal chunk 8/10 (layers 421-480) done in 124.8s
+[23:20:11][pid 9941][TAVG] zonal chunk 9/10 (layers 481-540) done in 118.8s
+[23:20:42][pid 9941][TAVG] zonal chunk 10/10 (layers 541-556) done in 31.1s
+[23:20:42][pid 9941][TAVG] melting + merging 57 zones x 556 layers
+[23:20:42][pid 9941][TAVG] done (31692 rows)
+[18:19:43][pid 9942][SPEI-01] start
+[18:19:43][pid 9942][SPEI-01] 544 monthly tifs to process
+|---------|---------|---------|---------|=========================================                                          [18:25:19][pid 9942][SPEI-01] Inf-mask applied (lazy; materialised in zonal)
+[18:58:17][pid 9942][SPEI-01] zonal chunk 1/10 (layers 1-60) done in 1977.9s
+[19:30:59][pid 9942][SPEI-01] zonal chunk 2/10 (layers 61-120) done in 1961.4s
+[20:04:13][pid 9942][SPEI-01] zonal chunk 3/10 (layers 121-180) done in 1994.8s
+[20:36:39][pid 9942][SPEI-01] zonal chunk 4/10 (layers 181-240) done in 1945.3s
+[21:08:59][pid 9942][SPEI-01] zonal chunk 5/10 (layers 241-300) done in 1940.7s
+[21:41:45][pid 9942][SPEI-01] zonal chunk 6/10 (layers 301-360) done in 1965.8s
+[22:14:23][pid 9942][SPEI-01] zonal chunk 7/10 (layers 361-420) done in 1957.9s
+[22:47:30][pid 9942][SPEI-01] zonal chunk 8/10 (layers 421-480) done in 1986.9s
+[23:20:15][pid 9942][SPEI-01] zonal chunk 9/10 (layers 481-540) done in 1964.8s
+[23:22:52][pid 9942][SPEI-01] zonal chunk 10/10 (layers 541-544) done in 157.5s
+[23:22:52][pid 9942][SPEI-01] melting + merging 57 zones x 544 layers
+[23:22:53][pid 9942][SPEI-01] done (31008 rows)
+[18:19:44][pid 9943][SPEI-03] start
+[18:19:44][pid 9943][SPEI-03] 544 monthly tifs to process
+|---------|---------|---------|---------|=========================================                                          [18:25:04][pid 9943][SPEI-03] Inf-mask applied (lazy; materialised in zonal)
+[19:01:18][pid 9943][SPEI-03] zonal chunk 1/10 (layers 1-60) done in 2174.5s
+[19:36:55][pid 9943][SPEI-03] zonal chunk 2/10 (layers 61-120) done in 2136.4s
+[20:12:12][pid 9943][SPEI-03] zonal chunk 3/10 (layers 121-180) done in 2117.0s
+[20:48:14][pid 9943][SPEI-03] zonal chunk 4/10 (layers 181-240) done in 2161.8s
+[21:23:50][pid 9943][SPEI-03] zonal chunk 5/10 (layers 241-300) done in 2136.7s
+[21:59:29][pid 9943][SPEI-03] zonal chunk 6/10 (layers 301-360) done in 2139.0s
+[22:35:20][pid 9943][SPEI-03] zonal chunk 7/10 (layers 361-420) done in 2150.8s
+[23:11:05][pid 9943][SPEI-03] zonal chunk 8/10 (layers 421-480) done in 2144.9s
+[23:46:08][pid 9943][SPEI-03] zonal chunk 9/10 (layers 481-540) done in 2103.3s
+[23:48:57][pid 9943][SPEI-03] zonal chunk 10/10 (layers 541-544) done in 169.0s
+[23:48:57][pid 9943][SPEI-03] melting + merging 57 zones x 544 layers
+[23:48:58][pid 9943][SPEI-03] done (31008 rows)
+[23:48:58][pid 9943][SPEI-06] start
+[23:48:58][pid 9943][SPEI-06] 544 monthly tifs to process
+[23:53:36][pid 9943][SPEI-06] Inf-mask applied (lazy; materialised in zonal)
+[23:55:49][pid 9943][SPEI-06] zonal chunk 1/10 (layers 1-60) done in 131.4s
+[23:57:55][pid 9943][SPEI-06] zonal chunk 2/10 (layers 61-120) done in 122.5s
+[00:00:02][pid 9943][SPEI-06] zonal chunk 3/10 (layers 121-180) done in 124.3s
+[00:02:02][pid 9943][SPEI-06] zonal chunk 4/10 (layers 181-240) done in 116.6s
+[00:04:12][pid 9943][SPEI-06] zonal chunk 5/10 (layers 241-300) done in 126.7s
+[00:06:16][pid 9943][SPEI-06] zonal chunk 6/10 (layers 301-360) done in 120.4s
+[00:08:18][pid 9943][SPEI-06] zonal chunk 7/10 (layers 361-420) done in 118.6s
+[00:10:18][pid 9943][SPEI-06] zonal chunk 8/10 (layers 421-480) done in 117.7s
+[00:12:19][pid 9943][SPEI-06] zonal chunk 9/10 (layers 481-540) done in 117.2s
+[00:12:27][pid 9943][SPEI-06] zonal chunk 10/10 (layers 541-544) done in 8.4s
+[00:12:27][pid 9943][SPEI-06] melting + merging 57 zones x 544 layers
+[00:12:28][pid 9943][SPEI-06] done (31008 rows)
+[18:19:44][pid 9944][SPEI-12] start
+[18:19:44][pid 9944][SPEI-12] 544 monthly tifs to process
+|---------|---------|---------|---------|=========================================                                          [18:25:06][pid 9944][SPEI-12] Inf-mask applied (lazy; materialised in zonal)
+[19:01:07][pid 9944][SPEI-12] zonal chunk 1/10 (layers 1-60) done in 2161.8s
+[19:36:14][pid 9944][SPEI-12] zonal chunk 2/10 (layers 61-120) done in 2107.0s
+[20:10:59][pid 9944][SPEI-12] zonal chunk 3/10 (layers 121-180) done in 2084.7s
+[20:46:30][pid 9944][SPEI-12] zonal chunk 4/10 (layers 181-240) done in 2130.8s
+[21:21:54][pid 9944][SPEI-12] zonal chunk 5/10 (layers 241-300) done in 2124.4s
+[21:57:22][pid 9944][SPEI-12] zonal chunk 6/10 (layers 301-360) done in 2128.0s
+[22:32:47][pid 9944][SPEI-12] zonal chunk 7/10 (layers 361-420) done in 2124.6s
+[23:08:31][pid 9944][SPEI-12] zonal chunk 8/10 (layers 421-480) done in 2143.6s
+[23:43:23][pid 9944][SPEI-12] zonal chunk 9/10 (layers 481-540) done in 2092.6s
+[23:46:06][pid 9944][SPEI-12] zonal chunk 10/10 (layers 541-544) done in 162.8s
+[23:46:06][pid 9944][SPEI-12] melting + merging 57 zones x 544 layers
+[23:46:06][pid 9944][SPEI-12] done (31008 rows)
+[23:46:06][pid 9944][SPEI-24] start
+[23:46:06][pid 9944][SPEI-24] 544 monthly tifs to process
+[23:50:53][pid 9944][SPEI-24] Inf-mask applied (lazy; materialised in zonal)
+[23:53:07][pid 9944][SPEI-24] zonal chunk 1/10 (layers 1-60) done in 133.2s
+[23:55:19][pid 9944][SPEI-24] zonal chunk 2/10 (layers 61-120) done in 130.1s
+[23:57:25][pid 9944][SPEI-24] zonal chunk 3/10 (layers 121-180) done in 124.4s
+[23:59:30][pid 9944][SPEI-24] zonal chunk 4/10 (layers 181-240) done in 123.1s
+[00:01:40][pid 9944][SPEI-24] zonal chunk 5/10 (layers 241-300) done in 128.1s
+[00:03:47][pid 9944][SPEI-24] zonal chunk 6/10 (layers 301-360) done in 124.5s
+[00:05:55][pid 9944][SPEI-24] zonal chunk 7/10 (layers 361-420) done in 126.6s
+[00:08:01][pid 9944][SPEI-24] zonal chunk 8/10 (layers 421-480) done in 122.9s
+[00:10:01][pid 9944][SPEI-24] zonal chunk 9/10 (layers 481-540) done in 118.8s
+[00:10:10][pid 9944][SPEI-24] zonal chunk 10/10 (layers 541-544) done in 8.6s
+[00:10:10][pid 9944][SPEI-24] melting + merging 57 zones x 544 layers
+[00:10:11][pid 9944][SPEI-24] done (31008 rows)
+[00:12:28]   [1/9] PTOT: 31008 rows in 19227.4s
+[00:12:28]   [2/9] TMAX: 31692 rows in 1457.6s
+[00:12:28]   [3/9] TMIN: 31692 rows in 16740.6s
+[00:12:28]   [4/9] TAVG: 31692 rows in 1318.4s
+[00:12:28]   [5/9] SPEI-01: 31008 rows in 18189.3s
+[00:12:28]   [6/9] SPEI-03: 31008 rows in 19754.1s
+[00:12:28]   [7/9] SPEI-06: 31008 rows in 1410.4s
+[00:12:28]   [8/9] SPEI-12: 31008 rows in 19582.9s
+[00:12:28]   [9/9] SPEI-24: 31008 rows in 1444.1s
+[00:12:28]   merging admin metadata onto 281124 rows
+[00:12:29]   wrote Data/chirts_chirps_hist/admin/obs_monthly_adm0.parquet (4.6 MB)
+[00:12:29] === admin1: parquet already present, skipping (use --overwrite to rebuild)
+[00:12:29] Full extract complete. 2 parquet files written.
+   Data/chirts_chirps_hist/admin/obs_monthly_adm0.parquet 
+   Data/chirts_chirps_hist/admin/obs_monthly_adm1.parquet 
+
+Warnings collected: 0 

@@ -1,0 +1,51 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+[publish] workers=16  per_worker_gb~0.2  cores=40/40 (logical/physical)  RAM=360.5 free / 376.5 total GB  budget=3.2 GB
+project_dir          : /home/jovyan/atlas/hazards_prototype 
+working_dir          : /home/jovyan/common_data/nex-gddp-cimp6_hazards 
+admin dir            : Data/chirts_chirps_hist/admin 
+maps dir             : Data/chirts_chirps_hist/maps 
+metadata dir         : /home/jovyan/atlas/hazards_prototype/metadata 
+mode                 : --full 
+tier                 : all 
+tier 1 enabled       : TRUE 
+tier 2 enabled       : TRUE 
+overwrite            : FALSE 
+workers              : 16 
+
+[07:58:08] === FULL PUBLISH ===
+[07:58:08]   spec 'obs-admin-monthly': 2 files, 54.1 MB total
+[07:58:08]   spec 'obs-admin-periods': 2 files, 57.7 MB total
+[07:58:08]   spec 'obs-base-raster': 1 files, 0.0 MB total
+[07:58:08]   spec 'obs-climatology': 1404 files, 5321.1 MB total
+[07:58:08] === Uploading: obs-admin-monthly (tier 1) ===
+The current policy already allows public access to the specified files. 
+[1] "Report saved to: Data/chirts_chirps_hist/admin/obs-admin-monthly_uploadReport.json"
+[07:58:37]   done: 2 files in 28.9s
+[07:58:37] === Uploading: obs-admin-periods (tier 1) ===
+The current policy already allows public access to the specified files. 
+[1] "Report saved to: Data/chirts_chirps_hist/admin/obs-admin-periods_uploadReport.json"
+[07:58:55]   done: 2 files in 18.2s
+[07:58:55] === Uploading: obs-base-raster (tier 1) ===
+The current policy already allows public access to the specified files. 
+[1] "Report saved to: /home/jovyan/atlas/hazards_prototype/metadata/obs-base-raster_uploadReport.json"
+[07:58:59]   done: 1 files in 3.8s
+[07:58:59] === Uploading: obs-climatology (tier 2) ===
+The current policy already allows public access to the specified files. 
+[1] "Report saved to: Data/chirts_chirps_hist/maps/obs-climatology_uploadReport.json"
+[08:01:33]   done: 1404 files in 154.1s
+
+=== Full publish summary ===
+           upload_id  tier n_files  elapsed_s
+              <char> <int>   <int>      <num>
+1: obs-admin-monthly     1       2  28.917149
+2: obs-admin-periods     1       2  18.157522
+3:   obs-base-raster     1       1   3.828455
+4:   obs-climatology     2    1404 154.080310
+
+Total files: 1409, total elapsed: 205.0s
