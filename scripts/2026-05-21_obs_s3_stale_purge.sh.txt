@@ -95,49 +95,83 @@ echo "STAGE 0: local-file sanity check -> $LOG_FILE"
 # ======================================================================
 # STAGE 0b — re-COG every climatology TIF to bake real STATISTICS_*
 # ======================================================================
-# Diagnosis (2026-05-21): terra::writeRaster(filetype="COG") wrote real
-# Minimum/Maximum but STATISTICS_MEAN/STDDEV = -9999 sentinels into the
-# embedded TIFF metadata. compute_cog_stats() helper's `gdalinfo -stats`
-# never overrides because the embedded values are "already populated"
-# (just with sentinels). `gdal_edit.py -unsetstats` refuses because it
-# would break COG layout. Cleanest fix: `gdal_translate -of COG -stats`
-# rewrites each file with a fresh stats pass + preserved COG layout.
-# Atomic per-file: write to .tmp.tif, mv on success.
+# Diagnosis (2026-05-21):
+#   terra::writeRaster(filetype="COG") embeds STATISTICS_MEAN/STDDEV =
+#   -9999 sentinels into TIFF band metadata. gdal_translate inherits
+#   them verbatim, and `-stats` does NOT overwrite existing band
+#   metadata. gdal_edit.py -unsetstats refuses on a COG (would break
+#   layout). Verified recipe (diag_2026-05-21):
+#     1) gdal_translate COG -> plain GTiff (carries -9999 along).
+#     2) gdal_edit.py -unsetstats on plain GTiff (works; no COG
+#        layout protection on plain GTiff).
+#     3) gdal_translate plain GTiff -> COG with -stats (now source has
+#        no embedded stats, so the freshly-computed ones land in band
+#        metadata + are written into the new TIFF tags).
+#   End-to-end recipe produces real STATISTICS_MEAN/STDDEV embedded in
+#   a valid COG.
 #
-# Cost: ~1-2 s per file, 1421 files -> ~10-40 min sequential.
-# Parallelised with xargs -P 8 -> ~3-6 min.
+# Cost: ~3-5 s per file (3 GDAL passes), 1421 files -> ~70-120 min
+# sequential. Parallelised with xargs -P 8 -> ~10-15 min.
+# Disk: per-worker peak ~30 MB intermediate (s1 + s3).
 # Note: this also patches old non-PTOT vars that have the same bug.
 LOG_FILE="$LOG_DIR/obs_s3_purge_0b_recog_${STAMP}.log"
 echo "STAGE 0b: re-COG with -stats -> $LOG_FILE"
 
 MAPS_DIR="$WORKING_DIR/Data/chirts_chirps_hist/maps"
 
-# Single-file recipe: encapsulated as a function so xargs can call it.
-# Strategy: gdal_translate to .tmp.tif with -stats; verify the new file
-# has real STATISTICS_MEAN (not -9999); on success, atomic mv.
+# Single-file recipe: three-step COG -> plain GTiff -> unsetstats ->
+# COG-with-stats. Idempotent + atomic: source is not touched until the
+# final fresh COG is verified to have real stats, then we mv.
 recog_one() {
   local src="$1"
-  local tmp="${src}.tmp.tif"
+  local s1="${src}.s1.tif"   # plain GTiff intermediate
+  local s3="${src}.s3.tif"   # final COG with stats
+
+  # Tidy any leftover from a prior aborted run on this file
+  rm -f "$s1" "$s1.aux.xml" "$s3" "$s3.aux.xml"
+
+  # Step 1: COG -> plain GTiff (carries -9999 metadata)
+  gdal_translate -q -of GTiff "$src" "$s1" >/dev/null 2>&1
+  if [ $? -ne 0 ] || [ ! -f "$s1" ]; then
+    echo "FAIL step1 translate: $src"
+    rm -f "$s1" "$s1.aux.xml"
+    return 1
+  fi
+
+  # Step 2: strip embedded -9999 stats (works on plain GTiff)
+  gdal_edit.py -unsetstats "$s1" >/dev/null 2>&1
+  if [ $? -ne 0 ]; then
+    echo "FAIL step2 unsetstats: $src"
+    rm -f "$s1" "$s1.aux.xml"
+    return 1
+  fi
+
+  # Step 3: clean source -> COG with -stats (embeds real mean/stddev)
   gdal_translate -q -of COG \
     -co COMPRESS=DEFLATE \
     -co PREDICTOR=2 \
     -co BLOCKSIZE=512 \
     -co OVERVIEWS=AUTO \
     -co OVERVIEW_RESAMPLING=AVERAGE \
-    -stats "$src" "$tmp" 2>&1
-  if [ $? -ne 0 ] || [ ! -f "$tmp" ]; then
-    echo "FAIL translate: $src"
-    rm -f "$tmp"
+    -stats "$s1" "$s3" >/dev/null 2>&1
+  if [ $? -ne 0 ] || [ ! -f "$s3" ]; then
+    echo "FAIL step3 translate: $src"
+    rm -f "$s1" "$s1.aux.xml" "$s3" "$s3.aux.xml"
     return 1
   fi
+
+  # Verify stats actually populated
   local mean
-  mean=$(gdalinfo "$tmp" 2>&1 | awk -F'=' '/STATISTICS_MEAN=/{print $2; exit}')
+  mean=$(gdalinfo "$s3" 2>&1 | awk -F'=' '/STATISTICS_MEAN=/{print $2; exit}')
   if [ -z "$mean" ] || [ "$mean" = "-9999" ]; then
     echo "FAIL stats not real: $src (mean=$mean)"
-    rm -f "$tmp"
+    rm -f "$s1" "$s1.aux.xml" "$s3" "$s3.aux.xml"
     return 1
   fi
-  mv "$tmp" "$src"
+
+  # Atomic swap, then clean up intermediates
+  mv "$s3" "$src"
+  rm -f "$s1" "$s1.aux.xml" "$s3.aux.xml"
   echo "OK: $src (mean=$mean)"
 }
 export -f recog_one
@@ -160,9 +194,9 @@ export -f recog_one
   echo ""
   echo "=== STAGE 0b: parallel re-COG over all maps/**/*.tif ==="
   date
-  N_FILES=$(find "$MAPS_DIR" -name '*.tif' ! -name '*.tmp.tif' ! -name '*.aux.xml' | wc -l)
+  N_FILES=$(find "$MAPS_DIR" -name '*.tif' ! -name '*.s1.tif' ! -name '*.s3.tif' ! -name '*.aux.xml' | wc -l)
   echo "  total files to process: $N_FILES (workers: 8)"
-  find "$MAPS_DIR" -name '*.tif' ! -name '*.tmp.tif' ! -name '*.aux.xml' -print0 \
+  find "$MAPS_DIR" -name '*.tif' ! -name '*.s1.tif' ! -name '*.s3.tif' ! -name '*.aux.xml' -print0 \
     | xargs -0 -n 1 -P 8 -I {} bash -c 'recog_one "$@"' _ {} \
     | tee -a "$LOG_FILE" \
     | grep -E '^FAIL'
@@ -170,9 +204,9 @@ export -f recog_one
   echo "  done at $(date)"
   echo "  successes : $(grep -c '^OK: ' $LOG_FILE)"
   echo "  failures  : $(grep -c '^FAIL ' $LOG_FILE)"
-  # Tidy any leftover .tmp.tif (would only exist if a worker died mid-write)
-  echo "  leftover .tmp.tif files (should be 0):"
-  find "$MAPS_DIR" -name '*.tmp.tif' | tee -a "$LOG_FILE" | wc -l
+  # Tidy any leftover intermediates (would only exist if a worker died mid-write)
+  echo "  leftover .s1.tif / .s3.tif files (should be 0):"
+  find "$MAPS_DIR" \( -name '*.s1.tif' -o -name '*.s3.tif' \) | tee -a "$LOG_FILE" | wc -l
 } | tee -a "$LOG_FILE"
 # STOP if failures > 0; otherwise proceed.
 
