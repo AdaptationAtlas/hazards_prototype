@@ -186,6 +186,13 @@ if (!file.exists(mask_ls_file) || overwrite_glw == TRUE) {
   terra::writeRaster(livestock_mask, filename = mask_ls_file, overwrite = TRUE)
 } else {
   livestock_mask <- terra::rast(mask_ls_file)
+  # An on-disk mask from a prior run may be on a different grid than
+  # the current base_rast (issue: previously caused `data *
+  # livestock_mask_high` to halt with [*] extents do not match in
+  # split_livestock at L517 / L561). Re-align before downstream ops.
+  if (!terra::compareGeom(livestock_mask, base_rast, stopOnError = FALSE)) {
+    livestock_mask <- terra::resample(livestock_mask, base_rast, method = "near")
+  }
   livestock_mask_high <- livestock_mask[[grep("highland", names(livestock_mask))]]
   livestock_mask_low <- livestock_mask[[!grepl("highland", names(livestock_mask))]]
 }
