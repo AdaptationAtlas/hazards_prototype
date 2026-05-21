@@ -85,7 +85,13 @@ dataset_name <- "glw4-2020"
 
 glw_files <- list.files(glw_dir, ".tif$", full.names = TRUE)
 glw <- terra::rast(glw_files)
-names(glw) <- unlist(tstrsplit(names(glw), "_", keep = 1))
+# GLW4-2020 filenames use short species codes (Bf, Ch, Ct, Gt, Pg, Sh);
+# remap to the long names downstream code expects.
+glw_short_to_long <- c(Ch = "poultry", Sh = "sheep", Pg = "pigs",
+                       Ho = "horses",  Gt = "goats", Dk = "ducks",
+                       Bf = "buffalo", Ct = "cattle")
+short_codes <- unlist(tstrsplit(names(glw), "_", keep = 1))
+names(glw) <- glw_short_to_long[short_codes]
 glw <- glw[[c("poultry", "sheep", "pigs", "goats", "cattle")]]
 
 # 2.0.2) Not Run - 2015 ####
