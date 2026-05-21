@@ -1,0 +1,10 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Error: [*] extents do not match
+In addition: There were 50 or more warnings (use warnings() to see the first 50)
+Execution halted

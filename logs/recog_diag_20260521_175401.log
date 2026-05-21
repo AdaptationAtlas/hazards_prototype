@@ -1,0 +1,17 @@
+=== test 1: plain -stats — does it create .aux.xml? ===
+--- gdalinfo /tmp/dbg.tif ---
+  Minimum=0.040, Maximum=5100.455, Mean=-9999.000, StdDev=-9999.000
+    STATISTICS_MAXIMUM=5100.4545898438
+    STATISTICS_MEAN=-9999
+    STATISTICS_MINIMUM=0.03993720933795
+    STATISTICS_STDDEV=-9999
+--- aux.xml present? ---
+ls: cannot access '/tmp/dbg.tif.aux.xml': No such file or directory
+
+=== test 2: -stats with PAM disabled ===
+--- gdalinfo /tmp/dbg2.tif ---
+  Minimum=0.040, Maximum=5100.455, Mean=-9999.000, StdDev=-9999.000
+    STATISTICS_MAXIMUM=5100.4545898438
+    STATISTICS_MEAN=-9999
+    STATISTICS_MINIMUM=0.03993720933795
+    STATISTICS_STDDEV=-9999

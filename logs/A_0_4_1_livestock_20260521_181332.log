@@ -1,0 +1,10 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Error in eval(ei, envir) : object 'glw2020_int_dir' not found
+Calls: source -> withVisible -> eval -> eval
+Execution halted

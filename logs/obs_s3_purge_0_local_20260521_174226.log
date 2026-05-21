@@ -1,0 +1,8 @@
+=== STAGE 0: local Africa-extent check ===
+Thu May 21 17:42:26 UTC 2026
+  /home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_mean.tif -> Size is 1500, 1600
+  /home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_sd.tif -> Size is 1500, 1600
+  /home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_min.tif -> Size is 1500, 1600
+  /home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_max.tif -> Size is 1500, 1600
+--- gdalinfo stats on PTOT_annual_1991-2020_mean.tif ---
+  Minimum=0.040, Maximum=5100.455, Mean=-9999.000, StdDev=-9999.000

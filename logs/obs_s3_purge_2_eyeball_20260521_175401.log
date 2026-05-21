@@ -1,0 +1,36 @@
+=== STAGE 2: stale set ===
+Thu May 21 18:32:19 UTC 2026
+Total stale objects: 2806
+
+--- the 2 in-plan-already keys (intersection) ---
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/PTOT_AMJ_1991-2020_max.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=annual/clim=wmo_1991-2020/stat=max/PTOT_annual_1991-2020_max.tif
+
+--- stat-partition breakdown of stale ---
+   2806 stat=max
+
+--- period-partition breakdown of stale ---
+   1403 period=AMJ
+   1403 period=annual
+
+--- variable-partition breakdown of stale ---
+   2806 variable=PTOT
+
+--- first 10 stale keys ---
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/PTOT_AMJ_1991-2020_mean.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/PTOT_AMJ_1991-2020_min.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/PTOT_AMJ_1991-2020_sd.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/PTOT_AMJ_1995-2014_max.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/PTOT_AMJ_1995-2014_mean.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/PTOT_AMJ_1995-2014_min.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/PTOT_AMJ_1995-2014_sd.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/PTOT_AMJ_full_max.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/PTOT_AMJ_full_mean.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/PTOT_AMJ_full_min.tif
+
+--- 5 stale keys from mid-list ---
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/SPEI-06_DJF_full_max.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/TAVG_JFM_1995-2014_max.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=annual/clim=wmo_1991-2020/stat=max/PTOT_MJJ_1991-2020_max.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=annual/clim=wmo_1991-2020/stat=max/SPEI-06_OND_full_mean.tif
+domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology/variable=PTOT/period=annual/clim=wmo_1991-2020/stat=max/TMAX_AMJ_1995-2014_mean.tif

@@ -1,0 +1,23 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+[publish] workers=16  per_worker_gb~0.2  cores=40/40 (logical/physical)  RAM=359.9 free / 376.5 total GB  budget=3.2 GB
+project_dir          : /home/jovyan/atlas/hazards_prototype 
+working_dir          : /home/jovyan/common_data/nex-gddp-cimp6_hazards 
+admin dir            : Data/chirts_chirps_hist/admin 
+maps dir             : Data/chirts_chirps_hist/maps 
+metadata dir         : /home/jovyan/atlas/hazards_prototype/metadata 
+mode                 : --full 
+tier                 : 2 
+tier 1 enabled       : FALSE 
+tier 2 enabled       : TRUE 
+overwrite            : FALSE 
+workers              : 16 
+
+[18:36:13] === FULL PUBLISH ===
+[18:36:13]   spec 'obs-climatology': 1416 files, 7131.4 MB total
+[18:36:13] === Uploading: obs-climatology (tier 2) ===

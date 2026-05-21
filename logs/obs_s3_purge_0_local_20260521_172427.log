@@ -1,0 +1,7 @@
+=== STAGE 0: local Africa-extent check ===
+Thu May 21 17:24:39 UTC 2026
+  MISSING: /home/jovyan/atlas/hazards_prototype/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_mean.tif
+  MISSING: /home/jovyan/atlas/hazards_prototype/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_sd.tif
+  MISSING: /home/jovyan/atlas/hazards_prototype/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_min.tif
+  MISSING: /home/jovyan/atlas/hazards_prototype/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_max.tif
+--- gdalinfo stats on PTOT_annual_1991-2020_mean.tif ---

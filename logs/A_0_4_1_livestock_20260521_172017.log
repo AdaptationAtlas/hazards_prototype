@@ -1,0 +1,36 @@
+nohup: ignoring input
+[1] 1
+Installing package into ‘/home/jovyan/R/x86_64-pc-linux-gnu-library/4.5’
+(as ‘lib’ is unspecified)
+trying URL 'https://cloud.r-project.org/src/contrib/wbstats_1.1.tar.gz'
+Content type 'application/x-gzip' length 1548370 bytes (1.5 MB)
+==================================================
+downloaded 1.5 MB
+
+* installing *source* package ‘wbstats’ ...
+** this is package ‘wbstats’ version ‘1.1’
+** package ‘wbstats’ successfully unpacked and MD5 sums checked
+** using staged installation
+** R
+** data
+*** moving datasets to lazyload DB
+** inst
+** byte-compile and prepare package for lazy loading
+** help
+*** installing help indices
+*** copying figures
+** building package indices
+** installing vignettes
+** testing if installed package can be loaded from temporary location
+** testing if installed package can be loaded from final location
+** testing if installed package keeps a record of temporary installation path
+* DONE (wbstats)
+
+The downloaded source packages are in
+	‘/tmp/RtmpOs5fJI/downloaded_packages’
+
+wbstats installed
+Error in h(simpleError(msg, call)) : 
+  error in evaluating the argument 'x' in selecting a method for function 'rast': object 'base_rast_path' not found
+Calls: <Anonymous> -> .handleSimpleError -> h
+Execution halted

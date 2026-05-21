@@ -1,0 +1,17 @@
+=== step 1: COG -> plain GTiff (still inherits -9999?) ===
+    STATISTICS_MAXIMUM=5100.4545898438
+    STATISTICS_MEAN=-9999
+    STATISTICS_MINIMUM=0.03993720933795
+    STATISTICS_STDDEV=-9999
+
+=== step 2: gdal_edit.py -unsetstats on plain GTiff ===
+--- post-unsetstats ---
+
+=== step 3: clean source -> COG with -stats ===
+--- /tmp/s3.tif final ---
+  Minimum=0.040, Maximum=5100.455, Mean=644.311, StdDev=653.405
+    STATISTICS_MAXIMUM=5100.4545898438
+    STATISTICS_MEAN=644.31121432631
+    STATISTICS_MINIMUM=0.03993720933795
+    STATISTICS_STDDEV=653.40466779228
+    STATISTICS_VALID_PERCENT=51.87
