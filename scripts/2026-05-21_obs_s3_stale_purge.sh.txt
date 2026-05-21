@@ -1,0 +1,259 @@
+# ----------------------------------------------------------------------
+# Script: 2026-05-21_obs_s3_stale_purge.sh
+# Purpose: Purge stale Kenya-extent (170x210) PTOT climatology COGs from
+#          S3 that were left behind by the smoke-isolation bug, then
+#          re-publish so the canonical paths get the Africa-extent
+#          (1500x1600) replacements.
+# Background:
+#   - Smoke runs prior to commit 1a80341 wrote Kenya-cropped outputs to
+#     production paths, replacing the Africa-wide COGs on disk.
+#   - We fixed smoke isolation + re-ran step 5 (--full --overwrite) on
+#     CGlabs so LOCAL files are Africa-wide.
+#   - But step 6 publish uses AtlasDataManageR 0.0.0.9000, whose
+#     S3DirUploader has no `overwrite` arg -> default skip-if-exists.
+#     Bad objects already on S3 were never replaced.
+#   - gdalinfo confirms (2026-05-21): stat=max partition still contains
+#     four 170x210 files (mean/sd/min/max), Mean=-9999.
+# Strategy:
+#   STAGE 0: confirm local CGlabs files are Africa-wide.
+#   STAGE 1: enumerate every S3 object under processing=climatology/.
+#            Cross-reference against what step 6 WOULD upload (dry-run).
+#            Anything on S3 not matched by the dry-run is stale.
+#   STAGE 2: scope-confirmation pass — list the stale set to a CSV +
+#            tail the first 20. Pete eyeballs before any rm.
+#   STAGE 3: delete stale objects with `aws s3 rm` in batches.
+#   STAGE 4: re-run step 6 --full --tier 2 (uploads only missing /
+#            never-touched objects since uploader is skip-if-exists by
+#            default and the deleted slots are now empty).
+#   STAGE 5: verify post-publish — the four PTOT_annual_1991-2020 files
+#            return Size 1500,1600 and real stats.
+# Convention: paste-able blocks. Run blocks in order.
+# ----------------------------------------------------------------------
+
+# ======================================================================
+# 0) Pre-flight
+# ======================================================================
+cd $HOME/atlas/hazards_prototype
+git checkout develop
+git pull origin develop
+
+# AWS credentials sanity check
+aws sts get-caller-identity || { echo "NO AWS CREDS"; }
+
+# Screen for safety
+screen -ls
+# Reattach existing, or:
+screen -S obs_s3_stale_purge_2026-05-21
+
+
+# ======================================================================
+# 1) Paths + log dir
+# ======================================================================
+export PROJECT_DIR="$HOME/atlas/hazards_prototype"
+export LOG_DIR="$PROJECT_DIR/logs"
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+export BUCKET="digital-atlas"
+export PREFIX="domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology"
+
+
+# ======================================================================
+# STAGE 0 — confirm LOCAL files are Africa-wide (~10 s)
+# ======================================================================
+# If any of the four below report Size 170,210 instead of 1500,1600,
+# STOP: step 5 didn't rebake locally. Re-run R/observational/5_make_obs_map_climatologies.R --full --overwrite first.
+LOG_FILE="$LOG_DIR/obs_s3_purge_0_local_${STAMP}.log"
+echo "STAGE 0: local-file sanity check -> $LOG_FILE"
+{
+  echo "=== STAGE 0: local Africa-extent check ==="
+  date
+  for f in mean sd min max; do
+    LOCAL="$PROJECT_DIR/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_${f}.tif"
+    if [ -f "$LOCAL" ]; then
+      echo -n "  $LOCAL -> "
+      gdalinfo "$LOCAL" 2>&1 | awk '/^Size is/'
+    else
+      echo "  MISSING: $LOCAL"
+    fi
+  done
+  # Print stats on one to confirm not -9999
+  echo "--- gdalinfo stats on PTOT_annual_1991-2020_mean.tif ---"
+  gdalinfo "$PROJECT_DIR/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_mean.tif" 2>&1 | grep -E "^Overviews|Mean=|StdDev=" | head -3
+} | tee "$LOG_FILE"
+# STOP if any are 170,210 or Mean=-9999.
+
+
+# ======================================================================
+# STAGE 1 — enumerate S3 + run dry-run, build stale set (~1-2 min)
+# ======================================================================
+# 1a) Enumerate every object under processing=climatology/ on S3.
+LOG_FILE="$LOG_DIR/obs_s3_purge_1a_s3_listing_${STAMP}.log"
+echo "STAGE 1a: list S3 -> $LOG_FILE"
+aws s3 ls "s3://$BUCKET/$PREFIX/" --recursive \
+  | awk '{print $4}' \
+  | sort \
+  > "$LOG_DIR/s3_objects_${STAMP}.txt"
+echo "  S3 object count: $(wc -l < $LOG_DIR/s3_objects_${STAMP}.txt)"
+head -5 "$LOG_DIR/s3_objects_${STAMP}.txt"; echo "..."; tail -5 "$LOG_DIR/s3_objects_${STAMP}.txt"
+
+# 1b) Run step 6 dry-run to enumerate what step 6 WOULD upload.
+LOG_FILE="$LOG_DIR/obs_s3_purge_1b_dryrun_${STAMP}.log"
+echo "STAGE 1b: step 6 dry-run -> $LOG_FILE"
+Rscript "$PROJECT_DIR/R/observational/6_publish_obs_to_s3.R" --dry-run --tier 2 \
+  > "$LOG_FILE" 2>&1
+echo "  exit code: $?"
+# Dry-run writes Data/chirts_chirps_hist/_publish_dry_run.csv with the
+# canonical s3_uri per local file.
+DRY_CSV="$PROJECT_DIR/Data/chirts_chirps_hist/_publish_dry_run.csv"
+test -f "$DRY_CSV" && echo "OK: $DRY_CSV ($(wc -l < $DRY_CSV) rows)" || echo "FAIL: dry-run CSV missing"
+
+# 1c) Build the stale set: S3 objects whose key is NOT in the dry-run plan.
+# Extract just the S3 key (path after bucket) from the dry-run CSV.
+awk -F',' 'NR>1 {sub(/^s3:\/\/[^\/]+\//, "", $5); print $5}' "$DRY_CSV" \
+  | sort > "$LOG_DIR/s3_planned_${STAMP}.txt"
+comm -23 "$LOG_DIR/s3_objects_${STAMP}.txt" "$LOG_DIR/s3_planned_${STAMP}.txt" \
+  > "$LOG_DIR/s3_stale_${STAMP}.txt"
+echo "  planned (from dry-run) : $(wc -l < $LOG_DIR/s3_planned_${STAMP}.txt)"
+echo "  on S3                  : $(wc -l < $LOG_DIR/s3_objects_${STAMP}.txt)"
+echo "  STALE (s3 - planned)   : $(wc -l < $LOG_DIR/s3_stale_${STAMP}.txt)"
+
+
+# ======================================================================
+# STAGE 2 — eyeball the stale set BEFORE any rm (~10 s)
+# ======================================================================
+LOG_FILE="$LOG_DIR/obs_s3_purge_2_eyeball_${STAMP}.log"
+echo "STAGE 2: stale-set preview -> $LOG_FILE"
+{
+  echo "=== STAGE 2: stale set ==="
+  date
+  echo "Total stale objects: $(wc -l < $LOG_DIR/s3_stale_${STAMP}.txt)"
+  echo ""
+  echo "--- stat-partition breakdown ---"
+  awk -F'/' '{for(i=1;i<=NF;i++) if($i ~ /^stat=/) print $i}' "$LOG_DIR/s3_stale_${STAMP}.txt" | sort | uniq -c
+  echo ""
+  echo "--- variable-partition breakdown ---"
+  awk -F'/' '{for(i=1;i<=NF;i++) if($i ~ /^variable=/) print $i}' "$LOG_DIR/s3_stale_${STAMP}.txt" | sort | uniq -c
+  echo ""
+  echo "--- first 20 stale keys ---"
+  head -20 "$LOG_DIR/s3_stale_${STAMP}.txt"
+  echo ""
+  echo "--- last 5 stale keys ---"
+  tail -5 "$LOG_DIR/s3_stale_${STAMP}.txt"
+  echo ""
+  echo "--- spot-check sizes (first 5) ---"
+  head -5 "$LOG_DIR/s3_stale_${STAMP}.txt" | while read k; do
+    aws s3 ls "s3://$BUCKET/$k" 2>/dev/null
+  done
+} | tee "$LOG_FILE"
+# STOP and read. Expect: stat= breakdown to show 4 obvious 'wrong' bins
+# (mean/sd/min/max all parked under one stat partition) for the PTOT
+# Kenya-extent leftovers. If the count looks huge or the variable
+# breakdown surprises you, do NOT proceed to STAGE 3 - paste the output
+# back here for diagnosis.
+
+
+# ======================================================================
+# STAGE 3 — delete stale objects (typically 4-12 of them, ~10 s)
+# ======================================================================
+# Only proceed if STAGE 2 looked sensible.
+LOG_FILE="$LOG_DIR/obs_s3_purge_3_delete_${STAMP}.log"
+echo "STAGE 3: delete stale -> $LOG_FILE"
+{
+  echo "=== STAGE 3: delete ==="
+  date
+  while read k; do
+    if [ -n "$k" ]; then
+      echo "rm s3://$BUCKET/$k"
+      aws s3 rm "s3://$BUCKET/$k"
+    fi
+  done < "$LOG_DIR/s3_stale_${STAMP}.txt"
+  echo "done"
+  date
+} | tee "$LOG_FILE"
+
+
+# ======================================================================
+# STAGE 4 — re-run step 6 (idempotent: only fills in newly-empty slots)
+# ======================================================================
+# Skip-if-exists default means step 6 won't re-upload the 1417 good
+# objects, only the deleted slots (if any of them happened to also be
+# 'planned' targets) and any previously-missing keys.
+# Reality: stale keys were at WRONG partitions so the canonical paths
+# (the ones in the dry-run plan) are ALREADY filled with Africa-extent
+# files from the prior full publish. Nothing should re-upload. We run
+# step 6 anyway as a no-op idempotency check.
+LOG_FILE="$LOG_DIR/obs_s3_purge_4_republish_${STAMP}.log"
+echo "STAGE 4: step 6 republish -> $LOG_FILE"
+nohup Rscript "$PROJECT_DIR/R/observational/6_publish_obs_to_s3.R" --full --tier 2 \
+  > "$LOG_FILE" 2>&1 &
+PID_4=$!
+echo "PID $PID_4  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+wait $PID_4; echo "STAGE 4 exit code: $?"
+
+
+# ======================================================================
+# STAGE 5 — post-publish verification
+# ======================================================================
+# 5a) Confirm the four PTOT_annual_1991-2020 files at their CANONICAL
+# partition (stat=mean/, stat=sd/, stat=min/, stat=max/) are Africa-
+# extent now.
+LOG_FILE="$LOG_DIR/obs_s3_purge_5_verify_${STAMP}.log"
+echo "STAGE 5: verify -> $LOG_FILE"
+{
+  echo "=== STAGE 5: verification ==="
+  date
+  for f in mean sd min max; do
+    URL="https://digital-atlas.s3.amazonaws.com/${PREFIX}/variable=PTOT/period=annual/clim=wmo_1991-2020/stat=${f}/PTOT_annual_1991-2020_${f}.tif"
+    echo -n "[stat=$f] -> "
+    gdalinfo "/vsicurl/$URL" 2>&1 | awk '/^Size is/'
+  done
+  echo ""
+  echo "--- overviews + real stats on PTOT_annual_1991-2020_mean.tif ---"
+  gdalinfo "/vsicurl/https://digital-atlas.s3.amazonaws.com/${PREFIX}/variable=PTOT/period=annual/clim=wmo_1991-2020/stat=mean/PTOT_annual_1991-2020_mean.tif" 2>&1 | grep -E "^Overviews|Mean=|StdDev=" | head -3
+  echo ""
+  echo "--- confirm the OLD bad partition is gone ---"
+  aws s3 ls "s3://$BUCKET/${PREFIX}/variable=PTOT/period=AMJ/clim=wmo_1991-2020/stat=max/" 2>&1 | head -5
+} | tee "$LOG_FILE"
+# Expected:
+#   All 4 Size = 1500, 1600
+#   Overviews: 750x800, 375x400, 188x200, 94x100, 47x50
+#   Mean=<real>, StdDev=<real>  (NOT -9999)
+#   Old bad partition listing empty or "PRE" only.
+
+
+# ======================================================================
+# Summary
+# ======================================================================
+echo "=========================================="
+echo "Stale purge complete. Logs:"
+ls -1 "$LOG_DIR"/obs_s3_purge_*_${STAMP}.log
+echo "Stale list snapshot: $LOG_DIR/s3_stale_${STAMP}.txt"
+echo "=========================================="
+echo "If STAGE 5 verification passed:"
+echo "  - notebook (atlas_notebooks/dev/climateRationale + observational"
+echo "    dashboards) will pick up the corrected PTOT COGs."
+echo "  - Optional: replay the observational-pipeline smoke-vs-prod"
+echo "    audit if you want to spot-check other VAR/period combos."
+echo "If STAGE 5 still shows 170,210 anywhere: that path was BOTH in"
+echo "the stale set AND deleted, AND step 6 didn't refill it because"
+echo "the local file is missing. Re-run step 5 --full --overwrite for"
+echo "the offending variable."
+echo "=========================================="
+
+
+# ======================================================================
+# Troubleshooting
+# ======================================================================
+# - If STAGE 1c stale count is 0 but verification still fails: the bad
+#   objects ARE at canonical partitions (not stale). In that case skip-
+#   if-exists is hiding them. Force-delete just those canonical paths
+#   and re-run STAGE 4.
+# - If STAGE 3 reports many deletions (>50): probably picked up
+#   something legitimate. Re-read STAGE 2 output before continuing.
+# - If STAGE 4 step 6 exit != 0: tail the log, fix, re-run JUST stage 4.
+# - Commit logs after:
+#     cd $PROJECT_DIR
+#     git add logs/obs_s3_purge_*_${STAMP}.log
+#     git commit -m "logs: 2026-05-21 obs S3 stale purge"
+#     git push origin develop
