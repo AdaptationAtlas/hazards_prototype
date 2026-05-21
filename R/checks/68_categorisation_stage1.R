@@ -15,7 +15,17 @@
 # Workspace convention: source R/0_server_setup.R for all paths.
 #
 # Usage (from project_dir):
-#   Rscript R/checks/68_categorisation_stage1.R [--class-dir <path>] [--int-dir <path>]
+#   Rscript R/checks/68_categorisation_stage1.R
+#     [--class-dir <path>] [--int-dir <path>]
+#     [--countries AGO[,NGA,CIV,ETH]]
+#     [--sample N]                 (cap files per section for fast smoke)
+#
+# Subset behaviour:
+#   --countries: crop every raster to the union of these admin0 AOIs
+#                before global mean. Default = whole geoboundaries
+#                extent (slow on >1000 files). Strongly recommended.
+#   --sample N : stratified random pick of N files per section. Default
+#                = no cap. Useful for smoke runs on a CGlabs probe.
 
 project_dir <- if (nzchar(Sys.getenv("project_dir"))) {
   Sys.getenv("project_dir")
@@ -24,20 +34,39 @@ project_dir <- if (nzchar(Sys.getenv("project_dir"))) {
 }
 setwd(project_dir)
 source("R/0_server_setup.R")
+source("R/checks/_helpers.R")
 
 suppressPackageStartupMessages({
   pacman::p_load(terra, data.table, jsonlite, duckdb, DBI)
 })
 
-cat("\n=== CR-068 Stage 1 probe — categorisation asymmetry ===\n")
-cat(sprintf("  project_dir = %s\n", project_dir))
-cat(sprintf("  Cglabs      = %s\n", isTRUE(Cglabs)))
+# Reconstruct geoboundaries (0_server_setup.R does not export it).
+geoboundaries <- arrow::read_parquet(geo_files_local[1]) |>
+  sf::st_as_sf() |>
+  terra::vect()
+geoboundaries <- terra::aggregate(geoboundaries, "iso3")
+
+log_section("CR-068 Stage 1 probe — categorisation asymmetry")
+log_step("project_dir = %s", project_dir)
+log_step("Cglabs      = %s", isTRUE(Cglabs))
 
 args_all <- commandArgs(trailingOnly = TRUE)
 get_arg <- function(name) {
   i <- match(paste0("--", name), args_all)
   if (!is.na(i) && i < length(args_all)) args_all[i + 1L] else NA_character_
 }
+
+# Subset controls (logged so the run is self-documenting).
+countries_arg <- get_arg("countries")
+countries_iso <- if (is.na(countries_arg)) NULL else strsplit(countries_arg, ",")[[1]]
+sample_n      <- as.integer(parse_cli(args_all, "sample", "integer", default = NA_integer_))
+log_step("--countries = %s", if (is.null(countries_iso)) "ALL (full extent — slow)"
+         else paste(countries_iso, collapse = ","))
+log_step("--sample N  = %s", if (is.na(sample_n)) "ALL files" else sample_n)
+
+aoi <- countries_aoi(geoboundaries, countries_iso)
+log_step("aoi has %d feature(s); ext = %s",
+         length(aoi), paste(round(as.vector(terra::ext(aoi)), 2), collapse = ", "))
 
 # ----- Resolve class_dir + int_dir (try resolved path then fallbacks) ----
 resolve_dir <- function(label, resolved, candidates) {
@@ -82,44 +111,52 @@ results <- list()
 # Scans Step 1 output for saturated (>0.7) or near-zero (<0.005) hazards.
 # Sample patterns broadened from the dispatch's NDWS-G19/NTx35/NDWL0 to
 # match any hazard-with-threshold code (e.g. PTOT-L1500, NTx33-G7).
+log_section("Section A — class-layer per-pixel hazard means")
+
 if (!is.na(class_dir)) {
-  cat("[A] Sampling classified rasters...\n")
-  hazard_dirs <- list.dirs(class_dir, recursive = FALSE)
-  if (length(hazard_dirs) == 0L) hazard_dirs <- class_dir
-
-  # Widened regex to match any classified raster whose filename ends with
-  # the canonical threshold suffix `-G<num>.tif` or `-L<num>.tif`. Examples
-  # from CGlabs: ssp585_EC-Earth3_2081-2100_NTx35-mean-G14.tif (multi-
-  # segment hazard token), ssp585_EC-Earth3_2081-2100_THI-max-max-G92.tif.
-  # Earlier strict pattern ([A-Z][A-Za-z0-9]+-[GL][0-9]+) only matched
-  # single-segment tokens like NDWS-G19 from the dispatch example.
   pattern_a <- "-[GL][0-9]+\\.tif$"
-  sample <- rbindlist(lapply(hazard_dirs, function(d) {
-    files <- list.files(d, pattern = pattern_a,
+  files_a <- list.files(class_dir, pattern = pattern_a,
                         full.names = TRUE, recursive = TRUE)
-    files <- files[!grepl("ENSEMBLE", files)]
-    if (length(files) == 0L) return(NULL)
-    rbindlist(lapply(files, function(f) {
-      r <- terra::rast(f)
-      parts <- strsplit(basename(f), "_")[[1]]
-      data.table(
-        scenario   = parts[1],
-        model      = parts[2],
-        timeframe  = parts[3],
-        hazard     = sub("\\.tif$", "", paste(parts[-(1:3)], collapse = "_")),
-        n_layers   = terra::nlyr(r),
-        mean_value = as.numeric(
-          terra::global(terra::mean(r), "mean", na.rm = TRUE)[, 1]),
-        file       = basename(f)
-      )
-    }))
-  }), fill = TRUE)
+  files_a <- files_a[!grepl("ENSEMBLE", files_a)]
+  log_step("found %d class rasters before sampling", length(files_a))
+  files_a <- sample_files(files_a, sample_n)
+  log_step("after --sample: %d files to scan", length(files_a))
 
-  if (is.null(sample) || nrow(sample) == 0L) {
-    cat("  No matching rasters found under class_dir — skipping Section A\n\n")
+  if (length(files_a) == 0L) {
+    log_step("No matching rasters found under class_dir — skipping Section A")
   } else {
+    sample <- log_timer({
+      n_total <- length(files_a)
+      progress_every <- max(1L, n_total %/% 20L)  # ~5 % increments
+      rbindlist(lapply(seq_along(files_a), function(i) {
+        f <- files_a[i]
+        if (i %% progress_every == 1L || i == n_total) {
+          log_step("  [class A] %d / %d  %s", i, n_total, basename(f))
+        }
+        tryCatch({
+          r <- terra::rast(f)
+          r <- window_to_aoi(r, aoi)
+          parts <- strsplit(basename(f), "_")[[1]]
+          data.table(
+            scenario   = parts[1],
+            model      = parts[2],
+            timeframe  = parts[3],
+            hazard     = sub("\\.tif$", "", paste(parts[-(1:3)], collapse = "_")),
+            n_layers   = terra::nlyr(r),
+            mean_value = as.numeric(
+              terra::global(terra::mean(r), "mean", na.rm = TRUE)[, 1]),
+            file       = basename(f)
+          )
+        }, error = function(e) {
+          log_step("  WARN reading %s: %s", basename(f), conditionMessage(e))
+          NULL
+        })
+      }))
+    }, label = "Section A — read + global() per file")
+
     setorder(sample, hazard, scenario, timeframe)
-    cat(sprintf("  scanned %d classified rasters\n", nrow(sample)))
+    log_step("scanned %d classified rasters successfully", nrow(sample))
+
     agg_a <- sample[, list(
       n_files  = .N,
       mean_avg = mean(mean_value, na.rm = TRUE),
@@ -129,17 +166,14 @@ if (!is.na(class_dir)) {
     setorder(agg_a, hazard, scenario, timeframe)
     cat("\n  Mean hazard fraction by (scenario, timeframe, hazard):\n")
     print(agg_a)
-
     cat("\n  Saturated (mean > 0.7) — Candidate 1 evidence:\n")
     print(agg_a[mean_avg > 0.7])
-
     cat("\n  Near-zero (mean < 0.005) — Candidate 2 evidence:\n")
     print(agg_a[mean_avg < 0.005])
-
     results$class_means <- agg_a
   }
 } else {
-  cat("[A] SKIPPED — class_dir not available\n\n")
+  log_step("[A] SKIPPED — class_dir not available")
 }
 
 # =========================================================================
@@ -206,31 +240,46 @@ if (!is.null(ssp370_check)) {
 # every _int/<period>/*.tif and computes the per-pixel mean (= fraction of
 # months where the combo is active). Side-by-side historic vs future
 # means tell us if the asymmetry exists at the _int/ stage.
+log_section("Section E — Stage 1-bis: combo (_int/) means, historic vs future")
+
 if (!is.na(int_dir)) {
-  cat("\n[E] Stage 1-bis — combo (_int/) means, historic vs future\n")
   int_files <- list.files(int_dir, "\\.tif$",
                           full.names = TRUE, recursive = TRUE)
   int_files <- int_files[grepl("ENSEMBLEmean", int_files)]
-  cat(sprintf("  scanned %d ENSEMBLEmean combo files\n", length(int_files)))
+  log_step("found %d ENSEMBLEmean combo files before sampling",
+           length(int_files))
+  int_files <- sample_files(int_files, sample_n)
+  log_step("after --sample: %d files to scan", length(int_files))
 
   if (length(int_files) > 0L) {
-    int_sample <- rbindlist(lapply(int_files, function(f) {
-      parts <- strsplit(basename(f), "_")[[1]]
-      # Expected: <scenario>_<model>_<timeframe>_<combo>.tif
-      tryCatch({
-        r <- terra::rast(f)
-        data.table(
-          scenario   = parts[1],
-          model      = parts[2],
-          timeframe  = parts[3],
-          combo      = sub("\\.tif$", "", paste(parts[-(1:3)], collapse = "_")),
-          n_layers   = terra::nlyr(r),
-          mean_value = as.numeric(
-            terra::global(terra::mean(r), "mean", na.rm = TRUE)[, 1]),
-          file       = basename(f)
-        )
-      }, error = function(e) NULL)
-    }), fill = TRUE)
+    int_sample <- log_timer({
+      n_total <- length(int_files)
+      progress_every <- max(1L, n_total %/% 20L)
+      rbindlist(lapply(seq_along(int_files), function(i) {
+        f <- int_files[i]
+        if (i %% progress_every == 1L || i == n_total) {
+          log_step("  [int E] %d / %d  %s", i, n_total, basename(f))
+        }
+        parts <- strsplit(basename(f), "_")[[1]]
+        tryCatch({
+          r <- terra::rast(f)
+          r <- window_to_aoi(r, aoi)
+          data.table(
+            scenario   = parts[1],
+            model      = parts[2],
+            timeframe  = parts[3],
+            combo      = sub("\\.tif$", "", paste(parts[-(1:3)], collapse = "_")),
+            n_layers   = terra::nlyr(r),
+            mean_value = as.numeric(
+              terra::global(terra::mean(r), "mean", na.rm = TRUE)[, 1]),
+            file       = basename(f)
+          )
+        }, error = function(e) {
+          log_step("  WARN reading %s: %s", basename(f), conditionMessage(e))
+          NULL
+        })
+      }), fill = TRUE)
+    }, label = "Section E — read + global() per file")
 
     if (!is.null(int_sample) && nrow(int_sample) > 0L) {
       setorder(int_sample, combo, scenario, timeframe)
@@ -282,7 +331,8 @@ jsonlite::write_json(
     results),
   out_path, auto_unbox = TRUE, pretty = TRUE
 )
-cat(sprintf("\nWrote report to %s\n", out_path))
+log_step("Wrote report to %s", out_path)
+summarize_log()
 
 cat("\n=== STOP for Pete (Stage 1 only) ===\n")
 cat("Interpretation guide:\n")

@@ -28,6 +28,7 @@ project_dir <- if (nzchar(Sys.getenv("project_dir"))) {
 }
 setwd(project_dir)
 source("R/0_server_setup.R")
+source("R/checks/_helpers.R")
 
 suppressPackageStartupMessages({
   pacman::p_load(data.table, arrow, jsonlite, duckdb, DBI)
@@ -61,9 +62,9 @@ if (is.na(parquet_arg)) {
   parquet_arg <- candidates[1]
 }
 
-cat("\n=== Issue #9 Stage 3 validation ===\n")
-cat(sprintf("  parquet     = %s\n", parquet_arg))
-cat(sprintf("  countries   = %s\n\n", paste(countries, collapse = ", ")))
+log_section("Issue #9 Stage 3 validation")
+log_step("parquet     = %s", parquet_arg)
+log_step("countries   = %s", paste(countries, collapse = ", "))
 
 # ----- (a) iso3 x crop: sum(hazard != 'none','any') <= VOP_total -------
 # In the long parquet, every (iso3, admin0, admin1=NA, admin2=NA, crop,
@@ -75,10 +76,11 @@ cat(sprintf("  countries   = %s\n\n", paste(countries, collapse = ", ")))
 # CR-068 (a) notes the 'none' row is missing in the current parquet so
 # we cannot compute VOP_total from this table alone — we proxy via
 # `hazard = 'any'` (the union) which sums all exposed mass.
-cat("[a] sum(specific) <= sum('any') check, per (iso3, crop, scenario, timeframe)\n")
+log_section("[a] sum(specific) <= sum('any') check, per (iso3, crop, scenario, timeframe)")
 con <- DBI::dbConnect(duckdb::duckdb())
 on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 if (grepl("^https?://", parquet_arg)) {
+  log_step("Remote parquet — loading httpfs")
   DBI::dbExecute(con, "INSTALL httpfs; LOAD httpfs;")
 }
 q_a <- sprintf("
@@ -106,19 +108,22 @@ q_a <- sprintf("
   ORDER BY ratio DESC",
   parquet_arg,
   paste(sprintf("'%s'", countries), collapse = ", "))
-chk_a <- as.data.table(DBI::dbGetQuery(con, q_a))
-cat(sprintf("  rows checked: %d\n", nrow(chk_a)))
+chk_a <- log_timer(
+  as.data.table(DBI::dbGetQuery(con, q_a)),
+  label = "[a] specific-vs-any query"
+)
+log_step("rows checked: %d", nrow(chk_a))
 breach <- chk_a[!is.na(ratio) & ratio > 1.005]
-cat(sprintf("  breaches (ratio > 1.005): %d\n", nrow(breach)))
+log_step("breaches (ratio > 1.005): %d", nrow(breach))
 if (nrow(breach) > 0L) {
-  cat("  TOP 10 BREACHES:\n")
+  log_step("TOP 10 BREACHES:")
   print(breach[1:min(10L, .N)])
 } else {
-  cat("  PASS — no (iso3, crop, scenario, timeframe) where specific > any.\n")
+  log_step("PASS — no (iso3, crop, scenario, timeframe) where specific > any.")
 }
 
 # ----- (b) AGO sugarcane mass ratio re-probe ---------------------------
-cat("\n[b] AGO sugarcane mass — current parquet snapshot\n")
+log_section("[b] AGO sugarcane mass — current parquet snapshot")
 q_b <- sprintf("
   SELECT scenario, timeframe,
          ROUND(SUM(value)::DOUBLE, 1) AS sum_value,
@@ -130,11 +135,14 @@ q_b <- sprintf("
     AND hazard_vars IN ('NDWS+NTx35+NDWL0','NDWS+THI-max+NDWL0')
     AND exposure_unit = 'nominal-usd-2021'
   GROUP BY ALL ORDER BY scenario, timeframe", parquet_arg)
-chk_b <- as.data.table(DBI::dbGetQuery(con, q_b))
+chk_b <- log_timer(
+  as.data.table(DBI::dbGetQuery(con, q_b)),
+  label = "[b] AGO sugarcane query"
+)
 print(chk_b)
 
 # ----- (c) NGA oil-palm + CIV cocoa spot check -------------------------
-cat("\n[c] Spot-check sharp-concentration crops\n")
+log_section("[c] Spot-check sharp-concentration crops")
 q_c <- sprintf("
   SELECT iso3, crop, scenario, timeframe,
          ROUND(SUM(value)::DOUBLE, 1) AS sum_value
@@ -146,7 +154,10 @@ q_c <- sprintf("
     AND hazard_vars IN ('NDWS+NTx35+NDWL0','NDWS+THI-max+NDWL0')
     AND exposure_unit = 'nominal-usd-2021'
   GROUP BY ALL ORDER BY iso3, crop, scenario, timeframe", parquet_arg)
-chk_c <- as.data.table(DBI::dbGetQuery(con, q_c))
+chk_c <- log_timer(
+  as.data.table(DBI::dbGetQuery(con, q_c)),
+  label = "[c] spot-check NGA oilpalm + CIV cocoa"
+)
 print(chk_c)
 
 # ----- (d) CR-068 categorisation unchanged ----------------------------
@@ -154,8 +165,7 @@ print(chk_c)
 # show the same SHAPE as before the fix (issue #9 only changes
 # magnitudes via resample, not hazard categorisation). If the shape
 # changes materially, that's a regression to investigate.
-cat("\n[d] Hazard-category mass split (AGO) — sanity that issue #9 fix",
-    " did NOT perturb the categorisation column.\n", sep = "")
+log_section("[d] AGO hazard-category split — CR-068 regression check")
 q_d <- sprintf("
   SELECT hazard,
          ROUND(SUM(value) FILTER (WHERE scenario='historic' AND timeframe='1995-2014')::DOUBLE, 0)
@@ -172,11 +182,16 @@ q_d <- sprintf("
     AND crop != 'generic-crop'
     AND hazard != 'any'
   GROUP BY hazard ORDER BY hist_1995_2014 DESC", parquet_arg)
-chk_d <- as.data.table(DBI::dbGetQuery(con, q_d))
+chk_d <- log_timer(
+  as.data.table(DBI::dbGetQuery(con, q_d)),
+  label = "[d] AGO category split query"
+)
 print(chk_d)
-cat("  NOTE: zeros under historic for heat / heat+wet / wet are the",
-    " CR-068 bug (categorisation asymmetry), NOT a regression from",
-    " issue #9. CR-068 has its own dispatch.\n", sep = "")
+log_step(paste(
+  "NOTE: zeros under historic for heat / heat+wet / wet are the CR-068",
+  "bug (categorisation asymmetry), NOT a regression from issue #9.",
+  "CR-068 has its own dispatch."
+))
 
 # ----- JSON record -----------------------------------------------------
 out_dir <- file.path(project_dir, "metadata", "checks")
@@ -195,12 +210,13 @@ jsonlite::write_json(
   ),
   out_path, auto_unbox = TRUE, pretty = TRUE
 )
-cat(sprintf("\nWrote report to %s\n", out_path))
+log_step("Wrote report to %s", out_path)
+summarize_log()
 
 # Exit status: non-zero if (a) has breaches
 if (nrow(breach) > 0L) {
-  cat("\nDECISION: validation FAILED — investigate the (iso3, crop) breaches above.\n")
+  log_step("DECISION: validation FAILED — investigate the (iso3, crop) breaches above.")
   quit(status = 1, save = "no")
 } else {
-  cat("\nDECISION: validation PASSED — issue #9 fix closes the magnitude gap.\n")
+  log_step("DECISION: validation PASSED — issue #9 fix closes the magnitude gap.")
 }
