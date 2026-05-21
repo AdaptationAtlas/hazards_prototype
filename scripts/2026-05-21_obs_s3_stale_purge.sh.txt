@@ -93,6 +93,103 @@ echo "STAGE 0: local-file sanity check -> $LOG_FILE"
 
 
 # ======================================================================
+# STAGE 0b — re-COG every climatology TIF to bake real STATISTICS_*
+# ======================================================================
+# Diagnosis (2026-05-21): terra::writeRaster(filetype="COG") wrote real
+# Minimum/Maximum but STATISTICS_MEAN/STDDEV = -9999 sentinels into the
+# embedded TIFF metadata. compute_cog_stats() helper's `gdalinfo -stats`
+# never overrides because the embedded values are "already populated"
+# (just with sentinels). `gdal_edit.py -unsetstats` refuses because it
+# would break COG layout. Cleanest fix: `gdal_translate -of COG -stats`
+# rewrites each file with a fresh stats pass + preserved COG layout.
+# Atomic per-file: write to .tmp.tif, mv on success.
+#
+# Cost: ~1-2 s per file, 1421 files -> ~10-40 min sequential.
+# Parallelised with xargs -P 8 -> ~3-6 min.
+# Note: this also patches old non-PTOT vars that have the same bug.
+LOG_FILE="$LOG_DIR/obs_s3_purge_0b_recog_${STAMP}.log"
+echo "STAGE 0b: re-COG with -stats -> $LOG_FILE"
+
+MAPS_DIR="$WORKING_DIR/Data/chirts_chirps_hist/maps"
+
+# Single-file recipe: encapsulated as a function so xargs can call it.
+# Strategy: gdal_translate to .tmp.tif with -stats; verify the new file
+# has real STATISTICS_MEAN (not -9999); on success, atomic mv.
+recog_one() {
+  local src="$1"
+  local tmp="${src}.tmp.tif"
+  gdal_translate -q -of COG \
+    -co COMPRESS=DEFLATE \
+    -co PREDICTOR=2 \
+    -co BLOCKSIZE=512 \
+    -co OVERVIEWS=AUTO \
+    -co OVERVIEW_RESAMPLING=AVERAGE \
+    -stats "$src" "$tmp" 2>&1
+  if [ $? -ne 0 ] || [ ! -f "$tmp" ]; then
+    echo "FAIL translate: $src"
+    rm -f "$tmp"
+    return 1
+  fi
+  local mean
+  mean=$(gdalinfo "$tmp" 2>&1 | awk -F'=' '/STATISTICS_MEAN=/{print $2; exit}')
+  if [ -z "$mean" ] || [ "$mean" = "-9999" ]; then
+    echo "FAIL stats not real: $src (mean=$mean)"
+    rm -f "$tmp"
+    return 1
+  fi
+  mv "$tmp" "$src"
+  echo "OK: $src (mean=$mean)"
+}
+export -f recog_one
+
+# Smoke: do ONE file first as a recipe-validation check (~2 s)
+{
+  echo "=== STAGE 0b: smoke (one file) ==="
+  date
+  TEST_F="$MAPS_DIR/PTOT/PTOT_annual_1991-2020_mean.tif"
+  recog_one "$TEST_F"
+  echo "--- post-recog: $TEST_F ---"
+  gdalinfo "$TEST_F" 2>&1 | grep -E "Minimum=|STATISTICS_"
+} | tee "$LOG_FILE"
+# STOP here. Expected: line "Mean=<real>, StdDev=<real>" (NOT -9999)
+# AND STATISTICS_MEAN= a real number (not -9999).
+# If smoke fails, paste log back here before proceeding to the parallel loop.
+
+# Parallel pass over ALL maps/**/*.tif (~3-6 min with -P 8)
+{
+  echo ""
+  echo "=== STAGE 0b: parallel re-COG over all maps/**/*.tif ==="
+  date
+  N_FILES=$(find "$MAPS_DIR" -name '*.tif' ! -name '*.tmp.tif' ! -name '*.aux.xml' | wc -l)
+  echo "  total files to process: $N_FILES (workers: 8)"
+  find "$MAPS_DIR" -name '*.tif' ! -name '*.tmp.tif' ! -name '*.aux.xml' -print0 \
+    | xargs -0 -n 1 -P 8 -I {} bash -c 'recog_one "$@"' _ {} \
+    | tee -a "$LOG_FILE" \
+    | grep -E '^FAIL'
+  echo ""
+  echo "  done at $(date)"
+  echo "  successes : $(grep -c '^OK: ' $LOG_FILE)"
+  echo "  failures  : $(grep -c '^FAIL ' $LOG_FILE)"
+  # Tidy any leftover .tmp.tif (would only exist if a worker died mid-write)
+  echo "  leftover .tmp.tif files (should be 0):"
+  find "$MAPS_DIR" -name '*.tmp.tif' | tee -a "$LOG_FILE" | wc -l
+} | tee -a "$LOG_FILE"
+# STOP if failures > 0; otherwise proceed.
+
+# Verification: re-run STAGE 0 sanity check + confirm STATISTICS_MEAN real
+{
+  echo ""
+  echo "=== STAGE 0b: post-rebake verification ==="
+  for f in mean sd min max; do
+    LOCAL="$MAPS_DIR/PTOT/PTOT_annual_1991-2020_${f}.tif"
+    echo -n "[$f] -> "
+    gdalinfo "$LOCAL" 2>&1 | awk '/^Size is/'
+    gdalinfo "$LOCAL" 2>&1 | grep -E "STATISTICS_MEAN|STATISTICS_STDDEV" | sed 's/^/    /'
+  done
+} | tee -a "$LOG_FILE"
+
+
+# ======================================================================
 # STAGE 1 — enumerate S3 + run dry-run, build stale set (~1-2 min)
 # ======================================================================
 # 1a) Enumerate every object under processing=climatology/ on S3.
