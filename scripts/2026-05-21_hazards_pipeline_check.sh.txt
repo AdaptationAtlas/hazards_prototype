@@ -1,0 +1,187 @@
+# ----------------------------------------------------------------------
+# Script: 2026-05-21_hazards_pipeline_check.sh
+# Purpose: today's pipeline-verification runbook on CGlabs. Bundles the
+#          CR-068 categorisation probe, the issue #9 mass-conservation
+#          probe + rebake + validate, and a Round 2 perf smoke. Each
+#          stage is its own nohup'd Rscript with its own log; you can
+#          run them in sequence (each block depends on prior writes) or
+#          re-run a single stage in isolation.
+# Environment: CGlabs JupyterHub
+# ----------------------------------------------------------------------
+
+# ----------------------------------------------------------------------
+# Pre-flight
+# ----------------------------------------------------------------------
+# Pull all recent commits (issue #9 Stage 2 fix, Round 2 perf pass,
+# CR-068 probe fix with Section E).
+cd $HOME/atlas/hazards_prototype
+git checkout develop
+git pull origin develop
+git log --oneline -8
+
+# Always check before running a new job:
+screen -ls
+ps aux | grep Rscript | grep -v grep
+
+# Start a fresh screen (or reattach to today's):
+screen -S hazards_2026-05-21
+
+
+# ----------------------------------------------------------------------
+# Paths + log dir
+# ----------------------------------------------------------------------
+SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
+
+# Probe scripts (diagnostic only — no edits to production data)
+PROBE_68="$HOME/atlas/hazards_prototype/R/checks/68_categorisation_stage1.R"
+PROBE_9="$HOME/atlas/hazards_prototype/R/checks/9_mass_conservation_check.R"
+VALIDATE_9="$HOME/atlas/hazards_prototype/R/checks/9_mass_conservation_validate.R"
+
+# Production pipeline (issue #9 fix + Round 2 perf both apply)
+LIVESTOCK_SCRIPT="$HOME/atlas/hazards_prototype/R/0.4.1_create_livestock_exposure.R"
+EXPOSURE_SCRIPT="$HOME/atlas/hazards_prototype/R/0.4.4_process_exposure.R"
+HAZFREQ_SCRIPT="$HOME/atlas/hazards_prototype/R/2_calculate_haz_freq.R"
+FREQXEXP_SCRIPT="$HOME/atlas/hazards_prototype/R/3_freq_x_exposure.R"
+
+LOG_DIR="$HOME/atlas/hazards_prototype/logs"
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+
+
+# ======================================================================
+# STAGE A — CR-068 categorisation Stage 1 probe (diagnostic, no edits)
+# ======================================================================
+# Probes hazard_timeseries_class/ (Section A) + hazard_timeseries_int/
+# (Section E, Stage 1-bis added when CGlabs revealed _class/ wasn't
+# always populated locally). Writes JSON to:
+#   metadata/checks/68_categorisation_stage1.json
+#
+# Look for:
+#   - Section A "Saturated (mean > 0.7)" — Candidate 1 of dispatch
+#     (NDWS / NTx35 / PTOT raster ~1.0 in historic only).
+#   - Section A "Near-zero (mean < 0.005)" — Candidate 2 (heat / wet
+#     classifier returned all zeros historic).
+#   - Section E "Historic-vs-future combo ratio" rows where
+#     ratio > 1.5 — confirms the parquet asymmetry exists at the
+#     _int/ stage already.
+#   - Section D SSP370 row counts — verifies the missing-periods
+#     side finding (zero rows in 2041-2060 / 2061-2080 / 2081-2100).
+LOG_FILE="$LOG_DIR/cr068_probe_${STAMP}.log"
+echo "CR-068 Stage 1 probe -> $LOG_FILE"
+nohup Rscript "$PROBE_68" > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+# STOP after probe finishes. Paste the SUMMARY + Section A/E tables
+# back to Claude for Stage 2 diagnosis before any pipeline edits.
+
+
+# ======================================================================
+# STAGE B — Issue #9 mass-conservation baseline probe (diagnostic)
+# ======================================================================
+# Reads GLW cattle + Worldpop hpop source rasters; reports per-country
+# mass ratios under BOTH the current resample method (now method="sum"
+# after the Stage 2 fix at commit 6ab604c) and the prior bilinear
+# pattern, side-by-side. Confirms the fix landed and the assertion
+# threshold is honoured.
+LOG_FILE="$LOG_DIR/issue9_probe_${STAMP}.log"
+echo "Issue #9 probe -> $LOG_FILE"
+nohup Rscript "$PROBE_9" --country AGO,NGA,CIV,ETH > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+
+# ======================================================================
+# STAGE C — Rebake exposure pipeline (issue #9 fix + Round 2 perf)
+# ======================================================================
+# Three scripts in order. All intermediate writes are preserved, so the
+# pipeline is restartable from any stage if one of them fails.
+#
+# What to watch:
+#   - 0.4.1 will emit "[0.4.1] mass not conserved on resample" warnings
+#     if any GLW / TLU resample ratio drifts > ±0.5 % (assertion added
+#     in commit 6ab604c). Real-world expected: small drift due to
+#     boundary-attribution but no warnings.
+#   - 0.4.4 now parallelizes MapSPAM (8 workers) + GLW (8 workers)
+#     extraction loops. Expected runtime: ~minutes (was ~tens of mins).
+#   - 3_freq_x_exposure: workers bumped 7->16, scheduling=Inf removed,
+#     GDAL cache 60 GB. Should be 2-4x faster than prior runs.
+#     Live progress now streams to the log (was buffered before).
+
+# -- 0.4.1 livestock exposure (writes GLW + livestock_vop tifs) --
+LOG_FILE="$LOG_DIR/c041_livestock_${STAMP}.log"
+echo "0.4.1 livestock exposure -> $LOG_FILE"
+nohup Rscript "$LIVESTOCK_SCRIPT" > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+# -- 0.4.4 process exposure (admin extraction for MapSPAM + GLW + hpop) --
+LOG_FILE="$LOG_DIR/c044_process_${STAMP}.log"
+echo "0.4.4 process exposure -> $LOG_FILE"
+nohup Rscript "$EXPOSURE_SCRIPT" > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+# -- 3_freq_x_exposure (the slow one — biggest Round 2 win lives here) --
+LOG_FILE="$LOG_DIR/c3_freq_x_exp_${STAMP}.log"
+echo "3_freq_x_exposure -> $LOG_FILE"
+nohup Rscript "$FREQXEXP_SCRIPT" > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+
+# ======================================================================
+# STAGE D — Issue #9 validation against the freshly-baked parquet
+# ======================================================================
+# Runs the four checks from the dispatch:
+#   (a) per (iso3, crop, scenario, timeframe): sum(specific) <=
+#       sum('any') within +/- 0.5 % tolerance. Exits non-zero if any
+#       row breaches.
+#   (b) AGO sugarcane mass per (scenario, timeframe).
+#   (c) NGA oilpalm + CIV cocoa spot-check.
+#   (d) AGO hazard-category split — regression check that issue #9 fix
+#       did NOT perturb the categorisation column (CR-068's shape).
+#
+# By default scans the local hazard_exposure parquet under
+# atlas_dirs$data_dir$hazard_exposure. Override with:
+#   --parquet <path>
+LOG_FILE="$LOG_DIR/issue9_validate_${STAMP}.log"
+echo "Issue #9 Stage 3 validation -> $LOG_FILE"
+nohup Rscript "$VALIDATE_9" --country AGO,NGA,CIV > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+# Exit status non-zero on breach. Paste DECISION line + any TOP 10
+# BREACHES table back to Claude.
+
+
+# ======================================================================
+# STAGE E (optional) — re-bake hazard frequency from scratch
+# ======================================================================
+# Only needed if STAGE A revealed that hazard_timeseries_class/ is
+# empty or has the CR-068 saturation bug. Set run1 / run2 / etc.
+# at the top of the script before running.
+#
+# This is HOURS. Skip unless explicitly required by Stage A findings.
+LOG_FILE="$LOG_DIR/c2_haz_freq_${STAMP}.log"
+echo "2_calculate_haz_freq -> $LOG_FILE"
+nohup Rscript "$HAZFREQ_SCRIPT" > "$LOG_FILE" 2>&1 &
+echo "PID $!  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+
+
+# ----------------------------------------------------------------------
+# Notes
+# ----------------------------------------------------------------------
+# - Each stage writes its own timestamped log under $LOG_DIR. Grep
+#   "WARNING" or "Error" across the day's logs:
+#     grep -E "WARNING|Error" $LOG_DIR/*_${STAMP%_*}_*.log
+# - For Round 2 timing comparison, eyeball start/end timestamps in the
+#   per-timeframe section headers ("Processing <timeframe> tx /
+#   N_total started at ..." / "Processing Complete ...").
+# - Issue #9 fix means all three resamples in the exposure scripts use
+#   method="sum" with a +/- 0.5 % assertion. If you see "[0.4.1] mass
+#   not conserved" or "[0.4.4] mass not conserved", paste the line
+#   back so we can investigate (likely a CRS / boundary edge issue
+#   we noted as a residual).
+# - Round 2 stdout=FALSE means progress logs from worker tasks now
+#   stream live — if a script appears hung, tail the log to see
+#   per-worker progress instead of waiting for batch-end output.
