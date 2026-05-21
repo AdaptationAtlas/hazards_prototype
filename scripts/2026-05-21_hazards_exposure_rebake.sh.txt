@@ -41,6 +41,18 @@ export LOG_DIR="$HOME/atlas/hazards_prototype/logs"
 mkdir -p "$LOG_DIR"
 STAMP=$(date +%Y%m%d_%H%M%S)
 
+# Force every gated output to regenerate so the v9 mass-conserving
+# resample fix lands in EVERY downstream artefact (not just the
+# unconditionally-overwritten VOP rasters).
+# Without this, scripts skip existing outputs:
+#   0.4.1: overwrite_glw flag at L151 (livestock_masks.tif) + L537 (livestock_no)
+#   0.4.4: overwrite_spam (L73), overwrite_glw (L192)
+#   3_freq_x_exposure: overwrite + overwrite1..4 (L311 / L351 / L358 / L365 / L388)
+# Each script reads Sys.getenv("FORCE_OVERWRITE") and flips to TRUE.
+# Unset for normal incremental runs.
+export FORCE_OVERWRITE=1
+echo "FORCE_OVERWRITE = $FORCE_OVERWRITE (all gated outputs will regenerate)"
+
 # Sanity check that scripts exist
 test -f "$LIVESTOCK_SCRIPT" && echo "OK: 0.4.1 exists" || echo "FAIL: 0.4.1 missing"
 test -f "$EXPOSURE_SCRIPT"  && echo "OK: 0.4.4 exists" || echo "FAIL: 0.4.4 missing"

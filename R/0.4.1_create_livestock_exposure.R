@@ -148,7 +148,10 @@ glw2atlas <- data.table(
 
 # 2.4) Load high/low mask
 mask_ls_file <- paste0(glw_int_dir, "/livestock_masks.tif")
-overwrite_glw <- FALSE
+# Set FORCE_OVERWRITE=1 in env to force regen of all gated outputs.
+# Used by the issue #9 rebake runbook so the v9 mass-conserving fix
+# actually lands in livestock_masks.tif + livestock_number_number.tif.
+overwrite_glw <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 if (!file.exists(mask_ls_file) || overwrite_glw == TRUE) {
   glw <- terra::rast(glw_files)
   names(glw) <- glw_short_to_long[unlist(tstrsplit(names(glw), "_", keep = 1))]
@@ -531,7 +534,7 @@ for (i in seq_along(vop_list)) {
 # 6) Livestock Numbers ######
 livestock_no_file <- paste0(glw_pro_dir, "/livestock_number_number.tif")
 shoat_prop_file <- paste0(glw_int_dir, "/shoat_prop.tif")
-overwrite_glw <- FALSE
+overwrite_glw <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 
 if (!file.exists(livestock_no_file) || overwrite_glw == TRUE) {
   glw <- terra::rast(glw_files)
@@ -683,3 +686,6 @@ if (FALSE) {
   plot(glw_vop_cusd15_adm0 / fao_vop_cusd15_rast)
   plot(glw_vop_int15_adm0 / fao_vop_id15_rast)
 }
+
+cat("\n===== 0.4.1_create_livestock_exposure.R COMPLETE at ",
+    format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), " =====\n", sep = "")

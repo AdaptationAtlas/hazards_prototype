@@ -70,7 +70,10 @@ boundaries_index<-lapply(1:length(Geographies),FUN=function(i){
 names(boundaries_index)<-names(Geographies)
 
 # 1) Crop (MapSPAM) extraction by vector boundaries #####
-overwrite_spam<-F
+# Set FORCE_OVERWRITE=1 in env to force regen of all gated outputs.
+# Used by the issue #9 rebake runbook so the v9 mass-conserving fix
+# actually lands in every parquet.
+overwrite_spam <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 version_spam<-1
 source_year_spam<-list(spam_year=2020,fao_price="varies")
 
@@ -189,7 +192,7 @@ future::plan(future::sequential)
 
 # 2) Livestock (GLW) extraction by vector boundaries #####
 version_glw<-"glw4-2020_atlasv1"
-overwrite_glw<-F
+overwrite_glw <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 
 livestock_no_file<-paste0(glw_pro_dir,"/livestock_number_number.tif")
 if(!file.exists(livestock_no_file)){
@@ -478,4 +481,7 @@ if(!file.exists(file)|overwrite_pop==T){
   
   write_json(attr_info, attr_file, pretty = TRUE)
 }
+
+cat("\n===== 0.4.4_process_exposure.R COMPLETE at ",
+    format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), " =====\n", sep = "")
 

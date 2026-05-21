@@ -308,7 +308,10 @@ names(boundaries_index) <- names(Geographies)
 ## TODO: Abandoning for now as to caluclate the mean from admin 2 aggregation we need cell counts for every level as weights.
 
 ## d.2) Exposure variables ####
-overwrite <- FALSE
+# Set FORCE_OVERWRITE=1 in env to force regen of all gated outputs.
+# Used by the issue #9 rebake runbook so the v9 mass-conserving fix
+# actually lands in hazard_exposure.parquet.
+overwrite <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 ### d.2.1) Crops (MapSPAM) #####
 #### d.2.1.1) Crop VoP (Value of production) ######
 # To generalize it might be better to just supply a filename for the mapspam
@@ -348,21 +351,21 @@ cat("0.2.2.2) Using livestock vop usd file:", basename(livestock_vop_usd_file), 
 # e) Controls ####
 # e.1) Hazard frequency ####
 run1 <- FALSE
-overwrite1 <- FALSE
+overwrite1 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 worker_n1 <- 5
 multisession1 <- TRUE
 round1 <- 3
 version1 <- 2
 # e.2) Hazard means ####
 run2 <- FALSE
-overwrite2 <- FALSE
+overwrite2 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 worker_n2 <- 5
 multisession2 <- TRUE
 round2 <- 2
 version2 <- 2
 # e.3) (To Do!) Hazard timeseries ####
 run3 <- FALSE
-overwrite3 <- FALSE
+overwrite3 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 worker_n3 <- 5
 multisession3 <- TRUE
 round3 <- 2
@@ -385,7 +388,7 @@ multisession4 <- TRUE
 round4 <- 2
 version4 <- 1
 
-overwrite4 <- FALSE
+overwrite4 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 do_vop <- TRUE
 round_vop <- 0
 vop_name <- "vop_intld15"
@@ -1330,4 +1333,6 @@ for (tx in seq_along(timeframe_choices)) {
   )
 }
 
-cat("Exited timeframe loop - script complete /n")
+cat("Exited timeframe loop - script complete\n")
+cat("\n===== 3_freq_x_exposure.R COMPLETE at ",
+    format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), " =====\n", sep = "")
