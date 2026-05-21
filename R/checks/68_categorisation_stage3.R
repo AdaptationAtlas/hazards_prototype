@@ -119,21 +119,37 @@ for (var_token in c("PTOT", "TAVG", "NDWS")) {
 
 # Comparison summary
 log_section("Cross-scenario spread comparison")
+cmp_wide <- NULL
 cmp <- rbindlist(lapply(names(results), function(k) {
   r <- results[[k]]
   if (is.null(r)) return(NULL)
-  data.table(key = k, var = r$var,
+  # Split key into (var, scenario) by RIGHT-most underscore so multi-
+  # underscore var tokens (e.g. SPEI-12_historic) don't collide with
+  # the regex-based extraction the previous version used.
+  parts <- strsplit(k, "_(?=[^_]+$)", perl = TRUE)[[1]]
+  data.table(key = k, var = parts[1], scenario = parts[2],
              min = r$val_min, median = r$val_median, max = r$val_max,
              spread = r$val_spread)
 }))
 if (nrow(cmp) > 0L) {
-  cmp_wide <- dcast(cmp, var ~ sub(".*_", "", key),
-                    value.var = c("min", "median", "max", "spread"))
-  log_step("min / median / max / spread by variable, historic vs ssp245:")
-  print(cmp_wide)
-  log_step("Watch ratio of historic spread to ssp245 spread:")
-  log_step("  ratio < 0.5 = historic distribution collapsed (degenerate)")
-  log_step("  ratio ~ 1   = historic is fine; bug is downstream in NDWS deriv")
+  tryCatch({
+    cmp_wide <- dcast(cmp, var ~ scenario,
+                      value.var = c("min", "median", "max", "spread"))
+    log_step("min / median / max / spread by variable, historic vs ssp245:")
+    print(cmp_wide)
+    if (all(c("spread_historic", "spread_ssp245") %in% names(cmp_wide))) {
+      cmp_wide[, ratio_spread := round(spread_historic / spread_ssp245, 3)]
+      log_step("spread ratio historic / ssp245:")
+      print(cmp_wide[, .(var, spread_historic, spread_ssp245, ratio_spread)])
+    }
+    log_step("Watch ratio of historic spread to ssp245 spread:")
+    log_step("  ratio < 0.5 = historic distribution collapsed (degenerate)")
+    log_step("  ratio ~ 1   = historic is fine; bug is downstream in NDWS deriv")
+  }, error = function(e) {
+    log_step("dcast/summary failed: %s", conditionMessage(e))
+    log_step("falling back to long-form table (per-section data still in JSON):")
+    print(cmp)
+  })
 }
 
 # JSON record
