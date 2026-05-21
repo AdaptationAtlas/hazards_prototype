@@ -1,0 +1,31 @@
+nohup: ignoring input
+[14:51:09] bootstrap_minimal: resolving project / working dirs
+[14:51:10]   selected working_dir: /home/jovyan/common_data/nex-gddp-cimp6_hazards
+[publish] workers=16  per_worker_gb~0.2  cores=40/40 (logical/physical)  RAM=359.4 free / 376.5 total GB  budget=3.2 GB
+project_dir          : /home/jovyan/atlas/hazards_prototype 
+working_dir          : /home/jovyan/common_data/nex-gddp-cimp6_hazards 
+admin dir            : Data/chirts_chirps_hist/admin 
+maps dir             : Data/chirts_chirps_hist/maps 
+metadata dir         : /home/jovyan/atlas/hazards_prototype/metadata 
+mode                 : --smoke 
+tier                 : all 
+tier 1 enabled       : TRUE 
+tier 2 enabled       : FALSE 
+overwrite            : FALSE 
+workers              : 16 
+
+[14:51:11] === SMOKE TEST: upload obs_monthly_adm0.parquet + 4 inline checks ===
+[14:51:11]   local : Data/chirts_chirps_hist/admin/obs_monthly_adm0.parquet (4.6 MB)
+[14:51:11]   s3    : s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.parquet
+The current policy already allows public access to the specified files. 
+[1] "Report saved to: Data/chirts_chirps_hist/admin/obs-admin-monthly-smoke_uploadReport.json"
+[14:51:17] upload complete
+
+=== VERIFICATION CHECKS ===
+[OK] 1. Round-trip: 281124 rows x 12 cols match.
+[OK] 2. S3 listing contains the uploaded object (2 total objects in partition).
+[OK] 3. Anonymous read succeeded (object is public).
+[OK] 4. Upload report file present: ./Data/chirts_chirps_hist/admin/obs-admin-monthly-smoke_uploadReport.json
+
+=== SMOKE TEST PASSED - STOPPING (do NOT run --full from here) ===
+Smoke URI: s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.parquet
