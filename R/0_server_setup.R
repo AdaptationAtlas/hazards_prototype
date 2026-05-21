@@ -270,6 +270,7 @@ atlas_dirs$data_dir$adaptive_capacity <- file.path(atlas_dirs$data_dir[[1]], "ad
 atlas_dirs$data_dir$atlas_pop <- file.path(atlas_dirs$data_dir[[1]], "atlas_pop")
 # atlas_dirs$data_dir$commodity_masks    <- file.path(atlas_dirs$data_dir[[1]], "commodity_masks")
 atlas_dirs$data_dir$GLW4 <- file.path(atlas_dirs$data_dir[[1]], "GLW4")
+atlas_dirs$data_dir$GLW4_2020 <- file.path(atlas_dirs$data_dir[[1]], "GLW4_2020")
 atlas_dirs$data_dir$livestock_vop <- file.path(atlas_dirs$data_dir[[1]], "livestock_vop")
 atlas_dirs$data_dir$afr_highlands <- file.path(atlas_dirs$data_dir[[1]], "afr_highlands")
 atlas_dirs$data_dir$fao <- file.path(atlas_dirs$data_dir[[1]], "fao")
@@ -338,6 +339,23 @@ if (!dir.exists(glw_pro_dir)) {
 glw_int_dir <- file.path(glw_dir, "intermediate")
 if (!dir.exists(glw_int_dir)) {
   dir.create(glw_int_dir, recursive = TRUE)
+}
+
+# GLW4-2020 (used by 0.4.1_create_livestock_exposure.R after the
+# July/Sept 2025 refactors 35375cf + 69d7b84).
+glw2020_dir <- atlas_dirs$data_dir$GLW4_2020
+if (!dir.exists(glw2020_dir)) {
+  dir.create(glw2020_dir, recursive = TRUE)
+}
+
+glw2020_pro_dir <- file.path(glw2020_dir, "processed")
+if (!dir.exists(glw2020_pro_dir)) {
+  dir.create(glw2020_pro_dir, recursive = TRUE)
+}
+
+glw2020_int_dir <- file.path(glw2020_dir, "intermediate")
+if (!dir.exists(glw2020_int_dir)) {
+  dir.create(glw2020_int_dir, recursive = TRUE)
 }
 
 # ls_vop_dir <- atlas_dirs$data_dir$livestock_vop
