@@ -71,13 +71,23 @@ if (is.null(mean_dir) || !dir.exists(mean_dir)) {
   log_step("found %d NDWS source files (all scenarios)", length(all_src))
   for (scenario_dir in c("historic", "ssp245")) {
     log_section(sprintf("Section A.%s", scenario_dir))
-    src_files <- all_src[grepl(paste0("^", scenario_dir, "_"),
-                               basename(all_src))]
-    log_step("found %d NDWS source files for %s",
-             length(src_files), scenario_dir)
+    # The _class/ step renames `historical_` -> `historic_` at L654 of
+    # 2_calculate_haz_freq.R. The _mean/ source files (input to the
+    # classifier) probably retain the original `historical_` prefix.
+    # Match either prefix for the historic case so we always find them.
+    prefix_re <- if (scenario_dir == "historic") {
+      "^(historic|historical)_"
+    } else {
+      paste0("^", scenario_dir, "_")
+    }
+    src_files <- all_src[grepl(prefix_re, basename(all_src))]
+    log_step("found %d NDWS source files for %s (regex: %s)",
+             length(src_files), scenario_dir, prefix_re)
     if (length(src_files) == 0L) {
       log_step("(no matching files; check filename pattern under %s)",
                mean_dir)
+      log_step("(first 5 actual basenames for reference: %s)",
+               paste(head(basename(all_src), 5), collapse = ", "))
       next
     }
 
