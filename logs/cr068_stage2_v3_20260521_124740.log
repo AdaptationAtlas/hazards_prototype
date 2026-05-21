@@ -1,0 +1,150 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+
+======================================================================
+[12:48:08][pid 35937] ==== CR-068 Stage 2 — walk upstream ====
+======================================================================
+
+[12:48:08][pid 35937] project_dir = /home/jovyan/atlas/hazards_prototype
+[12:48:08][pid 35937] Cglabs      = TRUE
+[12:48:08][pid 35937] countries   = AGO
+
+======================================================================
+[12:48:08][pid 35937] ==== Section A — NDWS source TIF inspection (historic vs ssp245) ====
+======================================================================
+
+[12:48:08][pid 35937] mean_dir = Data/hazard_timeseries_mean
+[12:48:10][pid 35937] found 1224 NDWS source files (all scenarios)
+
+======================================================================
+[12:48:10][pid 35937] ==== Section A.historic ====
+======================================================================
+
+[12:48:10][pid 35937] found 72 NDWS source files for historic (regex: ^(historic|historical)_)
+[12:48:10][pid 35937] inspecting: historical_ACCESS-CM2_1995-2014_NDWS-mean_mean.tif
+[12:48:10][pid 35937]   layers = 1
+[12:48:10][pid 35937]   per-pixel summary (over AOI, all layers):
+                                                 min     mean    max
+historical_ACCESS-CM2_1995-2014_NDWS-mean_mean 28.36 29.30946 30.375
+[12:48:10][pid 35937]   value sample (n=1000): min=28.36, q05=28.75, median=29.30, q95=29.86, max=30.38
+[12:48:10][pid 35937]   diagnosis: is_binary=FALSE, is_daycount=TRUE
+
+======================================================================
+[12:48:10][pid 35937] ==== Section A.ssp245 ====
+======================================================================
+
+[12:48:10][pid 35937] found 288 NDWS source files for ssp245 (regex: ^ssp245_)
+[12:48:10][pid 35937] inspecting: ssp245_ACCESS-CM2_2021-2040_NDWS-mean_mean.tif
+[12:48:10][pid 35937]   layers = 1
+[12:48:10][pid 35937]   per-pixel summary (over AOI, all layers):
+                                              min    mean    max
+ssp245_ACCESS-CM2_2021-2040_NDWS-mean_mean 15.846 22.6045 30.246
+[12:48:10][pid 35937]   value sample (n=1000): min=15.85, q05=18.07, median=22.11, q95=27.82, max=30.25
+[12:48:10][pid 35937]   diagnosis: is_binary=FALSE, is_daycount=TRUE
+Warning messages:
+1: [mask] CRS do not match 
+2: [mask] CRS do not match 
+
+======================================================================
+[12:48:10][pid 35937] ==== Section B — NDWS classified TIF inspection (historic vs ssp245) ====
+======================================================================
+
+[12:48:10][pid 35937] class_dir = Data/hazard_timeseries_class
+
+======================================================================
+[12:48:10][pid 35937] ==== Section B.historic ====
+======================================================================
+
+[12:48:12][pid 35937] inspecting: historic_ACCESS-CM2_1995-2014_NDWS-mean-G15.tif
+[12:48:12][pid 35937]   layers = 19
+[12:48:12][pid 35937]   per-pixel summary (binary 0/1 expected):
+     min mean max
+1995   1    1   1
+1996   1    1   1
+1997   1    1   1
+1998   1    1   1
+1999   1    1   1
+2000   1    1   1
+2001   1    1   1
+2002   1    1   1
+2003   1    1   1
+2004   1    1   1
+2005   1    1   1
+2006   1    1   1
+2007   1    1   1
+2008   1    1   1
+2009   1    1   1
+2010   1    1   1
+2011   1    1   1
+2012   1    1   1
+2013   1    1   1
+[12:48:12][pid 35937]   global mean (pixel × time fraction flagged) = 1.0000
+
+======================================================================
+[12:48:12][pid 35937] ==== Section B.ssp245 ====
+======================================================================
+
+[12:48:13][pid 35937] inspecting: ssp245_ACCESS-CM2_2021-2040_NDWS-mean-G15.tif
+[12:48:13][pid 35937]   layers = 19
+[12:48:13][pid 35937]   per-pixel summary (binary 0/1 expected):
+     min      mean max
+2021   0 0.9738339   1
+2022   0 0.9988623   1
+2023   1 1.0000000   1
+2024   0 0.9954494   1
+2025   1 1.0000000   1
+2026   0 0.9965870   1
+2027   1 1.0000000   1
+2028   0 0.9926052   1
+2029   0 0.9994312   1
+2030   1 1.0000000   1
+2031   0 0.9960182   1
+2032   0 0.9687144   1
+2033   1 1.0000000   1
+2034   0 0.9994312   1
+2035   1 1.0000000   1
+2036   1 1.0000000   1
+2037   0 0.9670080   1
+2038   1 1.0000000   1
+2039   1 1.0000000   1
+[12:48:13][pid 35937]   global mean (pixel × time fraction flagged) = 0.9941
+Warning messages:
+1: [mask] CRS do not match 
+2: [mask] CRS do not match 
+
+======================================================================
+[12:48:13][pid 35937] ==== Section C — per-directory collision audit (the L654 rename concern) ====
+======================================================================
+
+[12:48:17][pid 35937] dirs with same-name files: 0
+[12:48:17][pid 35937]   no same-directory collisions found — Stage 1's 'collisions'
+[12:48:17][pid 35937]   were cross-subdir basename matches (benign)
+[12:48:17][pid 35937] Wrote report to /home/jovyan/atlas/hazards_prototype/metadata/checks/68_categorisation_stage2.json
+
+======================================================================
+[12:48:17][pid 35937] ==== STOP — Stage 2 report ====
+======================================================================
+
+[12:48:17][pid 35937] Read the per-pixel summary + is_binary / is_daycount diagnostics
+[12:48:17][pid 35937] above to determine where the saturation enters the pipeline:
+[12:48:17][pid 35937]   - is_daycount = TRUE && historic > future : Step 1 classifier
+[12:48:17][pid 35937]     threshold likely wrong, OR raw NDWS values are saturated.
+[12:48:17][pid 35937]   - is_binary = TRUE                          : classifier ran
+[12:48:17][pid 35937]     twice OR raw timeseries already encodes binary 0/1.
+[12:48:17][pid 35937]   - non-physical values                       : bug is upstream
+[12:48:17][pid 35937]     in R/1_make_timeseries.R historic-scenario read path.
+
+######################################################################
+######################################################################
+[12:48:17][pid 35937] ##### COMPLETE: CR-068 Stage 2 probe #####
+[12:48:17][pid 35937] ##### JSON report: /home/jovyan/atlas/hazards_prototype/metadata/checks/68_categorisation_stage2.json
+[12:48:17][pid 35937] ##### Diagnosis lines above — paste back for Stage 3 fix
+[12:48:17][pid 35937] ##### exit status 0; log file finalized 2026-05-21 12:48:17 #####
+######################################################################
+######################################################################
+
