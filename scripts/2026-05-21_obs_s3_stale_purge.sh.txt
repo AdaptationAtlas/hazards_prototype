@@ -50,11 +50,20 @@ screen -S obs_s3_stale_purge_2026-05-21
 # 1) Paths + log dir
 # ======================================================================
 export PROJECT_DIR="$HOME/atlas/hazards_prototype"
+# WORKING_DIR is where the DATA lives — distinct from PROJECT_DIR (code).
+# Must match bootstrap_minimal()'s switch in R/observational/6_publish_obs_to_s3.R
+# for the dry-run in STAGE 1b to enumerate the same files we check here.
+export WORKING_DIR="/home/jovyan/common_data/nex-gddp-cimp6_hazards"
 export LOG_DIR="$PROJECT_DIR/logs"
 mkdir -p "$LOG_DIR"
 STAMP=$(date +%Y%m%d_%H%M%S)
 export BUCKET="digital-atlas"
 export PREFIX="domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=climatology"
+
+# Sanity: confirm WORKING_DIR has the expected layout
+test -d "$WORKING_DIR/Data/chirts_chirps_hist/maps" \
+  && echo "OK: $WORKING_DIR/Data/chirts_chirps_hist/maps exists" \
+  || echo "FAIL: data dir not at $WORKING_DIR/Data/chirts_chirps_hist/maps"
 
 
 # ======================================================================
@@ -68,7 +77,7 @@ echo "STAGE 0: local-file sanity check -> $LOG_FILE"
   echo "=== STAGE 0: local Africa-extent check ==="
   date
   for f in mean sd min max; do
-    LOCAL="$PROJECT_DIR/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_${f}.tif"
+    LOCAL="$WORKING_DIR/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_${f}.tif"
     if [ -f "$LOCAL" ]; then
       echo -n "  $LOCAL -> "
       gdalinfo "$LOCAL" 2>&1 | awk '/^Size is/'
@@ -78,7 +87,7 @@ echo "STAGE 0: local-file sanity check -> $LOG_FILE"
   done
   # Print stats on one to confirm not -9999
   echo "--- gdalinfo stats on PTOT_annual_1991-2020_mean.tif ---"
-  gdalinfo "$PROJECT_DIR/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_mean.tif" 2>&1 | grep -E "^Overviews|Mean=|StdDev=" | head -3
+  gdalinfo "$WORKING_DIR/Data/chirts_chirps_hist/maps/PTOT/PTOT_annual_1991-2020_mean.tif" 2>&1 | grep -E "^Overviews|Mean=|StdDev=" | head -3
 } | tee "$LOG_FILE"
 # STOP if any are 170,210 or Mean=-9999.
 
@@ -102,9 +111,9 @@ echo "STAGE 1b: step 6 dry-run -> $LOG_FILE"
 Rscript "$PROJECT_DIR/R/observational/6_publish_obs_to_s3.R" --dry-run --tier 2 \
   > "$LOG_FILE" 2>&1
 echo "  exit code: $?"
-# Dry-run writes Data/chirts_chirps_hist/_publish_dry_run.csv with the
-# canonical s3_uri per local file.
-DRY_CSV="$PROJECT_DIR/Data/chirts_chirps_hist/_publish_dry_run.csv"
+# Dry-run writes Data/chirts_chirps_hist/_publish_dry_run.csv (relative
+# to whatever working_dir bootstrap_minimal() picks — same WORKING_DIR).
+DRY_CSV="$WORKING_DIR/Data/chirts_chirps_hist/_publish_dry_run.csv"
 test -f "$DRY_CSV" && echo "OK: $DRY_CSV ($(wc -l < $DRY_CSV) rows)" || echo "FAIL: dry-run CSV missing"
 
 # 1c) Build the stale set: S3 objects whose key is NOT in the dry-run plan.
