@@ -1,0 +1,104 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+
+======================================================================
+[12:58:10][pid 36863] ==== CR-068 Stage 3 — probe raw TAVG + PTOT source rasters ====
+======================================================================
+
+[12:58:10][pid 36863] project_dir = /home/jovyan/atlas/hazards_prototype
+[12:58:10][pid 36863] Cglabs      = TRUE
+[12:58:10][pid 36863] countries   = AGO
+[12:58:10][pid 36863] mean_dir = Data/hazard_timeseries_mean
+
+======================================================================
+[12:58:10][pid 36863] ==== Section: historic — PTOT ====
+======================================================================
+
+[12:58:11][pid 36863] found 72 source files (regex ^(historic|historical)_, var PTOT)
+[12:58:11][pid 36863] inspecting: historical_ACCESS-CM2_1995-2014_PTOT-sum_mean.tif
+[12:58:11][pid 36863]   layers = 1
+[12:58:11][pid 36863]   per-pixel summary (over AOI):
+                                                 min     mean      max
+historical_ACCESS-CM2_1995-2014_PTOT-sum_mean 77.478 990.8994 1595.611
+[12:58:11][pid 36863]   value sample n=1000: min=78.571, q05=376.549, median=1083.842, q95=1409.398, max=1595.611, spread=1517.040
+
+======================================================================
+[12:58:11][pid 36863] ==== Section: ssp245 — PTOT ====
+======================================================================
+
+[12:58:12][pid 36863] found 288 source files (regex ^ssp245_, var PTOT)
+[12:58:12][pid 36863] inspecting: ssp245_ACCESS-CM2_2021-2040_PTOT-sum_mean.tif
+[12:58:12][pid 36863]   layers = 1
+[12:58:12][pid 36863]   per-pixel summary (over AOI):
+                                             min     mean      max
+ssp245_ACCESS-CM2_2021-2040_PTOT-sum_mean 68.396 927.7843 1561.583
+[12:58:12][pid 36863]   value sample n=1000: min=68.396, q05=352.163, median=1019.869, q95=1359.721, max=1561.583, spread=1493.187
+
+======================================================================
+[12:58:12][pid 36863] ==== Section: historic — TAVG ====
+======================================================================
+
+[12:58:13][pid 36863] found 72 source files (regex ^(historic|historical)_, var TAVG)
+[12:58:13][pid 36863] inspecting: historical_ACCESS-CM2_1995-2014_TAVG-mean_mean.tif
+[12:58:13][pid 36863]   layers = 1
+[12:58:13][pid 36863]   per-pixel summary (over AOI):
+                                                 min     mean    max
+historical_ACCESS-CM2_1995-2014_TAVG-mean_mean 16.11 22.98718 26.415
+[12:58:13][pid 36863]   value sample n=1000: min=16.311, q05=20.100, median=23.286, q95=25.253, max=26.415, spread=10.104
+
+======================================================================
+[12:58:13][pid 36863] ==== Section: ssp245 — TAVG ====
+======================================================================
+
+[12:58:14][pid 36863] found 288 source files (regex ^ssp245_, var TAVG)
+[12:58:14][pid 36863] inspecting: ssp245_ACCESS-CM2_2021-2040_TAVG-mean_mean.tif
+[12:58:14][pid 36863]   layers = 1
+[12:58:14][pid 36863]   per-pixel summary (over AOI):
+                                              min     mean    max
+ssp245_ACCESS-CM2_2021-2040_TAVG-mean_mean 17.383 24.21831 27.473
+[12:58:14][pid 36863]   value sample n=1000: min=18.109, q05=21.360, median=24.426, q95=26.426, max=27.218, spread=9.109
+
+======================================================================
+[12:58:14][pid 36863] ==== Section: historic — NDWS ====
+======================================================================
+
+[12:58:14][pid 36863] found 72 source files (regex ^(historic|historical)_, var NDWS)
+[12:58:14][pid 36863] inspecting: historical_ACCESS-CM2_1995-2014_NDWS-mean_mean.tif
+[12:58:14][pid 36863]   layers = 1
+[12:58:14][pid 36863]   per-pixel summary (over AOI):
+                                                 min     mean    max
+historical_ACCESS-CM2_1995-2014_NDWS-mean_mean 28.36 29.30946 30.375
+[12:58:14][pid 36863]   value sample n=1000: min=28.360, q05=28.754, median=29.291, q95=29.880, max=30.355, spread=1.995
+
+======================================================================
+[12:58:14][pid 36863] ==== Section: ssp245 — NDWS ====
+======================================================================
+
+[12:58:15][pid 36863] found 288 source files (regex ^ssp245_, var NDWS)
+[12:58:15][pid 36863] inspecting: ssp245_ACCESS-CM2_2021-2040_NDWS-mean_mean.tif
+[12:58:15][pid 36863]   layers = 1
+[12:58:15][pid 36863]   per-pixel summary (over AOI):
+                                              min    mean    max
+ssp245_ACCESS-CM2_2021-2040_NDWS-mean_mean 15.846 22.6045 30.246
+[12:58:15][pid 36863]   value sample n=1000: min=15.846, q05=18.075, median=22.129, q95=27.691, max=30.246, spread=14.400
+Warning messages:
+1: [mask] CRS do not match 
+2: [mask] CRS do not match 
+3: [mask] CRS do not match 
+4: [mask] CRS do not match 
+5: [mask] CRS do not match 
+6: [mask] CRS do not match 
+
+======================================================================
+[12:58:15][pid 36863] ==== Cross-scenario spread comparison ====
+======================================================================
+
+Error in setkeyv(ans, key) : 
+  some columns are not in the data.table: [PTOT_historic]
+Calls: rbindlist ... data.table -> setkeyv -> stopf -> raise_condition -> signal
+Execution halted
