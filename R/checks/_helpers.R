@@ -123,3 +123,22 @@ log_mem <- function(label = "") {
     log_step("MEM   (install pryr for memory snapshot)  %s", label)
   }
 }
+
+# Loud end-of-script banner so `tail -f` / log files clearly show the
+# probe terminated normally. Anything that runs after this banner is
+# either an error trap or out-of-band cleanup — if you don't see this
+# in the log, the script crashed silently.
+log_complete <- function(label = "", extra = NULL) {
+  cat("\n")
+  cat(strrep("#", 70), "\n", sep = "")
+  cat(strrep("#", 70), "\n", sep = "")
+  log_step("##### COMPLETE: %s #####", label)
+  if (!is.null(extra)) {
+    for (line in extra) log_step("##### %s", line)
+  }
+  log_step("##### exit status 0; log file finalized %s #####",
+           format(Sys.time(), "%Y-%m-%d %H:%M:%S"))
+  cat(strrep("#", 70), "\n", sep = "")
+  cat(strrep("#", 70), "\n\n", sep = "")
+  flush.console()
+}

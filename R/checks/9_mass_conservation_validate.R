@@ -218,7 +218,11 @@ summarize_log()
 # Exit status: non-zero if (a) has breaches
 if (nrow(breach) > 0L) {
   log_step("DECISION: validation FAILED — investigate the (iso3, crop) breaches above.")
+  log_complete("Issue #9 Stage 3 validation",
+               c("DECISION = FAILED (exit code 1)"))
   quit(status = 1, save = "no")
 } else {
   log_step("DECISION: validation PASSED — issue #9 fix closes the magnitude gap.")
+  log_complete("Issue #9 Stage 3 validation",
+               c("DECISION = PASSED (exit code 0)"))
 }

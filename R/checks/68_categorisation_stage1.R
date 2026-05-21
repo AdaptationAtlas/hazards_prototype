@@ -429,3 +429,7 @@ cat("  Section A SKIPPED (class_dir empty), Section E shows large\n",
 cat("  Section A SKIPPED, Section E shows historic combo means ~= future:\n",
     "    -> bug is downstream of _int/ (in 3_freq_x_exposure.R or the\n",
     "       parquet build), and the local rasters are fine.\n", sep = "")
+
+log_complete("CR-068 Stage 1 probe",
+             c(sprintf("JSON report: %s", out_path),
+               "Paste SUMMARY + Saturated / Near-zero tables back to Claude"))

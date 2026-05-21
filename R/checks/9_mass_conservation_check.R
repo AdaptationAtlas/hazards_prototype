@@ -169,3 +169,5 @@ jsonlite::write_json(
 )
 log_step("Wrote report to %s", out_path)
 summarize_log()
+log_complete("Issue #9 mass-conservation baseline probe",
+             c(sprintf("JSON report: %s", out_path)))

@@ -61,18 +61,25 @@ if (is.null(mean_dir) || !dir.exists(mean_dir)) {
   log_step("hazard_timeseries_mean dir not resolvable, skipping Section A")
 } else {
   log_step("mean_dir = %s", mean_dir)
+  # The actual layout is per-period (jagermeyr/...) not per-scenario.
+  # Files are named <scenario>_<model>_<timeframe>_<index>.tif.
+  # Find NDWS source files for historic + ssp245 by recursive glob +
+  # filename-pattern.
+  all_src <- list.files(mean_dir, pattern = "NDWS.*\\.tif$",
+                        full.names = TRUE, recursive = TRUE)
+  all_src <- all_src[!grepl("ENSEMBLE", all_src)]
+  log_step("found %d NDWS source files (all scenarios)", length(all_src))
   for (scenario_dir in c("historic", "ssp245")) {
     log_section(sprintf("Section A.%s", scenario_dir))
-    scn_dir <- file.path(mean_dir, scenario_dir)
-    if (!dir.exists(scn_dir)) {
-      log_step("(skipping — %s does not exist)", scn_dir)
+    src_files <- all_src[grepl(paste0("^", scenario_dir, "_"),
+                               basename(all_src))]
+    log_step("found %d NDWS source files for %s",
+             length(src_files), scenario_dir)
+    if (length(src_files) == 0L) {
+      log_step("(no matching files; check filename pattern under %s)",
+               mean_dir)
       next
     }
-    src_files <- list.files(scn_dir, pattern = "NDWS.*\\.tif$",
-                            full.names = TRUE, recursive = TRUE)
-    src_files <- src_files[!grepl("ENSEMBLE", src_files)]
-    log_step("found %d NDWS source files under %s", length(src_files), scn_dir)
-    if (length(src_files) == 0L) next
 
     # Pick the first file as a representative sample.
     f <- src_files[1]
@@ -225,3 +232,8 @@ log_step("  - is_binary = TRUE                          : classifier ran")
 log_step("    twice OR raw timeseries already encodes binary 0/1.")
 log_step("  - non-physical values                       : bug is upstream")
 log_step("    in R/1_make_timeseries.R historic-scenario read path.")
+
+log_complete("CR-068 Stage 2 probe", c(
+  sprintf("JSON report: %s", out_path),
+  "Diagnosis lines above — paste back for Stage 3 fix"
+))
