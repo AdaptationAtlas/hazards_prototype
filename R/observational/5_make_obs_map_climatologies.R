@@ -155,8 +155,26 @@ climatologies <- list(
   full        = c(NA_integer_, NA_integer_)
 )
 
+# COG creation options.
+# - OVERVIEWS=AUTO + OVERVIEW_RESAMPLING=AVERAGE: pyramid pre-baked so
+#   browser clients (notebook geotiff.js HTTP Range) can fetch ~5 KB
+#   at continental zoom instead of full-resolution ~3.5 MB. Per
+#   dispatches/2026-05-21_observational-cog-extent-bug-plus-optimizations.md
+#   the single biggest perf win for the upcoming observational map view.
+# - PREDICTOR=2 is fine for our use; PREDICTOR=3 (Float32 predictor)
+#   may compress 10-20% better on smooth climatology fields — worth an
+#   A/B at the per-variable level if disk footprint matters.
+# - BLOCKSIZE=512 matches the existing publish layout.
+# - Statistics: terra's COG writer copies min/max but writes MEAN/STDDEV
+#   = -9999 sentinels. We post-process with `gdalinfo -stats` after
+#   writeRaster() to populate real stats in the .aux.xml sidecar
+#   (CR-076 part 2). See compute_cog_stats() further down.
 cog_gdal_opts <- c(
-  "COMPRESS=DEFLATE", "PREDICTOR=2", "OVERVIEWS=NONE", "BLOCKSIZE=512"
+  "COMPRESS=DEFLATE",
+  "PREDICTOR=2",
+  "OVERVIEWS=AUTO",
+  "OVERVIEW_RESAMPLING=AVERAGE",
+  "BLOCKSIZE=512"
 )
 maps_dir <- file.path(chirts_chirps_hist_dir, "maps")
 if (!dir.exists(maps_dir)) dir.create(maps_dir, recursive = TRUE)
@@ -281,6 +299,29 @@ reduce_to_stats <- function(yearly_stk) {
   out
 }
 
+#' Post-process a freshly-written COG to populate real STATISTICS_MEAN /
+#' STATISTICS_STDDEV (CR-076 part 2). terra::writeRaster(filetype = "COG")
+#' copies min/max from the source raster but writes -9999 sentinels for
+#' mean / stddev because GDAL's COG driver does NOT compute them during
+#' creation. `gdalinfo -stats` forces a full-pass scan and writes the
+#' real values into the .aux.xml sidecar; downstream readers (including
+#' the notebook's geotiff.js client) pick them up via the standard
+#' PAM lookup. Adds one extra full read per file — small cost relative
+#' to the per-COG bake time.
+compute_cog_stats <- function(path) {
+  if (!nzchar(Sys.which("gdalinfo"))) {
+    return(invisible(NULL))   # GDAL CLI not on PATH; silently skip.
+  }
+  res <- suppressWarnings(system2("gdalinfo",
+    args = c("-stats", "-mm", shQuote(path)),
+    stdout = FALSE, stderr = FALSE))
+  if (res != 0L) {
+    warning(sprintf("gdalinfo -stats failed (rc=%d) for %s",
+                    res, basename(path)))
+  }
+  invisible(NULL)
+}
+
 #' Resolve the year range for a climatology window, given the variable's
 #' available years (so 'full' truncates correctly).
 resolve_clim_years <- function(clim_bounds, available_years) {
@@ -316,7 +357,18 @@ if (is.null(backend)) {
 #' the vector of output paths written. Self-contained so it serialises
 #' cleanly to PSOCK workers when --backend multisession is used.
 process_variable <- function(var) {
-  out_var_dir <- file.path(maps_dir, var)
+  # CRITICAL: smoke runs use a Kenya bbox (smoke_bbox) and previously wrote
+  # to the SAME output path as the full bake — overwriting Africa-wide
+  # outputs with a Kenya crop. Caused the CR-076 / "4 PTOT_annual_1991-2020
+  # files at 170x210 px" bug surfaced 2026-05-21. Namespace the smoke
+  # outputs under a `_smoke/` subtree so they can NEVER collide with the
+  # production bake. The smoke validation block at the bottom of this
+  # script reads from this subdir; the publish layer never sees it.
+  out_var_dir <- if (mode == "--smoke") {
+    file.path(maps_dir, "_smoke", var)
+  } else {
+    file.path(maps_dir, var)
+  }
   if (!dir.exists(out_var_dir)) dir.create(out_var_dir, recursive = TRUE)
   files <- list_var_files(var)
   available_years <- sort(unique(files$year))
@@ -358,6 +410,9 @@ process_variable <- function(var) {
             overwrite = TRUE, filetype = "COG", gdal = cog_gdal_opts),
           label = sprintf("write %s", basename(out_path))
         )
+        # CR-076 part 2: populate real STATISTICS_MEAN / STDDEV via
+        # gdalinfo -stats sidecar. Small extra pass per file (~1 s).
+        compute_cog_stats(out_path)
         written_local <- c(written_local, out_path)
       }
 
