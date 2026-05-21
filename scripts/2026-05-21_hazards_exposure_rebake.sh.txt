@@ -66,22 +66,26 @@ echo "STAGE A: 0.4.1 livestock exposure -> $LOG_FILE"
 # session so the pipeline script has all its globals.
 # options(error=...) installs a traceback handler so any failure prints
 # the call stack to the log; the bottom row names the failing line.
-nohup Rscript -e '
+# The compound shell command appends a clear DONE sentinel + exit code
+# to the log so `grep -E "STAGE A (DONE|TRACEBACK)" "$LOG_FILE"` tells
+# you completion status at a glance.
+nohup bash -c "Rscript -e '
 options(error = function() {
-  cat("\n=== TRACEBACK ===\n", file = stderr())
+  cat(\"\n=== TRACEBACK ===\n\", file = stderr())
   traceback(2)
-  cat("\n=================\n", file = stderr())
-  quit(status = 1, save = "no")
+  cat(\"\n=================\n\", file = stderr())
+  quit(status = 1, save = \"no\")
 })
-source(Sys.getenv("SETUP_SCRIPT"))
-source(Sys.getenv("LIVESTOCK_SCRIPT"))
-' > "$LOG_FILE" 2>&1 &
+source(Sys.getenv(\"SETUP_SCRIPT\"))
+source(Sys.getenv(\"LIVESTOCK_SCRIPT\"))
+'; echo; echo \"===== STAGE A DONE (Rscript exit code: \$?) =====\"" \
+  > "$LOG_FILE" 2>&1 &
 PID_A=$!
 echo "PID $PID_A  -  tail -f $LOG_FILE"
 tail -f "$LOG_FILE"
-# Ctrl-C the tail when STAGE A finishes; the Rscript has exited.
-# Confirm exit status:
-wait $PID_A; echo "STAGE A exit code: $?"
+# Ctrl-C the tail once you see the "===== STAGE A DONE =====" line.
+# wait below confirms the OS-level exit too.
+wait $PID_A; echo "STAGE A bash exit code: $?"
 
 
 # ======================================================================
@@ -99,21 +103,22 @@ LOG_FILE="$LOG_DIR/B_0_4_4_process_${STAMP}.log"
 echo "STAGE B: 0.4.4 process exposure -> $LOG_FILE"
 # 0.4.4 needs base_rast_path + mapspam_pro_dir + glw_pro_dir + ... from
 # 0_server_setup.R — source it FIRST in the same R session. Traceback
-# handler same as STAGE A.
-nohup Rscript -e '
+# handler + DONE sentinel as in STAGE A.
+nohup bash -c "Rscript -e '
 options(error = function() {
-  cat("\n=== TRACEBACK ===\n", file = stderr())
+  cat(\"\n=== TRACEBACK ===\n\", file = stderr())
   traceback(2)
-  cat("\n=================\n", file = stderr())
-  quit(status = 1, save = "no")
+  cat(\"\n=================\n\", file = stderr())
+  quit(status = 1, save = \"no\")
 })
-source(Sys.getenv("SETUP_SCRIPT"))
-source(Sys.getenv("EXPOSURE_SCRIPT"))
-' > "$LOG_FILE" 2>&1 &
+source(Sys.getenv(\"SETUP_SCRIPT\"))
+source(Sys.getenv(\"EXPOSURE_SCRIPT\"))
+'; echo; echo \"===== STAGE B DONE (Rscript exit code: \$?) =====\"" \
+  > "$LOG_FILE" 2>&1 &
 PID_B=$!
 echo "PID $PID_B  -  tail -f $LOG_FILE"
 tail -f "$LOG_FILE"
-wait $PID_B; echo "STAGE B exit code: $?"
+wait $PID_B; echo "STAGE B bash exit code: $?"
 
 
 # ======================================================================
@@ -137,21 +142,22 @@ LOG_FILE="$LOG_DIR/C_3_freq_x_exp_${STAMP}.log"
 echo "STAGE C: 3_freq_x_exposure -> $LOG_FILE"
 # 3_freq_x_exposure needs base_rast_path + hazard_timeseries_dirs +
 # atlas_dirs from 0_server_setup.R — source it FIRST in the same R session.
-# Traceback handler same as STAGE A.
-nohup Rscript -e '
+# Traceback handler + DONE sentinel as in STAGE A.
+nohup bash -c "Rscript -e '
 options(error = function() {
-  cat("\n=== TRACEBACK ===\n", file = stderr())
+  cat(\"\n=== TRACEBACK ===\n\", file = stderr())
   traceback(2)
-  cat("\n=================\n", file = stderr())
-  quit(status = 1, save = "no")
+  cat(\"\n=================\n\", file = stderr())
+  quit(status = 1, save = \"no\")
 })
-source(Sys.getenv("SETUP_SCRIPT"))
-source(Sys.getenv("FREQXEXP_SCRIPT"))
-' > "$LOG_FILE" 2>&1 &
+source(Sys.getenv(\"SETUP_SCRIPT\"))
+source(Sys.getenv(\"FREQXEXP_SCRIPT\"))
+'; echo; echo \"===== STAGE C DONE (Rscript exit code: \$?) =====\"" \
+  > "$LOG_FILE" 2>&1 &
 PID_C=$!
 echo "PID $PID_C  -  tail -f $LOG_FILE"
 tail -f "$LOG_FILE"
-wait $PID_C; echo "STAGE C exit code: $?"
+wait $PID_C; echo "STAGE C bash exit code: $?"
 
 
 # ======================================================================
@@ -168,11 +174,12 @@ wait $PID_C; echo "STAGE C exit code: $?"
 #       regression.)
 LOG_FILE="$LOG_DIR/D_validate_9_${STAMP}.log"
 echo "STAGE D: issue #9 validation -> $LOG_FILE"
-nohup Rscript "$VALIDATE_9" --country AGO,NGA,CIV > "$LOG_FILE" 2>&1 &
+nohup bash -c "Rscript '$VALIDATE_9' --country AGO,NGA,CIV; echo; echo \"===== STAGE D DONE (Rscript exit code: \$?) =====\"" \
+  > "$LOG_FILE" 2>&1 &
 PID_D=$!
 echo "PID $PID_D  -  tail -f $LOG_FILE"
 tail -f "$LOG_FILE"
-wait $PID_D; echo "STAGE D exit code: $?"
+wait $PID_D; echo "STAGE D bash exit code: $?"
 # Exit 0 = validation PASSED — issue #9 fix closes the magnitude gap.
 # Exit 1 = breaches table at top of log; paste back the TOP 10 BREACHES.
 
