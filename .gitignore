@@ -7,3 +7,8 @@ combined_run.log
 setup_output.log
 timeseries_output.log
 haz-processing-notes.html
+.DS_Store
+**/.DS_Store
+# Quarto build artefacts under R/misc/
+R/misc/*.html
+R/misc/*_files/
