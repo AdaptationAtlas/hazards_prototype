@@ -1,0 +1,190 @@
+# ----------------------------------------------------------------------
+# Script: 2026-05-21_hazards_exposure_rebake.sh
+# Purpose: re-bake the NEX-GDDP hazards-exposure side of the pipeline
+#          on CGlabs with the issue #9 mass-conserving resample fix
+#          (commit 6ab604c) + Round 2 efficiency pass (commit eff96cc).
+#          Skips steps 1 + 2 of the hazards pipeline — those produce
+#          hazard-frequency rasters that consume the broken historic
+#          NDWS source (CR-068, bookmarked upstream); rerunning them
+#          today gains nothing.
+# Environment: CGlabs JupyterHub
+# Convention: paste-able blocks. Run blocks in order; each Rscript
+#          must finish before the next starts.
+# ----------------------------------------------------------------------
+
+# ======================================================================
+# 0) Pre-flight
+# ======================================================================
+cd $HOME/atlas/hazards_prototype
+git checkout develop
+git pull origin develop
+git log --oneline -8
+
+# Always check for an existing screen / running Rscript before starting
+screen -ls
+ps aux | grep Rscript | grep -v grep
+
+# Start a screen for this rebake (so a disconnect doesn't kill the chain)
+screen -S hazards_exposure_rebake_2026-05-21
+
+
+# ======================================================================
+# 1) Paths + log dir (these don't survive a shell restart — re-run if
+#    you lose the session and start a new one)
+# ======================================================================
+export SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
+export LIVESTOCK_SCRIPT="$HOME/atlas/hazards_prototype/R/0.4.1_create_livestock_exposure.R"
+export EXPOSURE_SCRIPT="$HOME/atlas/hazards_prototype/R/0.4.4_process_exposure.R"
+export FREQXEXP_SCRIPT="$HOME/atlas/hazards_prototype/R/3_freq_x_exposure.R"
+export VALIDATE_9="$HOME/atlas/hazards_prototype/R/checks/9_mass_conservation_validate.R"
+export LOG_DIR="$HOME/atlas/hazards_prototype/logs"
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+
+# Sanity check that scripts exist
+test -f "$LIVESTOCK_SCRIPT" && echo "OK: 0.4.1 exists" || echo "FAIL: 0.4.1 missing"
+test -f "$EXPOSURE_SCRIPT"  && echo "OK: 0.4.4 exists" || echo "FAIL: 0.4.4 missing"
+test -f "$FREQXEXP_SCRIPT"  && echo "OK: 3_freq_x_exposure exists" || echo "FAIL: 3_freq_x_exposure missing"
+test -f "$VALIDATE_9"       && echo "OK: validate_9 exists" || echo "FAIL: validate_9 missing"
+
+
+# ======================================================================
+# STAGE A — 0.4.1 livestock exposure  (~10-20 min)
+# ======================================================================
+# Inputs : GLW4 rasters + FAOSTAT livestock data + boundaries
+# Outputs: livestock_no rasters + livestock_vop_{usd,intd}15 rasters
+#          + shoat_prop.tif, all under atlas_dirs$data_dir$livestock_vop
+# Watch for:
+#   - "[0.4.1] mass not conserved on resample" WARNINGS — the new
+#     assertion from issue #9 Stage 2; if any layer drifts > ±0.5 %
+#     paste it back. Small residual drift expected (boundary
+#     attribution), not a bug per se.
+LOG_FILE="$LOG_DIR/A_0_4_1_livestock_${STAMP}.log"
+echo "STAGE A: 0.4.1 livestock exposure -> $LOG_FILE"
+nohup Rscript "$LIVESTOCK_SCRIPT" > "$LOG_FILE" 2>&1 &
+PID_A=$!
+echo "PID $PID_A  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+# Ctrl-C the tail when STAGE A finishes; the Rscript has exited.
+# Confirm exit status:
+wait $PID_A; echo "STAGE A exit code: $?"
+
+
+# ======================================================================
+# STAGE B — 0.4.4 process exposure  (~10-20 min, now parallelised)
+# ======================================================================
+# Inputs : MapSPAM crop rasters + GLW livestock rasters + Worldpop hpop
+#          + boundaries
+# Outputs: admin-extracted parquets per (variable, exposure, unit, tech)
+#          under mapspam_pro_dir + glw_pro_dir + hpop_pro_dir
+# Watch for:
+#   - "[0.4.4] mass not conserved on hpop resample" WARNINGS.
+#   - Round 2 parallelism: 8 workers each for MapSPAM + GLW loops;
+#     expect ~tens of seconds instead of minutes on those.
+LOG_FILE="$LOG_DIR/B_0_4_4_process_${STAMP}.log"
+echo "STAGE B: 0.4.4 process exposure -> $LOG_FILE"
+nohup Rscript "$EXPOSURE_SCRIPT" > "$LOG_FILE" 2>&1 &
+PID_B=$!
+echo "PID $PID_B  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+wait $PID_B; echo "STAGE B exit code: $?"
+
+
+# ======================================================================
+# STAGE C — 3_freq_x_exposure  (the slow one, ~30 min - 2 h)
+# ======================================================================
+# Inputs : hazard-frequency rasters from R/2 (existing on disk; we are
+#          NOT rebaking those today — see CR-068 bookmark) + the fresh
+#          exposure parquets from STAGE A + STAGE B
+# Outputs: hazard_exposure.parquet at
+#          atlas_dirs$data_dir$hazard_exposure (the file the notebook
+#          consumes after the S3 republish).
+# Round 2 changes that apply here:
+#   - terra::gdalCache(60000) at script top
+#   - worker_n4.1 / worker_n4.2 bumped 7 -> 16
+#   - scheduling=Inf anti-pattern removed from both Stage 4.1 + 4.2
+#     future_map calls (dynamic load balancing now)
+#   - stdout=FALSE in furrr_options (live worker logs)
+#   - threads=TRUE on terra::zonal()
+# Expected: 2-4x faster than prior runs on the same machine.
+LOG_FILE="$LOG_DIR/C_3_freq_x_exp_${STAMP}.log"
+echo "STAGE C: 3_freq_x_exposure -> $LOG_FILE"
+nohup Rscript "$FREQXEXP_SCRIPT" > "$LOG_FILE" 2>&1 &
+PID_C=$!
+echo "PID $PID_C  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+wait $PID_C; echo "STAGE C exit code: $?"
+
+
+# ======================================================================
+# STAGE D — issue #9 Stage 3 validation against the new parquet (~30 s)
+# ======================================================================
+# Confirms:
+#   (a) per (iso3, crop, scenario, timeframe): sum(specific) <= sum('any')
+#       within +/- 0.5 % tolerance. Exit non-zero if any breach.
+#   (b) AGO sugarcane mass per (scenario, timeframe).
+#   (c) NGA oilpalm + CIV cocoa spot-check.
+#   (d) AGO hazard-category split — regression check that issue #9 fix
+#       did NOT perturb the CR-068 categorisation column. (Zeros under
+#       historic/heat/wet/heat+wet are the CR-068 bug, not an issue #9
+#       regression.)
+LOG_FILE="$LOG_DIR/D_validate_9_${STAMP}.log"
+echo "STAGE D: issue #9 validation -> $LOG_FILE"
+nohup Rscript "$VALIDATE_9" --country AGO,NGA,CIV > "$LOG_FILE" 2>&1 &
+PID_D=$!
+echo "PID $PID_D  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+wait $PID_D; echo "STAGE D exit code: $?"
+# Exit 0 = validation PASSED — issue #9 fix closes the magnitude gap.
+# Exit 1 = breaches table at top of log; paste back the TOP 10 BREACHES.
+
+
+# ======================================================================
+# Summary
+# ======================================================================
+echo "=========================================="
+echo "Rebake complete. Logs under:"
+echo "  $LOG_DIR/A_0_4_1_livestock_${STAMP}.log"
+echo "  $LOG_DIR/B_0_4_4_process_${STAMP}.log"
+echo "  $LOG_DIR/C_3_freq_x_exp_${STAMP}.log"
+echo "  $LOG_DIR/D_validate_9_${STAMP}.log"
+echo "=========================================="
+echo "Cross-log check: any mass-conservation WARNINGs?"
+grep -E "mass not conserved" $LOG_DIR/[ABC]_*_${STAMP}.log || echo "(none — clean rebake)"
+echo "=========================================="
+
+
+# ======================================================================
+# Next steps
+# ======================================================================
+# 1. Commit + push the logs:
+#      cd $HOME/atlas/hazards_prototype
+#      git add logs/[ABCD]_*_${STAMP}.log
+#      git commit -m "hazards exposure rebake logs ${STAMP}"
+#      git push origin develop
+#
+# 2. Publish the new hazard_exposure.parquet to S3 (separate script
+#    or use the existing push_to_s3.R pattern — coordinate with
+#    Pete / Brayden before invoking).
+#
+# 3. The notebook (atlas_notebooks/dev/climateRationale) will pick
+#    up the new parquet once the S3 republish lands.
+#    CR-068 "Under construction" warning stays until the NDWS
+#    derivation owner re-bakes the historic NDWS source rasters.
+#
+# 4. Once S3 republish lands, replay the cross-check:
+#      Rscript R/checks/9_mass_conservation_validate.R \
+#        --country AGO,NGA,CIV \
+#        --parquet 'https://digital-atlas.s3.amazonaws.com/<...>'
+#    against the S3 URL to confirm the public parquet matches.
+
+
+# ======================================================================
+# Troubleshooting
+# ======================================================================
+# - If a STAGE exits non-zero: read the log tail, fix, re-run JUST
+#   that stage (each is independent given prior stage's outputs).
+# - If the screen disconnects: re-attach with `screen -r hazards_exposure_rebake_2026-05-21`.
+# - To kill a stuck stage: `kill <PID>` (or `kill -9` if it ignores
+#   SIGTERM).  All four stages write their PID at start so it's
+#   greppable from the log.
