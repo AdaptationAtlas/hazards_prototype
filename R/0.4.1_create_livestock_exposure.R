@@ -64,10 +64,21 @@ options(scipen = 999)
 # 60000 MB budget; CGlabs has the RAM headroom (~360 GB) easily.
 terra::gdalCache(60000)
 
+# Tiny progress logger so the run shows clear checkpoints in the log.
+.log041 <- function(msg) {
+  cat(sprintf("[%s] [0.4.1] %s\n",
+              format(Sys.time(), "%H:%M:%S"), msg))
+  flush.console()
+}
+.log041(sprintf("script start (FORCE_OVERWRITE=%s)",
+                Sys.getenv("FORCE_OVERWRITE", "<unset>")))
+
 # b) Load base raster ####
+.log041("loading base raster")
 base_rast <- terra::rast(base_rast_path)
 
 # 1) Load geographies ####
+.log041("loading geoboundaries (admin0)")
 file <- geo_files_local[1]
 geoboundaries <- read_parquet(file)
 geoboundaries <- geoboundaries |>
@@ -83,7 +94,9 @@ glw_int_dir <- glw2020_int_dir
 glw_pro_dir <- glw2020_pro_dir
 dataset_name <- "glw4-2020"
 
+.log041(sprintf("loading GLW4-2020 tifs from %s", glw_dir))
 glw_files <- list.files(glw_dir, ".tif$", full.names = TRUE)
+.log041(sprintf("found %d GLW4-2020 tifs", length(glw_files)))
 glw <- terra::rast(glw_files)
 # GLW4-2020 filenames use short species codes (Bf, Ch, Ct, Gt, Pg, Sh);
 # remap to the long names downstream code expects.
@@ -113,6 +126,7 @@ if (FALSE) {
 # density / bilinear-resample / density-back pattern leaked ~3.6% mass
 # at country totals (probe in R/checks/9_mass_conservation_check.R,
 # issue #9) because bilinear smears values across destination cells.
+.log041("computing GLW source mass + resampling to base_rast (method=sum)")
 .glw_src_mass <- terra::global(glw, "sum", na.rm = TRUE)[, 1]
 glw <- terra::resample(glw, base_rast, method = "sum")
 .glw_dst_mass <- terra::global(glw, "sum", na.rm = TRUE)[, 1]
@@ -124,9 +138,11 @@ if (any(abs(.glw_ratio - 1) > 0.005, na.rm = TRUE)) {
   ))
 }
 # mask to focal countries
+.log041("masking GLW to focal countries")
 glw <- terra::mask(glw, geoboundaries)
 
 ## 2.2) Extract by admin0 #####
+.log041("extracting GLW totals by admin0")
 glw_admin0 <- terra::extract(glw, geoboundaries, fun = "sum", na.rm = TRUE)
 glw_admin0$iso3 <- geoboundaries$iso3
 glw_admin0$ID <- NULL
@@ -152,7 +168,10 @@ mask_ls_file <- paste0(glw_int_dir, "/livestock_masks.tif")
 # Used by the issue #9 rebake runbook so the v9 mass-conserving fix
 # actually lands in livestock_masks.tif + livestock_number_number.tif.
 overwrite_glw <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+.log041(sprintf("livestock_masks.tif exists=%s, overwrite_glw=%s",
+                file.exists(mask_ls_file), overwrite_glw))
 if (!file.exists(mask_ls_file) || overwrite_glw == TRUE) {
+  .log041("regenerating livestock_masks.tif (mask block IN)")
   glw <- terra::rast(glw_files)
   names(glw) <- glw_short_to_long[unlist(tstrsplit(names(glw), "_", keep = 1))]
   glw <- glw[[c("poultry", "sheep", "pigs", "goats", "cattle")]]
@@ -186,8 +205,11 @@ if (!file.exists(mask_ls_file) || overwrite_glw == TRUE) {
 
   livestock_mask <- c(livestock_mask_high, livestock_mask_low)
 
+  .log041(sprintf("writing %s", mask_ls_file))
   terra::writeRaster(livestock_mask, filename = mask_ls_file, overwrite = TRUE)
+  .log041("livestock_masks.tif written")
 } else {
+  .log041("loading existing livestock_masks.tif (else-branch)")
   livestock_mask <- terra::rast(mask_ls_file)
   # An on-disk mask from a prior run may be on a different grid than
   # the current base_rast (issue: previously caused `data *
@@ -201,6 +223,7 @@ if (!file.exists(mask_ls_file) || overwrite_glw == TRUE) {
 }
 
 ## 2.5) Convert glw3 pixels to proportion of national total ####
+.log041("computing per-pixel proportion of national total (glw_prop)")
 glw_admin0_cast <- dcast(glw_admin0, iso3 ~ glw3_name, value.var = "glw3_no")
 glw_vect <- merge(geoboundaries, glw_admin0_cast, all.x = TRUE, by = "iso3")
 
@@ -218,8 +241,10 @@ if (!terra::compareGeom(glw, base_rast, stopOnError = FALSE)) {
 }
 
 glw_prop <- glw / glw_rast
+.log041("glw_prop computed")
 
 # 3) Load FAOstat data ####
+.log041("loading FAOSTAT data (VoP, prices, production)")
 remove_countries <- c("Ethiopia PDR", "Sudan (former)", "Cabo Verde", "Comoros", "Mauritius", "R\xe9union", "Seychelles")
 atlas_iso3 <- geoboundaries$iso3
 target_year <- c(2014:2023)
@@ -380,6 +405,7 @@ if (FALSE) {
 }
 
 ## 3.6) Merge datasets ####
+.log041("merging FAOSTAT datasets (VoP / Price / Production / PPP)")
 prod_merge <- merge(prod_value_usd, prod_value_i, all.x = TRUE)
 prod_merge <- merge(prod_merge, prod_price, all.x = TRUE)
 prod_merge <- merge(prod_merge, prod, all.x = TRUE)
@@ -390,6 +416,7 @@ prod_merge[, year := as.integer(gsub("Y", "", year))]
 # prod_merge<-merge(prod_merge,ppp_xrat,by=c("iso3","year"),all.x=T)
 
 # 4) Infer missing value from production and price data ####
+.log041("inferring missing VoP values (production x price gap-fill)")
 ## 4.1) Nominal usd ####
 # Ok so now we want to estimate a sensible nominal value in usd from the most recent data available
 # We will use production amount and price to get this as conversion of iusd15 to nominal usd seems to give unrealistically low values
@@ -486,8 +513,11 @@ if (FALSE) {
 
 # Combine lists
 vop_list <- c(nominal_usd, intd_2015)
+.log041(sprintf("entering VoP distribution loop over %d (unit x year) tables",
+                length(vop_list)))
 
 for (i in seq_along(vop_list)) {
+  .log041(sprintf("  [VoP %d/%d] %s", i, length(vop_list), names(vop_list)[i]))
   # Unit is t x usd/t = usd or 1000 intdlr x 1000 there should be no need for any unit conversions (e.g. x 1000)
   final_vop <- copy(vop_list[[i]])
   setnames(final_vop, "vop_usd_nominal", "value")
@@ -529,25 +559,34 @@ for (i in seq_along(vop_list)) {
   save_file <- file.path(glw_pro_dir, paste0("variable=", unit), paste0(names(vop_list)[i], ".tif"))
   ensure_dir(dirname(save_file))
   terra::writeRaster(round(glw_vop_usd_split, 0), save_file, overwrite = TRUE)
+  .log041(sprintf("    wrote %s", save_file))
 }
+.log041("VoP loop complete")
 
 # 6) Livestock Numbers ######
+.log041("computing livestock_no + shoat_prop")
 livestock_no_file <- paste0(glw_pro_dir, "/livestock_number_number.tif")
 shoat_prop_file <- paste0(glw_int_dir, "/shoat_prop.tif")
 overwrite_glw <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 
+.log041(sprintf("livestock_number_number.tif exists=%s, overwrite_glw=%s",
+                file.exists(livestock_no_file), overwrite_glw))
 if (!file.exists(livestock_no_file) || overwrite_glw == TRUE) {
+  .log041("regenerating livestock_no (livestock_no block IN)")
   glw <- terra::rast(glw_files)
   names(glw) <- glw_short_to_long[unlist(tstrsplit(names(glw), "_", keep = 1))]
   livestock_no <- glw[[c("poultry", "sheep", "pigs", "goats", "cattle")]]
 
+  .log041("  computing TLU (cattle*0.7 + poultry*0.01 + ...)")
   TLU <- sum(c(glw$cattle * 0.7, glw$poultry * 0.01, glw$goats * 0.1, glw$pigs * 0.2, glw$sheep * 0.1))
 
   livestock_no$total <- TLU
+  .log041("  crop+mask livestock_no to geoboundaries")
   livestock_no <- terra::mask(terra::crop(livestock_no, geoboundaries), geoboundaries)
 
   # resample to base_rast (v9: mass-conserving via method="sum"; see issue #9
   # + R/checks/9_mass_conservation_check.R).
+  .log041("  resampling livestock_no to base_rast (method=sum)")
   .lvno_src_mass <- terra::global(livestock_no, "sum", na.rm = TRUE)[, 1]
   livestock_no <- terra::resample(livestock_no, base_rast, method = "sum")
   .lvno_dst_mass <- terra::global(livestock_no, "sum", na.rm = TRUE)[, 1]
@@ -563,14 +602,18 @@ if (!file.exists(livestock_no_file) || overwrite_glw == TRUE) {
   sheep_prop <- livestock_no$sheep / (livestock_no$goats + livestock_no$sheep)
   goat_prop <- livestock_no$goats / (livestock_no$goats + livestock_no$sheep)
 
+  .log041(sprintf("  writing %s", shoat_prop_file))
   terra::writeRaster(terra::rast(c(sheep_prop = sheep_prop, goat_prop = goat_prop)),
     filename = shoat_prop_file, overwrite = TRUE
   )
 
   # Split livestock between highland and tropical
+  .log041("  split_livestock(livestock_no, mask_high, mask_low)")
   livestock_no <- split_livestock(data = livestock_no, livestock_mask_high, livestock_mask_low)
 
+  .log041(sprintf("  writing %s", livestock_no_file))
   terra::writeRaster(livestock_no, filename = livestock_no_file, overwrite = TRUE)
+  .log041("livestock_no block complete")
 }
 
 
