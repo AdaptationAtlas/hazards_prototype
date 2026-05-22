@@ -131,6 +131,15 @@ spam_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
   }
 
   data <- terra::rast(file)
+  # MapSPAM tifs ship at MapSPAM-native (10km global) extent;
+  # boundaries_zonal is at base_rast (NEX-GDDP, Africa) extent. Defensive
+  # resample so terra::zonal() inside admin_extract_wrap doesn't halt
+  # with "[zonal] extents do not match". Use method="sum" so the area
+  # totals are mass-conserved (issue #9 pattern).
+  zone_rast_geom <- terra::rast(boundaries_zonal[[1]])
+  if (!terra::compareGeom(data, zone_rast_geom, stopOnError = FALSE)) {
+    data <- terra::resample(data, zone_rast_geom, method = "sum")
+  }
 
   result <- admin_extract_wrap(data = data,
                                save_dir = dirname(file),
@@ -194,12 +203,14 @@ future::plan(future::sequential)
 version_glw<-"glw4-2020_atlasv1"
 overwrite_glw <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 
-livestock_no_file<-paste0(glw_pro_dir,"/livestock_number_number.tif")
-if(!file.exists(livestock_no_file)){
-  stop("Run script 0.4_create_livestock_exposure.R")
+# 0.4.1 writes its livestock outputs under glw2020_pro_dir
+# (Data/GLW4_2020/processed), not glw_pro_dir (the 2015 GLW4 dir).
+livestock_no_file <- file.path(glw2020_pro_dir, "livestock_number_number.tif")
+if (!file.exists(livestock_no_file)) {
+  stop("Run script 0.4.1_create_livestock_exposure.R first")
 }
 
-files<-list.files(glw_pro_dir,".tif$",recursive=T,full.names=T)
+files <- list.files(glw2020_pro_dir, ".tif$", recursive = TRUE, full.names = TRUE)
 
 # v9: parallel GLW extraction, mirroring the MapSPAM block above.
 glw_workers <- min(8L, length(files))
@@ -220,18 +231,25 @@ glw_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
 
     stat<-"sum"
     
-    data<-terra::rast(file)
-    
-    result<-admin_extract_wrap(data=data,
-                               save_dir=dirname(file),
-                               filename =file_base,
-                               FUN=stat,
-                               append_vals=c(exposure=var,unit=unit,tech=tech),
-                               var_name="crop",
-                               round=1,
-                               boundaries_zonal=boundaries_zonal,
-                               boundaries_index=boundaries_index,
-                               overwrite=overwrite_glw)
+    data <- terra::rast(file)
+    # Defensive: ensure GLW data is on the same grid as boundaries_zonal
+    # (issue #9 / [zonal] extents do not match). 0.4.1 already resamples
+    # to base_rast so this should be a no-op, but cheap to verify.
+    .zone_geom <- terra::rast(boundaries_zonal[[1]])
+    if (!terra::compareGeom(data, .zone_geom, stopOnError = FALSE)) {
+      data <- terra::resample(data, .zone_geom, method = "sum")
+    }
+
+    result <- admin_extract_wrap(data = data,
+                                 save_dir = dirname(file),
+                                 filename = file_base,
+                                 FUN = stat,
+                                 append_vals = c(exposure = var, unit = unit, tech = tech),
+                                 var_name = "crop",
+                                 round = 1,
+                                 boundaries_zonal = boundaries_zonal,
+                                 boundaries_index = boundaries_index,
+                                 overwrite = overwrite_glw)
     
     attr_file<-file.path(dirname(file),paste0(file_base,"_adm_",stat,".parquet.json"))
     

@@ -335,16 +335,18 @@ cat("0.2.1.2) Using crop harvested area file:", basename(crop_ha_file), "\n")
 # crop_ha_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_ha_adm_sum.parquet"))
 ### d.2.2) Livestock #####
 #### d.2.2.1) Livestock Numbers (GLW) ######
-livestock_no_file <- file.path(glw_pro_dir, "/livestock_number_number.tif")
+# 0.4.1 writes its livestock outputs under glw2020_pro_dir
+# (Data/GLW4_2020/processed), not glw_pro_dir (the 2015 GLW4 dir).
+livestock_no_file <- file.path(glw2020_pro_dir, "livestock_number_number.tif")
 livestock_no <- terra::rast(livestock_no_file)
 cat("0.2.2.1) Using livestock number file:", basename(livestock_no_file), "\n")
 
 #### d.2.2.2) Livestock VoP ######
-livestock_vop_file <- file.path(glw_pro_dir, "/livestock_vop_intld2015.tif")
+livestock_vop_file <- file.path(glw2020_pro_dir, "livestock_vop_intld2015.tif")
 livestock_vop <- terra::rast(livestock_vop_file)
 cat("0.2.2.2) Using livestock vop intd file:", basename(livestock_vop_file), "\n")
 
-livestock_vop_usd_file <- file.path(glw_pro_dir, "livestock_vop_usd2015.tif")
+livestock_vop_usd_file <- file.path(glw2020_pro_dir, "livestock_vop_usd2015.tif")
 livestock_vop_usd <- terra::rast(livestock_vop_usd_file)
 cat("0.2.2.2) Using livestock vop usd file:", basename(livestock_vop_usd_file), "\n")
 

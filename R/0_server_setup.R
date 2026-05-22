@@ -216,6 +216,7 @@ subdirs <- c(
   "hazard_risk_ha",
   "hazard_risk_n",
   "hazard_risk_vop_reduced",
+  "hazard_exposure",
   "roi",
   "exposure",
   "isimip_timeseries",

@@ -90,7 +90,7 @@ options(error = function() {
 })
 source(Sys.getenv(\"SETUP_SCRIPT\"))
 source(Sys.getenv(\"LIVESTOCK_SCRIPT\"))
-'; echo; echo \"===== STAGE A DONE (Rscript exit code: \$?) =====\"" \
+'; RC=\$?; echo; echo \"===== STAGE A DONE (Rscript exit code: \$RC) =====\"" \
   > "$LOG_FILE" 2>&1 &
 PID_A=$!
 echo "PID $PID_A  -  tail -f $LOG_FILE"
@@ -125,7 +125,7 @@ options(error = function() {
 })
 source(Sys.getenv(\"SETUP_SCRIPT\"))
 source(Sys.getenv(\"EXPOSURE_SCRIPT\"))
-'; echo; echo \"===== STAGE B DONE (Rscript exit code: \$?) =====\"" \
+'; RC=\$?; echo; echo \"===== STAGE B DONE (Rscript exit code: \$RC) =====\"" \
   > "$LOG_FILE" 2>&1 &
 PID_B=$!
 echo "PID $PID_B  -  tail -f $LOG_FILE"
@@ -164,7 +164,7 @@ options(error = function() {
 })
 source(Sys.getenv(\"SETUP_SCRIPT\"))
 source(Sys.getenv(\"FREQXEXP_SCRIPT\"))
-'; echo; echo \"===== STAGE C DONE (Rscript exit code: \$?) =====\"" \
+'; RC=\$?; echo; echo \"===== STAGE C DONE (Rscript exit code: \$RC) =====\"" \
   > "$LOG_FILE" 2>&1 &
 PID_C=$!
 echo "PID $PID_C  -  tail -f $LOG_FILE"
@@ -186,7 +186,7 @@ wait $PID_C; echo "STAGE C bash exit code: $?"
 #       regression.)
 LOG_FILE="$LOG_DIR/D_validate_9_${STAMP}.log"
 echo "STAGE D: issue #9 validation -> $LOG_FILE"
-nohup bash -c "Rscript '$VALIDATE_9' --country AGO,NGA,CIV; echo; echo \"===== STAGE D DONE (Rscript exit code: \$?) =====\"" \
+nohup bash -c "Rscript '$VALIDATE_9' --country AGO,NGA,CIV; RC=\$?; echo; echo \"===== STAGE D DONE (Rscript exit code: \$RC) =====\"" \
   > "$LOG_FILE" 2>&1 &
 PID_D=$!
 echo "PID $PID_D  -  tail -f $LOG_FILE"
