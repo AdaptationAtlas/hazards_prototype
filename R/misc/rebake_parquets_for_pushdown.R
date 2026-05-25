@@ -221,9 +221,23 @@ verify_stats <- function(out_path, verify_on) {
   ))$num_rows
 
   problems <- character(0)
+  # Pushdown only matters when the file is large enough that the
+  # browser can save real work by skipping row groups. For small
+  # files (< ~50K rows), the entire file decompresses in well under
+  # a second and ONE row group is the right answer. Don't fail on
+  # that — just note it.
+  small_file_threshold <- 50000L
   if (n_groups < 2L) {
-    problems <- c(problems,
-      sprintf("only %d row group(s) — pushdown will not work", n_groups))
+    if (total_rows < small_file_threshold) {
+      cat(sprintf(
+        "    note: 1 row group, %s rows — file is small (< %s); pushdown N/A, this is fine\n",
+        format(total_rows, big.mark = ","),
+        format(small_file_threshold, big.mark = ",")
+      ))
+    } else {
+      problems <- c(problems,
+        sprintf("only %d row group(s) — pushdown will not work", n_groups))
+    }
   }
 
   stats_summary <- vector("list", length(verify_on))
