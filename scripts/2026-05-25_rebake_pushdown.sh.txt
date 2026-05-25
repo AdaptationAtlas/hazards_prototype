@@ -14,9 +14,12 @@
 #          $LOG_DIR with STAMP suffix and ends with a "===== DONE ====="
 #          sentinel that includes the Rscript exit code.
 # References:
-#   - Dispatch (atlas_notebooks repo, for context only):
-#       playbook/handovers/climateRationale/dispatches/
+#   - Producer-side dispatch:
+#       atlas_notebooks/playbook/handovers/climateRationale/dispatches/
 #         2026-05-25_pipeline-parquet-pushdown-rewrite.md
+#   - Sandbox / staging dispatch (THIS workflow's spec):
+#       atlas_notebooks/playbook/handovers/climateRationale/dispatches/
+#         2026-05-25_parquet-pushdown-sandbox.md
 #   - Helper: R/_helpers.R::write_parquet_pushdown
 #   - Convention memory: feedback-parquet-authoring-for-duckdb-wasm
 # ----------------------------------------------------------------------
@@ -124,14 +127,15 @@ grep -E "^[a-z][a-z0-9_]+ " "$LOG_FILE" | head -20
 
 
 # ======================================================================
-# STAGE C — REAL upload of all rebaked files to `.fixed.parquet` sidecars (~10-30 min)
+# STAGE C — REAL upload of all rebakes to the S3 sandbox prefix (~10-30 min)
 # ======================================================================
-# Downloads + rebakes + verifies + UPLOADS each result to
-# s3://digital-atlas/<...>/<original>.fixed.parquet
-# Canonical paths are NOT touched. The manual-swap commands are
-# printed at the end of the log.
-LOG_FILE="$LOG_DIR/Cpush_upload_sidecars_${STAMP}.log"
-echo "STAGE C: real rebake + sidecar upload -> $LOG_FILE"
+# Downloads + rebakes + verifies + UPLOADS each result to:
+#   s3://digital-atlas/sandbox/parquet-pushdown/<original-canonical-path>
+# Canonical paths are NOT touched. STAGE F's promotion commands are
+# printed at the end of the log (do NOT run them yet — wait for the
+# in-browser sandbox A/B in STAGE E).
+LOG_FILE="$LOG_DIR/Cpush_upload_sandbox_${STAMP}.log"
+echo "STAGE C: real rebake + sandbox upload -> $LOG_FILE"
 nohup bash -c "Rscript \"$REBAKE_SCRIPT\"; RC=\$?; echo; echo \"===== STAGE C DONE (Rscript exit code: \$RC) =====\"" \
   > "$LOG_FILE" 2>&1 &
 PID_C=$!
@@ -141,16 +145,18 @@ wait $PID_C; echo "STAGE C bash exit code: $?"
 
 echo "--- target-by-target status from STAGE C ---"
 grep -E "PROBLEM|^===|^  [a-z]|uploaded" "$LOG_FILE" | head -60
-echo "--- manual-swap commands printed at end ---"
-grep -A 100 "manual-swap commands" "$LOG_FILE" | head -80
+echo "--- STAGE F promotion commands (DON'T RUN until STAGE E passes) ---"
+grep -A 100 "STAGE F promotion commands" "$LOG_FILE" | head -80
 
 
 # ======================================================================
-# STAGE D — A/B speedup verification (canonical vs .fixed sidecar, ~10-20 min)
+# STAGE D — CLI A/B sanity check (canonical vs sandbox prefix, ~10-20 min)
 # ======================================================================
 # Run the same 9 notebook-style queries against both canonical and
-# sidecar URLs. Per-query speedup ratio + a summary table at the end
-# tell us whether pushdown is actually firing. Speedup >= 3x = win.
+# sandbox-prefix URLs. NOTE: per STAGE B2's finding, DuckDB CLI is
+# already fast on canonical (1.5-2s). This stage is a sanity floor
+# (correctness + sandbox URL reachability), not the real verdict.
+# The real verdict is STAGE E (in-browser).
 # Speedup ~1x = sort/stats not narrowing the predicate; investigate
 # the script's EXPLAIN ANALYZE plan dump.
 LOG_FILE="$LOG_DIR/Dpush_speedup_${STAMP}.log"
@@ -205,7 +211,7 @@ grep -A 30 "=== summary ===" "$LOG_FILE" | head -40
 # (the "STAGE F promotion commands" block). Extract them with:
 #
 #   sed -n '/=== STAGE F promotion commands /,/^=== /p' \
-#     "$LOG_DIR/Cpush_upload_sidecars_${STAMP}.log"
+#     "$LOG_DIR/Cpush_upload_sandbox_${STAMP}.log"
 #
 # Then paste those `aws s3 mv` lines below ONE TARGET AT A TIME to
 # stage in the swap (per-target promotion lets you spot any
@@ -239,7 +245,7 @@ echo "=========================================="
 # Next steps after STAGE D passes
 # ======================================================================
 # 1. Promote sidecars to canonical (one country at a time if cautious):
-#      grep "aws s3 mv" "$LOG_DIR/Cpush_upload_sidecars_${STAMP}.log"
+#      grep "aws s3 mv" "$LOG_DIR/Cpush_upload_sandbox_${STAMP}.log"
 #    Then paste the printed `aws s3 mv` lines.
 #
 # 2. Commit + push these logs:
