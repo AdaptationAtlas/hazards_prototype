@@ -104,6 +104,26 @@ grep -E "PROBLEM|^===|^  [a-z]" "$LOG_FILE" | head -50
 
 
 # ======================================================================
+# STAGE B2 — BASELINE cold-start timings against canonical (~5-15 min)
+# ======================================================================
+# Run notebook-style filter queries against the CURRENT canonical
+# parquets only. This is the "before" measurement — each query should
+# take ~30-70s because the file has one row group and no usable stats.
+# We need this number to compute the speedup ratio in STAGE D.
+LOG_FILE="$LOG_DIR/B2push_baseline_$STAMP.log"
+echo "STAGE B2: cold-start baseline (canonical only) -> $LOG_FILE"
+nohup bash -c "Rscript \"$HOME/atlas/hazards_prototype/R/misc/verify_pushdown_speedup.R\" --canonical-only; RC=\$?; echo; echo \"===== STAGE B2 DONE (Rscript exit code: \$RC) =====\"" \
+  > "$LOG_FILE" 2>&1 &
+PID_B2=$!
+echo "PID $PID_B2  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+wait $PID_B2; echo "STAGE B2 bash exit code: $?"
+
+echo "--- baseline summary ---"
+grep -E "^[a-z][a-z0-9_]+ " "$LOG_FILE" | head -20
+
+
+# ======================================================================
 # STAGE C — REAL upload of all rebaked files to `.fixed.parquet` sidecars (~10-30 min)
 # ======================================================================
 # Downloads + rebakes + verifies + UPLOADS each result to
@@ -126,34 +146,31 @@ grep -A 100 "manual-swap commands" "$LOG_FILE" | head -80
 
 
 # ======================================================================
-# STAGE D — Cold-start verification on a .fixed.parquet (~30 s)
+# STAGE D — A/B speedup verification (canonical vs .fixed sidecar, ~10-20 min)
 # ======================================================================
-# DuckDB query against the sidecar with cache disabled, to confirm
-# the pushdown actually fires. Should return in < 5 s for a national
-# slice (vs ~70 s against the canonical single-row-group file).
-LOG_FILE="$LOG_DIR/Dpush_cold_start_check_${STAMP}.log"
-echo "STAGE D: cold-start check on adm0_obs_monthly sidecar -> $LOG_FILE"
-{
-  echo "=== STAGE D ==="
-  date
-  echo "--- with cache disabled, query the .fixed sidecar ---"
-  time duckdb -c "
-    PRAGMA enable_object_cache=false;
-    SELECT COUNT(*) FROM read_parquet(
-      'https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.fixed.parquet'
-    ) WHERE iso3='AGO' AND variable='PTOT';
-  "
-  echo ""
-  echo "--- same query against canonical (BEFORE) for comparison ---"
-  time duckdb -c "
-    PRAGMA enable_object_cache=false;
-    SELECT COUNT(*) FROM read_parquet(
-      'https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.parquet'
-    ) WHERE iso3='AGO' AND variable='PTOT';
-  "
-} | tee "$LOG_FILE"
-# Expected: .fixed.parquet returns in single-digit seconds.
-# Canonical returns in ~30-70 s.
+# Run the same 9 notebook-style queries against both canonical and
+# sidecar URLs. Per-query speedup ratio + a summary table at the end
+# tell us whether pushdown is actually firing. Speedup >= 3x = win.
+# Speedup ~1x = sort/stats not narrowing the predicate; investigate
+# the script's EXPLAIN ANALYZE plan dump.
+LOG_FILE="$LOG_DIR/Dpush_speedup_${STAMP}.log"
+echo "STAGE D: canonical vs sidecar speedup A/B -> $LOG_FILE"
+nohup bash -c "Rscript \"$HOME/atlas/hazards_prototype/R/misc/verify_pushdown_speedup.R\"; RC=\$?; echo; echo \"===== STAGE D DONE (Rscript exit code: \$RC) =====\"" \
+  > "$LOG_FILE" 2>&1 &
+PID_D=$!
+echo "PID $PID_D  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+wait $PID_D; echo "STAGE D bash exit code: $?"
+
+echo "--- A/B summary ---"
+grep -A 30 "=== summary ===" "$LOG_FILE" | head -40
+# Expected outcome:
+#   - obs / faostat / external small-file targets: 5-15x speedup
+#   - cmip6 timeseries: 10-30x speedup (these are 100MB+ files; biggest win)
+#   - hazard_exposure_multi: similar (big file, narrow predicate)
+#   - exposure_crop_livestock: similar
+# If any target shows speedup ~1x, the predicate isn't narrowing —
+# look at the EXPLAIN ANALYZE plan dump in the per-query section.
 
 
 # ======================================================================
@@ -161,12 +178,15 @@ echo "STAGE D: cold-start check on adm0_obs_monthly sidecar -> $LOG_FILE"
 # ======================================================================
 echo "=========================================="
 echo "Rebake complete. Logs:"
-ls -1 "$LOG_DIR"/[ABCD]push_*_${STAMP}.log
+ls -1 "$LOG_DIR"/[ABCD]*push_*_${STAMP}.log
 echo "=========================================="
 echo "Cross-log: any PROBLEM lines?"
-grep -E "PROBLEM" "$LOG_DIR"/[ABCD]push_*_${STAMP}.log || echo "(none — clean rebake)"
+grep -E "PROBLEM" "$LOG_DIR"/[ABCD]*push_*_${STAMP}.log || echo "(none — clean rebake)"
 echo "=========================================="
-echo "If STAGE D shows .fixed.parquet < 5 s on AGO/PTOT:"
+echo "Speedup table (STAGE D):"
+grep -A 30 "=== summary ===" "$LOG_DIR/Dpush_speedup_${STAMP}.log" | head -40
+echo "=========================================="
+echo "If STAGE D shows >= 3x speedups across the board:"
 echo "  - Run the manual-swap commands from STAGE C's log to promote"
 echo "    each .fixed.parquet to the canonical name. The notebook"
 echo "    will pick up the speedup immediately (same URL)."
