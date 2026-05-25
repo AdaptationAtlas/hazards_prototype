@@ -52,17 +52,6 @@ write_parquet_pushdown <- function(
   # Coerce to data.table for the sort, then back to whatever arrow wants.
   if (!inherits(tbl, "data.table")) tbl <- data.table::as.data.table(tbl)
 
-  # Coerce factor columns in verify_stats_on to character. arrow writes
-  # factors as dictionary-encoded — and column statistics are stored
-  # against the dictionary indices, not the decoded values, so
-  # parquet_metadata() returns NULL stats_min/max for them. Forcing
-  # character keeps stats populated against the actual strings.
-  for (col in intersect(verify_stats_on, names(tbl))) {
-    if (is.factor(tbl[[col]])) {
-      data.table::set(tbl, j = col, value = as.character(tbl[[col]]))
-    }
-  }
-
   sort_cols_present <- intersect(sort_by, names(tbl))
   if (length(sort_cols_present) == 0L) {
     warning(sprintf(
@@ -73,30 +62,25 @@ write_parquet_pushdown <- function(
     data.table::setorderv(tbl, sort_cols_present)
   }
 
-  # Force PLAIN encoding on the columns we verify stats on. arrow's
-  # default writes dictionary-encoded strings AND stores column
-  # statistics against the dictionary indices (integers), not the
-  # decoded values — so DuckDB's parquet_metadata() returns NULL
-  # stats_min/max on those columns. PLAIN encoding writes the actual
-  # values directly + populates stats correctly. Other (non-verified)
-  # string columns can still benefit from dictionary compression.
-  verify_present <- intersect(verify_stats_on, names(tbl))
-  col_encoding <- setNames(
-    as.list(rep("PLAIN", length(verify_present))),
-    verify_present
-  )
-
-  arrow::write_parquet(
-    tbl,
-    out_path,
-    compression       = compression,
-    compression_level = compression_level,
-    chunk_size        = row_group_size,
-    write_statistics  = TRUE,
-    use_dictionary    = FALSE,
-    column_encoding   = col_encoding,
-    ...
-  )
+  # Write via DuckDB COPY TO PARQUET. arrow R writes string columns
+  # dictionary-encoded with stats against the dict indices, so
+  # parquet_metadata() returns NULL stats_min/max — defeats pushdown.
+  # DuckDB writes strings as VARCHAR with proper column stats. The
+  # older arrow on CGlabs also doesn't support the column_encoding
+  # kwarg we tried as a workaround. DuckDB COPY is the reliable path.
+  con <- DBI::dbConnect(duckdb::duckdb())
+  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+  DBI::dbWriteTable(con, "tbl_src", as.data.frame(tbl), overwrite = TRUE)
+  order_by <- if (length(sort_cols_present) > 0L) {
+    paste("ORDER BY", paste(sprintf("\"%s\"", sort_cols_present), collapse = ", "))
+  } else {
+    ""
+  }
+  DBI::dbExecute(con, sprintf(
+    "COPY (SELECT * FROM tbl_src %s)
+     TO '%s' (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE %d)",
+    order_by, out_path, row_group_size
+  ))
 
   # Verify via DuckDB's parquet_metadata() — canonical surface and
   # works across arrow R-package versions.

@@ -326,46 +326,39 @@ rebake_one <- function(target, row_group_size, dry_run, tmpdir) {
   cat(sprintf("    BEFORE: %d row group(s), %s rows\n",
               before, format(n_rows, big.mark = ",")))
 
-  # 5. Sort + factor → character coercion on verify columns.
-  #    arrow writes R factors as dictionary-encoded; column stats are
-  #    then against the dictionary indices, not the string values, so
-  #    DuckDB's parquet_metadata() returns NULL stats_min/max. Coerce
-  #    here so stats are written against the actual strings.
-  t0 <- Sys.time()
-  tbl_dt <- as.data.frame(tbl)  # convert via R DF; faster than arrow::compute for our sizes
-  if (!inherits(tbl_dt, "data.table")) tbl_dt <- data.table::as.data.table(tbl_dt)
-  for (col in intersect(target$verify_stats_on, names(tbl_dt))) {
-    if (is.factor(tbl_dt[[col]])) {
-      data.table::set(tbl_dt, j = col, value = as.character(tbl_dt[[col]]))
-    }
-  }
-  tbl_sorted <- reorder_table(tbl_dt, target$sort_by)
-  cat(sprintf("    sorted by [%s] in %.2fs\n",
-              paste(target$sort_by, collapse = ", "),
-              as.numeric(difftime(Sys.time(), t0), units = "secs")))
-
-  # 6. Write to a local tmp file with the desired row group size + stats.
+  # 5./6. Sort + write via DuckDB COPY TO PARQUET. We skip the R-side
+  #       arrow write entirely — arrow R writes string columns as
+  #       dictionary-encoded with stats against the dict indices,
+  #       which reads back NULL via parquet_metadata(). DuckDB writes
+  #       strings as VARCHAR with proper column stats, and the older
+  #       arrow on CGlabs doesn't support the column_encoding kwarg.
   out_local <- file.path(tmpdir, sprintf("%s.fixed.parquet", target$key))
+  con_w <- DBI::dbConnect(duckdb::duckdb())
+  schema_cols <- DBI::dbGetQuery(con_w, sprintf(
+    "SELECT column_name FROM (DESCRIBE SELECT * FROM read_parquet('%s'))",
+    in_local
+  ))$column_name
+  sort_cols_present <- intersect(target$sort_by, schema_cols)
+  missing <- setdiff(target$sort_by, schema_cols)
+  if (length(missing) > 0L) {
+    cat(sprintf("    warn: sort cols not in schema, skipping: %s\n",
+                paste(missing, collapse = ", ")))
+  }
+  order_by <- if (length(sort_cols_present) > 0L) {
+    paste("ORDER BY", paste(sprintf("\"%s\"", sort_cols_present), collapse = ", "))
+  } else {
+    cat("    warn: no sort cols matched schema — file written unsorted\n")
+    ""
+  }
   t0 <- Sys.time()
-  # Force PLAIN encoding for the verify columns. Without this, arrow
-  # writes them dictionary-encoded with stats against the dict
-  # indices (NULL when DuckDB reads them back).
-  verify_present <- intersect(target$verify_stats_on, names(tbl_sorted))
-  col_encoding <- setNames(
-    as.list(rep("PLAIN", length(verify_present))),
-    verify_present
-  )
-
-  arrow::write_parquet(
-    tbl_sorted, out_local,
-    compression       = "zstd",
-    compression_level = 9L,
-    chunk_size        = row_group_size,
-    write_statistics  = TRUE,
-    use_dictionary    = FALSE,
-    column_encoding   = col_encoding
-  )
-  cat(sprintf("    wrote local rebake in %.2fs -> %s\n",
+  DBI::dbExecute(con_w, sprintf(
+    "COPY (SELECT * FROM read_parquet('%s') %s)
+     TO '%s' (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE %d)",
+    in_local, order_by, out_local, row_group_size
+  ))
+  DBI::dbDisconnect(con_w, shutdown = TRUE)
+  cat(sprintf("    sorted by [%s] + wrote via DuckDB COPY in %.2fs -> %s\n",
+              paste(sort_cols_present, collapse = ", "),
               as.numeric(difftime(Sys.time(), t0), units = "secs"),
               out_local))
 
