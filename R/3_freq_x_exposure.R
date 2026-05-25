@@ -1002,7 +1002,10 @@ for (tx in seq_along(timeframe_choices)) {
         return(as.character(f))
       }
       for (i in seq_along(to_do_list)) {
-        cat(timeframe, "4.1.1) Intersecting hazard risk x exposure - ", to_do_list[[i]]$variable, " \n")
+        .var_41_start <- Sys.time()
+        .log03(sprintf("[%s] 4.1.1) variable %d/%d: %s — start",
+                       timeframe, i, length(to_do_list),
+                       to_do_list[[i]]$variable))
 
         # Setup parallel plan
         set_parallel_plan(n_cores = worker_n4.1, use_multisession = multisession4)
@@ -1035,10 +1038,14 @@ for (tx in seq_along(timeframe_choices)) {
           # than others.
           p <- furrr::future_map(seq_along(files), function(.i) {
             .f <- files[.i]
-            cat(sprintf("[%s] [3_freq_x_exp] [4.1 %d/%d] %s\n",
-                        format(Sys.time(), "%H:%M:%S"),
-                        .i, .n_files_41, basename(.f)))
-            flush.console()
+            # Throttle: first file, last file, and every 200th — keeps
+            # logs readable while still showing the loop is moving.
+            if (.i == 1L || .i == .n_files_41 || .i %% 200L == 0L) {
+              cat(sprintf("[%s] [3_freq_x_exp] [4.1 %d/%d] %s\n",
+                          format(Sys.time(), "%H:%M:%S"),
+                          .i, .n_files_41, basename(.f)))
+              flush.console()
+            }
             retry_risk_x_exposure(.f,
               save_dir = to_do_list[[i]]$folder,
               variable = to_do_list[[i]]$variable,
@@ -1064,7 +1071,11 @@ for (tx in seq_along(timeframe_choices)) {
           warning(sprintf("Some files failed after retrying. See '%s'", error_file))
         }
 
-        cat(timeframe, "4.1.1) Intersecting hazard risk x exposure - ", to_do_list[[i]]$variable, " - Complete \n")
+        .var_41_elapsed <- difftime(Sys.time(), .var_41_start, units = "mins")
+        .log03(sprintf("[%s] 4.1.1) variable %d/%d: %s — Complete (%.1f min)",
+                       timeframe, i, length(to_do_list),
+                       to_do_list[[i]]$variable,
+                       as.numeric(.var_41_elapsed)))
       }
 
       # 4.1.1) Check results ######
@@ -1113,7 +1124,8 @@ for (tx in seq_along(timeframe_choices)) {
         folder <- to_do_list[[v]]$folder
         variable <- to_do_list[[v]]$variable
 
-        .log03(sprintf("[%s] 4.2) variable %d/%d: %s -> %s",
+        .var_42_start <- Sys.time()
+        .log03(sprintf("[%s] 4.2) variable %d/%d: %s — start (folder=%s)",
                        timeframe, v, length(to_do_list), variable, folder))
 
         overwrite <- overwrite4
@@ -1213,10 +1225,13 @@ for (tx in seq_along(timeframe_choices)) {
 
           furrr::future_map(seq_along(group), function(i) {
             mts_choice <- group[i]
-            cat(sprintf("[%s] [3_freq_x_exp] [4.2 %d/%d] %s\n",
-                        format(Sys.time(), "%H:%M:%S"),
-                        i, .n_groups_42, mts_choice))
-            flush.console()
+            # Throttle: first, last, every 200th. Match the 4.1 worker.
+            if (i == 1L || i == .n_groups_42 || i %% 200L == 0L) {
+              cat(sprintf("[%s] [3_freq_x_exp] [4.2 %d/%d] %s\n",
+                          format(Sys.time(), "%H:%M:%S"),
+                          i, .n_groups_42, mts_choice))
+              flush.console()
+            }
 
             save_file <- file.path(folder, paste0(mts_choice, ".parquet"))
 
@@ -1369,7 +1384,10 @@ for (tx in seq_along(timeframe_choices)) {
         }
 
 
-        cat(timeframe, "4.2) Variable = ", variable, v, "/", length(to_do_list), "- Complete \n")
+        .var_42_elapsed <- difftime(Sys.time(), .var_42_start, units = "mins")
+        .log03(sprintf("[%s] 4.2) variable %d/%d: %s — Complete (%.1f min)",
+                       timeframe, v, length(to_do_list), variable,
+                       as.numeric(.var_42_elapsed)))
       }
 
 
@@ -1377,11 +1395,10 @@ for (tx in seq_along(timeframe_choices)) {
     }
   }
 
-  cat(
-    "Processing Complete", timeframe, tx, "/", length(timeframe_choices),
-    "ended at time:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
-    "\n total time:", Sys.time() - sys_start_time, "\n"
-  )
+  .tf_elapsed <- difftime(Sys.time(), sys_start_time, units = "mins")
+  .log03(sprintf("[timeframe %d/%d] %s — Complete (%.1f min total)",
+                 tx, length(timeframe_choices), timeframe,
+                 as.numeric(.tf_elapsed)))
 }
 
 cat("Exited timeframe loop - script complete\n")
