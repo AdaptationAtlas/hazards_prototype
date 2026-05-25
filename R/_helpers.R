@@ -73,6 +73,19 @@ write_parquet_pushdown <- function(
     data.table::setorderv(tbl, sort_cols_present)
   }
 
+  # Force PLAIN encoding on the columns we verify stats on. arrow's
+  # default writes dictionary-encoded strings AND stores column
+  # statistics against the dictionary indices (integers), not the
+  # decoded values — so DuckDB's parquet_metadata() returns NULL
+  # stats_min/max on those columns. PLAIN encoding writes the actual
+  # values directly + populates stats correctly. Other (non-verified)
+  # string columns can still benefit from dictionary compression.
+  verify_present <- intersect(verify_stats_on, names(tbl))
+  col_encoding <- setNames(
+    as.list(rep("PLAIN", length(verify_present))),
+    verify_present
+  )
+
   arrow::write_parquet(
     tbl,
     out_path,
@@ -80,12 +93,8 @@ write_parquet_pushdown <- function(
     compression_level = compression_level,
     chunk_size        = row_group_size,
     write_statistics  = TRUE,
-    # Disable dictionary encoding: when ON, arrow writes column
-    # statistics against the dictionary indices (integers), not the
-    # decoded string values, so DuckDB's parquet_metadata() returns
-    # NULL stats_min / stats_max on string filter columns. zstd-9
-    # still compresses repeated strings ~well.
     use_dictionary    = FALSE,
+    column_encoding   = col_encoding,
     ...
   )
 

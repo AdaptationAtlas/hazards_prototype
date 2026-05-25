@@ -347,17 +347,23 @@ rebake_one <- function(target, row_group_size, dry_run, tmpdir) {
   # 6. Write to a local tmp file with the desired row group size + stats.
   out_local <- file.path(tmpdir, sprintf("%s.fixed.parquet", target$key))
   t0 <- Sys.time()
+  # Force PLAIN encoding for the verify columns. Without this, arrow
+  # writes them dictionary-encoded with stats against the dict
+  # indices (NULL when DuckDB reads them back).
+  verify_present <- intersect(target$verify_stats_on, names(tbl_sorted))
+  col_encoding <- setNames(
+    as.list(rep("PLAIN", length(verify_present))),
+    verify_present
+  )
+
   arrow::write_parquet(
     tbl_sorted, out_local,
     compression       = "zstd",
     compression_level = 9L,
     chunk_size        = row_group_size,
     write_statistics  = TRUE,
-    # Disable dictionary encoding so column stats are written against
-    # the decoded string values; otherwise DuckDB's parquet_metadata()
-    # returns NULL stats_min/max for iso3, variable, ... and the whole
-    # pushdown purpose is defeated.
-    use_dictionary    = FALSE
+    use_dictionary    = FALSE,
+    column_encoding   = col_encoding
   )
   cat(sprintf("    wrote local rebake in %.2fs -> %s\n",
               as.numeric(difftime(Sys.time(), t0), units = "secs"),
