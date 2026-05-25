@@ -1,0 +1,244 @@
+nohup: ignoring input
+=== rebake_parquets_for_pushdown.R ===
+bucket:        s3://digital-atlas
+targets:       15 of 15
+row_group:     100,000 rows
+dry_run:       TRUE
+tmpdir:        /tmp/atlas_parquet_rebake
+AWS_PROFILE:   <unset>
+
+[adm0_obs_monthly] domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.parquet
+    notes: Producer: hazards_prototype/R/observational/3_extract_obs_admin.R
+    head: 4.59M bytes (4.59 MB)
+    downloaded in 1.52s
+    read into arrow: 281,124 rows, 12 cols, 0.04s
+    BEFORE: 1 row group(s), 281,124 rows
+    sorted by [iso3, variable, year, month] + wrote via DuckDB COPY in 0.27s -> /tmp/atlas_parquet_rebake/adm0_obs_monthly.fixed.parquet
+    AFTER:  3 row group(s), 281,124 rows
+    stats[iso3]: 3 groups · min~[AGO, GHA, SDN] max~[GHA, SDN, ZWE]
+    stats[variable]: 3 groups · min~[PTOT] max~[TMIN]
+    rebaked size: 4,247,989 bytes (-11.8% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.fixed.parquet
+
+[adm1_obs_monthly] domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm1_obs.parquet
+    notes: Producer: hazards_prototype/R/observational/3_extract_obs_admin.R
+    head: 49.5M bytes (49.53 MB)
+    downloaded in 4.63s
+    read into arrow: 3,403,080 rows, 12 cols, 0.11s
+    BEFORE: 4 row group(s), 3,403,080 rows
+    sorted by [iso3, admin1_name, variable, year, month] + wrote via DuckDB COPY in 1.50s -> /tmp/atlas_parquet_rebake/adm1_obs_monthly.fixed.parquet
+    AFTER:  34 row group(s), 3,403,080 rows
+    stats[iso3]: 34 groups · min~[AGO, BDI, BEN] max~[TZA, ZMB, ZWE]
+    stats[variable]: 34 groups · min~[PTOT] max~[TMIN]
+    rebaked size: 50,050,427 bytes (-3.6% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm1_obs.fixed.parquet
+
+[adm0_obs_periods] domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm0_obs.parquet
+    notes: Producer: hazards_prototype/R/observational/4_aggregate_obs_admin_periods.R
+    head: 4.81M bytes (4.81 MB)
+    downloaded in 0.95s
+    read into arrow: 302,841 rows, 12 cols, 0.03s
+    BEFORE: 1 row group(s), 302,841 rows
+    sorted by [iso3, variable, period, year] + wrote via DuckDB COPY in 0.35s -> /tmp/atlas_parquet_rebake/adm0_obs_periods.fixed.parquet
+    AFTER:  4 row group(s), 302,841 rows
+    stats[iso3]: 4 groups · min~[AGO, ETH, NER] max~[ETH, NER, ZWE]
+    stats[variable]: 4 groups · min~[PTOT, TAVG] max~[TMIN]
+    stats[period]: 4 groups · min~[AMJ] max~[annual]
+    rebaked size: 4,539,255 bytes (-10.0% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm0_obs.fixed.parquet
+
+[adm1_obs_periods] domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm1_obs.parquet
+    notes: Producer: hazards_prototype/R/observational/4_aggregate_obs_admin_periods.R
+    head: 52.9M bytes (52.93 MB)
+    downloaded in 7.25s
+    read into arrow: 3,665,970 rows, 12 cols, 0.14s
+    BEFORE: 4 row group(s), 3,665,970 rows
+    sorted by [iso3, admin1_name, variable, period, year] + wrote via DuckDB COPY in 2.03s -> /tmp/atlas_parquet_rebake/adm1_obs_periods.fixed.parquet
+    AFTER:  37 row group(s), 3,665,970 rows
+    stats[iso3]: 37 groups · min~[AGO, BDI, BEN] max~[ZAF, ZMB, ZWE]
+    stats[variable]: 37 groups · min~[PTOT] max~[TMIN]
+    stats[period]: 37 groups · min~[AMJ] max~[annual]
+    rebaked size: 54,003,291 bytes (-2.7% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm1_obs.fixed.parquet
+
+[cmip6_historical] domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=1995-2014/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
+    notes: Producer: hazards_prototype/R/1.x_*_timeseries.R
+    head: 23.1M bytes (23.11 MB)
+    downloaded in 3.24s
+    read into arrow: 1,746,216 rows, 20 cols, 0.69s
+    BEFORE: 2 row group(s), 1,746,216 rows
+    warn: sort cols not in schema, skipping: variable
+    sorted by [iso3, admin1_name, season, year] + wrote via DuckDB COPY in 2.60s -> /tmp/atlas_parquet_rebake/cmip6_historical.fixed.parquet
+    warn: verify col variable not in schema; skipping
+    AFTER:  18 row group(s), 1,746,216 rows
+    stats[iso3]: 18 groups · min~[AGO, BEN, CIV] max~[TZA, ZMB, ZWE]
+    stats[variable]: (no stats — verification will fail)
+    stats[season]: 18 groups · min~[AMJ] max~[annual]
+    rebaked size: 33,877,568 bytes (+39.8% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=1995-2014/baseline=1995-2014/variable=ensemble_season_timeseries.fixed.parquet
+
+[cmip6_2021_2040] domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2021-2040/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
+    notes: Producer: hazards_prototype/R/1.x_*_timeseries.R
+    head: 96.4M bytes (96.43 MB)
+    downloaded in 12.91s
+    read into arrow: 6,984,864 rows, 20 cols, 2.80s
+    BEFORE: 7 row group(s), 6,984,864 rows
+    warn: sort cols not in schema, skipping: variable
+    sorted by [iso3, admin1_name, season, scenario, year] + wrote via DuckDB COPY in 7.01s -> /tmp/atlas_parquet_rebake/cmip6_2021_2040.fixed.parquet
+    warn: verify col variable not in schema; skipping
+    AFTER:  70 row group(s), 6,984,864 rows
+    stats[iso3]: 70 groups · min~[AGO, BDI, BEN] max~[ZAF, ZMB, ZWE]
+    stats[variable]: (no stats — verification will fail)
+    stats[season]: 70 groups · min~[AMJ] max~[annual]
+    stats[scenario]: 70 groups · min~[ssp126] max~[ssp585]
+    rebaked size: 142,527,277 bytes (+41.0% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2021-2040/baseline=1995-2014/variable=ensemble_season_timeseries.fixed.parquet
+
+[cmip6_2041_2060] domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2041-2060/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
+    notes: Producer: hazards_prototype/R/1.x_*_timeseries.R
+    head: 98.9M bytes (98.87 MB)
+    downloaded in 6.45s
+    read into arrow: 6,984,864 rows, 20 cols, 3.02s
+    BEFORE: 7 row group(s), 6,984,864 rows
+    warn: sort cols not in schema, skipping: variable
+    sorted by [iso3, admin1_name, season, scenario, year] + wrote via DuckDB COPY in 7.05s -> /tmp/atlas_parquet_rebake/cmip6_2041_2060.fixed.parquet
+    warn: verify col variable not in schema; skipping
+    AFTER:  70 row group(s), 6,984,864 rows
+    stats[iso3]: 70 groups · min~[AGO, BDI, BEN] max~[ZAF, ZMB, ZWE]
+    stats[variable]: (no stats — verification will fail)
+    stats[season]: 70 groups · min~[AMJ] max~[annual]
+    stats[scenario]: 70 groups · min~[ssp126] max~[ssp585]
+    rebaked size: 144,544,873 bytes (+39.4% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2041-2060/baseline=1995-2014/variable=ensemble_season_timeseries.fixed.parquet
+
+[cmip6_2061_2080] domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2061-2080/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
+    notes: Producer: hazards_prototype/R/1.x_*_timeseries.R
+    head: 101M bytes (100.96 MB)
+    downloaded in 11.29s
+    read into arrow: 6,984,864 rows, 20 cols, 3.23s
+    BEFORE: 7 row group(s), 6,984,864 rows
+    warn: sort cols not in schema, skipping: variable
+    sorted by [iso3, admin1_name, season, scenario, year] + wrote via DuckDB COPY in 6.61s -> /tmp/atlas_parquet_rebake/cmip6_2061_2080.fixed.parquet
+    warn: verify col variable not in schema; skipping
+    AFTER:  70 row group(s), 6,984,864 rows
+    stats[iso3]: 70 groups · min~[AGO, BDI, BEN] max~[ZAF, ZMB, ZWE]
+    stats[variable]: (no stats — verification will fail)
+    stats[season]: 70 groups · min~[AMJ] max~[annual]
+    stats[scenario]: 70 groups · min~[ssp126] max~[ssp585]
+    rebaked size: 147,002,978 bytes (+38.9% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2061-2080/baseline=1995-2014/variable=ensemble_season_timeseries.fixed.parquet
+
+[cmip6_2081_2100] domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2081-2100/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
+    notes: Producer: hazards_prototype/R/1.x_*_timeseries.R
+    head: 103M bytes (102.62 MB)
+    downloaded in 7.57s
+    read into arrow: 6,984,864 rows, 20 cols, 2.87s
+    BEFORE: 7 row group(s), 6,984,864 rows
+    warn: sort cols not in schema, skipping: variable
+    sorted by [iso3, admin1_name, season, scenario, year] + wrote via DuckDB COPY in 6.39s -> /tmp/atlas_parquet_rebake/cmip6_2081_2100.fixed.parquet
+    warn: verify col variable not in schema; skipping
+    AFTER:  70 row group(s), 6,984,864 rows
+    stats[iso3]: 70 groups · min~[AGO, BDI, BEN] max~[ZAF, ZMB, ZWE]
+    stats[variable]: (no stats — verification will fail)
+    stats[season]: 70 groups · min~[AMJ] max~[annual]
+    stats[scenario]: 70 groups · min~[ssp126] max~[ssp585]
+    rebaked size: 149,527,571 bytes (+39.0% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2081-2100/baseline=1995-2014/variable=ensemble_season_timeseries.fixed.parquet
+
+[hazard_exposure_multi] domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
+    notes: Producer: hazards_prototype/R/3_freq_x_exposure.R
+    head: 68.4M bytes (68.36 MB)
+    downloaded in 5.76s
+    read into arrow: 60,252,017 rows, 18 cols, 5.59s
+    BEFORE: 58 row group(s), 60,252,017 rows
+    warn: sort cols not in schema, skipping: timeperiod
+    sorted by [iso3, admin1_name, crop, scenario] + wrote via DuckDB COPY in 43.48s -> /tmp/atlas_parquet_rebake/hazard_exposure_multi.fixed.parquet
+    AFTER:  601 row group(s), 60,252,017 rows
+    stats[iso3]: 601 groups · min~[AGO, BDI, BEN] max~[ZAF, ZMB, ZWE]
+    stats[crop]: 601 groups · min~[arabica-coffee, banana, barley] max~[tobacco, wheat, yams]
+    stats[scenario]: 601 groups · min~[historic] max~[ssp585]
+    rebaked size: 162,537,272 bytes (+126.7% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.fixed.parquet
+
+[exposure_crop_livestock] domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=crop-livestock_all.parquet
+    notes: Producer: hazards_prototype/R/0.4.4_process_exposure.R (renamed at publish time)
+    head: 6.54M bytes (6.54 MB)
+    downloaded in 1.57s
+    read into arrow: 7,847,746 rows, 14 cols, 0.83s
+    BEFORE: 8 row group(s), 7,847,746 rows
+    sorted by [iso3, admin1_name, exposure, unit_full, crop] + wrote via DuckDB COPY in 3.95s -> /tmp/atlas_parquet_rebake/exposure_crop_livestock.fixed.parquet
+    AFTER:  79 row group(s), 7,847,746 rows
+    stats[iso3]: 79 groups · min~[AGO, BDI, BEN] max~[ZAF, ZMB, ZWE]
+    stats[exposure]: 79 groups · min~[harv-area] max~[vop]
+    stats[unit_full]: 79 groups · min~[ha] max~[t]
+    rebaked size: 25,337,508 bytes (+269.4% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=crop-livestock_all.fixed.parquet
+
+[adm0_faostat] domain=socioeconomic/type=production/source=faostat/region=ssa/variable=adm0_faostat.parquet
+    notes: Producer: hazards_prototype/R/0.4.5_create_faostat_long.R
+    head: 2.98M bytes (2.98 MB)
+    downloaded in 3.18s
+    read into arrow: 753,746 rows, 13 cols, 0.24s
+    BEFORE: 1 row group(s), 753,746 rows
+    sorted by [iso3, variable, commodity, year] + wrote via DuckDB COPY in 0.67s -> /tmp/atlas_parquet_rebake/adm0_faostat.fixed.parquet
+    AFTER:  8 row group(s), 753,746 rows
+    stats[iso3]: 8 groups · min~[AGO, CMR, EGY] max~[SYC, ZAF, ZWE]
+    stats[variable]: 8 groups · min~[export_quantity] max~[yield]
+    stats[commodity]: 8 groups · min~[Abaca, Almonds, Almonds, shelled] max~[Wheat and meslin flour, Yams]
+    rebaked size: 3,150,212 bytes (+0.7% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=socioeconomic/type=production/source=faostat/region=ssa/variable=adm0_faostat.fixed.parquet
+
+[a0_gdp] domain=socioeconomic/type=economic/source=worldbank_gdp/region=ssa/variable=adm0_sectorGDP_usd2015.parquet
+    notes: External producer (World Bank WDI pipeline not in mounted repos).
+    head: 15.2K bytes (0.01 MB)
+    downloaded in 0.27s
+    read into arrow: 1,440 rows, 6 cols, 0.01s
+    BEFORE: 1 row group(s), 1,440 rows
+    sorted by [iso3, year] + wrote via DuckDB COPY in 0.01s -> /tmp/atlas_parquet_rebake/a0_gdp.fixed.parquet
+    AFTER:  1 row group(s), 1,440 rows
+    stats[iso3]: 1 groups · min~[AGO] max~[ZWE]
+    PROBLEM: only 1 row group(s) — pushdown will not work
+    !! aborting this target — not uploading
+
+[a0_landuse] domain=socioeconomic/type=economic/source=fao_landuse/region=ssa/variable=adm0_sectorLanduse.parquet
+    notes: External producer (FAOSTAT land-use pipeline not in mounted repos).
+    head: 11.9K bytes (0.01 MB)
+    downloaded in 0.27s
+    read into arrow: 1,096 rows, 8 cols, 0.01s
+    BEFORE: 1 row group(s), 1,096 rows
+    sorted by [iso3, year] + wrote via DuckDB COPY in 0.01s -> /tmp/atlas_parquet_rebake/a0_landuse.fixed.parquet
+    AFTER:  1 row group(s), 1,096 rows
+    stats[iso3]: 1 groups · min~[AGO] max~[ZWE]
+    PROBLEM: only 1 row group(s) — pushdown will not work
+    !! aborting this target — not uploading
+
+[poverty] domain=socioeconomic/type=economic/source=worldbank_gsap2023/region=africa/variable=adm01_pov-rates.parquet
+    notes: External producer (World Bank GSAP 2023 pipeline not in mounted repos).
+    head: 23.2K bytes (0.02 MB)
+    downloaded in 0.33s
+    read into arrow: 774 rows, 10 cols, 0.01s
+    BEFORE: 1 row group(s), 774 rows
+    sorted by [iso3, admin1_name] + wrote via DuckDB COPY in 0.01s -> /tmp/atlas_parquet_rebake/poverty.fixed.parquet
+    AFTER:  1 row group(s), 774 rows
+    stats[iso3]: 1 groups · min~[AGO] max~[ZWE]
+    PROBLEM: only 1 row group(s) — pushdown will not work
+    !! aborting this target — not uploading
+
+=== summary ===
+  adm0_obs_monthly         dry_run
+  adm1_obs_monthly         dry_run
+  adm0_obs_periods         dry_run
+  adm1_obs_periods         dry_run
+  cmip6_historical         dry_run
+  cmip6_2021_2040          dry_run
+  cmip6_2041_2060          dry_run
+  cmip6_2061_2080          dry_run
+  cmip6_2081_2100          dry_run
+  hazard_exposure_multi    dry_run
+  exposure_crop_livestock  dry_run
+  adm0_faostat             dry_run
+  a0_gdp                   verify_failed
+  a0_landuse               verify_failed
+  poverty                  verify_failed
+
+===== STAGE B DONE (Rscript exit code: 1) =====
