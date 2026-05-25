@@ -1,11 +1,8 @@
 # ----------------------------------------------------------------------
 # Script: 2026-05-25_rebake_pushdown.sh
 # Purpose: Drive the R rebake of Atlas S3 parquets for DuckDB-WASM
-#          pushdown. The rebake script itself lives in
-#          atlas_notebooks/scripts/rebake_parquets_for_pushdown.R
-#          (alongside the original .py companion); this runbook drives
-#          it from the standard hazards_prototype runbook location so
-#          all paste-able pipeline runbooks live in one spot.
+#          pushdown (scripts/rebake_parquets_for_pushdown.R, same dir
+#          as this runbook).
 # Background:
 #   - Notebook cold-start fetches were 30-70s because the published
 #     parquets had ONE row group and NULL stats on filter keys.
@@ -18,38 +15,23 @@
 #          $LOG_DIR with STAMP suffix and ends with a "===== DONE ====="
 #          sentinel that includes the Rscript exit code.
 # References:
-#   - Dispatch: atlas_notebooks/playbook/handovers/climateRationale/
-#               dispatches/2026-05-25_pipeline-parquet-pushdown-rewrite.md
-#   - Rebake R:  atlas_notebooks/scripts/rebake_parquets_for_pushdown.R
-#   - Helper:    hazards_prototype/R/_helpers.R::write_parquet_pushdown
+#   - Dispatch (atlas_notebooks repo, for context only):
+#       playbook/handovers/climateRationale/dispatches/
+#         2026-05-25_pipeline-parquet-pushdown-rewrite.md
+#   - Helper: R/_helpers.R::write_parquet_pushdown
 #   - Convention memory: feedback-parquet-authoring-for-duckdb-wasm
 # ----------------------------------------------------------------------
 
 # ======================================================================
 # 0) Pre-flight
 # ======================================================================
-# Pull both repos so the rebake R script + this runbook are in sync.
-# Clone atlas_notebooks the first time (it lives alongside
-# hazards_prototype under ~/atlas/).
-if [ ! -d "$HOME/atlas/atlas_notebooks" ]; then
-  echo "Cloning atlas_notebooks (first time) ..."
-  cd $HOME/atlas
-  git clone https://github.com/AdaptationAtlas/atlas_notebooks.git
-fi
-
-cd $HOME/atlas/atlas_notebooks
-git fetch origin dev/climateRationale
-git checkout dev/climateRationale
-git pull origin dev/climateRationale
-git log --oneline -3
-
 cd $HOME/atlas/hazards_prototype
 git checkout develop
 git pull origin develop
 git log --oneline -3
 
 # Confirm the R rebake script is present
-REBAKE_SCRIPT="$HOME/atlas/atlas_notebooks/scripts/rebake_parquets_for_pushdown.R"
+REBAKE_SCRIPT="$HOME/atlas/hazards_prototype/scripts/rebake_parquets_for_pushdown.R"
 test -f "$REBAKE_SCRIPT" \
   && echo "OK: rebake R script present" \
   || echo "FAIL: missing $REBAKE_SCRIPT"
@@ -62,7 +44,7 @@ aws sts get-caller-identity 2>&1 | head -5 \
 # ======================================================================
 # 1) Paths + log dir + STAMP
 # ======================================================================
-export REBAKE_SCRIPT="$HOME/atlas/atlas_notebooks/scripts/rebake_parquets_for_pushdown.R"
+export REBAKE_SCRIPT="$HOME/atlas/hazards_prototype/scripts/rebake_parquets_for_pushdown.R"
 # Logs live with the other runbook logs in hazards_prototype/logs/
 export LOG_DIR="$HOME/atlas/hazards_prototype/logs"
 mkdir -p "$LOG_DIR"
