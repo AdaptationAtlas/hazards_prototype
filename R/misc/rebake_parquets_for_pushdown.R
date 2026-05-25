@@ -343,7 +343,11 @@ rebake_one <- function(target, row_group_size, dry_run, tmpdir) {
     compression_level = 9L,
     chunk_size        = row_group_size,
     write_statistics  = TRUE,
-    use_dictionary    = TRUE
+    # Disable dictionary encoding so column stats are written against
+    # the decoded string values; otherwise DuckDB's parquet_metadata()
+    # returns NULL stats_min/max for iso3, variable, ... and the whole
+    # pushdown purpose is defeated.
+    use_dictionary    = FALSE
   )
   cat(sprintf("    wrote local rebake in %.2fs -> %s\n",
               as.numeric(difftime(Sys.time(), t0), units = "secs"),
