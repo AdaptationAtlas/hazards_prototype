@@ -1012,20 +1012,34 @@ for (tx in seq_along(timeframe_choices)) {
         options(progressr.clear = FALSE)
         options(progressr.interval = 0.2) # tune as needed
 
-        # Load and set handler
+        # Use the "void" handler so progressr doesn't try to render a
+        # progress bar to stdout — under multisession workers + retries,
+        # that produced thousands of "no longer listening to this
+        # progressor" warning lines per timeframe. We still pass the
+        # progressor in so retry_risk_x_exposure's signature works;
+        # workers also stream a direct per-file cat() to the log.
         progressr::handlers(global = TRUE)
-        progressr::handlers("progress") # or "progress", "cli", etc.
+        progressr::handlers("void")
 
-        with_progress({
-          prog <- progressor(steps = length(files))
+        .n_files_41 <- length(files)
+        # suppressWarnings on the whole block kills late-firing
+        # "no longer listening to this progressor" spam from futures
+        # that complete after with_progress() returns.
+        suppressWarnings(with_progress({
+          prog <- progressor(steps = .n_files_41)
 
           # v9: scheduling=Inf forced static load-balancing (each worker
           # got 1/Nth of files up-front and idled if their batch finished
           # early). Default scheduling lets workers grab tasks as they
           # complete, evening out runtime when some files are heavier
           # than others.
-          p <- furrr::future_map(files,
-            ~ retry_risk_x_exposure(.x,
+          p <- furrr::future_map(seq_along(files), function(.i) {
+            .f <- files[.i]
+            cat(sprintf("[%s] [3_freq_x_exp] [4.1 %d/%d] %s\n",
+                        format(Sys.time(), "%H:%M:%S"),
+                        .i, .n_files_41, basename(.f)))
+            flush.console()
+            retry_risk_x_exposure(.f,
               save_dir = to_do_list[[i]]$folder,
               variable = to_do_list[[i]]$variable,
               overwrite = overwrite4,
@@ -1034,10 +1048,11 @@ for (tx in seq_along(timeframe_choices)) {
               crop_choices = crop_choices,
               round_n = to_do_list[[i]]$round_n,
               prog = prog
-            ),
+            )
+          },
             .options = furrr::furrr_options(seed = TRUE, stdout = FALSE)
           )
-        })
+        }))
 
         # Reset plan to sequential
         future::plan(sequential)
@@ -1183,19 +1198,25 @@ for (tx in seq_along(timeframe_choices)) {
 
         set_parallel_plan(n_cores = worker_n, use_multisession = multisession)
 
-        # Enable progressr
+        # Use "void" handler — see 4.1 for rationale. Workers emit
+        # explicit per-group cat() lines for log visibility.
         options(progressr.enable = TRUE)
         options(progressr.clear = FALSE)
         options(progressr.interval = 0.2)
         progressr::handlers(global = TRUE)
-        progressr::handlers("progress")
+        progressr::handlers("void")
 
-        p <- with_progress({
-          prog <- progressr::progressor(steps = length(group))
+        .n_groups_42 <- length(group)
+        # Same warning-mufflers as 4.1 (handlers void + suppressWarnings).
+        p <- suppressWarnings(with_progress({
+          prog <- progressr::progressor(steps = .n_groups_42)
 
           furrr::future_map(seq_along(group), function(i) {
             mts_choice <- group[i]
-            prog(sprintf("Processing %s (%d of %d)", mts_choice, i, length(group)))
+            cat(sprintf("[%s] [3_freq_x_exp] [4.2 %d/%d] %s\n",
+                        format(Sys.time(), "%H:%M:%S"),
+                        i, .n_groups_42, mts_choice))
+            flush.console()
 
             save_file <- file.path(folder, paste0(mts_choice, ".parquet"))
 
@@ -1297,7 +1318,7 @@ for (tx in seq_along(timeframe_choices)) {
           # v9: same scheduling fix as Stage 4.1 — default lets workers
           # grab tasks dynamically instead of static 1/Nth slices.
           }, .options = furrr::furrr_options(seed = TRUE, stdout = FALSE))
-        })
+        }))
 
         plan(sequential)
 
