@@ -164,13 +164,52 @@ wait $PID_D; echo "STAGE D bash exit code: $?"
 
 echo "--- A/B summary ---"
 grep -A 30 "=== summary ===" "$LOG_FILE" | head -40
-# Expected outcome:
-#   - obs / faostat / external small-file targets: 5-15x speedup
-#   - cmip6 timeseries: 10-30x speedup (these are 100MB+ files; biggest win)
-#   - hazard_exposure_multi: similar (big file, narrow predicate)
-#   - exposure_crop_livestock: similar
-# If any target shows speedup ~1x, the predicate isn't narrowing —
-# look at the EXPLAIN ANALYZE plan dump in the per-query section.
+# STAGE D is a CLI A/B and is only a sanity floor. STAGE B2 already
+# showed the CLI is fast against canonical (1.5-2s); STAGE D mostly
+# confirms the rebaked files in the sandbox prefix return the same
+# row counts. The REAL gate is STAGE E — the in-browser test.
+
+
+# ======================================================================
+# STAGE E — Browser-side A/B via the parquet pushdown sandbox notebook
+# ======================================================================
+# Open the sandbox notebook locally and let it run the 15 A/B pairs
+# against the sandbox prefix in DuckDB-WASM (the actual consumer):
+#
+#   cd $HOME/atlas/atlas_notebooks
+#   quarto preview notebooks/sandbox/parquet_pushdown_perf.qmd
+#
+# Wait for the rendered table. Copy it back into a log file here:
+#
+#   $LOG_DIR/Epush_browser_AB_${STAMP}.log
+#
+# Gate (per dispatch 2026-05-25_parquet-pushdown-sandbox.md):
+#   - Every target: rows_match = true
+#   - All targets: speedup_ratio >= 2x
+#   - adm0_obs_periods + cmip6_*: speedup_ratio >= 5x (historical pain
+#     targets)
+# If pass, proceed to STAGE F. If not, leave the sandbox in place and
+# diagnose (likely DuckDB-WASM HTTP range-request behaviour) before
+# touching production.
+
+
+# ======================================================================
+# STAGE F — Promote sandbox copies to canonical (manual, GATED on STAGE E)
+# ======================================================================
+# This is the only stage that mutates production. Each command:
+#   1) renames the canonical file to a `.preFix.bak` backup
+#   2) renames the sandbox copy into the canonical key
+# Rollback = rename the .preFix.bak back. Trivially scriptable.
+#
+# The exact MV commands were printed at the end of STAGE C's log
+# (the "STAGE F promotion commands" block). Extract them with:
+#
+#   sed -n '/=== STAGE F promotion commands /,/^=== /p' \
+#     "$LOG_DIR/Cpush_upload_sidecars_${STAMP}.log"
+#
+# Then paste those `aws s3 mv` lines below ONE TARGET AT A TIME to
+# stage in the swap (per-target promotion lets you spot any
+# fall-through with a quick notebook re-render between targets).
 
 
 # ======================================================================

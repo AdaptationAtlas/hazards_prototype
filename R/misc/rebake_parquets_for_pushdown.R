@@ -15,10 +15,13 @@
 #
 # This script reads each canonical parquet from S3, rewrites it with
 # ~100K-row row groups, sorted by the filter keys, with column
-# statistics enabled, then writes the result to a SIDECAR S3 key
-# (`<original>.fixed.parquet` alongside the original). It does NOT
-# overwrite the canonical path — that swap is a manual step you do
-# once you've A/B tested cold-start performance.
+# statistics enabled, then uploads to an S3 STAGING AREA at
+# `s3://digital-atlas/sandbox/parquet-pushdown/<original-canonical-path>`.
+# Canonical paths are NOT touched. Promotion (sandbox -> canonical)
+# is a separate manual step run AFTER the in-browser sandbox notebook
+# A/B confirms the speedup. See
+# atlas_notebooks/playbook/handovers/climateRationale/dispatches/
+#   2026-05-25_parquet-pushdown-sandbox.md
 #
 # Usage
 # -----
@@ -29,7 +32,7 @@
 #     # Dry-run first (downloads, rebakes locally, prints stats, no upload):
 #     Rscript scripts/rebake_parquets_for_pushdown.R --dry-run
 #
-#     # Real run — uploads each rebake to a `.fixed.parquet` sidecar S3 key:
+#     # Real run — uploads each rebake to the sandbox staging prefix:
 #     Rscript scripts/rebake_parquets_for_pushdown.R
 #
 #     # Limit to a subset:
@@ -194,11 +197,18 @@ s3_upload <- function(local_path, key) {
   invisible(key)
 }
 
-sidecar_key <- function(canonical_key) {
+SANDBOX_PREFIX <- "sandbox/parquet-pushdown"
+
+# Map canonical S3 key -> staging-area S3 key. We mirror the full
+# canonical path under sandbox/parquet-pushdown/ so the sandbox
+# notebook can compute the URL with one string sub. See
+# atlas_notebooks/playbook/handovers/climateRationale/dispatches/
+# 2026-05-25_parquet-pushdown-sandbox.md for the rationale.
+sandbox_key <- function(canonical_key) {
   if (!grepl("\\.parquet$", canonical_key)) {
     stop(sprintf("unexpected key (missing .parquet): %s", canonical_key))
   }
-  sub("\\.parquet$", ".fixed.parquet", canonical_key)
+  file.path(SANDBOX_PREFIX, canonical_key)
 }
 
 # ---------------------------------------------------------------------------
@@ -411,8 +421,8 @@ rebake_one <- function(target, row_group_size, dry_run, tmpdir) {
   cat(sprintf("    rebaked size: %s bytes (%+.1f%% vs original)\n",
               format(new_size, big.mark = ","), delta_pct))
 
-  # 8. Upload to sidecar key (unless dry-run).
-  out_key <- sidecar_key(target$s3_key)
+  # 8. Upload to sandbox staging key (unless dry-run).
+  out_key <- sandbox_key(target$s3_key)
   if (dry_run) {
     cat(sprintf("    DRY-RUN: would upload to %s\n", s3_url(out_key)))
     return(list(key = target$key, status = "dry_run", details = v))
@@ -420,7 +430,7 @@ rebake_one <- function(target, row_group_size, dry_run, tmpdir) {
 
   s3_upload(out_local, out_key)
   cat(sprintf("    uploaded -> %s\n", s3_url(out_key)))
-  list(key = target$key, status = "uploaded", details = v, sidecar_key = out_key)
+  list(key = target$key, status = "uploaded", details = v, sandbox_key = out_key)
 }
 
 # ---------------------------------------------------------------------------
@@ -512,18 +522,21 @@ main <- function(argv) {
     cat(sprintf("  %-*s  %s\n", width, r$key, r$status))
   }
 
-  # Manual-swap cheatsheet.
+  # Promotion cheatsheet — to run from STAGE F of the runbook ONLY
+  # after the in-browser sandbox notebook A/B passes (see dispatch
+  # 2026-05-25_parquet-pushdown-sandbox.md).
   uploaded <- Filter(function(r) r$status == "uploaded", results)
   if (length(uploaded) > 0L) {
-    cat("\n=== manual-swap commands (after validating the .fixed files via DuckDB) ===\n")
+    cat("\n=== STAGE F promotion commands ",
+        "(run ONLY after the sandbox notebook A/B passes) ===\n")
     for (r in uploaded) {
       t <- Find(function(t) t$key == r$key, TARGETS)
       canonical <- s3_url(t$s3_key)
-      sidecar   <- s3_url(r$sidecar_key)
+      sandbox   <- s3_url(r$sandbox_key)
       backup    <- paste0(canonical, ".preFix.bak")
       cat(sprintf("# %s\n", r$key))
       cat(sprintf("aws s3 mv %s %s\n", canonical, backup))
-      cat(sprintf("aws s3 mv %s   %s\n", sidecar, canonical))
+      cat(sprintf("aws s3 mv %s   %s\n", sandbox, canonical))
       cat("\n")
     }
   }

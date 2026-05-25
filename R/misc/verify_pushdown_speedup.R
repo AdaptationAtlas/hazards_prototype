@@ -4,7 +4,8 @@
 #
 # Smoke-test the parquet pushdown rebake by running notebook-style
 # filter queries against (a) the canonical S3 parquet and (b) the
-# `.fixed.parquet` sidecar produced by rebake_parquets_for_pushdown.R.
+# staging copy under s3://digital-atlas/sandbox/parquet-pushdown/
+# produced by rebake_parquets_for_pushdown.R.
 # For each query, measure:
 #   - elapsed wall time   (the user-facing metric the notebook pays)
 #   - bytes downloaded    (via DuckDB's PRAGMA + duckdb_extension stats
@@ -19,14 +20,14 @@
 # Usage
 # -----
 #   Rscript R/misc/verify_pushdown_speedup.R
-#       Runs all built-in queries (canonical + sidecar pairs).
+#       Runs all built-in queries (canonical + sandbox pairs).
 #
 #   Rscript R/misc/verify_pushdown_speedup.R --only adm0_obs_monthly adm0_faostat
 #       Restrict to specific target keys (same keys as the rebake script).
 #
 #   Rscript R/misc/verify_pushdown_speedup.R --canonical-only
 #       Only query canonical paths — useful for an A baseline before
-#       STAGE C uploads the sidecars.
+#       STAGE C uploads the sandboxs.
 #
 # Expected outcome
 # ----------------
@@ -36,7 +37,7 @@
 # groups, ~1-5 s per query.
 # Speedup ratio: 10-30×.
 #
-# If the sidecar timing is close to canonical, pushdown isn't firing.
+# If the sandbox timing is close to canonical, pushdown isn't firing.
 # Most likely cause: filter columns aren't sorted on (predicate can't
 # narrow row groups) or stats still aren't populated (regression in
 # the rebake script).
@@ -153,8 +154,17 @@ parse_args <- function(argv) {
 # Per-query runner
 # ---------------------------------------------------------------------------
 
-sidecar_url <- function(canonical_url) {
-  sub("\\.parquet$", ".fixed.parquet", canonical_url)
+# Map a canonical S3 URL to its staging-area equivalent under
+# https://<bucket>.s3.amazonaws.com/sandbox/parquet-pushdown/<canonical-path>.
+# Mirrors the sandbox_key() logic in
+# R/misc/rebake_parquets_for_pushdown.R.
+sandbox_url <- function(canonical_url) {
+  m <- regmatches(canonical_url,
+                  regexec("^(https://[^/]+/)(.+)$", canonical_url))[[1]]
+  if (length(m) != 3L) {
+    stop(sprintf("can't parse canonical URL: %s", canonical_url))
+  }
+  paste0(m[2], "sandbox/parquet-pushdown/", m[3])
 }
 
 # Run a single query against a given URL with a fresh DuckDB connection
@@ -200,7 +210,7 @@ run_query <- function(q, canonical_only = FALSE) {
   cat(sprintf("    WHERE %s\n", q$where))
 
   canonical_url <- file.path(S3_BASE, q$s3_key)
-  sidecar       <- sidecar_url(canonical_url)
+  sandbox       <- sandbox_url(canonical_url)
 
   out <- list(key = q$key)
 
@@ -217,16 +227,16 @@ run_query <- function(q, canonical_only = FALSE) {
 
   if (canonical_only) return(out)
 
-  cat(sprintf("    sidecar   : %s\n", sidecar))
-  r_side <- tryCatch(run_one(sidecar, q$where),
+  cat(sprintf("    sandbox   : %s\n", sandbox))
+  r_side <- tryCatch(run_one(sandbox, q$where),
                      error = function(e) {
-                       cat(sprintf("    sidecar FAILED: %s\n", conditionMessage(e)))
+                       cat(sprintf("    sandbox FAILED: %s\n", conditionMessage(e)))
                        list(elapsed_s = NA, n_rows = NA, plan = conditionMessage(e))
                      })
-  cat(sprintf("    sidecar   : %.2fs, %s rows\n",
+  cat(sprintf("    sandbox   : %.2fs, %s rows\n",
               r_side$elapsed_s,
               format(r_side$n_rows, big.mark = ",")))
-  out$sidecar <- r_side
+  out$sandbox <- r_side
 
   # Verdict.
   if (!is.na(r_can$elapsed_s) && !is.na(r_side$elapsed_s) && r_side$elapsed_s > 0) {
@@ -293,13 +303,13 @@ main <- function(argv) {
     }
   } else {
     cat(sprintf("%-26s %12s %12s %8s %s\n",
-                "target", "canonical_s", "sidecar_s", "speedup", "rows_match"))
+                "target", "canonical_s", "sandbox_s", "speedup", "rows_match"))
     cat(strrep("-", 75), "\n")
     for (r in results) {
       cat(sprintf("%-26s %12.2f %12.2f %7.1fx %s\n",
                   r$key,
                   r$canonical$elapsed_s,
-                  r$sidecar$elapsed_s,
+                  r$sandbox$elapsed_s,
                   r$speedup,
                   if (isTRUE(r$rows_match)) "ok" else "MISMATCH"))
     }
