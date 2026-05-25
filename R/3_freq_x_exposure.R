@@ -1237,17 +1237,28 @@ for (tx in seq_along(timeframe_choices)) {
 
             if (!file.exists(save_file) | overwrite) {
               file_choices <- files$file[files$group == mts_choice]
-              rast_data <- terra::rast(file_choices)
+              # Per-file load + defensive resample to base_rast before
+              # stacking. The Stage 4.1 intersection writes inherit the
+              # native extent of whichever exposure raster was used
+              # (SPAM crops at 10km vs GLW livestock at base_rast),
+              # so the per-group set can be a mix of extents and
+              # terra::rast(c(...)) errors with [rast] extents do not
+              # match. Use method="sum" (mass-conserving — same v9
+              # pattern as 0.4.1 / 0.4.4).
+              boundary_choice <- boundaries_zonal$admin2
+              zonal_rast <- terra::rast(boundary_choice)
+              rast_layers <- lapply(file_choices, function(.f) {
+                .r <- terra::rast(.f)
+                if (!terra::compareGeom(.r, base_rast, stopOnError = FALSE)) {
+                  .r <- terra::resample(.r, base_rast, method = "sum")
+                }
+                .r
+              })
+              rast_data <- terra::rast(rast_layers)
 
               if (any(table(names(rast_data)) > 1)) {
                 stop("duplicate layer names present")
               }
-
-
-              # cat("Group", i, "/", length(group), mts_choice, " - extracting boundary        \r")
-
-              boundary_choice <- boundaries_zonal$admin2
-              zonal_rast <- terra::rast(boundary_choice)
 
               # v9: terra >= 1.7 supports multithreaded zonal; safe with
               # older versions too (extra arg is silently dropped).
