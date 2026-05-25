@@ -340,14 +340,17 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
       variable = exposure_adm_sum_tab[,unique(exposure)],
       unit = exposure_adm_sum_tab[,unique(unit)],
       technology = exposure_adm_sum_tab[,unique(tech)],
-      stat=stat,
+      # MapSPAM + GLW extractions both use FUN="sum"; literal here so we
+      # don't depend on `stat` leaking out of the (now-multisession)
+      # furrr_map function scope.
+      stat = "sum",
       notes = paste0("A merged table of all mapspam crop x technology and glw livestock values extracted by boundary vectors then summarized.")
     )
-    
+
     attr_file<-paste0(file,".json")
-    
+
     write_json(attr_info, attr_file, pretty = TRUE)
-    
+
     # Harmonize unit naming
     for(k in 1:length(units)){
       exposure_adm_sum_tab[unit==units[k],unit:=names(units)[k]]
@@ -395,7 +398,7 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
         variable = exposure_adm_sum_tab[,unique(exposure)],
         unit = exposure_adm_sum_tab[,unique(unit)],
         technology = exposure_adm_sum_tab[,unique(tech)],
-        stat=stat,
+        stat = "sum",  # MapSPAM + GLW extractions both use FUN="sum" (see L343 note)
         notes = paste0("A merged table of all mapspam crop x technology and glw livestock values extracted by boundary vectors then summarized.")
       )
       
