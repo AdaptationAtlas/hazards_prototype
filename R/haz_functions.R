@@ -2771,7 +2771,7 @@ upload_files_to_s3 <- function(files,
   
   # Enable progressr handlers for progress tracking
   progressr::handlers(global = TRUE)
-  progressr::handlers("progress")
+  progressr::handlers("void")
   
   # Ensure the S3 directory exists, create if not
   if (!s3_dir_exists(selected_bucket)) {
@@ -3087,7 +3087,7 @@ optimize_histograms <- function(data, breaks = 10) {
 #'
 check_and_delete_bad_files <- function(files, delete_bad = TRUE, worker_n = 2) {
   # Set up progress handling and parallel plan
-  progressr::handlers("progress")
+  progressr::handlers("void")
   future::plan(future::multisession, workers = worker_n)
   
   # Progress and error-handling for loading files
@@ -3234,11 +3234,15 @@ check_tif_integrity <- function(dir_path,
   
   # ---- 2. Parallel plan + progressr setup -----------------------------------
   set_parallel_plan(n_cores = n_workers_files, use_multisession = use_multisession)
+  # Use "void" handler so no progress bar is drawn to stdout. Under
+  # nohup capture, the spinner + \r-overwrites become hundreds of
+  # "[----] 0%" lines in the log file. We log per-folder via the
+  # outer cat(); per-file progress for a check pass is rarely useful.
   progressr::handlers(global = TRUE)
-  progressr::handlers("progress")
-  
+  progressr::handlers("void")
+
   # ---- 3. Integrity check ---------------------------------------------------
-  results <- progressr::with_progress({
+  results <- suppressWarnings(progressr::with_progress({
     p <- progressr::progressor(along = files)
     future.apply::future_lapply(files, function(f) {
       res <- tryCatch({
@@ -3250,7 +3254,7 @@ check_tif_integrity <- function(dir_path,
       p()
       res
     },future.seed = TRUE )
-  })
+  }))
   
   plan(sequential)
   results <- data.table::rbindlist(results)
@@ -3340,7 +3344,7 @@ list_files_parallel <- function(root_dir,
   if (n_workers > 1) {
     set_parallel_plan(n_cores = n_workers, use_multisession = use_multisession)
     progressr::handlers(global = TRUE)
-    progressr::handlers("progress")
+    progressr::handlers("void")
     
     files_nested <- progressr::with_progress({
       p <- progressr::progressor(steps = length(folders))
