@@ -76,9 +76,11 @@ write_parquet_pushdown <- function(
   } else {
     ""
   }
+  # COMPRESSION_LEVEL 9 matches the original arrow zstd level so file
+  # sizes don't grow ~40% on big timeseries files. Requires DuckDB >= 0.10.
   DBI::dbExecute(con, sprintf(
     "COPY (SELECT * FROM tbl_src %s)
-     TO '%s' (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE %d)",
+     TO '%s' (FORMAT PARQUET, COMPRESSION ZSTD, COMPRESSION_LEVEL 9, ROW_GROUP_SIZE %d)",
     order_by, out_path, row_group_size
   ))
 
