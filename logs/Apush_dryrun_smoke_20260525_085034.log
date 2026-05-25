@@ -10,11 +10,11 @@ AWS_PROFILE:   <unset>
 [adm0_obs_monthly] domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.parquet
     notes: Producer: hazards_prototype/R/observational/3_extract_obs_admin.R
     head: 4.59M bytes (4.59 MB)
-    downloaded in 1.75s
+    downloaded in 1.60s
     read into arrow: 281,124 rows, 12 cols, 0.05s
     BEFORE: 1 row group(s), 281,124 rows
-    sorted by [iso3, variable, year, month] in 0.06s
-    wrote local rebake in 0.22s -> /tmp/atlas_parquet_rebake/adm0_obs_monthly.fixed.parquet
+    sorted by [iso3, variable, year, month] in 0.07s
+    wrote local rebake in 0.24s -> /tmp/atlas_parquet_rebake/adm0_obs_monthly.fixed.parquet
     AFTER:  3 row group(s), 281,124 rows
     stats[iso3]: 3 groups · min~[] max~[]
     stats[variable]: 3 groups · min~[] max~[]
@@ -25,11 +25,11 @@ AWS_PROFILE:   <unset>
 [adm0_obs_periods] domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm0_obs.parquet
     notes: Producer: hazards_prototype/R/observational/4_aggregate_obs_admin_periods.R
     head: 4.81M bytes (4.81 MB)
-    downloaded in 0.79s
-    read into arrow: 302,841 rows, 12 cols, 0.01s
+    downloaded in 1.02s
+    read into arrow: 302,841 rows, 12 cols, 0.02s
     BEFORE: 1 row group(s), 302,841 rows
-    sorted by [iso3, variable, period, year] in 0.25s
-    wrote local rebake in 0.20s -> /tmp/atlas_parquet_rebake/adm0_obs_periods.fixed.parquet
+    sorted by [iso3, variable, period, year] in 0.46s
+    wrote local rebake in 0.27s -> /tmp/atlas_parquet_rebake/adm0_obs_periods.fixed.parquet
     AFTER:  4 row group(s), 302,841 rows
     stats[iso3]: 4 groups · min~[] max~[]
     stats[variable]: 4 groups · min~[] max~[]
@@ -42,11 +42,11 @@ AWS_PROFILE:   <unset>
 [adm0_faostat] domain=socioeconomic/type=production/source=faostat/region=ssa/variable=adm0_faostat.parquet
     notes: Producer: hazards_prototype/R/0.4.5_create_faostat_long.R
     head: 2.98M bytes (2.98 MB)
-    downloaded in 0.62s
+    downloaded in 1.87s
     read into arrow: 753,746 rows, 13 cols, 0.04s
     BEFORE: 1 row group(s), 753,746 rows
-    sorted by [iso3, variable, commodity, year] in 0.48s
-    wrote local rebake in 0.54s -> /tmp/atlas_parquet_rebake/adm0_faostat.fixed.parquet
+    sorted by [iso3, variable, commodity, year] in 0.86s
+    wrote local rebake in 1.27s -> /tmp/atlas_parquet_rebake/adm0_faostat.fixed.parquet
     AFTER:  8 row group(s), 753,746 rows
     stats[iso3]: 8 groups · min~[] max~[]
     stats[variable]: 8 groups · min~[] max~[]
