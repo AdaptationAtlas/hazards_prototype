@@ -144,7 +144,9 @@ if (mode == "--smoke") {
 }
 
 source(file.path(project_dir, "R", "observational", "_helpers.R"))
-pacman::p_load(future, future.apply, furrr)
+# Shared parquet-writer for DuckDB-WASM pushdown (multi-row-group + stats).
+source(file.path(project_dir, "R", "_helpers.R"))
+pacman::p_load(future, future.apply, furrr, DBI, duckdb)
 
 # Per-worker peak RSS observed on CGlabs adm1 was ~50 GB - that's a
 # property of the workload (terra::zonal over a 544-layer 0.05deg Africa
@@ -568,7 +570,12 @@ for (level in levels_run) {
     build_time = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
     build_script = "R/observational/3_extract_obs_admin.R"
   ))
-  arrow::write_parquet(tbl, out_path, compression = "zstd", compression_level = 9)
+  # adm0 has no admin1_name column; helper drops missing sort cols.
+  write_parquet_pushdown(
+    tbl, out_path,
+    sort_by         = c("iso3", "admin1_name", "variable", "year", "month"),
+    verify_stats_on = c("iso3", "variable")
+  )
   log_step(sprintf("  wrote %s (%.1f MB)", out_path, file.info(out_path)$size / 1024 / 1024))
   written <- c(written, out_path)
 

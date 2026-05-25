@@ -35,6 +35,10 @@ terra::gdalCache(60000)
 
 # b) Load functions & wrappers ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+# Shared parquet-writer for DuckDB-WASM pushdown (multi-row-group + stats).
+# Sourced after 0_server_setup.R so project_dir is defined.
+pacman::p_load(DBI, duckdb)
+source(file.path(project_dir, "R", "_helpers.R"))
 
 
 # 0) Load and prepare admin rasters ####
@@ -383,8 +387,13 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
     }
 
     exposure_adm_sum_tab[,crop:=gsub("_| ","-",crop)]
-    
-    arrow::write_parquet(exposure_adm_sum_tab,file)
+
+    write_parquet_pushdown(
+      exposure_adm_sum_tab, file,
+      sort_by         = c("iso3", "admin0_name", "admin1_name", "admin2_name",
+                          "exposure", "unit", "tech", "crop"),
+      verify_stats_on = c("iso3", "exposure", "unit", "crop")
+    )
 }
   
   
@@ -433,8 +442,13 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
       write_json(attr_info, attr_file, pretty = TRUE)
       
       exposure_adm_sum_tab[,crop:=gsub("_| ","-",crop)]
-      
-      arrow::write_parquet(exposure_adm_sum_tab,file)
+
+      write_parquet_pushdown(
+        exposure_adm_sum_tab, file,
+        sort_by         = c("iso3", "admin0_name", "admin1_name", "admin2_name",
+                            "exposure", "unit", "tech", "crop"),
+        verify_stats_on = c("iso3", "exposure", "unit", "crop")
+      )
     }
   
 # 4) Population ######
@@ -506,8 +520,12 @@ if(!file.exists(file)|overwrite_pop==T){
   
   # Order to optimize parquet performance
   hpop_extracted<-hpop_extracted[order(iso3,admin0_name,admin1_name,admin2_name)]
-  
-  arrow::write_parquet(hpop_extracted,file)
+
+  write_parquet_pushdown(
+    hpop_extracted, file,
+    sort_by         = c("iso3", "admin0_name", "admin1_name", "admin2_name"),
+    verify_stats_on = c("iso3")
+  )
   
   attr_file<-paste0(file,".json")
   

@@ -3,7 +3,10 @@
 # and import quantity + value. Run 0_server_setup.R first (defines `fao_dir`).
 # Variables whose source CSV is missing are skipped.
 
-pacman::p_load(data.table, arrow, countrycode)
+pacman::p_load(data.table, arrow, countrycode, DBI, duckdb)
+# Shared parquet-writer for DuckDB-WASM pushdown (multi-row-group + stats).
+# 0_server_setup.R is expected to have run first (defines project_dir).
+source(file.path(project_dir, "R", "_helpers.R"))
 
 # Relevance filter: for each (iso3, commodity) take the last 5 calendar years
 # of vop_intd15 and average. Drop the commodity (across all variables) when
@@ -956,7 +959,11 @@ fao_long[, (factor_cols) := lapply(.SD, as.factor), .SDcols = factor_cols]
 
 tbl <- arrow::arrow_table(fao_long)
 tbl <- tbl$ReplaceSchemaMetadata(build_meta)
-arrow::write_parquet(tbl, out_file, compression = "zstd", compression_level = 9)
+write_parquet_pushdown(
+  tbl, out_file,
+  sort_by         = c("iso3", "variable", "commodity", "year"),
+  verify_stats_on = c("iso3", "variable", "commodity")
+)
 
 cat(
   "Wrote", nrow(fao_long), "rows to", out_file, "\n",

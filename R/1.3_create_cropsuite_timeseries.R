@@ -3,8 +3,11 @@
 # If you are experiencing issues with the admin_extract functions, delete the exactextractr package and use this version:  remotes::install_github("isciences/exactextractr")
 # Note % change in suitable area results in some very large numbers, probably due to very small areas expanding. This is not a useful statistic to use.
 # 1) Load R functions & packages ####
-packages <- c("terra","data.table","future","doFuture","sf","geoarrow","arrow")
+packages <- c("terra","data.table","future","doFuture","sf","geoarrow","arrow",
+              "DBI","duckdb")
 p_load(char=packages)
+# Shared parquet-writer for DuckDB-WASM pushdown (multi-row-group + stats).
+source(file.path(project_dir, "R", "_helpers.R"))
 
 # 2) Set-up workspace ####
 # 2.1) Load admin boundaries #####
@@ -135,7 +138,11 @@ for(var in cs_vars){
                                          ][, median := round(median,1)] 
     
     save_file <- file.path(cropsuite_class_dir, paste0(var, "_diff", "_adm_mean.parquet"))
-    arrow::write_parquet(data_diff_ex, save_file)  # Save the cleaned data to a parquet file
+    write_parquet_pushdown(
+      data_diff_ex, save_file,
+      sort_by         = c("iso3", "admin1_name", "variable", "scenario", "timeframe", "crop"),
+      verify_stats_on = c("iso3", "variable", "scenario")
+    )
     
     # Append vop data to weight average yields
     # Append map cropnames
@@ -161,7 +168,11 @@ for(var in cs_vars){
                                     by=.(admin0_name,admin1_name)]
     
     save_file <- file.path(cropsuite_class_dir, paste0(var, "_diff", "_adm_mean_agg.parquet"))
-    arrow::write_parquet(data_diff_ex_ms_w, save_file)  # Save the cleaned data to a parquet file
+    write_parquet_pushdown(
+      data_diff_ex_ms_w, save_file,
+      sort_by         = c("iso3", "admin1_name", "variable", "scenario", "timeframe", "crop"),
+      verify_stats_on = c("iso3", "variable", "scenario")
+    )
     
     # Classify differences
     data_diff_class <- terra::rast(lapply(1:length(crops), FUN = function(i) {
@@ -309,11 +320,19 @@ for(var in cs_vars){
     ][, timeframe := gsub(".", "_", timeframe, fixed = TRUE)]
     
     save_file <- file.path(cropsuite_class_dir, paste0(var, "_area-changes", "_adm_sum.parquet"))
-    arrow::write_parquet(data_area_ex, save_file)  # Save the summarized area changes to a parquet file
+    write_parquet_pushdown(
+      data_area_ex, save_file,
+      sort_by         = c("iso3", "admin1_name", "variable", "scenario", "timeframe", "crop"),
+      verify_stats_on = c("iso3", "variable", "scenario")
+    )
     
     save_file <- file.path(cropsuite_class_dir, paste0(var, "_area-changes", "_adm_sum_simple.parquet"))
     data_area_ex_simple <- data_area_ex[, diff := round(diff, 0)][, value := round(value, 0)][, value_hist := round(value_hist, 0)]
-    arrow::write_parquet(data_area_ex_simple, save_file)  # Save a simplified version of the summarized area changes to a parquet file
+    write_parquet_pushdown(
+      data_area_ex_simple, save_file,
+      sort_by         = c("iso3", "admin1_name", "variable", "scenario", "timeframe", "crop"),
+      verify_stats_on = c("iso3", "variable", "scenario")
+    )
     
     # Append vop data to weight average % change in suitable area
 

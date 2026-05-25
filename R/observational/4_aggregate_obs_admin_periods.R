@@ -89,10 +89,14 @@ if (mode == "--smoke") {
   paths <- bootstrap_minimal()
   project_dir <- paths$project_dir
   chirts_chirps_hist_dir <- paths$chirts_chirps_hist_dir
+  pacman::p_load(DBI, duckdb)
+  source(file.path(project_dir, "R", "_helpers.R"))
 } else if (mode == "--full") {
   source("R/0_server_setup.R")
-  pacman::p_load(data.table, arrow, glue, jsonlite)
+  pacman::p_load(data.table, arrow, glue, jsonlite, DBI, duckdb)
   chirts_chirps_hist_dir <- atlas_dirs$data_dir$chirts_chirps_hist
+  # Shared parquet-writer for DuckDB-WASM pushdown.
+  source(file.path(project_dir, "R", "_helpers.R"))
 } else {
   cat(
     "Usage:\n",
@@ -289,7 +293,12 @@ for (lvl in levels_run) {
     build_time = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
     build_script = "R/observational/4_aggregate_obs_admin_periods.R"
   ))
-  arrow::write_parquet(tbl, out_path, compression = "zstd", compression_level = 9)
+  # adm0 has no admin1_name column; helper drops missing sort cols.
+  write_parquet_pushdown(
+    tbl, out_path,
+    sort_by         = c("iso3", "admin1_name", "variable", "period", "year"),
+    verify_stats_on = c("iso3", "variable", "period")
+  )
   log_step(sprintf(
     "  wrote %s (%.1f MB)",
     out_path, file.info(out_path)$size / 1024 / 1024

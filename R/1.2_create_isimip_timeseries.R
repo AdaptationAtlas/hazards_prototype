@@ -2,8 +2,11 @@
 # Please run 0.1_get_isimip.R before executing this script
 
 # 1) Load R functions & packages ####
-packages <- c("terra","data.table","future","doFuture","sf","geoarrow","arrow")
+packages <- c("terra","data.table","future","doFuture","sf","geoarrow","arrow",
+              "DBI","duckdb")
 p_load(char=packages)
+# Shared parquet-writer for DuckDB-WASM pushdown (multi-row-group + stats).
+source(file.path(project_dir, "R", "_helpers.R"))
 
 # 2) Set directories  ####
 # Directory where isimip timeseries data are stored
@@ -356,7 +359,11 @@ for(i in 1:length(leaf_dirs)){
                               ][timeframe %in% c("2020","2021"),timeframe:="2021_2040"]
     
     
-    arrow::write_parquet(data_ex_stats,save_file)
+    write_parquet_pushdown(
+      data_ex_stats, save_file,
+      sort_by         = c("iso3", "admin1_name", "variable", "season", "scenario", "year"),
+      verify_stats_on = c("iso3", "variable", "scenario")
+    )
     
     data_ex_stats<-merge(data_ex_stats,isimip_meta[,list(var,var_long)],by="var",all.x=T)
     data_ex_stats[,var:=NULL]
@@ -367,7 +374,11 @@ for(i in 1:length(leaf_dirs)){
     
     save_file2<-gsub("mean.parquet","mean_simple.parquet",save_file)
     
-    arrow::write_parquet(data_ex_stats,save_file2)
+    write_parquet_pushdown(
+      data_ex_stats, save_file2,
+      sort_by         = c("iso3", "admin1_name", "variable", "season", "scenario", "year"),
+      verify_stats_on = c("iso3", "variable", "scenario")
+    )
     
   }
   
@@ -434,7 +445,11 @@ for(i in 1:length(leaf_dirs)){
   ][,variable:=NULL
   ][,var:=gsub("evap.total","evap",var)]
   
-  arrow::write_parquet(data_diff_ex,save_file_diff)
+  write_parquet_pushdown(
+    data_diff_ex, save_file_diff,
+    sort_by         = c("iso3", "admin1_name", "variable", "season", "scenario", "year"),
+    verify_stats_on = c("iso3", "variable", "scenario")
+  )
   }
   # 7.2.2) GCMS (Average across models) ######
   save_file_diff_gcms<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff_gcms.parquet"))
@@ -509,7 +524,11 @@ for(i in 1:length(leaf_dirs)){
     # Round values to reduce size
     data_diff_gcm_ex[, (names(data_diff_gcm_ex)) := lapply(.SD, function(x) if (is.numeric(x)) round(x, 2) else x)]
     
-    arrow::write_parquet(data_diff_gcm_ex,save_file_diff_gcms)
+    write_parquet_pushdown(
+      data_diff_gcm_ex, save_file_diff_gcms,
+      sort_by         = c("iso3", "admin1_name", "variable", "season", "scenario", "year"),
+      verify_stats_on = c("iso3", "variable", "scenario")
+    )
   }
   # 7.2.3) All (Average across models and gcms) ######
   
@@ -590,7 +609,11 @@ for(i in 1:length(leaf_dirs)){
     data_diff_all_ex[,var:=NULL]
     setnames(data_diff_all_ex,"var_long","variable")
     
-    arrow::write_parquet(data_diff_all_ex,save_file_diff_all)
+    write_parquet_pushdown(
+      data_diff_all_ex, save_file_diff_all,
+      sort_by         = c("iso3", "admin1_name", "variable", "season", "scenario", "year"),
+      verify_stats_on = c("iso3", "variable", "scenario")
+    )
   }
   
   # 7.2.4) Ensemble over models and prepare for notebook ######
@@ -634,7 +657,11 @@ for(i in 1:length(leaf_dirs)){
   
 
   save_file_diff_ens<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff_ens_all.parquet"))
-  arrow::write_parquet(data_ex_stats_ens,save_file_diff_ens)
+  write_parquet_pushdown(
+    data_ex_stats_ens, save_file_diff_ens,
+    sort_by         = c("iso3", "admin1_name", "variable", "season", "scenario", "year"),
+    verify_stats_on = c("iso3", "variable", "season", "scenario")
+  )
   
   data_ex_stats_ens_ss<-data_ex_stats_ens[,.(admin0_name,admin1_name,variable,scenario,timeframe,perc_mean_mean,perc_max_mean,perc_min_mean,perc_sd_mean)]
   setnames(data_ex_stats_ens_ss,
@@ -643,5 +670,9 @@ for(i in 1:length(leaf_dirs)){
   data_ex_stats_ens_ss[,unit:="% change"]
   
   save_file_diff_ens_simple<-file.path(leaf_dirs[i],paste0(filename,"_adm_mean_diff_ens_simple.parquet"))
-  arrow::write_parquet(data_ex_stats_ens_ss,save_file_diff_ens_simple)
+  write_parquet_pushdown(
+    data_ex_stats_ens_ss, save_file_diff_ens_simple,
+    sort_by         = c("iso3", "admin1_name", "variable", "season", "scenario", "year"),
+    verify_stats_on = c("iso3", "variable", "season", "scenario")
+  )
   }
