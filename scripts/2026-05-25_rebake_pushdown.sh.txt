@@ -1,0 +1,220 @@
+# ----------------------------------------------------------------------
+# Script: 2026-05-25_rebake_pushdown.sh
+# Purpose: Drive the R rebake of Atlas S3 parquets for DuckDB-WASM
+#          pushdown. The rebake script itself lives in
+#          atlas_notebooks/scripts/rebake_parquets_for_pushdown.R
+#          (alongside the original .py companion); this runbook drives
+#          it from the standard hazards_prototype runbook location so
+#          all paste-able pipeline runbooks live in one spot.
+# Background:
+#   - Notebook cold-start fetches were 30-70s because the published
+#     parquets had ONE row group and NULL stats on filter keys.
+#   - The pipeline-side fix is in hazards_prototype f365fe5 (6 of 7
+#     producer scripts now route through write_parquet_pushdown()).
+#   - This runbook executes the in-place rescue on already-published
+#     S3 files so the speedup arrives now, not the next time the
+#     pipeline re-runs.
+# Convention: paste-able blocks. Each STAGE captures a log under
+#          $LOG_DIR with STAMP suffix and ends with a "===== DONE ====="
+#          sentinel that includes the Rscript exit code.
+# References:
+#   - Dispatch: atlas_notebooks/playbook/handovers/climateRationale/
+#               dispatches/2026-05-25_pipeline-parquet-pushdown-rewrite.md
+#   - Rebake R:  atlas_notebooks/scripts/rebake_parquets_for_pushdown.R
+#   - Helper:    hazards_prototype/R/_helpers.R::write_parquet_pushdown
+#   - Convention memory: feedback-parquet-authoring-for-duckdb-wasm
+# ----------------------------------------------------------------------
+
+# ======================================================================
+# 0) Pre-flight
+# ======================================================================
+# Pull both repos so the rebake R script + this runbook are in sync.
+cd $HOME/atlas/atlas_notebooks
+git checkout dev/climateRationale
+git pull origin dev/climateRationale
+git log --oneline -3
+
+cd $HOME/atlas/hazards_prototype
+git checkout develop
+git pull origin develop
+git log --oneline -3
+
+# Confirm the R rebake script is present
+REBAKE_SCRIPT="$HOME/atlas/atlas_notebooks/scripts/rebake_parquets_for_pushdown.R"
+test -f "$REBAKE_SCRIPT" \
+  && echo "OK: rebake R script present" \
+  || echo "FAIL: missing $REBAKE_SCRIPT"
+
+# AWS credentials sanity check (s3fs honours the default chain)
+aws sts get-caller-identity 2>&1 | head -5 \
+  || echo "WARNING: aws CLI not configured; s3fs may still work via ~/.aws/credentials"
+
+
+# ======================================================================
+# 1) Paths + log dir + STAMP
+# ======================================================================
+export REBAKE_SCRIPT="$HOME/atlas/atlas_notebooks/scripts/rebake_parquets_for_pushdown.R"
+# Logs live with the other runbook logs in hazards_prototype/logs/
+export LOG_DIR="$HOME/atlas/hazards_prototype/logs"
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+echo "STAMP   = $STAMP"
+echo "LOG_DIR = $LOG_DIR"
+echo "SCRIPT  = $REBAKE_SCRIPT"
+
+
+# ======================================================================
+# STAGE A — DRY-RUN over the highest-impact subset (~2-5 min)
+# ======================================================================
+# Downloads adm0_obs_monthly + adm0_obs_periods + adm0_faostat,
+# rebakes locally to /tmp/atlas_parquet_rebake/, verifies via DuckDB,
+# does NOT upload anything. This is the recipe-validation step.
+# Watch for:
+#   - "PROBLEM: column X not in schema" — schema drift since the
+#     dispatch was authored; we'll adjust the script's TARGETS list.
+#   - "PROBLEM: only N row group(s)" — chunk_size too high for that
+#     file's row count; lower it with --row-group.
+#   - All targets ending with stats[col]: N groups · min~[...] max~[...]
+#     and no PROBLEM lines = green light for STAGE B.
+LOG_FILE="$LOG_DIR/Apush_dryrun_smoke_${STAMP}.log"
+echo "STAGE A: dry-run smoke (3 targets) -> $LOG_FILE"
+nohup bash -c "Rscript \"$REBAKE_SCRIPT\" --dry-run --only adm0_obs_monthly adm0_obs_periods adm0_faostat; RC=\$?; echo; echo \"===== STAGE A DONE (Rscript exit code: \$RC) =====\"" \
+  > "$LOG_FILE" 2>&1 &
+PID_A=$!
+echo "PID $PID_A  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+# Ctrl-C the tail once you see "===== STAGE A DONE ====="
+wait $PID_A; echo "STAGE A bash exit code: $?"
+
+# Quick sanity: surface any PROBLEM or summary lines
+echo "--- PROBLEM/summary lines from STAGE A ---"
+grep -E "PROBLEM|^===|status|summary" "$LOG_FILE" | head -30
+
+
+# ======================================================================
+# STAGE B — DRY-RUN over ALL 15 targets (~10-30 min, depending on file sizes)
+# ======================================================================
+# Same as A but full target list. Confirms every published parquet
+# can be rebaked + verified before any S3 write happens. Still no
+# uploads.
+LOG_FILE="$LOG_DIR/Bpush_dryrun_all_${STAMP}.log"
+echo "STAGE B: dry-run over ALL targets -> $LOG_FILE"
+nohup bash -c "Rscript \"$REBAKE_SCRIPT\" --dry-run; RC=\$?; echo; echo \"===== STAGE B DONE (Rscript exit code: \$RC) =====\"" \
+  > "$LOG_FILE" 2>&1 &
+PID_B=$!
+echo "PID $PID_B  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+wait $PID_B; echo "STAGE B bash exit code: $?"
+
+echo "--- target-by-target status from STAGE B ---"
+grep -E "PROBLEM|^===|^  [a-z]" "$LOG_FILE" | head -50
+# STOP and read. If any target shows verify_failed or exception,
+# either adjust the script's TARGETS sort_by/verify_stats_on for
+# that key, or pass --row-group 64000 (smaller) and retry STAGE B.
+
+
+# ======================================================================
+# STAGE C — REAL upload of all rebaked files to `.fixed.parquet` sidecars (~10-30 min)
+# ======================================================================
+# Downloads + rebakes + verifies + UPLOADS each result to
+# s3://digital-atlas/<...>/<original>.fixed.parquet
+# Canonical paths are NOT touched. The manual-swap commands are
+# printed at the end of the log.
+LOG_FILE="$LOG_DIR/Cpush_upload_sidecars_${STAMP}.log"
+echo "STAGE C: real rebake + sidecar upload -> $LOG_FILE"
+nohup bash -c "Rscript \"$REBAKE_SCRIPT\"; RC=\$?; echo; echo \"===== STAGE C DONE (Rscript exit code: \$RC) =====\"" \
+  > "$LOG_FILE" 2>&1 &
+PID_C=$!
+echo "PID $PID_C  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+wait $PID_C; echo "STAGE C bash exit code: $?"
+
+echo "--- target-by-target status from STAGE C ---"
+grep -E "PROBLEM|^===|^  [a-z]|uploaded" "$LOG_FILE" | head -60
+echo "--- manual-swap commands printed at end ---"
+grep -A 100 "manual-swap commands" "$LOG_FILE" | head -80
+
+
+# ======================================================================
+# STAGE D — Cold-start verification on a .fixed.parquet (~30 s)
+# ======================================================================
+# DuckDB query against the sidecar with cache disabled, to confirm
+# the pushdown actually fires. Should return in < 5 s for a national
+# slice (vs ~70 s against the canonical single-row-group file).
+LOG_FILE="$LOG_DIR/Dpush_cold_start_check_${STAMP}.log"
+echo "STAGE D: cold-start check on adm0_obs_monthly sidecar -> $LOG_FILE"
+{
+  echo "=== STAGE D ==="
+  date
+  echo "--- with cache disabled, query the .fixed sidecar ---"
+  time duckdb -c "
+    PRAGMA enable_object_cache=false;
+    SELECT COUNT(*) FROM read_parquet(
+      'https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.fixed.parquet'
+    ) WHERE iso3='AGO' AND variable='PTOT';
+  "
+  echo ""
+  echo "--- same query against canonical (BEFORE) for comparison ---"
+  time duckdb -c "
+    PRAGMA enable_object_cache=false;
+    SELECT COUNT(*) FROM read_parquet(
+      'https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.parquet'
+    ) WHERE iso3='AGO' AND variable='PTOT';
+  "
+} | tee "$LOG_FILE"
+# Expected: .fixed.parquet returns in single-digit seconds.
+# Canonical returns in ~30-70 s.
+
+
+# ======================================================================
+# Summary
+# ======================================================================
+echo "=========================================="
+echo "Rebake complete. Logs:"
+ls -1 "$LOG_DIR"/[ABCD]push_*_${STAMP}.log
+echo "=========================================="
+echo "Cross-log: any PROBLEM lines?"
+grep -E "PROBLEM" "$LOG_DIR"/[ABCD]push_*_${STAMP}.log || echo "(none — clean rebake)"
+echo "=========================================="
+echo "If STAGE D shows .fixed.parquet < 5 s on AGO/PTOT:"
+echo "  - Run the manual-swap commands from STAGE C's log to promote"
+echo "    each .fixed.parquet to the canonical name. The notebook"
+echo "    will pick up the speedup immediately (same URL)."
+echo "  - Optional: refresh the Climate Rationale notebook locally,"
+echo "    pick Angola, switch through PTOT/TAVG/TMAX in turn. Status"
+echo "    header should show single-digit-second fetches."
+echo "=========================================="
+
+
+# ======================================================================
+# Next steps after STAGE D passes
+# ======================================================================
+# 1. Promote sidecars to canonical (one country at a time if cautious):
+#      grep "aws s3 mv" "$LOG_DIR/Cpush_upload_sidecars_${STAMP}.log"
+#    Then paste the printed `aws s3 mv` lines.
+#
+# 2. Commit + push these logs:
+#      cd $HOME/atlas/hazards_prototype
+#      git add logs/[ABCD]push_*_${STAMP}.log
+#      git commit -m "logs: 2026-05-25 parquet pushdown rebake"
+#      git push origin develop
+#
+# 3. Once notebook smoke-tests confirm the cold-start speedup, the
+#    `.preFix.bak` files on S3 can stay as a rollback safety net or
+#    be deleted in a separate housekeeping pass.
+
+
+# ======================================================================
+# Troubleshooting
+# ======================================================================
+# - If STAGE A "PROBLEM: column unit_full not in schema" for the
+#   exposure_crop_livestock target: the published file uses `unit`,
+#   not `unit_full`. Edit the script's TARGETS list (this target's
+#   sort_by + verify_stats_on) and retry.
+# - If "PROBLEM: only 1 row group" on a small file: pass
+#     --row-group 10000
+#   to force smaller groups. Re-run from STAGE B.
+# - If s3fs auth fails: check ~/.aws/credentials OR
+#     export AWS_ACCESS_KEY_ID=...; export AWS_SECRET_ACCESS_KEY=...
+#   then re-run.
+# - To kill a stuck stage: `kill <PID>` (printed at stage start).
