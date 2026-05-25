@@ -29,7 +29,16 @@
 # 0) Pre-flight
 # ======================================================================
 # Pull both repos so the rebake R script + this runbook are in sync.
+# Clone atlas_notebooks the first time (it lives alongside
+# hazards_prototype under ~/atlas/).
+if [ ! -d "$HOME/atlas/atlas_notebooks" ]; then
+  echo "Cloning atlas_notebooks (first time) ..."
+  cd $HOME/atlas
+  git clone https://github.com/AdaptationAtlas/atlas_notebooks.git
+fi
+
 cd $HOME/atlas/atlas_notebooks
+git fetch origin dev/climateRationale
 git checkout dev/climateRationale
 git pull origin dev/climateRationale
 git log --oneline -3
