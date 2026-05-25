@@ -1,0 +1,56 @@
+nohup: ignoring input
+=== rebake_parquets_for_pushdown.R ===
+bucket:        s3://digital-atlas
+targets:       3 of 15
+row_group:     100,000 rows
+dry_run:       TRUE
+tmpdir:        /tmp/atlas_parquet_rebake
+AWS_PROFILE:   <unset>
+
+[adm0_obs_monthly] domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.parquet
+    notes: Producer: hazards_prototype/R/observational/3_extract_obs_admin.R
+    head: 4.59M bytes (4.59 MB)
+    downloaded in 1.60s
+    read into arrow: 281,124 rows, 12 cols, 0.04s
+    BEFORE: 1 row group(s), 281,124 rows
+    sorted by [iso3, variable, year, month] + wrote via DuckDB COPY in 0.74s -> /tmp/atlas_parquet_rebake/adm0_obs_monthly.fixed.parquet
+    AFTER:  3 row group(s), 281,124 rows
+    stats[iso3]: 3 groups · min~[AGO, GHA, SDN] max~[GHA, SDN, ZWE]
+    stats[variable]: 3 groups · min~[PTOT] max~[TMIN]
+    rebaked size: 4,247,989 bytes (-11.8% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.fixed.parquet
+
+[adm0_obs_periods] domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm0_obs.parquet
+    notes: Producer: hazards_prototype/R/observational/4_aggregate_obs_admin_periods.R
+    head: 4.81M bytes (4.81 MB)
+    downloaded in 0.96s
+    read into arrow: 302,841 rows, 12 cols, 0.02s
+    BEFORE: 1 row group(s), 302,841 rows
+    sorted by [iso3, variable, period, year] + wrote via DuckDB COPY in 0.35s -> /tmp/atlas_parquet_rebake/adm0_obs_periods.fixed.parquet
+    AFTER:  4 row group(s), 302,841 rows
+    stats[iso3]: 4 groups · min~[AGO, ETH, NER] max~[ETH, NER, ZWE]
+    stats[variable]: 4 groups · min~[PTOT, TAVG] max~[TMIN]
+    stats[period]: 4 groups · min~[AMJ] max~[annual]
+    rebaked size: 4,539,255 bytes (-10.0% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm0_obs.fixed.parquet
+
+[adm0_faostat] domain=socioeconomic/type=production/source=faostat/region=ssa/variable=adm0_faostat.parquet
+    notes: Producer: hazards_prototype/R/0.4.5_create_faostat_long.R
+    head: 2.98M bytes (2.98 MB)
+    downloaded in 0.68s
+    read into arrow: 753,746 rows, 13 cols, 0.04s
+    BEFORE: 1 row group(s), 753,746 rows
+    sorted by [iso3, variable, commodity, year] + wrote via DuckDB COPY in 0.69s -> /tmp/atlas_parquet_rebake/adm0_faostat.fixed.parquet
+    AFTER:  8 row group(s), 753,746 rows
+    stats[iso3]: 8 groups · min~[AGO, CMR, EGY] max~[SYC, ZAF, ZWE]
+    stats[variable]: 8 groups · min~[export_quantity] max~[yield]
+    stats[commodity]: 8 groups · min~[Abaca, Almonds, Almonds, shelled] max~[Wheat and meslin flour, Yams]
+    rebaked size: 3,150,212 bytes (+0.7% vs original)
+    DRY-RUN: would upload to s3://digital-atlas/domain=socioeconomic/type=production/source=faostat/region=ssa/variable=adm0_faostat.fixed.parquet
+
+=== summary ===
+  adm0_obs_monthly  dry_run
+  adm0_obs_periods  dry_run
+  adm0_faostat      dry_run
+
+===== STAGE A DONE (Rscript exit code: 0) =====
