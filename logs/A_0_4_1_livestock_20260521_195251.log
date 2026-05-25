@@ -1,0 +1,12 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+
+===== 0.4.1_create_livestock_exposure.R COMPLETE at 2026-05-21 19:54:25 UTC =====
+There were 50 or more warnings (use warnings() to see the first 50)
+
+===== STAGE A DONE (Rscript exit code: 0) =====

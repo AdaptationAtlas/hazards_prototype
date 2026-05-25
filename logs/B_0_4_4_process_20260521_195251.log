@@ -1,0 +1,203 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+
+Attaching package: ‘arrow’
+
+The following object is masked from ‘package:terra’:
+
+    buffer
+
+The following object is masked from ‘package:utils’:
+
+    timestamp
+
+Error in eval(ei, envir) : object 'stat' not found
+Calls: source -> withVisible -> eval -> eval
+In addition: There were 50 or more warnings (use warnings() to see the first 50)
+
+=== TRACEBACK ===
+5: (function () 
+   {
+       cat("\n=== TRACEBACK ===\n", file = stderr())
+       traceback(2)
+       cat("\n=================\n", file = stderr())
+       quit(status = 1, save = "no")
+   })()
+4: eval(ei, envir)
+3: eval(ei, envir)
+2: withVisible(eval(ei, envir))
+1: source(Sys.getenv("EXPOSURE_SCRIPT"))
+
+=================
+
+===== STAGE B DONE (Rscript exit code: 1) =====

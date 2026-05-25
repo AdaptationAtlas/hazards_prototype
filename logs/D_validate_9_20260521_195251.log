@@ -1,0 +1,12 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Error in list.files(hex_dir, "multi-hazard\\.parquet$", recursive = TRUE,  : 
+  invalid 'path' argument
+Execution halted
+
+===== STAGE D DONE (Rscript exit code: 0) =====

@@ -1,0 +1,30 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Error: [*] extents do not match
+In addition: There were 50 or more warnings (use warnings() to see the first 50)
+
+=== TRACEBACK ===
+11: (function () 
+    {
+        cat("\n=== TRACEBACK ===\n", file = stderr())
+        traceback(2)
+        cat("\n=================\n", file = stderr())
+        quit(status = 1, save = "no")
+    })()
+10: stop("[", f, "] ", emsg, ..., call. = FALSE)
+9: error(f, x@pntr$getError())
+8: messages(e1, oper)
+7: data * livestock_mask_high
+6: data * livestock_mask_high
+5: split_livestock(data = glw_vop, livestock_mask_high, livestock_mask_low)
+4: eval(ei, envir)
+3: eval(ei, envir)
+2: withVisible(eval(ei, envir))
+1: source(Sys.getenv("LIVESTOCK_SCRIPT"))
+
+=================
