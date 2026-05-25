@@ -33,7 +33,16 @@
 # - Progress bars and error catching are built in via `progressr` and `check_tif_integrity()`.
 # - Designed for high-performance batch processing of multi-model, multi-scenario climate data.
 #
-cat("Starting 3_freq_x_exposure.R script/n")
+# Tiny progress logger so the run shows clear checkpoints in the log.
+# Mirrors .log041()/.log044() in 0.4.1 / 0.4.4.
+.log03 <- function(msg) {
+  cat(sprintf("[%s] [3_freq_x_exp] %s\n",
+              format(Sys.time(), "%H:%M:%S"), msg))
+  flush.console()
+}
+.log03(sprintf("script start (FORCE_OVERWRITE=%s)",
+               Sys.getenv("FORCE_OVERWRITE", "<unset>")))
+
 # a) Install and load packages ####
 packages <- c(
   "terra",
@@ -407,14 +416,15 @@ prod_name <- "prod_t"
 check4.1 <- TRUE
 
 # Start timeframe loop ####
+.log03(sprintf("entering timeframe loop over %d periods: %s",
+               length(timeframe_choices),
+               paste(timeframe_choices, collapse = ", ")))
 for (tx in seq_along(timeframe_choices)) {
   timeframe <- timeframe_choices[tx]
   cat("---------------------------------------------------------------------------------------\n")
   sys_start_time <- Sys.time()
-  cat(
-    "Processing", timeframe, tx, "/", length(timeframe_choices),
-    "started at time:", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "\n"
-  )
+  .log03(sprintf("[timeframe %d/%d] %s — start",
+                 tx, length(timeframe_choices), timeframe))
 
   haz_timeseries_dir <- file.path(indices_dir2, timeframe)
   cat("haz_timeseries_dir =", haz_timeseries_dir, "\n")
@@ -833,6 +843,8 @@ for (tx in seq_along(timeframe_choices)) {
   }
 
   # 4) Hazard risk x exposure ####
+  .log03(sprintf("[%s] section 4: hazard risk x exposure (run4.1=%s, run4.2=%s)",
+                 timeframe, run4.1, run4.2))
   if (run4.1 || run4.2) {
     cat(timeframe, "4) Hazard risk x exposure \n")
 
@@ -907,10 +919,12 @@ for (tx in seq_along(timeframe_choices)) {
     ## 4.1) Multiply Hazard Freq by Exposure #####
 
     if (run4.1) {
-      cat(timeframe, "4.1) Intersecting hazard risk x exposure \n")
+      .log03(sprintf("[%s] 4.1) Intersecting hazard risk x exposure",
+                     timeframe))
 
       # List files (can use the first element of the to_do_list only as the haz freq files are always the same)
       files <- list.files(to_do_list[[1]]$source_dir, ".tif$", full.names = TRUE)
+      .log03(sprintf("[%s] 4.1) input files = %d", timeframe, length(files)))
 
       if (!do_ensemble_sd4.1) {
         files <- files[!grepl("ENSEMBLEsd", files)]
@@ -1065,13 +1079,15 @@ for (tx in seq_along(timeframe_choices)) {
 
     ## 4.2) Extract Freq x Exposure by Geography #####
     if (run4.2) {
-      cat(timeframe, "4.2) Extract Freq x Exposure by Geography\n")
+      .log03(sprintf("[%s] 4.2) Extract Freq x Exposure by Geography (%d variables)",
+                     timeframe, length(to_do_list)))
 
       for (v in seq_along(to_do_list)) {
         folder <- to_do_list[[v]]$folder
         variable <- to_do_list[[v]]$variable
 
-        cat(timeframe, "4.2) Variable = ", variable, v, "/", length(to_do_list), "--", folder, "\n")
+        .log03(sprintf("[%s] 4.2) variable %d/%d: %s -> %s",
+                       timeframe, v, length(to_do_list), variable, folder))
 
         overwrite <- overwrite4
         round <- round4
