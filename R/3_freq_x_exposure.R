@@ -405,7 +405,10 @@ do_ensemble_sd4.2 <- TRUE
 ensemble_only4.1 <- TRUE
 ensemble_only4.2 <- TRUE
 worker_n4.1 <- 16
-worker_n4.2 <- 16
+# 4.2 zonal-against-admin2 is much heavier per task than 4.1 intersection.
+# 16 workers OOM-killed a worker mid-extract 2026-05-25 (log 180833). Lowered
+# to 6 to match the typical groups-per-variable count and halve peak memory.
+worker_n4.2 <- 6
 worker_n4_check <- 20
 multisession4 <- TRUE
 round4 <- 2
