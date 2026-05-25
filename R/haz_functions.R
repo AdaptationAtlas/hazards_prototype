@@ -1640,8 +1640,13 @@ admin_extract_wrap <- function(data,
                                overwrite = F,
                                var_name = "crop"
                                ) {
-  library(terra)
-  library(arrow)
+  # suppressPackageStartupMessages avoids ~10 lines of "Attaching package
+  # 'arrow' / following object is masked from ..." per worker call —
+  # that's ~180 lines of noise per furrr_map run otherwise.
+  suppressPackageStartupMessages({
+    library(terra)
+    library(arrow)
+  })
   # Define a mapping of administrative level names to short codes.
   levels <- c(admin0 = "adm0", admin1 = "adm1", admin2 = "adm2")
   

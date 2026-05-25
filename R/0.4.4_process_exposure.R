@@ -23,11 +23,22 @@ pacman::p_load(packages,character.only=T)
 # observational pipeline.
 terra::gdalCache(60000)
 
+# Tiny progress logger so the run shows clear checkpoints in the log.
+# Mirrors .log041() in 0.4.1_create_livestock_exposure.R.
+.log044 <- function(msg) {
+  cat(sprintf("[%s] [0.4.4] %s\n",
+              format(Sys.time(), "%H:%M:%S"), msg))
+  flush.console()
+}
+.log044(sprintf("script start (FORCE_OVERWRITE=%s)",
+                Sys.getenv("FORCE_OVERWRITE", "<unset>")))
+
 # b) Load functions & wrappers ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
 
 # 0) Load and prepare admin rasters ####
+.log044("section 0: loading admin rasters + geographies")
   ## 0.0) Base rast ####
   base_rast <- terra::rast(base_rast_path)
 
@@ -116,9 +127,16 @@ field_descriptions <- data.table::data.table(
 # zonal vector raster.
 spam_workers <- min(8L, length(files))
 set_parallel_plan(n_cores = spam_workers, use_multisession = TRUE)
+.log044(sprintf("section 1: MapSPAM extraction over %d files, %d workers",
+                length(files), spam_workers))
+.n_spam <- length(files)
 spam_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
   file <- files[i]
   file_base <- gsub(".tif", "", basename(file))
+  cat(sprintf("[%s] [0.4.4] MapSPAM %d/%d %s\n",
+              format(Sys.time(), "%H:%M:%S"),
+              i, .n_spam, basename(file)))
+  flush.console()
   var <- unlist(tstrsplit(file_base, "_", keep = 2))
   unit <- unlist(tstrsplit(file_base, "_", keep = 3))
   tech <- unlist(tstrsplit(file_base, "_", keep = 4))
@@ -215,15 +233,22 @@ files <- list.files(glw2020_pro_dir, ".tif$", recursive = TRUE, full.names = TRU
 # v9: parallel GLW extraction, mirroring the MapSPAM block above.
 glw_workers <- min(8L, length(files))
 set_parallel_plan(n_cores = glw_workers, use_multisession = TRUE)
+.log044(sprintf("section 2: GLW extraction over %d files, %d workers",
+                length(files), glw_workers))
+.n_glw <- length(files)
 glw_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
     file <- files[i]
-    
+    cat(sprintf("[%s] [0.4.4] GLW %d/%d %s\n",
+                format(Sys.time(), "%H:%M:%S"),
+                i, .n_glw, basename(file)))
+    flush.console()
+
     if(grepl("number",file)){
       source_year_glw<-list(glw=2020)
     }else{
       source_year_glw<-list(glw=2020,faostat_vop=gsub(".tif","",tail(unlist(strsplit(basename(file),"-")),1)))
     }
-    
+
     file_base<-gsub(".tif","",basename(file))
     var<-unlist(tstrsplit(basename(file),"_",keep=2))
     unit<-gsub(".tif","",unlist(tstrsplit(basename(file),"_",keep=3)))
@@ -300,6 +325,7 @@ glw_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
 future::plan(future::sequential)
   
 # 3) Combine exposure totals by admin areas ####
+.log044("section 3: merging MapSPAM + GLW exposure tables by admin areas")
   # 3.1) Original recipe ####
 file<-paste0(exposure_dir,"/exposure_adm_sum_spam20-20_glw420-20.parquet")
 
@@ -412,6 +438,7 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
     }
   
 # 4) Population ######
+.log044("section 4: Worldpop hpop harmonize + admin extract")
 overwrite_pop<-T
   ## 4.1) Harmonize to atlas base raster ####
 hpop_file<-paste0(hpop_int_dir,"/hpop_atlas.tif")
