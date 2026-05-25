@@ -193,7 +193,13 @@ s3_download <- function(key, local_path) {
 }
 
 s3_upload <- function(local_path, key) {
-  s3fs::s3_file_upload(local_path, s3_url(key), overwrite = TRUE)
+  # Public-read ACL — the canonical Atlas parquets are public; the
+  # rebakes have to be reachable via anonymous HTTPS the same way or
+  # the in-browser sandbox notebook can't fetch them. Without this,
+  # s3fs defaults to private and reads return HTTP 0 Internal Server
+  # Error from anonymous clients.
+  s3fs::s3_file_upload(local_path, s3_url(key),
+                       overwrite = TRUE, ACL = "public-read")
   invisible(key)
 }
 
