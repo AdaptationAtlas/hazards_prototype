@@ -1,4 +1,22 @@
 # ----------------------------------------------------------------------
+# !! OUTCOME (2026-05-25, after this runbook executed end-to-end) !!
+#
+# The rebake produced NO meaningful speedup. STAGE D's CLI A/B showed
+# 0/9 targets at >= 3x, with three big-file targets actually SLOWER.
+# The atlas_notebooks browser sandbox confirmed canonical parquets
+# already pushdown fine (L1 -> L3 = 3-10x on the canonical files
+# alone). The 70s cold-start pain traces to notebook-side query
+# patterns, not parquet layout. See OUTCOME section in
+#   atlas_notebooks/playbook/handovers/climateRationale/dispatches/
+#     2026-05-25_parquet-pushdown-sandbox.md
+#
+# DO NOT RUN STAGE F (promotion). The 15 .fixed copies under
+# s3://digital-atlas/sandbox/parquet-pushdown/ can be deleted with
+# `aws s3 rm --recursive` when there's no further use.
+#
+# This runbook is retained for the diagnostic path it documents (CLI
+# A/B + browser hand-off) — not as something to re-run.
+# ----------------------------------------------------------------------
 # Script: 2026-05-25_rebake_pushdown.sh
 # Purpose: Drive the R rebake of Atlas S3 parquets for DuckDB-WASM
 #          pushdown (R/misc/rebake_parquets_for_pushdown.R).
