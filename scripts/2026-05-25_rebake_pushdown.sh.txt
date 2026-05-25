@@ -1,8 +1,7 @@
 # ----------------------------------------------------------------------
 # Script: 2026-05-25_rebake_pushdown.sh
 # Purpose: Drive the R rebake of Atlas S3 parquets for DuckDB-WASM
-#          pushdown (scripts/rebake_parquets_for_pushdown.R, same dir
-#          as this runbook).
+#          pushdown (R/misc/rebake_parquets_for_pushdown.R).
 # Background:
 #   - Notebook cold-start fetches were 30-70s because the published
 #     parquets had ONE row group and NULL stats on filter keys.
@@ -31,7 +30,7 @@ git pull origin develop
 git log --oneline -3
 
 # Confirm the R rebake script is present
-REBAKE_SCRIPT="$HOME/atlas/hazards_prototype/scripts/rebake_parquets_for_pushdown.R"
+REBAKE_SCRIPT="$HOME/atlas/hazards_prototype/R/misc/rebake_parquets_for_pushdown.R"
 test -f "$REBAKE_SCRIPT" \
   && echo "OK: rebake R script present" \
   || echo "FAIL: missing $REBAKE_SCRIPT"
@@ -44,7 +43,7 @@ aws sts get-caller-identity 2>&1 | head -5 \
 # ======================================================================
 # 1) Paths + log dir + STAMP
 # ======================================================================
-export REBAKE_SCRIPT="$HOME/atlas/hazards_prototype/scripts/rebake_parquets_for_pushdown.R"
+export REBAKE_SCRIPT="$HOME/atlas/hazards_prototype/R/misc/rebake_parquets_for_pushdown.R"
 # Logs live with the other runbook logs in hazards_prototype/logs/
 export LOG_DIR="$HOME/atlas/hazards_prototype/logs"
 mkdir -p "$LOG_DIR"
