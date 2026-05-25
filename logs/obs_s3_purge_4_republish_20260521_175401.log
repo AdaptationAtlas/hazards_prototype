@@ -21,3 +21,13 @@ workers              : 16
 [18:36:13] === FULL PUBLISH ===
 [18:36:13]   spec 'obs-climatology': 1416 files, 7131.4 MB total
 [18:36:13] === Uploading: obs-climatology (tier 2) ===
+The current policy already allows public access to the specified files. 
+[1] "Report saved to: Data/chirts_chirps_hist/maps/obs-climatology_uploadReport.json"
+[18:42:09]   done: 1416 files in 355.7s
+
+=== Full publish summary ===
+         upload_id  tier n_files elapsed_s
+            <char> <int>   <int>     <num>
+1: obs-climatology     2    1416  355.7438
+
+Total files: 1416, total elapsed: 355.7s
