@@ -326,9 +326,19 @@ rebake_one <- function(target, row_group_size, dry_run, tmpdir) {
   cat(sprintf("    BEFORE: %d row group(s), %s rows\n",
               before, format(n_rows, big.mark = ",")))
 
-  # 5. Sort.
+  # 5. Sort + factor → character coercion on verify columns.
+  #    arrow writes R factors as dictionary-encoded; column stats are
+  #    then against the dictionary indices, not the string values, so
+  #    DuckDB's parquet_metadata() returns NULL stats_min/max. Coerce
+  #    here so stats are written against the actual strings.
   t0 <- Sys.time()
   tbl_dt <- as.data.frame(tbl)  # convert via R DF; faster than arrow::compute for our sizes
+  if (!inherits(tbl_dt, "data.table")) tbl_dt <- data.table::as.data.table(tbl_dt)
+  for (col in intersect(target$verify_stats_on, names(tbl_dt))) {
+    if (is.factor(tbl_dt[[col]])) {
+      data.table::set(tbl_dt, j = col, value = as.character(tbl_dt[[col]]))
+    }
+  }
   tbl_sorted <- reorder_table(tbl_dt, target$sort_by)
   cat(sprintf("    sorted by [%s] in %.2fs\n",
               paste(target$sort_by, collapse = ", "),

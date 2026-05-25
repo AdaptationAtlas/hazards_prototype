@@ -51,6 +51,18 @@ write_parquet_pushdown <- function(
 
   # Coerce to data.table for the sort, then back to whatever arrow wants.
   if (!inherits(tbl, "data.table")) tbl <- data.table::as.data.table(tbl)
+
+  # Coerce factor columns in verify_stats_on to character. arrow writes
+  # factors as dictionary-encoded — and column statistics are stored
+  # against the dictionary indices, not the decoded values, so
+  # parquet_metadata() returns NULL stats_min/max for them. Forcing
+  # character keeps stats populated against the actual strings.
+  for (col in intersect(verify_stats_on, names(tbl))) {
+    if (is.factor(tbl[[col]])) {
+      data.table::set(tbl, j = col, value = as.character(tbl[[col]]))
+    }
+  }
+
   sort_cols_present <- intersect(sort_by, names(tbl))
   if (length(sort_cols_present) == 0L) {
     warning(sprintf(
