@@ -10,130 +10,85 @@ Each query runs on a FRESH duckdb connection with object cache
     canonical : https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.parquet
     canonical : 1.48s, 544 rows
     sandbox   : https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.parquet
-    sandbox FAILED: HTTP Error: HTTP GET error on 'https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm0_obs.parquet' (HTTP 0 Internal Server Error)
-
-LINE 1: SELECT COUNT(*) AS n FROM read_parquet('https://digital-atlas.s3.amazonaws.com/sandbox...
-                                  ^
-ℹ Context: rapi_prepare
-ℹ Error type: HTTP
-    sandbox   : NAs, NA rows
+    sandbox   : 1.34s, 544 rows
+    speedup   : 1.1x (no meaningful speedup) (correctness: match)
 
 === [adm1_obs_monthly] subnational TAVG query ===
     WHERE iso3 = 'KEN' AND variable = 'TAVG'
     canonical : https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm1_obs.parquet
-    canonical : 1.70s, 26,688 rows
+    canonical : 1.63s, 26,688 rows
     sandbox   : https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm1_obs.parquet
-    sandbox FAILED: HTTP Error: HTTP GET error on 'https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm1_obs.parquet' (HTTP 0 Internal Server Error)
-
-LINE 1: SELECT COUNT(*) AS n FROM read_parquet('https://digital-atlas.s3.amazonaws.com/sandbox...
-                                  ^
-ℹ Context: rapi_prepare
-ℹ Error type: HTTP
-    sandbox   : NAs, NA rows
+    sandbox   : 1.64s, 26,688 rows
+    speedup   : 1.0x (no meaningful speedup) (correctness: match)
 
 === [adm0_obs_periods] national + period filter (the dispatch's example) ===
     WHERE iso3 = 'AGO' AND variable = 'PTOT' AND period = 'annual'
     canonical : https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm0_obs.parquet
-    canonical : 1.52s, 45 rows
+    canonical : 1.41s, 45 rows
     sandbox   : https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm0_obs.parquet
-    sandbox FAILED: HTTP Error: HTTP GET error on 'https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm0_obs.parquet' (HTTP 0 Internal Server Error)
-
-LINE 1: SELECT COUNT(*) AS n FROM read_parquet('https://digital-atlas.s3.amazonaws.com/sandbox...
-                                  ^
-ℹ Context: rapi_prepare
-ℹ Error type: HTTP
-    sandbox   : NAs, NA rows
+    sandbox   : 1.51s, 45 rows
+    speedup   : 0.9x (no meaningful speedup) (correctness: match)
 
 === [adm1_obs_periods] subnational + period filter ===
     WHERE iso3 = 'ETH' AND variable = 'TMIN' AND period = 'annual'
     canonical : https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm1_obs.parquet
-    canonical : 1.76s, 598 rows
+    canonical : 1.79s, 598 rows
     sandbox   : https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm1_obs.parquet
-    sandbox FAILED: HTTP Error: HTTP GET error on 'https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-periods/variable=adm1_obs.parquet' (HTTP 0 Internal Server Error)
-
-LINE 1: SELECT COUNT(*) AS n FROM read_parquet('https://digital-atlas.s3.amazonaws.com/sandbox...
-                                  ^
-ℹ Context: rapi_prepare
-ℹ Error type: HTTP
-    sandbox   : NAs, NA rows
+    sandbox   : 1.75s, 598 rows
+    speedup   : 1.0x (no meaningful speedup) (correctness: match)
 
 === [cmip6_historical] historical national + season filter ===
     WHERE iso3 = 'NGA' AND season = 'annual'
     canonical : https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=1995-2014/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
-    canonical : 1.69s, 6,840 rows
+    canonical : 1.59s, 6,840 rows
     sandbox   : https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=1995-2014/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
-    sandbox FAILED: HTTP Error: HTTP GET error on 'https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=1995-2014/baseline=1995-2014/variable=ensemble_season_timeseries.parquet' (HTTP 0 Internal Server Error)
-
-LINE 1: SELECT COUNT(*) AS n FROM read_parquet('https://digital-atlas.s3.amazonaws.com/sandbox...
-                                  ^
-ℹ Context: rapi_prepare
-ℹ Error type: HTTP
-    sandbox   : NAs, NA rows
+    sandbox   : 1.95s, 6,840 rows
+    speedup   : 0.8x (no meaningful speedup) (correctness: match)
 
 === [cmip6_2021_2040] scenario + season filter ===
     WHERE iso3 = 'NGA' AND scenario = 'ssp245' AND season = 'annual'
     canonical : https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2021-2040/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
-    canonical : 1.91s, 6,840 rows
+    canonical : 1.97s, 6,840 rows
     sandbox   : https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2021-2040/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
-    sandbox FAILED: HTTP Error: HTTP GET error on 'https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2021-2040/baseline=1995-2014/variable=ensemble_season_timeseries.parquet' (HTTP 0 Internal Server Error)
-
-LINE 1: SELECT COUNT(*) AS n FROM read_parquet('https://digital-atlas.s3.amazonaws.com/sandbox...
-                                  ^
-ℹ Context: rapi_prepare
-ℹ Error type: HTTP
-    sandbox   : NAs, NA rows
+    sandbox   : 2.97s, 6,840 rows
+    speedup   : 0.7x (no meaningful speedup) (correctness: match)
 
 === [hazard_exposure_multi] hazard x exposure crop slice ===
     WHERE iso3 = 'CIV' AND crop = 'cocoa'
     canonical : https://digital-atlas.s3.amazonaws.com/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
-    canonical : 1.80s, 13,056 rows
+    canonical : 1.86s, 13,056 rows
     sandbox   : https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
-    sandbox FAILED: HTTP Error: HTTP GET error on 'https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet' (HTTP 0 Internal Server Error)
-
-LINE 1: SELECT COUNT(*) AS n FROM read_parquet('https://digital-atlas.s3.amazonaws.com/sandbox...
-                                  ^
-ℹ Context: rapi_prepare
-ℹ Error type: HTTP
-    sandbox   : NAs, NA rows
+    sandbox   : 4.46s, 13,056 rows
+    speedup   : 0.4x (no meaningful speedup) (correctness: match)
 
 === [exposure_crop_livestock] national + exposure filter ===
     WHERE iso3 = 'UGA' AND exposure = 'vop'
     canonical : https://digital-atlas.s3.amazonaws.com/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=crop-livestock_all.parquet
-    canonical : 1.55s, 43,646 rows
+    canonical : 1.64s, 43,646 rows
     sandbox   : https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=crop-livestock_all.parquet
-    sandbox FAILED: HTTP Error: HTTP GET error on 'https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=crop-livestock_all.parquet' (HTTP 0 Internal Server Error)
-
-LINE 1: SELECT COUNT(*) AS n FROM read_parquet('https://digital-atlas.s3.amazonaws.com/sandbox...
-                                  ^
-ℹ Context: rapi_prepare
-ℹ Error type: HTTP
-    sandbox   : NAs, NA rows
+    sandbox   : 2.35s, 43,646 rows
+    speedup   : 0.7x (no meaningful speedup) (correctness: match)
 
 === [adm0_faostat] FAOSTAT national production query ===
     WHERE iso3 = 'ETH' AND variable = 'production'
     canonical : https://digital-atlas.s3.amazonaws.com/domain=socioeconomic/type=production/source=faostat/region=ssa/variable=adm0_faostat.parquet
-    canonical : 1.55s, 1,125 rows
+    canonical : 1.65s, 1,125 rows
     sandbox   : https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=socioeconomic/type=production/source=faostat/region=ssa/variable=adm0_faostat.parquet
-    sandbox FAILED: HTTP Error: HTTP GET error on 'https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/domain=socioeconomic/type=production/source=faostat/region=ssa/variable=adm0_faostat.parquet' (HTTP 0 Internal Server Error)
-
-LINE 1: SELECT COUNT(*) AS n FROM read_parquet('https://digital-atlas.s3.amazonaws.com/sandbox...
-                                  ^
-ℹ Context: rapi_prepare
-ℹ Error type: HTTP
-    sandbox   : NAs, NA rows
+    sandbox   : 1.72s, 1,125 rows
+    speedup   : 1.0x (no meaningful speedup) (correctness: match)
 
 === summary ===
 target                      canonical_s    sandbox_s  speedup rows_match
 --------------------------------------------------------------------------- 
-adm0_obs_monthly                   1.48           NA      NAx MISMATCH
-adm1_obs_monthly                   1.70           NA      NAx MISMATCH
-adm0_obs_periods                   1.52           NA      NAx MISMATCH
-adm1_obs_periods                   1.76           NA      NAx MISMATCH
-cmip6_historical                   1.69           NA      NAx MISMATCH
-cmip6_2021_2040                    1.91           NA      NAx MISMATCH
-hazard_exposure_multi              1.80           NA      NAx MISMATCH
-exposure_crop_livestock            1.55           NA      NAx MISMATCH
-adm0_faostat                       1.55           NA      NAx MISMATCH
+adm0_obs_monthly                   1.48         1.34     1.1x ok
+adm1_obs_monthly                   1.63         1.64     1.0x ok
+adm0_obs_periods                   1.41         1.51     0.9x ok
+adm1_obs_periods                   1.79         1.75     1.0x ok
+cmip6_historical                   1.59         1.95     0.8x ok
+cmip6_2021_2040                    1.97         2.97     0.7x ok
+hazard_exposure_multi              1.86         4.46     0.4x ok
+exposure_crop_livestock            1.64         2.35     0.7x ok
+adm0_faostat                       1.65         1.72     1.0x ok
 
 Pushdown firing (>=3x speedup) on 0/9 queries.
 Warning message:
