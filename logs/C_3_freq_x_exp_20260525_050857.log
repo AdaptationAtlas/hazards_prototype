@@ -1,0 +1,39 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+[05:37:06] [3_freq_x_exp] script start (FORCE_OVERWRITE=1)
+0.2.1.1) Using crop vop intd file: spam_vop_intld15_all.tif 
+0.2.1.1) Using crop vop usd file: spam_vop_usd2015_all.tif 
+0.2.1.2) Using crop harvested area file: spam_harv-area_ha_all.tif 
+0.2.2.1) Using livestock number file: livestock_number_number.tif 
+Error: [rast] file does not exist: Data/GLW4_2020/processed/livestock_vop_intld2015.tif
+In addition: Warning message:
+In new_CppObject_xp(fields$.module, fields$.pointer, ...) :
+  GDAL Error 4: Data/GLW4_2020/processed/livestock_vop_intld2015.tif: No such file or directory
+
+=== TRACEBACK ===
+11: (function () 
+    {
+        cat("\n=== TRACEBACK ===\n", file = stderr())
+        traceback(2)
+        cat("\n=================\n", file = stderr())
+        quit(status = 1, save = "no")
+    })()
+10: stop("[", f, "] ", emsg, ..., call. = FALSE)
+9: error(f, x@pntr$getError())
+8: messages(r, "rast")
+7: .local(x, ...)
+6: terra::rast(livestock_vop_file)
+5: terra::rast(livestock_vop_file)
+4: eval(ei, envir)
+3: eval(ei, envir)
+2: withVisible(eval(ei, envir))
+1: source(Sys.getenv("FREQXEXP_SCRIPT"))
+
+=================
+
+===== STAGE C DONE (Rscript exit code: 1) =====
