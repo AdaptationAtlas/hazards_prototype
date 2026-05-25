@@ -136,6 +136,20 @@ wait $PID_B; echo "STAGE B bash exit code: $?"
 # ======================================================================
 # STAGE C — 3_freq_x_exposure  (the slow one, ~30 min - 2 h)
 # ======================================================================
+# 2026-05-25 retry note:
+#   Two prior STAGE C runs failed:
+#     - 06:23 run: 4.2 [rast] extents-do-not-match. Fixed by commit 8af46c5
+#       (defensive resample in 4.2 worker).
+#     - 18:08 run: 4.2 worker pid 25629 OOM-killed mid-extract (variable
+#       1/3 vop_intld15-2021). Fixed by commit a3d009a (worker_n4.2: 16->6).
+#   For the next retry you can SKIP 4.1 (it completed cleanly at 18:31:56
+#   in the 18:08 run, outputs are good) by leaving FORCE_OVERWRITE unset
+#   below — the per-file overwrite gate in the script then keeps the 4.1
+#   parquets and re-runs only the missing 4.2 work.
+#
+#   Sanity check before retry: confirm CGlabs has the latest commit
+#     cd $HOME/atlas/hazards_prototype && git pull origin develop
+#     git log --oneline -3   # should show a3d009a at HEAD
 # Inputs : hazard-frequency rasters from R/2 (existing on disk; we are
 #          NOT rebaking those today — see CR-068 bookmark) + the fresh
 #          exposure parquets from STAGE A + STAGE B
