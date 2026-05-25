@@ -351,11 +351,23 @@ livestock_no <- terra::rast(livestock_no_file)
 cat("0.2.2.1) Using livestock number file:", basename(livestock_no_file), "\n")
 
 #### d.2.2.2) Livestock VoP ######
-livestock_vop_file <- file.path(glw2020_pro_dir, "livestock_vop_intld2015.tif")
+# 0.4.1 writes per-year VoP rasters under variable=<unit>-<year>/
+# subdirs (2015/2020/2021). Per 2026-05-25 decision, use the 2021
+# valuations as "current" — matches validate-script filter
+# `variable=vop_nominal-usd-2021`.
+livestock_vop_file <- file.path(
+  glw2020_pro_dir,
+  "variable=vop_intld15-2021",
+  "glw4-2020_vop_intld15-2021.tif"
+)
 livestock_vop <- terra::rast(livestock_vop_file)
 cat("0.2.2.2) Using livestock vop intd file:", basename(livestock_vop_file), "\n")
 
-livestock_vop_usd_file <- file.path(glw2020_pro_dir, "livestock_vop_usd2015.tif")
+livestock_vop_usd_file <- file.path(
+  glw2020_pro_dir,
+  "variable=vop_nominal-usd-2021",
+  "glw4-2020_vop_nominal-usd-2021.tif"
+)
 livestock_vop_usd <- terra::rast(livestock_vop_usd_file)
 cat("0.2.2.2) Using livestock vop usd file:", basename(livestock_vop_usd_file), "\n")
 
@@ -402,10 +414,10 @@ version4 <- 1
 overwrite4 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 do_vop <- TRUE
 round_vop <- 0
-vop_name <- "vop_intld15"
+vop_name <- "vop_intld15-2021"
 do_vop_usd <- TRUE
 round_vop_usd <- 0
-vop_usd_name <- "vop_usd15"
+vop_usd_name <- "vop_nominal-usd-2021"
 do_ha <- TRUE
 round_ha <- 0
 ha_name <- "harv-area_ha"
