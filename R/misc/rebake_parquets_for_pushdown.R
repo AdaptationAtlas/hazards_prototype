@@ -354,9 +354,13 @@ rebake_one <- function(target, row_group_size, dry_run, tmpdir) {
     ""
   }
   t0 <- Sys.time()
+  # COMPRESSION_LEVEL 9 brings file size back near the original — the
+  # DuckDB default is ~3, the producer pipeline used 9. Without it the
+  # CMIP6 timeseries files grow ~40% which breaches the dispatch's
+  # +/- 20% acceptance bound. Requires DuckDB >= 0.10.
   DBI::dbExecute(con_w, sprintf(
     "COPY (SELECT * FROM read_parquet('%s') %s)
-     TO '%s' (FORMAT PARQUET, COMPRESSION ZSTD, ROW_GROUP_SIZE %d)",
+     TO '%s' (FORMAT PARQUET, COMPRESSION ZSTD, COMPRESSION_LEVEL 9, ROW_GROUP_SIZE %d)",
     in_local, order_by, out_local, row_group_size
   ))
   DBI::dbDisconnect(con_w, shutdown = TRUE)
