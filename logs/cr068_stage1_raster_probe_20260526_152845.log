@@ -528,3 +528,36 @@ Top-level subdirs:
   ssp585_TaiESM1_2061_2080
   ssp585_TaiESM1_2081_2100
 
+Total indices TIFs found: 3480444
+
+File counts per (scenario, period):
+   scenario  period      N
+     <char>  <char>  <int>
+1: historic unknown 502524
+2:   ssp126 unknown 744480
+3:   ssp245 unknown 744480
+4:   ssp370 unknown 744480
+5:   ssp585 unknown 744480
+
+File counts per scenario only:
+   scenario      N
+     <char>  <int>
+1: historic 502524
+2:   ssp126 744480
+3:   ssp245 744480
+4:   ssp370 744480
+5:   ssp585 744480
+
+=== VERDICT (1C) ===
+SSP245 future periods present at indices_dir: 
+SSP370 future periods present at indices_dir: 
+SSP370 future periods MISSING at indices_dir: 2021-2040, 2041-2060, 2061-2080, 2081-2100
+
+SSP370 raw inputs MISSING for: 2021-2040, 2041-2060, 2061-2080, 2081-2100
+=> The 2041+ zero data is an UPSTREAM FETCH bug. The NEX-GDDP fetch
+   pipeline did not pull SSP370 future from NASA. Need to re-pull
+   then re-run R/1_make_timeseries.R for those periods.
+
+===== Stage 1 complete =====
+Verdicts above. STOP-AND-REPORT before Stage 2.
+Per-variant stats RDS saved to /home/jovyan/atlas/hazards_prototype/logs/cr068_stage1b_20260526_152845.rds
