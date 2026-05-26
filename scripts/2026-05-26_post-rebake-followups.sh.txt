@@ -8,8 +8,9 @@
 #            B) SSP370 2041+ zeros in [b] / [c]      — expected CR-068
 #            C) AGO historic heat/wet/heat+wet = 0   — expected CR-068
 # Environment: CGlabs JupyterHub
-# Convention: paste-able blocks. Run blocks in order. Sub-second queries
-#          (no nohup needed) — output goes to the terminal AND to a log.
+# Convention: paste-able blocks. R blocks use 'Rscript - <<EOF' heredoc
+#          so single quotes in SQL pass through cleanly (vs. the
+#          shell-quoting trap of 'Rscript -e' with embedded quotes).
 # Reference: logs/D_validate_9_20260526_091356.log (the run this triages)
 # ----------------------------------------------------------------------
 
@@ -20,7 +21,6 @@ cd $HOME/atlas/hazards_prototype
 git pull origin develop
 git log --oneline -3   # should include 333de6f (D producer fallback)
 
-export SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
 export LOG_DIR="$HOME/atlas/hazards_prototype/logs"
 mkdir -p "$LOG_DIR"
 STAMP=$(date +%Y%m%d_%H%M%S)
@@ -53,42 +53,45 @@ test -f "$PARQUET" && echo "OK: producer parquet exists" || echo "FAIL: $PARQUET
 #           A2 / A3 -> open a follow-up dispatch + hold publish.
 echo "" | tee -a "$LOG_FILE"
 echo "===== A) NGA oilpalm row inventory =====" | tee -a "$LOG_FILE"
-Rscript -e '
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
 suppressPackageStartupMessages({library(duckdb); library(DBI)})
 con <- dbConnect(duckdb())
 parquet <- Sys.getenv("PARQUET")
-q <- sprintf("
+sql <- sprintf("
   SELECT
-    COUNT(*)                                  AS n_rows,
-    COUNT(*) FILTER (WHERE value IS NOT NULL) AS n_non_null,
-    SUM(CASE WHEN isnan(value) THEN 1 ELSE 0 END) AS n_nan,
-    MIN(value) FILTER (WHERE NOT isnan(value)) AS min_val,
-    MAX(value) FILTER (WHERE NOT isnan(value)) AS max_val
-  FROM read_parquet(%s)
-  WHERE iso3 = %s AND crop = %s
-", paste0("'", parquet, "'"), "'NGA'", "'oilpalm'")
-print(dbGetQuery(con, q))
-' 2>&1 | tee -a "$LOG_FILE"
+    COUNT(*)                                                          AS n_rows,
+    COUNT(*) FILTER (WHERE value IS NOT NULL AND NOT isnan(value))    AS n_finite,
+    SUM(CASE WHEN value IS NULL THEN 1 ELSE 0 END)                    AS n_null,
+    SUM(CASE WHEN value IS NOT NULL AND isnan(value) THEN 1 ELSE 0 END) AS n_nan,
+    MIN(value) FILTER (WHERE value IS NOT NULL AND NOT isnan(value))  AS min_val,
+    MAX(value) FILTER (WHERE value IS NOT NULL AND NOT isnan(value))  AS max_val
+  FROM read_parquet('%s')
+  WHERE iso3 = 'NGA' AND crop = 'oilpalm'
+", parquet)
+print(dbGetQuery(con, sql))
+EOF
 
-# If n_rows == 0 ----> outcome A1.  Drop / swap the spot-check.
-# If n_nan  >  0 ----> outcome A2 / A3.  Inspect the producer TIF next.
+# If n_rows  == 0 -> outcome A1.  Drop / swap the spot-check.
+# If n_nan   >  0 -> outcome A2 / A3.  Inspect the producer TIF next.
 
 # Cross-check: is oilpalm produced anywhere else in the parquet?
 echo "" | tee -a "$LOG_FILE"
 echo "===== A.bis) global oilpalm coverage (any iso3) =====" | tee -a "$LOG_FILE"
-Rscript -e '
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
 suppressPackageStartupMessages({library(duckdb); library(DBI)})
 con <- dbConnect(duckdb())
 parquet <- Sys.getenv("PARQUET")
-q <- sprintf("
-  SELECT iso3, COUNT(*) AS n_rows,
-         SUM(CASE WHEN isnan(value) THEN 1 ELSE 0 END) AS n_nan
-  FROM read_parquet(%s)
-  WHERE crop = %s AND admin1_name IS NULL AND admin2_name IS NULL
+sql <- sprintf("
+  SELECT iso3,
+         COUNT(*)                                                          AS n_rows,
+         SUM(CASE WHEN value IS NOT NULL AND isnan(value) THEN 1 ELSE 0 END) AS n_nan,
+         COUNT(*) FILTER (WHERE value IS NOT NULL AND NOT isnan(value))    AS n_finite
+  FROM read_parquet('%s')
+  WHERE crop = 'oilpalm' AND admin1_name IS NULL AND admin2_name IS NULL
   GROUP BY iso3 ORDER BY iso3
-", paste0("'", parquet, "'"), "'oilpalm'")
-print(dbGetQuery(con, q))
-' 2>&1 | tee -a "$LOG_FILE"
+", parquet)
+print(dbGetQuery(con, sql))
+EOF
 
 # If oilpalm is widely populated EXCEPT for NGA -> the NGA-specific
 # MapSPAM tif has a coverage hole (or the NGA admin0 mask misses it).
@@ -106,24 +109,24 @@ print(dbGetQuery(con, q))
 # to zero, or other scenarios drop out, that IS new and a blocker.
 echo "" | tee -a "$LOG_FILE"
 echo "===== B) SSP370 vs SSP245 per-period coverage =====" | tee -a "$LOG_FILE"
-Rscript -e '
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
 suppressPackageStartupMessages({library(duckdb); library(DBI)})
 con <- dbConnect(duckdb())
 parquet <- Sys.getenv("PARQUET")
-q <- sprintf("
+sql <- sprintf("
   SELECT scenario, timeframe,
-         COUNT(*) AS n_rows,
+         COUNT(*)   AS n_rows,
          SUM(value) AS sum_value,
          SUM(CASE WHEN value = 0 THEN 1 ELSE 0 END) AS n_zero
-  FROM read_parquet(%s)
+  FROM read_parquet('%s')
   WHERE scenario IN ('ssp245','ssp370')
     AND hazard = 'any'
     AND admin1_name IS NULL AND admin2_name IS NULL
   GROUP BY scenario, timeframe
   ORDER BY scenario, timeframe
-", paste0("'", parquet, "'"))
-print(dbGetQuery(con, q))
-' 2>&1 | tee -a "$LOG_FILE"
+", parquet)
+print(dbGetQuery(con, sql))
+EOF
 
 # Expected (CR-068 fingerprint):
 #   ssp245 all 4 future periods: sum_value > 0
@@ -141,21 +144,21 @@ print(dbGetQuery(con, q))
 # go/no-go decision has a single consolidated log.
 echo "" | tee -a "$LOG_FILE"
 echo "===== C) AGO category split (historic) =====" | tee -a "$LOG_FILE"
-Rscript -e '
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
 suppressPackageStartupMessages({library(duckdb); library(DBI)})
 con <- dbConnect(duckdb())
 parquet <- Sys.getenv("PARQUET")
-q <- sprintf("
+sql <- sprintf("
   SELECT hazard, ROUND(SUM(value)::DOUBLE, 0) AS hist_sum
-  FROM read_parquet(%s)
-  WHERE iso3 = %s AND scenario = %s AND timeframe = %s
+  FROM read_parquet('%s')
+  WHERE iso3 = 'AGO' AND scenario = 'historic' AND timeframe = '1995-2014'
     AND hazard NOT IN ('none','any')
     AND admin1_name IS NULL AND admin2_name IS NULL
   GROUP BY hazard
   ORDER BY hist_sum DESC
-", paste0("'", parquet, "'"), "'AGO'", "'historic'", "'1995-2014'")
-print(dbGetQuery(con, q))
-' 2>&1 | tee -a "$LOG_FILE"
+", parquet)
+print(dbGetQuery(con, sql))
+EOF
 
 # Expected (CR-068 fingerprint):
 #   dry / dry+wet / dry+heat / dry+heat+wet: > 0
