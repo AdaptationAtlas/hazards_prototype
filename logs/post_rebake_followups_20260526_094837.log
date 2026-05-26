@@ -1,0 +1,70 @@
+
+===== A) NGA oilpalm row inventory =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+PARQUET = /home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_risk_vop_usd/jagermeyr/haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet 
+
+  n_rows n_finite n_null n_nan min_val    max_val
+1 152048   136480      0 15568       0 2396978489
+
+===== A.bis) global oilpalm coverage (any iso3) =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+   iso3 n_rows n_nan n_finite
+1   AGO    272     0      272
+2   BDI    272     0      272
+3   BEN    272     0      272
+4   BFA    272     0      272
+5   BWA    272     0      272
+6   CAF    272     0      272
+7   CIV    272     0      272
+8   CMR    272     0      272
+9   COD    272     0      272
+10  COG    272     0      272
+11  COM    272     0      272
+12  CPV    272     0      272
+13  DJI    272     0      272
+14  DZA    272     0      272
+15  EGY    816     0      816
+16  ERI    272     0      272
+17  ESH    272     0      272
+18  ETH    272     0      272
+19  GAB    272     0      272
+20  GHA    272     0      272
+21  GIN    272     0      272
+22  GMB    272     0      272
+23  GNB    272     0      272
+24  GNQ    272     0      272
+25  KEN    544     0      544
+26  LBR    272     0      272
+27  LBY    272     0      272
+28  LSO    272     0      272
+29  MAR    272     0      272
+30  MDG    272     0      272
+31  MLI    272     0      272
+32  MOZ    272     0      272
+33  MRT    272     0      272
+34  MUS    272     0      272
+35  MWI    272     0      272
+36  NAM    272     0      272
+37  NER    272     0      272
+38  NGA    272     0      272
+39  RWA    272     0      272
+40  SDN   1088     0     1088
+41  SEN    272     0      272
+42  SLE    272     0      272
+43  SOM    272     0      272
+44  SSD    816     0      816
+45  STP    272     0      272
+46  SWZ    272     0      272
+47  SYC    272     0      272
+48  TCD    272     0      272
+49  TGO    272     0      272
+50  TUN    272     0      272
+51  TZA    272     0      272
+52  UGA    272     0      272
+53  ZAF    272     0      272
+54  ZMB    272     0      272
+55  ZWE    272     0      272

@@ -1,0 +1,70 @@
+
+===== A) NGA oilpalm row inventory =====
+Error in `dbSendQuery()`:
+! Parser Error: syntax error at or near ","
+
+LINE 8:   FROM read_parquet(, parquet, )
+                            ^
+ℹ Context: rapi_prepare
+ℹ Error type: PARSER
+Backtrace:
+     ▆
+  1. ├─base::print(dbGetQuery(con, q))
+  2. ├─DBI::dbGetQuery(con, q)
+  3. ├─DBI::dbGetQuery(con, q)
+  4. │ └─DBI (local) .local(conn, statement, ...)
+  5. │   ├─DBI::dbSendQuery(conn, statement, ...)
+  6. │   └─duckdb::dbSendQuery(conn, statement, ...)
+  7. │     └─duckdb (local) .local(conn, statement, ...)
+  8. │       └─duckdb:::rethrow_rapi_prepare(conn@conn_ref, statement, env)
+  9. │         ├─rlang::try_fetch(...)
+ 10. │         │ ├─base::tryCatch(...)
+ 11. │         │ │ └─base (local) tryCatchList(expr, classes, parentenv, handlers)
+ 12. │         │ │   └─base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+ 13. │         │ │     └─base (local) doTryCatch(return(expr), name, parentenv, handler)
+ 14. │         │ └─base::withCallingHandlers(...)
+ 15. │         └─duckdb:::rapi_prepare(conn, query, env)
+ 16. ├─duckdb (local) `<fn>`(...)
+ 17. │ └─rlang::abort(error_parts, class = "duckdb_error", !!!fields)
+ 18. │   └─rlang:::signal_abort(cnd, .file)
+ 19. │     └─base::signalCondition(cnd)
+ 20. └─rlang (local) `<fn>`(`<dckdb_rr>`)
+ 21.   └─handlers[[1L]](cnd)
+ 22.     └─duckdb:::rethrow_error_from_rapi(e, call)
+ 23.       └─rlang::abort(msg, call = call)
+Execution halted
+
+===== A.bis) global oilpalm coverage (any iso3) =====
+Error in `dbSendQuery()`:
+! Parser Error: syntax error at or near ","
+
+LINE 4:   FROM read_parquet(, parquet, )
+                            ^
+ℹ Context: rapi_prepare
+ℹ Error type: PARSER
+Backtrace:
+     ▆
+  1. ├─base::print(dbGetQuery(con, q))
+  2. ├─DBI::dbGetQuery(con, q)
+  3. ├─DBI::dbGetQuery(con, q)
+  4. │ └─DBI (local) .local(conn, statement, ...)
+  5. │   ├─DBI::dbSendQuery(conn, statement, ...)
+  6. │   └─duckdb::dbSendQuery(conn, statement, ...)
+  7. │     └─duckdb (local) .local(conn, statement, ...)
+  8. │       └─duckdb:::rethrow_rapi_prepare(conn@conn_ref, statement, env)
+  9. │         ├─rlang::try_fetch(...)
+ 10. │         │ ├─base::tryCatch(...)
+ 11. │         │ │ └─base (local) tryCatchList(expr, classes, parentenv, handlers)
+ 12. │         │ │   └─base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+ 13. │         │ │     └─base (local) doTryCatch(return(expr), name, parentenv, handler)
+ 14. │         │ └─base::withCallingHandlers(...)
+ 15. │         └─duckdb:::rapi_prepare(conn, query, env)
+ 16. ├─duckdb (local) `<fn>`(...)
+ 17. │ └─rlang::abort(error_parts, class = "duckdb_error", !!!fields)
+ 18. │   └─rlang:::signal_abort(cnd, .file)
+ 19. │     └─base::signalCondition(cnd)
+ 20. └─rlang (local) `<fn>`(`<dckdb_rr>`)
+ 21.   └─handlers[[1L]](cnd)
+ 22.     └─duckdb:::rethrow_error_from_rapi(e, call)
+ 23.       └─rlang::abort(msg, call = call)
+Execution halted
