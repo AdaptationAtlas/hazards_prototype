@@ -89,8 +89,12 @@ ps     <- Sys.getenv("PROBE_SCENARIO")
 
 probe_per_gcm <- function(label, scenario, period) {
   d <- file.path(atlas_dirs$data_dir$hazard_timeseries_int, "annual")
-  # Per-GCM files end with the combination string
-  pat <- sprintf("^%s_[^_]+_%s_%s\\.tif$", scenario, period, combo)
+  # Per-GCM files end with the combination string. The combination
+  # contains literal '+' chars (e.g. NDWS-G15+NTx35-G7+NDWL0-G2)
+  # which are regex metachars — escape them so list.files treats
+  # the combination as a literal string.
+  combo_re <- gsub("([+])", "\\\\\\1", combo)
+  pat <- sprintf("^%s_[^_]+_%s_%s\\.tif$", scenario, period, combo_re)
   fs <- list.files(d, pat, full.names = TRUE)
   cat(sprintf("\n--- %s : %s × %s × %s — %d per-GCM files matched ---\n",
               label, scenario, period, combo, length(fs)))
@@ -195,9 +199,11 @@ probe  <- Sys.getenv("PROBE_PERIOD")
 ps     <- Sys.getenv("PROBE_SCENARIO")
 
 d <- file.path(atlas_dirs$data_dir$hazard_timeseries_int, "annual")
-per_gcm_pat <- sprintf("^%s_[^_]+_%s_%s\\.tif$", ps, probe, combo)
+# Escape '+' regex metachars in the combination (e.g. NDWS-G15+NTx35-G7+NDWL0-G2)
+combo_re <- gsub("([+])", "\\\\\\1", combo)
+per_gcm_pat <- sprintf("^%s_[^_]+_%s_%s\\.tif$", ps, probe, combo_re)
 per_gcm_fs  <- list.files(d, per_gcm_pat, full.names = TRUE)
-ensemble_pat <- sprintf("^%s_ENSEMBLEmean_%s_%s\\.tif$",  ps, probe, combo)
+ensemble_pat <- sprintf("^%s_ENSEMBLEmean_%s_%s\\.tif$",  ps, probe, combo_re)
 ensemble_f   <- list.files(d, ensemble_pat, full.names = TRUE)
 
 cat("per-GCM inputs: ", length(per_gcm_fs), "\n",
