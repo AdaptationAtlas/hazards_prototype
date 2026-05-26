@@ -1,0 +1,269 @@
+# ----------------------------------------------------------------------
+# Script: 2026-05-26_cr068_stage2a_ndws_root_cause.sh
+# Purpose: Stage 2A of the CR-068 investigation — given Stage 1B's
+#          finding that NDWS classified rasters are saturated for
+#          historic (mean ≈ 1.0 at all G15/G20/G25 thresholds) but
+#          NOT for future (mean 0.40-0.78), walk upstream to find
+#          whether:
+#            (i)  The RAW NDWS day-counts at indices_dir are
+#                 implausibly high for historic (then the bug is in
+#                 upstream NDWS computation — the 'hazards' repo
+#                 at github.com/AdaptationAtlas/hazards or
+#                 R/1_make_timeseries.R), OR
+#            (ii) Raw counts are reasonable but the classification
+#                 threshold in R/2_calculate_haz_freq.R treats
+#                 historic differently from future (then the bug
+#                 is in this repo's Step 2 / threshold logic).
+#
+#          STOP-AND-REPORT before any remediation.
+#
+# Context: cr068_stage1_raster_probe_20260526_152845.log [1B]
+#          confirmed the dispatch's NDWS saturation hypothesis.
+#          1C confirmed SSP370 raw indices exist for all 2041+
+#          periods → CR-068(c) is downstream-of-fetch.
+#
+# Environment: CGlabs JupyterHub
+# Convention: paste-able blocks, heredoc R, source 0_server_setup.R.
+# ----------------------------------------------------------------------
+
+# ======================================================================
+# 0) Pre-flight
+# ======================================================================
+export PROJECT_DIR="$HOME/atlas/hazards_prototype"
+cd "$PROJECT_DIR" || { echo "FAIL: cannot cd $PROJECT_DIR"; return 1 2>/dev/null || exit 1; }
+git pull origin develop
+git log --oneline -3
+
+export LOG_DIR="$PROJECT_DIR/logs"
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="$LOG_DIR/cr068_stage2a_ndws_root_cause_${STAMP}.log"
+echo "Logging to $LOG_FILE"
+
+# Knobs — match the Stage 1B probe so any discrepancy is on the
+# pipeline side, not on what we picked to compare.
+export PROBE_GCM="ACCESS-CM2"
+export FUTURE_SCENARIO="ssp245"
+export FUTURE_PERIOD="2041_2060"   # indices_dir uses '_' between years; 1B's class dir uses '-'
+export HISTORIC_PERIOD="1995_2014"
+
+
+# ======================================================================
+# 2A.1) Inventory the historic + future indices subdirs
+# ======================================================================
+# indices_dir is the upstream NEX-GDDP-hazards indices produced by
+# https://github.com/AdaptationAtlas/hazards. Discover what files
+# live in the (historic, GCM, period) and (ssp245, GCM, period)
+# subdirs so we know where NDWS day-counts actually live.
+# indices_dir2 is R/1_make_timeseries.R's output (seasonal
+# aggregates) — also worth peeking, since Step 2 may read from
+# either depending on the hazard.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 2A.1) Inventory raw indices + seasonal indices =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(data.table)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+
+gcm   <- Sys.getenv("PROBE_GCM")
+fs    <- Sys.getenv("FUTURE_SCENARIO")
+fp    <- Sys.getenv("FUTURE_PERIOD")
+hp    <- Sys.getenv("HISTORIC_PERIOD")
+
+hist_subdir <- file.path(indices_dir, sprintf("historical_%s_%s", gcm, hp))
+fut_subdir  <- file.path(indices_dir, sprintf("%s_%s_%s", fs, gcm, fp))
+
+cat("Historic indices subdir: ", hist_subdir, "\n", sep = "")
+cat("  exists? ", dir.exists(hist_subdir), "\n\n", sep = "")
+cat("Future indices subdir:   ", fut_subdir, "\n", sep = "")
+cat("  exists? ", dir.exists(fut_subdir), "\n\n", sep = "")
+
+list_top <- function(dir) {
+  if (!dir.exists(dir)) return(invisible(NULL))
+  cat("\n--- Top-level entries under ", dir, " ---\n", sep = "")
+  ents <- list.files(dir, full.names = FALSE, all.files = FALSE)
+  cat("count = ", length(ents), "\n", sep = "")
+  cat("first 30:\n")
+  print(head(ents, 30))
+}
+list_top(hist_subdir)
+list_top(fut_subdir)
+
+# Also peek indices_dir2 (seasonal) if it exists at parallel paths
+if (exists("indices_dir2")) {
+  hist2 <- file.path(indices_dir2, sprintf("historical_%s_%s", gcm, hp))
+  fut2  <- file.path(indices_dir2, sprintf("%s_%s_%s", fs, gcm, fp))
+  cat("\nSeasonal indices_dir2 sample:\n  hist exists? ", dir.exists(hist2),
+      "\n  fut  exists? ", dir.exists(fut2), "\n", sep = "")
+  list_top(hist2)
+  list_top(fut2)
+}
+
+# Find any NDWS-named TIF anywhere under either subdir (depth 3)
+cat("\n--- NDWS-named files under indices_dir/<hist subdir> (depth <=3) ---\n")
+if (dir.exists(hist_subdir)) {
+  ndws_hist <- list.files(hist_subdir, pattern = "NDWS",
+                          recursive = TRUE, full.names = TRUE)
+  cat("count = ", length(ndws_hist), "\n", sep = "")
+  print(head(ndws_hist, 20))
+}
+cat("\n--- NDWS-named files under indices_dir/<fut subdir> ---\n")
+if (dir.exists(fut_subdir)) {
+  ndws_fut <- list.files(fut_subdir, pattern = "NDWS",
+                         recursive = TRUE, full.names = TRUE)
+  cat("count = ", length(ndws_fut), "\n", sep = "")
+  print(head(ndws_fut, 20))
+}
+EOF
+
+
+# ======================================================================
+# 2A.2) Stats on RAW NDWS rasters — historic vs future, per pixel
+# ======================================================================
+# For each NDWS file found above, compute min/mean/max + percentiles.
+# If historic raw NDWS means show absurdly high day-counts (e.g. > 200
+# days of water stress per year — saturated) while future is much
+# lower, the saturation is in the upstream NDWS calculation. If
+# historic raw is similar to future raw, the saturation arrives at
+# the classification step (Step 2) — the threshold function treats
+# historic differently.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 2A.2) Raw NDWS distributions, historic vs future =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(terra); library(data.table)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+
+gcm <- Sys.getenv("PROBE_GCM")
+fs  <- Sys.getenv("FUTURE_SCENARIO")
+fp  <- Sys.getenv("FUTURE_PERIOD")
+hp  <- Sys.getenv("HISTORIC_PERIOD")
+
+hist_subdir <- file.path(indices_dir, sprintf("historical_%s_%s", gcm, hp))
+fut_subdir  <- file.path(indices_dir, sprintf("%s_%s_%s", fs, gcm, fp))
+
+# Helper: read first band only, compute fast global stats. (Some
+# indices files are multi-band yearly stacks; we still want a
+# single-band summary so a saturated layer is visible.)
+probe <- function(path) {
+  r <- suppressWarnings(try(terra::rast(path), silent = TRUE))
+  if (inherits(r, "try-error")) return(NULL)
+  nl <- terra::nlyr(r)
+  # First-band stats
+  r1 <- if (nl > 1L) r[[1]] else r
+  v <- suppressWarnings(as.numeric(terra::values(r1, na.rm = TRUE)))
+  if (length(v) == 0L) return(NULL)
+  qs <- quantile(v, c(0.05, 0.50, 0.95), na.rm = TRUE, names = FALSE)
+  # Also probe per-band MEAN if multi-band (so we see annual trend)
+  per_band_means <- NA_real_
+  if (nl > 1L) {
+    g <- suppressWarnings(terra::global(r, fun = "mean", na.rm = TRUE))
+    per_band_means <- paste(round(g$mean, 1), collapse = ",")
+  }
+  data.table(
+    file       = basename(path),
+    n_layers   = nl,
+    band1_n    = length(v),
+    band1_min  = min(v, na.rm = TRUE),
+    band1_p05  = qs[1],
+    band1_p50  = qs[2],
+    band1_mean = mean(v, na.rm = TRUE),
+    band1_p95  = qs[3],
+    band1_max  = max(v, na.rm = TRUE),
+    per_band_means = per_band_means
+  )
+}
+
+run_dir <- function(label, dir) {
+  cat(sprintf("\n--- %s — %s ---\n", label, dir))
+  if (!dir.exists(dir)) { cat("(dir missing)\n"); return(NULL) }
+  files <- list.files(dir, pattern = "NDWS", recursive = TRUE,
+                      full.names = TRUE)
+  if (length(files) == 0L) { cat("(no NDWS files)\n"); return(NULL) }
+  cat("Found ", length(files), " NDWS file(s). Probing first 10:\n",
+      sep = "")
+  files <- head(files, 10)
+  out <- rbindlist(lapply(files, probe), fill = TRUE)
+  print(out)
+  invisible(out)
+}
+
+hist_stats <- run_dir("HISTORIC raw NDWS", hist_subdir)
+fut_stats  <- run_dir("FUTURE raw NDWS",   fut_subdir)
+
+cat("\n=== VERDICT (2A.2) ===\n")
+if (is.null(hist_stats) || is.null(fut_stats)) {
+  cat("Cannot diff — one or both NDWS sets are absent.\n")
+  cat("Re-check 2A.1's inventory: NDWS may live under a different ",
+      "filename convention (e.g. NDWS-G15.tif as the index-name not ",
+      "just NDWS).\n", sep = "")
+} else {
+  hist_mean <- mean(hist_stats$band1_mean, na.rm = TRUE)
+  fut_mean  <- mean(fut_stats$band1_mean,  na.rm = TRUE)
+  hist_max  <- max(hist_stats$band1_max,  na.rm = TRUE)
+  fut_max   <- max(fut_stats$band1_max,   na.rm = TRUE)
+  cat(sprintf("Aggregate raw-NDWS band-1 mean:  historic=%.2f  future=%.2f  gap=%.2f\n",
+              hist_mean, fut_mean, hist_mean - fut_mean))
+  cat(sprintf("Aggregate raw-NDWS band-1 max:   historic=%.2f  future=%.2f\n",
+              hist_max, fut_max))
+  if (hist_mean > fut_mean * 1.5 && hist_max > 200) {
+    cat("\nHistoric raw NDWS day-counts are LARGE relative to future\n")
+    cat("and saturate near the calendar-year ceiling. The bug is\n")
+    cat("UPSTREAM of classification — investigate R/1_make_timeseries.R\n")
+    cat("(NDWS aggregation step) and the upstream `hazards` repo\n")
+    cat("(daily PET/AWC calculation) for why historic produces\n")
+    cat("saturated counts. The classification threshold logic in\n")
+    cat("R/2_calculate_haz_freq.R is then doing the right thing on\n")
+    cat("broken inputs.\n")
+  } else if (abs(hist_mean - fut_mean) < 5) {
+    cat("\nHistoric raw NDWS day-counts are SIMILAR to future. The\n")
+    cat("saturation arrives AT CLASSIFICATION. Investigate the\n")
+    cat("threshold logic in R/2_calculate_haz_freq.R for a\n")
+    cat("scenario-dependent branch (historic vs future) that flips\n")
+    cat("the comparator or substitutes a different threshold value.\n")
+  } else {
+    cat("\nDirection intermediate — examine the per-band-means columns\n")
+    cat("above for which years drive the gap, then escalate to Pete.\n")
+  }
+}
+EOF
+
+
+# ======================================================================
+# 2A.3) Inspect the classification threshold logic — no modifications
+# ======================================================================
+# Print the R/2_calculate_haz_freq.R section that turns raw counts
+# into classified 0/1. Look for any historic-vs-future branch, any
+# scenario-dependent threshold, or any rename collision that would
+# explain the symptom even if 2A.2 shows raw inputs are fine.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 2A.3) Classification threshold logic (R/2_calculate_haz_freq.R) =====" | tee -a "$LOG_FILE"
+{
+  echo ""
+  echo "--- haz_class table assembly (lines 90-120) ---"
+  sed -n '90,120p' "$PROJECT_DIR/R/2_calculate_haz_freq.R"
+  echo ""
+  echo "--- Thresholds_U construction (lines 480-510) ---"
+  sed -n '480,510p' "$PROJECT_DIR/R/2_calculate_haz_freq.R"
+  echo ""
+  echo "--- Section 1) Classify time series (around line 599-660) ---"
+  sed -n '590,660p' "$PROJECT_DIR/R/2_calculate_haz_freq.R"
+  echo ""
+  echo "--- grep: any historic vs future branching ---"
+  grep -nE "historic|historical|scenario\\s*==|scenario\\s+%in%" "$PROJECT_DIR/R/2_calculate_haz_freq.R" || echo "(no matches)"
+} | tee -a "$LOG_FILE"
+
+
+# ======================================================================
+# Stage 2A — STOP HERE
+# ======================================================================
+echo "" | tee -a "$LOG_FILE"
+echo "===== Stage 2A complete =====" | tee -a "$LOG_FILE"
+echo "Verdict in 2A.2 tells you which direction Stage 2B walks:" | tee -a "$LOG_FILE"
+echo "  upstream-NDWS-bug  -> 'hazards' repo + R/1_make_timeseries.R" | tee -a "$LOG_FILE"
+echo "  classification-bug -> R/2_calculate_haz_freq.R threshold logic" | tee -a "$LOG_FILE"
+echo "DO NOT modify pipeline code yet. STOP-AND-REPORT first." | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Log saved to $LOG_FILE"
