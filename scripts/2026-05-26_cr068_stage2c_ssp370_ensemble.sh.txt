@@ -185,23 +185,42 @@ if (nrow(out) == 0L) {
   cat("naming differs in this layout, or the ensemble files aren't\n")
   cat("under a flat <timeframe>/ subdir. Re-inspect 2C.1 tier layouts.\n")
 } else {
-  flagged_period   <- out[!is.na(ratio_period)   & ratio_period   < 0.5]
-  flagged_scenario <- out[!is.na(ratio_scenario) & ratio_scenario < 0.5]
-  if (nrow(flagged_period) + nrow(flagged_scenario) == 0L) {
-    cat("All ENSEMBLE means within 50%+ across pairings. The ensemble\n")
-    cat("aggregation looks healthy at the raster level. Drop must be\n")
-    cat("at the parquet-write in R/3_freq_x_exposure.R — maybe in the\n")
-    cat("zonal-stats step that intersects ENSEMBLE rasters with the\n")
-    cat("admin boundaries + exposure (sec 4.1 / 4.2). Inspect for\n")
-    cat("admin-mask coverage gaps or join-key mismatches.\n")
-  } else {
-    cat("Period gap (ssp370 2041+ vs ssp370 2021-2040 < 50%):\n")
+  # NaN cases are STRONGER signals than 'value gap' — the ENSEMBLE
+  # produced an all-NaN raster. Surface them before the ratio check.
+  nan_cases <- out[is.nan(ssp370_probe_mean) | is.na(ssp370_probe_mean)]
+  if (nrow(nan_cases) > 0L) {
+    cat("CRITICAL: SSP370 ", Sys.getenv("PROBE_PERIOD"),
+        " ENSEMBLE values are NaN at:\n", sep = "")
+    print(nan_cases[, .(tier, timeframe, ssp370_probe_file)])
+    cat("\nThis indicates the ENSEMBLE-writing step produced ENTIRELY-NaN\n")
+    cat("rasters for SSP370 ", Sys.getenv("PROBE_PERIOD"), " at these tiers.\n", sep = "")
+    cat("Likely cause: ensemble averaging across per-GCM files where one\n")
+    cat("or more GCMs have NaN, and the mean is computed WITHOUT na.rm=TRUE\n")
+    cat("(so a single NaN poisons every pixel). Inspect:\n")
+    cat("  R/2_calculate_haz_freq.R line 1386-1410 (section 5.2 ENSEMBLE writer)\n")
+    cat("  R/2_calculate_haz_freq.R line  789- 800 (haz_time_risk_dir writer)\n")
+    cat("Stage 3 probe will reproduce this math from per-GCM inputs to\n")
+    cat("confirm.\n")
+  }
+  flagged_period   <- out[!is.na(ratio_period)   & !is.nan(ratio_period)
+                          & ratio_period   < 0.5]
+  flagged_scenario <- out[!is.na(ratio_scenario) & !is.nan(ratio_scenario)
+                          & ratio_scenario < 0.5]
+  if (nrow(flagged_period) + nrow(flagged_scenario) > 0L) {
+    cat("\nPeriod gap (ssp370 2041+ vs ssp370 2021-2040 < 50%):\n")
     print(flagged_period)
     cat("\nScenario gap (ssp370 2041+ vs ssp245 2041+ < 50%):\n")
     print(flagged_scenario)
     cat("\nThe tier with the largest gap is where ENSEMBLE aggregation\n")
     cat("for SSP370 2041+ first goes wrong. Trace back to its writer\n")
     cat("at the line in R/2_calculate_haz_freq.R that emits this tier.\n")
+  } else if (nrow(nan_cases) == 0L) {
+    cat("All ENSEMBLE means within 50%+ across pairings AND no NaN cases.\n")
+    cat("The ensemble aggregation looks healthy at the raster level. Drop\n")
+    cat("must be at the parquet-write in R/3_freq_x_exposure.R — maybe in\n")
+    cat("the zonal-stats step that intersects ENSEMBLE rasters with the\n")
+    cat("admin boundaries + exposure (sec 4.1 / 4.2). Inspect for\n")
+    cat("admin-mask coverage gaps or join-key mismatches.\n")
   }
 }
 EOF

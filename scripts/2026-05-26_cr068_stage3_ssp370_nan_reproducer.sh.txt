@@ -1,0 +1,288 @@
+# ----------------------------------------------------------------------
+# Script: 2026-05-26_cr068_stage3_ssp370_nan_reproducer.sh
+# Purpose: Stage 3 — confirm the SSP370 2041-2060 categorisation
+#          ENSEMBLE NaN bug found in Stage 2C.
+#
+#          Stage 2C result: ssp370_ENSEMBLEmean_2041-2060_<combo>.tif
+#          at hazard_timeseries_int/ and hazard_timeseries_risk/ are
+#          entirely NaN (validated by sampling AGO centroid + global
+#          mean for one combination file). SSP370 2021-2040 and
+#          SSP245 2041-2060 ENSEMBLEs at the same tiers are populated.
+#
+#          This probe:
+#            3.1 Per-GCM input audit — for the same broken file
+#                (ssp370 × 2041-2060 × NDWS-G15+NTx35-G7+NDWL0-G2),
+#                read ALL 20 per-GCM int files at the same tier and
+#                report mean/min/max + NaN-fraction per GCM. If most
+#                GCMs are clean but a few are NaN-only, the bug is
+#                "ENSEMBLE math without na.rm = TRUE on a single
+#                bad GCM input". If most/all are NaN, the bug is
+#                upstream (Step 1/2 producing NaN inputs for SSP370
+#                2041-2060 specifically).
+#            3.2 Print the ENSEMBLE-writing code in section 5.2 of
+#                R/2_calculate_haz_freq.R and the equivalent at
+#                haz_time_risk_dir (line ~789-800). Look for any
+#                `mean(...)` / `terra::mean(...)` call without an
+#                explicit `na.rm` argument.
+#            3.3 Manually reproduce the ENSEMBLE math. Load the 20
+#                per-GCM SSP370 2041-2060 int files for ONE
+#                combination, compute mean across GCMs both with
+#                `na.rm = TRUE` and `na.rm = FALSE`, and compare to
+#                the existing all-NaN ENSEMBLEmean output. Whichever
+#                matches identifies the bug shape.
+#
+#          STOP-AND-REPORT. No remediation.
+#
+# Context: Stage 2C log
+#   logs/cr068_stage2c_ssp370_ensemble_20260526_194832.log
+#   confirmed the NaN ENSEMBLE write — this Stage 3 pins WHY.
+#
+# Environment: CGlabs JupyterHub
+# Convention: paste-able blocks, heredoc R, source 0_server_setup.R.
+# ----------------------------------------------------------------------
+
+# ======================================================================
+# 0) Pre-flight
+# ======================================================================
+export PROJECT_DIR="$HOME/atlas/hazards_prototype"
+cd "$PROJECT_DIR" || { echo "FAIL: cannot cd $PROJECT_DIR"; return 1 2>/dev/null || exit 1; }
+git pull origin develop
+git log --oneline -3
+
+export LOG_DIR="$PROJECT_DIR/logs"
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="$LOG_DIR/cr068_stage3_ssp370_nan_reproducer_${STAMP}.log"
+echo "Logging to $LOG_FILE"
+
+# Knobs — pin the EXACT broken file that Stage 2C surfaced. The
+# combination NDWS-G15+NTx35-G7+NDWL0-G2 is the canonical "multi-
+# hazard.parquet" filter set used by the published parquet.
+export PROBE_SCENARIO="ssp370"
+export PROBE_PERIOD="2041-2060"
+export PROBE_COMBO="NDWS-G15+NTx35-G7+NDWL0-G2"
+export REF_SCENARIO="ssp245"      # apples-to-apples reference scenario
+export PRIOR_PERIOD="2021-2040"   # SSP370's own non-broken period
+
+
+# ======================================================================
+# 3.1) Per-GCM input audit — which GCMs are NaN for the broken case?
+# ======================================================================
+# At hazard_timeseries_int/<timeframe>/, list every per-GCM file
+# matching ssp370_*_2041-2060_<COMBO>.tif. For each, report:
+#   mean (across all layers/pixels), min, max, n_pixels,
+#   pct_nan (fraction of pixels that are NaN).
+# Cross-check with the same per-GCM files for ssp370 2021-2040 and
+# ssp245 2041-2060.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 3.1) Per-GCM SSP370 2041-2060 int-tier audit =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(terra); library(data.table)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+combo  <- Sys.getenv("PROBE_COMBO")
+probe  <- Sys.getenv("PROBE_PERIOD")
+prior  <- Sys.getenv("PRIOR_PERIOD")
+ref    <- Sys.getenv("REF_SCENARIO")
+ps     <- Sys.getenv("PROBE_SCENARIO")
+
+probe_per_gcm <- function(label, scenario, period) {
+  d <- file.path(atlas_dirs$data_dir$hazard_timeseries_int, "annual")
+  # Per-GCM files end with the combination string
+  pat <- sprintf("^%s_[^_]+_%s_%s\\.tif$", scenario, period, combo)
+  fs <- list.files(d, pat, full.names = TRUE)
+  cat(sprintf("\n--- %s : %s × %s × %s — %d per-GCM files matched ---\n",
+              label, scenario, period, combo, length(fs)))
+  if (length(fs) == 0L) return(NULL)
+  out <- rbindlist(lapply(fs, function(f) {
+    r <- suppressWarnings(try(terra::rast(f), silent = TRUE))
+    if (inherits(r, "try-error")) return(NULL)
+    nl <- terra::nlyr(r)
+    v <- suppressWarnings(as.numeric(terra::values(r, na.rm = FALSE)))
+    g <- suppressWarnings(terra::global(r, fun = c("min","mean","max"),
+                                         na.rm = TRUE))
+    # Parse GCM token from filename: scenario_GCM_period_combo.tif
+    gcm_tok <- sub(sprintf("^%s_([^_]+)_%s_.*\\.tif$",
+                            scenario, period), "\\1", basename(f))
+    data.table(
+      gcm     = gcm_tok,
+      n_layers = nl,
+      n_pixels = length(v),
+      n_nan    = sum(is.nan(v) | is.na(v)),
+      pct_nan  = round(100 * mean(is.nan(v) | is.na(v)), 2),
+      min      = mean(g$min, na.rm = TRUE),
+      mean     = mean(g$mean, na.rm = TRUE),
+      max      = mean(g$max, na.rm = TRUE)
+    )
+  }), fill = TRUE)
+  setorder(out, -pct_nan)
+  print(out)
+  invisible(out)
+}
+
+a <- probe_per_gcm("PROBE  (broken case)",      ps,   probe)
+b <- probe_per_gcm("PRIOR  (same scen, prev p)", ps,   prior)
+c <- probe_per_gcm("REF    (sibling scenario)",  ref,  probe)
+
+cat("\n=== VERDICT (3.1) ===\n")
+if (!is.null(a)) {
+  any_nan_gcm <- a[pct_nan > 0]
+  if (nrow(any_nan_gcm) == nrow(a)) {
+    cat("ALL ", nrow(a), " per-GCM files for ", ps, " ", probe, " ", combo,
+        " contain NaN pixels.\n", sep = "")
+    cat("Bug is UPSTREAM — Step 1 or Step 2 sec 1 produces NaN per-GCM\n")
+    cat("inputs for this scenario × period × combination. Investigate\n")
+    cat("R/2_calculate_haz_freq.R section 1 classification for SSP370\n")
+    cat("2041-2060 specifically.\n")
+  } else if (nrow(any_nan_gcm) > 0L) {
+    cat("Some per-GCM files have NaN: ", nrow(any_nan_gcm),
+        " of ", nrow(a), ".\n", sep = "")
+    print(any_nan_gcm[, .(gcm, pct_nan)])
+    cat("Other GCMs are clean. Ensemble averaging without na.rm=TRUE\n")
+    cat("would propagate the NaN GCMs across every pixel of the\n")
+    cat("ENSEMBLE output. Stage 3.3 will confirm with a manual reduce.\n")
+  } else {
+    cat("All per-GCM files are NaN-free at the input level.\n")
+    cat("The NaN ENSEMBLE output must arise from the writing step\n")
+    cat("itself (terra::mean, division, or interpolation hitting NaN).\n")
+    cat("Inspect section 5.2 code via 3.2 and reproduce in 3.3.\n")
+  }
+}
+EOF
+
+
+# ======================================================================
+# 3.2) ENSEMBLE-writing code inspection (no edits)
+# ======================================================================
+# Print the surrounding context for line 1386-1410 of
+# R/2_calculate_haz_freq.R (the section 5.2 ENSEMBLEmean writer for
+# multi-hazard combinations) plus line 789-810 (haz_time_risk_dir
+# ENSEMBLE writer). Then grep for terra::mean / mean( / na.rm in
+# section 5.2 specifically. The hypothesis is a mean call lacking
+# na.rm = TRUE.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 3.2) ENSEMBLE writer code inspection =====" | tee -a "$LOG_FILE"
+{
+  echo ""
+  echo "--- R/2_calculate_haz_freq.R lines 1360-1420 (sec 5.2 ENSEMBLE write) ---"
+  sed -n '1360,1420p' "$PROJECT_DIR/R/2_calculate_haz_freq.R"
+  echo ""
+  echo "--- R/2_calculate_haz_freq.R lines 780-820 (haz_time_risk_dir) ---"
+  sed -n '780,820p' "$PROJECT_DIR/R/2_calculate_haz_freq.R"
+  echo ""
+  echo "--- grep: terra::mean / mean( / na.rm in R/2_calculate_haz_freq.R ---"
+  grep -nE "terra::mean|mean\\(|na\\.rm" "$PROJECT_DIR/R/2_calculate_haz_freq.R" | head -40
+} | tee -a "$LOG_FILE"
+
+
+# ======================================================================
+# 3.3) Reproduce the ENSEMBLE math manually
+# ======================================================================
+# Load the broken-case per-GCM int files. Compute their mean across
+# GCMs both with na.rm = TRUE and na.rm = FALSE. Compare to the
+# existing ENSEMBLEmean file at the same tier. The matching variant
+# tells us how the writer is calling mean.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 3.3) Manual ENSEMBLE reproduction =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(terra); library(data.table)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+combo  <- Sys.getenv("PROBE_COMBO")
+probe  <- Sys.getenv("PROBE_PERIOD")
+ps     <- Sys.getenv("PROBE_SCENARIO")
+
+d <- file.path(atlas_dirs$data_dir$hazard_timeseries_int, "annual")
+per_gcm_pat <- sprintf("^%s_[^_]+_%s_%s\\.tif$", ps, probe, combo)
+per_gcm_fs  <- list.files(d, per_gcm_pat, full.names = TRUE)
+ensemble_pat <- sprintf("^%s_ENSEMBLEmean_%s_%s\\.tif$",  ps, probe, combo)
+ensemble_f   <- list.files(d, ensemble_pat, full.names = TRUE)
+
+cat("per-GCM inputs: ", length(per_gcm_fs), "\n",
+    "existing ENSEMBLE: ", length(ensemble_f), " (basename=",
+    if (length(ensemble_f)) basename(ensemble_f) else "(none)", ")\n", sep = "")
+
+if (length(per_gcm_fs) == 0L) {
+  cat("(no per-GCM inputs — can't reproduce; stop here)\n")
+} else {
+  # Stack all per-GCM rasters; each is multi-layer (one per combo dim)
+  stk <- suppressWarnings(lapply(per_gcm_fs, terra::rast))
+  cat("First file: ", basename(per_gcm_fs[1]), "  layers=",
+      terra::nlyr(stk[[1]]), "\n", sep = "")
+
+  # Compute layer-wise mean across GCMs, both with na.rm=TRUE and FALSE.
+  # Use the first layer only for the reproduction (saves time, NaN
+  # propagation behaviour is the same regardless of layer).
+  layer1_stack <- terra::rast(lapply(stk, function(r) r[[1]]))
+  cat("Stacked first-layer across ", terra::nlyr(layer1_stack), " GCMs\n", sep = "")
+  mean_narm_T <- terra::app(layer1_stack, fun = mean, na.rm = TRUE)
+  mean_narm_F <- terra::app(layer1_stack, fun = mean, na.rm = FALSE)
+
+  g_T <- suppressWarnings(terra::global(mean_narm_T, fun = "mean", na.rm = TRUE))$mean
+  g_F <- suppressWarnings(terra::global(mean_narm_F, fun = "mean", na.rm = TRUE))$mean
+  pct_nan_T <- mean(is.nan(terra::values(mean_narm_T)) | is.na(terra::values(mean_narm_T)))
+  pct_nan_F <- mean(is.nan(terra::values(mean_narm_F)) | is.na(terra::values(mean_narm_F)))
+
+  cat("\n--- Manual reduce results (first layer only) ---\n")
+  cat(sprintf("  mean(., na.rm = TRUE) : global mean = %s   pct_nan = %.2f%%\n",
+              ifelse(is.nan(g_T), "NaN", round(g_T, 4)), 100 * pct_nan_T))
+  cat(sprintf("  mean(., na.rm = FALSE): global mean = %s   pct_nan = %.2f%%\n",
+              ifelse(is.nan(g_F), "NaN", round(g_F, 4)), 100 * pct_nan_F))
+
+  if (length(ensemble_f) > 0L) {
+    existing <- suppressWarnings(terra::rast(ensemble_f))
+    ex_layer1 <- existing[[1]]
+    g_ex <- suppressWarnings(terra::global(ex_layer1, fun = "mean", na.rm = TRUE))$mean
+    pct_nan_ex <- mean(is.nan(terra::values(ex_layer1)) | is.na(terra::values(ex_layer1)))
+    cat(sprintf("  existing ENSEMBLE     : global mean = %s   pct_nan = %.2f%%\n",
+                ifelse(is.nan(g_ex), "NaN", round(g_ex, 4)),
+                100 * pct_nan_ex))
+
+    cat("\n=== VERDICT (3.3) ===\n")
+    if (pct_nan_ex > 0.99 && pct_nan_F > 0.99 && pct_nan_T < 0.01) {
+      cat("CONFIRMED: existing ENSEMBLE matches `mean(..., na.rm = FALSE)`.\n")
+      cat("ROOT CAUSE = the ENSEMBLE writer in R/2_calculate_haz_freq.R\n")
+      cat("section 5.2 (around line 1386) calls a mean function WITHOUT\n")
+      cat("na.rm = TRUE. One or more per-GCM SSP370 2041-2060 files have\n")
+      cat("NaN pixels; the unset-na.rm averaging poisons every pixel.\n")
+      cat("Fix: pass na.rm = TRUE to the relevant terra::mean / terra::app\n")
+      cat("call. Then re-run section 5.2 for SSP370 future periods to\n")
+      cat("refresh the int rasters, then re-run STAGE C (R/3_freq_x_exposure)\n")
+      cat("to flow the fix into hazard_exposure.parquet.\n")
+    } else if (pct_nan_ex > 0.99 && pct_nan_T > 0.99) {
+      cat("Both na.rm=TRUE and na.rm=FALSE produce NaN. The per-GCM\n")
+      cat("inputs themselves are all NaN — Stage 3.1 should have flagged\n")
+      cat("this. Bug is upstream of the ENSEMBLE writer; investigate\n")
+      cat("R/2_calculate_haz_freq.R section 1 classification step for\n")
+      cat("SSP370 2041-2060 inputs.\n")
+    } else if (pct_nan_ex < 0.01) {
+      cat("The existing ENSEMBLE has very few NaN — the file we sampled\n")
+      cat("for the 2C.4 spot-check may not match the broken instance.\n")
+      cat("Recheck filename pattern + tier matching.\n")
+    } else {
+      cat("Mixed result. Manual ENSEMBLE differs from both na.rm options.\n")
+      cat("The writer probably uses a different reduction (e.g.\n")
+      cat("terra::mean with a custom weight or interpolation). Inspect\n")
+      cat("3.2's printed code in detail.\n")
+    }
+  } else {
+    cat("(no existing ENSEMBLE file found — can't compare)\n")
+  }
+}
+EOF
+
+
+# ======================================================================
+# Stage 3 — STOP HERE
+# ======================================================================
+echo "" | tee -a "$LOG_FILE"
+echo "===== Stage 3 complete =====" | tee -a "$LOG_FILE"
+echo "If 3.3 confirms na.rm=FALSE matches the existing all-NaN output," | tee -a "$LOG_FILE"
+echo "the fix is one line in R/2_calculate_haz_freq.R (and possibly its" | tee -a "$LOG_FILE"
+echo "siblings at lines 789-790 and 1131-1132). Don't ship the fix yet;" | tee -a "$LOG_FILE"
+echo "report the diagnosis to Pete first, then schedule a section-5.2-" | tee -a "$LOG_FILE"
+echo "only re-run + Stage C downstream rebake for SSP370 future periods." | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Log saved to $LOG_FILE"
