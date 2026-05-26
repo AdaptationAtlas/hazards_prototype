@@ -17,21 +17,28 @@
 # ======================================================================
 # 0) Pre-flight
 # ======================================================================
-cd $HOME/atlas/hazards_prototype
+export PROJECT_DIR="$HOME/atlas/hazards_prototype"
+cd "$PROJECT_DIR" || { echo "FAIL: cannot cd $PROJECT_DIR"; return 1 2>/dev/null || exit 1; }
 git pull origin develop
 git log --oneline -3   # should include 333de6f (D producer fallback)
 
-export LOG_DIR="$HOME/atlas/hazards_prototype/logs"
+export LOG_DIR="$PROJECT_DIR/logs"
 mkdir -p "$LOG_DIR"
 STAMP=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="$LOG_DIR/post_rebake_followups_${STAMP}.log"
 echo "Logging to $LOG_FILE"
 
 # Producer parquet the validator picked (echoed in
-# D_validate_9_20260526_091356.log line 13). All queries below read
-# from this file via DuckDB — fast, no S3 round-trip.
-export PARQUET="Data/hazard_risk_vop_usd/jagermeyr/haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet"
-test -f "$PARQUET" && echo "OK: producer parquet exists" || echo "FAIL: $PARQUET missing"
+# D_validate_9_20260526_091356.log line 13). Absolute path so the
+# Rscript heredoc blocks below don't depend on whatever cwd the
+# pasting terminal happens to be in. All queries read from this file
+# via DuckDB — fast, no S3 round-trip.
+export PARQUET="$PROJECT_DIR/Data/hazard_risk_vop_usd/jagermeyr/haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet"
+if [ ! -f "$PARQUET" ]; then
+  echo "FAIL: $PARQUET missing — aborting (rerun STAGE C or fix the path)"
+  return 1 2>/dev/null || exit 1
+fi
+echo "OK: producer parquet exists ($PARQUET)"
 
 
 # ======================================================================
