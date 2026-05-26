@@ -1,0 +1,187 @@
+
+===== 2C.1) ENSEMBLE file-count inventory =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+                     tier timeframe ssp370_probe ssp370_prior ref_probe
+                   <char>    <char>        <int>        <int>     <int>
+1: hazard_timeseries_risk    annual          183          183       183
+2: hazard_timeseries_risk jagermeyr          183          183       183
+3: hazard_timeseries_mean    annual           86           86        86
+4: hazard_timeseries_mean jagermeyr           86           86        86
+5:  hazard_timeseries_int    annual          132          132       132
+6:  hazard_timeseries_int jagermeyr          132          132       132
+7:            hazard_risk    annual            0            0         0
+8:            hazard_risk jagermeyr            0            0         0
+   total_tifs
+        <int>
+1:      62290
+2:      62220
+3:      27692
+4:      27692
+5:      44880
+6:      44880
+7:       5880
+8:       5880
+
+=== VERDICT (2C.1 — ENSEMBLE file counts) ===
+ENSEMBLE file counts MATCH across (ssp370 2041+, ssp370 2021-2040, ssp245 2041+).
+Drop is value-level, not file-level. Proceed to 2C.2.
+
+===== 2C.2) ENSEMBLE value comparison =====
+Warning messages:
+1: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+2: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+3: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+4: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+5: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+6: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+7: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+8: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+                     tier timeframe ssp370_probe_mean ssp370_prior_mean
+                   <char>    <char>             <num>             <num>
+1: hazard_timeseries_risk    annual               NaN         0.3184159
+2: hazard_timeseries_risk jagermeyr               NaN         0.2984686
+3: hazard_timeseries_mean    annual          31.37786        29.6974991
+4: hazard_timeseries_mean jagermeyr          30.85992        29.2275124
+5:  hazard_timeseries_int    annual               NaN         0.2403069
+6:  hazard_timeseries_int jagermeyr               NaN         0.2402166
+   ref_probe_mean                                            ssp370_probe_file
+            <num>                                                       <char>
+1:      0.3190059              ssp370_ENSEMBLEmean_2041-2060_NDWL0-mean-G2.tif
+2:      0.3016104              ssp370_ENSEMBLEmean_2041-2060_NDWL0-mean-G2.tif
+3:     30.9827146           ssp370_ENSEMBLEmean_2041-2060_HSH-max-max_mean.tif
+4:     30.5161645           ssp370_ENSEMBLEmean_2041-2060_HSH-max-max_mean.tif
+5:      0.2412630 ssp370_ENSEMBLEmean_2041-2060_NDWS-G15+NTx35-G7+NDWL0-G2.tif
+6:      0.2414777 ssp370_ENSEMBLEmean_2041-2060_NDWS-G15+NTx35-G7+NDWL0-G2.tif
+   ratio_period ratio_scenario
+          <num>          <num>
+1:          NaN            NaN
+2:          NaN            NaN
+3:     1.056583       1.012754
+4:     1.055852       1.011265
+5:          NaN            NaN
+6:          NaN            NaN
+
+=== VERDICT (2C.2 — ENSEMBLE values) ===
+All ENSEMBLE means within 50%+ across pairings. The ensemble
+aggregation looks healthy at the raster level. Drop must be
+at the parquet-write in R/3_freq_x_exposure.R — maybe in the
+zonal-stats step that intersects ENSEMBLE rasters with the
+admin boundaries + exposure (sec 4.1 / 4.2). Inspect for
+admin-mask coverage gaps or join-key mismatches.
+
+===== 2C.3) Per-GCM SSP370 coverage at categorisation tier =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+Probing per-GCM coverage under: Data/hazard_timeseries_int/annual
+Distinct GCMs per (scenario, period):
+    scenario    period n_gcms n_files
+      <char>    <char>  <int>   <int>
+ 1: historic 1995-2014     20    2640
+ 2:   ssp126 2021-2040     20    2640
+ 3:   ssp126 2041-2060     20    2640
+ 4:   ssp126 2061-2080     20    2640
+ 5:   ssp126 2081-2100     20    2640
+ 6:   ssp245 2021-2040     20    2640
+ 7:   ssp245 2041-2060     20    2640
+ 8:   ssp245 2061-2080     20    2640
+ 9:   ssp245 2081-2100     20    2640
+10:   ssp370 2021-2040     20    2640
+11:   ssp370 2041-2060     20    2640
+12:   ssp370 2061-2080     20    2640
+13:   ssp370 2081-2100     20    2640
+14:   ssp585 2021-2040     20    2640
+15:   ssp585 2041-2060     20    2640
+16:   ssp585 2061-2080     20    2640
+17:   ssp585 2081-2100     20    2640
+
+=== VERDICT (2C.3 — GCM coverage) ===
+All three cells have 20 GCMs — coverage is uniform.
+If 2C.2 flags a value gap, the bug is in the ENSEMBLE math
+itself (averaging logic), not in the GCM coverage feeding it.
+
+===== 2C.4) AGO admin0 ENSEMBLE spot-check =====
+Warning messages:
+1: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+2: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+3: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+4: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+5: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+6: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+7: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+8: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+Sampling ENSEMBLE TIFs (basename):
+  ssp370_probe : ssp370_ENSEMBLEmean_2041-2060_NDWS-G15+NTx35-G7+NDWL0-G2.tif
+  ssp370_prior : ssp370_ENSEMBLEmean_2021-2040_NDWS-G15+NTx35-G7+NDWL0-G2.tif
+  ref_probe : ssp245_ENSEMBLEmean_2041-2060_NDWS-G15+NTx35-G7+NDWL0-G2.tif
+
+--- ssp370_probe ---
+  layers          : 8
+  global mean     : NaN
+  AGO bbox mean   : NaN
+  AGO centroid val:
+  ID ssp370_ENSEMBLEmean_2041-2060_any ssp370_ENSEMBLEmean_2041-2060_dry
+1  1                                NA                                NA
+  ssp370_ENSEMBLEmean_2041-2060_heat ssp370_ENSEMBLEmean_2041-2060_wet
+1                                 NA                                NA
+  ssp370_ENSEMBLEmean_2041-2060_dry+heat ssp370_ENSEMBLEmean_2041-2060_dry+wet
+1                                     NA                                    NA
+  ssp370_ENSEMBLEmean_2041-2060_heat+wet
+1                                     NA
+  ssp370_ENSEMBLEmean_2041-2060_dry+heat+wet
+1                                         NA
+
+--- ssp370_prior ---
+  layers          : 8
+  global mean     : 0.2403069
+  AGO bbox mean   : 0.248822
+  AGO centroid val:
+  ID ssp370_ENSEMBLEmean_2021-2040_any ssp370_ENSEMBLEmean_2021-2040_dry
+1  1                                 1                             0.196
+  ssp370_ENSEMBLEmean_2021-2040_heat ssp370_ENSEMBLEmean_2021-2040_wet
+1                                  0                             0.058
+  ssp370_ENSEMBLEmean_2021-2040_dry+heat ssp370_ENSEMBLEmean_2021-2040_dry+wet
+1                                  0.003                                 0.743
+  ssp370_ENSEMBLEmean_2021-2040_heat+wet
+1                                      0
+  ssp370_ENSEMBLEmean_2021-2040_dry+heat+wet
+1                                          0
+
+--- ref_probe ---
+  layers          : 8
+  global mean     : 0.241263
+  AGO bbox mean   : 0.2494398
+  AGO centroid val:
+  ID ssp245_ENSEMBLEmean_2041-2060_any ssp245_ENSEMBLEmean_2041-2060_dry
+1  1                                 1                             0.202
+  ssp245_ENSEMBLEmean_2041-2060_heat ssp245_ENSEMBLEmean_2041-2060_wet
+1                                  0                             0.003
+  ssp245_ENSEMBLEmean_2041-2060_dry+heat ssp245_ENSEMBLEmean_2041-2060_dry+wet
+1                                  0.015                                 0.763
+  ssp245_ENSEMBLEmean_2041-2060_heat+wet
+1                                      0
+  ssp245_ENSEMBLEmean_2041-2060_dry+heat+wet
+1                                      0.018
+
+===== Stage 2C-SSP370 complete =====
+Decision tree from the verdicts:
+  2C.1 file-count mismatch -> ENSEMBLE writer drops files
+  2C.2 ratio < 0.5         -> ENSEMBLE math produces low/zero
+                              values; inspect R/2_calculate_haz_freq.R
+                              lines 789-790 / 1131-1132 / 1386-1387
+  2C.3 GCM coverage gap    -> some GCMs don't have SSP370 future;
+                              normalisation might over-divide
+  2C.4 AGO local zero      -> spatial scope; check admin0 mask
+                              alignment with ENSEMBLE raster
+  All clean                -> drop is in the parquet-write step;
+                              inspect R/3_freq_x_exposure.R sec 4.1/4.2
+DO NOT modify pipeline code. STOP-AND-REPORT.
+
