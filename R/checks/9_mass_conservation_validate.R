@@ -47,7 +47,12 @@ parquet_arg <- {
   i <- match("--parquet", args)
   if (!is.na(i) && i < length(args)) args[i + 1L] else NA_character_
 }
-# Resolve local path under hazard_exposure_dir if not provided
+# Resolve local path under hazard_exposure_dir if not provided.
+# Two resolution paths in priority order:
+#   1) post-publish hive layout under Data/hazard_exposure/ (matches the
+#      S3 canonical path the notebook reads).
+#   2) producer-side STAGE C output under Data/hazard_risk_vop_usd/<period>/
+#      — used to validate the rebake BEFORE pushing to S3.
 hex_dir <- atlas_dirs$data_dir$hazard_exposure
 if (is.na(parquet_arg)) {
   candidates <- list.files(hex_dir, "multi-hazard\\.parquet$",
@@ -58,10 +63,26 @@ if (is.na(parquet_arg)) {
     grepl("severity=severe", candidates)
   ]
   if (length(candidates) == 0L) {
-    stop("hazard_exposure parquet not found under ", hex_dir,
-         " — rerun the rebake or pass --parquet <path>.")
+    prod_dir <- file.path(atlas_dirs$data_dir$hazard_risk_vop_usd, "jagermeyr")
+    prod_candidates <- list.files(
+      prod_dir,
+      "^haz-freq-exp_.*_ENSEMBLEmean_int_adm_severe\\.parquet$",
+      full.names = TRUE
+    )
+    if (length(prod_candidates) == 0L) {
+      stop("hazard_exposure parquet not found under ", hex_dir,
+           " AND no producer fallback under ", prod_dir,
+           " — rerun STAGE C or pass --parquet <path>.")
+    }
+    if (length(prod_candidates) > 1L) {
+      stop("Producer fallback under ", prod_dir, " matched ",
+           length(prod_candidates), " files; pass --parquet to disambiguate:\n  ",
+           paste(prod_candidates, collapse = "\n  "))
+    }
+    parquet_arg <- prod_candidates[1]
+  } else {
+    parquet_arg <- candidates[1]
   }
-  parquet_arg <- candidates[1]
 }
 
 log_section("Issue #9 Stage 3 validation")
