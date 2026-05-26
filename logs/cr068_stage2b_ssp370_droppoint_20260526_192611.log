@@ -1,0 +1,227 @@
+
+===== 2B.1) File-count inventory across pipeline tiers =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+                       tier timeframe ssp370   ref
+                     <char>    <char>  <int> <int>
+ 1: hazard_timeseries_class    annual   3294  3294
+ 2: hazard_timeseries_class jagermeyr   3294  3294
+ 3:  hazard_timeseries_risk    annual   3660  3660
+ 4:  hazard_timeseries_risk jagermeyr   3660  3660
+ 5:  hazard_timeseries_mean    annual   1634  1636
+ 6:  hazard_timeseries_mean jagermeyr   1634  1634
+ 7:   hazard_timeseries_int    annual   2640  2640
+ 8:   hazard_timeseries_int jagermeyr   2640  2640
+ 9:             hazard_risk    annual      0     0
+10:             hazard_risk jagermeyr      0     0
+11:     hazard_risk_vop_usd    annual      0     0
+12:     hazard_risk_vop_usd jagermeyr      0     0
+13:         hazard_risk_vop    annual      0     0
+14:         hazard_risk_vop jagermeyr      0     0
+15:          hazard_risk_ha    annual      0     0
+16:          hazard_risk_ha jagermeyr      0     0
+                              note
+                            <char>
+ 1:  total_files=56058 (0 parquet)
+ 2:  total_files=55998 (0 parquet)
+ 3:  total_files=62290 (0 parquet)
+ 4:  total_files=62220 (0 parquet)
+ 5: total_files=27734 (19 parquet)
+ 6: total_files=27730 (19 parquet)
+ 7:  total_files=44880 (0 parquet)
+ 8:  total_files=44880 (0 parquet)
+ 9: total_files=6121 (120 parquet)
+10: total_files=6121 (120 parquet)
+11:   total_files=7879 (9 parquet)
+12:   total_files=7879 (9 parquet)
+13:   total_files=7099 (9 parquet)
+14:   total_files=7099 (9 parquet)
+15:   total_files=6079 (9 parquet)
+16:    total_files=669 (9 parquet)
+
+=== VERDICT (2B.1 — file-count level) ===
+File counts DIVERGE at:
+                     tier timeframe ssp370   ref                           note
+                   <char>    <char>  <int> <int>                         <char>
+1: hazard_timeseries_mean    annual   1634  1636 total_files=27734 (19 parquet)
+
+The first tier listed is where SSP370 starts disappearing.
+Inspect the R script that writes that tier for a scenario filter
+(e.g. R/2_calculate_haz_freq.R or R/3_freq_x_exposure.R).
+
+===== 2B.2) Sample value comparison across tiers =====
+Warning messages:
+1: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+2: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+3: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+4: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+5: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+6: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+7: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+8: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+                      tier timeframe
+                    <char>    <char>
+1: hazard_timeseries_class    annual
+2: hazard_timeseries_class jagermeyr
+3:  hazard_timeseries_risk    annual
+4:  hazard_timeseries_risk jagermeyr
+5:  hazard_timeseries_mean    annual
+6:  hazard_timeseries_mean jagermeyr
+7:   hazard_timeseries_int    annual
+8:   hazard_timeseries_int jagermeyr
+                                                  ssp370_file ssp370_mean
+                                                       <char>       <num>
+1:              ssp370_ACCESS-CM2_2041-2060_NDWL0-mean-G2.tif   0.3142034
+2:              ssp370_ACCESS-CM2_2041-2060_NDWL0-mean-G2.tif   0.2997012
+3:              ssp370_ACCESS-CM2_2041-2060_NDWL0-mean-G2.tif   0.3142034
+4:              ssp370_ACCESS-CM2_2041-2060_NDWL0-mean-G2.tif   0.2997012
+5:           ssp370_ACCESS-CM2_2041-2060_HSH-max-max_mean.tif  32.7237400
+6:           ssp370_ACCESS-CM2_2041-2060_HSH-max-max_mean.tif  32.1961950
+7: ssp370_ACCESS-CM2_2041-2060_NDWS-G15+NTx35-G7+NDWL0-G2.tif   0.2413212
+8: ssp370_ACCESS-CM2_2041-2060_NDWS-G15+NTx35-G7+NDWL0-G2.tif   0.2428965
+                                                     ref_file   ref_mean
+                                                       <char>      <num>
+1:              ssp245_ACCESS-CM2_2041-2060_NDWL0-mean-G2.tif  0.3143201
+2:              ssp245_ACCESS-CM2_2041-2060_NDWL0-mean-G2.tif  0.2986587
+3:              ssp245_ACCESS-CM2_2041-2060_NDWL0-mean-G2.tif  0.3143201
+4:              ssp245_ACCESS-CM2_2041-2060_NDWL0-mean-G2.tif  0.2986587
+5:           ssp245_ACCESS-CM2_2041-2060_HSH-max-max_mean.tif 32.5143434
+6:           ssp245_ACCESS-CM2_2041-2060_HSH-max-max_mean.tif 32.0063941
+7: ssp245_ACCESS-CM2_2041-2060_NDWS-G15+NTx35-G7+NDWL0-G2.tif  0.2410555
+8: ssp245_ACCESS-CM2_2041-2060_NDWS-G15+NTx35-G7+NDWL0-G2.tif  0.2428771
+       ratio
+       <num>
+1: 0.9996289
+2: 1.0034906
+3: 0.9996289
+4: 1.0034906
+5: 1.0064401
+6: 1.0059301
+7: 1.0011021
+8: 1.0000800
+
+=== VERDICT (2B.2 — value level) ===
+All tier-level SSP370 means are within 50%+ of SSP245 means.
+The 2041+ zero pattern must be EMERGING at the parquet-write
+layer (Step 3 / R/3_freq_x_exposure.R or its categorisation
+section 5.2 around lines 1283-1359 in R/2_calculate_haz_freq.R).
+Inspect those for ssp370-specific branches or aggregation
+filters that drop the future periods.
+
+===== 2B.3) Scenario-specific branches in Step 2 + Step 3 =====
+
+--- R/2_calculate_haz_freq.R — grep ssp370 / scenario branches ---
+80:Scenarios <- c("ssp126", "ssp245", "ssp370", "ssp585")
+782:          scenario_choice <- haz_scen_mod$scenario[i]
+786:            haz_freq_file_tab$scenario == scenario_choice &
+789:          save_file_mean <- file.path(haz_time_risk_dir, paste0(scenario_choice, "_ENSEMBLEmean_", time_choice, "_", haz_choice, ".tif"))
+790:          save_file_sd <- file.path(haz_time_risk_dir, paste0(scenario_choice, "_ENSEMBLEsd_", time_choice, "_", haz_choice, ".tif"))
+1117:          scenario_choice <- haz_scen_mod$scenario[i]
+1121:            file_tab$scenario == scenario_choice &
+1131:          save_file_mean <- file.path(haz_mean_dir, paste0(scenario_choice, "_ENSEMBLEmean_", time_choice, "_", haz_choice, "_mean.tif"))
+1132:          save_file_sd <- file.path(haz_mean_dir, paste0(scenario_choice, "_ENSEMBLEmean_", time_choice, "_", haz_choice, "_sd.tif"))
+1305:            scenario_choice <- scenarios_x_models$scenario[l]
+1321:                haz_class_file_tab$scenario == scenario_choice &
+1377:          scenario_choice <- scenarios$scenario[l]
+1380:          if (scenario_choice != "historic" & do_ensemble5.2) {
+1383:            scen_mod_time_choice <- scenarios_x_models[scenarios_x_models$scen_x_time == scen_time_choice, "scen_mod_time"]
+1386:            save_file_mean <- file.path(haz_time_int_dir, paste0(scenario_choice, "_ENSEMBLEmean_", time_choice, "_", paste0(combos, collapse = "+"), ".tif"))
+1387:            save_file_sd <- file.path(haz_time_int_dir, paste0(scenario_choice, "_ENSEMBLEsd_", time_choice, "_", paste0(combos, collapse = "+"), ".tif"))
+
+--- R/3_freq_x_exposure.R — grep ssp370 / scenario branches ---
+(no matches)
+
+--- R/2_calculate_haz_freq.R section 5.2 (categorisation) — lines 1283-1359 ---
+    # Wrap the parallel processing in a with_progress call
+    p <- with_progress({
+      # Define the progress bar
+      progress <- progressr::progressor(along = seq_len(nrow(combinations_choice)))
+
+      invisible(future.apply::future_lapply(seq_len(nrow(combinations_choice)), FUN = function(i) {
+        # Display progress
+        progress(sprintf("Combination %d/%d", i, nrow(combinations_choice)))
+
+        combos <- gsub("_", "-", unlist(combinations_choice[i, list(dry, heat, wet)]))
+        grep_vals <- paste0(paste0(combos, ".tif"), collapse = "|")
+
+        combo_names <- c(
+          names(combos),
+          apply(combn(names(combos), 2), 2, paste, collapse = "+"),
+          paste(names(combos), collapse = "+")
+        )
+
+        combo_binary <- data.table(combo_name = combo_names, value = 0)[grep(names(combos)[1], combo_name), value := 1][grep(names(combos)[2], combo_name), value := value + 10][grep(names(combos)[3], combo_name), value := value + 100]
+
+        if (do5.2_main) {
+          for (l in seq_len(nrow(scenarios_x_models))) {
+            scenario_choice <- scenarios_x_models$scenario[l]
+            time_choice <- scenarios_x_models$timeframe[l]
+            model_choice <- scenarios_x_models$model[l]
+            scen_mod_time_choice <- scenarios_x_models$scen_mod_time[l]
+
+            # Display progress
+            cat(
+              "Combination:", i, "/", nrow(combinations_choice),
+              "| Scenario x Time x model:", l, "/", nrow(scenarios_x_models), "                   \r"
+            )
+
+            combo_binary[, lyr_names := paste0(scen_mod_time_choice, "_", combo_name)]
+            save_file <- file.path(haz_time_int_dir, paste0(scen_mod_time_choice, "_", paste0(combos, collapse = "+"), ".tif"))
+
+            if (!file.exists(save_file) | overwrite5.2 == TRUE) {
+              files <- haz_class_file_tab[haz_class_file_tab$timeframe == time_choice &
+                haz_class_file_tab$scenario == scenario_choice &
+                haz_class_file_tab$model == model_choice, ]
+              files <- files[match(combos, files$hazard2), "file"]
+
+              if (length(files) != 3) {
+                stop("Issue with classified hazard files, 3 files not found.")
+              }
+
+              haz <- lapply(files, rast)
+              names(haz) <- names(combos)
+
+              # Multiply risk probability to create a binary value when summed
+              haz[["heat"]] <- haz[["heat"]] * 10
+              haz[["wet"]] <- haz[["wet"]] * 100
+
+              haz_sum <- terra::rast(lapply(1:nlyr(haz[[1]]), FUN = function(m) {
+                sum(terra::rast(lapply(haz, "[[", m)))
+              }))
+
+              names(haz_sum) <- names(haz[[1]])
+
+              # Any haz
+              any_haz <- terra::ifel(haz_sum >= 1 & haz_sum <= 999999, 1, 0)
+              any_haz_mean <- terra::mean(any_haz, na.rm = TRUE)
+              names(any_haz_mean) <- paste0(scen_mod_time_choice, "_any")
+
+              # Interactions
+              int <- terra::rast(lapply(seq_len(nrow(combo_binary)), FUN = function(a) {
+                data <- int_risk(data = haz_sum, interaction_mask_vals = combo_binary[-a, value], lyr_name = combo_binary[a, lyr_names])
+              }))
+
+              int_any <- c(any_haz_mean, int)
+
+              if (!is.null(round5.2)) {
+                int_any <- round(int_any, round5.2)
+              }
+
+              terra::writeRaster(int_any, filename = save_file, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
+
+
+===== Stage 2B-SSP370 complete =====
+Verdict logic:
+  2B.1 file-count divergence -> the tier with fewer SSP370 files
+       is the producer to fix. Inspect its writer in R/.
+  2B.2 value-level divergence -> the tier with low SSP370 mean
+       is where values get zeroed. Inspect the writer.
+  Neither -> drop happens at parquet-write (Step 3 aggregation
+       or a scenario filter); 2B.3's grep output should show
+       the candidate scenario branches.
+DO NOT modify pipeline code. STOP-AND-REPORT.
+
