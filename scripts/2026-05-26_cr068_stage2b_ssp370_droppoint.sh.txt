@@ -1,0 +1,267 @@
+# ----------------------------------------------------------------------
+# Script: 2026-05-26_cr068_stage2b_ssp370_droppoint.sh
+# Purpose: Stage 2B-SSP370 — find the pipeline tier where SSP370
+#          future-period values (2041+) drop out. CR-068(c) shows up
+#          in the published parquet as ~half the mass + ~1500 extra
+#          zero rows for SSP370 2041+ vs 2021-2040 (post-rebake
+#          followups log). Stage 1's 1C confirmed raw SSP370 indices
+#          are PRESENT at indices_dir, so the drop happens downstream
+#          inside hazards_prototype. This probe walks the local
+#          pipeline tiers in order and identifies the first one
+#          where SSP370 2041-2060 file count or aggregate value
+#          diverges from ssp245 2041-2060 (the apples-to-apples
+#          reference scenario).
+#
+#          STOP-AND-REPORT before any remediation.
+#
+# Pipeline tiers (rough order of execution):
+#   1. indices_dir              — raw monthly NDWS / NTx / etc.
+#                                  (upstream; confirmed in Stage 1)
+#   2. hazard_timeseries_class/ — classified 0/1 rasters
+#                                  (R/2_calculate_haz_freq.R sec 1)
+#   3. hazard_timeseries_risk/  — risk-classified
+#   4. hazard_timeseries_mean/  — multi-year mean
+#   5. hazard_timeseries_int/   — multi-hazard interactions
+#                                  (sec 5.2 categorisation)
+#   6. hazard_risk/             — frequency × severity
+#   7. hazard_risk_vop_usd/     — VOP-weighted (Step 3 output)
+#
+# Context: Cross-reference dispatch
+#   atlas_notebooks/.../2026-05-18_hazards-prototype-categorisation-bug.md
+#   ISSUES.md CR-068(c) (3 findings bundled with CR-068).
+#
+# Environment: CGlabs JupyterHub
+# Convention: paste-able blocks, heredoc R, source 0_server_setup.R.
+# Knobs match Stage 2A so any cross-stage discrepancy is apples-to-apples.
+# ----------------------------------------------------------------------
+
+# ======================================================================
+# 0) Pre-flight
+# ======================================================================
+export PROJECT_DIR="$HOME/atlas/hazards_prototype"
+cd "$PROJECT_DIR" || { echo "FAIL: cannot cd $PROJECT_DIR"; return 1 2>/dev/null || exit 1; }
+git pull origin develop
+git log --oneline -3
+
+export LOG_DIR="$PROJECT_DIR/logs"
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="$LOG_DIR/cr068_stage2b_ssp370_droppoint_${STAMP}.log"
+echo "Logging to $LOG_FILE"
+
+# Knobs — match Stage 2A so any divergence is a pipeline issue, not
+# a sampling artefact. Compare SSP370 vs SSP245 at the same period
+# (2041-2060) since 2021-2040 is fine for both scenarios.
+export PROBE_GCM="ACCESS-CM2"
+export REF_SCENARIO="ssp245"           # apples-to-apples reference
+export PROBE_PERIOD="2041-2060"        # the first period where SSP370 drops
+
+
+# ======================================================================
+# 2B.1) File-count inventory at each pipeline tier
+# ======================================================================
+# At each Data/hazard_<...>/<timeframe>/ dir, count files matching
+# SSP370 2041-2060 vs SSP245 2041-2060. If ssp370 count == ssp245
+# count at a tier, the drop hasn't happened yet. The FIRST tier where
+# ssp370 count < ssp245 count is the drop point — or, if file counts
+# match all the way through, the drop is value-level (not row-level)
+# and we look at 2B.2.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 2B.1) File-count inventory across pipeline tiers =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(data.table)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+
+ref_sc <- Sys.getenv("REF_SCENARIO")   # ssp245
+period <- Sys.getenv("PROBE_PERIOD")   # 2041-2060
+
+# The hazard_timeseries_class/ and friends layout: flat within
+# <timeframe>/, filenames like <scenario>_<gcm>_<period>_<variable>.tif
+# OR — for downstream parquets / interactions — they may be aggregated
+# (one file per (variable, model, severity) for ALL scenarios).
+# Probe both styles per dir.
+
+tiers <- c(
+  "hazard_timeseries_class",
+  "hazard_timeseries_risk",
+  "hazard_timeseries_mean",
+  "hazard_timeseries_int",
+  "hazard_risk",
+  "hazard_risk_vop_usd",
+  "hazard_risk_vop",
+  "hazard_risk_ha"
+)
+timeframes <- c("annual", "jagermeyr")
+
+out <- data.table()
+for (t in tiers) {
+  root <- atlas_dirs$data_dir[[t]]
+  if (is.null(root) || !dir.exists(root)) {
+    out <- rbind(out, data.table(tier = t, timeframe = NA, ssp370 = NA, ref = NA, note = "(dir missing)"))
+    next
+  }
+  for (tf in timeframes) {
+    d <- file.path(root, tf)
+    if (!dir.exists(d)) {
+      out <- rbind(out, data.table(tier = t, timeframe = tf, ssp370 = NA, ref = NA, note = "(timeframe missing)"))
+      next
+    }
+    fs <- list.files(d, recursive = FALSE)
+    n_ssp370 <- sum(grepl(paste0("ssp370.*", period),  fs) | grepl(paste0(period, ".*ssp370"), fs))
+    n_ref    <- sum(grepl(paste0(ref_sc,   ".*", period), fs) | grepl(paste0(period, ".*", ref_sc), fs))
+    # Some dirs may not encode period in filename — count parquets too
+    parqs <- grep("\\.parquet$", fs, value = TRUE)
+    out <- rbind(out, data.table(
+      tier = t, timeframe = tf,
+      ssp370 = n_ssp370, ref = n_ref,
+      note = sprintf("total_files=%d (%d parquet)", length(fs), length(parqs))
+    ))
+  }
+}
+print(out)
+
+cat("\n=== VERDICT (2B.1 — file-count level) ===\n")
+flagged <- out[!is.na(ssp370) & !is.na(ref) & ssp370 < ref]
+if (nrow(flagged) == 0L) {
+  cat("File counts match SSP370 vs SSP245 at every tier where both probe.\n")
+  cat("Drop is VALUE-LEVEL not ROW-LEVEL — proceed to 2B.2.\n")
+} else {
+  cat("File counts DIVERGE at:\n")
+  print(flagged)
+  cat("\nThe first tier listed is where SSP370 starts disappearing.\n")
+  cat("Inspect the R script that writes that tier for a scenario filter\n")
+  cat("(e.g. R/2_calculate_haz_freq.R or R/3_freq_x_exposure.R).\n")
+}
+EOF
+
+
+# ======================================================================
+# 2B.2) Value-level probe — sample SSP370 vs SSP245 raster means
+# ======================================================================
+# If 2B.1 shows file counts match, the drop is value-level. Walk each
+# tier, sample one SSP370 + one SSP245 file matching the probe period,
+# compute mean of pixel values. If SSP370 mean is much lower (or
+# exactly zero) while SSP245 mean is sensible, the drop is the
+# producer of that tier.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 2B.2) Sample value comparison across tiers =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(terra); library(data.table)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+
+ref_sc <- Sys.getenv("REF_SCENARIO")
+period <- Sys.getenv("PROBE_PERIOD")
+gcm    <- Sys.getenv("PROBE_GCM")
+
+tiers <- c(
+  "hazard_timeseries_class",
+  "hazard_timeseries_risk",
+  "hazard_timeseries_mean",
+  "hazard_timeseries_int",
+  "hazard_risk",
+  "hazard_risk_vop_usd"
+)
+timeframes <- c("annual", "jagermeyr")
+
+probe_mean <- function(path) {
+  r <- suppressWarnings(try(terra::rast(path), silent = TRUE))
+  if (inherits(r, "try-error")) return(NA_real_)
+  g <- suppressWarnings(terra::global(r, fun = "mean", na.rm = TRUE))
+  mean(g$mean, na.rm = TRUE)   # average across layers if multi-band
+}
+
+out <- data.table()
+for (t in tiers) {
+  root <- atlas_dirs$data_dir[[t]]
+  if (is.null(root) || !dir.exists(root)) next
+  for (tf in timeframes) {
+    d <- file.path(root, tf)
+    if (!dir.exists(d)) next
+    fs <- list.files(d, "\\.tif$", full.names = TRUE)
+    ssp370_re <- paste0("ssp370.*", gcm, ".*", period)
+    ref_re    <- paste0(ref_sc,    ".*", gcm, ".*", period)
+    ssp370_f <- head(grep(ssp370_re, fs, value = TRUE), 1)
+    ref_f    <- head(grep(ref_re,    fs, value = TRUE), 1)
+    if (length(ssp370_f) == 0 || length(ref_f) == 0) next
+    ssp370_mean <- probe_mean(ssp370_f)
+    ref_mean    <- probe_mean(ref_f)
+    out <- rbind(out, data.table(
+      tier = t, timeframe = tf,
+      ssp370_file = basename(ssp370_f), ssp370_mean = ssp370_mean,
+      ref_file    = basename(ref_f),    ref_mean    = ref_mean,
+      ratio = ssp370_mean / ref_mean
+    ))
+  }
+}
+print(out)
+
+cat("\n=== VERDICT (2B.2 — value level) ===\n")
+if (nrow(out) == 0L) {
+  cat("No matching SSP370 + SSP245 file pairs found at any tier.\n")
+  cat("Either filename convention differs from {scenario}_{GCM}_{period}\n")
+  cat("or these tiers aggregate across scenarios (single parquet per\n")
+  cat("variable+model+severity). Check the per-tier 'total_files'\n")
+  cat("count in 2B.1 — if it's small (~tens), it's probably aggregated\n")
+  cat("and the drop is INSIDE those parquets, not in raster files.\n")
+} else {
+  # Tier with ratio << 1 is where SSP370 starts being zeroed
+  flagged <- out[!is.na(ratio) & ratio < 0.5]
+  if (nrow(flagged) == 0L) {
+    cat("All tier-level SSP370 means are within 50%+ of SSP245 means.\n")
+    cat("The 2041+ zero pattern must be EMERGING at the parquet-write\n")
+    cat("layer (Step 3 / R/3_freq_x_exposure.R or its categorisation\n")
+    cat("section 5.2 around lines 1283-1359 in R/2_calculate_haz_freq.R).\n")
+    cat("Inspect those for ssp370-specific branches or aggregation\n")
+    cat("filters that drop the future periods.\n")
+  } else {
+    cat("Drop point candidates (ratio < 0.5):\n")
+    print(flagged[order(ratio)])
+    cat("\nThe tier with the LOWEST ratio is where SSP370 first goes\n")
+    cat("to ~zero. Inspect that tier's producer for a scenario filter.\n")
+  }
+}
+EOF
+
+
+# ======================================================================
+# 2B.3) Inspect Step 2 + Step 3 for scenario-specific branches
+# ======================================================================
+# If 2B.1 + 2B.2 show file counts match and per-tier means look fine
+# in rasters, the SSP370 drop is in the parquet-write logic. Grep the
+# two Step scripts for any ssp370 / scenario-conditional branch that
+# might filter or zero those periods specifically.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 2B.3) Scenario-specific branches in Step 2 + Step 3 =====" | tee -a "$LOG_FILE"
+{
+  echo ""
+  echo "--- R/2_calculate_haz_freq.R — grep ssp370 / scenario branches ---"
+  grep -nE "ssp370|scenario.*==|scenario.*%in%|scenario_choice" "$PROJECT_DIR/R/2_calculate_haz_freq.R" || echo "(no matches)"
+  echo ""
+  echo "--- R/3_freq_x_exposure.R — grep ssp370 / scenario branches ---"
+  grep -nE "ssp370|scenario.*==|scenario.*%in%|scenario_choice" "$PROJECT_DIR/R/3_freq_x_exposure.R" || echo "(no matches)"
+  echo ""
+  echo "--- R/2_calculate_haz_freq.R section 5.2 (categorisation) — lines 1283-1359 ---"
+  sed -n '1283,1359p' "$PROJECT_DIR/R/2_calculate_haz_freq.R"
+} | tee -a "$LOG_FILE"
+
+
+# ======================================================================
+# Stage 2B-SSP370 — STOP HERE
+# ======================================================================
+echo "" | tee -a "$LOG_FILE"
+echo "===== Stage 2B-SSP370 complete =====" | tee -a "$LOG_FILE"
+echo "Verdict logic:" | tee -a "$LOG_FILE"
+echo "  2B.1 file-count divergence -> the tier with fewer SSP370 files" | tee -a "$LOG_FILE"
+echo "       is the producer to fix. Inspect its writer in R/." | tee -a "$LOG_FILE"
+echo "  2B.2 value-level divergence -> the tier with low SSP370 mean" | tee -a "$LOG_FILE"
+echo "       is where values get zeroed. Inspect the writer." | tee -a "$LOG_FILE"
+echo "  Neither -> drop happens at parquet-write (Step 3 aggregation" | tee -a "$LOG_FILE"
+echo "       or a scenario filter); 2B.3's grep output should show" | tee -a "$LOG_FILE"
+echo "       the candidate scenario branches." | tee -a "$LOG_FILE"
+echo "DO NOT modify pipeline code. STOP-AND-REPORT." | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Log saved to $LOG_FILE"
