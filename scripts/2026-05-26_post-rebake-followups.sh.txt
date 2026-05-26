@@ -8,9 +8,12 @@
 #            B) SSP370 2041+ zeros in [b] / [c]      — expected CR-068
 #            C) AGO historic heat/wet/heat+wet = 0   — expected CR-068
 # Environment: CGlabs JupyterHub
-# Convention: paste-able blocks. R blocks use 'Rscript - <<EOF' heredoc
-#          so single quotes in SQL pass through cleanly (vs. the
-#          shell-quoting trap of 'Rscript -e' with embedded quotes).
+# Convention: paste-able blocks. Each Rscript heredoc sources
+#          R/0_server_setup.R so atlas_dirs resolves under the
+#          climdat_source-specific working_dir (nexgddp lives under
+#          /home/jovyan/common_data/nex-gddp-cimp6_hazards, NOT under
+#          the repo). normalizePath(mustWork=TRUE) fails loud if the
+#          producer parquet isn't on disk yet.
 # Reference: logs/D_validate_9_20260526_091356.log (the run this triages)
 # ----------------------------------------------------------------------
 
@@ -20,7 +23,7 @@
 export PROJECT_DIR="$HOME/atlas/hazards_prototype"
 cd "$PROJECT_DIR" || { echo "FAIL: cannot cd $PROJECT_DIR"; return 1 2>/dev/null || exit 1; }
 git pull origin develop
-git log --oneline -3   # should include 333de6f (D producer fallback)
+git log --oneline -3
 
 export LOG_DIR="$PROJECT_DIR/logs"
 mkdir -p "$LOG_DIR"
@@ -28,17 +31,12 @@ STAMP=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="$LOG_DIR/post_rebake_followups_${STAMP}.log"
 echo "Logging to $LOG_FILE"
 
-# Producer parquet the validator picked (echoed in
-# D_validate_9_20260526_091356.log line 13). Absolute path so the
-# Rscript heredoc blocks below don't depend on whatever cwd the
-# pasting terminal happens to be in. All queries read from this file
-# via DuckDB — fast, no S3 round-trip.
-export PARQUET="$PROJECT_DIR/Data/hazard_risk_vop_usd/jagermeyr/haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet"
-if [ ! -f "$PARQUET" ]; then
-  echo "FAIL: $PARQUET missing — aborting (rerun STAGE C or fix the path)"
-  return 1 2>/dev/null || exit 1
-fi
-echo "OK: producer parquet exists ($PARQUET)"
+# Producer parquet name (the validator picked this in
+# D_validate_9_20260526_091356.log line 13). The directory it lives
+# in is derived inside each Rscript block via atlas_dirs after
+# sourcing R/0_server_setup.R — the path is climdat_source-dependent
+# and is NOT $PROJECT_DIR/Data/...
+export PARQUET_NAME="haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet"
 
 
 # ======================================================================
@@ -62,16 +60,23 @@ echo "" | tee -a "$LOG_FILE"
 echo "===== A) NGA oilpalm row inventory =====" | tee -a "$LOG_FILE"
 Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
 suppressPackageStartupMessages({library(duckdb); library(DBI)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+parquet <- normalizePath(file.path(
+  atlas_dirs$data_dir$hazard_risk_vop_usd, "jagermeyr",
+  Sys.getenv("PARQUET_NAME")
+), mustWork = TRUE)
+cat("PARQUET =", parquet, "\n\n")
 con <- dbConnect(duckdb())
-parquet <- Sys.getenv("PARQUET")
 sql <- sprintf("
   SELECT
-    COUNT(*)                                                          AS n_rows,
-    COUNT(*) FILTER (WHERE value IS NOT NULL AND NOT isnan(value))    AS n_finite,
-    SUM(CASE WHEN value IS NULL THEN 1 ELSE 0 END)                    AS n_null,
+    COUNT(*)                                                            AS n_rows,
+    COUNT(*) FILTER (WHERE value IS NOT NULL AND NOT isnan(value))      AS n_finite,
+    SUM(CASE WHEN value IS NULL THEN 1 ELSE 0 END)                      AS n_null,
     SUM(CASE WHEN value IS NOT NULL AND isnan(value) THEN 1 ELSE 0 END) AS n_nan,
-    MIN(value) FILTER (WHERE value IS NOT NULL AND NOT isnan(value))  AS min_val,
-    MAX(value) FILTER (WHERE value IS NOT NULL AND NOT isnan(value))  AS max_val
+    MIN(value) FILTER (WHERE value IS NOT NULL AND NOT isnan(value))    AS min_val,
+    MAX(value) FILTER (WHERE value IS NOT NULL AND NOT isnan(value))    AS max_val
   FROM read_parquet('%s')
   WHERE iso3 = 'NGA' AND crop = 'oilpalm'
 ", parquet)
@@ -86,13 +91,19 @@ echo "" | tee -a "$LOG_FILE"
 echo "===== A.bis) global oilpalm coverage (any iso3) =====" | tee -a "$LOG_FILE"
 Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
 suppressPackageStartupMessages({library(duckdb); library(DBI)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+parquet <- normalizePath(file.path(
+  atlas_dirs$data_dir$hazard_risk_vop_usd, "jagermeyr",
+  Sys.getenv("PARQUET_NAME")
+), mustWork = TRUE)
 con <- dbConnect(duckdb())
-parquet <- Sys.getenv("PARQUET")
 sql <- sprintf("
   SELECT iso3,
-         COUNT(*)                                                          AS n_rows,
+         COUNT(*)                                                            AS n_rows,
          SUM(CASE WHEN value IS NOT NULL AND isnan(value) THEN 1 ELSE 0 END) AS n_nan,
-         COUNT(*) FILTER (WHERE value IS NOT NULL AND NOT isnan(value))    AS n_finite
+         COUNT(*) FILTER (WHERE value IS NOT NULL AND NOT isnan(value))      AS n_finite
   FROM read_parquet('%s')
   WHERE crop = 'oilpalm' AND admin1_name IS NULL AND admin2_name IS NULL
   GROUP BY iso3 ORDER BY iso3
@@ -118,8 +129,14 @@ echo "" | tee -a "$LOG_FILE"
 echo "===== B) SSP370 vs SSP245 per-period coverage =====" | tee -a "$LOG_FILE"
 Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
 suppressPackageStartupMessages({library(duckdb); library(DBI)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+parquet <- normalizePath(file.path(
+  atlas_dirs$data_dir$hazard_risk_vop_usd, "jagermeyr",
+  Sys.getenv("PARQUET_NAME")
+), mustWork = TRUE)
 con <- dbConnect(duckdb())
-parquet <- Sys.getenv("PARQUET")
 sql <- sprintf("
   SELECT scenario, timeframe,
          COUNT(*)   AS n_rows,
@@ -153,8 +170,14 @@ echo "" | tee -a "$LOG_FILE"
 echo "===== C) AGO category split (historic) =====" | tee -a "$LOG_FILE"
 Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
 suppressPackageStartupMessages({library(duckdb); library(DBI)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+parquet <- normalizePath(file.path(
+  atlas_dirs$data_dir$hazard_risk_vop_usd, "jagermeyr",
+  Sys.getenv("PARQUET_NAME")
+), mustWork = TRUE)
 con <- dbConnect(duckdb())
-parquet <- Sys.getenv("PARQUET")
 sql <- sprintf("
   SELECT hazard, ROUND(SUM(value)::DOUBLE, 0) AS hist_sum
   FROM read_parquet('%s')
