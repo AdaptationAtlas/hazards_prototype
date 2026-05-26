@@ -1,0 +1,178 @@
+# ----------------------------------------------------------------------
+# Script: 2026-05-26_post-rebake-followups.sh
+# Purpose: triage the three findings surfaced by D_validate_9 after the
+#          2026-05-25 STAGE C re-bake. The validator decision was
+#          PASSED (issue #9 mass-conservation closes), but three
+#          side findings need a pass/fail call BEFORE the S3 republish:
+#            A) NGA oilpalm = NaN in spot-check [c]  — UNKNOWN
+#            B) SSP370 2041+ zeros in [b] / [c]      — expected CR-068
+#            C) AGO historic heat/wet/heat+wet = 0   — expected CR-068
+# Environment: CGlabs JupyterHub
+# Convention: paste-able blocks. Run blocks in order. Sub-second queries
+#          (no nohup needed) — output goes to the terminal AND to a log.
+# Reference: logs/D_validate_9_20260526_091356.log (the run this triages)
+# ----------------------------------------------------------------------
+
+# ======================================================================
+# 0) Pre-flight
+# ======================================================================
+cd $HOME/atlas/hazards_prototype
+git pull origin develop
+git log --oneline -3   # should include 333de6f (D producer fallback)
+
+export SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
+export LOG_DIR="$HOME/atlas/hazards_prototype/logs"
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="$LOG_DIR/post_rebake_followups_${STAMP}.log"
+echo "Logging to $LOG_FILE"
+
+# Producer parquet the validator picked (echoed in
+# D_validate_9_20260526_091356.log line 13). All queries below read
+# from this file via DuckDB — fast, no S3 round-trip.
+export PARQUET="Data/hazard_risk_vop_usd/jagermeyr/haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet"
+test -f "$PARQUET" && echo "OK: producer parquet exists" || echo "FAIL: $PARQUET missing"
+
+
+# ======================================================================
+# A) NGA oilpalm = NaN — UNKNOWN, the only finding without a dispatch
+# ======================================================================
+# Validator [c] reported NaN for every (scenario, timeframe) at
+# iso3='NGA', crop='oilpalm'. Three possibilities to discriminate:
+#   A1. NGA has no oilpalm rows at all in the parquet
+#       -> validator [c] spot-check is meaningless for this crop;
+#          patch the validator to drop or swap it. NOT a publish blocker.
+#   A2. NGA oilpalm rows exist but `value` is NaN end-to-end
+#       -> NaN injected upstream; likely the MapSPAM oilpalm raster
+#          has NaN over NGA (or zonal-sum saw zero non-NA cells).
+#          Investigate the producer TIF before publish.
+#   A3. Some NGA oilpalm rows have non-NA values, others are NaN
+#       -> partial NaN; sum_value collapses to NaN. Treat as A2.
+#
+# Decision: A1 -> patch validator (no S3 blocker).
+#           A2 / A3 -> open a follow-up dispatch + hold publish.
+echo "" | tee -a "$LOG_FILE"
+echo "===== A) NGA oilpalm row inventory =====" | tee -a "$LOG_FILE"
+Rscript -e '
+suppressPackageStartupMessages({library(duckdb); library(DBI)})
+con <- dbConnect(duckdb())
+parquet <- Sys.getenv("PARQUET")
+q <- sprintf("
+  SELECT
+    COUNT(*)                                  AS n_rows,
+    COUNT(*) FILTER (WHERE value IS NOT NULL) AS n_non_null,
+    SUM(CASE WHEN isnan(value) THEN 1 ELSE 0 END) AS n_nan,
+    MIN(value) FILTER (WHERE NOT isnan(value)) AS min_val,
+    MAX(value) FILTER (WHERE NOT isnan(value)) AS max_val
+  FROM read_parquet(%s)
+  WHERE iso3 = %s AND crop = %s
+", paste0("'", parquet, "'"), "'NGA'", "'oilpalm'")
+print(dbGetQuery(con, q))
+' 2>&1 | tee -a "$LOG_FILE"
+
+# If n_rows == 0 ----> outcome A1.  Drop / swap the spot-check.
+# If n_nan  >  0 ----> outcome A2 / A3.  Inspect the producer TIF next.
+
+# Cross-check: is oilpalm produced anywhere else in the parquet?
+echo "" | tee -a "$LOG_FILE"
+echo "===== A.bis) global oilpalm coverage (any iso3) =====" | tee -a "$LOG_FILE"
+Rscript -e '
+suppressPackageStartupMessages({library(duckdb); library(DBI)})
+con <- dbConnect(duckdb())
+parquet <- Sys.getenv("PARQUET")
+q <- sprintf("
+  SELECT iso3, COUNT(*) AS n_rows,
+         SUM(CASE WHEN isnan(value) THEN 1 ELSE 0 END) AS n_nan
+  FROM read_parquet(%s)
+  WHERE crop = %s AND admin1_name IS NULL AND admin2_name IS NULL
+  GROUP BY iso3 ORDER BY iso3
+", paste0("'", parquet, "'"), "'oilpalm'")
+print(dbGetQuery(con, q))
+' 2>&1 | tee -a "$LOG_FILE"
+
+# If oilpalm is widely populated EXCEPT for NGA -> the NGA-specific
+# MapSPAM tif has a coverage hole (or the NGA admin0 mask misses it).
+# If oilpalm is NaN across multiple iso3 -> rebake artefact, hold publish.
+
+
+# ======================================================================
+# B) SSP370 2041+ zeros — expected fingerprint of CR-068
+# ======================================================================
+# CR-068 SSP370 missing-periods signature (see
+# R/checks/68_categorisation_stage1.R:289-315): SSP370 2021-2040 is
+# populated; SSP370 2041-2060, 2061-2080, 2081-2100 are zero across
+# every (iso3, crop). If our parquet matches that fingerprint we can
+# confirm "known bug, no new regression". If 2021-2040 ALSO collapses
+# to zero, or other scenarios drop out, that IS new and a blocker.
+echo "" | tee -a "$LOG_FILE"
+echo "===== B) SSP370 vs SSP245 per-period coverage =====" | tee -a "$LOG_FILE"
+Rscript -e '
+suppressPackageStartupMessages({library(duckdb); library(DBI)})
+con <- dbConnect(duckdb())
+parquet <- Sys.getenv("PARQUET")
+q <- sprintf("
+  SELECT scenario, timeframe,
+         COUNT(*) AS n_rows,
+         SUM(value) AS sum_value,
+         SUM(CASE WHEN value = 0 THEN 1 ELSE 0 END) AS n_zero
+  FROM read_parquet(%s)
+  WHERE scenario IN ('ssp245','ssp370')
+    AND hazard = 'any'
+    AND admin1_name IS NULL AND admin2_name IS NULL
+  GROUP BY scenario, timeframe
+  ORDER BY scenario, timeframe
+", paste0("'", parquet, "'"))
+print(dbGetQuery(con, q))
+' 2>&1 | tee -a "$LOG_FILE"
+
+# Expected (CR-068 fingerprint):
+#   ssp245 all 4 future periods: sum_value > 0
+#   ssp370 2021-2040: sum_value > 0
+#   ssp370 2041-2060 / 2061-2080 / 2081-2100: sum_value == 0
+# If you see anything else, treat as a new regression and hold publish.
+
+
+# ======================================================================
+# C) AGO historic heat / wet / heat+wet = 0 — expected fingerprint
+#    of CR-068 categorisation asymmetry
+# ======================================================================
+# The validator already reports this (D log lines 102-110) and flags it
+# as CR-068, not a #9 regression. Re-confirm here so the publish
+# go/no-go decision has a single consolidated log.
+echo "" | tee -a "$LOG_FILE"
+echo "===== C) AGO category split (historic) =====" | tee -a "$LOG_FILE"
+Rscript -e '
+suppressPackageStartupMessages({library(duckdb); library(DBI)})
+con <- dbConnect(duckdb())
+parquet <- Sys.getenv("PARQUET")
+q <- sprintf("
+  SELECT hazard, ROUND(SUM(value)::DOUBLE, 0) AS hist_sum
+  FROM read_parquet(%s)
+  WHERE iso3 = %s AND scenario = %s AND timeframe = %s
+    AND hazard NOT IN ('none','any')
+    AND admin1_name IS NULL AND admin2_name IS NULL
+  GROUP BY hazard
+  ORDER BY hist_sum DESC
+", paste0("'", parquet, "'"), "'AGO'", "'historic'", "'1995-2014'")
+print(dbGetQuery(con, q))
+' 2>&1 | tee -a "$LOG_FILE"
+
+# Expected (CR-068 fingerprint):
+#   dry / dry+wet / dry+heat / dry+heat+wet: > 0
+#   heat / wet / heat+wet: == 0
+# If a "dry" combo drops to zero historically, that IS a #9 regression
+# and a hard publish blocker.
+
+
+# ======================================================================
+# Decision matrix — publish or hold?
+# ======================================================================
+echo "" | tee -a "$LOG_FILE"
+echo "===== DECISION =====" | tee -a "$LOG_FILE"
+echo "Hold publish if ANY of:" | tee -a "$LOG_FILE"
+echo "  A2 / A3 (NGA oilpalm rows exist but NaN)"          | tee -a "$LOG_FILE"
+echo "  B fingerprint deviates from CR-068 expected shape" | tee -a "$LOG_FILE"
+echo "  C any 'dry*' combo historic == 0"                  | tee -a "$LOG_FILE"
+echo "Otherwise -> safe to push to S3."                    | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Log saved to $LOG_FILE"
