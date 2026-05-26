@@ -170,8 +170,17 @@ q_c <- sprintf("
   SELECT iso3, crop, scenario, timeframe,
          ROUND(SUM(value)::DOUBLE, 1) AS sum_value
   FROM read_parquet('%s')
-  WHERE (iso3 = 'NGA' AND crop IN ('oilpalm','oil-palm','oil_palm'))
-     OR (iso3 = 'CIV' AND crop IN ('cocoa'))
+  -- AND binds tighter than OR, so the (NGA OR CIV) selector MUST be
+  -- wrapped in its own parens — otherwise the common filters below
+  -- only bind to the CIV branch and NGA leaks every admin level, every
+  -- hazard, every hazard_vars, every exposure_unit. Result: SUM gets
+  -- poisoned by sub-national NaN rows and the spot-check spuriously
+  -- reports NaN for NGA oilpalm even though admin0 NGA oilpalm is
+  -- clean. See logs/post_rebake_followups_20260526_094837.log.
+  WHERE (
+         (iso3 = 'NGA' AND crop IN ('oilpalm','oil-palm','oil_palm'))
+      OR (iso3 = 'CIV' AND crop IN ('cocoa'))
+        )
     AND admin2_name IS NULL AND admin1_name IS NULL
     AND hazard = 'any'
     AND hazard_vars IN ('NDWS+NTx35+NDWL0','NDWS+THI-max+NDWL0')
