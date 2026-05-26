@@ -204,28 +204,35 @@ if (is.null(hist_stats) || is.null(fut_stats)) {
   fut_mean  <- mean(fut_stats$band1_mean,  na.rm = TRUE)
   hist_max  <- max(hist_stats$band1_max,  na.rm = TRUE)
   fut_max   <- max(fut_stats$band1_max,   na.rm = TRUE)
+  # Saturation ratio = mean / max — scale-free, works for daily/monthly/annual
+  hist_sat <- hist_mean / hist_max
+  fut_sat  <- fut_mean  / fut_max
   cat(sprintf("Aggregate raw-NDWS band-1 mean:  historic=%.2f  future=%.2f  gap=%.2f\n",
               hist_mean, fut_mean, hist_mean - fut_mean))
   cat(sprintf("Aggregate raw-NDWS band-1 max:   historic=%.2f  future=%.2f\n",
               hist_max, fut_max))
-  if (hist_mean > fut_mean * 1.5 && hist_max > 200) {
-    cat("\nHistoric raw NDWS day-counts are LARGE relative to future\n")
-    cat("and saturate near the calendar-year ceiling. The bug is\n")
-    cat("UPSTREAM of classification — investigate R/1_make_timeseries.R\n")
-    cat("(NDWS aggregation step) and the upstream `hazards` repo\n")
-    cat("(daily PET/AWC calculation) for why historic produces\n")
-    cat("saturated counts. The classification threshold logic in\n")
-    cat("R/2_calculate_haz_freq.R is then doing the right thing on\n")
-    cat("broken inputs.\n")
-  } else if (abs(hist_mean - fut_mean) < 5) {
-    cat("\nHistoric raw NDWS day-counts are SIMILAR to future. The\n")
-    cat("saturation arrives AT CLASSIFICATION. Investigate the\n")
-    cat("threshold logic in R/2_calculate_haz_freq.R for a\n")
-    cat("scenario-dependent branch (historic vs future) that flips\n")
-    cat("the comparator or substitutes a different threshold value.\n")
+  cat(sprintf("Saturation ratio (mean/max):     historic=%.3f  future=%.3f  gap=%.3f\n",
+              hist_sat, fut_sat, hist_sat - fut_sat))
+  if (hist_sat > 0.85 && fut_sat < 0.85 && hist_mean > fut_mean) {
+    cat("\nHistoric raw NDWS is SATURATED (mean/max > 0.85) while future\n")
+    cat("retains normal variance. The bug is UPSTREAM of classification —\n")
+    cat("investigate the upstream `hazards` repo at\n")
+    cat("https://github.com/AdaptationAtlas/hazards (daily PET/AWC + NDWS\n")
+    cat("monthly aggregation). The classification logic in\n")
+    cat("R/2_calculate_haz_freq.R is doing the right thing on broken inputs.\n")
+    cat("Dispatch handed to that repo's maintainer:\n")
+    cat("  atlas_notebooks/playbook/handovers/climateRationale/dispatches/\n")
+    cat("    2026-05-26_hazards-repo-ndws-historic-saturation.md\n")
+  } else if (abs(hist_sat - fut_sat) < 0.10) {
+    cat("\nHistoric raw NDWS saturation ratio is SIMILAR to future\n")
+    cat("(within 10 pp). The saturation arrives AT CLASSIFICATION, not\n")
+    cat("upstream. Investigate the threshold logic in\n")
+    cat("R/2_calculate_haz_freq.R for a scenario-dependent branch.\n")
   } else {
-    cat("\nDirection intermediate — examine the per-band-means columns\n")
-    cat("above for which years drive the gap, then escalate to Pete.\n")
+    cat("\nDirection intermediate — saturation gap exists but not as\n")
+    cat("clear-cut as the canonical upstream-bug fingerprint. Inspect\n")
+    cat("the per-band-means above for which years drive the gap, then\n")
+    cat("escalate to Pete.\n")
   }
 }
 EOF
