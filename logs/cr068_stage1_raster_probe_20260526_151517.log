@@ -1,0 +1,105 @@
+
+===== 1A) Classified raster inventory =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+class_root = /home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_timeseries_class 
+
+Timeframe subdirs (2):
+  annual
+  jagermeyr
+
+Sample listing of 'annual':
+  (56058 files)
+ [1] "historic_ACCESS-CM2_1995-2014_NDWL0-mean-G2.tif" 
+ [2] "historic_ACCESS-CM2_1995-2014_NDWL0-mean-G5.tif" 
+ [3] "historic_ACCESS-CM2_1995-2014_NDWL0-mean-G8.tif" 
+ [4] "historic_ACCESS-CM2_1995-2014_NDWS-mean-G15.tif" 
+ [5] "historic_ACCESS-CM2_1995-2014_NDWS-mean-G20.tif" 
+ [6] "historic_ACCESS-CM2_1995-2014_NDWS-mean-G25.tif" 
+ [7] "historic_ACCESS-CM2_1995-2014_NTx20-mean-G1.tif" 
+ [8] "historic_ACCESS-CM2_1995-2014_NTx20-mean-G14.tif"
+ [9] "historic_ACCESS-CM2_1995-2014_NTx20-mean-G21.tif"
+[10] "historic_ACCESS-CM2_1995-2014_NTx20-mean-G7.tif" 
+[11] "historic_ACCESS-CM2_1995-2014_NTx23-mean-G14.tif"
+[12] "historic_ACCESS-CM2_1995-2014_NTx23-mean-G21.tif"
+[13] "historic_ACCESS-CM2_1995-2014_NTx23-mean-G7.tif" 
+[14] "historic_ACCESS-CM2_1995-2014_NTx25-mean-G14.tif"
+[15] "historic_ACCESS-CM2_1995-2014_NTx25-mean-G21.tif"
+[16] "historic_ACCESS-CM2_1995-2014_NTx25-mean-G7.tif" 
+[17] "historic_ACCESS-CM2_1995-2014_NTx27-mean-G1.tif" 
+[18] "historic_ACCESS-CM2_1995-2014_NTx27-mean-G10.tif"
+[19] "historic_ACCESS-CM2_1995-2014_NTx27-mean-G5.tif" 
+[20] "historic_ACCESS-CM2_1995-2014_NTx28-mean-G14.tif"
+[21] "historic_ACCESS-CM2_1995-2014_NTx28-mean-G21.tif"
+[22] "historic_ACCESS-CM2_1995-2014_NTx28-mean-G7.tif" 
+[23] "historic_ACCESS-CM2_1995-2014_NTx29-mean-G14.tif"
+[24] "historic_ACCESS-CM2_1995-2014_NTx29-mean-G21.tif"
+[25] "historic_ACCESS-CM2_1995-2014_NTx29-mean-G7.tif" 
+[26] "historic_ACCESS-CM2_1995-2014_NTx30-mean-G1.tif" 
+[27] "historic_ACCESS-CM2_1995-2014_NTx30-mean-G10.tif"
+[28] "historic_ACCESS-CM2_1995-2014_NTx30-mean-G14.tif"
+[29] "historic_ACCESS-CM2_1995-2014_NTx30-mean-G21.tif"
+[30] "historic_ACCESS-CM2_1995-2014_NTx30-mean-G5.tif" 
+  ...
+ [1] "ssp585_TaiESM1_2081-2100_THI-max-max-G76.tif"
+ [2] "ssp585_TaiESM1_2081-2100_THI-max-max-G78.tif"
+ [3] "ssp585_TaiESM1_2081-2100_THI-max-max-G79.tif"
+ [4] "ssp585_TaiESM1_2081-2100_THI-max-max-G81.tif"
+ [5] "ssp585_TaiESM1_2081-2100_THI-max-max-G82.tif"
+ [6] "ssp585_TaiESM1_2081-2100_THI-max-max-G86.tif"
+ [7] "ssp585_TaiESM1_2081-2100_THI-max-max-G89.tif"
+ [8] "ssp585_TaiESM1_2081-2100_THI-max-max-G92.tif"
+ [9] "ssp585_TaiESM1_2081-2100_THI-max-max-G93.tif"
+[10] "ssp585_TaiESM1_2081-2100_THI-max-max-G94.tif"
+
+===== 1B) Historic saturation probe =====
+Warning messages:
+1: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+2: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+3: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+4: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+5: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+6: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+7: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+8: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+Error: historic dir missing at Data/hazard_timeseries_class/historic — check Stage 1A inventory for the actual name (could be 'hist', '1995-2014', etc.)
+Execution halted
+
+===== 1C) Future (2041-2060) saturation probe =====
+Warning messages:
+1: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+2: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+3: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+4: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+5: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+6: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+7: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+8: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+Error: future timeframe dir '2041-2060' not found anywhere under Data/hazard_timeseries_class — check Stage 1A and adjust FUTURE_TIMEFRAME.
+Execution halted
+
+===== 1D) Saturation diff: HISTORIC vs FUTURE =====
+Error: Stats RDS files missing — run 1B and 1C first.
+Execution halted
+
+===== 1E) SSP370 raw-input coverage check =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+Error in normalizePath(ts_root, mustWork = TRUE) : 
+  path[1]="Data/hazard_timeseries": No such file or directory
+Calls: cat -> normalizePath
+Execution halted
+
+===== Stage 1 complete =====
+Verdicts logged above. STOP-AND-REPORT before Stage 2 — the next
+pass walks upstream from whichever hazard 1D flagged (or 1E if
+the SSP370 gap is the priority). Do NOT modify pipeline code yet.
+

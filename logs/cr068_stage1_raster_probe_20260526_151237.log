@@ -1,0 +1,54 @@
+
+===== 1A) Classified raster inventory =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+class_root = /home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_timeseries_class 
+
+Timeframe subdirs (2):
+  annual
+  jagermeyr
+
+Sample listing of 'annual':
+  (56058 files)
+ [1] "historic_ACCESS-CM2_1995-2014_NDWL0-mean-G2.tif" 
+ [2] "historic_ACCESS-CM2_1995-2014_NDWL0-mean-G5.tif" 
+ [3] "historic_ACCESS-CM2_1995-2014_NDWL0-mean-G8.tif" 
+ [4] "historic_ACCESS-CM2_1995-2014_NDWS-mean-G15.tif" 
+ [5] "historic_ACCESS-CM2_1995-2014_NDWS-mean-G20.tif" 
+ [6] "historic_ACCESS-CM2_1995-2014_NDWS-mean-G25.tif" 
+ [7] "historic_ACCESS-CM2_1995-2014_NTx20-mean-G1.tif" 
+ [8] "historic_ACCESS-CM2_1995-2014_NTx20-mean-G14.tif"
+ [9] "historic_ACCESS-CM2_1995-2014_NTx20-mean-G21.tif"
+[10] "historic_ACCESS-CM2_1995-2014_NTx20-mean-G7.tif" 
+[11] "historic_ACCESS-CM2_1995-2014_NTx23-mean-G14.tif"
+[12] "historic_ACCESS-CM2_1995-2014_NTx23-mean-G21.tif"
+[13] "historic_ACCESS-CM2_1995-2014_NTx23-mean-G7.tif" 
+[14] "historic_ACCESS-CM2_1995-2014_NTx25-mean-G14.tif"
+[15] "historic_ACCESS-CM2_1995-2014_NTx25-mean-G21.tif"
+[16] "historic_ACCESS-CM2_1995-2014_NTx25-mean-G7.tif" 
+[17] "historic_ACCESS-CM2_1995-2014_NTx27-mean-G1.tif" 
+[18] "historic_ACCESS-CM2_1995-2014_NTx27-mean-G10.tif"
+[19] "historic_ACCESS-CM2_1995-2014_NTx27-mean-G5.tif" 
+[20] "historic_ACCESS-CM2_1995-2014_NTx28-mean-G14.tif"
+[21] "historic_ACCESS-CM2_1995-2014_NTx28-mean-G21.tif"
+[22] "historic_ACCESS-CM2_1995-2014_NTx28-mean-G7.tif" 
+[23] "historic_ACCESS-CM2_1995-2014_NTx29-mean-G14.tif"
+[24] "historic_ACCESS-CM2_1995-2014_NTx29-mean-G21.tif"
+[25] "historic_ACCESS-CM2_1995-2014_NTx29-mean-G7.tif" 
+[26] "historic_ACCESS-CM2_1995-2014_NTx30-mean-G1.tif" 
+[27] "historic_ACCESS-CM2_1995-2014_NTx30-mean-G10.tif"
+[28] "historic_ACCESS-CM2_1995-2014_NTx30-mean-G14.tif"
+[29] "historic_ACCESS-CM2_1995-2014_NTx30-mean-G21.tif"
+[30] "historic_ACCESS-CM2_1995-2014_NTx30-mean-G5.tif" 
+  ...
+ [1] "ssp585_TaiESM1_2081-2100_THI-max-max-G76.tif"
+ [2] "ssp585_TaiESM1_2081-2100_THI-max-max-G78.tif"
+ [3] "ssp585_TaiESM1_2081-2100_THI-max-max-G79.tif"
+ [4] "ssp585_TaiESM1_2081-2100_THI-max-max-G81.tif"
+ [5] "ssp585_TaiESM1_2081-2100_THI-max-max-G82.tif"
+ [6] "ssp585_TaiESM1_2081-2100_THI-max-max-G86.tif"
+ [7] "ssp585_TaiESM1_2081-2100_THI-max-max-G89.tif"
+ [8] "ssp585_TaiESM1_2081-2100_THI-max-max-G92.tif"
+ [9] "ssp585_TaiESM1_2081-2100_THI-max-max-G93.tif"
+[10] "ssp585_TaiESM1_2081-2100_THI-max-max-G94.tif"
