@@ -247,8 +247,12 @@ if (length(all_tifs) == 0L) {
   paths <- data.table(path = all_tifs)
   paths[, scenario := regmatches(path,
     regexpr("ssp[0-9]+|historic", path, ignore.case = TRUE))]
-  paths[, period := regmatches(path,
-    regexpr("[0-9]{4}-[0-9]{4}", path))]
+  # indices_dir uses '_' between years in path tokens (e.g. ".../ssp370_<GCM>_2041_2060/...")
+  # — NOT the hyphenated 'YYYY-YYYY' form used in Data/hazard_timeseries_class/ filenames.
+  # Accept both delimiters; normalise to '-' for downstream comparisons.
+  paths[, period := sub(".*?([0-9]{4}[-_][0-9]{4}).*", "\\1", path)]
+  paths[!grepl("^[0-9]{4}[-_][0-9]{4}$", period), period := NA_character_]
+  paths[, period := gsub("_", "-", period)]
   paths[is.na(scenario) | scenario == "", scenario := "unknown"]
   paths[is.na(period)   | period == "",   period := "unknown"]
 
