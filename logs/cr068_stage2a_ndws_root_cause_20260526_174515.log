@@ -1,0 +1,317 @@
+
+===== 2A.1) Inventory raw indices + seasonal indices =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+Historic indices subdir: /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014
+  exists? TRUE
+
+Future indices subdir:   /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060
+  exists? TRUE
+
+
+--- Top-level entries under /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014 ---
+count = 42
+first 30:
+ [1] "HSH"    "NDD"    "NDWL0"  "NDWL50" "NDWS"   "NTx20"  "NTx21"  "NTx22" 
+ [9] "NTx23"  "NTx24"  "NTx25"  "NTx26"  "NTx27"  "NTx28"  "NTx29"  "NTx30" 
+[17] "NTx31"  "NTx32"  "NTx33"  "NTx34"  "NTx35"  "NTx36"  "NTx37"  "NTx38" 
+[25] "NTx39"  "NTx40"  "NTx41"  "NTx42"  "NTx43"  "NTx44" 
+
+--- Top-level entries under /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060 ---
+count = 42
+first 30:
+ [1] "HSH"    "NDD"    "NDWL0"  "NDWL50" "NDWS"   "NTx20"  "NTx21"  "NTx22" 
+ [9] "NTx23"  "NTx24"  "NTx25"  "NTx26"  "NTx27"  "NTx28"  "NTx29"  "NTx30" 
+[17] "NTx31"  "NTx32"  "NTx33"  "NTx34"  "NTx35"  "NTx36"  "NTx37"  "NTx38" 
+[25] "NTx39"  "NTx40"  "NTx41"  "NTx42"  "NTx43"  "NTx44" 
+
+Seasonal indices_dir2 sample:
+  hist exists? FALSE
+  fut  exists? FALSE
+
+--- NDWS-named files under indices_dir/<hist subdir> (depth <=3) ---
+count = 240
+ [1] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-01.tif"
+ [2] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-02.tif"
+ [3] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-03.tif"
+ [4] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-04.tif"
+ [5] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-05.tif"
+ [6] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-06.tif"
+ [7] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-07.tif"
+ [8] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-08.tif"
+ [9] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-09.tif"
+[10] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-10.tif"
+[11] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-11.tif"
+[12] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-12.tif"
+[13] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1996-01.tif"
+[14] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1996-02.tif"
+[15] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1996-03.tif"
+[16] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1996-04.tif"
+[17] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1996-05.tif"
+[18] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1996-06.tif"
+[19] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1996-07.tif"
+[20] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1996-08.tif"
+
+--- NDWS-named files under indices_dir/<fut subdir> ---
+count = 240
+ [1] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2041-01.tif"
+ [2] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2041-02.tif"
+ [3] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2041-03.tif"
+ [4] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2041-04.tif"
+ [5] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2041-05.tif"
+ [6] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2041-06.tif"
+ [7] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2041-07.tif"
+ [8] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2041-08.tif"
+ [9] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2041-09.tif"
+[10] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2041-10.tif"
+[11] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2041-11.tif"
+[12] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2041-12.tif"
+[13] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2042-01.tif"
+[14] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2042-02.tif"
+[15] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2042-03.tif"
+[16] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2042-04.tif"
+[17] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2042-05.tif"
+[18] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2042-06.tif"
+[19] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2042-07.tif"
+[20] "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060/NDWS/NDWS-2042-08.tif"
+
+===== 2A.2) Raw NDWS distributions, historic vs future =====
+Warning messages:
+1: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+2: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+3: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+4: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+5: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+6: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+7: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+8: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+
+--- HISTORIC raw NDWS — /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/historical_ACCESS-CM2_1995_2014 ---
+Found 240 NDWS file(s). Probing first 10:
+                file n_layers band1_n band1_min band1_p05 band1_p50 band1_mean
+              <char>    <num>   <int>     <num>     <num>     <num>      <num>
+ 1: NDWS-1995-01.tif        1  148475  18.15239  26.59970  31.00000   29.98059
+ 2: NDWS-1995-02.tif        1  148475  15.76563  23.29368  28.00000   26.94364
+ 3: NDWS-1995-03.tif        1  148475  18.07092  25.65503  31.00000   29.69868
+ 4: NDWS-1995-04.tif        1  148475  19.13268  25.51727  29.96399   28.89426
+ 5: NDWS-1995-05.tif        1  148475  18.61176  26.45419  30.62499   29.80113
+ 6: NDWS-1995-06.tif        1  148475  17.34327  25.38546  30.00000   28.89221
+ 7: NDWS-1995-07.tif        1  148475  17.26963  26.32875  31.00000   29.88957
+ 8: NDWS-1995-08.tif        1  148475  19.11282  26.54226  31.00000   29.95184
+ 9: NDWS-1995-09.tif        1  148475  19.28583  25.26674  30.00000   28.89201
+10: NDWS-1995-10.tif        1  148475  19.06873  26.46857  31.00000   29.89008
+    band1_p95 band1_max per_band_means
+        <num>     <num>          <num>
+ 1:        31        31             NA
+ 2:        28        28             NA
+ 3:        31        31             NA
+ 4:        30        30             NA
+ 5:        31        31             NA
+ 6:        30        30             NA
+ 7:        31        31             NA
+ 8:        31        31             NA
+ 9:        30        30             NA
+10:        31        31             NA
+
+--- FUTURE raw NDWS — /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-CM2_2041_2060 ---
+Found 240 NDWS file(s). Probing first 10:
+                file n_layers band1_n band1_min band1_p05 band1_p50 band1_mean
+              <char>    <num>   <int>     <num>     <num>     <num>      <num>
+ 1: NDWS-2041-01.tif        1  148475         0         0        27   19.21496
+ 2: NDWS-2041-02.tif        1  148475         0         0        27   18.19480
+ 3: NDWS-2041-03.tif        1  148475         0         0        27   20.99230
+ 4: NDWS-2041-04.tif        1  148475         0         0        27   21.61581
+ 5: NDWS-2041-05.tif        1  148475         0         0        31   24.32612
+ 6: NDWS-2041-06.tif        1  148475         0         0        30   22.71314
+ 7: NDWS-2041-07.tif        1  148475         0         0        30   22.20098
+ 8: NDWS-2041-08.tif        1  148475         0         0        31   22.44440
+ 9: NDWS-2041-09.tif        1  148475         0         0        28   22.57369
+10: NDWS-2041-10.tif        1  148475         0         0        30   22.80608
+    band1_p95 band1_max per_band_means
+        <num>     <num>          <num>
+ 1:        31        31             NA
+ 2:        28        28             NA
+ 3:        31        31             NA
+ 4:        30        30             NA
+ 5:        31        31             NA
+ 6:        30        30             NA
+ 7:        31        31             NA
+ 8:        31        31             NA
+ 9:        30        30             NA
+10:        31        31             NA
+
+=== VERDICT (2A.2) ===
+Aggregate raw-NDWS band-1 mean:  historic=29.28  future=21.71  gap=7.58
+Aggregate raw-NDWS band-1 max:   historic=31.00  future=31.00
+
+Direction intermediate — examine the per-band-means columns
+above for which years drive the gap, then escalate to Pete.
+
+===== 2A.3) Classification threshold logic (R/2_calculate_haz_freq.R) =====
+
+--- haz_class table assembly (lines 90-120) ---
+ms_codes <- data.table::fread(ms_codes_url, showProgress = FALSE)[, Code := toupper(Code)]
+ms_codes <- ms_codes[compound == "no" & !is.na(Code)]
+
+### 0.2.2) Set master hazards & create haz_class table ####
+# haz_class table is the source of truth for interactions & crop specific information
+hazards <- c("NTx40", "NTx35", "HSH_max", "HSH_mean", "THI_max", "THI_mean", "NDWS", "TAI", "NDWL0", "PTOT", "TAVG") # NDD is not being used as it cannot be projected to future scenarios with delta method
+
+cat("Full hazards =", hazards, "\n")
+
+haz_meta <- data.table::fread(file.path(project_dir, "metadata", "haz_metadata.csv"))
+haz_meta[variable.code %in% hazards]
+haz_meta[, code2 := paste0(haz_meta$code, "_", haz_meta$`function`)]
+
+haz_class <- data.table::fread(haz_class_url, showProgress = FALSE)
+haz_class <- haz_class[index_name %in% hazards, list(index_name, description, direction, crop, threshold)]
+haz_classes <- unique(haz_class$description)
+
+# duplicate generic non-heat stress variables for livestock
+livestock <- livestock <- haz_class[grepl("cattle|goats|poultry|pigs|sheep", crop), unique(crop)]
+non_heat <- c("NTx40", "NTx35", "NDWS", "TAI", "NDWL0", "PTOT") # NDD is not being used as it cannot be projected to future scenarios
+
+haz_class <- rbind(
+  haz_class[crop == "generic"],
+  rbindlist(lapply(seq_along(livestock), FUN = function(i) {
+    rbind(haz_class[crop == "generic" & index_name %in% non_heat][, crop := livestock[i]], haz_class[crop == livestock[i]])
+  }))
+)
+
+# Pull out severity classes and associate impact scores
+severity_classes <- unique(fread(haz_class_url)[, list(description, value)])
+setnames(severity_classes, "description", "class")
+
+--- Thresholds_U construction (lines 480-510) ---
+
+combinations_ca_ss <- data.frame(combinations_ca_ss)
+
+### 0.2.5) Create a table of unique hazard thresholds ####
+Thresholds_U <- unique(haz_class[description != "No significant stress", list(index_name, code2, direction, threshold)][, index_name := gsub("NTxM|NTxS|NTxE", "NTx", index_name)])
+
+Thresholds_U[, direction2 := direction][, direction2 := gsub("<", "L", direction2)][, direction2 := gsub(">", "G", direction2)][, code := paste0(direction2, threshold), by = .I][, index_name2 := index_name][index_name2 %in% c("PTOT", "TAVG"), index_name2 := paste0(index_name2, "_", direction2)]
+
+# Subset to interaction hazards
+Thresholds_U <- Thresholds_U[grepl(paste(if (any(grepl("NTx", interaction_haz))) {
+  c("NTx", interaction_haz)
+} else {
+  interaction_haz
+}, collapse = "|"), index_name2)]
+
+# Do the same for annual crops only
+Thresholds_U_ss <- unique(haz_class[crop %in% short_crops & description != "No significant stress", list(index_name, code2, direction, threshold)][, index_name := gsub("NTxM|NTxS|NTxE", "NTx", index_name)])
+
+Thresholds_U_ss[, direction2 := direction][, direction2 := gsub("<", "L", direction2)][, direction2 := gsub(">", "G", direction2)][, code := paste0(direction2, threshold), by = .I][, index_name2 := index_name][index_name2 %in% c("PTOT", "TAVG"), index_name2 := paste0(index_name2, "_", direction2)]
+
+# Subset to interaction hazards
+Thresholds_U_ss <- Thresholds_U_ss[grepl(paste(if (any(grepl("NTx", interaction_haz))) {
+  c("NTx", interaction_haz)
+} else {
+  interaction_haz
+}, collapse = "|"), index_name2)]
+
+# ---------------------------------------------------------------####
+## 0.3) Set flow controls and overwrite parameters ####
+### 0.3.1) Classify hazards ####
+run1 <- TRUE
+
+--- Section 1) Classify time series (around line 599-660) ---
+  )
+
+  # Create output folders
+  haz_time_class_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_class, timeframe)
+  haz_time_risk_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_risk, timeframe)
+  haz_risk_dir <- file.path(atlas_dirs$data_dir$hazard_risk, timeframe)
+  haz_mean_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_mean, timeframe)
+  haz_time_int_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_int, timeframe)
+
+  # 1) Classify time series climate variables based on hazard thresholds ####
+  if (run1) {
+    cat(timeframe, "1) Classify time series climate variables based on hazard thresholds\n")
+
+    haz_timeseries_dir <- file.path(indices_dir2, timeframe)
+    cat("haz_timeseries_dir =", haz_timeseries_dir, "\n")
+
+    if (!dir.exists(haz_time_class_dir)) {
+      dir.create(haz_time_class_dir, recursive = TRUE)
+    }
+
+    files <- list.files(haz_timeseries_dir, ".tif", full.names = TRUE)
+
+    if (annual_season_subset == TRUE && grepl("sos", timeframe)) {
+      thresholds <- copy(Thresholds_U)
+    } else {
+      thresholds <- copy(Thresholds_U_ss)
+    }
+
+    cat("timeframe 1) Classifying these hazards:\n")
+    print(thresholds)
+
+    set_parallel_plan(n_cores = worker_n1, use_multisession = multisession1)
+
+    # Enable progressr
+    progressr::handlers(global = TRUE)
+    progressr::handlers("progress")
+
+    # Wrap the parallel processing in a with_progress call
+    p <- with_progress({
+      # Define the progress bar
+      prog <- progressr::progressor(along = seq_len(nrow(thresholds)))
+
+      future.apply::future_lapply(seq_len(nrow(thresholds)), FUN = function(i) {
+        #  lapply(1:nrow(thresholds),FUN=function(i){
+        index_name <- thresholds[[i, "code2"]]
+        files_ss <- grep(index_name, files, value = TRUE)
+        files_ss <- files_ss[!grepl("ENSEMBLE", files_ss)]
+
+        if (length(files_ss) == 0) {
+          warning(paste0("No files present for ", index_name, "\n"))
+        }
+
+        prog(sprintf("Threshold %d/%d", i, nrow(thresholds)))
+
+        for (j in seq_along(files_ss)) {
+          #   cat(i,"-",j,"\n")
+
+          file_name <- gsub(".tif", paste0("-", thresholds[[i, "code"]], ".tif"), file.path(haz_time_class_dir, basename(files_ss[j])), fixed = TRUE)
+
+          # Fix issues with file naming formulation
+          file_name <- gsub("_max", "-max", file_name)
+          file_name <- gsub("_mean", "-mean", file_name)
+          file_name <- gsub("_sum", "-sum", file_name)
+
+          file_name <- gsub("historical_", "historic_historic_historic_", file_name)
+          file_name <- gsub("2021_2040_", "2021-2040_", file_name)
+          file_name <- gsub("2041_2060_", "2041-2060_", file_name)
+          file_name <- gsub("2061_2080_", "2061-2080_", file_name)
+          file_name <- gsub("2081_2100_", "2081-2100_", file_name)
+          file_name <- gsub("ENSEMBLE_mean_", "ENSEMBLEmean-", file_name)
+
+
+--- grep: any historic vs future branching ---
+25:#   - Hazard time series rasters (historical and projected)
+84:Scenarios <- rbind(data.table(Scenario = "historic", Time = "historic"), data.table(expand.grid(Scenario = Scenarios, Time = Times)))
+654:          file_name <- gsub("historical_", "historic_historic_historic_", file_name)
+760:      haz_freq_file_tab <- haz_freq_file_tab[model != "historic"]
+786:            haz_freq_file_tab$scenario == scenario_choice &
+1036:    files_new <- gsub("historical_", "historic_historic_historic_", files_new)
+1089:      files <- files[!grepl("historic|ENSEMBLE|_sd.tif", files)]
+1121:            file_tab$scenario == scenario_choice &
+1195:      files_hist <- grep("historic", files, value = TRUE)
+1206:          var <- gsub("historical_", "", tail(tstrsplit(file_hist, "/"), 1))
+1321:                haz_class_file_tab$scenario == scenario_choice &
+1380:          if (scenario_choice != "historic" & do_ensemble5.2) {
+1471:    timeframe_options <- haz_int_file_tab[timeframe != "historic", unique(timeframe)]
+1525:                if (model_choice == "historic") {
+1528:                      "5.3) there should be one interaction stack for historic timeframe",
+
+===== Stage 2A complete =====
+Verdict in 2A.2 tells you which direction Stage 2B walks:
+  upstream-NDWS-bug  -> 'hazards' repo + R/1_make_timeseries.R
+  classification-bug -> R/2_calculate_haz_freq.R threshold logic
+DO NOT modify pipeline code yet. STOP-AND-REPORT first.
+
