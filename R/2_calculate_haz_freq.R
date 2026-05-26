@@ -506,9 +506,23 @@ Thresholds_U_ss <- Thresholds_U_ss[grepl(paste(if (any(grepl("NTx", interaction_
 
 # ---------------------------------------------------------------####
 ## 0.3) Set flow controls and overwrite parameters ####
+#
+# Env-var overrides for rebake automation (default behaviour is
+# preserved when no env var is set):
+#   FORCE_OVERWRITE=1    -> set all overwrite_* gates TRUE
+#                          AND enable section 5.2 (run5.2 + do5.2_main),
+#                          matching the rebake workflow in
+#                          scripts/2026-05-26_cr068_ac_rebake.sh.txt.
+#                          Same convention as R/3_freq_x_exposure.R.
+#   SKIP_R2_RUN1=1       -> skip section 1 (classification — slow);
+#                          useful when re-baking sections 2/4/5.2
+#                          only and the classified rasters are
+#                          already current.
+.force_overwrite_r2 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+
 ### 0.3.1) Classify hazards ####
-run1 <- TRUE
-overwrite1 <- FALSE
+run1 <- !identical(Sys.getenv("SKIP_R2_RUN1"), "1")
+overwrite1 <- .force_overwrite_r2
 worker_n1 <- 20
 multisession1 <- TRUE
 annual_season_subset <- TRUE # When seasonal data is being analysed (other than GCCMI crop calendar) should only annual crops be run?
@@ -519,14 +533,14 @@ run2_main <- TRUE # Set to F if you only want to run the ensemble step only (set
 check2 <- TRUE
 round2 <- NULL # set to integer if you wish to round results
 worker_n2 <- 20
-overwrite2 <- FALSE
+overwrite2 <- .force_overwrite_r2
 multisession2 <- TRUE
 do_ensemble2 <- TRUE
 
 ### 0.3.3) Make crop stacks for risk freq ####
 run3 <- FALSE
 check3 <- TRUE
-overwrite3 <- FALSE
+overwrite3 <- .force_overwrite_r2
 worker_n3 <- 20
 multisession3 <- TRUE
 
@@ -535,7 +549,7 @@ run4 <- TRUE
 check4 <- TRUE
 run4.1 <- FALSE # Difference (currently not updated, keep as F)
 round4 <- 3
-overwrite4 <- FALSE
+overwrite4 <- .force_overwrite_r2
 worker_n4 <- 15
 do_ensemble4 <- TRUE
 multisession4 <- TRUE
@@ -543,11 +557,11 @@ multisession4 <- TRUE
 ### 0.3.5) Calculate interactions ####
 
 # Interaction Tifs
-run5.2 <- FALSE
-do5.2_main <- FALSE # Set to F if you only want to run the ensembling step
+run5.2 <- .force_overwrite_r2
+do5.2_main <- .force_overwrite_r2 # Set to F if you only want to run the ensembling step
 check5.2 <- TRUE
 round5.2 <- 3
-overwrite5.2 <- FALSE
+overwrite5.2 <- .force_overwrite_r2
 do_ensemble5.2 <- TRUE
 worker_n5.2 <- 20
 multisession5.2 <- TRUE
@@ -555,7 +569,7 @@ multisession5.2 <- TRUE
 # Interaction crop stacks
 run5.3 <- FALSE
 worker_n5.3 <- 15
-overwrite5.3 <- FALSE
+overwrite5.3 <- .force_overwrite_r2
 upload5 <- FALSE
 multisession5.3 <- TRUE
 check5.3 <- TRUE

@@ -1,0 +1,246 @@
+# ----------------------------------------------------------------------
+# Script: 2026-05-26_cr068_ac_rebake.sh
+# Purpose: Bundle the CR-068(a) + CR-068(c) fixes into one re-bake
+#          window and publish a fresh hazard_exposure.parquet to S3.
+#
+# Code changes shipping in this re-bake (already committed to develop):
+#   8d559b3 - na.rm=TRUE on 6 ENSEMBLE writer sites in R/2 (CR-068(c))
+#   41c1c00 - hazard='none' layer in R/2 sec 5.2          (CR-068(a))
+#   <new>   - FORCE_OVERWRITE env-var support in R/2 flow controls
+#             (matches R/3's convention; lets this runbook set flags
+#             without sed-patching the file inline)
+#
+# After this lands:
+#   - SSP370 2041+ in hazard_exposure.parquet will be populated
+#     (no more NaN ENSEMBLE upstream)
+#   - Every (iso3, admin1, crop, scenario, timeframe) cell will have
+#     a hazard='none' row whose value + value(any) = total VoP for
+#     that cell. The notebook % exposed denominator becomes self-
+#     contained, unblocking CR-049's resume.
+#
+#   STILL OPEN after this re-bake:
+#     CR-068(b) — historic NDWS saturation in AdaptationAtlas/hazards
+#                 (separate dispatch handed to that repo's maintainer).
+#                 Re-running our pipeline against the broken upstream
+#                 produces the same historic bundling — the bug is at
+#                 the source.
+#
+# Environment: CGlabs JupyterHub
+# Convention: paste-able blocks; each long-running stage is nohup'd
+#          with its own log under $LOG_DIR. Same pattern as
+#          scripts/2026-05-21_hazards_exposure_rebake.sh.txt.
+# ----------------------------------------------------------------------
+
+# ======================================================================
+# 0) Pre-flight
+# ======================================================================
+cd $HOME/atlas/hazards_prototype
+git checkout develop
+git pull origin develop
+git log --oneline -5   # should include 41c1c00 + 8d559b3 + the new R/2 env-var patch
+
+# Start a screen so a disconnect doesn't kill the chain
+screen -ls
+ps aux | grep Rscript | grep -v grep
+# screen -S cr068_ac_rebake_2026-05-26
+
+
+# ======================================================================
+# 1) Paths + STAMP + env-var settings
+# ======================================================================
+export SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
+export HAZ_FREQ_SCRIPT="$HOME/atlas/hazards_prototype/R/2_calculate_haz_freq.R"
+export FREQXEXP_SCRIPT="$HOME/atlas/hazards_prototype/R/3_freq_x_exposure.R"
+export VALIDATE_9="$HOME/atlas/hazards_prototype/R/checks/9_mass_conservation_validate.R"
+export PUBLISH_RUNBOOK="$HOME/atlas/hazards_prototype/scripts/2026-05-26_publish_to_s3.sh.txt"
+export LOG_DIR="$HOME/atlas/hazards_prototype/logs"
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+
+# Force every overwrite gate AND enable section 5.2 (which defaults
+# to FALSE). The R/2 patch makes both honour FORCE_OVERWRITE.
+export FORCE_OVERWRITE=1
+# Skip section 1 (classification — slow, outputs already current
+# per the existing hazard_timeseries_class/ inventory; the bug is
+# at the ENSEMBLE writers, not the classifier).
+export SKIP_R2_RUN1=1
+echo "FORCE_OVERWRITE = $FORCE_OVERWRITE  SKIP_R2_RUN1 = $SKIP_R2_RUN1"
+
+# Sanity check that scripts exist
+test -f "$HAZ_FREQ_SCRIPT"  && echo "OK: haz_freq exists" || echo "FAIL"
+test -f "$FREQXEXP_SCRIPT"  && echo "OK: freq_x_exposure exists" || echo "FAIL"
+test -f "$VALIDATE_9"       && echo "OK: validate_9 exists" || echo "FAIL"
+test -f "$PUBLISH_RUNBOOK"  && echo "OK: publish runbook exists" || echo "FAIL"
+
+
+# ======================================================================
+# STAGE F — R/2_calculate_haz_freq.R sections 2 + 4 + 5.2
+# ======================================================================
+# Re-runs the ENSEMBLE-emitting sections of R/2 with the patched
+# code (na.rm=TRUE in mean/sd writers + new 'none' layer in sec 5.2).
+# Section 1 (classification) is SKIPPED via SKIP_R2_RUN1 (its outputs
+# are current; the bug isn't there). Sections 2/4/5.2 regenerate
+# ENSEMBLE rasters at:
+#   hazard_timeseries_risk/<tf>/<scen>_ENSEMBLEmean_<period>_<haz>.tif
+#   hazard_timeseries_mean/<tf>/<scen>_ENSEMBLEmean_<period>_<haz>.tif
+#   hazard_timeseries_int/<tf>/<scen>_ENSEMBLEmean_<period>_<combo>.tif
+# Both timeframes (annual, jagermeyr) are processed via the script's
+# own timeframe loop — no need to invoke twice. Expect hours.
+LOG_FILE="$LOG_DIR/F_haz_freq_${STAMP}.log"
+echo "STAGE F: R/2 sections 2+4+5.2 -> $LOG_FILE"
+nohup bash -c "Rscript -e '
+options(error = function() {
+  cat(\"\n=== TRACEBACK ===\n\", file = stderr())
+  traceback(2)
+  cat(\"\n=================\n\", file = stderr())
+  quit(status = 1, save = \"no\")
+})
+source(Sys.getenv(\"SETUP_SCRIPT\"))
+source(Sys.getenv(\"HAZ_FREQ_SCRIPT\"))
+'; RC=\$?; echo; echo \"===== STAGE F DONE (Rscript exit code: \$RC) =====\"" \
+  > "$LOG_FILE" 2>&1 &
+PID_F=$!
+echo "PID $PID_F  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+wait $PID_F; echo "STAGE F bash exit code: $?"
+
+
+# ======================================================================
+# STAGE C — R/3_freq_x_exposure.R
+# ======================================================================
+# Re-runs the hazard×exposure intersection for both timeframes. R/3
+# also reads FORCE_OVERWRITE (line ~322) and flips its own gates.
+# The 'none' layer added at R/2 sec 5.2 propagates here naturally:
+# R/3 sec 4.1 multiplies int rasters × VoP per pixel and 4.2 zonally
+# aggregates, producing 'none' rows in the long parquet alongside
+# the existing 'any' + per-combo rows.
+LOG_FILE="$LOG_DIR/C_3_freq_x_exp_${STAMP}.log"
+echo "STAGE C: R/3 -> $LOG_FILE"
+nohup bash -c "Rscript -e '
+options(error = function() {
+  cat(\"\n=== TRACEBACK ===\n\", file = stderr())
+  traceback(2)
+  cat(\"\n=================\n\", file = stderr())
+  quit(status = 1, save = \"no\")
+})
+source(Sys.getenv(\"SETUP_SCRIPT\"))
+source(Sys.getenv(\"FREQXEXP_SCRIPT\"))
+'; RC=\$?; echo; echo \"===== STAGE C DONE (Rscript exit code: \$RC) =====\"" \
+  > "$LOG_FILE" 2>&1 &
+PID_C=$!
+echo "PID $PID_C  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+wait $PID_C; echo "STAGE C bash exit code: $?"
+
+
+# ======================================================================
+# STAGE D — broader-scope mass-conservation validator
+# ======================================================================
+# Re-runs R/checks/9_mass_conservation_validate.R against the local
+# producer parquet. Broader country set (was AGO/NGA/CIV) to catch
+# any (iso3, crop, scenario, timeframe) cells where the new 'none'
+# row or the SSP370 fix introduces an unexpected mass relationship.
+LOG_FILE="$LOG_DIR/D_validate_9_${STAMP}.log"
+echo "STAGE D: validator (broad) -> $LOG_FILE"
+nohup bash -c "Rscript '$VALIDATE_9' --country AGO,NGA,CIV,ETH,KEN,UGA,TZA,COD,MOZ,ZWE; \
+  RC=\$?; echo; echo \"===== STAGE D DONE (Rscript exit code: \$RC) =====\"" \
+  > "$LOG_FILE" 2>&1 &
+PID_D=$!
+echo "PID $PID_D  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+wait $PID_D; echo "STAGE D bash exit code: $?"
+# Exit 0 = mass-conservation invariant holds (specific <= any × 1.005).
+
+
+# ======================================================================
+# STAGE E — publish to canonical S3 key
+# ======================================================================
+# Uses the existing 2026-05-26 publish runbook unchanged. It backs up
+# the current canonical to s3://digital-atlas/sandbox/backup/<STAMP>/
+# (with public-read ACL — the download+upload pattern from commit
+# 638aae1), then uploads the freshly-rebaked local file, then
+# validates the published URL via DuckDB-httpfs.
+echo "STAGE E: publish_to_s3 -> running the publish runbook directly"
+bash "$PUBLISH_RUNBOOK"
+
+
+# ======================================================================
+# STAGE G — cleanup the typo S3 file (CR-068 handover follow-up)
+# ======================================================================
+# s3://digital-atlas/domain=hazard_exposure/source=atlas_cmip6/.../
+# variable=vop_nominal-usd21/period=jagermeyr/model=historic/
+# severity=severe/int=milti-hazard.parquet (note "milti" not "multi")
+# was flagged as debris in the 2026-05-26 handover. No notebook reads
+# it (confirmed via grep across atlas_notebooks). Delete it.
+echo "STAGE G: typo S3 file cleanup"
+Rscript - <<'EOF' 2>&1
+suppressPackageStartupMessages({library(s3fs)})
+typo_url <- "s3://digital-atlas/domain=hazard_exposure/source=atlas_cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=historic/severity=severe/int=milti-hazard.parquet"
+info <- tryCatch(s3fs::s3_file_info(typo_url), error = function(e) NULL)
+if (is.null(info)) {
+  cat("Typo file already absent — nothing to do.\n")
+} else {
+  cat("Deleting typo file:\n  ", typo_url, "\n  size = ", info$size, "\n", sep = "")
+  s3fs::s3_file_delete(typo_url)
+  cat("Deleted.\n")
+}
+EOF
+
+
+# ======================================================================
+# STAGE H — verify post-publish: 'none' rows exist + SSP370 2041+ populated
+# ======================================================================
+# Queries the just-published S3 parquet via DuckDB-httpfs and confirms
+# two invariants from this rebake:
+#   (i)  hazard='none' rows exist for AGO sugarcane (CR-068(a))
+#   (ii) SSP370 2041+ AGO sugarcane is no longer 0 (CR-068(c))
+LOG_FILE="$LOG_DIR/H_post_publish_verify_${STAMP}.log"
+echo "STAGE H: post-publish verify -> $LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee "$LOG_FILE"
+suppressPackageStartupMessages({library(duckdb); library(DBI); library(data.table)})
+url <- "https://digital-atlas.s3.amazonaws.com/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet"
+con <- dbConnect(duckdb())
+DBI::dbExecute(con, "INSTALL httpfs; LOAD httpfs;")
+
+cat("=== (i) hazard='none' presence — AGO sugarcane, historic ===\n")
+print(setDT(dbGetQuery(con, sprintf("
+  SELECT scenario, timeframe, hazard,
+         ROUND(SUM(value)::DOUBLE, 0) AS sum_value, COUNT(*) AS n_rows
+  FROM read_parquet('%s')
+  WHERE iso3 = 'AGO' AND crop = 'sugarcane'
+    AND admin1_name IS NULL AND admin2_name IS NULL
+    AND hazard IN ('any', 'none')
+    AND scenario = 'historic'
+  GROUP BY ALL ORDER BY hazard
+", url))))
+cat("Expected: TWO rows, one for 'any' and one for 'none'.\n")
+cat("Invariant: value(any) + value(none) = total VoP for AGO sugarcane historic.\n\n")
+
+cat("=== (ii) SSP370 2041+ population — AGO sugarcane, all scenarios ===\n")
+print(setDT(dbGetQuery(con, sprintf("
+  SELECT scenario, timeframe, ROUND(SUM(value)::DOUBLE, 0) AS sum_value
+  FROM read_parquet('%s')
+  WHERE iso3 = 'AGO' AND crop = 'sugarcane'
+    AND admin1_name IS NULL AND admin2_name IS NULL
+    AND hazard = 'any'
+  GROUP BY ALL ORDER BY scenario, timeframe
+", url))))
+cat("Expected: SSP370 2041-2060 / 2061-2080 / 2081-2100 are now NON-ZERO\n")
+cat("(previous value was 0 — see D_validate_9_20260526_103030.log line ~45-48).\n")
+EOF
+
+
+# ======================================================================
+# Summary
+# ======================================================================
+echo "=========================================="
+echo "CR-068(a) + (c) re-bake complete. Logs:"
+echo "  $LOG_DIR/F_haz_freq_${STAMP}.log"
+echo "  $LOG_DIR/C_3_freq_x_exp_${STAMP}.log"
+echo "  $LOG_DIR/D_validate_9_${STAMP}.log"
+echo "  $LOG_DIR/H_post_publish_verify_${STAMP}.log"
+echo "=========================================="
+echo "Still open (separate paths, NOT in this rebake's scope):"
+echo "  CR-068(b) — historic NDWS saturation in AdaptationAtlas/hazards"
+echo "  Exposure producer drift (crop-livestock_all.parquet — Brayden)"
+echo "=========================================="
