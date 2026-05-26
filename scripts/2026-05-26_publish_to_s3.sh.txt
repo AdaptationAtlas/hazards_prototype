@@ -1,0 +1,235 @@
+# ----------------------------------------------------------------------
+# Script: 2026-05-26_publish_to_s3.sh
+# Purpose: Replace the live canonical hazard_exposure parquet on S3
+#          with the 2026-05-25 STAGE C re-bake output that passed
+#          D_validate_9 (after the [c] precedence fix in commit
+#          f50e869). Single-file publish — the canonical set is one
+#          object (verified 2026-05-26 via s3fs::s3_dir_ls).
+#
+#          Pipeline-relevant mapping:
+#            LOCAL  Data/hazard_risk_vop_usd/jagermeyr/
+#                     haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet
+#            S3     s3://digital-atlas/domain=hazard_exposure/
+#                     source=nex-gddp-cmip6/region=ssa/
+#                     processing=hazard-risk-exposure/
+#                     variable=vop_nominal-usd21/period=jagermeyr/
+#                     model=ENSEMBLEmean/severity=severe/
+#                     int=multi-hazard.parquet
+#          (variable naming differs: producer uses "vop_nominal-usd-2021",
+#          canonical S3 uses "vop_nominal-usd21" — we hard-code both.)
+#
+# Environment: CGlabs JupyterHub
+# Convention: paste-able blocks. AWS creds via s3fs default chain
+#          (env vars or ~/.aws/credentials).
+# Safety:  STAGE E2 backs up the current canonical file to a versioned
+#          sandbox key BEFORE STAGE E3 overwrites it. STAGE E4 reads
+#          the new object back via DuckDB+httpfs and re-runs the [a]
+#          mass-conservation invariant against the published file so
+#          we know the notebook will see the same numbers D_validate_9
+#          signed off on locally.
+#
+#          To roll back: copy the sandbox/backup key back over the
+#          canonical key (s3fs::s3_file_copy) — STAGE E2's output
+#          prints the exact restore command.
+# Reference: logs/D_validate_9_20260526_103030.log (the run that
+#          PASSED with f50e869 applied)
+# ----------------------------------------------------------------------
+
+# ======================================================================
+# 0) Pre-flight
+# ======================================================================
+export PROJECT_DIR="$HOME/atlas/hazards_prototype"
+cd "$PROJECT_DIR" || { echo "FAIL: cannot cd $PROJECT_DIR"; return 1 2>/dev/null || exit 1; }
+git pull origin develop
+git log --oneline -3   # should include f50e869
+
+export LOG_DIR="$PROJECT_DIR/logs"
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="$LOG_DIR/E_publish_to_s3_${STAMP}.log"
+echo "Logging to $LOG_FILE"
+
+# Canonical S3 key (hard-coded — confirmed live 2026-05-26)
+export S3_CANONICAL="s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet"
+
+# Backup key — same path, prefixed with sandbox/backup/<STAMP>/ so
+# rollback is one copy away. Hive-style suffix preserved so the
+# backup is readable with the same tooling.
+export S3_BACKUP="s3://digital-atlas/sandbox/backup/${STAMP}/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet"
+
+echo "Canonical: $S3_CANONICAL"
+echo "Backup:    $S3_BACKUP"
+
+
+# ======================================================================
+# STAGE E1 — verify local producer file + current canonical state
+# ======================================================================
+# Confirms the local file the publish will upload AND fetches metadata
+# (size, last-modified) for the canonical file we are about to
+# overwrite. If the canonical file isn't there, we abort — the
+# canonical layout might have shifted and the hard-coded S3 key
+# would be wrong.
+echo "" | tee -a "$LOG_FILE"
+echo "===== E1) Verify local + current canonical =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(s3fs)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+
+local_path <- normalizePath(file.path(
+  atlas_dirs$data_dir$hazard_risk_vop_usd, "jagermeyr",
+  "haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet"
+), mustWork = TRUE)
+local_info <- file.info(local_path)
+cat("LOCAL:\n")
+cat("  path  =", local_path, "\n")
+cat("  size  =", local_info$size, "bytes (",
+    round(local_info$size / 1024 / 1024, 1), "MB)\n")
+cat("  mtime =", format(local_info$mtime), "\n\n")
+
+canon_url <- Sys.getenv("S3_CANONICAL")
+canon_info <- tryCatch(s3fs::s3_file_info(canon_url),
+                       error = function(e) NULL)
+if (is.null(canon_info)) {
+  stop("Canonical S3 file not found at: ", canon_url,
+       "\nHard-coded key may be wrong — re-check the layout before re-running.")
+}
+cat("CURRENT CANONICAL S3:\n")
+cat("  url   =", canon_url, "\n")
+cat("  size  =", canon_info$size, "bytes (",
+    round(as.numeric(canon_info$size) / 1024 / 1024, 1), "MB)\n")
+cat("  mtime =", format(canon_info$last_modified), "\n")
+cat("  etag  =", canon_info$etag, "\n")
+EOF
+
+
+# ======================================================================
+# STAGE E2 — backup current canonical to sandbox/backup/<STAMP>/
+# ======================================================================
+# Safety net. Copy is server-side (no download/re-upload), so it's
+# fast and ACL-preserving. Print the exact restore command in the log
+# so rollback is trivial if STAGE E4 fails.
+echo "" | tee -a "$LOG_FILE"
+echo "===== E2) Backup current canonical =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(s3fs)})
+src <- Sys.getenv("S3_CANONICAL")
+dst <- Sys.getenv("S3_BACKUP")
+cat("Copying:\n  ", src, "\n  -> ", dst, "\n", sep = "")
+s3fs::s3_file_copy(src, dst, overwrite = FALSE)
+info <- s3fs::s3_file_info(dst)
+cat("\nBACKUP confirmed:\n")
+cat("  size =", info$size, "bytes\n")
+cat("  etag =", info$etag, "\n\n")
+cat("ROLLBACK (if STAGE E4 fails):\n")
+cat("  s3fs::s3_file_copy(\n    '", dst, "',\n    '", src,
+    "', overwrite = TRUE)\n", sep = "")
+EOF
+
+
+# ======================================================================
+# STAGE E3 — upload local producer file over the canonical key
+# ======================================================================
+# Public-read ACL is REQUIRED — anonymous DuckDB-httpfs reads (which
+# is what the in-browser notebook uses) get HTTP 500 without it. Same
+# pattern as R/misc/rebake_parquets_for_pushdown.R:195-204.
+echo "" | tee -a "$LOG_FILE"
+echo "===== E3) Upload local -> canonical =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(s3fs)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+local_path <- normalizePath(file.path(
+  atlas_dirs$data_dir$hazard_risk_vop_usd, "jagermeyr",
+  "haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet"
+), mustWork = TRUE)
+canon_url <- Sys.getenv("S3_CANONICAL")
+cat("Uploading:\n  ", local_path, "\n  -> ", canon_url,
+    "\n  ACL = public-read\n\n", sep = "")
+t0 <- Sys.time()
+s3fs::s3_file_upload(local_path, canon_url,
+                     overwrite = TRUE, ACL = "public-read")
+dt <- as.numeric(difftime(Sys.time(), t0, units = "secs"))
+cat("Upload complete in ", round(dt, 1), " s\n", sep = "")
+
+# Sanity-check the new object's metadata matches what we expect
+info <- s3fs::s3_file_info(canon_url)
+local_size <- file.info(local_path)$size
+cat("\nPOST-UPLOAD CANONICAL S3:\n")
+cat("  size  =", info$size, "bytes\n")
+cat("  mtime =", format(info$last_modified), "\n")
+cat("  etag  =", info$etag, "\n")
+if (as.numeric(info$size) != local_size) {
+  stop("SIZE MISMATCH after upload — local=", local_size,
+       " s3=", info$size, ". DO NOT TRUST PUBLISH; roll back.")
+}
+cat("\nSize matches local — upload integrity OK.\n")
+EOF
+
+
+# ======================================================================
+# STAGE E4 — read the published file back + re-run [a] invariant
+# ======================================================================
+# The validator passed locally — re-run its specific-vs-any check
+# against the PUBLISHED S3 URL via DuckDB-httpfs. This is what the
+# notebook will actually see. If [a] passes here, the publish is
+# notebook-safe.
+echo "" | tee -a "$LOG_FILE"
+echo "===== E4) Re-validate against published S3 URL =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(duckdb); library(DBI)})
+canon_url <- Sys.getenv("S3_CANONICAL")
+# DuckDB reads s3:// directly via httpfs; the bucket is public so no
+# creds are needed for this read (mirrors what the notebook does).
+https_url <- sub("^s3://", "https://", sub("^s3://([^/]+)/", "https://\\1.s3.amazonaws.com/", canon_url))
+cat("Reading via:", https_url, "\n\n")
+
+con <- dbConnect(duckdb())
+DBI::dbExecute(con, "INSTALL httpfs; LOAD httpfs;")
+sql <- sprintf("
+  WITH base AS (
+    SELECT iso3, crop, scenario, timeframe, hazard, value
+    FROM read_parquet('%s')
+    WHERE admin2_name IS NULL AND admin1_name IS NULL
+      AND hazard_vars IN ('NDWS+NTx35+NDWL0','NDWS+THI-max+NDWL0')
+      AND exposure_unit = 'nominal-usd-2021'
+      AND hazard NOT IN ('none')
+  ),
+  agg AS (
+    SELECT iso3, crop, scenario, timeframe,
+           SUM(CASE WHEN hazard = 'any' THEN value END) AS sum_any,
+           SUM(CASE WHEN hazard != 'any' THEN value END) AS sum_specific
+    FROM base GROUP BY ALL
+  )
+  SELECT
+    COUNT(*) AS n_rows,
+    SUM(CASE WHEN sum_specific > sum_any * 1.005 THEN 1 ELSE 0 END) AS n_breaches
+  FROM agg
+  WHERE sum_any IS NOT NULL AND sum_any > 0
+", https_url)
+res <- dbGetQuery(con, sql)
+print(res)
+if (res$n_breaches > 0) {
+  stop("E4 FAIL: ", res$n_breaches, " mass-conservation breaches in ",
+       "the PUBLISHED file. Roll back using the command in E2's log.")
+}
+cat("\nE4 PASS — published file matches D_validate_9 [a] invariant ",
+    "(0 breaches across ", res$n_rows, " (iso3,crop,scenario,timeframe) cells).\n", sep = "")
+EOF
+
+
+# ======================================================================
+# Final summary
+# ======================================================================
+echo "" | tee -a "$LOG_FILE"
+echo "===== PUBLISH COMPLETE =====" | tee -a "$LOG_FILE"
+echo "Canonical (LIVE): $S3_CANONICAL"      | tee -a "$LOG_FILE"
+echo "Backup (rollback): $S3_BACKUP"         | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Notebook consumers will pick up the new parquet on next" | tee -a "$LOG_FILE"
+echo "cold-start. CR-068 caveats unchanged (SSP370 missing-periods"  | tee -a "$LOG_FILE"
+echo "+ historic categorisation asymmetry — see their dispatches)."  | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Log saved to $LOG_FILE"
