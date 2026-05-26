@@ -27,6 +27,17 @@ packages <- c("remotes", "data.table", "httr", "s3fs", "xml2", "paws.storage", "
 # Use pacman to install and load the packages
 pacman::p_load(char = packages)
 
+# Silence pbapply's \r-spinner under non-interactive (nohup) runs. Under
+# nohup capture the spinner becomes hundreds of "[----] 0%" / "/ |  \" lines
+# in the log file. progressr handlers("void") does NOT touch pbapply — it
+# has its own global option that has to be set independently. Setting it
+# once here covers every script that sources 0_server_setup.R.
+if (!interactive()) {
+  if (requireNamespace("pbapply", quietly = TRUE)) {
+    pbapply::pboptions(type = "none")
+  }
+}
+
 # Source additional functions used in this workflow from GitHub
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
