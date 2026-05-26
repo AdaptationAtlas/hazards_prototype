@@ -1,0 +1,134 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+
+======================================================================
+[09:14:24][pid 60892] ==== Issue #9 Stage 3 validation ====
+======================================================================
+
+[09:14:24][pid 60892] parquet     = Data/hazard_risk_vop_usd/jagermeyr/haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet
+[09:14:24][pid 60892] countries   = AGO, NGA, CIV
+
+======================================================================
+[09:14:24][pid 60892] ==== [a] sum(specific) <= sum('any') check, per (iso3, crop, scenario, timeframe) ====
+======================================================================
+
+[09:14:24][pid 60892] START  [a] specific-vs-any query
+[09:14:24][pid 60892] END    [a] specific-vs-any query  (0.3 s)
+[09:14:24][pid 60892] rows checked: 1442
+[09:14:24][pid 60892] breaches (ratio > 1.005): 0
+[09:14:24][pid 60892] PASS — no (iso3, crop, scenario, timeframe) where specific > any.
+
+======================================================================
+[09:14:24][pid 60892] ==== [b] AGO sugarcane mass — current parquet snapshot ====
+======================================================================
+
+[09:14:24][pid 60892] START  [b] AGO sugarcane query
+[09:14:25][pid 60892] END    [b] AGO sugarcane query  (0.1 s)
+    scenario timeframe sum_value n_rows
+      <char>    <char>     <num>  <num>
+ 1: historic 1995-2014 132647255      1
+ 2:   ssp126 2021-2040  78384450      1
+ 3:   ssp126 2041-2060  82577541      1
+ 4:   ssp126 2061-2080  84319081      1
+ 5:   ssp126 2081-2100  83440227      1
+ 6:   ssp245 2021-2040  80102180      1
+ 7:   ssp245 2041-2060  82984160      1
+ 8:   ssp245 2061-2080  82776039      1
+ 9:   ssp245 2081-2100  88995365      1
+10:   ssp370 2021-2040  80684377      1
+11:   ssp370 2041-2060         0      1
+12:   ssp370 2061-2080         0      1
+13:   ssp370 2081-2100         0      1
+14:   ssp585 2021-2040  81191392      1
+15:   ssp585 2041-2060  84978014      1
+16:   ssp585 2061-2080  90172829      1
+17:   ssp585 2081-2100  97960263      1
+
+======================================================================
+[09:14:25][pid 60892] ==== [c] Spot-check sharp-concentration crops ====
+======================================================================
+
+[09:14:25][pid 60892] START  [c] spot-check NGA oilpalm + CIV cocoa
+[09:14:25][pid 60892] END    [c] spot-check NGA oilpalm + CIV cocoa  (0.1 s)
+      iso3    crop scenario timeframe  sum_value
+    <char>  <char>   <char>    <char>      <num>
+ 1:    CIV   cocoa historic 1995-2014 3000951672
+ 2:    CIV   cocoa   ssp126 2021-2040  769390934
+ 3:    CIV   cocoa   ssp126 2041-2060  882992256
+ 4:    CIV   cocoa   ssp126 2061-2080  983038737
+ 5:    CIV   cocoa   ssp126 2081-2100  930551067
+ 6:    CIV   cocoa   ssp245 2021-2040  797345143
+ 7:    CIV   cocoa   ssp245 2041-2060  938672080
+ 8:    CIV   cocoa   ssp245 2061-2080 1183190163
+ 9:    CIV   cocoa   ssp245 2081-2100 1407839292
+10:    CIV   cocoa   ssp370 2021-2040  771775997
+11:    CIV   cocoa   ssp370 2041-2060          0
+12:    CIV   cocoa   ssp370 2061-2080          0
+13:    CIV   cocoa   ssp370 2081-2100          0
+14:    CIV   cocoa   ssp585 2021-2040  830268793
+15:    CIV   cocoa   ssp585 2041-2060 1148435113
+16:    CIV   cocoa   ssp585 2061-2080 1809393824
+17:    CIV   cocoa   ssp585 2081-2100 2450213833
+18:    NGA oilpalm historic 1995-2014        NaN
+19:    NGA oilpalm   ssp126 2021-2040        NaN
+20:    NGA oilpalm   ssp126 2041-2060        NaN
+21:    NGA oilpalm   ssp126 2061-2080        NaN
+22:    NGA oilpalm   ssp126 2081-2100        NaN
+23:    NGA oilpalm   ssp245 2021-2040        NaN
+24:    NGA oilpalm   ssp245 2041-2060        NaN
+25:    NGA oilpalm   ssp245 2061-2080        NaN
+26:    NGA oilpalm   ssp245 2081-2100        NaN
+27:    NGA oilpalm   ssp370 2021-2040        NaN
+28:    NGA oilpalm   ssp370 2041-2060        NaN
+29:    NGA oilpalm   ssp370 2061-2080        NaN
+30:    NGA oilpalm   ssp370 2081-2100        NaN
+31:    NGA oilpalm   ssp585 2021-2040        NaN
+32:    NGA oilpalm   ssp585 2041-2060        NaN
+33:    NGA oilpalm   ssp585 2061-2080        NaN
+34:    NGA oilpalm   ssp585 2081-2100        NaN
+      iso3    crop scenario timeframe  sum_value
+
+======================================================================
+[09:14:25][pid 60892] ==== [d] AGO hazard-category split — CR-068 regression check ====
+======================================================================
+
+[09:14:25][pid 60892] START  [d] AGO category split query
+[09:14:25][pid 60892] END    [d] AGO category split query  (0.1 s)
+         hazard hist_1995_2014 ssp245_2021_2040 ssp585_2021_2040
+         <char>          <num>            <num>            <num>
+1:          dry    10738132556       4191059060       3915288398
+2:      dry+wet     2545115142          8393456          4688582
+3:     dry+heat     1342604878       1019079080        988004556
+4: dry+heat+wet      188839994          2698350          1322982
+5:     heat+wet              0        240990488        293287906
+6:          wet              0       2703626212       3027489240
+7:         heat              0        574681988        569510538
+[09:14:25][pid 60892] NOTE: zeros under historic for heat / heat+wet / wet are the CR-068 bug (categorisation asymmetry), NOT a regression from issue #9. CR-068 has its own dispatch.
+[09:14:25][pid 60892] Wrote report to /home/jovyan/atlas/hazards_prototype/metadata/checks/9_mass_conservation_validate.json
+
+----------------------------------------------------------------------
+[09:14:25][pid 60892] Stage timings (top to bottom = slowest first)
+----------------------------------------------------------------------
+                                  label secs
+              [a] specific-vs-any query  0.3
+                [b] AGO sugarcane query  0.1
+ [c] spot-check NGA oilpalm + CIV cocoa  0.1
+           [d] AGO category split query  0.1
+[09:14:25][pid 60892] TOTAL  0.6 s (0.0 min)
+[09:14:25][pid 60892] DECISION: validation PASSED — issue #9 fix closes the magnitude gap.
+
+######################################################################
+######################################################################
+[09:14:25][pid 60892] ##### COMPLETE: Issue #9 Stage 3 validation #####
+[09:14:25][pid 60892] ##### DECISION = PASSED (exit code 0)
+[09:14:25][pid 60892] ##### exit status 0; log file finalized 2026-05-26 09:14:25 #####
+######################################################################
+######################################################################
+
+
+===== STAGE D DONE (Rscript exit code: 0) =====
