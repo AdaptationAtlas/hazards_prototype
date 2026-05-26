@@ -791,8 +791,8 @@ for (tx in seq_along(timeframes)) {
 
           if (!file.exists(save_file_mean) | overwrite2) {
             ensemble_stack <- terra::rast(ensemble_files)
-            ensemble_mean <- mean(ensemble_stack)
-            ensemble_sd <- app(ensemble_stack, fun = sd)
+            ensemble_mean <- mean(ensemble_stack, na.rm = TRUE)
+            ensemble_sd <- app(ensemble_stack, fun = sd, na.rm = TRUE)
 
             if (!is.null(round2)) {
               ensemble_mean <- round(ensemble_mean, round2)
@@ -1134,8 +1134,8 @@ for (tx in seq_along(timeframes)) {
           if (!file.exists(save_file_mean) | overwrite2) {
             ensemble_stack <- terra::rast(ensemble_files)
 
-            ensemble_mean <- mean(ensemble_stack)
-            ensemble_sd <- terra::app(ensemble_stack, fun = sd)
+            ensemble_mean <- mean(ensemble_stack, na.rm = TRUE)
+            ensemble_sd <- terra::app(ensemble_stack, fun = sd, na.rm = TRUE)
 
             if (!is.null(round4)) {
               ensemble_mean <- round(ensemble_mean, round4)
@@ -1391,12 +1391,12 @@ for (tx in seq_along(timeframes)) {
 
               ensemble_mean <- terra::rast(lapply(1:nlyr(ensemble_stack[[1]]), FUN = function(j) {
                 ensemble_dat <- terra::rast(lapply(ensemble_stack, "[[", j))
-                mean(ensemble_dat)
+                mean(ensemble_dat, na.rm = TRUE)
               }))
 
               ensemble_sd <- terra::rast(lapply(1:nlyr(ensemble_stack[[1]]), FUN = function(j) {
                 ensemble_dat <- terra::rast(lapply(ensemble_stack, "[[", j))
-                terra::app(ensemble_dat, fun = sd)
+                terra::app(ensemble_dat, fun = sd, na.rm = TRUE)
               }))
 
               if (!is.null(round5.2)) {
