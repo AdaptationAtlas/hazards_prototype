@@ -1,0 +1,360 @@
+# ----------------------------------------------------------------------
+# Script: 2026-05-26_cr068_stage2c_ssp370_ensemble.sh
+# Purpose: Stage 2C-SSP370 — Stage 2B ruled out the raster pipeline
+#          (per-GCM SSP370 2041+ files exist and have normal values,
+#          ratio to SSP245 ≈ 1.0 through every intermediate tier).
+#          Drop must therefore happen at the ENSEMBLE aggregation
+#          OR in the parquet-write that consumes ENSEMBLE files.
+#          This stage:
+#            2C.1 inventories ENSEMBLE* files at each tier
+#                 (hazard_timeseries_risk / _mean / _int / hazard_risk).
+#            2C.2 samples ENSEMBLE raster values directly — SSP370
+#                 2041-2060 vs SSP370 2021-2040 (same scenario, diff
+#                 period) vs SSP245 2041-2060 (diff scenario, same
+#                 period). If SSP370 ENSEMBLE 2041+ values are
+#                 systematically lower, the ensemble aggregation is
+#                 the producer to fix.
+#            2C.3 per-GCM contribution count at the per-GCM tier for
+#                 SSP370 2041+ vs 2021-2040 — confirms whether the
+#                 18-GCM coverage is uniform across periods (1B
+#                 inventory was filename-pattern based; this one
+#                 splits by GCM token specifically).
+#            2C.4 spatial spot-check at AGO admin0 centroid (the
+#                 validator's [b] sugarcane case lands here) —
+#                 extract ENSEMBLE pixel values for SSP370 2041+ vs
+#                 SSP370 2021-2040.
+#
+#          STOP-AND-REPORT. No remediation.
+#
+# Context: Stage 2B log
+#   logs/cr068_stage2b_ssp370_droppoint_20260526_190642.log
+#   ruled out the per-GCM raster pipeline.
+#
+# Environment: CGlabs JupyterHub
+# Convention: paste-able blocks, heredoc R, source 0_server_setup.R.
+# ----------------------------------------------------------------------
+
+# ======================================================================
+# 0) Pre-flight
+# ======================================================================
+export PROJECT_DIR="$HOME/atlas/hazards_prototype"
+cd "$PROJECT_DIR" || { echo "FAIL: cannot cd $PROJECT_DIR"; return 1 2>/dev/null || exit 1; }
+git pull origin develop
+git log --oneline -3
+
+export LOG_DIR="$PROJECT_DIR/logs"
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="$LOG_DIR/cr068_stage2c_ssp370_ensemble_${STAMP}.log"
+echo "Logging to $LOG_FILE"
+
+# Knobs — keep aligned with 2B for cross-stage comparability
+export REF_SCENARIO="ssp245"
+export PROBE_PERIOD="2041-2060"
+export PRIOR_PERIOD="2021-2040"   # SSP370's own non-broken period
+
+
+# ======================================================================
+# 2C.1) ENSEMBLE file inventory at each tier
+# ======================================================================
+# Counts files matching 'ssp370_ENSEMBLEmean_2041-2060_*' vs
+# 'ssp245_ENSEMBLEmean_2041-2060_*' vs 'ssp370_ENSEMBLEmean_2021-2040_*'
+# at each tier that produces ENSEMBLE files. If SSP370 2041-2060
+# ENSEMBLE file count is lower than its siblings, the ensemble
+# producer is dropping files. If counts match but values differ
+# (2C.2), the bug is in the averaging math.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 2C.1) ENSEMBLE file-count inventory =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(data.table)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+ref      <- Sys.getenv("REF_SCENARIO")
+probe_p  <- Sys.getenv("PROBE_PERIOD")
+prior_p  <- Sys.getenv("PRIOR_PERIOD")
+
+tiers <- c(
+  "hazard_timeseries_risk",
+  "hazard_timeseries_mean",
+  "hazard_timeseries_int",
+  "hazard_risk"
+)
+timeframes <- c("annual", "jagermeyr")
+
+out <- data.table()
+for (t in tiers) {
+  root <- atlas_dirs$data_dir[[t]]
+  if (is.null(root) || !dir.exists(root)) next
+  for (tf in timeframes) {
+    d <- file.path(root, tf)
+    if (!dir.exists(d)) next
+    fs <- list.files(d, "\\.tif$")
+    n_ssp370_probe <- sum(grepl(sprintf("^ssp370_ENSEMBLEmean_%s_", probe_p), fs))
+    n_ssp370_prior <- sum(grepl(sprintf("^ssp370_ENSEMBLEmean_%s_", prior_p), fs))
+    n_ref_probe    <- sum(grepl(sprintf("^%s_ENSEMBLEmean_%s_",   ref, probe_p), fs))
+    out <- rbind(out, data.table(
+      tier = t, timeframe = tf,
+      ssp370_probe = n_ssp370_probe,     # ssp370 × probe_period (likely bad)
+      ssp370_prior = n_ssp370_prior,     # ssp370 × prior_period (likely good)
+      ref_probe    = n_ref_probe,        # ref scenario × probe_period (definitely good)
+      total_tifs   = length(fs)
+    ))
+  }
+}
+print(out)
+
+cat("\n=== VERDICT (2C.1 — ENSEMBLE file counts) ===\n")
+mismatch <- out[ssp370_probe != ssp370_prior | ssp370_probe != ref_probe]
+if (nrow(mismatch) == 0L) {
+  cat("ENSEMBLE file counts MATCH across (ssp370 2041+, ssp370 2021-2040, ssp245 2041+).\n")
+  cat("Drop is value-level, not file-level. Proceed to 2C.2.\n")
+} else {
+  cat("ENSEMBLE file counts DIVERGE:\n")
+  print(mismatch)
+  cat("\nThe tier with fewer SSP370 ENSEMBLE files is where the producer\n")
+  cat("is dropping SSP370 2041+. Inspect R/2_calculate_haz_freq.R lines\n")
+  cat("789-790 (haz_time_risk_dir), 1131-1132 (haz_mean_dir), or\n")
+  cat("1386-1387 (haz_time_int_dir) for the ENSEMBLE-write logic.\n")
+}
+EOF
+
+
+# ======================================================================
+# 2C.2) ENSEMBLE value comparison — same scenario / diff period AND
+#       same period / diff scenario
+# ======================================================================
+# Reads ONE representative ENSEMBLE TIF per (tier, scenario, period)
+# combo and computes global mean. Three pairings tell us where the
+# drop emerges:
+#   (a) ssp370 2041+ vs ssp370 2021-2040  — period gap within scenario
+#   (b) ssp370 2041+ vs ssp245 2041+      — scenario gap within period
+#   (c) all three numerically             — for sanity
+echo "" | tee -a "$LOG_FILE"
+echo "===== 2C.2) ENSEMBLE value comparison =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(terra); library(data.table)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+ref      <- Sys.getenv("REF_SCENARIO")
+probe_p  <- Sys.getenv("PROBE_PERIOD")
+prior_p  <- Sys.getenv("PRIOR_PERIOD")
+
+tiers <- c("hazard_timeseries_risk","hazard_timeseries_mean",
+           "hazard_timeseries_int","hazard_risk")
+timeframes <- c("annual","jagermeyr")
+
+probe_mean <- function(path) {
+  r <- suppressWarnings(try(terra::rast(path), silent = TRUE))
+  if (inherits(r, "try-error")) return(NA_real_)
+  g <- suppressWarnings(terra::global(r, fun = "mean", na.rm = TRUE))
+  mean(g$mean, na.rm = TRUE)
+}
+
+out <- data.table()
+for (t in tiers) {
+  root <- atlas_dirs$data_dir[[t]]
+  if (is.null(root) || !dir.exists(root)) next
+  for (tf in timeframes) {
+    d <- file.path(root, tf)
+    if (!dir.exists(d)) next
+    fs <- list.files(d, "\\.tif$", full.names = TRUE)
+    pick <- function(pat) head(grep(pat, fs, value = TRUE), 1)
+    a <- pick(sprintf("ssp370_ENSEMBLEmean_%s_", probe_p))
+    b <- pick(sprintf("ssp370_ENSEMBLEmean_%s_", prior_p))
+    c <- pick(sprintf("%s_ENSEMBLEmean_%s_",     ref, probe_p))
+    if (length(a) && length(b) && length(c)) {
+      out <- rbind(out, data.table(
+        tier = t, timeframe = tf,
+        ssp370_probe_mean = probe_mean(a),
+        ssp370_prior_mean = probe_mean(b),
+        ref_probe_mean    = probe_mean(c),
+        ssp370_probe_file = basename(a)
+      ))
+    }
+  }
+}
+out[, ratio_period   := ssp370_probe_mean / ssp370_prior_mean]
+out[, ratio_scenario := ssp370_probe_mean / ref_probe_mean]
+print(out)
+
+cat("\n=== VERDICT (2C.2 — ENSEMBLE values) ===\n")
+if (nrow(out) == 0L) {
+  cat("No ENSEMBLE-name pattern matched any tier. Either ENSEMBLEmean\n")
+  cat("naming differs in this layout, or the ensemble files aren't\n")
+  cat("under a flat <timeframe>/ subdir. Re-inspect 2C.1 tier layouts.\n")
+} else {
+  flagged_period   <- out[!is.na(ratio_period)   & ratio_period   < 0.5]
+  flagged_scenario <- out[!is.na(ratio_scenario) & ratio_scenario < 0.5]
+  if (nrow(flagged_period) + nrow(flagged_scenario) == 0L) {
+    cat("All ENSEMBLE means within 50%+ across pairings. The ensemble\n")
+    cat("aggregation looks healthy at the raster level. Drop must be\n")
+    cat("at the parquet-write in R/3_freq_x_exposure.R — maybe in the\n")
+    cat("zonal-stats step that intersects ENSEMBLE rasters with the\n")
+    cat("admin boundaries + exposure (sec 4.1 / 4.2). Inspect for\n")
+    cat("admin-mask coverage gaps or join-key mismatches.\n")
+  } else {
+    cat("Period gap (ssp370 2041+ vs ssp370 2021-2040 < 50%):\n")
+    print(flagged_period)
+    cat("\nScenario gap (ssp370 2041+ vs ssp245 2041+ < 50%):\n")
+    print(flagged_scenario)
+    cat("\nThe tier with the largest gap is where ENSEMBLE aggregation\n")
+    cat("for SSP370 2041+ first goes wrong. Trace back to its writer\n")
+    cat("at the line in R/2_calculate_haz_freq.R that emits this tier.\n")
+  }
+}
+EOF
+
+
+# ======================================================================
+# 2C.3) Per-GCM SSP370 coverage — count distinct GCMs at the per-GCM tier
+# ======================================================================
+# Stage 1's inventory showed 18 GCMs total. Sanity-check that all 18
+# contribute SSP370 2041+ at the per-GCM categorisation tier (the
+# input to ENSEMBLE aggregation). If only N < 18 GCMs have SSP370
+# 2041+ files, the ENSEMBLE mean averages over fewer terms and the
+# bug is GCM coverage, not aggregation math.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 2C.3) Per-GCM SSP370 coverage at categorisation tier =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(data.table)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+probe_p <- Sys.getenv("PROBE_PERIOD")
+prior_p <- Sys.getenv("PRIOR_PERIOD")
+ref     <- Sys.getenv("REF_SCENARIO")
+
+d <- file.path(atlas_dirs$data_dir$hazard_timeseries_int, "annual")
+if (!dir.exists(d)) {
+  d <- file.path(atlas_dirs$data_dir$hazard_timeseries_class, "annual")
+}
+cat("Probing per-GCM coverage under: ", d, "\n", sep = "")
+fs <- list.files(d, "\\.tif$")
+# Parse <scenario>_<gcm>_<period>_<variable>.tif
+stems <- sub("\\.tif$", "", fs)
+parts <- strsplit(stems, "_", fixed = TRUE)
+parsed <- data.table(
+  scenario = vapply(parts, `[`, character(1), 1L),
+  gcm      = vapply(parts, `[`, character(1), 2L),
+  period   = vapply(parts, `[`, character(1), 3L)
+)
+parsed <- parsed[!is.na(scenario) & !is.na(gcm) & !is.na(period)]
+parsed <- parsed[grepl("^ssp|^historic", scenario)]   # drop ENSEMBLE rows
+
+cat("Distinct GCMs per (scenario, period):\n")
+print(parsed[, .(n_gcms = uniqueN(gcm), n_files = .N),
+             by = .(scenario, period)][order(scenario, period)])
+
+cat("\n=== VERDICT (2C.3 — GCM coverage) ===\n")
+gcm_counts <- parsed[, .(n_gcms = uniqueN(gcm)), by = .(scenario, period)]
+ssp370_probe <- gcm_counts[scenario == "ssp370" & period == probe_p, n_gcms]
+ssp370_prior <- gcm_counts[scenario == "ssp370" & period == prior_p, n_gcms]
+ref_probe    <- gcm_counts[scenario == ref      & period == probe_p, n_gcms]
+if (length(ssp370_probe) == 0L || length(ssp370_prior) == 0L || length(ref_probe) == 0L) {
+  cat("Couldn't find all three reference cells in the (scenario, period) grid.\n")
+  cat("Check the table above — likely a naming convention difference.\n")
+} else if (ssp370_probe < ssp370_prior || ssp370_probe < ref_probe) {
+  cat(sprintf("SSP370 %s has %d GCMs (vs %s SSP370 %d, %s %s %d).\n",
+              probe_p, ssp370_probe, prior_p, ssp370_prior,
+              ref, probe_p, ref_probe))
+  cat("ENSEMBLE averaging for SSP370 %s is mixing FEWER GCMs.\n", sep = "")
+  cat("If the ENSEMBLE writer normalises by 'expected N_GCMs' rather\n")
+  cat("than the actual count present, the mean will be artificially low.\n")
+  cat("Identify the missing GCMs from the table above and check whether\n")
+  cat("they emit SSP370 future at the raw indices stage. If yes, the\n")
+  cat("R/1_make_timeseries.R or R/2_calculate_haz_freq.R Step 1 missed\n")
+  cat("a fetch for those GCMs. If no, the upstream NEX-GDDP doesn't\n")
+  cat("publish SSP370 future for them — known CMIP6 coverage gap.\n")
+} else {
+  cat(sprintf("All three cells have %d GCMs — coverage is uniform.\n",
+              ssp370_probe))
+  cat("If 2C.2 flags a value gap, the bug is in the ENSEMBLE math\n")
+  cat("itself (averaging logic), not in the GCM coverage feeding it.\n")
+}
+EOF
+
+
+# ======================================================================
+# 2C.4) Spatial spot-check — AGO admin0 ENSEMBLE values
+# ======================================================================
+# Validator's [b] showed AGO sugarcane SSP370 2041+ = 0. Pull the
+# ENSEMBLE TIF for SSP370 2041+ and extract pixel values around the
+# AGO admin0 centroid (~-12.3°S, 17.9°E). Same for SSP370 2021-2040
+# and SSP245 2041+. If AGO-specific cells go to 0 in SSP370 2041+
+# but stay populated in the siblings, the bug is locally scoped to
+# certain (lat, lon) cells under SSP370 2041+.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 2C.4) AGO admin0 ENSEMBLE spot-check =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(terra)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+ref     <- Sys.getenv("REF_SCENARIO")
+probe_p <- Sys.getenv("PROBE_PERIOD")
+prior_p <- Sys.getenv("PRIOR_PERIOD")
+
+# Try the int (categorisation output) tier first — that's what Step 3
+# directly consumes for hazard×exposure intersection
+d <- file.path(atlas_dirs$data_dir$hazard_timeseries_int, "annual")
+if (!dir.exists(d)) {
+  cat("hazard_timeseries_int/annual missing — bailing.\n")
+} else {
+  fs <- list.files(d, "\\.tif$", full.names = TRUE)
+  pick <- function(pat) head(grep(pat, fs, value = TRUE), 1)
+  files <- list(
+    ssp370_probe = pick(sprintf("ssp370_ENSEMBLEmean_%s_", probe_p)),
+    ssp370_prior = pick(sprintf("ssp370_ENSEMBLEmean_%s_", prior_p)),
+    ref_probe    = pick(sprintf("%s_ENSEMBLEmean_%s_",     ref, probe_p))
+  )
+  cat("Sampling ENSEMBLE TIFs (basename):\n")
+  for (k in names(files)) cat("  ", k, " : ",
+    if (length(files[[k]])) basename(files[[k]]) else "(missing)", "\n", sep = "")
+
+  # AGO admin0 centroid (approximate — Angola's land centroid)
+  ago_lon <- 17.87; ago_lat <- -11.20
+  ago_pt <- terra::vect(matrix(c(ago_lon, ago_lat), ncol = 2), crs = "EPSG:4326")
+  # Also a small box for context
+  ago_box <- terra::ext(11, 25, -18, -4)   # rough Angola bbox
+
+  for (k in names(files)) {
+    f <- files[[k]]
+    if (!length(f)) { cat("\n", k, " : (file missing)\n", sep = ""); next }
+    r <- suppressWarnings(terra::rast(f))
+    pt_val <- suppressWarnings(terra::extract(r, ago_pt))
+    g_ago <- suppressWarnings(terra::global(
+      terra::crop(r, ago_box), fun = "mean", na.rm = TRUE
+    ))
+    g_all <- suppressWarnings(terra::global(r, fun = "mean", na.rm = TRUE))
+    cat("\n--- ", k, " ---\n", sep = "")
+    cat("  layers          : ", terra::nlyr(r), "\n", sep = "")
+    cat("  global mean     : ", mean(g_all$mean, na.rm = TRUE), "\n", sep = "")
+    cat("  AGO bbox mean   : ", mean(g_ago$mean, na.rm = TRUE), "\n", sep = "")
+    cat("  AGO centroid val:\n")
+    print(pt_val)
+  }
+}
+EOF
+
+
+# ======================================================================
+# Stage 2C-SSP370 — STOP HERE
+# ======================================================================
+echo "" | tee -a "$LOG_FILE"
+echo "===== Stage 2C-SSP370 complete =====" | tee -a "$LOG_FILE"
+echo "Decision tree from the verdicts:" | tee -a "$LOG_FILE"
+echo "  2C.1 file-count mismatch -> ENSEMBLE writer drops files" | tee -a "$LOG_FILE"
+echo "  2C.2 ratio < 0.5         -> ENSEMBLE math produces low/zero" | tee -a "$LOG_FILE"
+echo "                              values; inspect R/2_calculate_haz_freq.R" | tee -a "$LOG_FILE"
+echo "                              lines 789-790 / 1131-1132 / 1386-1387" | tee -a "$LOG_FILE"
+echo "  2C.3 GCM coverage gap    -> some GCMs don't have SSP370 future;" | tee -a "$LOG_FILE"
+echo "                              normalisation might over-divide" | tee -a "$LOG_FILE"
+echo "  2C.4 AGO local zero      -> spatial scope; check admin0 mask" | tee -a "$LOG_FILE"
+echo "                              alignment with ENSEMBLE raster" | tee -a "$LOG_FILE"
+echo "  All clean                -> drop is in the parquet-write step;" | tee -a "$LOG_FILE"
+echo "                              inspect R/3_freq_x_exposure.R sec 4.1/4.2" | tee -a "$LOG_FILE"
+echo "DO NOT modify pipeline code. STOP-AND-REPORT." | tee -a "$LOG_FILE"
+echo "" | tee -a "$LOG_FILE"
+echo "Log saved to $LOG_FILE"
