@@ -1,0 +1,530 @@
+
+===== 1A) Filename inventory =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+class_dir = /home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_timeseries_class/annual
+total TIFs: 56058
+
+Scenarios: historic, ssp126, ssp245, ssp370, ssp585
+GCMs (18): ACCESS-CM2, ACCESS-ESM1-5, CanESM5, CMCC-ESM2, EC-Earth3, EC-Earth3-Veg-LR, GFDL-ESM4, INM-CM4-8, INM-CM5-0, IPSL-CM6A-LR, KACE-1-0-G, MIROC6, MPI-ESM1-2-HR, MPI-ESM1-2-LR, MRI-ESM2-0, NorESM2-LM, NorESM2-MM, TaiESM1
+Periods:   1995-2014, 2021-2040, 2041-2060, 2061-2080, 2081-2100
+
+Variable families + count:
+    var_family     N
+        <char> <int>
+ 1:       PTOT 22338
+ 2:        THI  4284
+ 3:      NTx30  1836
+ 4:      NTx32  1836
+ 5:      NTx34  1836
+ 6:      NTx35  1836
+ 7:      NTx36  1836
+ 8:      NTx38  1836
+ 9:      NTx39  1836
+10:      NTx40  1836
+11:      NTx42  1836
+12:      NTx20   978
+13:      NDWL0   918
+14:       NDWS   918
+15:      NTx23   918
+16:      NTx25   918
+17:      NTx27   918
+18:      NTx28   918
+19:      NTx29   918
+20:      NTx31   918
+21:      NTx33   918
+22:      NTx37   918
+23:      NTx41   918
+24:      NTx45   918
+25:      NTx47   918
+    var_family     N
+
+File counts per (scenario, period):
+    scenario    period     N
+      <char>    <char> <int>
+ 1: historic 1995-2014  3305
+ 2:   ssp126 2021-2040  3307
+ 3:   ssp126 2041-2060  3306
+ 4:   ssp126 2061-2080  3306
+ 5:   ssp126 2081-2100  3306
+ 6:   ssp245 2021-2040  3294
+ 7:   ssp245 2041-2060  3294
+ 8:   ssp245 2061-2080  3294
+ 9:   ssp245 2081-2100  3294
+10:   ssp370 2021-2040  3294
+11:   ssp370 2041-2060  3294
+12:   ssp370 2061-2080  3294
+13:   ssp370 2081-2100  3294
+14:   ssp585 2021-2040  3294
+15:   ssp585 2041-2060  3294
+16:   ssp585 2061-2080  3294
+17:   ssp585 2081-2100  3294
+
+Unique NTx* variants in filenames:
+ [1] "NTx20-mean-G1"  "NTx20-mean-G14" "NTx20-mean-G21" "NTx20-mean-G7" 
+ [5] "NTx23-mean-G14" "NTx23-mean-G21" "NTx23-mean-G7"  "NTx25-mean-G14"
+ [9] "NTx25-mean-G21" "NTx25-mean-G7"  "NTx27-mean-G1"  "NTx27-mean-G10"
+[13] "NTx27-mean-G5"  "NTx28-mean-G14" "NTx28-mean-G21" "NTx28-mean-G7" 
+[17] "NTx29-mean-G14" "NTx29-mean-G21" "NTx29-mean-G7"  "NTx30-mean-G1" 
+[21] "NTx30-mean-G10" "NTx30-mean-G14" "NTx30-mean-G21" "NTx30-mean-G5" 
+[25] "NTx30-mean-G7"  "NTx31-mean-G14" "NTx31-mean-G21" "NTx31-mean-G7" 
+[29] "NTx32-mean-G1"  "NTx32-mean-G10" "NTx32-mean-G14" "NTx32-mean-G21"
+[33] "NTx32-mean-G5"  "NTx32-mean-G7"  "NTx33-mean-G14" "NTx33-mean-G21"
+[37] "NTx33-mean-G7"  "NTx34-mean-G1"  "NTx34-mean-G10" "NTx34-mean-G14"
+[41] "NTx34-mean-G21" "NTx34-mean-G5"  "NTx34-mean-G7"  "NTx35-mean-G1" 
+[45] "NTx35-mean-G10" "NTx35-mean-G14" "NTx35-mean-G21" "NTx35-mean-G5" 
+[49] "NTx35-mean-G7"  "NTx36-mean-G1"  "NTx36-mean-G10" "NTx36-mean-G14"
+[53] "NTx36-mean-G21" "NTx36-mean-G5"  "NTx36-mean-G7"  "NTx37-mean-G14"
+[57] "NTx37-mean-G21" "NTx37-mean-G7"  "NTx38-mean-G1"  "NTx38-mean-G10"
+[61] "NTx38-mean-G14" "NTx38-mean-G21" "NTx38-mean-G5"  "NTx38-mean-G7" 
+[65] "NTx39-mean-G1"  "NTx39-mean-G10" "NTx39-mean-G14" "NTx39-mean-G21"
+[69] "NTx39-mean-G5"  "NTx39-mean-G7"  "NTx40-mean-G1"  "NTx40-mean-G10"
+[73] "NTx40-mean-G14" "NTx40-mean-G21" "NTx40-mean-G5"  "NTx40-mean-G7" 
+[77] "NTx41-mean-G1"  "NTx41-mean-G10" "NTx41-mean-G5"  "NTx42-mean-G1" 
+[81] "NTx42-mean-G10" "NTx42-mean-G14" "NTx42-mean-G21" "NTx42-mean-G5" 
+[85] "NTx42-mean-G7"  "NTx45-mean-G1"  "NTx45-mean-G10" "NTx45-mean-G5" 
+[89] "NTx47-mean-G1"  "NTx47-mean-G10" "NTx47-mean-G5" 
+
+Knob-coverage check:
+  historic + PROBE_GCM rows: 3305
+  ssp245 + 2041-2060 + PROBE_GCM rows: 3294
+
+===== 1B) Per-variant saturation probe (PROBE_GCM = ACCESS-CM2) =====
+Warning messages:
+1: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+2: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+3: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+4: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+5: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+6: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+7: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+8: /usr/lib/x86_64-linux-gnu/libtiff.so.6: version `LIBTIFF_4.6.1' not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36) (GDAL error 1) 
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+
+--- NDWS ---
+  historic files: 3   future (ssp245 2041-2060) files: 3
+  3 variants matched — top 10 by mean_gap (historic - future):
+         variant    h_mean h_pct_max h_max    f_mean f_pct_max f_max  mean_gap
+          <char>     <num>     <num> <num>     <num>     <num> <num>     <num>
+1: NDWS-mean-G25 0.9997911     99.95     1 0.4038442     42.33     1 0.5959469
+2: NDWS-mean-G20 1.0000000    100.00     1 0.5908537     60.87     1 0.4091463
+3: NDWS-mean-G15 1.0000000    100.00     1 0.7814675     79.08     1 0.2185325
+   sat_gap
+     <num>
+1:   57.62
+2:   39.13
+3:   20.92
+
+--- NTx35 ---
+  historic files: 6   future (ssp245 2041-2060) files: 6
+  6 variants matched — top 10 by mean_gap (historic - future):
+          variant     h_mean h_pct_max h_max     f_mean f_pct_max f_max
+           <char>      <num>     <num> <num>      <num>     <num> <num>
+1: NTx35-mean-G21 0.01395576      1.88     1 0.04948691      6.56     1
+2: NTx35-mean-G14 0.09147315     10.74     1 0.18508130     22.26     1
+3: NTx35-mean-G10 0.16685554     18.55     1 0.30092224     33.09     1
+4:  NTx35-mean-G7 0.23791784     26.24     1 0.38819427     42.08     1
+5:  NTx35-mean-G5 0.29822376     32.34     1 0.45133641     49.71     1
+6:  NTx35-mean-G1 0.51625041     54.35     1 0.69235971     71.70     1
+      mean_gap sat_gap
+         <num>   <num>
+1: -0.03553115   -4.68
+2: -0.09360815  -11.52
+3: -0.13406670  -14.54
+4: -0.15027642  -15.84
+5: -0.15311265  -17.37
+6: -0.17610929  -17.35
+
+--- NDWL0 ---
+  historic files: 3   future (ssp245 2041-2060) files: 3
+  3 variants matched — top 10 by mean_gap (historic - future):
+         variant    h_mean h_pct_max h_max     f_mean f_pct_max f_max
+          <char>     <num>     <num> <num>      <num>     <num> <num>
+1: NDWL0-mean-G8 0.0487634      5.87     1 0.04545546      4.49     1
+2: NDWL0-mean-G5 0.1137229     12.54     1 0.12357931     11.57     1
+3: NDWL0-mean-G2 0.2950394     31.24     1 0.33732172     31.43     1
+       mean_gap sat_gap
+          <num>   <num>
+1:  0.003307934    1.38
+2: -0.009856432    0.97
+3: -0.042282273   -0.19
+
+--- THI-max ---
+  historic files: 14   future (ssp245 2041-2060) files: 14
+  14 variants matched — top 10 by mean_gap (historic - future):
+            variant      h_mean h_pct_max h_max    f_mean f_pct_max f_max
+             <char>       <num>     <num> <num>     <num>     <num> <num>
+ 1: THI-max-max-G71 0.919145499     92.88     1 0.9497492     95.32     1
+ 2: THI-max-max-G72 0.905853405     91.88     1 0.9437825     94.79     1
+ 3: THI-max-max-G74 0.871906285     89.15     1 0.9288500     93.43     1
+ 4: THI-max-max-G75 0.850650204     87.32     1 0.9200283     92.58     1
+ 5: THI-max-max-G94 0.009541758      1.83     1 0.0805978     11.57     1
+ 6: THI-max-max-G76 0.826626763     85.11     1 0.9100420     91.57     1
+ 7: THI-max-max-G93 0.020454674      3.49     1 0.1189527     16.51     1
+ 8: THI-max-max-G78 0.770728592     79.61     1 0.8791127     88.84     1
+ 9: THI-max-max-G79 0.733588365     76.21     1 0.8558844     86.90     1
+10: THI-max-max-G92 0.042130241      6.37     1 0.1704807     22.21     1
+       mean_gap sat_gap
+          <num>   <num>
+ 1: -0.03060375   -2.44
+ 2: -0.03792911   -2.91
+ 3: -0.05694376   -4.28
+ 4: -0.06937810   -5.26
+ 5: -0.07105604   -9.74
+ 6: -0.08341525   -6.46
+ 7: -0.09849799  -13.02
+ 8: -0.10838410   -9.23
+ 9: -0.12229603  -10.69
+10: -0.12835042  -15.84
+
+=== VERDICT (1B) ===
+2 variant(s) flagged:
+   hazard       variant    h_mean    f_mean  mean_gap h_pct_max f_pct_max
+   <char>        <char>     <num>     <num>     <num>     <num>     <num>
+1:   NDWS NDWS-mean-G25 0.9997911 0.4038442 0.5959469     99.95     42.33
+2:   NDWS NDWS-mean-G20 1.0000000 0.5908537 0.4091463    100.00     60.87
+   sat_gap
+     <num>
+1:   57.62
+2:   39.13
+
+Stage 2 should walk upstream from these variants — inspect the raw
+indices feeding them at indices_dir, plus the threshold step in
+R/2_calculate_haz_freq.R that emits the classified values.
+
+===== 1C) SSP370 raw-input coverage at indices_dir =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+indices_dir = /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices
+
+Top-level subdirs:
+  historical_ACCESS-CM2_1981_2014
+  historical_ACCESS-CM2_1995_2014
+  historical_ACCESS-ESM1-5_1981_2014
+  historical_ACCESS-ESM1-5_1995_2014
+  historical_CanESM5_1981_2014
+  historical_CanESM5_1995_2014
+  historical_CMCC-ESM2_1981_2014
+  historical_CMCC-ESM2_1995_2014
+  historical_EC-Earth3_1981_2014
+  historical_EC-Earth3_1995_2014
+  historical_EC-Earth3-Veg-LR_1981_2014
+  historical_EC-Earth3-Veg-LR_1995_2014
+  historical_GFDL-ESM4_1981_2014
+  historical_GFDL-ESM4_1995_2014
+  historical_INM-CM4-8_1981_2014
+  historical_INM-CM4-8_1995_2014
+  historical_INM-CM5-0_1981_2014
+  historical_INM-CM5-0_1995_2014
+  historical_IPSL-CM6A-LR_1981_2014
+  historical_IPSL-CM6A-LR_1995_2014
+  historical_KACE-1-0-G_1981_2014
+  historical_KACE-1-0-G_1995_2014
+  historical_MIROC6_1981_2014
+  historical_MIROC6_1995_2014
+  historical_MPI-ESM1-2-HR_1981_2014
+  historical_MPI-ESM1-2-HR_1995_2014
+  historical_MPI-ESM1-2-LR_1981_2014
+  historical_MPI-ESM1-2-LR_1995_2014
+  historical_MRI-ESM2-0_1981_2014
+  historical_MRI-ESM2-0_1995_2014
+  historical_NorESM2-LM_1981_2014
+  historical_NorESM2-LM_1995_2014
+  historical_NorESM2-MM_1981_2014
+  historical_NorESM2-MM_1995_2014
+  historical_TaiESM1_1981_2014
+  historical_TaiESM1_1995_2014
+  SPI
+  ssp126_ACCESS-CM2_2021_2040
+  ssp126_ACCESS-CM2_2041_2060
+  ssp126_ACCESS-CM2_2061_2080
+  ssp126_ACCESS-CM2_2081_2100
+  ssp126_ACCESS-ESM1-5_2021_2040
+  ssp126_ACCESS-ESM1-5_2041_2060
+  ssp126_ACCESS-ESM1-5_2061_2080
+  ssp126_ACCESS-ESM1-5_2081_2100
+  ssp126_CanESM5_2021_2040
+  ssp126_CanESM5_2041_2060
+  ssp126_CanESM5_2061_2080
+  ssp126_CanESM5_2081_2100
+  ssp126_CMCC-ESM2_2021_2040
+  ssp126_CMCC-ESM2_2041_2060
+  ssp126_CMCC-ESM2_2061_2080
+  ssp126_CMCC-ESM2_2081_2100
+  ssp126_EC-Earth3_2021_2040
+  ssp126_EC-Earth3_2041_2060
+  ssp126_EC-Earth3_2061_2080
+  ssp126_EC-Earth3_2081_2100
+  ssp126_EC-Earth3-Veg-LR_2021_2040
+  ssp126_EC-Earth3-Veg-LR_2041_2060
+  ssp126_EC-Earth3-Veg-LR_2061_2080
+  ssp126_EC-Earth3-Veg-LR_2081_2100
+  ssp126_GFDL-ESM4_2021_2040
+  ssp126_GFDL-ESM4_2041_2060
+  ssp126_GFDL-ESM4_2061_2080
+  ssp126_GFDL-ESM4_2081_2100
+  ssp126_INM-CM4-8_2021_2040
+  ssp126_INM-CM4-8_2041_2060
+  ssp126_INM-CM4-8_2061_2080
+  ssp126_INM-CM4-8_2081_2100
+  ssp126_INM-CM5-0_2021_2040
+  ssp126_INM-CM5-0_2041_2060
+  ssp126_INM-CM5-0_2061_2080
+  ssp126_INM-CM5-0_2081_2100
+  ssp126_IPSL-CM6A-LR_2021_2040
+  ssp126_IPSL-CM6A-LR_2041_2060
+  ssp126_IPSL-CM6A-LR_2061_2080
+  ssp126_IPSL-CM6A-LR_2081_2100
+  ssp126_KACE-1-0-G_2021_2040
+  ssp126_KACE-1-0-G_2041_2060
+  ssp126_KACE-1-0-G_2061_2080
+  ssp126_KACE-1-0-G_2081_2100
+  ssp126_MIROC6_2021_2040
+  ssp126_MIROC6_2041_2060
+  ssp126_MIROC6_2061_2080
+  ssp126_MIROC6_2081_2100
+  ssp126_MPI-ESM1-2-HR_2021_2040
+  ssp126_MPI-ESM1-2-HR_2041_2060
+  ssp126_MPI-ESM1-2-HR_2061_2080
+  ssp126_MPI-ESM1-2-HR_2081_2100
+  ssp126_MPI-ESM1-2-LR_2021_2040
+  ssp126_MPI-ESM1-2-LR_2041_2060
+  ssp126_MPI-ESM1-2-LR_2061_2080
+  ssp126_MPI-ESM1-2-LR_2081_2100
+  ssp126_MRI-ESM2-0_2021_2040
+  ssp126_MRI-ESM2-0_2041_2060
+  ssp126_MRI-ESM2-0_2061_2080
+  ssp126_MRI-ESM2-0_2081_2100
+  ssp126_NorESM2-LM_2021_2040
+  ssp126_NorESM2-LM_2041_2060
+  ssp126_NorESM2-LM_2061_2080
+  ssp126_NorESM2-LM_2081_2100
+  ssp126_NorESM2-MM_2021_2040
+  ssp126_NorESM2-MM_2041_2060
+  ssp126_NorESM2-MM_2061_2080
+  ssp126_NorESM2-MM_2081_2100
+  ssp126_TaiESM1_2021_2040
+  ssp126_TaiESM1_2041_2060
+  ssp126_TaiESM1_2061_2080
+  ssp126_TaiESM1_2081_2100
+  ssp245_ACCESS-CM2_2021_2040
+  ssp245_ACCESS-CM2_2041_2060
+  ssp245_ACCESS-CM2_2061_2080
+  ssp245_ACCESS-CM2_2081_2100
+  ssp245_ACCESS-ESM1-5_2021_2040
+  ssp245_ACCESS-ESM1-5_2041_2060
+  ssp245_ACCESS-ESM1-5_2061_2080
+  ssp245_ACCESS-ESM1-5_2081_2100
+  ssp245_CanESM5_2021_2040
+  ssp245_CanESM5_2041_2060
+  ssp245_CanESM5_2061_2080
+  ssp245_CanESM5_2081_2100
+  ssp245_CMCC-ESM2_2021_2040
+  ssp245_CMCC-ESM2_2041_2060
+  ssp245_CMCC-ESM2_2061_2080
+  ssp245_CMCC-ESM2_2081_2100
+  ssp245_EC-Earth3_2021_2040
+  ssp245_EC-Earth3_2041_2060
+  ssp245_EC-Earth3_2061_2080
+  ssp245_EC-Earth3_2081_2100
+  ssp245_EC-Earth3-Veg-LR_2021_2040
+  ssp245_EC-Earth3-Veg-LR_2041_2060
+  ssp245_EC-Earth3-Veg-LR_2061_2080
+  ssp245_EC-Earth3-Veg-LR_2081_2100
+  ssp245_GFDL-ESM4_2021_2040
+  ssp245_GFDL-ESM4_2041_2060
+  ssp245_GFDL-ESM4_2061_2080
+  ssp245_GFDL-ESM4_2081_2100
+  ssp245_INM-CM4-8_2021_2040
+  ssp245_INM-CM4-8_2041_2060
+  ssp245_INM-CM4-8_2061_2080
+  ssp245_INM-CM4-8_2081_2100
+  ssp245_INM-CM5-0_2021_2040
+  ssp245_INM-CM5-0_2041_2060
+  ssp245_INM-CM5-0_2061_2080
+  ssp245_INM-CM5-0_2081_2100
+  ssp245_IPSL-CM6A-LR_2021_2040
+  ssp245_IPSL-CM6A-LR_2041_2060
+  ssp245_IPSL-CM6A-LR_2061_2080
+  ssp245_IPSL-CM6A-LR_2081_2100
+  ssp245_KACE-1-0-G_2021_2040
+  ssp245_KACE-1-0-G_2041_2060
+  ssp245_KACE-1-0-G_2061_2080
+  ssp245_KACE-1-0-G_2081_2100
+  ssp245_MIROC6_2021_2040
+  ssp245_MIROC6_2041_2060
+  ssp245_MIROC6_2061_2080
+  ssp245_MIROC6_2081_2100
+  ssp245_MPI-ESM1-2-HR_2021_2040
+  ssp245_MPI-ESM1-2-HR_2041_2060
+  ssp245_MPI-ESM1-2-HR_2061_2080
+  ssp245_MPI-ESM1-2-HR_2081_2100
+  ssp245_MPI-ESM1-2-LR_2021_2040
+  ssp245_MPI-ESM1-2-LR_2041_2060
+  ssp245_MPI-ESM1-2-LR_2061_2080
+  ssp245_MPI-ESM1-2-LR_2081_2100
+  ssp245_MRI-ESM2-0_2021_2040
+  ssp245_MRI-ESM2-0_2041_2060
+  ssp245_MRI-ESM2-0_2061_2080
+  ssp245_MRI-ESM2-0_2081_2100
+  ssp245_NorESM2-LM_2021_2040
+  ssp245_NorESM2-LM_2041_2060
+  ssp245_NorESM2-LM_2061_2080
+  ssp245_NorESM2-LM_2081_2100
+  ssp245_NorESM2-MM_2021_2040
+  ssp245_NorESM2-MM_2041_2060
+  ssp245_NorESM2-MM_2061_2080
+  ssp245_NorESM2-MM_2081_2100
+  ssp245_TaiESM1_2021_2040
+  ssp245_TaiESM1_2041_2060
+  ssp245_TaiESM1_2061_2080
+  ssp245_TaiESM1_2081_2100
+  ssp370_ACCESS-CM2_2021_2040
+  ssp370_ACCESS-CM2_2041_2060
+  ssp370_ACCESS-CM2_2061_2080
+  ssp370_ACCESS-CM2_2081_2100
+  ssp370_ACCESS-ESM1-5_2021_2040
+  ssp370_ACCESS-ESM1-5_2041_2060
+  ssp370_ACCESS-ESM1-5_2061_2080
+  ssp370_ACCESS-ESM1-5_2081_2100
+  ssp370_CanESM5_2021_2040
+  ssp370_CanESM5_2041_2060
+  ssp370_CanESM5_2061_2080
+  ssp370_CanESM5_2081_2100
+  ssp370_CMCC-ESM2_2021_2040
+  ssp370_CMCC-ESM2_2041_2060
+  ssp370_CMCC-ESM2_2061_2080
+  ssp370_CMCC-ESM2_2081_2100
+  ssp370_EC-Earth3_2021_2040
+  ssp370_EC-Earth3_2041_2060
+  ssp370_EC-Earth3_2061_2080
+  ssp370_EC-Earth3_2081_2100
+  ssp370_EC-Earth3-Veg-LR_2021_2040
+  ssp370_EC-Earth3-Veg-LR_2041_2060
+  ssp370_EC-Earth3-Veg-LR_2061_2080
+  ssp370_EC-Earth3-Veg-LR_2081_2100
+  ssp370_GFDL-ESM4_2021_2040
+  ssp370_GFDL-ESM4_2041_2060
+  ssp370_GFDL-ESM4_2061_2080
+  ssp370_GFDL-ESM4_2081_2100
+  ssp370_INM-CM4-8_2021_2040
+  ssp370_INM-CM4-8_2041_2060
+  ssp370_INM-CM4-8_2061_2080
+  ssp370_INM-CM4-8_2081_2100
+  ssp370_INM-CM5-0_2021_2040
+  ssp370_INM-CM5-0_2041_2060
+  ssp370_INM-CM5-0_2061_2080
+  ssp370_INM-CM5-0_2081_2100
+  ssp370_IPSL-CM6A-LR_2021_2040
+  ssp370_IPSL-CM6A-LR_2041_2060
+  ssp370_IPSL-CM6A-LR_2061_2080
+  ssp370_IPSL-CM6A-LR_2081_2100
+  ssp370_KACE-1-0-G_2021_2040
+  ssp370_KACE-1-0-G_2041_2060
+  ssp370_KACE-1-0-G_2061_2080
+  ssp370_KACE-1-0-G_2081_2100
+  ssp370_MIROC6_2021_2040
+  ssp370_MIROC6_2041_2060
+  ssp370_MIROC6_2061_2080
+  ssp370_MIROC6_2081_2100
+  ssp370_MPI-ESM1-2-HR_2021_2040
+  ssp370_MPI-ESM1-2-HR_2041_2060
+  ssp370_MPI-ESM1-2-HR_2061_2080
+  ssp370_MPI-ESM1-2-HR_2081_2100
+  ssp370_MPI-ESM1-2-LR_2021_2040
+  ssp370_MPI-ESM1-2-LR_2041_2060
+  ssp370_MPI-ESM1-2-LR_2061_2080
+  ssp370_MPI-ESM1-2-LR_2081_2100
+  ssp370_MRI-ESM2-0_2021_2040
+  ssp370_MRI-ESM2-0_2041_2060
+  ssp370_MRI-ESM2-0_2061_2080
+  ssp370_MRI-ESM2-0_2081_2100
+  ssp370_NorESM2-LM_2021_2040
+  ssp370_NorESM2-LM_2041_2060
+  ssp370_NorESM2-LM_2061_2080
+  ssp370_NorESM2-LM_2081_2100
+  ssp370_NorESM2-MM_2021_2040
+  ssp370_NorESM2-MM_2041_2060
+  ssp370_NorESM2-MM_2061_2080
+  ssp370_NorESM2-MM_2081_2100
+  ssp370_TaiESM1_2021_2040
+  ssp370_TaiESM1_2041_2060
+  ssp370_TaiESM1_2061_2080
+  ssp370_TaiESM1_2081_2100
+  ssp585_ACCESS-CM2_2021_2040
+  ssp585_ACCESS-CM2_2041_2060
+  ssp585_ACCESS-CM2_2061_2080
+  ssp585_ACCESS-CM2_2081_2100
+  ssp585_ACCESS-ESM1-5_2021_2040
+  ssp585_ACCESS-ESM1-5_2041_2060
+  ssp585_ACCESS-ESM1-5_2061_2080
+  ssp585_ACCESS-ESM1-5_2081_2100
+  ssp585_CanESM5_2021_2040
+  ssp585_CanESM5_2041_2060
+  ssp585_CanESM5_2061_2080
+  ssp585_CanESM5_2081_2100
+  ssp585_CMCC-ESM2_2021_2040
+  ssp585_CMCC-ESM2_2041_2060
+  ssp585_CMCC-ESM2_2061_2080
+  ssp585_CMCC-ESM2_2081_2100
+  ssp585_EC-Earth3_2021_2040
+  ssp585_EC-Earth3_2041_2060
+  ssp585_EC-Earth3_2061_2080
+  ssp585_EC-Earth3_2081_2100
+  ssp585_EC-Earth3-Veg-LR_2021_2040
+  ssp585_EC-Earth3-Veg-LR_2041_2060
+  ssp585_EC-Earth3-Veg-LR_2061_2080
+  ssp585_EC-Earth3-Veg-LR_2081_2100
+  ssp585_GFDL-ESM4_2021_2040
+  ssp585_GFDL-ESM4_2041_2060
+  ssp585_GFDL-ESM4_2061_2080
+  ssp585_GFDL-ESM4_2081_2100
+  ssp585_INM-CM4-8_2021_2040
+  ssp585_INM-CM4-8_2041_2060
+  ssp585_INM-CM4-8_2061_2080
+  ssp585_INM-CM4-8_2081_2100
+  ssp585_INM-CM5-0_2021_2040
+  ssp585_INM-CM5-0_2041_2060
+  ssp585_INM-CM5-0_2061_2080
+  ssp585_INM-CM5-0_2081_2100
+  ssp585_IPSL-CM6A-LR_2021_2040
+  ssp585_IPSL-CM6A-LR_2041_2060
+  ssp585_IPSL-CM6A-LR_2061_2080
+  ssp585_IPSL-CM6A-LR_2081_2100
+  ssp585_KACE-1-0-G_2021_2040
+  ssp585_KACE-1-0-G_2041_2060
+  ssp585_KACE-1-0-G_2061_2080
+  ssp585_KACE-1-0-G_2081_2100
+  ssp585_MIROC6_2021_2040
+  ssp585_MIROC6_2041_2060
+  ssp585_MIROC6_2061_2080
+  ssp585_MIROC6_2081_2100
+  ssp585_MPI-ESM1-2-HR_2021_2040
+  ssp585_MPI-ESM1-2-HR_2041_2060
+  ssp585_MPI-ESM1-2-HR_2061_2080
+  ssp585_MPI-ESM1-2-HR_2081_2100
+  ssp585_MPI-ESM1-2-LR_2021_2040
+  ssp585_MPI-ESM1-2-LR_2041_2060
+  ssp585_MPI-ESM1-2-LR_2061_2080
+  ssp585_MPI-ESM1-2-LR_2081_2100
+  ssp585_MRI-ESM2-0_2021_2040
+  ssp585_MRI-ESM2-0_2041_2060
+  ssp585_MRI-ESM2-0_2061_2080
+  ssp585_MRI-ESM2-0_2081_2100
+  ssp585_NorESM2-LM_2021_2040
+  ssp585_NorESM2-LM_2041_2060
+  ssp585_NorESM2-LM_2061_2080
+  ssp585_NorESM2-LM_2081_2100
+  ssp585_NorESM2-MM_2021_2040
+  ssp585_NorESM2-MM_2041_2060
+  ssp585_NorESM2-MM_2061_2080
+  ssp585_NorESM2-MM_2081_2100
+  ssp585_TaiESM1_2021_2040
+  ssp585_TaiESM1_2041_2060
+  ssp585_TaiESM1_2061_2080
+  ssp585_TaiESM1_2081_2100
+
