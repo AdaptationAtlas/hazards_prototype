@@ -1344,12 +1344,20 @@ for (tx in seq_along(timeframes)) {
               any_haz_mean <- terra::mean(any_haz, na.rm = TRUE)
               names(any_haz_mean) <- paste0(scen_mod_time_choice, "_any")
 
+              # None haz — CR-068(a): per-pixel probability of NO hazard
+              # exposure = 1 - prob(any). When R/3 multiplies by VoP and
+              # zonally sums, value(none) + value(any) = total VoP for that
+              # (admin, crop), so the % exposed denominator becomes
+              # self-contained inside hazard_exposure.parquet.
+              none_haz_mean <- 1 - any_haz_mean
+              names(none_haz_mean) <- paste0(scen_mod_time_choice, "_none")
+
               # Interactions
               int <- terra::rast(lapply(seq_len(nrow(combo_binary)), FUN = function(a) {
                 data <- int_risk(data = haz_sum, interaction_mask_vals = combo_binary[-a, value], lyr_name = combo_binary[a, lyr_names])
               }))
 
-              int_any <- c(any_haz_mean, int)
+              int_any <- c(any_haz_mean, none_haz_mean, int)
 
               if (!is.null(round5.2)) {
                 int_any <- round(int_any, round5.2)
@@ -1357,7 +1365,7 @@ for (tx in seq_along(timeframes)) {
 
               terra::writeRaster(int_any, filename = save_file, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
 
-              rm(haz, haz_sum, int, any_haz, any_haz_mean, int_any)
+              rm(haz, haz_sum, int, any_haz, any_haz_mean, none_haz_mean, int_any)
               gc()
             }
           }
