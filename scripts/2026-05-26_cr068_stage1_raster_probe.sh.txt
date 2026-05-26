@@ -1,27 +1,26 @@
 # ----------------------------------------------------------------------
-# Script: 2026-05-26_cr068_stage1_raster_probe.sh
-# Purpose: Stage 1 of the CR-068 investigation — confirm or refute the
-#          "historic NDWS-G19 (or other hazard layer) is saturated"
-#          hypothesis by inventorying the classified hazard rasters at
-#          Data/hazard_timeseries_class/<timeframe>/*.tif and emitting
-#          a per-(hazard, timeframe) saturation table. STOP-AND-REPORT
-#          before Stage 2; this script does NO remediation.
+# Script: 2026-05-26_cr068_stage1_raster_probe.sh   (v2 — fixes layout
+#         assumptions from v1: classified rasters live FLAT under
+#         Data/hazard_timeseries_class/<timeframe>/ with
+#         <scenario>_<gcm>_<period>_<variable>.tif naming, NOT nested
+#         by scenario/period subdir.)
+# Purpose: Stage 1 of the CR-068 investigation — confirm or refute
+#          "one or more classified hazard layers are saturated for
+#          historic but not future" hypothesis. STOP-AND-REPORT;
+#          no remediation.
 #
-# Context: The 2026-05-26 issue-#9 rebake fixed mass-conservation
-#          downstream of hazard categorisation but did NOT address the
-#          three CR-068 findings (categorisation asymmetry, SSP370
-#          missing periods, missing hazard='none' row). See
-#            atlas_notebooks/playbook/handovers/climateRationale/
-#              dispatches/2026-05-18_hazards-prototype-categorisation-bug.md
-#          for the debug spec this stage executes.
+# Context: 2026-05-26 issue-#9 rebake refreshed mass conservation but
+#          NOT the CR-068 categorisation asymmetry / SSP370 gap.
+#          Spec: atlas_notebooks/.../2026-05-18_hazards-prototype-
+#          categorisation-bug.md  (now carries an OUTCOME banner).
 #
 # Environment: CGlabs JupyterHub
-# Convention: paste-able blocks. R blocks use 'Rscript - <<EOF' heredoc
-#          and source R/0_server_setup.R so atlas_dirs resolves under
-#          the climdat_source-specific working_dir (Data/ lives at
-#          /home/jovyan/common_data/nex-gddp-cimp6_hazards/ on CGlabs).
-# Reference: scripts/2026-05-26_handover.md (state machine), and
-#          atlas_notebooks/.../ISSUES.md CR-068 (3 findings).
+# Convention: paste-able blocks. Each Rscript heredoc sources
+#          R/0_server_setup.R (Data/ lives at
+#          /home/jovyan/common_data/nex-gddp-cimp6_hazards/ on nexgddp).
+#          Raw indices lives at a SEPARATE path:
+#          /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices
+#          (per 0_server_setup.R:154-158 — used in 1E).
 # ----------------------------------------------------------------------
 
 # ======================================================================
@@ -38,311 +37,256 @@ STAMP=$(date +%Y%m%d_%H%M%S)
 LOG_FILE="$LOG_DIR/cr068_stage1_raster_probe_${STAMP}.log"
 echo "Logging to $LOG_FILE"
 
+# Knobs (adjust if 1A shows different naming):
+export PROBE_GCM="ACCESS-CM2"           # one GCM — historic-vs-future GAP is what matters
+export FUTURE_SCENARIO="ssp245"         # representative non-SSP370 future
+export FUTURE_PERIOD="2041-2060"        # representative non-2021-2040 future
+export TIMEFRAME="annual"               # 'annual' or 'jagermeyr' (also exists)
+
 
 # ======================================================================
-# 1A) Inventory — what classified-hazard rasters actually exist on disk?
+# 1A) Inventory — parse filenames + count by (scenario, period)
 # ======================================================================
-# Stage 1 needs to know the actual directory layout AND the actual
-# filenames before we probe — the dispatch's hypothesis names
-# NDWS-G19.tif but the real on-disk names may differ. List the
-# top-level structure of hazard_timeseries_class/ and a representative
-# subfolder.
 echo "" | tee -a "$LOG_FILE"
-echo "===== 1A) Classified raster inventory =====" | tee -a "$LOG_FILE"
-Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
-suppressMessages(suppressWarnings(
-  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
-))
-class_root <- atlas_dirs$data_dir$hazard_timeseries_class
-cat("class_root =", normalizePath(class_root, mustWork = TRUE), "\n\n")
-
-timeframes <- list.dirs(class_root, recursive = FALSE, full.names = FALSE)
-cat("Timeframe subdirs (", length(timeframes), "):\n", sep = "")
-for (tf in timeframes) cat("  ", tf, "\n", sep = "")
-
-# Sample one timeframe — list TIFs to see naming conventions
-if (length(timeframes) > 0) {
-  sample_tf <- timeframes[1]
-  cat("\nSample listing of '", sample_tf, "':\n", sep = "")
-  files <- list.files(file.path(class_root, sample_tf),
-                      pattern = "\\.tif$", full.names = FALSE)
-  cat("  (", length(files), " files)\n", sep = "")
-  # Print head + tail so we see naming patterns without dumping thousands
-  print(head(files, 30))
-  if (length(files) > 30) {
-    cat("  ...\n")
-    print(tail(files, 10))
-  }
-}
-EOF
-
-
-# ======================================================================
-# 1B) Per-hazard saturation probe — HISTORIC
-# ======================================================================
-# For each classified hazard raster under hazard_timeseries_class/historic/,
-# compute summary stats. The "saturation" signal is mean ~ 1 AND
-# fraction_of_pixels_eq_max ~ 1 (every cell exceeds the threshold
-# every year, so the layer carries no information). If multiple
-# layers (bands), aggregate per-band first.
-#
-# Stats reported per raster:
-#   n_layers, n_pixels, n_finite, min, p05, p50, mean, p95, max,
-#   pct_eq_max (saturation), pct_eq_zero (dead pixels)
-echo "" | tee -a "$LOG_FILE"
-echo "===== 1B) Historic saturation probe =====" | tee -a "$LOG_FILE"
-Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
-suppressPackageStartupMessages({library(terra); library(data.table)})
-suppressMessages(suppressWarnings(
-  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
-))
-class_root <- atlas_dirs$data_dir$hazard_timeseries_class
-hist_dir <- file.path(class_root, "historic")
-if (!dir.exists(hist_dir)) {
-  stop("historic dir missing at ", hist_dir,
-       " — check Stage 1A inventory for the actual name (could be 'hist', '1995-2014', etc.)")
-}
-
-probe_raster <- function(f) {
-  r <- tryCatch(terra::rast(f), error = function(e) NULL)
-  if (is.null(r)) return(data.table(file = basename(f), error = "rast() failed"))
-  v <- terra::values(r, dataframe = FALSE, na.rm = TRUE)
-  if (length(v) == 0L) return(data.table(file = basename(f), error = "empty"))
-  v <- as.numeric(v)
-  qs <- quantile(v, c(0.05, 0.50, 0.95), na.rm = TRUE, names = FALSE)
-  data.table(
-    file       = basename(f),
-    n_layers   = terra::nlyr(r),
-    n_finite   = length(v),
-    min        = min(v, na.rm = TRUE),
-    p05        = qs[1],
-    p50        = qs[2],
-    mean       = mean(v, na.rm = TRUE),
-    p95        = qs[3],
-    max        = max(v, na.rm = TRUE),
-    pct_eq_max = round(100 * mean(v == max(v, na.rm = TRUE), na.rm = TRUE), 2),
-    pct_eq_zero = round(100 * mean(v == 0, na.rm = TRUE), 2)
-  )
-}
-
-files <- list.files(hist_dir, pattern = "\\.tif$", full.names = TRUE)
-cat("Found ", length(files), " classified rasters under ", hist_dir, "\n\n", sep = "")
-if (length(files) == 0L) {
-  cat("(no rasters — skipping)\n")
-} else {
-  # Probe all, but show a progress dot per 5 files (some folders have 100s)
-  out <- vector("list", length(files))
-  for (i in seq_along(files)) {
-    out[[i]] <- probe_raster(files[[i]])
-    if (i %% 5 == 0L) cat(".")
-    if (i %% 200 == 0L) cat(" ", i, "\n", sep = "")
-  }
-  cat("\n")
-  hist_stats <- rbindlist(out, fill = TRUE)
-  hist_stats <- hist_stats[order(-pct_eq_max)]
-  cat("\nTop 20 by pct_eq_max (saturation candidates first):\n")
-  print(hist_stats[1:min(20, .N)])
-  # Save full table for downstream comparison
-  saveRDS(hist_stats, file.path(Sys.getenv("LOG_DIR"),
-          sprintf("cr068_hist_stats_%s.rds", Sys.getenv("STAMP"))))
-  cat("\nFull table saved to ", Sys.getenv("LOG_DIR"),
-      "/cr068_hist_stats_", Sys.getenv("STAMP"), ".rds\n", sep = "")
-}
-EOF
-
-
-# ======================================================================
-# 1C) Per-hazard saturation probe — FUTURE (representative)
-# ======================================================================
-# Repeat 1B against ONE future-period folder. Picking the one with the
-# most representative coverage and most distinct from historic so any
-# saturation gap is visible. Adjust FUTURE_TIMEFRAME below if Stage 1A
-# shows a different naming. Common candidates: '2021-2040', '2041-2060',
-# '2061-2080', '2081-2100' (sometimes nested under a scenario subdir).
-export FUTURE_TIMEFRAME="2041-2060"   # tweak after Stage 1A if needed
-echo "" | tee -a "$LOG_FILE"
-echo "===== 1C) Future ($FUTURE_TIMEFRAME) saturation probe =====" | tee -a "$LOG_FILE"
-Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
-suppressPackageStartupMessages({library(terra); library(data.table)})
-suppressMessages(suppressWarnings(
-  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
-))
-class_root <- atlas_dirs$data_dir$hazard_timeseries_class
-fut_tf <- Sys.getenv("FUTURE_TIMEFRAME")
-fut_dir <- file.path(class_root, fut_tf)
-if (!dir.exists(fut_dir)) {
-  # Try to find a matching subdir at any depth — naming might differ
-  cands <- list.dirs(class_root, recursive = TRUE, full.names = TRUE)
-  match <- grep(paste0("/", fut_tf, "(/|$)"), cands, value = TRUE)
-  if (length(match) > 0L) fut_dir <- match[1]
-}
-if (!dir.exists(fut_dir)) {
-  stop("future timeframe dir '", fut_tf, "' not found anywhere under ",
-       class_root, " — check Stage 1A and adjust FUTURE_TIMEFRAME.")
-}
-cat("Probing: ", fut_dir, "\n\n", sep = "")
-
-probe_raster <- function(f) {
-  r <- tryCatch(terra::rast(f), error = function(e) NULL)
-  if (is.null(r)) return(data.table(file = basename(f), error = "rast() failed"))
-  v <- terra::values(r, dataframe = FALSE, na.rm = TRUE)
-  if (length(v) == 0L) return(data.table(file = basename(f), error = "empty"))
-  v <- as.numeric(v)
-  qs <- quantile(v, c(0.05, 0.50, 0.95), na.rm = TRUE, names = FALSE)
-  data.table(
-    file       = basename(f),
-    n_layers   = terra::nlyr(r),
-    n_finite   = length(v),
-    min        = min(v, na.rm = TRUE),
-    p05        = qs[1],
-    p50        = qs[2],
-    mean       = mean(v, na.rm = TRUE),
-    p95        = qs[3],
-    max        = max(v, na.rm = TRUE),
-    pct_eq_max = round(100 * mean(v == max(v, na.rm = TRUE), na.rm = TRUE), 2),
-    pct_eq_zero = round(100 * mean(v == 0, na.rm = TRUE), 2)
-  )
-}
-
-files <- list.files(fut_dir, pattern = "\\.tif$", full.names = TRUE)
-cat("Found ", length(files), " classified rasters\n\n", sep = "")
-out <- vector("list", length(files))
-for (i in seq_along(files)) {
-  out[[i]] <- probe_raster(files[[i]])
-  if (i %% 5 == 0L) cat(".")
-  if (i %% 200 == 0L) cat(" ", i, "\n", sep = "")
-}
-cat("\n")
-fut_stats <- rbindlist(out, fill = TRUE)
-fut_stats <- fut_stats[order(-pct_eq_max)]
-cat("\nTop 20 by pct_eq_max (saturation candidates first):\n")
-print(fut_stats[1:min(20, .N)])
-saveRDS(fut_stats, file.path(Sys.getenv("LOG_DIR"),
-        sprintf("cr068_fut_stats_%s.rds", Sys.getenv("STAMP"))))
-cat("\nFull table saved.\n")
-EOF
-
-
-# ======================================================================
-# 1D) Diff verdict — which layers are saturated in historic but NOT future?
-# ======================================================================
-# Joins the two stats tables by file basename and ranks the largest
-# (hist.mean - fut.mean) gaps. A layer with hist.mean ~ 1 (or
-# hist.pct_eq_max ~ 100 %) AND fut.mean << 1 is the categorisation
-# bug's smoking gun: the layer carries no information historically.
-echo "" | tee -a "$LOG_FILE"
-echo "===== 1D) Saturation diff: HISTORIC vs FUTURE =====" | tee -a "$LOG_FILE"
-Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
-suppressPackageStartupMessages({library(data.table)})
-log_dir <- Sys.getenv("LOG_DIR")
-stamp   <- Sys.getenv("STAMP")
-hist_rds <- file.path(log_dir, sprintf("cr068_hist_stats_%s.rds", stamp))
-fut_rds  <- file.path(log_dir, sprintf("cr068_fut_stats_%s.rds",  stamp))
-if (!file.exists(hist_rds) || !file.exists(fut_rds)) {
-  stop("Stats RDS files missing — run 1B and 1C first.")
-}
-h <- readRDS(hist_rds); f <- readRDS(fut_rds)
-setnames(h, c("mean", "pct_eq_max", "pct_eq_zero", "p50", "p95", "max"),
-            c("h_mean","h_pct_max","h_pct_zero","h_p50","h_p95","h_max"))
-setnames(f, c("mean", "pct_eq_max", "pct_eq_zero", "p50", "p95", "max"),
-            c("f_mean","f_pct_max","f_pct_zero","f_p50","f_p95","f_max"))
-keep <- c("file","h_mean","h_pct_max","h_pct_zero","f_mean","f_pct_max","f_pct_zero")
-merged <- merge(h[, ..keep[c(1:4)]], f[, ..keep[c(1, 5:7)]], by = "file", all = FALSE)
-merged[, mean_gap := h_mean - f_mean]
-merged[, sat_gap  := h_pct_max - f_pct_max]
-setorder(merged, -mean_gap)
-cat("Top 20 layers by hist.mean - fut.mean (positive => historic saturated more):\n")
-print(merged[1:min(20, .N)])
-
-cat("\n--- Verdict ---\n")
-threshold_mean_gap <- 0.30   # 30+ pp difference in mean classification
-threshold_sat_gap  <- 50     # 50+ pp difference in pct_eq_max
-flagged <- merged[mean_gap > threshold_mean_gap | sat_gap > threshold_sat_gap]
-if (nrow(flagged) == 0L) {
-  cat("NO clear saturation gap. CR-068(b) categorisation asymmetry may NOT be ",
-      "explained by simple historic-layer saturation — the bug is elsewhere ",
-      "(e.g. threshold function, layer rename collision, scenario-dependent ",
-      "categorisation). Stage 2 should walk upstream (raw timeseries + ",
-      "thresholds) rather than re-bake the classified rasters.\n", sep = "")
-} else {
-  cat(nrow(flagged), " layer(s) flagged as potentially saturated historic:\n\n", sep = "")
-  print(flagged[order(-mean_gap)])
-  cat("\nLikely root-cause direction: the raw timeseries that feed these layers ",
-      "produce saturated counts under the historic baseline. Stage 2 should ",
-      "inspect Data/hazard_timeseries/historic/ for the parent raster of each ",
-      "flagged layer + the threshold function that emits the classified value.\n", sep = "")
-}
-EOF
-
-
-# ======================================================================
-# 1E) SSP370 future-period coverage — separate but bundled CR-068(c) probe
-# ======================================================================
-# CR-068(c) says SSP370 has zero data for 2041+. Two possibilities:
-#   (i)  Raw input timeseries are missing (NEX-GDDP fetch didn't pull
-#        SSP370 future from NASA) — investigate Step 1 / fetch script.
-#   (ii) Raw inputs exist but classification step emits zeros (bug in
-#        Step 2 / hazard_freq classification for SSP370 specifically).
-# This block disambiguates by listing files under
-# Data/hazard_timeseries/ for SSP370 vs SSP245 (a sibling that works).
-echo "" | tee -a "$LOG_FILE"
-echo "===== 1E) SSP370 raw-input coverage check =====" | tee -a "$LOG_FILE"
+echo "===== 1A) Filename inventory =====" | tee -a "$LOG_FILE"
 Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
 suppressPackageStartupMessages({library(data.table)})
 suppressMessages(suppressWarnings(
   source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
 ))
-ts_root <- atlas_dirs$data_dir$hazard_timeseries
-cat("Raw-timeseries root: ", normalizePath(ts_root, mustWork = TRUE), "\n\n", sep = "")
+class_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_class, Sys.getenv("TIMEFRAME"))
+cat("class_dir = ", normalizePath(class_dir, mustWork = TRUE), "\n", sep = "")
 
-# Walk the directory two levels deep so we see scenario × period combos
-list_tree <- function(root, depth = 3) {
-  d <- list.dirs(root, recursive = TRUE, full.names = TRUE)
-  rel <- sub(paste0("^", root, "/?"), "", d)
-  parts <- strsplit(rel, "/")
-  keep <- vapply(parts, function(p) length(p) > 0L && length(p) <= depth, logical(1))
-  d[keep]
-}
-all_dirs <- list_tree(ts_root, depth = 3)
-cat("Subdirs (depth <=3):\n")
-for (d in all_dirs) cat("  ", sub(paste0("^", ts_root, "/?"), "", d), "\n", sep = "")
+files <- list.files(class_dir, "\\.tif$", full.names = FALSE)
+cat("total TIFs: ", length(files), "\n\n", sep = "")
 
-# Per (scenario, period), count TIFs — empty cells = no data
-cat("\nFile counts per (scenario, period):\n")
-periods   <- c("2021-2040","2041-2060","2061-2080","2081-2100")
-scenarios <- c("ssp126","ssp245","ssp370","ssp585")
-results <- data.table(
-  scenario = rep(scenarios, each = length(periods)),
-  period   = rep(periods,    times = length(scenarios)),
-  n_tifs   = NA_integer_,
-  exists   = NA
+# Parse: <scenario>_<gcm>_<period>_<variable>.tif  (variable may contain '_' itself)
+stems <- sub("\\.tif$", "", files)
+parts <- strsplit(stems, "_", fixed = TRUE)
+parsed <- data.table(
+  file     = files,
+  scenario = vapply(parts, `[`, character(1), 1L),
+  gcm      = vapply(parts, `[`, character(1), 2L),
+  period   = vapply(parts, `[`, character(1), 3L),
+  variable = vapply(parts, function(p) paste(p[-(1:3)], collapse = "_"), character(1))
 )
-for (i in seq_len(nrow(results))) {
-  # Probe a couple of plausible layouts: <scenario>/<period> AND <period>/<scenario>
-  cand1 <- file.path(ts_root, results$scenario[i], results$period[i])
-  cand2 <- file.path(ts_root, results$period[i],   results$scenario[i])
-  cand3 <- file.path(ts_root, paste0(results$scenario[i], "_", results$period[i]))
-  found <- c(cand1, cand2, cand3)[c(dir.exists(cand1), dir.exists(cand2), dir.exists(cand3))]
-  results$exists[i] <- length(found) > 0L
-  results$n_tifs[i] <- if (length(found) == 0L) 0L else
-    length(list.files(found[1], pattern = "\\.tif$", recursive = TRUE))
-}
-print(results)
 
-cat("\n--- Verdict ---\n")
-ssp370_present <- results[scenario == "ssp370" & n_tifs > 0L, .N]
-ssp245_present <- results[scenario == "ssp245" & n_tifs > 0L, .N]
-if (ssp370_present == 0L && ssp245_present > 0L) {
-  cat("SSP370 raw inputs MISSING entirely — bug is upstream of Step 1 ",
-      "(NEX-GDDP fetch / make_timeseries). Need to re-pull SSP370 future ",
-      "from NASA + re-run R/1_make_timeseries.R.\n", sep = "")
-} else if (ssp370_present == 4L) {
-  cat("SSP370 raw inputs PRESENT for all 4 future periods — bug is in ",
-      "Step 2 (classification or aggregation drops SSP370). Inspect ",
-      "R/2_calculate_haz_freq.R for scenario-dependent branches.\n", sep = "")
+cat("Scenarios: ", paste(sort(unique(parsed$scenario)), collapse = ", "), "\n", sep = "")
+cat("GCMs (", length(unique(parsed$gcm)), "): ",
+    paste(sort(unique(parsed$gcm)), collapse = ", "), "\n", sep = "")
+cat("Periods:   ", paste(sort(unique(parsed$period)), collapse = ", "), "\n\n", sep = "")
+
+# Variable families = first hyphen-split token (NDWS, NTx35, NDWL0, THI-max, ...)
+parsed[, var_family := sub("-.*$", "", variable)]
+cat("Variable families + count:\n")
+print(parsed[, .(.N), by = var_family][order(-N)])
+
+cat("\nFile counts per (scenario, period):\n")
+print(parsed[, .N, by = .(scenario, period)][order(scenario, period)])
+
+# Check which NTx variants actually exist (dispatch hypothesis: NTx35)
+cat("\nUnique NTx* variants in filenames:\n")
+print(sort(unique(parsed[grepl("^NTx", var_family), variable])))
+
+# Snapshot key knobs match real files
+gcm <- Sys.getenv("PROBE_GCM")
+fs  <- Sys.getenv("FUTURE_SCENARIO")
+fp  <- Sys.getenv("FUTURE_PERIOD")
+cat("\nKnob-coverage check:\n")
+cat("  historic + PROBE_GCM rows: ",
+    parsed[scenario == "historic" & gcm == gcm, .N], "\n", sep = "")
+cat("  ", fs, " + ", fp, " + PROBE_GCM rows: ",
+    parsed[scenario == fs & period == fp & gcm == gcm, .N], "\n", sep = "")
+EOF
+
+
+# ======================================================================
+# 1B) Saturation probe — historic vs future, ONE GCM, per variant
+# ======================================================================
+# Probes one representative GCM (PROBE_GCM) for the four hazard families
+# the categorisation step actually uses (NDWS, NTx35, NDWL0, THI-max —
+# per the validator's `hazard_vars IN (...)` filter). For each variant
+# (G-threshold), compares historic mean vs future mean. A historic-only
+# saturation (high mean historic, normal future) is CR-068(b)'s smoking
+# gun.
+echo "" | tee -a "$LOG_FILE"
+echo "===== 1B) Per-variant saturation probe (PROBE_GCM = $PROBE_GCM) =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(terra); library(data.table)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+class_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_class, Sys.getenv("TIMEFRAME"))
+gcm  <- Sys.getenv("PROBE_GCM")
+fs   <- Sys.getenv("FUTURE_SCENARIO")
+fp   <- Sys.getenv("FUTURE_PERIOD")
+
+# Hazard families that participate in CR-068's categorisation step
+HAZARDS <- c("NDWS", "NTx35", "NDWL0", "THI-max")
+
+# Fast stats via terra::global — operates on layers without pulling
+# everything into R memory. Returns one row per layer.
+probe <- function(path) {
+  r <- suppressWarnings(try(terra::rast(path), silent = TRUE))
+  if (inherits(r, "try-error")) return(NULL)
+  g <- suppressWarnings(terra::global(r,
+    fun = c("min","mean","max"), na.rm = TRUE))
+  v <- suppressWarnings(terra::values(r, na.rm = TRUE))
+  if (length(v) == 0L) return(NULL)
+  v <- as.numeric(v)
+  data.table(
+    file        = basename(path),
+    n_finite    = length(v),
+    mean        = g$mean[1],
+    min         = g$min[1],
+    max         = g$max[1],
+    pct_eq_max  = round(100 * mean(v == g$max[1]), 2),
+    pct_eq_zero = round(100 * mean(v == 0), 2)
+  )
+}
+
+flagged_all <- list()
+for (haz in HAZARDS) {
+  cat(sprintf("\n--- %s ---\n", haz))
+  hist_re <- sprintf("^historic_%s_[^_]+_%s[^.]*\\.tif$",   gcm, haz)
+  fut_re  <- sprintf("^%s_%s_%s_%s[^.]*\\.tif$", fs, gcm, fp, haz)
+  hist_f <- list.files(class_dir, hist_re, full.names = TRUE)
+  fut_f  <- list.files(class_dir, fut_re,  full.names = TRUE)
+  cat(sprintf("  historic files: %d   future (%s %s) files: %d\n",
+              length(hist_f), fs, fp, length(fut_f)))
+  if (length(hist_f) == 0 || length(fut_f) == 0) {
+    cat("  (skipping — one side empty)\n")
+    next
+  }
+
+  # Variant = the <variable> portion (e.g. 'NDWS-mean-G15')
+  to_variant <- function(f) {
+    sub(sprintf("^[^_]+_%s_[^_]+_", gcm), "",
+        sub("\\.tif$", "", basename(f)))
+  }
+  hist_dt <- rbindlist(lapply(hist_f, probe))
+  fut_dt  <- rbindlist(lapply(fut_f,  probe))
+  if (nrow(hist_dt) == 0 || nrow(fut_dt) == 0) {
+    cat("  (skipping — no readable files)\n"); next
+  }
+  hist_dt[, variant := to_variant(file)]
+  fut_dt[,  variant := to_variant(file)]
+
+  merged <- merge(
+    hist_dt[, .(variant, h_mean = mean, h_pct_max = pct_eq_max, h_max = max)],
+    fut_dt[,  .(variant, f_mean = mean, f_pct_max = pct_eq_max, f_max = max)],
+    by = "variant"
+  )
+  merged[, mean_gap := h_mean - f_mean]
+  merged[, sat_gap  := h_pct_max - f_pct_max]
+  setorder(merged, -mean_gap)
+  cat(sprintf("  %d variants matched — top 10 by mean_gap (historic - future):\n",
+              nrow(merged)))
+  print(merged[1:min(10L, .N)])
+  merged[, hazard := haz]
+  flagged_all[[haz]] <- merged
+}
+
+# Verdict
+cat("\n=== VERDICT (1B) ===\n")
+all_dt <- rbindlist(flagged_all, fill = TRUE)
+saveRDS(all_dt, file.path(Sys.getenv("LOG_DIR"),
+        sprintf("cr068_stage1b_%s.rds", Sys.getenv("STAMP"))))
+threshold_mean <- 0.30   # 30 pp gap in mean classification
+threshold_sat  <- 50     # 50 pp gap in pct_eq_max
+flagged <- all_dt[mean_gap > threshold_mean | sat_gap > threshold_sat]
+if (nrow(flagged) == 0L) {
+  cat("NO variant exceeds thresholds (mean_gap > 0.30 OR sat_gap > 50 pp).\n")
+  cat("CR-068(b) is NOT explained by simple historic-layer saturation in the\n")
+  cat("classified rasters. Stage 2 should look UPSTREAM of classification —\n")
+  cat("either the threshold function in R/2_calculate_haz_freq.R or the raw\n")
+  cat("indices at /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices.\n")
 } else {
-  cat("SSP370 raw inputs PARTIAL (", ssp370_present, " / 4 periods present). ",
-      "Need to identify which periods got fetched + which didn't.\n", sep = "")
+  cat(nrow(flagged), " variant(s) flagged:\n", sep = "")
+  print(flagged[order(-mean_gap), .(hazard, variant, h_mean, f_mean, mean_gap, h_pct_max, f_pct_max, sat_gap)])
+  cat("\nStage 2 should walk upstream from these variants — inspect the raw\n")
+  cat("indices feeding them at indices_dir, plus the threshold step in\n")
+  cat("R/2_calculate_haz_freq.R that emits the classified values.\n")
+}
+EOF
+
+
+# ======================================================================
+# 1C) SSP370 raw-input coverage — CR-068(c) bundled probe
+# ======================================================================
+# Raw NEX-GDDP indices live at indices_dir (NOT under Data/). Walk the
+# tree for each (scenario, period) combo we'd expect and count files,
+# disambiguating whether SSP370 future is missing because the fetch
+# pipeline didn't pull it (raw inputs absent) or because Step 2 dropped
+# it (raw inputs present but classification emits nothing).
+echo "" | tee -a "$LOG_FILE"
+echo "===== 1C) SSP370 raw-input coverage at indices_dir =====" | tee -a "$LOG_FILE"
+Rscript - <<'EOF' 2>&1 | tee -a "$LOG_FILE"
+suppressPackageStartupMessages({library(data.table)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+if (!exists("indices_dir") || !dir.exists(indices_dir)) {
+  stop("indices_dir not set or missing — check R/0_server_setup.R lines 150-158")
+}
+cat("indices_dir = ", indices_dir, "\n\n", sep = "")
+
+# Walk depth=3 so we see scenario / period / gcm or scenario / gcm /
+# period or similar — print the tree skeleton first.
+top <- list.dirs(indices_dir, recursive = FALSE, full.names = FALSE)
+cat("Top-level subdirs:\n  ", paste(top, collapse = "\n  "), "\n\n", sep = "")
+
+# Search for TIFs anywhere and parse path to (scenario, period)
+all_tifs <- list.files(indices_dir, "\\.tif$",
+                       recursive = TRUE, full.names = FALSE)
+cat("Total indices TIFs found: ", length(all_tifs), "\n", sep = "")
+if (length(all_tifs) == 0L) {
+  cat("(no TIFs at all under indices_dir — bigger problem upstream)\n")
+} else {
+  # Extract scenario tokens (ssp*, historic) and period tokens (YYYY-YYYY)
+  paths <- data.table(path = all_tifs)
+  paths[, scenario := regmatches(path,
+    regexpr("ssp[0-9]+|historic", path, ignore.case = TRUE))]
+  paths[, period := regmatches(path,
+    regexpr("[0-9]{4}-[0-9]{4}", path))]
+  paths[is.na(scenario) | scenario == "", scenario := "unknown"]
+  paths[is.na(period)   | period == "",   period := "unknown"]
+
+  cat("\nFile counts per (scenario, period):\n")
+  print(paths[, .N, by = .(scenario, period)][order(scenario, period)])
+
+  cat("\nFile counts per scenario only:\n")
+  print(paths[, .N, by = scenario][order(scenario)])
+}
+
+cat("\n=== VERDICT (1C) ===\n")
+periods_expected <- c("2021-2040","2041-2060","2061-2080","2081-2100")
+if (length(all_tifs) == 0L) {
+  cat("indices_dir empty → upstream fetch may have been deleted or moved.\n")
+} else {
+  # Compare ssp370 future coverage vs ssp245
+  ssp370_periods <- paths[scenario == "ssp370", unique(period)]
+  ssp245_periods <- paths[scenario == "ssp245", unique(period)]
+  missing_370 <- setdiff(periods_expected, ssp370_periods)
+  present_245 <- intersect(periods_expected, ssp245_periods)
+  cat("SSP245 future periods present at indices_dir: ",
+      paste(present_245, collapse = ", "), "\n", sep = "")
+  cat("SSP370 future periods present at indices_dir: ",
+      paste(intersect(periods_expected, ssp370_periods), collapse = ", "), "\n", sep = "")
+  cat("SSP370 future periods MISSING at indices_dir: ",
+      paste(missing_370, collapse = ", "), "\n", sep = "")
+  if (length(missing_370) == 0L) {
+    cat("\nSSP370 raw inputs PRESENT for all future periods.\n")
+    cat("=> The 2041+ zero data we see in hazard_exposure is a Step 2\n")
+    cat("   classification bug, NOT a fetch bug. Inspect R/2_calculate_haz_freq.R\n")
+    cat("   for scenario-dependent branches that drop SSP370.\n")
+  } else {
+    cat("\nSSP370 raw inputs MISSING for: ",
+        paste(missing_370, collapse = ", "), "\n", sep = "")
+    cat("=> The 2041+ zero data is an UPSTREAM FETCH bug. The NEX-GDDP fetch\n")
+    cat("   pipeline did not pull SSP370 future from NASA. Need to re-pull\n")
+    cat("   then re-run R/1_make_timeseries.R for those periods.\n")
+  }
 }
 EOF
 
@@ -352,9 +296,6 @@ EOF
 # ======================================================================
 echo "" | tee -a "$LOG_FILE"
 echo "===== Stage 1 complete =====" | tee -a "$LOG_FILE"
-echo "Verdicts logged above. STOP-AND-REPORT before Stage 2 — the next" | tee -a "$LOG_FILE"
-echo "pass walks upstream from whichever hazard 1D flagged (or 1E if" | tee -a "$LOG_FILE"
-echo "the SSP370 gap is the priority). Do NOT modify pipeline code yet." | tee -a "$LOG_FILE"
-echo "" | tee -a "$LOG_FILE"
+echo "Verdicts above. STOP-AND-REPORT before Stage 2." | tee -a "$LOG_FILE"
+echo "Per-variant stats RDS saved to $LOG_DIR/cr068_stage1b_${STAMP}.rds" | tee -a "$LOG_FILE"
 echo "Log saved to $LOG_FILE"
-echo "Raw stats RDS files saved to $LOG_DIR/cr068_*_${STAMP}.rds"
