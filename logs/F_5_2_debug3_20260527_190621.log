@@ -35,4 +35,4 @@ run5.3 = FALSE check5.3 = TRUE round5.3 = overwrite5.3 = TRUE workers5.3 = 15 mu
 
 Processing annual 1 / 2 . Started at time: 2026-05-27 19:06:39 
 5.2) Calculate interactions
-Combination: 1 / 132 | Scenario x Time x model: 1 / 306                    
+Combination: 1 / 132 | Scenario x Time x model: 1 / 306                    Combination: 1 / 132 | Scenario x Time x model: 2 / 306                    Combination: 1 / 132 | Scenario x Time x model: 3 / 306                    Combination: 1 / 132 | Scenario x Time x model: 4 / 306                    Combination: 1 / 132 | Scenario x Time x model: 5 / 306                    
