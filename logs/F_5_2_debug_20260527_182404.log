@@ -1,0 +1,47 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Starting 2_calculate_haz_freq.R script/nScenarios x timeframes: historic-historic ssp126-2021_2040 ssp245-2021_2040 ssp370-2021_2040 ssp585-2021_2040 ssp126-2041_2060 ssp245-2041_2060 ssp370-2041_2060 ssp585-2041_2060 ssp126-2061_2080 ssp245-2061_2080 ssp370-2061_2080 ssp585-2061_2080 ssp126-2081_2100 ssp245-2081_2100 ssp370-2081_2100 ssp585-2081_2100 
+Full hazards = NTx40 NTx35 HSH_max HSH_mean THI_max THI_mean NDWS TAI NDWL0 PTOT TAVG 
+1 - 1  |  arabica coffee / Coffea arabica                 2 - 1  |  banana / Musa acuminata                 3 - 1  |  barley / Hordeum vulgare                 4 - 1  |  bean / Phaseolus vulgaris                 5 - 1  |  cassava / Manihot esculenta                 6 - 1  |  chickpea / Cicer arietinum                 7 - 1  |  coconut / Cocos nucifera                 8 - 1  |  cocoa / Theobroma cacao                 9 - 1  |  cotton / Gossypium hirsutum                 10 - 1  |  cowpea / Vigna unguiculata                 11 - 1  |  groundnut / Arachis hypogaea                 12 - 1  |  lentil / Lens culinaris                 13 - 1  |  maize / Zea mays                 14 - 1  |  oilpalm / Elaeis guineensis                 15 - 1  |  pigeonpea / Cajanus cajan                 16 - 1  |  plantain / Musa acuminata x balbisiana                 16 - 2  |  plantain / Musa balbisiana                 17 - 1  |  pearl millet / Pennisetum glaucum                 18 - 1  |  potato / Solanum tuberosum                 19 - 1  |  rapeseed / Brassica napus                 20 - 1  |  robusta coffee / Coffea canephora                 21 - 1  |  rice / Oryza sativa                 22 - 1  |  sesameseed / Sesamum indicum                 23 - 1  |  small millet / Eleusine coracana ssp. coracana                 24 - 1  |  sorghum / Sorghum bicolor                 25 - 1  |  soybean / Glycine max                 26 - 1  |  sugarbeet / Beta vulgaris                 27 - 1  |  sugarcane / Saccharum officinarum                 28 - 1  |  sunflower / Helianthus annuus                 29 - 1  |  sweet potato / Ipomoea batatas                 30 - 1  |  tea / Camellia sinensis                 31 - 1  |  tobacco / Nicotiana tabacum                 32 - 1  |  wheat / Triticum aestivum                 33 - 1  |  yams / Dioscorea rotundata                 2 -  Replication of generic hazard per crop is set to FALSECrop interaction variables
+Indices: <heat_fixed>, <wet_fixed>, <dry_fixed>
+   heat_simple wet_simple dry_simple heat_fixed wet_fixed dry_fixed   type
+        <char>     <char>     <char>     <lgcl>    <lgcl>    <lgcl> <char>
+1:       NTx35      NDWL0       NDWS       TRUE      TRUE      TRUE   crop
+2:        NTxS     PTOT_G     PTOT_L      FALSE     FALSE     FALSE   crop
+Animal interaction variables
+Indices: <heat_fixed>, <wet_fixed>, <dry_fixed>
+   heat_simple wet_simple dry_simple heat_fixed wet_fixed dry_fixed   type
+        <char>     <char>     <char>     <lgcl>    <lgcl>    <lgcl> <char>
+1:     THI_max      NDWL0       NDWS      FALSE      TRUE      TRUE animal
+2:     THI_max     PTOT_G     PTOT_L      FALSE     FALSE     FALSE animal
+DEBUG_R2_5_2=1: section 5.2 forced to sequential (workers=1)
+Control and overwrite settings:
+timeframes =  annual jagermeyr 
+
+run1 = FALSE overwrite1 = TRUE workers1 = 20 multisession1 = TRUE 
+
+run2 = FALSE round2 = check2 = TRUE overwrite = TRUE workers2 = 20 multisession2=  TRUE do_ensemble2= TRUE 
+
+run4 = FALSE round4 = 3 check 4 = TRUE overwrite4 = TRUE workers4 = 15 multisession4 = TRUE do_ensemble4 = TRUE 
+
+run5.2 = TRUE check5.2 = TRUE round5.2 = 3 overwrite5.2 = TRUE workers5.2 = 1 multisession5.2 = FALSE do_ensemble5.2 = TRUE 
+
+run5.3 = FALSE check5.3 = TRUE round5.3 = overwrite5.3 = TRUE workers5.3 = 15 multisession5.3 = TRUE 
+
+Processing annual 1 / 2 . Started at time: 2026-05-27 18:24:21 
+5.2) Calculate interactions
+Combination: 1 / 132 | Scenario x Time x model: 1 / 306                    Error in if (all(i)) return(x) : missing value where TRUE/FALSE needed
+Calls: source ... FUN -> lapply -> FUN -> FUN -> .local -> .fullFilename
+In addition: Warning messages:
+1: In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+2: In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+3: In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+4: In eval(jsub, SDenv, parent.frame()) : NAs introduced by coercion
+5: In `[.data.table`(haz_class, , !"direction2") :
+  column not removed because not found: [direction2]
+Execution halted
