@@ -518,6 +518,16 @@ Thresholds_U_ss <- Thresholds_U_ss[grepl(paste(if (any(grepl("NTx", interaction_
 #                          useful when re-baking sections 2/4/5.2
 #                          only and the classified rasters are
 #                          already current.
+#   SKIP_R2_RUN2=1       -> skip section 2 (hazard frequency + ensemble);
+#                          useful for jumping past completed-and-still-valid
+#                          stages when re-running just section 4 or 5.2
+#                          after a crash.
+#   SKIP_R2_RUN4=1       -> skip section 4 (mean/sd + ensemble); same
+#                          reason as SKIP_R2_RUN2.
+#   DEBUG_R2_5_2=1       -> force section 5.2 to run sequentially
+#                          (workers=1, no future_lapply rethrow) so the
+#                          actual per-iteration error surfaces instead
+#                          of being wrapped in a generic simpleError.
 .force_overwrite_r2 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 
 ### 0.3.1) Classify hazards ####
@@ -528,7 +538,7 @@ multisession1 <- TRUE
 annual_season_subset <- TRUE # When seasonal data is being analysed (other than GCCMI crop calendar) should only annual crops be run?
 
 ### 0.3.2) Calculate hazard risk freq ####
-run2 <- TRUE
+run2 <- !identical(Sys.getenv("SKIP_R2_RUN2"), "1")
 run2_main <- TRUE # Set to F if you only want to run the ensemble step only (setting do_ensemble2 to T)
 check2 <- TRUE
 round2 <- NULL # set to integer if you wish to round results
@@ -545,7 +555,7 @@ worker_n3 <- 20
 multisession3 <- TRUE
 
 ### 0.3.4) Calculate hazard time series mean and sd ####
-run4 <- TRUE
+run4 <- !identical(Sys.getenv("SKIP_R2_RUN4"), "1")
 check4 <- TRUE
 run4.1 <- FALSE # Difference (currently not updated, keep as F)
 round4 <- 3
@@ -565,6 +575,14 @@ overwrite5.2 <- .force_overwrite_r2
 do_ensemble5.2 <- TRUE
 worker_n5.2 <- 20
 multisession5.2 <- TRUE
+# Diagnostic override: when DEBUG_R2_5_2=1 in env, run section 5.2
+# sequentially (no future workers) so the real per-iteration error
+# is visible instead of being wrapped in a `simpleError` rethrow.
+if (identical(Sys.getenv("DEBUG_R2_5_2"), "1")) {
+  multisession5.2 <- FALSE
+  worker_n5.2 <- 1L
+  cat("DEBUG_R2_5_2=1: section 5.2 forced to sequential (workers=1)\n")
+}
 
 # Interaction crop stacks
 run5.3 <- FALSE
