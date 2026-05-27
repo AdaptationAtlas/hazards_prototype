@@ -27,6 +27,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 48,Barley flour and grits,44,Barley,byproduct,Barley,TRUE
 49,"Malt, whether or not roasted",44,Barley,byproduct,Barley,TRUE
 50,Malt extract,44,Barley,byproduct,Barley,TRUE
+51,Beer of barley,44,Barley,byproduct,Barley,TRUE
 56,Maize (corn),,,crop,Maize,TRUE
 57,Germ of maize,56,Maize,byproduct,Maize,TRUE
 58,Flour of maize,56,Maize (corn),byproduct,Maize,TRUE
@@ -210,19 +211,19 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 489,Plantains and cooking bananas,,,crop,Plantains,TRUE
 490,Oranges,,,crop,Oranges,TRUE
 491,Orange juice,490,Oranges,byproduct,Oranges,TRUE
-492,"Orange juice, concentrated",,,byproduct,"Orange juice, concentrated",FALSE
+492,"Orange juice, concentrated",490,Oranges,byproduct,Oranges,TRUE
 495,"Tangerines, mandarins, clementines",,,crop,Tangerines and mandarins,TRUE
 496,Juice of tangerine,495,"Tangerines, mandarins, clementines",byproduct,Tangerines and mandarins,TRUE
 497,Lemons and limes,,,crop,Lemons and limes,TRUE
 498,Juice of lemon,497,Lemons and limes,byproduct,Lemons and limes,TRUE
-499,"Lemon juice, concentrated",,,byproduct,"Lemon juice, concentrated",FALSE
+499,"Lemon juice, concentrated",497,Lemons and limes,byproduct,Lemons and limes,TRUE
 507,Pomelos and grapefruits,,,crop,Pomelos and grapefruits,TRUE
-509,Grapefruit juice,509,Grapefruit juice,byproduct,Grapefruit juice,TRUE
-510,"Grapefruit juice, concentrated",,,byproduct,"Grapefruit juice, concentrated",FALSE
+509,Grapefruit juice,507,Pomelos and grapefruits,byproduct,Pomelos and grapefruits,TRUE
+510,"Grapefruit juice, concentrated",507,Pomelos and grapefruits,byproduct,Pomelos and grapefruits,TRUE
 515,Apples,,,crop,Apples,TRUE
 517,Cider and other fermented beverages,,,crop,Cider and other fermented beverages,FALSE
 518,Apple juice,515,Apples,byproduct,Apples,TRUE
-519,"Apple juice, concentrated",,,byproduct,"Apple juice, concentrated",FALSE
+519,"Apple juice, concentrated",515,Apples,byproduct,Apples,TRUE
 521,Pears,,,crop,Pears,TRUE
 523,Quinces,,,crop,Quinces,TRUE
 526,Apricots,,,crop,Apricots,TRUE
@@ -240,7 +241,8 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 554,Cranberries,,,crop,Cranberries,TRUE
 560,Grapes,,,crop,Grapes,TRUE
 561,Raisins,560,Grapes,byproduct,Grapes,TRUE
-562,Grape juice,509,Grapefruit juice,byproduct,Grape juice,TRUE
+562,Grape juice,560,Grapes,byproduct,Grapes,TRUE
+564,Wine,560,Grapes,byproduct,Grapes,TRUE
 563,Must of grape,560,Grapes,byproduct,Grapes,TRUE
 565,Vermouth and other wine of fresh grapes flavoured with plats or aromatic substances,,,crop,Vermouth and other wine of fresh grapes flavoured with plats or aromatic substances,FALSE
 567,Watermelons,,,crop,Watermelons,TRUE

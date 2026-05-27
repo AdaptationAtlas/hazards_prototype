@@ -1,0 +1,207 @@
+# ----------------------------------------------------------------------
+# Script: 2026-05-27_faostat_f2_apply.sh
+# Purpose: re-run R/0.4.5_create_faostat_long.R after the F-2a + F-2b
+#          fixes, then republish the FAOSTAT canonical parquet to S3.
+#
+# Code changes already on develop:
+#   R/0.4.5_create_faostat_long.R:
+#     - "^Wine$" + "^Beer of barley" moved out of always-on
+#       exclude_patterns; only "^Margarine" remains there.
+#     - New non_trade_processed_excludes vector + processed_excluded_mask
+#       (trade-aware, same shape as the meat exclusion pattern).
+#   metadata/faostat_processed_to_raw.csv:
+#     - 6 row replacements (492/499/509/510/519/562 — concentrate-juice
+#       link-ups + grape-juice + grapefruit-juice parent fixes)
+#     - 2 new rows (51 Beer of barley → Barley; 564 Wine → Grapes)
+#
+# CR-088 in atlas_notebooks ISSUES.md tracks the wider audit.
+# Margarine intentionally stays excluded (composite-group-standalones
+# rule, project memory feedback-no-composite-group-standalones).
+#
+# Environment: CGlabs JupyterHub OR Pete's local R if running offline
+#          (R/0.4.5 doesn't require CGlabs paths — it reads FAOSTAT
+#          bulk zips downloaded by R/0_server_setup.R §3.5.5).
+# ----------------------------------------------------------------------
+
+# ======================================================================
+# 0) Pre-flight
+# ======================================================================
+cd $HOME/atlas/hazards_prototype
+git pull origin develop
+git log --oneline -5   # should include the F-2 apply commit at HEAD
+
+export SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
+export FAOSTAT_SCRIPT="$HOME/atlas/hazards_prototype/R/0.4.5_create_faostat_long.R"
+export LOG_DIR="$HOME/atlas/hazards_prototype/logs"
+mkdir -p "$LOG_DIR"
+STAMP=$(date +%Y%m%d_%H%M%S)
+LOG_FILE="$LOG_DIR/faostat_f2_apply_${STAMP}.log"
+
+test -f "$FAOSTAT_SCRIPT" && echo "OK: 0.4.5 exists" || echo "FAIL"
+
+
+# ======================================================================
+# 1) Re-run R/0.4.5_create_faostat_long.R end-to-end
+# ======================================================================
+# The script reads FAOSTAT bulk zips, applies the exclude/include
+# masks, builds the long parquet at Data/faostat/<filename>.parquet
+# (canonical name comes from the script's local file naming — log
+# will show the path). Re-run takes minutes; trade rows are small.
+echo "Logging to $LOG_FILE"
+nohup bash -c "Rscript -e '
+options(error = function() {
+  cat(\"\n=== TRACEBACK ===\n\", file = stderr())
+  traceback(2)
+  cat(\"\n=================\n\", file = stderr())
+  quit(status = 1, save = \"no\")
+})
+source(Sys.getenv(\"SETUP_SCRIPT\"))
+source(Sys.getenv(\"FAOSTAT_SCRIPT\"))
+'; RC=\$?; echo; echo \"===== FAOSTAT F-2 DONE (Rscript exit code: \$RC) =====\"" \
+  > "$LOG_FILE" 2>&1 &
+PID=$!
+echo "PID $PID  -  tail -f $LOG_FILE"
+tail -f "$LOG_FILE"
+wait $PID; echo "exit code: $?"
+
+
+# ======================================================================
+# 2) Spot-check the new parquet for the F-2a + F-2b expected rows
+# ======================================================================
+Rscript - <<'EOF' 2>&1
+suppressPackageStartupMessages({library(duckdb); library(DBI); library(data.table)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+
+# Locate the just-rebaked FAOSTAT long parquet. R/0.4.5 writes under
+# Data/faostat/ — adjust pattern if the script's naming convention
+# differs in this checkout.
+parq <- list.files(
+  file.path(atlas_dirs$data_dir[[1]], "faostat"),
+  "\\.parquet$", recursive = TRUE, full.names = TRUE
+)
+cat("Candidate parquets:\n"); print(parq)
+parq <- parq[which.max(file.info(parq)$mtime)]
+cat("Using newest:", parq, "\n\n")
+
+con <- dbConnect(duckdb())
+
+cat("=== F-2a check: ZAF wine + Beer of barley present in trade rows ===\n")
+print(setDT(dbGetQuery(con, sprintf("
+  SELECT iso3, commodity, variable, COUNT(*) AS n_rows,
+         ROUND(SUM(value), 0) AS sum_value
+  FROM read_parquet('%s')
+  WHERE commodity IN ('Wine','Beer of barley')
+    AND variable IN ('export_quantity','export_value','export_value_usd15',
+                     'import_quantity','import_value')
+    AND iso3 IN ('ZAF','NAM','KEN')
+  GROUP BY ALL ORDER BY iso3, commodity, variable
+", parq))))
+
+cat("\n=== F-2a check: Wine/Beer ABSENT from production+VoP rows ===\n")
+print(setDT(dbGetQuery(con, sprintf("
+  SELECT commodity, variable, COUNT(*) AS n_rows
+  FROM read_parquet('%s')
+  WHERE commodity IN ('Wine','Beer of barley','Margarine')
+    AND variable IN ('production','yield','vop_intd15','vop_usd15')
+  GROUP BY ALL ORDER BY commodity, variable
+", parq))))
+cat("Expected: empty (no rows). Wine/Beer/Margarine all dropped for these variables.\n\n")
+
+cat("=== F-2b check: Grape juice parent now = Grapes (560) ===\n")
+print(setDT(dbGetQuery(con, sprintf("
+  SELECT commodity, parent_raw_item, COUNT(*) AS n_rows
+  FROM read_parquet('%s')
+  WHERE commodity IN ('Grape juice','Grapefruit juice','Wine','Beer of barley',
+                     'Orange juice, concentrated','Apple juice, concentrated',
+                     'Lemon juice, concentrated','Grapefruit juice, concentrated')
+  GROUP BY ALL ORDER BY commodity
+", parq))))
+EOF
+
+
+# ======================================================================
+# 3) Publish to S3 (canonical FAOSTAT parquet)
+# ======================================================================
+# The canonical S3 key per atlas_notebooks nbData.json:
+#   s3://digital-atlas/domain=socioeconomic/type=production/source=faostat/
+#     region=ssa/variable=adm0_faostat.parquet
+# Upload with ACL=public-read (matches the rebake script convention).
+# A backup of the current canonical is copied to sandbox/backup/<STAMP>/
+# first — same download+upload-with-ACL pattern as the hazard_exposure
+# publish runbook (commit 638aae1 captures why s3_file_copy doesn't
+# work here).
+echo ""
+echo "===== Publish to S3 ====="
+Rscript - <<'EOF' 2>&1
+suppressPackageStartupMessages({library(s3fs)})
+suppressMessages(suppressWarnings(
+  source(file.path(Sys.getenv("PROJECT_DIR"), "R/0_server_setup.R"))
+))
+
+local <- list.files(file.path(atlas_dirs$data_dir[[1]], "faostat"),
+                    "\\.parquet$", recursive = TRUE, full.names = TRUE)
+local <- local[which.max(file.info(local)$mtime)]
+canon <- "s3://digital-atlas/domain=socioeconomic/type=production/source=faostat/region=ssa/variable=adm0_faostat.parquet"
+backup_stamp <- format(Sys.time(), "%Y%m%d_%H%M%S")
+backup <- paste0("s3://digital-atlas/sandbox/backup/", backup_stamp,
+                 "/domain=socioeconomic/type=production/source=faostat/region=ssa/variable=adm0_faostat.parquet")
+
+# Backup current canonical (download then re-upload with ACL — the
+# direct s3_file_copy strips ACL)
+tmp <- tempfile(fileext = ".parquet")
+on.exit(unlink(tmp), add = TRUE)
+cat("Backing up canonical -> ", backup, "\n", sep = "")
+s3fs::s3_file_download(canon, tmp, overwrite = TRUE)
+s3fs::s3_file_upload(tmp, backup, overwrite = FALSE, ACL = "public-read")
+
+# Upload the new file over the canonical key
+cat("\nUploading local -> canonical\n  local:", local, "\n  canon:", canon, "\n")
+s3fs::s3_file_upload(local, canon, overwrite = TRUE, ACL = "public-read")
+info <- s3fs::s3_file_info(canon)
+cat("\nPublished:\n  size = ", info$size,
+    "\n  mtime = ", format(info$last_modified),
+    "\n  etag = ", info$etag, "\n", sep = "")
+
+cat("\nROLLBACK (if needed):\n")
+cat("  tmp <- tempfile(fileext = '.parquet')\n")
+cat("  s3fs::s3_file_download('", backup, "', tmp, overwrite = TRUE)\n", sep = "")
+cat("  s3fs::s3_file_upload(tmp, '", canon, "', overwrite = TRUE, ACL = 'public-read')\n", sep = "")
+EOF
+
+
+# ======================================================================
+# 4) Post-publish verify via DuckDB-httpfs (notebook read path)
+# ======================================================================
+echo ""
+echo "===== Post-publish verify ====="
+Rscript - <<'EOF' 2>&1
+suppressPackageStartupMessages({library(duckdb); library(DBI); library(data.table)})
+url <- "https://digital-atlas.s3.amazonaws.com/domain=socioeconomic/type=production/source=faostat/region=ssa/variable=adm0_faostat.parquet"
+con <- dbConnect(duckdb())
+DBI::dbExecute(con, "INSTALL httpfs; LOAD httpfs;")
+
+cat("=== ZAF wine export rows (post-publish) ===\n")
+print(setDT(dbGetQuery(con, sprintf("
+  SELECT iso3, commodity, variable, year, value
+  FROM read_parquet('%s')
+  WHERE iso3 = 'ZAF' AND commodity = 'Wine'
+    AND variable IN ('export_value','export_value_usd15','export_quantity')
+    AND year >= 2020
+  ORDER BY variable, year
+", url))))
+cat("\n=== Grape-juice/Wine parent links ===\n")
+print(setDT(dbGetQuery(con, sprintf("
+  SELECT DISTINCT commodity, parent_raw_item
+  FROM read_parquet('%s')
+  WHERE commodity IN ('Grape juice','Wine','Beer of barley')
+  ORDER BY commodity
+", url))))
+EOF
+
+
+echo ""
+echo "===== FAOSTAT F-2 apply + publish complete ====="
+echo "Log: $LOG_FILE"
+echo "Backup canonical: see Rscript output above for the sandbox/backup/<STAMP>/ key"

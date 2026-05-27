@@ -70,8 +70,13 @@ exclude_patterns <- c(
   "^Oilcrops, ", "^Coir,", "^Chicory roots$", "^Jute,",
   "^Oil of maize$", "^Pyrethrum", "^Hop cones$", "^Peppermint",
   "^Onions and shallots, dry", "^Brazil nuts", "^Silk-worm", "^Raw silk",
-  # Beverages / processed
-  "^Wine$", "^Beer of barley", "^Margarine",
+  # Beverages / processed — Margarine only. Wine + Beer of barley moved
+  # to `non_trade_processed_excludes` below so they re-enter the parquet
+  # for trade variables (HS 2204 wine, HS 2203 beer) per CR-088 F-2a.
+  # Margarine stays here for ALL variables because it has no single raw
+  # parent (palm + soy + rapeseed + sunflower blend) and the project rule
+  # is no-composite-group-standalones.
+  "^Margarine",
   # Other animal products
   "^Natural honey$", "^Beeswax$", "^Snails,", "^Shorn wool",
   # Misc
@@ -93,6 +98,24 @@ non_trade_meat_excludes <- c(
   "^Meat of .*fresh or chilled$", "^Horse meat, fresh or chilled$"
 )
 trade_vars <- c("export_quantity", "export_value", "import_quantity", "import_value")
+
+# Non-trade processed exclusions: applied to production / yield / vop_*
+# rows only. FAOSTAT publishes Wine + Beer of barley as farm-gate-
+# equivalent rows that would double-count with Grapes + Barley (their
+# raw parents) in any "value of production" view — the atlas's
+# production / VoP totals are raw-only by the I-2 invariant, so we
+# drop wine + beer there. For TRADE variables, however, these ARE the
+# physical flow the notebook wants (HS 2204 wine, HS 2203 beer) and
+# they belong in the parquet — without this allow-back, ZAF wine
+# (~$2.5-4 B/year export) disappears entirely. See CR-088 F-2a in
+# atlas_notebooks/playbook/.../ISSUES.md.
+# Margarine is NOT in this list (it stays in always-on `exclude_patterns`)
+# because it has no single raw parent — composite of palm/soy/rapeseed/
+# sunflower/cottonseed — and Pete's project-level rule is
+# no-composite-group-standalones.
+non_trade_processed_excludes <- c(
+  "^Wine$", "^Beer of barley"
+)
 
 # Spice items to combine into a single "Spices, combined" commodity ####
 # Production and VoP are summed; yield is production-weighted across items.
@@ -308,10 +331,17 @@ meat_regex <- paste(non_trade_meat_excludes, collapse = "|")
 meat_excluded_mask <- grepl(meat_regex, fao_long$commodity, ignore.case = TRUE) &
   !(fao_long$variable %in% trade_vars)
 
-dropped_commodities <- sort(unique(fao_long$commodity[excluded_mask | meat_excluded_mask]))
+# Same trade-aware pattern as meat: drop Wine + Beer of barley from
+# production / yield / vop rows; keep them for trade rows. See
+# non_trade_processed_excludes definition above for rationale.
+processed_regex <- paste(non_trade_processed_excludes, collapse = "|")
+processed_excluded_mask <- grepl(processed_regex, fao_long$commodity, ignore.case = TRUE) &
+  !(fao_long$variable %in% trade_vars)
+
+dropped_commodities <- sort(unique(fao_long$commodity[excluded_mask | meat_excluded_mask | processed_excluded_mask]))
 cat("Excluding", length(dropped_commodities), "commodities by name:\n")
 cat(paste0("  - ", dropped_commodities, collapse = "\n"), "\n")
-fao_long <- fao_long[!(excluded_mask | meat_excluded_mask)]
+fao_long <- fao_long[!(excluded_mask | meat_excluded_mask | processed_excluded_mask)]
 fao_long <- fao_long[value > 0]
 
 # Combine spices into a single synthetic commodity ####
