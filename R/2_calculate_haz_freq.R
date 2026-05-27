@@ -1322,12 +1322,20 @@ for (tx in seq_along(timeframes)) {
     progressr::handlers(global = TRUE)
     progressr::handlers("progress")
 
-    # Wrap the parallel processing in a with_progress call
+    # Wrap the parallel processing in a with_progress call. Under
+    # DEBUG_R2_5_2=1 the loop runs via base lapply (no future wrapper)
+    # so errors propagate with their original stack instead of being
+    # rethrown as a generic simpleError by the future worker.
+    .lapply_fn <- if (identical(Sys.getenv("DEBUG_R2_5_2"), "1")) {
+      function(X, FUN) lapply(X, FUN)
+    } else {
+      function(X, FUN) future.apply::future_lapply(X, FUN = FUN)
+    }
     p <- with_progress({
       # Define the progress bar
       progress <- progressr::progressor(along = seq_len(nrow(combinations_choice)))
 
-      invisible(future.apply::future_lapply(seq_len(nrow(combinations_choice)), FUN = function(i) {
+      invisible(.lapply_fn(seq_len(nrow(combinations_choice)), FUN = function(i) {
         # Display progress
         progress(sprintf("Combination %d/%d", i, nrow(combinations_choice)))
 
