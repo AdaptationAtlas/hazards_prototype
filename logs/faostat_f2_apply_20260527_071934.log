@@ -1,0 +1,78 @@
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Mapping include filter: dropped 1572448 rows (47.7%) for include = FALSE items.
+Deflation: appended 210796 export_value_usd15 + 347902 import_value_usd15 rows (anchor 2014-2016).
+Excluding 18 commodities by name:
+  - Beer of barley, malted
+  - Cake, oilseeds nes
+  - Crude Materials nes
+  - Feed, other concentrates nes
+  - Horse meat, fresh or chilled
+  - Meat of buffalo, fresh or chilled
+  - Meat of camels, fresh or chilled
+  - Meat of cattle boneless, fresh or chilled
+  - Meat of cattle with the bone, fresh or chilled
+  - Meat of chickens, fresh or chilled
+  - Meat of goat, fresh or chilled
+  - Meat of pig boneless, fresh or chilled
+  - Meat of pig with the bone, fresh or chilled
+  - Meat of rabbits and hares, fresh or chilled
+  - Meat of sheep, fresh or chilled
+  - Meat of turkeys, fresh or chilled
+  - Tobacco
+  - Wine 
+Combined 7 spice items -> 15790 'Spices, combined' rows
+Filter (production vop_intd15): kept 1429 (iso3, commodity) pairs across 54 countries.
+Filter (export_value):          kept 948 pairs across 54 countries.
+Filter (import_value):          kept 1513 pairs across 54 countries.
+Filter (union of 3, window = last 5 yr, share > 0.0025): kept 3117 pairs across 54 countries.
+Long-table rows after filter: 750943 / 2279445 (32.9%).
+Parent-mapping gate: kept 33452 / 63670 processed-export rows (52.5%); dropped 30218 rows.
+WARNING: commodity_class not set for 1 commodities - defaulting to 'crop'. Curate metadata/faostat_processed_to_raw.csv:
+  - Spices, combined 
+type column: 565430 raw rows, 155295 processed rows.
+commodity_class column: crop=451268, byproduct=150194, livestock=119263
+WARNING: 81 production/yield rows have type != 'raw'. Dropping them.
+      iso3 item_code     commodity   variable      type
+    <char>     <int>        <char>     <char>    <char>
+ 1:    DZA       237 Soya bean oil production processed
+ 2:    EGY       237 Soya bean oil production processed
+ 3:    MAR       237 Soya bean oil production processed
+ 4:    ZAF       237 Soya bean oil production processed
+ 5:    ZMB       237 Soya bean oil production processed
+ 6:    TGO       237 Soya bean oil production processed
+ 7:    BEN       237 Soya bean oil production processed
+ 8:    SEN       244 Groundnut oil production processed
+ 9:    SDN       244 Groundnut oil production processed
+10:    GMB       244 Groundnut oil production processed
+Other aggregation: top 10 (iso3, type) by Other share of vop_intd15:
+      iso3   type other_intd  kept_intd      pct
+    <char> <char>      <num>      <num>    <num>
+ 1:    CIV    raw   18283123  353414832 4.918812
+ 2:    UGA    raw   17598998  426428145 3.963496
+ 3:    ZAF    raw   34722805  855627245 3.899905
+ 4:    COM    raw     152849    3824743 3.842752
+ 5:    MAR    raw   17080454  469496069 3.510333
+ 6:    COD    raw   13050852  366150105 3.441672
+ 7:    BEN    raw    3346915  104663063 3.098709
+ 8:    NGA    raw   49139597 1729168979 2.763277
+ 9:    LBY    raw    1960929   71780871 2.659182
+10:    AGO    raw    4454792  167090923 2.596854
+Other aggregation: appended 42731 Other rows (25969 raw + 16762 processed) across summable variables.
+Yield sanity OK: median Maize yield = 1560 kg/ha (last 5 yrs, expected 1000 - 10000 kg/ha).
+Integrity check: wrote 160 production-only + 1733 trade-only (iso3, commodity) cells to Data/fao/integrity_check_mismatches.csv
+  reason breakdown: review=1651, meat-by-design=242
+write_parquet_pushdown: Data/fao/faostat_long.parquet written (8 row groups, stats verified on iso3, variable, commodity)
+Wrote 759330 rows to Data/fao/faostat_long.parquet 
+ Variables: export_quantity, export_value, export_value_usd15, import_quantity, import_value, import_value_usd15, production, vop_intd15, vop_usd15, yield 
+ Countries: 55 | Commodities: 217 | Years: 1961-2024 
+ Atlas-name match rate: 68.5% 
+Warning messages:
+1: Invalid metadata$r 
+2: Connection already closed. 
+
+===== FAOSTAT F-2 DONE (Rscript exit code: 0) =====
