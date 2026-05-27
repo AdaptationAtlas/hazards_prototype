@@ -1045,8 +1045,14 @@ for (tx in seq_along(timeframes)) {
     # Remove ensemble
     files <- files[!grepl("ENSEMBLE", files)]
 
-    # Rename files from first part of hazard pipeline to use consistent delimiters
-    files_new <- gsub("1_2", "1-2", basename(files))
+    # Rename files from first part of hazard pipeline to use consistent
+    # delimiters. The year-pair `YYYY_YYYY` → `YYYY-YYYY` substitution must
+    # match ONLY the 4-digit-year boundary, not stray `1_2` substrings that
+    # appear elsewhere — e.g. GCMs ending in "1" before an underscore-
+    # separated period (TaiESM1_2021_2040 incorrectly collapsed to
+    # TaiESM1-2021-2040, splitting into 4 underscore parts instead of 5
+    # and crashing rbindlist at section 4.1).
+    files_new <- gsub("([0-9]{4})_([0-9]{4})", "\\1-\\2", basename(files), perl = TRUE)
     files_new <- gsub("_mean", "-mean", files_new)
     files_new <- gsub("_max", "-max", files_new)
     files_new <- gsub("_min", "-min", files_new)

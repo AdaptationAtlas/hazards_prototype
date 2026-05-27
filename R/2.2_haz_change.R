@@ -181,7 +181,7 @@ change[, value := round(100 * value / total, 1)][, total := NULL]
 # Wrangle variable name
 var_names <- change$variable
 var_names <- gsub("sum.|_PTOT_sum", "", var_names)
-var_names <- gsub("1_2", "1-2", var_names)
+var_names <- gsub("([0-9]{4})_([0-9]{4})", "\\1-\\2", var_names, perl = TRUE)
 var_names <- do.call("cbind", tstrsplit(var_names, "_"))
 colnames(var_names) <- c("scenario", "model", "timeframe")
 
@@ -277,7 +277,7 @@ data[, value := round(100 * value / total, 1)][, total := NULL]
 # Wrangle variable name
 var_names <- data$variable
 var_names <- gsub("sum.|_THI_max_max", "", var_names)
-var_names <- gsub("1_2", "1-2", var_names)
+var_names <- gsub("([0-9]{4})_([0-9]{4})", "\\1-\\2", var_names, perl = TRUE)
 var_names <- gsub(".G", "_", var_names)
 var_names <- gsub("historical", "historical_historical_historical", var_names)
 var_names <- do.call("cbind", tstrsplit(var_names, "_"))[, c(1:3, 5)]
@@ -363,7 +363,7 @@ data <- rbindlist(lapply(seq_along(choices), FUN = function(j) {
   # Wrangle variable name
   var_names <- data$variable
   var_names <- gsub(paste0("sum.|_", haz, "_mean"), "", var_names) # _mean needs to be generalized
-  var_names <- gsub("1_2", "1-2", var_names)
+  var_names <- gsub("([0-9]{4})_([0-9]{4})", "\\1-\\2", var_names, perl = TRUE)
   var_names <- gsub(".G", "_", var_names) # .G needs to be generalized
   var_names <- gsub("historical", "historical_historical_historical", var_names)
   var_names <- do.call("cbind", tstrsplit(var_names, "_"))[, c(1:3, 5)]
@@ -439,7 +439,7 @@ data <- rbindlist(lapply(seq_along(choices), FUN = function(j) {
   # Wrangle variable name
   var_names <- data$variable
   var_names <- gsub(paste0(extract_fun, ".|_", haz, "_", stat), "", var_names)
-  var_names <- gsub("1_2", "1-2", var_names)
+  var_names <- gsub("([0-9]{4})_([0-9]{4})", "\\1-\\2", var_names, perl = TRUE)
   var_names <- gsub(paste0(".", cat_thresholds[1, direction2]), "_", var_names)
   var_names <- gsub("historical", "historical_historical_historical", var_names)
   var_names <- do.call("cbind", tstrsplit(var_names, "_"))[, c(1:3, 5)]
