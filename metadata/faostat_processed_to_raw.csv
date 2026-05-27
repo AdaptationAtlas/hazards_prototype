@@ -27,7 +27,7 @@ item_code,item,parent_raw_item_code,parent_raw_item,commodity_class,commodity_gr
 48,Barley flour and grits,44,Barley,byproduct,Barley,TRUE
 49,"Malt, whether or not roasted",44,Barley,byproduct,Barley,TRUE
 50,Malt extract,44,Barley,byproduct,Barley,TRUE
-51,Beer of barley,44,Barley,byproduct,Barley,TRUE
+51,"Beer of barley, malted",44,Barley,byproduct,Barley,TRUE
 56,Maize (corn),,,crop,Maize,TRUE
 57,Germ of maize,56,Maize,byproduct,Maize,TRUE
 58,Flour of maize,56,Maize (corn),byproduct,Maize,TRUE
