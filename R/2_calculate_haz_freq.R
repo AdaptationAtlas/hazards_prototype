@@ -1281,7 +1281,21 @@ for (tx in seq_along(timeframes)) {
     haz_class_file_tab[, stat := NA]
   }
 
-  haz_class_file_tab[!is.na(stat), hazard2 := paste0(hazard2, "-", stat)][, hazard2 := paste0(hazard2, "-", tail(unlist(strsplit(hazard, "-")), 1)), by = .I][, layer_name := paste(c(scenario, timeframe, hazard2), collapse = "_"), by = .I]
+  haz_class_file_tab[!is.na(stat), hazard2 := paste0(hazard2, "-", stat)][, hazard2 := paste0(hazard2, "-", tail(unlist(strsplit(hazard, "-")), 1)), by = .I]
+
+  # Normalize hazard2 by stripping the extraction-stat infix
+  # ("-mean-") that the classification step adds when its input
+  # timeseries file already encoded the stat (NDWS_mean.tif →
+  # NDWS-mean-G15.tif). The `combinations` table references bare
+  # hazard + threshold (NDWS-G15), so without this strip
+  # match(combos, hazard2) returns NA on 2-dash hazards (NDWS,
+  # NTx*, NDWL0, PTOT, TAVG) — and section 5.2's
+  # `lapply(files, rast)` crashes on NA paths with the unhelpful
+  # `if (all(i)) return(x) : missing value where TRUE/FALSE needed`
+  # error. 3-dash hazards (HSH-max, THI-mean, etc.) already had
+  # the correct form because the previous parsing step captured
+  # the source-stat in position 2.
+  haz_class_file_tab[, hazard2 := gsub("-mean-", "-", hazard2)][, layer_name := paste(c(scenario, timeframe, hazard2), collapse = "_"), by = .I]
 
   scenarios_x_models <- unique(haz_class_file_tab[, .(scenario, timeframe, model)][, scen_x_time := paste0(scenario, "_", timeframe)][, scen_mod_time := paste0(scenario, "_", model, "_", timeframe)])
 
