@@ -1,0 +1,485 @@
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Starting 2_calculate_haz_freq.R script/nScenarios x timeframes: historic-historic ssp126-2021_2040 ssp245-2021_2040 ssp370-2021_2040 ssp585-2021_2040 ssp126-2041_2060 ssp245-2041_2060 ssp370-2041_2060 ssp585-2041_2060 ssp126-2061_2080 ssp245-2061_2080 ssp370-2061_2080 ssp585-2061_2080 ssp126-2081_2100 ssp245-2081_2100 ssp370-2081_2100 ssp585-2081_2100 
+Full hazards = NTx40 NTx35 HSH_max HSH_mean THI_max THI_mean NDWS TAI NDWL0 PTOT TAVG 
+1 - 1  |  arabica coffee / Coffea arabica                 2 - 1  |  banana / Musa acuminata                 3 - 1  |  barley / Hordeum vulgare                 4 - 1  |  bean / Phaseolus vulgaris                 5 - 1  |  cassava / Manihot esculenta                 6 - 1  |  chickpea / Cicer arietinum                 7 - 1  |  coconut / Cocos nucifera                 8 - 1  |  cocoa / Theobroma cacao                 9 - 1  |  cotton / Gossypium hirsutum                 10 - 1  |  cowpea / Vigna unguiculata                 11 - 1  |  groundnut / Arachis hypogaea                 12 - 1  |  lentil / Lens culinaris                 13 - 1  |  maize / Zea mays                 14 - 1  |  oilpalm / Elaeis guineensis                 15 - 1  |  pigeonpea / Cajanus cajan                 16 - 1  |  plantain / Musa acuminata x balbisiana                 16 - 2  |  plantain / Musa balbisiana                 17 - 1  |  pearl millet / Pennisetum glaucum                 18 - 1  |  potato / Solanum tuberosum                 19 - 1  |  rapeseed / Brassica napus                 20 - 1  |  robusta coffee / Coffea canephora                 21 - 1  |  rice / Oryza sativa                 22 - 1  |  sesameseed / Sesamum indicum                 23 - 1  |  small millet / Eleusine coracana ssp. coracana                 24 - 1  |  sorghum / Sorghum bicolor                 25 - 1  |  soybean / Glycine max                 26 - 1  |  sugarbeet / Beta vulgaris                 27 - 1  |  sugarcane / Saccharum officinarum                 28 - 1  |  sunflower / Helianthus annuus                 29 - 1  |  sweet potato / Ipomoea batatas                 30 - 1  |  tea / Camellia sinensis                 31 - 1  |  tobacco / Nicotiana tabacum                 32 - 1  |  wheat / Triticum aestivum                 33 - 1  |  yams / Dioscorea rotundata                 2 -  Replication of generic hazard per crop is set to FALSECrop interaction variables
+Indices: <heat_fixed>, <wet_fixed>, <dry_fixed>
+   heat_simple wet_simple dry_simple heat_fixed wet_fixed dry_fixed   type
+        <char>     <char>     <char>     <lgcl>    <lgcl>    <lgcl> <char>
+1:       NTx35      NDWL0       NDWS       TRUE      TRUE      TRUE   crop
+2:        NTxS     PTOT_G     PTOT_L      FALSE     FALSE     FALSE   crop
+Animal interaction variables
+Indices: <heat_fixed>, <wet_fixed>, <dry_fixed>
+   heat_simple wet_simple dry_simple heat_fixed wet_fixed dry_fixed   type
+        <char>     <char>     <char>     <lgcl>    <lgcl>    <lgcl> <char>
+1:     THI_max      NDWL0       NDWS      FALSE      TRUE      TRUE animal
+2:     THI_max     PTOT_G     PTOT_L      FALSE     FALSE     FALSE animal
+Control and overwrite settings:
+timeframes =  annual jagermeyr 
+
+run1 = FALSE overwrite1 = TRUE workers1 = 20 multisession1 = TRUE 
+
+run2 = TRUE round2 = check2 = TRUE overwrite = TRUE workers2 = 20 multisession2=  TRUE do_ensemble2= TRUE 
+
+run4 = TRUE round4 = 3 check 4 = TRUE overwrite4 = TRUE workers4 = 15 multisession4 = TRUE do_ensemble4 = TRUE 
+
+run5.2 = TRUE check5.2 = TRUE round5.2 = 3 overwrite5.2 = TRUE workers5.2 = 20 multisession5.2 = TRUE do_ensemble5.2 = TRUE 
+
+run5.3 = FALSE check5.3 = TRUE round5.3 = overwrite5.3 = TRUE workers5.3 = 15 multisession5.3 = TRUE 
+
+Processing annual 1 / 2 . Started at time: 2026-05-27 13:27:54 
+annual 2) Calculate hazard frequency (0-1) across classified time series 
+annual 2) Calculate hazard frequency across classified time series - Complete
+annual 2.1) Ensembling hazard frequency
+annual 2.1) Ensembling hazard frequency - Complete
+annual 2) Checking file integrity
+Checked 62290 file(s); 0 failed.
+annual 2)  File integrity check complete
+annual 4) Calculate mean and sd across time series.
+Processing n = 13159 files
+annual 4) Calculate mean and sd across time series - Complete
+annual 4.1) Ensembling timeseries mean
+annual 4.1) Ensembling timeseries mean - Complete
+annual 4.2) Checking file integrity
+Checked 30788 file(s); 0 failed.
+annual 4.2) File integrity check complete
+5.2) Calculate interactions
+Combination: 1 / 132 | Scenario x Time x model: 1 / 306                    Warning: Caught simpleError. Canceling all iterations ...
+Error in if (all(i)) return(x) : missing value where TRUE/FALSE needed
+Calls: source ... tryCatchList -> tryCatchOne -> <Anonymous> -> onError
+In addition: There were 50 or more warnings (use warnings() to see the first 50)
+
+=== TRACEBACK ===
+14: (function () 
+    {
+        cat("\n=== TRACEBACK ===\n", file = stderr())
+        traceback(2)
+        cat("\n=================\n", file = stderr())
+        quit(status = 1, save = "no")
+    })()
+13: stop(ex)
+12: onError(e, futures = fs, debug = debug)
+11: value[[3L]](cond)
+10: tryCatchOne(tryCatchList(expr, names[-nh], parentenv, handlers[-nh]), 
+        names[nh], parentenv, handlers[[nh]])
+9: tryCatchList(expr, classes, parentenv, handlers)
+8: tryCatch({
+       for (ii in seq_along(chunks)) {
+           chunk <- chunks[[ii]]
+           if (debug) 
+               mdebugf("Chunk #%d of %d ...", ii, length(chunks))
+           args_ii <- get_chunk(chunk_args, chunk)
+           globals_ii <- globals
+           globals_ii[["...future.elements_ii"]] <- args_ii
+           packages_ii <- packages
+           if (scanForGlobals) {
+               if (debug) 
+                   mdebugf(" - Finding globals in '%s' for chunk #%d ...", 
+                     args_name, ii)
+               gp <- getGlobalsAndPackages(args_ii, envir = envir, 
+                   globals = TRUE)
+               globals_args <- gp$globals
+               packages_args <- gp$packages
+               gp <- NULL
+               if (debug) {
+                   mdebugf("   + additional globals found: [n=%d] %s", 
+                     length(globals_args), commaq(names(globals_args)))
+                   mdebugf("   + additional namespaces needed: [n=%d] %s", 
+                     length(packages_args), commaq(packages_args))
+               }
+               if (length(globals_args) > 0L) {
+                   reserved <- intersect(c("...future.FUN", "...future.elements_ii", 
+                     "...future.seeds_ii"), names(globals_args))
+                   if (length(reserved) > 0) {
+                     stop("Detected globals in '%s' using reserved variables names: ", 
+                       args_name, commaq(reserved))
+                   }
+                   globals_args <- as.FutureGlobals(globals_args)
+                   globals_ii <- unique(c(globals_ii, globals_args))
+                   if (length(packages_args) > 0L) 
+                     packages_ii <- unique(c(packages_ii, packages_args))
+               }
+               if (debug) 
+                   mdebugf(" - Finding globals in '%s' for chunk #%d ... DONE", 
+                     args_name, ii)
+           }
+           args_ii <- NULL
+           if (!is.null(globals.maxSize)) {
+               globals_ii["...future.globals.maxSize"] <- list(globals.maxSize)
+           }
+           if (length(chunks) > 1L) {
+               options(future.globals.maxSize = length(chunks) * 
+                   globals.maxSize.default)
+               if (debug) 
+                   mdebugf(" - Adjusted option 'future.globals.maxSize': %.0f -> %d * %.0f = %.0f (bytes)", 
+                     globals.maxSize.default, length(chunks), globals.maxSize.default, 
+                     getOption("future.globals.maxSize"))
+               on.exit(options(future.globals.maxSize = globals.maxSize), 
+                   add = TRUE)
+           }
+           if (is.null(seeds)) {
+               if (debug) 
+                   mdebug(" - seeds: <none>")
+           }
+           else {
+               if (debug) 
+                   mdebugf(" - seeds: [%d] <seeds>", length(chunk))
+               globals_ii[["...future.seeds_ii"]] <- seeds[chunk]
+           }
+           if (debug) {
+               mdebugf(" - All globals exported: [n=%d] %s", length(globals_ii), 
+                   commaq(names(globals_ii)))
+           }
+           fs[[ii]] <- future(expr, substitute = FALSE, envir = future.envir, 
+               stdout = future.stdout, conditions = future.conditions, 
+               globals = globals_ii, packages = packages_ii, seed = future.seed, 
+               label = labels[ii])
+           if (debug) {
+               mdebug("Created future:")
+               mprint(fs[[ii]])
+           }
+           rm(list = c("chunk", "globals_ii"))
+           if (debug) 
+               mdebugf("Chunk #%d of %d ... DONE", ii, nchunks)
+       }
+       if (debug) 
+           mdebugf("Launching %d futures (chunks) ... DONE", nchunks)
+       if (debug) 
+           mdebugf("Resolving %d futures (chunks) ...", nchunks)
+       if (isFALSE(future.seed)) {
+           withCallingHandlers({
+               values <- local({
+                   oopts <- options(future.rng.onMisuse.keepFuture = FALSE)
+                   on.exit(options(oopts))
+                   value(fs)
+               })
+           }, RngFutureCondition = function(cond) {
+               idx <- NULL
+               uuid <- attr(cond, "uuid")
+               if (!is.null(uuid)) {
+                   for (kk in seq_along(fs)) {
+                     if (identical(fs[[kk]]$uuid, uuid)) 
+                       idx <- kk
+                   }
+               }
+               else {
+                   f <- attr(cond, "future")
+                   if (is.null(f)) 
+                     return()
+                   if (!isFALSE(f$seed)) 
+                     return()
+                   for (kk in seq_along(fs)) {
+                     if (identical(fs[[kk]], f)) 
+                       idx <- kk
+                   }
+               }
+               if (is.null(idx)) 
+                   return()
+               f <- fs[[idx]]
+               label <- sQuoteLabel(f)
+               message <- sprintf("UNRELIABLE VALUE: One of the %s iterations (%s) unexpectedly generated random numbers without declaring so. There is a risk that those random numbers are not statistically sound and the overall results might be invalid. To fix this, specify 'future.seed=TRUE'. This ensures that proper, parallel-safe random numbers are produced via a parallel RNG method. To disable this check, use 'future.seed = NULL', or set option 'future.rng.onMisuse' to \"ignore\".", 
+                   sQuote(.packageName), label)
+               cond$message <- message
+               if (inherits(cond, "warning")) {
+                   warning(cond)
+                   invokeRestart("muffleWarning")
+               }
+               else if (inherits(cond, "error")) {
+                   stop(cond)
+               }
+           })
+       }
+       else {
+           value(fs)
+       }
+   }, interrupt = function(int) {
+       onInterrupt(int, fcn_name = fcn_name, debug = debug)
+   }, error = function(e) {
+       onError(e, futures = fs, debug = debug)
+   })
+7: future_xapply(FUN = FUN, nX = nX, chunk_args = X, args = list(...), 
+       get_chunk = `chunkWith[[`, expr = expr, envir = envir, future.envir = future.envir, 
+       future.globals = future.globals, future.packages = future.packages, 
+       future.scheduling = future.scheduling, future.chunk.size = future.chunk.size, 
+       future.stdout = future.stdout, future.conditions = future.conditions, 
+       future.seed = future.seed, future.label = future.label, fcn_name = fcn_name, 
+       args_name = args_name, debug = debug)
+6: future.apply::future_lapply(seq_len(nrow(combinations_choice)), 
+       FUN = function(i) {
+           progress(sprintf("Combination %d/%d", i, nrow(combinations_choice)))
+           combos <- gsub("_", "-", unlist(combinations_choice[i, 
+               list(dry, heat, wet)]))
+           grep_vals <- paste0(paste0(combos, ".tif"), collapse = "|")
+           combo_names <- c(names(combos), apply(combn(names(combos), 
+               2), 2, paste, collapse = "+"), paste(names(combos), 
+               collapse = "+"))
+           combo_binary <- data.table(combo_name = combo_names, 
+               value = 0)[grep(names(combos)[1], combo_name), `:=`(value, 
+               1)][grep(names(combos)[2], combo_name), `:=`(value, 
+               value + 10)][grep(names(combos)[3], combo_name), 
+               `:=`(value, value + 100)]
+           if (do5.2_main) {
+               for (l in seq_len(nrow(scenarios_x_models))) {
+                   scenario_choice <- scenarios_x_models$scenario[l]
+                   time_choice <- scenarios_x_models$timeframe[l]
+                   model_choice <- scenarios_x_models$model[l]
+                   scen_mod_time_choice <- scenarios_x_models$scen_mod_time[l]
+                   cat("Combination:", i, "/", nrow(combinations_choice), 
+                     "| Scenario x Time x model:", l, "/", nrow(scenarios_x_models), 
+                     "                   \r")
+                   combo_binary[, `:=`(lyr_names, paste0(scen_mod_time_choice, 
+                     "_", combo_name))]
+                   save_file <- file.path(haz_time_int_dir, paste0(scen_mod_time_choice, 
+                     "_", paste0(combos, collapse = "+"), ".tif"))
+                   if (!file.exists(save_file) | overwrite5.2 == 
+                     TRUE) {
+                     files <- haz_class_file_tab[haz_class_file_tab$timeframe == 
+                       time_choice & haz_class_file_tab$scenario == 
+                       scenario_choice & haz_class_file_tab$model == 
+                       model_choice, ]
+                     files <- files[match(combos, files$hazard2), 
+                       "file"]
+                     if (length(files) != 3) {
+                       stop("Issue with classified hazard files, 3 files not found.")
+                     }
+                     haz <- lapply(files, rast)
+                     names(haz) <- names(combos)
+                     haz[["heat"]] <- haz[["heat"]] * 10
+                     haz[["wet"]] <- haz[["wet"]] * 100
+                     haz_sum <- terra::rast(lapply(1:nlyr(haz[[1]]), 
+                       FUN = function(m) {
+                         sum(terra::rast(lapply(haz, "[[", m)))
+                       }))
+                     names(haz_sum) <- names(haz[[1]])
+                     any_haz <- terra::ifel(haz_sum >= 1 & haz_sum <= 
+                       999999, 1, 0)
+                     any_haz_mean <- terra::mean(any_haz, na.rm = TRUE)
+                     names(any_haz_mean) <- paste0(scen_mod_time_choice, 
+                       "_any")
+                     none_haz_mean <- 1 - any_haz_mean
+                     names(none_haz_mean) <- paste0(scen_mod_time_choice, 
+                       "_none")
+                     int <- terra::rast(lapply(seq_len(nrow(combo_binary)), 
+                       FUN = function(a) {
+                         data <- int_risk(data = haz_sum, interaction_mask_vals = combo_binary[-a, 
+                           value], lyr_name = combo_binary[a, lyr_names])
+                       }))
+                     int_any <- c(any_haz_mean, none_haz_mean, int)
+                     if (!is.null(round5.2)) {
+                       int_any <- round(int_any, round5.2)
+                     }
+                     terra::writeRaster(int_any, filename = save_file, 
+                       overwrite = TRUE, filetype = "COG", gdal = c(OVERVIEWS = "NONE"))
+                     rm(haz, haz_sum, int, any_haz, any_haz_mean, 
+                       none_haz_mean, int_any)
+                     gc()
+                   }
+               }
+           }
+           scenarios <- scenarios_x_models
+           scenarios$model <- NULL
+           scenarios$scen_mod_time <- NULL
+           scenarios <- unique(scenarios)
+           for (l in seq_len(nrow(scenarios))) {
+               cat("Calculating Ensemble:", i, "/", nrow(combinations_choice), 
+                   "| Scenario:", l, "/", length(unique(scenarios$scen_x_time)), 
+                   "                    \r")
+               scenario_choice <- scenarios$scenario[l]
+               if (scenario_choice != "historic" & do_ensemble5.2) {
+                   time_choice <- scenarios$timeframe[l]
+                   scen_time_choice <- scenarios$scen_x_time[l]
+                   scen_mod_time_choice <- scenarios_x_models[scenarios_x_models$scen_x_time == 
+                     scen_time_choice, "scen_mod_time"]
+                   ensemble_files <- file.path(haz_time_int_dir, 
+                     paste0(scen_mod_time_choice, "_", paste0(combos, 
+                       collapse = "+"), ".tif"))
+                   save_file_mean <- file.path(haz_time_int_dir, 
+                     paste0(scenario_choice, "_ENSEMBLEmean_", time_choice, 
+                       "_", paste0(combos, collapse = "+"), ".tif"))
+                   save_file_sd <- file.path(haz_time_int_dir, paste0(scenario_choice, 
+                     "_ENSEMBLEsd_", time_choice, "_", paste0(combos, 
+                       collapse = "+"), ".tif"))
+                   if (!file.exists(save_file_mean) | overwrite5.2) {
+                     ensemble_stack <- lapply(ensemble_files, terra::rast)
+                     ensemble_mean <- terra::rast(lapply(1:nlyr(ensemble_stack[[1]]), 
+                       FUN = function(j) {
+                         ensemble_dat <- terra::rast(lapply(ensemble_stack, 
+                           "[[", j))
+                         mean(ensemble_dat, na.rm = TRUE)
+                       }))
+                     ensemble_sd <- terra::rast(lapply(1:nlyr(ensemble_stack[[1]]), 
+                       FUN = function(j) {
+                         ensemble_dat <- terra::rast(lapply(ensemble_stack, 
+                           "[[", j))
+                         terra::app(ensemble_dat, fun = sd, na.rm = TRUE)
+                       }))
+                     if (!is.null(round5.2)) {
+                       ensemble_mean <- round(ensemble_mean, round5.2)
+                       ensemble_sd <- round(ensemble_sd, round5.2)
+                     }
+                     ensemble_names <- names(ensemble_stack[[1]])
+                     ensemble_names_mean <- gsub(paste0(model_options, 
+                       collapse = "|"), "ENSEMBLEmean", ensemble_names)
+                     ensemble_names_sd <- gsub(paste0(model_options, 
+                       collapse = "|"), "ENSEMBLEsd", ensemble_names)
+                     names(ensemble_mean) <- ensemble_names_mean
+                     names(ensemble_sd) <- ensemble_names_sd
+                     terra::writeRaster(ensemble_mean, filename = save_file_mean, 
+                       overwrite = TRUE, filetype = "COG", gdal = c(OVERVIEWS = "NONE"))
+                     terra::writeRaster(ensemble_sd, filename = save_file_sd, 
+                       overwrite = TRUE, filetype = "COG", gdal = c(OVERVIEWS = "NONE"))
+                     rm(ensemble_stack, ensemble_mean, ensemble_sd)
+                     gc()
+                   }
+               }
+           }
+       })
+5: with_progress({
+       progress <- progressr::progressor(along = seq_len(nrow(combinations_choice)))
+       invisible(future.apply::future_lapply(seq_len(nrow(combinations_choice)), 
+           FUN = function(i) {
+               progress(sprintf("Combination %d/%d", i, nrow(combinations_choice)))
+               combos <- gsub("_", "-", unlist(combinations_choice[i, 
+                   list(dry, heat, wet)]))
+               grep_vals <- paste0(paste0(combos, ".tif"), collapse = "|")
+               combo_names <- c(names(combos), apply(combn(names(combos), 
+                   2), 2, paste, collapse = "+"), paste(names(combos), 
+                   collapse = "+"))
+               combo_binary <- data.table(combo_name = combo_names, 
+                   value = 0)[grep(names(combos)[1], combo_name), 
+                   `:=`(value, 1)][grep(names(combos)[2], combo_name), 
+                   `:=`(value, value + 10)][grep(names(combos)[3], 
+                   combo_name), `:=`(value, value + 100)]
+               if (do5.2_main) {
+                   for (l in seq_len(nrow(scenarios_x_models))) {
+                     scenario_choice <- scenarios_x_models$scenario[l]
+                     time_choice <- scenarios_x_models$timeframe[l]
+                     model_choice <- scenarios_x_models$model[l]
+                     scen_mod_time_choice <- scenarios_x_models$scen_mod_time[l]
+                     cat("Combination:", i, "/", nrow(combinations_choice), 
+                       "| Scenario x Time x model:", l, "/", nrow(scenarios_x_models), 
+                       "                   \r")
+                     combo_binary[, `:=`(lyr_names, paste0(scen_mod_time_choice, 
+                       "_", combo_name))]
+                     save_file <- file.path(haz_time_int_dir, paste0(scen_mod_time_choice, 
+                       "_", paste0(combos, collapse = "+"), ".tif"))
+                     if (!file.exists(save_file) | overwrite5.2 == 
+                       TRUE) {
+                       files <- haz_class_file_tab[haz_class_file_tab$timeframe == 
+                         time_choice & haz_class_file_tab$scenario == 
+                         scenario_choice & haz_class_file_tab$model == 
+                         model_choice, ]
+                       files <- files[match(combos, files$hazard2), 
+                         "file"]
+                       if (length(files) != 3) {
+                         stop("Issue with classified hazard files, 3 files not found.")
+                       }
+                       haz <- lapply(files, rast)
+                       names(haz) <- names(combos)
+                       haz[["heat"]] <- haz[["heat"]] * 10
+                       haz[["wet"]] <- haz[["wet"]] * 100
+                       haz_sum <- terra::rast(lapply(1:nlyr(haz[[1]]), 
+                         FUN = function(m) {
+                           sum(terra::rast(lapply(haz, "[[", m)))
+                         }))
+                       names(haz_sum) <- names(haz[[1]])
+                       any_haz <- terra::ifel(haz_sum >= 1 & haz_sum <= 
+                         999999, 1, 0)
+                       any_haz_mean <- terra::mean(any_haz, na.rm = TRUE)
+                       names(any_haz_mean) <- paste0(scen_mod_time_choice, 
+                         "_any")
+                       none_haz_mean <- 1 - any_haz_mean
+                       names(none_haz_mean) <- paste0(scen_mod_time_choice, 
+                         "_none")
+                       int <- terra::rast(lapply(seq_len(nrow(combo_binary)), 
+                         FUN = function(a) {
+                           data <- int_risk(data = haz_sum, interaction_mask_vals = combo_binary[-a, 
+                             value], lyr_name = combo_binary[a, 
+                             lyr_names])
+                         }))
+                       int_any <- c(any_haz_mean, none_haz_mean, 
+                         int)
+                       if (!is.null(round5.2)) {
+                         int_any <- round(int_any, round5.2)
+                       }
+                       terra::writeRaster(int_any, filename = save_file, 
+                         overwrite = TRUE, filetype = "COG", gdal = c(OVERVIEWS = "NONE"))
+                       rm(haz, haz_sum, int, any_haz, any_haz_mean, 
+                         none_haz_mean, int_any)
+                       gc()
+                     }
+                   }
+               }
+               scenarios <- scenarios_x_models
+               scenarios$model <- NULL
+               scenarios$scen_mod_time <- NULL
+               scenarios <- unique(scenarios)
+               for (l in seq_len(nrow(scenarios))) {
+                   cat("Calculating Ensemble:", i, "/", nrow(combinations_choice), 
+                     "| Scenario:", l, "/", length(unique(scenarios$scen_x_time)), 
+                     "                    \r")
+                   scenario_choice <- scenarios$scenario[l]
+                   if (scenario_choice != "historic" & do_ensemble5.2) {
+                     time_choice <- scenarios$timeframe[l]
+                     scen_time_choice <- scenarios$scen_x_time[l]
+                     scen_mod_time_choice <- scenarios_x_models[scenarios_x_models$scen_x_time == 
+                       scen_time_choice, "scen_mod_time"]
+                     ensemble_files <- file.path(haz_time_int_dir, 
+                       paste0(scen_mod_time_choice, "_", paste0(combos, 
+                         collapse = "+"), ".tif"))
+                     save_file_mean <- file.path(haz_time_int_dir, 
+                       paste0(scenario_choice, "_ENSEMBLEmean_", 
+                         time_choice, "_", paste0(combos, collapse = "+"), 
+                         ".tif"))
+                     save_file_sd <- file.path(haz_time_int_dir, 
+                       paste0(scenario_choice, "_ENSEMBLEsd_", time_choice, 
+                         "_", paste0(combos, collapse = "+"), ".tif"))
+                     if (!file.exists(save_file_mean) | overwrite5.2) {
+                       ensemble_stack <- lapply(ensemble_files, 
+                         terra::rast)
+                       ensemble_mean <- terra::rast(lapply(1:nlyr(ensemble_stack[[1]]), 
+                         FUN = function(j) {
+                           ensemble_dat <- terra::rast(lapply(ensemble_stack, 
+                             "[[", j))
+                           mean(ensemble_dat, na.rm = TRUE)
+                         }))
+                       ensemble_sd <- terra::rast(lapply(1:nlyr(ensemble_stack[[1]]), 
+                         FUN = function(j) {
+                           ensemble_dat <- terra::rast(lapply(ensemble_stack, 
+                             "[[", j))
+                           terra::app(ensemble_dat, fun = sd, na.rm = TRUE)
+                         }))
+                       if (!is.null(round5.2)) {
+                         ensemble_mean <- round(ensemble_mean, round5.2)
+                         ensemble_sd <- round(ensemble_sd, round5.2)
+                       }
+                       ensemble_names <- names(ensemble_stack[[1]])
+                       ensemble_names_mean <- gsub(paste0(model_options, 
+                         collapse = "|"), "ENSEMBLEmean", ensemble_names)
+                       ensemble_names_sd <- gsub(paste0(model_options, 
+                         collapse = "|"), "ENSEMBLEsd", ensemble_names)
+                       names(ensemble_mean) <- ensemble_names_mean
+                       names(ensemble_sd) <- ensemble_names_sd
+                       terra::writeRaster(ensemble_mean, filename = save_file_mean, 
+                         overwrite = TRUE, filetype = "COG", gdal = c(OVERVIEWS = "NONE"))
+                       terra::writeRaster(ensemble_sd, filename = save_file_sd, 
+                         overwrite = TRUE, filetype = "COG", gdal = c(OVERVIEWS = "NONE"))
+                       rm(ensemble_stack, ensemble_mean, ensemble_sd)
+                       gc()
+                     }
+                   }
+               }
+           }))
+   })
+4: eval(ei, envir)
+3: eval(ei, envir)
+2: withVisible(eval(ei, envir))
+1: source(Sys.getenv("HAZ_FREQ_SCRIPT"))
+
+=================
+
+===== STAGE F DONE (Rscript exit code: 1) =====
