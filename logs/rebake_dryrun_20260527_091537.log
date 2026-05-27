@@ -1,0 +1,40 @@
+nohup: ignoring input
+=== rebake_parquets_for_pushdown.R ===
+bucket:        s3://digital-atlas
+targets:       5 of 15
+row_group:     50,000 rows
+dry_run:       TRUE
+tmpdir:        /tmp/atlas_parquet_rebake
+AWS_PROFILE:   <unset>
+
+[cmip6_historical] domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=1995-2014/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
+    notes: Producer: hazards_prototype/R/2.1_create_monthly_haz_tables.R (sections 3.2/3.3)
+Warning: Caught paws_error. Canceling all iterations ...
+    !! missing on S3 — skipping
+
+[cmip6_2021_2040] domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2021-2040/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
+    notes: Producer: hazards_prototype/R/2.1_create_monthly_haz_tables.R (sections 3.2/3.3)
+Warning: Caught paws_error. Canceling all iterations ...
+    !! missing on S3 — skipping
+
+[cmip6_2041_2060] domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2041-2060/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
+    notes: Producer: hazards_prototype/R/2.1_create_monthly_haz_tables.R (sections 3.2/3.3)
+Warning: Caught paws_error. Canceling all iterations ...
+    !! missing on S3 — skipping
+
+[cmip6_2061_2080] domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2061-2080/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
+    notes: Producer: hazards_prototype/R/2.1_create_monthly_haz_tables.R (sections 3.2/3.3)
+Warning: Caught paws_error. Canceling all iterations ...
+    !! missing on S3 — skipping
+
+[cmip6_2081_2100] domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2081-2100/baseline=1995-2014/variable=ensemble_season_timeseries.parquet
+    notes: Producer: hazards_prototype/R/2.1_create_monthly_haz_tables.R (sections 3.2/3.3)
+Warning: Caught paws_error. Canceling all iterations ...
+    !! missing on S3 — skipping
+
+=== summary ===
+  cmip6_historical  missing
+  cmip6_2021_2040   missing
+  cmip6_2041_2060   missing
+  cmip6_2061_2080   missing
+  cmip6_2081_2100   missing
