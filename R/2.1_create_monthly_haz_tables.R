@@ -201,7 +201,11 @@ extract_hazard <- function(i, folders, hazards, output_dir, overwrite, round_dp,
         result_long[, variable := NULL]
         result_long <- result_long[do.call(order, result_long[, ..order_by])]
 
-        arrow::write_parquet(result_long, save_file)
+        write_parquet_pushdown(
+          result_long, save_file,
+          sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "model", "timeframe", "year", "month"),
+          verify_stats_on = c("admin0_name", "hazard")
+        )
         write_json(list(
           source = list(input_raster = files, extraction_rast = extraction_rast),
           extraction_method = "zonal",
@@ -315,7 +319,11 @@ problem_data <- lapply(seq_along(timeframes), FUN = function(i) {
 
     data[, year := as.integer(year)][, month := as.integer(month)]
 
-    arrow::write_parquet(data, save_path)
+    write_parquet_pushdown(
+      data, save_path,
+      sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "model", "timeframe", "year", "month"),
+      verify_stats_on = c("admin0_name", "hazard", "scenario")
+    )
 
     json_dat <- jsonlite::read_json(paste0(files_ss[1], ".json"), simplifyVector = TRUE)
     filters <- list(
@@ -438,7 +446,11 @@ lapply(monthly_files, FUN = function(month_file) {
       setorderv(data, order_by2)
     }
 
-    arrow::write_parquet(data_ex_season, save_file)
+    write_parquet_pushdown(
+      data_ex_season, save_file,
+      sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "model", "timeframe", "season", "year"),
+      verify_stats_on = c("admin0_name", "hazard", "scenario")
+    )
 
     json_dat <- jsonlite::read_json(paste0(month_file, ".json"), simplifyVector = TRUE)
     filters <- list(
@@ -517,7 +529,11 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     data[, anomaly := value - baseline_value]
     data[, baseline_name := baseline_name]
 
-    arrow::write_parquet(data, save_file)
+    write_parquet_pushdown(
+      data, save_file,
+      sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "model", "timeframe", "season", "year"),
+      verify_stats_on = c("admin0_name", "hazard", "scenario")
+    )
 
     data_json <- jsonlite::read_json(file.path(output_dir, paste0(basename(file_combos$data[i]), ".json")), simplifyVector = TRUE)
 
@@ -649,7 +665,19 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
       setorderv(data_ag_ens, order_by2)
     }
 
-    arrow::write_parquet(data_anomaly_ens, save_file2)
+    # CANONICAL — this file is published to S3 as
+    # `variable=ensemble_season_timeseries.parquet` (after rename by the
+    # AtlasDataManageR publisher) and drives the climateRationale
+    # notebook's Future Projections section. Sort prefix matches the
+    # 2026-05-27 dispatch's `[iso3, hazard, scenario, season, year,
+    # admin1_name]` recommendation; local file uses admin0_name (iso3
+    # is added downstream by the publisher) so the helper degrades
+    # to admin0_name automatically via sort_cols_present intersect.
+    write_parquet_pushdown(
+      data_anomaly_ens, save_file2,
+      sort_by         = c("iso3", "admin0_name", "hazard", "scenario", "season", "year", "timeframe", "admin1_name"),
+      verify_stats_on = c("admin0_name", "hazard", "scenario", "season")
+    )
 
     filters$model <- NULL
 
@@ -705,7 +733,11 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     ), paste0(save_file2, ".json"), pretty = TRUE)
 
 
-    arrow::write_parquet(data_ag_ens, save_file3)
+    write_parquet_pushdown(
+      data_ag_ens, save_file3,
+      sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "timeframe", "season"),
+      verify_stats_on = c("admin0_name", "hazard", "scenario")
+    )
 
     filters$year <- NULL
 
@@ -830,7 +862,11 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     }
 
     # Save result
-    arrow::write_parquet(data_ex_trend_stats, save_file)
+    write_parquet_pushdown(
+      data_ex_trend_stats, save_file,
+      sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "model", "timeframe", "season"),
+      verify_stats_on = c("admin0_name", "hazard", "scenario")
+    )
 
     filters <- list(
       scenario = data_ex_trend_stats[, unique(scenario)],
@@ -912,7 +948,11 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
       setorderv(data_ex_trend_stats_ens, order_by2)
     }
 
-    arrow::write_parquet(data_ex_trend_stats_ens, save_file2)
+    write_parquet_pushdown(
+      data_ex_trend_stats_ens, save_file2,
+      sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "timeframe", "season", "stat"),
+      verify_stats_on = c("admin0_name", "hazard")
+    )
 
     field_descriptions$model <- NULL
 
@@ -947,7 +987,11 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
 
     data_ex_trend_stats_ens_simple <- data_ex_trend_stats_ens[hazard %in% c("PTOT", "TAVG", "TMAX") & stat %in% c("value_diff", "value_decade", "anomaly_diff")]
 
-    arrow::write_parquet(data_ex_trend_stats_ens_simple, save_file3)
+    write_parquet_pushdown(
+      data_ex_trend_stats_ens_simple, save_file3,
+      sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "season", "stat"),
+      verify_stats_on = c("admin0_name", "hazard")
+    )
 
     filters <- list(
       scenario = data_ex_trend_stats_ens_simple[, unique(scenario)],

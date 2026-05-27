@@ -113,7 +113,13 @@ write_parquet_pushdown <- function(
   n_chunks   <- rg_check$n_chunks
   avg_chunk_kb <- if (n_chunks > 0) (rg_check$bytes_compressed / n_chunks) / 1024 else 0
 
-  if (n_groups < 2L) {
+  # Tables smaller than ~2× row_group_size naturally fall in a single
+  # row group — pushdown verification is N/A there (the helper still
+  # writes the file correctly, just can't subdivide). Skip the >1 RG
+  # requirement in that case so small intermediates and lookup tables
+  # don't error.
+  small_table <- nrow(tbl) < (2L * row_group_size)
+  if (!small_table && n_groups < 2L) {
     stop(sprintf(
       paste0("write_parquet_pushdown: %s ended up with %d row group(s); ",
              "row_group_size = %d may be too large for %d rows"),
