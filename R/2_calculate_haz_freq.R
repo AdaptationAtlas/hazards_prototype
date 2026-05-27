@@ -609,6 +609,10 @@ for (tx in seq_along(timeframes)) {
   haz_risk_dir <- file.path(atlas_dirs$data_dir$hazard_risk, timeframe)
   haz_mean_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_mean, timeframe)
   haz_time_int_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_int, timeframe)
+  # haz_timeseries_dir is also assigned inside section 1's if-block (line
+  # ~617). Define it here too so section 4 (line ~1039) can find it when
+  # section 1 is skipped via SKIP_R2_RUN1=1 during a partial re-bake.
+  haz_timeseries_dir <- file.path(indices_dir2, timeframe)
 
   # 1) Classify time series climate variables based on hazard thresholds ####
   if (run1) {
