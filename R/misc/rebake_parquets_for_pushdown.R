@@ -94,40 +94,46 @@ TARGETS <- list(
     "Producer: hazards_prototype/R/observational/4_aggregate_obs_admin_periods.R"
   ),
   # NEX-GDDP-CMIP6 ensemble timeseries (historical + 4 future periods) -------
+  # Predicate column is `hazard` (not `variable`) in the canonical files;
+  # the climateRationale notebook filters on iso3 + season + scenario +
+  # hazard, with admin1_name typically NULL for the country aggregate
+  # (so admin1_name goes LAST in the sort prefix per the 2026-05-27
+  # dispatch). atlas_notebooks rebake_parquets_for_pushdown.py:11a040a
+  # made the same fix on the Python side.
   make_target(
     "cmip6_historical",
     "domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=1995-2014/baseline=1995-2014/variable=ensemble_season_timeseries.parquet",
-    c("iso3", "admin1_name", "variable", "season", "year"),
-    c("iso3", "variable", "season"),
-    "Producer: hazards_prototype/R/1.x_*_timeseries.R"
+    c("iso3", "hazard", "season", "year", "admin1_name"),
+    c("iso3", "hazard", "season"),
+    "Producer: hazards_prototype/R/2.1_create_monthly_haz_tables.R (sections 3.2/3.3)"
   ),
   make_target(
     "cmip6_2021_2040",
     "domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2021-2040/baseline=1995-2014/variable=ensemble_season_timeseries.parquet",
-    c("iso3", "admin1_name", "variable", "season", "scenario", "year"),
-    c("iso3", "variable", "season", "scenario"),
-    "Producer: hazards_prototype/R/1.x_*_timeseries.R"
+    c("iso3", "hazard", "scenario", "season", "year", "admin1_name"),
+    c("iso3", "hazard", "scenario", "season"),
+    "Producer: hazards_prototype/R/2.1_create_monthly_haz_tables.R (sections 3.2/3.3)"
   ),
   make_target(
     "cmip6_2041_2060",
     "domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2041-2060/baseline=1995-2014/variable=ensemble_season_timeseries.parquet",
-    c("iso3", "admin1_name", "variable", "season", "scenario", "year"),
-    c("iso3", "variable", "season", "scenario"),
-    "Producer: hazards_prototype/R/1.x_*_timeseries.R"
+    c("iso3", "hazard", "scenario", "season", "year", "admin1_name"),
+    c("iso3", "hazard", "scenario", "season"),
+    "Producer: hazards_prototype/R/2.1_create_monthly_haz_tables.R (sections 3.2/3.3)"
   ),
   make_target(
     "cmip6_2061_2080",
     "domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2061-2080/baseline=1995-2014/variable=ensemble_season_timeseries.parquet",
-    c("iso3", "admin1_name", "variable", "season", "scenario", "year"),
-    c("iso3", "variable", "season", "scenario"),
-    "Producer: hazards_prototype/R/1.x_*_timeseries.R"
+    c("iso3", "hazard", "scenario", "season", "year", "admin1_name"),
+    c("iso3", "hazard", "scenario", "season"),
+    "Producer: hazards_prototype/R/2.1_create_monthly_haz_tables.R (sections 3.2/3.3)"
   ),
   make_target(
     "cmip6_2081_2100",
     "domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period=2081-2100/baseline=1995-2014/variable=ensemble_season_timeseries.parquet",
-    c("iso3", "admin1_name", "variable", "season", "scenario", "year"),
-    c("iso3", "variable", "season", "scenario"),
-    "Producer: hazards_prototype/R/1.x_*_timeseries.R"
+    c("iso3", "hazard", "scenario", "season", "year", "admin1_name"),
+    c("iso3", "hazard", "scenario", "season"),
+    "Producer: hazards_prototype/R/2.1_create_monthly_haz_tables.R (sections 3.2/3.3)"
   ),
   # hazard exposure & exposure -----------------------------------------------
   make_target(
