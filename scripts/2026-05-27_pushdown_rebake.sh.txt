@@ -1,0 +1,307 @@
+# 2026-05-27 — re-bake CMIP6 future_climate_timeseries for WASM pushdown
+# =====================================================================
+# Origin: atlas_notebooks/playbook/handovers/climateRationale/dispatches/
+#         2026-05-27_parquet-pushdown-pipeline-ask.md (priority #1).
+#
+# Driver: Pete's 10-minute Future-Projections cold-load wait. HAR
+# analysis traced it to the canonical CMIP6 parquets being fetched in
+# whole row-group column chunks (~19MB per range request) by DuckDB-
+# WASM under the hive_partitioning=1 + UNION view shape.
+#
+# Fix landed in R/_helpers.R (commit on develop): write_parquet_pushdown()
+# default ROW_GROUP_SIZE 100000 → 50000. Synthetic sweep at
+# /tmp/parquet-pushdown-experiment/ confirms avg column-chunk size
+# halves (148 KB → 76 KB) with only +0.3% file-size cost.
+#
+# What this runbook does:
+#   STAGE 0  pre-flight (branch state, helper sourcing, AWS creds)
+#   STAGE 1  re-run R/1.2_create_isimip_timeseries.R end-to-end
+#            (produces 5 ensemble_season_timeseries.parquet files)
+#   STAGE 2  local verify: row_groups, stats populated, avg chunk size
+#            below ceiling, narrow predicate query in DuckDB CLI returns
+#            sane row count
+#   STAGE 3  upload each rebake to S3 sandbox prefix
+#            s3://digital-atlas/sandbox/parquet-pushdown/<canonical-path>
+#   STAGE 4  DuckDB CLI A/B (canonical vs sandbox) — sanity floor, not
+#            the verdict
+#   STAGE 5  *** WASM browser smoke test *** — open the climateRationale
+#            notebook with the sandbox prefix swapped in; capture HAR;
+#            confirm `dbFutureHive` cell does NOT crash, byte transfer
+#            for `WHERE iso3='AGO'` is ~2-5% of file size. THIS IS THE
+#            REAL GATE.
+#   STAGE 6  promote sandbox → canonical (only after STAGE 5 passes)
+#   STAGE 7  post-promote verify (DuckDB-httpfs against canonical URL)
+#
+# Hazards specific to this runbook:
+#   - R/1.2 takes ~30-90 min per CMIP6 period × baseline pair; the 5
+#     future-period writes are sequential. Background under nohup.
+#   - Sandbox S3 upload via s3fs MUST pass ACL="public-read"; default
+#     is private and anonymous WASM reads return HTTP 500. See
+#     feedback_s3fs_copy_does_not_preserve_acl.
+#   - Promotion is `aws s3 mv` only after browser-side gate passes.
+#   - Pyarrow output crashes WASM — do NOT pivot the rebake script to
+#     pyarrow if the DuckDB-native output disappoints. Investigate WASM
+#     range coalescing / view-shape interactions instead.
+
+set -euo pipefail
+cd /home/jovyan/common_data/hazards_prototype  # CGlabs path; adjust if elsewhere
+
+# -----------------------------------------------------------------------
+# STAGE 0  pre-flight
+# -----------------------------------------------------------------------
+
+# Confirm the helper change is on develop
+git -C /home/jovyan/common_data/hazards_prototype log --oneline -3 R/_helpers.R | head -3
+
+# Source the setup so atlas_dirs / working_dir resolve correctly
+Rscript - <<'EOF'
+source("R/0_server_setup.R")
+source("R/_helpers.R")
+cat("project_dir:", project_dir, "\n")
+cat("working_dir:", working_dir, "\n")
+cat("helper sources OK\n")
+EOF
+
+# Confirm AWS creds present (only needed for STAGE 3+)
+test -n "${AWS_ACCESS_KEY_ID:-}" || { echo "AWS_ACCESS_KEY_ID unset"; exit 1; }
+test -n "${AWS_SECRET_ACCESS_KEY:-}" || { echo "AWS_SECRET_ACCESS_KEY unset"; exit 1; }
+
+# -----------------------------------------------------------------------
+# STAGE 1  re-run R/1.2_create_isimip_timeseries.R
+# -----------------------------------------------------------------------
+# Generates ensemble_season_timeseries.parquet for each (baseline,
+# period) combination. write_parquet_pushdown() runs at each save site;
+# new files automatically get the rg=50000 layout.
+#
+# Roughly 30-90 min per write site; ~7 sites in this script. Background
+# under nohup and tail the log.
+
+mkdir -p logs
+nohup Rscript R/1.2_create_isimip_timeseries.R \
+  > logs/pushdown_rebake_R12_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+echo "PID: $!"
+tail -f logs/pushdown_rebake_R12_*.log
+# Wait for "write_parquet_pushdown: ... written" lines for each output.
+# Each successful write should report:
+#   N row groups, M chunks, ~50-90 KB avg chunk
+
+# -----------------------------------------------------------------------
+# STAGE 2  local verify
+# -----------------------------------------------------------------------
+# Locate the 5 future + 5 historical hindcast files just written.
+# Path pattern (per dispatch):
+#   <working_dir>/Data/.../period={PERIOD}/baseline={BASELINE}/variable=ensemble_season_timeseries.parquet
+# (Each baseline writes a parallel set; the climateRationale notebook
+# reads the baseline=1995-2014 set.)
+
+Rscript - <<'EOF'
+source("R/0_server_setup.R")
+suppressPackageStartupMessages({pacman::p_load(DBI, duckdb)})
+
+# Adjust path glob to the actual output dir of R/1.2 on this host
+files <- Sys.glob(file.path(
+  working_dir, "Data", "*", "*ensemble_season_timeseries*", "*", "*", "*ensemble_season_timeseries.parquet"
+))
+if (length(files) == 0L) {
+  files <- Sys.glob(file.path(
+    working_dir, "**", "*ensemble_season_timeseries.parquet"
+  ))
+}
+cat("Found", length(files), "ensemble_season_timeseries.parquet files\n")
+for (f in files) cat("  ", f, "\n")
+
+con <- DBI::dbConnect(duckdb::duckdb())
+for (f in files) {
+  md <- DBI::dbGetQuery(con, sprintf(
+    "SELECT COUNT(DISTINCT row_group_id) AS n_groups,
+            COUNT(*) AS n_chunks,
+            SUM(total_compressed_size)/1024 AS bytes_kb
+     FROM parquet_metadata('%s')", f))
+  iso3 <- DBI::dbGetQuery(con, sprintf(
+    "SELECT COUNT(*) AS null_count FROM parquet_metadata('%s')
+     WHERE path_in_schema = 'iso3' AND (stats_min IS NULL OR stats_max IS NULL)", f))
+  cat(sprintf("%-60s  rg=%-4d  chunks=%-5d  avg=%.1f KB  iso3_null_stats=%d\n",
+              basename(dirname(dirname(f))) , md$n_groups, md$n_chunks,
+              md$bytes_kb / md$n_chunks, iso3$null_count))
+}
+DBI::dbDisconnect(con, shutdown = TRUE)
+EOF
+
+# Spot-check a notebook-shape query on one file (use AGO as canary)
+Rscript - <<'EOF'
+source("R/0_server_setup.R")
+suppressPackageStartupMessages({pacman::p_load(DBI, duckdb)})
+con <- DBI::dbConnect(duckdb::duckdb())
+DBI::dbExecute(con, "PRAGMA enable_object_cache=false")
+files <- Sys.glob(file.path(working_dir, "**", "period=2021-2040",
+                            "baseline=1995-2014", "*ensemble_season_timeseries.parquet"))
+stopifnot(length(files) >= 1)
+t0 <- Sys.time()
+r <- DBI::dbGetQuery(con, sprintf("
+  SELECT iso3, scenario, season, year, hazard, mean
+  FROM read_parquet('%s')
+  WHERE iso3='AGO' AND season='annual'
+    AND scenario IN ('ssp245','ssp585')
+    AND hazard IN ('PTOT','HSH-max')
+    AND admin1_name IS NULL", files[1]))
+cat("local query:", nrow(r), "rows in", as.numeric(Sys.time()-t0, units='secs'), "s\n")
+EOF
+
+# -----------------------------------------------------------------------
+# STAGE 3  upload to S3 sandbox prefix
+# -----------------------------------------------------------------------
+# Same prefix pattern as 2026-05-25_parquet-pushdown-sandbox.md:
+#   s3://digital-atlas/sandbox/parquet-pushdown/<canonical-path>
+
+Rscript - <<'EOF'
+source("R/0_server_setup.R")
+suppressPackageStartupMessages({pacman::p_load(s3fs)})
+s3fs::s3_credentials_set(
+  access_key_id     = Sys.getenv("AWS_ACCESS_KEY_ID"),
+  secret_access_key = Sys.getenv("AWS_SECRET_ACCESS_KEY")
+)
+BUCKET <- "digital-atlas"
+# Canonical key pattern (matches notebooks/data/climateRationale/nbData.json)
+CANON_PREFIX <- "domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months"
+periods <- c("1995-2014", "2021-2040", "2041-2060", "2061-2080", "2081-2100")
+baseline <- "1995-2014"
+for (p in periods) {
+  local_glob <- Sys.glob(file.path(working_dir, "**",
+                                   paste0("period=", p),
+                                   paste0("baseline=", baseline),
+                                   "*ensemble_season_timeseries.parquet"))
+  stopifnot(length(local_glob) == 1)
+  local <- local_glob[1]
+  s3_key <- sprintf("%s/period=%s/baseline=%s/variable=ensemble_season_timeseries.parquet",
+                    CANON_PREFIX, p, baseline)
+  sandbox_uri <- sprintf("s3://%s/sandbox/parquet-pushdown/%s", BUCKET, s3_key)
+  cat("upload:", local, "->", sandbox_uri, "\n")
+  s3fs::s3_file_upload(local, sandbox_uri, ACL = "public-read")
+}
+EOF
+
+# Confirm uploads landed with public-read
+aws s3 ls --recursive s3://digital-atlas/sandbox/parquet-pushdown/domain=climate/ | tail -10
+aws s3api get-object-acl --bucket digital-atlas \
+  --key "sandbox/parquet-pushdown/${CANON_PREFIX}/period=2021-2040/baseline=1995-2014/variable=ensemble_season_timeseries.parquet" \
+  | grep -E 'Grantee|Permission' | head -10
+# Expect at least one row with Permission READ and Grantee URI "Group/AllUsers".
+
+# -----------------------------------------------------------------------
+# STAGE 4  DuckDB CLI A/B  (sanity floor only)
+# -----------------------------------------------------------------------
+# Compare timing canonical vs sandbox in standalone DuckDB. Expect
+# similar or slightly faster on sandbox; CLI does not reflect WASM
+# behaviour. The real gate is STAGE 5.
+
+duckdb <<SQL
+PRAGMA enable_object_cache=false;
+INSTALL httpfs; LOAD httpfs;
+.timer on
+
+-- Canonical
+SELECT iso3, scenario, season, year, hazard, mean FROM read_parquet(
+  'https://digital-atlas.s3.amazonaws.com/${CANON_PREFIX}/period=2021-2040/baseline=1995-2014/variable=ensemble_season_timeseries.parquet')
+WHERE iso3='AGO' AND season='annual'
+  AND scenario IN ('ssp245','ssp585') AND hazard IN ('PTOT','HSH-max')
+  AND admin1_name IS NULL;
+
+-- Sandbox
+SELECT iso3, scenario, season, year, hazard, mean FROM read_parquet(
+  'https://digital-atlas.s3.amazonaws.com/sandbox/parquet-pushdown/${CANON_PREFIX}/period=2021-2040/baseline=1995-2014/variable=ensemble_season_timeseries.parquet')
+WHERE iso3='AGO' AND season='annual'
+  AND scenario IN ('ssp245','ssp585') AND hazard IN ('PTOT','HSH-max')
+  AND admin1_name IS NULL;
+SQL
+
+# -----------------------------------------------------------------------
+# STAGE 5  *** WASM browser smoke test ***
+# -----------------------------------------------------------------------
+# This is the authoritative gate per the 2026-05-27 dispatch.
+# Procedure (manual; ~15 min):
+#
+#   1. In atlas_notebooks repo, temporarily switch the climateRationale
+#      notebook's `nbData.json` future-projections entries to point at
+#      the sandbox prefix (5 URLs, replace `s3://digital-atlas/` with
+#      `s3://digital-atlas/sandbox/parquet-pushdown/`).
+#
+#   2. Run `quarto render notebooks/climateRationale/notebook.qmd`.
+#      Open the rendered HTML in Chrome with DevTools / Network panel
+#      open. Clear cache; record from page-load until the chart
+#      paints; capture HAR.
+#
+#   3. Confirm:
+#      (a) NO `[object WebAssembly.Exception]` from the `dbFutureHive`
+#          cell (revisit STAGE 1 if there is — pyarrow output gives
+#          this error; DuckDB-native output should not).
+#      (b) Cold-load total byte transfer for the 5 future-projection
+#          parquets is ~2-5% of total file size (vs ~25-30% baseline
+#          per Option-C HAR).
+#      (c) Wall-clock time to chart paint < 60 s (down from ~10 min).
+#
+#   4. Revert the `nbData.json` change before committing anything.
+#      The sandbox test does NOT modify production.
+#
+# If any of (a)/(b)/(c) fail → DO NOT promote. Document the actual
+# numbers; revisit the dispatch's open question on COPY TO PARQUET
+# parameters; investigate WASM HTTP coalescing behaviour against the
+# specific view shape.
+
+# -----------------------------------------------------------------------
+# STAGE 6  promote sandbox → canonical  (gated on STAGE 5 pass)
+# -----------------------------------------------------------------------
+# WARNING: This rewrites canonical files. Backup pattern: download
+# canonical, re-upload with `.preFix.bak` suffix, then move sandbox
+# to canonical. Use download+upload (NOT s3_file_copy — strips ACL,
+# see feedback_s3fs_copy_does_not_preserve_acl).
+
+Rscript - <<'EOF'
+source("R/0_server_setup.R")
+suppressPackageStartupMessages({pacman::p_load(s3fs)})
+s3fs::s3_credentials_set(
+  access_key_id     = Sys.getenv("AWS_ACCESS_KEY_ID"),
+  secret_access_key = Sys.getenv("AWS_SECRET_ACCESS_KEY")
+)
+BUCKET <- "digital-atlas"
+CANON_PREFIX <- "domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months"
+periods <- c("1995-2014", "2021-2040", "2041-2060", "2061-2080", "2081-2100")
+baseline <- "1995-2014"
+tmp <- tempfile(fileext = ".parquet")
+for (p in periods) {
+  key <- sprintf("%s/period=%s/baseline=%s/variable=ensemble_season_timeseries.parquet",
+                 CANON_PREFIX, p, baseline)
+  canon  <- sprintf("s3://%s/%s", BUCKET, key)
+  bak    <- sprintf("s3://%s/%s.preFix.bak", BUCKET, key)
+  sandbx <- sprintf("s3://%s/sandbox/parquet-pushdown/%s", BUCKET, key)
+  cat("BACKUP", canon, "->", bak, "\n")
+  s3fs::s3_file_download(canon, tmp, overwrite = TRUE)
+  s3fs::s3_file_upload(tmp, bak, ACL = "public-read")
+  cat("PROMOTE", sandbx, "->", canon, "\n")
+  s3fs::s3_file_download(sandbx, tmp, overwrite = TRUE)
+  s3fs::s3_file_upload(tmp, canon, ACL = "public-read")
+}
+unlink(tmp)
+EOF
+
+# -----------------------------------------------------------------------
+# STAGE 7  post-promote verify (DuckDB-httpfs against canonical)
+# -----------------------------------------------------------------------
+duckdb <<SQL
+INSTALL httpfs; LOAD httpfs;
+PRAGMA enable_object_cache=false;
+.timer on
+SELECT COUNT(*) FROM read_parquet(
+  'https://digital-atlas.s3.amazonaws.com/${CANON_PREFIX}/period=2021-2040/baseline=1995-2014/variable=ensemble_season_timeseries.parquet')
+WHERE iso3='AGO' AND season='annual';
+-- Expected: row count matches STAGE 2's local result. Latency: < 5s.
+SQL
+
+# Finally: clear the sandbox prefix if STAGE 5 + 6 + 7 all passed.
+# aws s3 rm --recursive s3://digital-atlas/sandbox/parquet-pushdown/
+#
+# Rollback (if STAGE 7 reveals a regression):
+#   for p in 1995-2014 2021-2040 2041-2060 2061-2080 2081-2100; do
+#     k="$CANON_PREFIX/period=$p/baseline=1995-2014/variable=ensemble_season_timeseries.parquet"
+#     aws s3 cp "s3://digital-atlas/$k.preFix.bak" /tmp/rollback.parquet
+#     aws s3 cp /tmp/rollback.parquet "s3://digital-atlas/$k" --acl public-read
+#   done

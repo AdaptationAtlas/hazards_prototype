@@ -6,24 +6,43 @@
 
 #' Write a parquet file in a way DuckDB-WASM can push predicates down on.
 #'
-#' Notebooks consumed via DuckDB-WASM can only skip work at the row-group
-#' level, and they can only decide to skip a group from column statistics.
-#' A single-row-group file with NULL stats forces the browser to download
-#' the entire compressed parquet on every cold-start query. This helper
-#' guarantees the four things that make a parquet pushdown-friendly:
+#' Atlas notebooks consume parquets via DuckDB-WASM, which can only skip
+#' work at the row-group level (per-row-group min/max column stats) AND
+#' can only range-read at the column-chunk level (one fetch per
+#' row-group × column needed). DuckDB-WASM has no per-page index
+#' support, so the chunk IS the fetch unit; smaller row groups ⇒
+#' smaller chunks ⇒ smaller per-fetch bytes.
 #'
-#' 1. Multiple row groups (target ~64K-128K rows per group).
-#' 2. Sorted by the columns notebooks actually filter on.
-#' 3. Column statistics enabled (default in recent arrow, but explicit
-#'    here so we don't drift on a version bump).
-#' 4. Verified post-write — row-group count > 1 and stats populated on
-#'    every filter column. Raises an error if not.
+#' This helper:
 #'
-#' Convention reference: project memory
-#'   feedback-parquet-authoring-for-duckdb-wasm
-#' Diagnosis: atlas_notebooks
-#'   playbook/handovers/climateRationale/dispatches/
-#'   2026-05-22_recent-changes-followups.md  (Follow-up 1)
+#' 1. Sorts by the columns notebooks filter on, so per-RG iso3 stats
+#'    bracket contiguous ranges and most RGs get skipped on a single-
+#'    country query.
+#' 2. Writes via DuckDB-native COPY TO PARQUET — pyarrow's writer
+#'    crashes DuckDB-WASM in the hive_partitioning=1 + multi-file UNION
+#'    view shape used by the climateRationale notebook (root cause:
+#'    byte-format-sensitive WASM parser). DuckDB writes a byte format
+#'    its own WASM build can read. See 2026-05-27 dispatch
+#'    parquet-pushdown-pipeline-ask.md for the failed-experiment trail.
+#' 3. Targets ROW_GROUP_SIZE = 50,000 rows. Per the 2026-05-27
+#'    parameter sweep at /tmp/parquet-pushdown-experiment/, this
+#'    halves average compressed column-chunk size (~150KB→~76KB) vs
+#'    the previous 100,000 default, with negligible (+0.3%) file-size
+#'    cost. Going smaller balloons footer overhead without further
+#'    chunk-size wins. DuckDB 1.5 has no DATA_PAGE_SIZE / WRITE_PAGE_-
+#'    INDEX option, so ROW_GROUP_SIZE is the only knob.
+#' 4. Verifies post-write: row-group count > 1, stats populated on every
+#'    `verify_stats_on` column, and average column-chunk compressed size
+#'    is below `max_avg_chunk_kb` (default 200 KB, the threshold above
+#'    which WASM range-read latency starts to dominate).
+#'
+#' NB: this verification is necessary-but-not-sufficient. The
+#' authoritative WASM perf verdict still has to come from loading the
+#' promoted canonical in Chrome and confirming HAR-level byte transfer
+#' for a `WHERE iso3 = 'X'` query is ~2-5% of file size. See the
+#' pipeline-ask dispatch's verification-checklist step 3.
+#'
+#' Convention reference: project memory feedback-parquet-authoring-for-duckdb-wasm
 #'
 #' @param tbl A data.frame / data.table / arrow Table.
 #' @param out_path File path to write to.
@@ -33,23 +52,29 @@
 #' @param verify_stats_on Character vector of columns whose min/max
 #'                       stats MUST be populated post-write. Defaults
 #'                       to sort_by.
-#' @param row_group_size Target row-group size in rows. Default 100,000.
-#' @param compression Default "zstd" / level 9 to match existing files.
-#' @param compression_level Numeric compression level for zstd.
-#' @param ... Forwarded to arrow::write_parquet for any other arguments.
+#' @param row_group_size Rows per parquet row group. Default 50,000 —
+#'                       sweet spot for WASM-side range-read efficiency.
+#' @param compression Codec. Default "zstd".
+#' @param compression_level Codec level. Default 9.
+#' @param max_avg_chunk_kb Soft ceiling on the average column-chunk
+#'                        compressed size (KB) before raising a warning.
+#'                        Default 200 — chunks larger than this defeat
+#'                        WASM's per-fetch latency budget on cold loads.
+#'                        Set NULL to suppress the check.
+#' @param ... Reserved for future extension; currently ignored.
 write_parquet_pushdown <- function(
   tbl,
   out_path,
   sort_by,
-  verify_stats_on = sort_by,
-  row_group_size  = 100000L,
-  compression     = "zstd",
+  verify_stats_on   = sort_by,
+  row_group_size    = 50000L,
+  compression       = "zstd",
   compression_level = 9L,
+  max_avg_chunk_kb  = 200,
   ...
 ) {
   stopifnot(is.character(sort_by), length(sort_by) >= 1L)
 
-  # Coerce to data.table for the sort, then back to whatever arrow wants.
   if (!inherits(tbl, "data.table")) tbl <- data.table::as.data.table(tbl)
 
   sort_cols_present <- intersect(sort_by, names(tbl))
@@ -62,42 +87,37 @@ write_parquet_pushdown <- function(
     data.table::setorderv(tbl, sort_cols_present)
   }
 
-  # Write via DuckDB COPY TO PARQUET. arrow R writes string columns
-  # dictionary-encoded with stats against the dict indices, so
-  # parquet_metadata() returns NULL stats_min/max — defeats pushdown.
-  # DuckDB writes strings as VARCHAR with proper column stats. The
-  # older arrow on CGlabs also doesn't support the column_encoding
-  # kwarg we tried as a workaround. DuckDB COPY is the reliable path.
   con <- DBI::dbConnect(duckdb::duckdb())
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
+
   DBI::dbWriteTable(con, "tbl_src", as.data.frame(tbl), overwrite = TRUE)
   order_by <- if (length(sort_cols_present) > 0L) {
     paste("ORDER BY", paste(sprintf("\"%s\"", sort_cols_present), collapse = ", "))
   } else {
     ""
   }
-  # COMPRESSION_LEVEL 9 matches the original arrow zstd level so file
-  # sizes don't grow ~40% on big timeseries files. Requires DuckDB >= 0.10.
   DBI::dbExecute(con, sprintf(
     "COPY (SELECT * FROM tbl_src %s)
-     TO '%s' (FORMAT PARQUET, COMPRESSION ZSTD, COMPRESSION_LEVEL 9, ROW_GROUP_SIZE %d)",
-    order_by, out_path, row_group_size
+     TO '%s' (FORMAT PARQUET, COMPRESSION %s, COMPRESSION_LEVEL %d, ROW_GROUP_SIZE %d)",
+    order_by, out_path, toupper(compression), compression_level, row_group_size
   ))
 
-  # Verify via DuckDB's parquet_metadata() — canonical surface and
-  # works across arrow R-package versions.
-  con <- DBI::dbConnect(duckdb::duckdb())
-  on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
   rg_check <- DBI::dbGetQuery(con, sprintf(
-    "SELECT COUNT(DISTINCT row_group_id) AS n_groups
+    "SELECT COUNT(DISTINCT row_group_id) AS n_groups,
+            COUNT(*)                     AS n_chunks,
+            SUM(total_compressed_size)   AS bytes_compressed
      FROM parquet_metadata('%s')",
     out_path
   ))
-  if (rg_check$n_groups < 2L) {
+  n_groups   <- rg_check$n_groups
+  n_chunks   <- rg_check$n_chunks
+  avg_chunk_kb <- if (n_chunks > 0) (rg_check$bytes_compressed / n_chunks) / 1024 else 0
+
+  if (n_groups < 2L) {
     stop(sprintf(
       paste0("write_parquet_pushdown: %s ended up with %d row group(s); ",
-             "chunk_size = %d may be too large for %d rows"),
-      out_path, rg_check$n_groups, row_group_size, nrow(tbl)
+             "row_group_size = %d may be too large for %d rows"),
+      out_path, n_groups, row_group_size, nrow(tbl)
     ))
   }
   for (col in verify_stats_on) {
@@ -123,9 +143,17 @@ write_parquet_pushdown <- function(
       ))
     }
   }
+  if (!is.null(max_avg_chunk_kb) && avg_chunk_kb > max_avg_chunk_kb) {
+    warning(sprintf(
+      paste0("write_parquet_pushdown: %s avg column-chunk = %.1f KB, ",
+             "exceeds soft ceiling %.0f KB. WASM cold-load may stall on ",
+             "large per-fetch range requests. Consider lowering row_group_size."),
+      out_path, avg_chunk_kb, max_avg_chunk_kb
+    ))
+  }
   message(sprintf(
-    "write_parquet_pushdown: %s written (%d row groups, stats verified on %s)",
-    out_path, rg_check$n_groups,
+    "write_parquet_pushdown: %s written (%d row groups, %d chunks, %.1f KB avg chunk, stats verified on %s)",
+    out_path, n_groups, n_chunks, avg_chunk_kb,
     paste(verify_stats_on, collapse = ", ")
   ))
   invisible(out_path)
