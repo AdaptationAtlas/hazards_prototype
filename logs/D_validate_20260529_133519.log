@@ -1,0 +1,302 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+
+======================================================================
+[13:35:32][pid 153647] ==== Issue #9 Stage 3 validation ====
+======================================================================
+
+[13:35:32][pid 153647] parquet     = Data/hazard_risk_vop_usd/jagermeyr/haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet
+[13:35:32][pid 153647] countries   = AGO, NGA, CIV
+
+======================================================================
+[13:35:32][pid 153647] ==== [a] sum(specific) <= sum('any') check, per (iso3, crop, scenario, timeframe) ====
+======================================================================
+
+[13:35:33][pid 153647] START  [a] specific-vs-any query
+Error in `dbSendQuery()`:
+! Invalid connection
+ℹ Context: rapi_prepare
+Backtrace:
+     ▆
+  1. ├─base::source(Sys.getenv("VALIDATE_SCRIPT"))
+  2. │ ├─base::withVisible(eval(ei, envir))
+  3. │ └─base::eval(ei, envir)
+  4. │   └─base::eval(ei, envir)
+  5. ├─global log_timer(as.data.table(DBI::dbGetQuery(con, q_a)), label = "[a] specific-vs-any query")
+  6. │ └─base::force(expr)
+  7. ├─data.table::as.data.table(DBI::dbGetQuery(con, q_a))
+  8. ├─DBI::dbGetQuery(con, q_a)
+  9. ├─DBI::dbGetQuery(con, q_a)
+ 10. │ └─DBI (local) .local(conn, statement, ...)
+ 11. │   ├─DBI::dbSendQuery(conn, statement, ...)
+ 12. │   └─duckdb::dbSendQuery(conn, statement, ...)
+ 13. │     └─duckdb (local) .local(conn, statement, ...)
+ 14. │       └─duckdb:::rethrow_rapi_prepare(conn@conn_ref, statement, env)
+ 15. │         ├─rlang::try_fetch(...)
+ 16. │         │ ├─base::tryCatch(...)
+ 17. │         │ │ └─base (local) tryCatchList(expr, classes, parentenv, handlers)
+ 18. │         │ │   └─base (local) tryCatchOne(expr, names, parentenv, handlers[[1L]])
+ 19. │         │ │     └─base (local) doTryCatch(return(expr), name, parentenv, handler)
+ 20. │         │ └─base::withCallingHandlers(...)
+ 21. │         └─duckdb:::rapi_prepare(conn, query, env)
+ 22. ├─duckdb (local) `<fn>`("rapi_prepare", "Invalid connection")
+ 23. │ └─rlang::abort(error_parts, class = "duckdb_error", !!!fields)
+ 24. │   └─rlang:::signal_abort(cnd, .file)
+ 25. │     └─base::signalCondition(cnd)
+ 26. └─rlang (local) `<fn>`(`<dckdb_rr>`)
+ 27.   └─handlers[[1L]](cnd)
+ 28.     └─duckdb:::rethrow_error_from_rapi(e, call)
+ 29.       └─rlang::abort(msg, call = call)
+32: (function () 
+    {
+        traceback(2)
+        quit(status = 1, save = "no")
+    })()
+31: stop(fallback)
+30: signal_abort(cnd, .file)
+29: rlang::abort(msg, call = call)
+28: rethrow_error_from_rapi(e, call)
+27: handlers[[1L]](cnd)
+26: (function (cnd) 
+    {
+        {
+            .__handler_frame__. <- TRUE
+            .__setup_frame__. <- frame
+            if (inherits(cnd, "message")) {
+                except <- c("warning", "error")
+            }
+            else if (inherits(cnd, "warning")) {
+                except <- "error"
+            }
+            else {
+                except <- ""
+            }
+        }
+        while (!is_null(cnd)) {
+            if (inherits(cnd, "error")) {
+                out <- handlers[[1L]](cnd)
+                if (!inherits(out, "rlang_zap")) 
+                    throw(out)
+            }
+            inherit <- .subset2(.subset2(cnd, "rlang"), "inherit")
+            if (is_false(inherit)) {
+                return()
+            }
+            cnd <- .subset2(cnd, "parent")
+        }
+    })(list(message = "Invalid connection\nℹ Context: rapi_prepare", 
+        trace = list(call = list(source(Sys.getenv("VALIDATE_SCRIPT")), 
+            withVisible(eval(ei, envir)), eval(ei, envir), eval(ei, 
+                envir), log_timer(as.data.table(DBI::dbGetQuery(con, 
+                q_a)), label = "[a] specific-vs-any query"), force(expr), 
+            as.data.table(DBI::dbGetQuery(con, q_a)), DBI::dbGetQuery(con, 
+                q_a), DBI::dbGetQuery(con, q_a), .local(conn, statement, 
+                ...), dbSendQuery(conn, statement, ...), dbSendQuery(conn, 
+                statement, ...), .local(conn, statement, ...), rethrow_rapi_prepare(conn@conn_ref, 
+                statement, env), rlang::try_fetch(rapi_prepare(conn, 
+                query, env), error = function(e) {
+                rethrow_error_from_rapi(e, call)
+            }), tryCatch(withCallingHandlers(expr, condition = function(cnd) {
+                {
+                    .__handler_frame__. <- TRUE
+                    .__setup_frame__. <- frame
+                    if (inherits(cnd, "message")) {
+                      except <- c("warning", "error")
+                    }
+                    else if (inherits(cnd, "warning")) {
+                      except <- "error"
+                    }
+                    else {
+                      except <- ""
+                    }
+                }
+                while (!is_null(cnd)) {
+                    if (inherits(cnd, "error")) {
+                      out <- handlers[[1L]](cnd)
+                      if (!inherits(out, "rlang_zap")) 
+                        throw(out)
+                    }
+                    inherit <- .subset2(.subset2(cnd, "rlang"), "inherit")
+                    if (is_false(inherit)) {
+                      return()
+                    }
+                    cnd <- .subset2(cnd, "parent")
+                }
+            }), stackOverflowError = handlers[[1L]]), tryCatchList(expr, 
+                classes, parentenv, handlers), tryCatchOne(expr, 
+                names, parentenv, handlers[[1L]]), doTryCatch(return(expr), 
+                name, parentenv, handler), withCallingHandlers(expr, 
+                condition = function(cnd) {
+                    {
+                      .__handler_frame__. <- TRUE
+                      .__setup_frame__. <- frame
+                      if (inherits(cnd, "message")) {
+                        except <- c("warning", "error")
+                      }
+                      else if (inherits(cnd, "warning")) {
+                        except <- "error"
+                      }
+                      else {
+                        except <- ""
+                      }
+                    }
+                    while (!is_null(cnd)) {
+                      if (inherits(cnd, "error")) {
+                        out <- handlers[[1L]](cnd)
+                        if (!inherits(out, "rlang_zap")) 
+                          throw(out)
+                      }
+                      inherit <- .subset2(.subset2(cnd, "rlang"), 
+                        "inherit")
+                      if (is_false(inherit)) {
+                        return()
+                      }
+                      cnd <- .subset2(cnd, "parent")
+                    }
+                }), rapi_prepare(conn, query, env), `<fn>`("rapi_prepare", 
+                "Invalid connection"), rlang::abort(error_parts, 
+                class = "duckdb_error", !!!fields)), parent = c(0L, 
+        1L, 1L, 3L, 0L, 5L, 0L, 0L, 0L, 9L, 10L, 10L, 12L, 13L, 14L, 
+        15L, 16L, 17L, 18L, 15L, 14L, 0L, 22L), visible = c(TRUE, 
+        TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, 
+        TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, TRUE, 
+        TRUE, FALSE), namespace = c("base", "base", "base", "base", 
+        NA, "base", "data.table", "DBI", "DBI", "DBI", "DBI", "duckdb", 
+        "duckdb", "duckdb", "rlang", "base", "base", "base", "base", 
+        "base", "duckdb", "duckdb", "rlang"), scope = c("::", "::", 
+        "::", "::", "global", "::", "::", "::", "::", "local", "::", 
+        "::", "local", ":::", "::", "::", "local", "local", "local", 
+        "::", ":::", "local", "::"), error_frame = c(FALSE, FALSE, 
+        FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, 
+        FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, FALSE, 
+        FALSE, TRUE, FALSE)), parent = NULL, context = "rapi_prepare", 
+        rlang = list(inherit = TRUE), call = (function (context, 
+            message, error_type = NULL, raw_message = NULL, extra_info = NULL) 
+        {
+            fields <- list()
+            fields$context <- context
+            fields$error_type <- error_type
+            fields$raw_message <- raw_message
+            fields$extra_info <- extra_info
+            error_parts <- c(message, i = paste0("Context: ", context))
+            if (!is.null(error_type)) {
+                error_parts <- c(error_parts, i = paste0("Error type: ", 
+                    error_type))
+            }
+            if (length(extra_info) > 0) {
+                info_text <- paste0(names(extra_info), ": ", extra_info)
+                names(info_text) <- rep_len("i", length(info_text))
+                error_parts <- c(error_parts, info_text)
+            }
+            rlang::abort(error_parts, class = "duckdb_error", !!!fields)
+        })("rapi_prepare", "Invalid connection")))
+25: signalCondition(cnd)
+24: signal_abort(cnd, .file)
+23: rlang::abort(error_parts, class = "duckdb_error", !!!fields)
+22: (function (context, message, error_type = NULL, raw_message = NULL, 
+        extra_info = NULL) 
+    {
+        fields <- list()
+        fields$context <- context
+        fields$error_type <- error_type
+        fields$raw_message <- raw_message
+        fields$extra_info <- extra_info
+        error_parts <- c(message, i = paste0("Context: ", context))
+        if (!is.null(error_type)) {
+            error_parts <- c(error_parts, i = paste0("Error type: ", 
+                error_type))
+        }
+        if (length(extra_info) > 0) {
+            info_text <- paste0(names(extra_info), ": ", extra_info)
+            names(info_text) <- rep_len("i", length(info_text))
+            error_parts <- c(error_parts, info_text)
+        }
+        rlang::abort(error_parts, class = "duckdb_error", !!!fields)
+    })("rapi_prepare", "Invalid connection")
+21: rapi_prepare(conn, query, env)
+20: withCallingHandlers(expr, condition = function(cnd) {
+        {
+            .__handler_frame__. <- TRUE
+            .__setup_frame__. <- frame
+            if (inherits(cnd, "message")) {
+                except <- c("warning", "error")
+            }
+            else if (inherits(cnd, "warning")) {
+                except <- "error"
+            }
+            else {
+                except <- ""
+            }
+        }
+        while (!is_null(cnd)) {
+            if (inherits(cnd, "error")) {
+                out <- handlers[[1L]](cnd)
+                if (!inherits(out, "rlang_zap")) 
+                    throw(out)
+            }
+            inherit <- .subset2(.subset2(cnd, "rlang"), "inherit")
+            if (is_false(inherit)) {
+                return()
+            }
+            cnd <- .subset2(cnd, "parent")
+        }
+    })
+19: doTryCatch(return(expr), name, parentenv, handler)
+18: tryCatchOne(expr, names, parentenv, handlers[[1L]])
+17: tryCatchList(expr, classes, parentenv, handlers)
+16: tryCatch(withCallingHandlers(expr, condition = function(cnd) {
+        {
+            .__handler_frame__. <- TRUE
+            .__setup_frame__. <- frame
+            if (inherits(cnd, "message")) {
+                except <- c("warning", "error")
+            }
+            else if (inherits(cnd, "warning")) {
+                except <- "error"
+            }
+            else {
+                except <- ""
+            }
+        }
+        while (!is_null(cnd)) {
+            if (inherits(cnd, "error")) {
+                out <- handlers[[1L]](cnd)
+                if (!inherits(out, "rlang_zap")) 
+                    throw(out)
+            }
+            inherit <- .subset2(.subset2(cnd, "rlang"), "inherit")
+            if (is_false(inherit)) {
+                return()
+            }
+            cnd <- .subset2(cnd, "parent")
+        }
+    }), stackOverflowError = handlers[[1L]])
+15: rlang::try_fetch(rapi_prepare(conn, query, env), error = function(e) {
+        rethrow_error_from_rapi(e, call)
+    })
+14: rethrow_rapi_prepare(conn@conn_ref, statement, env)
+13: .local(conn, statement, ...)
+12: dbSendQuery(conn, statement, ...)
+11: dbSendQuery(conn, statement, ...)
+10: .local(conn, statement, ...)
+9: DBI::dbGetQuery(con, q_a)
+8: DBI::dbGetQuery(con, q_a)
+7: as.data.table(DBI::dbGetQuery(con, q_a))
+6: force(expr)
+5: log_timer(as.data.table(DBI::dbGetQuery(con, q_a)), label = "[a] specific-vs-any query")
+4: eval(ei, envir)
+3: eval(ei, envir)
+2: withVisible(eval(ei, envir))
+1: source(Sys.getenv("VALIDATE_SCRIPT"))
+Warning message:
+In atlas_dirs$data_dir$GLPS <- file.path(atlas_dirs$data_dir[[1]],  :
+  Coercing LHS to a list
+===== STAGE D DONE (exit: 1) =====
