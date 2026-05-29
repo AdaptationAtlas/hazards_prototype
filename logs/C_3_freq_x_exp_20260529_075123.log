@@ -1,0 +1,2 @@
+Error in source(Sys.getenv("SETUP_SCRIPT")) : empty file/url name
+Execution halted
