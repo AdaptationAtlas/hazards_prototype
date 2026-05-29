@@ -87,7 +87,10 @@ write_parquet_pushdown <- function(
     data.table::setorderv(tbl, sort_cols_present)
   }
 
-  con <- DBI::dbConnect(duckdb::duckdb())
+  # Keep .drv in a variable — anonymous duckdb() is GC'd before the first
+  # query in newer DuckDB versions, invalidating the connection.
+  .drv <- duckdb::duckdb()
+  con <- DBI::dbConnect(.drv)
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
   DBI::dbWriteTable(con, "tbl_src", as.data.frame(tbl), overwrite = TRUE)
