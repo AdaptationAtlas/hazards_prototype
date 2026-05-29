@@ -976,16 +976,24 @@ for (tx in seq_along(timeframe_choices)) {
           try(
             {
               if (!is.null(prog)) prog(basename(f))
-              risk_x_exposure(
-                file = f,
-                save_dir = save_dir,
-                variable = variable,
-                overwrite = overwrite,
-                crop_exposure_path = crop_exposure_path,
-                livestock_exposure_path = livestock_exposure_path,
-                crop_choices = crop_choices,
-                round_n = round_n,
-                verbose = FALSE
+              # suppressWarnings inside the worker: GDAL/LIBTIFF version-mismatch
+              # warnings from terra::rast() / writeRaster() are R-level warnings
+              # that furrr re-signals in the main process after with_progress()
+              # closes, escaping the outer suppressWarnings(). Suppressing at
+              # source keeps the log clean without losing real errors (errors
+              # propagate through try() regardless of warning suppression).
+              suppressWarnings(
+                risk_x_exposure(
+                  file = f,
+                  save_dir = save_dir,
+                  variable = variable,
+                  overwrite = overwrite,
+                  crop_exposure_path = crop_exposure_path,
+                  livestock_exposure_path = livestock_exposure_path,
+                  crop_choices = crop_choices,
+                  round_n = round_n,
+                  verbose = FALSE
+                )
               )
               return(NULL)
             },
@@ -1240,15 +1248,20 @@ for (tx in seq_along(timeframe_choices)) {
               # match. Use method="sum" (mass-conserving — same v9
               # pattern as 0.4.1 / 0.4.4).
               boundary_choice <- boundaries_zonal$admin2
-              zonal_rast <- terra::rast(boundary_choice)
-              rast_layers <- lapply(file_choices, function(.f) {
-                .r <- terra::rast(.f)
-                if (!terra::compareGeom(.r, base_rast, stopOnError = FALSE)) {
-                  .r <- terra::resample(.r, base_rast, method = "sum")
-                }
-                .r
+              # suppressWarnings: GDAL/LIBTIFF version-mismatch R warnings
+              # from terra ops escape the outer suppressWarnings(with_progress())
+              # when furrr re-signals them post-collection. Suppress at source.
+              suppressWarnings({
+                zonal_rast <- terra::rast(boundary_choice)
+                rast_layers <- lapply(file_choices, function(.f) {
+                  .r <- terra::rast(.f)
+                  if (!terra::compareGeom(.r, base_rast, stopOnError = FALSE)) {
+                    .r <- terra::resample(.r, base_rast, method = "sum")
+                  }
+                  .r
+                })
+                rast_data <- terra::rast(rast_layers)
               })
-              rast_data <- terra::rast(rast_layers)
 
               if (any(table(names(rast_data)) > 1)) {
                 stop("duplicate layer names present")
@@ -1256,13 +1269,13 @@ for (tx in seq_along(timeframe_choices)) {
 
               # v9: terra >= 1.7 supports multithreaded zonal; safe with
               # older versions too (extra arg is silently dropped).
-              dat <- zonal(
+              dat <- suppressWarnings(zonal(
                 x = rast_data,
                 z = zonal_rast,
                 fun = extract_stat,
                 na.rm = TRUE,
                 threads = TRUE
-              )
+              ))
 
 
               dat <- merge(dat, boundaries_index$admin2, by = "zone_id", all.x = TRUE, sort = FALSE)
