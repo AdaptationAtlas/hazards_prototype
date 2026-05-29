@@ -112,6 +112,11 @@ log_step("dbIsValid after stopifnot: %s", DBI::dbIsValid(con))
 .test <- DBI::dbGetQuery(con, "SELECT 42 AS answer")
 log_step("sanity query result: %d", .test$answer)
 log_step("dbIsValid after sanity query: %s", DBI::dbIsValid(con))
+# Test read_parquet on the actual file before running the full query
+.count_q <- sprintf("SELECT COUNT(*) AS n FROM read_parquet('%s') LIMIT 1", parquet_arg)
+log_step("testing read_parquet COUNT on: %s", basename(parquet_arg))
+.count_res <- DBI::dbGetQuery(con, .count_q)
+log_step("read_parquet COUNT = %d, dbIsValid = %s", .count_res$n, DBI::dbIsValid(con))
 on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 if (grepl("^https?://", parquet_arg)) {
   log_step("Remote parquet — loading httpfs")
