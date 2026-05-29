@@ -100,10 +100,11 @@ log_step("countries   = %s", paste(countries, collapse = ", "))
 # we cannot compute VOP_total from this table alone — we proxy via
 # `hazard = 'any'` (the union) which sums all exposed mass.
 log_section("[a] sum(specific) <= sum('any') check, per (iso3, crop, scenario, timeframe)")
-# Keep .drv in a variable — anonymous duckdb() is GC'd before the first
-# query in newer DuckDB versions, invalidating the connection.
-.drv <- duckdb::duckdb()
+# Explicit :memory: avoids stale lock files in the current working_dir.
+# Named .drv so it isn't GC'd before the first query (newer DuckDB).
+.drv <- duckdb::duckdb(dbdir = ":memory:")
 con <- DBI::dbConnect(.drv)
+stopifnot("DuckDB connection invalid immediately after dbConnect" = DBI::dbIsValid(con))
 on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 if (grepl("^https?://", parquet_arg)) {
   log_step("Remote parquet — loading httpfs")

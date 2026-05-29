@@ -87,9 +87,9 @@ write_parquet_pushdown <- function(
     data.table::setorderv(tbl, sort_cols_present)
   }
 
-  # Keep .drv in a variable — anonymous duckdb() is GC'd before the first
-  # query in newer DuckDB versions, invalidating the connection.
-  .drv <- duckdb::duckdb()
+  # Explicit :memory: avoids stale lock files in working_dir.
+  # Named .drv so it isn't GC'd before the first query (newer DuckDB).
+  .drv <- duckdb::duckdb(dbdir = ":memory:")
   con <- DBI::dbConnect(.drv)
   on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 
