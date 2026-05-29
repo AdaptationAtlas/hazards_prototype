@@ -400,10 +400,10 @@ ensemble_only4.2 <- TRUE
 worker_n4.1 <- 16
 # 4.2 zonal-against-admin2 is much heavier per task than 4.1 intersection.
 # 16 workers OOM-killed a worker mid-extract 2026-05-25 (log 180833). Lowered
-# to 6 (a3d009a); lowered further to 2 (2026-05-29) after FORCE_OVERWRITE run
-# with none-layer TIFs OOM-killed at 6 — larger per-file footprint with the
-# new hazard='none' layer increases per-worker peak memory.
-worker_n4.2 <- 2
+# to 6 (a3d009a); to 2 (2026-05-29, still OOM); to 1 (sequential, 2026-05-29)
+# — hazard='none' layer increased per-group TIF footprint enough that even
+# 2 parallel workers OOM. Sequential is the safe floor.
+worker_n4.2 <- 1
 worker_n4_check <- 20
 multisession4 <- TRUE
 round4 <- 2
