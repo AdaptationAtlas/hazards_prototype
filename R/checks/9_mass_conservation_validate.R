@@ -33,7 +33,7 @@ source("R/0_server_setup.R")
 source(file.path(project_dir, "R/checks/_helpers.R"))
 
 suppressPackageStartupMessages({
-  pacman::p_load(data.table, arrow, jsonlite, duckdb, DBI)
+  pacman::p_load(data.table, arrow, jsonlite)
 })
 
 args <- commandArgs(trailingOnly = TRUE)
@@ -99,58 +99,36 @@ log_step("countries   = %s", paste(countries, collapse = ", "))
 # CR-068 (a) notes the 'none' row is missing in the current parquet so
 # we cannot compute VOP_total from this table alone — we proxy via
 # `hazard = 'any'` (the union) which sums all exposed mass.
+log_step("arrow version: %s", as.character(packageVersion("arrow")))
+
+# Load parquet once via arrow — avoids DuckDB/arrow C++ library conflict
+# (DuckDB 1.5.x read_parquet() crashes with 'Invalid connection' when
+# the arrow R package is also loaded in the same session on CGlabs).
+log_step("Loading parquet via arrow::read_parquet ...")
+.pq_raw <- arrow::read_parquet(parquet_arg)
+.pq <- data.table::as.data.table(.pq_raw)
+rm(.pq_raw); invisible(gc())
+log_step("Loaded %d rows, %d cols", nrow(.pq), ncol(.pq))
+
+.haz_vars <- c("NDWS+NTx35+NDWL0", "NDWS+THI-max+NDWL0")
+
+# ----- (a) sum(specific) <= sum('any') ---------------------------------
 log_section("[a] sum(specific) <= sum('any') check, per (iso3, crop, scenario, timeframe)")
-# Explicit :memory: avoids stale lock files in the current working_dir.
-# Named .drv so it isn't GC'd before the first query (newer DuckDB).
-.drv <- duckdb::duckdb(dbdir = ":memory:")
-con <- DBI::dbConnect(.drv)
-stopifnot("DuckDB connection invalid immediately after dbConnect" = DBI::dbIsValid(con))
-log_step("duckdb version: %s", as.character(packageVersion("duckdb")))
-log_step("arrow  version: %s", as.character(packageVersion("arrow")))
-log_step("dbIsValid after stopifnot: %s", DBI::dbIsValid(con))
-# Simple sanity query before touching parquet
-.test <- DBI::dbGetQuery(con, "SELECT 42 AS answer")
-log_step("sanity query result: %d", .test$answer)
-log_step("dbIsValid after sanity query: %s", DBI::dbIsValid(con))
-# Test read_parquet on the actual file before running the full query
-.count_q <- sprintf("SELECT COUNT(*) AS n FROM read_parquet('%s') LIMIT 1", parquet_arg)
-log_step("testing read_parquet COUNT on: %s", basename(parquet_arg))
-.count_res <- DBI::dbGetQuery(con, .count_q)
-log_step("read_parquet COUNT = %d, dbIsValid = %s", .count_res$n, DBI::dbIsValid(con))
-on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
-if (grepl("^https?://", parquet_arg)) {
-  log_step("Remote parquet — loading httpfs")
-  DBI::dbExecute(con, "INSTALL httpfs; LOAD httpfs;")
-}
-q_a <- sprintf("
-  WITH base AS (
-    SELECT iso3, crop, scenario, timeframe, hazard, value
-    FROM read_parquet('%s')
-    WHERE iso3 IN (%s)
-      AND admin2_name IS NULL
-      AND admin1_name IS NULL
-      AND hazard_vars IN ('NDWS+NTx35+NDWL0','NDWS+THI-max+NDWL0')
-      AND exposure_unit = 'nominal-usd-2021'
-      AND crop != 'generic-crop'
-  )
-  SELECT iso3, crop, scenario, timeframe,
-         ROUND(SUM(value) FILTER (WHERE hazard NOT IN ('none','any'))::DOUBLE, 1)
-           AS sum_specific,
-         ROUND(SUM(value) FILTER (WHERE hazard = 'any')::DOUBLE, 1)
-           AS sum_any,
-         ROUND((SUM(value) FILTER (WHERE hazard NOT IN ('none','any')) /
-                NULLIF(SUM(value) FILTER (WHERE hazard = 'any'), 0))::DOUBLE, 4)
-           AS ratio
-  FROM base
-  GROUP BY ALL
-  HAVING sum_any > 0
-  ORDER BY ratio DESC",
-  parquet_arg,
-  paste(sprintf("'%s'", countries), collapse = ", "))
-chk_a <- log_timer(
-  as.data.table(DBI::dbGetQuery(con, q_a)),
-  label = "[a] specific-vs-any query"
-)
+.base_a <- .pq[
+  iso3 %in% countries &
+  is.na(admin2_name) & is.na(admin1_name) &
+  hazard_vars %in% .haz_vars &
+  exposure_unit == "nominal-usd-2021" &
+  crop != "generic-crop"
+]
+chk_a <- log_timer({
+  .agg <- .base_a[, .(
+    sum_specific = round(sum(value[!hazard %in% c("none", "any")], na.rm = TRUE), 1),
+    sum_any      = round(sum(value[hazard == "any"], na.rm = TRUE), 1)
+  ), by = .(iso3, crop, scenario, timeframe)]
+  .agg[, ratio := round(sum_specific / data.table::fifelse(sum_any == 0, NA_real_, sum_any), 4)]
+  .agg[sum_any > 0][order(-ratio)]
+}, label = "[a] specific-vs-any aggregation")
 log_step("rows checked: %d", nrow(chk_a))
 breach <- chk_a[!is.na(ratio) & ratio > 1.005]
 log_step("breaches (ratio > 1.005): %d", nrow(breach))
@@ -163,77 +141,68 @@ if (nrow(breach) > 0L) {
 
 # ----- (b) AGO sugarcane mass ratio re-probe ---------------------------
 log_section("[b] AGO sugarcane mass — current parquet snapshot")
-q_b <- sprintf("
-  SELECT scenario, timeframe,
-         ROUND(SUM(value)::DOUBLE, 1) AS sum_value,
-         COUNT(*) AS n_rows
-  FROM read_parquet('%s')
-  WHERE iso3 = 'AGO' AND crop = 'sugarcane'
-    AND admin2_name IS NULL AND admin1_name IS NULL
-    AND hazard = 'any'
-    AND hazard_vars IN ('NDWS+NTx35+NDWL0','NDWS+THI-max+NDWL0')
-    AND exposure_unit = 'nominal-usd-2021'
-  GROUP BY ALL ORDER BY scenario, timeframe", parquet_arg)
-chk_b <- log_timer(
-  as.data.table(DBI::dbGetQuery(con, q_b)),
-  label = "[b] AGO sugarcane query"
-)
+chk_b <- log_timer({
+  .pq[
+    iso3 == "AGO" & crop == "sugarcane" &
+    is.na(admin2_name) & is.na(admin1_name) &
+    hazard == "any" &
+    hazard_vars %in% .haz_vars &
+    exposure_unit == "nominal-usd-2021",
+    .(sum_value = round(sum(value, na.rm = TRUE), 1), n_rows = .N),
+    by = .(scenario, timeframe)
+  ][order(scenario, timeframe)]
+}, label = "[b] AGO sugarcane aggregation")
 print(chk_b)
 
 # ----- (c) NGA oil-palm + CIV cocoa spot check -------------------------
 log_section("[c] Spot-check sharp-concentration crops")
-q_c <- sprintf("
-  SELECT iso3, crop, scenario, timeframe,
-         ROUND(SUM(value)::DOUBLE, 1) AS sum_value
-  FROM read_parquet('%s')
-  -- AND binds tighter than OR, so the (NGA OR CIV) selector MUST be
-  -- wrapped in its own parens — otherwise the common filters below
-  -- only bind to the CIV branch and NGA leaks every admin level, every
-  -- hazard, every hazard_vars, every exposure_unit. Result: SUM gets
-  -- poisoned by sub-national NaN rows and the spot-check spuriously
-  -- reports NaN for NGA oilpalm even though admin0 NGA oilpalm is
-  -- clean. See logs/post_rebake_followups_20260526_094837.log.
-  WHERE (
-         (iso3 = 'NGA' AND crop IN ('oilpalm','oil-palm','oil_palm'))
-      OR (iso3 = 'CIV' AND crop IN ('cocoa'))
-        )
-    AND admin2_name IS NULL AND admin1_name IS NULL
-    AND hazard = 'any'
-    AND hazard_vars IN ('NDWS+NTx35+NDWL0','NDWS+THI-max+NDWL0')
-    AND exposure_unit = 'nominal-usd-2021'
-  GROUP BY ALL ORDER BY iso3, crop, scenario, timeframe", parquet_arg)
-chk_c <- log_timer(
-  as.data.table(DBI::dbGetQuery(con, q_c)),
-  label = "[c] spot-check NGA oilpalm + CIV cocoa"
-)
+# AND binds tighter than OR — (NGA OR CIV) selector wrapped in its own
+# condition to avoid NGA leaking common filters. See logs/post_rebake_
+# followups_20260526_094837.log for the prior spurious-NaN incident.
+chk_c <- log_timer({
+  .pq[
+    ((iso3 == "NGA" & crop %in% c("oilpalm", "oil-palm", "oil_palm")) |
+     (iso3 == "CIV" & crop %in% c("cocoa"))) &
+    is.na(admin2_name) & is.na(admin1_name) &
+    hazard == "any" &
+    hazard_vars %in% .haz_vars &
+    exposure_unit == "nominal-usd-2021",
+    .(sum_value = round(sum(value, na.rm = TRUE), 1)),
+    by = .(iso3, crop, scenario, timeframe)
+  ][order(iso3, crop, scenario, timeframe)]
+}, label = "[c] spot-check NGA oilpalm + CIV cocoa")
 print(chk_c)
 
 # ----- (d) CR-068 categorisation unchanged ----------------------------
-# Compute per (scenario, timeframe) hazard mass split for AGO; should
-# show the same SHAPE as before the fix (issue #9 only changes
-# magnitudes via resample, not hazard categorisation). If the shape
-# changes materially, that's a regression to investigate.
+# Compute per-hazard mass split for AGO across three scenario×timeframe
+# slices. issue #9 changes magnitudes only (resample fix), not hazard
+# categorisation shape. Material shape changes = regression to investigate.
 log_section("[d] AGO hazard-category split — CR-068 regression check")
-q_d <- sprintf("
-  SELECT hazard,
-         ROUND(SUM(value) FILTER (WHERE scenario='historic' AND timeframe='1995-2014')::DOUBLE, 0)
-           AS hist_1995_2014,
-         ROUND(SUM(value) FILTER (WHERE scenario='ssp245'   AND timeframe='2021-2040')::DOUBLE, 0)
-           AS ssp245_2021_2040,
-         ROUND(SUM(value) FILTER (WHERE scenario='ssp585'   AND timeframe='2021-2040')::DOUBLE, 0)
-           AS ssp585_2021_2040
-  FROM read_parquet('%s')
-  WHERE iso3 = 'AGO'
-    AND admin2_name IS NULL
-    AND hazard_vars IN ('NDWS+NTx35+NDWL0','NDWS+THI-max+NDWL0')
-    AND exposure_unit = 'nominal-usd-2021'
-    AND crop != 'generic-crop'
-    AND hazard != 'any'
-  GROUP BY hazard ORDER BY hist_1995_2014 DESC", parquet_arg)
-chk_d <- log_timer(
-  as.data.table(DBI::dbGetQuery(con, q_d)),
-  label = "[d] AGO category split query"
-)
+chk_d <- log_timer({
+  .base_d <- .pq[
+    iso3 == "AGO" & is.na(admin2_name) &
+    hazard_vars %in% .haz_vars &
+    exposure_unit == "nominal-usd-2021" &
+    crop != "generic-crop" & hazard != "any"
+  ]
+  .long_d <- .base_d[, .(value = sum(value, na.rm = TRUE)),
+                     by = .(hazard, scenario, timeframe)]
+  .long_d[, col := paste0(
+    data.table::fcase(
+      scenario == "historic" & timeframe == "1995-2014", "hist_1995_2014",
+      scenario == "ssp245"   & timeframe == "2021-2040", "ssp245_2021_2040",
+      scenario == "ssp585"   & timeframe == "2021-2040", "ssp585_2021_2040",
+      default = paste0(scenario, "_", gsub("-", "_", timeframe))
+    )
+  )]
+  .wide <- data.table::dcast(.long_d, hazard ~ col, value.var = "value",
+                              fun.aggregate = sum, fill = 0)
+  # Round the numeric columns
+  num_cols <- setdiff(names(.wide), "hazard")
+  .wide[, (num_cols) := lapply(.SD, round, 0), .SDcols = num_cols]
+  if ("hist_1995_2014" %in% names(.wide)) setorder(.wide, -hist_1995_2014)
+  .wide
+}, label = "[d] AGO category split aggregation")
 print(chk_d)
 log_step(paste(
   "NOTE: zeros under historic for heat / heat+wet / wet are the CR-068",
