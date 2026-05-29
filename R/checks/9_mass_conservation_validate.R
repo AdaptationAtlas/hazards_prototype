@@ -105,6 +105,13 @@ log_section("[a] sum(specific) <= sum('any') check, per (iso3, crop, scenario, t
 .drv <- duckdb::duckdb(dbdir = ":memory:")
 con <- DBI::dbConnect(.drv)
 stopifnot("DuckDB connection invalid immediately after dbConnect" = DBI::dbIsValid(con))
+log_step("duckdb version: %s", as.character(packageVersion("duckdb")))
+log_step("arrow  version: %s", as.character(packageVersion("arrow")))
+log_step("dbIsValid after stopifnot: %s", DBI::dbIsValid(con))
+# Simple sanity query before touching parquet
+.test <- DBI::dbGetQuery(con, "SELECT 42 AS answer")
+log_step("sanity query result: %d", .test$answer)
+log_step("dbIsValid after sanity query: %s", DBI::dbIsValid(con))
 on.exit(DBI::dbDisconnect(con, shutdown = TRUE), add = TRUE)
 if (grepl("^https?://", parquet_arg)) {
   log_step("Remote parquet — loading httpfs")
