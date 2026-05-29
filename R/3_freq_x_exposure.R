@@ -389,7 +389,9 @@ version3 <- 1
 # `7` was a conservative laptop default that left 80 % of CPU idle on the
 # server. If running on a machine with fewer cores, drop these manually
 # (or in a follow-up, derive them from parallel::detectCores()).
-run4.1 <- TRUE
+# SKIP_R3_4_1=1 env flag: skip section 4.1 (TIF multiplication) and go
+# straight to 4.2. Use after 4.1 already completed in a prior run.
+run4.1 <- !nzchar(Sys.getenv("SKIP_R3_4_1"))
 run4.2 <- TRUE
 do_ensemble_sd4.1 <- TRUE
 do_ensemble_sd4.2 <- TRUE
@@ -398,8 +400,10 @@ ensemble_only4.2 <- TRUE
 worker_n4.1 <- 16
 # 4.2 zonal-against-admin2 is much heavier per task than 4.1 intersection.
 # 16 workers OOM-killed a worker mid-extract 2026-05-25 (log 180833). Lowered
-# to 6 to match the typical groups-per-variable count and halve peak memory.
-worker_n4.2 <- 6
+# to 6 (a3d009a); lowered further to 2 (2026-05-29) after FORCE_OVERWRITE run
+# with none-layer TIFs OOM-killed at 6 — larger per-file footprint with the
+# new hazard='none' layer increases per-worker peak memory.
+worker_n4.2 <- 2
 worker_n4_check <- 20
 multisession4 <- TRUE
 round4 <- 2
@@ -1082,6 +1086,13 @@ for (tx in seq_along(timeframe_choices)) {
 
       # 4.1.1) Check results ######
       if (check4.1) {
+        # list_files_parallel (called inside check_tif_integrity) uses
+        # pbapply::pblapply when n_workers=1. Suppress its spinner here
+        # because the global pboptions set in 0_server_setup.R can be
+        # reset by later package loads or worker re-initialisation.
+        if (requireNamespace("pbapply", quietly = TRUE)) {
+          pbapply::pboptions(type = "none")
+        }
         for (i in seq_along(to_do_list)) {
           check_folder <- to_do_list[[i]]$folder
           cat(timeframe, "4.1) Checking file integrity of", basename(check_folder), "\n")
