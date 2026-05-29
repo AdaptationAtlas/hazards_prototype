@@ -74,6 +74,7 @@ terra::gdalCache(60000)
 
 # b) Load/create functions & wrappers ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+source(file.path(Sys.getenv("project_dir"), "R", "_helpers.R"))
 
 #' Multiply Hazard Freq Raster by Exposure and Save Output
 #'
@@ -155,11 +156,11 @@ risk_x_exposure <- function(file,
       livestock_exposure <- NULL
     }
 
-    if (!crop %in% names(crop_exposure) && crop != "generic-crop" && crop %in% crop_choices) {
+    if (!is.null(crop_exposure) && !crop %in% names(crop_exposure) && crop != "generic-crop" && crop %in% crop_choices) {
       stop("Commodity ", crop, " not found in layer names of ", basename(crop_exposure_path))
     }
 
-    if (!crop %in% names(livestock_exposure) && !crop %in% crop_choices) {
+    if (!is.null(livestock_exposure) && !crop %in% names(livestock_exposure) && !crop %in% crop_choices) {
       stop("Commodity ", crop, " not found in layer names of ", basename(livestock_exposure_path))
     }
 
@@ -182,12 +183,7 @@ risk_x_exposure <- function(file,
           data_ex <- round(data_ex, round_n)
         }
         names(data_ex) <- paste0(names(data_ex), "_", variable)
-        terra::writeRaster(data_ex,
-          file = save_name,
-          overwrite = TRUE,
-          filetype = "COG",
-          gdal = c("COMPRESS=ZSTD", "of=COG")
-        )
+        write_cog(data_ex, save_name)
         rm(data, data_ex, exposure, livestock_exposure, crop_exposure)
         gc()
       }
@@ -209,12 +205,7 @@ risk_x_exposure <- function(file,
           }
 
           names(data_ex) <- paste0(gsub("generic-crop", crop_choice, names(data_ex)), "_", variable)
-          terra::writeRaster(data_ex,
-            file = save_name2,
-            overwrite = TRUE,
-            filetype = "COG",
-            gdal = c("COMPRESS=ZSTD", "of=COG")
-          )
+          write_cog(data_ex, save_name2)
           rm(data_ex, exposure)
           gc()
         }
@@ -297,7 +288,7 @@ boundaries_zonal <- lapply(seq_along(Geographies), FUN = function(i) {
       background = NA, # cells not covered by any polygon become NA
       touches = TRUE # optional: count cells touched by polygon boundaries
     )
-    terra::writeRaster(zone_rast, file_path, overwrite = TRUE)
+    write_cog(zone_rast, file_path)
   }
   file_path
 })
@@ -545,7 +536,7 @@ for (tx in seq_along(timeframe_choices)) {
             result_long[, variable := NULL]
 
             # Optimize ordering
-            if (!is.null(order)) {
+            if (!is.null(order_by)) {
               result_long <- result_long |> arrange(across(all_of(order_by)))
             }
 
@@ -677,7 +668,7 @@ for (tx in seq_along(timeframe_choices)) {
 
             # Optional rounding
             if (!is.null(round2)) {
-              result_long[, value := round(value, round1)]
+              result_long[, value := round(value, round2)]
             }
 
             # Clean and split variable column
@@ -685,7 +676,7 @@ for (tx in seq_along(timeframe_choices)) {
             result_long[, variable := NULL]
 
             # Optimize ordering
-            if (!is.null(order)) {
+            if (!is.null(order_by)) {
               result_long <- result_long |> arrange(across(all_of(order_by)))
             }
 
@@ -708,7 +699,7 @@ for (tx in seq_along(timeframe_choices)) {
               ),
               format = ".parquet",
               date_created = Sys.time(),
-              version = version1,
+              version = version2,
               parent_script = "3/3_freq_x_exposure.R - section 2",
               value_variable = "haz-mean",
               hazard_units = units,
@@ -906,7 +897,7 @@ for (tx in seq_along(timeframe_choices)) {
 
     if (do_ha) {
       haz_risk_ha_dir <- ensure_dir(atlas_dirs$data_dir$hazard_risk_ha, timeframe)
-      to_do_list$do_ha <- list(
+      to_do_list$ha <- list(
         variable = ha_name,
         folder = haz_risk_ha_dir,
         source_dir = haz_risk_dir,
@@ -918,7 +909,7 @@ for (tx in seq_along(timeframe_choices)) {
 
     if (do_n) {
       haz_risk_n_dir <- ensure_dir(atlas_dirs$data_dir$hazard_risk_n, timeframe)
-      to_do_list$do_n <- list(
+      to_do_list$n <- list(
         variable = n_name, folder = haz_risk_n_dir,
         source_dir = haz_risk_dir,
         crop_exposure_file = NULL,
@@ -1307,7 +1298,7 @@ for (tx in seq_along(timeframe_choices)) {
               }
 
               # Optimize ordering
-              if (!is.null(order)) {
+              if (!is.null(order_by)) {
                 result_long_adm012 <- result_long_adm012 |> arrange(across(all_of(order_by)))
               }
 
@@ -1330,7 +1321,7 @@ for (tx in seq_along(timeframe_choices)) {
                 filters = filters,
                 format = ".parquet",
                 date_created = Sys.time(),
-                version = version1,
+                version = version4,
                 parent_script = attr_parent_script,
                 value_variable = attr_value_variable,
                 unit = attr_unit,

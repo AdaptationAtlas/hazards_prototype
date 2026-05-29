@@ -164,3 +164,24 @@ write_parquet_pushdown <- function(
   ))
   invisible(out_path)
 }
+
+#' Write a Cloud-Optimized GeoTIFF using canonical pipeline settings.
+#'
+#' Canonical COG format for all hazards_prototype pipeline rasters:
+#' ZSTD compression (level 9), no overviews (computation intermediates,
+#' not map-tile serving), COG layout via terra's filetype = "COG".
+#'
+#' Use this instead of bare terra::writeRaster() calls so compression
+#' settings stay consistent across R/2, R/3, and observational scripts.
+#'
+#' @param rast  SpatRaster to write.
+#' @param filename  Output file path (must end in .tif).
+#' @param overwrite Overwrite existing file. Default TRUE.
+write_cog <- function(rast, filename, overwrite = TRUE) {
+  terra::writeRaster(
+    rast, filename,
+    overwrite = overwrite,
+    filetype  = "COG",
+    gdal      = c("COMPRESS=ZSTD", "COMPRESS_LEVEL=9", "OVERVIEWS=NONE")
+  )
+}
