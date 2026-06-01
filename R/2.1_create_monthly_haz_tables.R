@@ -104,7 +104,7 @@ haz_meta <- data.table::fread(haz_meta_url, showProgress = FALSE)
 round1 <- 1
 version1 <- 1
 worker_n1 <- 5
-overwrite1 <- FALSE # overwrite folder level extractions
+overwrite1 <- nzchar(Sys.getenv("FORCE_OVERWRITE")) # set FORCE_OVERWRITE=1 to regenerate
 
 # Data QC checks
 max_rain <- 3000 # Max acceptable value for monthly rainfall
@@ -113,7 +113,7 @@ exclude_flagged <- FALSE # Exclude combinations of admin x timeframe x scenario 
 
 ### Section 3 - Summarization of monthly hazards ####
 worker_n2 <- 20
-overwrite2 <- FALSE
+overwrite2 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 round3.1 <- 3
 round3.3 <- 3
 round3.4 <- 3
@@ -784,6 +784,10 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
 cat("3.3) Calculating ensemble stats - Complete \n")
 
 ## 3.4) Calculate trends #####
+# Set SKIP_R2_1_3_4=1 to skip trend computation (~9h per timeframe).
+# Skip when: outputs not yet surfaced in notebook (blocked on CR-094 TFPW),
+# or when rerunning purely for parquet pushdown optimization of sec 3.1-3.3.
+if (!nzchar(Sys.getenv("SKIP_R2_1_3_4"))) {
 # This involves running >10^6 linear models to look at trends, so the process is designed to run in parallel
 cat("3.4) Trend calculation\n")
 
@@ -1041,3 +1045,4 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
 }))
 
 cat("3.4) Trend calculations - Complete\n")
+} # end if (!SKIP_R2_1_3_4)
