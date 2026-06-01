@@ -614,16 +614,31 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     data_anomaly <- arrow::read_parquet(save_file)
     models <- data_anomaly[, paste0(sort(unique(model)), collapse = ",")]
 
-    # Ensemble models by years
+    # Ensemble models by years.
+    # CR-060: q5/q17/q50/q83/q95 added for IPCC AR6 calibrated-language
+    # uncertainty bands. n_models tracks the per-year GCM count (some models
+    # may drop out for specific years). Notebook's CR-061 swaps the ribbon
+    # from sd_anomaly ± to q17_anomaly..q83_anomaly once this lands.
     data_anomaly_ens <- data_anomaly[, list(
-      mean = mean(value, na.rm = TRUE),
-      max = max(value, na.rm = TRUE),
-      min = min(value, na.rm = TRUE),
-      sd = sd(value, na.rm = TRUE),
+      mean     = mean(value, na.rm = TRUE),
+      max      = max(value, na.rm = TRUE),
+      min      = min(value, na.rm = TRUE),
+      sd       = sd(value, na.rm = TRUE),
+      q5       = quantile(value, 0.05, na.rm = TRUE),
+      q17      = quantile(value, 0.17, na.rm = TRUE),
+      q50      = quantile(value, 0.50, na.rm = TRUE),
+      q83      = quantile(value, 0.83, na.rm = TRUE),
+      q95      = quantile(value, 0.95, na.rm = TRUE),
+      n_models = sum(!is.na(value)),
       mean_anomaly = mean(anomaly, na.rm = TRUE),
-      max_anomaly = max(anomaly, na.rm = TRUE),
-      min_anomaly = min(anomaly, na.rm = TRUE),
-      sd_anomaly = sd(anomaly, na.rm = TRUE)
+      max_anomaly  = max(anomaly, na.rm = TRUE),
+      min_anomaly  = min(anomaly, na.rm = TRUE),
+      sd_anomaly   = sd(anomaly, na.rm = TRUE),
+      q5_anomaly   = quantile(anomaly, 0.05, na.rm = TRUE),
+      q17_anomaly  = quantile(anomaly, 0.17, na.rm = TRUE),
+      q50_anomaly  = quantile(anomaly, 0.50, na.rm = TRUE),
+      q83_anomaly  = quantile(anomaly, 0.83, na.rm = TRUE),
+      q95_anomaly  = quantile(anomaly, 0.95, na.rm = TRUE)
     ),
     by = list(admin0_name, admin1_name, scenario, timeframe, year, hazard, season, baseline_name)
     ]
@@ -642,15 +657,20 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     by = list(admin0_name, admin1_name, scenario, timeframe, model, hazard, season, baseline_name)
     ]
 
+    # CR-060: quantiles also on the period-aggregate ensemble (per-model
+    # period means collapsed to ensemble distribution).
     data_ag_ens <- data_ag[, list(
-      mean_mean = mean(mean, na.rm = TRUE),
-      min_mean = min(mean, na.rm = TRUE),
-      max_mean = max(mean, na.rm = TRUE),
-      median_mean = median(mean, na.rm = TRUE),
+      mean_mean    = mean(mean, na.rm = TRUE),
+      min_mean     = min(mean, na.rm = TRUE),
+      max_mean     = max(mean, na.rm = TRUE),
+      median_mean  = median(mean, na.rm = TRUE),
       mean_anomaly = mean(mean_anomaly, na.rm = TRUE),
-      max_anomaly = max(mean_anomaly, na.rm = TRUE),
-      min_anomaly = min(mean_anomaly, na.rm = TRUE),
-      sd_anomaly = sd(mean_anomaly, na.rm = TRUE)
+      max_anomaly  = max(mean_anomaly, na.rm = TRUE),
+      min_anomaly  = min(mean_anomaly, na.rm = TRUE),
+      sd_anomaly   = sd(mean_anomaly, na.rm = TRUE),
+      q17_anomaly  = quantile(mean_anomaly, 0.17, na.rm = TRUE),
+      q83_anomaly  = quantile(mean_anomaly, 0.83, na.rm = TRUE),
+      n_models     = sum(!is.na(mean_anomaly))
     ),
     by = list(admin0_name, admin1_name, scenario, timeframe, hazard, season, baseline_name)
     ]
