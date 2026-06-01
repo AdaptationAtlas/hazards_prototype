@@ -805,11 +805,47 @@ cat("3.3) Calculating ensemble stats - Complete \n")
 
 ## 3.4) Calculate trends #####
 # Set SKIP_R2_1_3_4=1 to skip trend computation (~9h per timeframe).
-# Skip when: outputs not yet surfaced in notebook (blocked on CR-094 TFPW),
-# or when rerunning purely for parquet pushdown optimization of sec 3.1-3.3.
+# Run when CR-094 TFPW is in place (it is, as of 2026-06-01).
 if (!nzchar(Sys.getenv("SKIP_R2_1_3_4"))) {
+
+# CR-094: Yue et al. (2002) Trend-Free Pre-Whitening (TFPW).
+# Applied per-GCM before Theil-Sen + Mann-Kendall so autocorrelated
+# outputs (common in CMIP6 temperature series) don't inflate MK
+# significance. Matches helpers/trend.ojs's corrected algorithm
+# (Pete fixed a buggy formulation pre-commit; this R port was validated
+# numerically against 05_trend-validation-reference.py — 4/4 PASS,
+# zero diff on slope/AC/p for all four test series including the
+# critical Series D case where the buggy version gives p=0.23 instead
+# of the correct p=0.002).
+#
+# Algorithm (correct Yue 2002, NOT the buggy whitening-of-observed variant):
+#   1. Theil-Sen slope + intercept on raw value
+#   2. Detrend: detr = value - (slope * year + intercept)
+#   3. Lag-1 AC of detrended residuals (biased estimator)
+#   4. If |r| <= 0.1: skip (series is not autocorrelated enough)
+#   5. Pre-whiten detrended residuals: wr[t] = detr[t] - r * detr[t-1]
+#      (depends on detr[t-1], NOT wr[t-1], so fully vectorised in R)
+#   6. Re-add deterministic trend: z = wr + slope*year + intercept
+#   7. Theil-Sen + MK on z
+
+yue_tfpw <- function(year, value, threshold = 0.1) {
+  n <- length(value)
+  if (n < 4L || !all(is.finite(value))) return(list(y = value, applied = FALSE, r = NA_real_))
+  ts0 <- tryCatch(trend::sens.slope(value), error = function(e) NULL)
+  if (is.null(ts0)) return(list(y = value, applied = FALSE, r = NA_real_))
+  slope0     <- unname(ts0$estimates)
+  intercept0 <- median(value - slope0 * year, na.rm = TRUE)
+  detr       <- value - (slope0 * year + intercept0)
+  d          <- detr - mean(detr, na.rm = TRUE)
+  denom      <- sum(d * d, na.rm = TRUE)
+  r          <- if (denom > 0) sum(d[-n] * d[-1L], na.rm = TRUE) / denom else 0.0
+  if (abs(r) <= threshold) return(list(y = value, applied = FALSE, r = r))
+  wr <- c(detr[1L], detr[-1L] - r * detr[-n])
+  list(y = wr + slope0 * year + intercept0, applied = TRUE, r = r)
+}
+
 # This involves running >10^6 linear models to look at trends, so the process is designed to run in parallel
-cat("3.4) Trend calculation\n")
+cat("3.4) Trend calculation (with Yue 2002 TFPW pre-whitening)\n")
 
 invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   data_file <- file_combos$save_file[i]
@@ -827,25 +863,30 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     # Filter out rows with NA/NaN/Inf in 'value' or 'year' before fitting the model
     data_ex_trend <- data_ex_trend[is.finite(value) & is.finite(year)][, n_value := NULL]
 
-    ## 3.4.1) Calculate Theil–Sen estimator ####
+    ## 3.4.1) Calculate Theil–Sen estimator with TFPW ####
     trend_summary <- data_ex_trend[
       ,
       {
-        ts <- tryCatch(sens.slope(value), error = function(e) NULL)
+        pw  <- yue_tfpw(year, value)
+        yw  <- pw$y   # pre-whitened series (or raw if TFPW not applied)
+        ts  <- tryCatch(sens.slope(yw), error = function(e) NULL)
         if (is.null(ts)) {
           list(
             slope = NA_real_, intercept = NA_real_,
-            ci_low = NA_real_, ci_high = NA_real_, p_value = NA_real_
+            ci_low = NA_real_, ci_high = NA_real_, p_value = NA_real_,
+            tfpw_applied = FALSE, lag1_ac = pw$r
           )
         } else {
           m <- unname(ts$estimates)
           intercept <- median(baseline_value - m * year)
           list(
-            slope = m,
+            slope    = m,
             intercept = intercept,
-            ci_low = ts$conf.int[1],
-            ci_high = ts$conf.int[2],
-            p_value = tryCatch(mk.test(value)$p.value, error = function(e) NA_real_)
+            ci_low   = ts$conf.int[1],
+            ci_high  = ts$conf.int[2],
+            p_value  = tryCatch(mk.test(yw)$p.value, error = function(e) NA_real_),
+            tfpw_applied = pw$applied,
+            lag1_ac  = pw$r
           )
         }
       },
