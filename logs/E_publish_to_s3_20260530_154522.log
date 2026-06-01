@@ -1,0 +1,100 @@
+nohup: ignoring input
+From https://github.com/AdaptationAtlas/hazards_prototype
+ * branch            develop    -> FETCH_HEAD
+Already up to date.
+59c8392 fix(r3): lower worker_n4.2 to 1 (sequential) — still OOM at 2
+80d4670 log C updated
+e7c43ac fix(r3): lower worker_n4.2 2, add SKIP_R3_4_1 flag, suppress pbapply spinner
+Logging to /home/jovyan/atlas/hazards_prototype/logs/E_publish_to_s3_20260530_154522.log
+Canonical: s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
+Backup:    s3://digital-atlas/sandbox/backup/20260530_154522/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
+
+===== E1) Verify local + current canonical =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+LOCAL:
+  path  = /home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_risk_vop_usd/jagermeyr/haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet 
+  size  = 58809303 bytes ( 56.1 MB)
+  mtime = 2026-05-30 02:53:29 
+
+CURRENT CANONICAL S3:
+  url   = s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet 
+  size  = 58826503 bytes ( 56.1 MB)
+  mtime = 2026-05-29 18:02:37 
+  etag  = "507892b6240c2fbc996b535ed8f047c4" 
+
+===== E2) Backup current canonical (download + reupload with ACL) =====
+Source:      s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
+Backup dest: s3://digital-atlas/sandbox/backup/20260530_154522/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
+
+Downloading canonical to tmp...
+[1] "/tmp/RtmpyPWPEF/file7e0ea1f293db4.parquet"
+  size = 58826503 bytes
+Uploading to backup key with ACL=public-read...
+[1] "s3://digital-atlas/sandbox/backup/20260530_154522/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet"
+
+BACKUP confirmed:
+  size = 58826503 bytes
+  etag = "507892b6240c2fbc996b535ed8f047c4"
+
+ROLLBACK (if STAGE E4 fails — download+reupload to preserve ACL):
+  tmp <- tempfile(fileext = '.parquet')
+  s3fs::s3_file_download(
+    's3://digital-atlas/sandbox/backup/20260530_154522/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet', tmp, overwrite = TRUE)
+  s3fs::s3_file_upload(tmp,
+    's3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet', overwrite = TRUE, ACL = 'public-read')
+
+===== E3) Upload local -> canonical =====
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+Uploading:
+  /home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_risk_vop_usd/jagermeyr/haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet
+  -> s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
+  ACL = public-read
+
+[1] "s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet"
+Upload complete in 6.9 s
+
+POST-UPLOAD CANONICAL S3:
+  size  = 58809303 bytes
+  mtime = 2026-05-30 15:54:24 
+  etag  = "4c6e822161edba3a90f28b4848197716" 
+
+Size matches local — upload integrity OK.
+
+===== E4) Re-validate against published S3 URL =====
+Reading via: https://digital-atlas.s3.amazonaws.com/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet 
+
+[1] 0
+=== Apples-to-apples with D (--country AGO,NGA,CIV) — HARD GATE ===
+  [apples-to-apples] rows=1442  breaches=0
+  -> PASS — published file matches D_validate_9 [a].
+
+=== Broader cross-Africa sweep — INFORMATIONAL ===
+  [all countries] rows=19600  breaches=56
+  Compare this count against the OLD backup using:
+    tmp <- tempfile(fileext = '.parquet')
+    s3fs::s3_file_download(Sys.getenv('S3_BACKUP'), tmp, overwrite = TRUE)
+    # then re-run run_check() against tmp
+  If counts match -> publish is no worse than what was live.
+  If NEW > OLD     -> investigate (likely a rebake-introduced regression).
+
+===== PUBLISH COMPLETE =====
+Canonical (LIVE): s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
+Backup (rollback): s3://digital-atlas/sandbox/backup/20260530_154522/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
+
+Notebook consumers will pick up the new parquet on next
+cold-start. CR-068 caveats unchanged (SSP370 missing-periods
++ historic categorisation asymmetry — see their dispatches).
+
+Log saved to /home/jovyan/atlas/hazards_prototype/logs/E_publish_to_s3_20260530_154522.log
+ COMPLETE =====
+Canonical (LIVE): s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
+Backup (rollback): s3://digital-atlas/sandbox/backup/20260530_154522/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
+
+Notebook consumers will pick up the new parquet on next
+cold-start. CR-068 caveats unchanged (SSP370 missing-periods
++ historic categorisation asymmetry — see their dispatches).
+

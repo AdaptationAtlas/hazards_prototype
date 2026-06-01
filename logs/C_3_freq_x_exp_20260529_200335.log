@@ -1,0 +1,224 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+[20:03:46] [3_freq_x_exp] script start (FORCE_OVERWRITE=1)
+0.2.1.1) Using crop vop intd file: spam_vop_intld15_all.tif 
+0.2.1.1) Using crop vop usd file: spam_vop_usd2015_all.tif 
+0.2.1.2) Using crop harvested area file: spam_harv-area_ha_all.tif 
+0.2.2.1) Using livestock number file: livestock_number_number.tif 
+0.2.2.2) Using livestock vop intd file: glw4-2020_vop_intld15-2021.tif 
+0.2.2.2) Using livestock vop usd file: glw4-2020_vop_nominal-usd-2021.tif 
+[20:04:13] [3_freq_x_exp] entering timeframe loop over 2 periods: annual, jagermeyr
+---------------------------------------------------------------------------------------
+[20:04:14] [3_freq_x_exp] [timeframe 1/2] annual — start
+haz_timeseries_dir = /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices_seasonal/annual 
+[20:04:14] [3_freq_x_exp] [annual] section 4: hazard risk x exposure (run4.1=FALSE, run4.2=TRUE)
+annual 4) Hazard risk x exposure 
+4) Controls: 
+run4= FALSE 
+run4= TRUE 
+overwrite4= TRUE 
+worker_n4.1= 16 
+worker_n4.2= 1 
+multisession4= TRUE 
+version4= 1 
+check4.1= TRUE 
+4) Set-up:
+$vop
+$vop$variable
+[1] "vop_intld15-2021"
+
+$vop$folder
+[1] "Data/hazard_risk_vop/annual"
+
+$vop$source_dir
+[1] "Data/hazard_risk/annual"
+
+$vop$crop_exposure_file
+[1] "Data/mapspam/2020V1r2_SSA/processed/variable=vop_intld15/spam_vop_intld15_all.tif"
+
+$vop$livestock_exposure_file
+[1] "Data/GLW4_2020/processed/variable=vop_intld15-2021/glw4-2020_vop_intld15-2021.tif"
+
+$vop$round_n
+[1] 0
+
+
+$vop_usd
+$vop_usd$variable
+[1] "vop_nominal-usd-2021"
+
+$vop_usd$folder
+[1] "Data/hazard_risk_vop_usd/annual"
+
+$vop_usd$source_dir
+[1] "Data/hazard_risk/annual"
+
+$vop_usd$crop_exposure_file
+[1] "Data/mapspam/2020V1r2_SSA/processed/variable=vop_usd2015/spam_vop_usd2015_all.tif"
+
+$vop_usd$livestock_exposure_file
+[1] "Data/GLW4_2020/processed/variable=vop_nominal-usd-2021/glw4-2020_vop_nominal-usd-2021.tif"
+
+$vop_usd$round_n
+[1] 0
+
+
+$ha
+$ha$variable
+[1] "harv-area_ha"
+
+$ha$folder
+[1] "Data/hazard_risk_ha/annual"
+
+$ha$source_dir
+[1] "Data/hazard_risk/annual"
+
+$ha$crop_exposure_file
+[1] "Data/mapspam/2020V1r2_SSA/processed/variable=harv-area_ha/spam_harv-area_ha_all.tif"
+
+$ha$livestock_exposure_file
+NULL
+
+$ha$round_n
+[1] 0
+
+
+[20:04:14] [3_freq_x_exp] [annual] 4.2) Extract Freq x Exposure by Geography (3 variables)
+[20:04:14] [3_freq_x_exp] [annual] 4.2) variable 1/3: vop_intld15-2021 — start (folder=Data/hazard_risk_vop/annual)
+annual 4.2) Extracting 6 groups 
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table.
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_vop_intld15-2021_ENSEMBLE_int_adm_extreme.parquet      
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_vop_intld15-2021_ENSEMBLE_int_adm_moderate.parquet      
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_vop_intld15-2021_ENSEMBLE_int_adm_severe.parquet      
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table - Complete.
+[21:33:32] [3_freq_x_exp] [annual] 4.2) variable 1/3: vop_intld15-2021 — Complete (89.3 min)
+[21:33:32] [3_freq_x_exp] [annual] 4.2) variable 2/3: vop_nominal-usd-2021 — start (folder=Data/hazard_risk_vop_usd/annual)
+annual 4.2) Extracting 6 groups 
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table.
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_vop_nominal-usd-2021_ENSEMBLE_int_adm_extreme.parquet      
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_vop_nominal-usd-2021_ENSEMBLE_int_adm_moderate.parquet      
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_vop_nominal-usd-2021_ENSEMBLE_int_adm_severe.parquet      
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table - Complete.
+[23:18:44] [3_freq_x_exp] [annual] 4.2) variable 2/3: vop_nominal-usd-2021 — Complete (105.2 min)
+[23:18:44] [3_freq_x_exp] [annual] 4.2) variable 3/3: harv-area_ha — start (folder=Data/hazard_risk_ha/annual)
+annual 4.2) Extracting 6 groups 
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table.
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_harv-area_ha_ENSEMBLE_int_adm_extreme.parquet      
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_harv-area_ha_ENSEMBLE_int_adm_moderate.parquet      
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_harv-area_ha_ENSEMBLE_int_adm_severe.parquet      
+annual 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table - Complete.
+[00:38:45] [3_freq_x_exp] [annual] 4.2) variable 3/3: harv-area_ha — Complete (80.0 min)
+annual 4.2) Extract Freq x Exposure by Geography - Complete
+[00:38:45] [3_freq_x_exp] [timeframe 1/2] annual — Complete (274.5 min total)
+---------------------------------------------------------------------------------------
+[00:38:45] [3_freq_x_exp] [timeframe 2/2] jagermeyr — start
+haz_timeseries_dir = /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices_seasonal/jagermeyr 
+[00:38:45] [3_freq_x_exp] [jagermeyr] section 4: hazard risk x exposure (run4.1=FALSE, run4.2=TRUE)
+jagermeyr 4) Hazard risk x exposure 
+4) Controls: 
+run4= FALSE 
+run4= TRUE 
+overwrite4= TRUE 
+worker_n4.1= 16 
+worker_n4.2= 1 
+multisession4= TRUE 
+version4= 1 
+check4.1= TRUE 
+4) Set-up:
+$vop
+$vop$variable
+[1] "vop_intld15-2021"
+
+$vop$folder
+[1] "Data/hazard_risk_vop/jagermeyr"
+
+$vop$source_dir
+[1] "Data/hazard_risk/jagermeyr"
+
+$vop$crop_exposure_file
+[1] "Data/mapspam/2020V1r2_SSA/processed/variable=vop_intld15/spam_vop_intld15_all.tif"
+
+$vop$livestock_exposure_file
+[1] "Data/GLW4_2020/processed/variable=vop_intld15-2021/glw4-2020_vop_intld15-2021.tif"
+
+$vop$round_n
+[1] 0
+
+
+$vop_usd
+$vop_usd$variable
+[1] "vop_nominal-usd-2021"
+
+$vop_usd$folder
+[1] "Data/hazard_risk_vop_usd/jagermeyr"
+
+$vop_usd$source_dir
+[1] "Data/hazard_risk/jagermeyr"
+
+$vop_usd$crop_exposure_file
+[1] "Data/mapspam/2020V1r2_SSA/processed/variable=vop_usd2015/spam_vop_usd2015_all.tif"
+
+$vop_usd$livestock_exposure_file
+[1] "Data/GLW4_2020/processed/variable=vop_nominal-usd-2021/glw4-2020_vop_nominal-usd-2021.tif"
+
+$vop_usd$round_n
+[1] 0
+
+
+$ha
+$ha$variable
+[1] "harv-area_ha"
+
+$ha$folder
+[1] "Data/hazard_risk_ha/jagermeyr"
+
+$ha$source_dir
+[1] "Data/hazard_risk/jagermeyr"
+
+$ha$crop_exposure_file
+[1] "Data/mapspam/2020V1r2_SSA/processed/variable=harv-area_ha/spam_harv-area_ha_all.tif"
+
+$ha$livestock_exposure_file
+NULL
+
+$ha$round_n
+[1] 0
+
+
+[00:38:45] [3_freq_x_exp] [jagermeyr] 4.2) Extract Freq x Exposure by Geography (3 variables)
+[00:38:45] [3_freq_x_exp] [jagermeyr] 4.2) variable 1/3: vop_intld15-2021 — start (folder=Data/hazard_risk_vop/jagermeyr)
+jagermeyr 4.2) Extracting 6 groups 
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table.
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_vop_intld15-2021_ENSEMBLE_int_adm_extreme.parquet      
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_vop_intld15-2021_ENSEMBLE_int_adm_moderate.parquet      
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_vop_intld15-2021_ENSEMBLE_int_adm_severe.parquet      
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table - Complete.
+[02:06:58] [3_freq_x_exp] [jagermeyr] 4.2) variable 1/3: vop_intld15-2021 — Complete (88.2 min)
+[02:06:58] [3_freq_x_exp] [jagermeyr] 4.2) variable 2/3: vop_nominal-usd-2021 — start (folder=Data/hazard_risk_vop_usd/jagermeyr)
+jagermeyr 4.2) Extracting 6 groups 
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table.
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_vop_nominal-usd-2021_ENSEMBLE_int_adm_extreme.parquet      
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_vop_nominal-usd-2021_ENSEMBLE_int_adm_moderate.parquet      
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_vop_nominal-usd-2021_ENSEMBLE_int_adm_severe.parquet      
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table - Complete.
+[03:51:22] [3_freq_x_exp] [jagermeyr] 4.2) variable 2/3: vop_nominal-usd-2021 — Complete (104.4 min)
+[03:51:22] [3_freq_x_exp] [jagermeyr] 4.2) variable 3/3: harv-area_ha — start (folder=Data/hazard_risk_ha/jagermeyr)
+jagermeyr 4.2) Extracting 6 groups 
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table.
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_harv-area_ha_ENSEMBLE_int_adm_extreme.parquet      
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_harv-area_ha_ENSEMBLE_int_adm_moderate.parquet      
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File = haz-freq-exp_harv-area_ha_ENSEMBLE_int_adm_severe.parquet      
+jagermeyr 4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table - Complete.
+[05:05:27] [3_freq_x_exp] [jagermeyr] 4.2) variable 3/3: harv-area_ha — Complete (74.1 min)
+jagermeyr 4.2) Extract Freq x Exposure by Geography - Complete
+[05:05:27] [3_freq_x_exp] [timeframe 2/2] jagermeyr — Complete (266.7 min total)
+Exited timeframe loop - script complete
+
+===== 3_freq_x_exposure.R COMPLETE at 2026-05-30 05:05:27 UTC =====
+There were 12 warnings (use warnings() to see them)
+===== STAGE C DONE (exit: 0) =====

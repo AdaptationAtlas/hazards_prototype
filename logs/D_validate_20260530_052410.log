@@ -1,0 +1,178 @@
+nohup: ignoring input
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+
+======================================================================
+[05:24:24][pid 514988] ==== Issue #9 Stage 3 validation ====
+======================================================================
+
+[05:24:24][pid 514988] parquet     = Data/hazard_risk_vop_usd/jagermeyr/haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet
+[05:24:24][pid 514988] countries   = AGO, NGA, CIV
+[05:24:24][pid 514988] arrow version: 22.0.0
+[05:24:24][pid 514988] Loading parquet via arrow::read_parquet ...
+[05:25:52][pid 514988] Loaded 60402360 rows, 17 cols
+
+======================================================================
+[05:25:52][pid 514988] ==== [a] sum(specific) <= sum('any') check, per (iso3, crop, scenario, timeframe) ====
+======================================================================
+
+[05:25:58][pid 514988] START  [a] specific-vs-any aggregation
+[05:25:58][pid 514988] END    [a] specific-vs-any aggregation  (0.2 s)
+[05:25:58][pid 514988] rows checked: 1442
+[05:25:58][pid 514988] breaches (ratio > 1.005): 0
+[05:25:58][pid 514988] PASS — no (iso3, crop, scenario, timeframe) where specific > any.
+
+======================================================================
+[05:25:58][pid 514988] ==== [b] AGO sugarcane mass — current parquet snapshot ====
+======================================================================
+
+[05:25:58][pid 514988] START  [b] AGO sugarcane aggregation
+[05:26:04][pid 514988] END    [b] AGO sugarcane aggregation  (5.5 s)
+    scenario timeframe sum_value n_rows
+      <char>    <char>     <num>  <int>
+ 1: historic 1995-2014 132647255      1
+ 2:   ssp126 2021-2040  78384450      1
+ 3:   ssp126 2041-2060  82577541      1
+ 4:   ssp126 2061-2080  84319081      1
+ 5:   ssp126 2081-2100  83440227      1
+ 6:   ssp245 2021-2040  80102180      1
+ 7:   ssp245 2041-2060  82984160      1
+ 8:   ssp245 2061-2080  82776039      1
+ 9:   ssp245 2081-2100  88995365      1
+10:   ssp370 2021-2040  80684377      1
+11:   ssp370 2041-2060         0      1
+12:   ssp370 2061-2080         0      1
+13:   ssp370 2081-2100         0      1
+14:   ssp585 2021-2040  81191392      1
+15:   ssp585 2041-2060  84978014      1
+16:   ssp585 2061-2080  90172829      1
+17:   ssp585 2081-2100  97960263      1
+
+======================================================================
+[05:26:04][pid 514988] ==== [c] Spot-check sharp-concentration crops ====
+======================================================================
+
+[05:26:04][pid 514988] START  [c] spot-check NGA oilpalm + CIV cocoa
+[05:26:16][pid 514988] END    [c] spot-check NGA oilpalm + CIV cocoa  (12.5 s)
+      iso3    crop scenario timeframe  sum_value
+    <char>  <char>   <char>    <char>      <num>
+ 1:    CIV   cocoa historic 1995-2014 3000951669
+ 2:    CIV   cocoa   ssp126 2021-2040  769390934
+ 3:    CIV   cocoa   ssp126 2041-2060  882992256
+ 4:    CIV   cocoa   ssp126 2061-2080  983038737
+ 5:    CIV   cocoa   ssp126 2081-2100  930551067
+ 6:    CIV   cocoa   ssp245 2021-2040  797345143
+ 7:    CIV   cocoa   ssp245 2041-2060  938672081
+ 8:    CIV   cocoa   ssp245 2061-2080 1183190163
+ 9:    CIV   cocoa   ssp245 2081-2100 1407839293
+10:    CIV   cocoa   ssp370 2021-2040  771775997
+11:    CIV   cocoa   ssp370 2041-2060          0
+12:    CIV   cocoa   ssp370 2061-2080          0
+13:    CIV   cocoa   ssp370 2081-2100          0
+14:    CIV   cocoa   ssp585 2021-2040  830268793
+15:    CIV   cocoa   ssp585 2041-2060 1148435112
+16:    CIV   cocoa   ssp585 2061-2080 1809393827
+17:    CIV   cocoa   ssp585 2081-2100 2450213828
+18:    NGA oilpalm historic 1995-2014 2396978491
+19:    NGA oilpalm   ssp126 2021-2040 1409572448
+20:    NGA oilpalm   ssp126 2041-2060 1467583558
+21:    NGA oilpalm   ssp126 2061-2080 1493891457
+22:    NGA oilpalm   ssp126 2081-2100 1467311301
+23:    NGA oilpalm   ssp245 2021-2040 1385422441
+24:    NGA oilpalm   ssp245 2041-2060 1374697126
+25:    NGA oilpalm   ssp245 2061-2080 1525527359
+26:    NGA oilpalm   ssp245 2081-2100 1669271494
+27:    NGA oilpalm   ssp370 2021-2040 1322923464
+28:    NGA oilpalm   ssp370 2041-2060          0
+29:    NGA oilpalm   ssp370 2061-2080          0
+30:    NGA oilpalm   ssp370 2081-2100          0
+31:    NGA oilpalm   ssp585 2021-2040 1327683291
+32:    NGA oilpalm   ssp585 2041-2060 1518188146
+33:    NGA oilpalm   ssp585 2061-2080 1738276132
+34:    NGA oilpalm   ssp585 2081-2100 2129651380
+      iso3    crop scenario timeframe  sum_value
+
+======================================================================
+[05:26:16][pid 514988] ==== [d] AGO hazard-category split — CR-068 regression check ====
+======================================================================
+
+[05:26:16][pid 514988] START  [d] AGO category split aggregation
+[05:26:22][pid 514988] END    [d] AGO category split aggregation  (6.0 s)
+         hazard hist_1995_2014 ssp126_2021_2040 ssp126_2041_2060
+         <char>          <num>            <num>            <num>
+1:          dry    10738132546       4101174930       3873517520
+2:      dry+wet     2545115142          2865760          9071154
+3:     dry+heat     1342604876       1028999526       1090873700
+4: dry+heat+wet      188839994           509494          2011742
+5:         heat              0        573306632        592597656
+6:     heat+wet              0        233600392        294116000
+7:          wet              0       2661874616       2995331020
+   ssp126_2061_2080 ssp126_2081_2100 ssp245_2021_2040 ssp245_2041_2060
+              <num>            <num>            <num>            <num>
+1:       3957950760       4074081300       4191059070       3842415596
+2:          9126540          6728028          8393456         11228186
+3:       1149426512       1154467836       1019079080       1171465480
+4:          2720906          1593696          2698350          3064100
+5:        587084510        570226388        574681988        618615874
+6:        289336854        290134174        240990488        310420082
+7:       3047976580       3011645302       2703626216       3008368632
+   ssp245_2061_2080 ssp245_2081_2100 ssp370_2021_2040 ssp370_2041_2060
+              <num>            <num>            <num>            <num>
+1:       3863299456       3805424646       4187622102                0
+2:         13194312          9726042          4580394                0
+3:       1346305600       1453606336       1033463920                0
+4:          3657702          2715990          1002830                0
+5:        666922736        681908618        559493852                0
+6:        325925224        373074030        252195490                0
+7:       3017226612       3300808236       2820587834                0
+   ssp370_2061_2080 ssp370_2081_2100 ssp585_2021_2040 ssp585_2041_2060
+              <num>            <num>            <num>            <num>
+1:                0                0       3915288416       4004823482
+2:                0                0          4688582         17725620
+3:                0                0        988004556       1363541338
+4:                0                0          1322982          3966198
+5:                0                0        569510538        652773306
+6:                0                0        293287906        303916820
+7:                0                0       3027489242       2848657762
+   ssp585_2061_2080 ssp585_2081_2100
+              <num>            <num>
+1:       3714983068       3038654752
+2:          6566098         12242236
+3:       1890672372       2907459340
+4:          2603226          4001896
+5:        898708628       1473276018
+6:        378248096        577443742
+7:       2999197224       3028166526
+[05:26:22][pid 514988] NOTE: zeros under historic for heat / heat+wet / wet are the CR-068 bug (categorisation asymmetry), NOT a regression from issue #9. CR-068 has its own dispatch.
+[05:29:50][pid 514988] Wrote report to /home/jovyan/atlas/hazards_prototype/metadata/checks/9_mass_conservation_validate.json
+
+----------------------------------------------------------------------
+[05:29:50][pid 514988] Stage timings (top to bottom = slowest first)
+----------------------------------------------------------------------
+                                  label secs
+ [c] spot-check NGA oilpalm + CIV cocoa 12.5
+     [d] AGO category split aggregation  6.0
+          [b] AGO sugarcane aggregation  5.5
+        [a] specific-vs-any aggregation  0.2
+[05:29:50][pid 514988] TOTAL  24.2 s (0.4 min)
+[05:29:50][pid 514988] DECISION: validation PASSED — issue #9 fix closes the magnitude gap.
+
+######################################################################
+######################################################################
+[05:29:50][pid 514988] ##### COMPLETE: Issue #9 Stage 3 validation #####
+[05:29:50][pid 514988] ##### DECISION = PASSED (exit code 0)
+[05:29:50][pid 514988] ##### exit status 0; log file finalized 2026-05-30 05:29:50 #####
+######################################################################
+######################################################################
+
+Warning message:
+In atlas_dirs$data_dir$GLPS <- file.path(atlas_dirs$data_dir[[1]],  :
+  Coercing LHS to a list
+===== STAGE D DONE (exit: 0) =====
