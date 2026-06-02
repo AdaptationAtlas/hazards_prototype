@@ -274,7 +274,11 @@ files <- data.table(file = files)[, c("scenario", "model", "timeframe", "hazard"
 
 timeframes <- files[, unique(timeframe)]
 baselines <- files[grep("historic", scenario), unique(scenario)]
-names(baselines) <- c("1995-2014", "AgERA5 1981-2022")
+# Names are assigned in the canonical order — truncated to however many
+# baselines are actually present (CGlabs CMIP6 only has 1995-2014;
+# AgERA5 1981-2022 may not be present on all setups).
+all_baseline_names <- c("1995-2014", "AgERA5 1981-2022")
+names(baselines) <- all_baseline_names[seq_along(baselines)]
 
 futures <- files[!grepl("historic", timeframe), unique(timeframe)]
 
