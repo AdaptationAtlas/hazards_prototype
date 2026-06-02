@@ -421,7 +421,8 @@ lapply(monthly_files, FUN = function(month_file) {
     vars <- data_ex_ss[, unique(hazard)]
 
     data_ex_season <- lapply(seq_along(three_month_periods), function(j) {
-      m_period <- three_month_periods[[j]]
+      m_period    <- three_month_periods[[j]]
+      season_name <- names(three_month_periods)[j]
       dt <- copy(data_ex_ss)[month %in% m_period]
 
       dt[, seq := find_consecutive_pattern(seq = month, pattern = m_period),
