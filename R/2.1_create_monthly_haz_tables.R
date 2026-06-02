@@ -332,12 +332,12 @@ problem_data <- lapply(seq_along(timeframes), FUN = function(i) {
 
     json_dat <- jsonlite::read_json(paste0(files_ss[1], ".json"), simplifyVector = TRUE)
     filters <- list(
-      scenario = data_ex_season[, unique(scenario)],
-      model = data_ex_season[, unique(model)],
-      timeframe = data_ex_season[, unique(timeframe)],
-      year = data_ex_season[, unique(year)],
-      hazard = data_ex_season[, unique(hazard)],
-      month = data_ex_season[, unique(month)]
+      scenario = data[, unique(scenario)],
+      model = data[, unique(model)],
+      timeframe = data[, unique(timeframe)],
+      year = data[, unique(year)],
+      hazard = data[, unique(hazard)],
+      month = data[, unique(month)]
     )
 
     jsonlite::write_json(
@@ -448,7 +448,7 @@ lapply(monthly_files, FUN = function(month_file) {
     data_ex_season <- rbindlist(data_ex_season)
 
     if (!is.null(order_by2)) {
-      setorderv(data, order_by2)
+      setorderv(data_ex_season, order_by2)
     }
 
     write_parquet_pushdown(
