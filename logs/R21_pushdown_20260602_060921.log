@@ -1543,3 +1543,6 @@ In addition: There were 50 or more warnings (use warnings() to see the first 50)
 2: withVisible(eval(ei, envir))
 1: source(Sys.getenv("R21_SCRIPT"))
 ===== R/2.1 DONE (exit: 1) =====
+[develop 40d7972] auto: R/2.1 log 20260602_060921 (exit 1)
+ 1 file changed, 1545 insertions(+)
+ create mode 100644 logs/R21_pushdown_20260602_060921.log
