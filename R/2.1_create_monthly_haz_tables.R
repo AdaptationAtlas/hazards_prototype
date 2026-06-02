@@ -480,7 +480,7 @@ lapply(monthly_files, FUN = function(month_file) {
         version = json_dat$version,
         parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.1",
         value_variable = "hazard value",
-        unit = haz_meta[variable.code %in% data[, unique(hazard)], .(variable.code, base_unit)],
+        unit = haz_meta[variable.code %in% data_ex_ss[, unique(hazard)], .(variable.code, base_unit)],
         extract_stat = json_dat$extract_stat,
         notes = paste0("Monthly hazard values extracted by admin areas and summarized using ", extract_stat, ". Values then combined across 3 or 12 month sequences using sum or mean depending on the hazard type."),
         problem_data = data_ex_season[suspect_value_flag == TRUE]
@@ -584,8 +584,8 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
       field_descriptions = field_descriptions,
       unit = unique(haz_meta[variable.code %in% data[, unique(hazard)], base_unit]),
       extract_stat = extract_stat,
-      baseline = baseline_names[j],
-      models = models,
+      baseline = baseline_name,
+      models = data[, paste0(sort(unique(model)), collapse = ",")],
       notes = paste0(
         "This file contains model-specific climate hazard data extracted for subnational administrative units (admin0_name, admin1_name), ",
         "organized by scenario, timeframe, hazard type, season, year, and GCM (model). ",
@@ -744,7 +744,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
       field_descriptions = field_descriptions,
       unit = unique(haz_meta[variable.code %in% data_anomaly_ens[, unique(hazard)], base_unit]),
       extract_stat = extract_stat,
-      baseline = baseline_names[j],
+      baseline = baseline_name,
       models = models,
       notes = paste0(
         "This file contains ensembled summaries of monthly climate hazard values and their anomalies, ",
@@ -800,7 +800,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
       field_descriptions = field_descriptions,
       unit = haz_meta[variable.code %in% data_anomaly[, unique(hazard)], base_unit],
       extract_stat = extract_stat,
-      anomaly_baseline = baseline_names[j],
+      anomaly_baseline = baseline_name,
       models = models,
       notes = "This file presents ensemble summary statistics for climate hazard indicators and their anomalies, aggregated by subnational administrative units (admin0_name, admin1_name), scenario, timeframe, hazard, and season. Monthly hazard values were extracted using the selected spatial summary method (e.g., mean or sum) and grouped into rolling 3-month or annual periods based on the ‘season’ column. The resulting values and anomalies (relative to a historical baseline) were then averaged across all years within the specified timeframe for each GCM. These multi-year averages were used to calculate ensemble statistics across models (listed in the ‘models’ column), including the mean, min, max, and median for values, and mean, min, max, and standard deviation for anomalies. The file is designed to support high-level climate risk analysis, scenario comparison, and adaptation planning."
     ), paste0(save_file3, ".json"), pretty = TRUE)
@@ -982,7 +982,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
       parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.4",
       unit = unique(haz_meta[variable.code %in% data_ex_trend_stats[, unique(hazard)], .(variable.code, base_unit)]),
       extract_stat = extract_stat,
-      anomaly_baseline = baseline_names[j],
+      anomaly_baseline = baseline_name,
       notes = paste0(
         "This file contains climate hazard summary statistics extracted from monthly raster data, ",
         "aggregated by subnational administrative units (admin0_name, admin1_name). Values were first ",
@@ -1043,7 +1043,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
       parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.7.1",
       unit = unique(haz_meta[variable.code %in% data_ex_trend_stats_ens[, unique(hazard)], .(variable.code, base_unit)]),
       extract_stat = extract_stat,
-      anomaly_baseline = baseline_names[j],
+      anomaly_baseline = baseline_name,
       notes = paste0(
         "This file contains ensemble-level summaries of trend statistics derived from seasonal hazard values, ",
         "aggregated by subnational administrative units. Each row corresponds to a single trend metric (e.g., Sen's slope, decadal change) ",
@@ -1098,7 +1098,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
       parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.7.1",
       unit = unique(haz_meta[variable.code %in% data_ex_trend_stats_ens_simple[, unique(hazard)], .(variable.code, base_unit)]),
       extract_stat = extract_stat,
-      anomaly_baseline = baseline_names[j],
+      anomaly_baseline = baseline_name,
       notes = paste0(
         "This simplified file contains a filtered subset of ensemble-level climate trend summaries for key hazards ",
         "(precipitation total [PTOT], average temperature [TAVG], and maximum temperature [TMAX]). ",
