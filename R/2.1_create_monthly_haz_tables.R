@@ -434,7 +434,7 @@ lapply(monthly_files, FUN = function(month_file) {
 
       data_season <- rbindlist(lapply(vars, function(VAR) {
         func_name <- unique(haz_meta$`function`[haz_meta$variable.code == gsub("-", "_", VAR)])
-        func <- get(func_name, mode = "function", envir = parent.frame())
+        func <- match.fun(func_name)
 
         dt[hazard == VAR, .(
           value = round(func(value, na.rm = TRUE), round3.1),
