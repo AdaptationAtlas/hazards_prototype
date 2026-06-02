@@ -418,7 +418,7 @@ lapply(monthly_files, FUN = function(month_file) {
   if (!file.exists(save_file) | overwrite2) {
     cat("3.1) Seasonal summarization: ", basename(month_file), "\n")
     data_ex_ss <- data.table(arrow::read_parquet(month_file))
-    vars <- data_ex_ss[, unique(vars)]
+    vars <- data_ex_ss[, unique(hazard)]
 
     data_ex_season <- lapply(seq_along(three_month_periods), function(j) {
       m_period <- three_month_periods[[j]]
