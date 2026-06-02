@@ -370,8 +370,9 @@ problem_data <- lapply(seq_along(timeframes), FUN = function(i) {
 
 monthly_files <- file.path(output_dir, paste0("haz_monthly_adm_mean_", timeframes, ".parquet"))
 
-# Check for missing values
-data <- arrow::read_parquet(monthly_files[1])
+# Check for missing values (coerce to data.table — arrow::read_parquet returns
+# a tibble on some setups and data.table syntax requires a data.table).
+data <- data.table(arrow::read_parquet(monthly_files[1]))
 missing <- data[value == -Inf | is.infinite(value) | is.na(value) | is.null(value), .(hazard = paste(unique(hazard), collapse = ",")), by = .(admin0_name, admin1_name)]
 
 if (nrow(missing) > 0) {
@@ -416,7 +417,7 @@ lapply(monthly_files, FUN = function(month_file) {
 
   if (!file.exists(save_file) | overwrite2) {
     cat("3.1) Seasonal summarization: ", basename(month_file), "\n")
-    data_ex_ss <- arrow::read_parquet(month_file)
+    data_ex_ss <- data.table(arrow::read_parquet(month_file))
     vars <- data_ex_ss[, unique(vars)]
 
     data_ex_season <- lapply(seq_along(three_month_periods), function(j) {
@@ -616,7 +617,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   cat("3.3) Calculating ensemble stats for ", i, "/", nrow(file_combos), basename(save_file), "\n")
 
   if (!file.exists(save_file2) | overwrite2) {
-    data_anomaly <- arrow::read_parquet(save_file)
+    data_anomaly <- data.table(arrow::read_parquet(save_file))
     models <- data_anomaly[, paste0(sort(unique(model)), collapse = ",")]
 
     # Ensemble models by years.
@@ -863,7 +864,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   cat("3.4) Trends - Processing", i, "/", nrow(file_combos), basename(data_file), "\n")
 
   if (!file.exists(save_file) | overwrite2) {
-    data_ex_trend <- arrow::read_parquet(data_file)
+    data_ex_trend <- data.table(arrow::read_parquet(data_file))
 
     # Filter out rows with NA/NaN/Inf in 'value' or 'year' before fitting the model
     data_ex_trend <- data_ex_trend[is.finite(value) & is.finite(year)][, n_value := NULL]
