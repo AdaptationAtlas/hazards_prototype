@@ -20,6 +20,7 @@ packages <- c(
 
 # Call the function to install and load packages
 p_load(char = packages)
+source(file.path(Sys.getenv("project_dir"), "R", "_helpers.R"))
 
 # 1) Set up workspace ####
 ## 1.1) Set directories #####
