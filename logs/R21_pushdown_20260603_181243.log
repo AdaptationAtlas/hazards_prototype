@@ -1,0 +1,314 @@
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Starting 2.1_create_monthly_haz_tables.R
+output_dir = Data/hazard_timeseries_mean_month 
+Working with hazards = HSH_max TMAX TAVG NDWL0 NDWS NTx35 PTOT THI_max NDD 
+Using scenarios = ssp126 ssp245 ssp370 ssp585 
+Using time periods = 2021_2040 2041_2060 2061_2080 2081_2100 
+Section controls: sec2=FALSE 3.1=FALSE 3.2=FALSE 3.3=TRUE 3.4=TRUE
+Folders included = /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2081_2100 
+                    admin0_name        admin1_name
+                         <char>             <char>
+ 1:                     Comoros Anjouan (Ndzouani)
+ 2:                     Comoros     Mohéli (Mwali)
+ 3:                  Cabo Verde              Brava
+ 4:                  Cabo Verde               Maio
+ 5:                  Cabo Verde                Sal
+ 6:                  Cabo Verde        Sao Vicente
+ 7:                    Djibouti          Djiboutii
+ 8:                      Guinea            Conakry
+ 9:           Equatorial Guinea            Annobón
+10:                   Mauritius    Agalnga Islands
+11:                   Mauritius      Rivinre Noire
+12:       Sao Tome And Principe           Príncipe
+13:                  Seychelles           La Digue
+14:                  Seychelles               Mahe
+15:                  Seychelles      Other Islands
+16:                  Seychelles            Praslin
+17:                  Seychelles               <NA>
+18: United Republic of Tanzania    Kaskazini Pemba
+19: United Republic of Tanzania       Kusini Pemba
+                                                   hazard
+                                                   <char>
+ 1:                                            NDWL0,NDWS
+ 2:                                            NDWL0,NDWS
+ 3:                                       NDWL0,NDWS,PTOT
+ 4:                                            NDWL0,NDWS
+ 5:                                            NDWL0,NDWS
+ 6:                                            NDWL0,NDWS
+ 7:                                            NDWL0,NDWS
+ 8:                                                  PTOT
+ 9: HSH-max,NDWL0,NDWS,NTx35,NTx40,PTOT,TAVG,THI-max,TMAX
+10:                                            NDWL0,NDWS
+11:                                            NDWL0,NDWS
+12:                                            NDWL0,NDWS
+13:                                            NDWL0,NDWS
+14:                                            NDWL0,NDWS
+15:                                            NDWL0,NDWS
+16:                                            NDWL0,NDWS
+17:                                            NDWL0,NDWS
+18:                                            NDWL0,NDWS
+19:                                            NDWL0,NDWS
+3.1) Seasonal hazard calculation 
+3.1) Seasonal hazard calculation - Complete 
+3.2) Adding historical means 
+3.3) Calculating ensemble stats 
+3.3) Calculating ensemble stats for  1 / 7 haz_3months_adm_mean_1981-2014_anomaly-historic_seasons.parquet 
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_ensemble_seasons.parquet written (60 row groups, 1680 chunks, 64.8 KB avg chunk, stats verified on admin0_name, hazard, scenario, season)
+Error in FUN(X[[i]], ...) : object 'baseline_name' not found
+Calls: source ... lapply -> FUN -> write_json -> <Anonymous> -> force
+In addition: There were 50 or more warnings (use warnings() to see the first 50)
+10: (function () 
+    {
+        traceback(2)
+        quit(status = 1, save = "no")
+    })()
+9: force(x)
+8: jsonlite::toJSON(x, ...)
+7: write_json(list(source = list(input_table = data_json$input_raster, 
+       extraction_rast = atlas_data$boundaries$name), extraction_method = "zonal", 
+       geo_filters = grep("admin", colnames(data_anomaly_ens), value = TRUE), 
+       season_type = "3-month windows or annual", filters = filters, 
+       format = ".parquet", date_created = Sys.time(), version = version1, 
+       parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.3", 
+       value_variable = "hazard mean, max, min, sd, mean_anomaly, max_anomaly, min_anomaly, sd_anomaly", 
+       field_descriptions = field_descriptions, unit = unique(haz_meta[variable.code %in% 
+           data_anomaly_ens[, unique(hazard)], base_unit]), extract_stat = extract_stat, 
+       baseline = baseline_name, models = models, notes = paste0("This file contains ensembled summaries of monthly climate hazard values and their anomalies, ", 
+           "extracted for subnational administrative units (admin0_name, admin1_name) and grouped by scenario, timeframe, season, and hazard type. ", 
+           "Raw values were first summarized spatially using the statistic '", 
+           extract_stat, "' (e.g., mean or sum), ", "then aggregated into rolling 3-month or annual periods according to the 'season' column. ", 
+           "For each GCM (listed in the `models` column), anomaly values were computed relative to a specified baseline period. ", 
+           "The ensemble statistics include mean, min, max, and standard deviation (SD) across models, reported separately for both raw hazard values ", 
+           "and their anomalies. This provides a robust indication of central tendency and inter-model spread, which is critical for quantifying agreement ", 
+           "and uncertainty across climate projections.")), paste0(save_file2, 
+       ".json"), pretty = TRUE)
+6: FUN(X[[i]], ...)
+5: lapply(seq_len(nrow(file_combos)), FUN = function(i) {
+       save_file <- file_combos$save_file[i]
+       save_file2 <- file_combos$save_file2[i]
+       save_file3 <- file_combos$save_file3[i]
+       data_json <- jsonlite::read_json(file.path(output_dir, paste0(basename(file_combos$data[i]), 
+           ".json")), simplifyVector = TRUE)
+       cat("3.3) Calculating ensemble stats for ", i, "/", nrow(file_combos), 
+           basename(save_file), "\n")
+       if (!file.exists(save_file2) | overwrite2) {
+           data_anomaly <- data.table(arrow::read_parquet(save_file))
+           models <- data_anomaly[, paste0(sort(unique(model)), 
+               collapse = ",")]
+           data_anomaly_ens <- data_anomaly[, list(mean = mean(value, 
+               na.rm = TRUE), max = max(value, na.rm = TRUE), min = min(value, 
+               na.rm = TRUE), sd = sd(value, na.rm = TRUE), q5 = quantile(value, 
+               0.05, na.rm = TRUE), q17 = quantile(value, 0.17, 
+               na.rm = TRUE), q50 = quantile(value, 0.5, na.rm = TRUE), 
+               q83 = quantile(value, 0.83, na.rm = TRUE), q95 = quantile(value, 
+                   0.95, na.rm = TRUE), n_models = sum(!is.na(value)), 
+               mean_anomaly = mean(anomaly, na.rm = TRUE), max_anomaly = max(anomaly, 
+                   na.rm = TRUE), min_anomaly = min(anomaly, na.rm = TRUE), 
+               sd_anomaly = sd(anomaly, na.rm = TRUE), q5_anomaly = quantile(anomaly, 
+                   0.05, na.rm = TRUE), q17_anomaly = quantile(anomaly, 
+                   0.17, na.rm = TRUE), q50_anomaly = quantile(anomaly, 
+                   0.5, na.rm = TRUE), q83_anomaly = quantile(anomaly, 
+                   0.83, na.rm = TRUE), q95_anomaly = quantile(anomaly, 
+                   0.95, na.rm = TRUE)), by = list(admin0_name, 
+               admin1_name, scenario, timeframe, year, hazard, season, 
+               baseline_name)]
+           num_cols <- names(data_anomaly_ens)[sapply(data_anomaly_ens, 
+               is.numeric)]
+           data_anomaly_ens[, `:=`((num_cols), lapply(.SD, round, 
+               digits = round3.3)), .SDcols = num_cols]
+           data_anomaly_ens[, `:=`(hazard, gsub("_mean|_max", "", 
+               hazard))]
+           data_anomaly_ens[, `:=`(models, models)]
+           data_ag <- data_anomaly[, list(mean = mean(value, na.rm = TRUE), 
+               mean_anomaly = mean(anomaly, na.rm = TRUE)), by = list(admin0_name, 
+               admin1_name, scenario, timeframe, model, hazard, 
+               season, baseline_name)]
+           data_ag_ens <- data_ag[, list(mean_mean = mean(mean, 
+               na.rm = TRUE), min_mean = min(mean, na.rm = TRUE), 
+               max_mean = max(mean, na.rm = TRUE), median_mean = median(mean, 
+                   na.rm = TRUE), mean_anomaly = mean(mean_anomaly, 
+                   na.rm = TRUE), max_anomaly = max(mean_anomaly, 
+                   na.rm = TRUE), min_anomaly = min(mean_anomaly, 
+                   na.rm = TRUE), sd_anomaly = sd(mean_anomaly, 
+                   na.rm = TRUE), q17_anomaly = quantile(mean_anomaly, 
+                   0.17, na.rm = TRUE), q83_anomaly = quantile(mean_anomaly, 
+                   0.83, na.rm = TRUE), n_models = sum(!is.na(mean_anomaly))), 
+               by = list(admin0_name, admin1_name, scenario, timeframe, 
+                   hazard, season, baseline_name)]
+           data_ag_ens[, `:=`(models, models)]
+           num_cols <- names(data_ag_ens)[sapply(data_ag_ens, is.numeric)]
+           data_ag_ens[, `:=`((num_cols), lapply(.SD, round, digits = round_final)), 
+               .SDcols = num_cols]
+           if (!is.null(order_by2)) {
+               setorderv(data_anomaly_ens, order_by2)
+               setorderv(data_ag_ens, order_by2)
+           }
+           write_parquet_pushdown(data_anomaly_ens, save_file2, 
+               sort_by = c("iso3", "admin0_name", "hazard", "scenario", 
+                   "season", "year", "timeframe", "admin1_name"), 
+               verify_stats_on = c("admin0_name", "hazard", "scenario", 
+                   "season"))
+           filters <- list(scenario = data_anomaly[, unique(scenario)], 
+               timeframe = data_anomaly[, unique(timeframe)], year = data_anomaly[, 
+                   unique(year)], hazard = data_anomaly[, unique(hazard)], 
+               season = data_anomaly[, unique(season)], model = data_anomaly[, 
+                   unique(model)])
+           filters$model <- NULL
+           field_descriptions <- list(admin0_name = "Name of the country (first-level administrative unit)", 
+               admin1_name = "Name of the subnational region (second-level administrative unit)", 
+               scenario = "Emissions scenario (e.g., SSP1-2.6, SSP3-7.0)", 
+               timeframe = "Future period being analyzed (e.g., 2030s, 2050s)", 
+               year = "Calendar year of the data point", hazard = "Climate hazard variable (e.g., PTOT = precipitation total, TMAX = max temperature)", 
+               season = "3-month window or annual aggregation (e.g., DJF, MAM, annual)", 
+               baseline_name = "Label for the baseline period used in anomaly calculations (e.g., 1995–2014)", 
+               mean = paste0("Mean of the hazard values across GCMs using ", 
+                   extract_stat, " as the spatial summary method for each model"), 
+               max = "Maximum hazard value across GCMs", min = "Minimum hazard value across GCMs", 
+               sd = "Standard deviation of hazard values across GCMs", 
+               mean_anomaly = "Mean anomaly across GCMs (difference from historical baseline)", 
+               max_anomaly = "Maximum anomaly across GCMs", min_anomaly = "Minimum anomaly across GCMs", 
+               sd_anomaly = "Standard deviation of anomalies across GCMs", 
+               models = "Comma-separated list of GCMs included in the ensemble")
+           write_json(list(source = list(input_table = data_json$input_raster, 
+               extraction_rast = atlas_data$boundaries$name), extraction_method = "zonal", 
+               geo_filters = grep("admin", colnames(data_anomaly_ens), 
+                   value = TRUE), season_type = "3-month windows or annual", 
+               filters = filters, format = ".parquet", date_created = Sys.time(), 
+               version = version1, parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.3", 
+               value_variable = "hazard mean, max, min, sd, mean_anomaly, max_anomaly, min_anomaly, sd_anomaly", 
+               field_descriptions = field_descriptions, unit = unique(haz_meta[variable.code %in% 
+                   data_anomaly_ens[, unique(hazard)], base_unit]), 
+               extract_stat = extract_stat, baseline = baseline_name, 
+               models = models, notes = paste0("This file contains ensembled summaries of monthly climate hazard values and their anomalies, ", 
+                   "extracted for subnational administrative units (admin0_name, admin1_name) and grouped by scenario, timeframe, season, and hazard type. ", 
+                   "Raw values were first summarized spatially using the statistic '", 
+                   extract_stat, "' (e.g., mean or sum), ", "then aggregated into rolling 3-month or annual periods according to the 'season' column. ", 
+                   "For each GCM (listed in the `models` column), anomaly values were computed relative to a specified baseline period. ", 
+                   "The ensemble statistics include mean, min, max, and standard deviation (SD) across models, reported separately for both raw hazard values ", 
+                   "and their anomalies. This provides a robust indication of central tendency and inter-model spread, which is critical for quantifying agreement ", 
+                   "and uncertainty across climate projections.")), 
+               paste0(save_file2, ".json"), pretty = TRUE)
+           write_parquet_pushdown(data_ag_ens, save_file3, sort_by = c("iso3", 
+               "admin0_name", "admin1_name", "hazard", "scenario", 
+               "timeframe", "season"), verify_stats_on = c("admin0_name", 
+               "hazard", "scenario"))
+           filters$year <- NULL
+           field_descriptions <- list(admin0_name = "Name of the country (first-level administrative unit)", 
+               admin1_name = "Name of the subnational region (second-level administrative unit)", 
+               scenario = "Emissions scenario (e.g., SSP1-2.6, SSP3-7.0)", 
+               timeframe = "Future period being analyzed (e.g., 2030s, 2050s)", 
+               hazard = "Climate hazard variable (e.g., PTOT = precipitation total, TMAX = max temperature)", 
+               season = "3-month window or annual aggregation (e.g., DJF, MAM, annual)", 
+               baseline_name = "Label for the baseline period used in anomaly calculations (e.g., 1995–2014)", 
+               mean_mean = paste0("Mean of yearly-averaged hazard values across all GCMs, where each model’s values were spatially summarized using ", 
+                   extract_stat), min_mean = "Minimum of the yearly-averaged hazard values across models", 
+               max_mean = "Maximum of the yearly-averaged hazard values across models", 
+               median_mean = "Median of the yearly-averaged hazard values across models", 
+               mean_anomaly = "Mean of yearly-averaged anomalies (relative to baseline) across models", 
+               max_anomaly = "Maximum of yearly-averaged anomalies across models", 
+               min_anomaly = "Minimum of yearly-averaged anomalies across models", 
+               sd_anomaly = "Standard deviation of yearly-averaged anomalies across models", 
+               models = "Comma-separated list of GCMs included in the ensemble")
+           write_json(list(source = list(input_table = data_json$input_raster, 
+               extraction_rast = atlas_data$boundaries$name), extraction_method = "zonal", 
+               geo_filters = grep("admin", colnames(data_anomaly), 
+                   value = TRUE), season_type = "3-month windows or annual", 
+               filters = filters, format = ".parquet", date_created = Sys.time(), 
+               version = version1, parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.3", 
+               value_variable = "hazard mean, max, min, sd, mean_anomaly, max_anomaly, min_anomaly, sd_anomaly", 
+               field_descriptions = field_descriptions, unit = haz_meta[variable.code %in% 
+                   data_anomaly[, unique(hazard)], base_unit], extract_stat = extract_stat, 
+               anomaly_baseline = baseline_name, models = models, 
+               notes = "This file presents ensemble summary statistics for climate hazard indicators and their anomalies, aggregated by subnational administrative units (admin0_name, admin1_name), scenario, timeframe, hazard, and season. Monthly hazard values were extracted using the selected spatial summary method (e.g., mean or sum) and grouped into rolling 3-month or annual periods based on the ‘season’ column. The resulting values and anomalies (relative to a historical baseline) were then averaged across all years within the specified timeframe for each GCM. These multi-year averages were used to calculate ensemble statistics across models (listed in the ‘models’ column), including the mean, min, max, and median for values, and mean, min, max, and standard deviation for anomalies. The file is designed to support high-level climate risk analysis, scenario comparison, and adaptation planning."), 
+               paste0(save_file3, ".json"), pretty = TRUE)
+       }
+   })
+4: eval(ei, envir)
+3: eval(ei, envir)
+2: withVisible(eval(ei, envir))
+1: source(Sys.getenv("R21_SCRIPT"))
+===== R/2.1 DONE (exit: 1) at 2026-06-03 19:42:51 UTC =====
