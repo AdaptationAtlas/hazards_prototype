@@ -691,6 +691,10 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   save_file <- file_combos$save_file[i]
   save_file2 <- file_combos$save_file2[i]
   save_file3 <- file_combos$save_file3[i]
+  # data_json must be read here — sec 3.2's lapply closure doesn't persist
+  data_json  <- jsonlite::read_json(
+    file.path(output_dir, paste0(basename(file_combos$data[i]), ".json")),
+    simplifyVector = TRUE)
 
   cat("3.3) Calculating ensemble stats for ", i, "/", nrow(file_combos), basename(save_file), "\n")
 
