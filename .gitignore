@@ -13,3 +13,6 @@ haz-processing-notes.html
 # Quarto build artefacts under R/misc/
 R/misc/*.html
 R/misc/*_files/
+
+# NFS temp files (CGlabs network filesystem)
+.nfs*
