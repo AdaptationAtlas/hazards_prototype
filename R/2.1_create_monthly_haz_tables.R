@@ -783,7 +783,17 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
       verify_stats_on = c("admin0_name", "hazard", "scenario", "season")
     )
 
-    filters$model <- NULL
+    # filters must be re-defined here — sec 3.2's lapply closure doesn't
+    # persist variables into sec 3.3's scope.
+    filters <- list(
+      scenario  = data_anomaly[, unique(scenario)],
+      timeframe = data_anomaly[, unique(timeframe)],
+      year      = data_anomaly[, unique(year)],
+      hazard    = data_anomaly[, unique(hazard)],
+      season    = data_anomaly[, unique(season)],
+      model     = data_anomaly[, unique(model)]
+    )
+    filters$model <- NULL   # ensemble output — no per-model breakdown
 
     field_descriptions <- list(
       admin0_name = "Name of the country (first-level administrative unit)",
