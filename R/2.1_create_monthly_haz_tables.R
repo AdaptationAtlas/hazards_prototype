@@ -499,8 +499,17 @@ cat("3.1) Seasonal hazard calculation - Complete \n")
 cat("3.2) Adding historical means \n")
 
 # baseline averages
+# baselines contains scenario names (e.g. "historic") but monthly3_files
+# use the timeframe column (e.g. "historical"). Look up the matching
+# timeframe from the files table rather than grepping by scenario name.
+baseline_timeframe_map <- setNames(
+  files[, .(timeframe = unique(timeframe)[1]), by = scenario]$timeframe,
+  files[, .(timeframe = unique(timeframe)[1]), by = scenario]$scenario
+)
+
 data_ex_hist <- lapply(baselines, FUN = function(baseline) {
-  data <- data.table(arrow::read_parquet(grep(paste0("_", baseline, "[.]"), monthly3_files, value = TRUE)))
+  tf <- baseline_timeframe_map[baseline]
+  data <- data.table(arrow::read_parquet(grep(paste0("_", tf, "[.]"), monthly3_files, value = TRUE)))
   data <- data[, .(baseline_value = round(mean(value, na.rm = TRUE), round3.1)), by = .(admin0_name, admin1_name, hazard, season)]
   data[, baseline_name := baseline]
   data
