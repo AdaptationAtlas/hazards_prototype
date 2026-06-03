@@ -691,8 +691,9 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   save_file <- file_combos$save_file[i]
   save_file2 <- file_combos$save_file2[i]
   save_file3 <- file_combos$save_file3[i]
-  # data_json must be read here — sec 3.2's lapply closure doesn't persist
-  data_json  <- jsonlite::read_json(
+  # Variables from sec 3.2's lapply closure don't persist here — recompute.
+  baseline_name <- names(baselines)[baselines == file_combos$baseline[i]]
+  data_json     <- jsonlite::read_json(
     file.path(output_dir, paste0(basename(file_combos$data[i]), ".json")),
     simplifyVector = TRUE)
 
@@ -947,7 +948,8 @@ yue_tfpw <- function(year, value, threshold = 0.1) {
 cat("3.4) Trend calculation (with Yue 2002 TFPW pre-whitening)\n")
 
 invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
-  data_file <- file_combos$save_file[i]
+  data_file     <- file_combos$save_file[i]
+  baseline_name <- names(baselines)[baselines == file_combos$baseline[i]]
 
   file_base <- gsub("_seasons", "", data_file)
   save_file <- gsub(".parquet", "_trends.parquet", file_base)
