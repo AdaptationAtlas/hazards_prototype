@@ -1,220 +1,0 @@
-nohup: ignoring input
-Loading required package: pacman
-Loading required package: exactextractr
-Climate data source =  nexgddp 
-0_server_setup.R has completed successfully.
-CGLabs =  TRUE 
-There were 17 warnings (use warnings() to see them)
-Starting 2.1_create_monthly_haz_tables.R/nInstalling package into ‘/home/jovyan/R/x86_64-pc-linux-gnu-library/4.5’
-(as ‘lib’ is unspecified)
-trying URL 'https://cloud.r-project.org/src/contrib/trend_1.1.6.tar.gz'
-Content type 'application/x-gzip' length 274097 bytes (267 KB)
-==================================================
-downloaded 267 KB
-
-* installing *source* package ‘trend’ ...
-** this is package ‘trend’ version ‘1.1.6’
-** package ‘trend’ successfully unpacked and MD5 sums checked
-** using staged installation
-** libs
-using C compiler: ‘gcc (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
-using Fortran compiler: ‘GNU Fortran (Ubuntu 13.3.0-6ubuntu2~24.04) 13.3.0’
-gcc -std=gnu2x -I"/usr/share/R/include" -DNDEBUG       -fpic  -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/build/r-base-wwoKA3/r-base-4.5.1=. -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fdebug-prefix-map=/build/r-base-wwoKA3/r-base-4.5.1=/usr/src/r-base-4.5.1-1.2404.0 -Wdate-time -D_FORTIFY_SOURCE=3  -c CToF90.c -o CToF90.o
-gfortran  -fpic  -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/build/r-base-wwoKA3/r-base-4.5.1=. -fstack-protector-strong -fstack-clash-protection -fcf-protection -fdebug-prefix-map=/build/r-base-wwoKA3/r-base-4.5.1=/usr/src/r-base-4.5.1-1.2404.0  -c getpval.f -o getpval.o
-gcc -std=gnu2x -I"/usr/share/R/include" -DNDEBUG       -fpic  -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/build/r-base-wwoKA3/r-base-4.5.1=. -fstack-protector-strong -fstack-clash-protection -Wformat -Werror=format-security -fcf-protection -fdebug-prefix-map=/build/r-base-wwoKA3/r-base-4.5.1=/usr/src/r-base-4.5.1-1.2404.0 -Wdate-time -D_FORTIFY_SOURCE=3  -c init.c -o init.o
-gfortran  -fpic  -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/build/r-base-wwoKA3/r-base-4.5.1=. -fstack-protector-strong -fstack-clash-protection -fcf-protection -fdebug-prefix-map=/build/r-base-wwoKA3/r-base-4.5.1=/usr/src/r-base-4.5.1-1.2404.0  -c mcbr.f -o mcbr.o
-gfortran  -fpic  -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/build/r-base-wwoKA3/r-base-4.5.1=. -fstack-protector-strong -fstack-clash-protection -fcf-protection -fdebug-prefix-map=/build/r-base-wwoKA3/r-base-4.5.1=/usr/src/r-base-4.5.1-1.2404.0  -c mcbu.f -o mcbu.o
-gfortran  -fpic  -g -O2 -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer -ffile-prefix-map=/build/r-base-wwoKA3/r-base-4.5.1=. -fstack-protector-strong -fstack-clash-protection -fcf-protection -fdebug-prefix-map=/build/r-base-wwoKA3/r-base-4.5.1=/usr/src/r-base-4.5.1-1.2404.0  -c mcsnht.f -o mcsnht.o
-gcc -std=gnu2x -shared -L/usr/lib/R/lib -Wl,-Bsymbolic-functions -flto=auto -ffat-lto-objects -Wl,-z,relro -o trend.so CToF90.o getpval.o init.o mcbr.o mcbu.o mcsnht.o -lgfortran -lm -lquadmath -L/usr/lib/R/lib -lR
-installing to /home/jovyan/R/x86_64-pc-linux-gnu-library/4.5/00LOCK-trend/00new/trend/libs
-** R
-** data
-** inst
-** byte-compile and prepare package for lazy loading
-** help
-*** installing help indices
-** building package indices
-** installing vignettes
-** testing if installed package can be loaded from temporary location
-** checking absolute paths in shared objects and dynamic libraries
-** testing if installed package can be loaded from final location
-** testing if installed package keeps a record of temporary installation path
-* DONE (trend)
-
-The downloaded source packages are in
-	‘/tmp/RtmpORiznI/downloaded_packages’
-
-trend installed
-output_dir = Data/hazard_timeseries_mean_month 
-Working with hazards = HSH_max TMAX TAVG NDWL0 NDWS NTx35 PTOT THI_max NDD 
-Using scenarios = ssp126 ssp245 ssp370 ssp585 
-Using time periods = 2021_2040 2041_2060 2061_2080 2081_2100 
-Folders included = /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2081_2100
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2021_2040
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2041_2060
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2061_2080
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2081_2100 
-- [--------------------------------------------------------------------]   0%                                                                               \ [--------------------------------------------------------------------]   0% | [>------------------------------------------]   1% Processing folder 1 of 80                                                                              / [>------------------------------------------]   1% Processing folder 1 of 80- [>------------------------------------------]   2% Processing folder 2 of 80                                                                              \ [>------------------------------------------]   2% Processing folder 2 of 80| [=>-----------------------------------------]   4% Processing folder 4 of 80                                                                              / [=>-----------------------------------------]   4% Processing folder 4 of 80- [=>-----------------------------------------]   5% Processing folder 3 of 80                                                                              \ [=>-----------------------------------------]   5% Processing folder 3 of 80| [==>----------------------------------------]   6% Processing folder 5 of 80                                                                              / [==>----------------------------------------]   6% Processing folder 5 of 80- [==>----------------------------------------]   8% Processing folder 6 of 80                                                                              \ [==>----------------------------------------]   8% Processing folder 6 of 80| [===>---------------------------------------]   9% Processing folder 7 of 80                                                                              / [===>---------------------------------------]   9% Processing folder 7 of 80- [===>---------------------------------------]  10% Processing folder 8 of 80                                                                              \ [===>---------------------------------------]  10% Processing folder 8 of 80| [====>--------------------------------------]  11% Processing folder 9 of 80                                                                              / [====>--------------------------------------]  11% Processing folder 9 of 80- [====>-------------------------------------]  12% Processing folder 10 of 80                                                                              \ [====>-------------------------------------]  12% Processing folder 10 of 80| [=====>------------------------------------]  14% Processing folder 11 of 80                                                                              / [=====>------------------------------------]  14% Processing folder 11 of 80- [=====>------------------------------------]  15% Processing folder 12 of 80                                                                              \ [=====>------------------------------------]  15% Processing folder 12 of 80| [======>-----------------------------------]  16% Processing folder 13 of 80                                                                              / [======>-----------------------------------]  16% Processing folder 13 of 80- [======>-----------------------------------]  18% Processing folder 14 of 80                                                                              \ [======>-----------------------------------]  18% Processing folder 14 of 80| [=======>----------------------------------]  19% Processing folder 15 of 80                                                                              / [=======>----------------------------------]  19% Processing folder 15 of 80- [=======>----------------------------------]  20% Processing folder 16 of 80                                                                              \ [=======>----------------------------------]  20% Processing folder 16 of 80| [========>---------------------------------]  21% Processing folder 17 of 80                                                                              / [========>---------------------------------]  21% Processing folder 17 of 80- [========>---------------------------------]  22% Processing folder 18 of 80                                                                              \ [========>---------------------------------]  22% Processing folder 18 of 80| [=========>--------------------------------]  24% Processing folder 19 of 80                                                                              / [=========>--------------------------------]  24% Processing folder 19 of 80- [=========>--------------------------------]  25% Processing folder 20 of 80                                                                              \ [=========>--------------------------------]  25% Processing folder 20 of 80| [==========>-------------------------------]  26% Processing folder 21 of 80                                                                              / [==========>-------------------------------]  26% Processing folder 21 of 80- [===========>------------------------------]  28% Processing folder 22 of 80                                                                              \ [===========>------------------------------]  28% Processing folder 22 of 80| [===========>------------------------------]  29% Processing folder 23 of 80                                                                              / [===========>------------------------------]  29% Processing folder 23 of 80- [============>-----------------------------]  30% Processing folder 24 of 80                                                                              \ [============>-----------------------------]  30% Processing folder 24 of 80| [============>-----------------------------]  31% Processing folder 25 of 80                                                                              / [============>-----------------------------]  31% Processing folder 25 of 80- [=============>----------------------------]  32% Processing folder 26 of 80                                                                              \ [=============>----------------------------]  32% Processing folder 26 of 80| [=============>----------------------------]  34% Processing folder 27 of 80                                                                              / [=============>----------------------------]  34% Processing folder 27 of 80- [==============>---------------------------]  35% Processing folder 28 of 80                                                                              \ [==============>---------------------------]  35% Processing folder 28 of 80| [==============>---------------------------]  36% Processing folder 29 of 80                                                                              / [==============>---------------------------]  36% Processing folder 29 of 80- [===============>--------------------------]  38% Processing folder 30 of 80                                                                              \ [===============>--------------------------]  38% Processing folder 30 of 80| [===============>--------------------------]  39% Processing folder 31 of 80                                                                              / [===============>--------------------------]  39% Processing folder 31 of 80- [================>-------------------------]  40% Processing folder 32 of 80                                                                              \ [================>-------------------------]  40% Processing folder 32 of 80| [================>-------------------------]  41% Processing folder 33 of 80                                                                              / [================>-------------------------]  41% Processing folder 33 of 80- [=================>------------------------]  42% Processing folder 34 of 80                                                                              \ [=================>------------------------]  42% Processing folder 34 of 80| [=================>------------------------]  44% Processing folder 35 of 80                                                                              / [=================>------------------------]  44% Processing folder 35 of 80- [==================>-----------------------]  45% Processing folder 36 of 80                                                                              \ [==================>-----------------------]  45% Processing folder 36 of 80| [==================>-----------------------]  46% Processing folder 37 of 80                                                                              / [==================>-----------------------]  46% Processing folder 37 of 80- [===================>----------------------]  48% Processing folder 38 of 80                                                                              \ [===================>----------------------]  48% Processing folder 38 of 80| [===================>----------------------]  49% Processing folder 39 of 80                                                                              / [===================>----------------------]  49% Processing folder 39 of 80- [====================>---------------------]  50% Processing folder 40 of 80                                                                              \ [====================>---------------------]  50% Processing folder 40 of 80| [=====================>--------------------]  51% Processing folder 41 of 80                                                                              / [=====================>--------------------]  51% Processing folder 41 of 80- [=====================>--------------------]  52% Processing folder 42 of 80                                                                              \ [=====================>--------------------]  52% Processing folder 42 of 80| [======================>-------------------]  54% Processing folder 43 of 80                                                                              / [======================>-------------------]  54% Processing folder 43 of 80- [======================>-------------------]  55% Processing folder 44 of 80                                                                              \ [======================>-------------------]  55% Processing folder 44 of 80| [=======================>------------------]  56% Processing folder 45 of 80                                                                              / [=======================>------------------]  56% Processing folder 45 of 80- [=======================>------------------]  57% Processing folder 46 of 80                                                                              \ [=======================>------------------]  57% Processing folder 46 of 80| [========================>-----------------]  59% Processing folder 47 of 80                                                                              / [========================>-----------------]  59% Processing folder 47 of 80- [========================>-----------------]  60% Processing folder 48 of 80                                                                              \ [========================>-----------------]  60% Processing folder 48 of 80| [=========================>----------------]  61% Processing folder 49 of 80                                                                              / [=========================>----------------]  61% Processing folder 49 of 80- [=========================>----------------]  62% Processing folder 50 of 80                                                                              \ [=========================>----------------]  62% Processing folder 50 of 80| [==========================>---------------]  64% Processing folder 51 of 80                                                                              / [==========================>---------------]  64% Processing folder 51 of 80- [==========================>---------------]  65% Processing folder 52 of 80                                                                              \ [==========================>---------------]  65% Processing folder 52 of 80| [===========================>--------------]  66% Processing folder 53 of 80                                                                              / [===========================>--------------]  66% Processing folder 53 of 80- [===========================>--------------]  68% Processing folder 54 of 80                                                                              \ [===========================>--------------]  68% Processing folder 54 of 80| [============================>-------------]  69% Processing folder 55 of 80                                                                              / [============================>-------------]  69% Processing folder 55 of 80- [============================>-------------]  70% Processing folder 56 of 80                                                                              \ [============================>-------------]  70% Processing folder 56 of 80| [=============================>------------]  71% Processing folder 57 of 80                                                                              / [=============================>------------]  71% Processing folder 57 of 80- [=============================>------------]  72% Processing folder 58 of 80                                                                              \ [=============================>------------]  72% Processing folder 58 of 80| [==============================>-----------]  74% Processing folder 59 of 80                                                                              / [==============================>-----------]  74% Processing folder 59 of 80- [===============================>----------]  75% Processing folder 60 of 80                                                                              \ [===============================>----------]  75% Processing folder 60 of 80| [===============================>----------]  76% Processing folder 61 of 80                                                                              / [===============================>----------]  76% Processing folder 61 of 80- [================================>---------]  78% Processing folder 62 of 80                                                                              \ [================================>---------]  78% Processing folder 62 of 80| [================================>---------]  79% Processing folder 63 of 80                                                                              / [================================>---------]  79% Processing folder 63 of 80- [=================================>--------]  80% Processing folder 64 of 80                                                                              \ [=================================>--------]  80% Processing folder 64 of 80| [=================================>--------]  81% Processing folder 65 of 80                                                                              / [=================================>--------]  81% Processing folder 65 of 80- [==================================>-------]  82% Processing folder 66 of 80                                                                              \ [==================================>-------]  82% Processing folder 66 of 80| [==================================>-------]  84% Processing folder 67 of 80                                                                              / [==================================>-------]  84% Processing folder 67 of 80- [===================================>------]  85% Processing folder 68 of 80                                                                              \ [===================================>------]  85% Processing folder 68 of 80| [===================================>------]  86% Processing folder 69 of 80                                                                              / [===================================>------]  86% Processing folder 69 of 80- [====================================>-----]  88% Processing folder 70 of 80                                                                              \ [====================================>-----]  88% Processing folder 70 of 80| [====================================>-----]  89% Processing folder 71 of 80                                                                              / [====================================>-----]  89% Processing folder 71 of 80- [=====================================>----]  90% Processing folder 72 of 80                                                                              \ [=====================================>----]  90% Processing folder 72 of 80| [=====================================>----]  91% Processing folder 73 of 80                                                                              / [=====================================>----]  91% Processing folder 73 of 80- [======================================>---]  92% Processing folder 74 of 80                                                                              \ [======================================>---]  92% Processing folder 74 of 80| [======================================>---]  94% Processing folder 75 of 80                                                                              / [======================================>---]  94% Processing folder 75 of 80- [=======================================>--]  95% Processing folder 76 of 80                                                                              \ [=======================================>--]  95% Processing folder 76 of 80| [=======================================>--]  96% Processing folder 77 of 80                                                                              /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2061_2080 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2081_2100 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2021_2040 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2041_2060 HSH_max 
-/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2061_2080 HSH_max 
-                                                                              / [=========================================================>--]  96% :message
-Progress interrupted by purrr_error_indexed condition: ℹ In index: 1.
-Caused by error in `purrr::map()`:
-ℹ In index: 1.
-Caused by error in `write_parquet_pushdown()`:
-! could not find function "write_parquet_pushdown"
-Error in (function (.x, .f, ..., .progress = FALSE)  : ℹ In index: 1.
-Caused by error in `purrr::map()`:
-ℹ In index: 1.
-Caused by error in `write_parquet_pushdown()`:
-! could not find function "write_parquet_pushdown"
-Calls: source ... furrr_map_template -> furrr_template -> <Anonymous> -> value.list
-In addition: There were 45 warnings (use warnings() to see them)
-===== R/2.1 DONE (exit: 1) =====
