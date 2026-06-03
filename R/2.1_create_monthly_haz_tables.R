@@ -116,7 +116,7 @@ run_sec2   <- !nzchar(Sys.getenv("SKIP_R2_1_SEC2"))
 run_sec3_1 <- !nzchar(Sys.getenv("SKIP_R2_1_SEC3_1"))
 run_sec3_2 <- !nzchar(Sys.getenv("SKIP_R2_1_SEC3_2"))
 run_sec3_3 <- !nzchar(Sys.getenv("SKIP_R2_1_SEC3_3"))
-run_sec3_4 <- !nzchar(Sys.getenv("SKIP_R2_1_SEC3_4")) || !nzchar(Sys.getenv("SKIP_R2_1_3_4"))
+run_sec3_4 <- !nzchar(Sys.getenv("SKIP_R2_1_SEC3_4")) && !nzchar(Sys.getenv("SKIP_R2_1_3_4"))
 cat(sprintf("Section controls: sec2=%s 3.1=%s 3.2=%s 3.3=%s 3.4=%s\n",
             run_sec2, run_sec3_1, run_sec3_2, run_sec3_3, run_sec3_4))
 
@@ -280,7 +280,7 @@ with_progress({
       split_colnames = split_colnames,
       order_by = order_by,
       haz_meta = data.frame(haz_meta),
-      version = version,
+      version = version1,
       extraction_rast = atlas_data$boundaries$name,
       levels = levels
     )
@@ -526,16 +526,17 @@ cat("3.1) Seasonal hazard calculation - Complete \n")
 
 ## 3.2) Add historical mean ####
 cat("3.2) Adding historical means \n")
-if (run_sec3_2) {
 
-# baseline averages
+# Always compute baseline_timeframe_map — needed by file_combos (always-run)
+# and by data_ex_hist inside the sec 3.2 guard.
 # baselines contains scenario names (e.g. "historic") but monthly3_files
-# use the timeframe column (e.g. "historical"). Look up the matching
-# timeframe from the files table rather than grepping by scenario name.
+# use the timeframe column (e.g. "historical"). Build the lookup here.
 baseline_timeframe_map <- setNames(
   files[, .(timeframe = unique(timeframe)[1]), by = scenario]$timeframe,
   files[, .(timeframe = unique(timeframe)[1]), by = scenario]$scenario
 )
+
+if (run_sec3_2) {
 
 data_ex_hist <- lapply(baselines, FUN = function(baseline) {
   tf <- baseline_timeframe_map[baseline]
