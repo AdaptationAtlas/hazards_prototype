@@ -1,7 +1,42 @@
-# Please run 0_server_setup.R before executing this script
-# Note this script will only work on CGlabs server or if a folder containing the hazard_indices calculated in the https://github.com/AdaptationAtlas/hazards workflow are present
+# 2.1_create_monthly_haz_tables.R
+# ================================
+# Monthly hazard extraction + seasonal summarisation for the Atlas climateRationale
+# notebook (Future Projections section).
+#
+# REQUIRES: source R/0_server_setup.R first (sets atlas_dirs, indices_dir, climdat_source).
+# Use scripts/r21_rerun.sh for the canonical relaunch pattern.
+#
+# INPUTS:
+#   indices_dir  — per-GCM hazard index rasters (CGlabs: atlas_nex-gddp_hazards/cmip6/indices/)
+#   MapSPAM / GAUL boundaries (via atlas_dirs + boundaries_zonal)
+#
+# OUTPUTS (local, then publish via scripts/r21_publish_to_s3.R):
+#   Data/hazard_timeseries_mean_month/
+#     intermediate/        — per-GCM monthly parquets (sec 2)
+#     haz_monthly_adm_mean_*.parquet    — combined monthly (sec 2.5)
+#     haz_3months_adm_mean_*.parquet    — seasonal (sec 3.1)
+#     *_anomaly-*_seasons.parquet       — per-model anomalies (sec 3.2)
+#     *_anomaly-*_ensemble_seasons.parquet  — CANONICAL: ensemble_season_timeseries.parquet
+#                                            (drives notebook Future Projections)
+#     *_anomaly-*_ensemble.parquet      — period-aggregate ensemble (sec 3.3)
+#     *_trends*.parquet                 — Theil-Sen + MK + TFPW trends (sec 3.4, ~9h/timeframe)
+#
+# SECTION RUN CONTROLS (env vars, all default to running):
+#   SKIP_R2_1_SEC2=1   — skip extraction + combine (sec 2)
+#   SKIP_R2_1_SEC3_1=1 — skip seasonal summarisation (sec 3.1)
+#   SKIP_R2_1_SEC3_2=1 — skip anomaly calculation (sec 3.2)
+#   SKIP_R2_1_SEC3_3=1 — skip ensemble statistics (sec 3.3; includes CR-060 quantiles)
+#   SKIP_R2_1_SEC3_4=1 — skip trend computation (sec 3.4; includes CR-094 TFPW)
+#   FORCE_OVERWRITE=1  — rewrite all existing output files
+#
+# TYPICAL RUNTIMES (CGlabs, 5-GCM NEX-GDDP subset):
+#   Sec 2 (extraction):    ~1h  (parallel, worker_n1=5)
+#   Sec 3.1 (seasonal):    ~30 min
+#   Sec 3.2 (anomalies):   ~1-2h
+#   Sec 3.3 (ensemble):    ~1-2h
+#   Sec 3.4 (trends):      ~9h per timeframe (>10^6 linear models)
 
-cat("Starting 2.1_create_monthly_haz_tables.R/n")
+cat("Starting 2.1_create_monthly_haz_tables.R\n")
 
 # 0) Load R functions & packages ####
 packages <- c(
@@ -1157,3 +1192,6 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
 
 cat("3.4) Trend calculations - Complete\n")
 } # end if (run_sec3_4)
+
+cat(sprintf("\n===== 2.1_create_monthly_haz_tables.R COMPLETE at %s UTC =====\n",
+            format(Sys.time(), "%Y-%m-%d %H:%M:%S")))
