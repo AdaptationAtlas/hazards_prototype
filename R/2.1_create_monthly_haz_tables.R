@@ -101,6 +101,25 @@ haz_meta <- data.table::fread(haz_meta_url, showProgress = FALSE)
 
 ## 1.6) Controls ####
 
+### Section run controls ####
+# Each section can be skipped by setting the corresponding env var to "1".
+# Setup variables (file lists, combos, baselines) always run — they are fast
+# metadata operations needed by downstream sections regardless of which heavy
+# processing is skipped.
+#
+# Usage examples:
+#   Full rerun from scratch:        FORCE_OVERWRITE=1
+#   Resume at sec 3.1 (skip sec 2): SKIP_R2_1_SEC2=1
+#   Resume at sec 3.2 (skip 2+3.1): SKIP_R2_1_SEC2=1 SKIP_R2_1_SEC3_1=1
+#   Skip trend computation only:     SKIP_R2_1_SEC3_4=1   (same as old SKIP_R2_1_3_4)
+run_sec2   <- !nzchar(Sys.getenv("SKIP_R2_1_SEC2"))
+run_sec3_1 <- !nzchar(Sys.getenv("SKIP_R2_1_SEC3_1"))
+run_sec3_2 <- !nzchar(Sys.getenv("SKIP_R2_1_SEC3_2"))
+run_sec3_3 <- !nzchar(Sys.getenv("SKIP_R2_1_SEC3_3"))
+run_sec3_4 <- !nzchar(Sys.getenv("SKIP_R2_1_SEC3_4")) || !nzchar(Sys.getenv("SKIP_R2_1_3_4"))
+cat(sprintf("Section controls: sec2=%s 3.1=%s 3.2=%s 3.3=%s 3.4=%s\n",
+            run_sec2, run_sec3_1, run_sec3_2, run_sec3_3, run_sec3_4))
+
 ### Section 2 - Extraction of monthly hazards by admin areas ####
 round1 <- 1
 version1 <- 1
@@ -233,6 +252,7 @@ extract_hazard <- function(i, folders, hazards, output_dir, overwrite, round_dp,
 }
 
 ## 2.4) Run parallel extraction ####
+if (run_sec2) {
 # Set parallel plan
 set_parallel_plan(n_cores = worker_n1, use_multisession = TRUE)
 
@@ -267,8 +287,11 @@ with_progress({
   }, .options = furrr::furrr_options(scheduling = Inf))
 })
 plan(sequential)
+} # end if (run_sec2) — extraction
 
 ## 2.5) List and combine monthly hazard parquet files ####
+# Always run setup (fast file listing — needed by all downstream sections
+# even when sec 2 extraction is skipped).
 files <- list.files(output_int_dir, ".parquet$", full.names = TRUE)
 files <- data.table(file = files)[, c("scenario", "model", "timeframe", "hazard", "stat") := tstrsplit(basename(file), "_", keep = 1:5)][, stat := gsub(".parquet", "", stat)]
 
@@ -282,6 +305,7 @@ names(baselines) <- all_baseline_names[seq_along(baselines)]
 
 futures <- files[!grepl("historic", timeframe), unique(timeframe)]
 
+if (run_sec2) {
 problem_data <- lapply(seq_along(timeframes), FUN = function(i) {
   timeframe_choice <- timeframes[i]
   save_path <- file.path(output_dir, paste0("haz_monthly_adm_mean_", timeframe_choice, ".parquet"))
@@ -367,7 +391,9 @@ problem_data <- lapply(seq_along(timeframes), FUN = function(i) {
     NULL
   }
 })
+} # end if (run_sec2) — combine
 
+# Always compute monthly_files — fast path construction needed by all sections.
 monthly_files <- file.path(output_dir, paste0("haz_monthly_adm_mean_", timeframes, ".parquet"))
 
 # Check for missing values (coerce to data.table — arrow::read_parquet returns
@@ -409,6 +435,7 @@ three_month_periods$annual <- 1:12
 
 ## 3.1) Seasonal hazard calculation ####
 cat("3.1) Seasonal hazard calculation \n")
+if (run_sec3_1) {
 
 id_vars <- c("admin0_name", "admin1_name", "scenario", "model", "timeframe", "year", "hazard", "suspect_value_flag")
 
@@ -490,13 +517,16 @@ lapply(monthly_files, FUN = function(month_file) {
     )
   }
 })
+} # end if (run_sec3_1)
 
+# Always compute — fast string derivation, needed by sec 3.2+ even if 3.1 skipped.
 monthly3_files <- gsub("_monthly_", "_3months_", monthly_files)
 
 cat("3.1) Seasonal hazard calculation - Complete \n")
 
 ## 3.2) Add historical mean ####
 cat("3.2) Adding historical means \n")
+if (run_sec3_2) {
 
 # baseline averages
 # baselines contains scenario names (e.g. "historic") but monthly3_files
@@ -516,8 +546,10 @@ data_ex_hist <- lapply(baselines, FUN = function(baseline) {
 })
 
 names(data_ex_hist) <- baselines
+} # end if (run_sec3_2) — data_ex_hist
 
-# Combinations
+# Always compute file_combos — fast path construction needed by sec 3.3 and 3.4
+# even when sec 3.2 is skipped.
 fut_monthly3_files <- monthly3_files[!grepl("historic", monthly3_files)]
 
 file_combos <- data.table(rbind(
@@ -533,6 +565,7 @@ file_combos <- data.table(rbind(
 
 file_combos[, save_file := gsub(".parquet", paste0("_anomaly-", baseline, "_seasons.parquet"), data), by = .I][, save_file2 := gsub(".parquet", paste0("_anomaly-", baseline, "_ensemble_seasons.parquet"), data), by = .I][, save_file3 := gsub(".parquet", paste0("_anomaly-", baseline, "_ensemble.parquet"), data), by = .I]
 
+if (run_sec3_2) {
 invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   save_file <- file_combos$save_file[i]
 
@@ -612,13 +645,11 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
 }))
 
 cat("3.2) Adding historical means  - Complete \n")
-
-# Remove non-finite values
-# data_ex_season<-data_ex_season[is.finite(value)]
+} # end if (run_sec3_2)
 
 ## 3.3) Calculate ensembled statistics #####
 cat("3.3) Calculating ensemble stats \n")
-
+if (run_sec3_3) {
 # Each file create is a combination of futures x baselines, apart from baselines which are compared to themselves
 invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   save_file <- file_combos$save_file[i]
@@ -819,11 +850,12 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
 }))
 
 cat("3.3) Calculating ensemble stats - Complete \n")
+} # end if (run_sec3_3)
 
 ## 3.4) Calculate trends #####
-# Set SKIP_R2_1_3_4=1 to skip trend computation (~9h per timeframe).
-# Run when CR-094 TFPW is in place (it is, as of 2026-06-01).
-if (!nzchar(Sys.getenv("SKIP_R2_1_3_4"))) {
+# Controlled by run_sec3_4 (set via SKIP_R2_1_SEC3_4=1 or legacy SKIP_R2_1_3_4=1).
+# CR-094 TFPW is in place (2026-06-01). ~9h per timeframe.
+if (run_sec3_4) {
 
 # CR-094: Yue et al. (2002) Trend-Free Pre-Whitening (TFPW).
 # Applied per-GCM before Theil-Sen + Mann-Kendall so autocorrelated
@@ -1123,4 +1155,4 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
 }))
 
 cat("3.4) Trend calculations - Complete\n")
-} # end if (!SKIP_R2_1_3_4)
+} # end if (run_sec3_4)
