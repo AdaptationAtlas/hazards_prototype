@@ -523,8 +523,9 @@ fut_monthly3_files <- monthly3_files[!grepl("historic", monthly3_files)]
 file_combos <- data.table(rbind(
   expand.grid(data = fut_monthly3_files, baseline = baselines, stringsAsFactors = FALSE),
   rbindlist(lapply(baselines, FUN = function(baseline) {
+    tf <- baseline_timeframe_map[baseline]
     data.frame(
-      data = paste0(output_dir, "/haz_3months_adm_mean_", baseline, ".parquet"),
+      data = paste0(output_dir, "/haz_3months_adm_mean_", tf, ".parquet"),
       baseline = baseline
     )
   }))
