@@ -686,8 +686,10 @@ cat("3.2) Adding historical means  - Complete \n")
 ## 3.3) Calculate ensembled statistics #####
 cat("3.3) Calculating ensemble stats \n")
 if (run_sec3_3) {
-# Each file create is a combination of futures x baselines, apart from baselines which are compared to themselves
-invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
+# Parallelise across file_combos (each is independent: different input/output files).
+# worker_n2 is respected; set lower if memory is tight.
+set_parallel_plan(n_cores = worker_n2, use_multisession = TRUE)
+invisible(future.apply::future_lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   save_file <- file_combos$save_file[i]
   save_file2 <- file_combos$save_file2[i]
   save_file3 <- file_combos$save_file3[i]
@@ -900,6 +902,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   }
 }))
 
+plan(sequential)
 cat("3.3) Calculating ensemble stats - Complete \n")
 } # end if (run_sec3_3)
 
@@ -946,8 +949,8 @@ yue_tfpw <- function(year, value, threshold = 0.1) {
 
 # This involves running >10^6 linear models to look at trends, so the process is designed to run in parallel
 cat("3.4) Trend calculation (with Yue 2002 TFPW pre-whitening)\n")
-
-invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
+set_parallel_plan(n_cores = worker_n2, use_multisession = TRUE)
+invisible(future.apply::future_lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   data_file     <- file_combos$save_file[i]
   baseline_name <- names(baselines)[baselines == file_combos$baseline[i]]
 
@@ -1206,6 +1209,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   }
 }))
 
+plan(sequential)
 cat("3.4) Trend calculations - Complete\n")
 } # end if (run_sec3_4)
 
