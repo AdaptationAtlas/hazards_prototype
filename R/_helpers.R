@@ -188,3 +188,50 @@ write_cog <- function(rast, filename, overwrite = TRUE) {
     gdal      = c("COMPRESS=ZSTD", "COMPRESS_LEVEL=9", "OVERVIEWS=NONE")
   )
 }
+
+#' Memory-aware worker count for parallel pipeline sections.
+#'
+#' Reads available RAM from /proc/meminfo (Linux) or sysctl (Mac), then
+#' returns a worker count that respects both CPU and memory constraints.
+#'
+#' @param requested     Maximum workers the user wants (e.g. worker_n2).
+#' @param n_tasks       Number of parallel tasks (caps workers — no point
+#'                      spinning up more workers than tasks).
+#' @param mem_per_worker_gb Estimated peak RAM per worker in GB. Conservative
+#'                      default of 5 GB; lower for small-parquet sections,
+#'                      higher for sec 3.4 trend computation.
+#' @param safety_factor Fraction of available RAM to budget (default 0.7).
+#'                      Leaves headroom for OS, R session, and data.table
+#'                      internal parallelism.
+#' @return Integer worker count, always >= 1.
+safe_workers <- function(requested      = 20L,
+                         n_tasks        = Inf,
+                         mem_per_worker_gb = 5,
+                         safety_factor  = 0.7) {
+  avail_gb <- tryCatch({
+    if (file.exists("/proc/meminfo")) {
+      mem  <- readLines("/proc/meminfo", warn = FALSE)
+      ln   <- grep("^MemAvailable:", mem, value = TRUE)
+      if (length(ln)) as.numeric(sub(".*?(\\d+).*", "\\1", ln[1])) / 1024 / 1024
+      else NA_real_
+    } else {
+      out <- system("sysctl -n hw.memsize", intern = TRUE)
+      if (length(out)) as.numeric(out[1]) / 1024^3 else NA_real_
+    }
+  }, error = function(e) NA_real_)
+
+  mem_limit <- if (!is.na(avail_gb)) {
+    floor(avail_gb * safety_factor / mem_per_worker_gb)
+  } else {
+    requested   # fallback: trust the caller
+  }
+
+  n <- min(requested, mem_limit, n_tasks, parallel::detectCores(logical = TRUE))
+  n <- max(1L, as.integer(n))
+
+  cat(sprintf(
+    "[safe_workers] requested=%d  avail_ram=%.0f GB  mem_per_worker=%.0f GB  limit=%d  -> %d workers\n",
+    requested, if (!is.na(avail_gb)) avail_gb else -1, mem_per_worker_gb, mem_limit, n
+  ))
+  n
+}
