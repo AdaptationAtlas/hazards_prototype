@@ -539,12 +539,11 @@ for (tx in seq_along(timeframe_choices)) {
             result_long[, c(split_colnames) := tstrsplit(variable[1], split_delim, fixed = TRUE), by = variable]
             result_long[, variable := NULL]
 
-            # Optimize ordering
-            if (!is.null(order_by)) {
-              result_long <- result_long |> arrange(across(all_of(order_by)))
-            }
-
-            arrow::write_parquet(result_long, save_file)
+            write_parquet_pushdown(
+              result_long, save_file,
+              sort_by         = order_by,
+              verify_stats_on = c("iso3", "hazard", "scenario")
+            )
 
             # Add attributes
             attr_file <- paste0(save_file, ".json")
@@ -679,12 +678,11 @@ for (tx in seq_along(timeframe_choices)) {
             result_long[, c(split_colnames) := tstrsplit(variable[1], split_delim, fixed = TRUE), by = variable]
             result_long[, variable := NULL]
 
-            # Optimize ordering
-            if (!is.null(order_by)) {
-              result_long <- result_long |> arrange(across(all_of(order_by)))
-            }
-
-            arrow::write_parquet(result_long, save_file)
+            write_parquet_pushdown(
+              result_long, save_file,
+              sort_by         = order_by,
+              verify_stats_on = c("admin0_name", "hazard", "scenario")
+            )
 
             # Add attributes
             attr_file <- paste0(save_file, ".json")
@@ -848,8 +846,11 @@ for (tx in seq_along(timeframe_choices)) {
 
     haz_timeseries_tab <- haz_timeseries_tab[, .(admin0_name, admin1_name, admin2_name, scenario, model, timeframe, hazard, hazard_stat, year, value)]
 
-    # Save mean values as feather object
-    arrow::write_parquet(haz_timeseries_tab, filename)
+    write_parquet_pushdown(
+      haz_timeseries_tab, filename,
+      sort_by         = c("iso3", "admin0_name", "hazard", "scenario", "year"),
+      verify_stats_on = c("admin0_name", "hazard", "scenario")
+    )
   }
 
   # 4) Hazard risk x exposure ####
@@ -1321,12 +1322,11 @@ for (tx in seq_along(timeframe_choices)) {
                 result_long_adm012[, value := round(value, round)]
               }
 
-              # Optimize ordering
-              if (!is.null(order_by)) {
-                result_long_adm012 <- result_long_adm012 |> arrange(across(all_of(order_by)))
-              }
-
-              arrow::write_parquet(result_long_adm012, save_file)
+              write_parquet_pushdown(
+                result_long_adm012, save_file,
+                sort_by         = order_by,
+                verify_stats_on = c("iso3", "hazard", "scenario", "crop")
+              )
 
               # Add attributes
               attr_file <- paste0(save_file, ".json")
@@ -1392,7 +1392,11 @@ for (tx in seq_along(timeframe_choices)) {
 
               en_mean$value_sd <- en_sd$value
               en_mean$model <- "ENSEMBLE"
-              arrow::write_parquet(en_mean, save_file)
+              write_parquet_pushdown(
+                en_mean, save_file,
+                sort_by         = c("iso3", "admin0_name", "hazard", "crop", "scenario"),
+                verify_stats_on = c("iso3", "hazard", "scenario")
+              )
 
               attr_info <- jsonlite::read_json(paste0(en_files_mean[g], ".json"), simplifyVector = TRUE)
 
