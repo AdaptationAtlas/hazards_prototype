@@ -945,9 +945,11 @@ yue_tfpw <- function(year, value, threshold = 0.1) {
   d          <- detr - mean(detr, na.rm = TRUE)
   denom      <- sum(d * d, na.rm = TRUE)
   r          <- if (denom > 0) sum(d[-n] * d[-1L], na.rm = TRUE) / denom else 0.0
-  if (abs(r) <= threshold) return(list(y = value, applied = FALSE, r = r))
+  # Speedup #2: return ts0 so caller can reuse it when TFPW not applied,
+  # avoiding a second O(n²) sens.slope() call on the same series.
+  if (abs(r) <= threshold) return(list(y = value, applied = FALSE, r = r, ts0 = ts0))
   wr <- c(detr[1L], detr[-1L] - r * detr[-n])
-  list(y = wr + slope0 * year + intercept0, applied = TRUE, r = r)
+  list(y = wr + slope0 * year + intercept0, applied = TRUE, r = r, ts0 = NULL)
 }
 
 # This involves running >10^6 linear models to look at trends, so the process is designed to run in parallel
@@ -979,7 +981,10 @@ invisible(future.apply::future_lapply(seq_len(nrow(file_combos)), FUN = function
       {
         pw  <- yue_tfpw(year, value)
         yw  <- pw$y   # pre-whitened series (or raw if TFPW not applied)
-        ts  <- tryCatch(sens.slope(yw), error = function(e) NULL)
+        # Speedup #2: reuse ts0 computed inside yue_tfpw when TFPW not applied
+        # — avoids a second O(n²) sens.slope() on the same raw series.
+        ts  <- if (!pw$applied && !is.null(pw$ts0)) pw$ts0 else
+               tryCatch(sens.slope(yw), error = function(e) NULL)
         if (is.null(ts)) {
           list(
             slope = NA_real_, intercept = NA_real_,
