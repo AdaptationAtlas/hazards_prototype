@@ -59,8 +59,11 @@ for (tier in tiers) {
   cat(sprintf("  local  : %s (%.1f MB)\n", basename(local_f), file.size(local_f)/1e6))
   cat(sprintf("  s3     : %s\n", s3_url))
 
-  # Check if S3 key already exists
-  existing <- tryCatch(s3fs::s3_file_info(s3_url), error = function(e) NULL)
+  # Check if S3 key already exists (s3fs throws on 404 rather than returning NULL)
+  existing <- tryCatch(
+    suppressWarnings(s3fs::s3_file_info(s3_url)),
+    error = function(e) NULL
+  )
   if (!is.null(existing)) {
     cat(sprintf("  backup : %s\n", bak_url))
     if (!DRY_RUN) {
