@@ -472,7 +472,9 @@ three_month_periods$annual <- 1:12
 cat("3.1) Seasonal hazard calculation \n")
 if (run_sec3_1) {
 
-id_vars <- c("admin0_name", "admin1_name", "scenario", "model", "timeframe", "year", "hazard", "suspect_value_flag")
+# iso3 must be in id_vars so it propagates through sec 3.1 → 3.2 → 3.3
+# where the sec 3.3 by-clause groups on it for the canonical schema.
+id_vars <- c("iso3", "admin0_name", "admin1_name", "scenario", "model", "timeframe", "year", "hazard", "suspect_value_flag")
 
 lapply(monthly_files, FUN = function(month_file) {
   save_file <- gsub("_monthly_", "_3months_", month_file)
