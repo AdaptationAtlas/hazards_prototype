@@ -39,15 +39,16 @@ output_dir <- atlas_dirs$data_dir$hazard_timeseries_mean_month
 cat("=== R/2.1 -> S3 publish", if (DRY_RUN) "[DRY RUN]" else "", "===\n")
 cat("output_dir =", output_dir, "\n\n")
 
-# Verify local files exist before attempting upload
-all_files <- list.files(output_dir, "_ensemble_seasons\\.parquet$", full.names = TRUE)
-cat("Found ensemble_seasons parquets:", length(all_files), "\n")
-if (length(all_files) == 0) stop("No ensemble_seasons parquets found — has R/2.1 run?")
+# Only publish files from the current run (anomaly-historic baseline = NEX-GDDP 1995-2014).
+# Older runs leave anomaly-1981-2014 and anomaly-1995-2014 files in the same dir — ignore them.
+all_files <- list.files(output_dir, "_anomaly-historic_ensemble_seasons\\.parquet$", full.names = TRUE)
+cat("Found anomaly-historic ensemble_seasons parquets:", length(all_files), "\n")
+if (length(all_files) == 0) stop("No anomaly-historic_ensemble_seasons parquets found — has R/2.1 run?")
 
 for (p in PERIODS) {
-  # Match: any file whose name contains the period string
-  pattern <- gsub("-", ".", p, fixed = TRUE)   # 1995-2014 -> 1995.2014 for regex
-  candidates <- all_files[grepl(pattern, basename(all_files))]
+  # Match on DATA FILE period only (left of _anomaly-historic)
+  pattern <- paste0("haz_3months_adm_mean_", gsub("-", ".", p, fixed=TRUE), "_anomaly-historic")
+  candidates <- all_files[grepl(pattern, basename(all_files), fixed = FALSE)]
 
   if (length(candidates) == 0) {
     warning("No local file matched period=", p, " — skipping")

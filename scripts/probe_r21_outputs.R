@@ -22,16 +22,24 @@ fail <- function(msg) { cat(sprintf("  FAIL  %s\n", msg)); FAIL <<- FAIL + 1L }
 
 output_dir <- atlas_dirs$data_dir$hazard_timeseries_mean_month
 PERIODS    <- c("1995-2014", "2021-2040", "2041-2060", "2061-2080", "2081-2100")
-all_files  <- list.files(output_dir, "_ensemble_seasons\\.parquet$", full.names = TRUE)
+# Only match the CURRENT run's files: anomaly-historic (NEX-GDDP 1-baseline setup).
+# Multiple baselines exist from older runs (anomaly-1981-2014, anomaly-1995-2014) —
+# these are stale and should not be tested or published.
+all_files  <- list.files(output_dir, "_anomaly-historic_ensemble_seasons\\.parquet$",
+                         full.names = TRUE)
 
 cat("=== probe_r21_outputs.R ===\n")
-cat("output_dir =", output_dir, "\n\n")
+cat("output_dir =", output_dir, "\n")
+cat("Matching: *_anomaly-historic_ensemble_seasons.parquet\n")
+cat("Found:", length(all_files), "files\n\n")
 
 # ---- 1. File existence ----
 cat("--- 1. File existence (5 expected) ---\n")
 for (p in PERIODS) {
-  pattern <- gsub("-", ".", p, fixed = TRUE)
-  f <- all_files[grepl(pattern, basename(all_files))]
+  # Match on the DATA FILE period (left side of _anomaly-), not the baseline period.
+  # Pattern: haz_3months_adm_mean_{p}_anomaly-historic_ensemble_seasons.parquet
+  pattern <- paste0("haz_3months_adm_mean_", gsub("-", ".", p, fixed=TRUE), "_anomaly-historic")
+  f <- all_files[grepl(pattern, basename(all_files), fixed = FALSE)]
   if (length(f) == 1) ok(sprintf("period=%s exists: %s", p, basename(f)))
   else if (length(f) == 0) fail(sprintf("period=%s MISSING", p))
   else fail(sprintf("period=%s has %d matches (ambiguous): %s", p, length(f), paste(basename(f), collapse=", ")))
@@ -39,7 +47,8 @@ for (p in PERIODS) {
 
 # ---- 2. CR-060 columns ----
 cat("\n--- 2. CR-060 quantile columns ---\n")
-f_test <- all_files[grepl("2021.2040", basename(all_files))][1]
+# Test the 2021-2040 period file from the current run
+f_test <- all_files[grepl("haz_3months_adm_mean_2021.2040_anomaly-historic", basename(all_files))][1]
 if (!is.na(f_test) && file.exists(f_test)) {
   schema_cols <- names(arrow::read_parquet(f_test, as_data_frame = FALSE)$schema)
   for (col in c("q17_anomaly", "q83_anomaly", "q50_anomaly", "n_models")) {
