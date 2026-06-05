@@ -160,10 +160,20 @@ write_parquet_pushdown <- function(
       out_path, avg_chunk_kb, max_avg_chunk_kb
     ))
   }
+  # CR-119: verify row count matches input — catches thrift corruption where
+  # a parallel write overwrote the footer leaving dangling row-group bodies.
+  verify_n <- DBI::dbGetQuery(con, sprintf(
+    "SELECT COUNT(*) AS n FROM read_parquet('%s')", out_path))$n
+  if (verify_n != nrow(tbl)) {
+    stop(sprintf(
+      "write_parquet_pushdown: %s row count post-write %d != input %d (corruption or truncation)",
+      out_path, verify_n, nrow(tbl)
+    ))
+  }
   message(sprintf(
-    "write_parquet_pushdown: %s written (%d row groups, %d chunks, %.1f KB avg chunk, stats verified on %s)",
+    "write_parquet_pushdown: %s written (%d row groups, %d chunks, %.1f KB avg chunk, stats verified on %s, rows=%d)",
     out_path, n_groups, n_chunks, avg_chunk_kb,
-    paste(verify_stats_on, collapse = ", ")
+    paste(verify_stats_on, collapse = ", "), verify_n
   ))
   invisible(out_path)
 }

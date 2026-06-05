@@ -686,13 +686,12 @@ cat("3.2) Adding historical means  - Complete \n")
 ## 3.3) Calculate ensembled statistics #####
 cat("3.3) Calculating ensemble stats \n")
 if (run_sec3_3) {
-# Parallelise across file_combos (each is independent: different I/O files).
-# safe_workers() reads /proc/meminfo and caps workers to avoid OOM.
-# mem_per_worker_gb=5: each worker loads one anomaly parquet (~100-300 MB
-# compressed) plus data.table in-memory expansion; 5 GB is conservative.
-n_workers_3_3 <- safe_workers(worker_n2, n_tasks = nrow(file_combos), mem_per_worker_gb = 5)
-set_parallel_plan(n_cores = n_workers_3_3, use_multisession = TRUE)
-invisible(future.apply::future_lapply(seq_len(nrow(file_combos)), FUN = function(i) {
+# CR-119: sec 3.3 runs SEQUENTIALLY. Parallel write collapsed save_file2
+# when multiple file_combos resolved to the same output path (e.g.
+# model dimension dropped in aggregation), producing TProtocolException
+# on aggregate scans. Sequential is safe and single-digit minutes.
+# Re-parallelise only after adding a stopifnot(unique(save_file2)) guard.
+invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   save_file <- file_combos$save_file[i]
   save_file2 <- file_combos$save_file2[i]
   save_file3 <- file_combos$save_file3[i]
@@ -734,14 +733,17 @@ invisible(future.apply::future_lapply(seq_len(nrow(file_combos)), FUN = function
       q83_anomaly  = quantile(anomaly, 0.83, na.rm = TRUE),
       q95_anomaly  = quantile(anomaly, 0.95, na.rm = TRUE)
     ),
-    by = list(admin0_name, admin1_name, scenario, timeframe, year, hazard, season, baseline_name)
+    # CR-119 fix: iso3 must be in the by-clause or it is dropped from the schema.
+    # (write_parquet_pushdown silently skips iso3 in sort_by when not present in tbl.)
+    by = list(iso3, admin0_name, admin1_name, scenario, timeframe, year, hazard, season, baseline_name)
     ]
 
     num_cols <- names(data_anomaly_ens)[sapply(data_anomaly_ens, is.numeric)]
     data_anomaly_ens[, (num_cols) := lapply(.SD, round, digits = round3.3), .SDcols = num_cols]
 
     data_anomaly_ens[, hazard := gsub("_mean|_max", "", hazard)]
-    data_anomaly_ens[, models := models]
+    # CR-119 fix: do NOT replicate models as a per-row column (~250 bytes × millions of rows
+    # = ~150-250 MB of bloat). Store in JSON sidecar / kv-metadata only.
 
     # Aggregate models over years then ensemble
     data_ag <- data_anomaly[, list(
@@ -766,10 +768,10 @@ invisible(future.apply::future_lapply(seq_len(nrow(file_combos)), FUN = function
       q83_anomaly  = quantile(mean_anomaly, 0.83, na.rm = TRUE),
       n_models     = sum(!is.na(mean_anomaly))
     ),
-    by = list(admin0_name, admin1_name, scenario, timeframe, hazard, season, baseline_name)
+    # CR-119 fix: iso3 in by-clause.
+    by = list(iso3, admin0_name, admin1_name, scenario, timeframe, hazard, season, baseline_name)
     ]
-
-    data_ag_ens[, models := models]
+    # models stored in JSON sidecar only — not in data rows.
 
     num_cols <- names(data_ag_ens)[sapply(data_ag_ens, is.numeric)]
     data_ag_ens[, (num_cols) := lapply(.SD, round, digits = round_final), .SDcols = num_cols]
@@ -905,7 +907,6 @@ invisible(future.apply::future_lapply(seq_len(nrow(file_combos)), FUN = function
   }
 }))
 
-plan(sequential)
 cat("3.3) Calculating ensemble stats - Complete \n")
 } # end if (run_sec3_3)
 
