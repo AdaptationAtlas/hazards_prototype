@@ -719,6 +719,8 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
 
   if (!file.exists(save_file2) | overwrite2) {
     data_anomaly <- data.table(arrow::read_parquet(save_file))
+    cat("  sec3.3 data_anomaly cols:", paste(names(data_anomaly), collapse=","), "\n")
+    if (!"iso3" %in% names(data_anomaly)) stop(sprintf("CR-119: iso3 missing from data_anomaly in sec 3.3 (file: %s)", save_file))
     models <- data_anomaly[, paste0(sort(unique(model)), collapse = ",")]
 
     # Ensemble models by years.
