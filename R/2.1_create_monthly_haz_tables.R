@@ -630,6 +630,10 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
       sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "model", "timeframe", "season", "year"),
       verify_stats_on = c("iso3", "admin0_name", "hazard", "scenario")
     )
+    # CR-119 debug: read back immediately to confirm iso3 survives round-trip
+    .rb <- data.table(arrow::read_parquet(save_file))
+    cat("  round-trip cols:", paste(names(.rb), collapse=","), "\n")
+    if (!"iso3" %in% names(.rb)) stop("CR-119: iso3 LOST during write_parquet_pushdown round-trip")
 
     data_json <- jsonlite::read_json(file.path(output_dir, paste0(basename(file_combos$data[i]), ".json")), simplifyVector = TRUE)
 
