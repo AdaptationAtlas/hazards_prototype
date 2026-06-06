@@ -578,7 +578,9 @@ if (run_sec3_2) {
 data_ex_hist <- lapply(baselines, FUN = function(baseline) {
   tf <- baseline_timeframe_map[baseline]
   data <- data.table(arrow::read_parquet(grep(paste0("_", tf, "[.]"), monthly3_files, value = TRUE)))
-  data <- data[, .(baseline_value = round(mean(value, na.rm = TRUE), round3.1)), by = .(admin0_name, admin1_name, hazard, season)]
+  # Include iso3 in the aggregation so it propagates through the sec 3.2 merge
+  # and survives into the sec 3.3 ensemble by-clause.
+  data <- data[, .(baseline_value = round(mean(value, na.rm = TRUE), round3.1)), by = .(iso3, admin0_name, admin1_name, hazard, season)]
   data[, baseline_name := baseline]
   data
 })
@@ -613,7 +615,11 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     baseline <- file_combos$baseline[i]
     baseline_name <- names(baselines)[baselines == baseline]
     data <- data.table(arrow::read_parquet(file_combos$data[i]))
-    data <- merge(data, data_ex_hist[[baseline]], all.x = TRUE)
+    # Explicit by= so iso3 is a merge key (not just a left-side extra column
+    # that might be silently dropped if data_ex_hist also had it).
+    data <- merge(data, data_ex_hist[[baseline]],
+                  by = c("iso3", "admin0_name", "admin1_name", "hazard", "season"),
+                  all.x = TRUE)
     data[, anomaly := value - baseline_value]
     data[, baseline_name := baseline_name]
 
