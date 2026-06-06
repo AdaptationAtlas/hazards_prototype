@@ -615,18 +615,20 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     baseline <- file_combos$baseline[i]
     baseline_name <- names(baselines)[baselines == baseline]
     data <- data.table(arrow::read_parquet(file_combos$data[i]))
-    # Explicit by= so iso3 is a merge key (not just a left-side extra column
-    # that might be silently dropped if data_ex_hist also had it).
+    cat("  sec3.2 data cols:", paste(names(data), collapse=","), "\n")
+    if (!"iso3" %in% names(data)) stop("CR-119 debug: iso3 missing from data BEFORE merge in sec 3.2")
+    # Explicit by= so iso3 is a merge key.
     data <- merge(data, data_ex_hist[[baseline]],
                   by = c("iso3", "admin0_name", "admin1_name", "hazard", "season"),
                   all.x = TRUE)
+    if (!"iso3" %in% names(data)) stop("CR-119 debug: iso3 missing from data AFTER merge in sec 3.2")
     data[, anomaly := value - baseline_value]
     data[, baseline_name := baseline_name]
 
     write_parquet_pushdown(
       data, save_file,
       sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "model", "timeframe", "season", "year"),
-      verify_stats_on = c("admin0_name", "hazard", "scenario")
+      verify_stats_on = c("iso3", "admin0_name", "hazard", "scenario")
     )
 
     data_json <- jsonlite::read_json(file.path(output_dir, paste0(basename(file_combos$data[i]), ".json")), simplifyVector = TRUE)
