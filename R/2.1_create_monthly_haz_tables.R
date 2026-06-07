@@ -580,7 +580,7 @@ data_ex_hist <- lapply(baselines, FUN = function(baseline) {
   data <- data.table(arrow::read_parquet(grep(paste0("_", tf, "[.]"), monthly3_files, value = TRUE)))
   # Include iso3 in the aggregation so it propagates through the sec 3.2 merge
   # and survives into the sec 3.3 ensemble by-clause.
-  data <- data[, .(baseline_value = round(mean(value, na.rm = TRUE), round3.1)), by = .(iso3, admin0_name, admin1_name, hazard, season)]
+  data <- data[, .(baseline_value = round(mean(value, na.rm = TRUE), round3.1)), by = c("iso3", "admin0_name", "admin1_name", "hazard", "season")]
   data[, baseline_name := baseline]
   data
 })
@@ -763,12 +763,12 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     # CR-119 fix: do NOT replicate models as a per-row column (~250 bytes × millions of rows
     # = ~150-250 MB of bloat). Store in JSON sidecar / kv-metadata only.
 
-    # Aggregate models over years then ensemble
+    # Aggregate models over years then ensemble (iso3 must be in by-clause)
     data_ag <- data_anomaly[, list(
       mean = mean(value, na.rm = TRUE),
       mean_anomaly = mean(anomaly, na.rm = TRUE)
     ),
-    by = list(admin0_name, admin1_name, scenario, timeframe, model, hazard, season, baseline_name)
+    by = c("iso3", "admin0_name", "admin1_name", "scenario", "timeframe", "model", "hazard", "season", "baseline_name")
     ]
 
     # CR-060: quantiles also on the period-aggregate ensemble (per-model
