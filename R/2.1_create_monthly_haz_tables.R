@@ -751,7 +751,9 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     ),
     # CR-119 fix: iso3 must be in the by-clause or it is dropped from the schema.
     # (write_parquet_pushdown silently skips iso3 in sort_by when not present in tbl.)
-    by = list(iso3, admin0_name, admin1_name, scenario, timeframe, year, hazard, season, baseline_name)
+    # Use character vector by= — bare name in list() evaluates in enclosing scope,
+    # not the data.table frame, which fails if iso3 is defined elsewhere.
+    by = c("iso3", "admin0_name", "admin1_name", "scenario", "timeframe", "year", "hazard", "season", "baseline_name")
     ]
 
     num_cols <- names(data_anomaly_ens)[sapply(data_anomaly_ens, is.numeric)]
@@ -785,7 +787,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
       n_models     = sum(!is.na(mean_anomaly))
     ),
     # CR-119 fix: iso3 in by-clause.
-    by = list(iso3, admin0_name, admin1_name, scenario, timeframe, hazard, season, baseline_name)
+    by = c("iso3", "admin0_name", "admin1_name", "scenario", "timeframe", "hazard", "season", "baseline_name")
     ]
     # models stored in JSON sidecar only — not in data rows.
 
