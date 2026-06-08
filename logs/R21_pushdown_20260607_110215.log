@@ -1,0 +1,529 @@
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Starting 2.1_create_monthly_haz_tables.R
+output_dir = Data/hazard_timeseries_mean_month 
+Working with hazards = HSH_max TMAX TAVG NDWL0 NDWS NTx35 PTOT THI_max NDD 
+Using scenarios = ssp126 ssp245 ssp370 ssp585 
+Using time periods = 2021_2040 2041_2060 2061_2080 2081_2100 
+Section controls: sec2=FALSE 3.1=FALSE 3.2=FALSE 3.3=TRUE 3.4=TRUE
+Folders included = /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2081_2100 
+                    admin0_name        admin1_name
+                         <char>             <char>
+ 1:                     Comoros Anjouan (Ndzouani)
+ 2:                     Comoros     Mohéli (Mwali)
+ 3:                  Cabo Verde              Brava
+ 4:                  Cabo Verde               Maio
+ 5:                  Cabo Verde                Sal
+ 6:                  Cabo Verde        Sao Vicente
+ 7:                    Djibouti          Djiboutii
+ 8:                      Guinea            Conakry
+ 9:           Equatorial Guinea            Annobón
+10:                   Mauritius    Agalnga Islands
+11:                   Mauritius      Rivinre Noire
+12:       Sao Tome And Principe           Príncipe
+13:                  Seychelles           La Digue
+14:                  Seychelles               Mahe
+15:                  Seychelles      Other Islands
+16:                  Seychelles            Praslin
+17:                  Seychelles               <NA>
+18: United Republic of Tanzania    Kaskazini Pemba
+19: United Republic of Tanzania       Kusini Pemba
+                                                   hazard
+                                                   <char>
+ 1:                                            NDWL0,NDWS
+ 2:                                            NDWL0,NDWS
+ 3:                                       NDWL0,NDWS,PTOT
+ 4:                                            NDWL0,NDWS
+ 5:                                            NDWL0,NDWS
+ 6:                                            NDWL0,NDWS
+ 7:                                            NDWL0,NDWS
+ 8:                                                  PTOT
+ 9: HSH-max,NDWL0,NDWS,NTx35,NTx40,PTOT,TAVG,THI-max,TMAX
+10:                                            NDWL0,NDWS
+11:                                            NDWL0,NDWS
+12:                                            NDWL0,NDWS
+13:                                            NDWL0,NDWS
+14:                                            NDWL0,NDWS
+15:                                            NDWL0,NDWS
+16:                                            NDWL0,NDWS
+17:                                            NDWL0,NDWS
+18:                                            NDWL0,NDWS
+19:                                            NDWL0,NDWS
+3.1) Seasonal hazard calculation 
+3.1) Seasonal hazard calculation - Complete 
+3.2) Adding historical means 
+3.3) Calculating ensemble stats 
+3.3) Calculating ensemble stats for  1 / 7 haz_3months_adm_mean_1981-2014_anomaly-historic_seasons.parquet 
+  sec3.3 data_anomaly cols: iso3,admin0_name,admin1_name,hazard,season,scenario,model,timeframe,year,suspect_value_flag,value,n_value,baseline_value,baseline_name,anomaly 
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_ensemble_seasons.parquet written (60 row groups, 1680 chunks, 64.8 KB avg chunk, stats verified on admin0_name, hazard, scenario, season, rows=3037788)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_ensemble.parquet written (2 row groups, 38 chunks, 22.2 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=90207)
+3.3) Calculating ensemble stats for  2 / 7 haz_3months_adm_mean_1995-2014_anomaly-historic_seasons.parquet 
+  sec3.3 data_anomaly cols: iso3,admin0_name,admin1_name,hazard,season,scenario,model,timeframe,year,suspect_value_flag,value,n_value,baseline_value,baseline_name,anomaly 
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1995-2014_anomaly-historic_ensemble_seasons.parquet written (35 row groups, 980 chunks, 67.3 KB avg chunk, stats verified on admin0_name, hazard, scenario, season, rows=1781442)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1995-2014_anomaly-historic_ensemble.parquet written (2 row groups, 38 chunks, 24.3 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=90207)
+3.3) Calculating ensemble stats for  3 / 7 haz_3months_adm_mean_2021-2040_anomaly-historic_seasons.parquet 
+  sec3.3 data_anomaly cols: iso3,admin0_name,admin1_name,hazard,season,scenario,model,timeframe,year,suspect_value_flag,value,n_value,baseline_value,baseline_name,anomaly 
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2021-2040_anomaly-historic_ensemble_seasons.parquet written (155 row groups, 4340 chunks, 63.7 KB avg chunk, stats verified on admin0_name, hazard, scenario, season, rows=7917520)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2021-2040_anomaly-historic_ensemble.parquet written (8 row groups, 152 chunks, 28.9 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=400920)
+3.3) Calculating ensemble stats for  4 / 7 haz_3months_adm_mean_2041-2060_anomaly-historic_seasons.parquet 
+  sec3.3 data_anomaly cols: iso3,admin0_name,admin1_name,hazard,season,scenario,model,timeframe,year,suspect_value_flag,value,n_value,baseline_value,baseline_name,anomaly 
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2041-2060_anomaly-historic_ensemble_seasons.parquet written (155 row groups, 4340 chunks, 65.1 KB avg chunk, stats verified on admin0_name, hazard, scenario, season, rows=7917520)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2041-2060_anomaly-historic_ensemble.parquet written (8 row groups, 152 chunks, 30.5 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=400920)
+3.3) Calculating ensemble stats for  5 / 7 haz_3months_adm_mean_2061-2080_anomaly-historic_seasons.parquet 
+  sec3.3 data_anomaly cols: iso3,admin0_name,admin1_name,hazard,season,scenario,model,timeframe,year,suspect_value_flag,value,n_value,baseline_value,baseline_name,anomaly 
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2061-2080_anomaly-historic_ensemble_seasons.parquet written (155 row groups, 4340 chunks, 66.5 KB avg chunk, stats verified on admin0_name, hazard, scenario, season, rows=7917520)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2061-2080_anomaly-historic_ensemble.parquet written (8 row groups, 152 chunks, 31.5 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=400920)
+3.3) Calculating ensemble stats for  6 / 7 haz_3months_adm_mean_2081-2100_anomaly-historic_seasons.parquet 
+  sec3.3 data_anomaly cols: iso3,admin0_name,admin1_name,hazard,season,scenario,model,timeframe,year,suspect_value_flag,value,n_value,baseline_value,baseline_name,anomaly 
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2081-2100_anomaly-historic_ensemble_seasons.parquet written (155 row groups, 4340 chunks, 67.8 KB avg chunk, stats verified on admin0_name, hazard, scenario, season, rows=7917520)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2081-2100_anomaly-historic_ensemble.parquet written (8 row groups, 152 chunks, 32.3 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=400920)
+3.3) Calculating ensemble stats for  7 / 7 haz_3months_adm_mean_1981-2014_anomaly-historic_seasons.parquet 
+  sec3.3 data_anomaly cols: iso3,admin0_name,admin1_name,hazard,season,scenario,model,timeframe,year,suspect_value_flag,value,n_value,baseline_value,baseline_name,anomaly 
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_ensemble_seasons.parquet written (60 row groups, 1680 chunks, 64.8 KB avg chunk, stats verified on admin0_name, hazard, scenario, season, rows=3037788)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_ensemble.parquet written (2 row groups, 38 chunks, 22.2 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=90207)
+3.3) Calculating ensemble stats - Complete 
+3.4) Trend calculation (with Yue 2002 TFPW pre-whitening)
+[safe_workers] requested=20  avail_ram=344 GB  mem_per_worker=8 GB  limit=30  -> 7 workers
+3.4) Trends - Processing 1 / 7 haz_3months_adm_mean_1981-2014_anomaly-historic_seasons.parquet 
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_trends.parquet written (1062 row groups, 20178 chunks, 3.2 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=54347544)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_trends_ensemble.parquet written (20 row groups, 220 chunks, 64.3 KB avg chunk, stats verified on admin0_name, hazard, rows=986271)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_trends_ensemble_minimal.parquet written (2 row groups, 22 chunks, 52.6 KB avg chunk, stats verified on admin0_name, hazard, rows=90129)
+3.4) Trends - Processing 2 / 7 haz_3months_adm_mean_1995-2014_anomaly-historic_seasons.parquet 
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1995-2014_anomaly-historic_trends.parquet written (623 row groups, 11837 chunks, 5.1 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=31870908)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1995-2014_anomaly-historic_trends_ensemble.parquet written (20 row groups, 220 chunks, 63.9 KB avg chunk, stats verified on admin0_name, hazard, rows=986271)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1995-2014_anomaly-historic_trends_ensemble_minimal.parquet written (2 row groups, 22 chunks, 52.6 KB avg chunk, stats verified on admin0_name, hazard, rows=90129)
+Warning: Caught FutureInterruptError. Canceling all iterations ...
+3.4) Trends - Processing 7 / 7 haz_3months_adm_mean_1981-2014_anomaly-historic_seasons.parquet 
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_trends.parquet written (1062 row groups, 20178 chunks, 3.2 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=54347544)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_trends_ensemble.parquet written (20 row groups, 220 chunks, 64.3 KB avg chunk, stats verified on admin0_name, hazard, rows=986271)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_trends_ensemble_minimal.parquet written (2 row groups, 22 chunks, 52.6 KB avg chunk, stats verified on admin0_name, hazard, rows=90129)
+Error: Future (‘future_lapply-5’) of class MultisessionFuture interrupted, while running on ‘localhost’ (pid 2125314)
+In addition: There were 50 or more warnings (use warnings() to see the first 50)
+13: (function () 
+    {
+        traceback(2)
+        quit(status = 1, save = "no")
+    })()
+12: stop(ex)
+11: onError(e, futures = fs, debug = debug)
+10: value[[3L]](cond)
+9: tryCatchOne(tryCatchList(expr, names[-nh], parentenv, handlers[-nh]), 
+       names[nh], parentenv, handlers[[nh]])
+8: tryCatchList(expr, classes, parentenv, handlers)
+7: tryCatch({
+       for (ii in seq_along(chunks)) {
+           chunk <- chunks[[ii]]
+           if (debug) 
+               mdebugf("Chunk #%d of %d ...", ii, length(chunks))
+           args_ii <- get_chunk(chunk_args, chunk)
+           globals_ii <- globals
+           globals_ii[["...future.elements_ii"]] <- args_ii
+           packages_ii <- packages
+           if (scanForGlobals) {
+               if (debug) 
+                   mdebugf(" - Finding globals in '%s' for chunk #%d ...", 
+                     args_name, ii)
+               gp <- getGlobalsAndPackages(args_ii, envir = envir, 
+                   globals = TRUE)
+               globals_args <- gp$globals
+               packages_args <- gp$packages
+               gp <- NULL
+               if (debug) {
+                   mdebugf("   + additional globals found: [n=%d] %s", 
+                     length(globals_args), commaq(names(globals_args)))
+                   mdebugf("   + additional namespaces needed: [n=%d] %s", 
+                     length(packages_args), commaq(packages_args))
+               }
+               if (length(globals_args) > 0L) {
+                   reserved <- intersect(c("...future.FUN", "...future.elements_ii", 
+                     "...future.seeds_ii"), names(globals_args))
+                   if (length(reserved) > 0) {
+                     stop("Detected globals in '%s' using reserved variables names: ", 
+                       args_name, commaq(reserved))
+                   }
+                   globals_args <- as.FutureGlobals(globals_args)
+                   globals_ii <- unique(c(globals_ii, globals_args))
+                   if (length(packages_args) > 0L) 
+                     packages_ii <- unique(c(packages_ii, packages_args))
+               }
+               if (debug) 
+                   mdebugf(" - Finding globals in '%s' for chunk #%d ... DONE", 
+                     args_name, ii)
+           }
+           args_ii <- NULL
+           if (!is.null(globals.maxSize)) {
+               globals_ii["...future.globals.maxSize"] <- list(globals.maxSize)
+           }
+           if (length(chunks) > 1L) {
+               options(future.globals.maxSize = length(chunks) * 
+                   globals.maxSize.default)
+               if (debug) 
+                   mdebugf(" - Adjusted option 'future.globals.maxSize': %.0f -> %d * %.0f = %.0f (bytes)", 
+                     globals.maxSize.default, length(chunks), globals.maxSize.default, 
+                     getOption("future.globals.maxSize"))
+               on.exit(options(future.globals.maxSize = globals.maxSize), 
+                   add = TRUE)
+           }
+           if (is.null(seeds)) {
+               if (debug) 
+                   mdebug(" - seeds: <none>")
+           }
+           else {
+               if (debug) 
+                   mdebugf(" - seeds: [%d] <seeds>", length(chunk))
+               globals_ii[["...future.seeds_ii"]] <- seeds[chunk]
+           }
+           if (debug) {
+               mdebugf(" - All globals exported: [n=%d] %s", length(globals_ii), 
+                   commaq(names(globals_ii)))
+           }
+           fs[[ii]] <- future(expr, substitute = FALSE, envir = future.envir, 
+               stdout = future.stdout, conditions = future.conditions, 
+               globals = globals_ii, packages = packages_ii, seed = future.seed, 
+               label = labels[ii])
+           if (debug) {
+               mdebug("Created future:")
+               mprint(fs[[ii]])
+           }
+           rm(list = c("chunk", "globals_ii"))
+           if (debug) 
+               mdebugf("Chunk #%d of %d ... DONE", ii, nchunks)
+       }
+       if (debug) 
+           mdebugf("Launching %d futures (chunks) ... DONE", nchunks)
+       if (debug) 
+           mdebugf("Resolving %d futures (chunks) ...", nchunks)
+       if (isFALSE(future.seed)) {
+           withCallingHandlers({
+               values <- local({
+                   oopts <- options(future.rng.onMisuse.keepFuture = FALSE)
+                   on.exit(options(oopts))
+                   value(fs)
+               })
+           }, RngFutureCondition = function(cond) {
+               idx <- NULL
+               uuid <- attr(cond, "uuid")
+               if (!is.null(uuid)) {
+                   for (kk in seq_along(fs)) {
+                     if (identical(fs[[kk]]$uuid, uuid)) 
+                       idx <- kk
+                   }
+               }
+               else {
+                   f <- attr(cond, "future")
+                   if (is.null(f)) 
+                     return()
+                   if (!isFALSE(f$seed)) 
+                     return()
+                   for (kk in seq_along(fs)) {
+                     if (identical(fs[[kk]], f)) 
+                       idx <- kk
+                   }
+               }
+               if (is.null(idx)) 
+                   return()
+               f <- fs[[idx]]
+               label <- sQuoteLabel(f)
+               message <- sprintf("UNRELIABLE VALUE: One of the %s iterations (%s) unexpectedly generated random numbers without declaring so. There is a risk that those random numbers are not statistically sound and the overall results might be invalid. To fix this, specify 'future.seed=TRUE'. This ensures that proper, parallel-safe random numbers are produced via a parallel RNG method. To disable this check, use 'future.seed = NULL', or set option 'future.rng.onMisuse' to \"ignore\".", 
+                   sQuote(.packageName), label)
+               cond$message <- message
+               if (inherits(cond, "warning")) {
+                   warning(cond)
+                   invokeRestart("muffleWarning")
+               }
+               else if (inherits(cond, "error")) {
+                   stop(cond)
+               }
+           })
+       }
+       else {
+           value(fs)
+       }
+   }, interrupt = function(int) {
+       onInterrupt(int, fcn_name = fcn_name, debug = debug)
+   }, error = function(e) {
+       onError(e, futures = fs, debug = debug)
+   })
+6: future_xapply(FUN = FUN, nX = nX, chunk_args = X, args = list(...), 
+       get_chunk = `chunkWith[[`, expr = expr, envir = envir, future.envir = future.envir, 
+       future.globals = future.globals, future.packages = future.packages, 
+       future.scheduling = future.scheduling, future.chunk.size = future.chunk.size, 
+       future.stdout = future.stdout, future.conditions = future.conditions, 
+       future.seed = future.seed, future.label = future.label, fcn_name = fcn_name, 
+       args_name = args_name, debug = debug)
+5: future.apply::future_lapply(seq_len(nrow(file_combos)), FUN = function(i) {
+       data_file <- file_combos$save_file[i]
+       baseline_name <- names(baselines)[baselines == file_combos$baseline[i]]
+       file_base <- gsub("_seasons", "", data_file)
+       save_file <- gsub(".parquet", "_trends.parquet", file_base)
+       save_file2 <- gsub(".parquet", "_trends_ensemble.parquet", 
+           file_base)
+       save_file3 <- gsub(".parquet", "_trends_ensemble_minimal.parquet", 
+           file_base)
+       cat("3.4) Trends - Processing", i, "/", nrow(file_combos), 
+           basename(data_file), "\n")
+       if (!file.exists(save_file) | overwrite2) {
+           data_ex_trend <- data.table(arrow::read_parquet(data_file))
+           data_ex_trend <- data_ex_trend[is.finite(value) & is.finite(year)][, 
+               `:=`(n_value, NULL)]
+           trend_summary <- data_ex_trend[, {
+               pw <- yue_tfpw(year, value)
+               yw <- pw$y
+               ts <- if (!pw$applied && !is.null(pw$ts0)) 
+                   pw$ts0
+               else tryCatch(sens.slope(yw), error = function(e) NULL)
+               if (is.null(ts)) {
+                   list(slope = NA_real_, intercept = NA_real_, 
+                     ci_low = NA_real_, ci_high = NA_real_, p_value = NA_real_, 
+                     tfpw_applied = FALSE, lag1_ac = pw$r)
+               }
+               else {
+                   m <- unname(ts$estimates)
+                   intercept <- median(baseline_value - m * year)
+                   list(slope = m, intercept = intercept, ci_low = ts$conf.int[1], 
+                     ci_high = ts$conf.int[2], p_value = tryCatch(mk.test(yw)$p.value, 
+                       error = function(e) NA_real_), tfpw_applied = pw$applied, 
+                     lag1_ac = pw$r)
+               }
+           }, by = .(admin0_name, admin1_name, scenario, timeframe, 
+               model, hazard, season, baseline_name)]
+           data_ex_trend_m <- merge(data_ex_trend, trend_summary, 
+               by = c("admin0_name", "admin1_name", "scenario", 
+                   "timeframe", "model", "hazard", "season", "baseline_name"), 
+               all.x = TRUE, sort = FALSE)
+           data_ex_trend_stats <- data_ex_trend_m[, .(value_slope = slope[1], 
+               value_start = min(year) * slope[1] + intercept[1], 
+               value_s5 = mean(value[1:5]), anomaly_s5 = mean(anomaly[1:5]), 
+               value_end = max(year) * slope[1] + intercept[1], 
+               value_e5 = mean(tail(value, 5)), anomaly_e5 = mean(tail(anomaly, 
+                   5)), value_decade = 10 * slope, value_pval = p_value[1]), 
+               by = .(admin0_name, admin1_name, scenario, model, 
+                   timeframe, hazard, season, baseline_name)][, 
+               `:=`(value_diff, value_e5 - value_s5)][, `:=`(anomaly_diff, 
+               anomaly_e5 - anomaly_s5)]
+           data_ex_trend_stats_ens <- melt(data_ex_trend_stats, 
+               id.vals = c("admin0_name", "admin1_name", "scenario", 
+                   "model", "timeframe", "variable", "season", "baseline_name"), 
+               variable.name = "stat")
+           num_cols <- names(data_ex_trend_stats)[sapply(data_ex_trend_stats, 
+               is.numeric)]
+           data_ex_trend_stats[, `:=`((num_cols), lapply(.SD, round, 
+               digits = round3.4)), .SDcols = num_cols]
+           if (!is.null(order_by2)) {
+               setorderv(data_ex_trend_stats, order_by2)
+           }
+           write_parquet_pushdown(data_ex_trend_stats, save_file, 
+               sort_by = c("iso3", "admin0_name", "admin1_name", 
+                   "hazard", "scenario", "model", "timeframe", "season"), 
+               verify_stats_on = c("admin0_name", "hazard", "scenario"))
+           filters <- list(scenario = data_ex_trend_stats[, unique(scenario)], 
+               timeframe = data_ex_trend_stats[, unique(timeframe)], 
+               model = data_ex_trend_stats[, unique(model)], hazard = data_ex_trend_stats[, 
+                   unique(hazard)], season = data_ex_trend_stats[, 
+                   unique(season)])
+           field_descriptions <- list(admin0_name = "Name of the country (first-level administrative unit)", 
+               admin1_name = "Name of the subnational region (second-level administrative unit)", 
+               scenario = "Emissions scenario (e.g., SSP1-2.6, SSP3-7.0)", 
+               model = "Name of the General Circulation Model (GCM) used for climate projection", 
+               timeframe = "Future period being analyzed (e.g., 2030s, 2050s)", 
+               hazard = "Climate hazard variable (e.g., PTOT = precipitation total, TMAX = max temperature)", 
+               season = "3-month rolling window or annual aggregation (e.g., DJF, MAM, annual)", 
+               baseline_name = "Label for the baseline period used to compute anomalies (e.g., 1995–2014)", 
+               value_slope = "Sen's slope estimate of the linear trend in the `value` variable over time", 
+               value_start = "Estimated `value` at the starting year of the time series using slope and intercept", 
+               value_s5 = "Mean of the first 5 `value` entries in the time series", 
+               anomaly_s5 = "Mean of the first 5 `anomaly` entries in the time series", 
+               value_end = "Estimated `value` at the final year of the time series using slope and intercept", 
+               value_e5 = "Mean of the last 5 `value` entries in the time series", 
+               anomaly_e5 = "Mean of the last 5 `anomaly` entries in the time series", 
+               value_decade = "Change in the `value` variable over a 10-year period (slope × 10)", 
+               value_pval = "P-value from Mann-Kendall test assessing the significance of the trend in `value`", 
+               value_diff = "Difference between the 5-year end and start means for `value`", 
+               anomaly_diff = "Difference between the 5-year end and start means for `anomaly`")
+           write_json(list(source = list(input_raster = indices_dir, 
+               extraction_rast = atlas_data$boundaries$name), extraction_method = "zonal", 
+               geo_filters = grep("admin", colnames(data_ex_trend_stats), 
+                   value = TRUE), season_type = "3-month windows or annual", 
+               filters = filters, value_var = field_descriptions, 
+               format = ".parquet", date_created = Sys.time(), version = version1, 
+               parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.4", 
+               unit = unique(haz_meta[variable.code %in% data_ex_trend_stats[, 
+                   unique(hazard)], .(variable.code, base_unit)]), 
+               extract_stat = extract_stat, anomaly_baseline = baseline_name, 
+               notes = paste0("This file contains climate hazard summary statistics extracted from monthly raster data, ", 
+                   "aggregated by subnational administrative units (admin0_name, admin1_name). Values were first ", 
+                   "summarized using mean across spatial units, then grouped into rolling 3-month or 12-month periods ", 
+                   "depending on the 'season' column. The summary metric (mean or sum) applied to the seasonal value depends on the hazard type ", 
+                   "as defined in the hazard metadata. For each group of GCMs (models column), ensemble statistics (mean, min, max, SD) ", 
+                   "were calculated for both the raw hazard value and its anomaly (deviation from a historical baseline period). ", 
+                   "Temporal trends were assessed using Sen’s slope estimator, a non-parametric method robust to outliers and missing data, ", 
+                   "with significance evaluated using the Mann–Kendall trend test (p-value column). The table supports climate trend analysis, ", 
+                   "risk monitoring, and adaptation planning by season, region, and scenario.")), 
+               paste0(save_file, ".json"), pretty = TRUE)
+           data_ex_trend_stats_ens <- melt(data_ex_trend_stats, 
+               id.vals = c("admin0_name", "admin1_name", "scenario", 
+                   "model", "timeframe", "variable", "season"), 
+               variable.name = "stat")
+           data_ex_trend_stats_ens <- data_ex_trend_stats_ens[, 
+               list(mean = mean(value, na.rm = TRUE), max = max(value, 
+                   na.rm = TRUE), min = min(value, na.rm = TRUE), 
+                   sd = sd(value, na.rm = TRUE)), by = list(admin0_name, 
+                   admin1_name, scenario, timeframe, season, hazard, 
+                   stat)]
+           data_ex_trend_stats_ens[, `:=`(stat, as.character(stat))]
+           if (!is.null(order_by2)) {
+               setorderv(data_ex_trend_stats_ens, order_by2)
+           }
+           write_parquet_pushdown(data_ex_trend_stats_ens, save_file2, 
+               sort_by = c("iso3", "admin0_name", "admin1_name", 
+                   "hazard", "scenario", "timeframe", "season", 
+                   "stat"), verify_stats_on = c("admin0_name", "hazard"))
+           field_descriptions$model <- NULL
+           write_json(list(source = list(input_raster = indices_dir, 
+               extraction_rast = atlas_data$boundaries$name), extraction_method = "zonal", 
+               geo_filters = grep("admin", colnames(data_ex_trend_stats_ens), 
+                   value = TRUE), season_type = "3-month windows or annual", 
+               filters = filters, value_var = field_descriptions, 
+               format = ".parquet", date_created = Sys.time(), version = version1, 
+               parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.7.1", 
+               unit = unique(haz_meta[variable.code %in% data_ex_trend_stats_ens[, 
+                   unique(hazard)], .(variable.code, base_unit)]), 
+               extract_stat = extract_stat, anomaly_baseline = baseline_name, 
+               notes = paste0("This file contains ensemble-level summaries of trend statistics derived from seasonal hazard values, ", 
+                   "aggregated by subnational administrative units. Each row corresponds to a single trend metric (e.g., Sen's slope, decadal change) ", 
+                   "calculated across multiple GCM models for a given scenario, timeframe, season, and hazard type. ", 
+                   "The 'stat' column indicates the specific trend metric summarized, while the 'mean', 'min', 'max', and 'sd' columns report ensemble ", 
+                   "statistics across GCMs. Trend slopes were estimated using Sen's slope method, a robust non-parametric estimator. ", 
+                   "The Mann–Kendall trend test was used to assess significance. These summaries support regional assessments of ", 
+                   "climate hazard evolution and are suitable for visualizing uncertainty ranges across climate models.")), 
+               paste0(save_file2, ".json"), pretty = TRUE)
+           data_ex_trend_stats_ens_simple <- data_ex_trend_stats_ens[hazard %in% 
+               c("PTOT", "TAVG", "TMAX") & stat %in% c("value_diff", 
+               "value_decade", "anomaly_diff")]
+           write_parquet_pushdown(data_ex_trend_stats_ens_simple, 
+               save_file3, sort_by = c("iso3", "admin0_name", "admin1_name", 
+                   "hazard", "scenario", "season", "stat"), verify_stats_on = c("admin0_name", 
+                   "hazard"))
+           filters <- list(scenario = data_ex_trend_stats_ens_simple[, 
+               unique(scenario)], timeframe = data_ex_trend_stats_ens_simple[, 
+               unique(timeframe)], hazard = data_ex_trend_stats_ens_simple[, 
+               unique(hazard)], season = data_ex_trend_stats_ens_simple[, 
+               unique(season)], stat = data_ex_trend_stats_ens_simple[, 
+               unique(stat)])
+           field_descriptions_simple <- list(admin0_name = "Name of the country (first-level administrative unit)", 
+               admin1_name = "Name of the subnational region (second-level administrative unit)", 
+               scenario = "Emissions scenario (e.g., SSP1-2.6, SSP3-7.0)", 
+               timeframe = "Future period being analyzed (e.g., 2030s, 2050s)", 
+               hazard = "Climate hazard variable (e.g., PTOT = precipitation total, TMAX = max temperature)", 
+               season = "3-month rolling window or annual aggregation (e.g., DJF, MAM, annual)", 
+               baseline_name = "Label for the baseline period used to compute anomalies (e.g., 1995–2014)", 
+               value_diff = "Difference between end and start 5-year means for the raw hazard values (e.g., TAVG, PTOT, TMAX).", 
+               value_decade = "Estimated change in the seasonal hazard value over a 10-year period, based on Sen’s slope.", 
+               anomaly_diff = "Difference between end and start 5-year means for the seasonal anomalies relative to historical baseline.")
+           write_json(list(source = list(input_raster = indices_dir, 
+               extraction_rast = atlas_data$boundaries$name), extraction_method = "zonal", 
+               geo_filters = grep("admin", colnames(data_ex_trend_stats_ens_simple), 
+                   value = TRUE), season_type = "3-month windows or annual", 
+               filters = filters, value_var = field_descriptions_simple, 
+               format = ".parquet", date_created = Sys.time(), version = version1, 
+               parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.7.1", 
+               unit = unique(haz_meta[variable.code %in% data_ex_trend_stats_ens_simple[, 
+                   unique(hazard)], .(variable.code, base_unit)]), 
+               extract_stat = extract_stat, anomaly_baseline = baseline_name, 
+               notes = paste0("This simplified file contains a filtered subset of ensemble-level climate trend summaries for key hazards ", 
+                   "(precipitation total [PTOT], average temperature [TAVG], and maximum temperature [TMAX]). ", 
+                   "It includes only three critical trend metrics—value_diff, value_decade, and anomaly_diff—sufficient for many use cases such as regional trend mapping, ", 
+                   "climate impact summaries, and adaptation planning dashboards. These were computed across GCM ensembles and summarized using ", 
+                   "mean, min, max, and standard deviation (SD) to express model spread. The values are provided for each season, scenario, and region, ", 
+                   "enabling spatial and temporal comparison of hazard trends under different future climates.")), 
+               paste0(save_file3, ".json"), pretty = TRUE)
+       }
+   })
+4: eval(ei, envir)
+3: eval(ei, envir)
+2: withVisible(eval(ei, envir))
+1: source(Sys.getenv("R21_SCRIPT"))
+===== R/2.1 DONE (exit: 1) at 2026-06-08 12:28:35 UTC =====
