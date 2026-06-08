@@ -971,13 +971,97 @@ yue_tfpw <- function(year, value, threshold = 0.1) {
   list(y = wr + slope0 * year + intercept0, applied = TRUE, r = r, ts0 = NULL)
 }
 
+# Speedup #3 (Rcpp single-pass Theil–Sen + Mann–Kendall kernel).
+# trend::sens.slope() (slope+CI) and trend::mk.test() (p) each do an independent
+# O(n²) Kendall pass with heavy R-call/object overhead. mk_sen_cpp() does both in
+# ONE pairwise pass — ~63× faster per group (230µs → 3.6µs at n=24), validated
+# numerically IDENTICAL to trend 1.1.6 (R/probe_trend_kernel_identity.R: max diff
+# 1e-16; R/probe_trend_kernel_yue_identity.R full TFPW path: max 2e-13, < round3.4).
+# Compiled per process into .kernel_env; multisession workers each load from the
+# shared Rcpp cache (populated once in main below). Falls back to the trend:: path
+# if compilation fails or R21_DISABLE_TREND_KERNEL=1, so the section is never blocked.
+kernel_cpp   <- file.path(Sys.getenv("project_dir"), "R", "trend_kernel.cpp")
+kernel_cache <- file.path(Sys.getenv("project_dir"), "R", ".rcpp_cache")
+.kernel_env  <- new.env(parent = baseenv())  # baseenv (not emptyenv): sourceCpp loader needs base fns
+.ensure_kernel <- function() {
+  if (is.null(.kernel_env$mk_sen_cpp)) {
+    suppressMessages(Rcpp::sourceCpp(kernel_cpp, cacheDir = kernel_cache, env = .kernel_env))
+  }
+  invisible(NULL)
+}
+
+# Kernel equivalent of yue_tfpw + outer Sen/MK block. Returns the baseline-INVARIANT
+# fit only (no intercept — that is recomputed per baseline downstream). Mirrors the
+# trend:: math exactly: index-based Sen slope, year-based detrend intercept0, TFPW.
+fit_value_kernel <- function(year, value) {
+  n <- length(value)
+  if (n < 4L || !all(is.finite(value)))
+    return(list(slope = NA_real_, ci_low = NA_real_, ci_high = NA_real_,
+                p_value = NA_real_, tfpw_applied = FALSE, lag1_ac = NA_real_))
+  ts0        <- .kernel_env$mk_sen_cpp(value)
+  slope0     <- ts0$slope
+  intercept0 <- median(value - slope0 * year, na.rm = TRUE)
+  detr       <- value - (slope0 * year + intercept0)
+  r          <- .kernel_env$lag1_ac_cpp(detr)
+  if (abs(r) <= 0.1)  # TFPW not applied — reuse ts0 (Speedup #2, now kernel-native)
+    return(list(slope = ts0$slope, ci_low = ts0$ci_low, ci_high = ts0$ci_high,
+                p_value = ts0$p_value, tfpw_applied = FALSE, lag1_ac = r))
+  wr  <- c(detr[1L], detr[-1L] - r * detr[-n])
+  z   <- wr + slope0 * year + intercept0
+  tsz <- .kernel_env$mk_sen_cpp(z)
+  list(slope = tsz$slope, ci_low = tsz$ci_low, ci_high = tsz$ci_high,
+       p_value = tsz$p_value, tfpw_applied = TRUE, lag1_ac = r)
+}
+
+# Compile once in the main process so workers hit the Rcpp cache (no parallel-compile
+# race). Compile into a THROWAWAY env, never the global .kernel_env: a populated
+# .kernel_env holds a DLL external pointer that future would serialise to workers as a
+# dead pointer. Keeping the global empty makes each worker .ensure_kernel() load fresh
+# from the shared on-disk cache (cache hit → dyn.load only, no recompile).
+USE_TREND_KERNEL <- FALSE
+if (Sys.getenv("R21_DISABLE_TREND_KERNEL") != "1") {
+  dir.create(kernel_cache, showWarnings = FALSE, recursive = TRUE)
+  USE_TREND_KERNEL <- tryCatch({
+    .probe_env <- new.env(parent = baseenv())
+    suppressMessages(Rcpp::sourceCpp(kernel_cpp, cacheDir = kernel_cache, env = .probe_env))
+    is.function(.probe_env$mk_sen_cpp)
+  }, error = function(e) { message("§3.4 trend kernel compile failed — using trend:: fallback: ", conditionMessage(e)); FALSE })
+}
+
 # This involves running >10^6 linear models to look at trends, so the process is designed to run in parallel
-cat("3.4) Trend calculation (with Yue 2002 TFPW pre-whitening)\n")
+cat(sprintf("3.4) Trend calculation (with Yue 2002 TFPW pre-whitening) — START %s UTC\n",
+            format(Sys.time(), "%Y-%m-%d %H:%M:%S", tz = "UTC")))
+cat(sprintf("3.4) trend kernel: %s\n",
+            if (USE_TREND_KERNEL) "ENABLED (Rcpp single-pass, ~63x/fit)" else "DISABLED (trend:: fallback)"))
+t_sec3_4_start <- Sys.time()
 # sec 3.4 runs >10^6 linear models per file_combo — more memory-intensive
 # than 3.3. mem_per_worker_gb=8 is conservative for the trend data.table ops.
-n_workers_3_4 <- safe_workers(worker_n2, n_tasks = nrow(file_combos), mem_per_worker_gb = 8)
+#
+# Speedup #1 (baseline-invariant fit dedup): the Theil–Sen + MK fit acts on
+# `value`+`year`, which are IDENTICAL across baselines for the same source `data`
+# file. Only the intercept (median(baseline_value - slope*year)) and the downstream
+# anomaly_* stats are baseline-dependent. So we parallelise over the distinct source
+# `data` file and loop its baselines INSIDE one worker, computing the expensive
+# value-fit ONCE and reusing it for every baseline. Cuts §3.4 fit cost by ~#baselines.
+#
+# Parallel-write safety (CR-119 lesson): each worker owns one source, hence ALL of
+# that source's per-baseline output paths and NO other worker's. Output paths are
+# unique across the whole file_combos table (guarded below), so no two workers ever
+# write the same file/object.
+stopifnot(
+  !anyDuplicated(file_combos$save_file),
+  !anyDuplicated(file_combos$save_file2),
+  !anyDuplicated(file_combos$save_file3)
+)
+source_groups <- split(seq_len(nrow(file_combos)), file_combos$data)
+
+n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_per_worker_gb = 8)
 set_parallel_plan(n_cores = n_workers_3_4, use_multisession = TRUE)
-invisible(future.apply::future_lapply(seq_len(nrow(file_combos)), FUN = function(i) {
+invisible(future.apply::future_lapply(seq_along(source_groups), FUN = function(gi) {
+  combo_idx <- source_groups[[gi]]
+  value_fit <- NULL  # baseline-invariant Theil–Sen/MK fit, computed once per source
+
+  for (i in combo_idx) {
   data_file     <- file_combos$save_file[i]
   baseline_name <- names(baselines)[baselines == file_combos$baseline[i]]
 
@@ -986,7 +1070,10 @@ invisible(future.apply::future_lapply(seq_len(nrow(file_combos)), FUN = function
   save_file2 <- gsub(".parquet", "_trends_ensemble.parquet", file_base)
   save_file3 <- gsub(".parquet", "_trends_ensemble_minimal.parquet", file_base)
 
-  cat("3.4) Trends - Processing", i, "/", nrow(file_combos), basename(data_file), "\n")
+  cat(sprintf("3.4) [%s UTC] Processing combo %d/%d (source group %d/%d) %s\n",
+              format(Sys.time(), "%Y-%m-%d %H:%M:%S", tz = "UTC"),
+              i, nrow(file_combos), gi, length(source_groups), basename(data_file)))
+  t_combo_start <- Sys.time()
 
   if (!file.exists(save_file) | overwrite2) {
     data_ex_trend <- data.table(arrow::read_parquet(data_file))
@@ -994,38 +1081,66 @@ invisible(future.apply::future_lapply(seq_len(nrow(file_combos)), FUN = function
     # Filter out rows with NA/NaN/Inf in 'value' or 'year' before fitting the model
     data_ex_trend <- data_ex_trend[is.finite(value) & is.finite(year)][, n_value := NULL]
 
+    fit_keys <- c("admin0_name", "admin1_name", "scenario", "timeframe", "model", "hazard", "season")
+
     ## 3.4.1) Calculate Theil–Sen estimator with TFPW ####
-    trend_summary <- data_ex_trend[
-      ,
-      {
-        pw  <- yue_tfpw(year, value)
-        yw  <- pw$y   # pre-whitened series (or raw if TFPW not applied)
-        # Speedup #2: reuse ts0 computed inside yue_tfpw when TFPW not applied
-        # — avoids a second O(n²) sens.slope() on the same raw series.
-        ts  <- if (!pw$applied && !is.null(pw$ts0)) pw$ts0 else
-               tryCatch(sens.slope(yw), error = function(e) NULL)
-        if (is.null(ts)) {
-          list(
-            slope = NA_real_, intercept = NA_real_,
-            ci_low = NA_real_, ci_high = NA_real_, p_value = NA_real_,
-            tfpw_applied = FALSE, lag1_ac = pw$r
-          )
-        } else {
-          m <- unname(ts$estimates)
-          intercept <- median(baseline_value - m * year)
-          list(
-            slope    = m,
-            intercept = intercept,
-            ci_low   = ts$conf.int[1],
-            ci_high  = ts$conf.int[2],
-            p_value  = tryCatch(mk.test(yw)$p.value, error = function(e) NA_real_),
-            tfpw_applied = pw$applied,
-            lag1_ac  = pw$r
-          )
-        }
-      },
-      by = .(admin0_name, admin1_name, scenario, timeframe, model, hazard, season, baseline_name)
+    # Speedup #1: value-fit (slope/ci/p/tfpw/lag1_ac) is baseline-invariant — compute
+    # once for this source, reuse for every baseline. intercept is intentionally NOT
+    # here (baseline-dependent) and the fit key intentionally excludes baseline_name.
+    if (is.null(value_fit)) {
+      if (USE_TREND_KERNEL) {
+        # Speedup #3: single-pass Rcpp kernel (load into this worker from shared cache).
+        .ensure_kernel()
+        value_fit <- data_ex_trend[, fit_value_kernel(year, value), by = fit_keys]
+      } else {
+        value_fit <- data_ex_trend[
+          ,
+          {
+            pw  <- yue_tfpw(year, value)
+            yw  <- pw$y   # pre-whitened series (or raw if TFPW not applied)
+            # Speedup #2: reuse ts0 computed inside yue_tfpw when TFPW not applied
+            # — avoids a second O(n²) sens.slope() on the same raw series.
+            ts  <- if (!pw$applied && !is.null(pw$ts0)) pw$ts0 else
+                   tryCatch(sens.slope(yw), error = function(e) NULL)
+            if (is.null(ts)) {
+              list(
+                slope = NA_real_,
+                ci_low = NA_real_, ci_high = NA_real_, p_value = NA_real_,
+                tfpw_applied = FALSE, lag1_ac = pw$r
+              )
+            } else {
+              list(
+                slope    = unname(ts$estimates),
+                ci_low   = ts$conf.int[1],
+                ci_high  = ts$conf.int[2],
+                p_value  = tryCatch(mk.test(yw)$p.value, error = function(e) NA_real_),
+                tfpw_applied = pw$applied,
+                lag1_ac  = pw$r
+              )
+            }
+          },
+          by = fit_keys
+        ]
+      }
+    }
+
+    # Baseline-dependent intercept = median(baseline_value - slope*year) per group,
+    # using THIS baseline's baseline_value and the cached slope. .EACHI evaluates j
+    # over the data_ex_trend rows matching each value_fit group — identical row set
+    # and identical median to the per-baseline fit, since value/year/keys are shared.
+    trend_summary <- data_ex_trend[value_fit, on = fit_keys,
+      .(
+        slope        = i.slope,
+        intercept    = median(baseline_value - i.slope * year),
+        ci_low       = i.ci_low,
+        ci_high      = i.ci_high,
+        p_value      = i.p_value,
+        tfpw_applied = i.tfpw_applied,
+        lag1_ac      = i.lag1_ac
+      ),
+      by = .EACHI
     ]
+    trend_summary[, baseline_name := baseline_name]
 
     data_ex_trend_m <- merge(data_ex_trend, trend_summary,
       by = c("admin0_name", "admin1_name", "scenario", "timeframe", "model", "hazard", "season", "baseline_name"),
@@ -1237,10 +1352,18 @@ invisible(future.apply::future_lapply(seq_len(nrow(file_combos)), FUN = function
       )
     ), paste0(save_file3, ".json"), pretty = TRUE)
   }
+  cat(sprintf("3.4) [%s UTC] Done combo %d/%d in %.1f min %s\n",
+              format(Sys.time(), "%Y-%m-%d %H:%M:%S", tz = "UTC"),
+              i, nrow(file_combos),
+              as.numeric(difftime(Sys.time(), t_combo_start, units = "mins")),
+              basename(data_file)))
+  }  # end for (i in combo_idx) — baselines of one source share the cached value_fit
 }))
 
 plan(sequential)
-cat("3.4) Trend calculations - Complete\n")
+cat(sprintf("3.4) Trend calculations - Complete — END %s UTC (section took %.1f min)\n",
+            format(Sys.time(), "%Y-%m-%d %H:%M:%S", tz = "UTC"),
+            as.numeric(difftime(Sys.time(), t_sec3_4_start, units = "mins"))))
 } # end if (run_sec3_4)
 
 cat(sprintf("\n===== 2.1_create_monthly_haz_tables.R COMPLETE at %s UTC =====\n",
