@@ -1044,14 +1044,18 @@ t_sec3_4_start <- Sys.time()
 # `data` file and loop its baselines INSIDE one worker, computing the expensive
 # value-fit ONCE and reusing it for every baseline. Cuts §3.4 fit cost by ~#baselines.
 #
-# Parallel-write safety (CR-119 lesson): each worker owns one source, hence ALL of
-# that source's per-baseline output paths and NO other worker's. Output paths are
-# unique across the whole file_combos table (guarded below), so no two workers ever
-# write the same file/object.
+# Parallel-write safety (CR-119 lesson): each worker owns one source `data` file,
+# hence ALL of that source's per-baseline output paths and NO other worker's. A
+# save_file duplicated ACROSS combos is fine IFF those combos share the same source
+# `data` (then they land in the same group → same worker → sequential writes). Only
+# a path shared by DIFFERENT `data` files is a real cross-worker collision.
+# (file_combos legitimately repeats e.g. 1981-2014 as combo 1 and 7 — same data.)
+.path_single_source <- function(path_col)
+  all(tapply(file_combos$data, file_combos[[path_col]], function(d) uniqueN(d) == 1L))
 stopifnot(
-  !anyDuplicated(file_combos$save_file),
-  !anyDuplicated(file_combos$save_file2),
-  !anyDuplicated(file_combos$save_file3)
+  .path_single_source("save_file"),
+  .path_single_source("save_file2"),
+  .path_single_source("save_file3")
 )
 source_groups <- split(seq_len(nrow(file_combos)), file_combos$data)
 
