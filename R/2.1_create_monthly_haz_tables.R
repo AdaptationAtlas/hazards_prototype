@@ -1159,7 +1159,9 @@ invisible(future.apply::future_lapply(seq_along(source_groups), FUN = function(g
       value_decade = 10 * slope,
       value_pval = p_value[1]
     ),
-    by = .(admin0_name, admin1_name, scenario, model, timeframe, hazard, season, baseline_name)
+    # CR-119: iso3 in by-clause so the trends canonical keeps it (else dropped here,
+    # same silent-drop as §3.3). iso3 is 1:1 with admin0_name, carried from data_ex_trend.
+    by = .(iso3, admin0_name, admin1_name, scenario, model, timeframe, hazard, season, baseline_name)
     ][, value_diff := value_e5 - value_s5][, anomaly_diff := anomaly_e5 - anomaly_s5]
 
     # Create dataset for ensembling, before any rounding occurs
@@ -1253,7 +1255,8 @@ invisible(future.apply::future_lapply(seq_along(source_groups), FUN = function(g
       min = min(value, na.rm = TRUE),
       sd = sd(value, na.rm = TRUE)
     ),
-    by = list(admin0_name, admin1_name, scenario, timeframe, season, hazard, stat)
+    # CR-119: iso3 in by-clause so the trends-ensemble canonical keeps it.
+    by = list(iso3, admin0_name, admin1_name, scenario, timeframe, season, hazard, stat)
     ]
 
     data_ex_trend_stats_ens[, stat := as.character(stat)]
