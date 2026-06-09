@@ -4,8 +4,12 @@
 # match to < 1e-9 on slope/ci_low/ci_high/p_value over every series.
 suppressMessages({ library(Rcpp); library(trend) })
 
-cat("compiling R/trend_kernel.cpp ...\n")
+.t0 <- Sys.time()
+cat(sprintf("[%s] compiling R/trend_kernel.cpp (cold compile ~15-40s, cached ~2s) ...\n",
+            format(Sys.time(), "%H:%M:%S")))
 sourceCpp("R/trend_kernel.cpp")
+cat(sprintf("[%s] compiled in %.1fs — running comparisons ...\n",
+            format(Sys.time(), "%H:%M:%S"), as.numeric(difftime(Sys.time(), .t0, units = "secs"))))
 
 ref <- function(x, cl = 0.95) {
   ss <- trend::sens.slope(x, conf.level = cl)
@@ -55,5 +59,7 @@ cat(sprintf("compared %d series\n", ncmp))
 for (cc in names(maxdiff)) cat(sprintf("  %-9s max|diff|=%.3e\n", cc, maxdiff[[cc]]))
 
 if (nbad > 0) stop(sprintf("FAIL: %d NA-pattern mismatches", nbad))
-if (max(maxdiff) < 1e-9) cat(sprintf("PASS: kernel == trend:: across all series (max %.2e)\n", max(maxdiff))) else
+if (max(maxdiff) < 1e-9)
+  cat(sprintf("[%s] PASS: kernel == trend:: across all series (max %.2e) — total %.1fs\n",
+              format(Sys.time(), "%H:%M:%S"), max(maxdiff), as.numeric(difftime(Sys.time(), .t0, units = "secs")))) else
   stop(sprintf("FAIL: max diff %.3e exceeds 1e-9", max(maxdiff)))

@@ -4,6 +4,8 @@
 # .ensure_kernel() loads from cache. Exit 0 = workers produced kernel results matching
 # the main-process trend:: reference.
 suppressMessages({ library(Rcpp); library(trend); library(future.apply) })
+.t0 <- Sys.time()
+cat(sprintf("[%s] start (compiles kernel + spawns 4 workers; first run ~15-40s) ...\n", format(Sys.time(), "%H:%M:%S")))
 
 kernel_cpp <- normalizePath("R/trend_kernel.cpp")
 kernel_cache <- file.path(normalizePath("R"), ".rcpp_cache")
@@ -62,5 +64,7 @@ for (i in seq_along(series)) {
   mx <- max(mx, abs(res[[i]]$slope - rf$slope), abs(res[[i]]$p - rf$p), na.rm=TRUE)
 }
 cat(sprintf("ran %d series across %d worker PIDs; max|diff| vs trend:: = %.3e\n", length(series), npid, mx))
-if (mx < 1e-9) cat("PASS: multisession workers load kernel from cache & match trend::\n") else
+if (mx < 1e-9)
+  cat(sprintf("[%s] PASS: multisession workers load kernel from cache & match trend:: — total %.1fs\n",
+              format(Sys.time(), "%H:%M:%S"), as.numeric(difftime(Sys.time(), .t0, units = "secs")))) else
   stop(sprintf("FAIL: max diff %.3e", mx))

@@ -3,6 +3,8 @@
 # shared across baselines; baseline_value differs). Asserts identical trend_summary
 # (slope/intercept/ci/p/tfpw/lag1_ac) for every (group × baseline). Exit 0 = identical.
 suppressMessages({ library(Rcpp); library(trend); library(data.table) })
+.t0 <- Sys.time()
+cat(sprintf("[%s] start (first run compiles kernel ~15-40s cold, ~2s cached) ...\n", format(Sys.time(), "%H:%M:%S")))
 
 # --- helpers copied verbatim from R/2.1 §3.4 (kernel env + fit_value_kernel + yue_tfpw) ---
 kernel_cpp <- "R/trend_kernel.cpp"; kernel_cache <- "R/.rcpp_cache"
@@ -92,5 +94,7 @@ for (cc in num) {
 }
 cat(sprintf("groups=%d baselines=2 rows=%d  TFPW-applied groups=%d\n",
             uniqueN(g$gid), nrow(kernel_res), sum(value_fit$tfpw_applied)))
-if (mx < 1e-9) cat(sprintf("PASS: kernel+#1 == trend full §3.4 (max %.2e)\n", mx)) else
+if (mx < 1e-9)
+  cat(sprintf("[%s] PASS: kernel+#1 == trend full §3.4 (max %.2e) — total %.1fs\n",
+              format(Sys.time(), "%H:%M:%S"), mx, as.numeric(difftime(Sys.time(), .t0, units = "secs")))) else
   stop(sprintf("FAIL: max diff %.3e exceeds 1e-9", mx))
