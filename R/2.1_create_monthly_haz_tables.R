@@ -1060,7 +1060,15 @@ stopifnot(
 source_groups <- split(seq_len(nrow(file_combos)), file_combos$data)
 
 n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_per_worker_gb = 8)
-set_parallel_plan(n_cores = n_workers_3_4, use_multisession = TRUE)
+# R21_SEC3_4_SEQUENTIAL=1 forces an in-process (sequential) run — no multisession
+# workers. Use when the multisession path FutureInterrupts on a given host (worker
+# spawn/export fragility); the kernel keeps each source fast enough to run serially.
+if (Sys.getenv("R21_SEC3_4_SEQUENTIAL") == "1") {
+  cat("3.4) R21_SEC3_4_SEQUENTIAL=1 — running sequentially (plan(sequential), no multisession)\n")
+  future::plan(future::sequential)
+} else {
+  set_parallel_plan(n_cores = n_workers_3_4, use_multisession = TRUE)
+}
 invisible(future.apply::future_lapply(seq_along(source_groups), FUN = function(gi) {
   combo_idx <- source_groups[[gi]]
   value_fit <- NULL  # baseline-invariant Theil–Sen/MK fit, computed once per source
