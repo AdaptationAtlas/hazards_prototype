@@ -142,3 +142,53 @@ to load the compiled `.so`. Leading suspects:
 
 Until then: **`R21_SEC3_4_SEQUENTIAL=1` is mandatory.** Sequential + kernel ≈ 1.5–2.5h for all 6
 sources (vs ~a day on `trend::`), reliable.
+
+---
+
+## Strategy: reproduce + fix the multisession kernel bug LOCALLY (2026-06-10)
+
+Goal: get the parallel §3.4 path working again (currently `R21_SEC3_4_SEQUENTIAL=1`
+is the only safe mode). Do it entirely off CGLabs — the bug reproduces from the
+*code path*, not the node, so a laptop/local box with R + Rcpp + future suffices.
+The earlier local probe (`probe_sec3_4_multisession.R`) did NOT reproduce because it
+was too simplified (warm cache, 4 workers, trivial closure). The plan tightens that.
+
+### Phase A — reproduce the FutureInterrupt locally
+Build `R/repro_sec3_4_multisession.R` that mirrors the REAL path as closely as possible:
+1. Same global setup as §3.4: empty `.kernel_env`, `.ensure_kernel()`, `fit_value_kernel`,
+   `USE_TREND_KERNEL`, `kernel_cpp`, `kernel_cache=R/.rcpp_cache`.
+2. Synthetic data at realistic scale: ~6 "source groups", each ~0.3–1.5M groups × ~24 yrs
+   (use the `diag` generator; n≈24/group). Optionally read the 125M real seasons file if
+   migrated (`s3://digital-atlas/scratch/cr119-debug/`).
+3. Force the failing config: `plan(multisession, workers=6)`, `future.seed=TRUE`, each
+   worker calls `.ensure_kernel()` then `fit_value_kernel` over its group — i.e. concurrent
+   `sourceCpp(cacheDir=shared)` across 6 fresh workers.
+4. Run it 3× to confirm the interrupt is reproducible.
+   - Try **cold cache** (delete `R/.rcpp_cache` first) AND **warm cache** — the cold/concurrent
+     case is the prime suspect.
+
+### Phase B — bisect the cause (toggle one variable at a time)
+- **B1 private cacheDir:** each worker uses `cacheDir=file.path(tempdir(),paste0("rcpp_",Sys.getpid()))`.
+  If the interrupt disappears → confirms suspect #1 (shared-cache `sourceCpp` race).
+- **B2 dyn.load instead of sourceCpp:** main compiles once; workers `dyn.load()` the existing
+  `.so` + wrap `.Call`, no `sourceCpp`. If clean → it's `sourceCpp`'s in-worker machinery.
+- **B3 minimal globals:** strip the closure to just the kernel call (no write_parquet/json) to
+  rule out global-export/serialization (suspect #2).
+
+### Phase C — implement + validate the durable fix (package-ify)
+1. Scaffold a tiny package `trendkernel/` (DESCRIPTION + `src/trend_kernel.cpp` with the same
+   `// [[Rcpp::export]]` fns + `R/` wrappers). `Rcpp::compileAttributes()` then `R CMD INSTALL`.
+2. §3.4: replace `.ensure_kernel()`/`sourceCpp` with `requireNamespace("trendkernel")` and call
+   `trendkernel::mk_sen_cpp`/`lag1_ac_cpp`. Workers just `library(trendkernel)` — no per-worker
+   compile, no shared-cache race, no env serialization.
+3. Re-run Phase A harness with the package → must complete multisession, no interrupt, output
+   numerically identical to the sequential/`trend::` path (reuse the identity probes).
+4. Keep `R21_SEC3_4_SEQUENTIAL` as an escape hatch; keep `USE_TREND_KERNEL`/`R21_DISABLE_TREND_KERNEL`
+   gates and the `trend::` fallback if the package isn't installed.
+
+### Acceptance
+- Phase A reproduces the interrupt locally (so we're fixing the real thing).
+- Phase C: 6-worker multisession run completes locally across ≥3 repeats, results identical to
+  sequential within `round3.4`, no `FutureInterruptError`.
+- Then deploy to CGLabs (healthy-node pre-flight), parallel on, validate one real combo vs
+  `_trendref`, and drop the mandatory `R21_SEC3_4_SEQUENTIAL`.
