@@ -407,8 +407,15 @@ and aggregate scans threw `TProtocolException: Invalid data`. Root causes + fixe
     commit `b83dd3f`) and §3.4 (`data_ex_trend_stats` + `data_ex_trend_stats_ens`,
     commit `9117450`). `iso3` is carried from the §3.2 seasons file and is 1:1 with
     `admin0_name`. **All `*_trends*.parquet` must be regenerated to gain iso3.**
--   **14× size** — the `models` GCM list was stored as a per-row string. Now kept in
-    the JSON sidecar only, not in data rows.
+-   **size** — the original diagnosis blamed the per-row `models` string. **This is wrong**
+    (corrected 2026-06-10 via `parquet_metadata` footer reads, see
+    `ISSUE_cr119_canonical_regression.md` + the climateRationale dispatch): `models`
+    dict-encodes to ~0 MB. The real size driver on `ensemble_season_timeseries` is the
+    **CR-060 quantile columns** + the 4 unused stat columns (`max/min/max_anomaly/min_anomaly`
+    ≈ 45%). The fix is **per-iso3 hive partitioning + column pruning** on that file (a §3.3
+    producer change), not `models` removal. Note also: **Future Projections reads
+    `ensemble_season_timeseries`, not `*_trends*`** — the §3.4 trends regen here is orthogonal
+    to FP (serves the future CR-117 consumer).
 -   **Thrift corruption** — parallel §3.3 writers collided on a shared output path.
     §3.3 reverted to sequential `lapply` (single-digit minutes anyway). See
     `ISSUE_cr119_canonical_regression.md` for the full diagnosis + S3-versioning

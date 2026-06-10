@@ -76,6 +76,15 @@ by = list(iso3, admin0_name, admin1_name, scenario, timeframe, hazard, season, b
 
 ### 2. Per-file size inflated ~14× (~20 MB → ~295 MB per period)
 
+> **CORRECTION (2026-06-10) — the `models` root cause below is WRONG.** A `parquet_metadata`
+> footer read of the live file (climateRationale dispatch `2026-06-10_fp-blocker-is-perf-not-trends.md`)
+> shows `models` dict-encodes to **0.0 MB** (1 distinct value) — removing it saves ~0 MB. The
+> 310 MB bad rebake was the **CR-060 quantile columns** (extra float64 cols) ± row duplication.
+> The real size lever on `ensemble_season_timeseries` is **per-iso3 hive partitioning + pruning
+> the 4 unused stat columns** (`max/min/max_anomaly/min_anomaly` ≈ 45%), NOT `models` removal.
+> (The `models`→sidecar change is fine for cleanliness but is not a size fix.) Keep the rest of
+> this section for history; treat "Root cause #1" as superseded.
+
 **Verified by:** `curl -I` on `period=2021-2040` returns `Content-Length: 294633355`. Old canonical (pre-2026-05-27) was ~20 MB per the existing comment in the notebook's `cmip6_future_data` spinner copy.
 
 **Root cause #1 — `models` column replicated per row** at `R/2.1:744`:
