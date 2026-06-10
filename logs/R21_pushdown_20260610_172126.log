@@ -1,0 +1,182 @@
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Starting 2.1_create_monthly_haz_tables.R
+output_dir = Data/hazard_timeseries_mean_month 
+Working with hazards = HSH_max TMAX TAVG NDWL0 NDWS NTx35 PTOT THI_max NDD 
+Using scenarios = ssp126 ssp245 ssp370 ssp585 
+Using time periods = 2021_2040 2041_2060 2061_2080 2081_2100 
+Section controls: sec2=FALSE 3.1=FALSE 3.2=FALSE 3.3=FALSE 3.4=TRUE
+Folders included = /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2081_2100 
+                    admin0_name        admin1_name
+                         <char>             <char>
+ 1:                     Comoros Anjouan (Ndzouani)
+ 2:                     Comoros     Mohéli (Mwali)
+ 3:                  Cabo Verde              Brava
+ 4:                  Cabo Verde               Maio
+ 5:                  Cabo Verde                Sal
+ 6:                  Cabo Verde        Sao Vicente
+ 7:                    Djibouti          Djiboutii
+ 8:                      Guinea            Conakry
+ 9:           Equatorial Guinea            Annobón
+10:                   Mauritius    Agalnga Islands
+11:                   Mauritius      Rivinre Noire
+12:       Sao Tome And Principe           Príncipe
+13:                  Seychelles           La Digue
+14:                  Seychelles               Mahe
+15:                  Seychelles      Other Islands
+16:                  Seychelles            Praslin
+17:                  Seychelles               <NA>
+18: United Republic of Tanzania    Kaskazini Pemba
+19: United Republic of Tanzania       Kusini Pemba
+                                                   hazard
+                                                   <char>
+ 1:                                            NDWL0,NDWS
+ 2:                                            NDWL0,NDWS
+ 3:                                       NDWL0,NDWS,PTOT
+ 4:                                            NDWL0,NDWS
+ 5:                                            NDWL0,NDWS
+ 6:                                            NDWL0,NDWS
+ 7:                                            NDWL0,NDWS
+ 8:                                                  PTOT
+ 9: HSH-max,NDWL0,NDWS,NTx35,NTx40,PTOT,TAVG,THI-max,TMAX
+10:                                            NDWL0,NDWS
+11:                                            NDWL0,NDWS
+12:                                            NDWL0,NDWS
+13:                                            NDWL0,NDWS
+14:                                            NDWL0,NDWS
+15:                                            NDWL0,NDWS
+16:                                            NDWL0,NDWS
+17:                                            NDWL0,NDWS
+18:                                            NDWL0,NDWS
+19:                                            NDWL0,NDWS
+3.1) Seasonal hazard calculation 
+3.1) Seasonal hazard calculation - Complete 
+3.2) Adding historical means 
+3.3) Calculating ensemble stats 
+3.4) Trend calculation (with Yue 2002 TFPW pre-whitening) — START 2026-06-10 17:22:50 UTC
+3.4) trend kernel: ENABLED (Rcpp single-pass, ~63x/fit)
+[safe_workers] requested=20  avail_ram=347 GB  mem_per_worker=8 GB  limit=30  -> 6 workers
+3.4) R21_SEC3_4_SEQUENTIAL=1 — running sequentially (plan(sequential), no multisession)
+3.4) [2026-06-10 17:22:53 UTC] Processing combo 1/7 (source group 1/6) haz_3months_adm_mean_1981-2014_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 17:30:48 UTC] Done combo 1/7 in 7.9 min haz_3months_adm_mean_1981-2014_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 17:30:48 UTC] Processing combo 7/7 (source group 1/6) haz_3months_adm_mean_1981-2014_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 17:35:17 UTC] Done combo 7/7 in 4.5 min haz_3months_adm_mean_1981-2014_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 17:35:18 UTC] Processing combo 2/7 (source group 2/6) haz_3months_adm_mean_1995-2014_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 17:41:11 UTC] Done combo 2/7 in 5.9 min haz_3months_adm_mean_1995-2014_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 17:41:11 UTC] Processing combo 3/7 (source group 3/6) haz_3months_adm_mean_2021-2040_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 18:06:46 UTC] Done combo 3/7 in 25.6 min haz_3months_adm_mean_2021-2040_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 18:06:46 UTC] Processing combo 4/7 (source group 4/6) haz_3months_adm_mean_2041-2060_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 18:31:53 UTC] Done combo 4/7 in 25.1 min haz_3months_adm_mean_2041-2060_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 18:31:53 UTC] Processing combo 5/7 (source group 5/6) haz_3months_adm_mean_2061-2080_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 18:56:40 UTC] Done combo 5/7 in 24.8 min haz_3months_adm_mean_2061-2080_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 18:56:40 UTC] Processing combo 6/7 (source group 6/6) haz_3months_adm_mean_2081-2100_anomaly-historic_seasons.parquet
+3.4) [2026-06-10 19:21:48 UTC] Done combo 6/7 in 25.1 min haz_3months_adm_mean_2081-2100_anomaly-historic_seasons.parquet
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_trends.parquet written (32 row groups, 640 chunks, 32.6 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=1613898)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_trends_ensemble.parquet written (20 row groups, 240 chunks, 29.1 KB avg chunk, stats verified on admin0_name, hazard, rows=986271)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_trends_ensemble_minimal.parquet written (2 row groups, 24 chunks, 25.1 KB avg chunk, stats verified on admin0_name, hazard, rows=90129)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_trends.parquet written (32 row groups, 640 chunks, 32.6 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=1613898)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_trends_ensemble.parquet written (20 row groups, 240 chunks, 29.1 KB avg chunk, stats verified on admin0_name, hazard, rows=986271)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1981-2014_anomaly-historic_trends_ensemble_minimal.parquet written (2 row groups, 24 chunks, 25.1 KB avg chunk, stats verified on admin0_name, hazard, rows=90129)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1995-2014_anomaly-historic_trends.parquet written (32 row groups, 640 chunks, 32.3 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=1613898)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1995-2014_anomaly-historic_trends_ensemble.parquet written (20 row groups, 240 chunks, 28.9 KB avg chunk, stats verified on admin0_name, hazard, rows=986271)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_1995-2014_anomaly-historic_trends_ensemble_minimal.parquet written (2 row groups, 24 chunks, 24.6 KB avg chunk, stats verified on admin0_name, hazard, rows=90129)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2021-2040_anomaly-historic_trends.parquet written (130 row groups, 2600 chunks, 33.6 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=6610552)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2021-2040_anomaly-historic_trends_ensemble.parquet written (86 row groups, 1032 chunks, 30.2 KB avg chunk, stats verified on admin0_name, hazard, rows=4382664)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2021-2040_anomaly-historic_trends_ensemble_minimal.parquet written (8 row groups, 96 chunks, 24.5 KB avg chunk, stats verified on admin0_name, hazard, rows=361452)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2041-2060_anomaly-historic_trends.parquet written (130 row groups, 2600 chunks, 34.3 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=6610552)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2041-2060_anomaly-historic_trends_ensemble.parquet written (86 row groups, 1032 chunks, 30.4 KB avg chunk, stats verified on admin0_name, hazard, rows=4382664)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2041-2060_anomaly-historic_trends_ensemble_minimal.parquet written (8 row groups, 96 chunks, 24.9 KB avg chunk, stats verified on admin0_name, hazard, rows=361452)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2061-2080_anomaly-historic_trends.parquet written (130 row groups, 2600 chunks, 34.9 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=6610552)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2061-2080_anomaly-historic_trends_ensemble.parquet written (86 row groups, 1032 chunks, 30.5 KB avg chunk, stats verified on admin0_name, hazard, rows=4382664)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2061-2080_anomaly-historic_trends_ensemble_minimal.parquet written (8 row groups, 96 chunks, 25.1 KB avg chunk, stats verified on admin0_name, hazard, rows=361452)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2081-2100_anomaly-historic_trends.parquet written (130 row groups, 2600 chunks, 35.5 KB avg chunk, stats verified on admin0_name, hazard, scenario, rows=6610552)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2081-2100_anomaly-historic_trends_ensemble.parquet written (86 row groups, 1032 chunks, 30.5 KB avg chunk, stats verified on admin0_name, hazard, rows=4382664)
+write_parquet_pushdown: Data/hazard_timeseries_mean_month/haz_3months_adm_mean_2081-2100_anomaly-historic_trends_ensemble_minimal.parquet written (8 row groups, 96 chunks, 25.2 KB avg chunk, stats verified on admin0_name, hazard, rows=361452)
+3.4) Trend calculations - Complete — END 2026-06-10 19:21:48 UTC (section took 119.0 min)
+
+===== 2.1_create_monthly_haz_tables.R COMPLETE at 2026-06-10 19:21:48 UTC =====
+There were 16 warnings (use warnings() to see them)
+===== R/2.1 DONE (exit: 0) at 2026-06-10 19:21:53 UTC =====
