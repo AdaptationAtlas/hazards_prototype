@@ -90,13 +90,24 @@ Folders included = /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices
 /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2041_2060
 /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2061_2080
 /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2081_2100 
-/tmp/r21_run_20260610_172007.sh: line 7: 365302 Killed                  SKIP_R2_1_SEC3_3=1 SKIP_R2_1_SEC3_2=1 SKIP_R2_1_SEC3_1=1 SKIP_R2_1_SEC2=1 FORCE_OVERWRITE=1 Rscript -e '
+/tmp/r21_run_20260610_172036.sh: line 7: 365395 Killed                  SKIP_R2_1_SEC3_3=1 SKIP_R2_1_SEC3_2=1 SKIP_R2_1_SEC3_1=1 SKIP_R2_1_SEC2=1 FORCE_OVERWRITE=1 Rscript -e '
 options(error = function() { traceback(2); quit(status=1, save="no") })
 source(Sys.getenv("SETUP_SCRIPT"))
 source(Sys.getenv("R21_SCRIPT"))
 '
 ===== R/2.1 DONE (exit: 137) at 2026-06-10 17:21:16 UTC =====
-[develop 6280db1] auto: R/2.1 log 20260610_172007 (exit 137)
- 1 file changed, 98 insertions(+)
- create mode 100644 logs/R21_pushdown_20260610_172007.log
+fatal: Unable to create '/home/jovyan/atlas/hazards_prototype/.git/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
+fatal: Unable to create '/home/jovyan/atlas/hazards_prototype/.git/index.lock': File exists.
+
+Another git process seems to be running in this repository, e.g.
+an editor opened by 'git commit'. Please make sure all processes
+are terminated then try again. If it still fails, a git process
+may have crashed in this repository earlier:
+remove the file manually to continue.
 ===== LOG COMMITTED AND PUSHED =====
