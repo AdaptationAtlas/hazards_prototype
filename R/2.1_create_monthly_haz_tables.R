@@ -1168,7 +1168,9 @@ invisible(future.apply::future_lapply(seq_along(source_groups), FUN = function(g
       value_end = max(year) * slope[1] + intercept[1],
       value_e5 = mean(tail(value, 5)),
       anomaly_e5 = mean(tail(anomaly, 5)),
-      value_decade = 10 * slope,
+      value_decade = 10 * slope[1],  # scalar: slope is the per-row merged column; `10*slope`
+                                      # returned a length-n vector → data.table emitted one
+                                      # (identical) row PER YEAR (~20-34× row duplication).
       value_pval = p_value[1]
     ),
     # CR-119: iso3 in by-clause so the trends canonical keeps it (else dropped here,
