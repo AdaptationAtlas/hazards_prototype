@@ -1,0 +1,98 @@
+Loading required package: pacman
+Loading required package: exactextractr
+Climate data source =  nexgddp 
+0_server_setup.R has completed successfully.
+CGLabs =  TRUE 
+There were 17 warnings (use warnings() to see them)
+Starting 2.1_create_monthly_haz_tables.R
+output_dir = Data/hazard_timeseries_mean_month 
+Working with hazards = HSH_max TMAX TAVG NDWL0 NDWS NTx35 PTOT THI_max NDD 
+Using scenarios = ssp126 ssp245 ssp370 ssp585 
+Using time periods = 2021_2040 2041_2060 2061_2080 2081_2100 
+Section controls: sec2=FALSE 3.1=FALSE 3.2=FALSE 3.3=FALSE 3.4=TRUE
+Folders included = /home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp126_MRI-ESM2-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp245_MRI-ESM2-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp370_MRI-ESM2-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_ACCESS-ESM1-5_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_EC-Earth3_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_INM-CM5-0_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MPI-ESM1-2-HR_2081_2100
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2021_2040
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2041_2060
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2061_2080
+/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices/ssp585_MRI-ESM2-0_2081_2100 
+/tmp/r21_run_20260610_172007.sh: line 7: 365302 Killed                  SKIP_R2_1_SEC3_3=1 SKIP_R2_1_SEC3_2=1 SKIP_R2_1_SEC3_1=1 SKIP_R2_1_SEC2=1 FORCE_OVERWRITE=1 Rscript -e '
+options(error = function() { traceback(2); quit(status=1, save="no") })
+source(Sys.getenv("SETUP_SCRIPT"))
+source(Sys.getenv("R21_SCRIPT"))
+'
+===== R/2.1 DONE (exit: 137) at 2026-06-10 17:21:16 UTC =====
