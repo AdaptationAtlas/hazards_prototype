@@ -1063,13 +1063,10 @@ n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_pe
 # R21_SEC3_4_SEQUENTIAL=1 forces an in-process (sequential) run — no multisession
 # workers. Use when the multisession path FutureInterrupts on a given host (worker
 # spawn/export fragility); the kernel keeps each source fast enough to run serially.
-if (Sys.getenv("R21_SEC3_4_SEQUENTIAL") == "1") {
-  cat("3.4) R21_SEC3_4_SEQUENTIAL=1 — running sequentially (plan(sequential), no multisession)\n")
-  future::plan(future::sequential)
-} else {
-  set_parallel_plan(n_cores = n_workers_3_4, use_multisession = TRUE)
-}
-invisible(future.apply::future_lapply(seq_along(source_groups), FUN = function(gi) {
+# §3.4 worker over source groups. Defined as a plain function so SEQUENTIAL mode can invoke
+# it via base lapply() (below): future_lapply BUFFERS worker stdout until it returns, which
+# hides the per-combo timestamped progress — lapply() streams cat() live to the log.
+.sec34_FUN <- function(gi) {
   combo_idx <- source_groups[[gi]]
   value_fit <- NULL  # baseline-invariant Theil–Sen/MK fit, computed once per source
 
@@ -1375,7 +1372,17 @@ invisible(future.apply::future_lapply(seq_along(source_groups), FUN = function(g
               as.numeric(difftime(Sys.time(), t_combo_start, units = "mins")),
               basename(data_file)))
   }  # end for (i in combo_idx) — baselines of one source share the cached value_fit
-}))
+}
+
+# SEQUENTIAL → base lapply so per-combo cat() streams live (no future stdout buffering).
+# Parallel → future_lapply (multisession + kernel currently broken — see ISSUE_sec3.4).
+if (Sys.getenv("R21_SEC3_4_SEQUENTIAL") == "1") {
+  cat("3.4) R21_SEC3_4_SEQUENTIAL=1 — sequential via lapply (live per-combo progress)\n")
+  invisible(lapply(seq_along(source_groups), .sec34_FUN))
+} else {
+  set_parallel_plan(n_cores = n_workers_3_4, use_multisession = TRUE)
+  invisible(future.apply::future_lapply(seq_along(source_groups), FUN = .sec34_FUN))
+}
 
 plan(sequential)
 cat(sprintf("3.4) Trend calculations - Complete — END %s UTC (section took %.1f min)\n",
