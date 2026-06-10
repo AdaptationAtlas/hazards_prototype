@@ -100,3 +100,45 @@ Each step: re-run `05_trend-validation-reference.py` + diff one `file_combo`'s
 1. `05_trend-validation-reference.py` → 4/4 (lives in `atlas_notebooks/.../context/`)
 2. Diff one real `*_trends.parquet` combo (kernel vs `trend::` fallback) within `round3.4`
 3. Confirm cglabs has a C++ toolchain (else it auto-falls-back to `trend::`, slow but correct)
+
+---
+
+## KNOWN BUG (2026-06-10): multisession §3.4 path is non-functional with the kernel
+
+**Status: the parallel (multisession) §3.4 path is BROKEN and must NOT be used as-is.**
+Workaround in place: env flag `R21_SEC3_4_SEQUENTIAL=1` forces `plan(sequential)` (commit
+`5f8d97e`). All real runs must set it until the parallel path is fixed.
+
+**Symptom:** with `USE_TREND_KERNEL` on, `future.apply::future_lapply` over `source_groups`
+`FutureInterrupt`s **immediately**, every run, even on a healthy node:
+```
+Warning: Caught FutureInterruptError. Canceling all iterations ...
+Error: Future ('future_lapply-1') of class MultisessionFuture interrupted, while running on 'localhost'
+```
+Zero combos complete. NOT a node/FS issue (reproduces on a healthy node; the single-process
+diagnostic `diag_sec3_4_kernel_speed.R` runs fine; the OLD per-combo `trend::`-only multisession
+§3.4 completed Jun-5). The delta is the **kernel machinery shipped to workers**.
+
+**Root cause (suspected, not yet definitively pinned — bypassed rather than burn 1-per-run remote
+debug cycles):** each worker calls `Rcpp::sourceCpp(..., cacheDir=R/.rcpp_cache, env=.kernel_env)`
+to load the compiled `.so`. Leading suspects:
+1. **Concurrent in-worker `sourceCpp` on a shared cacheDir** — N workers racing/locking the same
+   cache artifacts; one trips → interrupt cascade. (A simplified local 4-worker probe did NOT
+   reproduce — warm cache, fewer workers, faster FS — so it's env + full-path specific.)
+2. `future` global-export/serialization of `.kernel_env` + the kernel function closures.
+3. Worker death during kernel load surfacing as an interrupt.
+
+**DURABLE FIX (do this to restore the parallel speedup):**
+- **Package-ify the kernel.** Move `R/trend_kernel.cpp` into a tiny source package (e.g.
+  `trendkernel/` with `src/` + `// [[Rcpp::export]]`), `R CMD INSTALL` it once. Then workers just
+  `library(trendkernel)` — NO per-worker `sourceCpp`, no shared-cache race, no env serialization.
+  This is the standard Rcpp-in-parallel pattern and should make multisession kernel-safe.
+- Fallback if not packaging: give each worker a **private cacheDir** (e.g.
+  `file.path(tempdir(), paste0("rcpp_", Sys.getpid()))`) so no two workers share cache files,
+  OR pre-compile in main and have workers `dyn.load()` the existing `.so` directly instead of
+  re-`sourceCpp`.
+- Reproduce locally first: pre-warm cache, then 6 workers each `sourceCpp` simultaneously under a
+  master `future_lapply`, to confirm which suspect fires before committing the fix.
+
+Until then: **`R21_SEC3_4_SEQUENTIAL=1` is mandatory.** Sequential + kernel ≈ 1.5–2.5h for all 6
+sources (vs ~a day on `trend::`), reliable.
