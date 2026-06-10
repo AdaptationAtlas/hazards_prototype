@@ -390,8 +390,97 @@ Additional fields in ensemble and trend tables include:
 
 ------------------------------------------------------------------------
 
+## 2026-06 Update — R/2.1 monthly pipeline (CR-119 fix, §3.4 trend speedup, ops lessons)
+
+*Added 2026-06-10. Scope: `R/2.1_create_monthly_haz_tables.R`, producing
+`hazard_timeseries_mean_month/*` for the NEX-GDDP-CMIP6 source on CGLabs.*
+
+### CR-119 — `iso3` dropped from canonical outputs (FIXED)
+
+The 2026-06-05 canonical publish broke every notebook reader: `iso3` was missing
+from the schema (`Binder Error: column "iso3" not found`), files were ~14× too big,
+and aggregate scans threw `TProtocolException: Invalid data`. Root causes + fixes:
+
+-   **iso3 dropped** — the §3.3 *and* §3.4 aggregation `by=` clauses omitted `iso3`,
+    and `write_parquet_pushdown` silently drops sort columns that aren't present.
+    Fixed by adding `iso3` to the by-clauses in §3.3 (`data_ag`/`data_ag_ens`,
+    commit `b83dd3f`) and §3.4 (`data_ex_trend_stats` + `data_ex_trend_stats_ens`,
+    commit `9117450`). `iso3` is carried from the §3.2 seasons file and is 1:1 with
+    `admin0_name`. **All `*_trends*.parquet` must be regenerated to gain iso3.**
+-   **size** — the original diagnosis blamed the per-row `models` string. **This is wrong**
+    (corrected 2026-06-10 via `parquet_metadata` footer reads, see
+    `ISSUE_cr119_canonical_regression.md` + the climateRationale dispatch): `models`
+    dict-encodes to ~0 MB. The real size driver on `ensemble_season_timeseries` is the
+    **CR-060 quantile columns** + the 4 unused stat columns (`max/min/max_anomaly/min_anomaly`
+    ≈ 45%). The fix is **per-iso3 hive partitioning + column pruning** on that file (a §3.3
+    producer change), not `models` removal. Note also: **Future Projections reads
+    `ensemble_season_timeseries`, not `*_trends*`** — the §3.4 trends regen here is orthogonal
+    to FP (serves the future CR-117 consumer).
+-   **Thrift corruption** — parallel §3.3 writers collided on a shared output path.
+    §3.3 reverted to sequential `lapply` (single-digit minutes anyway). See
+    `ISSUE_cr119_canonical_regression.md` for the full diagnosis + S3-versioning
+    rollback procedure used as the acute fix.
+
+### §3.4 trend computation — ~9 h/timeframe → minutes (speedups #1–#3)
+
+Sen's-slope + Mann–Kendall trend fit over >10⁶ groups was the pipeline bottleneck.
+Three numerically-identical speedups (validated to < `round3.4` by synthetic probes
+`R/probe_*`):
+
+-   **#1 baseline-invariant dedup** — `value`/`year` are identical across baselines
+    for the same source file; only `intercept`/anomalies differ. §3.4 now iterates
+    over distinct source `data` files (`source_groups`), computes the fit once, and
+    recomputes only the baseline-dependent intercept per baseline via an `.EACHI` join.
+-   **#2** — reuse the Theil–Sen fit from `yue_tfpw()` when TFPW isn't applied.
+-   **#3 Rcpp single-pass kernel** (`R/trend_kernel.cpp` → `mk_sen_cpp`/`lag1_ac_cpp`)
+    — replaces `trend::sens.slope` + `trend::mk.test` (two independent O(n²) Kendall
+    passes) with one pairwise pass. **~63× per fit** (230µs→3.6µs @ n=24), ~13k
+    groups/s on real data. Gated by `USE_TREND_KERNEL`; auto-falls-back to `trend::`
+    if the kernel can't compile, or force off with `R21_DISABLE_TREND_KERNEL=1`.
+
+See `ISSUE_sec3.4_trend_speedup.md` for full detail + validation table.
+
+### ⚠️ Known bug — multisession §3.4 path is broken with the kernel
+
+`future_lapply` over `source_groups` `FutureInterrupt`s immediately when the kernel is
+on (suspected: concurrent per-worker `Rcpp::sourceCpp` racing the shared `R/.rcpp_cache`).
+**Workaround (mandatory until fixed): set `R21_SEC3_4_SEQUENTIAL=1`** to force
+`plan(sequential)`. Sequential + kernel ≈ 1.5–2.5 h for all 6 sources (vs ~a day on
+`trend::`). Durable fix = package-ify the kernel (install as a tiny R package so workers
+`library()` it instead of re-`sourceCpp`). Detail + local-test strategy in
+`ISSUE_sec3.4_trend_speedup.md`.
+
+### Running §3.4 standalone (current reliable recipe, CGLabs)
+
+```bash
+# pre-flight: confirm the node's I/O is healthy (it has wedged repeatedly under load)
+uptime                                              # want single-digit load
+timeout 5 cat ~/R/x86_64-pc-linux-gnu-library/4.5/Rcpp/include/Rcpp.h >/dev/null && echo ok
+git checkout -- logs/ && git pull --rebase origin develop   # logs are tracked; drop local diffs first
+R21_SEC3_4_SEQUENTIAL=1 FORCE_OVERWRITE=1 nohup bash scripts/r21_rerun.sh \
+  --skip-sec2 --skip-sec3-1 --skip-sec3-2 --skip-sec3-3 > nohup.out 2>&1 &
+```
+
+### Ops lessons (CGLabs)
+
+-   The shared CGLabs node (long uptime, noisy neighbours) intermittently **stalls I/O**:
+    processes stick in uninterruptible `D` state, terminals freeze, even a tiny compile
+    or `aws --version` hangs >1 h. This killed several runs (surfaced as
+    `FutureInterruptError`, *not* a code bug). Recovery: Hub → Stop/Start My Server, and
+    escalate to ops to drain/cordon the node if a restart reschedules onto the same one.
+    **Always pre-flight node I/O health before a long run.**
+-   `logs/*.log` are tracked + auto-committed, then appended after the commit, so every
+    `git pull` blocks on "unstaged changes" → `git checkout -- logs/` first. If the pull
+    silently fails, the runbook launches **old code** — a repeated source of wasted runs.
+-   `Data/` resolves to the climdat-source `working_dir` (e.g.
+    `/home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/`), **not** the repo.
+
+------------------------------------------------------------------------
+
 ## 4) Next Steps
 
+-   [ ] Fix the multisession §3.4 path (package-ify the Rcpp kernel) to restore parallel speed
+-   [ ] Republish the regenerated (iso3-bearing) trends canonical to S3
 -   [ ] Add S3 upload logic to Scripts 2 and 3
 
     -   Confirm S3 inclusion for:
