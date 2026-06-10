@@ -192,3 +192,30 @@ Build `R/repro_sec3_4_multisession.R` that mirrors the REAL path as closely as p
   sequential within `round3.4`, no `FutureInterruptError`.
 - Then deploy to CGLabs (healthy-node pre-flight), parallel on, validate one real combo vs
   `_trendref`, and drop the mandatory `R21_SEC3_4_SEQUENTIAL`.
+
+---
+
+## Progress log 2026-06-10 (sequential rerun + two more bugs)
+
+**Sequential path works.** With `R21_SEC3_4_SEQUENTIAL=1` + kernel, §3.4 completed (exit 0),
+all 6 sources, iso3 present in all. First clean full run.
+
+**Bug B — `value_decade` row duplication (FIXED, `728b1b6`).** `data_ex_trend_stats` used
+`value_decade = 10 * slope`, but `slope` is the per-ROW merged column → returned a length-n
+vector → data.table emitted one (identical) row PER YEAR per group: **~20-34× duplicate rows**
+in every `*_trends.parquet` (1995-2014: 31.87M rows for 1.61M groups, ratio 19.7). Pre-existing,
+not from the speedup work. Fix: `value_decade = 10 * slope[1]`. Confirmed ratio → 1.0 on the
+regenerated file. Also ~halved §3.4 wall-time (234→119 min — writes were the bottleneck) since
+20× fewer rows to write. Ensemble outputs were numerically unaffected (melt+agg collapsed dups).
+
+**Timings (post-fix, sequential):** baselines ~6-8 min, futures ~25 min each, total ~119 min.
+
+**⚠️ Bug C — kernel trends have NO slopes (OPEN, BLOCKS REPUBLISH).** The regenerated trends
+have **`value_slope` = 100% NA and `value_pval` = 100% NA** (every group). The old `trend::`
+ref had slope NA=0%, pval NA=8%. So the Rcpp-kernel path produces NA for every fit column on
+REAL data — despite passing all synthetic probes (1e-16) and the integration probe. The non-fit
+columns (`value_s5/e5/anomaly/diff`) are fine. Under investigation: isolating whether
+`fit_value_kernel` returns NA at the `value_fit` stage (kernel fails on real data) or the bug is
+downstream in the `.EACHI`/merge. **DO NOT republish until resolved** — the headline trend
+output (slope, p-value) is currently all-NA. (Note: the `_trendref` reference is now only useful
+for non-slope columns; for slope/pval the old file actually has values and the new one doesn't.)
