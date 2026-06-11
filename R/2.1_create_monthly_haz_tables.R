@@ -977,47 +977,48 @@ yue_tfpw <- function(year, value, threshold = 0.1) {
 # ONE pairwise pass — ~63× faster per group (230µs → 3.6µs at n=24), validated
 # numerically IDENTICAL to trend 1.1.6 (R/probe_trend_kernel_identity.R: max diff
 # 1e-16; R/probe_trend_kernel_yue_identity.R full TFPW path: max 2e-13, < round3.4).
-# Compiled per process into .kernel_env; multisession workers each load from the
-# shared Rcpp cache (populated once in main below). Falls back to the trend:: path
-# if compilation fails or R21_DISABLE_TREND_KERNEL=1, so the section is never blocked.
+# Loaded WORKER-LOCAL (see below) from the shared Rcpp cache (populated once in main).
+# Falls back to the trend:: path if compilation fails or R21_DISABLE_TREND_KERNEL=1,
+# so the section is never blocked.
 kernel_cpp   <- file.path(Sys.getenv("project_dir"), "R", "trend_kernel.cpp")
 kernel_cache <- file.path(Sys.getenv("project_dir"), "R", ".rcpp_cache")
-.kernel_env  <- new.env(parent = baseenv())  # baseenv (not emptyenv): sourceCpp loader needs base fns
-.ensure_kernel <- function() {
-  if (is.null(.kernel_env$mk_sen_cpp)) {
-    suppressMessages(Rcpp::sourceCpp(kernel_cpp, cacheDir = kernel_cache, env = .kernel_env))
-  }
-  invisible(NULL)
+# WORKER-LOCAL kernel loading — the wiring that survives `future`. A previous design
+# shared a global `.kernel_env` and relied on future to export it; future's globals
+# layer can't carry an Rcpp external pointer and silently produced ALL-NA fits (and
+# globals-size errors). Fix: each worker builds its OWN kernel env + fit closure, so
+# nothing kernel-related is ever a captured/exported global. Validated: identical
+# results under base lapply AND future multisession (worker-local loading).
+load_kernel_env <- function() {
+  ke <- new.env(parent = baseenv())  # baseenv: sourceCpp loader needs base fns
+  suppressMessages(Rcpp::sourceCpp(kernel_cpp, cacheDir = kernel_cache, env = ke))
+  ke
 }
-
-# Kernel equivalent of yue_tfpw + outer Sen/MK block. Returns the baseline-INVARIANT
-# fit only (no intercept — that is recomputed per baseline downstream). Mirrors the
-# trend:: math exactly: index-based Sen slope, year-based detrend intercept0, TFPW.
-fit_value_kernel <- function(year, value) {
+# Factory: returns the baseline-INVARIANT fit fn closing over a worker-local kernel env
+# `ke`. Mirrors trend:: math exactly: index-based Sen slope, year-based detrend
+# intercept0, TFPW; reuses ts0 when TFPW not applied (Speedup #2).
+make_fit_value_kernel <- function(ke) function(year, value) {
   n <- length(value)
   if (n < 4L || !all(is.finite(value)))
     return(list(slope = NA_real_, ci_low = NA_real_, ci_high = NA_real_,
                 p_value = NA_real_, tfpw_applied = FALSE, lag1_ac = NA_real_))
-  ts0        <- .kernel_env$mk_sen_cpp(value)
+  ts0        <- ke$mk_sen_cpp(value)
   slope0     <- ts0$slope
   intercept0 <- median(value - slope0 * year, na.rm = TRUE)
   detr       <- value - (slope0 * year + intercept0)
-  r          <- .kernel_env$lag1_ac_cpp(detr)
-  if (abs(r) <= 0.1)  # TFPW not applied — reuse ts0 (Speedup #2, now kernel-native)
+  r          <- ke$lag1_ac_cpp(detr)
+  if (abs(r) <= 0.1)
     return(list(slope = ts0$slope, ci_low = ts0$ci_low, ci_high = ts0$ci_high,
                 p_value = ts0$p_value, tfpw_applied = FALSE, lag1_ac = r))
   wr  <- c(detr[1L], detr[-1L] - r * detr[-n])
   z   <- wr + slope0 * year + intercept0
-  tsz <- .kernel_env$mk_sen_cpp(z)
+  tsz <- ke$mk_sen_cpp(z)
   list(slope = tsz$slope, ci_low = tsz$ci_low, ci_high = tsz$ci_high,
        p_value = tsz$p_value, tfpw_applied = TRUE, lag1_ac = r)
 }
 
 # Compile once in the main process so workers hit the Rcpp cache (no parallel-compile
-# race). Compile into a THROWAWAY env, never the global .kernel_env: a populated
-# .kernel_env holds a DLL external pointer that future would serialise to workers as a
-# dead pointer. Keeping the global empty makes each worker .ensure_kernel() load fresh
-# from the shared on-disk cache (cache hit → dyn.load only, no recompile).
+# race) and to verify the kernel actually builds on this host. Compile into a throwaway
+# env; each worker later builds its OWN env via load_kernel_env() (cache hit → dyn.load).
 USE_TREND_KERNEL <- FALSE
 if (Sys.getenv("R21_DISABLE_TREND_KERNEL") != "1") {
   dir.create(kernel_cache, showWarnings = FALSE, recursive = TRUE)
@@ -1068,7 +1069,8 @@ n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_pe
 # hides the per-combo timestamped progress — lapply() streams cat() live to the log.
 .sec34_FUN <- function(gi) {
   combo_idx <- source_groups[[gi]]
-  value_fit <- NULL  # baseline-invariant Theil–Sen/MK fit, computed once per source
+  value_fit <- NULL          # baseline-invariant Theil–Sen/MK fit, computed once per source
+  fit_value_kernel <- NULL   # worker-local kernel fit closure, built on first use (survives future)
 
   for (i in combo_idx) {
   data_file     <- file_combos$save_file[i]
@@ -1098,8 +1100,9 @@ n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_pe
     # here (baseline-dependent) and the fit key intentionally excludes baseline_name.
     if (is.null(value_fit)) {
       if (USE_TREND_KERNEL) {
-        # Speedup #3: single-pass Rcpp kernel (load into this worker from shared cache).
-        .ensure_kernel()
+        # Speedup #3: single-pass Rcpp kernel, loaded WORKER-LOCAL so it survives future
+        # (no shared/exported kernel env — that produced all-NA fits). Built once per worker.
+        if (is.null(fit_value_kernel)) fit_value_kernel <- make_fit_value_kernel(load_kernel_env())
         value_fit <- data_ex_trend[, fit_value_kernel(year, value), by = fit_keys]
       } else {
         value_fit <- data_ex_trend[
