@@ -475,6 +475,25 @@ R21_SEC3_4_SEQUENTIAL=1 FORCE_OVERWRITE=1 nohup bash scripts/r21_rerun.sh \
 -   `Data/` resolves to the climdat-source `working_dir` (e.g.
     `/home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/`), **not** the repo.
 
+### Engineering lessons (parallel R / Rcpp / data.table) — reusable
+
+-   **Rcpp functions can't be shared across `future` workers** (external pointers don't
+    serialize). A shared global kernel env exported to workers silently produced **all-NA**
+    results. Fix: **worker-local loading** — each worker builds its own env + fit closure
+    (`load_kernel_env()` + `make_fit_value_kernel(ke)`); nothing kernel-related/large is a
+    captured global. Works under both `lapply` and `future` multisession.
+-   **`future_lapply` buffers worker stdout until it returns** (even `plan(sequential)`) —
+    per-combo progress never streams. Use base `lapply` for a sequential run that needs live
+    progress; track parallel runs via **output-file mtimes**, not the log.
+-   **A vector-returning `j` in `data.table[, .(), by=]` duplicates rows.**
+    `value_decade = 10 * slope` (per-row vector) emitted one identical row per year (~20-34×
+    bloat). Every `j` element must be length-1 (`slope[1]`, reducers). A `merge` exploding past
+    `nrow(x)+nrow(i)` is the duplicate-key tell.
+-   **An NA-ignoring diff can lie** — `max(abs(.), na.rm=TRUE)` reported "0.0" while 99.5% of a
+    column was NA. Always check NA-fraction / NA-pattern mismatch when validating two datasets.
+-   **`write_parquet_pushdown` silently drops sort columns not in the table** — a column missing
+    from a `by`-clause vanishes with no error (the iso3 bug). Verify key columns post-write.
+
 ------------------------------------------------------------------------
 
 ## 4) Next Steps
