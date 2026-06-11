@@ -219,3 +219,24 @@ columns (`value_s5/e5/anomaly/diff`) are fine. Under investigation: isolating wh
 downstream in the `.EACHI`/merge. **DO NOT republish until resolved** — the headline trend
 output (slope, p-value) is currently all-NA. (Note: the `_trendref` reference is now only useful
 for non-slope columns; for slope/pval the old file actually has values and the new one doesn't.)
+
+---
+
+## RESOLVED 2026-06-11: kernel wiring fixed (worker-local) — multisession + kernel now correct
+
+Root cause of BOTH the multisession `FutureInterrupt` AND the 100%-NA-slope bug **confirmed**:
+§3.4 shared a global `.kernel_env` and relied on `future` to export it to workers. `future`'s
+globals layer can't carry an Rcpp external pointer (and hits globals-size limits) → kernel fits
+silently came back **all-NA** under `future_lapply`. Proven by isolation: kernel via plain
+`lapply` = correct (slopeNA 0); via `future_lapply` = all-NA / globals-size error; standalone
+`dt[, fit, by]` = correct. So it was `future`'s globals handling, not the kernel.
+
+**Fix (commit `e1ef433`):** worker-local loading — `load_kernel_env()` + `make_fit_value_kernel(ke)`;
+each worker builds its OWN kernel env + fit closure, reads its data fresh. Nothing kernel-related
+or large is captured/exported as a `future` global. `R/probe_sec3_4_wiring.R`: identical results
+under base `lapply` AND `future` multisession (3 workers) — slopeNA 0, max|Δ| 0.0 vs reference.
+
+**Status now:** kernel works under BOTH paths. Default = multisession (parallel + fast + correct);
+`R21_SEC3_4_SEQUENTIAL=1` = `lapply` (live-streaming progress, no `future`). The package-ify route
+is no longer required — worker-local loading is the lighter fix. **Next CGLabs run: try the default
+(multisession) kernel path; if any FutureInterrupt persists, fall back to `R21_SEC3_4_SEQUENTIAL=1`.**
