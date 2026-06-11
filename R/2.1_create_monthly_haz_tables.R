@@ -977,56 +977,44 @@ yue_tfpw <- function(year, value, threshold = 0.1) {
 # ONE pairwise pass — ~63× faster per group (230µs → 3.6µs at n=24), validated
 # numerically IDENTICAL to trend 1.1.6 (R/probe_trend_kernel_identity.R: max diff
 # 1e-16; R/probe_trend_kernel_yue_identity.R full TFPW path: max 2e-13, < round3.4).
-# Loaded WORKER-LOCAL (see below) from the shared Rcpp cache (populated once in main).
-# Falls back to the trend:: path if compilation fails or R21_DISABLE_TREND_KERNEL=1,
-# so the section is never blocked.
-kernel_cpp   <- file.path(Sys.getenv("project_dir"), "R", "trend_kernel.cpp")
-kernel_cache <- file.path(Sys.getenv("project_dir"), "R", ".rcpp_cache")
-# WORKER-LOCAL kernel loading — the wiring that survives `future`. A previous design
-# shared a global `.kernel_env` and relied on future to export it; future's globals
-# layer can't carry an Rcpp external pointer and silently produced ALL-NA fits (and
-# globals-size errors). Fix: each worker builds its OWN kernel env + fit closure, so
-# nothing kernel-related is ever a captured/exported global. Validated: identical
-# results under base lapply AND future multisession (worker-local loading).
-load_kernel_env <- function() {
-  ke <- new.env(parent = baseenv())  # baseenv: sourceCpp loader needs base fns
-  suppressMessages(Rcpp::sourceCpp(kernel_cpp, cacheDir = kernel_cache, env = ke))
-  ke
-}
-# Factory: returns the baseline-INVARIANT fit fn closing over a worker-local kernel env
-# `ke`. Mirrors trend:: math exactly: index-based Sen slope, year-based detrend
-# intercept0, TFPW; reuses ts0 when TFPW not applied (Speedup #2).
-make_fit_value_kernel <- function(ke) function(year, value) {
+# Shipped as an INSTALLED PACKAGE `trendkernel` (built from trendkernel/ — one-time
+# `R CMD INSTALL trendkernel`). Packaging — NOT sourceCpp-into-an-env — is what makes the
+# kernel robust under future/multisession: workers load it via the package namespace, so
+# there is NO external-pointer serialisation and NO shared-env global. The earlier
+# sourceCpp-into-shared-env approach silently produced ALL-NA fits under future_lapply.
+# Validated identical under base lapply AND future multisession (R/probe_sec3_4_wiring.R).
+
+# Returns the baseline-INVARIANT fit fn. Mirrors trend:: math exactly: index-based Sen
+# slope, year-based detrend intercept0, TFPW; reuses ts0 when TFPW not applied (#2).
+# Calls the kernel via the `trendkernel` namespace — resolves in any worker with the pkg.
+make_fit_value_kernel <- function() function(year, value) {
   n <- length(value)
   if (n < 4L || !all(is.finite(value)))
     return(list(slope = NA_real_, ci_low = NA_real_, ci_high = NA_real_,
                 p_value = NA_real_, tfpw_applied = FALSE, lag1_ac = NA_real_))
-  ts0        <- ke$mk_sen_cpp(value)
+  ts0        <- trendkernel::mk_sen_cpp(value)
   slope0     <- ts0$slope
   intercept0 <- median(value - slope0 * year, na.rm = TRUE)
   detr       <- value - (slope0 * year + intercept0)
-  r          <- ke$lag1_ac_cpp(detr)
+  r          <- trendkernel::lag1_ac_cpp(detr)
   if (abs(r) <= 0.1)
     return(list(slope = ts0$slope, ci_low = ts0$ci_low, ci_high = ts0$ci_high,
                 p_value = ts0$p_value, tfpw_applied = FALSE, lag1_ac = r))
   wr  <- c(detr[1L], detr[-1L] - r * detr[-n])
   z   <- wr + slope0 * year + intercept0
-  tsz <- ke$mk_sen_cpp(z)
+  tsz <- trendkernel::mk_sen_cpp(z)
   list(slope = tsz$slope, ci_low = tsz$ci_low, ci_high = tsz$ci_high,
        p_value = tsz$p_value, tfpw_applied = TRUE, lag1_ac = r)
 }
 
-# Compile once in the main process so workers hit the Rcpp cache (no parallel-compile
-# race) and to verify the kernel actually builds on this host. Compile into a throwaway
-# env; each worker later builds its OWN env via load_kernel_env() (cache hit → dyn.load).
+# Use the kernel iff the package is installed (and not disabled). No compile here — the
+# package is pre-installed; workers load it via future.packages (declared at the call).
 USE_TREND_KERNEL <- FALSE
 if (Sys.getenv("R21_DISABLE_TREND_KERNEL") != "1") {
-  dir.create(kernel_cache, showWarnings = FALSE, recursive = TRUE)
-  USE_TREND_KERNEL <- tryCatch({
-    .probe_env <- new.env(parent = baseenv())
-    suppressMessages(Rcpp::sourceCpp(kernel_cpp, cacheDir = kernel_cache, env = .probe_env))
-    is.function(.probe_env$mk_sen_cpp)
-  }, error = function(e) { message("§3.4 trend kernel compile failed — using trend:: fallback: ", conditionMessage(e)); FALSE })
+  USE_TREND_KERNEL <- requireNamespace("trendkernel", quietly = TRUE)
+  if (!USE_TREND_KERNEL)
+    message("§3.4: package 'trendkernel' not installed — using trend:: fallback. ",
+            "Install once with:  R CMD INSTALL ", file.path(Sys.getenv("project_dir"), "trendkernel"))
 }
 
 # This involves running >10^6 linear models to look at trends, so the process is designed to run in parallel
@@ -1100,9 +1088,9 @@ n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_pe
     # here (baseline-dependent) and the fit key intentionally excludes baseline_name.
     if (is.null(value_fit)) {
       if (USE_TREND_KERNEL) {
-        # Speedup #3: single-pass Rcpp kernel, loaded WORKER-LOCAL so it survives future
-        # (no shared/exported kernel env — that produced all-NA fits). Built once per worker.
-        if (is.null(fit_value_kernel)) fit_value_kernel <- make_fit_value_kernel(load_kernel_env())
+        # Speedup #3: single-pass Rcpp kernel via the installed `trendkernel` package —
+        # robust under future (workers load it via future.packages; no env serialisation).
+        if (is.null(fit_value_kernel)) fit_value_kernel <- make_fit_value_kernel()
         value_fit <- data_ex_trend[, fit_value_kernel(year, value), by = fit_keys]
       } else {
         value_fit <- data_ex_trend[
@@ -1113,7 +1101,7 @@ n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_pe
             # Speedup #2: reuse ts0 computed inside yue_tfpw when TFPW not applied
             # — avoids a second O(n²) sens.slope() on the same raw series.
             ts  <- if (!pw$applied && !is.null(pw$ts0)) pw$ts0 else
-                   tryCatch(sens.slope(yw), error = function(e) NULL)
+                   tryCatch(trend::sens.slope(yw), error = function(e) NULL)
             if (is.null(ts)) {
               list(
                 slope = NA_real_,
@@ -1125,7 +1113,7 @@ n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_pe
                 slope    = unname(ts$estimates),
                 ci_low   = ts$conf.int[1],
                 ci_high  = ts$conf.int[2],
-                p_value  = tryCatch(mk.test(yw)$p.value, error = function(e) NA_real_),
+                p_value  = tryCatch(trend::mk.test(yw)$p.value, error = function(e) NA_real_),
                 tfpw_applied = pw$applied,
                 lag1_ac  = pw$r
               )
@@ -1378,13 +1366,18 @@ n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_pe
 }
 
 # SEQUENTIAL → base lapply so per-combo cat() streams live (no future stdout buffering).
-# Parallel → future_lapply (multisession + kernel currently broken — see ISSUE_sec3.4).
+# Parallel → future_lapply multisession. Workers must load the packages the worker fn uses;
+# the kernel is now an installed package (`trendkernel`) so it loads cleanly per worker
+# (the fix for the all-NA-slope bug). `trend` is needed for the fallback path.
+.sec34_pkgs <- c("data.table", "arrow", "trend",
+                 if (USE_TREND_KERNEL) "trendkernel" else NULL)
 if (Sys.getenv("R21_SEC3_4_SEQUENTIAL") == "1") {
   cat("3.4) R21_SEC3_4_SEQUENTIAL=1 — sequential via lapply (live per-combo progress)\n")
   invisible(lapply(seq_along(source_groups), .sec34_FUN))
 } else {
   set_parallel_plan(n_cores = n_workers_3_4, use_multisession = TRUE)
-  invisible(future.apply::future_lapply(seq_along(source_groups), FUN = .sec34_FUN))
+  invisible(future.apply::future_lapply(seq_along(source_groups), FUN = .sec34_FUN,
+                                        future.packages = .sec34_pkgs, future.seed = TRUE))
 }
 
 plan(sequential)

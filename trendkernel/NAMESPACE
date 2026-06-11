@@ -1,0 +1,4 @@
+useDynLib(trendkernel, .registration = TRUE)
+importFrom(Rcpp, sourceCpp)
+export(mk_sen_cpp)
+export(lag1_ac_cpp)

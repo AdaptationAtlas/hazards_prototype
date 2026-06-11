@@ -1,0 +1,14 @@
+Package: trendkernel
+Type: Package
+Title: Single-Pass Theil-Sen + Mann-Kendall Kernel
+Version: 0.1.0
+Authors@R: person("Atlas", "Pipeline", role = c("aut", "cre"), email = "p.steward@cgiar.org")
+Description: Rcpp single-pass Sen slope + Mann-Kendall p-value kernel (mk_sen_cpp)
+    and lag-1 autocorrelation (lag1_ac_cpp) for R/2.1 section 3.4 trend computation.
+    Packaged so parallel (future) workers load it via library() — robust under
+    multisession (no sourceCpp-into-shared-env, no external-pointer serialisation).
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports: Rcpp
+LinkingTo: Rcpp
+RoxygenNote: 7.2.0

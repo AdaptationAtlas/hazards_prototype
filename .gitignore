@@ -19,3 +19,8 @@ R/misc/*_files/
 
 # Rcpp sourceCpp compile cache (R/2.1 §3.4 trend kernel)
 R/.rcpp_cache/
+
+# trendkernel package build artifacts (sources tracked, builds ignored)
+trendkernel/src/*.o
+trendkernel/src/*.so
+trendkernel/src/*.dll
