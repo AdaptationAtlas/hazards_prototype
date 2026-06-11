@@ -1130,6 +1130,12 @@ n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_pe
     # and identical median to the per-baseline fit, since value/year/keys are shared.
     trend_summary <- data_ex_trend[value_fit, on = fit_keys,
       .(
+        # Bug C fix: carry baseline_name from the DATA (the raw scenario, e.g. "historic"),
+        # NOT the names(baselines) label ("1995-2014"). The seasons files + §3.3 ensembles key
+        # on the raw value; overriding it (old `trend_summary[, baseline_name := baseline_name]`)
+        # made the merge below match nothing → every right-side col (slope/intercept/p_value) NA.
+        # The human "1995-2014" label still lives in the JSON metadata (anomaly_baseline).
+        baseline_name = baseline_name[1L],
         slope        = i.slope,
         intercept    = median(baseline_value - i.slope * year),
         ci_low       = i.ci_low,
@@ -1140,12 +1146,20 @@ n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_pe
       ),
       by = .EACHI
     ]
-    trend_summary[, baseline_name := baseline_name]
 
     data_ex_trend_m <- merge(data_ex_trend, trend_summary,
       by = c("admin0_name", "admin1_name", "scenario", "timeframe", "model", "hazard", "season", "baseline_name"),
       all.x = TRUE, sort = FALSE
     )
+
+    # Hard gate (Bug C): a key mismatch here silently NA-s every slope/p_value and still
+    # writes a "successful" exit-0 file. Crash loudly BEFORE the expensive write instead.
+    .na_slope <- mean(is.na(data_ex_trend_m$slope))
+    if (.na_slope > 0.5)
+      stop(sprintf("§3.4: %.0f%% NA slope after trend_summary merge — join-key mismatch. data baseline_name={%s}, combo=%s",
+                   100 * .na_slope,
+                   paste(unique(data_ex_trend$baseline_name), collapse = ","),
+                   basename(data_file)))
 
     ### 3.4.2) Calculate trend stats #####
     data_ex_trend_stats <- data_ex_trend_m[, .(
