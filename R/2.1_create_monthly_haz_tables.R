@@ -259,7 +259,7 @@ extract_hazard <- function(i, folders, hazards, output_dir, overwrite, round_dp,
         write_parquet_pushdown(
           result_long, save_file,
           sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "model", "timeframe", "year", "month"),
-          verify_stats_on = c("admin0_name", "hazard")
+          verify_stats_on = c("iso3", "admin0_name", "hazard")
         )
         write_json(list(
           source = list(input_raster = files, extraction_rast = extraction_rast),
@@ -386,7 +386,7 @@ problem_data <- lapply(seq_along(timeframes), FUN = function(i) {
     write_parquet_pushdown(
       data, save_path,
       sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "model", "timeframe", "year", "month"),
-      verify_stats_on = c("admin0_name", "hazard", "scenario")
+      verify_stats_on = c("iso3", "admin0_name", "hazard", "scenario")
     )
 
     json_dat <- jsonlite::read_json(paste0(files_ss[1], ".json"), simplifyVector = TRUE)
@@ -520,7 +520,7 @@ lapply(monthly_files, FUN = function(month_file) {
     write_parquet_pushdown(
       data_ex_season, save_file,
       sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "model", "timeframe", "season", "year"),
-      verify_stats_on = c("admin0_name", "hazard", "scenario")
+      verify_stats_on = c("iso3", "admin0_name", "hazard", "scenario")
     )
 
     json_dat <- jsonlite::read_json(paste0(month_file, ".json"), simplifyVector = TRUE)
@@ -724,30 +724,22 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     models <- data_anomaly[, paste0(sort(unique(model)), collapse = ",")]
 
     # Ensemble models by years.
-    # CR-060: q5/q17/q50/q83/q95 added for IPCC AR6 calibrated-language
+    # CR-060: q17/q83 (+ _anomaly) for IPCC AR6 calibrated-language "likely"
     # uncertainty bands. n_models tracks the per-year GCM count (some models
     # may drop out for specific years). Notebook's CR-061 swaps the ribbon
-    # from sd_anomaly ± to q17_anomaly..q83_anomaly once this lands.
+    # from sd_anomaly ± to q17_anomaly..q83_anomaly.
+    # CR-119: pruned max/min/max_anomaly/min_anomaly (never read; ~45%/file)
+    # and q5/q50/q95(_anomaly) (notebook reads only q17/q83) for WASM perf.
     data_anomaly_ens <- data_anomaly[, list(
       mean     = mean(value, na.rm = TRUE),
-      max      = max(value, na.rm = TRUE),
-      min      = min(value, na.rm = TRUE),
       sd       = sd(value, na.rm = TRUE),
-      q5       = quantile(value, 0.05, na.rm = TRUE),
       q17      = quantile(value, 0.17, na.rm = TRUE),
-      q50      = quantile(value, 0.50, na.rm = TRUE),
       q83      = quantile(value, 0.83, na.rm = TRUE),
-      q95      = quantile(value, 0.95, na.rm = TRUE),
       n_models = sum(!is.na(value)),
       mean_anomaly = mean(anomaly, na.rm = TRUE),
-      max_anomaly  = max(anomaly, na.rm = TRUE),
-      min_anomaly  = min(anomaly, na.rm = TRUE),
       sd_anomaly   = sd(anomaly, na.rm = TRUE),
-      q5_anomaly   = quantile(anomaly, 0.05, na.rm = TRUE),
       q17_anomaly  = quantile(anomaly, 0.17, na.rm = TRUE),
-      q50_anomaly  = quantile(anomaly, 0.50, na.rm = TRUE),
-      q83_anomaly  = quantile(anomaly, 0.83, na.rm = TRUE),
-      q95_anomaly  = quantile(anomaly, 0.95, na.rm = TRUE)
+      q83_anomaly  = quantile(anomaly, 0.83, na.rm = TRUE)
     ),
     # CR-119 fix: iso3 must be in the by-clause or it is dropped from the schema.
     # (write_parquet_pushdown silently skips iso3 in sort_by when not present in tbl.)
@@ -810,7 +802,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     write_parquet_pushdown(
       data_anomaly_ens, save_file2,
       sort_by         = c("iso3", "admin0_name", "hazard", "scenario", "season", "year", "timeframe", "admin1_name"),
-      verify_stats_on = c("admin0_name", "hazard", "scenario", "season")
+      verify_stats_on = c("iso3", "admin0_name", "hazard", "scenario", "season")
     )
 
     # filters must be re-defined here — sec 3.2's lapply closure doesn't
@@ -838,14 +830,15 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
         "Mean of the hazard values across GCMs using ", extract_stat,
         " as the spatial summary method for each model"
       ),
-      max = "Maximum hazard value across GCMs",
-      min = "Minimum hazard value across GCMs",
       sd = "Standard deviation of hazard values across GCMs",
+      q17 = "17th percentile of hazard value across GCMs (AR6 'likely' lower bound)",
+      q83 = "83rd percentile of hazard value across GCMs (AR6 'likely' upper bound)",
+      n_models = "Number of GCMs with a non-NA value contributing to the ensemble for this row",
       mean_anomaly = "Mean anomaly across GCMs (difference from historical baseline)",
-      max_anomaly = "Maximum anomaly across GCMs",
-      min_anomaly = "Minimum anomaly across GCMs",
       sd_anomaly = "Standard deviation of anomalies across GCMs",
-      models = "Comma-separated list of GCMs included in the ensemble"
+      q17_anomaly = "17th percentile of anomaly across GCMs (AR6 'likely' lower bound)",
+      q83_anomaly = "83rd percentile of anomaly across GCMs (AR6 'likely' upper bound)",
+      models = "Comma-separated list of GCMs included in the ensemble (stored in metadata, not a data column)"
     )
 
     write_json(list(
@@ -858,7 +851,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
       date_created = Sys.time(),
       version = version1,
       parent_script = "R/2.1_create_monthly_haz_tables.R - section 3.3",
-      value_variable = "hazard mean, max, min, sd, mean_anomaly, max_anomaly, min_anomaly, sd_anomaly",
+      value_variable = "hazard mean, sd, q17, q83, n_models, mean_anomaly, sd_anomaly, q17_anomaly, q83_anomaly",
       field_descriptions = field_descriptions,
       unit = unique(haz_meta[variable.code %in% data_anomaly_ens[, unique(hazard)], base_unit]),
       extract_stat = extract_stat,
@@ -880,7 +873,7 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     write_parquet_pushdown(
       data_ag_ens, save_file3,
       sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "timeframe", "season"),
-      verify_stats_on = c("admin0_name", "hazard", "scenario")
+      verify_stats_on = c("iso3", "admin0_name", "hazard", "scenario")
     )
 
     filters$year <- NULL
@@ -1197,7 +1190,7 @@ n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_pe
     write_parquet_pushdown(
       data_ex_trend_stats, save_file,
       sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "model", "timeframe", "season"),
-      verify_stats_on = c("admin0_name", "hazard", "scenario")
+      verify_stats_on = c("iso3", "admin0_name", "hazard", "scenario")
     )
 
     filters <- list(
@@ -1284,7 +1277,7 @@ n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_pe
     write_parquet_pushdown(
       data_ex_trend_stats_ens, save_file2,
       sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "timeframe", "season", "stat"),
-      verify_stats_on = c("admin0_name", "hazard")
+      verify_stats_on = c("iso3", "admin0_name", "hazard")
     )
 
     field_descriptions$model <- NULL
@@ -1323,7 +1316,7 @@ n_workers_3_4 <- safe_workers(worker_n2, n_tasks = length(source_groups), mem_pe
     write_parquet_pushdown(
       data_ex_trend_stats_ens_simple, save_file3,
       sort_by         = c("iso3", "admin0_name", "admin1_name", "hazard", "scenario", "season", "stat"),
-      verify_stats_on = c("admin0_name", "hazard")
+      verify_stats_on = c("iso3", "admin0_name", "hazard")
     )
 
     filters <- list(
