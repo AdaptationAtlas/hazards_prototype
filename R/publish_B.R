@@ -1,13 +1,21 @@
 #!/usr/bin/env Rscript
 # CR-119 / CR-117: publish B (slim trends ensemble) to canonical domain=climate keys.
 # Source = §3.4 anomaly-historic *_trends_ensemble.parquet (fresh, iso3-bearing).
-# Slim to trend+significance: stat in {value_slope, value_decade, value_pval},
-# keep iso3/admin/scenario/timeframe/season/hazard/stat + mean (ensemble mean) +
-# sd (across-GCM spread). 4 future periods, baseline=1995-2014. DRY-RUN by default.
+# Ships TREND MAGNITUDE only: stat in {value_slope, value_decade}, keep
+# iso3/admin/scenario/timeframe/season/hazard/stat + mean (ensemble mean) + sd
+# (across-GCM spread). 4 future periods, baseline=1995-2014. DRY-RUN by default.
+#
+# value_slope is fit per-GCM (fit_keys incl. model, L1104) THEN ensembled
+# (§3.7.1 mean/sd across models) — ensembling-is-last, NOT slope-of-the-mean.
+#
+# SIGNIFICANCE DEFERRED (notebook dispatch 2026-06-12): mean-of-pvals across GCMs
+# is statistically weak — value_pval is NOT published. The significance layer needs
+# an AR6-style agreement metric (pct_gcms_sig = frac GCMs with sig slope; pct_sign_pos
+# = frac slope>0), computed per-GCM in the §3.4 producer (§3.7.1). Tracked for CR-117,
+# to land when the metric is settled alongside the sandbox trend-map prototype.
 #
 # Trend metrics are baseline-invariant (anomaly = value - const) => one variant
-# (anomaly-historic) suffices. Not consumed by climateRationale (dispatch
-# 2026-06-12); published for CR-117 / future trend maps.
+# (anomaly-historic) suffices. Not consumed by climateRationale; for CR-117 trend maps.
 #
 # Usage (cglabs):
 #   Rscript R/publish_B.R            # dry-run: checks + plan, writes slim files to /tmp, no upload
@@ -19,7 +27,7 @@ DIR  <- "/home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_timeseries_
 BASE <- "s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months"
 PERIODS <- c("2021-2040", "2041-2060", "2061-2080", "2081-2100")  # 4 futures
 BASELINE_KEY <- "1995-2014"
-KEEP_STATS <- c("value_slope", "value_decade", "value_pval")
+KEEP_STATS <- c("value_slope", "value_decade")   # value_pval deferred — see header (mean-pval weak)
 KEEP_COLS  <- c("iso3","admin0_name","admin1_name","scenario","timeframe","season","hazard","stat","mean","sd")
 VARIABLE   <- "ensemble_season_trends"
 CONFIRM <- nzchar(Sys.getenv("CONFIRM"))
