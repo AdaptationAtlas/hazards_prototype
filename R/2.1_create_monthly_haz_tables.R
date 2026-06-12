@@ -705,6 +705,23 @@ if (run_sec3_3) {
 # model dimension dropped in aggregation), producing TProtocolException
 # on aggregate scans. Sequential is safe and single-digit minutes.
 # Re-parallelise only after adding a stopifnot(unique(save_file2)) guard.
+
+# CR-119: compile the single-pass quantile/ensemble kernel ONCE (sec 3.3 is
+# sequential, so in-process sourceCpp is safe — no future workers). Falls back
+# to the grouped stats::quantile() path if compile fails or the kernel is
+# disabled via R21_DISABLE_QUANTILE_KERNEL=1.
+if (!nzchar(Sys.getenv("R21_DISABLE_QUANTILE_KERNEL"))) {
+  tryCatch({
+    Rcpp::sourceCpp("R/quantile_kernel.cpp")
+    cat("3.3) quantile kernel: ENABLED (Rcpp single-pass type-7)\n")
+  }, error = function(e) {
+    cat("3.3) quantile kernel compile FAILED — fallback to stats::quantile():",
+        conditionMessage(e), "\n")
+  })
+} else {
+  cat("3.3) quantile kernel: DISABLED (R21_DISABLE_QUANTILE_KERNEL) — using stats::quantile()\n")
+}
+
 invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
   save_file <- file_combos$save_file[i]
   save_file2 <- file_combos$save_file2[i]
@@ -730,23 +747,34 @@ invisible(lapply(seq_len(nrow(file_combos)), FUN = function(i) {
     # from sd_anomaly ± to q17_anomaly..q83_anomaly.
     # CR-119: pruned max/min/max_anomaly/min_anomaly (never read; ~45%/file)
     # and q5/q50/q95(_anomaly) (notebook reads only q17/q83) for WASM perf.
-    data_anomaly_ens <- data_anomaly[, list(
-      mean     = mean(value, na.rm = TRUE),
-      sd       = sd(value, na.rm = TRUE),
-      q17      = quantile(value, 0.17, na.rm = TRUE),
-      q83      = quantile(value, 0.83, na.rm = TRUE),
-      n_models = sum(!is.na(value)),
-      mean_anomaly = mean(anomaly, na.rm = TRUE),
-      sd_anomaly   = sd(anomaly, na.rm = TRUE),
-      q17_anomaly  = quantile(anomaly, 0.17, na.rm = TRUE),
-      q83_anomaly  = quantile(anomaly, 0.83, na.rm = TRUE)
-    ),
     # CR-119 fix: iso3 must be in the by-clause or it is dropped from the schema.
     # (write_parquet_pushdown silently skips iso3 in sort_by when not present in tbl.)
-    # Use character vector by= — bare name in list() evaluates in enclosing scope,
-    # not the data.table frame, which fails if iso3 is defined elsewhere.
-    by = c("iso3", "admin0_name", "admin1_name", "scenario", "timeframe", "year", "hazard", "season", "baseline_name")
-    ]
+    by_cols <- c("iso3", "admin0_name", "admin1_name", "scenario", "timeframe", "year", "hazard", "season", "baseline_name")
+    if (exists("ens_stats_cpp")) {
+      # CR-119 fast path: sort -> contiguous group ids -> one C++ pass.
+      # type-7 quantiles identical to stats::quantile (validated in probe).
+      setorderv(data_anomaly, by_cols)
+      data_anomaly[, .grp := .GRP, by = by_cols]
+      keys <- unique(data_anomaly[, ..by_cols])
+      ens_stats <- ens_stats_cpp(data_anomaly$value, data_anomaly$anomaly,
+                                 data_anomaly$.grp, nrow(keys))
+      data_anomaly_ens <- cbind(keys, as.data.table(ens_stats))
+      data_anomaly[, .grp := NULL]
+    } else {
+      data_anomaly_ens <- data_anomaly[, list(
+        mean     = mean(value, na.rm = TRUE),
+        sd       = sd(value, na.rm = TRUE),
+        q17      = quantile(value, 0.17, na.rm = TRUE),
+        q83      = quantile(value, 0.83, na.rm = TRUE),
+        n_models = sum(!is.na(value)),
+        mean_anomaly = mean(anomaly, na.rm = TRUE),
+        sd_anomaly   = sd(anomaly, na.rm = TRUE),
+        q17_anomaly  = quantile(anomaly, 0.17, na.rm = TRUE),
+        q83_anomaly  = quantile(anomaly, 0.83, na.rm = TRUE)
+      ),
+      by = by_cols
+      ]
+    }
 
     num_cols <- names(data_anomaly_ens)[sapply(data_anomaly_ens, is.numeric)]
     data_anomaly_ens[, (num_cols) := lapply(.SD, round, digits = round3.3), .SDcols = num_cols]
