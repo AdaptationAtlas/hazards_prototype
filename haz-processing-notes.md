@@ -498,8 +498,9 @@ R21_SEC3_4_SEQUENTIAL=1 FORCE_OVERWRITE=1 nohup bash scripts/r21_rerun.sh \
 
 ## 4) Next Steps
 
+-   [x] **CR-119 (2026-06-12): §3.3 A republished** — pruned to notebook read-set (drop max/min/max_anomaly/min_anomaly + q5/q50/q95(_anomaly); keep mean/sd/q17/q83/n_models + anomaly twins), iso3-first sort + `verify_stats_on += iso3` guard, single-pass Rcpp quantile kernel (`R/quantile_kernel.cpp`, 23 min → 28.5 s/period). 5 canonical keys republished via `R/republish_A.R` (backups `.preFix-20260612-125412.bak`); live S3 prunable (iso3 stats non-null). See `ISSUE_cr119_canonical_regression.md`. Remaining: real-browser FP verify; Phase-2 per-iso3 hive partitioning.
 -   [ ] Fix the multisession §3.4 path (package-ify the Rcpp kernel) to restore parallel speed
--   [ ] Republish the regenerated (iso3-bearing) trends canonical to S3
+-   [ ] Republish the regenerated (iso3-bearing) trends canonical to S3 (B — not consumed by climateRationale notebook; for CR-117)
 -   [ ] Add S3 upload logic to Scripts 2 and 3
 
     -   Confirm S3 inclusion for:

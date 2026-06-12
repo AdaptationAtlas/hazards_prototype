@@ -1,5 +1,15 @@
 # CR-119: ensemble_season_timeseries canonical (2026-06-05 12:00 UTC) — three regressions, permanent-fix plan
 
+> ## ✅ RESOLVED 2026-06-12 — A republished (pruned + prunable)
+> Producer + publish fixes shipped on `develop` (5ec8b70, 29111b2, c71de18, 7548690, 2035c29) and the 5 canonical keys republished (`R/republish_A.R` CONFIRM, ~13:09 UTC) with each prior object backed up to `.preFix-20260612-125412.bak`.
+> - **iso3 (regression 1):** in §3.3 by-clause; iso3-first `sort_by`; `verify_stats_on` now includes `iso3` on all iso3-sorted writes (build-time prunability guard). Live S3 verified: iso3 row-group stats non-null on all 5 files (35–155 RGs), 0% NULL iso3.
+> - **schema bloat (regression 2):** §3.3 `data_anomaly_ens` pruned to the notebook read-set — dropped `max/min/max_anomaly/min_anomaly` + `q5/q50/q95(_anomaly)`; kept `mean/sd/q17/q83/n_models` + anomaly twins. `models` already kv-only. (NB: new files ~140–148 MB/future > old ~107 MB because the old live file had **no** CR-060 quantiles; this run *adds* q17/q83 + iso3. Prunability — not raw size — is the fix; per-iso3 reads prune to a few RGs.)
+> - **speed:** §3.3 was quantile-bottlenecked (~23 min/period; data.table doesn't GForce quantile). Added `R/quantile_kernel.cpp` (`ens_stats_cpp`, single-pass type-7, sequential in-process sourceCpp via `project_dir`) → **28.5 s/period, kernel ≡ stats::quantile to 2e-14**. Validated `R/probe_sec3_3_prune.R`.
+> - **Phase-2 per-iso3 hive partitioning (Change 2 below): still OPEN** — only sort+prune+guard done. Revisit if per-country reads still stall.
+> - **Trends (B):** notebook does NOT consume trends (dispatch `atlas_notebooks/playbook/handovers/climateRationale/dispatches/2026-06-12_notebook-consumes-A-not-B.md`); B publish tracked separately for CR-117.
+> - **TODO:** verify FP load in a REAL browser (headless mis-runs gated DuckDB-WASM).
+
+
 **Where:** `R/2.1_create_monthly_haz_tables.R` §3.3, `R/_helpers.R` (`write_parquet_pushdown`), `R/s3_upload.R`.
 **Affected canonical:** `s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/period={1995-2014,2021-2040,2041-2060,2061-2080,2081-2100}/baseline=1995-2014/variable=ensemble_season_timeseries.parquet`.
 **Blast radius:** every notebook reader (`notebooks/climateRationale/notebook.qmd` `futureProjections_dataAll`; `notebooks/sandbox/obs_month_overlay.qmd` `cmip6_future_data`). Binder Error on every fetch + `TProtocolException: Invalid data` on any aggregate.
