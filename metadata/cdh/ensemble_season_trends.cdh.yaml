@@ -1,0 +1,130 @@
+# CDH metadata record (CGIAR Climate Data Hub standard) for the NEX-GDDP-CMIP6
+# ensemble seasonal hazard TREND dataset (B). DRAFT — fill TODOs / confirm with
+# the CDH team (bjyberg). Schema: github.com/CGIAR-Climate-Data-Hub/metadata
+# yaml-language-server: $schema=https://raw.githubusercontent.com/CGIAR-Climate-Data-Hub/metadata/main/spec/schemas/metadata-input.schema.json
+cdh_schema_version: "v0.0.1"
+encoding: stac
+
+# ---- Core ----
+id: nex-gddp-cmip6-ensemble-season-trends
+title: "NEX-GDDP-CMIP6 ensemble seasonal hazard trends (Africa, admin)"
+description: >
+  Per-decade Theil–Sen trend magnitude in seasonal climate-hazard indices over four
+  future 20-year periods (2021-2040, 2041-2060, 2061-2080, 2081-2100) under SSP1-2.6,
+  SSP2-4.5, SSP3-7.0 and SSP5-8.5, summarised by sub-national administrative unit across
+  Africa. Trends are fit per GCM (Theil–Sen slope on the per-model yearly series, with
+  Yue–Pilon trend-free pre-whitening) and then ensembled: each row gives the across-GCM
+  `mean` and `sd` of a trend metric. Derived from the NEX-GDDP-CMIP6 ensemble seasonal
+  timeseries (variable=ensemble_season_timeseries). Anomalies use a 1995-2014 baseline;
+  trend magnitude is baseline-invariant so a single baseline variant is published.
+license: ""        # TODO confirm (Atlas convention — likely CC-BY-4.0)
+resource_type: dataset
+keywords:
+  - climate hazard trends
+  - Theil-Sen slope
+  - CMIP6
+  - NEX-GDDP
+  - seasonal
+  - ensemble
+note: >
+  Statistical significance is intentionally NOT included yet. Mean-of-pvalues across GCMs
+  has no clean interpretation; an AR6-style agreement metric (fraction of GCMs with a
+  significant slope; fraction agreeing on sign) is planned (CR-117). Use `value_slope`/
+  `value_decade` for magnitude/direction only until then.
+
+# ---- Contact (>=1 licensor) ----
+contact:
+  - role: licensor
+    organization: "Africa Agriculture Adaptation Atlas"
+    url: "https://adaptationatlas.cgiar.org/"
+  - name: "Pete Steward"
+    role: producer
+    email: "p.steward@cgiar.org"
+    organization: "Alliance of Bioversity International and CIAT"
+
+# ---- Citation ----
+citation: ""       # TODO
+doi: ""            # TODO if/when minted
+
+created:           # CDH-managed
+updated:
+
+# ---- Spatial (admin tabular — no geometry column) ----
+spatial:
+  bbox: [-25.4, -46.97, 63.5, 37.55]   # TODO confirm Africa continental extent
+  geography: [africa]                  # vocab/geography.json (UN M49)
+  crs: "EPSG:4326"
+  resolution:
+    - type: polygon
+      unit: "admin unit"
+      label: "GAUL admin0 / admin1 (admin1_name IS NULL = country aggregate)"
+
+# ---- Temporal ----
+temporal:
+  start_date: "2021-01-01"
+  end_date: "2100-12-31"
+  resolution:
+    values: ["2021-2040", "2041-2060", "2061-2080", "2081-2100"]
+    unit: "20-year period"
+    note: >
+      Each row is a trend fit over one 20-year future period (the `timeframe` dimension).
+      `season` is a rolling 3-month window (12 values).
+
+# ---- Dimensions ----
+dimensions:
+  - name: iso3
+    type: string
+    description: "ISO 3166-1 alpha-3 country code (row-group sort key for predicate pushdown)"
+  - name: admin0_name
+    type: string
+    description: "Country name (GAUL admin0)"
+  - name: admin1_name
+    type: string
+    description: "Sub-national region name (GAUL admin1); NULL = country aggregate row"
+  - name: scenario
+    type: string
+    description: "SSP emissions scenario"
+    values: [ssp126, ssp245, ssp370, ssp585]
+  - name: timeframe
+    type: string
+    description: "Future 20-year period the trend is fit over"
+    values: ["2021-2040", "2041-2060", "2061-2080", "2081-2100"]
+  - name: season
+    type: string
+    description: "Rolling 3-month window"
+    values: [DJF, JFM, FMA, MAM, AMJ, MJJ, JJA, JAS, ASO, SON, OND, NDJ]
+  - name: hazard
+    type: string
+    description: "Climate hazard index"
+    values: [HSH-max, NDD, NDWL0, NDWS, NTx35, NTx40, PTOT, TAVG, THI-max, TMAX]
+  - name: stat
+    type: string
+    description: "Trend metric summarised in this row"
+    values: [value_slope, value_decade]
+    reference_system: >
+      value_slope = Theil–Sen slope per year of the seasonal hazard value;
+      value_decade = value_slope x 10 (change per decade).
+
+# ---- Variables (the cell values) ----
+variables:
+  - name: mean
+    dimensions: [iso3, admin0_name, admin1_name, scenario, timeframe, season, hazard, stat]
+    description: "Across-GCM ensemble mean of the trend metric named in `stat`"
+    data_type: double
+    unit: "hazard-unit per year (value_slope) / per decade (value_decade)"
+  - name: sd
+    dimensions: [iso3, admin0_name, admin1_name, scenario, timeframe, season, hazard, stat]
+    description: "Across-GCM standard deviation of the trend metric (inter-model spread)"
+    data_type: double
+    unit: "same as mean"
+
+# ---- CDH search/filter ----
+cdh:
+  use_cases:
+    - "Maps of projected per-decade change in seasonal climate hazards by admin unit"
+    - "Inter-model spread / agreement on hazard trend direction"
+  not_recommended_for:
+    - use: "Trend statistical significance / robustness"
+      reason: "Significance metric not yet published (mean-pval is statistically weak)"
+      use_instead: null
+  domain: [climate]
