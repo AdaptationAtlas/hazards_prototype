@@ -712,7 +712,7 @@ if (run_sec3_3) {
 # disabled via R21_DISABLE_QUANTILE_KERNEL=1.
 if (!nzchar(Sys.getenv("R21_DISABLE_QUANTILE_KERNEL"))) {
   tryCatch({
-    Rcpp::sourceCpp("R/quantile_kernel.cpp")
+    Rcpp::sourceCpp(file.path(Sys.getenv("project_dir"), "R", "quantile_kernel.cpp"))
     cat("3.3) quantile kernel: ENABLED (Rcpp single-pass type-7)\n")
   }, error = function(e) {
     cat("3.3) quantile kernel compile FAILED — fallback to stats::quantile():",
