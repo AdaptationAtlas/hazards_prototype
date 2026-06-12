@@ -92,15 +92,17 @@ qsub <- sub[, list(
   q17_anomaly=quantile(anomaly,0.17,na.rm=TRUE), q83_anomaly=quantile(anomaly,0.83,na.rm=TRUE)
 ), by = by_cols]
 setkeyv(ksub, by_cols); setkeyv(qsub, by_cols); m <- ksub[qsub]
-worst <- 0
+worst <- 0; patt_ok <- TRUE
 for (c in c("mean","sd","q17","q83","mean_anomaly","sd_anomaly","q17_anomaly","q83_anomaly")) {
-  x <- m[[c]]; y <- m[[paste0("i.", c)]]; both <- !is.na(x) & !is.na(y)
-  d <- if (any(both)) max(abs(x[both] - y[both])) else 0
+  x <- m[[c]]; y <- m[[paste0("i.", c)]]
+  fin <- is.finite(x) & is.finite(y)                      # skip NA/NaN/Inf (Inf-Inf=NaN)
+  d <- if (any(fin)) max(abs(x[fin] - y[fin])) else 0
   worst <- max(worst, d)
+  patt_ok <- patt_ok && identical(which(!is.finite(x)), which(!is.finite(y)))  # non-finite align
 }
 nmok <- all(m$n_models == m[["i.n_models"]])
-ts(sprintf("EQUIV subset (%s/%s, %d groups): max|kernel-quantile|=%.2e  n_models exact=%s",
-           s1, h1, nrow(ksub), worst, nmok))
-if (worst > 1e-6 || !nmok) stop("kernel != stats::quantile on real subset")
+ts(sprintf("EQUIV subset (%s/%s, %d groups): max|kernel-quantile|(finite)=%.2e  non-finite-match=%s  n_models exact=%s",
+           s1, h1, nrow(ksub), worst, patt_ok, nmok))
+if (worst > 1e-6 || !nmok || !patt_ok) stop("kernel != stats::quantile on real subset")
 
 ts("ALL PASS — kernel + prune safe to rerun §3.3 |", el())
