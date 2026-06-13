@@ -75,7 +75,7 @@ compute_iav <- function(period) {
   iav
 }
 
-ts("=== baseline IAV (", BASELINE_PERIOD, ") ===", sep = "")
+ts("=== baseline IAV (", BASELINE_PERIOD, ") ===")
 base_iav <- compute_iav(BASELINE_PERIOD)
 # baseline is scenario=historic; key it scenario-free for the per-GCM delta match
 base_x <- base_iav[, .(iav_sd_base = mean(iav_sd, na.rm = TRUE)), by = XKEYS]  # collapse any scenario dup
@@ -97,7 +97,7 @@ ts(sprintf("  baseline file: %d rows -> %.1f MB", nrow(base_ens), file.size(outb
 
 # --- futures: iav_sd + iav_delta + pct_gcms_increase ---
 for (P in FUTURES) {
-  ts("=== future ", P, " ===", sep = "")
+  ts("=== future ", P, " ===")
   fut <- compute_iav(P)
   fut[base_x, iav_sd_base := i.iav_sd_base, on = XKEYS]   # match GCM to its baseline series
   fut[, delta := iav_sd - iav_sd_base]                    # per-GCM change
