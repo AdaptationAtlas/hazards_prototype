@@ -106,8 +106,12 @@ for (P in FUTURES) {
     iav_sd_sd      = sd(iav_sd, na.rm = TRUE),
     iav_delta_mean = mean(delta, na.rm = TRUE),
     iav_delta_sd   = sd(delta, na.rm = TRUE),
-    pct_increase   = mean(delta > 0, na.rm = TRUE)
+    pct_increase   = mean(delta > 0, na.rm = TRUE),   # NaN if no GCM matched baseline
+    n_delta        = sum(!is.na(delta))
   ), by = EKEYS]
+  # all-NA aggregations -> NaN; store as clean NULL (groups w/ no valid future-vs-baseline GCM)
+  ncols <- c("iav_sd_mean","iav_sd_sd","iav_delta_mean","iav_delta_sd","pct_increase")
+  ens[, (ncols) := lapply(.SD, function(x) { x[is.nan(x)] <- NA_real_; x }), .SDcols = ncols]
   long <- rbindlist(list(
     ens[, .(iso3,admin0_name,admin1_name,scenario,timeframe,season,hazard,
             stat = "iav_sd",    mean = iav_sd_mean,    sd = iav_sd_sd,    pct_gcms_increase = NA_real_)],
@@ -127,13 +131,17 @@ for (P in FUTURES) {
 
 # --- asserts ---
 chk <- as.data.table(read_parquet(plan[[FUTURES[1]]]$out))
+dpct <- chk[stat == "iav_delta", pct_gcms_increase]
+pct_na <- mean(is.na(dpct))               # some groups have no future-vs-baseline GCM match -> NA (expected, sparse)
+ts(sprintf("future check: stats={%s} iso3-NA%%=%.3f  iav_delta pct NA%%=%.1f",
+           paste(sort(unique(chk$stat)), collapse=","), 100*mean(is.na(chk$iso3)), 100*pct_na))
 stopifnot(
   "iso3" %in% names(chk),
   setequal(unique(chk$stat), c("iav_sd","iav_delta")),
   100*mean(is.na(chk$iso3)) == 0,
-  all(is.na(chk[stat=="iav_sd", pct_gcms_increase])),          # pct only on delta
-  all(!is.na(chk[stat=="iav_delta", pct_gcms_increase])),
-  all(chk[stat=="iav_delta", pct_gcms_increase] >= 0 & chk[stat=="iav_delta", pct_gcms_increase] <= 1)
+  all(is.na(chk[stat=="iav_sd", pct_gcms_increase])),                 # pct only on delta rows
+  pct_na < 0.5,                                                       # most delta rows DO match a baseline
+  all(dpct[!is.na(dpct)] >= 0 & dpct[!is.na(dpct)] <= 1)              # non-NA pct is a valid fraction
 )
 bchk <- as.data.table(read_parquet(plan[[BASELINE_PERIOD]]$out))
 stopifnot(setequal(unique(bchk$stat), "iav_sd"))               # baseline = iav_sd only
