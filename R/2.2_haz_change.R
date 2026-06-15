@@ -31,11 +31,52 @@ packages <- c(
   "future.apply",
   "exactextractr",
   "parallel",
-  "pbapply"
+  "pbapply",
+  "DBI",
+  "duckdb"
 )
 
 # Call the function to install and load packages
 load_and_install_packages(packages)
+
+# CR-093: write_parquet_pushdown() (iso3-first sort + row-group stats) lives in
+# _helpers.R. 0_server_setup.R sets project_dir and must be run first.
+source(file.path(project_dir, "R", "_helpers.R"))
+
+# ----------------------------------------------------------------------------
+# CR-093: run controls + timestamped logging (best practice from the R/2.1 saga)
+# ----------------------------------------------------------------------------
+# Timestamped logger with elapsed-since-start, so every line shows duration.
+.t0_22 <- Sys.time()
+.log22 <- function(...) {
+  el <- as.numeric(difftime(Sys.time(), .t0_22, units = "secs"))
+  cat(sprintf("[%s | +%6.1fs] [2.2] %s\n",
+              format(Sys.time(), "%Y-%m-%d %H:%M:%S"), el, paste0(...)))
+  flush.console()
+}
+# Silence pbapply spinners under nohup (handlers("void") does NOT cover pbapply).
+# 0_server_setup.R sets this when run interactively; set it here too so a
+# non-interactive run of 2.2 alone stays quiet.
+if (!interactive()) pbapply::pboptions(type = "none")
+
+# Section run controls: each heavy section runs by default; export
+# SKIP_R22_SEC{1,2,3,4}=1 to skip it (e.g. stage-test SEC1 alone, validate,
+# then run the rest). Setup above (functions, paths, Geographies) is OUTSIDE
+# every guard and always executes.
+run_sec1 <- !nzchar(Sys.getenv("SKIP_R22_SEC1")) # 1) PTOT % area change + diff
+run_sec2 <- !nzchar(Sys.getenv("SKIP_R22_SEC2")) # 2) THI livestock heat % area
+run_sec3 <- !nzchar(Sys.getenv("SKIP_R22_SEC3")) # 3) NTx crop heat % area
+run_sec4 <- !nzchar(Sys.getenv("SKIP_R22_SEC4")) # 4) NDWS/NDWL0 drought/wet freq
+.log22(sprintf("run controls: SEC1=%s SEC2=%s SEC3=%s SEC4=%s",
+               run_sec1, run_sec2, run_sec3, run_sec4))
+
+# Helper: write an R/2.2 parquet with iso3-first pruning + a row-count log line.
+write_chg_parquet <- function(tbl, path) {
+  write_parquet_pushdown(tbl, path, sort_by = chg_sort_by, verify_stats_on = "iso3")
+  .log22(sprintf("wrote %s (%d rows, %d iso3)",
+                 basename(path), nrow(tbl),
+                 length(unique(tbl[["iso3"]]))))
+}
 
 merge_admin_extract <- function(data_ex) {
   # Define a mapping of administrative level names to short codes.
@@ -46,11 +87,14 @@ merge_admin_extract <- function(data_ex) {
     level <- levels[i]
 
     # Convert the data to a data.table and remove specific columns.
+    # CR-093: retain iso3 (notebook filters on it + enables iso3-first
+    # row-group pruning); only admin_name is dropped here.
     data <- data.table(data.frame(data_ex[[names(level)]]))
-    data <- data[, !c("admin_name", "iso3")]
+    data <- data[, !c("admin_name")]
 
     # Determine the administrative level being processed and adjust the data accordingly.
-    admin <- "admin0_name"
+    # CR-093: iso3 leads the id.vars so it survives the melt at every level.
+    admin <- c("iso3", "admin0_name")
     if (level %in% c("adm1", "adm2")) {
       admin <- c(admin, "admin1_name")
       data <- suppressWarnings(data[, !"a1_a0"])
@@ -74,6 +118,10 @@ merge_admin_extract <- function(data_ex) {
 }
 
 # 0.1) Set up workspace #####
+# CR-093: shared iso3-first sort order for all R/2.2 parquet outputs so the
+# notebook's per-country reads prune by row-group stats (write_parquet_pushdown
+# intersects with the columns actually present per output; iso3 is the guard).
+chg_sort_by <- c("iso3", "admin0_name", "admin1_name", "admin2_name", "scenario", "timeframe")
 haz_class <- fread(haz_class_url)
 haz_class[, direction2 := "G"][direction == "<", direction2 := "L"]
 haz_meta <- fread(haz_meta_url)
@@ -92,6 +140,9 @@ Geographies <- lapply(seq_along(geo_files_local), FUN = function(i) {
 names(Geographies) <- names(geo_files_local)
 
 # 1) % area of precipitation increase or decrease by admin vect ####
+if (run_sec1) {
+.log22("SEC1 (PTOT % area change + diff) — START")
+.t_sec1 <- Sys.time()
 # Create save folder
 haz_mean_ptot_dir <- file.path(haz_mean_dir, "ptot_perc")
 if (!dir.exists(haz_mean_ptot_dir)) {
@@ -110,30 +161,45 @@ files_fut <- files[!files %in% files_hist]
 exclude_dirs <- file.path(haz_mean_dir, "ssp245_EC-Earth3_2021_2040_PTOT_sum.tif")
 files_fut <- files_fut[!files_fut %in% exclude_dirs]
 
-save_file <- file.path(haz_mean_ptot_dir, "ptot_perc_change.tif")
-do_save <- FALSE
-overwrite <- TRUE
+# CR-093 FIX: the prior code referenced an undefined `file_hist` — it only
+# resolved via a global leaked from R/2_calculate_haz_freq.R when both scripts
+# were run in the same session (the kind of fragility behind the R/2.1 saga).
+# Restore the per-historic-file loop from that script's reference block so 2.2
+# is self-contained: for each historic PTOT raster, match the future rasters
+# sharing its GCM/variable token, then stack the per-GCM change(%) + diff layers.
+# Kill-gates below fail LOUD if no historic/future files or no token matches —
+# never silent garbage.
+.log22(sprintf("SEC1: %d historic PTOT file(s), %d future file(s)",
+               length(files_hist), length(files_fut)))
+stopifnot(length(files_hist) > 0L, length(files_fut) > 0L)
 
-if (!file.exists(save_file) || overwrite == TRUE) {
-  var <- gsub("historical_", "", tail(tstrsplit(file_hist, "/"), 1))
-  files_fut_ss <- grep(var, files_fut, value = TRUE)
+ptot_pairs <- lapply(seq_along(files_hist), function(i) {
+  file_hist <- files_hist[i]
+  var <- gsub("historical_", "", basename(file_hist))
+  # fixed=TRUE: match the historic token literally (avoid '.' acting as regex).
+  files_fut_ss <- grep(var, files_fut, value = TRUE, fixed = TRUE)
+  if (length(files_fut_ss) == 0L) {
+    .log22(sprintf("SEC1: WARN no future match for historic '%s' (token='%s') — skipped",
+                   basename(file_hist), var))
+    return(NULL)
+  }
   future <- terra::rast(files_fut_ss)
   past <- terra::rast(file_hist)
-
-  diff <- future - past
-  change <- round(100 * (diff) / past, 1)
-
-  names(change) <- gsub(".tif", "", basename(files_fut_ss))
-  names(diff) <- gsub(".tif", "", basename(files_fut_ss))
-
-  if (do_save) {
-    terra::writeRaster(change, filename = save_file, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
-    terra::writeRaster(diff, filename = gsub("_change", "_diff", save_file), filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
-  }
-} else {
-  change <- terra::rast(save_file)
-  diff <- terra::rast(gsub("_change", "_diff", save_file))
+  d <- future - past
+  ch <- round(100 * d / past, 1)
+  names(ch) <- gsub(".tif", "", basename(files_fut_ss))
+  names(d) <- gsub(".tif", "", basename(files_fut_ss))
+  list(change = ch, diff = d)
+})
+ptot_pairs <- Filter(Negate(is.null), ptot_pairs)
+if (length(ptot_pairs) == 0L) {
+  stop("SEC1: no historic PTOT file matched any future file — check naming/token ",
+       "logic before publishing (pre-existing matching logic, see CR-093 note).")
 }
+change <- terra::rast(lapply(ptot_pairs, `[[`, "change"))
+diff <- terra::rast(lapply(ptot_pairs, `[[`, "diff"))
+.log22(sprintf("SEC1: built change/diff stacks — %d layers from %d/%d historic file(s)",
+               terra::nlyr(change), length(ptot_pairs), length(files_hist)))
 
 
 # Increasing area
@@ -175,7 +241,7 @@ diff <- merge_admin_extract(diff)
 
 # Work out percentage change
 change <- rbind(change_inc, change_dec)
-change <- merge(change, base_areas[, list(admin0_name, admin1_name, admin2_name, total)], all.x = TRUE)
+change <- merge(change, base_areas[, list(iso3, admin0_name, admin1_name, admin2_name, total)], all.x = TRUE)
 change[, value := round(100 * value / total, 1)][, total := NULL]
 
 # Wrangle variable name
@@ -192,23 +258,29 @@ diff <- cbind(diff, var_names)[, variable := "PTOT"][, stat := "diff"]
 # Generate ensemble data from models
 change_ens <- change[!grepl("ENSEMBLE", model)]
 change_ens <- change_ens[, list(mean = mean(value, na.rm = TRUE), min = min(value, na.rm = TRUE), max = max(value, na.rm = TRUE), sd = sd(value, na.rm = TRUE)),
-  by = list(admin0_name, admin1_name, admin2_name, scenario, timeframe, direction, variable, stat)
+  by = list(iso3, admin0_name, admin1_name, admin2_name, scenario, timeframe, direction, variable, stat)
 ]
 
 diff_ens <- diff[!grepl("ENSEMBLE", model)]
 diff_ens <- diff_ens[, list(mean = mean(value, na.rm = TRUE), min = min(value, na.rm = TRUE), max = max(value, na.rm = TRUE), sd = sd(value, na.rm = TRUE)),
-  by = list(admin0_name, admin1_name, admin2_name, scenario, timeframe, variable, stat)
+  by = list(iso3, admin0_name, admin1_name, admin2_name, scenario, timeframe, variable, stat)
 ]
 
-# save results
-arrow::write_parquet(change, file.path(haz_mean_ptot_dir, "ptot_change_by_model.parquet"))
-arrow::write_parquet(change_ens, file.path(haz_mean_ptot_dir, "ptot_change_ensemble.parquet"))
+# save results — CR-093: iso3-first pruning + row-count log via write_chg_parquet.
+write_chg_parquet(change, file.path(haz_mean_ptot_dir, "ptot_change_by_model.parquet"))
+write_chg_parquet(change_ens, file.path(haz_mean_ptot_dir, "ptot_change_ensemble.parquet"))
+write_chg_parquet(diff, file.path(haz_mean_ptot_dir, "ptot_diff_by_model.parquet"))
+write_chg_parquet(diff_ens, file.path(haz_mean_ptot_dir, "ptot_diff_ensemble.parquet"))
 
-arrow::write_parquet(diff, file.path(haz_mean_ptot_dir, "ptot_diff_by_model.parquet"))
-arrow::write_parquet(diff_ens, file.path(haz_mean_ptot_dir, "ptot_diff_ensemble.parquet"))
+.log22(sprintf("SEC1 (PTOT) — DONE in %.1fs",
+               as.numeric(difftime(Sys.time(), .t_sec1, units = "secs"))))
+} # end run_sec1
 
 # 2) % area of severe or extreme crop or livestock heat stress ####
 # 2.1) Livestock #####
+if (run_sec2) {
+.log22("SEC2 (THI livestock heat % area) — START")
+.t_sec2 <- Sys.time()
 # set save location
 haz_mean_thi_dir <- file.path(haz_mean_dir, "thi_perc")
 if (!dir.exists(haz_mean_thi_dir)) {
@@ -271,7 +343,7 @@ base_areas <- merge_admin_extract(base_areas)
 setnames(base_areas, "value", "total")
 
 # Work out percentage change
-data <- merge(data, base_areas[, list(admin0_name, admin1_name, admin2_name, total)], all.x = TRUE)
+data <- merge(data, base_areas[, list(iso3, admin0_name, admin1_name, admin2_name, total)], all.x = TRUE)
 data[, value := round(100 * value / total, 1)][, total := NULL]
 
 # Wrangle variable name
@@ -292,13 +364,20 @@ data_ens <- data[, list(
   max = max(value, na.rm = TRUE),
   sd = round(sd(value, na.rm = TRUE), 1)
 ),
-by = list(admin0_name, admin1_name, admin2_name, scenario, timeframe, variable, severity, variable, crop)
+by = list(iso3, admin0_name, admin1_name, admin2_name, scenario, timeframe, variable, severity, crop)
 ]
 
-arrow::write_parquet(data, file.path(haz_mean_thi_dir, "thi_perc_area_by_model.parquet"))
-arrow::write_parquet(data_ens, file.path(haz_mean_thi_dir, "thi_perc_area_ensemble.parquet"))
+write_chg_parquet(data, file.path(haz_mean_thi_dir, "thi_perc_area_by_model.parquet"))
+write_chg_parquet(data_ens, file.path(haz_mean_thi_dir, "thi_perc_area_ensemble.parquet"))
+
+.log22(sprintf("SEC2 (THI) — DONE in %.1fs",
+               as.numeric(difftime(Sys.time(), .t_sec2, units = "secs"))))
+} # end run_sec2
 
 # 2.2) Crops #####
+if (run_sec3) {
+.log22("SEC3 (NTx crop heat % area) — START")
+.t_sec3 <- Sys.time()
 
 haz_mean_ntx_dir <- file.path(haz_mean_dir, "ntx_perc")
 if (!dir.exists(haz_mean_ntx_dir)) {
@@ -357,7 +436,7 @@ data <- rbindlist(lapply(seq_along(choices), FUN = function(j) {
   setnames(base_areas, "value", "total_area")
 
   # Work out percentage change
-  data <- merge(data, base_areas[, list(admin0_name, admin1_name, admin2_name, total_area)], all.x = TRUE)
+  data <- merge(data, base_areas[, list(iso3, admin0_name, admin1_name, admin2_name, total_area)], all.x = TRUE)
   data[, perc := round(100 * area / total_area, 1)]
 
   # Wrangle variable name
@@ -384,16 +463,23 @@ data_ens <- data[, list(
   max = max(value, na.rm = TRUE),
   sd = round(sd(value, na.rm = TRUE), 1)
 ),
-by = list(admin0_name, admin1_name, admin2_name, scenario, timeframe, hazard, severity, crop)
+by = list(iso3, admin0_name, admin1_name, admin2_name, scenario, timeframe, hazard, severity, crop)
 ][, variable := "perc_area"]
 
 
 data_ens[scenario == "historical", c("min", "max", "sd") := NA]
 
-arrow::write_parquet(data, file.path(haz_mean_ntx_dir, "ntx_perc_area_by_model.parquet"))
-arrow::write_parquet(data_ens, file.path(haz_mean_ntx_dir, "ntx_perc_area_ensemble.parquet"))
+write_chg_parquet(data, file.path(haz_mean_ntx_dir, "ntx_perc_area_by_model.parquet"))
+write_chg_parquet(data_ens, file.path(haz_mean_ntx_dir, "ntx_perc_area_ensemble.parquet"))
+
+.log22(sprintf("SEC3 (NTx) — DONE in %.1fs",
+               as.numeric(difftime(Sys.time(), .t_sec3, units = "secs"))))
+} # end run_sec3
 
 # 3) Extreme drought or wet spells ####
+if (run_sec4) {
+.log22("SEC4 (NDWS/NDWL0 drought/wet frequency) — START")
+.t_sec4 <- Sys.time()
 # choose hazards
 haz_choices <- c("NDWS", "NDWL0")
 # choose crops
@@ -468,7 +554,7 @@ data_ens <- data[, list(
   max = max(value, na.rm = TRUE),
   sd = round(sd(value, na.rm = TRUE), 1)
 ),
-by = list(admin0_name, admin1_name, admin2_name, scenario, timeframe, hazard, hazard_user, severity, crop, variable)
+by = list(iso3, admin0_name, admin1_name, admin2_name, scenario, timeframe, hazard, hazard_user, severity, crop, variable)
 ]
 
 data_ens[scenario == "historical", c("min", "max", "sd") := NA]
@@ -478,5 +564,12 @@ if (!dir.exists(haz_time_risk_stats_dir)) {
   dir.create(haz_time_risk_stats_dir)
 }
 
-arrow::write_parquet(data, file.path(haz_time_risk_stats_dir, "haz_freq.parquet"))
-arrow::write_parquet(data_ens, file.path(haz_time_risk_stats_dir, "haz_freq_ensemble.parquet"))
+write_chg_parquet(data, file.path(haz_time_risk_stats_dir, "haz_freq.parquet"))
+write_chg_parquet(data_ens, file.path(haz_time_risk_stats_dir, "haz_freq_ensemble.parquet"))
+
+.log22(sprintf("SEC4 (haz_freq) — DONE in %.1fs",
+               as.numeric(difftime(Sys.time(), .t_sec4, units = "secs"))))
+} # end run_sec4
+
+.log22(sprintf("R/2.2 complete — total %.1fs",
+               as.numeric(difftime(Sys.time(), .t0_22, units = "secs"))))
