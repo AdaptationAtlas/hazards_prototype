@@ -19,41 +19,50 @@ the old leaked-global crash and builds change/diff stacks, then hits the bugs be
   historic dups); pair historic->future by GCM token; suffix-strip parse for
   `PTOT-sum_mean`.
 
+## DONE 2026-06-23 (committed to develop: 0b82b4e, c3e13b5) — SEC1 GATE PASSED
+SEC1 runs end-to-end on live Data/; all 4 ptot_* outputs PASS
+`Rscript R/validate_cr093_real.R` (4 PASS / 6 FAIL = SEC2/3/4 not yet produced).
+1. **SEC1 `historical_` prefix** — DONE. `.extract_gcm` now strips `historical`
+   too. Both `historic_historic_historic_<GCM>_` and stale `historical_<GCM>_`
+   name the SAME 18 GCMs (full overlap), so the naive "add historical" fix would
+   DOUBLE-count — added GCM dedup after parse (keeps canonical hhh form).
+2. **SEC1 `_sd` files** — DONE, but the suggested `grepl("_mean", files)` is a
+   NO-OP: `files` are full paths and the parent dir is `hazard_timeseries_mean`,
+   so it matches everything. Anchored on the suffix: `grep("_mean[.]tif$", files)`.
+   (This was the real row-doubling + NaN/Inf source, not just cosmetic.)
+3. **admin_extract API MIGRATION** — DONE. boundaries_zonal/boundaries_index
+   built mirroring R/2.1:111-132; all 8 calls switched. Extra vs R/2.1: must
+   dedup boundaries_index by zone_id (GAUL2024 dup polygons would double rows ->
+   cartesian join) and join area by gaul code, not admin name (names not unique).
+   merge_admin_extract is now a pass-through; write_chg_parquet strips gaul*.
+
+### Known pre-existing artifact (NOT a regression; decide before publish)
+ptot_change_by_model has ~17k NaN/Inf `value` rows in zero-precip deserts
+(e.g. EGY Al-Kharga Oasis): the change raster is `round(100*d/past,1)` and
+`past≈0` blows up. Untouched science (R/2.2 ~L207). Gate doesn't check ranges.
+Also ~1728 rows look like dup keys when grouped by admin NAME only — genuine
+GAUL2024 duplicate names across distinct gaul codes, not a pipeline bug.
+
 ## TODO (fix + validate against real Data/, then commit each)
-1. **SEC1 `historical_` prefix** — TWO historic conventions coexist:
-   `historic_historic_historic_<GCM>_...` AND `historical_<GCM>_...` (36 files).
-   `.extract_gcm` only strips `historic_historic_historic|ssp[0-9]+` → the 36
-   `historical_` files mis-parse and get skipped. FIX: add `historical` to the
-   prefix-strip alternation in `.extract_gcm`.
-2. **SEC1 `_sd` files** — SEC1 ingests `PTOT-sum_sd` alongside `_mean`; PTOT %
-   area change is mean-only. FIX: `files <- files[grepl("_mean", files)]`.
-2b. **SEC1 missing ENSEMBLE filter (QAQC 2026-06-23)** — SEC1 does NOT drop
-   ENSEMBLE files, unlike SEC3 (:403) and SEC4 (:499) which do
-   `files[!grepl("ENSEMBLE", files)]`. `.extract_gcm` maps both historic and
-   future `ENSEMBLEmean` files to GCM="ENSEMBLEmean" → they pair → the by-model
-   parquet `ptot_change_by_model.parquet` gets polluted with model="ENSEMBLEmean"
-   rows (the proper ensemble is recomputed separately in change_ens). FIX: add
-   `files <- files[!grepl("ENSEMBLE", files)]` to SEC1's file list for parity.
-2c. **terra-probe on cglabs** — `USE_R2_5_2_VEC` defaults ON; the §5.2 vectorize
-   probe (`Rscript R/probe_r2_5_2_vec.R`) only ran on the macbook terra. Run it
-   ONCE on cglabs to confirm terra::mean/stdev parity before a multi-hour §5.2
-   bake; fallback is `USE_R2_5_2_VEC=0`.
-3. **admin_extract API MIGRATION (deep, the real blocker)** — `haz_functions.R`
-   (github main, line 1527) changed
-   `admin_extract(data, Geographies=, FUN=)` ->
-   `admin_extract(data, boundaries_zonal, boundaries_index, FUN=, max_cells_in_memory=)`.
-   R/2.2 errors: `unused argument (Geographies = Geographies)`. FIX: mirror
-   **R/2.1_create_monthly_haz_tables.R:111-132** — build `boundaries_zonal`
-   (per-geography rasterized `<name>_zonal.tif` cached in `boundaries_int_dir`) +
-   `boundaries_index` (data.frame zone_id->iso3/admin_name/gaul_code per geography),
-   then update ALL admin_extract calls in R/2.2 (SEC1 x3, SEC2 x2, SEC3 x2, SEC4 x1)
-   and verify `merge_admin_extract` output handling (zone_id join) matches R/2.1.
-   **QAQC CAUTION**: R/2.1:93 builds Geographies for `lapply(1:2, ...)` = admin0+
-   admin1 ONLY. R/2.2 extracts all 3 levels — do NOT inherit the `1:2` limit or
-   admin2 outputs silently vanish. Build boundaries_zonal/index over ALL
-   geo_files_local. Also confirm merge_admin_extract's CURRENT signature (it
-   changed too), not just admin_extract.
-4. **SEC2/3/4 stale parsers** — `gsub("historical", "historical_historical_historical")`
+Items 1-3 DONE + validated above (commits 0b82b4e, c3e13b5). Remaining:
+
+2b. **SEC1 ENSEMBLE filter** — DONE (parity with SEC3/4). SEC1 now drops
+   `ENSEMBLE` files before pairing. On current Data/ the by-model output was
+   already clean (no historic ENSEMBLEmean exists, so the future ENSEMBLEmean
+   never paired), but the filter is added defensively so a future producer
+   change can't leak model="ENSEMBLEmean" into ptot_change_by_model.
+2c. **terra-probe on cglabs** — OPEN (unrelated to R/2.2). `USE_R2_5_2_VEC`
+   defaults ON; the §5.2 vectorize probe (`Rscript R/probe_r2_5_2_vec.R`) only
+   ran on macbook terra. Run ONCE on cglabs to confirm terra::mean/stdev parity
+   before a multi-hour §5.2 bake; fallback `USE_R2_5_2_VEC=0`.
+4. **SEC2/3/4 stale parsers + naming (still BLOCKING those sections)** — risk
+   dir uses dashes and a 1-token `historic_` prefix, so the current code is
+   broken at multiple points, e.g. `list.files(haz_time_risk_dir, "THI_max")`
+   never matches real `..._THI-max-max-G71.tif`, threshold codes like
+   `THI_max_max-G71` vs real `THI-max-max-G71`, and the `.G`->`_` substitution
+   corrupts the `_`-split field positions. The admin_extract calls + area joins
+   in SEC2/3/4 are ALREADY migrated; only the file-listing / threshold-code /
+   var-name parsing remain. `gsub("historical", "historical_historical_historical")`
    at ~354/447/530 should target `historic` (real prefix); suffix-strip + `[,c(1:3,5)]`
    field-selection assume old naming. Validate each vs real risk filenames. Filename
    grammar is already documented — `scenario_model_timeframe_<haz-dashed>[_stat].tif`,
