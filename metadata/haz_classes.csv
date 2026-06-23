@@ -70,7 +70,7 @@ THI_max,Severe,2,>,poultry_tropical,79
 THI_max,Extreme,3,>,poultry_tropical,92
 THI_max,Moderate,1,>,poultry_highland,71
 THI_max,Severe,2,>,poultry_highland,76
-THI_max,Extreme,3,>,poultry_highland,79
+THI_max,Extreme,3,>,poultry_highland,89
 THI_mean,Moderate,1,>,cattle_tropical,74
 THI_mean,Severe,2,>,cattle_tropical,82
 THI_mean,Extreme,3,>,cattle_tropical,94
@@ -100,4 +100,4 @@ THI_mean,Severe,2,>,poultry_tropical,79
 THI_mean,Extreme,3,>,poultry_tropical,92
 THI_mean,Moderate,1,>,poultry_highland,71
 THI_mean,Severe,2,>,poultry_highland,76
-THI_mean,Extreme,3,>,poultry_highland,79
+THI_mean,Extreme,3,>,poultry_highland,89
