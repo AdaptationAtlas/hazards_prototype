@@ -321,6 +321,11 @@ change <- rbind(change_inc, change_dec)
 change <- merge(change, base_areas[, list(gaul0_code, gaul1_code, gaul2_code, total)],
   by = c("gaul0_code", "gaul1_code", "gaul2_code"), all.x = TRUE)
 change[, value := round(100 * value / total, 1)][, total := NULL]
+# CR-093: NA-clean non-finite % (NaN from 0/0 in zones with no covered base
+# cells; Inf where the upstream change raster blew up on near-zero historic
+# precip — see ISSUE_cr093_nan_zeroprecip.md, for the R/2 rebake to fix at
+# source). NA is a clean prunable NULL; ensemble means already use na.rm.
+change[!is.finite(value), value := NA_real_]
 
 # Wrangle variable name. Layer name = future basename, e.g.
 # "ssp126_ACCESS-CM2_2021-2040_PTOT-sum_mean". CR-093 FIX: strip the variable
@@ -440,6 +445,8 @@ setnames(base_areas, "value", "total")
 data <- merge(data, base_areas[, list(gaul0_code, gaul1_code, gaul2_code, total)],
   by = c("gaul0_code", "gaul1_code", "gaul2_code"), all.x = TRUE)
 data[, value := round(100 * value / total, 1)][, total := NULL]
+# CR-093: NA-clean non-finite % (0/0 in zero-area zones). See ISSUE_cr093_nan_zeroprecip.md.
+data[!is.finite(value), value := NA_real_]
 
 # Wrangle variable name. CR-093: parse the dash-delimited risk layer name
 # (scenario_model_timeframe_THI-max-max-Gthr_severity) directly.
@@ -534,6 +541,8 @@ data <- rbindlist(lapply(seq_len(nrow(choices)), FUN = function(j) {
   data <- merge(data, base_areas[, list(gaul0_code, gaul1_code, gaul2_code, total_area)],
     by = c("gaul0_code", "gaul1_code", "gaul2_code"), all.x = TRUE)
   data[, perc := round(100 * area / total_area, 1)]
+  # CR-093: NA-clean non-finite % (0/0 in zero-area zones). See ISSUE_cr093_nan_zeroprecip.md.
+  data[!is.finite(perc), perc := NA_real_]
 
   # Wrangle variable name. CR-093: parse the dash-delimited risk layer name
   # (scenario_model_timeframe_NTxNN-mean-Gthr_severity) directly.
@@ -635,6 +644,9 @@ data2 <- data2[scenario != "historic", value := round(value * years_scen, 0)][sc
 data[, value := round(value, 2)]
 
 data <- rbind(data, data2)
+# CR-093: NA-clean non-finite freq/freq_n (zonal mean over zones with no valid
+# cells -> NaN). See ISSUE_cr093_nan_zeroprecip.md.
+data[!is.finite(value), value := NA_real_]
 
 data[hazard == "NDWS", hazard_user := "drought"][hazard == "NDWL0", hazard_user := "wet"]
 
