@@ -183,6 +183,12 @@ if (!dir.exists(haz_mean_ptot_dir)) {
 files <- list.files(haz_mean_dir, ".tif", full.names = TRUE)
 files <- grep("PTOT", files, value = TRUE)
 files <- files[!grepl("change", files)]
+# CR-093: drop producer ENSEMBLE rasters before pairing (parity with SEC3/SEC4).
+# .extract_gcm maps ENSEMBLEmean files to GCM="ENSEMBLEmean"; if a historic
+# ENSEMBLEmean ever existed it would pair with the future one and leak a
+# model="ENSEMBLEmean" row into the by-model output (the ensemble is recomputed
+# separately as change_ens). Defensive — current Data/ has no historic ENSEMBLE.
+files <- files[!grepl("ENSEMBLE", files)]
 # CR-093 FIX: PTOT % area change is mean-only — the mean dir also holds the
 # matching `PTOT-sum_sd` rasters (one per mean), which are meaningless here and
 # would otherwise double every row (and inject NaN/out-of-range % from sd
