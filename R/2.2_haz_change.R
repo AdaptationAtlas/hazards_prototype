@@ -97,6 +97,21 @@ merge_admin_extract <- function(data_ex) {
   data_ex[]
 }
 
+# CR-093: parse a risk-dir layer name into scenario/model/timeframe/severity.
+# Risk filenames are scenario_model_timeframe_<HAZ-stat-Gthr>_severity, where
+# only the bookend underscores separate fields — the hazard token and the years
+# are dash-delimited (e.g. ssp126_ACCESS-CM2_2021-2040_NTx35-mean-G14_severe,
+# historic_ACCESS-CM2_1995-2014_THI-max-max-G82_extreme). So a plain `_`-split
+# gives exactly: [1]=scenario (historic|sspNNN — already a single token, no
+# `historical`->3-token expansion needed), [2]=model, [3]=timeframe, last=
+# severity. Taking ncol() for severity is robust to any extra middle fields.
+.parse_risk_vars <- function(v) {
+  m <- do.call("cbind", tstrsplit(v, "_"))
+  m <- m[, c(1, 2, 3, ncol(m)), drop = FALSE]
+  colnames(m) <- c("scenario", "model", "timeframe", "severity")
+  m
+}
+
 # 0.1) Set up workspace #####
 # CR-093: shared iso3-first sort order for all R/2.2 parquet outputs so the
 # notebook's per-country reads prune by row-group stats (write_parquet_pushdown
@@ -359,13 +374,17 @@ if (!dir.exists(haz_mean_thi_dir)) {
   dir.create(haz_mean_thi_dir)
 }
 
-# list data files
-files <- list.files(haz_time_risk_dir, "THI_max", full.names = TRUE)
+# list data files. CR-093: risk files are dash-delimited (`THI-max-...`); the
+# old underscore pattern `THI_max` matched nothing. Drop ENSEMBLE for parity
+# with SEC3/SEC4 (the by-model output must not carry model="ENSEMBLEmean").
+files <- list.files(haz_time_risk_dir, "THI-max", full.names = TRUE)
+files <- files[!grepl("ENSEMBLE", files)]
 
-# get severity thresholds
+# get severity thresholds. haz_class still keys on the underscore index_name
+# "THI_max", but the on-disk code is dashed: THI-max-max-G<threshold>.
 cat_thresholds <- haz_class[index_name == "THI_max" &
   description %in% c("Severe", "Extreme") &
-  crop %in% c("cattle_highland", "cattle_tropical"), list(index_name, crop, description, threshold)][, code := paste0("THI_max_max-G", threshold)]
+  crop %in% c("cattle_highland", "cattle_tropical"), list(index_name, crop, description, threshold)][, code := paste0("THI-max-max-G", threshold)]
 
 # get highland/lowland mask
 highlands <- terra::rast(afr_highlands_file)
@@ -422,14 +441,9 @@ data <- merge(data, base_areas[, list(gaul0_code, gaul1_code, gaul2_code, total)
   by = c("gaul0_code", "gaul1_code", "gaul2_code"), all.x = TRUE)
 data[, value := round(100 * value / total, 1)][, total := NULL]
 
-# Wrangle variable name
-var_names <- data$variable
-var_names <- gsub("sum.|_THI_max_max", "", var_names)
-var_names <- gsub("([0-9]{4})_([0-9]{4})", "\\1-\\2", var_names, perl = TRUE)
-var_names <- gsub(".G", "_", var_names)
-var_names <- gsub("historical", "historical_historical_historical", var_names)
-var_names <- do.call("cbind", tstrsplit(var_names, "_"))[, c(1:3, 5)]
-colnames(var_names) <- c("scenario", "model", "timeframe", "severity")
+# Wrangle variable name. CR-093: parse the dash-delimited risk layer name
+# (scenario_model_timeframe_THI-max-max-Gthr_severity) directly.
+var_names <- .parse_risk_vars(data$variable)
 
 data <- cbind(data, var_names)[, hazard := "THI"][, variable := "perc_area"][, crop := "cattle"]
 
@@ -468,9 +482,11 @@ crop_choices <- "generic"
 sev_classes <- c("Severe", "Extreme")
 
 
-choices <- expand.grid(haz = haz_choices, crop = crop_choices)
+choices <- expand.grid(haz = haz_choices, crop = crop_choices, stringsAsFactors = FALSE)
 
-data <- rbindlist(lapply(seq_along(choices), FUN = function(j) {
+# CR-093: iterate ROWS of choices (seq_along() on a data.frame walks COLUMNS;
+# it only worked before because nrow happened to equal ncol).
+data <- rbindlist(lapply(seq_len(nrow(choices)), FUN = function(j) {
   haz <- as.character(choices$haz[j])
   crop_focus <- as.character(choices$crop[j])
 
@@ -479,10 +495,10 @@ data <- rbindlist(lapply(seq_along(choices), FUN = function(j) {
   files <- files[!grepl("ENSEMBLE", files)]
 
 
-  # get severity thresholds
+  # get severity thresholds. CR-093: on-disk code is dashed (NTx35-mean-G14).
   cat_thresholds <- haz_class[index_name == haz &
     description %in% sev_classes &
-    crop %in% crop_focus, list(index_name, crop, description, threshold)][, code := paste0(haz, "_mean-G", threshold)] # mean-G -> this needs to be generalized
+    crop %in% crop_focus, list(index_name, crop, description, threshold)][, code := paste0(haz, "-mean-G", threshold)] # mean -> stat, should be generalized via haz_meta
 
   data <- terra::rast(lapply(seq_along(sev_classes), FUN = function(i) {
     files_ss <- grep(cat_thresholds[description == sev_classes[i], code], files, value = TRUE)
@@ -519,14 +535,9 @@ data <- rbindlist(lapply(seq_along(choices), FUN = function(j) {
     by = c("gaul0_code", "gaul1_code", "gaul2_code"), all.x = TRUE)
   data[, perc := round(100 * area / total_area, 1)]
 
-  # Wrangle variable name
-  var_names <- data$variable
-  var_names <- gsub(paste0("sum.|_", haz, "_mean"), "", var_names) # _mean needs to be generalized
-  var_names <- gsub("([0-9]{4})_([0-9]{4})", "\\1-\\2", var_names, perl = TRUE)
-  var_names <- gsub(".G", "_", var_names) # .G needs to be generalized
-  var_names <- gsub("historical", "historical_historical_historical", var_names)
-  var_names <- do.call("cbind", tstrsplit(var_names, "_"))[, c(1:3, 5)]
-  colnames(var_names) <- c("scenario", "model", "timeframe", "severity")
+  # Wrangle variable name. CR-093: parse the dash-delimited risk layer name
+  # (scenario_model_timeframe_NTxNN-mean-Gthr_severity) directly.
+  var_names <- .parse_risk_vars(data$variable)
 
   data <- cbind(data, var_names)[, hazard := haz][, crop := crop_focus]
 
@@ -547,7 +558,8 @@ by = list(iso3, admin0_name, admin1_name, admin2_name, scenario, timeframe, haza
 ][, variable := "perc_area"]
 
 
-data_ens[scenario == "historical", c("min", "max", "sd") := NA]
+# CR-093: historic scenario token is "historic" (risk-dir prefix), not "historical".
+data_ens[scenario == "historic", c("min", "max", "sd") := NA]
 
 write_chg_parquet(data, file.path(haz_mean_ntx_dir, "ntx_perc_area_by_model.parquet"))
 write_chg_parquet(data_ens, file.path(haz_mean_ntx_dir, "ntx_perc_area_ensemble.parquet"))
@@ -567,10 +579,11 @@ crop_choices <- "generic"
 # choose severity classes
 sev_classes <- c("Severe", "Extreme")
 
-choices <- expand.grid(haz = haz_choices, crop = crop_choices)
+choices <- expand.grid(haz = haz_choices, crop = crop_choices, stringsAsFactors = FALSE)
 extract_fun <- "mean"
 
-data <- rbindlist(lapply(seq_along(choices), FUN = function(j) {
+# CR-093: iterate ROWS of choices (seq_along() walks columns).
+data <- rbindlist(lapply(seq_len(nrow(choices)), FUN = function(j) {
   haz <- as.character(choices$haz[j])
   crop_focus <- as.character(choices$crop[j])
 
@@ -581,10 +594,10 @@ data <- rbindlist(lapply(seq_along(choices), FUN = function(j) {
   # get stat
   stat <- haz_meta[code == haz, `function`]
 
-  # get severity thresholds
+  # get severity thresholds. CR-093: on-disk code is dashed (NDWS-mean-G20).
   cat_thresholds <- haz_class[index_name == haz &
     description %in% sev_classes &
-    crop %in% crop_focus, list(index_name, crop, description, threshold, direction2)][, code := paste0(haz, "_", stat, "-", direction2, threshold)]
+    crop %in% crop_focus, list(index_name, crop, description, threshold, direction2)][, code := paste0(haz, "-", stat, "-", direction2, threshold)]
 
   data <- terra::rast(lapply(seq_along(sev_classes), FUN = function(i) {
     files_ss <- grep(cat_thresholds[description == sev_classes[i], code], files, value = TRUE)
@@ -603,14 +616,9 @@ data <- rbindlist(lapply(seq_along(choices), FUN = function(j) {
   # Tabulate data
   data <- merge_admin_extract(data)
 
-  # Wrangle variable name
-  var_names <- data$variable
-  var_names <- gsub(paste0(extract_fun, ".|_", haz, "_", stat), "", var_names)
-  var_names <- gsub("([0-9]{4})_([0-9]{4})", "\\1-\\2", var_names, perl = TRUE)
-  var_names <- gsub(paste0(".", cat_thresholds[1, direction2]), "_", var_names)
-  var_names <- gsub("historical", "historical_historical_historical", var_names)
-  var_names <- do.call("cbind", tstrsplit(var_names, "_"))[, c(1:3, 5)]
-  colnames(var_names) <- c("scenario", "model", "timeframe", "severity")
+  # Wrangle variable name. CR-093: parse the dash-delimited risk layer name
+  # (scenario_model_timeframe_<haz>-mean-Gthr_severity) directly.
+  var_names <- .parse_risk_vars(data$variable)
 
   data <- cbind(data, var_names)[, hazard := haz][, crop := crop_focus][, variable := "frequency"]
 
@@ -621,7 +629,8 @@ years_hist <- terra::nlyr(terra::rast(list.files(haz_timeseries_dir, "hist", ful
 years_scen <- terra::nlyr(terra::rast(list.files(haz_timeseries_dir, "ssp245", full.names = TRUE)[1]))
 
 data2 <- data.table::copy(data)
-data2 <- data2[scenario != "historical", value := round(value * years_scen, 0)][scenario == "historical", value := round(value * years_hist, 0)][, variable := "frequency_n"]
+# CR-093: historic scenario token is "historic" (risk-dir prefix), not "historical".
+data2 <- data2[scenario != "historic", value := round(value * years_scen, 0)][scenario == "historic", value := round(value * years_hist, 0)][, variable := "frequency_n"]
 
 data[, value := round(value, 2)]
 
@@ -638,7 +647,7 @@ data_ens <- data[, list(
 by = list(iso3, admin0_name, admin1_name, admin2_name, scenario, timeframe, hazard, hazard_user, severity, crop, variable)
 ]
 
-data_ens[scenario == "historical", c("min", "max", "sd") := NA]
+data_ens[scenario == "historic", c("min", "max", "sd") := NA]
 
 haz_time_risk_stats_dir <- file.path(haz_time_risk_dir, "stats")
 if (!dir.exists(haz_time_risk_stats_dir)) {
