@@ -1522,15 +1522,27 @@ for (tx in seq_along(timeframes)) {
             if (!file.exists(save_file_mean) | overwrite5.2) {
               ensemble_stack <- lapply(ensemble_files, terra::rast)
 
-              ensemble_mean <- terra::rast(lapply(1:nlyr(ensemble_stack[[1]]), FUN = function(j) {
-                ensemble_dat <- terra::rast(lapply(ensemble_stack, "[[", j))
-                mean(ensemble_dat, na.rm = TRUE)
-              }))
-
-              ensemble_sd <- terra::rast(lapply(1:nlyr(ensemble_stack[[1]]), FUN = function(j) {
-                ensemble_dat <- terra::rast(lapply(ensemble_stack, "[[", j))
-                terra::app(ensemble_dat, fun = sd, na.rm = TRUE)
-              }))
+              # v_opt (2026-06-23): ensemble mean/sd ACROSS models, per layer.
+              # The per-layer lapply is a direct elementwise reduce across the
+              # model rasters: terra::mean(r1..rn) and terra::stdev(..,pop=FALSE)
+              # (= base sd, sample n-1) preserve layers and match the loop
+              # exactly (probe_r2_5_2_vec.R: max|d|=0, NA-positions identical).
+              # Fall back to the loop under USE_R2_5_2_VEC=0 or the degenerate
+              # single-model case (terra::mean of one multi-layer raster would
+              # collapse layers).
+              if (identical(Sys.getenv("USE_R2_5_2_VEC"), "0") || length(ensemble_stack) < 2L) {
+                ensemble_mean <- terra::rast(lapply(1:nlyr(ensemble_stack[[1]]), FUN = function(j) {
+                  ensemble_dat <- terra::rast(lapply(ensemble_stack, "[[", j))
+                  mean(ensemble_dat, na.rm = TRUE)
+                }))
+                ensemble_sd <- terra::rast(lapply(1:nlyr(ensemble_stack[[1]]), FUN = function(j) {
+                  ensemble_dat <- terra::rast(lapply(ensemble_stack, "[[", j))
+                  terra::app(ensemble_dat, fun = sd, na.rm = TRUE)
+                }))
+              } else {
+                ensemble_mean <- do.call(terra::mean, c(ensemble_stack, list(na.rm = TRUE)))
+                ensemble_sd <- do.call(terra::stdev, c(ensemble_stack, list(pop = FALSE, na.rm = TRUE)))
+              }
 
               if (!is.null(round5.2)) {
                 ensemble_mean <- round(ensemble_mean, round5.2)
