@@ -27,6 +27,17 @@ the old leaked-global crash and builds change/diff stacks, then hits the bugs be
    prefix-strip alternation in `.extract_gcm`.
 2. **SEC1 `_sd` files** — SEC1 ingests `PTOT-sum_sd` alongside `_mean`; PTOT %
    area change is mean-only. FIX: `files <- files[grepl("_mean", files)]`.
+2b. **SEC1 missing ENSEMBLE filter (QAQC 2026-06-23)** — SEC1 does NOT drop
+   ENSEMBLE files, unlike SEC3 (:403) and SEC4 (:499) which do
+   `files[!grepl("ENSEMBLE", files)]`. `.extract_gcm` maps both historic and
+   future `ENSEMBLEmean` files to GCM="ENSEMBLEmean" → they pair → the by-model
+   parquet `ptot_change_by_model.parquet` gets polluted with model="ENSEMBLEmean"
+   rows (the proper ensemble is recomputed separately in change_ens). FIX: add
+   `files <- files[!grepl("ENSEMBLE", files)]` to SEC1's file list for parity.
+2c. **terra-probe on cglabs** — `USE_R2_5_2_VEC` defaults ON; the §5.2 vectorize
+   probe (`Rscript R/probe_r2_5_2_vec.R`) only ran on the macbook terra. Run it
+   ONCE on cglabs to confirm terra::mean/stdev parity before a multi-hour §5.2
+   bake; fallback is `USE_R2_5_2_VEC=0`.
 3. **admin_extract API MIGRATION (deep, the real blocker)** — `haz_functions.R`
    (github main, line 1527) changed
    `admin_extract(data, Geographies=, FUN=)` ->
@@ -37,6 +48,11 @@ the old leaked-global crash and builds change/diff stacks, then hits the bugs be
    `boundaries_index` (data.frame zone_id->iso3/admin_name/gaul_code per geography),
    then update ALL admin_extract calls in R/2.2 (SEC1 x3, SEC2 x2, SEC3 x2, SEC4 x1)
    and verify `merge_admin_extract` output handling (zone_id join) matches R/2.1.
+   **QAQC CAUTION**: R/2.1:93 builds Geographies for `lapply(1:2, ...)` = admin0+
+   admin1 ONLY. R/2.2 extracts all 3 levels — do NOT inherit the `1:2` limit or
+   admin2 outputs silently vanish. Build boundaries_zonal/index over ALL
+   geo_files_local. Also confirm merge_admin_extract's CURRENT signature (it
+   changed too), not just admin_extract.
 4. **SEC2/3/4 stale parsers** — `gsub("historical", "historical_historical_historical")`
    at ~354/447/530 should target `historic` (real prefix); suffix-strip + `[,c(1:3,5)]`
    field-selection assume old naming. Validate each vs real risk filenames. Filename
