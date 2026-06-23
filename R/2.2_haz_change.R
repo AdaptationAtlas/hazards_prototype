@@ -139,6 +139,20 @@ Geographies <- lapply(seq_along(geo_files_local), FUN = function(i) {
 })
 names(Geographies) <- names(geo_files_local)
 
+# CR-093: input dirs. These were previously LEAKED GLOBALS from
+# R/2_calculate_haz_freq.R (defined only inside its per-timeframe loop,
+# R/2:656-664), so R/2.2 only worked when run after R/2 in the same session.
+# Define them here, self-contained, at the `annual` axis (the parent dirs also
+# carry a `jagermeyr` axis; annual is the notebook-consumed PTOT/THI/NTx/NDWS
+# product). Override the axis with R22_TIMEFRAME=jagermeyr if ever needed.
+r22_timeframe <- Sys.getenv("R22_TIMEFRAME", unset = "annual")
+haz_mean_dir       <- file.path(atlas_dirs$data_dir$hazard_timeseries_mean, r22_timeframe)
+haz_time_risk_dir  <- file.path(atlas_dirs$data_dir$hazard_timeseries_risk, r22_timeframe)
+haz_timeseries_dir <- file.path(indices_dir2, r22_timeframe)
+.log22(sprintf("input dirs @ axis '%s': mean=%s | risk=%s | indices=%s",
+               r22_timeframe, haz_mean_dir, haz_time_risk_dir, haz_timeseries_dir))
+stopifnot(dir.exists(haz_mean_dir), dir.exists(haz_time_risk_dir))
+
 # 1) % area of precipitation increase or decrease by admin vect ####
 if (run_sec1) {
 .log22("SEC1 (PTOT % area change + diff) — START")
@@ -154,33 +168,37 @@ if (!dir.exists(haz_mean_ptot_dir)) {
 files <- list.files(haz_mean_dir, ".tif", full.names = TRUE)
 files <- grep("PTOT", files, value = TRUE)
 files <- files[!grepl("change", files)]
+# CR-093 FIX: keep only the canonical hyphen-year form (`YYYY-YYYY`). The mean
+# dir also holds ~18 stale underscore-year (`YYYY_YYYY`) duplicates of the
+# historic files; including both double-counts. Per [[feedback-r2-filename-parsing-pitfalls]]
+# the producer should not be re-run just to fix names — filter on read.
+files <- grep("[0-9]{4}-[0-9]{4}", files, value = TRUE)
 files_hist <- grep("historic", files, value = TRUE)
 files_fut <- files[!files %in% files_hist]
 
-# Temporarily exclude problem folders until issues with input data are resolved ####
-exclude_dirs <- file.path(haz_mean_dir, "ssp245_EC-Earth3_2021_2040_PTOT_sum.tif")
-files_fut <- files_fut[!files_fut %in% exclude_dirs]
+# CR-093 FIX: pair historic->future by GCM (the shared token), not by the whole
+# historic basename. The old `gsub("historical_", "")` matched nothing: the real
+# historic prefix is `historic_historic_historic_` and future names share only
+# the GCM (years + scenario differ). Filename grammar is documented in
+# [[feedback-r2-filename-parsing-pitfalls]]: scenario_model_timeframe_<haz>[_stat],
+# `_`-split, GCMs dashed, years YYYY-YYYY, historic scenario = 3 tokens.
+.extract_gcm <- function(x) {
+  b <- sub("^(historic_historic_historic|ssp[0-9]+)_", "", basename(x))  # drop scenario prefix
+  sub("_[0-9]{4}-[0-9]{4}_.*$", "", b)                                    # drop _years_<rest>
+}
+hist_gcm <- .extract_gcm(files_hist)
+fut_gcm  <- .extract_gcm(files_fut)
 
-# CR-093 FIX: the prior code referenced an undefined `file_hist` — it only
-# resolved via a global leaked from R/2_calculate_haz_freq.R when both scripts
-# were run in the same session (the kind of fragility behind the R/2.1 saga).
-# Restore the per-historic-file loop from that script's reference block so 2.2
-# is self-contained: for each historic PTOT raster, match the future rasters
-# sharing its GCM/variable token, then stack the per-GCM change(%) + diff layers.
-# Kill-gates below fail LOUD if no historic/future files or no token matches —
-# never silent garbage.
-.log22(sprintf("SEC1: %d historic PTOT file(s), %d future file(s)",
-               length(files_hist), length(files_fut)))
+.log22(sprintf("SEC1: %d historic PTOT file(s), %d future file(s); %d distinct GCMs",
+               length(files_hist), length(files_fut), length(unique(hist_gcm))))
 stopifnot(length(files_hist) > 0L, length(files_fut) > 0L)
 
 ptot_pairs <- lapply(seq_along(files_hist), function(i) {
   file_hist <- files_hist[i]
-  var <- gsub("historical_", "", basename(file_hist))
-  # fixed=TRUE: match the historic token literally (avoid '.' acting as regex).
-  files_fut_ss <- grep(var, files_fut, value = TRUE, fixed = TRUE)
+  files_fut_ss <- files_fut[fut_gcm == hist_gcm[i]]
   if (length(files_fut_ss) == 0L) {
-    .log22(sprintf("SEC1: WARN no future match for historic '%s' (token='%s') — skipped",
-                   basename(file_hist), var))
+    .log22(sprintf("SEC1: WARN no future match for historic GCM '%s' (%s) — skipped",
+                   hist_gcm[i], basename(file_hist)))
     return(NULL)
   }
   future <- terra::rast(files_fut_ss)
@@ -244,10 +262,14 @@ change <- rbind(change_inc, change_dec)
 change <- merge(change, base_areas[, list(iso3, admin0_name, admin1_name, admin2_name, total)], all.x = TRUE)
 change[, value := round(100 * value / total, 1)][, total := NULL]
 
-# Wrangle variable name
+# Wrangle variable name. Layer name = future basename, e.g.
+# "ssp126_ACCESS-CM2_2021-2040_PTOT-sum_mean". CR-093 FIX: strip the variable
+# +ext-stat+stat suffix (`_PTOT-sum_mean`/`_PTOT_sum_mean`), then `_`-split into
+# scenario_model_timeframe — GCMs use dashes so they stay one field (grammar:
+# [[feedback-r2-filename-parsing-pitfalls]]). Year regex already anchored (4b28977).
 var_names <- change$variable
-var_names <- gsub("sum.|_PTOT_sum", "", var_names)
 var_names <- gsub("([0-9]{4})_([0-9]{4})", "\\1-\\2", var_names, perl = TRUE)
+var_names <- sub("_PTOT[-_]sum(_(mean|sd|sum))?$", "", var_names)
 var_names <- do.call("cbind", tstrsplit(var_names, "_"))
 colnames(var_names) <- c("scenario", "model", "timeframe")
 
