@@ -72,6 +72,37 @@ pacman::p_load(packages, character.only = TRUE)
 # budget; CGlabs has the RAM headroom (~360 GB) easily.
 terra::gdalCache(60000)
 
+# ----------------------------------------------------------------------------
+# Timestamped logging + pbapply silencing (best practice from the R/2.1/2.2 saga).
+# Every line shows wall-clock + elapsed-since-start so multi-hour section
+# durations are visible in the nohup log. Mirrors R/2.2's .log22().
+# ----------------------------------------------------------------------------
+.t0_2 <- Sys.time()
+.log2 <- function(...) {
+  el <- as.numeric(difftime(Sys.time(), .t0_2, units = "secs"))
+  cat(sprintf("[%s | +%7.1fs] [2] %s\n",
+              format(Sys.time(), "%Y-%m-%d %H:%M:%S"), el, paste0(...)))
+  flush.console()
+}
+# Per-section timer: .sec2_start(name) on entry, .sec2_done(name) on exit prints
+# elapsed for that section alone (the per-timeframe gap 618->1672 had none).
+.sec2_t <- new.env(parent = emptyenv())
+.sec2_start <- function(tf, name) {
+  assign(name, Sys.time(), envir = .sec2_t)
+  .log2(sprintf("%s | %s - START", tf, name))
+}
+.sec2_done <- function(tf, name) {
+  if (!exists(name, envir = .sec2_t, inherits = FALSE)) {
+    .log2(sprintf("%s | %s - DONE (no START timer recorded)", tf, name))
+    return(invisible())
+  }
+  el <- as.numeric(difftime(Sys.time(), get(name, envir = .sec2_t), units = "secs"))
+  .log2(sprintf("%s | %s - DONE in %.1fs (%.2f min)", tf, name, el, el / 60))
+}
+# Silence pbapply spinners under nohup (handlers("void") does NOT cover pbapply);
+# 0_server_setup.R sets this interactively, set here too for a standalone run.
+if (!interactive()) pbapply::pboptions(type = "none")
+
 # Source functions from github
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
 
@@ -635,6 +666,7 @@ for (tx in seq_along(timeframes)) {
   # 1) Classify time series climate variables based on hazard thresholds ####
   if (run1) {
     cat(timeframe, "1) Classify time series climate variables based on hazard thresholds\n")
+    .sec2_start(timeframe, "1) Classify")
 
     haz_timeseries_dir <- file.path(indices_dir2, timeframe)
     cat("haz_timeseries_dir =", haz_timeseries_dir, "\n")
@@ -714,6 +746,7 @@ for (tx in seq_along(timeframes)) {
     plan(sequential)
 
     cat(timeframe, "1) Classify time series climate variables based on hazard thresholds - Completed\n")
+    .sec2_done(timeframe, "1) Classify")
 
     # 1.1) Check results ######
     files <- list.files(haz_time_class_dir, "tif$", full.names = TRUE, recursive = TRUE)
@@ -735,6 +768,7 @@ for (tx in seq_along(timeframes)) {
     file <- files[!grepl("ENSEMBLE", files)]
 
     if (run2_main) {
+      .sec2_start(timeframe, "2) Frequency")
       set_parallel_plan(n_cores = worker_n2, use_multisession = multisession2)
 
       # Enable progressr
@@ -767,11 +801,13 @@ for (tx in seq_along(timeframes)) {
       })
       plan(sequential)
       cat(timeframe, "2) Calculate hazard frequency across classified time series - Complete\n")
+      .sec2_done(timeframe, "2) Frequency")
     }
 
     # 2.1) Ensemble models ####
     if (do_ensemble2) {
       cat(timeframe, "2.1) Ensembling hazard frequency\n")
+      .sec2_start(timeframe, "2.1) Freq ensemble")
 
       # Create stacks of hazard x crop/animal x scenario x timeframe
       haz_freq_files <- list.files(haz_time_risk_dir, ".tif$", full.names = TRUE)
@@ -853,6 +889,7 @@ for (tx in seq_along(timeframes)) {
       plan(sequential)
 
       cat(timeframe, "2.1) Ensembling hazard frequency - Complete\n")
+      .sec2_done(timeframe, "2.1) Freq ensemble")
     }
 
     ## 2.2) Check file integrity ####
@@ -890,6 +927,7 @@ for (tx in seq_along(timeframes)) {
 
   if (run3) {
     cat(timeframe, "3) Create crop risk stacks\n")
+    .sec2_start(timeframe, "3) Crop risk stacks")
 
     if (!dir.exists(haz_risk_dir)) {
       dir.create(haz_risk_dir, recursive = TRUE)
@@ -1049,6 +1087,7 @@ for (tx in seq_along(timeframes)) {
     plan(sequential)
 
     cat(timeframe, "3) Create crop risk stacks - Complete\n")
+    .sec2_done(timeframe, "3) Crop risk stacks")
   }
 
   # 4) Calculate mean and sd across time series ####
@@ -1078,6 +1117,7 @@ for (tx in seq_along(timeframes)) {
     files_new <- gsub("historical_", "historic_historic_historic_", files_new)
 
     cat(timeframe, "4) Calculate mean and sd across time series.\nProcessing n =", length(files), "files\n")
+    .sec2_start(timeframe, "4) Mean/SD")
 
     set_parallel_plan(n_cores = worker_n4, use_multisession = FALSE)
 
@@ -1121,10 +1161,12 @@ for (tx in seq_along(timeframes)) {
 
     plan(sequential)
     cat(timeframe, "4) Calculate mean and sd across time series - Complete\n")
+    .sec2_done(timeframe, "4) Mean/SD")
 
     ## 4.1) Ensemble models ####
     if (do_ensemble4) {
       cat(timeframe, "4.1) Ensembling timeseries mean\n")
+      .sec2_start(timeframe, "4.1) Mean ensemble")
 
       # Create stacks of hazard x crop/animal x scenario x timeframe
       files <- list.files(haz_mean_dir, ".tif$", full.names = TRUE)
@@ -1198,6 +1240,7 @@ for (tx in seq_along(timeframes)) {
       plan(sequential)
 
       cat(timeframe, "4.1) Ensembling timeseries mean - Complete\n")
+      .sec2_done(timeframe, "4.1) Mean ensemble")
     }
 
     ## 4.2) Check integrity ####
@@ -1321,12 +1364,19 @@ for (tx in seq_along(timeframes)) {
 
   if (run5.2) {
     cat("5.2) Calculate interactions\n")
+    .sec2_start(timeframe, "5.2) Interactions")
 
     if (annual_season_subset == TRUE && grepl("sos", timeframe)) {
       combinations_choice <- combinations_ss
     } else {
       combinations_choice <- combinations
     }
+
+    # Tier-D gate metric (see R/ISSUE_r2_5_2_parallelism.md): the outer loop
+    # parallelises over combinations only; if this count << worker_n5.2 the inner
+    # scenario x model loop leaves workers idle and a 2-phase flatten would help.
+    .log2(sprintf("5.2: %d combinations x %d scen_x_model rows | worker_n5.2=%d (idle workers if combos<<workers)",
+                  nrow(combinations_choice), nrow(scenarios_x_models), worker_n5.2))
 
     # Estimate the RAM available therefore the number of workers
     set_parallel_plan(n_cores = floor(worker_n5.2), use_multisession = multisession5.2)
@@ -1396,9 +1446,21 @@ for (tx in seq_along(timeframes)) {
               haz[["heat"]] <- haz[["heat"]] * 10
               haz[["wet"]] <- haz[["wet"]] * 100
 
-              haz_sum <- terra::rast(lapply(1:nlyr(haz[[1]]), FUN = function(m) {
-                sum(terra::rast(lapply(haz, "[[", m)))
-              }))
+              # v_opt (2026-06-23): heat (*10) and wet (*100) are already applied
+              # above, so the old per-layer loop
+              #   terra::rast(lapply(1:nlyr(haz[[1]]), \(m) sum(terra::rast(lapply(haz,"[[",m)))))
+              # is just a direct multi-layer add across the three hazards. terra
+              # sums matching layers element-wise in a single C++ pass — identical
+              # result (same positional layer correspondence + NA propagation as
+              # the lapply), without the per-layer R loop + intermediate rast
+              # assembly. Set USE_R2_5_2_VEC=0 to fall back to the old kernel.
+              if (identical(Sys.getenv("USE_R2_5_2_VEC"), "0")) {
+                haz_sum <- terra::rast(lapply(1:nlyr(haz[[1]]), FUN = function(m) {
+                  sum(terra::rast(lapply(haz, "[[", m)))
+                }))
+              } else {
+                haz_sum <- haz[["dry"]] + haz[["heat"]] + haz[["wet"]]
+              }
 
               names(haz_sum) <- names(haz[[1]])
 
@@ -1496,6 +1558,7 @@ for (tx in seq_along(timeframes)) {
     plan(sequential)
 
     cat("5.2) Calculate interactions - Complete\n")
+    .sec2_done(timeframe, "5.2) Interactions")
 
     # 5.2.1) Check results ######
     if (check5.2) {
@@ -1527,6 +1590,7 @@ for (tx in seq_along(timeframes)) {
   ## 5.3) Per crop combine hazards into a single file #####
   if (run5.3) {
     cat("5.3) Per crop, combine hazards into a single file\n")
+    .sec2_start(timeframe, "5.3) Per-crop combine")
 
     # Make a table of interaction stack files
     haz_int_files <- list.files(haz_time_int_dir, full.names = TRUE)
@@ -1638,6 +1702,7 @@ for (tx in seq_along(timeframes)) {
     plan(sequential)
 
     cat("5.3) Per crop combine hazards into a single file - Complete\n")
+    .sec2_done(timeframe, "5.3) Per-crop combine")
 
     # 5.3.1) Check results ######
 
