@@ -15,9 +15,15 @@ log <- function(...) cat(sprintf("[%s] ", format(Sys.time(), "%H:%M:%S")), ..., 
 suppressPackageStartupMessages({ library(data.table); library(DBI); library(duckdb) })
 
 # Paths come from 0_server_setup.R (Data/ lives under the climdat working_dir).
+# server_setup only assigns `_dir` vars for NON-timeframe subdirs, so it does
+# NOT define haz_mean_dir / haz_time_risk_dir — derive them here at the same
+# `annual` axis R/2.2 writes to (honour R22_TIMEFRAME for parity).
 if (!exists("haz_mean_dir") || !exists("haz_time_risk_dir")) {
   log("sourcing 0_server_setup.R for atlas paths")
   source("R/0_server_setup.R")
+  r22_timeframe <- Sys.getenv("R22_TIMEFRAME", unset = "annual")
+  haz_mean_dir      <- file.path(atlas_dirs$data_dir$hazard_timeseries_mean, r22_timeframe)
+  haz_time_risk_dir <- file.path(atlas_dirs$data_dir$hazard_timeseries_risk, r22_timeframe)
 }
 stats_dir <- file.path(haz_time_risk_dir, "stats")
 
