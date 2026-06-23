@@ -55,21 +55,30 @@ Items 1-3 DONE + validated above (commits 0b82b4e, c3e13b5). Remaining:
    defaults ON; the §5.2 vectorize probe (`Rscript R/probe_r2_5_2_vec.R`) only
    ran on macbook terra. Run ONCE on cglabs to confirm terra::mean/stdev parity
    before a multi-hour §5.2 bake; fallback `USE_R2_5_2_VEC=0`.
-4. **SEC2/3/4 stale parsers + naming (still BLOCKING those sections)** — risk
-   dir uses dashes and a 1-token `historic_` prefix, so the current code is
-   broken at multiple points, e.g. `list.files(haz_time_risk_dir, "THI_max")`
-   never matches real `..._THI-max-max-G71.tif`, threshold codes like
-   `THI_max_max-G71` vs real `THI-max-max-G71`, and the `.G`->`_` substitution
-   corrupts the `_`-split field positions. The admin_extract calls + area joins
-   in SEC2/3/4 are ALREADY migrated; only the file-listing / threshold-code /
-   var-name parsing remain. `gsub("historical", "historical_historical_historical")`
-   at ~354/447/530 should target `historic` (real prefix); suffix-strip + `[,c(1:3,5)]`
-   field-selection assume old naming. Validate each vs real risk filenames. Filename
-   grammar is already documented — `scenario_model_timeframe_<haz-dashed>[_stat].tif`,
-   `_`-split, GCMs dashed, years `YYYY-YYYY`, historic prefix 1 or 3 tokens. Don't
-   re-dump to rediscover.
+4. **SEC2/3/4 stale parsers + naming** — DONE + validated (commit 203bac9).
+   Risk dir is dash-delimited with a 1-token `historic` prefix
+   (`historic_ACCESS-CM2_1995-2014_THI-max-max-G82.tif`). Fixed: file patterns
+   (`THI-max`), threshold codes (`THI-max-max-G`, `NTxNN-mean-G`, `NDWS-mean-G`),
+   a shared `.parse_risk_vars()` (plain `_`-split, take scenario/model/timeframe
+   + trailing severity — kills the `.G`->`_` field-shift that made severity="1"),
+   `"historical"` scenario literals -> `"historic"`, `seq_along(choices)` ->
+   `seq_len(nrow(choices))`, and SEC2 now drops ENSEMBLE. NOTE: ntx_perc_by_model
+   still carries extra `area`/`total_area` columns (pre-existing, harmless,
+   notebook uses `value`); could be trimmed later.
 
-## Gate before publish
+## STATUS 2026-06-23: FULL GATE PASSED (10/10)
+Full run (all sections) on live Data/ -> `Rscript R/validate_cr093_real.R` =
+**10 PASS / 0 FAIL**. All R/2.2 outputs are iso3-bearing + prunable + ensembles
+carry mean/min/max/sd. Safe to wire publish to the canonical `domain=` path.
+Remaining open item: 2c (terra §5.2 probe on cglabs — unrelated to R/2.2).
+
+### Known pre-existing artifact carried into all % outputs
+ptot/thi/ntx %-area and haz_freq `frequency_n` have NaN in zero-precip/zero-area
+zones (the `100*x/total` and `100*d/past` patterns with total/past≈0; ~15-30k
+rows each). Untouched science. Gate doesn't check value ranges. Decide whether to
+NA-clean before publish.
+
+## Gate before publish (procedure)
 Full run (drop SKIP flags) -> `Rscript R/validate_cr093_real.R` -> require
 `GATE PASSED` (iso3 present/non-NA/>=2 distinct, 0 null row-group stats, ensembles
 have mean/min/max/sd) -> only then wire publish to canonical `domain=` path.
