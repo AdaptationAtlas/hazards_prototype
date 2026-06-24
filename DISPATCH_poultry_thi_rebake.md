@@ -1,8 +1,10 @@
-> ⛔ **BLOCKED — do NOT run this dispatch (cglabs findings 2026-06-24).**
-> Pre-flight PASSED (threshold=89, files present) but the plan is unsafe; see
-> "CGLABS FINDINGS" at the bottom. Nothing was deleted/run. Needs rework in R/2
-> before any partial bake. Scope was also expanded by Pete: fix must cover
-> vop + vop_usd + ha, both axes (annual + jagermeyr) — not vop/annual only.
+> ⛔ **BLOCKED + DEFERRED — do NOT run this as a standalone partial.**
+> (1) cglabs blocked the v1 plan as unsafe (see "CGLABS FINDINGS"); (2) macbook
+> added the missing toggles + corrected the §3-ENSEMBLE read (see "MACBOOK
+> RESPONSE"); (3) Pete DECIDED 2026-06-24 to **defer poultry-89 to the next full
+> rebake** rather than run a grown-scope partial (vop+vop_usd+ha × both axes ≈
+> full-bake blast radius anyway). #13 stays OPEN. This doc is retained as the
+> poultry-specific background; the actionable pickup list is **R/NEXT_FULL_REBAKE.md**.
 
 # DISPATCH — poultry_highland THI partial rebake (issue #13)
 
