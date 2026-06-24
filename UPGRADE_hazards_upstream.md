@@ -20,6 +20,17 @@ heavy copy-paste. The water-balance scripts (NDWS/NDWL0/NDWL50) carry soil-moist
 global `<<-` + lexical-last AVAIL lookup + missing `overwrite=TRUE` — **the hazards#19 NDWS
 saturation failure class**.
 
+## 🚩 STALE / DEFERRED — upload system (Pete, 2026-06-24, do NOT fix now)
+`R/07_bucket_uploads/` (`upload_AWS.R`, `upload_GoogleCloud.R`) target the **legacy
+MVP-era path** `s3://digital-atlas/Updates_for_MVP_Release/1_hazards/` (and `gs://adaptation-atlas/`)
+— NOT the current `domain=climate/.../processing=analysis-ready/` STAC layout. They are
+**flagged STALE**; the current Stage-0 → S3 publish route is elsewhere/unknown. The
+**entire pipeline's upload/publish system (Stage 0 AND hazards_prototype push_to_s3.R)
+needs a holistic revision — that is a SEPARATE future project, not part of this workout.**
+So: the rank-2 ACL/success-gate fixes on the 07 uploaders and the rank-9 uploader
+de-dup are **DEFERRED** (not done now). The rank-2 `rm -r` guard is a separate safety
+item and is NOT part of this deferral. See [[project-pipeline-upload-revision]].
+
 ## ⚠️ SECURITY — act immediately
 `R/01_download_data/download_AgERA5.R` L15-16: live ECMWF/CDS credential committed (and now in
 `hazards_prototype` history too via the subtree vendor). **Rotate the key at CDS now** (Pete);
