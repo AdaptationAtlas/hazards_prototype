@@ -252,17 +252,19 @@ stopifnot(length(files_hist) > 0L, length(files_fut) > 0L)
 # the baseline below a meaningful annual-PTOT threshold so those cells become NA
 # (uncounted) rather than spurious increases.
 #
-# The threshold is a SCIENCE decision — NOT guessed here. Default unset => no
-# masking (current published behaviour preserved, so this commit is inert until
-# the rebake). The next R/2 rebake should export PTOT_BASELINE_MIN_MM=<X mm/yr>
-# (X chosen by the science lead) to activate it. Masking `past` here (rather than
-# in R/2's mean product) keeps the fix surgical to the change product and leaves
-# the published hazard_timeseries_mean PTOT raster untouched.
-.ptot_base_min <- suppressWarnings(as.numeric(Sys.getenv("PTOT_BASELINE_MIN_MM", unset = "")))
+# Threshold DECIDED 2026-06-24: 100 mm/yr (default; override via env, defensible
+# range 50-250). Below this hyper-arid line the denominator -> 0 so trace-level,
+# within-noise differences produce spurious large % changes; 100 mm/yr is also
+# the conventional desert isohyet below which rainfed agriculture is absent (so
+# masking removes no decision-relevant signal). Aligns with the Copernicus C3S
+# ~0.3 mm/day (~110 mm/yr) precip mask + the UNEP hyper-arid aridity boundary.
+# Masking `past` here (not R/2's mean product) keeps the fix surgical to the
+# change product. Full rationale + sources: ISSUE_cr093_nan_zeroprecip.md.
+.ptot_base_min <- suppressWarnings(as.numeric(Sys.getenv("PTOT_BASELINE_MIN_MM", unset = "100")))
 if (!is.na(.ptot_base_min)) {
-  .log22(sprintf("SEC1: masking baseline PTOT < %.1f mm before %% change (PTOT_BASELINE_MIN_MM)", .ptot_base_min))
+  .log22(sprintf("SEC1: masking baseline PTOT < %.1f mm/yr before %% change (PTOT_BASELINE_MIN_MM)", .ptot_base_min))
 } else {
-  .log22("SEC1: PTOT_BASELINE_MIN_MM unset — no baseline mask (desert false-increase NOT fixed; see ISSUE_cr093_nan_zeroprecip.md)")
+  .log22("SEC1: PTOT_BASELINE_MIN_MM=NA — baseline mask DISABLED (desert false-increase NOT fixed; see ISSUE_cr093_nan_zeroprecip.md)")
 }
 
 ptot_pairs <- lapply(seq_along(files_hist), function(i) {
