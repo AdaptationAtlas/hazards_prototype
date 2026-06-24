@@ -1,7 +1,19 @@
 # ISSUE (CR-093 follow-up) — fix NaN/Inf % at SOURCE in the R/2 rebake
 
 Owner: whoever runs the next **R/2** (`2_calculate_haz_freq.R`) rebake.
-Opened: 2026-06-23. Status: OPEN. Severity: low (cosmetic now; masked, not wrong-valued, in published R/2.2 outputs).
+Opened: 2026-06-23. Severity: low (masked, not wrong-valued, in published R/2.2 outputs).
+
+## STATUS 2026-06-24 — R/2.2 side CLOSED; root cause DEFERRED to R/2 rebake
+- DONE (shipped): R/2.2 NA-cleans every non-finite payload value before write
+  (commit 340a775). Re-ran full pipeline on live Data/ — nan=0 across all
+  outputs, gate 10/10. Published to canonical domain=climate hazard-change keys
+  (commit c9f1e73) and verified live over HTTPS (all 10 reachable + prunable,
+  null-stat=0). So nothing non-finite ships today.
+- STILL OPEN (this issue's real ask): the two ROOT CAUSES below live in the
+  R/2-produced rasters, NOT in R/2.2. Cause 1 in particular is a *correctness*
+  bug (desert false-"increase"), not cosmetic. Fix during the next R/2 rebake;
+  the R/2.2 guards then become no-ops and stay as cheap defense.
+- This issue stays OPEN until the R/2 rebake addresses cause 1 (+ optionally 2).
 
 ## Symptom
 R/2.2 % / frequency outputs carry ~15–30k non-finite rows per by-model file
