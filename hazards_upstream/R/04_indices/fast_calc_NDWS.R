@@ -4,7 +4,18 @@
 
 # R options
 # args <- commandArgs(trailingOnly = T)
-options(warn = -1, scipen = 999) # Remove warning alerts and scientific notation
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls, run config.
+# (sets scipen; warnings left at default so they surface - legacy warn=-1 dropped)
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)   # local=FALSE -> defs land in .GlobalEnv
+})
 suppressMessages(library(pacman))
 suppressMessages(pacman::p_load(tidyverse,terra,gtools,lubridate,compiler,raster,ncdf4))
 
@@ -63,10 +74,10 @@ peest2 <- function(srad, tmin, tmean, tmax){
   
 }
 
-root <- '/home/jovyan/common_data'
+root <- common_data_root()
 
 # Get CHIRPS extent
-msk <- terra::rast('/home/jovyan/common_data/chirps_wrld/chirps-v2.0.1981.01.01.tif')
+msk <- terra::rast(file.path(root, 'chirps_wrld', 'chirps-v2.0.1981.01.01.tif'))
 xtd <- terra::ext(msk); rm(msk)
 
 # Soil variables
@@ -77,9 +88,8 @@ sst <- terra::rast(paste0(root,'/atlas_hazards/soils/ssat_world.tif'))
 calc_ndws <- function(yr, mn){
   
   outfile <- paste0(out_dir,'/NDWS-',yr,'-',mn,'.tif')
-  cat(outfile,'\n')
-  
-  if (!file.exists(outfile)) {
+
+  if (!should_skip(outfile)) {   # honours FORCE_OVERWRITE=1
     
     dir.create(dirname(outfile),F,T)
     
@@ -87,7 +97,7 @@ calc_ndws <- function(yr, mn){
     last_day <- lubridate::days_in_month(as.Date(paste0(yr,'-',mn,'-01')))
     dts <- seq(from = as.Date(paste0(yr,'-',mn,'-01')), to = as.Date(paste0(yr,'-',mn,'-',last_day)), by = 'day')
     
-    cat('>>> Iniciando proceso:',yr,'-',mn,'\n')
+    .log('NDWS compute: ', yr, '-', mn)
     
     # Files
     pr_fls <- paste0(pr_pth,'/pr_', dts,'.tif')
@@ -98,6 +108,9 @@ calc_ndws <- function(yr, mn){
     tm_fls <- tm_fls[file.exists(tm_fls)]
     sr_fls <- paste0(sr_pth, '/rsds_', dts, '.tif')
     sr_fls <- sr_fls[file.exists(sr_fls)]
+    # Fail loud if any input variable has zero available days (roadmap rank 5)
+    stopifnot(length(pr_fls) > 0, length(tx_fls) > 0,
+              length(tm_fls) > 0, length(sr_fls) > 0)
     
     # Read variables
     prc <- terra::rast(pr_fls)
@@ -178,8 +191,8 @@ calc_ndws <- function(yr, mn){
     # Calculate number of soil water stress days
     cvls <- matrix(data = c(-Inf, 0.5, 1), ncol = 3) # Classification values
     NDWS <- terra::classify(x = ERATIO, rcl = cvls, right = F) |> sum()
-    terra::writeRaster(NDWS, outfile)
-    terra::writeRaster(AVAIL, paste0(dirname(outfile),'/AVAIL-',yr,'-',mn,'.tif'))
+    terra::writeRaster(NDWS, outfile, overwrite = TRUE)
+    terra::writeRaster(AVAIL, paste0(dirname(outfile),'/AVAIL-',yr,'-',mn,'.tif'), overwrite = TRUE)
     
     ## Clean up
     rm(list = c('prc','ETMAX','AVAIL','watbal','ERATIO','LOGGING','NDWL0'))
@@ -188,24 +201,22 @@ calc_ndws <- function(yr, mn){
 }
 
 # Runs
-scenario <- 'historical' # historical, future
-if (scenario == 'future') {
-  ssps <- c('ssp126', 'ssp245', 'ssp370', 'ssp585')
-  yrs <- 2021:2100
-} else {
-  if (scenario == 'historical') {
-    ssps <- 'historical'
-    yrs <- 1981:1994 # 1995:2014
-  }
-}
-gcms <- c('ACCESS-CM2','ACCESS-ESM1-5','CanESM5','CMCC-ESM2','EC-Earth3','EC-Earth3-Veg-LR','GFDL-ESM4','INM-CM4-8','INM-CM5-0','IPSL-CM6A-LR','KACE-1-0-G','MIROC6','MPI-ESM1-2-HR','MPI-ESM1-2-LR','MRI-ESM2-0','NorESM2-LM','NorESM2-MM','TaiESM1')
+# Run config - env-overridable via 00_setup.R (SCENARIO / SSPS / YRS / GCMS).
+# Historical window kept at the legacy 1981:1994 default (the documented CMIP6
+# baseline is 1995:2014 - run the baseline pass with YRS=1995:2014).
+scenario <- cfg_scenario("historical")
+ssps     <- cfg_ssps(scenario)
+yrs      <- cfg_yrs(scenario, historical = 1981:1994)
+gcms     <- cfg_gcms()
+.log('Run config: scenario=', scenario, ' | ssps=', paste(ssps, collapse=','),
+     ' | yrs=', min(yrs), ':', max(yrs), ' | n_gcms=', length(gcms))
 
 for (gcm in gcms) {
   
   for (ssp in ssps) {
     
     cmb <- paste0(ssp,'_',gcm)
-    cat('To process -----> ', cmb, '\n')
+    .log('To process: ', cmb)
     mns <- sprintf('%02.0f',1:12)
     stp <- base::expand.grid(yrs, mns, stringsAsFactors = F) |> base::as.data.frame(); rm(mns)
     names(stp) <- c('yrs','mns')
