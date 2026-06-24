@@ -266,6 +266,16 @@ if (!is.na(.ptot_base_min)) {
 } else {
   .log22("SEC1: PTOT_BASELINE_MIN_MM=NA — baseline mask DISABLED (desert false-increase NOT fixed; see ISSUE_cr093_nan_zeroprecip.md)")
 }
+# CR-093 refinement (a) — compound classify floor, DRAFT for rebake evaluation.
+# The bare +-5% "robust change" cut still mis-fires in the 100-200 mm band (+-5%
+# of 150 mm = +-7.5 mm, inside noise). When PTOT_DELTA_MIN_MM is set, a cell is
+# classified increase/decrease only if BOTH |% change| >= 5 AND |Δmm| >= floor.
+# DEFAULT UNSET = current +-5%-only behaviour (so this is inert until cglabs sets
+# e.g. PTOT_DELTA_MIN_MM=10 at the rebake to evaluate it). See ISSUE_cr093_nan_zeroprecip.md.
+.ptot_delta_min <- suppressWarnings(as.numeric(Sys.getenv("PTOT_DELTA_MIN_MM", unset = "")))
+if (!is.na(.ptot_delta_min)) {
+  .log22(sprintf("SEC1: compound classify ON — require |%%|>=5 AND |Δ|>=%.1f mm (PTOT_DELTA_MIN_MM)", .ptot_delta_min))
+}
 
 ptot_pairs <- lapply(seq_along(files_hist), function(i) {
   file_hist <- files_hist[i]
@@ -277,13 +287,16 @@ ptot_pairs <- lapply(seq_along(files_hist), function(i) {
   }
   future <- terra::rast(files_fut_ss)
   past <- terra::rast(file_hist)
-  # CR-093 cause-1 mask: NA-out sub-threshold baseline so deserts don't produce
-  # Inf% counted as an increase. Inert when PTOT_BASELINE_MIN_MM is unset.
-  if (!is.na(.ptot_base_min)) {
-    past[past < .ptot_base_min] <- NA
-  }
+  # CR-093: absolute change (Δmm) is valid EVERYWHERE incl. deserts — compute it
+  # from the UNMASKED baseline so ptot_diff reports full coverage (the dual-metric
+  # principle: % only where the baseline is robust, Δmm everywhere). Only the %
+  # denominator is degenerate at past≈0, so mask the baseline for the % ONLY.
   d <- future - past
-  ch <- round(100 * d / past, 1)
+  past_pct <- past
+  if (!is.na(.ptot_base_min)) {
+    past_pct[past_pct < .ptot_base_min] <- NA   # hyper-arid cells -> NA in % only
+  }
+  ch <- round(100 * (future - past_pct) / past_pct, 1)
   names(ch) <- gsub(".tif", "", basename(files_fut_ss))
   names(d) <- gsub(".tif", "", basename(files_fut_ss))
   list(change = ch, diff = d)
@@ -299,11 +312,19 @@ diff <- terra::rast(lapply(ptot_pairs, `[[`, "diff"))
                terra::nlyr(change), length(ptot_pairs), length(files_hist)))
 
 
-# Increasing area
-change_inc <- terra::classify(change, rcl = data.frame(from = c(-999999999, 5), to = c(5, 99999999999), becomes = c(0, 1)))
+# Increasing / decreasing area. CR-093 refinement (a): when PTOT_DELTA_MIN_MM is
+# set, require BOTH the >=5% relative cut AND an absolute |Δmm| floor (the `diff`
+# raster, still raw here — admin_extract clobbers it below). NA in either (e.g.
+# hyper-arid masked %) -> ifel returns NA -> not counted. Default (unset) keeps
+# the original +-5%-only classify.
+if (!is.na(.ptot_delta_min)) {
+  change_inc <- terra::ifel(change >= 5 & diff >= .ptot_delta_min, 1, 0)
+  change_dec <- terra::ifel(change <= -5 & diff <= -.ptot_delta_min, 1, 0)
+} else {
+  change_inc <- terra::classify(change, rcl = data.frame(from = c(-999999999, 5), to = c(5, 99999999999), becomes = c(0, 1)))
+  change_dec <- terra::classify(change, rcl = data.frame(from = c(-999999999, -5), to = c(-5, 99999999999), becomes = c(1, 0)))
+}
 change_inc <- change_inc * base_cellsize
-# Decreasing area
-change_dec <- terra::classify(change, rcl = data.frame(from = c(-999999999, -5), to = c(-5, 99999999999), becomes = c(1, 0)))
 change_dec <- change_dec * base_cellsize
 
 # Sum areas by admin vectors

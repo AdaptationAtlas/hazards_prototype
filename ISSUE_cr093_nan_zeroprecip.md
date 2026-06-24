@@ -53,13 +53,23 @@ consumer** — the root cause lives in the R/2 rasters.
      SPM Fig SPM.5 (relative-vs-absolute in dry regions + robustness hatching);
      Copernicus C3S 0.3 mm/day mask; World Bank CCKP precip metadata; CMIP6 extremes
      ≥3-events/yr dry mask; FAO Sahelian isohyets (100 mm Saharan / 200 mm cropping).
-   - **RECOMMENDED REFINEMENTS (not yet implemented — net-new, need real-data validation):**
-     (a) **Compound classify threshold** — the `±5%` "robust change" cut with no
-     absolute floor still mis-fires in the 100-200 mm band (±5% of 150 mm = ±7.5 mm,
-     inside noise). Require BOTH `±5%` AND `|Δ| ≥ ~10-15 mm/yr` before classifying a
-     cell increase/decrease. (b) **Dual-metric output** — report % only above the
-     mask but carry `Δmm/yr` everywhere (mirrors IPCC AR6; Δmm is the honest dryland
-     metric). (c) optional model-agreement (≥66-80% sign agreement) robustness flag.
+   - **REFINEMENTS DRAFTED 2026-06-24 (gated, evaluate at rebake — validated on
+     synthetic rasters, NOT yet on live Data/):**
+     (a) **Compound classify threshold** — `PTOT_DELTA_MIN_MM` (default UNSET = off).
+     When set, a cell counts as increase/decrease only if BOTH `|%| ≥ 5` AND
+     `|Δmm| ≥ floor`. Targets the 100-200 mm band (±5% of 150 mm = ±7.5 mm, inside
+     noise). cglabs evaluates at rebake with e.g. `PTOT_DELTA_MIN_MM=10`.
+     (b) **Dual-metric / Δmm-everywhere** — DONE as a correction: `diff` (Δmm) is now
+     computed from the UNMASKED baseline, so `ptot_diff_*.parquet` reports full
+     coverage incl. deserts (only the `%` uses the masked baseline). ⚠️ This CHANGES
+     `ptot_diff` in hyper-arid cells (was NA under the earlier shared-mask, now a
+     valid Δmm) — intended (Δmm is the honest dryland metric, IPCC AR6 style), takes
+     effect at the rebake.
+     (c) model-agreement (≥66-80% sign agreement) robustness flag — NOT drafted;
+     optional future enhancement.
+   - **Evaluation at rebake:** run R/2.2 once with default (compound off) and once
+     with `PTOT_DELTA_MIN_MM=10` (or 15); compare the increase/decrease %-area
+     deltas in the arid band before choosing whether to ship the compound cut.
    - **TO ACTIVATE / CLOSE (cglabs, next R/2 rebake):** `Rscript -e
      'source("R/0_server_setup.R"); source(file.path(project_dir,"R","2.2_haz_change.R"))'`
      (default 100 now applies; override `PTOT_BASELINE_MIN_MM=50` etc if science
