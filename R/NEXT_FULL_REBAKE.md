@@ -16,6 +16,22 @@ FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1
 (`RUN_R2_RUN5_2=1` too if the §5.2 combo tifs in `haz_time_int_dir` also need a
 rebuild; §5.2 already runs under FORCE_OVERWRITE, so usually not separately needed.)
 
+## CROSS-REPO — this rebake STARTS upstream in AdaptationAtlas/hazards (nexgddp)
+The full chain is **2 repos**: `AdaptationAtlas/hazards` (nexgddp branch) produces
+the per-year climate **indices** (NDWS, NDD, NTx, PTOT, … the analysis-ready rasters
++ the `indices_dir2`/haz_timeseries inputs) → `hazards_prototype` R/1 → R/2 → R/3
+consume them. So a true full rebake is:
+**(Stage 0) /hazards nexgddp — refresh/fix the indices → (Stage 1+) hazards_prototype.**
+- **hazards#19 (NDWS-historic saturation) is fixed in /hazards, not here** — Stage 0
+  must re-run the NDWS index on nexgddp before R/2 re-derives drought hazard, else
+  the saturation re-propagates regardless of anything in this repo.
+- Bringing the /hazards nexgddp workflow into the run plan is a TODO — its exact
+  steps/branch state aren't captured here yet (different repo). Pull them in before
+  scheduling the bake.
+- **Eventual goal (Pete): merge the two repos.** Until then, the cross-repo handoff
+  (indices → consumption) + the 24 runtime `raw.githubusercontent.com/.../hazards_prototype`
+  source URLs are the coupling to mind. (Merge scoping is a separate project.)
+
 ## ⛔ PRE-CONDITIONS / DEPENDENCIES (check BEFORE launching)
 - **hazards#19 — historic (1995-2014) NDWS rasters saturated (~0.95 every pixel).**
   UPSTREAM (`AdaptationAtlas/hazards`). A full rebake re-derives NDWS/NDWL0 hazard
