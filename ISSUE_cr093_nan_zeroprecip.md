@@ -3,7 +3,26 @@
 Owner: whoever runs the next **R/2** (`2_calculate_haz_freq.R`) rebake.
 Opened: 2026-06-23. Severity: low (masked, not wrong-valued, in published R/2.2 outputs).
 
-## STATUS 2026-06-24 — R/2.2 side CLOSED; root cause DEFERRED to R/2 rebake
+## STATUS 2026-06-24 (PM) — CAUSE 1 RESOLVED in R/2.2 (desert mask live + published)
+The baseline mask shipped via DISPATCH_desert_mask.md: R/2.2 SEC1 masks
+`past[past < 100 mm/yr] <- NA` before the % change (env `PTOT_BASELINE_MIN_MM`,
+default 100), and computes `ptot_diff` (Δmm) from the UNMASKED baseline so it
+keeps full coverage. Re-ran full R/2.2 on live Data/ (mask log line confirmed),
+validated 10/10, and **republished all 10 domain=climate keys** (CONFIRM=1,
+backups taken, verified null-stat=0). Sanity-verified: hyper-arid admins (e.g.
+EGY New Valley) now have NULL % (no false "+increase") while ptot_diff stays
+populated; arid increase_5 %-area dropped (sum 64.9M -> 61.0M). data.json
+hazard_change methods updated with the citable rationale.
+- **Cause 1 (past≈0 desert false-increase): RESOLVED** at the R/2.2 product
+  level. (A deeper source-level mask in R/2's mean raster remains a *broader,
+  optional* call — would also change the published mean product — not required.)
+- **Cause 2 (zero-coverage admin units): NA-by-design**, accepted.
+- Compound `PTOT_DELTA_MIN_MM` absolute-floor cut: still OPEN/optional, not
+  shipped (default off). Evaluate band numbers at the next rebake if wanted.
+- This issue can be **CLOSED** once Pete is satisfied with the 100 mm/yr choice;
+  no R/2 rebake is required for the desert fix anymore.
+
+## (superseded) STATUS 2026-06-24 — R/2.2 side CLOSED; root cause DEFERRED to R/2 rebake
 - DONE (shipped): R/2.2 NA-cleans every non-finite payload value before write
   (commit 340a775). Re-ran full pipeline on live Data/ — nan=0 across all
   outputs, gate 10/10. Published to canonical domain=climate hazard-change keys
