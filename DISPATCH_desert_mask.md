@@ -1,3 +1,15 @@
+> ✅ **DONE — executed on cglabs 2026-06-24 (commit 17e612b). Do not re-run.**
+> Re-ran R/2.2 with the 100 mm/yr baseline mask (SEC1 mask log confirmed),
+> validated 10/10, republished all 10 domain=climate hazard-change keys
+> (CONFIRM=1, backups taken, verified null-stat=0). Sanity: EGY New Valley % →
+> NULL (2752/2880), ptot_diff full coverage, arid increase_5 area 64.9M→61.0M,
+> nan=0. data.json hazard_change methods updated; ISSUE cause-1 RESOLVED.
+> STEP 3 compound diagnostic (`PTOT_DELTA_MIN_MM`) intentionally SKIPPED (default
+> ships baseline-100 only) — run it if Pete wants the arid-band delta numbers.
+> Housekeeping: two `.preFix-*.bak` sets exist on S3 for ptot/thi (a 2-min
+> foreground-timeout retry); prune older backups when convenient. Live URLs not
+> browser-verified by a human yet.
+
 # DISPATCH — activate desert PTOT mask + close ISSUE_cr093_nan_zeroprecip
 
 For: cglabs Claude Code (live Data/ + S3) — or run by hand in the cglabs terminal.
