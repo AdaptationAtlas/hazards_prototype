@@ -30,7 +30,8 @@ calc_ndd <- function(yr, mn){
     # Files
     fls <- paste0(pr_pth,'/','pr_',dts,'.tif')
     fls <- fls[file.exists(fls)]
-    
+    stopifnot(length(fls) > 0)
+
     # Read daily precipitation data
     prc <- terra::rast(fls)
     prc <- terra::crop(prc, xtd)

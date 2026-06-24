@@ -35,8 +35,10 @@ calc_thi <- function(yr, mn){
     # Files
     tx_fls <- paste0(tx_pth,'/tasmax_',dts,'.tif')
     tx_fls <- tx_fls[file.exists(tx_fls)]
+    stopifnot(length(tx_fls) > 0)
     rh_fls <- paste0(rh_pth,'/hurs_',dts,'.tif')
     rh_fls <- rh_fls[file.exists(rh_fls)]
+    stopifnot(length(rh_fls) > 0)
     
     # Read daily maximum temperature and relative humidity data
     tmx <- terra::rast(tx_fls) |> terra::crop(xtd)

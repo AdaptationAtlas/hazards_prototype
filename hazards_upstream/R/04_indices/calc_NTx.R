@@ -34,7 +34,8 @@ calc_ntx <- function(yr, mn, thr = 40) {
     # Files
     fls <- paste0(tx_pth,'/tasmax','_',dts,'.tif')
     fls <- fls[file.exists(fls)]
-    
+    stopifnot(length(fls) > 0)
+
     # Read daily maximum temperature data
     tmx <- terra::rast(fls)
     tmx <- terra::crop(tmx, xtd)

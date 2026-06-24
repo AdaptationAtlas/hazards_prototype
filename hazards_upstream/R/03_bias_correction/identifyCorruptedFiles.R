@@ -43,7 +43,9 @@ for(i in 1:nrow(stp)){
   vrf <- 1:length(ifl) %>%
     furrr::future_map(.f = function(j){
       r <- terra::rast(ifl[j])
-      v <- sum(r[!is.na(r)|r != 0])
+      # Sum only valid, non-zero cells; v==0 flags an all-NA/all-zero (corrupt)
+      # index. Was OR (`|`) which let NA-indexing poison the sum -> unreliable.
+      v <- sum(r[!is.na(r) & r != 0])
       return(v)
     }) %>% base::unlist()
   future:::ClusterRegistry("stop")
@@ -89,6 +91,7 @@ for(i in 1:nrow(stp)){
         fls2chck <- 1:length(pth) %>%
           purrr::map(.f = function(j){
             fls <- list.files(path = pth[j], pattern = '.tif$', full.names = T) # List daily files
+            if(length(fls) < 2){ return(character(0)) } # sd() needs n>=2; skip
             szs <- file.size(fls) * 1e-6    # File size in MB
             avg <- mean(szs)                # Average files size
             std <- sd(szs)                  # Standard deviation files size

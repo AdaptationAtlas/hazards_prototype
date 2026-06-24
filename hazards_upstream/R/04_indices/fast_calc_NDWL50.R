@@ -98,6 +98,9 @@ calc_ndwl50 <- function(yr, mn){
     tm_fls <- tm_fls[file.exists(tm_fls)]
     sr_fls <- paste0(sr_pth, '/rsds_', dts, '.tif')
     sr_fls <- sr_fls[file.exists(sr_fls)]
+    # Fail loud if any input variable has zero available days (roadmap rank 5)
+    stopifnot(length(pr_fls) > 0, length(tx_fls) > 0,
+              length(tm_fls) > 0, length(sr_fls) > 0)
     
     # Read variables
     prc <- terra::rast(pr_fls)
@@ -179,8 +182,8 @@ calc_ndwl50 <- function(yr, mn){
     # Note NDWL50 uses ssat * 0.5 (so this means soil is at 50% toward saturation)
     # here it suffices if the soil is above field capacity
     NDWL50  <- sum(LOGGING > (sst*0.5))
-    terra::writeRaster(NDWL50, outfile)
-    terra::writeRaster(AVAIL, paste0(dirname(outfile),'/AVAIL-',yr,'-',mn,'.tif'))
+    terra::writeRaster(NDWL50, outfile, overwrite = TRUE)
+    terra::writeRaster(AVAIL, paste0(dirname(outfile),'/AVAIL-',yr,'-',mn,'.tif'), overwrite = TRUE)
     
     ## Clean up
     rm(list = c('prc','ETMAX','AVAIL','watbal','ERATIO','LOGGING','NDWL0'))

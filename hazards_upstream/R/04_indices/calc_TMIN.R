@@ -34,7 +34,8 @@ calc_tmin <- function(yr, mn){
     # Files
     tnfls <- paste0(tn_pth,'/tasmin_',dts,'.tif')
     tnfls <- tnfls[file.exists(tnfls)]
-    
+    stopifnot(length(tnfls) > 0)
+
     # Read daily minimum temperature data
     tmn <- terra::rast(tnfls)
     tmn <- terra::crop(tmn, xtd)

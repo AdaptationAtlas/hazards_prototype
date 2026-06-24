@@ -34,9 +34,11 @@ calc_tav <- function(yr, mn){
     # Files
     txfls <- paste0(tx_pth,'/tasmax_',dts,'.tif')
     txfls <- txfls[file.exists(txfls)]
+    stopifnot(length(txfls) > 0)
     tnfls <- paste0(tn_pth,'/tasmin_',dts,'.tif')
     tnfls <- tnfls[file.exists(tnfls)]
-    
+    stopifnot(length(tnfls) > 0)
+
     # Read daily minimum and maximum temperatures data
     tmx <- terra::rast(txfls)
     tmx <- terra::crop(tmx, xtd)

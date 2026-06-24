@@ -83,6 +83,7 @@ fls <- c(sapply(paste0(his_dir, "/long_term_stats_max/"), FUN=function(i) paste0
          sapply(paste0(ssp_dir, "/long_term_stats_max/"), FUN=function(i) paste0(i, fls)),
          sapply(paste0(ssp_dir, "_max/"), FUN=function(i) paste0(i, fls)))
 fls <- fls[file.exists(fls)]
+stopifnot(length(fls) > 0)
 
 #first read datasets
 r_data <- terra::rast(fls)
