@@ -3,6 +3,11 @@
 Owner: whoever runs the next **R/2** (`2_calculate_haz_freq.R`) rebake.
 Opened: 2026-06-23. Severity: low (masked, not wrong-valued, in published R/2.2 outputs).
 
+## ✅ CLOSED 2026-06-24 — Pete signed off on 100 mm/yr. Desert mask live + published.
+Cause 1 RESOLVED (baseline mask 100 mm/yr live in published domain=climate). Cause 2
+NA-by-design (accepted). Compound `PTOT_DELTA_MIN_MM` cut = separate optional note,
+deferred to the next rebake if wanted (not blocking). No R/2 rebake needed. Details below.
+
 ## STATUS 2026-06-24 (PM) — CAUSE 1 RESOLVED in R/2.2 (desert mask live + published)
 The baseline mask shipped via DISPATCH_desert_mask.md: R/2.2 SEC1 masks
 `past[past < 100 mm/yr] <- NA` before the % change (env `PTOT_BASELINE_MIN_MM`,
