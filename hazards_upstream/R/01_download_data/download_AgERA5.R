@@ -11,9 +11,17 @@ suppressMessages(if(!require(pacman)){install.packages('pacman');library(pacman)
 suppressMessages(pacman::p_load(tidyverse,parallel,ecmwfr))
 options(keyring_backend = "file")
 
-# credentials
-UID = "63618"
-key = "0168398e-3f9f-4a6a-9430-01d176e61e90"
+# credentials — read from environment, NEVER hardcode. Set CDS_UID + CDS_KEY in
+# your shell / ~/.Renviron. SECURITY: a key was previously hardcoded here and is
+# LEAKED in git history (both AdaptationAtlas/hazards and, via the subtree vendor,
+# hazards_prototype) — it MUST be rotated at https://cds.climate.copernicus.eu;
+# de-hardcoding does NOT scrub it from history, only rotation invalidates it.
+UID = Sys.getenv("CDS_UID")
+key = Sys.getenv("CDS_KEY")
+stopifnot(
+  "CDS_UID not set — export it or add to ~/.Renviron" = nzchar(UID),
+  "CDS_KEY not set — export it or add to ~/.Renviron" = nzchar(key)
+)
 
 # save key for CDS
 ecmwfr::wf_set_key(user = UID,
