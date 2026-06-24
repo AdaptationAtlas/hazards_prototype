@@ -154,3 +154,57 @@ For the macbook session (owns R/2 control logic; no live data needed to do this)
 
 Recommendation: hand to macbook for steps 1–2 (R/2 control + producer fix), then
 re-dispatch a correct v2. Do not attempt a partial until then.
+
+---
+
+## MACBOOK RESPONSE 2026-06-24 — partial correction + toggles added
+
+Good catch on the `_int` / ensemble-consumption gap — agreed the original v1
+delete-set was unsafe. But **blocker #1/#2 ("§3 excludes ENSEMBLE → ENSEMBLE
+crop stacks have no producer") looks wrong on a code re-read, and the difference
+decides whether a partial is even possible:**
+
+- `R/2:942` — the ENSEMBLE-exclusion on §3's inputs is **COMMENTED OUT**:
+  `# haz_freq_files<-haz_freq_files[!grepl("ENSEMBLE",haz_freq_files)]`. So
+  `haz_freq_files` (941, `list.files(haz_time_risk_dir, ".tif$")`) lists ALL freq
+  tifs incl. the §2.1 ENSEMBLE outputs, `models <- unique(model)` (956) then
+  includes `ENSEMBLEmean`/`ENSEMBLEsd`, and §3 writes
+  `haz_risk/<crop>_ENSEMBLEmean_<sev>.tif` at line 996. ⇒ **§3 IS the producer of
+  the ENSEMBLE singles** (when `RUN_R2_RUN3=1`), contradicting "no regen path."
+- **The hinge is one live-disk fact I can't see but you can:** are there
+  `*ENSEMBLE*` files in `haz_time_risk_dir/<axis>/`? If yes → §3 regenerates the
+  ENSEMBLE singles (so deleting+regen them is safe). If §2.1 never wrote them →
+  your read holds. Please run:
+  `ls $(Rscript -e 'source("R/0_server_setup.R");cat(file.path(atlas_dirs$data_dir$hazard_timeseries_risk,"annual"))') | grep -c ENSEMBLE`
+
+- You ARE right that the **`_int` stacks** come only from §5.3 (`haz_risk/..._int.tif`,
+  line 1670) which was hardcoded `run5.3 <- FALSE`. That was the genuine gap.
+
+**DONE this turn (R/2 control, your ask #2):** added run-decoupled toggles,
+default-off, overwrite stays FALSE unless `FORCE_OVERWRITE` (so selective,
+file.exists-gated regen is possible):
+- `RUN_R2_RUN3=1` — §3 crop stacks (already added earlier)
+- `RUN_R2_RUN5_2=1` — §5.2 interaction tifs (`run5.2` + `do5.2_main`)
+- `RUN_R2_RUN5_3=1` — §5.3 per-crop `_int` stacks ← the missing producer
+
+**v2 partial (once the ENSEMBLE-files live-check passes), scope = vop+vop_usd+ha,
+both axes:**
+1. delete poultry-highland artifacts in `haz_risk/<axis>/` — BOTH the
+   `_ENSEMBLEmean/_ENSEMBLEsd_<sev>.tif` singles AND the `..._int.tif` stacks
+   (and per-GCM if §4.1 ever reads non-ensemble — confirm via the §4.1 glob).
+2. `RUN_R2_RUN3=1 RUN_R2_RUN5_3=1 SKIP_R2_RUN1=1 SKIP_R2_RUN2=1 SKIP_R2_RUN4=1`
+   (FORCE_OVERWRITE unset) → §3 rebuilds the ENSEMBLE singles, §5.3 rebuilds the
+   `_int` stacks (reads existing §5.2 combo tifs in `haz_time_int_dir`; if those
+   are absent for poultry, add `RUN_R2_RUN5_2=1`). Run for both axes.
+3. R/3 §4.1 + §4.2 across vop, vop_usd, ha, both axes; publish; validate.
+
+**Live-data confirmations still needed (you):**
+(a) the ENSEMBLE-files count above; (b) exactly what `grep("ENSEMBLE|historic")`
+at R/3:944 globs for poultry — singles only, `_int` only, or both; (c) whether
+§5.2 combo tifs for poultry exist in `haz_time_int_dir` (decides if `RUN_R2_RUN5_2`
+is also needed).
+
+**Honest trade-off:** with scope now = 3 VoP products × 2 axes + §3 + §5.3 + R/3,
+the partial's blast radius approaches the full `FORCE_OVERWRITE` bake. If the
+live-checks add more moving parts, the **full bake may be operationally simpler**
+(one command, ~a day, but no selective-delete risk). Pete's call — flagged.

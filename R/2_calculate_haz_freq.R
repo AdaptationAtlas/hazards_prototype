@@ -602,8 +602,13 @@ multisession4 <- TRUE
 ### 0.3.5) Calculate interactions ####
 
 # Interaction Tifs
-run5.2 <- .force_overwrite_r2
-do5.2_main <- .force_overwrite_r2 # Set to F if you only want to run the ensembling step
+# RUN_R2_RUN5_2=1 decouples RUN from OVERWRITE: the section runs (do5.2_main on)
+# while overwrite5.2 stays FALSE unless FORCE_OVERWRITE — so a targeted/selective
+# regen (pre-delete the artifacts to rebuild, file.exists-gated) is possible
+# without a full all-crops re-bake. Mirrors RUN_R2_RUN3. See DISPATCH_poultry_thi_rebake.md.
+.run5_2_toggle <- identical(Sys.getenv("RUN_R2_RUN5_2"), "1")
+run5.2 <- .force_overwrite_r2 || .run5_2_toggle
+do5.2_main <- .force_overwrite_r2 || .run5_2_toggle # Set to F if you only want to run the ensembling step
 check5.2 <- TRUE
 round5.2 <- 3
 overwrite5.2 <- .force_overwrite_r2
@@ -619,8 +624,13 @@ if (identical(Sys.getenv("DEBUG_R2_5_2"), "1")) {
   cat("DEBUG_R2_5_2=1: section 5.2 forced to sequential (workers=1)\n")
 }
 
-# Interaction crop stacks
-run5.3 <- FALSE
+# Interaction crop stacks. Was hardcoded FALSE (even under FORCE_OVERWRITE) —
+# preserve that exactly; only add an explicit opt-in toggle. RUN_R2_RUN5_3=1
+# enables it run-decoupled from overwrite (overwrite5.3 stays FALSE unless
+# FORCE_OVERWRITE). This is the producer of the per-crop
+# `haz_risk/<crop>_<model>_<sev>_<combo>_int.tif` interaction stacks R/3 §4.1
+# consumes — a poultry _int regen needs THIS section, not just §3.
+run5.3 <- identical(Sys.getenv("RUN_R2_RUN5_3"), "1")
 worker_n5.3 <- 15
 overwrite5.3 <- .force_overwrite_r2
 upload5 <- FALSE
