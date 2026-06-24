@@ -245,6 +245,26 @@ fut_gcm    <- .extract_gcm(files_fut)
                .n_hist_raw, length(files_hist), length(files_fut), length(unique(hist_gcm))))
 stopifnot(length(files_hist) > 0L, length(files_fut) > 0L)
 
+# CR-093 follow-up (ISSUE_cr093_nan_zeroprecip.md, cause 1): in hyper-arid cells
+# the historic baseline precip `past` ~ 0, so `100*(future-past)/past` -> Inf and
+# the classify(>=5 -> increase) step counts a desert as a precip INCREASE — a
+# finite-but-wrong value the `!is.finite := NA` guard does NOT catch. Fix: mask
+# the baseline below a meaningful annual-PTOT threshold so those cells become NA
+# (uncounted) rather than spurious increases.
+#
+# The threshold is a SCIENCE decision — NOT guessed here. Default unset => no
+# masking (current published behaviour preserved, so this commit is inert until
+# the rebake). The next R/2 rebake should export PTOT_BASELINE_MIN_MM=<X mm/yr>
+# (X chosen by the science lead) to activate it. Masking `past` here (rather than
+# in R/2's mean product) keeps the fix surgical to the change product and leaves
+# the published hazard_timeseries_mean PTOT raster untouched.
+.ptot_base_min <- suppressWarnings(as.numeric(Sys.getenv("PTOT_BASELINE_MIN_MM", unset = "")))
+if (!is.na(.ptot_base_min)) {
+  .log22(sprintf("SEC1: masking baseline PTOT < %.1f mm before %% change (PTOT_BASELINE_MIN_MM)", .ptot_base_min))
+} else {
+  .log22("SEC1: PTOT_BASELINE_MIN_MM unset — no baseline mask (desert false-increase NOT fixed; see ISSUE_cr093_nan_zeroprecip.md)")
+}
+
 ptot_pairs <- lapply(seq_along(files_hist), function(i) {
   file_hist <- files_hist[i]
   files_fut_ss <- files_fut[fut_gcm == hist_gcm[i]]
@@ -255,6 +275,11 @@ ptot_pairs <- lapply(seq_along(files_hist), function(i) {
   }
   future <- terra::rast(files_fut_ss)
   past <- terra::rast(file_hist)
+  # CR-093 cause-1 mask: NA-out sub-threshold baseline so deserts don't produce
+  # Inf% counted as an increase. Inert when PTOT_BASELINE_MIN_MM is unset.
+  if (!is.na(.ptot_base_min)) {
+    past[past < .ptot_base_min] <- NA
+  }
   d <- future - past
   ch <- round(100 * d / past, 1)
   names(ch) <- gsub(".tif", "", basename(files_fut_ss))

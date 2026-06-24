@@ -33,6 +33,19 @@ consumer** — the root cause lives in the R/2 rasters.
      a meaningful threshold (decide the threshold — e.g. annual `PTOT < X mm`)
      before the % change is derived, so those cells are NA not Inf. This needs a
      science call on X; that's why it's deferred to the rebake, not patched blind.
+   - DRAFTED 2026-06-24 (macbook, parameterized, INERT until activated): R/2.2
+     SEC1 now masks `past[past < PTOT_BASELINE_MIN_MM] <- NA` before the % change,
+     gated on the env var `PTOT_BASELINE_MIN_MM` (mm/yr). **Default unset = no
+     masking** → current published behaviour is unchanged; this commit ships
+     nothing new until the rebake exports the threshold. Implemented surgically in
+     R/2.2 (not R/2's mean product) so the published `hazard_timeseries_mean` PTOT
+     raster is untouched. **TO ACTIVATE (cglabs, next rebake):** science lead picks
+     X, then `PTOT_BASELINE_MIN_MM=<X> Rscript -e 'source("R/0_server_setup.R");
+     source(file.path(project_dir,"R","2.2_haz_change.R"))'` → `Rscript
+     R/validate_cr093_real.R` → `CONFIRM=1 Rscript R/publish_cr093_r22.R`. Then this
+     issue can close. (If the science prefers masking at R/2 source instead, that's
+     a broader change — it also alters the published mean product; flagged for the
+     rebake decision.)
 
 2. **`x / total` and zonal mean over zero-valid-cell zones (all % + freq).**
    Tiny/islet admin units where `base_rast` (CHIRPS-grid, waterbody-masked) covers
