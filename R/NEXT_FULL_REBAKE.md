@@ -22,12 +22,18 @@ the per-year climate **indices** (NDWS, NDD, NTx, PTOT, … the analysis-ready r
 + the `indices_dir2`/haz_timeseries inputs) → `hazards_prototype` R/1 → R/2 → R/3
 consume them. So a true full rebake is:
 **(Stage 0) /hazards nexgddp — refresh/fix the indices → (Stage 1+) hazards_prototype.**
-- **hazards#19 (NDWS-historic saturation) is fixed in /hazards, not here** — Stage 0
-  must re-run the NDWS index on nexgddp before R/2 re-derives drought hazard, else
-  the saturation re-propagates regardless of anything in this repo.
-- Bringing the /hazards nexgddp workflow into the run plan is a TODO — its exact
-  steps/branch state aren't captured here yet (different repo). Pull them in before
-  scheduling the bake.
+- **Stage 0 is now IN-REPO at `hazards_upstream/`** (vendored 2026-06-24 via full-history
+  `git subtree add` from AdaptationAtlas/hazards `nexgddp`; update later with
+  `git subtree pull --prefix=hazards_upstream <hazards> nexgddp`). The producer is a
+  7-stage R pipeline: `hazards_upstream/R/{01_download_data, 02_preprocess_data,
+  03_bias_correction, 04_indices, 05_final_maps, 06_metadata, 07_bucket_uploads}`.
+  Its outputs (the climate indices) are what hazards_prototype R/1→R/2 consume via
+  `indices_dir2`.
+- **hazards#19 (NDWS-historic saturation) is fixed in `hazards_upstream/R/04_indices`**
+  (the index-calc stage), NOT in this repo's R/. Stage 0 must re-run NDWS there before
+  R/2 re-derives drought hazard, else the saturation re-propagates regardless of
+  anything downstream. (Apply the #19 fix in 04_indices, re-run Stage 0 for NDWS,
+  confirm historic NDWS no longer ~0.95/pixel, THEN proceed to R/2.)
 - **Eventual goal (Pete): merge the two repos.** Until then, the cross-repo handoff
   (indices → consumption) + the 24 runtime `raw.githubusercontent.com/.../hazards_prototype`
   source URLs are the coupling to mind. (Merge scoping is a separate project.)
