@@ -4,7 +4,18 @@
 # July, 2025
 
 # R options
-options(warn = -1, scipen = 999)
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls.
+# (sets scipen; warnings left at default so they surface - legacy warn=-1 dropped)
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 suppressMessages(library(pacman))
 pacman::p_load(terra, tidyverse, FactoMineR, arrow)
 list.files2 <- Vectorize(FUN = list.files, vectorize.args = 'pattern')
@@ -29,7 +40,7 @@ if (scenario == 'future') {
   }
 }
 
-root <- '/home/jovyan/common_data'
+root <- common_data_root()
 
 # Available indices
 indices <- c('TAVG','TMAX','TMIN','PTOT',
@@ -39,7 +50,7 @@ indices <- c('TAVG','TMAX','TMIN','PTOT',
 # Applying QAQC tool to all folders
 dfm_qaqc <- purrr::map(.x = indices, .f = function(index) {
   
-  cat('.... Validating files for index:',index,'\n')
+  .log('Validating index: ', index)
   
   dfm_qaqc <- purrr::map(.x = 1:nrow(stp_tbl), .f = function(i) {
     
@@ -51,11 +62,11 @@ dfm_qaqc <- purrr::map(.x = indices, .f = function(index) {
       trg_pth <- paste0(root,'/atlas_nex-gddp_hazards/cmip6/indices/',stp_tbl$ssp[i],'_',stp_tbl$gcm[i],'_',stp_tbl$ini_year[i],'_',stp_tbl$end_year[i],'/',index)
     }
     
-    app_call <- '~/common_data/cloud-convert run-qaqc '
+    app_call <- paste0(common_data_root(), '/cloud-convert run-qaqc ')
     app_args <- ' --quantiles --pct-check 100'
-    
+
     if (!file.exists(file.path(trg_pth,'qaqc.csv'))) {
-      cat('Processing', trg_pth,'\n')
+      .log('Processing ', trg_pth)
       system(command = paste0(app_call, trg_pth, app_args))
     }
     
@@ -118,10 +129,10 @@ table(dfm_qaqc$folder[is.na(dfm_qaqc$mean)]) |> sort(decreasing = T)
 
 ## Indices quality control ----
 # Get indices statistics
-dlt_sts_file <- '~/common_data/affected_geographies/corrected_delta_stats.parquet'
+dlt_sts_file <- file.path(common_data_root(), 'affected_geographies/corrected_delta_stats.parquet')
 if (!file.exists(dlt_sts_file)) {
-  dlt_pth <- '~/common_data/esfg_cmip6/intermediate/interpolated_mthly_anomaly'
-  system(paste0('~/common_data/cloud-convert run-qaqc ',dlt_pth,' --quantiles --pct-check 100'))
+  dlt_pth <- file.path(common_data_root(), 'esfg_cmip6/intermediate/interpolated_mthly_anomaly')
+  system(paste0(common_data_root(), '/cloud-convert run-qaqc ',dlt_pth,' --quantiles --pct-check 100'))
   # Read delta statistics
   delta_sts <- utils::read.csv(file.path(dlt_pth,'qaqc.csv'))
   delta_sts <- delta_sts[grep('_fixed',delta_sts$file),]
@@ -149,10 +160,10 @@ stp_tbl <- expand.grid(ssp = ssps, gcm = gcms, prd = prds, stringsAsFactors = F)
 rm(ssps, gcms, prds)
 stp_tbl$folder <- paste0(stp_tbl$ssp,'_',stp_tbl$gcm,'_',stp_tbl$prd)
 # Get monthly statistics
-mnt_sts_file <- '~/common_data/affected_geographies/corrected_monthly_stats.parquet'
+mnt_sts_file <- file.path(common_data_root(), 'affected_geographies/corrected_monthly_stats.parquet')
 if (!file.exists(mnt_sts_file)) {
-  root <- '~/common_data'
-  app_call <- '~/common_data/cloud-convert run-qaqc '
+  root <- common_data_root()
+  app_call <- paste0(common_data_root(), '/cloud-convert run-qaqc ')
   app_args <- ' --quantiles --pct-check 100'
   for (i in 1:nrow(stp_tbl)) {
     
@@ -187,7 +198,7 @@ mthly.pca.res <- mthly_sts |> dplyr::select(mean, min, max, stdev, q1, median, q
 
 ## Daily's quality control ----
 # Get daily statistics
-dly_sts_file <- '~/common_data/affected_geographies/corrected_daily_stats.parquet'
+dly_sts_file <- file.path(common_data_root(), 'affected_geographies/corrected_daily_stats.parquet')
 if (!file.exists(dly_sts_file)) {
   stp_tbl$daily_folder <- paste0('Prec_',stp_tbl$gcm,'_',stp_tbl$ssp,'_',stp_tbl$prd)
   for (i in 1:nrow(stp_tbl)) {

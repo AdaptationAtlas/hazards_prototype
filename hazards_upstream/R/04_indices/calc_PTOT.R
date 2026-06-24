@@ -3,7 +3,18 @@
 # Alliance Bioversity-International & CIAT, 2025
 
 # R options
-options(warn = -1, scipen = 999)    # Remove warning alerts and scientific notation
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls, run config.
+# (sets scipen; warnings left at default so they surface - legacy warn=-1 dropped)
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 suppressMessages(library(pacman))
 suppressMessages(pacman::p_load(tidyverse,terra,gtools,lubridate))
 
@@ -11,10 +22,10 @@ suppressMessages(pacman::p_load(tidyverse,terra,gtools,lubridate))
 # args <- commandArgs(trailingOnly = T)
 
 # Root folder
-root <- '/home/jovyan/common_data'
+root <- common_data_root()
 
 # Extent CHIRPS
-msk <- terra::rast('/home/jovyan/common_data/chirps_wrld/chirps-v2.0.1981.01.01.tif')
+msk <- terra::rast(file.path(root, 'chirps_wrld', 'chirps-v2.0.1981.01.01.tif'))
 xtd <- terra::ext(msk)
 
 # PTOT function
@@ -23,7 +34,7 @@ calc_ptot <- function(yr, mn){
   outfile <- paste0(out_dir,'/PTOT-',yr,'-',mn,'.tif')
   cat(outfile,'\n')
   
-  if(!file.exists(outfile)){
+  if(!should_skip(outfile)){
     
     dir.create(dirname(outfile), F, T)
     
@@ -56,17 +67,14 @@ calc_ptot <- function(yr, mn){
 # gcms  <- args[2]
 
 # Runs
-scenario <- 'historical' # historical, future
-if (scenario == 'future') {
-  ssps <- c('ssp126', 'ssp245', 'ssp370', 'ssp585')
-  yrs <- 2021:2100
-} else {
-  if (scenario == 'historical') {
-    ssps <- 'historical'
-    yrs <- 1981:1994 # 1995:2014
-  }
-}
-gcms <- c('ACCESS-CM2','ACCESS-ESM1-5','CanESM5','CMCC-ESM2','EC-Earth3','EC-Earth3-Veg-LR','GFDL-ESM4','INM-CM4-8','INM-CM5-0','IPSL-CM6A-LR','KACE-1-0-G','MIROC6','MPI-ESM1-2-HR','MPI-ESM1-2-LR','MRI-ESM2-0','NorESM2-LM','NorESM2-MM','TaiESM1')
+# Run config - env-overridable via 00_setup.R (SCENARIO / SSPS / YRS / GCMS).
+# Historical window kept at the legacy 1981:1994 default (documented baseline is
+# 1995:2014 - run the baseline pass with YRS=1995:2014).
+scenario <- cfg_scenario("historical")
+ssps     <- cfg_ssps(scenario)
+yrs      <- cfg_yrs(scenario, historical = 1981:1994)
+gcms     <- cfg_gcms()
+.log('Run config: scenario=', scenario, ' | yrs=', min(yrs), ':', max(yrs), ' | n_gcms=', length(gcms))
 
 for (gcm in gcms) {
   
