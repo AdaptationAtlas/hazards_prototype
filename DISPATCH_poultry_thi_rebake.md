@@ -1,3 +1,9 @@
+> ⛔ **BLOCKED — do NOT run this dispatch (cglabs findings 2026-06-24).**
+> Pre-flight PASSED (threshold=89, files present) but the plan is unsafe; see
+> "CGLABS FINDINGS" at the bottom. Nothing was deleted/run. Needs rework in R/2
+> before any partial bake. Scope was also expanded by Pete: fix must cover
+> vop + vop_usd + ha, both axes (annual + jagermeyr) — not vop/annual only.
+
 # DISPATCH — poultry_highland THI partial rebake (issue #13)
 
 For: cglabs Claude Code (live `Data/` + S3) — or run by hand in the cglabs terminal.
@@ -87,3 +93,64 @@ ACL `public-read`. Then close #13 + note the corrected threshold + version bump.
    (not superseded by another path) before deleting.
 4. Exact §4.2 parquet naming/location under `hazard_risk_vop/annual` — adjust the
    `rm *.parquet` glob if there are subdirs.
+
+---
+
+## CGLABS FINDINGS 2026-06-24 — why this is BLOCKED (evidence)
+
+Verified against live `Data/` + the current R/2 / R/3 code. Nothing deleted/run.
+
+**What R/3 §4.1 actually consumes** (the files the threshold fix must reach):
+`R/3_freq_x_exposure.R` sets `ensemble_only4.1 <- TRUE` (line 398) and filters
+its inputs to `grep("ENSEMBLE|historic", files)` (line 944). In
+`haz_risk/<axis>/`, the poultry-highland files matching that are the **18
+`ENSEMBLEmean/ENSEMBLEsd` single stacks** (+ their `_int` interaction stacks) —
+NOT the per-GCM stacks.
+
+**Three blockers:**
+1. **§3 rebuilds the wrong subset.** `RUN_R2_RUN3=1` runs §3, which writes
+   `haz_risk/<crop>_<model>_<sev>.tif` (line 996) where `models <-
+   haz_freq_file_tab[,unique(model)]` (line 956) — **ENSEMBLE excluded**
+   upstream. So §3 regenerates only the 162 per-GCM singles, never the 18
+   ENSEMBLE singles or the `_int` stacks §4.1 reads. (`overwrite3` is correctly
+   decoupled via `RUN_R2_RUN3`, so that part is fine — it's just the wrong files.)
+2. **No producer for the consumed files in enabled code.** §5.2 writes
+   interactions to `haz_time_int_dir`, NOT `haz_risk` (lines 1434/1523). The
+   only `haz_risk` `_int` writer is §5.3 (line 1670), and `run5.3 <- FALSE`
+   (line 623). There is no ensemble sub-step in §3. ⇒ The on-disk
+   `haz_risk/poultry-highland_ENSEMBLEmean_*.tif` have **no locatable regen path
+   in the current enabled pipeline**. Deleting them = permanent loss.
+3. **§5.2 run gate ≡ overwrite gate.** `run5.2 <- .force_overwrite_r2` and
+   `overwrite5.2 <- .force_overwrite_r2` (lines 605/609). There is no env to run
+   §5.2 overwrite-off; enabling it (`FORCE_OVERWRITE=1`) forces a full,
+   all-crops, both-axes bake (§5.2 alone was ~26h in the 2026-05 handover).
+
+**So `rm poultry-highland_*.tif` + §3-only would delete the ENSEMBLE/`_int`
+stacks and never rebuild them**, breaking R/3 §4.1. Pre-flight passing does not
+make the plan safe — it only confirms inputs exist.
+
+## What's actually needed before a poultry partial bake is possible
+For the macbook session (owns R/2 control logic; no live data needed to do this):
+1. **Locate / restore the ENSEMBLE-crop-stack producer.** Find what writes
+   `haz_risk/<crop>_ENSEMBLEmean_<sev>.tif` (+ `_int`). Likely §5.3 (currently
+   `run5.3 <- FALSE`) and/or a §3 ensemble sub-step that has been disabled. Until
+   this is identified and runnable, NOTHING in `haz_risk` poultry can be safely
+   deleted.
+2. **Decouple run from overwrite for §5.2/§5.3**, mirroring the existing
+   `RUN_R2_RUN3` pattern (line 586): add `RUN_R2_RUN5_2` / `RUN_R2_RUN5_3` env
+   toggles so the section runs while `overwrite5.x` stays FALSE (file.exists-
+   gated selective regen). The per-file gates at lines 1436/1672 already respect
+   `!file.exists`, so only the run/overwrite wiring needs changing.
+3. THEN a safe v2 dispatch can: delete poultry artifacts across §3 + §5.2/§5.3
+   outputs + R/3 §4 (vop, vop_usd, ha; both axes), run §3 + §5.2 + §5.3
+   overwrite-off, then R/3, then publish.
+
+## Alternatives if the surgical path isn't worth the rework
+- **Full `FORCE_OVERWRITE=1` R/2 + R/3 bake (both axes)** — the only currently-
+  working way to propagate the threshold. Correct but ~a day and re-bakes/
+  republishes every product, not just poultry (larger blast radius + review).
+- **Defer** the poultry_highland 79→89 fix to the next scheduled full rebake;
+  keep issue #13 open with this note.
+
+Recommendation: hand to macbook for steps 1–2 (R/2 control + producer fix), then
+re-dispatch a correct v2. Do not attempt a partial until then.
