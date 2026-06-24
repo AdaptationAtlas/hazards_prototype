@@ -579,7 +579,11 @@ multisession2 <- TRUE
 do_ensemble2 <- TRUE
 
 ### 0.3.3) Make crop stacks for risk freq ####
-run3 <- FALSE
+# Default OFF (steady state). Enable with RUN_R2_RUN3=1 for a targeted §3 regen
+# (e.g. the poultry-THI partial rebake: enable §3, leave FORCE_OVERWRITE unset,
+# and pre-delete the poultry-highland_* stacks so only those regenerate — see
+# DISPATCH_poultry_thi_rebake.md). Mirrors the SKIP_R2_RUN{1,2,4} env pattern.
+run3 <- identical(Sys.getenv("RUN_R2_RUN3"), "1")
 check3 <- TRUE
 overwrite3 <- .force_overwrite_r2
 worker_n3 <- 20
