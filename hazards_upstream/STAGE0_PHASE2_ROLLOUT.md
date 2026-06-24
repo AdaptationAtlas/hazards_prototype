@@ -52,10 +52,16 @@ and `rm(list=ls())` across all stages. Started 2026-06-24 (macbook = code/docs).
 6. Progress `cat(...)` → `.log(...)`.
 7. Keep the Phase-1 `stopifnot(length(...)>0)` gates already added.
 
+## Migration status
+- **04_indices — DONE** (commit `c5b5f06`): all 13 scripts migrated (NDWS pilot +
+  NDWL0/50 + 9 calc_* + QAQC). Parse-clean, no residual hardcoded roots.
+  fast_calc AVAIL lexical-last lookup deliberately untouched (Phase 4 / hazards#19).
+  calc_NTx kept its vectorized `[!file.exists(outfile)]` skip; QAQC kept inline QA
+  config (BC-subset GCMs / 4-period prds).
+
 ## Remaining migration (queued — NOT done)
 | stage | scripts | notes |
 |---|---|---|
-| 04_indices | 12 left (calc_*, fast_calc_NDWL0/50, QAQC) | homogeneous w/ pilot; fast_calc_NDWL0/50 share NDWS shape (do NOT touch AVAIL lexical-last lookup — that's Phase 4 / hazards#19) |
 | 01_download_data | 7 | heterogeneous (JRV `library()` vs HAE pacman); `download_AgERA5.R` already de-hardcoded CDS key — keep |
 | 02_preprocess_data | 14 | incl. the NEX-GDDP converter pair (pr2 unit bug = rank 6, Phase 3) |
 | 03_bias_correction | 5 | `identifyCorruptedFiles.R` already OR→AND + SD-guard fixed (Phase 1) |
