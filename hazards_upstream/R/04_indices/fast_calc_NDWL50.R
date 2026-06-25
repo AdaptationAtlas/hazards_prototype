@@ -196,7 +196,7 @@ calc_ndwl50 <- function(yr, mn){
     terra::writeRaster(AVAIL, paste0(dirname(outfile),'/AVAIL-',yr,'-',mn,'.tif'), overwrite = TRUE)
     
     ## Clean up
-    rm(list = c('prc','ETMAX','AVAIL','watbal','ERATIO','LOGGING','NDWL0'))
+    rm(list = intersect(c('prc','ETMAX','AVAIL','watbal','ERATIO','LOGGING','NDWL0'), ls()))  # only existing (this branch lacks some)
     gc(F, T, T)
   }
 }
