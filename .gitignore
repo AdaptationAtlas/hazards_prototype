@@ -24,3 +24,6 @@ R/.rcpp_cache/
 trendkernel/src/*.o
 trendkernel/src/*.so
 trendkernel/src/*.dll
+
+# Reference PDFs and exposure scratch (large binaries, not pipeline code)
+references/
