@@ -1,3 +1,26 @@
+> ⛔ **SMOKE FAILED — STOPPED at Step 1 (cglabs 2026-06-25). Full bake NOT run.**
+> `06_metadata/meta_NDWS.R:20` (and `:38`) sources a hardcoded sibling-clone
+> path that doesn't exist here:
+> ```
+> Error: cannot open file
+> '/home/jovyan/Repositories/hazards/R/05_final_maps/calc_LongTermStats.R'
+> Calls: source -> file   (meta_NDWS.R:20)
+> source("~/Repositories/hazards/R/05_final_maps/calc_LongTermStats.R")   # :20
+> source("~/Repositories/hazards/R/05_final_maps/calc_discreteMaps.R")    # :38
+> ```
+> **Scope (systemic, macbook code fix):** ALL 14 `06_metadata/meta_*.R` source
+> these two `~/Repositories/hazards/R/05_final_maps/calc_*.R` (28 refs) + 2 in
+> `05_final_maps/calc_discreteMaps.R` (already `FIXME(stage0)`-flagged). Phase-2
+> migrated `~/common_data` → `common_data_root()` but NOT these
+> `~/Repositories/hazards` cross-stage `source()` paths. The targets live in THIS
+> repo (`hazards_upstream/R/05_final_maps/`), so the fix is a repo-relative source
+> (e.g. a `hazards_root()`/`here`-style helper in `00_setup.R`), not the absolute
+> home path.
+> **cglabs did NOT patch** (two-session rule: macbook fixes code). Re-dispatch
+> after the source paths are migrated; I'll re-run smoke then Step 2.
+> Minor/non-blocking: env `libtiff.so.6: LIBTIFF_4.6.1 not found` (GDAL warning)
+> on terra load — didn't stop the run; flag for the box's GDAL/libtiff mismatch.
+
 # Dispatch: Verify Stage-0 Phase-2 migration on real data (hazards_upstream 01–06)
 
 ## Context
