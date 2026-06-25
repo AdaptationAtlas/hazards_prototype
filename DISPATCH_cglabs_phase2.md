@@ -1,108 +1,48 @@
-> 🟢 **STEP 2 READY (macbook 2026-06-25, commit 63c7362) — run the validation bake.**
-> Pete's calls: (1) **Validation bake 02→06 on EXISTING data** — do NOT run
-> 01_download. (2) **Skip CDS entirely** — Atlas is moving 01_download to AWS
-> Open Data, so 01 is out of scope for this bake. (3) **Run-controls now work**:
-> `calc_LongTermStats`/`discreteMaps` honor `GCMS`/`SCENARIO` (commit 63c7362),
-> so you can do a fast scoped pass first, then the full one. Unset env = legacy
-> full behaviour (verified byte-identical: gcm_list=6, block-2 stp=75 rows).
-> See **Step 2 (revised)** below. `git pull` first.
+# Dispatch: Stage-0 Phase-2 — validation bake 02→06 (hazards_upstream)
 
-> ✅ **SMOKE RE-RUN PASS (cglabs 2026-06-25, after fix 0eee8b4).** meta_NDWS.R
-> now sources calc_LongTermStats/discreteMaps via the repo-relative
-> `getOption("hazards.r_root")` — no `Repositories/hazards` / missing-function /
-> path errors anywhere in the log; ran real compute (6+ scenario×GCM
-> LongTermStats combos, paths resolving to `/home/jovyan/common_data`). The run
-> hit MY 400s test cap (exit 124) mid-compute — NOT a failure: the calc sourced
-> by meta_NDWS does a FULL-ENSEMBLE pass (it does NOT honour the GCMS/SCENARIO
-> env scope), so it's long. Migration layer = validated.
->   - Follow-up (macbook, non-blocking): the sourced 05_final_maps calc ignores
->     the run-controls, so "smoke" ≈ a full LongTermStats bake. If a quick smoke
->     is wanted, scope that calc too — or accept it's heavy.
->   - **Step 2 (full 01→06 bake) still HELD pending Pete:** (a) bake scope
->     (GCMS/SCENARIO/SSPS/YRS — "normal full-bake env" undefined), and (b)
->     01_download (CDS) handling. (Both resolved in the banner above.)
->
-> ✅ **FIX APPLIED (macbook 2026-06-25) — re-run smoke, then Step 2.**
-> Cross-stage `source()` paths migrated to repo-relative. `00_setup.R` now
-> self-locates its dir (`hazards_r_root()`) and stores it in the `hazards.r_root`
-> option (survives `rm(list=ls())`). All 14 `meta_*.R` source siblings via
-> `getOption("hazards.r_root")`; block-1 gets a setup bootstrap so the option is
-> set before the first source. Verified locally: option survives 2× `rm(list=ls())`,
-> calc paths resolve, all 14 parse. `git pull` then re-run the Step-1 smoke below.
-> (Non-blocking libtiff GDAL warning is a box env issue, unrelated.)
->
-> ⛔ ~~SMOKE FAILED — STOPPED at Step 1 (cglabs 2026-06-25). Full bake NOT run.~~ (FIXED above)
-> `06_metadata/meta_NDWS.R:20` (and `:38`) sources a hardcoded sibling-clone
-> path that doesn't exist here:
-> ```
-> Error: cannot open file
-> '/home/jovyan/Repositories/hazards/R/05_final_maps/calc_LongTermStats.R'
-> Calls: source -> file   (meta_NDWS.R:20)
-> source("~/Repositories/hazards/R/05_final_maps/calc_LongTermStats.R")   # :20
-> source("~/Repositories/hazards/R/05_final_maps/calc_discreteMaps.R")    # :38
-> ```
-> **Scope (systemic, macbook code fix):** ALL 14 `06_metadata/meta_*.R` source
-> these two `~/Repositories/hazards/R/05_final_maps/calc_*.R` (28 refs) + 2 in
-> `05_final_maps/calc_discreteMaps.R` (already `FIXME(stage0)`-flagged). Phase-2
-> migrated `~/common_data` → `common_data_root()` but NOT these
-> `~/Repositories/hazards` cross-stage `source()` paths. The targets live in THIS
-> repo (`hazards_upstream/R/05_final_maps/`), so the fix is a repo-relative source
-> (e.g. a `hazards_root()`/`here`-style helper in `00_setup.R`), not the absolute
-> home path.
-> **cglabs did NOT patch** (two-session rule: macbook fixes code). Re-dispatch
-> after the source paths are migrated; I'll re-run smoke then Step 2.
-> Minor/non-blocking: env `libtiff.so.6: LIBTIFF_4.6.1 not found` (GDAL warning)
-> on terra load — didn't stop the run; flag for the box's GDAL/libtiff mismatch.
-
-# Dispatch: Verify Stage-0 Phase-2 migration on real data (hazards_upstream 01–06)
+**Status: migration validated on real data (smoke passed). Now run the validation bake.**
+Head = origin/develop `fcfb7f0`. Two-session rule: macbook fixes code, cglabs runs (you have real `~/common_data`).
 
 ## Context
-`hazards_prototype/hazards_upstream/R` is the nexgddp index-producer pipeline. Phase-2 migrated stages 01–06 to source a shared `R/00_setup.R` (defines `common_data_root()`, timestamped `.log()`, and env run-controls: `COMMON_DATA`, `GCMS`, `SCENARIO`, `SSPS`, `YRS`, `PRDS`, `MONTHS`, `FORCE_OVERWRITE`). Hardcoded `~/common_data` paths replaced with `common_data_root()`.
-
-Work was done on a local machine (no `~/common_data` data) and verified **only at the sourcing layer**. Your job: verify it runs on **real data**, then do the full bake if smoke passes.
-
-## What's already pushed (origin/develop, up to `beef763`)
-- `4010c1a` 01_download_data, `058065f` 02_preprocess_data, `a7bac48` 03_bias_correction, `85c5713` 05_final_maps, `acaa0ea` 06_metadata
-- `5fbb877` — **critical fix**: 4× 02_preprocess scripts had `rm(list=ls())` AFTER sourcing setup, wiping helpers. Dropped. The 06_metadata migration was built to avoid this — setup sourced at line ~58, **after** the four `rm(list=ls())` at lines 6/36/51/56.
-- `beef763` chore: track AGENTS.md + nexgddp_coverage.csv, gitignore references/
+`hazards_prototype/hazards_upstream/R` = nexgddp index-producer pipeline. Phase-2 migrated stages 01–06 to source shared `R/00_setup.R` (`common_data_root()`, timestamped `.log()`, env run-controls `COMMON_DATA`/`GCMS`/`SCENARIO`/`SSPS`/`YRS`/`PRDS`/`MONTHS`/`FORCE_OVERWRITE`). Hardcoded `~/common_data` + `~/Repositories/hazards` paths removed. Smoke (meta_NDWS.R) passed on real data after the cross-stage `source()` fix; run-controls now honored by 05/06 calc.
 
 ## Pull
 ```bash
 cd <hazards_prototype>/hazards_upstream/R
-git checkout develop && git pull        # DO NOT create branches (standing rule)
+git checkout develop && git pull        # head fcfb7f0; DO NOT create branches (standing rule)
 export COMMON_DATA=<your real data root>
 ```
 
-## Step 1 — smoke test BEFORE any long run (mandatory)
-Cheapest stage that exercises the migration end-to-end on real data:
+## Decisions (Pete, 2026-06-25)
+1. **Validation bake 02→06 on EXISTING data** — do NOT run 01_download.
+2. **Skip CDS** — Atlas moving 01_download to AWS Open Data; 01 out of scope for this bake. 07_bucket_uploads stays deferred.
+3. **Run-controls work** — `calc_LongTermStats`/`discreteMaps` honor `GCMS`/`SCENARIO` (commit 63c7362). Unset env = legacy full ensemble (verified byte-identical: gcm_list=6, block-2 stp=75 rows).
+
+## 2a — fast scoped gate FIRST (mandatory before full bake)
+Cheap end-to-end proof; all 5 stages exercised via the meta path:
 ```bash
-GCMS=ACCESS-ESM1-5 SCENARIO=historical Rscript 06_metadata/meta_NDWS.R 2>&1 | tee /tmp/smoke_meta_ndws.log
-```
-PASS criteria:
-- `common_data_root()` resolves to `$COMMON_DATA` (check `.log` lines / paths in output)
-- timestamped `.log()` lines appear
-- **no** `object 'common_data_root' not found` / `could not find function` (would mean a `rm(list=ls())` wiped setup — the 5fbb877 class of bug)
-- no path-not-found on real dirs
-
-If smoke FAILS: capture exact error + offending file:line, STOP, report back. Do not patch blind.
-
-## Step 2 (revised) — validation bake 02→06 on existing data
-**Do NOT run 01_download** (skipping CDS; AWS-Open-Data migration pending). Run 02→06 on the existing `$COMMON_DATA`. 07_bucket_uploads stays **deferred**.
-
-**2a. Fast scoped gate first** (proves all 5 stages end-to-end cheaply, now that run-controls work):
-```bash
-export COMMON_DATA=<your real data root>
 GCMS=ACCESS-ESM1-5 SCENARIO=historical \
   Rscript 06_metadata/meta_NDWS.R 2>&1 | tee /tmp/bake_2a_meta_ndws.log
-# expect: block-2 stp = 3 rows, gcm_list = ACCESS-ESM1-5 + ENSEMBLE only -> finishes fast
+# expect: gcm_list = ACCESS-ESM1-5 + ENSEMBLE, block-2 stp = 3 rows -> finishes fast
 ```
-If 2a is clean (no path/object errors, completes quickly), proceed to 2b.
+PASS = no path/object errors, completes quickly with the expected scoped row count. If FAIL: capture exact error + file:line, STOP, report back. Do not patch blind.
 
-**2b. Full validation bake 02→06** with your normal full env (unset GCMS/SCENARIO = legacy full ensemble). Run the stage scripts in order; watch for residual hardcoded paths or missing-object errors. Logs are timestamped — note per-stage elapsed.
+## 2b — full validation bake 02→06 (only if 2a clean)
+Normal full env (unset GCMS/SCENARIO = legacy full ensemble). Run the 02→06 stage scripts in order. Watch per-stage for residual hardcoded paths / missing-object errors. Logs timestamped — note per-stage elapsed.
 
-## Report back
-- 2a scoped gate: pass/fail + did it finish fast (rows/gcm count as expected)?
-- 2b per-stage status + any errors with file:line
+## Report back (edit this file + commit)
+- 2a: pass/fail + did it finish fast (rows/gcm count as expected)?
+- 2b: per-stage status + any errors with file:line
 - whether outputs landed under `$COMMON_DATA`
 
-Do not push fixes without flagging the diff first.
+Do not push code fixes without flagging the diff first.
+
+---
+## Log (newest first)
+- 2026-06-25 `fcfb7f0` (macbook) — trimmed CDS credential comment (env-read, CDS retiring).
+- 2026-06-25 `63c7362` (macbook) — run-controls fix: 05/06 calc honor GCMS/SCENARIO; meta block-2 `setdiff` + guarded historical row; unset = byte-identical legacy.
+- 2026-06-25 `96061c5` (cglabs) — SMOKE RE-RUN PASS: meta_NDWS sourced calc via repo-relative `getOption("hazards.r_root")`, real compute, no path/missing-fn errors. (Hit cglabs 400s test cap mid-compute — not a failure; calc was full-ensemble pre-63c7362.)
+- 2026-06-25 `cfc4039` (macbook) — cross-stage source() fix: `00_setup.R` self-locates (`hazards_r_root()`) + stores in `hazards.r_root` option (survives `rm(list=ls())`); 14 meta source siblings via `getOption`.
+- 2026-06-25 (cglabs) — SMOKE FAILED: meta_*.R sourced `~/Repositories/hazards` sibling-clone path (absent). 28 refs. Root cause: Phase-2 missed cross-stage source() paths. → fixed in cfc4039.
+- earlier — 01–06 migrated to 00_setup.R (`4010c1a`/`058065f`/`a7bac48`/`85c5713`/`acaa0ea`); `5fbb877` dropped `rm(list=ls())` that wiped setup in 4× 02_preprocess.
+- Non-blocking: cglabs box `libtiff.so.6: LIBTIFF_4.6.1 not found` GDAL warning on terra load — box env issue, didn't stop the run.
