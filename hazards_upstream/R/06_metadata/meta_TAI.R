@@ -53,10 +53,22 @@ rm(list = ls()) # Remove objects
 gc(reset = T) # Empty garbage collector
 
 # Source metadata and other functions
+# Shared Stage-0 setup: data root, .log(), env run-controls (sourced here, after the
+# compile-section rm(list=ls()), so the definitions survive).
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 source("https://raw.githubusercontent.com/AdaptationAtlas/metadata/main/R/metadata.R")
 
 #working directory
-wd <- "~/common_data/atlas_hazards/cmip6"
+wd <- file.path(common_data_root(), "atlas_hazards/cmip6")
 
 #gcms and scenarios
 gcms <- c("ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0", "MRI-ESM2-0", "ENSEMBLE")
