@@ -38,7 +38,37 @@ Normal full env (unset GCMS/SCENARIO = legacy full ensemble). Run the 02→06 st
 Do not push code fixes without flagging the diff first.
 
 ---
+## ⛔ 2a GATE FAILED (cglabs 2026-06-25, HEAD a10c1b5) — macbook code fix needed
+Scoping is fine (block-1 `calc_LongTermStats` ran scoped + printed "Done"). 2b NOT run.
+Failure is a `hazards.r_root` **clobber-on-re-source** path-doubling:
+```
+Error: cannot open file
+'.../hazards_upstream/R/05_final_maps/05_final_maps/calc_discreteMaps.R'   <- doubled
+Calls: source -> file   (meta_NDWS.R:48)
+```
+Mechanism (evidenced):
+- `00_setup.R:41-48` `.HAZARDS_R_ROOT` = dirname of the **first/outermost** stack
+  frame that has `ofile`, then `:51 options(hazards.r_root = .HAZARDS_R_ROOT)`.
+- meta_NDWS block-1 bootstrap sources `00_setup.R` directly → outermost ofile =
+  `.../R/00_setup.R` → root `.../R` ✓; `meta_NDWS.R:30` resolves
+  `.../R/05_final_maps/calc_LongTermStats.R` and it runs ("Done").
+- `calc_LongTermStats.R:17` then **re-sources `00_setup.R`**. Now the outermost
+  ofile frame is block-1's `source(.../05_final_maps/calc_LongTermStats.R)`, so
+  `.HAZARDS_R_ROOT` recomputes to `.../R/05_final_maps` and `:51` **overwrites**
+  the option with the subdir.
+- meta_NDWS block-2 `:48 source(file.path(getOption("hazards.r_root"),
+  "05_final_maps/calc_discreteMaps.R"))` → `.../R/05_final_maps/05_final_maps/...` → fail.
+Fix options (macbook's call — NOT patched here):
+  (a) set the option only once: `if (is.null(getOption("hazards.r_root"))) options(...)`
+      (don't let a re-source clobber the good root); OR
+  (b) make the ofile-scan pick the **innermost** setup frame (the `00_setup.R`
+      `ofile`), not the outermost; OR
+  (c) calc_* scripts resolve siblings via the already-set option and don't re-source setup.
+Re-dispatch after fix; I'll re-run 2a then 2b.
+
 ## Log (newest first)
+- 2026-06-25 (cglabs) — 2a FAILED: `hazards.r_root` clobber-on-re-source doubles
+  `05_final_maps/` (meta_NDWS.R:48 / 00_setup.R:51). Scoping OK; 2b not run. See above.
 - 2026-06-25 `fcfb7f0` (macbook) — trimmed CDS credential comment (env-read, CDS retiring).
 - 2026-06-25 `63c7362` (macbook) — run-controls fix: 05/06 calc honor GCMS/SCENARIO; meta block-2 `setdiff` + guarded historical row; unset = byte-identical legacy.
 - 2026-06-25 `96061c5` (cglabs) — SMOKE RE-RUN PASS: meta_NDWS sourced calc via repo-relative `getOption("hazards.r_root")`, real compute, no path/missing-fn errors. (Hit cglabs 400s test cap mid-compute — not a failure; calc was full-ensemble pre-63c7362.)
