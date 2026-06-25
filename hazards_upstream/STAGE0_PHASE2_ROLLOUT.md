@@ -75,8 +75,8 @@ smallest scope (one GCM, one month = 1995-01, the historical AVAIL seed month â€
 prior-AVAIL dependency). A self-checking harness does this and asserts every PASS
 criterion, exiting non-zero on any failure:
 ```bash
-bash hazards_upstream/R/04_indices/gate_phase2_ndws.sh
-# pick a present GCM if EC-Earth3 historical is absent:
+bash hazards_upstream/R/04_indices/gate_phase2_ndws.sh   # default GCM ACCESS-ESM1-5 (confirmed present)
+# override with another present GCM if needed:
 GATE_GCM=MPI-ESM1-2-HR bash hazards_upstream/R/04_indices/gate_phase2_ndws.sh
 ```
 The single-month scope is enabled by the new `MONTHS` run-control (`cfg_months()` in

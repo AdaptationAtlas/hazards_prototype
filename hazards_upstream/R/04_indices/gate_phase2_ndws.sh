@@ -14,7 +14,7 @@
 # =============================================================================
 set -uo pipefail
 
-GCM="${GATE_GCM:-EC-Earth3}"
+GCM="${GATE_GCM:-ACCESS-ESM1-5}"   # confirmed present: common_data/nex-gddp-cmip6/pr/historical/ACCESS-ESM1-5
 COMMON_DATA="${COMMON_DATA:-$HOME/common_data}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 OUT_DIR="$COMMON_DATA/nex-gddp-cmip6_indices/historical_${GCM}/NDWS"
