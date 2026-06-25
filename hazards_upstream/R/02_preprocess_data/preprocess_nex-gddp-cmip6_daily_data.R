@@ -3,14 +3,24 @@
 # Alliance Bioversity-International & CIAT, 2025
 
 # R options
-options(warn = -1, scipen = 999)
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls (warn=-1 dropped).
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 if (!require(pacman)) {install.packages('pacman'); library(pacman)} else {library(pacman)}
 pacman::p_load(tidyverse, terra, furrr, future, xts, tsbox)
 
 grep2 <- Vectorize(grep, 'pattern')
 
 # Root directory
-root <- '/home/jovyan/common_data'
+root <- common_data_root()
 
 ## Conversion factors
 # Precipitation: pr * 86400

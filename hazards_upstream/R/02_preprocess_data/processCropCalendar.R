@@ -4,20 +4,31 @@
 #load packages
 library(terra)
 library(tidyverse)
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls.
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 
 #clean-up environment
 rm(list=ls())
 gc(verbose=FALSE, full=TRUE, reset=TRUE)
 
 #working directory
-wd <- "~/common_data/atlas_crop_calendar"
+wd <- file.path(common_data_root(), "atlas_crop_calendar")
 
 #output directory
 out_dir <- paste0(wd, "/intermediate")
 if (!file.exists(out_dir)) {dir.create(out_dir)}
 
 #read Africa shapefile
-r_msk <- terra::rast("~/common_data/atlas_hazards/roi/africa.tif")
+r_msk <- terra::rast(file.path(common_data_root(), "atlas_hazards/roi/africa.tif"))
 
 #read maize calendar of Jagermeyr
 r_cal <- terra::rast(paste0(wd, "/raw_jagermeyr/mai_rf_ggcmi_crop_calendar_phase3_v1.01.nc4"))

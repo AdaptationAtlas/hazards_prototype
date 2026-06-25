@@ -3,8 +3,17 @@
 # Alliance of Bioversity-CIAT
 # September, 2025
 
-# R options
-options(warn = -1, scipen = 999)
+# R options + shared Stage-0 setup (data root, .log(), env run-controls; warn=-1 dropped)
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 suppressMessages(library(pacman))
 pacman::p_load(terra, tidyverse, FactoMineR, arrow)
 list.files2 <- Vectorize(FUN = list.files, vectorize.args = 'pattern')
@@ -29,7 +38,7 @@ if (scenario == 'future') {
   }
 }
 
-root <- '/home/jovyan/common_data'
+root <- common_data_root()
 
 vrs <- c('hurs','pr','rsds','tasmax','tasmin')
 # vrs <- c('pr','hurs')
@@ -46,7 +55,7 @@ dfm_qaqc <- purrr::map(.x = vrs, .f = function(index) {
     # Target
     trg_pth <- paste0(root,'/nex-gddp-cmip6/',index,'/',stp_tbl$ssp[i],'/',stp_tbl$gcm[i])
     
-    app_call <- '~/common_data/cloud-convert run-qaqc '
+    app_call <- paste0(common_data_root(), '/cloud-convert run-qaqc ')
     app_args <- ' --quantiles --pct-check 100'
     
     if (!file.exists(file.path(trg_pth,'qaqc.csv'))) {

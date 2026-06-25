@@ -5,19 +5,31 @@
 library(terra)
 library(tidyverse)
 
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls.
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
+
 #clean-up environment
 rm(list=ls())
 gc(verbose=FALSE, full=TRUE, reset=TRUE)
 
 #working directory
-wd <- "~/common_data/atlas_hazards/livestock_mask"
+wd <- file.path(common_data_root(), "atlas_hazards/livestock_mask")
 if (!file.exists(wd)) {dir.create(wd)}
 
 #read Africa shapefile
-r_msk <- terra::rast("~/common_data/atlas_hazards/roi/africa.tif")
+r_msk <- terra::rast(file.path(common_data_root(), "atlas_hazards/roi/africa.tif"))
 
 #first list all VoP individual species files
-lstk_dir <- "~/common_data/atlas_livestock/raw"
+lstk_dir <- file.path(common_data_root(), "atlas_livestock/raw")
 lstk_files <- list.files(lstk_dir, pattern="\\.tif")
 
 #load them as raster
@@ -27,7 +39,7 @@ lstk_rs <- terra::app(lstk_rs, fun=sum, na.rm=TRUE)
 lstk_rs[lstk_rs[] == 0] <- NA
 
 #resample resulting raster into CHIRPS resolution, use nn
-chirps_rs <- terra::rast("~/common_data/chirps_wrld/chirps-v2.0.1995.01.01.tif") %>%
+chirps_rs <- terra::rast(file.path(common_data_root(), "chirps_wrld/chirps-v2.0.1995.01.01.tif")) %>%
   terra::crop(., r_msk)
 chirps_rs[chirps_rs[]<0] <- NA
 chirps_rs[!is.na(chirps_rs[])] <- 1

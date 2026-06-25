@@ -3,13 +3,23 @@
 ## December, 2022
 
 # R options
-g <- gc(reset = T); rm(list = ls()) # Empty garbage collector
-options(warn = -1, scipen = 999)    # Remove warning alerts and scientific notation
+g <- gc(reset = T)   # rm(list=ls()) + warn=-1 dropped (see 00_setup.R)
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls.
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 suppressMessages(if(!require(pacman)){install.packages('pacman');library(pacman)} else {library(pacman)})
 suppressMessages(pacman::p_load(tidyverse,raster,terra,sp,geodata,rnaturalearthdata,rnaturalearth))
 
 # Root directory
-root <- '/home/jovyan/common_data/atlas_hazards'
+root <- file.path(common_data_root(), "atlas_hazards")
 
 ## Shapefile
 # Output file
@@ -31,7 +41,7 @@ if(!file.exists(tif)){
   # Africa shapefile
   afrc <- terra::vect(out)
   # CHIRPS template
-  ref <- terra::rast('/home/jovyan/common_data/chirps_wrld/chirps-v2.0.1981.01.02.tif')
+  ref <- terra::rast(file.path(common_data_root(), "chirps_wrld/chirps-v2.0.1981.01.02.tif"))
   ref <- ref %>% terra::crop(terra::ext(afrc))
   ref <- terra::rasterize(afrc, ref)
   terra::writeRaster(ref, tif)

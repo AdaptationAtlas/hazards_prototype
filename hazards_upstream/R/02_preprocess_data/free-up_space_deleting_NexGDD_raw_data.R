@@ -8,6 +8,18 @@
 # file became corrupted, we must download the raw file
 # to fix it again. BE CAREFUL WITH ITS USE.
 
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls.
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
+
 vrs <- c('pr','tasmax','tasmin','hurs','rsds')
 
 # Irreversible deletion. Default DRY_RUN=TRUE: only prints targets.
@@ -17,7 +29,7 @@ stopifnot(!is.na(DRY_RUN))
 
 for (vr in vrs) {
 
-  pth <- file.path('~/common_data/nex-gddp-cmip6_raw',vr)
+  pth <- file.path(common_data_root(), 'nex-gddp-cmip6_raw', vr)
   drs <- list.dirs(path = pth, recursive = F)
   drs <- drs[grep('ssp', drs)]
 

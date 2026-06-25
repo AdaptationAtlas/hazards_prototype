@@ -3,8 +3,17 @@
 # By: H. Achicanoy
 # Alliance of Bioversity International & CIAT, 2025
 
-# R options
-options(warn = -1, scipen = 999)
+# R options + shared Stage-0 setup (data root, .log(), env run-controls; warn=-1 dropped)
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 suppressMessages(library(pacman))
 pacman::p_load(purrr)
 list.files2 <- Vectorize(FUN = list.files, vectorize.args = 'pattern')
@@ -30,7 +39,7 @@ if (scenario == 'future') {
   }
 }
 
-root <- '/home/jovyan/common_data'
+root <- common_data_root()
 
 # Available indices
 indices <- c('TAVG','TMAX','TMIN','PTOT',

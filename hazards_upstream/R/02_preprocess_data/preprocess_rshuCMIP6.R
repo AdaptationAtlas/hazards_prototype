@@ -6,9 +6,20 @@
 #libraries
 library(terra)
 library(tidyverse)
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls.
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 
 #working directory
-wd <- "~/common_data/esfg_cmip6/raw_"
+wd <- file.path(common_data_root(), "esfg_cmip6/raw_")
 
 #GCMs of interest: ACCESS-ESM1-5, EC-Earth3-Veg, INM-CM5-0, MPI-ESM1-2-HR, MRI-ESM2-0
 dataset_list <- c("day_ACCESS-ESM1-5",

@@ -2,7 +2,17 @@
 # By: H. Achicanoy
 # Alliance Bioversity International & CIAT, 2025
 
-options(warn = -1, scipen = 999)
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls (warn=-1 dropped).
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 library(pacman)
 pacman::p_load(terra)
 
@@ -19,7 +29,7 @@ pacman::p_load(terra)
 # transformations.
 
 # Corrupted file
-fle <- '/home/jovyan/common_data/nex-gddp-cmip6/hurs/ssp126/NorESM2-MM/hurs_2072-08-29.tif'
+fle <- file.path(common_data_root(), 'nex-gddp-cmip6/hurs/ssp126/NorESM2-MM/hurs_2072-08-29.tif')
 
 crr_ssp <- strsplit(fle, split = '/') |> purrr::map(7) |> unlist()
 crr_gcm <- strsplit(fle, split = '/') |> purrr::map(8) |> unlist()
@@ -29,7 +39,7 @@ crr_dte <- gsub(paste0(crr_var,'_'), '', crr_dte)
 crr_dte <- gsub('.tif', '', crr_dte)
 
 dte <- as.Date(crr_dte)
-raw_pth <- paste0('~/common_data/nex-gddp-cmip6_raw/',crr_var,'/',crr_ssp,'/',crr_gcm)
+raw_pth <- file.path(common_data_root(), 'nex-gddp-cmip6_raw', crr_var, crr_ssp, crr_gcm)
 raw_fls <- list.files(path = raw_pth, pattern = '.nc$', full.names = T, recursive = F)
 raw_fle <- raw_fls[grep(lubridate::year(dte), raw_fls)]
 
