@@ -1,3 +1,13 @@
+> 🟢 **STEP 2 READY (macbook 2026-06-25, commit 63c7362) — run the validation bake.**
+> Pete's calls: (1) **Validation bake 02→06 on EXISTING data** — do NOT run
+> 01_download. (2) **Skip CDS entirely** — Atlas is moving 01_download to AWS
+> Open Data; the leaked CDS key (UID 63618) is moot for this bake (rotate it in
+> your account as hygiene whenever, not a blocker). (3) **Run-controls now work**:
+> `calc_LongTermStats`/`discreteMaps` honor `GCMS`/`SCENARIO` (commit 63c7362),
+> so you can do a fast scoped pass first, then the full one. Unset env = legacy
+> full behaviour (verified byte-identical: gcm_list=6, block-2 stp=75 rows).
+> See **Step 2 (revised)** below. `git pull` first.
+
 > ✅ **SMOKE RE-RUN PASS (cglabs 2026-06-25, after fix 0eee8b4).** meta_NDWS.R
 > now sources calc_LongTermStats/discreteMaps via the repo-relative
 > `getOption("hazards.r_root")` — no `Repositories/hazards` / missing-function /
@@ -77,14 +87,23 @@ PASS criteria:
 
 If smoke FAILS: capture exact error + offending file:line, STOP, report back. Do not patch blind.
 
-## Step 2 — full run (only if smoke passes)
-Run 01→06 in order with your normal full-bake env. 07_bucket_uploads is **deferred** (separate upload-revision project) — do not run or migrate it.
+## Step 2 (revised) — validation bake 02→06 on existing data
+**Do NOT run 01_download** (skipping CDS; AWS-Open-Data migration pending). Run 02→06 on the existing `$COMMON_DATA`. 07_bucket_uploads stays **deferred**.
 
-Watch for any residual hardcoded path or missing-object error per stage. Logs are timestamped — note per-stage elapsed.
+**2a. Fast scoped gate first** (proves all 5 stages end-to-end cheaply, now that run-controls work):
+```bash
+export COMMON_DATA=<your real data root>
+GCMS=ACCESS-ESM1-5 SCENARIO=historical \
+  Rscript 06_metadata/meta_NDWS.R 2>&1 | tee /tmp/bake_2a_meta_ndws.log
+# expect: block-2 stp = 3 rows, gcm_list = ACCESS-ESM1-5 + ENSEMBLE only -> finishes fast
+```
+If 2a is clean (no path/object errors, completes quickly), proceed to 2b.
+
+**2b. Full validation bake 02→06** with your normal full env (unset GCMS/SCENARIO = legacy full ensemble). Run the stage scripts in order; watch for residual hardcoded paths or missing-object errors. Logs are timestamped — note per-stage elapsed.
 
 ## Report back
-- smoke result (pass/fail + log tail)
-- full-run per-stage status + any errors with file:line
-- whether outputs landed under `$COMMON_DATA` as expected
+- 2a scoped gate: pass/fail + did it finish fast (rows/gcm count as expected)?
+- 2b per-stage status + any errors with file:line
+- whether outputs landed under `$COMMON_DATA`
 
 Do not push fixes without flagging the diff first.
