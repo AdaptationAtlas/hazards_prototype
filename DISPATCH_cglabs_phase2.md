@@ -1,0 +1,43 @@
+# Dispatch: Verify Stage-0 Phase-2 migration on real data (hazards_upstream 01–06)
+
+## Context
+`hazards_prototype/hazards_upstream/R` is the nexgddp index-producer pipeline. Phase-2 migrated stages 01–06 to source a shared `R/00_setup.R` (defines `common_data_root()`, timestamped `.log()`, and env run-controls: `COMMON_DATA`, `GCMS`, `SCENARIO`, `SSPS`, `YRS`, `PRDS`, `MONTHS`, `FORCE_OVERWRITE`). Hardcoded `~/common_data` paths replaced with `common_data_root()`.
+
+Work was done on a local machine (no `~/common_data` data) and verified **only at the sourcing layer**. Your job: verify it runs on **real data**, then do the full bake if smoke passes.
+
+## What's already pushed (origin/develop, up to `beef763`)
+- `4010c1a` 01_download_data, `058065f` 02_preprocess_data, `a7bac48` 03_bias_correction, `85c5713` 05_final_maps, `acaa0ea` 06_metadata
+- `5fbb877` — **critical fix**: 4× 02_preprocess scripts had `rm(list=ls())` AFTER sourcing setup, wiping helpers. Dropped. The 06_metadata migration was built to avoid this — setup sourced at line ~58, **after** the four `rm(list=ls())` at lines 6/36/51/56.
+- `beef763` chore: track AGENTS.md + nexgddp_coverage.csv, gitignore references/
+
+## Pull
+```bash
+cd <hazards_prototype>/hazards_upstream/R
+git checkout develop && git pull        # DO NOT create branches (standing rule)
+export COMMON_DATA=<your real data root>
+```
+
+## Step 1 — smoke test BEFORE any long run (mandatory)
+Cheapest stage that exercises the migration end-to-end on real data:
+```bash
+GCMS=ACCESS-ESM1-5 SCENARIO=historical Rscript 06_metadata/meta_NDWS.R 2>&1 | tee /tmp/smoke_meta_ndws.log
+```
+PASS criteria:
+- `common_data_root()` resolves to `$COMMON_DATA` (check `.log` lines / paths in output)
+- timestamped `.log()` lines appear
+- **no** `object 'common_data_root' not found` / `could not find function` (would mean a `rm(list=ls())` wiped setup — the 5fbb877 class of bug)
+- no path-not-found on real dirs
+
+If smoke FAILS: capture exact error + offending file:line, STOP, report back. Do not patch blind.
+
+## Step 2 — full run (only if smoke passes)
+Run 01→06 in order with your normal full-bake env. 07_bucket_uploads is **deferred** (separate upload-revision project) — do not run or migrate it.
+
+Watch for any residual hardcoded path or missing-object error per stage. Logs are timestamped — note per-stage elapsed.
+
+## Report back
+- smoke result (pass/fail + log tail)
+- full-run per-stage status + any errors with file:line
+- whether outputs landed under `$COMMON_DATA` as expected
+
+Do not push fixes without flagging the diff first.
