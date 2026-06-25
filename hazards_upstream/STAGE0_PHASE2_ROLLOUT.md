@@ -59,12 +59,21 @@ and `rm(list=ls())` across all stages. Started 2026-06-24 (macbook = code/docs).
   calc_NTx kept its vectorized `[!file.exists(outfile)]` skip; QAQC kept inline QA
   config (BC-subset GCMs / 4-period prds).
 
+## Migration status (cont.)
+- **03_bias_correction — DONE** (commit `a7bac48`): 5 scripts; `identifyCorruptedFiles.R`
+  OR→AND + SD-guard already fixed (Phase 1).
+- **01_download_data — DONE** (commit `4010c1a`): heterogeneous (JRV `library()` vs HAE
+  pacman); `download_AgERA5.R` de-hardcoded CDS key preserved.
+- **02_preprocess_data — DONE** (uncommitted): all 14 scripts source 00_setup.R, no live
+  hardcoded roots, all parse-clean. **Bug caught + fixed:** createLivestock/Pop/Spam-Mask
+  + processCropCalendar had `rm(list=ls())` AFTER the setup-source block (line ~20) which
+  wipes the global-sourced helpers (`common_data_root()` etc.) → next line throws
+  "could not find function". Dropped the `rm()`, kept `gc()`. NEX-GDDP converter pr2 unit
+  bug still rank 6 / Phase 3 (untouched here).
+
 ## Remaining migration (queued — NOT done)
 | stage | scripts | notes |
 |---|---|---|
-| 01_download_data | 7 | heterogeneous (JRV `library()` vs HAE pacman); `download_AgERA5.R` already de-hardcoded CDS key — keep |
-| 02_preprocess_data | 14 | incl. the NEX-GDDP converter pair (pr2 unit bug = rank 6, Phase 3) |
-| 03_bias_correction | 5 | `identifyCorruptedFiles.R` already OR→AND + SD-guard fixed (Phase 1) |
 | 05_final_maps | 3 | sources sibling `~/Repositories/hazards/R/05_final_maps/*` — fix those self-refs to relative paths |
 | 06_metadata | 14 | rank 7 says templatize to driver+config (Phase 3); a thin setup-source is still worth adding now |
 | 07_bucket_uploads | 2 | **STALE/DEFERRED** — do not migrate (separate upload-revision project) |

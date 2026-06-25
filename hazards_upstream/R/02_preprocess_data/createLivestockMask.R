@@ -17,8 +17,7 @@ local({
   source(normalizePath(hit), local = FALSE)
 })
 
-#clean-up environment
-rm(list=ls())
+# rm(list=ls()) dropped — would wipe 00_setup.R helpers sourced above (see 00_setup.R)
 gc(verbose=FALSE, full=TRUE, reset=TRUE)
 
 #working directory
