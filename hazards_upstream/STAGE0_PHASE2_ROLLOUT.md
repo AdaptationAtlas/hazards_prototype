@@ -19,7 +19,7 @@ and `rm(list=ls())` across all stages. Started 2026-06-24 (macbook = code/docs).
   })
   ```
   Provides: `common_data_root()`, `.log()/.log_reset()`, `env_flag()/env_or()`,
-  `parse_yrs()`, `cfg_gcms/ssps/scenario/yrs/prds()`, `should_skip()`,
+  `parse_yrs()`, `cfg_gcms/ssps/scenario/yrs/prds/months()`, `should_skip()`,
   `ATLAS_GCMS` (18), `ATLAS_GCMS_BC` (5), `ATLAS_SSPS_FUTURE`, `ATLAS_PRDS`.
   Unit-tested locally (logging format + elapsed, env truthy parse, yrs range/csv,
   config defaults + overrides, should_skip gate) — all assertions pass.
@@ -70,17 +70,21 @@ and `rm(list=ls())` across all stages. Started 2026-06-24 (macbook = code/docs).
 | 07_bucket_uploads | 2 | **STALE/DEFERRED** — do not migrate (separate upload-revision project) |
 
 ## GATE before any long run (cglabs — REQUIRED)
-Per roadmap sequencing step 2, validate on a **single-GCM, single-month** run before
-trusting the migration at scale. On cglabs:
+Per roadmap sequencing step 2, validate the migration at RUNTIME on live Data/ at the
+smallest scope (one GCM, one month = 1995-01, the historical AVAIL seed month — no
+prior-AVAIL dependency). A self-checking harness does this and asserts every PASS
+criterion, exiting non-zero on any failure:
 ```bash
-cd hazards_upstream/R/04_indices
-SCENARIO=historical YRS=1995:1995 GCMS=EC-Earth3 \
-  Rscript fast_calc_NDWS.R 2>&1 | tee /tmp/ndws_gate.log
+bash hazards_upstream/R/04_indices/gate_phase2_ndws.sh
+# pick a present GCM if EC-Earth3 historical is absent:
+GATE_GCM=MPI-ESM1-2-HR bash hazards_upstream/R/04_indices/gate_phase2_ndws.sh
 ```
-PASS criteria:
-- timestamped `.log` markers appear (run config line shows `n_gcms=1`, `yrs=1995:1995`);
-- resolves paths off `~/common_data` (no `/home/jovyan` literal needed);
-- writes `NDWS-1995-01.tif` + `AVAIL-1995-01.tif` (overwrite=TRUE, no "file exists" abort);
-- a missing input month fails loud via the Phase-1 `stopifnot` (not a silent empty `rast()`);
-- `FORCE_OVERWRITE=1` re-runs an existing month; unset skips it.
-Only after PASS roll the recipe across the remaining scripts.
+The single-month scope is enabled by the new `MONTHS` run-control (`cfg_months()` in
+00_setup.R; the harness sets `MONTHS=1 YRS=1995:1995 GCMS=<one>`). The harness checks:
+1. timestamped `.log` run-config marker with `n_gcms=1`;
+2. writes `NDWS-1995-01.tif` + `AVAIL-1995-01.tif`;
+3. re-run without `FORCE_OVERWRITE` SKIPS (should_skip); with `FORCE_OVERWRITE=1`
+   RECOMPUTES and overwrites with no "file exists" abort (overwrite=TRUE);
+4. a no-input year (1850) FAILS LOUD via the Phase-1 `stopifnot` (non-zero exit).
+
+**Exit 0 = PASS → safe to sweep 01/02/03/05/06.** Non-zero → stop and inspect the log.

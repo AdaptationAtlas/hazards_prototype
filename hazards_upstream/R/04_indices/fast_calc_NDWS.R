@@ -217,7 +217,7 @@ for (gcm in gcms) {
     
     cmb <- paste0(ssp,'_',gcm)
     .log('To process: ', cmb)
-    mns <- sprintf('%02.0f',1:12)
+    mns <- cfg_months()   # MONTHS env restricts the inner loop (fast GATE runs)
     stp <- base::expand.grid(yrs, mns, stringsAsFactors = F) |> base::as.data.frame(); rm(mns)
     names(stp) <- c('yrs','mns')
     stp <- stp |> dplyr::arrange(yrs, mns) |> base::as.data.frame()

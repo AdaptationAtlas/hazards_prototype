@@ -134,6 +134,14 @@ cfg_prds <- function() {
   if (is.na(v) || v == "") ATLAS_PRDS else trimws(strsplit(v, ",", fixed = TRUE)[[1]])
 }
 
+# Months as zero-padded "01".."12". Override MONTHS="1" or MONTHS="1,7" (csv ints)
+# to restrict the inner month loop - used for fast single-month GATE runs.
+cfg_months <- function(default = sprintf('%02.0f', 1:12)) {
+  v <- Sys.getenv("MONTHS", unset = NA_character_)
+  if (is.na(v) || v == "") return(default)
+  sprintf('%02.0f', as.integer(trimws(strsplit(v, ",", fixed = TRUE)[[1]])))
+}
+
 # ---- skip / overwrite gate --------------------------------------------------
 # TRUE => skip (output present AND not forced). FORCE_OVERWRITE=1 forces recompute.
 should_skip <- function(outfile, force = env_flag("FORCE_OVERWRITE", FALSE)) {
