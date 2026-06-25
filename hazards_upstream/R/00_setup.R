@@ -36,12 +36,18 @@ common_data_root <- function(check = FALSE) {
 # Self-locates the directory holding THIS 00_setup.R (= hazards_upstream/R) at
 # source() time, so scripts can source sibling stage scripts repo-relative
 # instead of a hardcoded ~/Repositories/hazards sibling-clone path that only
-# exists on one box. Scans the call stack for the source()-set `ofile`.
+# exists on one box. Scans the call stack for the frame whose source()-set
+# `ofile` is THIS file (00_setup.R) - NOT just any outer ofile: a sibling
+# script (e.g. 05_final_maps/calc_*.R) that re-sources this file leaves its own
+# ofile higher in the stack, and matching that would mis-root to its subdir and
+# double the path on the next getOption() resolve.
 .HAZARDS_R_ROOT <- local({
   d <- NULL
   for (i in seq_len(sys.nframe())) {
     of <- sys.frame(i)$ofile
-    if (!is.null(of)) { d <- dirname(normalizePath(of)); break }
+    if (!is.null(of) && basename(of) == "00_setup.R") {
+      d <- dirname(normalizePath(of)); break
+    }
   }
   if (is.null(d)) d <- getwd()
   d
