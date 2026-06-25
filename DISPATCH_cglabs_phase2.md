@@ -1,3 +1,18 @@
+> ✅ **SMOKE RE-RUN PASS (cglabs 2026-06-25, after fix 0eee8b4).** meta_NDWS.R
+> now sources calc_LongTermStats/discreteMaps via the repo-relative
+> `getOption("hazards.r_root")` — no `Repositories/hazards` / missing-function /
+> path errors anywhere in the log; ran real compute (6+ scenario×GCM
+> LongTermStats combos, paths resolving to `/home/jovyan/common_data`). The run
+> hit MY 400s test cap (exit 124) mid-compute — NOT a failure: the calc sourced
+> by meta_NDWS does a FULL-ENSEMBLE pass (it does NOT honour the GCMS/SCENARIO
+> env scope), so it's long. Migration layer = validated.
+>   - Follow-up (macbook, non-blocking): the sourced 05_final_maps calc ignores
+>     the run-controls, so "smoke" ≈ a full LongTermStats bake. If a quick smoke
+>     is wanted, scope that calc too — or accept it's heavy.
+>   - **Step 2 (full 01→06 bake) still HELD pending Pete:** (a) bake scope
+>     (GCMS/SCENARIO/SSPS/YRS — "normal full-bake env" undefined), and (b) the
+>     leaked CDS key (UID 63618) `01_download_data` would use — rotate first.
+>
 > ✅ **FIX APPLIED (macbook 2026-06-25) — re-run smoke, then Step 2.**
 > Cross-stage `source()` paths migrated to repo-relative. `00_setup.R` now
 > self-locates its dir (`hazards_r_root()`) and stores it in the `hazards.r_root`
