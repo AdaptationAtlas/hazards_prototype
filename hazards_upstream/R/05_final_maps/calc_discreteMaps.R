@@ -20,19 +20,21 @@ local({
 #working directory
 wd <- file.path(common_data_root(), "atlas_hazards")
 
-#list of GCMs
-gcm_list <- c("CMIP6_ACCESS-ESM1-5",
-              "CMIP6_MPI-ESM1-2-HR",
-              "CMIP6_EC-Earth3",
-              "CMIP6_INM-CM5-0",
-              "CMIP6_MRI-ESM2-0",
-              "CMIP6_ENSEMBLE")
+#list of GCMs - env-overridable via GCMS=csv (00_setup cfg_gcms); default = the
+#5 bias-corrected GCMs (ATLAS_GCMS_BC) plus the computed ENSEMBLE.
+gcm_list <- c(paste0("CMIP6_", sub("^CMIP6_", "", cfg_gcms(default = ATLAS_GCMS_BC))), "CMIP6_ENSEMBLE")
 
-#list of scenarios
-sce_list <- c("historical" , "ssp245", "ssp585")
-
-#periods
-period_list <- c("hist", "near", "mid")
+#scenarios / periods - narrowed only when SCENARIO is explicitly set; unset =>
+#legacy full set, so default behaviour is byte-for-byte unchanged.
+.sce_env <- Sys.getenv("SCENARIO", unset = NA_character_)
+if (is.na(.sce_env) || .sce_env == "") {
+  sce_list    <- c("historical", "ssp245", "ssp585")
+  period_list <- c("hist", "near", "mid")
+} else if (tolower(.sce_env) == "historical") {
+  sce_list    <- c("historical"); period_list <- c("hist")
+} else {
+  sce_list    <- c("ssp245", "ssp585"); period_list <- c("near", "mid")
+}
 
 #indices
 indx_list <- c("NDD", "NTx40", "NTx35", "HSM_NTx35", "HSH", "NDWS", "NDWL50", "NDWL0", "THI", "TAI")

@@ -46,9 +46,9 @@ if (!skip_preparation) {
   rm(list = ls()) # Remove objects
   gc(reset = T) # Empty garbage collector
   source(file.path(getOption("hazards.r_root"), "05_final_maps/calc_discreteMaps.R"))
-  stp <- expand.grid(sce=sce_list[2:3], prd = period_list[2:3], gcm = gcm_list, stat=stat_list) %>%
+  stp <- expand.grid(sce=setdiff(sce_list, "historical"), prd = setdiff(period_list, "hist"), gcm = gcm_list, stat=stat_list) %>%
     as.data.frame() %>%
-    rbind(data.frame(sce="historical", prd="hist", gcm=NA, stat=stat_list), .)
+    {if ("historical" %in% sce_list) rbind(data.frame(sce="historical", prd="hist", gcm=NA, stat=stat_list), .) else .}
   1:nrow(stp) %>%
     purrr::map(.f=function(i) {
       category_map(index="NDWL0", HS.stat=NULL, period=stp$prd[i], scenario=stp$sce[i], gcm=stp$gcm[i], stat=stp$stat[i])
