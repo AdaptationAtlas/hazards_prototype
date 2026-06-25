@@ -1,3 +1,18 @@
+> ✅ **GATE PASS — executed on cglabs 2026-06-25 (HEAD 88fc098).**
+> - TASK 1: `=== GATE SUMMARY: 9 passed, 0 failed ===`, exit 0. All 4 checks
+>   (fresh compute w/ `n_gcms=1` marker; no-FORCE SKIP; `FORCE_OVERWRITE=1`
+>   recompute+overwrite, mtime advanced, no abort; year-1850 no-input → loud
+>   `stopifnot` rc=1).
+> - TASK 2 content sanity (ACCESS-ESM1-5, NDWS-1995-01): min 18.15, max 31,
+>   NA% 74.2 (ocean/no-data) → in [0,31], not all-NA → **PASS**.
+> - TASK 3: all 13 `04_indices/*.R` parse **OK** on this box.
+> - Newly-surfaced warnings (expected, `warn=-1` dropped): during NDWS compute,
+>   `rm(list=...)` warns `object 'ETMAX'/'LOGGING'/'NDWL0' not found` — harmless
+>   (cleanup rm of vars not created in the NDWS branch); cosmetic, a `mget`/
+>   `Filter(exists,...)` guard would silence — macbook follow-up, non-blocking.
+> - Test artifact left in place (`historical_ACCESS-ESM1-5/NDWS/{NDWS,AVAIL}-1995-01.tif`);
+>   safe to delete. **Did NOT sweep 01/02/03/05/06 — macbook's next code step.**
+
 # DISPATCH → cglabs Claude Code — Stage-0 Phase-2 GATE
 
 **You are the cglabs session** in the two-session model: macbook = code/docs,
