@@ -3,12 +3,22 @@
 ## December, 2022
 
 # R options
-g <- gc(reset = T); rm(list = ls()) # Empty garbage collector
-options(warn = -1, scipen = 999)    # Remove warning alerts and scientific notation
+g <- gc(reset = T)   # rm(list=ls()) + warn=-1 dropped (see 00_setup.R)
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls.
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 suppressMessages(library(pacman))
 suppressMessages(pacman::p_load(tidyverse,terra,gtools,lubridate))
 
-root <- '/home/jovyan/common_data'
+root <- common_data_root()
 
 ref <- terra::rast(paste0(root,'/atlas_hazards/roi/africa.tif'))
 

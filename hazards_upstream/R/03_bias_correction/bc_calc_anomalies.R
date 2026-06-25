@@ -6,11 +6,20 @@
 if(!require(pacman)){install.packages('pacman');library(pacman)} else library(pacman)
 pacman::p_load(tidyverse, terra, fields, furrr, future)
 
-#options
-options(warn = -1, scipen = 999)    # Remove warning alerts and scientific notation
+#options + shared Stage-0 setup (data root, .log(), env run-controls; warn=-1 dropped)
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 
 #working directory
-wd <- "~/common_data/esfg_cmip6"
+wd <- file.path(common_data_root(), "esfg_cmip6")
 raw_dir <- paste0(wd, "/raw")
 rsds_dir <- paste0(wd, "/raw_rsds")
 hurs_dir <- paste0(wd, "/raw_hurs")
@@ -287,7 +296,7 @@ for (rcp in c("ssp126","ssp245","ssp370", "ssp585")) {
                                   clm_dir=clm_dir)$climatology
       
       #reference CHIRPS/CHIRTS raster
-      r_ref <- terra::rast("~/common_data/chirts/Tmax/1995/Tmax.1995.01.01.tif")
+      r_ref <- terra::rast(file.path(common_data_root(), "chirts/Tmax/1995/Tmax.1995.01.01.tif"))
       r_ref <- r_ref %>% terra::crop(terra::ext(his_clm), snap = 'out')
       r_ref[r_ref[] < -9990] <- NA
       

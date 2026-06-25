@@ -1,10 +1,21 @@
 #Get reruns file
 #JRV, Jan 2023
 
+# Shared Stage-0 setup (so common_data_root() is available when sourced standalone)
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 
 getReruns <- function(newfiles=NULL) {
   # Base directory
-  root <- '/home/jovyan/common_data'
+  root <- common_data_root()
   
   # Data fixes
   bad_fls <- readRDS(paste0(root, "/atlas_hazards/cmip6/corrupted_files.RDS"))
