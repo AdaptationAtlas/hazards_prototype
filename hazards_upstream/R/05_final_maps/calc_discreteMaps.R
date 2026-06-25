@@ -5,8 +5,20 @@
 library(terra)
 library(tidyverse)
 
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls.
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
+
 #working directory
-wd <- "~/common_data/atlas_hazards"
+wd <- file.path(common_data_root(), "atlas_hazards")
 
 #list of GCMs
 gcm_list <- c("CMIP6_ACCESS-ESM1-5",
@@ -29,6 +41,10 @@ indx_list <- c("NDD", "NTx40", "NTx35", "HSM_NTx35", "HSH", "NDWS", "NDWL50", "N
 stat_list <- c("mean_year", "max_year", "median_year")
 
 #source make_class_tb() function
+# FIXME(stage0): sibling-clone path - assumes ~/Repositories/hazards is checked out,
+# not the in-repo ./makeClassTable.R. Architectural: where does Stage-0 run from
+# (vendored hazards_upstream/ vs sibling clone)? Decide w/ repo-merge scope before
+# rewiring (see STAGE0_PHASE2_ROLLOUT.md "sibling-clone coupling").
 source("~/Repositories/hazards/R/05_final_maps/makeClassTable.R")
 
 #generate final categorical maps

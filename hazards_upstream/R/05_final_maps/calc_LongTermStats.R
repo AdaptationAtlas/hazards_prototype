@@ -5,8 +5,20 @@
 library(terra)
 library(tidyverse)
 
+# Shared Stage-0 setup: data root, timestamped .log(), env run-controls.
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
+
 #working directory
-wd <- "~/common_data/atlas_hazards"
+wd <- file.path(common_data_root(), "atlas_hazards")
 
 #list of GCMs
 gcm_list <- c("CMIP6_ACCESS-ESM1-5",
@@ -142,7 +154,7 @@ continuous_map <- function(index="NDD", HS.stat=NULL, period="hist", scenario="h
         #calculate mean of all months (average of climatological means)
         #for maize heat stress index that uses growing season, divide by growing season length instead of normal mean
         if (index == "HSM_NTx35" & !omitcalendar) {
-          r_cal <- terra::rast("~/common_data/atlas_crop_calendar/intermediate/mai_rf_ggcmi_crop_calendar_phase3_v1.01_Africa.tif")
+          r_cal <- terra::rast(file.path(common_data_root(), "atlas_crop_calendar/intermediate/mai_rf_ggcmi_crop_calendar_phase3_v1.01_Africa.tif"))
           r_cal <- r_cal[[3]] / 30
           r_mean <- sum(r_month, na.rm=TRUE) / r_cal
           terra::writeRaster(r_mean, paste0(out_dir, "/mean_year.tif"), overwrite=TRUE)
