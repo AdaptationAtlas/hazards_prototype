@@ -5,8 +5,20 @@
 library(geodata)
 library(tidyverse)
 
+# Shared Stage-0 setup (common_data_root() for the basedir default below)
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
+
 #function to get CHIRTS data (Tmax, Tmin, RHum).
-CHIRTS_data <- function(vars=c("RH", "Tmax", "Tmin"), years=1983:2016, basedir="~/common_data/chirts") {
+CHIRTS_data <- function(vars=c("RH", "Tmax", "Tmin"), years=1983:2016, basedir=file.path(common_data_root(), "chirts")) {
   #create table of files and file names e.g., RH.1983.01.01.tif
   file_tb <- expand.grid(day=1:31, month=1:12, year=years, variable=vars)
   

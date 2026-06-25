@@ -2,8 +2,17 @@
 # By: H. Achicanoy
 # Alliance Bioversity International & CIAT, 2025
 
-# R options
-options(warn = -1, scipen = 999)
+# R options + shared Stage-0 setup (data root, .log(), env run-controls; warn=-1 dropped)
+local({
+  cargs <- commandArgs(FALSE)
+  fa <- grep("^--file=", cargs, value = TRUE)
+  base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+  cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"),
+            "../00_setup.R", "00_setup.R")
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("00_setup.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
 
 # Load libraries and functions
 if(!require(pacman)){install.packages('pacman');library(pacman)} else {library(pacman)}
@@ -43,7 +52,7 @@ if (scenario == 'future') {
 stp <- base::expand.grid(gcm = gcms, ssp = ssps, var = vars, yr = yrs, stringsAsFactors = F) |>
   base::as.data.frame(); rm(gcms, ssps, vars, yrs)
 # Available files to download
-wd <- '/home/jovyan/common_data/nex-gddp-cmip6_raw'
+wd <- file.path(common_data_root(), "nex-gddp-cmip6_raw")
 dir.create(wd, F, T)
 if (scenario == 'future') {
   outfile <- file.path(wd,'cmip6_future_v2.0_files_to_download.csv')
