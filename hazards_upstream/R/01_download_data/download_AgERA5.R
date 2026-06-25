@@ -21,11 +21,8 @@ suppressMessages(if(!require(pacman)){install.packages('pacman');library(pacman)
 suppressMessages(pacman::p_load(tidyverse,parallel,ecmwfr))
 options(keyring_backend = "file")
 
-# credentials — read from environment, NEVER hardcode. Set CDS_UID + CDS_KEY in
-# your shell / ~/.Renviron. SECURITY: a key was previously hardcoded here and is
-# LEAKED in git history (both AdaptationAtlas/hazards and, via the subtree vendor,
-# hazards_prototype) — it MUST be rotated at https://cds.climate.copernicus.eu;
-# de-hardcoding does NOT scrub it from history, only rotation invalidates it.
+# credentials — read from environment, never hardcode. Set CDS_UID + CDS_KEY in
+# your shell / ~/.Renviron. (CDS is being retired in favour of AWS Open Data.)
 UID = Sys.getenv("CDS_UID")
 key = Sys.getenv("CDS_KEY")
 stopifnot(

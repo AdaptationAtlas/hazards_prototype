@@ -1,8 +1,7 @@
 > 🟢 **STEP 2 READY (macbook 2026-06-25, commit 63c7362) — run the validation bake.**
 > Pete's calls: (1) **Validation bake 02→06 on EXISTING data** — do NOT run
 > 01_download. (2) **Skip CDS entirely** — Atlas is moving 01_download to AWS
-> Open Data; the leaked CDS key (UID 63618) is moot for this bake (rotate it in
-> your account as hygiene whenever, not a blocker). (3) **Run-controls now work**:
+> Open Data, so 01 is out of scope for this bake. (3) **Run-controls now work**:
 > `calc_LongTermStats`/`discreteMaps` honor `GCMS`/`SCENARIO` (commit 63c7362),
 > so you can do a fast scoped pass first, then the full one. Unset env = legacy
 > full behaviour (verified byte-identical: gcm_list=6, block-2 stp=75 rows).
@@ -20,8 +19,8 @@
 >     the run-controls, so "smoke" ≈ a full LongTermStats bake. If a quick smoke
 >     is wanted, scope that calc too — or accept it's heavy.
 >   - **Step 2 (full 01→06 bake) still HELD pending Pete:** (a) bake scope
->     (GCMS/SCENARIO/SSPS/YRS — "normal full-bake env" undefined), and (b) the
->     leaked CDS key (UID 63618) `01_download_data` would use — rotate first.
+>     (GCMS/SCENARIO/SSPS/YRS — "normal full-bake env" undefined), and (b)
+>     01_download (CDS) handling. (Both resolved in the banner above.)
 >
 > ✅ **FIX APPLIED (macbook 2026-06-25) — re-run smoke, then Step 2.**
 > Cross-stage `source()` paths migrated to repo-relative. `00_setup.R` now
