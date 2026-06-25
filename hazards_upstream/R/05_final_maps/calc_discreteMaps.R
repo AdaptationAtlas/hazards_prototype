@@ -41,11 +41,9 @@ indx_list <- c("NDD", "NTx40", "NTx35", "HSM_NTx35", "HSH", "NDWS", "NDWL50", "N
 stat_list <- c("mean_year", "max_year", "median_year")
 
 #source make_class_tb() function
-# FIXME(stage0): sibling-clone path - assumes ~/Repositories/hazards is checked out,
-# not the in-repo ./makeClassTable.R. Architectural: where does Stage-0 run from
-# (vendored hazards_upstream/ vs sibling clone)? Decide w/ repo-merge scope before
-# rewiring (see STAGE0_PHASE2_ROLLOUT.md "sibling-clone coupling").
-source("~/Repositories/hazards/R/05_final_maps/makeClassTable.R")
+# Repo-relative: resolves to the in-repo sibling via hazards_r_root() (00_setup.R),
+# replacing the former hardcoded ~/Repositories/hazards sibling-clone path.
+source(file.path(hazards_r_root(), "05_final_maps/makeClassTable.R"))
 
 #generate final categorical maps
 category_map <- function(index="NDD", HS.stat=NULL, period="hist", scenario="historical", gcm="CMIP6_ENSEMBLE", stat="max_year"){

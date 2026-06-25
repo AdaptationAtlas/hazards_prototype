@@ -32,6 +32,25 @@ common_data_root <- function(check = FALSE) {
   root
 }
 
+# ---- repo R-dir (for cross-stage source() of sibling scripts) ---------------
+# Self-locates the directory holding THIS 00_setup.R (= hazards_upstream/R) at
+# source() time, so scripts can source sibling stage scripts repo-relative
+# instead of a hardcoded ~/Repositories/hazards sibling-clone path that only
+# exists on one box. Scans the call stack for the source()-set `ofile`.
+.HAZARDS_R_ROOT <- local({
+  d <- NULL
+  for (i in seq_len(sys.nframe())) {
+    of <- sys.frame(i)$ofile
+    if (!is.null(of)) { d <- dirname(normalizePath(of)); break }
+  }
+  if (is.null(d)) d <- getwd()
+  d
+})
+# Stored as an option too: options survive rm(list=ls()), so scripts that wipe
+# globalenv between sections can still resolve sibling paths via getOption().
+options(hazards.r_root = .HAZARDS_R_ROOT)
+hazards_r_root <- function() getOption("hazards.r_root", .HAZARDS_R_ROOT)
+
 # ---- environment readers ----------------------------------------------------
 # Truthy: 1/true/t/yes/y/on (case-insensitive). Everything else (incl. unset) -> default.
 env_flag <- function(name, default = FALSE) {

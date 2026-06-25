@@ -17,7 +17,17 @@ skip_preparation <- FALSE
 # Run calc_LongTermStats: run this section of the code if the
 # long-term statistics (long-term mean, etc) need to be rerun
 if (!skip_preparation) {
-  source("~/Repositories/hazards/R/05_final_maps/calc_LongTermStats.R")
+  # Bootstrap shared setup so getOption("hazards.r_root") is set before sourcing
+  # sibling stage scripts. Stored as an option, it survives the rm(list=ls())
+  # calls in the sections below.
+  local({
+    cargs <- commandArgs(FALSE); fa <- grep("^--file=", cargs, value = TRUE)
+    base <- if (length(fa)) dirname(normalizePath(sub("^--file=", "", fa[1]))) else getwd()
+    cand <- c(file.path(base, "..", "00_setup.R"), file.path(base, "00_setup.R"), "../00_setup.R", "00_setup.R")
+    hit <- cand[file.exists(cand)][1]; if (is.na(hit)) stop("00_setup.R not found from ", base)
+    source(normalizePath(hit), local = FALSE)
+  })
+  source(file.path(getOption("hazards.r_root"), "05_final_maps/calc_LongTermStats.R"))
   stp <- expand.grid(sce=sce_list, prd = period_list) %>% 
     as.data.frame() %>%
     dplyr::mutate(sce_prd = paste0(sce, "-", prd)) %>%
@@ -35,7 +45,7 @@ if (!skip_preparation) {
 if (!skip_preparation) {
   rm(list = ls()) # Remove objects
   gc(reset = T) # Empty garbage collector
-  source("~/Repositories/hazards/R/05_final_maps/calc_discreteMaps.R")
+  source(file.path(getOption("hazards.r_root"), "05_final_maps/calc_discreteMaps.R"))
   stp <- expand.grid(sce=sce_list[2:3], prd = period_list[2:3], gcm = gcm_list, stat=stat_list) %>%
     as.data.frame() %>%
     rbind(data.frame(sce="historical", prd="hist", gcm=NA, stat=stat_list), .)
