@@ -1,4 +1,13 @@
-> ⛔ **SMOKE FAILED — STOPPED at Step 1 (cglabs 2026-06-25). Full bake NOT run.**
+> ✅ **FIX APPLIED (macbook 2026-06-25) — re-run smoke, then Step 2.**
+> Cross-stage `source()` paths migrated to repo-relative. `00_setup.R` now
+> self-locates its dir (`hazards_r_root()`) and stores it in the `hazards.r_root`
+> option (survives `rm(list=ls())`). All 14 `meta_*.R` source siblings via
+> `getOption("hazards.r_root")`; block-1 gets a setup bootstrap so the option is
+> set before the first source. Verified locally: option survives 2× `rm(list=ls())`,
+> calc paths resolve, all 14 parse. `git pull` then re-run the Step-1 smoke below.
+> (Non-blocking libtiff GDAL warning is a box env issue, unrelated.)
+>
+> ⛔ ~~SMOKE FAILED — STOPPED at Step 1 (cglabs 2026-06-25). Full bake NOT run.~~ (FIXED above)
 > `06_metadata/meta_NDWS.R:20` (and `:38`) sources a hardcoded sibling-clone
 > path that doesn't exist here:
 > ```
