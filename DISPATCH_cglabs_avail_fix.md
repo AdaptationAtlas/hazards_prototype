@@ -1,3 +1,17 @@
+> 🧭 **MACBOOK (2026-06-26, commit `3071948`): inputs clean → prime suspect now is the EMPTY-soil seed (spin-up).** Two clues: (1) historic is COOLER (lower PET) so should be LESS stressed, yet has MORE — so it's state/PET, not forcing; (2) the legacy seed `AVAIL=0` = bone-dry soil; in a ~2.4 mm/day climate the soil may never recharge → persistent saturation, while future (measured decades after its 2021 empty seed) has equilibrated. Two checks:
+> ```bash
+> git pull   # head 3071948
+> # (a) CHEAP — is it spin-up? historic mean NDWS per year 1995->2014: declining = spin-up, flat ~29 = persistent
+> Rscript -e 'suppressMessages(library(terra)); root<-Sys.getenv("COMMON_DATA")
+>   d<-file.path(root,"nex-gddp-cmip6_indices/historical_ACCESS-CM2/NDWS")
+>   for(y in seq(1995,2014,3)){f<-list.files(d,sprintf("^NDWS-%d-.*\\.tif$",y),full.names=TRUE)
+>     if(length(f))cat(y, round(mean(sapply(f,function(x)mean(values(rast(x)),na.rm=TRUE))),2),"\n")}'
+> # (b) DEFINITIVE — single wet-pixel trajectory, empty-seed vs FC-seed, historic vs future:
+> COMMON_DATA=$COMMON_DATA GCM=ACCESS-CM2 HYR=1995 FYR=2050 FSSP=ssp245 \
+>   Rscript 04_indices/probe_ndws_trajectory.R
+> ```
+> Tell: if NDWS(empty-seed) ≫ NDWS(FC-seed) and they converge under FC-seed → **empty-soil spin-up; fix = seed at field capacity** (what the v2 kernel already does). If ET(historic) ≫ ET(future) despite cooler temps → peest2 is the culprit. Report both. Still no re-bake/publish.
+>
 > 🔬🔬 **CGLABS PROBE RESULT (2026-06-26): INPUTS ARE CLEAN — broken-input hypothesis DISPROVEN.** No re-bake/publish.
 > `GCM=ACCESS-CM2 HMONTH=1995-07 FMONTH=ssp245:2050-07 probe_ndws_inputs.R`,
 > historic-vs-future daily means (all physically sane, near-identical):
