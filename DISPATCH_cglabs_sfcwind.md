@@ -1,3 +1,39 @@
+> ✅ **calc_PET VALIDATED (cglabs 2026-06-26, HEAD 72b34bd).** Report below.
+>
+> **1. Download** — sfcWind `.nc` are **~302 MB** (Content-Length 301,834,989), so the
+> `1e8`/100 MB size-skip is CORRECT — **no threshold edit needed** (flagged loop didn't occur).
+> **sfcWind HISTORICAL fully downloaded: 612/612** (18 GCM × 34 yr, 1981-2014). NOTE:
+> the run filter is `pr/hurs/sfcWind` and the **pr/hurs RAW `.nc` are absent** on cglabs
+> (only their tifs exist), so the script also re-fetched pr+hurs (manifest = 1836 files,
+> ~550 GB). I **stopped that pr/hurs tail once sfcWind completed** (~370 GB of waste avoided).
+> **future NOT downloaded** (another ~TBs; PET validation is historical-only; future PET
+> needs an explicit SSP-scope decision — see findings).
+> **2. Staging** — `cp` sfcWind2 → `/home/jovyan/shared-data-premium/nex-gddp-cmip6_raw/sfcWind/historical/ACCESS-ESM1-5/` OK; ACCESS-ESM1-5/1995 byte-exact (301,834,989 == remote).
+> **3. Preprocess** — ⛔ **`furrr::future_map` produces NOTHING on cglabs**: returns
+> `[[1]] NULL`, writes **0 tifs**, exit 0 (error swallowed). Reproduced with `workers=1`
+> AND `future::plan(sequential)`. The **identical body run outside furrr (in-session)
+> writes all 365 tifs fine** (verified: 365 layers, dates 1995-01..12-31, rotate+write OK).
+> So the furrr wrapper is the culprit on this box. **Macbook fix needed** (drop furrr /
+> surface worker errors / base lapply fallback). I bypassed it (ran the exact transform
+> in-session) to produce the sfcWind daily tifs and unblock validation; reverted all my
+> diagnostic edits — tree clean.
+> **4. calc_PET smoke** — ✅ **PASS.** `historical_ACCESS-ESM1-5/PET/PET-1995-01.tif`
+> written, exit 0, no path/object errors. **min 0.5 / max 330 / mean 96.3 mm / NA% 71.8**
+> (NA = ocean). Mean squarely in the ~30-250 guide; max 330 is a hot/high-wind arid
+> extreme (slightly above the guide — plausible for FAO-56 PM, worth a glance).
+>
+> **Findings for macbook (flag, not fixed here):**
+> A. **preprocess furrr writes 0 tifs on cglabs** — blocker for any real preprocess bake
+>    via the script; fix before a full sfcWind→tif (or any var) preprocess run.
+> B. **pr/hurs re-download** because raw `.nc` absent — make the run filter sfcWind-only
+>    when pr/hurs tifs already exist (else +~370 GB needless egress/disk).
+> C. **hardcoded GCM lists** (download L39, preprocess L111) ignore the `GCMS` env — can't scope.
+> D. **`1e8` < true ~302 MB**: a file crossing 100 MB mid-write is briefly seen as
+>    "complete" (observed the 108 MB→302 MB transition). Prefer a Content-Length check.
+>
+> **Done for the goal** (FAO-56 PM PET validated). Remaining if a full PET PRODUCTION is
+> wanted: fix A, then preprocess all 18 GCM sfcWind (historical present; future TBD), run calc_PET.
+
 # Dispatch: fetch + preprocess sfcWind, then validate calc_PET (FAO-56 PM)
 
 **Goal:** get `sfcWind` (near-surface wind) into the pipeline so FAO-56 Penman-Monteith ET₀ (`calc_PET.R`) can run on real data. sfcWind confirmed available for all 18 Atlas GCMs × scenarios in NEX-GDDP-CMIP6 (r1i1p1f1). Head = origin/develop `2f94535`.
