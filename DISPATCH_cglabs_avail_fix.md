@@ -1,5 +1,12 @@
 # Dispatch: hazards#19 AVAIL fix — show legacy-vs-fixed impact (pre-approval)
 
+> ⏸️ **ON HOLD (2026-06-26). Do NOT run `compare_avail_fix.sh` or re-bake the trio.**
+> The hazards#19 AVAIL fix is being **folded into a single "water-balance v2"** effort
+> together with (a) the FAO-56 Penman-Monteith PET swap (replacing `peest2`) and
+> (b) the Rcpp single-pass kernel — so the trio is rewritten + impact-compared +
+> re-baked ONCE, not three times. A new consolidated dispatch will supersede this.
+> The flag-gated fix (`NDWS_AVAIL_FIX`) stays in place, default off, until then.
+
 **Do NOT integrate / re-bake yet.** Goal: quantify the impact of the deterministic AVAIL fix on real data so Pete can approve before we flip it on. Head = origin/develop `c2508b7`.
 
 ## Background
