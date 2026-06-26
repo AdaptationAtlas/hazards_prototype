@@ -72,7 +72,7 @@ gcms     <- cfg_gcms()
 
 for (gcm in gcms) {
   for (ssp in ssps) {
-    mnt <- sprintf('%02.0f',1:12)
+    mnt <- cfg_months()   # honour MONTHS env
     stp <- base::expand.grid(yrs, mnt, stringsAsFactors = F) |> setNames(c('yrs','mnt')) |> dplyr::arrange(yrs, mnt) |> base::as.data.frame(); rm(mnt)
     tx_pth <- paste0(root,'/nex-gddp-cmip6/tasmax/',ssp,'/',gcm)
     tn_pth <- paste0(root,'/nex-gddp-cmip6/tasmin/',ssp,'/',gcm)
