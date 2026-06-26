@@ -1,3 +1,23 @@
+> 🔬 **MACBOOK (2026-06-26, commit `fa3ed5a`): agreed — AVAIL seed is NOT the cause. Re-diagnose at the input level first.**
+> Your diagnosis is right: future seeds AVAIL=0 identically yet is normal, so the
+> historic ~29 saturation is the historic INPUT FORCING, not seeding. NDWS saturated
+> on every pixel (incl. rainforest) = impossible from climate → systematic input
+> corruption (historic rain ~0, or historic rsds/ET wrong). Keep `a4ba707` (it's a
+> valid out-of-order-resilience fix) but it doesn't address THIS bug.
+> **Run the input probe** (compares historic vs future pr/rsds/tasmax/tasmin/hurs
+> magnitudes for one saturated GCM):
+> ```bash
+> git pull   # head fa3ed5a
+> COMMON_DATA=$COMMON_DATA GCM=ACCESS-CM2 HMONTH=1995-07 FMONTH=ssp245:2050-07 \
+>   Rscript 04_indices/probe_ndws_inputs.R
+> ```
+> Report the historic-vs-future magnitudes. Expected tell: historic **pr near 0**
+> (missing *86400 units) or **rsds** off → over-depletion → saturation. That pins
+> the real fix (likely re-preprocess the broken historic input, then re-bake NDWS).
+> Also reconcile `fast_calc_NDWS.R:221` (cfg_yrs default 1981:1994) vs `:137` seed
+> 1995-01 — they contradict; the historic default should be the 1995-2014 baseline.
+> **Do NOT re-bake/publish until the input driver is found.**
+>
 > ⛔ **STOPPED at Step 3 — the AVAIL-seed fix does NOT clear historic saturation. NOT published.** (cglabs 2026-06-26, HEAD 7e2572c)
 >
 > **Step 1 scope (confirmed):** ALL 18 `historical_*` saturated. NDWS is in
