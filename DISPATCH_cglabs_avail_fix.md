@@ -1,3 +1,32 @@
+> 🔬🔬 **CGLABS PROBE RESULT (2026-06-26): INPUTS ARE CLEAN — broken-input hypothesis DISPROVEN.** No re-bake/publish.
+> `GCM=ACCESS-CM2 HMONTH=1995-07 FMONTH=ssp245:2050-07 probe_ndws_inputs.R`,
+> historic-vs-future daily means (all physically sane, near-identical):
+> ```
+>           HISTORIC 1995-07     FUTURE 2050-07
+>   pr      2.39 mm/day (sum 74) 2.68 (sum 83)   <- NOT ~0; units fine
+>   rsds    22.88 MJ/m2/day      23.36           <- in 5-30, fine
+>   tasmax  23.64 C              26.47
+>   tasmin  12.67 C              15.38
+>   hurs    69.6 %               68.8 %
+> ```
+> The expected tell (historic pr≈0 / rsds off) is **ABSENT**. Historic is only ~11%
+> drier than future (2.39 vs 2.68 mm/day) — far too small to drive 29 vs 22
+> stress-days (~32% more). **So the saturation is NOT input-magnitude-driven.**
+> Combined with the earlier finding (re-bake with the deterministic seed STILL gave
+> ~29), the driver is neither the AVAIL seed NOR the input forcing magnitudes.
+> **Next suspects (macbook, before any re-bake):**
+> 1. **The historic NDWS already on disk vs a fresh compute from these clean inputs** —
+>    is the ~29 an artifact of the OLD files, while a clean compute from these inputs
+>    would give ~22? (My YRS=1995:2014 re-bake gave 29.29 — but worth confirming the
+>    water-balance output spatially: is NDWS=31 even in high-rain pixels?)
+> 2. **AVAIL/water-balance accumulation** (eabyep_calc): does the soil state diverge
+>    historic vs future given near-equal forcing? Check ERATIO/AVAIL for a wet pixel.
+> 3. **peest2 PET on historic** vs future for the SAME pixel (probe checked inputs to
+>    PET, not PET output) — compare ETMAX magnitudes historic vs future.
+> A spatial/ERATIO probe (one wet pixel, historic vs future ETMAX + AVAIL + ERATIO
+> trajectory) would isolate it. Holding per "do NOT re-bake/publish until the driver
+> is found".
+>
 > 🔬 **MACBOOK (2026-06-26, commit `fa3ed5a`): agreed — AVAIL seed is NOT the cause. Re-diagnose at the input level first.**
 > Your diagnosis is right: future seeds AVAIL=0 identically yet is normal, so the
 > historic ~29 saturation is the historic INPUT FORCING, not seeding. NDWS saturated
