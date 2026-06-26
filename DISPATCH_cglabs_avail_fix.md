@@ -1,3 +1,37 @@
+> ⛔ **STOPPED at Step 3 — the AVAIL-seed fix does NOT clear historic saturation. NOT published.** (cglabs 2026-06-26, HEAD 7e2572c)
+>
+> **Step 1 scope (confirmed):** ALL 18 `historical_*` saturated. NDWS is in
+> **days/month (0-31)**, so the one-liner's `m>0.9` flags everything (incl. future)
+> — read the raw value: historic ≈ **29.2 days** (29/31 ≈ 0.94 = saturated) vs
+> future ≈ **22 days** (22/31 ≈ 0.71 = normal). So: historic saturated, future fine.
+>
+> **Config blocker hit (the dispatch's Step-2 command FAILS as written):**
+> `fast_calc_NDWS.R:221` forces `cfg_yrs(scenario, historical = 1981:1994)`, but the
+> seed (`:137`) is hardcoded `1995-01`. With no `YRS`, the loop starts 1981-01,
+> isn't the seed → reads prior 1980-12 → `stopifnot` "prior-month AVAIL missing"
+> → all 3 abort in ~20s. I aligned to the documented seed with `YRS=1995:2014`
+> (env override, no code edit) and re-ran; that got past the seed.
+>
+> **Step 3 validation — FIX DID NOT TAKE:** re-baked `historical_ACCESS-CM2`
+> NDWS with `NDWS_AVAIL_FIX` default-on, `YRS=1995:2014`, FORCE, chronological
+> from the 1995-01 (AVAIL=0) seed:
+> - 1995 mean = **29.29** (was ~29.2) — unchanged
+> - 1996 mean = **28.95** (full spin-up year later) — still saturated, NO drop to ~22.
+> Per Step 3 ("if still ~0.95, STOP"), I **stopped the re-bake and did NOT publish**.
+>
+> **Why the seed fix can't be the cause (diagnosis pointer for macbook/Track 2):**
+> future seeds AVAIL=0 the same way (`:137` includes `2021-01`) yet is ~22 (normal).
+> Same seed logic, same water-balance/peest2 — so the historic ~29 saturation is
+> driven by the **historic input forcing / PET**, NOT the AVAIL seeding. The
+> deterministic-seed change (a4ba707) addresses the wrong root cause for this bug.
+> Recommend re-diagnosing the historic pr/tasmax/tasmin/rsds (or peest2 on historic)
+> before any further re-bake. (Also: reconcile the `:221` 1981:1994 default vs the
+> `:137` 1995-01 seed — they contradict.)
+>
+> **State:** `historical_ACCESS-CM2` 1995-01..1996-04 NDWS/NDWL were FORCE-overwritten
+> with new-but-still-saturated values (~29, no functional change vs old); other 17
+> GCMs untouched. Live Atlas NOT modified (no publish). No code edited (env-only).
+
 # Dispatch (TRACK 1): fix the saturated HISTORIC NDWS/NDWL, ship to the current Atlas
 
 **Bug (hazards#19, scoped from downstream):** the **historic 1995-2014** NDWS rasters are **saturated — mean/max ≈ 0.95 every pixel/month/year** (nearly always water-stressed); the matching **future** NDWS is **normal (~0.70)**. Cause: on a resume/re-run the historic series re-seeded every month from the lexically-last (dry) `AVAIL`, pinning soil to max depletion. Deterministic prior-month seed (now default, commit `a4ba707`) fixes it. **peest2 PET unchanged; no sfcWind; the FAO-56/AquaCrop overhaul is Track 2.**
