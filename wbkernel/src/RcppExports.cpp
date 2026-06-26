@@ -11,23 +11,26 @@ Rcpp::Rostream<false>& Rcpp::Rcerr = Rcpp::Rcpp_cerr_get();
 #endif
 
 // wb_kernel_cpp
-List wb_kernel_cpp(NumericMatrix rain, NumericMatrix evap, NumericVector soilcp, NumericVector soilsat, NumericVector avail0);
-RcppExport SEXP _wbkernel_wb_kernel_cpp(SEXP rainSEXP, SEXP evapSEXP, SEXP soilcpSEXP, SEXP soilsatSEXP, SEXP avail0SEXP) {
+List wb_kernel_cpp(NumericMatrix rain, NumericMatrix et0, NumericVector taw, NumericVector ssat, NumericVector a_mm, NumericVector s0, double p, int aer_lag);
+RcppExport SEXP _wbkernel_wb_kernel_cpp(SEXP rainSEXP, SEXP et0SEXP, SEXP tawSEXP, SEXP ssatSEXP, SEXP a_mmSEXP, SEXP s0SEXP, SEXP pSEXP, SEXP aer_lagSEXP) {
 BEGIN_RCPP
     Rcpp::RObject rcpp_result_gen;
     Rcpp::RNGScope rcpp_rngScope_gen;
     Rcpp::traits::input_parameter< NumericMatrix >::type rain(rainSEXP);
-    Rcpp::traits::input_parameter< NumericMatrix >::type evap(evapSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type soilcp(soilcpSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type soilsat(soilsatSEXP);
-    Rcpp::traits::input_parameter< NumericVector >::type avail0(avail0SEXP);
-    rcpp_result_gen = Rcpp::wrap(wb_kernel_cpp(rain, evap, soilcp, soilsat, avail0));
+    Rcpp::traits::input_parameter< NumericMatrix >::type et0(et0SEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type taw(tawSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type ssat(ssatSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type a_mm(a_mmSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type s0(s0SEXP);
+    Rcpp::traits::input_parameter< double >::type p(pSEXP);
+    Rcpp::traits::input_parameter< int >::type aer_lag(aer_lagSEXP);
+    rcpp_result_gen = Rcpp::wrap(wb_kernel_cpp(rain, et0, taw, ssat, a_mm, s0, p, aer_lag));
     return rcpp_result_gen;
 END_RCPP
 }
 
 static const R_CallMethodDef CallEntries[] = {
-    {"_wbkernel_wb_kernel_cpp", (DL_FUNC) &_wbkernel_wb_kernel_cpp, 5},
+    {"_wbkernel_wb_kernel_cpp", (DL_FUNC) &_wbkernel_wb_kernel_cpp, 8},
     {NULL, NULL, 0}
 };
 

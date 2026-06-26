@@ -1,14 +1,16 @@
 Package: wbkernel
 Type: Package
-Title: Single-Pass EABYEP Soil-Water-Balance Kernel
-Version: 0.1.0
+Title: Single-Pass FAO-56/AquaCrop Soil-Water-Balance Kernel
+Version: 0.2.0
 Authors@R: person("Atlas", "Pipeline", role = c("aut", "cre"), email = "p.steward@cgiar.org")
-Description: Rcpp single-pass daily soil-water-balance kernel (wb_kernel_cpp) for
-    the NDWS / NDWL0 / NDWL50 hazard indices. Marches days per cell carrying soil
-    availability, returning per-cell-day ERATIO (-> NDWS) and LOGGING (-> NDWL)
-    plus the final availability (next-month seed). Replaces the R per-day terra
-    loop in fast_calc_NDWS/NDWL0/NDWL50.R. Packaged so parallel (future) workers
-    load it via library() (no sourceCpp-into-shared-env), same as trendkernel.
+Description: Rcpp single-pass daily FAO-56 root-zone soil-water-balance kernel
+    (wb_kernel_cpp) for the NDWS (drought) and NDWL0/NDWL50 (waterlogging) hazard
+    indices. Per cell, marches days carrying soil water relative to field capacity,
+    returning the FAO-56 water-stress coefficient Ks (Allen et al. 1998 Ch.8;
+    Pereira et al. 2026) and the AquaCrop aeration-stress coefficient Ks_aer (Raes
+    et al. 2009) plus waterlogged-day occurrence and the final state (next-month
+    seed). Replaces the legacy eabyep heuristic. Packaged so parallel (future)
+    workers load it via library() (no sourceCpp-into-shared-env), like trendkernel.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Imports: Rcpp
