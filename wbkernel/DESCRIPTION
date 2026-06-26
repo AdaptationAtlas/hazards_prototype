@@ -1,0 +1,16 @@
+Package: wbkernel
+Type: Package
+Title: Single-Pass EABYEP Soil-Water-Balance Kernel
+Version: 0.1.0
+Authors@R: person("Atlas", "Pipeline", role = c("aut", "cre"), email = "p.steward@cgiar.org")
+Description: Rcpp single-pass daily soil-water-balance kernel (wb_kernel_cpp) for
+    the NDWS / NDWL0 / NDWL50 hazard indices. Marches days per cell carrying soil
+    availability, returning per-cell-day ERATIO (-> NDWS) and LOGGING (-> NDWL)
+    plus the final availability (next-month seed). Replaces the R per-day terra
+    loop in fast_calc_NDWS/NDWL0/NDWL50.R. Packaged so parallel (future) workers
+    load it via library() (no sourceCpp-into-shared-env), same as trendkernel.
+License: MIT + file LICENSE
+Encoding: UTF-8
+Imports: Rcpp
+LinkingTo: Rcpp
+RoxygenNote: 7.2.0

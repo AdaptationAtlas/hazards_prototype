@@ -27,3 +27,8 @@ trendkernel/src/*.dll
 
 # Reference PDFs and exposure scratch (large binaries, not pipeline code)
 references/
+
+# wbkernel package build artifacts (sources tracked, builds ignored)
+wbkernel/src/*.o
+wbkernel/src/*.so
+wbkernel/src/*.dll

@@ -1,0 +1,3 @@
+useDynLib(wbkernel, .registration = TRUE)
+importFrom(Rcpp, sourceCpp)
+export(wb_kernel_cpp)
