@@ -117,38 +117,33 @@ table(stp$version)
 # and includes sfcWind rows; existing files are skipped on download (size check).
 stp <- stp |> dplyr::filter(var %in% c('pr','hurs','sfcWind')) |> base::as.data.frame()
 
-# Download files (serial)
-1:nrow(stp) |>
-  purrr::map(.f = function(i) {
-
+# Download files (parallel) - network/IO bound, so concurrent curls help a lot.
+# Worker count via DL_WORKERS (default 16). Size-skip (>1e8 B) makes re-runs
+# resumable: already-downloaded files are skipped, so a re-run only fills gaps.
+# For maximum throughput on this PUBLIC bucket, `s5cmd cp --no-sign-request` or
+# `aws s3 cp --no-sign-request` (many concurrent transfers) outperform R curl -
+# consider those for a full multi-var bulk pull.
+dl_workers <- as.integer(env_or("DL_WORKERS", "16"))
+.log('Download: ', nrow(stp), ' files, ', dl_workers, ' workers')
+future::plan(future::multisession, workers = dl_workers)
+ok <- 1:nrow(stp) |>
+  furrr::future_map(.f = function(i) {
     outd <- paste0(wd,'/',stp$var[i],'2/',stp$ssp[i],'/',stp$gcm[i])
-    dir.create(outd,F,T)
-    outfile <- file.path(outd,stp$file[i])
-
+    dir.create(outd, F, T)
+    outfile <- file.path(outd, stp$file[i])
     if (!file.exists(outfile) || file.size(outfile) < 1e8) {
-      download.file(url = file.path(stp$pth_dir[i], stp$file[i]), destfile = outfile, method = 'curl')
-    } else {
-      cat(stp$file[i],'downloaded!\n')
+      try(download.file(url = file.path(stp$pth_dir[i], stp$file[i]),
+                        destfile = outfile, method = 'curl', quiet = TRUE), silent = TRUE)
     }
-    return('Done.\n')
-  })
+    file.exists(outfile) && file.size(outfile) >= 1e8   # present + plausibly complete
+  }, .progress = TRUE) |> unlist()
+future::plan(future::sequential)
 gc(F, T, T)
-# 
-# # # Download files (parallel)
-# # plan(multisession, workers = 30)
-# # 1:nrow(stp) |>
-# #   furrr::future_map(.f = function(i) {
-# #     
-# #     outd <- paste0(wd,'/',stp$var[i],'/',stp$ssp[i],'/',stp$gcm[i])
-# #     dir.create(outd,F,T)
-# #     outfile <- file.path(outd,stp$file[i])
-# #     
-# #     if (!file.exists(outfile) || file.size(outfile) < 1e8) {
-# #       download.file(url = file.path(stp$pth_dir[i], stp$file[i]), destfile = outfile, method = 'curl')
-# #     } else {
-# #       cat(stp$file[i],'downloaded!\n')
-# #     }
-# #     return('Done.\n')
-# #   }, .progress = T)
-# # plan(sequential)
-# # gc(F, T, T)
+# Loud failure report (silent worker try() must not hide gaps; re-run fills them).
+nfail <- sum(!ok)
+if (nfail > 0) {
+  .log(nfail, ' of ', length(ok), ' files FAILED/incomplete - re-run to retry gaps', level = 'WARN')
+  print(utils::head(file.path(stp$pth_dir[!ok], stp$file[!ok]), 20))
+} else {
+  .log('Download complete: all ', length(ok), ' files present')
+}
