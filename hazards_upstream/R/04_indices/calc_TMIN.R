@@ -82,7 +82,7 @@ for (gcm in gcms) {
     
     ## Parameters
     cmb <- paste0(ssp, '_', gcm)
-    mnt <- sprintf('%02.0f',1:12)
+    mnt <- cfg_months()   # honour MONTHS env (was hardcoded 1:12)
     stp <- base::expand.grid(yrs, mnt, stringsAsFactors = F) |> setNames(c('yrs', 'mnt')) |> dplyr::arrange(yrs, mnt) |> base::as.data.frame(); rm(mnt)
     
     ## Setup in/out files
