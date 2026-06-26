@@ -112,7 +112,10 @@ if(!file.exists(outfile)) {
 
 stp$version <- strsplit(x = stp$file, split = '_') |> purrr::map(8) |> base::unlist() |> gsub(pattern = '.nc', replacement = '', x = _)
 table(stp$version)
-stp <- stp |> dplyr::filter(var %in% c('pr','hurs')) |> base::as.data.frame()
+# Per-run download scope. sfcWind added for FAO-56 PM ET0 (PET). NOTE: if the
+# cached manifest CSV (above) predates sfcWind, delete it so the URL-probe re-runs
+# and includes sfcWind rows; existing files are skipped on download (size check).
+stp <- stp |> dplyr::filter(var %in% c('pr','hurs','sfcWind')) |> base::as.data.frame()
 
 # Download files (serial)
 1:nrow(stp) |>
