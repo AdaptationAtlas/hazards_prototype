@@ -43,6 +43,35 @@ Use your normal full GCM set (unset GCMS = the script default). NDWS/NDWL have a
 Do not push code fixes without flagging the diff first.
 
 ---
+## ✅ 2a PASS + 2b SWEEP PASS (cglabs 2026-06-26, HEAD 45159bd)
+- **2a gate** (`gate_phase2_ndws.sh`): `GATE SUMMARY: 9 passed, 0 failed`, exit 0.
+- **2b — full historical sweep, all 12 `04_indices` scripts, default 18-GCM set,
+  no FORCE:** every script exit 0, 0 error lines.
+  | script | exit | elapsed | script | exit | elapsed |
+  |---|---|---|---|---|---|
+  | calc_NDD | 0 | 13s | calc_TAI | 0 | 13s |
+  | calc_NTx | 0 | 42s | calc_HSH | 0 | 15s |
+  | calc_PTOT | 0 | 12s | calc_THI | 0 | 16s |
+  | calc_TAVG | 0 | 13s | fast_calc_NDWS | 0 | 835s |
+  | calc_TMAX | 0 | 13s | fast_calc_NDWL0 | 0 | 827s |
+  | calc_TMIN | 0 | 12s | fast_calc_NDWL50 | 0 | 820s |
+  The 3 `fast_calc_*` did real fresh compute across all 18 GCMs (~46s/GCM,
+  AVAIL-ordered) — not just skips; calc_* fast where outputs already existed.
+- **Outputs verified** under `$COMMON_DATA/nex-gddp-cmip6_indices/`: e.g.
+  `historical_TaiESM1/NDWS` 816 tifs, `…/PTOT` 480.
+- **Future code path validated** (`SCENARIO=future` calc_PTOT, ACCESS-ESM1-5):
+  exit 0, `scenario=future yrs=2021:2100`, SSP expansion works. Future indices
+  already populated (ssp126/245/370/585 NDWS = 1920 tifs each /GCM).
+- **INCOMPLETE-GCM concern (coverage.csv) did NOT bite** historical: all 18 GCMs
+  ran clean (sufficient historical coverage / existing outputs skip).
+- **Migration VALIDATED on real data, 02→04.** Note: indices were already
+  comprehensively baked (prior run, `indice_completion_2025-07-22`), so this was
+  a clean re-validation + gap-fill, not a from-scratch bake.
+- **NOT done (by design / optional):** a full FORCE re-bake, and a full *future*
+  fast_calc re-sweep across 18 GCMs × 4 SSPs (hours of NDWS/NDWL fresh compute;
+  outputs already present). Run as a scheduled background job only if a full
+  refresh is actually wanted — say the word.
+
 ## Log (newest first)
 - 2026-06-25 — **scope narrowed to 02→04** (hazard variables only; drop 05/06). Dispatch rewritten.
 - 2026-06-25 `0d1e036` (macbook) — fix `hazards.r_root` clobber: ofile-scan now matches the `00_setup.R` frame (not any outer ofile), so a sibling re-sourcing setup can't re-root to its subdir. Fixes the 2a path-doubling. (Affected 05/06 path; now out of scope but fixed.)
