@@ -40,11 +40,13 @@ get_daily_data <- function (vr, ssp, gcm) {
   # Files in input directory
   fls <- list.files(path = indir, pattern = '.nc$', full.names = T)
   
-  # Process files in parallel
-  # Set up parallel processing
-  future::plan(future::multisession, workers = 6) # parallel::detectCores() - 1
-  furrr::future_map(.x = fls, .f = function(fl) {
-    
+  # Process files. NOTE: furrr::future_map produced 0 tifs on cglabs (worker
+  # failed to capture the enclosing gcm/vr/outdir, error swallowed -> [[1]] NULL,
+  # exit 0). terra objects also don't serialise across future workers. Plain
+  # lapply (lexical scope, same process) is correct; the download dominates wall
+  # time, so we don't lose meaningful speed here.
+  lapply(fls, function(fl) {
+
     # Read annual raster
     r <- terra::rast(fl)
     # Get daily dates
@@ -70,35 +72,32 @@ get_daily_data <- function (vr, ssp, gcm) {
     to_process <- !file.exists(out_files)
     
     if (any(to_process)) {
-      # Wrap raster for parallel processing
-      r_wrapped <- terra::wrap(r)
-      
-      # Apply unit transformations
-      r_unwrapped <- terra::unwrap(r_wrapped)
-      if (vr == 'pr2') {
-        r_unwrapped <- r_unwrapped * 86400
+      # Apply unit transformations (no wrap/unwrap - in-process, no serialisation).
+      # pr: kg m-2 s-1 -> mm/day; tas: K -> degC; rsds: W m-2 -> MJ m-2 day-1.
+      # hurs (%) and sfcWind (m/s) pass through unchanged.
+      if (vr == 'pr') {
+        r <- r * 86400
       } else if (vr %in% c('tasmax','tasmin')) {
-        r_unwrapped <- r_unwrapped - 273.15
+        r <- r - 273.15
       } else if (vr == 'rsds') {
-        r_unwrapped <- r_unwrapped * 86400 / 1000000
+        r <- r * 86400 / 1000000
       }
-      
+
       # Rotate rasters
-      r_unwrapped <- terra::rotate(r_unwrapped)
-      
+      r <- terra::rotate(r)
+
       # Write only the files that don't exist
-      terra::writeRaster(x = r_unwrapped[[to_process]], filename = out_files[to_process], overwrite = T)
+      terra::writeRaster(x = r[[to_process]], filename = out_files[to_process], overwrite = T)
     }
-    
-  }, .progress = T)
-  future::plan(future::sequential)
+
+  })
   gc(F, T, T)
   
   return(cat('Done.\n'))
   
 }
 
-scenario <- 'future'
+scenario <- cfg_scenario("historical")   # SCENARIO env: historical (default) | future
 
 if (scenario == 'future'){
   ssps <- c('ssp126','ssp245','ssp370','ssp585')
@@ -108,7 +107,7 @@ if (scenario == 'future'){
   }
 }
 vrs <- c('pr','sfcWind') # ,'hurs' 'tasmax','tasmin','rsds' -- sfcWind added for FAO-56 PM ET0 (PET); no unit conversion
-gcms <- c('ACCESS-CM2','ACCESS-ESM1-5','CanESM5','CMCC-ESM2','EC-Earth3','EC-Earth3-Veg-LR','GFDL-ESM4','INM-CM4-8','INM-CM5-0','IPSL-CM6A-LR','KACE-1-0-G','MIROC6','MPI-ESM1-2-HR','MPI-ESM1-2-LR','MRI-ESM2-0','NorESM2-LM','NorESM2-MM','TaiESM1')
+gcms <- cfg_gcms()   # GCMS env (default = ATLAS_GCMS, the 18); was hardcoded
 
 stp <- base::expand.grid(gcm = gcms, ssp = ssps, vr = vrs, stringsAsFactors = F) |>
   base::as.data.frame(); rm(vrs, ssps, gcms)

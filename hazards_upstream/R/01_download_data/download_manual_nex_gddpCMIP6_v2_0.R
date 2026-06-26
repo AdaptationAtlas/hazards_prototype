@@ -36,7 +36,7 @@ scenario <- cfg_scenario("historical") # SCENARIO env: historical (default) | fu
 root <- 'https://nex-gddp-cmip6.s3.us-west-2.amazonaws.com/NEX-GDDP-CMIP6'
 
 # Filters to apply
-gcms <- c('ACCESS-CM2','ACCESS-ESM1-5','CanESM5','CMCC-ESM2','EC-Earth3','EC-Earth3-Veg-LR','GFDL-ESM4','INM-CM4-8','INM-CM5-0','IPSL-CM6A-LR','KACE-1-0-G','MIROC6','MPI-ESM1-2-HR','MPI-ESM1-2-LR','MRI-ESM2-0','NorESM2-LM','NorESM2-MM','TaiESM1')
+gcms <- cfg_gcms()   # GCMS env (default = ATLAS_GCMS, the 18); was hardcoded
 vars <- c('pr','tasmax','tasmin','hurs','rsds','sfcWind')  # sfcWind added for FAO-56 PM ET0 (PET)
 if (scenario == 'future') {
   ssps <- c('ssp126','ssp245','ssp370','ssp585')
@@ -115,7 +115,11 @@ table(stp$version)
 # Per-run download scope. sfcWind added for FAO-56 PM ET0 (PET). NOTE: if the
 # cached manifest CSV (above) predates sfcWind, delete it so the URL-probe re-runs
 # and includes sfcWind rows; existing files are skipped on download (size check).
-stp <- stp |> dplyr::filter(var %in% c('pr','hurs','sfcWind')) |> base::as.data.frame()
+# Per-run var scope. sfcWind-only: the other vars' daily tifs already exist on
+# cglabs (their raw .nc are deleted post-preprocess), so including them re-fetches
+# ~370 GB needlessly (cglabs 2026-06-26). Widen this list only when a var's tifs
+# are genuinely missing. If the cached manifest CSV predates sfcWind, delete it first.
+stp <- stp |> dplyr::filter(var %in% c('sfcWind')) |> base::as.data.frame()
 
 # Download files (parallel) - network/IO bound, so concurrent curls help a lot.
 # Worker count via DL_WORKERS (default 16). Size-skip (>1e8 B) makes re-runs
@@ -135,9 +139,19 @@ ok <- 1:nrow(stp) |>
     outd <- paste0(wd,'/',stp$var[i],'2/',stp$ssp[i],'/',stp$gcm[i])
     dir.create(outd, F, T)
     outfile <- file.path(outd, stp$file[i])
-    complete <- function() file.exists(outfile) && file.size(outfile) >= 1e8
+    url <- file.path(stp$pth_dir[i], stp$file[i])
+    # Byte-exact completeness via remote Content-Length: a fixed floor (1e8)
+    # wrongly accepts a connection-truncated file that happens to exceed it
+    # (cglabs flag D - sfcWind .nc are ~302 MB). Fall back to the floor if the
+    # HEAD/Content-Length is unavailable.
+    exp_sz <- tryCatch(as.numeric(httr::headers(httr::HEAD(url))[["content-length"]]),
+                       error = function(e) NA_real_)
+    complete <- function() {
+      if (!file.exists(outfile)) return(FALSE)
+      sz <- file.size(outfile)
+      if (!is.na(exp_sz) && exp_sz > 0) isTRUE(sz == exp_sz) else sz >= 1e8
+    }
     if (!complete()) {
-      url <- file.path(stp$pth_dir[i], stp$file[i])
       for (k in seq_len(dl_tries)) {
         tryCatch(download.file(url, outfile, method = 'curl', quiet = TRUE),
                  error = function(e) NULL, warning = function(w) NULL)
