@@ -137,7 +137,19 @@ calc_ndwl50 <- function(yr, mn){
     if(date %in% c('1995-01','2021-01')){
       AVAIL <<- ETMAX[[1]] * 0
       AVAIL[!is.na(AVAIL)] <- 0
+    } else if (env_flag("NDWS_AVAIL_FIX", FALSE)) {
+      # hazards#19 FIX (flag-gated; default OFF until approved): seed soil moisture
+      # from the DETERMINISTIC prior month (yr/mn arithmetic), NOT the lexically-last
+      # AVAIL file. Lexical-last mis-seeds month N from the wrong month on any
+      # resumed / out-of-order / gap-fill run -> historic saturation. Missing prior
+      # month now fails LOUD instead of silently seeding wrong.
+      pdate <- as.Date(paste0(yr,'-',mn,'-01')) - 1
+      prior_avail <- paste0(dirname(outfile),'/AVAIL-',format(pdate,'%Y'),'-',format(pdate,'%m'),'.tif')
+      stopifnot("prior-month AVAIL missing - run months in order from the seed month" = file.exists(prior_avail))
+      AVAIL <<- terra::rast(prior_avail)
+      AVAIL <<- AVAIL[[terra::nlyr(AVAIL)]]
     } else {
+      # LEGACY lexical-last recovery (hazards#19 bug) - default until fix approved.
       avail_fl <- list.files(path = dirname(outfile), pattern = 'AVAIL-')
       avail_fl <- avail_fl[grep(pattern = '\\.tif', avail_fl)]
       avail_fl <- avail_fl[length(avail_fl)]
