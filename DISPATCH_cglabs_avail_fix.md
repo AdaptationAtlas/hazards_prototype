@@ -1,44 +1,48 @@
-# Dispatch (TRACK 1): ship the hazards#19 NDWS/NDWL fix to the CURRENT Atlas
+# Dispatch (TRACK 1): fix the saturated HISTORIC NDWS/NDWL, ship to the current Atlas
 
-**Goal:** fix the live NDWS/NDWL0/NDWL50 saturation bug NOW, on the existing legacy method (peest2 PET unchanged) — independent of the FAO-56/AquaCrop overhaul (Track 2, full rebake). **No sfcWind needed.** Head = origin/develop `a4ba707`.
+**Bug (hazards#19, scoped from downstream):** the **historic 1995-2014** NDWS rasters are **saturated — mean/max ≈ 0.95 every pixel/month/year** (nearly always water-stressed); the matching **future** NDWS is **normal (~0.70)**. Cause: on a resume/re-run the historic series re-seeded every month from the lexically-last (dry) `AVAIL`, pinning soil to max depletion. Deterministic prior-month seed (now default, commit `a4ba707`) fixes it. **peest2 PET unchanged; no sfcWind; the FAO-56/AquaCrop overhaul is Track 2.**
 
-## What changed
-`fast_calc_NDWS/NDWL0/NDWL50.R` seeded soil moisture from the lexically-last `AVAIL-*.tif` → mis-seeds month N from the wrong month on resumed/out-of-order/gap-fill runs (hazards#19 historic saturation). The deterministic prior-month seed is now the **default** (`NDWS_AVAIL_FIX` default-on, commit a4ba707); the legacy lexical-last path is reachable only via `NDWS_AVAIL_FIX=0` (for the comparison below). PET method, formulas, soil — all unchanged.
+**Scope is already known — no probe needed:**
+- Affected: **HISTORIC (1995-2014)**, indices **NDWS + NDWL0 + NDWL50** (share the AVAIL chain), **all GCMs**.
+- **NOT affected: future (ssp*) — DO NOT re-bake it.** Other 10 indices untouched.
 
 ## Pull
 ```bash
 cd <hazards_prototype>/hazards_upstream/R
-git checkout develop && git pull        # head a4ba707; DO NOT create branches
+git checkout develop && git pull        # head a4ba707+; DO NOT create branches
 export COMMON_DATA=<your real data root>
 ```
 
-## Step 1 — impact comparison (legacy vs fixed)
-Runs each script both ways on baked GCM/months using the #19 trigger (recompute a mid-series month while later months exist), diffs, restores canonical data:
+## Step 1 — confirm scope (cheap, reads published rasters)
+Verify the historic saturation across GCMs (expect mean NDWS ≈ 0.95 historic vs ~0.70 future):
 ```bash
-bash 04_indices/compare_avail_fix.sh                 # NDWS, ACCESS-ESM1-5, 1996-06
-INDEX=NDWL0  bash 04_indices/compare_avail_fix.sh
-INDEX=NDWL50 bash 04_indices/compare_avail_fix.sh
-# a 2nd GCM/month is worth it: GCM=EC-Earth3 TGT_YR=2005 TGT_MN=09 bash 04_indices/compare_avail_fix.sh
+Rscript -e 'suppressMessages(library(terra)); root<-Sys.getenv("COMMON_DATA")
+for (g in list.dirs(file.path(root,"nex-gddp-cmip6_indices"),recursive=FALSE)) {
+  f<-list.files(file.path(g,"NDWS"),"^NDWS-.*\\.tif$",full.names=TRUE); if(!length(f)) next
+  m<-mean(sapply(head(f,12), function(x) mean(values(rast(x)),na.rm=TRUE)))
+  cat(basename(g), sprintf("mean NDWS(first12mo)=%.2f%s\n", m, if(m>0.9)"  <- SATURATED" else ""))}'
 ```
-Report the diff stats here (cells changed, mean shift, saturation direction). Pete reviews → approves the re-bake.
+GCMs flagged SATURATED on their `historical_*` series → re-bake; any not saturated → leave.
 
-## Step 2 — re-bake the trio (after approval)
-FORCE re-bake NDWS+NDWL0+NDWL50 across the full production scope. **Run months IN ORDER from the seed** (1995-01 historical / 2021-01 future) — the deterministic seed reads the prior month, so chronological order is required; the script's loop is already chronological, just don't shard months out of order.
+## Step 2 — re-bake the HISTORIC trio (saturated GCMs)
+FORCE re-bake NDWS+NDWL0+NDWL50, **SCENARIO=historical only**, chronological from the 1995-01 seed (deterministic seed reads the prior month — the script loop is already chronological):
 ```bash
-# historical (seed 1995-01)
 SCENARIO=historical FORCE_OVERWRITE=1 Rscript 04_indices/fast_calc_NDWS.R
 SCENARIO=historical FORCE_OVERWRITE=1 Rscript 04_indices/fast_calc_NDWL0.R
 SCENARIO=historical FORCE_OVERWRITE=1 Rscript 04_indices/fast_calc_NDWL50.R
-# future (seed 2021-01) - repeat the three with SCENARIO=future
+# default GCM set; restrict to the saturated GCMs via GCMS=... if Step 1 showed any clean.
+# DO NOT run SCENARIO=future (future is fine).
 ```
-(Default GCM set; default fix on. fast_calc_NDWS/NDWL are the slow ones ~835 s/GCM — the Rcpp speedup is Track 2, not this fix.)
 
-## Step 3 — publish to the current Atlas
-Push the re-baked NDWS/NDWL0/NDWL50 through the existing NDWS publish path. NOTE the publish layer is the known-stale upload system (push_to_s3 legacy path; ACL caveats) — use the current production publish step for these indices and verify the live Atlas reads the new values.
+## Step 3 — validate the fix cleared it
+Re-run Step 1's check: historic mean NDWS should now drop from ~0.95 to a normal spread (~0.6-0.75), comparable to future. If still ~0.95, STOP and report (fix didn't take).
+
+## Step 4 — publish to the current Atlas
+Push the re-baked historic NDWS/NDWL0/NDWL50 through the existing NDWS publish path (note the stale upload layer — push_to_s3 legacy path/ACL caveats; use the current production publish step). Confirm the live Atlas `hazard_exposure` historic panel is no longer saturated (clears CR-068 (b)+(c), Luanda NaN).
 
 ## Report back (edit this file + commit)
-- Step 1 impact stats (per index/GCM/month)
-- Step 2 re-bake: completion + any errors with file:line
-- Step 3 publish: confirmed live
+- Step 1 scope: which `historical_*` series were saturated
+- Step 3 validation: historic mean NDWS before/after
+- Step 4: published + live Atlas confirmed
 
-Track 2 (FAO-56/AquaCrop water balance, FAO-56 PM PET, HSH/WBGT, sfcWind, SPEI, EDDI) is a SEPARATE later full rebake — do not mix into this fix.
+Track 2 (FAO-56/AquaCrop water balance, FAO-56 PM PET, HSH/WBGT, sfcWind, SPEI, EDDI) = separate later full rebake.
