@@ -16,6 +16,11 @@
 # exactly so results are reproducible against the FAO worked examples.
 # =============================================================================
 
+# Elementwise clamps that work for BOTH numeric scalars/vectors AND terra
+# SpatRasters (pmin/pmax don't dispatch reliably on SpatRaster). Arithmetic only.
+.clamp_hi <- function(x, hi) x - (x - hi) * (x > hi)   # == min(x, hi)
+.clamp_lo <- function(x, lo) x + (lo - x) * (x < lo)   # == max(x, lo)
+
 # Saturation vapour pressure e°(T) [kPa] - FAO-56 Eq. 11
 .es_T <- function(Tc) 0.6108 * exp(17.27 * Tc / (Tc + 237.3))
 
@@ -35,7 +40,7 @@
   phi <- lat_deg * pi / 180
   dr  <- 1 + 0.033 * cos(2 * pi * J / 365)              # Eq. 23 inverse rel. dist.
   dec <- 0.409 * sin(2 * pi * J / 365 - 1.39)           # Eq. 24 solar declination
-  ws  <- acos(pmax(pmin(-tan(phi) * tan(dec), 1), -1))  # Eq. 25 sunset hour angle
+  ws  <- acos(.clamp_lo(.clamp_hi(-tan(phi) * tan(dec), 1), -1))  # Eq. 25 sunset hour angle
   (24 * 60 / pi) * 0.0820 * dr *
     (ws * sin(phi) * sin(dec) + cos(phi) * cos(dec) * sin(ws))   # Eq. 21
 }
@@ -66,7 +71,7 @@ et0_fao56 <- function(tmax, tmin, rs, u2, lat_deg, J, elev = 0,
   TmaxK <- tmax + 273.16; TminK <- tmin + 273.16
   Rnl <- sigma * ((TmaxK^4 + TminK^4) / 2) *
          (0.34 - 0.14 * sqrt(ea)) *
-         (1.35 * pmin(rs / Rso, 1) - 0.35)
+         (1.35 * .clamp_hi(rs / Rso, 1) - 0.35)
   Rn  <- Rns - Rnl
   num <- 0.408 * D * (Rn - G) + g * (900 / (Tmean + 273)) * u2 * (es - ea)
   den <- D + g * (1 + 0.34 * u2)

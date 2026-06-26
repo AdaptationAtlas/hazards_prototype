@@ -107,7 +107,7 @@ if (scenario == 'future'){
     ssps <- 'historical'
   }
 }
-vrs <- c('pr','tasmax','tasmin','rsds','hurs')
+vrs <- c('pr','tasmax','tasmin','rsds','hurs','sfcWind')  # sfcWind added for FAO-56 PM ET0 (PET); no unit conversion (passes through like hurs)
 gcms <- c('ACCESS-CM2','ACCESS-ESM1-5','CanESM5','CMCC-ESM2','EC-Earth3','EC-Earth3-Veg-LR','GFDL-ESM4','INM-CM4-8','INM-CM5-0','IPSL-CM6A-LR','KACE-1-0-G','MIROC6','MPI-ESM1-2-HR','MPI-ESM1-2-LR','MRI-ESM2-0','NorESM2-LM','NorESM2-MM','TaiESM1')
 
 stp <- base::expand.grid(gcm = gcms, ssp = ssps, vr = vrs, stringsAsFactors = F) |>

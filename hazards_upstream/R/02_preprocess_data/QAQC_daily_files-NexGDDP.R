@@ -40,7 +40,7 @@ if (scenario == 'future') {
 
 root <- common_data_root()
 
-vrs <- c('hurs','pr','rsds','tasmax','tasmin')
+vrs <- c('hurs','pr','rsds','tasmax','tasmin','sfcWind')  # sfcWind added for FAO-56 PM ET0 (PET)
 # vrs <- c('pr','hurs')
 # vrs <- paste0(vrs,'2')
 

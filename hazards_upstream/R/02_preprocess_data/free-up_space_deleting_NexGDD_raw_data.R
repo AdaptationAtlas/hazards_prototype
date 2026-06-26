@@ -20,7 +20,7 @@ local({
   source(normalizePath(hit), local = FALSE)
 })
 
-vrs <- c('pr','tasmax','tasmin','hurs','rsds')
+vrs <- c('pr','tasmax','tasmin','hurs','rsds','sfcWind')  # sfcWind added for FAO-56 PM ET0 (PET)
 
 # Irreversible deletion. Default DRY_RUN=TRUE: only prints targets.
 # Set DRY_RUN=FALSE in the environment to actually delete. (roadmap rank 2)
