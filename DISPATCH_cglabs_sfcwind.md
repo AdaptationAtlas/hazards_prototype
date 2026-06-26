@@ -1,3 +1,15 @@
+> 🔧 **MACBOOK FIXES APPLIED (2026-06-26, commit `331c8ce`) — re-run preprocess + full PET.**
+> All 4 findings fixed:
+> - **A (blocker):** preprocess `furrr::future_map` → plain `lapply` (the worker failed to
+>   capture the enclosing gcm/vr/outdir; terra doesn't serialise across futures). Now writes
+>   tifs in-process. Also fixed a latent `'pr2'` typo → `'pr'` (precip *86400 was being skipped).
+> - **B:** download GCM list + preprocess GCM/scenario lists → `cfg_gcms()`/`cfg_scenario()` (honor env).
+> - **C:** download per-run filter scoped to **sfcWind only** (no more pr/hurs ~370 GB re-fetch).
+> - **D:** download completeness now a byte-exact **Content-Length** check (HEAD), 1e8 floor as fallback.
+> Re-run path: pull → preprocess sfcWind historical for all 18 GCMs (now works) → `calc_PET` full
+> historical. Future PET still needs an explicit SSP-scope decision (see finding, ~TBs).
+> (The download `furrr` is fine — top-level globals — left parallel.)
+>
 > ✅ **calc_PET VALIDATED (cglabs 2026-06-26, HEAD 72b34bd).** Report below.
 >
 > **1. Download** — sfcWind `.nc` are **~302 MB** (Content-Length 301,834,989), so the
