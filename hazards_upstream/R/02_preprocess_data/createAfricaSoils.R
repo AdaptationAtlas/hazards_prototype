@@ -130,16 +130,23 @@ soil_data4 <- soil_data2 %>%
                      x  = unique(px$x),
                      y  = unique(px$y),
                      scp  = scp,
-                     ssat = ssat)
+                     ssat = ssat,
+                     # effective rooting depth (cm) used to integrate scp/ssat -
+                     # the same clamp soilcap_calc applies (minval=45, maxval=100).
+                     # Needed for the FAO-56/AquaCrop anaerobiosis offset
+                     # a_mm = 0.05 * Zr(m) * 1000 in the water-balance kernel.
+                     sroot = min(max(px$rdepth, 45), 100))
     return(df)
   }) %>%
   dplyr::bind_rows()
 
-sscp <- raster::rasterFromXYZ(soil_data4[,c('x','y','scp')], crs = raster::crs(ref))
-ssat <- raster::rasterFromXYZ(soil_data4[,c('x','y','ssat')], crs = raster::crs(ref))
+sscp  <- raster::rasterFromXYZ(soil_data4[,c('x','y','scp')],   crs = raster::crs(ref))
+ssat  <- raster::rasterFromXYZ(soil_data4[,c('x','y','ssat')],  crs = raster::crs(ref))
+sroot <- raster::rasterFromXYZ(soil_data4[,c('x','y','sroot')], crs = raster::crs(ref))
 
 outdir <- paste0(root,'/soils')
 dir.create(outdir, F, T)
 
-raster::writeRaster(x = sscp, filename = paste0(outdir,'/africa_scp.tif'), overwrite = T)
-raster::writeRaster(x = ssat, filename = paste0(outdir,'/africa_ssat.tif'), overwrite = T)
+raster::writeRaster(x = sscp,  filename = paste0(outdir,'/africa_scp.tif'),   overwrite = T)
+raster::writeRaster(x = ssat,  filename = paste0(outdir,'/africa_ssat.tif'),  overwrite = T)
+raster::writeRaster(x = sroot, filename = paste0(outdir,'/africa_sroot.tif'), overwrite = T)  # rooting depth (cm)
