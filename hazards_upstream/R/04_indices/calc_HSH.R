@@ -1,5 +1,9 @@
-# Compute human heat stress (HSH)
-# By: H. Achicanoy
+# Compute human heat stress (HSH) = NWS (Rothfusz) Heat Index.
+# By: H. Achicanoy; revised 2025 (Stage-0): use the full NOAA Heat Index from
+# Tmax + RH-at-Tmax (heat_index.R), replacing the prior daily-mean-temperature
+# formula that omitted the Steadman fallback and the low/high-RH adjustments.
+# RHx (RH at Tmax) derived from daily-mean hurs under the FAO-56 conserved-
+# vapour-pressure assumption (see heat_index.R / rhx_from_daily).
 # Alliance Bioversity International & CIAT, 2025
 
 # R options
@@ -17,6 +21,7 @@ local({
 })
 suppressMessages(library(pacman))
 suppressMessages(pacman::p_load(tidyverse,terra,gtools,lubridate))
+source(file.path(getOption("hazards.r_root"), "04_indices/heat_index.R"))
 
 root <- common_data_root()
 
@@ -41,51 +46,27 @@ calc_hsh <- function(yr, mn){
     last_day <- lubridate::days_in_month(as.Date(paste0(yr,'-',mn,'-01'))) # Last day of the month
     dts <- seq(from = as.Date(paste0(yr,'-',mn,'-01')), to = as.Date(paste0(yr,'-',mn,'-',last_day)), by = 'day')
     
-    # Files
-    tx_fls <- paste0(tx_pth,'/tasmax_',dts,'.tif')
-    tx_fls <- tx_fls[file.exists(tx_fls)]
-    stopifnot(length(tx_fls) > 0)
-    tn_fls <- paste0(tn_pth,'/tasmin_',dts,'.tif')
-    tn_fls <- tn_fls[file.exists(tn_fls)]
-    stopifnot(length(tn_fls) > 0)
-    rh_fls <- paste0(rh_pth,'/hurs_',dts,'.tif')
-    rh_fls <- rh_fls[file.exists(rh_fls)]
-    stopifnot(length(rh_fls) > 0)
-    
-    # Read daily minimum and maximum temperatures, and relative humidity data
-    tmx <- terra::rast(tx_fls) |> terra::crop(xtd)
-    tmn <- terra::rast(tn_fls) |> terra::crop(xtd)
-    rhm <- terra::rast(rh_fls) |> terra::crop(xtd)
-    tav <- (tmx + tmn)/2
-    
-    # Constants
-    c1 = -8.78469475556
-    c2 =  1.61139411
-    c3 =  2.33854883889
-    c4 = -0.14611605
-    c5 = -0.012308094
-    c6 = -0.0164248277778
-    c7 =  2.211732 * 10^(-3)
-    c8 =  7.2546 * 10^(-4)
-    c9 = -3.582 * 10^(-6)
-    # Compute human stress index
-    heat_idx <- function(tmean, rhum){
-      hi <- terra::ifel(test = tmean >= 25,
-                        yes  = c1 + (c2*tmean) + (c3*rhum) + (c4*tmean*rhum) + (c5*tmean^2) + (c6*rhum^2) + (c7*tmean^2*rhum) + (c8*tmean*rhum^2) + (c9*tmean^2*rhum^2),
-                        no   = tmean)
-      return(hi)
-    }
-    cheat_idx <- compiler::cmpfun(heat_idx)
-    HI <- cheat_idx(tmean = tav, rhum = rhm)
+    # Files - keep only days present for all three variables (aligned stacks)
+    ex <- function(p,v) file.exists(paste0(p,'/',v,'_',dts,'.tif'))
+    keep <- ex(tx_pth,'tasmax') & ex(tn_pth,'tasmin') & ex(rh_pth,'hurs')
+    stopifnot("no complete tasmax/tasmin/hurs days for month" = any(keep))
+    dd <- dts[keep]
+    rdc <- function(p,v) terra::crop(terra::rast(paste0(p,'/',v,'_',dd,'.tif')), xtd)
+    tmx <- rdc(tx_pth,'tasmax'); tmn <- rdc(tn_pth,'tasmin'); rhm <- rdc(rh_pth,'hurs')
+
+    # NWS Heat Index from Tmax + RH-at-Tmax (RHx). Full NOAA algorithm in
+    # heat_index.R - fixes the prior bug (daily-mean T, no Steadman/low-RH/high-RH).
+    rhx <- rhx_from_daily(tmx, tmn, rhm)
+    HI  <- heat_index_nws(tmx, rhx)          # daily Heat Index, degC
     HI_avg <- mean(HI)
     HI_max <- max(HI)
-    
+
     terra::writeRaster(HI_avg, outfile1, overwrite = T)
     terra::writeRaster(HI_max, outfile2, overwrite = T)
     terra::writeRaster(HI, outfile3, overwrite = T)
-    
+
     # Clean-up
-    rm(tmx, tmn, tav, rhm, HI, HI_avg, HI_max); gc(F, T, T)
+    rm(tmx, tmn, rhm, rhx, HI, HI_avg, HI_max); gc(F, T, T)
     
   }
 }
