@@ -26,7 +26,7 @@ urlFileExist <- function(url){
   list(exists = status == HTTP_STATUS_OK)
 }
 
-scenario <- 'future' # historical, future
+scenario <- cfg_scenario("historical") # SCENARIO env: historical (default) | future
 
 # # Available files to download
 # fls <- readLines('https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/index_v1.1_md5.txt')
@@ -123,19 +123,29 @@ stp <- stp |> dplyr::filter(var %in% c('pr','hurs','sfcWind')) |> base::as.data.
 # For maximum throughput on this PUBLIC bucket, `s5cmd cp --no-sign-request` or
 # `aws s3 cp --no-sign-request` (many concurrent transfers) outperform R curl -
 # consider those for a full multi-var bulk pull.
-dl_workers <- as.integer(env_or("DL_WORKERS", "16"))
-.log('Download: ', nrow(stp), ' files, ', dl_workers, ' workers')
+# DL_WORKERS default 32 (cglabs has good bandwidth); S3 won't throttle this -
+# the practical cap is the local link, not the bucket. Each file gets a few
+# retries with exponential backoff to ride out transient connection drops.
+dl_workers <- as.integer(env_or("DL_WORKERS", "32"))
+dl_tries   <- as.integer(env_or("DL_TRIES", "3"))
+.log('Download: ', nrow(stp), ' files, ', dl_workers, ' workers, ', dl_tries, ' tries/file')
 future::plan(future::multisession, workers = dl_workers)
 ok <- 1:nrow(stp) |>
   furrr::future_map(.f = function(i) {
     outd <- paste0(wd,'/',stp$var[i],'2/',stp$ssp[i],'/',stp$gcm[i])
     dir.create(outd, F, T)
     outfile <- file.path(outd, stp$file[i])
-    if (!file.exists(outfile) || file.size(outfile) < 1e8) {
-      try(download.file(url = file.path(stp$pth_dir[i], stp$file[i]),
-                        destfile = outfile, method = 'curl', quiet = TRUE), silent = TRUE)
+    complete <- function() file.exists(outfile) && file.size(outfile) >= 1e8
+    if (!complete()) {
+      url <- file.path(stp$pth_dir[i], stp$file[i])
+      for (k in seq_len(dl_tries)) {
+        tryCatch(download.file(url, outfile, method = 'curl', quiet = TRUE),
+                 error = function(e) NULL, warning = function(w) NULL)
+        if (complete()) break
+        Sys.sleep(2^(k - 1))            # 1s, 2s, 4s, ... backoff
+      }
     }
-    file.exists(outfile) && file.size(outfile) >= 1e8   # present + plausibly complete
+    complete()                          # TRUE if present + plausibly complete
   }, .progress = TRUE) |> unlist()
 future::plan(future::sequential)
 gc(F, T, T)
