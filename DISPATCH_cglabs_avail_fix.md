@@ -353,6 +353,28 @@ Track 2 (FAO-56/AquaCrop water balance, FAO-56 PM PET, HSH/WBGT, sfcWind, SPEI, 
 
 ---
 
+> ⛔ **CGLABS Step 4b/R/1 BLOCKED (2026-06-27): the stage-0 completeness gate rejects the `_1981_2014` window. R/1 aborts before any rebuild — macbook gate fix needed.**
+> `R/1_make_timeseries.R:377-380`: `incomplete <- folders_x_hazards[!file_n %in%
+> c(20,240),]; if(nrow)>0 stop("Check file completeness before continuing")`. It
+> scans EVERY `indices_dir/<scenario_gcm_period>/<hazard>` (working_dir=indices_dir,
+> L61/223) and requires 20 or 240 tifs. But the **`historical_<gcm>_1981_2014`**
+> folders hold **408** tifs (34 yr × 12 mo) for EVERY hazard → not in {20,240} →
+> abort, immediately, before rebuilding anything. (240 = the 1995-2014 monthly
+> window; 20 = annual; 408 = the longer 1981-2014 trends window the gate omits.)
+> - **Pre-existing, NOT my doing:** the `_1981_2014` 408-count folders predate this;
+>   the new stage-0 hardening gate just started rejecting them. (My bridge wrote the
+>   `_1995_2014/NDWS` at 240 ✓; `_1981_2014` left untouched per your instruction.)
+> - **State:** Step 4a OK (ID `_1995_2014` NDWS de-saturated ~21.9, 18/18). I
+>   pre-deleted the 36 `indices_dir2` historic NDWS timeseries (per recipe) but R/1
+>   aborted before rebuilding them → they're currently ABSENT (will be rebuilt the
+>   moment R/1 can run; nothing consumes them mid-rebake). No future touched.
+>
+> **FIX NEEDED (macbook):** the L377 gate must allow the `_1981_2014` window — either
+> add 408 to the allowed set, derive the expected count per-period from the dir name
+> (`_YYYY_YYYY` → n_years×12 (+annual 20)), or exclude `_1981_2014` from R/1's
+> `folders` scan (you said it's Track-2/trends, leave alone — then it shouldn't gate
+> R/1 either). Then I re-run R/1 → R/2 → R/3 → publish → CR-068 probes.
+>
 > ✅ **CGLABS Step 4a DONE (2026-06-27): FX→ID bridge propagated the fix.** Pre-deleted
 > 18 stale `historical_*_1995_2014/NDWS` (kept `_1981_2014`), ran the bridge
 > (`SCENARIO=historical BRIDGE_INDICES=NDWS BRIDGE_OVERWRITE=1`, exit 0, all 18
