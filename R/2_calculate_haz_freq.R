@@ -559,8 +559,6 @@ Thresholds_U_ss <- Thresholds_U_ss[grepl(paste(if (any(grepl("NTx", interaction_
 #                          (workers=1, no future_lapply rethrow) so the
 #                          actual per-iteration error surfaces instead
 #                          of being wrapped in a generic simpleError.
-.force_overwrite_r2 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
-
 # REBAKE_SCENARIO: comma-list of filename tokens to KEEP (e.g. "historic") for a
 # scenario-scoped re-bake, so a partial fix propagates WITHOUT touching/re-shipping
 # other scenarios. UNSET -> no-op (all files; default behaviour unchanged). Applied
@@ -573,7 +571,14 @@ Thresholds_U_ss <- Thresholds_U_ss[grepl(paste(if (any(grepl("NTx", interaction_
   keep <- Reduce(`|`, lapply(.rebake_keep, function(t) grepl(t, basename(files), fixed = TRUE)))
   files[keep]
 }
-if (length(.rebake_keep)) cat("REBAKE_SCENARIO active - keeping only files matching:", .rebake_keep, "\n")
+# Scoping recipe is PRE-DELETE + overwrite=FALSE (NOT overwrite=TRUE): delete the
+# stale matching-scenario outputs, then overwrite=FALSE rebuilds exactly the deleted
+# ones (file.exists=FALSE) while every other-scenario output (e.g. future) is skipped.
+# This fails safe (a missed delete = under-refresh, not re-shipping future to prod),
+# unlike a global overwrite=TRUE which would re-write future at any un-filtered input.
+# The .rebake_scope input filter is an extra belt (skip processing other scenarios).
+.force_overwrite_r2 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+if (length(.rebake_keep)) cat("REBAKE_SCENARIO active (input filter) - keeping only:", .rebake_keep, "\n")
 
 ### 0.3.1) Classify hazards ####
 run1 <- !identical(Sys.getenv("SKIP_R2_RUN1"), "1")
@@ -792,7 +797,7 @@ for (tx in seq_along(timeframes)) {
 
     if (!dir.exists(haz_time_risk_dir)) dir.create(haz_time_risk_dir, recursive = TRUE)
 
-    files <- list.files(haz_time_class_dir, full.names = TRUE)
+    files <- .rebake_scope(list.files(haz_time_class_dir, full.names = TRUE))
     file <- files[!grepl("ENSEMBLE", files)]
 
     if (run2_main) {

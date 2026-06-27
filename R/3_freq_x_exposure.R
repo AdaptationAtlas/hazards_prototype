@@ -311,18 +311,19 @@ names(boundaries_index) <- names(Geographies)
 # Set FORCE_OVERWRITE=1 in env to force regen of all gated outputs.
 # Used by the issue #9 rebake runbook so the v9 mass-conserving fix
 # actually lands in hazard_exposure.parquet.
-overwrite <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
-
 # REBAKE_SCENARIO: comma-list of filename tokens to KEEP (e.g. "historic") for a
 # scenario-scoped re-bake. UNSET -> no-op (default). Filters processing-input file
-# lists so a partial fix (e.g. historic-only NDWS) doesn't re-bake/re-ship others.
+# lists AND implies overwrite=TRUE so the matching outputs actually rebuild (the
+# filter restricts processing to the matching scenario, so non-matching outputs are
+# never regenerated). Mirrors R/2.
 .rebake_keep <- trimws(strsplit(Sys.getenv("REBAKE_SCENARIO", ""), ",", fixed = TRUE)[[1]])
 .rebake_keep <- .rebake_keep[nzchar(.rebake_keep)]
 .rebake_scope <- function(files) {
   if (length(.rebake_keep) == 0L) return(files)
   files[Reduce(`|`, lapply(.rebake_keep, function(t) grepl(t, basename(files), fixed = TRUE)))]
 }
-if (length(.rebake_keep)) cat("REBAKE_SCENARIO active (R/3) - keeping only:", .rebake_keep, "\n")
+overwrite <- nzchar(Sys.getenv("FORCE_OVERWRITE"))   # scoping = pre-delete + overwrite=FALSE (fails safe); .rebake_scope filters inputs
+if (length(.rebake_keep)) cat("REBAKE_SCENARIO active (R/3, input filter) - keeping only:", .rebake_keep, "\n")
 
 ### d.2.1) Crops (MapSPAM) #####
 #### d.2.1.1) Crop VoP (Value of production) ######
