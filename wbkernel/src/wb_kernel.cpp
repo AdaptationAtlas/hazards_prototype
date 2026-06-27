@@ -94,3 +94,55 @@ List wb_kernel_cpp(NumericMatrix rain,    // [ncell x ndays] mm/day
 
   return List::create(_["ks"]=ks, _["ksaer"]=ksaer, _["wl"]=wl, _["s_final"]=s_final);
 }
+
+// ---------------------------------------------------------------------------
+// LEGACY EABYEP kernel (exact replica of eabyep_calc() in fast_calc_NDWS/NDWL*.R)
+// for the CURRENT (peest2) producer - a single C++ pass replacing the ~30
+// terra-op/month R loop, to speed the legacy NDWS re-bake. Math is byte-for-byte
+// the legacy eabyep (validated identical at wbkernel 0.1, commit 1ba4f6e). This
+// is the LEGACY index math (heuristic ERATIO 97/3.868); the FAO-56/AquaCrop v2 is
+// wb_kernel_cpp above. NA-propagating to match R min/max.
+// Loaded via library(wbkernel) in each per-GCM process (installed package, no
+// sourceCpp-into-env, no future-worker pointer serialisation - per our Rcpp lessons).
+// [[Rcpp::export]]
+List eabyep_kernel_cpp(NumericMatrix rain,    // [ncell x ndays] mm/day
+                       NumericMatrix evap,    // [ncell x ndays] peest2 ETMAX mm/day
+                       NumericVector soilcp,  // [ncell] soil water holding capacity
+                       NumericVector soilsat, // [ncell] additional saturation capacity
+                       NumericVector avail0)  // [ncell] initial availability (prior-month last day)
+{
+  const int ncell = rain.nrow();
+  const int ndays = rain.ncol();
+  if (evap.nrow() != ncell || evap.ncol() != ndays)
+    stop("rain and evap must have identical dimensions");
+  if (soilcp.size() != ncell || soilsat.size() != ncell || avail0.size() != ncell)
+    stop("soilcp/soilsat/avail0 length must equal nrow(rain)");
+
+  NumericMatrix eratio(ncell, ndays);
+  NumericMatrix logging(ncell, ndays);
+  NumericVector avail_final(ncell);
+
+  for (int c = 0; c < ncell; ++c) {
+    double cp = soilcp[c], sat = soilsat[c], av = avail0[c];
+    if (NumericMatrix::is_na(cp) || NumericMatrix::is_na(sat)) {
+      for (int d = 0; d < ndays; ++d) { eratio(c,d)=NA_REAL; logging(c,d)=NA_REAL; }
+      avail_final[c] = NA_REAL; continue;
+    }
+    const double demand_denom = 97.0 - 3.868 * std::sqrt(cp);
+    for (int d = 0; d < ndays; ++d) {
+      double rn = rain(c,d), ev = evap(c,d);
+      if (NumericMatrix::is_na(av) || NumericMatrix::is_na(rn) || NumericMatrix::is_na(ev)) {
+        eratio(c,d)=NA_REAL; logging(c,d)=NA_REAL; av=NA_REAL; continue;
+      }
+      double av_in  = std::min(av, cp);
+      double percwt = std::max(std::min(av_in / cp * 100.0, 100.0), 1.0);
+      double er     = std::min(percwt / demand_denom, 1.0);
+      double result = av_in + rn - er * ev;
+      logging(c,d)  = std::min(std::max(result - cp, 0.0), sat);
+      eratio(c,d)   = er;
+      av = std::max(std::min(cp, result), 0.0);
+    }
+    avail_final[c] = av;
+  }
+  return List::create(_["eratio"]=eratio, _["logging"]=logging, _["avail_final"]=avail_final);
+}

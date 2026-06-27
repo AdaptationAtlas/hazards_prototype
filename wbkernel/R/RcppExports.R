@@ -5,3 +5,7 @@ wb_kernel_cpp <- function(rain, et0, taw, ssat, a_mm, s0, p = 0.5, aer_lag = 4L)
     .Call(`_wbkernel_wb_kernel_cpp`, rain, et0, taw, ssat, a_mm, s0, p, aer_lag)
 }
 
+eabyep_kernel_cpp <- function(rain, evap, soilcp, soilsat, avail0) {
+    .Call(`_wbkernel_eabyep_kernel_cpp`, rain, evap, soilcp, soilsat, avail0)
+}
+

@@ -1,3 +1,4 @@
 useDynLib(wbkernel, .registration = TRUE)
 importFrom(Rcpp, sourceCpp)
 export(wb_kernel_cpp)
+export(eabyep_kernel_cpp)

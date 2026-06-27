@@ -17,7 +17,7 @@ local({
   source(normalizePath(hit), local = FALSE)   # local=FALSE -> defs land in .GlobalEnv
 })
 suppressMessages(library(pacman))
-suppressMessages(pacman::p_load(tidyverse,terra,gtools,lubridate,compiler,raster,ncdf4))
+suppressMessages(pacman::p_load(tidyverse,terra,gtools,lubridate,compiler,raster,ncdf4,wbkernel))
 
 peest2 <- function(srad, tmin, tmean, tmax){
   
@@ -156,60 +156,25 @@ calc_ndws <- function(yr, mn){
       AVAIL <<- terra::rast(paste0(dirname(outfile),'/',avail_fl))
       AVAIL <<- AVAIL[[terra::nlyr(AVAIL)]]
     }
-    eabyep_calc <- function(soilcp = scp, soilsat = ssat, avail = AVAIL, rain = prc[[1]], evap = ETMAX[[1]]){
-      
-      avail   <- min(avail, soilcp)
-      
-      # ERATIO
-      percwt <- min(avail/soilcp*100, 100)
-      percwt <- max(percwt, 1)
-      eratio <- min(percwt/(97-3.868*sqrt(soilcp)), 1)
-      
-      demand  <- eratio * evap
-      result  <- avail + rain - demand
-      logging <- result - soilcp
-      logging <- max(logging, 0)
-      logging <- min(logging, soilsat)
-      # runoff  <- result - logging + soilcp
-      avail   <- min(soilcp, result)
-      avail   <- max(avail, 0)
-      # runoff  <- max(runoff, 0)
-      
-      out     <- list(Availability = c(AVAIL, avail),
-                      # Demand       = demand,
-                      Eratio       = eratio
-                      # Logging      = logging
-      )
-      return(out)
-    }
-    ceabyep_calc <- compiler::cmpfun(eabyep_calc)
-    
-    watbal <- vector('list', terra::nlyr(ETMAX))
-    for(j in 1:terra::nlyr(ETMAX)){
-      water_balance <- ceabyep_calc(soilcp  = scp,
-                                    soilsat = sst,
-                                    avail   = AVAIL[[terra::nlyr(AVAIL)]],
-                                    rain    = prc[[j]],
-                                    evap    = ETMAX[[j]])
-      # Update AVAIL with deep copy to avoid memory leaks
-      AVAIL <- terra::deepcopy(water_balance$Availability)
-      # Store result and clean temporary objects
-      watbal[[j]] <- water_balance
-      rm(water_balance)
-    }
-    
-    ERATIO <- watbal |> purrr::map('Eratio') |> terra::rast()
-    
-    # Number of soil-water-stress days = count of days with ERATIO < 0.5.
-    # hazards#19 ROOT CAUSE FIX: the old `classify(rcl=c(-Inf,0.5,1))` mapped
-    # stressed days to 1 but LEFT non-stressed days (>=0.5) at their fractional
-    # ERATIO, so sum() = stress-day-count + sum(fractions of every wet day) ->
-    # inflated/saturated NDWS (worst in wet/low-stress pixels, e.g. rainforest).
-    # A boolean count is the correct day-count. (Inflates future too, not just
-    # historic - both must be re-baked.)
-    NDWS <- sum(ERATIO < 0.5)
-    terra::writeRaster(NDWS, outfile, overwrite = TRUE)
-    terra::writeRaster(AVAIL, paste0(dirname(outfile),'/AVAIL-',yr,'-',mn,'.tif'), overwrite = TRUE)
+    # Single-pass Rcpp water balance (wbkernel::eabyep_kernel_cpp) - exact replica
+    # of the legacy eabyep_calc (validated identical), replacing the ~30 terra-op/
+    # month R loop for a large per-month speedup. Loaded as an INSTALLED package
+    # (library at top), and the bake parallelises at PROCESS level (one Rscript per
+    # GCM) - no sourceCpp-into-env, no future-worker pointer serialisation (Rcpp
+    # lessons). avail0 = the seeded AVAIL (seed month -> 0, else prior-month end).
+    k <- wbkernel::eabyep_kernel_cpp(
+           rain    = terra::values(prc),
+           evap    = terra::values(ETMAX),
+           soilcp  = terra::values(scp)[,1],
+           soilsat = terra::values(sst)[,1],
+           avail0  = terra::values(AVAIL[[terra::nlyr(AVAIL)]])[,1])
+
+    # NDWS = count of days ERATIO < 0.5 (boolean; hazards#19 classify-bug fix -
+    # the old classify-sum left non-stressed days at fractional ERATIO -> inflated).
+    NDWS  <- terra::setValues(prc[[1]], rowSums(k$eratio < 0.5))
+    AVOUT <- terra::setValues(prc[[1]], k$avail_final)  # month-end availability = next-month seed
+    terra::writeRaster(NDWS,  outfile, overwrite = TRUE)
+    terra::writeRaster(AVOUT, paste0(dirname(outfile),'/AVAIL-',yr,'-',mn,'.tif'), overwrite = TRUE)
     
     ## Clean up
     rm(list = intersect(c('prc','ETMAX','AVAIL','watbal','ERATIO','LOGGING','NDWL0'), ls()))  # only existing (this branch lacks some)

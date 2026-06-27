@@ -28,9 +28,25 @@ BEGIN_RCPP
     return rcpp_result_gen;
 END_RCPP
 }
+// eabyep_kernel_cpp
+List eabyep_kernel_cpp(NumericMatrix rain, NumericMatrix evap, NumericVector soilcp, NumericVector soilsat, NumericVector avail0);
+RcppExport SEXP _wbkernel_eabyep_kernel_cpp(SEXP rainSEXP, SEXP evapSEXP, SEXP soilcpSEXP, SEXP soilsatSEXP, SEXP avail0SEXP) {
+BEGIN_RCPP
+    Rcpp::RObject rcpp_result_gen;
+    Rcpp::RNGScope rcpp_rngScope_gen;
+    Rcpp::traits::input_parameter< NumericMatrix >::type rain(rainSEXP);
+    Rcpp::traits::input_parameter< NumericMatrix >::type evap(evapSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type soilcp(soilcpSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type soilsat(soilsatSEXP);
+    Rcpp::traits::input_parameter< NumericVector >::type avail0(avail0SEXP);
+    rcpp_result_gen = Rcpp::wrap(eabyep_kernel_cpp(rain, evap, soilcp, soilsat, avail0));
+    return rcpp_result_gen;
+END_RCPP
+}
 
 static const R_CallMethodDef CallEntries[] = {
     {"_wbkernel_wb_kernel_cpp", (DL_FUNC) &_wbkernel_wb_kernel_cpp, 8},
+    {"_wbkernel_eabyep_kernel_cpp", (DL_FUNC) &_wbkernel_eabyep_kernel_cpp, 5},
     {NULL, NULL, 0}
 };
 
