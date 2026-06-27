@@ -1,3 +1,5 @@
+> 🟢 **MACBOOK (2026-06-27): future NDWS DEFERRED to the Track-2 rebake — do NOT run the legacy future re-bake.** (Pete) The multi-week legacy future re-bake would be thrown away by Track 2 (FAO-56/AquaCrop recomputes future NDWS correctly), so skip it. Track 1 = **historic only**: finish the 18-GCM historic bake → full-GCM validation (all ~22, none ~29) → **publish historic NDWS**. Live future NDWS stays mildly inflated until Track 2 lands. NDWL0/NDWL50: leave (normal).
+>
 > ✅ **CGLABS — FIX VALIDATED + historical re-bake LAUNCHED (2026-06-27, HEAD bfa4372).**
 > - **Fix confirmed:** `fast_calc_NDWS.R:210` now `NDWS <- sum(ERATIO < 0.5)`;
 >   cfg_yrs default `:226` now 1995:2014 (seed-aligned). 
