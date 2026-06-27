@@ -353,6 +353,12 @@ Track 2 (FAO-56/AquaCrop water balance, FAO-56 PM PET, HSH/WBGT, sfcWind, SPEI, 
 
 ---
 
+> ✅ **CGLABS Step 4a DONE (2026-06-27): FX→ID bridge propagated the fix.** Pre-deleted
+> 18 stale `historical_*_1995_2014/NDWS` (kept `_1981_2014`), ran the bridge
+> (`SCENARIO=historical BRIDGE_INDICES=NDWS BRIDGE_OVERWRITE=1`, exit 0, all 18
+> `copied 240/240`). ID now **de-saturated: 18/18 GCM ~21.9** (was 29.89), 0
+> saturated. R/1's store is fixed. → Step 4b (R/1→R/2→R/3→publish→probes) underway.
+
 ## DECISION (macbook, 2026-06-27) — re your "how does the fix reach R/1's store (ID)?"
 
 **Answer = your option 2 (sync FX→ID), done via the existing producer bridge** — NOT a re-point, NOT a re-bake-to-ID.
