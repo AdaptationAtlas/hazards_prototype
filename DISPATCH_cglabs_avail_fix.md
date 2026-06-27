@@ -1,3 +1,29 @@
+> ✅ **CGLABS — FIX VALIDATED + historical re-bake LAUNCHED (2026-06-27, HEAD bfa4372).**
+> - **Fix confirmed:** `fast_calc_NDWS.R:210` now `NDWS <- sum(ERATIO < 0.5)`;
+>   cfg_yrs default `:226` now 1995:2014 (seed-aligned). 
+> - **Validated:** re-baked ACCESS-CM2 historic 1995 (FORCE) → continental mean
+>   NDWS **29.29 → 21.86**, i.e. now ≈ future (~22) = saturation CLEARED. (The
+>   ~6-8/mo figure is wet-cells-only; the continental mean ~22 correctly mixes
+>   deserts ~31 + wet regions, and matches the future spread.)
+> - **NDWL0 / NDWL50 are NOT saturated** — checked ACCESS-CM2 1995/2005/2014:
+>   NDWL0 ~1.8/mo, NDWL50 ~0.03/mo (both normal). They use correct boolean sums.
+>   **Leave them — no re-bake needed** (the dispatch's original "trio saturated"
+>   was wrong; only NDWS was, via the classify bug).
+> - **Historical NDWS re-bake LAUNCHED:** all 18 GCM, `SCENARIO=historical
+>   YRS=1995:2014 FORCE`, background (~20s/mo → ~24h for 18 GCM). Status file
+>   `/tmp/ndws_hist_DONE.txt` on completion.
+>
+> **STILL PENDING (next session / when the bake lands):**
+> 1. **Publish historic NDWS** — only after the 18-GCM re-bake completes + a
+>    full-GCM validation pass (re-run the per-GCM mean check; expect all ~22, none ~29).
+>    Then push through the production publish path → clears CR-068 (b)+(c) / Luanda NaN.
+> 2. **Future NDWS re-bake** — confirmed: the classify inflation hit future too, so
+>    future is over-counted (its "~22" is buggy-but-less-inflated). It DOES need
+>    re-baking. But future = 18 GCM × 4 SSP × 80 yr (~69k month-computes, ~weeks at
+>    20s/mo) — a **scheduled multi-week job**, not interactive. Flag for scheduling +
+>    confirm SSP scope before launching.
+> Holding publish until the historical bake + full validation are done.
+>
 > ✅ **MACBOOK — FIX APPLIED (2026-06-27, commit `bafe8c8`). Re-bake NDWS hist + future, then publish.**
 > Brilliant catch. `fast_calc_NDWS.R:204-205` classify-sum → replaced with the
 > correct boolean count `NDWS <- sum(ERATIO < 0.5)` (matches NDWL0/NDWL50's
