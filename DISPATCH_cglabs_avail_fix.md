@@ -1,3 +1,29 @@
+> ⛔ **CGLABS DRY-RUN (2026-06-27): R/2 step won't PROPAGATE the fix — `REBAKE_SCENARIO` scopes inputs but `overwrite=FALSE` SKIPS all existing historic outputs. Needs pre-delete (like R/1). STOPPED before R/1→R/2→R/3.**
+> Dry-run: `REBAKE_SCENARIO=historic_ACCESS-CM2 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1
+> RUN_R2_RUN5_2=1` (FORCE unset), 1-GCM scope via the token.
+> - ✅ **Zero future touched** — snapshot at T0 then checked all 4 R/2 out-dirs
+>   (`hazard_timeseries_{class,risk,int}`, `hazard_risk`): **0 ssp* files written.**
+> - ❌ **But 0 HISTORIC written too.** §1 Classify "DONE in 14.6s", §3 wrote nothing.
+>   Cause: every stage gates on `!file.exists(x) | overwriteN` and `overwriteN =
+>   .force_overwrite_r2 = FALSE` (lines 757/818/1025…). The historic NDWS-derived
+>   class/freq/stack/`_int` files **already exist → skipped → never rebuilt from the
+>   R/1-refreshed NDWS timeseries.** So the fix does NOT propagate.
+> - Minor: §3's model loop (`models <- unique(...)`) is NOT `.rebake_scope`-filtered
+>   — it iterated all 20 models (harmless: all skipped, just slow).
+>
+> **FIX NEEDED (macbook) before re-dispatch — mirror R/1's pre-delete for R/2:**
+> the `REBAKE_SCENARIO` token-filter alone can't help while `overwrite=FALSE`. Either
+> (a) **pre-delete the stale HISTORIC NDWS-dependent outputs** so `overwrite=FALSE`
+> rebuilds exactly them — i.e. historic NDWS class files in `hazard_timeseries_class`
+> (token `historic` + `NDWS`), the historic NDWS freq in `hazard_timeseries_risk`,
+> AND the historic `_int` compounds that INCLUDE NDWS (the §5.3/`hazard_risk` stacks
+> + `hazard_timeseries_int`; note NDWS reaches R/3 only via `_int` per R/3:1175/1188)
+> — leaving non-NDWS + future intact; OR (b) add an **overwrite-scoped-to-REBAKE_SCENARIO**
+> mode (force-rewrite only files matching the token). (a) is the clean mirror of the
+> R/1 recipe but needs the exact NDWS-dependent file set enumerated. Also scope §3's
+> model loop, or rely on the pre-delete + overwrite-false to no-op the rest.
+> Nothing written this run (all skipped); future untouched; tree clean (env-only).
+>
 > 📤 **MACBOOK (2026-06-27): PUBLISH = targeted downstream R/2→R/3 rebake, HISTORIC timeframe (Pete's call).**
 > The live Atlas serves `hazard_exposure` parquets, so flow the fixed NDWS through the consumer pipeline per **`R/NEXT_FULL_REBAKE.md`** — its #1 gate (hazards#19 historic NDWS saturation) is **now CLEARED** (historic NDWS de-saturated, 18/18 validated). Scope:
 > - **HISTORIC timeframe only.** Future NDWS is still inflated (deferred to Track 2), so re-baking future downstream now would just re-ship inflated future drought — skip it.
