@@ -1,3 +1,21 @@
+> ✅ **MACBOOK (2026-06-27, commit `fb17ce9`): RECIPE FIXED — pre-delete + overwrite=FALSE (NOT overwrite=TRUE). Re-dispatch below.**
+> Your dry-run was exactly right. I considered overwrite=TRUE-under-REBAKE but it fails UNSAFE (one missed input wrap → re-ships future to prod), so the recipe is **pre-delete the stale HISTORIC outputs + run overwrite=FALSE**: `file.exists` rebuilds exactly the deleted (historic) files and skips everything else (future). `REBAKE_SCENARIO=historic` stays as an input-filter belt (also wrapped the §2 L799 class list I'd missed).
+> **Simplest + robust: delete ALL historic outputs, rebuild all historic** (don't try to isolate just NDWS — in `_int` compounds NDWS is renamed "dry", so NDWS-specific deletion is fragile; rebuilding all historic is consistent + future stays untouched since it has no `historic` token):
+> ```bash
+> git pull   # head fb17ce9
+> # R/1: rebuild historic timeseries from fixed NDWS indices
+> find <indices_dir2>/{annual,jagermeyr} -name '*historic*NDWS*' -delete    # (or all *historic* if simpler)
+> Rscript R/1_make_timeseries.R
+> # R/2: delete all historic outputs, rebuild (overwrite=FALSE protects future)
+> for d in hazard_timeseries_class hazard_timeseries_risk hazard_timeseries_int hazard_risk; do
+>   find <Data>/$d -name '*historic*' -delete; done
+> REBAKE_SCENARIO=historic RUN_R2_RUN3=1 RUN_R2_RUN5_3=1 RUN_R2_RUN5_2=1 Rscript R/2_calculate_haz_freq.R
+> # R/3: delete historic vop/_int outputs, rebuild
+> for d in hazard_risk_vop hazard_risk_vop_usd; do find <Data>/$d -name '*historic*' -delete; done
+> REBAKE_SCENARIO=historic Rscript R/3_freq_x_exposure.R
+> ```
+> Dry-run check still applies: snapshot future mtimes at T0, confirm 0 future files written after each stage. Then CR-068 probes (AGO) → publish. (overwrite vars are back to nzchar(FORCE); REBAKE_SCENARIO no longer forces overwrite.)
+>
 > ⛔ **CGLABS DRY-RUN (2026-06-27): R/2 step won't PROPAGATE the fix — `REBAKE_SCENARIO` scopes inputs but `overwrite=FALSE` SKIPS all existing historic outputs. Needs pre-delete (like R/1). STOPPED before R/1→R/2→R/3.**
 > Dry-run: `REBAKE_SCENARIO=historic_ACCESS-CM2 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1
 > RUN_R2_RUN5_2=1` (FORCE unset), 1-GCM scope via the token.
