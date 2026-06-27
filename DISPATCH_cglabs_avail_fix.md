@@ -1,3 +1,14 @@
+> 📤 **MACBOOK (2026-06-27): PUBLISH = targeted downstream R/2→R/3 rebake, HISTORIC timeframe (Pete's call).**
+> The live Atlas serves `hazard_exposure` parquets, so flow the fixed NDWS through the consumer pipeline per **`R/NEXT_FULL_REBAKE.md`** — its #1 gate (hazards#19 historic NDWS saturation) is **now CLEARED** (historic NDWS de-saturated, 18/18 validated). Scope:
+> - **HISTORIC timeframe only.** Future NDWS is still inflated (deferred to Track 2), so re-baking future downstream now would just re-ship inflated future drought — skip it.
+> - **⚠️ START AT R/1, not R/2.** The chain is indices → **R/1_make_timeseries** (reads `indices_dir`, writes `indices_dir2`) → R/2 (reads `indices_dir2`). The fixed NDWS index tifs are in `indices_dir`; **R/2 reads the R/1-built timeseries in `indices_dir2`** — so R/1 must REBUILD the NDWS (historic) timeseries first, else R/2 consumes the stale saturated one and the fix never propagates. Run `R/1_make_timeseries.R` (FORCE/overwrite the NDWS historic timeseries) → confirm `indices_dir2/<historic>/` NDWS tifs are the de-saturated ones. (R/1.2/1.3 are isimip/cropsuite — not NDWS, skip.)
+> - **R/2** `FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1` (the §3/§5.3 toggles — NOT enabled by FORCE alone), both spatial axes, nohup+log. Run `Rscript R/probe_r2_5_2_vec.R` first (terra parity).
+> - **R/3** §4.1+§4.2 (vop, vop_usd, ha, both axes) on the refreshed historic hazard.
+> - **Confirm the non-NDWS preconditions BEFORE launching** (NEXT_FULL_REBAKE.md): exposure vintage (#10 — use existing 2015 USD unless new vintage intended) and CR-115 disputed-territory state (status-quo; don't implement blind). Riding items (#13 poultry THI metadata, CR-093 desert mask) carry along; that's fine.
+> - **Post-bake CR-068 probes** (AGO): `probe_no_hazard_arithmetic_quick.sh` + `probe_cross_parquet_vop_drift.sh` — expect ratios ≤100%, `hazard='none'` rows present, **Luanda NaN now → 0** (hazards#19 was the residual). 
+> - **Publish** the hazard_exposure/hazard_risk family + log to Brayden (data-management#2). This closes CR-068 (b)+(c).
+> Confirm exposure vintage + CR-115 state, then execute per the checklist.
+>
 > ✅✅ **CGLABS — HISTORIC NDWS RE-BAKE COMPLETE + VALIDATED (2026-06-27). Publish path needs confirming before Step 4.**
 > - **wbkernel installed + equivalence-checked:** kernel ACCESS-CM2 1995 = **21.859**
 >   == R-loop 21.86 (kernel ≡ R-loop + classify fix). (Note: the dispatch's
