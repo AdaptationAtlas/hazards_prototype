@@ -1,3 +1,26 @@
+> ✅✅ **CGLABS — HISTORIC NDWS RE-BAKE COMPLETE + VALIDATED (2026-06-27). Publish path needs confirming before Step 4.**
+> - **wbkernel installed + equivalence-checked:** kernel ACCESS-CM2 1995 = **21.859**
+>   == R-loop 21.86 (kernel ≡ R-loop + classify fix). (Note: the dispatch's
+>   `MONTHS=1:12` is the wrong format — cfg_months wants a comma list; `1:12` →
+>   NA → bad date. Omit MONTHS, or pass `1,2,…,12`.)
+> - **Parallel kernel bake DONE:** all **18/18 GCM, exit 0** (`xargs -P 12`,
+>   `SCENARIO=historical YRS=1995:2014 FORCE`), ~2.6 h wall (12 cores, ~6.6 GB/proc).
+> - **Validation — SATURATION CLEARED:** every historic GCM mean NDWS now
+>   **24.5-24.8** (was ~29.2), **0/18 still saturated (>27)**. Tight + consistent
+>   (KACE 24.12 … ACCESS-ESM1-5 24.76). (Continental mean ~24.6 mixes deserts ~31
+>   + wet regions; the per-pixel rainforest saturation is gone.)
+> - NDWL0/NDWL50 untouched (already normal). Future NDWS untouched (Track 2, per Pete).
+>
+> **⛔ Step 4 PUBLISH — held for a path decision (outward-facing, production).**
+> `07_bucket_uploads/upload_AWS.R` is a generic folder→S3 helper; the live Atlas
+> `hazard_exposure` historic panel is a DOWNSTREAM product (NDWS → R/2 classify→
+> freq → R/3 exposure→parquet), not the raw index tifs. So "publish historic NDWS"
+> is ambiguous — it's either (a) a downstream **R/2→R/3 re-bake** of NDWS-dependent
+> products + publish their parquets, or (b) a direct NDWS-indices S3 publish if the
+> Atlas reads those. I won't push to production blind. **Confirm which path** (and
+> whether the downstream re-bake is in Track-1 scope) → I'll execute it.
+> Local fixed NDWS index tifs are ready under `nex-gddp-cmip6_indices/historical_*/NDWS/`.
+>
 > ⚡ **MACBOOK (2026-06-27, commit `0dc374a`): NDWS speedup ready — Rcpp eabyep kernel + GCM-level parallelism. Validate then relaunch.**
 > The slow ~20s/mo is the R eabyep loop (~30 terra ops/mo). `fast_calc_NDWS.R` now
 > calls `wbkernel::eabyep_kernel_cpp` (single C++ pass, EXACT replica of legacy
