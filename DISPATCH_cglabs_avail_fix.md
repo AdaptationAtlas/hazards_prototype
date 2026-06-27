@@ -350,3 +350,55 @@ Push the re-baked historic NDWS/NDWL0/NDWL50 through the existing NDWS publish p
 - Step 4: published + live Atlas confirmed
 
 Track 2 (FAO-56/AquaCrop water balance, FAO-56 PM PET, HSH/WBGT, sfcWind, SPEI, EDDI) = separate later full rebake.
+
+---
+
+## DECISION (macbook, 2026-06-27) — re your "how does the fix reach R/1's store (ID)?"
+
+**Answer = your option 2 (sync FX→ID), done via the existing producer bridge** — NOT a re-point, NOT a re-bake-to-ID.
+
+Found the bridge: `hazards_upstream/R/02_preprocess_data/saveNexGDDPindicesFollowing-atlas_hazards-structure.R`. It `file.copy`s FX `nex-gddp-cmip6_indices/<ssp>_<gcm>/<index>` → ID `atlas_nex-gddp_hazards/cmip6/indices/<ssp>_<gcm>_<prd>/<index>`. It was never re-run after the FX fix, so ID is stale. I fixed 3 bugs in it (commit on develop):
+1. historic window was hardcoded `1981_2014` → now from `cfg_yrs()` (default **1995:2014**) so it writes `historical_<gcm>_1995_2014` (the live baseline + your fixed FX window).
+2. `file.copy` defaulted `overwrite=FALSE` → it would SKIP the stale saturated ID files. Added `BRIDGE_OVERWRITE=1`.
+3. Added `BRIDGE_INDICES=NDWS` to scope the index loop (no need to re-copy 30+ indices).
+
+**Period question answered:** live `hazard_exposure` baseline = **`_1995_2014`**. `_1981_2014` = the longer trends/climate-domain window — **leave it alone** for Track 1 (Track-2 territory). R/1 reads ALL ID subdirs (`list.dirs`), so the `_1995_2014` panel feeds the published baseline.
+
+**FX intended to replace ID? No** — FX is the working index store, ID is the consumer-facing reorg. The bridge is the permanent handoff; we just had to re-run it.
+
+### Step 4a — PROPAGATE FX→ID (NDWS historic only)
+```bash
+cd <hazards_prototype>/hazards_upstream/R
+git checkout develop && git pull       # picks up the bridge fix
+export COMMON_DATA=<your real data root>
+# pre-delete stale ID historic NDWS (clean copy; bridge overwrite also set as belt+braces)
+find "$COMMON_DATA/atlas_nex-gddp_hazards/cmip6/indices" -maxdepth 1 -type d \
+  -name 'historical_*_1995_2014' -exec rm -rf {}/NDWS \;
+# run the bridge, NDWS + historic only
+SCENARIO=historical BRIDGE_INDICES=NDWS BRIDGE_OVERWRITE=1 \
+  Rscript 02_preprocess_data/saveNexGDDPindicesFollowing-atlas_hazards-structure.R
+```
+Then confirm ID is de-saturated (the store R/1 actually reads):
+```bash
+Rscript -e 'suppressMessages(library(terra)); root<-Sys.getenv("COMMON_DATA")
+base<-file.path(root,"atlas_nex-gddp_hazards/cmip6/indices")
+for (d in list.dirs(base,recursive=FALSE)) {
+  if(!grepl("historical_.*_1995_2014$",basename(d))) next
+  f<-list.files(file.path(d,"NDWS"),"^NDWS-.*\\.tif$",full.names=TRUE); if(!length(f)) next
+  m<-mean(sapply(head(f,12),function(x) mean(values(rast(x)),na.rm=TRUE)))
+  cat(basename(d), sprintf("ID mean NDWS=%.2f%s\n", m, if(m>0.9)"  <- STILL SATURATED" else ""))}'
+```
+Expect de-saturated (~22.35), NOT 29.89. If still saturated → STOP, the FX→ID copy didn't take.
+
+### Step 4b — run the consumer chain (historic-scoped), then publish
+Follow RUN SEQUENCE in memory `reference_consumer_chain_ndws_to_atlas` steps 1-6 (R/1 → R/2 → R/3 → s3_upload → CR-068 probes). Do not skip:
+- R/1: pre-delete historic NDWS in `indices_dir2/{annual,jagermeyr}` (R/1 overwrite=FALSE in-code), then `Rscript R/1_make_timeseries.R`.
+- R/2: FORCE UNSET; pre-delete historic in haz_time_class/risk/int + NDWS-bearing `_int` compounds in hazard_risk, then `RUN_R2_RUN3=1 RUN_R2_RUN5_3=1 RUN_R2_RUN5_2=1 REBAKE_SCENARIO=historic Rscript R/2_calculate_haz_freq.R`.
+- R/3: pre-delete stale NDWS `_int` TIFs+parquets in hazard_risk_vop[_usd], then `REBAKE_SCENARIO=historic Rscript R/3_freq_x_exposure.R` (FORCE UNSET).
+- Skip R/3.1 (no-op, issue #17).
+- Publish: `Rscript R/s3_upload.R annual TRUE TRUE FALSE FALSE TRUE TRUE 10` + jagermeyr.
+- CR-068 probes on AGO (project_cr068_post_bake_probes).
+
+### Report back (edit this file + commit)
+- Step 4a: ID mean NDWS before/after (expect 29.89 → ~22.35)
+- Step 4b: each stage's historic-only counts (confirm 0 future written) + live Atlas confirmed de-saturated
