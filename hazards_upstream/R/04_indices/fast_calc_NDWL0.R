@@ -219,7 +219,7 @@ calc_ndwl0 <- function(yr, mn){
 # 1995:2014 - run the baseline pass with YRS=1995:2014).
 scenario <- cfg_scenario("historical")
 ssps     <- cfg_ssps(scenario)
-yrs      <- cfg_yrs(scenario, historical = 1981:1994)
+yrs      <- cfg_yrs(scenario, historical = 1995:2014)   # match the 1995-01 seed + documented CMIP6 baseline (was 1981:1994, aborted: not the seed)
 gcms     <- cfg_gcms()
 .log('Run config: scenario=', scenario, ' | ssps=', paste(ssps, collapse=','),
      ' | yrs=', min(yrs), ':', max(yrs), ' | n_gcms=', length(gcms))

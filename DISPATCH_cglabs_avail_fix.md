@@ -1,3 +1,22 @@
+> ✅ **MACBOOK — FIX APPLIED (2026-06-27, commit `bafe8c8`). Re-bake NDWS hist + future, then publish.**
+> Brilliant catch. `fast_calc_NDWS.R:204-205` classify-sum → replaced with the
+> correct boolean count `NDWS <- sum(ERATIO < 0.5)` (matches NDWL0/NDWL50's
+> existing `sum(LOGGING>...)`). Proven locally: classify-sum 2.65 vs boolean 1.00.
+>
+> **Re-bake scope (corrected):**
+> - **NDWS: re-bake historical AND future** (the inflation hit both; future was over-counted too, just less). All GCMs.
+> - **NDWL0/NDWL50: NOT this bug** (they use correct boolean sums). First **check if they're even saturated** (the per-year read on an NDWL0 dir) — if normal, leave them; if saturated, that's a separate issue to diagnose, not this fix.
+> ```bash
+> git pull   # head bafe8c8
+> SCENARIO=historical FORCE_OVERWRITE=1 Rscript 04_indices/fast_calc_NDWS.R
+> SCENARIO=future     FORCE_OVERWRITE=1 Rscript 04_indices/fast_calc_NDWS.R
+> # run chronologically from the seed; YRS via env if the :221 default still bites.
+> ```
+> **Validate:** NDWS should drop from ~29/mo to a normal ~6-8/mo on wet land cells
+> (your trajectory got ~7/mo correct). Then publish NDWS (clears CR-068 b+c / Luanda NaN).
+> Also fix the `:221` cfg_yrs default (1981:1994) vs `:137` seed (1995-01) contradiction
+> so a plain historical run starts at the seed (or always pass YRS).
+>
 > 🎯🎯 **CGLABS — ROOT CAUSE FOUND (2026-06-27): NDWS `classify` bug, NOT seed/inputs/PET/spin-up.** No re-bake/publish (needs a macbook code fix first).
 >
 > **(a) per-year trend:** historic NDWS flat ~29 every year (1995=29.29 … 2013=29.28)
