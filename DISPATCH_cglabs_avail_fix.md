@@ -1,3 +1,26 @@
+> ⛔⛔ **CGLABS (2026-06-27): STOP — the NDWS fix is in a DIFFERENT index store than R/1 reads. Pre-delete recipe would rebuild from STALE data. No deletes/runs done.**
+> Path check (per the recipe's "fixed NDWS index tifs are in indices_dir") — they are NOT:
+> - **FX = `nex-gddp-cmip6_indices/historical_<gcm>/NDWS/`** (the hazards_upstream
+>   04 producer = WHERE I re-baked): `NDWS-1995-07` mean = **22.35** (fixed ✓).
+> - **ID = `indices_dir` = `atlas_nex-gddp_hazards/cmip6/indices/historical_<gcm>_<period>/NDWS/`**
+>   (what **R/1 actually reads**): `historical_ACCESS-CM2_1995_2014/NDWS/NDWS-1995-07`
+>   = **29.89** (STILL SATURATED).
+> Two separate stores, different layouts (FX `historical_<gcm>`; ID
+> `historical_<gcm>_{1981_2014,1995_2014}`). The Track-1 fast_calc re-bake fixed the
+> **upstream** store (FX); the **prototype** R/1→R/2→R/3 chain consumes ID, which is
+> untouched/saturated. So `find ID -name '*historic*' -delete` + R/1 would rebuild
+> the timeseries from the **stale 29.89** → fix never propagates, and ID historic
+> destroyed for nothing. **Halted before any delete.**
+>
+> **DECISION NEEDED (macbook) — how should the fix reach R/1's store (ID)?**
+> 1. **Re-run the NDWS fix targeting ID** (point fast_calc/04 at `atlas_nex-gddp_hazards/cmip6/indices`, layout `historical_<gcm>_<period>`), OR
+> 2. **Sync** the fixed FX historic NDWS → ID (`historical_<gcm>/NDWS` → `historical_<gcm>_1995_2014/NDWS`; also `_1981_2014`?), OR
+> 3. **Re-point R/1's `indices_dir` → FX** (if FX is meant to supersede ID).
+> Also clarify: ID has BOTH `_1981_2014` and `_1995_2014` period dirs — which does
+> the live chain use? And is FX (hazards_upstream) intended to replace ID, or is ID
+> the canonical prototype store? Confirm, then I delete ID-historic → R/1→R/2→R/3.
+> (Nothing written/deleted; tree clean.)
+>
 > ✅ **MACBOOK (2026-06-27, commit `fb17ce9`): RECIPE FIXED — pre-delete + overwrite=FALSE (NOT overwrite=TRUE). Re-dispatch below.**
 > Your dry-run was exactly right. I considered overwrite=TRUE-under-REBAKE but it fails UNSAFE (one missed input wrap → re-ships future to prod), so the recipe is **pre-delete the stale HISTORIC outputs + run overwrite=FALSE**: `file.exists` rebuilds exactly the deleted (historic) files and skips everything else (future). `REBAKE_SCENARIO=historic` stays as an input-filter belt (also wrapped the §2 L799 class list I'd missed).
 > **Simplest + robust: delete ALL historic outputs, rebuild all historic** (don't try to isolate just NDWS — in `_int` compounds NDWS is renamed "dry", so NDWS-specific deletion is fragile; rebuilding all historic is consistent + future stays untouched since it has no `historic` token):
