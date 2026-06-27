@@ -200,9 +200,14 @@ calc_ndws <- function(yr, mn){
     
     ERATIO <- watbal |> purrr::map('Eratio') |> terra::rast()
     
-    # Calculate number of soil water stress days
-    cvls <- matrix(data = c(-Inf, 0.5, 1), ncol = 3) # Classification values
-    NDWS <- terra::classify(x = ERATIO, rcl = cvls, right = F) |> sum()
+    # Number of soil-water-stress days = count of days with ERATIO < 0.5.
+    # hazards#19 ROOT CAUSE FIX: the old `classify(rcl=c(-Inf,0.5,1))` mapped
+    # stressed days to 1 but LEFT non-stressed days (>=0.5) at their fractional
+    # ERATIO, so sum() = stress-day-count + sum(fractions of every wet day) ->
+    # inflated/saturated NDWS (worst in wet/low-stress pixels, e.g. rainforest).
+    # A boolean count is the correct day-count. (Inflates future too, not just
+    # historic - both must be re-baked.)
+    NDWS <- sum(ERATIO < 0.5)
     terra::writeRaster(NDWS, outfile, overwrite = TRUE)
     terra::writeRaster(AVAIL, paste0(dirname(outfile),'/AVAIL-',yr,'-',mn,'.tif'), overwrite = TRUE)
     
