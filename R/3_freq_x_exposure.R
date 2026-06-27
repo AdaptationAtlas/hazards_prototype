@@ -312,6 +312,18 @@ names(boundaries_index) <- names(Geographies)
 # Used by the issue #9 rebake runbook so the v9 mass-conserving fix
 # actually lands in hazard_exposure.parquet.
 overwrite <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+
+# REBAKE_SCENARIO: comma-list of filename tokens to KEEP (e.g. "historic") for a
+# scenario-scoped re-bake. UNSET -> no-op (default). Filters processing-input file
+# lists so a partial fix (e.g. historic-only NDWS) doesn't re-bake/re-ship others.
+.rebake_keep <- trimws(strsplit(Sys.getenv("REBAKE_SCENARIO", ""), ",", fixed = TRUE)[[1]])
+.rebake_keep <- .rebake_keep[nzchar(.rebake_keep)]
+.rebake_scope <- function(files) {
+  if (length(.rebake_keep) == 0L) return(files)
+  files[Reduce(`|`, lapply(.rebake_keep, function(t) grepl(t, basename(files), fixed = TRUE)))]
+}
+if (length(.rebake_keep)) cat("REBAKE_SCENARIO active (R/3) - keeping only:", .rebake_keep, "\n")
+
 ### d.2.1) Crops (MapSPAM) #####
 #### d.2.1.1) Crop VoP (Value of production) ######
 # To generalize it might be better to just supply a filename for the mapspam
@@ -459,7 +471,7 @@ for (tx in seq_along(timeframe_choices)) {
       "\nversion1=", version1, "\n"
     )
 
-    files <- data.table(file = list.files(haz_risk_dir, ".tif$", full.names = TRUE))
+    files <- data.table(file = .rebake_scope(list.files(haz_risk_dir, ".tif$", full.names = TRUE)))
     files[, c("model", "severity") := tstrsplit(basename(file)[1], "_", keep = c(2, 3), fixed = TRUE), by = file][, severity := gsub(".tif", "", severity)][, type := "solo"][grepl("_int.tif", file), type := "int"][, mod_x_type_x_sev := paste0("haz-freq_", model, "_", type, "_adm_", severity)]
 
     mod_x_type_x_sev <- files[, unique(mod_x_type_x_sev)]

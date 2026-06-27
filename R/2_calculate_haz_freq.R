@@ -561,6 +561,20 @@ Thresholds_U_ss <- Thresholds_U_ss[grepl(paste(if (any(grepl("NTx", interaction_
 #                          of being wrapped in a generic simpleError.
 .force_overwrite_r2 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
 
+# REBAKE_SCENARIO: comma-list of filename tokens to KEEP (e.g. "historic") for a
+# scenario-scoped re-bake, so a partial fix propagates WITHOUT touching/re-shipping
+# other scenarios. UNSET -> no-op (all files; default behaviour unchanged). Applied
+# to processing-INPUT file lists only (not ensemble/output-existence checks).
+# e.g. historic-only NDWS fix that must not re-bake the still-inflated future.
+.rebake_keep <- trimws(strsplit(Sys.getenv("REBAKE_SCENARIO", ""), ",", fixed = TRUE)[[1]])
+.rebake_keep <- .rebake_keep[nzchar(.rebake_keep)]
+.rebake_scope <- function(files) {
+  if (length(.rebake_keep) == 0L) return(files)
+  keep <- Reduce(`|`, lapply(.rebake_keep, function(t) grepl(t, basename(files), fixed = TRUE)))
+  files[keep]
+}
+if (length(.rebake_keep)) cat("REBAKE_SCENARIO active - keeping only files matching:", .rebake_keep, "\n")
+
 ### 0.3.1) Classify hazards ####
 run1 <- !identical(Sys.getenv("SKIP_R2_RUN1"), "1")
 overwrite1 <- .force_overwrite_r2
@@ -689,7 +703,7 @@ for (tx in seq_along(timeframes)) {
       dir.create(haz_time_class_dir, recursive = TRUE)
     }
 
-    files <- list.files(haz_timeseries_dir, ".tif", full.names = TRUE)
+    files <- .rebake_scope(list.files(haz_timeseries_dir, ".tif", full.names = TRUE))
 
     if (annual_season_subset == TRUE && grepl("sos", timeframe)) {
       thresholds <- copy(Thresholds_U)
@@ -763,7 +777,7 @@ for (tx in seq_along(timeframes)) {
     .sec2_done(timeframe, "1) Classify")
 
     # 1.1) Check results ######
-    files <- list.files(haz_time_class_dir, "tif$", full.names = TRUE, recursive = TRUE)
+    files <- .rebake_scope(list.files(haz_time_class_dir, "tif$", full.names = TRUE, recursive = TRUE))
     (bad_files <- check_and_delete_bad_files(files, delete_bad = TRUE, worker_n = worker_n1))
     # If you finding files will not open delete them then run the download process again
     if (length(bad_files) > 0) {
@@ -1111,7 +1125,7 @@ for (tx in seq_along(timeframes)) {
     if (!dir.exists(haz_mean_dir)) dir.create(haz_mean_dir, recursive = TRUE)
 
     # List timeseries hazard files
-    files <- list.files(haz_timeseries_dir, ".tif", full.names = TRUE)
+    files <- .rebake_scope(list.files(haz_timeseries_dir, ".tif", full.names = TRUE))
 
     # Remove ensemble
     files <- files[!grepl("ENSEMBLE", files)]
@@ -1322,7 +1336,7 @@ for (tx in seq_along(timeframes)) {
   ## 5.1) List classfied raster stacks ####
 
   # Restructure names of classified hazard files so they can be easily searched for scenario x timeframe x hazard x threshold
-  haz_class_files <- list.files(haz_time_class_dir, full.names = TRUE)
+  haz_class_files <- .rebake_scope(list.files(haz_time_class_dir, full.names = TRUE))
   haz_class_files <- haz_class_files[!grepl("ENSEMBLE", haz_class_files)]
   haz_class_files2 <- basename(haz_class_files)
 
@@ -1619,7 +1633,7 @@ for (tx in seq_along(timeframes)) {
     .sec2_start(timeframe, "5.3) Per-crop combine")
 
     # Make a table of interaction stack files
-    haz_int_files <- list.files(haz_time_int_dir, full.names = TRUE)
+    haz_int_files <- .rebake_scope(list.files(haz_time_int_dir, full.names = TRUE))
 
     # Split the file elements
     split_elements <- strsplit(basename(haz_int_files), "_")
