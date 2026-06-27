@@ -16,10 +16,9 @@
 >   'SCENARIO=historical YRS=1995:2014 FORCE_OVERWRITE=1 GCMS={} Rscript 04_indices/fast_calc_NDWS.R > /tmp/ndws_{}.log 2>&1'
 > ```
 > `-P 12` (tune to free cores/RAM; ~6.6 GB/proc). NDWL0/NDWL50 unchanged (R loop, not re-baked).
-> **Do NOT stop the current serial run** — it's correct (R loop + classify fix), just slow; let it
-> finish. The kernel+parallel speedup is for the NEXT re-bake (or apply it only to GCMs the serial
-> run hasn't reached — but never double-write the same GCM concurrently). The equivalence-check above
-> can run on a throwaway scope/copy without touching the live bake.
+> **STOP the current single-core serial run first** (it's the slow R-loop, ~24h; the kernel+parallel
+> redo is <1h — no reason to wait it out), then run the equivalence-check + parallel bake above.
+> FORCE_OVERWRITE re-does everything cleanly, so partial progress from the killed run is fine.
 >
 > 🟢 **MACBOOK (2026-06-27): future NDWS DEFERRED to the Track-2 rebake — do NOT run the legacy future re-bake.** (Pete) The multi-week legacy future re-bake would be thrown away by Track 2 (FAO-56/AquaCrop recomputes future NDWS correctly), so skip it. Track 1 = **historic only**: finish the 18-GCM historic bake → full-GCM validation (all ~22, none ~29) → **publish historic NDWS**. Live future NDWS stays mildly inflated until Track 2 lands. NDWL0/NDWL50: leave (normal).
 >
