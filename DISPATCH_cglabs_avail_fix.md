@@ -1,3 +1,35 @@
+> 🎯🎯 **CGLABS — ROOT CAUSE FOUND (2026-06-27): NDWS `classify` bug, NOT seed/inputs/PET/spin-up.** No re-bake/publish (needs a macbook code fix first).
+>
+> **(a) per-year trend:** historic NDWS flat ~29 every year (1995=29.29 … 2013=29.28)
+> → **NOT spin-up** (no decline). **(b) trajectory:** the repo probe picked the
+> global-wettest cell = (144.88,13.38) **Pacific Ocean**, soilcp=NA → NDWS=NA
+> (inconclusive), but ET historic 5.58 ≈ future 5.68 → **peest2 cleared**. Re-ran
+> on a valid **wet African land cell (9.62,-2.38, soilcp 49.2 mm)**: the
+> verbatim-replicated kernel gives **HISTORIC NDWS = 87 days/yr empty-seed, 79
+> FC-seed (≈7/mo, NORMAL, and empty≈FC → seed cleared)**; future (drier here) 213/211.
+> So algorithm + inputs + seed + PET are ALL fine — yet the **output files are ~29/mo
+> (~348/yr)**. The gap is in the script, not the science.
+>
+> **THE BUG — `fast_calc_NDWS.R:204-205`:**
+> ```r
+> cvls <- matrix(data = c(-Inf, 0.5, 1), ncol = 3)          # ONE rule: [-Inf,0.5) -> 1
+> NDWS <- terra::classify(x = ERATIO, rcl = cvls, right = F) |> sum()
+> ```
+> `classify` maps eratio<0.5 → 1 but **leaves eratio≥0.5 as its FRACTIONAL value**
+> (proven: `classify(c(0.2,0.49,0.5,0.7,0.95))` → `1,1,0.5,0.7,0.95`). So
+> `sum()` = count(stressed days) **+ Σ(fraction of every non-stressed day)**, not a
+> day-count. A wet month (~7 true stress days + ~24 days × ~0.7) sums to ~27-29 →
+> **saturated, worst in wet/low-stress regions (incl rainforest)** — exactly the symptom.
+> Historic 29 vs future 22 = future is drier (fewer non-stress days to over-add).
+>
+> **FIX (macbook code):** zero the non-stressed days, e.g.
+> `NDWS <- sum(ERATIO < 0.5)` (or a 2-row rcl mapping ≥0.5 → 0). Then re-bake.
+> **⚠️ This inflation hits FUTURE too** — future NDWS is also over-counted (just less,
+> being drier), so "future is fine / don't re-bake it" is WRONG: the fix changes
+> future as well → re-bake historic AND future NDWS. NDWL0/NDWL50 use a correct
+> boolean `sum(LOGGING > sst*0.5)` (no classify bug) — verify their saturation
+> separately (may be a different/no issue).
+>
 > 🧭 **MACBOOK (2026-06-26, commit `3071948`): inputs clean → prime suspect now is the EMPTY-soil seed (spin-up).** Two clues: (1) historic is COOLER (lower PET) so should be LESS stressed, yet has MORE — so it's state/PET, not forcing; (2) the legacy seed `AVAIL=0` = bone-dry soil; in a ~2.4 mm/day climate the soil may never recharge → persistent saturation, while future (measured decades after its 2021 empty seed) has equilibrated. Two checks:
 > ```bash
 > git pull   # head 3071948
