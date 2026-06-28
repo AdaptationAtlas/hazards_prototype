@@ -481,3 +481,24 @@ Follow RUN SEQUENCE in memory `reference_consumer_chain_ndws_to_atlas` steps 1-6
 ### Report back (edit this file + commit)
 - Step 4a: ID mean NDWS before/after (expect 29.89 → ~22.35)
 - Step 4b: each stage's historic-only counts (confirm 0 future written) + live Atlas confirmed de-saturated
+
+---
+> ## CGLABS REPORT (2026-06-28)
+>
+> **R/1 (Step 4b/stage 1) — COMPLETE.** Both timeframe axes rebuilt + de-saturated:
+> - annual:    18/18  NDWS mean range [20.91, 21.66]  sat>27 = 0
+> - jagermeyr: 18/18  NDWS mean range [20.38, 21.49]  sat>27 = 0
+> - 36/36 historic `_1995_2014` NDWS timeseries rebuilt from fixed ID store. 0 future (`ssp*`) timeseries touched.
+>
+> **⚠️ CODE FIX (committed `44ec9e7`, FLAGGED for ratification):** R/1 halted twice at the
+> annual→jagermeyr param-set boundary with `object 'ClusterRegistry' not found` (Execution halted),
+> after annual built but before jagermeyr. Root cause: `future:::ClusterRegistry("stop")` at
+> R/1 L217/576/746 — that internal was **removed in future >= 1.40** (box has future 1.67.0,
+> `exists("ClusterRegistry", asNamespace("future"))` = FALSE). `plan(sequential)` (called on the
+> line above each) already shuts multisession workers, so the call is dead weight. Wrapped each in
+> `tryCatch(..., error=function(e) NULL)` → no-op on new future, harmless on old. 3 lines.
+> Re-run after fix: clean exit, jagermeyr 18/18. Please ratify the diff.
+>
+> **NEXT (cglabs):** Step 4b stage 2 — R/2 (pre-delete historic in haz_time_class/risk/int +
+> NDWS-bearing `_int` in hazard_risk → `probe_r2_5_2_vec.R` → `RUN_R2_RUN3=1 RUN_R2_RUN5_3=1
+> RUN_R2_RUN5_2=1 REBAKE_SCENARIO=historic`) → R/3 → publish → CR-068. Future-mtime guard each stage.
