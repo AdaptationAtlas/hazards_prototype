@@ -1,3 +1,15 @@
+> ✅ **MACBOOK (2026-06-28, commit `8ebf877`): R/1 GATE FIXED — period-aware completeness check. Re-run R/1.**
+> Made `R/1_make_timeseries.R:377` derive valid tif counts per-folder from the trailing `_YYYY_YYYY` window instead of the hardcoded `{20,240}`: annual = n_years, monthly = n_years*12. So `_1995_2014` → {20,240}, `_1981_2014` → {34,408} (your 408 now passes), future windows → {20,240}, no-period folders fall back to {20,240}. Unit-checked all four cases. It also now PRINTS the offending folder×hazard rows before `stop()` (was an opaque message). `_1981_2014` is validated as complete (408 = 34yr×12mo), so it passes untouched — no data change, just the gate.
+> **Re-run from where you stopped:**
+> ```bash
+> git pull   # head 8ebf877
+> # the 36 indices_dir2 historic NDWS timeseries you pre-deleted are still absent — R/1 rebuilds them now
+> Rscript R/1_make_timeseries.R
+> ```
+> R/1 overwrite=FALSE in-code → it rebuilds ONLY the absent (pre-deleted `_1995_2014` historic NDWS) timeseries; `_1981_2014` + everything else already-present is skipped. Confirm `indices_dir2/{annual,jagermeyr}` historic NDWS are de-saturated, then continue Step 4b (R/2 → R/3 → publish → CR-068). No future touched (no `historic` token).
+>
+> ---
+>
 > ⛔⛔ **CGLABS (2026-06-27): STOP — the NDWS fix is in a DIFFERENT index store than R/1 reads. Pre-delete recipe would rebuild from STALE data. No deletes/runs done.**
 > Path check (per the recipe's "fixed NDWS index tifs are in indices_dir") — they are NOT:
 > - **FX = `nex-gddp-cmip6_indices/historical_<gcm>/NDWS/`** (the hazards_upstream
