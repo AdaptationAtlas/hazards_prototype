@@ -221,14 +221,21 @@ if (FALSE) {
 
 # List hazard folders (top-level)
 folders <- list.dirs(working_dir, recursive = FALSE)
-# Remove directories that are incomplete or unneeded for this analysis
-folders <- folders[!grepl("ENSEMBLE|ipyn|gadm0|hazard_comb|indices_seasonal", folders)]
+# Remove directories that are incomplete or unneeded for this analysis.
+# - SPI: stray empty index dir (0 tifs) — tripped the completeness gate.
+# - _1981_2014: the longer trends/climate-domain window is INCOMPLETE in
+#   indices_seasonal (only ~8 GCMs have e.g. NTx40) and is Track-2 territory;
+#   the live hazard_exposure baseline = _1995_2014. Re-enable when Track-2
+#   rebuilds the full 1981_2014 window.
+folders <- folders[!grepl("ENSEMBLE|ipyn|gadm0|hazard_comb|indices_seasonal|SPI|_1981_2014", folders)]
 # folders <- folders[!grepl("ssp126|ssp370|2061_2080|2081_2100", folders)]
 folders <- basename(folders)
 
-# Temporarily limit folders to 5 atlas gcms ####
-gcms <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
-folders <- folders[!grepl(paste(gcms, collapse = "|"), folders)]
+# NOTE: dev-only GCM subset disabled — a full/publishable rebake needs ALL 18
+# ATLAS GCMs (the comment said "limit to 5" but !grepl actually DROPPED these 5,
+# processing the other 13). Re-enable only for quick dev runs.
+# gcms <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
+# folders <- folders[!grepl(paste(gcms, collapse = "|"), folders)]
 # Corrupt data in KACE NDD exclude until resolved.
 # folders<-folders[!grepl("KACE",folders)]
 # Extract the model names (assuming each folder has a structure like scenario_model_yearrange)
