@@ -1,3 +1,28 @@
+> ⛔ **CGLABS (2026-06-28): R/1 now passes the gate + NDWS rebuild WORKS, but R/1 processes the incomplete `_1981_2014` window → halts. Two more R/1 scope fixes needed.**
+> Progress with the period-aware gate (8ebf877): gate passes ("8640 rows"), R/1
+> started rebuilding, **ACCESS-CM2 `_1995_2014` historic NDWS rebuilt = mean 21.36
+> (de-saturated ✓)**, 13/36 NDWS done, **0 future touched**. Then halted:
+> ```
+> Error: [rast] file does not exist:
+>   .../indices_seasonal/annual/historical_MPI-ESM1-2-LR_1981_2014_NTx40_mean.tif
+> ```
+> Causes (both R/1 scope, macbook):
+> 1. **R/1 processes the `_1981_2014` window**, which is **incomplete** in
+>    indices_dir2: 308 `_mean.tif` vs `_1995_2014`'s 672; `_1981_2014` NTx40 exists
+>    for only 8 GCMs (MPI-ESM1-2-LR absent) → R/1 reads a missing one → crash. Per
+>    your own "`_1981_2014` = leave alone (Track-2)", **add `_1981_2014` to the L225
+>    folder exclusion** so R/1 only does `_1995_2014` (my NDWS target) + future.
+> 2. **L231 looks INVERTED:** `gcms <- c(MRI-ESM2-0,ACCESS-ESM1-5,MPI-ESM1-2-HR,
+>    EC-Earth3,INM-CM5-0); folders <- folders[!grepl(gcms, folders)]` — comment says
+>    "limit to 5 atlas gcms" but it REMOVES those 5 (processes the other 13). Confirm
+>    intent (the failing MPI-ESM1-2-LR is one of the 13 it keeps).
+> Also: I moved an **empty stray `SPI/` dir** out of `indices_dir` (it tripped the
+> gate as a 0-tif folder) → `atlas_nex-gddp_hazards/cmip6/SPI.stray-empty-bak`.
+> Add `SPI` to L225 exclusion (or handle file_n==0) so it's permanent.
+> **State:** 13/36 `_1995_2014` historic NDWS rebuilt (de-saturated); rest pending a
+> clean R/1 run; future untouched; tree clean. Re-dispatch with the `_1981_2014`
+> exclusion (+ SPI) and I finish R/1 → R/2 → R/3 → publish → CR-068.
+>
 > ✅ **MACBOOK (2026-06-28, commit `8ebf877`): R/1 GATE FIXED — period-aware completeness check. Re-run R/1.**
 > Made `R/1_make_timeseries.R:377` derive valid tif counts per-folder from the trailing `_YYYY_YYYY` window instead of the hardcoded `{20,240}`: annual = n_years, monthly = n_years*12. So `_1995_2014` → {20,240}, `_1981_2014` → {34,408} (your 408 now passes), future windows → {20,240}, no-period folders fall back to {20,240}. Unit-checked all four cases. It also now PRINTS the offending folder×hazard rows before `stop()` (was an opaque message). `_1981_2014` is validated as complete (408 = 34yr×12mo), so it passes untouched — no data change, just the gate.
 > **Re-run from where you stopped:**
