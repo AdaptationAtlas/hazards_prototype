@@ -214,7 +214,7 @@ if (FALSE) {
   })
 
   plan(sequential)
-  future:::ClusterRegistry("stop")
+  tryCatch(future:::ClusterRegistry("stop"), error = function(e) NULL)  # future>=1.40 removed this internal; plan(sequential) already stops workers
 }
 
 # 3) Set up workspace ####
@@ -573,7 +573,7 @@ for (ii in seq_len(nrow(parameters))) {
       })
       # After finishing, revert to sequential
       future::plan(sequential)
-      future:::ClusterRegistry("stop")
+      tryCatch(future:::ClusterRegistry("stop"), error = function(e) NULL)  # future>=1.40 removed this internal; plan(sequential) already stops workers
     } else {
       # Single-core execution
       p <- lapply(
@@ -743,7 +743,7 @@ for (ii in seq_len(nrow(parameters))) {
 
       # Return to sequential plan after ensembles
       future::plan(sequential)
-      future:::ClusterRegistry("stop")
+      tryCatch(future:::ClusterRegistry("stop"), error = function(e) NULL)  # future>=1.40 removed this internal; plan(sequential) already stops workers
       gc()
       cat("Ensembling of parameter set", ii, "complete\n")
     }
