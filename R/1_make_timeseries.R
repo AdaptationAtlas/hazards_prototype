@@ -373,10 +373,29 @@ folders_x_hazards$file_n <- vapply(
   integer(1)
 )
 
-# Check for inconsitent file_n
-incomplete <- folders_x_hazards[!folders_x_hazards$file_n %in% c(20, 240), ]
+# Check for inconsitent file_n.
+# Valid tif counts are derived per-folder from its period window (trailing
+# _YYYY_YYYY): annual = n_years (one tif/year), monthly = n_years*12. So the
+# baseline window 1995_2014 -> {20, 240}; the longer trends window 1981_2014 ->
+# {34, 408}. Folders without a parseable period fall back to the legacy {20, 240}.
+.period_counts <- function(folder) {
+  m <- regmatches(folder, regexec("_([0-9]{4})_([0-9]{4})$", folder))[[1]]
+  if (length(m) == 3L) {
+    ny <- as.integer(m[3]) - as.integer(m[2]) + 1L
+    c(ny, ny * 12L)
+  } else {
+    c(20L, 240L)
+  }
+}
+folders_x_hazards$count_ok <- mapply(
+  function(folder, n) n %in% .period_counts(folder),
+  folders_x_hazards$folders, folders_x_hazards$file_n
+)
+incomplete <- folders_x_hazards[!folders_x_hazards$count_ok, ]
 
 if (nrow(incomplete) > 0) {
+  cat("Incomplete folder x hazard combinations (file_n not matching period window):\n")
+  print(incomplete[, c("folders", "hazards", "file_n")])
   stop("Check file completeness before continuing")
 }
 
