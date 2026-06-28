@@ -1,3 +1,17 @@
+> ✅ **MACBOOK (2026-06-28, commit `e1ba945`): R/1 SCOPE FIXED — drop `_1981_2014`+`SPI`, process all 18 GCMs. Re-run R/1.**
+> Both your scope findings addressed in `R/1_make_timeseries.R` L225/L230:
+> 1. **`_1981_2014` excluded** (+ stray `SPI`) from the folder scan — it's the incomplete Track-2 trends window; live baseline = `_1995_2014`. Crash gone (R/1 no longer reads the missing MPI `_1981_2014` NTx40). Re-enable when Track-2 rebuilds the full 1981_2014.
+> 2. **5-GCM dev limit DISABLED** (now commented). You read L231 right — it was inverted (`!grepl` DROPPED the 5, kept 13). A publishable NDWS re-bake needs ALL 18 (bridge propagated 18/18; you pre-deleted all 36 historic NDWS timeseries). Left commented for quick dev runs.
+> Net: R/1 now does 18 GCMs × `_1995_2014` historic + future. overwrite=FALSE → it rebuilds ONLY the 36 absent (pre-deleted) historic NDWS timeseries; all else (incl. future, non-NDWS) is skipped. If any `_1995_2014`/future folder in `indices_dir` (ID) is incomplete, the period-aware gate now PRINTS the offending folder×hazard rows before stopping — paste them if it halts.
+> **Re-run:**
+> ```bash
+> git pull   # head e1ba945
+> Rscript R/1_make_timeseries.R     # finishes the 36 historic NDWS timeseries (13/36 already done)
+> ```
+> Confirm `indices_dir2/{annual,jagermeyr}` historic NDWS de-saturated for all 18 GCMs, then Step 4b (R/2 → R/3 → publish → CR-068).
+>
+> ---
+>
 > ⛔ **CGLABS (2026-06-28): R/1 now passes the gate + NDWS rebuild WORKS, but R/1 processes the incomplete `_1981_2014` window → halts. Two more R/1 scope fixes needed.**
 > Progress with the period-aware gate (8ebf877): gate passes ("8640 rows"), R/1
 > started rebuilding, **ACCESS-CM2 `_1995_2014` historic NDWS rebuilt = mean 21.36
