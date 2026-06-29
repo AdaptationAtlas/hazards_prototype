@@ -1550,8 +1550,12 @@ for (tx in seq_along(timeframes)) {
 
           scenario_choice <- scenarios$scenario[l]
 
-          # Ensemble models
-          if (scenario_choice != "historic" & do_ensemble5.2) {
+          # Ensemble models.
+          # Historic was excluded here, but §5.3 (L1713) requires a historic
+          # per-combo ENSEMBLEmean/sd interaction stack to exist (model loop
+          # covers ENSEMBLEmean), and the live Atlas baseline serves historic
+          # ENSEMBLE exposure -> build it for historic too (2026-06-29 dispatch).
+          if (do_ensemble5.2) {
             time_choice <- scenarios$timeframe[l]
             scen_time_choice <- scenarios$scen_x_time[l]
             scen_mod_time_choice <- scenarios_x_models[scenarios_x_models$scen_x_time == scen_time_choice, "scen_mod_time"]
