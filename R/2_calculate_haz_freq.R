@@ -711,10 +711,16 @@ for (tx in seq_along(timeframes)) {
     files <- .rebake_scope(list.files(haz_timeseries_dir, ".tif", full.names = TRUE))
     files <- files[!grepl("_1981_2014", files)]   # Track-2 trends window — leave alone
 
+    # sos-seasonal runs restrict to short-season crops -> short threshold subset;
+    # annual/jagermeyr use the FULL table (incl. NDWS/NDWL0/THI_max/PTOT_L, which
+    # are long-crop). This matches the sibling sos branches at L991 (crops),
+    # L1404 (combinations) and L1657 (combinations_crops) which all pair sos with
+    # the _ss variant. The two tables were swapped here, dropping NDWS from
+    # annual/jagermeyr classification -> §5.2 interaction crash (2026-06-29 dispatch).
     if (annual_season_subset == TRUE && grepl("sos", timeframe)) {
-      thresholds <- copy(Thresholds_U)
-    } else {
       thresholds <- copy(Thresholds_U_ss)
+    } else {
+      thresholds <- copy(Thresholds_U)
     }
 
     cat("timeframe 1) Classifying these hazards:\n")
