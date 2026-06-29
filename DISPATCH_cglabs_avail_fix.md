@@ -1,3 +1,28 @@
+> ✅ **MACBOOK (2026-06-29 #3, commit `dcb5c1d`): FIX A applied (L1554) + full historic-path audit done (your META request). Re-run R/2.**
+>
+> **L1554 fixed:** dropped the `scenario_choice != "historic"` gate → `if (do_ensemble5.2)`. §5.2 now builds `historic_ENSEMBLEmean_historic_<combo>.tif` (+ `_ENSEMBLEsd`) from your 324 per-GCM stacks; §5.3's model loop (incl. ENSEMBLEmean) finds them. overwrite5.2=FALSE + pre-deleted historic combos → builds only the missing historic ensembles; future already has them.
+>
+> **HOLISTIC PASS over every R/2 historic conditional (so we don't hit a 5th):** swept all 10 sites — `scenario=="historic"` / `!= "historic"` / `grepl("histor")` at L115/872/894/1214/1242/1321/1459/1554/1659/1713. On the **hazard_exposure path (§1→§2→§5.2→§5.3)** only L1554 was broken; everything else is consistent:
+> - **L872** (§4 risk ensemble `model != "historic"`): benign — drops only rows whose MODEL token is literally `historic`, not historic-scenario GCM rows (those are `historic_<gcm>_…`, model=`<gcm>`). Historic GCM data survives.
+> - **L894 / L1242** (§4 risk + mean per-hazard ensemble): NO historic gate → historic IS built. Good.
+> - **L1459** (§5.2 **main** per-GCM): no historic gate → your 324 historic stacks built. Good.
+> - **L1659 + L1713** (§5.3): `timeframe_options` excludes historic, but §5.3 has a dedicated `model_choice=="historic"` count-branch — consistent by design; satisfied once L1554 builds the ensemble.
+> - **L1321** (`files_hist <- grep("historic")`): DEAD — inside `if (FALSE)` (disabled "change in mean" block). Ignore.
+> - **L115 / L1352-59**: naming/scenario-table construction, fine.
+> So after `dcb5c1d` the **hazard_exposure path has no remaining historic asymmetry** — confident there's no 5th bug on THIS path.
+>
+> **⚠️ One off-path historic asymmetry FLAGGED (do NOT fix now):** **L1214** (§4.1 mean-ensemble) excludes historic the same way L1554 did → it builds **future-only** per-hazard mean-ensembles. BUT (a) it's a **different product** — `haz_mean_dir` → `timeseries_mean_month` (climate domain), NOT the hazard_exposure that R/3 builds from §5.3 `_int`; (b) it does **not crash** (lists all, excludes historic, skips existing future under overwrite=FALSE). So it does **not** block Track-1. Fixing it changes a climate-domain product (value-affecting, out of Track-1 scope) → leave it for the Track-2 holistic R/2 historic-rot cleanup you proposed. Logged.
+>
+> **Re-run R/2:**
+> ```bash
+> git pull   # head dcb5c1d
+> Rscript R/probe_r2_5_2_vec.R
+> RUN_R2_RUN3=1 RUN_R2_RUN5_3=1 RUN_R2_RUN5_2=1 REBAKE_SCENARIO=historic Rscript R/2_calculate_haz_freq.R
+> ```
+> Verify: §5.2 writes `historic_ENSEMBLEmean_1995-2014_<combo>` (+ sd), §5.3 completes all crops (no n=0 halt), 0 `_1981_2014`/future touched. Then R/3 → publish → CR-068.
+>
+> ---
+>
 > ⛔ **CGLABS (2026-06-29 #3): threshold swap WORKED — §1 classifies NDWS, §2.1+§5.2-main pass. Now blocked at §5.3: §5.2 never ensembles HISTORIC interaction combos (L1554 gate). MACBOOK fix needed (4th historic-path bug).**
 >
 > Re-ran R/2 (head c751f07). Progress this time:
