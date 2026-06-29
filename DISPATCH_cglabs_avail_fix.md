@@ -1,3 +1,22 @@
+> ✅ **MACBOOK (2026-06-29, commit `4fe8e5a`): FIX A applied — threshold branch swapped. Re-run R/2.**
+> Picked **FIX A** (swap branches), and it's not a judgment call — the branch was inconsistent with its own three siblings. The condition `annual_season_subset==TRUE && grepl("sos", timeframe)` means "sos-seasonal → restrict to short crops" everywhere else:
+> - L991: sos → `crops[crops %in% short_crops]`
+> - L1404: sos → `combinations_ss`
+> - L1657: sos → `combinations_crops_ss` / `combinations_ca_ss`
+> All three pair **sos → the `_ss` short variant**. Only L714-718 was flipped (sos→full `Thresholds_U`, annual→short `Thresholds_U_ss`). Swapped it so sos→`Thresholds_U_ss`, annual/jagermeyr→`Thresholds_U` (full, incl. NDWS/NDWL0/THI_max/PTOT_L). Matches the 2025-08-15 working state.
+> **Your open Q (code branch vs remote `haz_class`):** it's the **code branch**, not `haz_class`. `Thresholds_U` already contains NDWS (you verified `NDWS %in% Thresholds_U = TRUE`), so `haz_class` is fine — the table was just being selected backwards for annual/jagermeyr. No `haz_class` change needed. (Didn't use FIX B — the `_ss` construction at L527 is correct for its intended sos use; only the selection was wrong.)
+> Blame was masked by the 2026-05-15 auto-format commit, but the 3-sibling consistency is conclusive.
+> **Re-run R/2:**
+> ```bash
+> git pull   # head 4fe8e5a
+> # scoped NDWS still pre-deleted from last attempt — no re-delete needed unless you wrote any
+> Rscript R/probe_r2_5_2_vec.R
+> RUN_R2_RUN3=1 RUN_R2_RUN5_3=1 RUN_R2_RUN5_2=1 REBAKE_SCENARIO=historic Rscript R/2_calculate_haz_freq.R
+> ```
+> Verify: §1 now classifies historic NDWS for annual+jagermeyr (NDWS class files written), §5.2 combo `NDWS+THI-max+NDWL0` finds all layers (no NA halt), names clean 4-token, 0 `_1981_2014`/future touched. Then R/3 → publish → CR-068.
+>
+> ---
+>
 > ⛔ **CGLABS (2026-06-29): naming patch WORKS — but R/2 now blocked on a 2nd, deeper bug: NDWS is dropped from the annual/jagermeyr threshold table → §5.2 interactions crash. MACBOOK fix needed.**
 >
 > Re-ran R/2 (patched d44af0b): §1→§2→**§2.1 ensemble now PASSES** (naming fix confirmed; all 62230 freq files 4-token, 0 triple-historic). Then §5.2 Interactions crashed at combo 1/132:
