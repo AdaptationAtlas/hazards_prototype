@@ -502,3 +502,39 @@ Follow RUN SEQUENCE in memory `reference_consumer_chain_ndws_to_atlas` steps 1-6
 > **NEXT (cglabs):** Step 4b stage 2 — R/2 (pre-delete historic in haz_time_class/risk/int +
 > NDWS-bearing `_int` in hazard_risk → `probe_r2_5_2_vec.R` → `RUN_R2_RUN3=1 RUN_R2_RUN5_3=1
 > RUN_R2_RUN5_2=1 REBAKE_SCENARIO=historic`) → R/3 → publish → CR-068. Future-mtime guard each stage.
+
+---
+> ## CGLABS REPORT (2026-06-29) — R/2 BLOCKED on a §1 naming bug
+>
+> **R/2 first attempt FAILED.** Ran probe (PASS), pre-deleted 2268 scoped NDWS files
+> (class 108 / risk 120 / int 720 / hazard_risk NDWS `_int` 1320 — all asserted ssp-free;
+> hazard_risk confirmed historic-baseline-only: 0 ssp tokens across all 12240 files).
+> §1 Classify + §2 Frequency ran, then §2.1 ensemble crashed:
+> `Error in rbindlist(...): Item 1265 has 7 columns, inconsistent with item 1 which has 4`.
+>
+> **Root cause — pre-existing R/2 §1 naming bug (commit `832344b`, latent until a historic re-bake):**
+> The class save-name block converts period→hyphen **only for future windows** and mangles the
+> historic scenario token:
+> ```r
+> # R/2 L755 (and identical L1150):
+> file_name <- gsub("historical_", "historic_historic_historic_", file_name)   # ← scenario TRIPLED; should be "historic_"
+> file_name <- gsub("2021_2040_", "2021-2040_", file_name)                     # future periods hyphenated…
+> file_name <- gsub("2041_2060_", "2041-2060_", file_name)                     # …but NO 1995_2014_ / 1981_2014_ rule
+> ...
+> ```
+> So historic outputs become `historic_historic_historic_<model>_1995_2014_<haz>` →
+> 7 `_`-tokens vs the parser's expected 4 (`scenario_model_timeframe_hazard`, timeframe as a single
+> hyphen token) → rbindlist blows up. No reverse-collapse exists anywhere. Future bakes are fine
+> (their periods *are* hyphenated), which is why this never surfaced. The mangled name also ≠ the
+> existing clean name, so the `overwrite=FALSE` gate didn't catch it → §1 rebuilt **all** historic
+> hazards incl. NTx/PTOT **and `_1981_2014`** (Track-2), writing 6240 malformed files.
+>
+> **Cleanup done:** removed all 6240 malformed `historic_historic_historic_*` files (class 3120 +
+> risk 3120; int stage hadn't run), 0 remaining. Pre-existing clean files untouched. No future touched.
+>
+> **PROPOSED FIX (NOT yet applied — awaiting ratification):**
+> 1. L755 + L1150: `"historic_historic_historic_"` → `"historic_"`.
+> 2. Replace the four hardcoded future-period gsubs with one general rule:
+>    `file_name <- gsub("_([0-9]{4})_([0-9]{4})_", "_\\1-\\2_", file_name)` (handles all windows).
+> 3. Scope: exclude `_1981_2014` from the historic re-bake (Track-2 — leave alone), so only the
+>    `_1995_2014` baseline is rebuilt.
