@@ -709,6 +709,7 @@ for (tx in seq_along(timeframes)) {
     }
 
     files <- .rebake_scope(list.files(haz_timeseries_dir, ".tif", full.names = TRUE))
+    files <- files[!grepl("_1981_2014", files)]   # Track-2 trends window — leave alone
 
     if (annual_season_subset == TRUE && grepl("sos", timeframe)) {
       thresholds <- copy(Thresholds_U)
@@ -752,11 +753,11 @@ for (tx in seq_along(timeframes)) {
           file_name <- gsub("_mean", "-mean", file_name)
           file_name <- gsub("_sum", "-sum", file_name)
 
-          file_name <- gsub("historical_", "historic_historic_historic_", file_name)
-          file_name <- gsub("2021_2040_", "2021-2040_", file_name)
-          file_name <- gsub("2041_2060_", "2041-2060_", file_name)
-          file_name <- gsub("2061_2080_", "2061-2080_", file_name)
-          file_name <- gsub("2081_2100_", "2081-2100_", file_name)
+          file_name <- gsub("historical_", "historic_", file_name)
+          # Hyphenate ANY period window (historic 1995_2014 + all future) so the
+          # timeframe stays a single token; the 4 hardcoded future gsubs missed
+          # historic, tripling crashes (see 2026-06-29 dispatch).
+          file_name <- gsub("_([0-9]{4})_([0-9]{4})_", "_\\1-\\2_", file_name)
           file_name <- gsub("ENSEMBLE_mean_", "ENSEMBLEmean-", file_name)
 
           if ((!file.exists(file_name)) | overwrite1) {
@@ -1131,6 +1132,7 @@ for (tx in seq_along(timeframes)) {
 
     # List timeseries hazard files
     files <- .rebake_scope(list.files(haz_timeseries_dir, ".tif", full.names = TRUE))
+    files <- files[!grepl("_1981_2014", files)]   # Track-2 trends window — leave alone
 
     # Remove ensemble
     files <- files[!grepl("ENSEMBLE", files)]
@@ -1147,7 +1149,7 @@ for (tx in seq_along(timeframes)) {
     files_new <- gsub("_max", "-max", files_new)
     files_new <- gsub("_min", "-min", files_new)
     files_new <- gsub("_sum", "-sum", files_new)
-    files_new <- gsub("historical_", "historic_historic_historic_", files_new)
+    files_new <- gsub("historical_", "historic_", files_new)
 
     cat(timeframe, "4) Calculate mean and sd across time series.\nProcessing n =", length(files), "files\n")
     .sec2_start(timeframe, "4) Mean/SD")
