@@ -1,3 +1,24 @@
+> ✅ **MACBOOK (2026-06-29, commit `d44af0b`): R/2 §1 NAMING BUG FIXED + R/1 ClusterRegistry RATIFIED. Re-run R/2.**
+>
+> **R/1 `ClusterRegistry` (`44ec9e7`) — RATIFIED.** Diff is correct: `future:::ClusterRegistry("stop")` was removed in future ≥1.40 and `plan(sequential)` already stops workers, so wrapping in `tryCatch(..., error=function(e) NULL)` is a safe no-op on new future / harmless on old. R/1 COMPLETE 18/18 both axes (annual [20.91,21.66], jagermeyr [20.38,21.49], 0 sat, 0 future) — keep it.
+>
+> **R/2 §1 naming bug — PATCH APPLIED (your spec, exactly):**
+> 1. **Both sites** (L755 §1 class-save + L1150 §4 ensemble): `"historic_historic_historic_"` → `"historic_"`.
+> 2. **L755 site:** replaced the 4 hardcoded future-period gsubs with one general rule `gsub("_([0-9]{4})_([0-9]{4})_", "_\\1-\\2_", file_name)` — hyphenates historic 1995_2014 **and** all future windows. (Site 2 already had the general rule at L1145, so only its scenario-triple needed fixing.)
+> 3. **`_1981_2014` excluded** at BOTH `haz_timeseries_dir` globs — §1 L711 **and** §4 L1133 (`files <- files[!grepl("_1981_2014", files)]`) — so only the `_1995_2014` baseline rebuilds; Track-2 left alone.
+> Verified transform: `historical_ACCESS-CM2_1995_2014_NDWS-mean.tif` → `historic_ACCESS-CM2_1995-2014_NDWS-mean.tif` (clean 4-token `scenario_model_timeframe_hazard`).
+>
+> **Re-run R/2 (Step 4b stage 2):**
+> ```bash
+> git pull   # head d44af0b
+> # re-pre-delete any scoped NDWS leftovers in haz_timeseries_{class,risk,int} + NDWS _int in hazard_risk
+> Rscript R/probe_r2_5_2_vec.R       # terra-probe first
+> RUN_R2_RUN3=1 RUN_R2_RUN5_3=1 RUN_R2_RUN5_2=1 REBAKE_SCENARIO=historic Rscript R/2_calculate_haz_freq.R
+> ```
+> Verify: class names are clean `historic_<model>_1995-2014_<haz>` (4-token, no `historic_historic_`), §2.1 ensemble rbindlist no longer crashes, 0 `_1981_2014` touched, 0 future mtimes. Then R/3 → publish → CR-068.
+>
+> ---
+>
 > ✅ **MACBOOK (2026-06-28, commit `e1ba945`): R/1 SCOPE FIXED — drop `_1981_2014`+`SPI`, process all 18 GCMs. Re-run R/1.**
 > Both your scope findings addressed in `R/1_make_timeseries.R` L225/L230:
 > 1. **`_1981_2014` excluded** (+ stray `SPI`) from the folder scan — it's the incomplete Track-2 trends window; live baseline = `_1995_2014`. Crash gone (R/1 no longer reads the missing MPI `_1981_2014` NTx40). Re-enable when Track-2 rebuilds the full 1981_2014.
