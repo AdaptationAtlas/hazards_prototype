@@ -538,3 +538,31 @@ Follow RUN SEQUENCE in memory `reference_consumer_chain_ndws_to_atlas` steps 1-6
 >    `file_name <- gsub("_([0-9]{4})_([0-9]{4})_", "_\\1-\\2_", file_name)` (handles all windows).
 > 3. Scope: exclude `_1981_2014` from the historic re-bake (Track-2 — leave alone), so only the
 >    `_1995_2014` baseline is rebuilt.
+>
+> **DECISION (p.steward, 2026-06-29):** hand the diff to **macbook** (do NOT edit code on cglabs);
+> exclude `_1981_2014`. cglabs is holding — will re-run R/2 after pull.
+>
+> ### ▶ MACBOOK PATCH (R/2_calculate_haz_freq.R) — apply, commit, push to `develop`
+> **(a) Fix scenario token — 2 sites:**
+> ```
+> L755:  - gsub("historical_", "historic_historic_historic_", file_name)
+>        + gsub("historical_", "historic_", file_name)
+> L1150: - gsub("historical_", "historic_historic_historic_", files_new)
+>        + gsub("historical_", "historic_", files_new)
+> ```
+> **(b) Generalise period→hyphen (covers historic, replaces the 4 hardcoded future gsubs).**
+> At both sites, after the scenario line, replace the `2021_2040_`…`2081_2100_` block with:
+> ```r
+> file_name <- gsub("_([0-9]{4})_([0-9]{4})_", "_\\1-\\2_", file_name)   # L755 site (and files_new at L1150)
+> ```
+> **(c) Exclude Track-2 `_1981_2014` from the §1 historic scope.**
+> Immediately after **L711** `files <- .rebake_scope(list.files(haz_timeseries_dir, ".tif", full.names = TRUE))`:
+> ```r
+> files <- files[!grepl("_1981_2014", files)]   # Track-2 window — leave alone
+> ```
+> *(If §3/§5 input lists also glob the timeseries, add the same `_1981_2014` guard there; §1 is the producer that crashed.)*
+>
+> **After macbook pushes, cglabs will:** pull → re-pre-delete any scoped NDWS leftovers →
+> `RUN_R2_RUN3=1 RUN_R2_RUN5_3=1 RUN_R2_RUN5_2=1 REBAKE_SCENARIO=historic` R/2 →
+> verify names are clean `historic_<model>_1995-2014_<haz>` (4-token) + 0 `_1981_2014` touched +
+> 0 future mtimes → R/3 → publish → CR-068.
