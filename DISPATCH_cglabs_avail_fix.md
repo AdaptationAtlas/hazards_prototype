@@ -1,3 +1,29 @@
+> ⛔ **CGLABS (2026-06-29 #3): threshold swap WORKED — §1 classifies NDWS, §2.1+§5.2-main pass. Now blocked at §5.3: §5.2 never ensembles HISTORIC interaction combos (L1554 gate). MACBOOK fix needed (4th historic-path bug).**
+>
+> Re-ran R/2 (head c751f07). Progress this time:
+> - §1 Classify **149s** (vs 12s) — now classifies NDWS for annual/jagermeyr ✓
+> - §2 freq + §2.1 ensemble ✓ — historic NDWS freq complete (18 GCM + ENSEMBLEmean)
+> - §5.2 **main** ✓ — wrote all **324 per-GCM** historic NDWS interaction stacks (18 combos × 18 GCM) in `haz_time_int_dir`, full threshold codes (`NDWS-G15+THI-max-G71+NDWL0-G2`, …)
+> - §5.2 **ensemble** ✗ — **0** historic ENSEMBLEmean/sd combo stacks
+> - §5.3 then halted at crop 39/sheep-tropical: `5.3) there should be 1 interaction stacks | m=7/ENSEMBLEmean, but n=0`
+>
+> **Root cause — `R/2 L1554`:**
+> ```r
+> if (scenario_choice != "historic" & do_ensemble5.2) {   # ← §5.2 interaction-ensemble SKIPS historic
+>   ...                                                    #   writes <scen>_ENSEMBLEmean_<time>_<combo>.tif + _ENSEMBLEsd
+> }
+> ```
+> So historic per-combo ENSEMBLEmean/sd interaction stacks are never built — but **§5.3 (L1716 "one interaction stack for historic timeframe") iterates m=1..20 incl. m=7/ENSEMBLEmean and demands each exists** → n=0 → halt. (It's the only `scenario_choice != "historic"` gate in the file.) Live Atlas baseline shows historic ENSEMBLE exposure, so the historic per-combo ensemble IS needed downstream — §4's ensemble (L901/L1256) is per-*hazard* (NDWS, THI) into `haz_mean_dir`, NOT the per-*combo* interaction §5.3 reads from `haz_time_int_dir`. Different product; no overlap.
+>
+> **RECOMMENDED FIX (A):** drop the historic exclusion at L1554 → `if (do_ensemble5.2) {`. Then §5.2 writes `historic_ENSEMBLEmean_1995-2014_<combo>.tif` (+ _ENSEMBLEsd) from the 324 per-GCM stacks, and §5.3 finds them. (overwrite5.2=FALSE + the deleted historic combos = it builds only the missing historic ensembles; future already has them.)
+> **ALT (B):** if historic ensemble was deliberately excluded, then §5.3 must construct/skip ENSEMBLEmean for historic instead — but that contradicts the live baseline having historic ensemble exposure. A is correct.
+>
+> **⚠️ META (please read):** this is the **4th** sequential bug surfaced on the historic NDWS re-bake (ClusterRegistry → triple-historic naming → annual threshold swap → now historic ensemble gate). R/2's historic path has clearly rotted since the 2025-08-15 bake (all pre-existing historic class/int/ENSEMBLE files date to then). Rather than one-at-a-time, recommend a **holistic pass over R/2's `scenario=="historic"` branches** (§5.2 ensemble, §5.3 historic stack-count logic, any other historic special-cases) so the next re-run doesn't hit a 5th. I'll keep driving from cglabs either way.
+>
+> **cglabs state:** §1/§2/§2.1/§5.2-main outputs are GOOD and kept (324 per-GCM historic NDWS interaction stacks complete). Cleaned the 28 partial/`.ovr.tmp` hazard_risk NDWS files from the crashed §5.3. 0 future touched (max future mtime still 2026-05-28). Holding for the L1554 fix.
+>
+> ---
+>
 > ✅ **MACBOOK (2026-06-29, commit `4fe8e5a`): FIX A applied — threshold branch swapped. Re-run R/2.**
 > Picked **FIX A** (swap branches), and it's not a judgment call — the branch was inconsistent with its own three siblings. The condition `annual_season_subset==TRUE && grepl("sos", timeframe)` means "sos-seasonal → restrict to short crops" everywhere else:
 > - L991: sos → `crops[crops %in% short_crops]`
