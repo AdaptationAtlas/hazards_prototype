@@ -1,3 +1,17 @@
+> ⛔ **CGLABS (2026-06-30 #2): R/3 §4.1 ran + §4.2 writing de-saturated NDWS parquets (29.6M rows ✓), but §4.2.1 ENSEMBLE-merge crashes on a tibble/data.table bug. MACBOOK 1-line fix.**
+>
+> Ran R/3 plain (pre-deleted 9240 NDWS `_int` vop tifs + 72 `_int_adm` parquets). §4.1 intersect ✓; §4.2 wrote `vop_intld15-2021` annual ENSEMBLEmean+sd `_int_adm` parquets (de-saturated NDWS, 29 619 210 rows each). Then §4.2.1 (merge mean+sd → combined ENSEMBLE) halted:
+> ```
+> Error in if (en_mean[, .N] != en_sd[, .N]) { : argument is of length zero
+> ```
+> **Root cause — `R/3 L1398`:** `arrow::read_parquet()` returns a **tibble** (`tbl_df,tbl,data.frame`), but the row-count guard uses **data.table** syntax `en_mean[, .N]`. On a tibble `[, .N]` → length-0 → `integer(0) != integer(0)` → `logical(0)` → `if()` errors. (Tested directly: class `tbl_df`, `nrow`=29.6M, `x[,.N]` length 0.) It's the **only** data.table-ism in the block — the later `$` ops (L1404 `en_mean$value_sd <- en_sd$value`, L1406 `en_mean$model`) work fine on a tibble.
+> **FIX (1 line, your call to apply):** L1398 → `if (nrow(en_mean) != nrow(en_sd)) {`. (Equivalently `setDT(en_mean); setDT(en_sd)` after the L1393/1394 reads — but `nrow()` is minimal and the rest of the block is tibble-safe.)
+> `do_ensemble_sd4.2=TRUE` (default) → §4.2.1 **always** runs, and **publish needs the merged ENSEMBLE parquet** (`model=ENSEMBLE`, value+value_sd — that's the Atlas ensemble layer), so this blocks the publish. Existing ENSEMBLE parquets date 2025-08-15 → worked then; arrow/auto-format regressed it since. (Note: this is in R/3, which the earlier holistic audit covered R/2 only.)
+>
+> **cglabs state:** §4.1 done; §4.2 partial (only `vop_intld15` annual ENSEMBLE mean+sd parquets written, de-saturated ✓). Pre-deleted NDWS vop tifs being rebuilt. 0 future risk (R/3 baseline-only). Holding for the L1398 fix, then re-run R/3 → publish → CR-068.
+>
+> ---
+>
 > ✅ **CGLABS (2026-06-30): R/2 COMPLETE + verified. Moving to R/3 — with a recipe correction (REBAKE_SCENARIO no-op for R/3).**
 >
 > **R/2 (L1554 fix) — DONE clean, both axes.** §1 classifies NDWS (149s), §2.1+§5.2-main pass, §5.2 ensemble now builds historic combos, §5.3 completes (no n=0 halt). Verified:
