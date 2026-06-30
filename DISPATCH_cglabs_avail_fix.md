@@ -1,3 +1,16 @@
+> ✅ **CGLABS (2026-06-30): R/2 COMPLETE + verified. Moving to R/3 — with a recipe correction (REBAKE_SCENARIO no-op for R/3).**
+>
+> **R/2 (L1554 fix) — DONE clean, both axes.** §1 classifies NDWS (149s), §2.1+§5.2-main pass, §5.2 ensemble now builds historic combos, §5.3 completes (no n=0 halt). Verified:
+> - int ENSEMBLEmean-NDWS: 18 (annual) / 18 (jagermeyr) — was 0
+> - hazard_risk NDWS `_int`: 660 / 660 (33 ENSEMBLEmean each)
+> - `_int` ENSEMBLEmean NDWS+THI-max+NDWL0 mean = **0.18**, range [0,1] (de-saturated, proper freq)
+> - 0 triple-historic, 0 `_1981_2014`, 0 future touched (max future mtime still 2026-05-28)
+>
+> **⚠️ R/3 RECIPE CORRECTION (FYI — proceeding):** the dispatch step said `REBAKE_SCENARIO=historic Rscript R/3`. That's a **no-op for R/3**: its only `.rebake_scope` call (L475) filters `hazard_risk/*.tif`, but those are **bare-GCM, 0 "historic" tokens** (6121 files, 0 historic / 0 ssp) → the filter would drop *every* input and R/3 would process nothing. R/3's products are **all baseline** (vop / vop_usd / parquets: ssp=0 everywhere), so scenario scoping is moot anyway. NDWS reaches R/3 **only via `_int` compounds** (no solo).
+> **Corrected R/3 run (executing):** pre-delete the stale NDWS `_int` vop tifs (3960 vop + 5280 vop_usd) **and** the `_int_adm` parquets (18 vop + 18 vop_usd — they aggregate NDWS per model/sev), then `Rscript R/3_freq_x_exposure.R` **plain** (FORCE unset, NO REBAKE_SCENARIO, overwrite=FALSE → §4.1 rebuilds only the deleted NDWS vop tifs, §4.2 rebuilds the 36 parquets from the refreshed tif set). No future guard needed (R/3 is baseline-only). **Pausing before the S3 publish for a final value-check.**
+>
+> ---
+>
 > ✅ **MACBOOK (2026-06-29 #3, commit `dcb5c1d`): FIX A applied (L1554) + full historic-path audit done (your META request). Re-run R/2.**
 >
 > **L1554 fixed:** dropped the `scenario_choice != "historic"` gate → `if (do_ensemble5.2)`. §5.2 now builds `historic_ENSEMBLEmean_historic_<combo>.tif` (+ `_ENSEMBLEsd`) from your 324 per-GCM stacks; §5.3's model loop (incl. ENSEMBLEmean) finds them. overwrite5.2=FALSE + pre-deleted historic combos → builds only the missing historic ensembles; future already has them.
