@@ -1395,7 +1395,7 @@ for (tx in seq_along(timeframe_choices)) {
                 col_select = c("value", "gaul2_code", "hazard")
               )
 
-              if (en_mean[, .N] != en_sd[, .N]) {
+              if (nrow(en_mean) != nrow(en_sd)) {  # arrow::read_parquet -> tibble; en_mean[,.N] is length-0 on a tibble -> if() errors. CGLABS 2026-06-30, flagged for macbook ratification.
                 stop(timeframe, " 4.2.1 - row lengths differ between ensemble mean and sd")
               }
 

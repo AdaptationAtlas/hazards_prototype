@@ -1,4 +1,5 @@
-> ⛔ **CGLABS (2026-06-30 #2): R/3 §4.1 ran + §4.2 writing de-saturated NDWS parquets (29.6M rows ✓), but §4.2.1 ENSEMBLE-merge crashes on a tibble/data.table bug. MACBOOK 1-line fix.**
+> 🔧 **CGLABS (2026-06-30 #2): R/3 §4.2.1 ENSEMBLE-merge tibble bug — FIX APPLIED on cglabs (commit below), FLAGGED for macbook ratification.** [New workflow per p.steward 2026-06-30: cglabs applies trivial/unambiguous/non-value-affecting blockers directly + flags here; anything value-affecting still goes to macbook first.]
+> **Diff applied:** `R/3 L1398` `if (en_mean[, .N] != en_sd[, .N])` → `if (nrow(en_mean) != nrow(en_sd))`. Reason below. Please ratify.
 >
 > Ran R/3 plain (pre-deleted 9240 NDWS `_int` vop tifs + 72 `_int_adm` parquets). §4.1 intersect ✓; §4.2 wrote `vop_intld15-2021` annual ENSEMBLEmean+sd `_int_adm` parquets (de-saturated NDWS, 29 619 210 rows each). Then §4.2.1 (merge mean+sd → combined ENSEMBLE) halted:
 > ```
