@@ -1,3 +1,19 @@
+> 🛑 **CGLABS (2026-07-01): STRATEGY BUG FOUND — historic-scoping TRUNCATED the multi-scenario NDWS `_int` stacks. NOT published (live Atlas safe). Recovery feasible. Needs a decision.**
+>
+> **What broke:** the `_int` / vop / admin-parquet layers are **multi-scenario STACKS**, not per-scenario files. A PTOT `_int` tif = **136 layers** (9 interaction-subtypes × {historic + ssp126/245/370/585 × periods}). But `R/2 §5.3` run under `REBAKE_SCENARIO=historic` rebuilt the NDWS `_int` tifs as **historic-only (9 layers)** — dropping 127/136 layers (all future). Cascade: R/3 §4.1 built historic-only NDWS vop → §4.2 parquet has NDWS `hazard_vars` for **historic only, 0 ssp**. Confirmed: `Data/hazard_risk/annual/...NDWS+THI-max+NDWL0_int.tif` nlyr=9 (historic), mtime today; sibling PTOT `_int` nlyr=136 (all scenarios).
+> **Why:** historic-scoping is correct for the **per-scenario** stages (timeseries / class / freq — files are `historic_*` vs `ssp*`), but WRONG for `_int`/vop/parquet where scenarios are **stacked into one file**. Scoping to historic there = truncation.
+>
+> **Blast radius:** LOCAL only — **nothing published**, live Atlas untouched. Corrupted local artifacts: NDWS `_int` (hazard_risk + haz_time_int), NDWS vop tifs, and the 2 rebuilt annual `vop_intld15` parquets — all now historic-only for NDWS. Earlier stages are FINE: historic NDWS freq de-saturated ✓, future NDWS freq (960 ssp files) intact ✓. De-saturated historic NDWS is correct; only the future layers were dropped.
+>
+> **Recovery (feasible, future freq intact):** rebuild the **full multi-scenario** NDWS `_int` → vop → parquet by re-running **§5.2/§5.3/R/3 for NDWS WITHOUT scenario-scoping** (scope by pre-deleting the NDWS artifacts + `overwrite=FALSE`, NO `REBAKE_SCENARIO`). §5.2 restacks all scenarios from the intact freq: historic = de-saturated (the goal), future = rebuilt from **existing (unchanged) future NDWS freq**.
+> **⚠️ Implication needing your call:** future NDWS freq was **never fixed** (Track-1 = historic only; future = Track-2, deferred). So rebuilt future NDWS = **same values as currently live** (no regression, status-quo), but the recovery does **re-process future NDWS**. Proper future de-saturation stays Track-2.
+>
+> **Fixes applied this session that are still good + flagged for ratification:** R/1 ClusterRegistry (`44ec9e7`), R/3 §4.2.1 `nrow()` (`87f6d51`). R/2 (L1554 etc.) fixes from macbook are correct — the historic NDWS *freq* is properly de-saturated; the bug is purely the scoping strategy at the stack stages.
+>
+> **HOLDING for decision on the recovery approach (below).**
+>
+> ---
+>
 > 🔧 **CGLABS (2026-06-30 #2): R/3 §4.2.1 ENSEMBLE-merge tibble bug — FIX APPLIED on cglabs (commit below), FLAGGED for macbook ratification.** [New workflow per p.steward 2026-06-30: cglabs applies trivial/unambiguous/non-value-affecting blockers directly + flags here; anything value-affecting still goes to macbook first.]
 > **Diff applied:** `R/3 L1398` `if (en_mean[, .N] != en_sd[, .N])` → `if (nrow(en_mean) != nrow(en_sd))`. Reason below. Please ratify.
 >
