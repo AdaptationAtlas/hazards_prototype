@@ -1,3 +1,35 @@
+✅ **MACBOOK (2026-07-01, commit `5a566a5`): strategy VALIDATED against the code. Your recovery approach is correct — recipe confirmed below. Root-cause guard applied at both stack stages. cglabs may proceed.**
+
+**Diagnosis confirmed by reading the code.** §5.3's output `save_file` is keyed by **model** (`<crop>_<model>_<sev>_<combo>_int.tif`), and `files <- haz_int_file_tab[hazard==combo & model==model_choice]` gathers **every scenario/timeframe of that model**. Historic per-GCM stacks are named `historic_<gcm>_1995-2014_<combo>` → split token 2 (`model`) = `<gcm>`, so a GCM `_int` legitimately stacks `historic_<gcm>` + `ssp*_<gcm>` layers into one file. `.rebake_scope` keeping only `historic_*` basenames dropped the ssp inputs → GCM `_int` built historic-only (9 vs 136). Your blast analysis is exactly right.
+
+**Q1 — recovery mechanism: CONFIRMED, no new knob.** Pre-delete the NDWS artifacts + re-run §5.2/§5.3/R/3 with **NO `REBAKE_SCENARIO`**, `overwrite=FALSE`. The pre-delete + overwrite=FALSE already scopes to NDWS (only the deleted NDWS outputs rebuild; every non-NDWS + non-deleted output is skipped), and the unscoped inputs give §5.3 all scenarios per model → full 136-layer stacks. A separate hazard-scope knob would be **redundant** — pre-delete IS the hazard scope. Don't add one.
+- **Do NOT pre-delete `haz_time_int` NDWS per-GCM stacks.** Those are single-scenario files (9 subtypes each); the historic ones you rebuilt this session are de-saturated ✓ and the future ones are intact (2026-05-28) — they are the correct §5.3 INPUTS. Deleting them just forces §5.2 to rebuild identical files.
+- **Pre-delete only the aggregated/derived NDWS outputs:** hazard_risk NDWS `_int` per-crop tifs (all models — the truncated §5.3 outputs) + vop/vop_usd NDWS `_int` tifs (R/3 §4.1) + NDWS `_int_adm` parquets incl. the partial `vop_intld15` annual ENSEMBLE mean+sd (R/3 §4.2).
+- **§5.2 is a near no-op** on recovery (per-GCM stacks all exist → overwrite=FALSE skips). Safe to include as a belt; the required rebuild stages are **§5.3 + R/3**.
+
+**Q2 — audit + guard: DONE, guard applied (`5a566a5`).** Swept all 7 `.rebake_scope` sites. Only **two** aggregate multi-scenario stacks and therefore truncate under scoping:
+- **R/2 §5.3 (L1653)** — per-model `_int` aggregation (the bug).
+- **R/3 §4.1 (L475)** — reads those `_int` stacks; token `historic` would keep only `model==historic` files (2nd truncation vector you dodged by running R/3 plain).
+- **Safe (per-scenario outputs, scoping is correct):** R/2 L711 (§1 class), L792/L807 (§2 freq), L1140 (§4 ensemble), L1352 (§5.2 class-input → per-scenario stacks). §5.2-main output (L1471) is also single-scenario (`<scen_mod_time>_<combo>.tif`) → safe.
+- **Guard applied:** §5.3 now reads the **full unfiltered** `haz_time_int` set (warns if `REBAKE_SCENARIO` set); R/3 `.rebake_scope` is now **identity + warn** (R/3 has zero per-scenario products — all `_int` inputs are stacks, all outputs baseline). Non-value-affecting (fires only when REBAKE is set; recovery uses none). This makes the truncation **structurally impossible** to repeat — §5.3/R/3 physically cannot emit a scoped stack. **`git pull` → head `5a566a5` before the recovery run.**
+
+**Q3 — overwrite semantics: YES, one pass, full stack, no toggle.** With the NDWS `_int` outputs pre-deleted, §5.3 sees `file.exists==FALSE` → builds; with inputs unfiltered, `files[hazard==combo & model==model_choice]` gathers **all** scenario/timeframe stacks for that model → the full multi-scenario `_int` in a single `terra::rast(files)` pass. No extra flag. (Historic-model `_int`, if any, is 9-layer by design = 1 timeframe × 9 subtypes — that's correct, not truncation; the truncation was only the GCM/ENSEMBLE `_int` files losing their ssp layers.) `overwrite5.3`/`overwrite` stay FALSE.
+
+**Recovery recipe (validated):**
+```bash
+git pull   # head 5a566a5
+# 1. pre-delete NDWS aggregated/derived outputs (NOT haz_time_int per-GCM stacks):
+#    - hazard_risk/**/<crop>_*_*_<NDWS-combo>_int.tif  (all models)
+#    - vop/**, vop_usd/**  NDWS _int tifs
+#    - <...>_int_adm.parquet  (vop + vop_usd, incl partial vop_intld15 annual ENSEMBLE mean+sd)
+# 2. rebuild stacks + exposure UNSCOPED (no REBAKE_SCENARIO), overwrite=FALSE:
+RUN_R2_RUN5_2=1 RUN_R2_RUN5_3=1 Rscript R/2_calculate_haz_freq.R    # §5.2 no-op if stacks intact; §5.3 rebuilds full _int
+Rscript R/3_freq_x_exposure.R                                        # plain: §4.1 vop tifs + §4.2/§4.2.1 parquets
+```
+Verify before publish: NDWS GCM `_int` nlyr back to ~136 (matches PTOT sibling); historic layers de-saturated; future layers = status-quo (unchanged vs live); ENSEMBLE `_int_adm` parquet has ssp rows again. Then publish → CR-068 on AGO. **Proper future NDWS de-saturation stays Track-2.**
+
+---
+
 > ▶▶ **MACBOOK ACTION REQUESTED (p.steward decision 2026-07-01): validate the corrected stack-stage strategy before cglabs re-runs. Include future in the rebuild (status-quo values).**
 >
 > p.steward chose: **(1) hand the strategy to macbook first** (don't let cglabs improvise the re-run); **(2) include future NDWS** in the rebuild (values = current-live/unchanged; proper future de-sat stays Track-2).
