@@ -1,3 +1,16 @@
+> ▶▶ **MACBOOK ACTION REQUESTED (p.steward decision 2026-07-01): validate the corrected stack-stage strategy before cglabs re-runs. Include future in the rebuild (status-quo values).**
+>
+> p.steward chose: **(1) hand the strategy to macbook first** (don't let cglabs improvise the re-run); **(2) include future NDWS** in the rebuild (values = current-live/unchanged; proper future de-sat stays Track-2).
+>
+> **Please decide + push the corrected approach for the stack-stages (§5.2/§5.3/R/3):**
+> - **Q1 — recovery mechanism.** The truncated NDWS `_int` future layers are already gone (overwritten to 9-layer historic), so a layer-surgical "replace historic only" is NOT possible — a **full multi-scenario NDWS rebuild** is required regardless. Confirm the cglabs recipe: pre-delete the NDWS artifacts (`_int` in hazard_risk + haz_time_int, NDWS vop tifs in vop/vop_usd, and the partially-rebuilt annual `vop_intld15` parquets) → re-run **§5.2/§5.3** and **R/3** for NDWS **WITHOUT `REBAKE_SCENARIO`** (scope = pre-delete + `overwrite=FALSE`; §5.2 restacks all scenarios from the intact freq). Is that the approach you want, or do you prefer a **hazard-scope** knob (rebuild NDWS combos across all scenarios) added to §5.2/§5.3?
+> - **Q2 — audit.** Your earlier holistic pass covered R/2's `scenario=="historic"` branches, but the failure here is the **`REBAKE_SCENARIO` input-filter interacting with multi-scenario STACK outputs** at §5.2/§5.3/R/3. Please audit those three for any other place a scenario-scoped run truncates a stack (so a re-run doesn't silently drop future again). Consider making `REBAKE_SCENARIO` **error/warn** when the stage writes multi-scenario stacks.
+> - **Q3 — overwrite semantics.** With `overwrite=FALSE`, will §5.2 actually rebuild a pre-deleted NDWS `_int` as a **full 136-layer** stack (all scenarios) in one pass, or does it need a specific toggle? Confirm so the recovery run is right first time.
+>
+> **cglabs is HOLDING** — no re-run, no publish — until macbook pushes the validated recipe. Corrupted-local inventory to fix on recovery: NDWS `_int` (hazard_risk+haz_time_int) = historic-only 9-layer; NDWS vop tifs = historic-only; a few annual `vop_intld15` `_int_adm` parquets (ENSEMBLE mean+sd, partial — R/3 crashed at §4.2.1) = historic-only-NDWS. Everything else (per-scenario freq/class/timeseries; non-NDWS stacks) is intact.
+>
+> ---
+>
 > 🛑 **CGLABS (2026-07-01): STRATEGY BUG FOUND — historic-scoping TRUNCATED the multi-scenario NDWS `_int` stacks. NOT published (live Atlas safe). Recovery feasible. Needs a decision.**
 >
 > **What broke:** the `_int` / vop / admin-parquet layers are **multi-scenario STACKS**, not per-scenario files. A PTOT `_int` tif = **136 layers** (9 interaction-subtypes × {historic + ssp126/245/370/585 × periods}). But `R/2 §5.3` run under `REBAKE_SCENARIO=historic` rebuilt the NDWS `_int` tifs as **historic-only (9 layers)** — dropping 127/136 layers (all future). Cascade: R/3 §4.1 built historic-only NDWS vop → §4.2 parquet has NDWS `hazard_vars` for **historic only, 0 ssp**. Confirmed: `Data/hazard_risk/annual/...NDWS+THI-max+NDWL0_int.tif` nlyr=9 (historic), mtime today; sibling PTOT `_int` nlyr=136 (all scenarios).
