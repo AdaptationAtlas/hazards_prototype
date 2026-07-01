@@ -311,19 +311,20 @@ names(boundaries_index) <- names(Geographies)
 # Set FORCE_OVERWRITE=1 in env to force regen of all gated outputs.
 # Used by the issue #9 rebake runbook so the v9 mass-conserving fix
 # actually lands in hazard_exposure.parquet.
-# REBAKE_SCENARIO: comma-list of filename tokens to KEEP (e.g. "historic") for a
-# scenario-scoped re-bake. UNSET -> no-op (default). Filters processing-input file
-# lists AND implies overwrite=TRUE so the matching outputs actually rebuild (the
-# filter restricts processing to the matching scenario, so non-matching outputs are
-# never regenerated). Mirrors R/2.
+# REBAKE_SCENARIO: INERT in R/3 by design (2026-07-01). R/3 has NO per-scenario
+# products: every _int input is already a per-model, all-scenario STACK (historic
+# + ssp layers in one tif, built by R/2 §5.3) and every output (vop / vop_usd
+# tifs + parquets) is baseline. Filtering the inputs by a scenario token would
+# TRUNCATE those stacks (keep only model=="historic" _int files, drop future
+# layers) - the exact bug that corrupted the NDWS re-bake. So .rebake_scope never
+# filters here; it warns if REBAKE_SCENARIO is set and returns the full list.
+# Scope R/3 to a hazard by PRE-DELETE + overwrite=FALSE instead (rebuilds only the
+# deleted outputs, full multi-scenario, from the intact stacked inputs).
 .rebake_keep <- trimws(strsplit(Sys.getenv("REBAKE_SCENARIO", ""), ",", fixed = TRUE)[[1]])
 .rebake_keep <- .rebake_keep[nzchar(.rebake_keep)]
-.rebake_scope <- function(files) {
-  if (length(.rebake_keep) == 0L) return(files)
-  files[Reduce(`|`, lapply(.rebake_keep, function(t) grepl(t, basename(files), fixed = TRUE)))]
-}
-overwrite <- nzchar(Sys.getenv("FORCE_OVERWRITE"))   # scoping = pre-delete + overwrite=FALSE (fails safe); .rebake_scope filters inputs
-if (length(.rebake_keep)) cat("REBAKE_SCENARIO active (R/3, input filter) - keeping only:", .rebake_keep, "\n")
+.rebake_scope <- function(files) files   # never filter: inputs are multi-scenario stacks
+overwrite <- nzchar(Sys.getenv("FORCE_OVERWRITE"))   # scoping = pre-delete + overwrite=FALSE (fails safe)
+if (length(.rebake_keep)) cat("WARNING: REBAKE_SCENARIO is IGNORED in R/3 - inputs are multi-scenario stacks (filtering truncates future layers). Scope by pre-delete + overwrite=FALSE instead.\n")
 
 ### d.2.1) Crops (MapSPAM) #####
 #### d.2.1.1) Crop VoP (Value of production) ######

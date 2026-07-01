@@ -1650,7 +1650,16 @@ for (tx in seq_along(timeframes)) {
     .sec2_start(timeframe, "5.3) Per-crop combine")
 
     # Make a table of interaction stack files
-    haz_int_files <- .rebake_scope(list.files(haz_time_int_dir, full.names = TRUE))
+    # §5.3 aggregates EVERY scenario/timeframe of each model into ONE per-model
+    # _int stack (save_file is keyed by model; `files` is gathered by
+    # model==model_choice across all scenarios). A GCM stack therefore holds its
+    # historic_<gcm> AND ssp*_<gcm> layers together. Scenario-scoping the INPUTS
+    # here truncates those stacks -> the 2026-07-01 historic re-bake dropped all
+    # future layers (GCM _int built historic-only, 9 vs 136 layers). §5.3 must
+    # read the FULL, unfiltered interaction-stack set; REBAKE_SCENARIO is inert
+    # here by design (warn if set so a scoped multi-stage run is not a surprise).
+    if (length(.rebake_keep)) cat("WARNING (5.3): REBAKE_SCENARIO ignored - 5.3 stacks all scenarios per model; filtering truncates future layers. Reading full haz_time_int set.\n")
+    haz_int_files <- list.files(haz_time_int_dir, full.names = TRUE)
 
     # Split the file elements
     split_elements <- strsplit(basename(haz_int_files), "_")
