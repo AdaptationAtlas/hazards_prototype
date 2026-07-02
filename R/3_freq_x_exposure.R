@@ -1390,18 +1390,45 @@ for (tx in seq_along(timeframe_choices)) {
             if (!file.exists(save_file) || overwrite4 == TRUE) {
               cat(timeframe, "4.2.1) merging ENSEMBLEmean and ENSEMBLEsd into single table. File =", basename(save_file), "     \n")
 
-              # In the mean and sd files should be in exactly the same order so a simple assign should work
+              # value_sd is attached POSITIONALLY (en_mean$value_sd <- en_sd$value),
+              # so both frames must be in identical row order. They are NOT as
+              # written: §4.2 sorts each by order_by = c(iso3,admin0,admin1,admin2,
+              # crop) (L1341/L1166), which omits hazard/scenario/timeframe/
+              # hazard_vars — so within a sort group those rows land in divergent
+              # order between the mean and sd files and the positional assign
+              # misaligns (CGLABS 2026-07-02). Fix: co-sort BOTH by the FULL shared
+              # identity here, in memory, right before the assign. setorderv uses a
+              # stable radix sort and both files come off the identical extraction
+              # path, so even genuine ties (CR-115 disputed-sliver / duplicate-
+              # admin-name rows, ~0.16%) keep the same relative order in both ->
+              # 1:1 alignment WITHOUT a keyed join (a join would row-multiply on
+              # the dups). Includes every gaul code so the key is dup-complete.
               en_mean <- arrow::read_parquet(en_files_mean[g])
-              en_sd <- arrow::read_parquet(gsub("ENSEMBLEmean", "ENSEMBLEsd", en_files_mean[g]),
-                col_select = c("value", "gaul2_code", "hazard")
-              )
+              en_sd <- arrow::read_parquet(gsub("ENSEMBLEmean", "ENSEMBLEsd", en_files_mean[g]))
+              data.table::setDT(en_mean)
+              data.table::setDT(en_sd)
 
               if (nrow(en_mean) != nrow(en_sd)) {  # arrow::read_parquet -> tibble; en_mean[,.N] is length-0 on a tibble -> if() errors. CGLABS 2026-06-30, flagged for macbook ratification.
                 stop(timeframe, " 4.2.1 - row lengths differ between ensemble mean and sd")
               }
 
-              if ((sum(en_mean$gaul2_code != en_sd$gaul2_code, na.rm = TRUE) + sum(en_mean$hazard != en_sd$hazard, na.rm = TRUE)) > 0) {
-                stop(timeframe, " 4.2.1 - mismatch in row order between ensemble mean and sd")
+              .merge_key <- c(
+                "iso3", "gaul0_code", "gaul1_code", "gaul2_code",
+                "admin0_name", "admin1_name", "admin2_name",
+                "scenario", "timeframe", "hazard", "hazard_vars", "crop"
+              )
+              .merge_key <- intersect(.merge_key, intersect(names(en_mean), names(en_sd)))
+              data.table::setorderv(en_mean, .merge_key, na.last = TRUE)
+              data.table::setorderv(en_sd, .merge_key, na.last = TRUE)
+
+              # Full-identity alignment guard: compare a composite key string
+              # (per-column `!=` would NA-drop the aggregate rows where gaul is NA
+              # and silently pass a misalignment). Must be exact before the assign.
+              .k_mean <- do.call(paste, c(en_mean[, .SD, .SDcols = .merge_key], sep = "\r"))
+              .k_sd <- do.call(paste, c(en_sd[, .SD, .SDcols = .merge_key], sep = "\r"))
+              if (!identical(.k_mean, .k_sd)) {
+                stop(timeframe, " 4.2.1 - mean/sd row identity mismatch after co-sort (",
+                     sum(.k_mean != .k_sd), " of ", length(.k_mean), " rows)")
               }
 
               en_mean$value_sd <- en_sd$value
