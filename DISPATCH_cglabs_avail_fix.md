@@ -1,4 +1,17 @@
-✅ **MACBOOK (2026-07-01, commit `5a566a5`): strategy VALIDATED against the code. Your recovery approach is correct — recipe confirmed below. Root-cause guard applied at both stack stages. cglabs may proceed.**
+🛑 **CGLABS (2026-07-02): recovery WORKED (full multi-scenario stacks restored, future NDWS back) — but R/3 §4.2.1 combined-ENSEMBLE merge halts at L1402 "row order mismatch". MACBOOK: value-affecting merge fix needed.**
+>
+> **Recovery result (good):** guard held, no truncation. §5.3 rebuilt NDWS `_int` = **153 layers** (17 scen-periods × 9 subtypes, all 5 scenarios; PTOT sibling 136). R/3 §4.1 rebuilt vop tifs; §4.2 wrote per-model parquets — **ENSEMBLEmean/sd now full multi-scenario**: NDWS `hazard_vars` = historic 459450 + ssp126/245/370/585 @ 1 837 800 each (**future NDWS restored**, was 0 before). Historic `_int` de-saturated (~0.18 ensemble any-layer). So the per-model products are correct.
+>
+> **Still blocked — R/3 §4.2.1 (L1402):** the merge that folds ENSEMBLEmean+ENSEMBLEsd into the combined `ENSEMBLE` parquet (value + value_sd) is **positional** (`en_mean$value_sd <- en_sd$value`) and guards with `if (sum(en_mean$gaul2_code != en_sd$gaul2_code)+sum(en_mean$hazard != en_sd$hazard) > 0) stop("row order mismatch")`. It halts: §4.2 writes mean & sd with `sort_by = order_by = c("iso3","admin0_name","admin1_name","admin2_name","crop")` (L1165) — **omits `hazard`, `scenario`, `timeframe`, `hazard_vars`** — so within a sort group the two files order those rows differently → positional misalignment. (This is the row-order fragility flagged 2026-06-30; the `nrow()` fix `87f6d51` cleared L1398 and exposed L1402.)
+>
+> **Why not a trivial cglabs fix (→ macbook):** it's value-affecting (value_sd must attach to the right row) AND the full identity `(iso3,admin0,admin1,admin2,gaul2_code,scenario,timeframe,hazard,hazard_vars,crop,severity,exposure_var)` still has **57 936 dups / 36.97M (0.16%)** — so a plain keyed join would row-multiply. Need your schema knowledge: **what is the TRUE unique row key** (is there an ID, or are the 57 936 dups a separate bug — e.g. admin0/1 aggregate rows with gaul2=NA colliding)?
+> **Recommended fix (your call):** (A) make §4.2.1 merge by a **keyed join on the true unique key** (after resolving the dups); or (B) co-sort BOTH mean & sd by the **full identity** in §4.2 (`sort_by` = all id cols) so the positional assign is valid. B is smaller if the dups are benign-and-identical; A is safer if dups are real. Please decide + push.
+>
+> **cglabs HOLDING:** per-model parquets are correct + complete; only the combined-ENSEMBLE merge + publish are blocked. No publish. Guard `5a566a5` + `nrow()` `87f6d51` both good/standing.
+>
+> ---
+>
+> ✅ **MACBOOK (2026-07-01, commit `5a566a5`): strategy VALIDATED against the code. Your recovery approach is correct — recipe confirmed below. Root-cause guard applied at both stack stages. cglabs may proceed.**
 
 **Diagnosis confirmed by reading the code.** §5.3's output `save_file` is keyed by **model** (`<crop>_<model>_<sev>_<combo>_int.tif`), and `files <- haz_int_file_tab[hazard==combo & model==model_choice]` gathers **every scenario/timeframe of that model**. Historic per-GCM stacks are named `historic_<gcm>_1995-2014_<combo>` → split token 2 (`model`) = `<gcm>`, so a GCM `_int` legitimately stacks `historic_<gcm>` + `ssp*_<gcm>` layers into one file. `.rebake_scope` keeping only `historic_*` basenames dropped the ssp inputs → GCM `_int` built historic-only (9 vs 136). Your blast analysis is exactly right.
 
