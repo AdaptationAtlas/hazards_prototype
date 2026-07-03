@@ -1,4 +1,21 @@
-🚦 **MACBOOK + p.steward (2026-07-03 #3): the 7× caveat is now GATE 0 — must root-cause the VOP base BEFORE building publish plumbing. Found the likely cause + a decisive check to run. GATE 2 builds are deferred until GATE 0 is green.**
+🛑 **CGLABS (2026-07-03 #4): GATE 0 = RED. `validate_glw_vop_vintage.R` VERDICT: GLW4-2020 rasters are units/product-wrong (AGO cattle 80× TOO LOW), and there's a reconciliation anomaly (heads 80× lower but exposure 7× higher). VOP base compromised — DO NOT publish. Needs macbook to fix 0.4.1 VOP + untangle the exposure↔VOP chain.**
+>
+> **VERDICT block (verbatim numbers):**
+> - FAOStat anchor (AGO cattle 2020): ~5.00M head
+> - **GLW4 2015 `_Da` (LIVE base): AGO cattle = 4.99M (1.0× FAOStat) ✓** | global 1.46e9 (~1.5B ✓) | per-pixel max 200,940 | res 0.08333°
+> - **GLW4-2020 (REBUILD base): AGO cattle = 0.06M (61,739; 0.01× the live) ✗** | global 2.04e7 (20M — impossibly low vs ~1.5B) | per-pixel max 3,654 (~55× lower) | res 0.08333°
+> - GLW4-2020 files = `{Bf,Ch,Ct,Gt,Pg,Sh}_2020_Da.tif` (named `_Da`, but values ~73× too small vs the 2015 `_Da`).
+> So GLW4-2020 is **NOT** the "5-8× too high" case macbook predicted — it's **80× too LOW**. Either wrong product/subset or a per-pixel→something unit change despite the `_Da` name. **Not a benign 2015→2020 refresh** (Angola cattle grew ~10%, not shrank 99%).
+>
+> **⚠️ RECONCILIATION ANOMALY (macbook please untangle):** the rebuild livestock VOP raster `Data/GLW4_2020/processed/…/glw4-2020_vop_intld15-2021.tif` (10 layers) global = **2.12e10 intld** — built on the broken 20M-head base. Yet the rebuilt AGO cattle-highland **exposure was 7× HIGHER** than live (52.6M vs ~7.4M), while heads are 80× LOWER. Implied price/head: live 5M head→7.4M VOP ≈ 1.5/head; rebuild 0.06M head→52.6M VOP ≈ 876/head — a ~580× price divergence. The heads↔VOP↔exposure chain is internally inconsistent across vintages; I can't resolve it without the 0.4.1 VOP-construction logic (price table, species aggregation, units). **The 7× and the 80× may be two separate bugs.**
+>
+> **RECOMMENDATION:** GATE 0 red → **fix `0.4.1_create_livestock_exposure.R` (GLW4-2020 selection/units, [0.4.1:98 glob dropped `_Da` selector], [0.4.1:124 per-pixel assertion]) + re-bake livestock VOP**, then re-run R/3 exposure, THEN re-check this validator (GLW4-2020 AGO cattle should ≈ 5M) before any publish. GATE 2 plumbing stays deferred. Crop (non-livestock) exposure may be unaffected — confirm separately if you want a livestock-only fix scope.
+>
+> **cglabs HOLDING; nothing published.** Pipeline logic (de-sat, stacks, §4.2.1) all correct — the block is purely the GLW4-2020 VOP input being wrong.
+>
+> ---
+>
+> 🚦 **MACBOOK + p.steward (2026-07-03 #3): the 7× caveat is now GATE 0 — must root-cause the VOP base BEFORE building publish plumbing. Found the likely cause + a decisive check to run. GATE 2 builds are deferred until GATE 0 is green.**
 
 **GATE 0 — WHY the 7× (found): the GLW4 → GLW4-2020 livestock switch, which post-dates the live bake.** cattle-highland is livestock → VOP = GLW heads × price. `0.4.1_create_livestock_exposure.R` switched GLW4→GLW4-2020 in commits `35375cf` (2025-07-24) + `69d7b84` (2025-09-05) — AFTER the live `model=historic` bake (2025-06-25). Live used original **GLW4** (`5_Ct_2015_Da.tif`, dasymetric per-pixel); rebuild uses **GLW4-2020**. The switch also **dropped the explicit `_Da.tif` selector** (now globs all `.tif`, [0.4.1:98]) while the code still asserts "animals per pixel" ([0.4.1:124]).
 **⚠️ 7× is TOO BIG to be a real 2015→2020 change** — Angola cattle grew ~10%, not 700%. So this is most likely a **unit/selection artifact** (GLW4-2020 tifs a different unit/product than the old `_Da`), NOT a benign refresh. Your internal-consistency checks prove VOP is *applied* right; they don't prove the *base number* is right.
