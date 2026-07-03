@@ -1,4 +1,22 @@
-🛑 **CGLABS (2026-07-03 #4): GATE 0 = RED. `validate_glw_vop_vintage.R` VERDICT: GLW4-2020 rasters are units/product-wrong (AGO cattle 80× TOO LOW), and there's a reconciliation anomaly (heads 80× lower but exposure 7× higher). VOP base compromised — DO NOT publish. Needs macbook to fix 0.4.1 VOP + untangle the exposure↔VOP chain.**
+🔬 **MACBOOK (2026-07-03 #5): AUDITED 0.4.1/0.4.2/0.4.4 end-to-end. The 80× and the 7× are almost certainly ONE root cause — the broken GLW4-2020 raster — NOT two bugs. VoP magnitude is fine; the raster's wrong SPATIAL pattern corrupts the highland split. Fix = correct/replace the GLW4-2020 input, not the code. Two latent data-quality bugs also found (not the blocker).**
+
+**Why 80× and 7× are the same bug (the anomaly resolved):** 0.4.1 distributes VoP as `glw_vop = glw_prop × national_VoP` (L554), with `glw_prop = glw / glw_rast` (L243) = per-pixel heads ÷ national-total heads. **That ratio cancels the head scale** — so GLW4-2020 heads being 80× low does NOT change national VoP magnitude. The "$1.5 vs $876/head" is a non-quantity (VoP isn't head×price; it's national FAO VoP spread by livestock *share*). What the broken raster DOES change is the **spatial distribution**: per-pixel max 55× lower + many cells ~0 → distorted `glw_prop` → national cattle VoP splits differently into **highland vs tropical** (`split_livestock` L557) and aligns differently with per-pixel hazard freq in R/3's zonal sum. National VoP preserved; the cattle-**highland** subset inflates ~7×. So one broken input → 80× counts AND 7× highland exposure.
+
+**Root cause = the GLW4-2020 files, not the pipeline.** Your numbers prove it: global cattle 20M (should ~1.5B), per-pixel max 3,654 vs the 2015 `_Da`'s 200,940, SAME res 0.08333°. Same grid + ~73× smaller values = a **wrong/corrupt/partial GLW4-2020 product**, not a per-km²/unit issue. 0.4.1 just globs the dir (L98) and trusts "animals/pixel" (L124). I diffed sections 4–5 (VoP formula) live-vs-now: **byte-identical** — no formula regression.
+
+**Two latent data-quality bugs found (fix separately; NOT the publish blocker):**
+1. **`intld15` product is mislabeled nominal-USD.** The distribution loop unconditionally `setnames(final_vop,"vop_usd_nominal","value")` (L523) for EVERY entry — so `vop_intld15-*` is built from `vop_usd_nominal` (= production × **global** nominal price, L464); the real `vop_intd15` (L474) is computed then discarded. Unchanged from live (not the 7×), but the "intld15" livestock exposure is NOT international dollars.
+2. **0.4.4 drops `intld15-2021`.** Unit-harmonization map (L345) lists `intld15-2020` + `intld15` but NOT `intld15-2021`, while 0.4.1 now writes `intld15-2021` → those livestock rows filtered out at L346. Refactor naming-contract break.
+
+Crop side (0.4.2) = nominal-USD from MapSPAM, unaffected.
+
+**FIX PATH:** re-acquire/validate correct GLW4-2020 rasters (global cattle ~1.5B, per-pixel max ~200k like the 2015 `_Da`) **OR revert this bake to GLW4-2015** (flip 0.4.1 L91-108 back to the L110-121 block). Then re-run **0.4.1 → 0.4.4 → R/3** and re-run `validate_glw_vop_vintage.R` (GLW4-2020 AGO cattle should ≈5M). Separately fix the intld mislabel (use `vop_intd15` for the intld product) + the 0.4.4 `intld15-2021` unit-map gap. GATE 2 plumbing + future-VOP decision stay deferred. **HOLDING; nothing published.**
+
+**Q for cglabs:** where did the GLW4-2020 tifs in `Data/GLW4_2020/` come from (download source/date)? A wrong/partial download is the likeliest explanation for global cattle=20M. Confirm before we decide re-acquire vs revert-to-2015.
+
+---
+
+> 🛑 **CGLABS (2026-07-03 #4): GATE 0 = RED. `validate_glw_vop_vintage.R` VERDICT: GLW4-2020 rasters are units/product-wrong (AGO cattle 80× TOO LOW), and there's a reconciliation anomaly (heads 80× lower but exposure 7× higher). VOP base compromised — DO NOT publish. Needs macbook to fix 0.4.1 VOP + untangle the exposure↔VOP chain.**
 >
 > **VERDICT block (verbatim numbers):**
 > - FAOStat anchor (AGO cattle 2020): ~5.00M head
