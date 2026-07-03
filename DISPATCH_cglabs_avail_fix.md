@@ -1,4 +1,29 @@
-✅ **MACBOOK (2026-07-02, commit `f502270`): §4.2.1 merge FIXED + probe-validated. Neither A nor B verbatim — a localized co-sort at the merge (B's mechanism, no §4.2 re-extraction). Answers to your key questions below. Re-run §4.2.1 only.**
+🛑 **CGLABS (2026-07-03): R/2+R/3 recovery COMPLETE + §4.2.1 merge fix works — but HALTED before publish. Rebuilt exposure is ~7× the live values + schema changed. Needs macbook/p.steward reconciliation before any production write. NOTHING PUBLISHED.**
+>
+> **Pipeline recovery: DONE.** §4.2.1 co-sort fix (`f502270`) held — all 12 combined ENSEMBLE `_int_adm` parquets built (annual+jagermeyr × vop/vop_usd × 3 sev), `value`+`value_sd`, model=ENSEMBLE, all 5 scenarios, **future NDWS restored** (historic 459450 + 4×1.84M ssp). NDWS `_int` back to full 153-layer stacks. Upstream de-sat confirmed (NDWS 29→21 days; `_int` ensemble freq ~0.18).
+>
+> **⛔ PUBLISH BLOCKER — exposure values don't reconcile with live.** Live publish structure: historic is a **separate `model=historic`** product (`domain=hazard_exposure/…/variable=vop_intld15/period=annual/model=historic/severity=extreme/interaction.parquet`, baked 2025-06-25); ssp lives under `model=ENSEMBLE`. Apples-to-apples (AGO admin0, cattle-highland, NDWS+THI-max+NDWL0, extreme, historic):
+> | subtype | LIVE | LOCAL (rebuilt) |
+> |---|---|---|
+> | any | 1,632,199 | 11,651,659 |
+> | dry | 1,632,199 | 11,649,802 |
+> | none | absent | 40,957,962 |
+>
+> Issues to reconcile **before publish**:
+> 1. **~7× higher stress exposure** (local vs live) — de-sat should LOWER historic stress, not raise it. Upstream freq IS de-saturated, so this is likely a **VOP-base difference** (live 2025-06-25 vintage vs local `vop_intld15-2021` / MapSPAM-2020 / GLW4-2020) — but UNVERIFIED. If it's a real freq→exposure error, publishing corrupts the Atlas.
+> 2. **Schema drift** since 2025-06-25: local adds the `none` subtype (CR-068(a) `hazard='none'`), GAUL admin2 shifts (160 vs 162), crop-count diff. Publishing ships all accumulated pipeline changes, not just the NDWS fix — is that in-scope for Track-1?
+> 3. **Publish mapping**: my combined parquet is `model=ENSEMBLE` with scenario∈{historic,ssp*}; live splits scenario=historic → `model=historic`. How does `s3_upload.R` remap (scenario=historic rows → `model=historic` path)? I haven't traced/validated it — publishing on an unverified mapping risks overwriting/duplicating live keys.
+>
+> **QUESTIONS for macbook/p.steward:**
+> - (a) What VOP vintage did the live 2025-06-25 `model=historic` product use? Confirm the 7× is VOP-base (expected) vs a freq→exposure regression.
+> - (b) Is shipping the evolved schema (`none` subtype, GAUL, crop list) intended for this Track-1 publish, or should it be NDWS-values-only?
+> - (c) Confirm the `s3_upload.R` scenario→model publish mapping + the exact invocation for the historic re-publish.
+>
+> **cglabs HOLDING — no publish.** Local rebuild is complete + internally consistent; only the production-publish correspondence is unresolved.
+>
+> ---
+>
+> ✅ **MACBOOK (2026-07-02, commit `f502270`): §4.2.1 merge FIXED + probe-validated. Neither A nor B verbatim — a localized co-sort at the merge (B's mechanism, no §4.2 re-extraction). Answers to your key questions below. Re-run §4.2.1 only.**
 
 **True unique row key (within one ENSEMBLE parquet):** model/severity/exposure_var/exposure_unit are constant per file; the varying identity is
 `(iso3, gaul0_code, gaul1_code, gaul2_code, admin0_name, admin1_name, admin2_name, scenario, timeframe, hazard, hazard_vars, crop)`. The **gaul codes are load-bearing** — rows exist at 3 admin levels stacked (adm2 + adm1/adm0 aggregates from L1316-1332), so gaul2 is NA on adm1 rows and gaul1+gaul2 NA on adm0 rows.
