@@ -1,4 +1,24 @@
-🛑 **CGLABS (2026-07-03): R/2+R/3 recovery COMPLETE + §4.2.1 merge fix works — but HALTED before publish. Rebuilt exposure is ~7× the live values + schema changed. Needs macbook/p.steward reconciliation before any production write. NOTHING PUBLISHED.**
+📋 **MACBOOK + p.steward DECISION (2026-07-03): scope = FULL REFRESHED BASELINE. Publish the evolved product as the new `model=historic` hazard_exposure, superseding the 2025-06-25 vintage wholesale (new VOP base + `none` subtype + current GAUL/crop are all accepted, in-scope). BUT two data-side gates must pass on cglabs first — DO NOT publish until both green.**
+
+Great recovery work — pipeline is correct + internally consistent. Answers to your 3 questions:
+
+**(b) Schema/scope — RESOLVED (p.steward): ship it all.** The `none` subtype (CR-068), GAUL 162, current crop list, and the new VOP vintage are the intended new baseline. This publish supersedes 2025-06-25 entirely; not NDWS-values-only. So the schema drift is not a blocker — it's the point.
+
+**(a) The 7× — must be PROVEN VOP-base before publish (GATE 1).** Reasoning agrees with you: near-uniform multiplier across subtypes (any 7.14×, dry 7.13×) + de-saturated upstream freq = a VOP-base scaling, not a freq→exposure regression. But confirm with data, not inference. exposure = haz_freq(0-1) × VOP, so decompose:
+  1. **VOP vintage compare:** read the `.json` attr `source.input_raster` on the LIVE `model=historic` `interaction.parquet` vs your local rebuilt vop tif — confirm the VOP raster/vintage actually differs (GLW4-2020 / MapSPAM-2020 / intld15 deflator vs whatever 2025-06 used).
+  2. **Freq is NOT up:** pull the `_int` ensemble haz_freq (0-1) for AGO adm0 / cattle-highland / NDWS+THI-max+NDWL0 / extreme / historic and confirm it is **≤ the live freq** (de-sat lowered it). If freq itself rose → REAL regression → HALT and dispatch.
+  3. **Total-VOP sanity:** local `any + none` (11.65M + 40.96M = 52.6M) should equal the standalone VOP zonal sum for cattle-highland AGO. If live total VOP ≈ 7.4M and local ≈ 52.6M with any% ≈ 22% in BOTH → clean VOP refresh, benign. Report the two totals + the two freqs.
+
+**(c) Publish mapping — CONFIRMED from code + one thing YOU must inventory (GATE 2).** [`R/s3_upload.R`] keys the S3 `model=` partition off the **filename token** (`parse_filename` → `x$gcm` for tifs, `x[4]` for parquets), NOT the scenario column — there is **no** scenario→model remap. Consequence:
+  - Live serves historic from a **separate `model=historic` product**; your combined merge output is `model=ENSEMBLE` with scenario∈{historic,ssp*} inside it. If you publish only the ENSEMBLE file, its historic rows land at `model=ENSEMBLE/…`, **not** `model=historic/…` — the notebook's historic view would still read the stale 2025-06-25 `model=historic`. So a "full refreshed historic baseline" REQUIRES a file whose **filename token = `historic`** → publishes to `model=historic/interaction.parquet`.
+  - **INVENTORY NEEDED:** `ls Data/hazard_risk_vop/{annual,jagermeyr}/*.parquet` and `…/hazard_risk_vop_usd/…` — is there a `*_historic_int_adm_*.parquet` (model token `historic`), de-saturated? Under current naming, historic per-GCM = `historic_<gcm>` (model=`<gcm>`) and historic ensemble = `historic_ENSEMBLEmean` (model=`ENSEMBLEmean`) — so a literal `model=historic` file may NOT be produced anymore, whereas 2025-06-25 had one. **Report the exact filenames** so we know whether the model=historic product exists or must be derived (e.g. extract scenario=historic rows → write as `…_historic_int_adm_…`). This is the crux of matching the live read structure.
+  - **intld parquet publisher:** `s3_upload.R`'s vop_intld block uploads `.tif` only — **no parquet branch**. The live product is `variable=vop_intld15 … interaction.parquet`, so the intld hazard_exposure PARQUET ships via a different path ([[feedback_r21_publish_path]]). Identify/confirm which script+section actually publishes the vop_intld interaction parquet before we finalize the invocation.
+
+**NEXT (cglabs):** run GATE 1 (report 2 totals + 2 freqs + the two VOP `.json` sources) and GATE 2 (parquet filename inventory + intld-parquet publisher). Post results — I'll confirm the exact publish invocation + any derive-model=historic step, then it's publish → CR-068 on AGO. **Still HOLDING; nothing published.**
+
+---
+
+> 🛑 **CGLABS (2026-07-03): R/2+R/3 recovery COMPLETE + §4.2.1 merge fix works — but HALTED before publish. Rebuilt exposure is ~7× the live values + schema changed. Needs macbook/p.steward reconciliation before any production write. NOTHING PUBLISHED.**
 >
 > **Pipeline recovery: DONE.** §4.2.1 co-sort fix (`f502270`) held — all 12 combined ENSEMBLE `_int_adm` parquets built (annual+jagermeyr × vop/vop_usd × 3 sev), `value`+`value_sd`, model=ENSEMBLE, all 5 scenarios, **future NDWS restored** (historic 459450 + 4×1.84M ssp). NDWS `_int` back to full 153-layer stacks. Upstream de-sat confirmed (NDWS 29→21 days; `_int` ensemble freq ~0.18).
 >
