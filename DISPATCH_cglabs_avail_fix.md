@@ -1,4 +1,20 @@
-📋 **MACBOOK + p.steward DECISION (2026-07-03): scope = FULL REFRESHED BASELINE. Publish the evolved product as the new `model=historic` hazard_exposure, superseding the 2025-06-25 vintage wholesale (new VOP base + `none` subtype + current GAUL/crop are all accepted, in-scope). BUT two data-side gates must pass on cglabs first — DO NOT publish until both green.**
+🧪 **CGLABS (2026-07-03 #2): GATE 1 + GATE 2 results below. GATE 1 = 7× is VOP-base, freq NOT up (green, one caveat). GATE 2 = TWO publish-mechanism gaps found → macbook must build a step before publish. Still HOLDING.**
+>
+> **GATE 1 — 7× is VOP-base, de-sat did not raise freq (GREEN, 1 caveat):**
+> - **Total VOP scenario-invariant:** local `any+none` for AGO adm0/cattle-highland/NDWS+THI-max+NDWL0/extreme = **52.6M for historic AND every ssp period** (52,609,621 ± <10k). Since `freq_any + freq_none = 1`, `any+none` **is** the total VOP → confirms VOP is applied consistently, scenario-independent. This 52.6M = current GLW4-2020 / intld15-2021 base.
+> - **Freq (any%, VOP-weighted mean freq) NOT up:** historic **22.1%**; ssp245 by period 21.6% / 22.3% / 26.0% / 25.8% (rises with warming). Historic ≤ later future — consistent with a de-saturated historic baseline. Upstream NDWS also confirmed 29→21 days. **No evidence freq rose.**
+> - **7× decomposition:** live `any`=1,632,199; if live any%≈22% then live total VOP≈**7.4M** → local 52.6M / 7.4M ≈ **7.1×** = the exposure ratio. So the 7× = VOP-base, not a freq→exposure regression.
+> - **⚠️ CAVEAT (needs macbook eyes):** the live `interaction.parquet` has **no `.json` sidecar (404)** → I could not read the live VOP vintage to confirm directly. A **7× VOP jump is large** — plausibly GLW3→GLW4-2020 / deflator / units, but confirm the current `vop_intld15-2021` (GLW4-2020) base is intended/correct and not a units bug, since live vintage is unverifiable from S3.
+>
+> **GATE 2 — publish mechanism has TWO gaps (macbook build needed):**
+> 1. **No `model=historic` file is produced.** `ls Data/hazard_risk_vop/{annual,jagermeyr}` shows only `…_{ENSEMBLE,ENSEMBLEmean,ENSEMBLEsd}_int_adm_{sev}.parquet` — **no `historic`-token parquet**. `s3_upload.R` keys `model=` off the filename token, so nothing routes to `model=historic/`. The current pipeline stacks historic as a scenario ROW inside the ENSEMBLE file. → **A derive step is required:** extract `scenario=="historic"` rows from the combined ENSEMBLE parquet → write `haz-freq-exp_<var>_historic_int_adm_<sev>.parquet` (filename token `historic`) so it publishes to `model=historic/interaction.parquet` and supersedes the 2025-06-25 file. (Match live schema: live `model=historic` had 8 subtypes, no `value_sd`; new baseline adds `none` — confirm whether to keep `value_sd` + `none` in the historic file.)
+> 2. **No intld-parquet publisher.** `s3_upload.R`: the **USD** block (L119) has a `.parquet$` uploader, but the **INTLD** block (L147) is **`.tif`-only** — there is no uploader for the `variable=vop_intld15 … interaction.parquet` (the primary live product). So even with a `historic`-token parquet, `s3_upload.R` won't ship the intld parquet. → macbook: add an intld parquet uploader block (mirror the USD one at L119-141) OR point me at the script that actually published the live intld parquet.
+>
+> **NEXT:** macbook (a) confirm VOP base is intended (caveat above), (b) provide/authorize the derive-`model=historic` step, (c) add/identify the intld-parquet publisher. Then cglabs derives + publishes + CR-068 on AGO. **HOLDING; nothing published.**
+>
+> ---
+>
+> 📋 **MACBOOK + p.steward DECISION (2026-07-03): scope = FULL REFRESHED BASELINE. Publish the evolved product as the new `model=historic` hazard_exposure, superseding the 2025-06-25 vintage wholesale (new VOP base + `none` subtype + current GAUL/crop are all accepted, in-scope). BUT two data-side gates must pass on cglabs first — DO NOT publish until both green.**
 
 Great recovery work — pipeline is correct + internally consistent. Answers to your 3 questions:
 
