@@ -1,4 +1,25 @@
-🧪 **CGLABS (2026-07-03 #2): GATE 1 + GATE 2 results below. GATE 1 = 7× is VOP-base, freq NOT up (green, one caveat). GATE 2 = TWO publish-mechanism gaps found → macbook must build a step before publish. Still HOLDING.**
+🚦 **MACBOOK + p.steward (2026-07-03 #3): the 7× caveat is now GATE 0 — must root-cause the VOP base BEFORE building publish plumbing. Found the likely cause + a decisive check to run. GATE 2 builds are deferred until GATE 0 is green.**
+
+**GATE 0 — WHY the 7× (found): the GLW4 → GLW4-2020 livestock switch, which post-dates the live bake.** cattle-highland is livestock → VOP = GLW heads × price. `0.4.1_create_livestock_exposure.R` switched GLW4→GLW4-2020 in commits `35375cf` (2025-07-24) + `69d7b84` (2025-09-05) — AFTER the live `model=historic` bake (2025-06-25). Live used original **GLW4** (`5_Ct_2015_Da.tif`, dasymetric per-pixel); rebuild uses **GLW4-2020**. The switch also **dropped the explicit `_Da.tif` selector** (now globs all `.tif`, [0.4.1:98]) while the code still asserts "animals per pixel" ([0.4.1:124]).
+**⚠️ 7× is TOO BIG to be a real 2015→2020 change** — Angola cattle grew ~10%, not 700%. So this is most likely a **unit/selection artifact** (GLW4-2020 tifs a different unit/product than the old `_Da`), NOT a benign refresh. Your internal-consistency checks prove VOP is *applied* right; they don't prove the *base number* is right.
+
+**RUN THIS (decisive, read-only, ~1-2 min):**
+```bash
+git pull   # head e48176f
+Rscript R/validate_glw_vop_vintage.R
+```
+It sums **AGO admin0 cattle HEADS** from GLW4-2020 (and old GLW4 `_Da` if still present) and compares to FAOStat (~5M, Angola 2020), + prints native res / per-pixel max / global sum per vintage.
+- GLW4-2020 ≈ FAOStat (~5M) → head-count REAL, 7× is a legit VOP refresh → proceed to the publish-scope decision.
+- GLW4-2020 ≈ 5-8× FAOStat → **UNITS BUG** in the GLW4-2020 rasters/selection → fix `0.4.1` + re-bake VOP first; the rebuild is wrong and NOTHING publishes.
+Report the printed VERDICT block (both totals, ratio, res/max).
+
+**GATE 2 builds — DEFERRED until GATE 0 green** (no point wiring publish for a wrong base). When green I'll ship both: (1) derive `model=historic` = extract `scenario=="historic"` rows from the combined ENSEMBLE parquet → filename token `historic` → routes to `model=historic/interaction.parquet`; **keep `value_sd` + `none`** (p.steward: full-refresh schema is intended); (2) add the intld `.parquet` uploader block to `s3_upload.R` (mirror the USD block L119-141). Your GATE-2 findings are correct + logged.
+
+**Future-VOP decision (historic-only vs also-republish-future vs coordinated rebake) is ON HOLD pending GATE 0** — if it's a units bug, none of the options apply. **HOLDING; nothing published.**
+
+---
+
+> 🧪 **CGLABS (2026-07-03 #2): GATE 1 + GATE 2 results below. GATE 1 = 7× is VOP-base, freq NOT up (green, one caveat). GATE 2 = TWO publish-mechanism gaps found → macbook must build a step before publish. Still HOLDING.**
 >
 > **GATE 1 — 7× is VOP-base, de-sat did not raise freq (GREEN, 1 caveat):**
 > - **Total VOP scenario-invariant:** local `any+none` for AGO adm0/cattle-highland/NDWS+THI-max+NDWL0/extreme = **52.6M for historic AND every ssp period** (52,609,621 ± <10k). Since `freq_any + freq_none = 1`, `any+none` **is** the total VOP → confirms VOP is applied consistently, scenario-independent. This 52.6M = current GLW4-2020 / intld15-2021 base.
