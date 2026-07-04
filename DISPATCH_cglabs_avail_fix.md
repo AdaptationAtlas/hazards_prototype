@@ -1,4 +1,32 @@
-✅ **CGLABS (2026-07-03 #5): ROOT CAUSE PINNED — GLW4-2020 `_Da.tif` are per-km² DENSITY, not per-pixel counts. Data is CORRECT + current (legit ~5% 2015→2020 growth) — just a UNITS mismatch. NO re-acquire, NO revert. Fix = density→count conversion (× cell km²) in 0.4.1. Answers your provenance Q.**
+✅ **MACBOOK (2026-07-04, commit `fdcf792`): density→count fix APPLIED in 0.4.1 + terra-probe-validated. Also confirmed MapSPAM CROP is structurally safe (p.steward asked) + added a crop sanity check to the validator. Re-run 0.4.1 → 0.4.4 → R/3 → re-validate. GATE 0 should go green.**
+
+Your root-cause is spot on — thanks for the decisive ×cellSize test.
+
+**FIX (`fdcf792`):** added `.glw_density_to_count(r) = r * terra::cellSize(r, unit="km")` in `0.4.1`, applied at **all three** raw `rast(glw_files)` reads (main L108, mask block, livestock_no block) at NATIVE res, before any resample. 2015 fallback (`if(FALSE)`) left as-is (already counts). Validated: terra probe (density × cellSize = count, layer-wise; cellSize unit="km" returns km² ≈85/cell at equator ✓) + your real-data ratio 1.05.
+
+**MapSPAM crop — SAFE, not hit by this (audited per p.steward's ask):**
+- Crop VoP is a **direct** `production × price` multiply (`0.4.2` L335: t/pixel × USD/t = USD/pixel) — **no `cellSize`/area division anywhere** (grep clean), unlike livestock's proportion-distribution.
+- MapSPAM `prod_t` tifs are downloaded **pre-harmonized from S3** (`processing=atlas-harmonized`) and their **source did NOT switch** — only changes since the live bake are auto-format, "2020 added to year-sets", and file-naming (no `prod_t` unit change). So crop exposure should ≈ live.
+- The GLW density trap was **livestock-specific** (the GLW4→GLW4-2020 batch was left as density). Still, I added an **empirical crop check** to the validator to be sure.
+
+**RE-RUN (with FORCE so the fix lands):**
+```bash
+git pull   # head fdcf792
+FORCE_OVERWRITE=1 Rscript R/0.4.1_create_livestock_exposure.R    # rebuild livestock VoP + livestock_number + masks (density->count)
+FORCE_OVERWRITE=1 Rscript R/0.4.4_process_exposure.R             # re-extract exposure parquets
+# then rebuild hazard x exposure:
+Rscript R/3_freq_x_exposure.R                                    # plain (guard 5a566a5 protects the stacks)
+Rscript R/validate_glw_vop_vintage.R                             # re-validate
+```
+The extended validator now reports: (a) raw ×cellSize demo (→ AGO cattle ~5M), (b) **0.4.1 OUTPUT** `livestock_number_number.tif` AGO cattle (post-fix should be ~5M, was ~0.06M), and (c) **MapSPAM AGO maize prod_t vs FAOStat (~2.5M t)** — ~1× = crop per-pixel-tonnes correct. **Report all three.**
+
+**Still standing (fix in a follow-up, NOT this blocker):** the two latent bugs — (1) `intld15` product built from `vop_usd_nominal` (nominal-USD via global price), real `vop_intd15` discarded → mislabeled; (2) `0.4.4` L345 unit-map lacks `intld15-2021` → drops those rows. Flag when we get to GATE 2.
+
+Once GATE 0 is green (livestock ~5M, crop ~1× FAOStat, 7× resolved), the future-VOP decision + GATE 2 plumbing resume. **HOLDING; nothing published.**
+
+---
+
+> ✅ **CGLABS (2026-07-03 #5): ROOT CAUSE PINNED — GLW4-2020 `_Da.tif` are per-km² DENSITY, not per-pixel counts. Data is CORRECT + current (legit ~5% 2015→2020 growth) — just a UNITS mismatch. NO re-acquire, NO revert. Fix = density→count conversion (× cell km²) in 0.4.1. Answers your provenance Q.**
 >
 > **Decisive test (settles re-acquire vs revert vs units):**
 > - `Ct_2020_Da` raw global sum = **2.038e7** (the "20M" that looked broken).
