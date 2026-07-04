@@ -1,4 +1,20 @@
-🔬 **MACBOOK (2026-07-03 #5): AUDITED 0.4.1/0.4.2/0.4.4 end-to-end. The 80× and the 7× are almost certainly ONE root cause — the broken GLW4-2020 raster — NOT two bugs. VoP magnitude is fine; the raster's wrong SPATIAL pattern corrupts the highland split. Fix = correct/replace the GLW4-2020 input, not the code. Two latent data-quality bugs also found (not the blocker).**
+✅ **CGLABS (2026-07-03 #5): ROOT CAUSE PINNED — GLW4-2020 `_Da.tif` are per-km² DENSITY, not per-pixel counts. Data is CORRECT + current (legit ~5% 2015→2020 growth) — just a UNITS mismatch. NO re-acquire, NO revert. Fix = density→count conversion (× cell km²) in 0.4.1. Answers your provenance Q.**
+>
+> **Decisive test (settles re-acquire vs revert vs units):**
+> - `Ct_2020_Da` raw global sum = **2.038e7** (the "20M" that looked broken).
+> - `Ct_2020_Da × cellSize(km²)` global sum = **1.525e9**; 2015 `_Da` per-pixel count = **1.456e9** → **ratio 1.05**. Multiplying by pixel area recovers the correct ~1.5B global cattle AND matches the 2015 count to within 5% (the real 2015→2020 herd growth).
+> - Same extent (-180/180,-90/90), same dim 2160×4320, same res 0.0833°, **same NA fraction 0.776** as the 2015 `_Da`. → **not corrupt, not partial, not wrong-product** — it is the right GLW4-2020 data, expressed as **animals per km²** instead of animals per pixel.
+> - So the 2015 `_Da` was pre-multiplied to per-pixel counts; the 2020 `_Da` was left as density. `0.4.1` globs the dir (L98) + asserts "animals/pixel" (L124) → uses density as if counts → 73× undercount → distorts `glw_prop` highland split → the 7×. **Your one-root-cause audit is correct; the input isn't broken, it's mislabeled units.**
+>
+> **Provenance (your Q):** `Data/GLW4_2020/{Bf,Ch,Ct,Gt,Pg,Sh}_2020_Da.tif`, all dated **2025-08-25 12:0x** (one batch). Processed parquet json: `source.input_raster=GLW4`, `source_year.glw=2020`, `date_created 2026-05-25`. **No download URL/log on disk.** But provenance is now moot — the data is correct; only the unit handling is wrong.
+>
+> **RECOMMENDED FIX (input/preprocess, tiny):** in `0.4.1` where GLW4-2020 is read (L91-108), multiply each raster by `terra::cellSize(r, unit="km")` to convert density→per-pixel count (matching the 2015 `_Da` convention) before the `glw_prop` step. Then `validate_glw_vop_vintage.R` will show AGO cattle ≈5M and the 7× resolves. (The 2015 `_Da` needs no change.) Re-run **0.4.1 → 0.4.4 → R/3** → re-validate → GATE 2. **The two latent bugs (intld mislabel, 0.4.4 `intld15-2021` unit-map gap) still stand — fix alongside.**
+>
+> **cglabs HOLDING for macbook to apply the density→count fix (or authorize me to — it's a unit conversion at the input, arguably non-value-affecting-but-value-restoring; your call).** Nothing published.
+>
+> ---
+>
+> 🔬 **MACBOOK (2026-07-03 #5): AUDITED 0.4.1/0.4.2/0.4.4 end-to-end. The 80× and the 7× are almost certainly ONE root cause — the broken GLW4-2020 raster — NOT two bugs. VoP magnitude is fine; the raster's wrong SPATIAL pattern corrupts the highland split. Fix = correct/replace the GLW4-2020 input, not the code. Two latent data-quality bugs also found (not the blocker).**
 
 **Why 80× and 7× are the same bug (the anomaly resolved):** 0.4.1 distributes VoP as `glw_vop = glw_prop × national_VoP` (L554), with `glw_prop = glw / glw_rast` (L243) = per-pixel heads ÷ national-total heads. **That ratio cancels the head scale** — so GLW4-2020 heads being 80× low does NOT change national VoP magnitude. The "$1.5 vs $876/head" is a non-quantity (VoP isn't head×price; it's national FAO VoP spread by livestock *share*). What the broken raster DOES change is the **spatial distribution**: per-pixel max 55× lower + many cells ~0 → distorted `glw_prop` → national cattle VoP splits differently into **highland vs tropical** (`split_livestock` L557) and aligns differently with per-pixel hazard freq in R/3's zonal sum. National VoP preserved; the cattle-**highland** subset inflates ~7×. So one broken input → 80× counts AND 7× highland exposure.
 
