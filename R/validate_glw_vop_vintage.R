@@ -102,3 +102,67 @@ cat("                                       (per-km2 vs per-pixel, or wrong prod
 cat("                                       0.4.1 + re-bake VOP BEFORE publish.\n")
 cat(" - Also compare native res / per-pixel max between vintages: a big gap = unit change.\n")
 cat("======================================================================\n")
+
+# =============================================================================
+# CONFIRMED (cglabs 2026-07-03): GLW4-2020 _Da is per-km2 DENSITY. The fix in
+# 0.4.1 (.glw_density_to_count = r * cellSize(km2)) converts density->count.
+# The checks below (a) demonstrate the fix recovers ~5M AGO cattle, and
+# (b) after re-running 0.4.1 with the fix, verify its OUTPUT is correct.
+# =============================================================================
+cat("\n---- density->count fix demonstration (raw GLW4-2020 cattle x cell km2) ----\n")
+new_cattle_count <- new_stk[[new_cattle_idx]] * terra::cellSize(new_stk[[new_cattle_idx]], unit = "km")
+ago_new_fixed <- terra::extract(new_cattle_count, ago, fun = "sum", na.rm = TRUE, ID = FALSE)[1, 1]
+cat(sprintf("GLW4-2020 AGO cattle x cellSize(km2): %.2fM head  (%.1fx FAOStat) -- should ~= 1.0x\n",
+            ago_new_fixed / 1e6, ago_new_fixed / FAOSTAT_AGO_CATTLE_2020))
+
+# (b) post-fix 0.4.1 output check (only meaningful AFTER re-running 0.4.1 with the fix)
+lvno_file <- file.path(glw2020_pro_dir, "livestock_number_number.tif")
+if (file.exists(lvno_file)) {
+  lvno <- terra::rast(lvno_file)
+  # livestock_number_number.tif is split highland/tropical; cattle layers sum to total cattle
+  cat_layers <- grep("cattle", names(lvno), value = TRUE, ignore.case = TRUE)
+  if (length(cat_layers)) {
+    lvno_cat <- sum(lvno[[cat_layers]], na.rm = TRUE)
+    ago_out <- terra::extract(lvno_cat, ago, fun = "sum", na.rm = TRUE, ID = FALSE)[1, 1]
+    .vlog(sprintf("0.4.1 OUTPUT livestock_number_number.tif AGO cattle = %.2fM (%.1fx FAOStat) [layers: %s]",
+                  ago_out / 1e6, ago_out / FAOSTAT_AGO_CATTLE_2020, paste(cat_layers, collapse = "+")))
+    cat(sprintf("   -> post-fix this should be ~5M (%.1fx). If still ~0.06M, the 0.4.1 fix didn't take.\n",
+                ago_out / FAOSTAT_AGO_CATTLE_2020))
+  }
+} else {
+  .vlog(sprintf("0.4.1 output %s not present yet — re-run 0.4.1 with the density->count fix, then re-run this.", lvno_file))
+}
+
+# =============================================================================
+# CROP (MapSPAM) production sanity — is prod_t per-pixel tonnes (not density)?
+# Crop VoP = production x price (DIRECT multiply, 0.4.2 L335), so a density/
+# count error here would 55-80x crop VoP the same way it did livestock.
+# Sum SPAM prod_t maize over AGO and compare to FAOStat (~2.5M t, Angola 2020).
+# =============================================================================
+cat("\n---- MapSPAM crop production sanity (AGO maize prod_t vs FAOStat) ----\n")
+FAOSTAT_AGO_MAIZE_2020_T <- 2.5e6   # ~2.5M t (FAOStat maize production, Angola, ~2020) — anchor, verify
+prod_t_dir <- file.path(mapspam_pro_dir, "variable=prod_t")
+if (dir.exists(prod_t_dir)) {
+  spam_files <- list.files(prod_t_dir, ".tif$", full.names = TRUE)
+  .vlog(sprintf("prod_t files (%d): %s", length(spam_files), paste(basename(spam_files), collapse = ", ")))
+  # pick the 'all technologies' file if identifiable (token 4 == A/all), else first
+  all_tech <- spam_files[grepl("_A\\.tif$|_all\\.tif$", spam_files)]
+  pick <- if (length(all_tech)) all_tech[1] else spam_files[1]
+  sp <- terra::rast(pick)
+  maize_lyr <- grep("maiz|maize", names(sp), value = TRUE, ignore.case = TRUE)
+  cat(sprintf("using %s | res=%.5f deg | maize layer(s): %s\n",
+              basename(pick), terra::res(sp)[1], paste(maize_lyr, collapse = ", ")))
+  if (length(maize_lyr)) {
+    m <- sp[[maize_lyr[1]]]
+    ago_maize <- terra::extract(m, ago, fun = "sum", na.rm = TRUE, ID = FALSE)[1, 1]
+    cat(sprintf("AGO maize SPAM prod_t (sum) = %.3fM t  (%.1fx FAOStat ~2.5M)\n",
+                ago_maize / 1e6, ago_maize / FAOSTAT_AGO_MAIZE_2020_T))
+    cat("   -> ~1x (0.5-2x) = per-pixel tonnes CORRECT, crop VoP OK.\n")
+    cat("   -> ~50-80x too high/low = density/unit issue in prod_t (mirror of the GLW bug).\n")
+  } else {
+    cat("   maize layer not found by name — inspect layer names above manually.\n")
+  }
+} else {
+  .vlog(sprintf("MapSPAM prod_t dir not found (%s) — check mapspam_pro_dir.", prod_t_dir))
+}
+cat("======================================================================\n")

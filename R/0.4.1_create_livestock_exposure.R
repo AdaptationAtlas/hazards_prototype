@@ -94,6 +94,18 @@ glw_int_dir <- glw2020_int_dir
 glw_pro_dir <- glw2020_pro_dir
 dataset_name <- "glw4-2020"
 
+# GLW4-2020 `_Da.tif` are per-km2 DENSITY, NOT per-pixel counts. (The original
+# 2015 `_Da` in atlas_dirs$data_dir$GLW4 were pre-multiplied to per-pixel counts;
+# the 2020 batch was left as density.) Confirmed on real data (cglabs 2026-07-03):
+# Ct_2020_Da global sum = 2.04e7, x cellSize(km2) = 1.525e9 ~= the 2015 per-pixel
+# count 1.456e9 (ratio 1.05 = real 2015->2020 herd growth). Downstream code
+# (glw_prop, glw_admin0, TLU, livestock_no, mass-conserving sum-resample) all
+# assume per-pixel COUNTS, so convert density->count by multiplying by cell area
+# (km2) at NATIVE resolution, before any resample. Applied at every raw
+# `rast(glw_files)` read below. NB: the 2015 fallback block (if(FALSE)) is already
+# per-pixel and must NOT be converted if reactivated.
+.glw_density_to_count <- function(r) r * terra::cellSize(r, unit = "km")
+
 .log041(sprintf("loading GLW4-2020 tifs from %s", glw_dir))
 glw_files <- list.files(glw_dir, ".tif$", full.names = TRUE)
 .log041(sprintf("found %d GLW4-2020 tifs", length(glw_files)))
@@ -106,6 +118,7 @@ glw_short_to_long <- c(Ch = "poultry", Sh = "sheep", Pg = "pigs",
 short_codes <- unlist(tstrsplit(names(glw), "_", keep = 1))
 names(glw) <- glw_short_to_long[short_codes]
 glw <- glw[[c("poultry", "sheep", "pigs", "goats", "cattle")]]
+glw <- .glw_density_to_count(glw)   # per-km2 density -> per-pixel count (see L96)
 
 # 2.0.2) Not Run - 2015 ####
 if (FALSE) {
@@ -175,6 +188,7 @@ if (!file.exists(mask_ls_file) || overwrite_glw == TRUE) {
   glw <- terra::rast(glw_files)
   names(glw) <- glw_short_to_long[unlist(tstrsplit(names(glw), "_", keep = 1))]
   glw <- glw[[c("poultry", "sheep", "pigs", "goats", "cattle")]]
+  glw <- .glw_density_to_count(glw)   # per-km2 density -> per-pixel count (see L96)
 
   lus <- c(glw$cattle * 0.7, glw$poultry * 0.01, glw$goats * 0.1, glw$pigs * 0.2, glw$sheep * 0.1)
   lus <- c(lus, sum(lus, na.rm = TRUE))
@@ -575,6 +589,7 @@ if (!file.exists(livestock_no_file) || overwrite_glw == TRUE) {
   .log041("regenerating livestock_no (livestock_no block IN)")
   glw <- terra::rast(glw_files)
   names(glw) <- glw_short_to_long[unlist(tstrsplit(names(glw), "_", keep = 1))]
+  glw <- .glw_density_to_count(glw)   # per-km2 density -> per-pixel count (see L96)
   livestock_no <- glw[[c("poultry", "sheep", "pigs", "goats", "cattle")]]
 
   .log041("  computing TLU (cattle*0.7 + poultry*0.01 + ...)")
