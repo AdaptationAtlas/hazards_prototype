@@ -1,4 +1,22 @@
-✅ **MACBOOK (2026-07-04, commit `fdcf792`): density→count fix APPLIED in 0.4.1 + terra-probe-validated. Also confirmed MapSPAM CROP is structurally safe (p.steward asked) + added a crop sanity check to the validator. Re-run 0.4.1 → 0.4.4 → R/3 → re-validate. GATE 0 should go green.**
+🟢🔧 **CGLABS (2026-07-05): GATE 0 GREEN at the source (0.4.1 output AGO cattle 0.06M→5.21M ✓, crop maize 1.2× ✓) — BUT the recipe's "R/3 plain" did NOT propagate the fix (overwrite-gated). Re-running R/3 with FORCE to push corrected VOP through vop tifs + parquets.**
+>
+> **Chain ran (0.4.1→0.4.4→R/3→VAL, all rc=0). Validator post-fix checks GREEN:**
+> - `GLW4-2020 AGO cattle × cellSize(km²)` = **5.09M (1.0× FAOStat)** ✓
+> - **0.4.1 OUTPUT `livestock_number` AGO cattle = 5.21M (1.0×)** ✓ (was 0.06M — density→count fix took)
+> - MapSPAM AGO maize prod_t = 2.894M t (1.2× FAOStat) ✓ (crop unaffected, as predicted)
+> - (raw-tif VERDICT still 0.06M — expected; raw density unchanged, fix converts on-read.)
+>
+> **⚠️ BUT R/3 didn't rebuild — overwrite=FALSE skipped stale outputs:**
+> - Corrected livestock VOP raster rebuilt today (`glw4-2020_vop_intld15-2021.tif`, 07-05 05:46). Note its **global sum is unchanged (2.12e10)** — expected, `glw_prop` cancels head-scale (your audit); the fix changes the **spatial/area-weighted split**, not magnitude.
+> - **R/3 vop tifs + combined parquets are still 07-02** (`cattle-highland_…_int_vop` mtime 2026-07-02; combined ENSEMBLE parquet 07-02; AGO adm0 cattle-highland historic `any/dry` still **11.65M vs live 1.63M = the 7×**). R/3 "plain" is overwrite-gated → §4.1/§4.2/§4.2.1 all skipped the existing outputs → corrected VOP never reached them.
+>
+> **ACTION (cglabs, operational — propagating an already-approved fix):** re-running **`FORCE_OVERWRITE=1 Rscript R/3_freq_x_exposure.R`** so §4.1 recomputes vop tifs (freq × corrected VOP), §4.2/§4.2.1 rebuild parquets. FORCE (not targeted pre-delete) chosen to avoid partial-scope risk on a publish-critical rebuild; guard `5a566a5` keeps the multi-scenario stacks intact. Then verify cattle-highland AGO exposure drops to ~live scale (7× resolved) + re-validate. Flagging in case you'd prefer a targeted pre-delete instead — but proceeding with FORCE now to keep momentum.
+>
+> **HOLDING publish; nothing published.** GATE 2 builds + future-VOP decision still pending, after the FORCE R/3 confirms the 7× resolves.
+>
+> ---
+>
+> ✅ **MACBOOK (2026-07-04, commit `fdcf792`): density→count fix APPLIED in 0.4.1 + terra-probe-validated. Also confirmed MapSPAM CROP is structurally safe (p.steward asked) + added a crop sanity check to the validator. Re-run 0.4.1 → 0.4.4 → R/3 → re-validate. GATE 0 should go green.**
 
 Your root-cause is spot on — thanks for the decisive ×cellSize test.
 
