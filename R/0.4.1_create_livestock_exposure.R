@@ -534,7 +534,16 @@ for (i in seq_along(vop_list)) {
   .log041(sprintf("  [VoP %d/%d] %s", i, length(vop_list), names(vop_list)[i]))
   # Unit is t x usd/t = usd or 1000 intdlr x 1000 there should be no need for any unit conversions (e.g. x 1000)
   final_vop <- copy(vop_list[[i]])
-  setnames(final_vop, "vop_usd_nominal", "value")
+  # CURRENCY BASIS (fix 2026-07-06): the intld15 outputs must carry REAL constant
+  # international dollars (FAOStat "Gross Production Value (constant 2014-2016
+  # thousand I$)" x 1000 = vop_intd15, computed in 4.2), NOT vop_usd_nominal.
+  # The old code used vop_usd_nominal (production x GLOBAL nominal price) for EVERY
+  # entry, so the file named *_vop_intld15-* actually held nominal USD -> it mixed
+  # with the constant-I$-2015 crop VoP in hazard_exposure and drove the ~7x cattle
+  # inflation. Pick the value column by the output label so both currencies are
+  # produced correctly: intld15 -> vop_intd15 (real I$), nominal-usd -> vop_usd_nominal.
+  .val_col <- if (grepl("intld15", names(vop_list)[i])) "vop_intd15" else "vop_usd_nominal"
+  setnames(final_vop, .val_col, "value")
 
   final_vop <- final_vop[, list(iso3, atlas_name, value)]
   final_vop <- merge(final_vop, glw2atlas, all.x = TRUE, by = "atlas_name")
