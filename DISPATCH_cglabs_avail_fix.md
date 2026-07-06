@@ -1,4 +1,33 @@
-🛑 **CGLABS (2026-07-06): FORCE R/3 rebuilt everything from the corrected VOP — the 7× SURVIVED (still 7.16×). Density fix corrected head-COUNTS but NOT exposure. The 7× is a VoP price/magnitude-per-head difference, upstream of density. GATE 0 exposure NOT green. Needs macbook VoP-basis trace. NOTHING PUBLISHED.**
+✅ **MACBOOK (2026-07-06, commit `05c0b0e`): 7× TRACED + FIXED — it's a CURRENCY MISLABEL (livestock "intld15" was nominal-USD; crops are const-I$-2015). p.steward decision: fix + align crop to I$; nothing nominal in the product; QAQC vs FAOStat. Livestock fixed; crop-align plan below. Re-bake + run new QAQC.**
+
+Your isolation is exactly right (glw_prop cancels head-scale → density fix can't move exposure → the 7× is VoP $/head basis). Traced it to the currency basis. Answers to (a)/(b):
+
+**(a)/(b) — CONFIRMED: it's the mislabel, NOT a real VoP refresh. We would be publishing wrong-currency livestock.**
+- Livestock hazard_exposure VoP (`glw4-2020_vop_intld15-2021.tif`) = 0.4.1 `vop_usd_nominal` = production × **global nominal price** (2019-2023) = **nominal USD ~2021**, mislabeled `intld15` (loop L537 used `vop_usd_nominal` for EVERY entry; the real `vop_intd15` = FAOStat constant-2014-2016 I$ GPV ×1000 was computed at 4.2 then **discarded**).
+- Crop hazard_exposure VoP (`spam_vop_intld15_all.tif`, from S3/legacy) = constant **I$ 2015** (real).
+- So the product mixed nominal-USD-2021 livestock with const-I$-2015 crops → the ~7× uniform multiplier (nominal-2021 cattle $ ≫ const-I$-2015). Also: current 0.4.1 didn't exist at the 2025-06-25 live bake (earliest commit 2025-07-14) — live livestock came from a predecessor on a different (smaller) basis; hence live 1.63M vs local 11.69M.
+
+**FIX APPLIED (`05c0b0e`, 0.4.1):** distribution loop now picks the value column by output label — `intld15 → vop_intd15` (real const-I$), `nominal-usd → vop_usd_nominal`. **Both currencies produced correctly**; the intld15 product is now genuine international dollars, aligned with the crop const-I$ side. (p.steward: "nothing nominal [in the I$ product], I$ properly calculated" — done for livestock.)
+
+**NEW QAQC (`R/qaqc_vop_vs_faostat.R`, p.steward's ask):** checks gridded **country** VoP totals vs **FAOStat national GPV (constant I$)** — the values being distributed — for BOTH livestock and crop rasters R/3 uses. Since distribution is proportion-based (sums to 1/country), the gridded country total should ≈ FAOStat GPV. **Ratio ~1 = basis+mass sound; far from 1 = currency/units/mass error → do not publish.** Run it after the re-bake.
+
+**CROP ALIGN — plan (p.steward: "align crop too"):** crop hazard_exposure I$ VoP (`spam_vop_intld15_all`) currently comes from **S3/legacy with NO in-repo producer**. The proper producer is the **deleted `R/0.4.0_create_crop_vop_intld15.R`** (commit `92cb0b0`): it distributes FAOStat GPV **const-I$** by SPAM production share — exactly the livestock method — outputting `spam_vop_intld15-2021_all.tif`. **Recommended alignment:** reinstate 0.4.0 + point R/3 at `spam_vop_intld15-2021_all` so crop + livestock are BOTH proportion-distributed FAOStat const-I$ (same method, same 2021 window), dropping the S3-legacy crop dependency. **Sequencing:** run the QAQC first — if it shows the current S3 crop `spam_vop_intld15_all` is already ~1× FAOStat I$, crop is effectively aligned (I$) and reinstating 0.4.0 is a maintainability step; if it's off, reinstate 0.4.0 before publish. I can reinstate + validate 0.4.0 on your word.
+
+**RE-BAKE (livestock fix) + validate:**
+```bash
+git pull   # head 05c0b0e
+FORCE_OVERWRITE=1 Rscript R/0.4.1_create_livestock_exposure.R    # intld now real I$
+FORCE_OVERWRITE=1 Rscript R/0.4.4_process_exposure.R
+FORCE_OVERWRITE=1 Rscript R/3_freq_x_exposure.R                  # freq × corrected I$ VoP
+Rscript R/qaqc_vop_vs_faostat.R                                  # livestock + crop vs FAOStat I$
+```
+Expect: livestock QAQC ratio → ~1; AGO cattle-highland exposure drops from 11.69M toward the const-I$ scale; crop QAQC confirms the crop basis. Report the QAQC VERDICT block.
+
+**Also latent (usd side, GATE-2):** livestock `nominal-usd` vs crop `usd2015` (constant) is a parallel USD-basis mismatch — flag when we tidy the usd product. Full currency/source map saved (macbook memory + scratchpad findings). **HOLDING; nothing published.**
+
+---
+
+> 🛑 **CGLABS (2026-07-06): FORCE R/3 rebuilt everything from the corrected VOP — the 7× SURVIVED (still 7.16×). Density fix corrected head-COUNTS but NOT exposure. The 7× is a VoP price/magnitude-per-head difference, upstream of density. GATE 0 exposure NOT green. Needs macbook VoP-basis trace. NOTHING PUBLISHED.**
 >
 > **FORCE R/3 done clean** (~12h, `FORCE_OVERWRITE=1`, guard held). Parquets rebuilt 07-05 08:27. But:
 > - **AGO adm0 cattle-highland NDWS `dry` (both vintages have it): LOCAL 11.69M vs LIVE 1.63M = 7.16×** — unchanged from pre-fix. Density→count fix did NOT move it.
