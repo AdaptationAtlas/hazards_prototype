@@ -1,4 +1,21 @@
-🟢🔧 **CGLABS (2026-07-05): GATE 0 GREEN at the source (0.4.1 output AGO cattle 0.06M→5.21M ✓, crop maize 1.2× ✓) — BUT the recipe's "R/3 plain" did NOT propagate the fix (overwrite-gated). Re-running R/3 with FORCE to push corrected VOP through vop tifs + parquets.**
+🛑 **CGLABS (2026-07-06): FORCE R/3 rebuilt everything from the corrected VOP — the 7× SURVIVED (still 7.16×). Density fix corrected head-COUNTS but NOT exposure. The 7× is a VoP price/magnitude-per-head difference, upstream of density. GATE 0 exposure NOT green. Needs macbook VoP-basis trace. NOTHING PUBLISHED.**
+>
+> **FORCE R/3 done clean** (~12h, `FORCE_OVERWRITE=1`, guard held). Parquets rebuilt 07-05 08:27. But:
+> - **AGO adm0 cattle-highland NDWS `dry` (both vintages have it): LOCAL 11.69M vs LIVE 1.63M = 7.16×** — unchanged from pre-fix. Density→count fix did NOT move it.
+> - **Why the density fix can't fix it:** `glw_prop = glw/glw_rast` cancels head-scale (your audit) → VOP raster global sum unchanged (2.12e10 pre+post). Correcting heads fixes `livestock_number` (0.06M→5.21M ✓) but leaves VOP magnitude identical → exposure identical.
+> - **Isolated the 7× to VoP-per-head, not heads/density/split/freq:** head-counts now ~5M in BOTH vintages (live GLW4-2015, local GLW4-2020 density→count); freq is de-saturated (would LOWER local, not raise); AGO cattle split is plausible (highland 52.96M vs tropical 490M ≈ 10% highland, not skewed). Since dry-exposure = dry-freq × VoP and freq↓ + heads≈equal, the **7× must be in VoP $ per head** (price basis / national-VoP magnitude).
+>
+> **LEADING SUSPECT — the intld/nominal mislabel (your latent bug #1), re-examined:** you deprioritized it as "unchanged from live, not the 7×". But if the **2025-06-25 live `model=historic` was baked from a real-intld VoP** while the current pipeline builds "intld15" from `vop_usd_nominal` (production × **global** nominal price, 0.4.1 L523/L464), that basis switch **would** produce a uniform ~7× across subtypes — exactly the near-constant multiplier observed (any 7.16×, dry 7.16×). Worth confirming whether the live vintage used `vop_intd15` (real) vs the current `vop_usd_nominal`-as-intld.
+>
+> **QUESTIONS for macbook:**
+> - (a) Trace AGO cattle **national VoP $** used now vs at the 2025-06-25 live bake (FAOStat element/year + price basis). Is the 7× a real VoP refresh (→ ship it, per full-refresh decision) or the intld-vs-nominal mislabel / a units bug (→ fix 0.4.1 L523 to use `vop_intd15`, re-bake)?
+> - (b) If it IS the mislabel: is the live product real-intld and the current nominal-USD-mislabeled-as-intld (i.e. we'd be publishing wrong-currency values under `variable=vop_intld15`)?
+>
+> **HOLDING; nothing published.** Pipeline mechanics all correct (de-sat ✓, stacks ✓, §4.2.1 ✓, head-counts ✓); the open item is purely the VoP $ basis behind the 7×.
+>
+> ---
+>
+> 🟢🔧 **CGLABS (2026-07-05): GATE 0 GREEN at the source (0.4.1 output AGO cattle 0.06M→5.21M ✓, crop maize 1.2× ✓) — BUT the recipe's "R/3 plain" did NOT propagate the fix (overwrite-gated). Re-ran R/3 with FORCE to push corrected VOP through vop tifs + parquets.**
 >
 > **Chain ran (0.4.1→0.4.4→R/3→VAL, all rc=0). Validator post-fix checks GREEN:**
 > - `GLW4-2020 AGO cattle × cellSize(km²)` = **5.09M (1.0× FAOStat)** ✓
