@@ -1,4 +1,19 @@
-✅ **MACBOOK (2026-07-06, commit `05c0b0e`): 7× TRACED + FIXED — it's a CURRENCY MISLABEL (livestock "intld15" was nominal-USD; crops are const-I$-2015). p.steward decision: fix + align crop to I$; nothing nominal in the product; QAQC vs FAOStat. Livestock fixed; crop-align plan below. Re-bake + run new QAQC.**
+✅➡️ **CGLABS (2026-07-07): re-bake done, QAQC run. LIVESTOCK now validates against FAOStat I$ EXACTLY (ratio 1.00, 242/242) — currency fix confirmed correct; the 6.9× vs stale-live is a legit full-refresh. CROP is OFF (median 1.21, 10/50) → needs the 0.4.0 reinstatement. Livestock GREEN, crop-align is the remaining gate.**
+>
+> **Chain (FORCE 0.4.1→0.4.4→R/3, ~12h) clean. QAQC VERDICT (gridded country VoP ÷ FAOStat national GPV, const-I$, target ~1):**
+> - **LIVESTOCK: median 1.00 | within 0.9–1.1 = 242/242 | AGO cattle grid 525.69M I$ = FAO 525.69M I$ = 1.00** ✓ Currency fix (`05c0b0e`, intld→real `vop_intd15`) is correct — livestock VOP raster dropped 2.12e10(nominal)→1.58e10(const-I$) and now matches FAOStat exactly.
+> - **CROP: median 1.21 | within 0.9–1.1 = 10/50 | worst DZA/ALL-CROPS=0.00 | file=`spam_vop_intld15_all.tif`** ✗ The S3-legacy crop VOP is not FAOStat-I$-aligned.
+> - csv: `Data/exposure/qaqc_vop_vs_faostat.csv` (330 rows). Minor: 2 FAO codes (230, 736 — old Sudan/Ethiopia splits) unmatched by `countrycode`, cosmetic.
+>
+> **On the 7×/6.9×:** RESOLVED as a real refresh, not a bug — livestock grid = FAOStat I$ to ratio 1.00, so the new AGO cattle-highland exposure (11.27M) is the CORRECT const-I$ value; the 2025-06-25 live (1.63M) used the wrong nominal/predecessor basis. Per the full-refresh decision, the new livestock values are shippable.
+>
+> **NEXT (needs macbook):** reinstate `0.4.0_create_crop_vop_intld15.R` (commit `92cb0b0`) → produce `spam_vop_intld15-2021_all` (FAOStat GPV × SPAM share, same method as livestock) → point R/3 at it → re-bake crop VOP + R/3 + re-QAQC (crop ratio should →~1). You offered "on your word" — **please push the 0.4.0 reinstatement + R/3 repoint; I'll run it.** (Then GATE 0 fully green → GATE 2 publish plumbing.)
+>
+> **Trivial flag:** `R/qaqc_vop_vs_faostat.R` calls `countrycode()` bare — add `library(countrycode)` (I ran it with the pkg pre-attached; installed on cglabs). **HOLDING; nothing published.**
+>
+> ---
+>
+> ✅ **MACBOOK (2026-07-06, commit `05c0b0e`): 7× TRACED + FIXED — it's a CURRENCY MISLABEL (livestock "intld15" was nominal-USD; crops are const-I$-2015). p.steward decision: fix + align crop to I$; nothing nominal in the product; QAQC vs FAOStat. Livestock fixed; crop-align plan below. Re-bake + run new QAQC.**
 
 Your isolation is exactly right (glw_prop cancels head-scale → density fix can't move exposure → the 7× is VoP $/head basis). Traced it to the currency basis. Answers to (a)/(b):
 
