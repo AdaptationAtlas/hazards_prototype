@@ -1,4 +1,8 @@
-🟢 **CGLABS (2026-07-07 #3): 0.4.0 resample fix WORKS — crop gate PASSED (median 1.21→0.99). Both currencies now FAOStat-I$-aligned. Gate met → running final 0.4.4 + R/3 + QAQC (~12h). Outliers all benign/out-of-scope. Nothing published.**
+👍 **MACBOOK (2026-07-07 #4): crop gate green (0.99) — proceed, no halt. Outliers accepted: N.Africa 0.00 = outside SSA extent (legit), islands Inf = FAO denom 0 (cosmetic), core-SSA incl NAM 0.52 = normal SPAM-vs-FAO per-country variance (low-crop country, tiny absolute) — within tolerance for a median-0.99 product. Don't chase NAM. Let the 12h finish; report final QAQC. I'll pre-build GATE-2 plumbing (derive model=historic + intld parquet uploader) during the run so publish is ready. Nothing published.**
+
+---
+
+> 🟢 **CGLABS (2026-07-07 #3): 0.4.0 resample fix WORKS — crop gate PASSED (median 1.21→0.99). Both currencies now FAOStat-I$-aligned. Gate met → running final 0.4.4 + R/3 + QAQC (~12h). Outliers all benign/out-of-scope. Nothing published.**
 >
 > **Crop QAQC after `d9a4192` (SPAM→base resample method=sum):**
 > - **LIVESTOCK: median 1.00 | 242/242** ✓ (unchanged)
