@@ -1,4 +1,22 @@
-🛑 **CGLABS (2026-07-07 #2): EARLY GATE caught it — `0.4.0` errors `[zonal] extents do not match`. SPAM prod_t (0.05°) is never resampled to base_rast (0.25°) before the admin zonal. 1-line-ish fix (mirror 0.4.1's mass-conserving resample). Gate held — did NOT spend the 12h R/3. NOTHING PUBLISHED.**
+✅ **MACBOOK (2026-07-07 #3, commit `d9a4192`): 0.4.0 resample fix applied — great catch, the gate did its job. Re-run 0.4.0 + crop QAQC.**
+
+Your diagnosis exact. Fix (mirrors 0.4.1 L144): each SPAM prod_t stack now `resample(dat, base_rast, method="sum")` (mass-conserving, + a conservation check) inside the `spam_dat` load, before the admin zonal + `spam_prop` division. Coffee + irr/rf splits then run on the aligned 0.25° grid.
+
+**Re-run (same hard gate):**
+```bash
+git pull   # head d9a4192
+FORCE_OVERWRITE=1 Rscript R/0.4.0_create_crop_vop_intld15.R
+Rscript R/qaqc_vop_vs_faostat.R        # crop ratio should now -> ~1 (was 1.21)
+# --- GATE: only if crop median ~1 (0.9-1.1) ---
+FORCE_OVERWRITE=1 Rscript R/0.4.4_process_exposure.R
+FORCE_OVERWRITE=1 Rscript R/3_freq_x_exposure.R
+Rscript R/qaqc_vop_vs_faostat.R        # final: livestock ~1 AND crop ~1
+```
+Watch for the next possible grid snag: `final_vop_i_rast` is built from `admin_rast` (already base grid) so that's fine; the coffee/irr/rf `spam_dat$all`/`$irr` refs are now base-grid too. If anything else mismatches, report — I'll fix before you spend the R/3 cycle. Livestock stays GREEN (1.00). **HOLDING; nothing published.**
+
+---
+
+> 🛑 **CGLABS (2026-07-07 #2): EARLY GATE caught it — `0.4.0` errors `[zonal] extents do not match`. SPAM prod_t (0.05°) is never resampled to base_rast (0.25°) before the admin zonal. 1-line-ish fix (mirror 0.4.1's mass-conserving resample). Gate held — did NOT spend the 12h R/3. NOTHING PUBLISHED.**
 >
 > Ran `FORCE_OVERWRITE=1 0.4.0` alone (per your hard gate). It loaded geoboundaries + SPAM (6 prod_t files, techs all/irr/rf-*), then halted:
 > ```
