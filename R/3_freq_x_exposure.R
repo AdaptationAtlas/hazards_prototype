@@ -330,7 +330,11 @@ if (length(.rebake_keep)) cat("WARNING: REBAKE_SCENARIO is IGNORED in R/3 - inpu
 #### d.2.1.1) Crop VoP (Value of production) ######
 # To generalize it might be better to just supply a filename for the mapspam
 files <- list.files(mapspam_pro_dir, ".tif$", recursive = TRUE, full.names = TRUE)
-crop_vop_file <- grep("vop_intld15_all", files, value = TRUE)
+# Crop VoP now = FAOStat const-I$ distributed by SPAM production share (0.4.0,
+# reinstated 2026-07-07), matching the livestock const-I$ basis. Supersedes the
+# S3-legacy `spam_vop_intld15_all.tif` (was NOT FAOStat-I$-aligned, QAQC 1.21).
+crop_vop_file <- grep("vop_intld15-2021_all", files, value = TRUE)
+if (length(crop_vop_file) != 1) stop("expected exactly 1 crop vop_intld15-2021_all tif, found ", length(crop_vop_file), " — run R/0.4.0_create_crop_vop_intld15.R")
 cat("0.2.1.1) Using crop vop intd file:", basename(crop_vop_file), "\n")
 
 crop_vop_tot <- terra::rast(crop_vop_file)

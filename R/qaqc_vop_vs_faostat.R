@@ -26,7 +26,7 @@
 }
 
 suppressWarnings(suppressMessages({
-  library(terra); library(data.table); library(arrow); library(sf)
+  library(terra); library(data.table); library(arrow); library(sf); library(countrycode)
 }))
 
 .qlog("sourcing haz_functions + 0_server_setup.R")
@@ -106,7 +106,10 @@ if (file.exists(ls_vop_file)) {
 # CROP  (national total: robust to layer-name->FAO mapping differences)
 # =============================================================================
 .qlog("CROP: FAO I$ GPV + gridded VoP (national totals)")
-crop_vop_file <- Sys.glob(file.path(mapspam_pro_dir, "variable=vop_intld15", "*intld15_all*.tif"))
+# Prefer the 0.4.0 FAOStat-const-I$ output (what R/3 now uses); fall back to the
+# S3-legacy file if 0.4.0 hasn't been run yet (so the QAQC still reports something).
+crop_vop_file <- Sys.glob(file.path(mapspam_pro_dir, "variable=vop_intld15-2021", "spam_vop_intld15-2021_all.tif"))
+if (!length(crop_vop_file)) crop_vop_file <- Sys.glob(file.path(mapspam_pro_dir, "variable=vop_intld15", "*intld15_all*.tif"))
 if (length(crop_vop_file)) {
   spam2fao <- fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv")
   spam_map <- setNames(spam2fao$name_fao_val, spam2fao$short_spam2010)
