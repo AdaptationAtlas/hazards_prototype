@@ -144,23 +144,54 @@ if (UPLOAD_HAZ_EXPOSURE_VOP_USD) {
 
 ## -- Upload haz X exposure X vop international dollar-- ##
 if (UPLOAD_HAZ_EXPOSURE_VOP_INTLD) {
-  uploader_haz_exp_intld <- AtlasDataManageR::S3DirUploader$new(
-    upload_id = "haz_exp_vop_intld",
-    local_dir = paste0("Data/hazard_risk_vop/", TIMEFRAME),
-    s3_dir = "domain=hazard_exposure",
-    bucket = "digital-atlas",
-    file_pattern = ".tif",
-    filter_fn = filter_PTOT,
-    name_fn = \(x) {
-      x_base <- basename(x)
-      split <- parse_filename(x_base, variable = "vop_intld15")
-      return(build_s3_path(split))
-    },
-    public = TRUE,
-    recursive = FALSE
-  )
-  uploader_haz_exp_intld$upload_files_parallel(PARALLEL_WORKERS)
-  uploader_haz_exp_intld$save_report()
+  vop_intld_var <- "vop_intld15"
+  if (UPLOAD_TIF) {
+    uploader_haz_exp_intld <- AtlasDataManageR::S3DirUploader$new(
+      upload_id = "haz_exp_vop_intld",
+      local_dir = paste0("Data/hazard_risk_vop/", TIMEFRAME),
+      s3_dir = "domain=hazard_exposure",
+      bucket = "digital-atlas",
+      file_pattern = ".tif",
+      filter_fn = filter_PTOT,
+      name_fn = \(x) {
+        x_base <- basename(x)
+        split <- parse_filename(x_base, variable = vop_intld_var)
+        return(build_s3_path(split))
+      },
+      public = TRUE,
+      recursive = FALSE
+    )
+    uploader_haz_exp_intld$upload_files_parallel(PARALLEL_WORKERS)
+    uploader_haz_exp_intld$save_report()
+  }
+  # vop_intld15 interaction.parquet is THE live hazard_exposure product; the block
+  # above only shipped the .tif (parquet publish previously went via a separate/
+  # legacy path). Mirror the USD parquet uploader so the intld parquet ships here.
+  if (UPLOAD_PARQUET) {
+    uploader_haz_exp_intld_parquet <- AtlasDataManageR::S3DirUploader$new(
+      upload_id = "haz-exp_vop-intld_parquet",
+      local_dir = paste0("Data/hazard_risk_vop/", TIMEFRAME),
+      s3_dir = "domain=hazard_exposure",
+      bucket = "digital-atlas",
+      file_pattern = ".parquet$",
+      name_fn = \(x) {
+        x_base <- tools::file_path_sans_ext(basename(x))
+        split <- strsplit(x_base, "_")
+        names <- lapply(split, \(x) {
+          sprintf(
+            "source=atlas_cmip6/region=ssa/processing=hazard-risk-exposure/variable=%s/period=%s/model=%s/severity=%s/%s.parquet",
+            vop_intld_var,
+            TIMEFRAME,
+            x[4],
+            x[7],
+            ifelse(x[5] == "int", "interaction", "solo")
+          )
+        })
+      }
+    )
+    uploader_haz_exp_intld_parquet$upload_files_parallel(PARALLEL_WORKERS)
+    uploader_haz_exp_intld_parquet$save_report()
+  }
 }
 
 ## -- Upload haz X exposure X vop harvested area -- ##
