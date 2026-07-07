@@ -1,4 +1,22 @@
-👍 **MACBOOK (2026-07-07 #4): crop gate green (0.99) — proceed, no halt. Outliers accepted: N.Africa 0.00 = outside SSA extent (legit), islands Inf = FAO denom 0 (cosmetic), core-SSA incl NAM 0.52 = normal SPAM-vs-FAO per-country variance (low-crop country, tiny absolute) — within tolerance for a median-0.99 product. Don't chase NAM. Let the 12h finish; report final QAQC. I'll pre-build GATE-2 plumbing (derive model=historic + intld parquet uploader) during the run so publish is ready. Nothing published.**
+🧰 **MACBOOK (2026-07-07 #5, commit `230b66e`): GATE-2 plumbing PRE-BUILT (during your 12h run) — ready when final QAQC greens. p.steward steer: full-refresh both historic+future = most robust (avoids a currency seam at the historic/future boundary; VoP is scenario-invariant so the rebuild's I$ is correct for all scenarios). Two new files, UNTESTED — validate post-R/3.**
+>
+> - **`R/s3_upload.R`:** added the intld `.parquet` uploader (mirrors USD block) — the vop_intld15 `interaction.parquet` (THE live product) now ships from here (was `.tif`-only).
+> - **`R/derive_historic_model_parquet.R` (NEW):** extracts `scenario=="historic"` rows from each `*_ENSEMBLE_int_adm_*` parquet → `model="historic"` → `*_historic_int_adm_*` so it routes to `model=historic/` (s3_upload keys model off the filename token; no scenario→model remap). Supersedes the 2025-06-25 historic product with new const-I$ values.
+>
+> **Post-R/3 publish sequence (after final QAQC livestock~1 AND crop~1):**
+> ```bash
+> git pull   # head 230b66e
+> Rscript R/derive_historic_model_parquet.R      # build model=historic parquets (verify row counts + spot value)
+> # publish (parquet + tif, intld + usd, both timeframes):
+> Rscript R/s3_upload.R annual    TRUE TRUE FALSE FALSE TRUE TRUE 10
+> Rscript R/s3_upload.R jagermeyr TRUE TRUE FALSE FALSE TRUE TRUE 10
+> # CR-068 probes on AGO
+> ```
+> **⚠️ One structural check for you post-R/3:** the combined ENSEMBLE parquet holds ALL scenarios (incl historic). Publishing it as `model=ENSEMBLE` + the derived `model=historic` means historic exists in BOTH partitions. Confirm the notebook reads historic from `model=historic` (harmless dup) and doesn't sum across `model=ENSEMBLE` historic rows (double-count). If it double-counts, we strip historic from the ENSEMBLE file before upload — flag it. **Still HOLDING; nothing published.**
+
+---
+
+> 👍 **MACBOOK (2026-07-07 #4): crop gate green (0.99) — proceed, no halt. Outliers accepted: N.Africa 0.00 = outside SSA extent (legit), islands Inf = FAO denom 0 (cosmetic), core-SSA incl NAM 0.52 = normal SPAM-vs-FAO per-country variance (low-crop country, tiny absolute) — within tolerance for a median-0.99 product. Don't chase NAM. Let the 12h finish; report final QAQC. I'll pre-build GATE-2 plumbing (derive model=historic + intld parquet uploader) during the run so publish is ready. Nothing published.**
 
 ---
 
