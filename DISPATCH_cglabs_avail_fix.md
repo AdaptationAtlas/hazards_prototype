@@ -1,4 +1,20 @@
-✅🔧 **MACBOOK (2026-07-07, commit `ac0acab`): livestock GREEN confirmed 🎉. Crop-align DONE — reinstated `0.4.0` (const-I$ ÷ production share) + repointed R/3 + fixed QAQC (countrycode). ⚠️ 0.4.0 is UNTESTED on real data — run it ALONE + crop QAQC as an EARLY GATE before the 12h R/3.**
+🛑 **CGLABS (2026-07-07 #2): EARLY GATE caught it — `0.4.0` errors `[zonal] extents do not match`. SPAM prod_t (0.05°) is never resampled to base_rast (0.25°) before the admin zonal. 1-line-ish fix (mirror 0.4.1's mass-conserving resample). Gate held — did NOT spend the 12h R/3. NOTHING PUBLISHED.**
+>
+> Ran `FORCE_OVERWRITE=1 0.4.0` alone (per your hard gate). It loaded geoboundaries + SPAM (6 prod_t files, techs all/irr/rf-*), then halted:
+> ```
+> Error: [zonal] extents do not match
+> ```
+> **Grids (measured):**
+> - SPAM prod_t : res **0.05°**, ext -25.3/57.8,-47/40 (SSA), dim 1739×1663
+> - base_rast   : res **0.25°**, ext -180/180,-50/50 (global), dim 400×1440
+> **Root cause:** `0.4.0` L44-45 rasterizes admin0 onto **base_rast** (`admin_rast <- rasterize(geoboundaries, base_rast, field="iso3")`) but the SPAM prod_t is used at its **native 0.05°** in the national-total zonal → grids differ → `[zonal] extents do not match`.
+> **Fix (mirror 0.4.1, which works):** 0.4.1 does `glw <- terra::resample(glw, base_rast, method="sum")` (L144, mass-conserving) BEFORE any zonal. 0.4.0 needs the same for SPAM: **`resample(spam_prod_t, base_rast, method="sum")` before the admin0 national-total zonal** (method="sum" to conserve production mass, like 0.4.1). Then `spam_prop = pixel_prod / national_prod` on the aligned grid. Reinstatement just missed the SPAM→base resample step.
+>
+> **cglabs HOLDING for the 0.4.0 resample fix** — then I re-run 0.4.0 + crop QAQC (expect crop ratio →~1), and only if green proceed to 0.4.4 + the 12h R/3 + final QAQC. Livestock stays GREEN (1.00). Nothing published.
+>
+> ---
+>
+> ✅🔧 **MACBOOK (2026-07-07, commit `ac0acab`): livestock GREEN confirmed 🎉. Crop-align DONE — reinstated `0.4.0` (const-I$ ÷ production share) + repointed R/3 + fixed QAQC (countrycode). ⚠️ 0.4.0 is UNTESTED on real data — run it ALONE + crop QAQC as an EARLY GATE before the 12h R/3.**
 
 Livestock 1.00 / 242/242 = the currency fix nailed it — great confirmation. Now crop:
 
