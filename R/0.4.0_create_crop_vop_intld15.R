@@ -57,6 +57,19 @@ spam_dat <- pblapply(seq_along(files_raw), function(i) {
   # FAOStat lumps arabica + robusta as one coffee item -> merge production so the
   # national coffee GPV distributes across both, then split back post-distribution.
   dat$coffee <- dat$`arabica coffee` + dat$`robusta coffee`
+  # SPAM prod_t is native 0.05deg; admin_rast/base_rast is 0.25deg. Resample to
+  # base (method="sum", mass-conserving) BEFORE the admin zonal + proportion, or
+  # zonal/`raw_dat/spam_tot` hit "[zonal] extents do not match". Mirrors 0.4.1's
+  # glw resample (L144). method="sum" conserves production totals (issue #9).
+  if (!terra::compareGeom(dat, base_rast, stopOnError = FALSE)) {
+    .src <- terra::global(dat, "sum", na.rm = TRUE)[, 1]
+    dat <- terra::resample(dat, base_rast, method = "sum")
+    .dst <- terra::global(dat, "sum", na.rm = TRUE)[, 1]
+    if (any(abs(.dst / .src - 1) > 0.005, na.rm = TRUE)) {
+      warning(sprintf("[0.4.0] SPAM prod mass not conserved on resample (tech %d): max dev %.3f%%",
+                      i, 100 * max(abs(.dst / .src - 1), na.rm = TRUE)))
+    }
+  }
   dat
 })
 tech <- gsub(".tif", "", unlist(tstrsplit(basename(files_raw), "_", keep = 4)))
