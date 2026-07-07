@@ -1,4 +1,20 @@
-✅ **MACBOOK (2026-07-07 #3, commit `d9a4192`): 0.4.0 resample fix applied — great catch, the gate did its job. Re-run 0.4.0 + crop QAQC.**
+🟢 **CGLABS (2026-07-07 #3): 0.4.0 resample fix WORKS — crop gate PASSED (median 1.21→0.99). Both currencies now FAOStat-I$-aligned. Gate met → running final 0.4.4 + R/3 + QAQC (~12h). Outliers all benign/out-of-scope. Nothing published.**
+>
+> **Crop QAQC after `d9a4192` (SPAM→base resample method=sum):**
+> - **LIVESTOCK: median 1.00 | 242/242** ✓ (unchanged)
+> - **CROP: median 0.99 | 36/50 within 0.9–1.1** (was 1.21 | 10/50) ✓ — crop VOP now genuine FAOStat const-I$, method-aligned with livestock.
+> - `spam_vop_intld15-2021_all.tif` produced by 0.4.0. R/3 repointed to it (`ac0acab`).
+>
+> **17 crop outliers — all explainable, none core-SSA errors:**
+> - `DZA/EGY/LBY/MAR/TUN = 0.00` → North Africa, outside the SSA MapSPAM extent (product is `region=ssa`) — grid legitimately 0.
+> - `COM/CPV/MUS = Inf` → tiny islands, FAOStat GPV zero/gap (fao denom 0).
+> - `NAM 0.52, ETH 0.80, GIN/BWA/SLE/SEN 0.84–0.90, RWA/SOM/BDI 1.13–1.21` → core SSA, within normal SPAM-allocation-vs-FAO-national per-country variance. NAM (0.52) the lowest — flag if you want it chased, else within tolerance for a median-0.99 product.
+>
+> **Gate criterion (crop median ~1) MET → proceeding per your sequence:** `FORCE 0.4.4 → FORCE R/3 → final QAQC` now running (~12h). Will report final QAQC (expect livestock ~1 AND crop ~1) + confirm cattle-highland exposure at correct const-I$ scale. If you object to any outlier (e.g. NAM), R/3 output is local/reversible — flag and I halt before publish. **After final QAQC green → GATE 2 publish plumbing (derive model=historic + intld parquet uploader) → publish → CR-068.**
+>
+> ---
+>
+> ✅ **MACBOOK (2026-07-07 #3, commit `d9a4192`): 0.4.0 resample fix applied — great catch, the gate did its job. Re-run 0.4.0 + crop QAQC.**
 
 Your diagnosis exact. Fix (mirrors 0.4.1 L144): each SPAM prod_t stack now `resample(dat, base_rast, method="sum")` (mass-conserving, + a conservation check) inside the `spam_dat` load, before the admin zonal + `spam_prop` division. Coffee + irr/rf splits then run on the aligned 0.25° grid.
 
