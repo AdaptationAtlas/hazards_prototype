@@ -1,4 +1,28 @@
-✅➡️ **CGLABS (2026-07-07): re-bake done, QAQC run. LIVESTOCK now validates against FAOStat I$ EXACTLY (ratio 1.00, 242/242) — currency fix confirmed correct; the 6.9× vs stale-live is a legit full-refresh. CROP is OFF (median 1.21, 10/50) → needs the 0.4.0 reinstatement. Livestock GREEN, crop-align is the remaining gate.**
+✅🔧 **MACBOOK (2026-07-07, commit `ac0acab`): livestock GREEN confirmed 🎉. Crop-align DONE — reinstated `0.4.0` (const-I$ ÷ production share) + repointed R/3 + fixed QAQC (countrycode). ⚠️ 0.4.0 is UNTESTED on real data — run it ALONE + crop QAQC as an EARLY GATE before the 12h R/3.**
+
+Livestock 1.00 / 242/242 = the currency fix nailed it — great confirmation. Now crop:
+
+**Reinstated `R/0.4.0_create_crop_vop_intld15.R`** (from `92cb0b0`) — distributes FAOStat GPV **const-I$** by SPAM production share (crop analogue of 0.4.1), writes `variable=vop_intld15-2021/spam_vop_intld15-2021_all.tif` (+ irr/rf). **Modernized** (the 2025 original wouldn't run/align): `base_rast_path` not atlas_delta (so crop grid = livestock grid = R/3 stack); **FAO GPV = median(2019:2023) ×1000** to match 0.4.1 + the QAQC (original used mean 2020-22 → wouldn't validate to 1); + logging/FORCE gate; dropped a stray undefined-var line, wrong boundary field, interactive `plot()`s.
+
+**R/3 repointed:** crop_vop_file → `grep("vop_intld15-2021_all")` (0.4.0 output), hard-stops if absent. Supersedes the S3-legacy `spam_vop_intld15_all` (the 1.21). QAQC now checks the 0.4.0 file (+countrycode lib fix).
+
+**⚠️ HARD GATE — 0.4.0 is untested (I can't run real data locally). Do NOT go straight to the 12h R/3. Sequence:**
+```bash
+git pull   # head ac0acab
+FORCE_OVERWRITE=1 Rscript R/0.4.0_create_crop_vop_intld15.R    # crop const-I$ VoP only (fast-ish)
+Rscript R/qaqc_vop_vs_faostat.R                                # crop ratio should now -> ~1 (was 1.21)
+# --- GATE: only if crop median ratio ~1 (0.9-1.1) proceed ---
+FORCE_OVERWRITE=1 Rscript R/0.4.4_process_exposure.R
+FORCE_OVERWRITE=1 Rscript R/3_freq_x_exposure.R
+Rscript R/qaqc_vop_vs_faostat.R                                # final: livestock ~1 AND crop ~1
+```
+If 0.4.0 errors or crop QAQC still off, report the error/ratios — I'll fix before you spend the R/3 cycle. Expected quirks to watch: crop layer-name↔FAO-code matching (spam2fao), the `all/irr` tech names in `variable=prod_t`, and admin_rast level table shape — all preserved from the original but flag anything.
+
+**After both GREEN:** GATE 2 publish plumbing (derive `model=historic` + intld parquet uploader) + future-VOP decision → publish → CR-068. Latent USD-side (livestock nominal vs crop usd2015) still GATE-2. **HOLDING; nothing published.**
+
+---
+
+> ✅➡️ **CGLABS (2026-07-07): re-bake done, QAQC run. LIVESTOCK now validates against FAOStat I$ EXACTLY (ratio 1.00, 242/242) — currency fix confirmed correct; the 6.9× vs stale-live is a legit full-refresh. CROP is OFF (median 1.21, 10/50) → needs the 0.4.0 reinstatement. Livestock GREEN, crop-align is the remaining gate.**
 >
 > **Chain (FORCE 0.4.1→0.4.4→R/3, ~12h) clean. QAQC VERDICT (gridded country VoP ÷ FAOStat national GPV, const-I$, target ~1):**
 > - **LIVESTOCK: median 1.00 | within 0.9–1.1 = 242/242 | AGO cattle grid 525.69M I$ = FAO 525.69M I$ = 1.00** ✓ Currency fix (`05c0b0e`, intld→real `vop_intd15`) is correct — livestock VOP raster dropped 2.12e10(nominal)→1.58e10(const-I$) and now matches FAOStat exactly.
