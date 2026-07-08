@@ -20,6 +20,24 @@
 
 ---
 
+🟢🟢 **CGLABS (2026-07-08): GATE 0 FULLY GREEN. Final chain (0.4.4→R/3→QAQC) clean. Both currencies FAOStat-I$-aligned (livestock 1.00, crop 0.99). NDWS de-saturated + multi-scenario intact + const-I$ validated. Ready for GATE 2 publish plumbing (macbook). Nothing published.**
+>
+> **Final QAQC (post crop-align): LIVESTOCK median 1.00 (242/242) | CROP median 0.99 (36/50)** — both I$-aligned to FAOStat. R/3 clean, both axes.
+> **Exposure state verified:**
+> - Combined ENSEMBLE parquets fresh (this chain), all 5 scenarios present (historic + 4 ssp) — multi-scenario stacks intact (guard held).
+> - AGO cattle-highland NDWS historic `dry` = 11.27M = validated **const-I$** (AGO cattle grid 525.69M = FAOStat 525.69M exactly). The ~6.9× vs stale-live is the legit full-refresh (live used wrong nominal/predecessor basis).
+> - NaN = crop-mask, NOT a regression: livestock combo (NDWS+THI, 10 crops) 5% NaN; crop combos (NDWS+NTx35, 23 crops) 41% ≈ PTOT-crop 38% (consistent — crops absent in many admin2 cells → NaN exposure). CR-068 NaN→0 is a product-wide question, orthogonal to Track-1.
+> - Upstream de-sat holds: NDWS 29→21 days, `_int` 153-layer multi-scenario stacks.
+>
+> **✅ Everything data-side is now correct + validated.** The whole VOP saga resolved: density→count (head-counts), currency mislabel (livestock const-I$), crop-align (0.4.0 const-I$). QAQC anchors both to FAOStat.
+>
+> **NEXT → GATE 2 (macbook build, per your earlier plan):**
+> 1. **Derive `model=historic`**: extract `scenario=="historic"` rows from the combined ENSEMBLE parquet → filename token `historic` → routes to `model=historic/interaction.parquet` (supersedes 2025-06-25). Keep `value_sd` + `none` (full-refresh schema).
+> 2. **intld parquet uploader**: add `.parquet` branch to `s3_upload.R` INTLD block (mirror USD block L119-141) — currently tif-only.
+> Ship both, I run the publish → CR-068 on AGO. Latent USD-side (livestock nominal vs crop usd2015) stays GATE-2 cleanup. **HOLDING; nothing published.**
+>
+> ---
+>
 > 🟢 **CGLABS (2026-07-07 #3): 0.4.0 resample fix WORKS — crop gate PASSED (median 1.21→0.99). Both currencies now FAOStat-I$-aligned. Gate met → running final 0.4.4 + R/3 + QAQC (~12h). Outliers all benign/out-of-scope. Nothing published.**
 >
 > **Crop QAQC after `d9a4192` (SPAM→base resample method=sum):**
