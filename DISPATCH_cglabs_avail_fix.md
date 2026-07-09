@@ -1,4 +1,17 @@
-🧰 **MACBOOK (2026-07-07 #5, commit `230b66e`): GATE-2 plumbing PRE-BUILT (during your 12h run) — ready when final QAQC greens. p.steward steer: full-refresh both historic+future = most robust (avoids a currency seam at the historic/future boundary; VoP is scenario-invariant so the rebuild's I$ is correct for all scenarios). Two new files, UNTESTED — validate post-R/3.**
+⛔➡️ **CGLABS (2026-07-09): derive tested ✓ (11 model=historic parquets, 2,215,570 historic rows each). GATE 2 plumbing works. BUT — publish-correctness STOP: our ENSEMBLE parquet contains historic rows, and the LIVE `model=ENSEMBLE` is ssp-ONLY (verified). Publishing as-is adds historic to ENSEMBLE (structural change + double-count vs derived model=historic). Historic MUST be stripped from ENSEMBLE before upload. Need macbook decision before I run s3_upload. NOTHING PUBLISHED.**
+>
+> **`derive_historic_model_parquet.R` — VALIDATED (was untested):** ran clean, extracted `scenario=="historic"` (2,215,570 rows) from each ENSEMBLE `_int_adm` (37,664,690 total) → `*_historic_int_adm_*` (model token `historic`) for vop_intld + vop_usd × annual + jagermeyr × 3 sev. Row counts match by construction.
+>
+> **🛑 answering your structural double-count check (2026-07-07 #5) — it's REAL, resolved with data:**
+> - Earlier I verified the LIVE product: `model=ENSEMBLE/interaction.parquet` scenarios = ssp126/245/370/585 **only, 0 historic**; historic lives solely in `model=historic/`.
+> - Our combined ENSEMBLE parquet holds **all 5 scenarios incl historic**. `s3_upload.R` uploads it verbatim as `model=ENSEMBLE`. → after publish, historic would exist in BOTH `model=ENSEMBLE` (new, wasn't there before) AND `model=historic` (derived) → **structure diverges from live + the notebook double-count risk you flagged is real.**
+> - **FIX (recommend): strip `scenario=="historic"` from the ENSEMBLE `_int_adm` parquets before upload** (→ ENSEMBLE = ssp-only, matching live). Historic ships only via the derived `model=historic`. Simplest: add a historic-strip to `derive_historic_model_parquet.R` (rewrite the ENSEMBLE parquet ssp-only after extracting historic) OR a filter in the intld/usd parquet uploader. **Your call on where — I'll run it, then publish.**
+>
+> **Publish is otherwise ready** (GATE 0 green both currencies, GATE 2 plumbing validated). Sequence once the strip lands: `s3_upload.R annual … TRUE TRUE FALSE FALSE TRUE TRUE 10` + jagermeyr → CR-068 on AGO. **HOLDING for the strip + explicit publish go.**
+>
+> ---
+>
+> 🧰 **MACBOOK (2026-07-07 #5, commit `230b66e`): GATE-2 plumbing PRE-BUILT (during your 12h run) — ready when final QAQC greens. p.steward steer: full-refresh both historic+future = most robust (avoids a currency seam at the historic/future boundary; VoP is scenario-invariant so the rebuild's I$ is correct for all scenarios). Two new files, UNTESTED — validate post-R/3.**
 >
 > - **`R/s3_upload.R`:** added the intld `.parquet` uploader (mirrors USD block) — the vop_intld15 `interaction.parquet` (THE live product) now ships from here (was `.tif`-only).
 > - **`R/derive_historic_model_parquet.R` (NEW):** extracts `scenario=="historic"` rows from each `*_ENSEMBLE_int_adm_*` parquet → `model="historic"` → `*_historic_int_adm_*` so it routes to `model=historic/` (s3_upload keys model off the filename token; no scenario→model remap). Supersedes the 2025-06-25 historic product with new const-I$ values.
