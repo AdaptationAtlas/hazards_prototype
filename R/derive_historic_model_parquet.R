@@ -42,6 +42,7 @@ vop_dirs <- c(
 sort_key <- c("iso3", "admin0_name", "hazard", "crop", "scenario")
 
 n_written <- 0L
+n_stripped <- 0L
 for (vd in vop_dirs) {
   for (tf in timeframes) {
     dir_tf <- file.path(vd, tf)
@@ -50,26 +51,45 @@ for (vd in vop_dirs) {
     .dlog(sprintf("%s: %d ENSEMBLE parquets", dir_tf, length(en_files)))
     for (f in en_files) {
       out <- file.path(dirname(f), gsub("_ENSEMBLE_int_adm_", "_historic_int_adm_", basename(f)))
-      if (file.exists(out) && !overwrite) { .dlog(sprintf("  skip (exists): %s", basename(out))); next }
       dt <- as.data.table(arrow::read_parquet(f))
       if (!"scenario" %in% names(dt)) stop("no scenario column in ", basename(f))
       hist <- dt[scenario == "historic"]
-      if (!nrow(hist)) { .dlog(sprintf("  WARN 0 historic rows in %s — skipping", basename(f))); next }
-      hist[, model := "historic"]
-      .dlog(sprintf("  %s: %d historic / %d total rows -> %s", basename(f), nrow(hist), nrow(dt), basename(out)))
-      write_parquet_pushdown(hist, out,
-        sort_by = intersect(sort_key, names(hist)),
-        verify_stats_on = intersect(c("iso3", "hazard", "crop"), names(hist)))
-      # carry the attribute json if present
-      if (file.exists(paste0(f, ".json"))) {
-        aj <- jsonlite::read_json(paste0(f, ".json"))
-        aj$model <- "historic"
-        jsonlite::write_json(aj, paste0(out, ".json"))
+      ssp <- dt[scenario != "historic"]
+      stopifnot(nrow(hist) + nrow(ssp) == nrow(dt))
+
+      # 1) derive model=historic (idempotent; skip write if present unless FORCE)
+      if (nrow(hist) == 0L) {
+        .dlog(sprintf("  %s already ssp-only (0 historic) — nothing to derive/strip", basename(f)))
+      } else {
+        if (file.exists(out) && !overwrite) {
+          .dlog(sprintf("  skip historic write (exists): %s", basename(out)))
+        } else {
+          h <- copy(hist)[, model := "historic"]
+          .dlog(sprintf("  %s: %d historic / %d total -> %s", basename(f), nrow(hist), nrow(dt), basename(out)))
+          write_parquet_pushdown(h, out,
+            sort_by = intersect(sort_key, names(h)),
+            verify_stats_on = intersect(c("iso3", "hazard", "crop"), names(h)))
+          if (file.exists(paste0(f, ".json"))) {
+            aj <- jsonlite::read_json(paste0(f, ".json")); aj$model <- "historic"
+            jsonlite::write_json(aj, paste0(out, ".json"))
+          }
+          n_written <- n_written + 1L
+        }
+
+        # 2) STRIP historic from the ENSEMBLE parquet so model=ENSEMBLE = ssp-only
+        # (live model=ENSEMBLE is ssp-only; historic ships ONLY via model=historic).
+        # In-place rewrite — the all-scenario file is regenerable from R/3, and
+        # historic is already safely in the derived file above (written first).
+        stopifnot(nrow(ssp) > 0L)
+        .dlog(sprintf("  STRIP: %s -> ssp-only (%d -> %d rows)", basename(f), nrow(dt), nrow(ssp)))
+        write_parquet_pushdown(ssp, f,
+          sort_by = intersect(c("iso3", "admin0_name", "hazard", "crop", "scenario"), names(ssp)),
+          verify_stats_on = intersect(c("iso3", "hazard", "scenario"), names(ssp)))
+        n_stripped <- n_stripped + 1L
       }
-      n_written <- n_written + 1L
     }
   }
 }
-.dlog(sprintf("done — wrote %d model=historic parquets", n_written))
+.dlog(sprintf("done — wrote %d model=historic parquets, stripped %d ENSEMBLE parquets to ssp-only", n_written, n_stripped))
 cat("\nVERIFY before publish: model=historic row count == ENSEMBLE scenario==historic count;\n",
     "spot-check a (iso3,hazard,crop) value matches; then publish (s3_upload UPLOAD_PARQUET).\n", sep = "")
