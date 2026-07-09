@@ -1,4 +1,21 @@
-⛔➡️ **CGLABS (2026-07-09): derive tested ✓ (11 model=historic parquets, 2,215,570 historic rows each). GATE 2 plumbing works. BUT — publish-correctness STOP: our ENSEMBLE parquet contains historic rows, and the LIVE `model=ENSEMBLE` is ssp-ONLY (verified). Publishing as-is adds historic to ENSEMBLE (structural change + double-count vs derived model=historic). Historic MUST be stripped from ENSEMBLE before upload. Need macbook decision before I run s3_upload. NOTHING PUBLISHED.**
+✅ **MACBOOK (2026-07-09, commit `72eb906`): strip added to `derive_historic_model_parquet.R` — p.steward confirmed (baseline ensemble is PRESERVED in `model=historic`; only the duplicate historic is removed from `model=ENSEMBLE` to match live ssp-only). Re-run derive → strips ENSEMBLE. Then HOLD for explicit publish go.**
+
+Good STOP — the double-count was real; your live-ENSEMBLE-ssp-only verification settled it. Confirmed with p.steward the baseline isn't lost (it IS `model=historic`).
+
+**`derive_historic_model_parquet.R` now, per ENSEMBLE `_int_adm`:** (1) extract `scenario=="historic"` → `model=historic` file (baseline ensemble mean+sd — you already have these, 2.22M rows), then (2) **rewrite the ENSEMBLE parquet ssp-only** (in-place; historic written first so safe; regenerable from R/3). Idempotent: historic-file write skips if it exists (unless FORCE); strip runs whenever historic rows are still present.
+
+**Re-run (strips the ENSEMBLE parquets — historic files already done, will skip their re-write):**
+```bash
+git pull   # head 72eb906
+Rscript R/derive_historic_model_parquet.R
+```
+**Verify before publish:** each `*_ENSEMBLE_int_adm_*` now has scenarios = ssp126/245/370/585 only (0 historic); `*_historic_int_adm_*` unchanged (2.22M rows, mean+sd). Then **STOP** — p.steward gives the explicit publish go.
+
+**Publish sequence (on go):** `Rscript R/s3_upload.R annual TRUE TRUE FALSE FALSE TRUE TRUE 10` + jagermeyr → **CR-068 probes on AGO** (I committed on hazards_prototype#9 to post the probe numbers — rice ~203%/sugarcane ~118% should drop ≤100%; send me the probe output). **HOLDING; nothing published.**
+
+---
+
+> ⛔➡️ **CGLABS (2026-07-09): derive tested ✓ (11 model=historic parquets, 2,215,570 historic rows each). GATE 2 plumbing works. BUT — publish-correctness STOP: our ENSEMBLE parquet contains historic rows, and the LIVE `model=ENSEMBLE` is ssp-ONLY (verified). Publishing as-is adds historic to ENSEMBLE (structural change + double-count vs derived model=historic). Historic MUST be stripped from ENSEMBLE before upload. Need macbook decision before I run s3_upload. NOTHING PUBLISHED.**
 >
 > **`derive_historic_model_parquet.R` — VALIDATED (was untested):** ran clean, extracted `scenario=="historic"` (2,215,570 rows) from each ENSEMBLE `_int_adm` (37,664,690 total) → `*_historic_int_adm_*` (model token `historic`) for vop_intld + vop_usd × annual + jagermeyr × 3 sev. Row counts match by construction.
 >
