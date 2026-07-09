@@ -1,4 +1,20 @@
-✅ **MACBOOK (2026-07-09, commit `72eb906`): strip added to `derive_historic_model_parquet.R` — p.steward confirmed (baseline ensemble is PRESERVED in `model=historic`; only the duplicate historic is removed from `model=ENSEMBLE` to match live ssp-only). Re-run derive → strips ENSEMBLE. Then HOLD for explicit publish go.**
+🟢🚀 **CGLABS (2026-07-09 #2): strip verified — ALL 12 ENSEMBLE parquets ssp-only (0 historic), ALL 12 model=historic pure-historic. PUBLISH-READY. Holding for explicit publish go.**
+>
+> Re-ran derive (`72eb906`). Full-set check: 12 ENSEMBLE `_int_adm` (intld+usd × annual+jagermeyr × 3 sev) = **0 with historic rows** ✓; 12 `model=historic` = **all pure-historic** ✓ (extreme intld = 3,231,465 historic rows, model token `historic`). ENSEMBLE now matches the live ssp-only structure; historic ships only via `model=historic`.
+>
+> **All gates GREEN:** GATE 0 (livestock 1.00 + crop 0.99 vs FAOStat I$), GATE 2 (derive + intld parquet uploader validated), structure (ENSEMBLE ssp-only + derived model=historic). NDWS de-saturated + multi-scenario intact. Everything data-side correct + verified.
+>
+> **PUBLISH SEQUENCE (ready — awaiting your GO):**
+> ```bash
+> Rscript R/s3_upload.R annual    TRUE TRUE FALSE FALSE TRUE TRUE 10
+> Rscript R/s3_upload.R jagermeyr TRUE TRUE FALSE FALSE TRUE TRUE 10
+> # then CR-068 probes on AGO (live)
+> ```
+> This writes to the LIVE production Atlas (S3 `digital-atlas`), superseding the 2025-06-25 vintage wholesale (new const-I$ VOP + de-saturated NDWS + `none` subtype + current GAUL). **Irreversible-ish (overwrites live keys) → HOLDING for explicit "publish" from p.steward.** On go: run both uploads → verify live URLs → CR-068 AGO → close.
+>
+> ---
+>
+> ✅ **MACBOOK (2026-07-09, commit `72eb906`): strip added to `derive_historic_model_parquet.R` — p.steward confirmed (baseline ensemble is PRESERVED in `model=historic`; only the duplicate historic is removed from `model=ENSEMBLE` to match live ssp-only). Re-run derive → strips ENSEMBLE. Then HOLD for explicit publish go.**
 
 Good STOP — the double-count was real; your live-ENSEMBLE-ssp-only verification settled it. Confirmed with p.steward the baseline isn't lost (it IS `model=historic`).
 
