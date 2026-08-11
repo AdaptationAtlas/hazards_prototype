@@ -8,6 +8,56 @@ Producer to be written: `R/observational/5b_make_obs_seasonal_rasters.R` (+ new 
 
 ---
 
+## [macbook 2026-08-11 #3] ACTION → cglabs: bake + publish per-year SEASONAL sum COGs (all 12 windows) for the notebook A/B
+
+**Goal (p.steward):** precalculate the 3-month sums for all **12 tri-month windows**, per year,
+host as COGs — so the KE-ENSO notebook can **compare performance**: fetch 1 seasonal COG vs
+fetch 3 monthly COGs + sum client-side.
+
+**Code shipped (develop):**
+- NEW `R/observational/5b_make_obs_seasonal_rasters.R` — per-year seasonal SUM rasters. Reads the
+  monthly PTOT store (same files as the Tier-3 monthly product → consistent), sums the 3 months
+  per window per year, writes COG + embeds stats (3-step GDAL roundtrip). Windows: JFM FMA MAM AMJ
+  MJJ JJA JAS ASO SON OND NDJ DJF. NDJ/DJF attribute December to the PREVIOUS year (matches script 5).
+- NEW `R/observational/_seasonal_helpers.R` — the pure fns (mirrors script 5; script 5 left
+  untouched — dedup debt noted in the file header).
+- `6_publish_obs_to_s3.R` **Tier 4** (`--tier 4`, opt-in, not in `all`):
+  S3 `…/processing=seasonal/variable=PTOT/season={SEASON}/PTOT_{SEASON}_{YYYY}_sum.tif`.
+
+### Steps
+1. `git pull` develop.
+2. **SMOKE GATE (do first — ~1-2 min, 3 windows, Kenya bbox):**
+   `Rscript R/observational/5b_make_obs_seasonal_rasters.R --smoke`
+   → writes `Data/chirts_chirps_hist/seasonal/PTOT/PTOT_{JFM,OND,DJF}_{YYYY}_sum.tif` (Kenya crop).
+3. **EQUIVALENCE CHECK (hard gate — proves the precalc == client-side sum):** pick one year, e.g.
+   OND 2015. Confirm the seasonal COG equals the sum of the 3 monthly COGs at a sample pixel:
+   ```r
+   library(terra)
+   s <- rast("Data/chirts_chirps_hist/seasonal/PTOT/PTOT_OND_2015_sum.tif")
+   m <- sum(rast(sprintf("Data/chirts_chirps_hist/PTOT/PTOT-2015-%02d.tif", 10:12)))
+   d <- global(abs(s - crop(m, s)), "max", na.rm=TRUE)[[1]]; cat("max abs diff =", d, "\n")
+   ```
+   Expect **~0** (identical up to float). If not ~0, STOP and report — do NOT run --full.
+4. **FULL bake:** `Rscript R/observational/5b_make_obs_seasonal_rasters.R --full`
+   (~540 PTOT COGs, ~30-40 min sequential). Report COG count under `seasonal/PTOT/`.
+5. **Publish:** `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 4` (eyeball rows),
+   then `Rscript R/observational/6_publish_obs_to_s3.R --full --tier 4`.
+6. **Verify live:** `curl -s -o /dev/null -w '%{http_code}\n' -r 0-0 "https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=seasonal/variable=PTOT/season=OND/PTOT_OND_2015_sum.tif"` → 206 + CORS.
+
+### RESPONSE block to append (then push)
+```
+smoke: 3 windows written = yes/no
+EQUIVALENCE OND-2015 max abs diff = ?   (expect ~0)
+full bake COGs under seasonal/PTOT/ = ?   (expect ~540)
+dry-run rows = ?   published = ?/?
+live 206 = yes/no   CORS = yes/no
+base URL = https://digital-atlas.s3.amazonaws.com/.../processing=seasonal/variable=PTOT/season={SEASON}/
+→ SEASONAL TIER LIVE = yes/no
+```
+Note: `--overwrite` not honoured by AtlasDataManageR 0.0.0.9000 (delete S3 keys to force re-upload).
+
+---
+
 ## [macbook 2026-08-11 #2] ACTION → cglabs: publish per-pixel MONTHLY PTOT COGs (Tier 3) so the notebook can sum client-side
 
 **Decision (p.steward):** skip the seasonal pre-bake for now. Publish the existing per-pixel

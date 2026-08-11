@@ -126,9 +126,10 @@ usage <- function() {
     "      Uploads every file in the selected tiers. Requires AWS credentials.\n",
     "\n",
     "Flags:\n",
-    "  --tier {1|2|3|all}  Default 'all' (Tier 1+2). Tier 3 = per-pixel monthly\n",
-    "                      COGs; OPT-IN ONLY (--tier 3), not in 'all'. Ignored by\n",
-    "                      --smoke (always Tier 1).\n",
+    "  --tier {1|2|3|4|all} Default 'all' (Tier 1+2). Tier 3 = per-pixel monthly\n",
+    "                      COGs; Tier 4 = per-year seasonal-sum COGs. Tiers 3 & 4\n",
+    "                      are OPT-IN ONLY (--tier 3 / --tier 4), not in 'all'.\n",
+    "                      Ignored by --smoke (always Tier 1).\n",
     "  --overwrite         Re-upload files already on S3.\n",
     sep = ""
   )
@@ -167,13 +168,14 @@ pacman::p_load(future, future.apply)
 # Resolve --tier (default all). --smoke always means Tier 1, one file.
 tier_arg <- parse_cli_flag(args, "tier", "character")
 if (is.null(tier_arg) || is.na(tier_arg)) tier_arg <- "all"
-if (!tier_arg %in% c("1", "2", "3", "all")) {
-  stop(glue::glue("--tier must be 1, 2, 3, or all (got '{tier_arg}')"))
+if (!tier_arg %in% c("1", "2", "3", "4", "all")) {
+  stop(glue::glue("--tier must be 1, 2, 3, 4, or all (got '{tier_arg}')"))
 }
-# Tier 3 is opt-in only: NOT included in 'all' (large per-pixel monthly upload).
+# Tiers 3 & 4 are opt-in only: NOT included in 'all' (large raster uploads).
 do_tier1 <- mode == "--smoke" || tier_arg %in% c("1", "all")
 do_tier2 <- mode != "--smoke" && tier_arg %in% c("2", "all")
 do_tier3 <- mode != "--smoke" && tier_arg == "3"
+do_tier4 <- mode != "--smoke" && tier_arg == "4"
 
 overwrite <- parse_overwrite_flag(args)
 # AtlasDataManageR 0.0.0.9000 (currently installed) does NOT expose an
@@ -248,6 +250,7 @@ prefix_admin_monthly <- paste0(climate_root, "/processing=admin-monthly")
 prefix_admin_periods <- paste0(climate_root, "/processing=admin-periods")
 prefix_climatology   <- paste0(climate_root, "/processing=climatology")
 prefix_monthly       <- paste0(climate_root, "/processing=monthly")
+prefix_seasonal      <- paste0(climate_root, "/processing=seasonal")
 prefix_base_raster   <- "domain=boundaries/type=raster/source=chirps-grid/region=africa/processing=base-raster"
 
 # Translate the on-disk climatology label (bare year-range) to the
@@ -291,6 +294,22 @@ name_fn_monthly <- function(x) {
                  paste(fname[bad], collapse = ", ")))
   }
   sprintf("variable=%s/%s", var, fname)
+}
+
+# Per-year seasonal (tri-month) sum COG (Tier 4). On-disk name:
+# {VAR}_{SEASON}_{YYYY}_sum.tif (e.g. PTOT_OND_2015_sum.tif). Africa extent.
+# S3 leaf: variable={VAR}/season={SEASON}/{fname}. name_fn is vectorized (the
+# uploader passes the whole path vector — see name_fn_monthly note).
+name_fn_seasonal <- function(x) {
+  fname <- basename(x)
+  base  <- tools::file_path_sans_ext(fname)
+  parts <- tstrsplit(base, "_", fixed = TRUE)            # PTOT | SEASON | YYYY | sum
+  bad <- !grepl("^[A-Za-z0-9]+_[A-Z]{3}_[0-9]{4}_sum$", base)
+  if (any(bad)) {
+    stop(sprintf("Unexpected seasonal filename shape (expected {VAR}_{SEASON}_YYYY_sum.tif): %s",
+                 paste(fname[bad], collapse = ", ")))
+  }
+  sprintf("variable=%s/season=%s/%s", parts[[1]], parts[[2]], fname)
 }
 
 name_fn_climatology <- function(x) {
@@ -370,10 +389,26 @@ tier3_specs <- list(
   )
 )
 
+# Tier 4 (per-year seasonal tri-month sum COGs, from 5b). Opt-in ONLY (--tier 4)
+# — ~540 PTOT files. local_dir is the seasonal store (recursive over variable
+# subdirs: seasonal/{VAR}/{VAR}_{SEASON}_YYYY_sum.tif).
+tier4_specs <- list(
+  list(
+    upload_id     = "obs-seasonal",
+    local_dir     = file.path(chirts_chirps_hist_dir, "seasonal"),
+    s3_dir        = prefix_seasonal,
+    file_pattern  = "^[A-Za-z0-9]+_[A-Z]{3}_[0-9]{4}_sum\\.tif$",
+    name_fn       = name_fn_seasonal,
+    recursive     = TRUE,
+    tier          = 4L
+  )
+)
+
 active_specs <- c(
   if (do_tier1) tier1_specs else list(),
   if (do_tier2) tier2_specs else list(),
-  if (do_tier3) tier3_specs else list()
+  if (do_tier3) tier3_specs else list(),
+  if (do_tier4) tier4_specs else list()
 )
 
 cat("project_dir          :", project_dir, "\n")
@@ -386,6 +421,7 @@ cat("tier                 :", tier_arg, "\n")
 cat("tier 1 enabled       :", do_tier1, "\n")
 cat("tier 2 enabled       :", do_tier2, "\n")
 cat("tier 3 enabled       :", do_tier3, "\n")
+cat("tier 4 enabled       :", do_tier4, "\n")
 cat("overwrite            :", overwrite, "\n")
 cat("workers              :", workers, "\n\n")
 
