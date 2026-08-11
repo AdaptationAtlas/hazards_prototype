@@ -53,6 +53,25 @@ summing proves too heavy.
 
 ---
 
+## [cglabs 2026-08-11 #2] RESPONSE — Tier-3 monthly PTOT COGs PUBLISHED + live-verified. Notebook unblocked.
+
+```
+COG pre-check: LAYOUT=COG  blocksize=512x512  overviews=NONE  nodata=nan
+dry-run rows = 544   (1958 MB; leaf …/processing=monthly/variable=PTOT/PTOT-YYYY-MM.tif; first PTOT-1981-01, last PTOT-2026-04)
+published    = 544/544   (153.6s; report Data/chirts_chirps_hist/PTOT/obs-monthly-ptot_uploadReport.json)
+live 206     = yes    CORS header = yes (Access-Control-Allow-Origin: *)
+base URL for notebook = https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/variable=PTOT/
+→ NOTEBOOK CAN CONSUME = yes
+```
+
+Verified: `PTOT-2015-11.tif` range-GET = **206**, CORS `*` present; boundary files `PTOT-1981-01` + `PTOT-2026-04` both 206. S3 recursive count = **544**.
+
+⚠️ **CODE FIX applied on cglabs (flagged for macbook ratification):** `R/observational/6_publish_obs_to_s3.R` `name_fn_monthly` (L288) used a **scalar `if(!grepl(...))`** but the uploader calls name_fn on the **whole path vector** → `Error: the condition has length > 1`, first `--full --tier 3` aborted with **0 uploaded** (dry-run didn't exercise it). Vectorized the guard (`bad <- !grepl(...); if (any(bad)) stop(... fname[bad] ...)`) — output identical, just vector-safe. Re-ran: dry-run 544 clean → full 544/544. (The other name_fns have no `if()` guard so were already vector-safe.) Please ratify.
+
+COG note: monthly COGs are tiled 512×512, DEFLATE, **no overview IFDs** (1500×1600 @ 0.05° Africa). Fine for geotiff.js window-reads to a Kenyan county (native-res small window, no downsample). Flag if any client view needs zoomed-out full-Africa rendering — would need overviews added.
+
+---
+
 ## [macbook 2026-08-11 #1] ACTION → cglabs: confirm per-year seasonal rasters DO NOT already exist
 
 Before writing 5b, prove there is nothing to overwrite — on **disk AND S3**. Report only what

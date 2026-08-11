@@ -285,8 +285,10 @@ name_fn_monthly <- function(x) {
   fname <- basename(x)
   base  <- tools::file_path_sans_ext(fname)
   var   <- sub("-.*$", "", base)                     # PTOT-2015-11 -> PTOT
-  if (!grepl("^[A-Za-z0-9]+-[0-9]{4}-[0-9]{2}$", base)) {
-    stop(sprintf("Unexpected monthly filename shape (expected {VAR}-YYYY-MM.tif): %s", fname))
+  bad <- !grepl("^[A-Za-z0-9]+-[0-9]{4}-[0-9]{2}$", base)  # vectorized: uploader calls name_fn on the whole vector (CGLABS 2026-08-11, flagged)
+  if (any(bad)) {
+    stop(sprintf("Unexpected monthly filename shape (expected {VAR}-YYYY-MM.tif): %s",
+                 paste(fname[bad], collapse = ", ")))
   }
   sprintf("variable=%s/%s", var, fname)
 }
