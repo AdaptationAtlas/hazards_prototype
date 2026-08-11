@@ -8,7 +8,52 @@ Producer to be written: `R/observational/5b_make_obs_seasonal_rasters.R` (+ new 
 
 ---
 
-## [macbook 2026-08-11] ACTION → cglabs: confirm per-year seasonal rasters DO NOT already exist
+## [macbook 2026-08-11 #2] ACTION → cglabs: publish per-pixel MONTHLY PTOT COGs (Tier 3) so the notebook can sum client-side
+
+**Decision (p.steward):** skip the seasonal pre-bake for now. Publish the existing per-pixel
+**monthly** PTOT COGs to the public bucket; the KE-ENSO notebook sums the 3 season months
+in-browser (geotiff.js window-read to the county). Rationale: CHC's raw monthly tifs have **no
+CORS** (browser-blocked) and the Atlas monthly COGs were **never on S3** (404, Afrilabs-only) —
+so nothing public is renderable today. `digital-atlas` already has CORS `*` + range requests.
+
+**Code shipped (develop):** new **Tier 3** in `R/observational/6_publish_obs_to_s3.R`
+(`upload_id=obs-monthly-ptot`). Opt-in only via `--tier 3` (NOT in `--tier all`; 544 files).
+- local: `Data/chirts_chirps_hist/PTOT/PTOT-YYYY-MM.tif`
+- S3: `domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/variable=PTOT/PTOT-YYYY-MM.tif`
+- name_fn parses `{VAR}-YYYY-MM.tif`; Africa extent (notebook window-reads to Kenya).
+
+### Steps
+1. `git -C <repo> pull` (develop; this dispatch + the Tier-3 code).
+2. **Pre-check one file is a real COG** (tiled + overviews → geotiff.js window-read works):
+   `gdalinfo Data/chirts_chirps_hist/PTOT/PTOT-2015-11.tif | grep -Ei 'LAYOUT|BLOCK|Overviews|NoData'`
+   Report: LAYOUT=COG? blocksize? overviews present? NoData value?
+3. **Dry-run:** `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 3`
+   → eyeball `_publish_dry_run.csv`: expect ~544 rows, S3 leaf `…/processing=monthly/variable=PTOT/PTOT-YYYY-MM.tif`. Report row count + first/last path.
+4. **Publish:** `Rscript R/observational/6_publish_obs_to_s3.R --full --tier 3`
+   (AWS via `~/.aws/credentials` default profile — `export AWS_PROFILE=default` if the uploader needs it). Idempotent (skip-if-exists).
+5. **Verify live (this is what unblocks the notebook):**
+   - public read + range: `curl -s -o /dev/null -w '%{http_code}\n' -r 0-0 "https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/variable=PTOT/PTOT-2015-11.tif"` → expect **206**.
+   - CORS: add `-H "Origin: https://example.com"` to a `curl -I` and confirm `access-control-allow-origin` present.
+   - count: `aws s3 ls --recursive .../processing=monthly/variable=PTOT/ | wc -l` → expect 544.
+
+### RESPONSE block to append (then push)
+```
+COG pre-check: LAYOUT=? blocksize=? overviews=? nodata=?
+dry-run rows = ?   (expect ~544)
+published    = ?/544
+live 206     = yes/no    CORS header = yes/no
+base URL for notebook = https://digital-atlas.s3.amazonaws.com/.../processing=monthly/variable=PTOT/
+→ NOTEBOOK CAN CONSUME = yes/no
+```
+
+Note: the earlier "confirm rasters absent" ask below is now moot for the monthly path (monthly
+per-pixel rasters were never on S3 — verified by anon bucket list: only admin-monthly[parquet],
+admin-periods[parquet], climatology[COG]). Seasonal 5b bake deferred; revisit if client-side
+summing proves too heavy.
+
+---
+
+## [macbook 2026-08-11 #1] ACTION → cglabs: confirm per-year seasonal rasters DO NOT already exist
 
 Before writing 5b, prove there is nothing to overwrite — on **disk AND S3**. Report only what
 you find (`ls` / `aws s3 ls`), don't infer.

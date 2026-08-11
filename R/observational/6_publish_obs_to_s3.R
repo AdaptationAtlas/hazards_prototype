@@ -126,7 +126,9 @@ usage <- function() {
     "      Uploads every file in the selected tiers. Requires AWS credentials.\n",
     "\n",
     "Flags:\n",
-    "  --tier {1|2|all}    Default 'all'. Ignored by --smoke (always Tier 1).\n",
+    "  --tier {1|2|3|all}  Default 'all' (Tier 1+2). Tier 3 = per-pixel monthly\n",
+    "                      COGs; OPT-IN ONLY (--tier 3), not in 'all'. Ignored by\n",
+    "                      --smoke (always Tier 1).\n",
     "  --overwrite         Re-upload files already on S3.\n",
     sep = ""
   )
@@ -165,11 +167,13 @@ pacman::p_load(future, future.apply)
 # Resolve --tier (default all). --smoke always means Tier 1, one file.
 tier_arg <- parse_cli_flag(args, "tier", "character")
 if (is.null(tier_arg) || is.na(tier_arg)) tier_arg <- "all"
-if (!tier_arg %in% c("1", "2", "all")) {
-  stop(glue::glue("--tier must be 1, 2, or all (got '{tier_arg}')"))
+if (!tier_arg %in% c("1", "2", "3", "all")) {
+  stop(glue::glue("--tier must be 1, 2, 3, or all (got '{tier_arg}')"))
 }
+# Tier 3 is opt-in only: NOT included in 'all' (large per-pixel monthly upload).
 do_tier1 <- mode == "--smoke" || tier_arg %in% c("1", "all")
 do_tier2 <- mode != "--smoke" && tier_arg %in% c("2", "all")
+do_tier3 <- mode != "--smoke" && tier_arg == "3"
 
 overwrite <- parse_overwrite_flag(args)
 # AtlasDataManageR 0.0.0.9000 (currently installed) does NOT expose an
@@ -243,6 +247,7 @@ climate_root <- "domain=climate/type=observational/source=chirps-chirts-era5/reg
 prefix_admin_monthly <- paste0(climate_root, "/processing=admin-monthly")
 prefix_admin_periods <- paste0(climate_root, "/processing=admin-periods")
 prefix_climatology   <- paste0(climate_root, "/processing=climatology")
+prefix_monthly       <- paste0(climate_root, "/processing=monthly")
 prefix_base_raster   <- "domain=boundaries/type=raster/source=chirps-grid/region=africa/processing=base-raster"
 
 # Translate the on-disk climatology label (bare year-range) to the
@@ -271,6 +276,20 @@ name_fn_admin_periods <- function(x) {
 }
 
 name_fn_base_raster <- function(x) basename(x)
+
+# Per-pixel monthly COG (Tier 3). On-disk name: {VAR}-YYYY-MM.tif (e.g.
+# PTOT-2015-11.tif). Africa extent — the notebook window-reads to the county
+# via geotiff.js range requests, so no per-country crop here. S3 leaf:
+#   variable={VAR}/{VAR}-YYYY-MM.tif
+name_fn_monthly <- function(x) {
+  fname <- basename(x)
+  base  <- tools::file_path_sans_ext(fname)
+  var   <- sub("-.*$", "", base)                     # PTOT-2015-11 -> PTOT
+  if (!grepl("^[A-Za-z0-9]+-[0-9]{4}-[0-9]{2}$", base)) {
+    stop(sprintf("Unexpected monthly filename shape (expected {VAR}-YYYY-MM.tif): %s", fname))
+  }
+  sprintf("variable=%s/%s", var, fname)
+}
 
 name_fn_climatology <- function(x) {
   fname <- basename(x)
@@ -334,9 +353,25 @@ tier2_specs <- list(
   )
 )
 
+# Tier 3 (per-pixel monthly COGs). Opt-in ONLY (--tier 3) — 544+ PTOT files,
+# large one-time upload; deliberately NOT part of --tier all. local_dir is the
+# monthly variable store sibling of admin/ + maps/ (e.g. chirts_chirps_hist/PTOT).
+tier3_specs <- list(
+  list(
+    upload_id     = "obs-monthly-ptot",
+    local_dir     = file.path(chirts_chirps_hist_dir, "PTOT"),
+    s3_dir        = prefix_monthly,
+    file_pattern  = "^PTOT-[0-9]{4}-[0-9]{2}\\.tif$",
+    name_fn       = name_fn_monthly,
+    recursive     = FALSE,
+    tier          = 3L
+  )
+)
+
 active_specs <- c(
   if (do_tier1) tier1_specs else list(),
-  if (do_tier2) tier2_specs else list()
+  if (do_tier2) tier2_specs else list(),
+  if (do_tier3) tier3_specs else list()
 )
 
 cat("project_dir          :", project_dir, "\n")
@@ -348,6 +383,7 @@ cat("mode                 :", mode, "\n")
 cat("tier                 :", tier_arg, "\n")
 cat("tier 1 enabled       :", do_tier1, "\n")
 cat("tier 2 enabled       :", do_tier2, "\n")
+cat("tier 3 enabled       :", do_tier3, "\n")
 cat("overwrite            :", overwrite, "\n")
 cat("workers              :", workers, "\n\n")
 
