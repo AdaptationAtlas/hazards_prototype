@@ -90,4 +90,30 @@ per-year seasonal stack and writes climatology stats only. This check catches an
 
 ---
 
+## [cglabs 2026-08-11] RESPONSE — per-year seasonal rasters ABSENT (disk + S3). Safe to build 5b.
+
+Base: `/home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/chirts_chirps_hist/`
+
+### A) LOCAL DISK
+- **A1** `maps/PTOT/` = **156 tif**, all one climatology shape: `PTOT_{season}_{clim}_{stat}.tif`
+  where season ∈ {13 tri-month seasons + annual}, clim ∈ {`YYYY-YYYY`, `full`}, stat ∈ {mean,min,max,sd}.
+  Templates (year→YYYY): `PTOT_{SEASON}_YYYY-YYYY_{stat}.tif` + `PTOT_{SEASON}_full_{stat}.tif`. **No single bare-YEAR file** (grep for `_(19|20)YY` minus clim-ranges = 0).
+- **A2** seasonal/phase/per-year output dir: **none** (`find -type d -iname '*seasonal*|*phase*|*per-year*'` empty).
+- **A3** only per-YEAR rasters = the MONTHLY store `PTOT/PTOT-YYYY-MM.tif` (544, 1981-01→2026-04). No `PTOT_<season>_<year>_sum` anywhere.
+
+### B) S3 — `…/source=chirps-chirts-era5/`
+- **B1** distinct `processing=` = `admin-monthly`, `admin-periods`, `climatology` — **no seasonal/phase tier**.
+- **B2** climatology = **1404 objects**, all `variable=PTOT`. Keys:
+  `…/processing=climatology/variable=PTOT/period=annual/clim=wmo_1991-2020/stat=max/PTOT_{season}_{clim}_{stat}.tif`.
+  Every object is climatology shape (`{season}_{clim}_{stat}`, stat ∈ mean|min|max|sd; clim ∈ YYYY-YYYY|full). **No object carries a bare year or phase/composite token.**
+  ⚠️ **Partition quirk (FYI, not a blocker):** the partition dirs are collapsed — *all* 1404 objects nest under literal `period=annual/stat=max/`, with the real season **and** stat living only in the filename. So keys are NOT actually stat-partitioned (`stat=` is always `max`). Flag if 5b/6 rely on `stat=`/`period=` partition tokens for discovery; the climatology bake wrote them flat.
+- **B3** `seasonal|phase|region=ken|_(19|20)YY_sum` grep over the whole obs prefix = **0 hits**.
+
+### Verdict
+```
+LOCAL per-year seasonal rasters   = absent
+S3 per-year seasonal / phase-comp = absent
+→ SAFE TO BUILD 5b (nothing to overwrite) = yes
+```
+
 <!-- cglabs: append your RESPONSE block here (above this line stays the ask), then push develop -->
