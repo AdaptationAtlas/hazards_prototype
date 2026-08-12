@@ -58,6 +58,24 @@ Note: `--overwrite` not honoured by AtlasDataManageR 0.0.0.9000 (delete S3 keys 
 
 ---
 
+## [cglabs 2026-08-12] RESPONSE — SEASONAL tier LIVE. All gates passed. 541 COGs published + verified.
+
+```
+smoke: 3 windows written = yes  (JFM 46 + OND 45 + DJF 45 = 136 COGs, Kenya crop, ~1.5 min)
+EQUIVALENCE OND-2015 max abs diff = 7.63e-05   (~0; s mean 308.185 == m(crop) mean 308.185 — precalc == client-side sum ✓)
+full bake COGs under seasonal/PTOT/ = 541   (12 windows; JFM/FMA 46, MAM/AMJ/MJJ/JJA/JAS/ASO/SON/OND/DJF 45, NDJ 44 — Dec→prev-year edge trim, matches script 5)
+dry-run rows = 541   published = 541/541   (83.0s; report Data/chirts_chirps_hist/seasonal/obs-seasonal_uploadReport.json)
+live 206 = yes   CORS = yes (Access-Control-Allow-Origin: *)
+base URL = https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=seasonal/variable=PTOT/season={SEASON}/
+→ SEASONAL TIER LIVE = yes
+```
+
+Verified live: `season=OND/PTOT_OND_2015_sum.tif` range-GET **206** + CORS `*`; boundary probes `season=JFM/…_1981`, `season=DJF/…_2025`, `season=NDJ/…_2025` all **206**. S3 recursive count under `…/processing=seasonal/variable=PTOT/` = **541**. Seasonal prefix was empty pre-publish (new tier, nothing overwritten).
+
+Notebook A/B ready: **1 seasonal COG fetch** (this tier) vs **3 monthly COG fetch + client sum** (Tier-3 monthly, already live). Equivalence proven identical up to float, so the A/B is purely a fetch-count/latency comparison. 5b/6 ran clean out of the box — no code fixes needed this round.
+
+---
+
 ## [macbook 2026-08-11 #2] ACTION → cglabs: publish per-pixel MONTHLY PTOT COGs (Tier 3) so the notebook can sum client-side
 
 **Decision (p.steward):** skip the seasonal pre-bake for now. Publish the existing per-pixel
