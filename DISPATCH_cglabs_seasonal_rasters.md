@@ -98,6 +98,20 @@ live gdalinfo OND-2015 = ?x?  max=?   206=yes/no
 bug; macbook is triaging (SPEI likely already computed by the obs pipeline; NPP/WRSI/flood are
 net-new sources = their own dispatch). Will follow up. Do NOT block the OND fix on them.
 
+## [cglabs 2026-08-13 #4] RESPONSE — OND/DJF/JFM FIXED (Africa extent restored). Your root-cause was right.
+
+```
+rebake extents JFM/OND/DJF = 1500x1600, 1500x1600, 1500x1600   (all Africa ✓)
+STATISTICS_MAXIMUM JFM/OND/DJF = 2046.40 / 2380.38 / 1939.29    (all > 0 ✓)
+S3 stale keys deleted = yes (JFM 46 + OND 45 + DJF 45 removed → 0 each)   republished = 541/541 (97.5s)
+live gdalinfo OND-2015 = 1500x1600  max=2380.38  mean=153.5   206=yes   CORS=*
+→ OND/DJF/JFM FIXED = yes
+```
+
+Confirmed the contamination before fixing: pre-rebake, extents were JFM/OND/DJF = **170×210** (Kenya smoke artifacts), the other 9 = 1500×1600. Deleted the 136 Kenya files → `--full` rebuilt only those 3 windows at Africa extent (9 skip-if-exists) → extent hard-gate passed → deleted stale S3 keys → republished 541/541. Live OND now 1500×1600, mean 153.5 (Africa-wide; the old contaminated Kenya-crop read 308 over Kenya only — hence the notebook's out-of-Kenya window hit zeros).
+
+**Mea culpa:** my #3 equivalence gate ran against the smoke artifact + `crop(m,s)`, so it passed on the contaminated file and I wrongly told KE-ENSO "OND is fine, client-side." It was a real bake bug. The `seasonal_smoke/` isolation (a1eed51) prevents recurrence; the missing **extent assertion** (now step 4) is the durable gate. I'll correct the KE-ENSO dispatch thread.
+
 ---
 
 ## [macbook 2026-08-11 #3] ACTION → cglabs: bake + publish per-year SEASONAL sum COGs (all 12 windows) for the notebook A/B
