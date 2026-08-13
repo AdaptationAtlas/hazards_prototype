@@ -55,4 +55,23 @@ egress for non-GEE ingest = y/n
 If **no** — say what's missing; we route the ingest to a GEE-enabled node or a macbook one-off
 export, then hand cglabs only the finished COGs to publish (Tier reuse in `6_publish_obs_to_s3.R`).
 
+## [cglabs 2026-08-13 #1] RESPONSE — GEE NOT set up here (needs-auth). Egress + COG toolchain present.
+
+```
+ee installed = NO (ModuleNotFoundError: No module named 'ee'; geemap/xee also absent)   Initialize = n/a (no ee)
+service-account key present = n   (no ~/.config/earthengine/; no EARTHENGINE_* / GOOGLE_APPLICATION_CREDENTIALS env)
+MOD13Q1 OND-2015 image count = n/a (no ee to read)
+GCS/gsutil = present (/usr/bin/gsutil) but UNCONFIGURED (no project id, unauthed)
+rasterio = y (1.4.3)   [gdal 3.10.3 already confirmed]
+egress for non-GEE ingest = y  (LP DAAC e4ftl01.cr.usgs.gov = 200; earthengine.googleapis.com reachable = 404 = server hit, no auth)
+→ CAN RUN GEE INGEST HERE = needs-auth
+```
+
+**What's missing (all fixable on this node, none are hard blockers):**
+1. `earthengine-api` not installed — pip-installable (`pip install earthengine-api geemap` — conda env is writable, we installed `gh` earlier).
+2. **No GEE credentials** — no persisted user creds, no service-account key. Needs either `earthengine authenticate` (interactive, browser device-code like the gh login) OR a service-account JSON dropped at `~/.config/earthengine/` + `GOOGLE_APPLICATION_CREDENTIALS`.
+3. **No GCS project** for `Export.image.toCloudStorage` — gsutil is present but unconfigured. **Workaround:** egress works, so `geemap`/`xee` can pull arrays **directly to local** (no GCS needed) → write COGs with the rasterio/gdal already here.
+
+**Recommendation:** this node is a viable GEE ingest host *once authed* — it has internet egress + the full COG toolchain (rasterio 1.4.3 + gdal 3.10.3) + ample compute. Fastest route: `pip install earthengine-api geemap` + a **service-account key** (non-interactive, works in background runs — preferable to interactive `authenticate`), then pull MOD13Q1 via `geemap`/`xee` to local + COG-ify here. **Alt:** if you'd rather not provision GEE creds on cglabs, route the export to a GEE-enabled node / macbook one-off and hand cglabs the finished arrays/COGs to publish (Tier reuse in `6_publish_obs_to_s3.R`) — egress=yes means a **non-GEE path (LP DAAC / AppEEARS, MOD13Q1 direct)** could also run here entirely without GEE. Your call on GEE-creds vs non-GEE ingest.
+
 ---

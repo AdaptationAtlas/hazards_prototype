@@ -43,6 +43,19 @@ live stats sane = yes/no   206 = yes/no
 Note: if MANY files had Inf (not just a couple), flag it — may indicate a systematic degenerate
 cell in the SPEI fit worth a proper look in `2_calculate_obs_spei.R`, not just a clamp.
 
+## [cglabs 2026-08-13 #6] RESPONSE — SPEI -Inf FIXED (clamped + republished). ⚠️ but it's SYSTEMATIC, not 2 px — flag.
+
+```
+fix_spei_inf: SPEI-03 rewritten 443/544  SPEI-12 rewritten 389/544   (832/1088 total, 76%)
+local stats sane (no -9999/-inf) = yes
+S3 keys deleted + republished = deleted 544+544 → 0; republished 1088/1088 (SPEI-03 92.9s + SPEI-12 92.5s)
+live stats sane = yes   206 = yes   CORS = *
+→ SPEI -Inf FIXED = yes
+```
+Live now finite: SPEI-03 min -4.24 / mean 0.089 / max 2.57; SPEI-12 min -7.14 / mean -0.384 / max 2.87. Counts 544 each.
+
+⚠️ **FLAG (per your note — it IS the "MANY" case, not 2 px):** **832 of 1088** SPEI COGs (76%) contained Inf — **SPEI-03 443/544, SPEI-12 389/544** — and not a couple pixels each: **hundreds to ~1,575 px/file** (e.g. SPEI-12-2025-11 = 1575). My #5 sample (SPEI-03-2015-11, 2 px) badly under-counted it. This is **systematic**, likely a degenerate SPEI distribution fit — probably arid/zero-precip cells where the gamma/log-logistic fit → 0 CDF → SPEI = -Inf (recurring in the same dry cells + concentrated in recent months 2025-2026). The clamp (Inf→NA) is the right *display* fix (those cells legitimately have no valid SPEI), and the product is now clean + shippable. **BUT** worth a proper look in `2_calculate_obs_spei.R`: confirm the -Inf cells are genuine no-data (permanently dry / insufficient record) vs a fittable-but-broken result being silently masked. If the fit is degenerating on cells that *should* have SPEI, clamping hides a real bug. Not blocking — data is live + valid where defined.
+
 ---
 
 ## [macbook 2026-08-13 #5] ACTION → cglabs: publish SPEI-03 + SPEI-12 MONTHLY COGs (Tier 3)
