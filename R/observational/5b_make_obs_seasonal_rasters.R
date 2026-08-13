@@ -69,6 +69,11 @@ out_base <- if (mode == "--smoke") "seasonal_smoke" else "seasonal"
 out_dir <- file.path(root, out_base, VAR)
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
+# Filename stat suffix reflects the per-var window aggregation: PTOT -> "sum",
+# SPEI/TAVG -> "mean", TMAX -> "max", TMIN -> "min" (from _seasonal_helpers agg_rule).
+agg_suffix <- .agg_rule[[VAR]]
+if (is.null(agg_suffix)) stop("no agg_rule for var '", VAR, "' in _seasonal_helpers.R")
+
 # Scope
 smoke_windows <- c("JFM", "OND", "DJF")                       # incl a cross-boundary
 smoke_bbox    <- c(xmin = 33.5, xmax = 42.0, ymin = -5.0, ymax = 5.5)  # Kenya-ish
@@ -92,7 +97,7 @@ for (period in windows) {
   yrs <- names(stk)
   w <- 0L; s <- 0L
   for (k in seq_along(yrs)) {
-    out_path <- file.path(out_dir, sprintf("%s_%s_%s_sum.tif", VAR, period, yrs[k]))
+    out_path <- file.path(out_dir, sprintf("%s_%s_%s_%s.tif", VAR, period, yrs[k], agg_suffix))
     if (!overwrite && file.exists(out_path) && file.size(out_path) > 100L) {
       s <- s + 1L; next
     }

@@ -287,8 +287,9 @@ name_fn_base_raster <- function(x) basename(x)
 name_fn_monthly <- function(x) {
   fname <- basename(x)
   base  <- tools::file_path_sans_ext(fname)
-  var   <- sub("-.*$", "", base)                     # PTOT-2015-11 -> PTOT
-  bad <- !grepl("^[A-Za-z0-9]+-[0-9]{4}-[0-9]{2}$", base)  # vectorized: uploader calls name_fn on the whole vector (CGLABS 2026-08-11, flagged)
+  var   <- sub("-[0-9]{4}-[0-9]{2}$", "", base)      # PTOT-2015-11 -> PTOT ; SPEI-03-2015-11 -> SPEI-03
+  # vectorized guard: uploader calls name_fn on the whole path vector (CGLABS 2026-08-11)
+  bad <- !grepl("^.+-[0-9]{4}-[0-9]{2}$", base)
   if (any(bad)) {
     stop(sprintf("Unexpected monthly filename shape (expected {VAR}-YYYY-MM.tif): %s",
                  paste(fname[bad], collapse = ", ")))
@@ -303,10 +304,10 @@ name_fn_monthly <- function(x) {
 name_fn_seasonal <- function(x) {
   fname <- basename(x)
   base  <- tools::file_path_sans_ext(fname)
-  parts <- tstrsplit(base, "_", fixed = TRUE)            # PTOT | SEASON | YYYY | sum
-  bad <- !grepl("^[A-Za-z0-9]+_[A-Z]{3}_[0-9]{4}_sum$", base)
+  parts <- tstrsplit(base, "_", fixed = TRUE)            # {VAR} | SEASON | YYYY | {sum|mean}
+  bad <- !grepl("^.+_[A-Z]{3}_[0-9]{4}_(sum|mean|min|max)$", base)  # VAR may contain '-' (SPEI-03)
   if (any(bad)) {
-    stop(sprintf("Unexpected seasonal filename shape (expected {VAR}_{SEASON}_YYYY_sum.tif): %s",
+    stop(sprintf("Unexpected seasonal filename shape (expected {VAR}_{SEASON}_YYYY_{sum|mean}.tif): %s",
                  paste(fname[bad], collapse = ", ")))
   }
   sprintf("variable=%s/season=%s/%s", parts[[1]], parts[[2]], fname)
@@ -377,17 +378,20 @@ tier2_specs <- list(
 # Tier 3 (per-pixel monthly COGs). Opt-in ONLY (--tier 3) — 544+ PTOT files,
 # large one-time upload; deliberately NOT part of --tier all. local_dir is the
 # monthly variable store sibling of admin/ + maps/ (e.g. chirts_chirps_hist/PTOT).
-tier3_specs <- list(
-  list(
-    upload_id     = "obs-monthly-ptot",
-    local_dir     = file.path(chirts_chirps_hist_dir, "PTOT"),
-    s3_dir        = prefix_monthly,
-    file_pattern  = "^PTOT-[0-9]{4}-[0-9]{2}\\.tif$",
-    name_fn       = name_fn_monthly,
-    recursive     = FALSE,
-    tier          = 3L
-  )
-)
+# Per-pixel monthly COGs, one spec per variable. PTOT is already published;
+# SPEI-03/SPEI-12 added (obs pipeline computes them; agg for SPEI is a monthly
+# value, not a sum). A var whose local dir is absent simply yields 0 files.
+# Confirm the on-disk dir names match (e.g. "SPEI-03" not "SPEI-3") before --full.
+monthly_vars <- c("PTOT", "SPEI-03", "SPEI-12")
+tier3_specs <- lapply(monthly_vars, function(v) list(
+  upload_id     = paste0("obs-monthly-", tolower(v)),
+  local_dir     = file.path(chirts_chirps_hist_dir, v),
+  s3_dir        = prefix_monthly,
+  file_pattern  = sprintf("^%s-[0-9]{4}-[0-9]{2}\\.tif$", v),
+  name_fn       = name_fn_monthly,
+  recursive     = FALSE,
+  tier          = 3L
+))
 
 # Tier 4 (per-year seasonal tri-month sum COGs, from 5b). Opt-in ONLY (--tier 4)
 # — ~540 PTOT files. local_dir is the seasonal store (recursive over variable
@@ -397,7 +401,7 @@ tier4_specs <- list(
     upload_id     = "obs-seasonal",
     local_dir     = file.path(chirts_chirps_hist_dir, "seasonal"),
     s3_dir        = prefix_seasonal,
-    file_pattern  = "^[A-Za-z0-9]+_[A-Z]{3}_[0-9]{4}_sum\\.tif$",
+    file_pattern  = "^.+_[A-Z]{3}_[0-9]{4}_(sum|mean|min|max)\\.tif$",
     name_fn       = name_fn_seasonal,
     recursive     = TRUE,
     tier          = 4L
