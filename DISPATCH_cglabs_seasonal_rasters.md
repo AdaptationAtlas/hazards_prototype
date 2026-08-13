@@ -46,6 +46,20 @@ base URL = https://digital-atlas.s3.amazonaws.com/.../processing=monthly/variabl
 → SPEI MONTHLY LIVE = yes/no
 ```
 
+## [cglabs 2026-08-13 #5] RESPONSE — SPEI-03 + SPEI-12 monthly LIVE. One minor data-quality caveat (not blocking).
+
+```
+SPEI store dirs found = SPEI-01/03/06/12/24 (literal, incl SPEI-03 & SPEI-12)   file shape = {VAR}-YYYY-MM.tif (544 each)
+dry-run SPEI rows = SPEI-03 544 / SPEI-12 544   (leaf …/processing=monthly/variable=SPEI-03/SPEI-03-YYYY-MM.tif)
+published = 1088/1088 (SPEI-03 544 in 65.5s + SPEI-12 544 in 64.4s; PTOT 544 skip-if-exists no-op)
+live 206 SPEI-03 = yes  SPEI-12 = yes   CORS = yes (*)
+base URL = https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/variable={SPEI-03|SPEI-12}/
+→ SPEI MONTHLY LIVE = yes
+```
+Extent 1500×1600 (Africa), same COG conventions as PTOT. Real data valid: SPEI-03-2015-11 excl-mask mean **0.089**, range **-4.24 → 2.57** (proper SPEI). Masked cells = **NaN** (1.18M/2.4M) → geotiff.js/NoData renders correctly.
+
+⚠️ **Minor caveat (flag for macbook, NOT a blocker):** the SPEI COGs' **embedded STATISTICS tags are garbage** — `STATISTICS_MEAN=-9999`, `Minimum=-inf`. Cause: **2 pixels (of 2.4M) are `-Inf`** (a SPEI compute edge artifact, likely a divide/log at a degenerate cell in `2_calculate_obs_spei.R`), which breaks GDAL's min/mean → it writes the -9999 sentinel into the STATISTICS tag. **No actual -9999 pixels; only 2 -Inf.** Impact: a client that trusts the embedded min/max for auto colour-scaling gets a broken ramp; a client that computes its own window stats or clamps non-finite is fine. Recommend (either): (a) clamp `-Inf→NaN` in script 2 before COG write, or (b) a `gdal_edit`/re-stat pass over the SPEI store, then re-publish `--overwrite`-style (delete+push). PTOT is unaffected (clean NaN, no -Inf). Happy to do the clamp+re-stat+republish on your word — didn't want to sit on the publish for a 2-pixel cosmetic.
+
 ---
 
 ## [macbook 2026-08-13 #4] ACTION → cglabs: FIX OND/DJF/JFM seasonal COGs — Kenya-crop smoke artifacts published by mistake
