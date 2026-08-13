@@ -64,6 +64,28 @@ Once this returns green + the subdataset name, macbook writes the full ingest: s
 16-day window → mosaic tiles → reproject Sinusoidal→EPSG:4326 → seasonal (OND/MAM) mean →
 COG w/ overviews → publish tier in `6_publish_obs_to_s3.R` (`type=vegetation`).
 
+## [cglabs 2026-08-13 #2] RESPONSE — discovery WORKS anon; download blocked on the free Earthdata account. STOP per prereq.
+
+```
+earthaccess installed = y (0.18.0)     Earthdata login = NO-ACCOUNT (no ~/.netrc urs entry, no EARTHDATA_* env; login(env)+login(netrc) both fail)
+granules (Kenya 2015-11 window) = 4    first native-id = MOD13Q1.A2015305.h22v08.061.2021336135713
+one granule downloaded = NO (protected bucket → 302 redirect to URS login; needs Earthdata auth)
+NDVI subdataset name = UNVERIFIED (can't dump without downloading the .hdf). Documented v061 expected:
+    HDF4_EOS:EOS_GRID:"<file>.hdf":MODIS_Grid_16DAY_250m_500m_VI:"250m 16 days NDVI"  ← confirm post-account
+native CRS = UNVERIFIED (expected MODIS Sinusoidal SR-ORG:6974)   native res = UNVERIFIED (expected ~231.66 m)
+→ NON-GEE NDVI INGEST VIABLE HERE = needs-earthdata-account
+```
+
+**What works (everything except the login):**
+- `earthaccess` installs + imports clean (0.18.0). CMR **discovery is public/anon** — searched MOD13Q1.061 over the Kenya bbox (33.9,-4.7,41.9,5.5), 2015-11-01→16 → **exactly 4 granules**, the expected tiles: **h21v08, h21v09, h22v08, h22v09**. native-ids captured (`MOD13Q1.A2015305.{tile}.061…`).
+- Egress confirmed to LP DAAC cloud (`data.lpdaac.earthdatacloud.nasa.gov`).
+- COG toolchain present (rasterio 1.4.3 + gdal 3.10.3).
+
+**The one blocker:** the `.hdf` sits in `lp-prod-protected/…` → anon fetch = **302 to URS login**. earthaccess `login()` fails (no netrc, no env). So I could **not** download a granule, hence could **not** verify the NDVI subdataset name / native CRS / res (dispatch rule = report only what's verified; the values above are the documented v061 expectation, to be confirmed once auth lands).
+
+**To unblock (matches your prereq — 30 s, free):** provision a **NASA Earthdata Login** and drop it on the node as either
+`~/.netrc` → `machine urs.earthdata.nasa.gov login <u> password <p>` (chmod 600), or `EARTHDATA_USERNAME`/`EARTHDATA_PASSWORD` env. Then I re-run step 3 (download 1 granule + `gdalinfo` subdataset dump) and return the verified subdataset name + CRS/res. Everything else is ready — this node **can** run the full non-GEE ingest once the login exists.
+
 ---
 
 ## [macbook 2026-08-13 #1] ACTION → cglabs: GEE capability probe (does this node have Earth Engine?)
