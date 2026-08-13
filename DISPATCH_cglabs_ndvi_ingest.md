@@ -8,6 +8,64 @@ This first dispatch is a **capability probe** — where can the GEE ingest run? 
 
 ---
 
+## [macbook 2026-08-13 #2] ACTION → cglabs: NON-GEE path — earthaccess + LP DAAC auth/discovery gate
+
+**Dropping GEE.** The #1 probe showed GEE needs auth/provisioning we don't want — but egress to
+**LP DAAC = 200** and rasterio 1.4.3 + gdal 3.10.3 are present. So pull **MOD13Q1 direct from NASA
+LP DAAC via `earthaccess`** (only "auth" = a **free NASA Earthdata Login** — much lighter than a GEE
+service account). This dispatch is a cheap gate: prove auth + discovery, and capture the HDF
+subdataset metadata I need to write the ingest correctly. **No full ingest yet.**
+
+### Prereq
+Free **NASA Earthdata Login** (https://urs.earthdata.nasa.gov). Provide creds via `~/.netrc`
+(`machine urs.earthdata.nasa.gov login <u> password <p>`) OR `EARTHDATA_USERNAME` / `EARTHDATA_PASSWORD`
+env. **If no account exists, STOP and report — we'll get one provisioned (30 s, free).**
+
+### Steps
+1. `git pull` develop. `pip install earthaccess` (conda env is writable).
+2. **Auth + discovery test (no bulk download):**
+   ```python
+   python3 - <<'PY'
+   import earthaccess
+   earthaccess.login()  # ~/.netrc or EARTHDATA_* env
+   r = earthaccess.search_data(short_name="MOD13Q1", version="061",
+         bounding_box=(33.9,-4.7,41.9,5.5), temporal=("2015-11-01","2015-11-16"))
+   print("granules:", len(r))
+   print("first:", r[0]["meta"]["native-id"] if r else "NONE")
+   PY
+   ```
+   Expect ~4 granules (Kenya spans MODIS tiles h21v08/09, h22v08/09).
+3. **Download ONE granule + dump its subdatasets** (this is what I need to build the ingest —
+   the exact NDVI subdataset name + native CRS/res):
+   ```python
+   python3 - <<'PY'
+   import earthaccess
+   earthaccess.login()
+   r = earthaccess.search_data(short_name="MOD13Q1", version="061",
+         bounding_box=(36.5,-1.5,38.0,0.5), temporal=("2015-11-01","2015-11-16"))
+   f = earthaccess.download(r[:1], local_path="./ndvi_probe_dl")
+   print("file:", f)
+   PY
+   gdalinfo ./ndvi_probe_dl/*.hdf 2>/dev/null | grep -iE 'SUBDATASET_.*_NAME|NDVI|Coordinate System is|PROJCRS|sinusoidal' | head -30
+   ```
+   Paste the `SUBDATASET_*_NAME` lines (esp the "250m 16 days NDVI" one) + the CRS line.
+
+### RESPONSE block (append, then push)
+```
+earthaccess installed = y/n     Earthdata login = ok/no-account
+granules (Kenya 2015-11 window) = ?    first native-id = ?
+one granule downloaded = y/n
+NDVI subdataset name = HDF4_EOS:EOS_GRID:"...":MODIS_Grid_16DAY_250m_500m_VI:"250m 16 days NDVI"
+native CRS = ? (expect MODIS Sinusoidal)   native res = ? (~231 m)
+→ NON-GEE NDVI INGEST VIABLE HERE = yes / no / needs-earthdata-account
+```
+
+Once this returns green + the subdataset name, macbook writes the full ingest: search per
+16-day window → mosaic tiles → reproject Sinusoidal→EPSG:4326 → seasonal (OND/MAM) mean →
+COG w/ overviews → publish tier in `6_publish_obs_to_s3.R` (`type=vegetation`).
+
+---
+
 ## [macbook 2026-08-13 #1] ACTION → cglabs: GEE capability probe (does this node have Earth Engine?)
 
 MODIS NDVI comes from Google Earth Engine (`MODIS/061/MOD13Q1`). Before writing the export

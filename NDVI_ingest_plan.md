@@ -46,11 +46,14 @@ s3://digital-atlas/domain=climate/type=vegetation/source=modis-mod13q1/region=af
 COG conventions = the rainfall tiers (EPSG:4326, tiled, overviews ON, CORS `*`, range). New publish
 tier in `6_publish_obs_to_s3.R`. Flag the `type=vegetation` path to Brayden (new type).
 
-## 6. Ingest mechanism (net-new — the real work)
-- GEE: `MODIS/061/MOD13Q1` → `.select("NDVI").multiply(1e-4)` → per-season composite
-  (mean over the season's 16-day layers per year) → `Export.image` to GCS → download → COG w/
-  overviews → publish tier.
-- hazards_prototype has **no GEE today** → new dependency + service-account auth. Python ingest script.
+## 6. Ingest mechanism (net-new — NON-GEE, via NASA LP DAAC)
+**No GEE** (dropped — the #1 probe showed it needs service-account provisioning we don't want; the
+node has egress + rasterio + gdal, so a direct path runs there).
+- **`earthaccess`** (pip) → search MOD13Q1 v061 by bbox+date → download HDF from LP DAAC.
+- Extract "250m 16 days NDVI" subdataset (×1e-4) → mosaic MODIS tiles → **reproject Sinusoidal →
+  EPSG:4326** → per-season mean over the window's 16-day layers → COG w/ overviews.
+- Only "auth" = a **free NASA Earthdata Login** (`~/.netrc` or `EARTHDATA_*`) — far lighter than GEE.
+- Python ingest script; publish via new `type=vegetation` tier in `6_publish_obs_to_s3.R`.
 
 ## 7. Decisions to confirm BEFORE building
 1. **Compute + auth:** does the bake node (cglabs) have **GEE access** (earthengine-api + service
