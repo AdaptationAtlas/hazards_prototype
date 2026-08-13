@@ -8,6 +8,46 @@ Producer to be written: `R/observational/5b_make_obs_seasonal_rasters.R` (+ new 
 
 ---
 
+## [macbook 2026-08-13 #5] ACTION → cglabs: publish SPEI-03 + SPEI-12 MONTHLY COGs (Tier 3)
+
+**Context:** KE-ENSO wants a SPEI drought layer. The obs pipeline computes SPEI but it was never
+published (S3 is PTOT-only). SPEI-03 is already a 3-month accumulation → it IS the seasonal
+drought signal (OND drought = SPEI-03 at December), so we publish SPEI **monthly** only; no
+seasonal-SPEI bake (would be redundant). Do this AFTER #4 (OND fix) — independent, don't block.
+
+**Code shipped (develop @ c4c3de2):** Tier-3 now iterates `monthly_vars = c("PTOT","SPEI-03","SPEI-12")`
+(name_fn handles hyphenated vars, unit-tested). PTOT re-runs are skip-if-exists (no-op).
+
+### Steps
+1. `git pull` develop.
+2. **VERIFY the SPEI monthly store exists + confirm exact dir/file names:**
+   ```bash
+   ls -d Data/chirts_chirps_hist/SPEI-* 2>/dev/null
+   ls Data/chirts_chirps_hist/SPEI-03/ 2>/dev/null | head -3   # expect SPEI-03-YYYY-MM.tif
+   ```
+   Report the actual dir names. **If they're not literally `SPEI-03` / `SPEI-12`** (e.g. `SPEI-3`),
+   STOP and report — I'll adjust `monthly_vars`. **If the SPEI store is absent entirely**, SPEI
+   wasn't baked → report; that's a prerequisite (run `2_calculate_obs_spei.R` first) we'll decide on.
+3. **Dry-run:** `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 3`
+   → CSV should now list PTOT (already-live) + SPEI-03 + SPEI-12 rows under
+   `…/processing=monthly/variable={PTOT|SPEI-03|SPEI-12}/`. Report SPEI row counts.
+4. **Publish:** `Rscript R/observational/6_publish_obs_to_s3.R --full --tier 3`
+   (PTOT skip-if-exists; SPEI-03/12 upload).
+5. **Verify live:** for v in SPEI-03 SPEI-12 —
+   `curl -s -o /dev/null -w '%{http_code}\n' -r 0-0 "https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/variable=$v/$v-2015-11.tif"` → 206 + CORS.
+
+### RESPONSE block (append, then push)
+```
+SPEI store dirs found = ?   file shape = ?
+dry-run SPEI rows = SPEI-03 ? / SPEI-12 ?
+published = ?/?
+live 206 SPEI-03 = yes/no  SPEI-12 = yes/no   CORS = yes/no
+base URL = https://digital-atlas.s3.amazonaws.com/.../processing=monthly/variable={SPEI-03|SPEI-12}/
+→ SPEI MONTHLY LIVE = yes/no
+```
+
+---
+
 ## [macbook 2026-08-13 #4] ACTION → cglabs: FIX OND/DJF/JFM seasonal COGs — Kenya-crop smoke artifacts published by mistake
 
 **Bug (macbook, my fault):** KE-ENSO reported `season=OND` reads all-zeros. Root cause: `5b`
