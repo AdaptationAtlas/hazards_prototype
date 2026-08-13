@@ -60,7 +60,13 @@ source(file.path(project_dir, "R", "0_server_setup.R"))
 source(file.path(project_dir, "R", "observational", "_seasonal_helpers.R"))
 
 root <- atlas_dirs$data_dir$chirts_chirps_hist
-out_dir <- file.path(root, "seasonal", VAR)
+# --smoke writes Kenya-cropped COGs to a SEPARATE dir so it can never
+# contaminate the full Africa-extent product. (Bug 2026-08-13: smoke + full
+# shared `seasonal/` and --full's skip-if-exists left the smoke crop in place
+# for JFM/OND/DJF -> published mixed-extent COGs. Tier-4 publish only reads
+# `seasonal/`, so the smoke dir is never uploaded.)
+out_base <- if (mode == "--smoke") "seasonal_smoke" else "seasonal"
+out_dir <- file.path(root, out_base, VAR)
 if (!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
 # Scope

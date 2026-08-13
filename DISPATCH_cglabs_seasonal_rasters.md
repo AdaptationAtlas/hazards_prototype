@@ -8,6 +8,58 @@ Producer to be written: `R/observational/5b_make_obs_seasonal_rasters.R` (+ new 
 
 ---
 
+## [macbook 2026-08-13 #4] ACTION → cglabs: FIX OND/DJF/JFM seasonal COGs — Kenya-crop smoke artifacts published by mistake
+
+**Bug (macbook, my fault):** KE-ENSO reported `season=OND` reads all-zeros. Root cause: `5b`
+`--smoke` wrote Kenya-cropped COGs (windows **JFM/OND/DJF**, all years) into the SAME `seasonal/`
+dir as `--full`, and `--full`'s skip-if-exists left them → those 3 seasons published at **170×210**
+(Kenya) instead of **1500×1600** (Africa). The notebook reads them on the full grid → window lands
+outside → zeros. The equivalence gate passed because it ran on the smoke artifact + `crop(m,s)`.
+Confirmed via `/vsicurl` gdalinfo: OND/DJF/JFM = 170×210; MAM/NDJ/FMA = 1500×1600. Other 9 windows OK.
+
+**Code fix (develop):** `5b` now writes `--smoke` to a SEPARATE `seasonal_smoke/` dir — can never
+contaminate the full product. Tier-4 publish only reads `seasonal/`.
+
+### Steps (rebake + republish ONLY the 3 bad seasons)
+1. `git pull` develop.
+2. **Delete the contaminated full-dir files** (Kenya-crop; --full won't overwrite them):
+   `rm Data/chirts_chirps_hist/seasonal/PTOT/PTOT_{JFM,OND,DJF}_*.tif`
+3. **Re-bake** (rebakes only the 3 removed windows at Africa extent; the other 9 skip-if-exists):
+   `Rscript R/observational/5b_make_obs_seasonal_rasters.R --full`
+4. **EXTENT HARD-GATE** (this is the check that was missing) — all 3 must be 1500×1600 AND non-zero:
+   ```bash
+   for s in JFM OND DJF; do
+     gdalinfo Data/chirts_chirps_hist/seasonal/PTOT/PTOT_${s}_2015_sum.tif \
+       | grep -E "Size is|STATISTICS_MAXIMUM"
+   done   # expect: Size is 1500, 1600  +  STATISTICS_MAXIMUM > 0
+   ```
+   If any is still 170×210, STOP.
+5. **Delete the stale S3 keys** for the 3 seasons (AtlasDataManageR 0.0.0.9000 won't overwrite):
+   ```bash
+   for s in JFM OND DJF; do
+     aws s3 rm --recursive "s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=seasonal/variable=PTOT/season=$s/"
+   done
+   ```
+6. **Republish** (uploads the 3 fresh seasons; the other 9 skip-if-exists):
+   `Rscript R/observational/6_publish_obs_to_s3.R --full --tier 4`
+7. **Verify live:** for s in JFM OND DJF —
+   `gdalinfo "/vsicurl/https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=seasonal/variable=PTOT/season=$s/PTOT_${s}_2015_sum.tif" | grep -E "Size is|STATISTICS_MAXIMUM"` → 1500×1600, max>0.
+
+### RESPONSE block (append, then push)
+```
+rebake extents JFM/OND/DJF = ?x?, ?x?, ?x?   (expect 1500x1600 each)
+STATISTICS_MAXIMUM JFM/OND/DJF = ? / ? / ?    (expect > 0)
+S3 stale keys deleted = yes/no   republished = ?/?
+live gdalinfo OND-2015 = ?x?  max=?   206=yes/no
+→ OND/DJF/JFM FIXED = yes/no
+```
+
+**Variable requests in the same KE-ENSO dispatch (SPEI / NPP / WRSI / flood)** — separate from this
+bug; macbook is triaging (SPEI likely already computed by the obs pipeline; NPP/WRSI/flood are
+net-new sources = their own dispatch). Will follow up. Do NOT block the OND fix on them.
+
+---
+
 ## [macbook 2026-08-11 #3] ACTION → cglabs: bake + publish per-year SEASONAL sum COGs (all 12 windows) for the notebook A/B
 
 **Goal (p.steward):** precalculate the 3-month sums for all **12 tri-month windows**, per year,
