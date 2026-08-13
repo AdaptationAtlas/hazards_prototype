@@ -1,0 +1,58 @@
+# DISPATCH — cglabs ⇄ macbook · MODIS NDVI ingest (KE-ENSO rangeland)
+
+_Append-only. Newest on top. cglabs runs, appends RESPONSE, pushes; macbook reads._
+
+Workstream: per-pixel MODIS NDVI (MOD13Q1, 250 m, seasonal OND/MAM, 2000–) → COG w/ overviews →
+publish to `domain=climate/type=vegetation/source=modis-mod13q1/…`. Plan: `NDVI_ingest_plan.md`.
+This first dispatch is a **capability probe** — where can the GEE ingest run? No ingest yet.
+
+---
+
+## [macbook 2026-08-13 #1] ACTION → cglabs: GEE capability probe (does this node have Earth Engine?)
+
+MODIS NDVI comes from Google Earth Engine (`MODIS/061/MOD13Q1`). Before writing the export
+script, confirm whether THIS node can reach GEE, or whether ingest must run elsewhere (a
+GEE-enabled node / macbook one-off). Report only what you verify.
+
+### Checks
+1. **earthengine-api installed?**
+   `python3 -c "import ee; print('ee', ee.__version__)"` — report version or ImportError.
+2. **Auth available?** Try, in order, and report which (if any) works:
+   ```python
+   import ee
+   try:
+       ee.Initialize()                      # persisted user creds
+       print("INIT ok (user creds)")
+   except Exception as e:
+       print("user-init failed:", str(e)[:120])
+   ```
+   Also report: is there a **service-account key** on the node?
+   `ls ~/.config/earthengine/ 2>/dev/null; env | grep -iE 'EARTHENGINE|GOOGLE_APPLICATION_CRED' | sed 's/=.*/=<set>/'`
+3. **Live read (only if Initialize worked):**
+   ```python
+   ic = ee.ImageCollection("MODIS/061/MOD13Q1").filterDate("2015-10-01","2015-12-31")
+   print("MOD13Q1 OND-2015 images:", ic.size().getInfo())   # expect ~6 (16-day)
+   ```
+4. **Export path:** can the node write a GCS bucket (for `Export.image.toCloudStorage`)?
+   `gsutil ls 2>&1 | head` (report if gsutil present + any bucket). If no GCS, note it — we'd
+   pull arrays locally via `geemap`/`xee` instead.
+5. **Local COG toolchain:** `python3 -c "import rasterio; print('rasterio', rasterio.__version__)"`
+   (gdal already confirmed 3.10.3). Report rasterio present y/n.
+6. **Alt path if no GEE:** if ee is absent/unauthable here, note whether the node has plain
+   internet egress (so a non-GEE ingest via NASA LP DAAC / AppEEARS could run here instead).
+
+### RESPONSE block (append, then push)
+```
+ee installed = ? (version)      Initialize = ok/failed (mode)
+service-account key present = y/n
+MOD13Q1 OND-2015 image count = ?   (proves live GEE read)
+GCS/gsutil = present/absent (bucket?)
+rasterio = y/n
+egress for non-GEE ingest = y/n
+→ CAN RUN GEE INGEST HERE = yes / no / needs-auth
+```
+
+If **no** — say what's missing; we route the ingest to a GEE-enabled node or a macbook one-off
+export, then hand cglabs only the finished COGs to publish (Tier reuse in `6_publish_obs_to_s3.R`).
+
+---
