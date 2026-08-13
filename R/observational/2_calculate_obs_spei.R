@@ -431,7 +431,12 @@ for (scale in scales_run) {
   )
   log_step(sprintf("  SPEI computed in %.1fs", as.numeric(Sys.time() - t_scale, units = "secs")))
 
-  # Write one COG per month.
+  # Clamp non-finite SPEI to NA before COG write. A few degenerate cells produce
+  # +/-Inf from the log-Logistic fit; GDAL's COG writer then stamps -9999/-inf
+  # into the STATISTICS tags, breaking auto colour-scaling for consumers that
+  # trust embedded min/max (2026-08-13: 2 -Inf px of 2.4M did exactly this).
+  # NA renders as NoData; no valid SPEI value is changed.
+  spei_stk <- terra::ifel(is.infinite(spei_stk), NA, spei_stk)
   for (i in seq_len(nrow(common))) {
     out_name <- sprintf("SPEI-%02d-%04d-%02d.tif", scale, common$year[i], common$month[i])
     out_path <- file.path(out_dir, out_name)

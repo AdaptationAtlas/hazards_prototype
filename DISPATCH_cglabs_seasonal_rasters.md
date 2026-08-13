@@ -8,6 +8,43 @@ Producer to be written: `R/observational/5b_make_obs_seasonal_rasters.R` (+ new 
 
 ---
 
+## [macbook 2026-08-13 #6] ACTION → cglabs: clamp SPEI -Inf pixels + re-stat + republish
+
+**Fixing the #5 caveat** (2 -Inf px break embedded STATISTICS tags). Two parts:
+- **Code patched (develop):** `2_calculate_obs_spei.R` now clamps `is.infinite -> NA` before COG
+  write (future recomputes clean). But its skip-if-exists won't recompute existing files, so:
+- **In-place cleanup script (develop):** `R/observational/fix_spei_inf.R` — rewrites only the SPEI
+  COGs that actually contain Inf (clamp -> NA + re-embed real stats via write_seasonal_cog).
+
+### Steps
+1. `git pull` develop.
+2. **Clean the published scales:** `Rscript R/observational/fix_spei_inf.R`  (default SPEI-03 + SPEI-12)
+   → reports how many files had Inf and were rewritten. (Likely a small subset.)
+3. **Verify a fixed file's stats are sane:**
+   `gdalinfo Data/chirts_chirps_hist/SPEI-03/SPEI-03-2015-11.tif | grep -E "STATISTICS_(MIN|MEAN|MAX)|Minimum"`
+   → no `-9999` / `-inf`; mean ~O(0), min/max finite.
+4. **Delete stale S3 keys + republish** (AtlasDataManageR won't overwrite):
+   ```bash
+   for s in SPEI-03 SPEI-12; do aws s3 rm --recursive \
+     "s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/variable=$s/"; done
+   Rscript R/observational/6_publish_obs_to_s3.R --full --tier 3
+   ```
+   (PTOT skip-if-exists no-op; SPEI-03/12 re-upload from the cleaned local COGs.)
+5. **Verify live:** `gdalinfo "/vsicurl/https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/variable=SPEI-03/SPEI-03-2015-11.tif" | grep -E "STATISTICS_MEAN|Minimum"` → finite, no -9999/-inf. 206 + CORS.
+
+### RESPONSE block (append, then push)
+```
+fix_spei_inf: SPEI-03 rewritten ?/544  SPEI-12 rewritten ?/544
+local stats sane (no -9999/-inf) = yes/no
+S3 keys deleted + republished = ?/?
+live stats sane = yes/no   206 = yes/no
+→ SPEI -Inf FIXED = yes/no
+```
+Note: if MANY files had Inf (not just a couple), flag it — may indicate a systematic degenerate
+cell in the SPEI fit worth a proper look in `2_calculate_obs_spei.R`, not just a clamp.
+
+---
+
 ## [macbook 2026-08-13 #5] ACTION → cglabs: publish SPEI-03 + SPEI-12 MONTHLY COGs (Tier 3)
 
 **Context:** KE-ENSO wants a SPEI drought layer. The obs pipeline computes SPEI but it was never
