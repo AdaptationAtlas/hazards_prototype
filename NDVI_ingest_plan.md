@@ -55,17 +55,20 @@ node has egress + rasterio + gdal, so a direct path runs there).
 - Only "auth" = a **free NASA Earthdata Login** (`~/.netrc` or `EARTHDATA_*`) — far lighter than GEE.
 - Python ingest script; publish via new `type=vegetation` tier in `6_publish_obs_to_s3.R`.
 
-## 7. Decisions to confirm BEFORE building
-1. **Compute + auth:** does the bake node (cglabs) have **GEE access** (earthengine-api + service
-   account)? If not, ingest runs on a GEE-enabled node / macbook one-off. → cglabs capability probe (gates all).
-2. **Products:** seasonal (OND/MAM) NDVI is the clear v1. Also want annual? per-16-day? (seasonal recommended.)
-3. **Co-registration:** need a 0.05° NDVI tier for NDVI×rainfall math, or is 250m+overviews enough? (overviews enough for v1.)
-4. **S3 `type=vegetation`** convention — pick + inform Brayden.
+## 7. Decisions — RESOLVED
+1. **Compute + auth:** ~~GEE~~ → **non-GEE via earthaccess/LP DAAC** (dispatch #2). Node ready
+   (earthaccess 0.18.0 + egress + rasterio + gdal). **GATE = a free NASA Earthdata Login on cglabs**
+   (`~/.netrc` / `EARTHDATA_*`) — the ONLY open blocker. Discovery is anon; download needs it.
+2. **Products (KE-ENSO 2026-08-14):** ✅ **seasonal OND/MAM v1 + annual**. Skip raw 16-day.
+3. **Co-registration (KE-ENSO):** ✅ **250 m + overviews enough — NO 0.05° pixel-math tier.**
+4. **S3 `type=vegetation`** convention — pick + inform Brayden (still to flag).
 
 ## 8. Sequence
-1. cglabs GEE capability probe — gates everything.
-2. MOD13Q1 seasonal NDVI (OND/MAM, 2000–2025) → COG w/ overviews → publish tier → verify live.
-3. (opt) WaPOR 100m East-Africa; (opt) 0.05° co-registered tier; (opt) NPP carbon layer.
-4. Flag to Brayden for cataloguing.
+1. **Earthdata login on cglabs** — the one gate (see §7.1).
+2. cglabs re-runs dispatch #2 step 3 → verified NDVI subdataset name + native CRS/res.
+3. macbook writes ingest: MOD13Q1 → mosaic → reproject Sinusoidal→EPSG:4326 → **seasonal (OND/MAM)
+   + annual** mean → COG w/ overviews → new `type=vegetation` publish tier.
+4. Verify live; flag to Brayden for cataloguing.
+5. (opt/deferred) WaPOR 100 m East-Africa; NPP carbon layer.
 
-_Open until §7 answered. No code yet._
+_Only open item: the Earthdata Login on cglabs. Everything else decided._
