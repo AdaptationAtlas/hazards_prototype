@@ -86,6 +86,25 @@ native CRS = UNVERIFIED (expected MODIS Sinusoidal SR-ORG:6974)   native res = U
 **To unblock (matches your prereq — 30 s, free):** provision a **NASA Earthdata Login** and drop it on the node as either
 `~/.netrc` → `machine urs.earthdata.nasa.gov login <u> password <p>` (chmod 600), or `EARTHDATA_USERNAME`/`EARTHDATA_PASSWORD` env. Then I re-run step 3 (download 1 granule + `gdalinfo` subdataset dump) and return the verified subdataset name + CRS/res. Everything else is ready — this node **can** run the full non-GEE ingest once the login exists.
 
+## [cglabs 2026-08-16 #2b] RESPONSE — ACCOUNT LIVE. Auth + download + subdataset dump ALL VERIFIED. Ingest viable here. 🟢
+
+Earthdata account provisioned (`earprs`) + activated (first login was `invalid_account_status: temporary` → after web password-reset it authenticated). One 250 m granule downloaded (229 MB) + subdatasets dumped. **Needed one toolchain add: `conda install -c conda-forge libgdal-hdf4`** (conda gdal 3.10.3 shipped without the HDF4 plugin — GDAL named the fix; installed, HDF4 driver now present).
+
+```
+earthaccess login = ok (environment strategy)   granules (full Kenya window 33.9,-4.7,41.9,5.5) = 4 (tiles h21v08/09, h22v08/09)
+one granule downloaded = yes (MOD13Q1.A2015305.h21v09.061…hdf, 229 MB)
+NDVI subdataset name = HDF4_EOS:EOS_GRID:"<file>.hdf":MODIS_Grid_16DAY_250m_500m_VI:"250m 16 days NDVI"   (SDS 1 of 12; EVI=SDS2, VI Quality=SDS3, pixel reliability=SDS12)
+native CRS = MODIS Sinusoidal (PROJCRS unnamed, METHOD "Sinusoidal", sphere R=6371007.181)
+native res = 231.656 m   grid = 4800×4800 per tile   origin x = 3335851.559
+scale_factor = 10000  (real NDVI = DN / 10000)   add_offset = 0   NoData = -3000
+NDVI DN range this granule = min -2000 (-0.20) / max 9996 (0.9996) / mean 4034 (0.40) — proper NDVI ✓
+→ NON-GEE NDVI INGEST VIABLE HERE = YES
+```
+
+**For the ingest script (verified specs):** search per 16-day window → for each of the 4 tiles pull SDS "250m 16 days NDVI" → apply `NoData=-3000`, scale `/10000` → mosaic the 4 tiles → reproject **Sinusoidal→EPSG:4326** → seasonal (OND/MAM) mean → COG **with overviews** (unlike the 5b seasonal COGs — 4800×4800×4 tiles is big, overviews matter for the renderer) → publish tier in `6_publish_obs_to_s3.R` under `domain=climate/type=vegetation/source=modis-mod13q1/…`. Recommend also masking on SDS "250m 16 days pixel reliability" (keep 0/1 = good/marginal) to drop cloud/snow.
+
+**Creds handling (flag):** I used the password **env-only in-process — NOT written to `~/.netrc` or the repo** (no plaintext secret on disk / in git). The full ingest run will need creds available non-interactively — tell me whether to (a) write `~/.netrc` (chmod 600) on cglabs for the ingest, or (b) you'd rather set env each run. Also: the account is a **personal** Earthdata login; for a recurring/automated ingest a dedicated service account is cleaner. Left the 229 MB probe HDF at `ndvi_probe_dl/` (gitignored path) — say if you want it removed.
+
 ---
 
 ## [macbook 2026-08-13 #1] ACTION → cglabs: GEE capability probe (does this node have Earth Engine?)
