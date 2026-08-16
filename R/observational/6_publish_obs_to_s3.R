@@ -126,9 +126,9 @@ usage <- function() {
     "      Uploads every file in the selected tiers. Requires AWS credentials.\n",
     "\n",
     "Flags:\n",
-    "  --tier {1|2|3|4|all} Default 'all' (Tier 1+2). Tier 3 = per-pixel monthly\n",
-    "                      COGs; Tier 4 = per-year seasonal-sum COGs. Tiers 3 & 4\n",
-    "                      are OPT-IN ONLY (--tier 3 / --tier 4), not in 'all'.\n",
+    "  --tier {1|2|3|4|5|all} Default 'all' (Tier 1+2). Tier 3 = monthly COGs;\n",
+    "                      Tier 4 = seasonal-sum COGs; Tier 5 = MODIS NDVI COGs.\n",
+    "                      Tiers 3/4/5 are OPT-IN ONLY (--tier 3|4|5), not in 'all'.\n",
     "                      Ignored by --smoke (always Tier 1).\n",
     "  --overwrite         Re-upload files already on S3.\n",
     sep = ""
@@ -168,14 +168,15 @@ pacman::p_load(future, future.apply)
 # Resolve --tier (default all). --smoke always means Tier 1, one file.
 tier_arg <- parse_cli_flag(args, "tier", "character")
 if (is.null(tier_arg) || is.na(tier_arg)) tier_arg <- "all"
-if (!tier_arg %in% c("1", "2", "3", "4", "all")) {
-  stop(glue::glue("--tier must be 1, 2, 3, 4, or all (got '{tier_arg}')"))
+if (!tier_arg %in% c("1", "2", "3", "4", "5", "all")) {
+  stop(glue::glue("--tier must be 1, 2, 3, 4, 5, or all (got '{tier_arg}')"))
 }
-# Tiers 3 & 4 are opt-in only: NOT included in 'all' (large raster uploads).
+# Tiers 3, 4 & 5 are opt-in only: NOT included in 'all' (large raster uploads).
 do_tier1 <- mode == "--smoke" || tier_arg %in% c("1", "all")
 do_tier2 <- mode != "--smoke" && tier_arg %in% c("2", "all")
 do_tier3 <- mode != "--smoke" && tier_arg == "3"
 do_tier4 <- mode != "--smoke" && tier_arg == "4"
+do_tier5 <- mode != "--smoke" && tier_arg == "5"
 
 overwrite <- parse_overwrite_flag(args)
 # AtlasDataManageR 0.0.0.9000 (currently installed) does NOT expose an
@@ -251,6 +252,10 @@ prefix_admin_periods <- paste0(climate_root, "/processing=admin-periods")
 prefix_climatology   <- paste0(climate_root, "/processing=climatology")
 prefix_monthly       <- paste0(climate_root, "/processing=monthly")
 prefix_seasonal      <- paste0(climate_root, "/processing=seasonal")
+# NDVI is a NEW domain path (type=vegetation, not CHIRPS observational). Region =
+# east-africa (the 4 MOD13Q1 tiles / Kenya footprint, NOT all Africa). processing=
+# and season= are emitted by name_fn_ndvi (seasonal vs annual differ).
+prefix_ndvi <- "domain=climate/type=vegetation/source=modis-mod13q1/region=east-africa"
 prefix_base_raster   <- "domain=boundaries/type=raster/source=chirps-grid/region=africa/processing=base-raster"
 
 # Translate the on-disk climatology label (bare year-range) to the
@@ -311,6 +316,25 @@ name_fn_seasonal <- function(x) {
                  paste(fname[bad], collapse = ", ")))
   }
   sprintf("variable=%s/season=%s/%s", parts[[1]], parts[[2]], fname)
+}
+
+# MODIS NDVI COG (Tier 5, type=vegetation). On-disk names:
+#   seasonal: NDVI_{SEASON}_{YYYY}_mean.tif   annual: NDVI_{YYYY}_mean.tif
+# S3 leaf (under prefix_ndvi): processing={seasonal|annual}/variable=NDVI/[season={S}/]{fname}
+name_fn_ndvi <- function(x) {
+  fname <- basename(x)
+  base  <- tools::file_path_sans_ext(fname)
+  seas <- grepl("^NDVI_[A-Z]{3}_[0-9]{4}_mean$", base)
+  ann  <- grepl("^NDVI_[0-9]{4}_mean$", base)
+  bad  <- !(seas | ann)
+  if (any(bad)) {
+    stop(sprintf("Unexpected NDVI filename (expected NDVI_{SEASON}_YYYY_mean or NDVI_YYYY_mean): %s",
+                 paste(fname[bad], collapse = ", ")))
+  }
+  ifelse(seas,
+    sprintf("processing=seasonal/variable=NDVI/season=%s/%s",
+            sub("^NDVI_([A-Z]{3})_.*", "\\1", base), fname),
+    sprintf("processing=annual/variable=NDVI/%s", fname))
 }
 
 name_fn_climatology <- function(x) {
@@ -408,11 +432,26 @@ tier4_specs <- list(
   )
 )
 
+# Tier 5 (MODIS NDVI COGs, type=vegetation). Opt-in ONLY (--tier 5). local_dir is
+# the NDVI store: <Data>/ndvi_modis/NDVI (sibling of chirts_chirps_hist under Data/).
+tier5_specs <- list(
+  list(
+    upload_id     = "obs-ndvi-modis",
+    local_dir     = file.path(dirname(chirts_chirps_hist_dir), "ndvi_modis", "NDVI"),
+    s3_dir        = prefix_ndvi,
+    file_pattern  = "^NDVI_([A-Z]{3}_)?[0-9]{4}_mean\\.tif$",
+    name_fn       = name_fn_ndvi,
+    recursive     = FALSE,
+    tier          = 5L
+  )
+)
+
 active_specs <- c(
   if (do_tier1) tier1_specs else list(),
   if (do_tier2) tier2_specs else list(),
   if (do_tier3) tier3_specs else list(),
-  if (do_tier4) tier4_specs else list()
+  if (do_tier4) tier4_specs else list(),
+  if (do_tier5) tier5_specs else list()
 )
 
 cat("project_dir          :", project_dir, "\n")
@@ -426,6 +465,7 @@ cat("tier 1 enabled       :", do_tier1, "\n")
 cat("tier 2 enabled       :", do_tier2, "\n")
 cat("tier 3 enabled       :", do_tier3, "\n")
 cat("tier 4 enabled       :", do_tier4, "\n")
+cat("tier 5 enabled       :", do_tier5, "\n")
 cat("overwrite            :", overwrite, "\n")
 cat("workers              :", workers, "\n\n")
 

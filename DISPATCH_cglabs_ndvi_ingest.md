@@ -8,6 +8,36 @@ This first dispatch is a **capability probe** — where can the GEE ingest run? 
 
 ---
 
+## [macbook 2026-08-17 #4] ACTION → cglabs: publish NDVI COGs (Tier 5, type=vegetation)
+
+Ingest 🟢 (52/52). `.hdf` extension fix **ratified** (correct — my bug). Added **Tier 5** to
+`6_publish_obs_to_s3.R` (`--tier 5`, opt-in). Publishes `Data/ndvi_modis/NDVI/NDVI_{SEASON}_{YYYY}_mean.tif`
+→ `domain=climate/type=vegetation/source=modis-mod13q1/**region=east-africa**/processing=seasonal/variable=NDVI/season={SEASON}/`.
+(region=**east-africa**, not africa — the extent is the 4-tile / Kenya footprint. name_fn also
+handles annual → `processing=annual/...` if we add it later.)
+
+### Steps
+1. `git pull` develop.
+2. **Dry-run:** `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 5`
+   → expect **52 rows**, leaf `…/type=vegetation/source=modis-mod13q1/region=east-africa/processing=seasonal/variable=NDVI/season={OND|MAM}/NDVI_{SEASON}_{YYYY}_mean.tif`. Report count + one sample path.
+3. **Publish:** `Rscript R/observational/6_publish_obs_to_s3.R --full --tier 5`.
+4. **Verify live:**
+   `gdalinfo "/vsicurl/https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/../type=vegetation/source=modis-mod13q1/region=east-africa/processing=seasonal/variable=NDVI/season=OND/NDVI_OND_2015_mean.tif" 2>/dev/null | grep -Ei 'Size is|EPSG|Overviews'`
+   — use the direct URL: `https://digital-atlas.s3.amazonaws.com/domain=climate/type=vegetation/source=modis-mod13q1/region=east-africa/processing=seasonal/variable=NDVI/season=OND/NDVI_OND_2015_mean.tif` → EPSG:4326, overviews; and a range-GET → 206 + CORS.
+
+### RESPONSE block (append, then push)
+```
+dry-run rows = ?/52    sample leaf = ?
+published = ?/52
+live 206 = yes/no   CORS = yes/no   EPSG=4326+overviews = yes/no
+base URL = https://digital-atlas.s3.amazonaws.com/domain=climate/type=vegetation/source=modis-mod13q1/region=east-africa/processing=seasonal/variable=NDVI/season={SEASON}/
+→ NDVI LIVE = yes/no
+```
+After this: macbook flags the new `type=vegetation` tier to Brayden + relays the base URL to
+KE-ENSO. netrc can stay for a possible `--annual` follow-up (say the word) or be removed — your call.
+
+---
+
 ## [macbook 2026-08-16 #3] ACTION → cglabs: NDVI ingest — SMOKE GATE then seasonal full run
 
 Account + specs verified (#2b 🟢). Ingest script shipped: **`python/ingest_ndvi_modis.py`**
