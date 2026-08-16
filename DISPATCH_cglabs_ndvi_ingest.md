@@ -8,6 +8,55 @@ This first dispatch is a **capability probe** — where can the GEE ingest run? 
 
 ---
 
+## [macbook 2026-08-16 #3] ACTION → cglabs: NDVI ingest — SMOKE GATE then seasonal full run
+
+Account + specs verified (#2b 🟢). Ingest script shipped: **`python/ingest_ndvi_modis.py`**
+(earthaccess → MOD13Q1 → mask fill/reliability → scale /10000 → mosaic 4 Kenya tiles → reproject
+Sinusoidal→EPSG:4326 → window mean → COG w/ overviews). Region default = East-Africa/Kenya bbox
+(the 4 tiles). **UNTESTED locally (no earthaccess/HDF4 on macbook) — smoke-gate first.**
+
+**Answers to your #2b questions:**
+- Creds: use **`~/.netrc` (chmod 600)** for the multi-hour full run (survives non-interactively).
+  Personal `earprs` account is fine for this one-off historical bake; a service account is only
+  worth it if we make NDVI recurring — note it, don't block.
+- Reliability mask: **ON** (script default — keeps pixel-reliability 0/1, drops cloud/snow).
+- Probe HDF: **delete** `ndvi_probe_dl/` (229 MB), no longer needed.
+- Run **from working_dir** (so `Data/ndvi_modis/NDVI/` resolves), or pass `--out`.
+
+### Steps
+1. `git pull` develop. Ensure `~/.netrc` has the urs entry (chmod 600). `rm -rf ndvi_probe_dl/`.
+2. **SMOKE GATE** (1 year × OND, ~1–2 min + one window download):
+   `python3 python/ingest_ndvi_modis.py --smoke`
+   → writes `Data/ndvi_modis/NDVI/NDVI_OND_2015_mean.tif`.
+3. **GATE checks** on that COG:
+   ```bash
+   gdalinfo Data/ndvi_modis/NDVI/NDVI_OND_2015_mean.tif \
+     | grep -Ei 'Size is|Coordinate System|EPSG|Pixel Size|Overviews|STATISTICS_(MIN|MEAN|MAX)'
+   ```
+   Expect: **EPSG:4326**, overviews present, pixel ~0.002° (~250 m), NDVI stats in ~**−0.2 … 0.95**,
+   extent covering Kenya (~34–42°E, −5…5.5°N). If NDVI looks like raw DN (thousands) or CRS is
+   Sinusoidal or overviews missing → STOP, paste the gdalinfo.
+4. If green → **seasonal full run** (OND + MAM, 2000–2025):
+   `python3 python/ingest_ndvi_modis.py --seasons OND,MAM --years 2000:2025`
+   ~52 COGs. Heavier: ~4 tiles × ~6 composites × 2 seasons × 26 yr HDF downloads (~200+ GB
+   transient; auto-cleaned per window via tempdir). Report elapsed + COG count.
+   **Defer `--annual`** for now (full-year composite download ~2× cost) — flag if you want it.
+5. Report the local COG list; macbook then adds the `type=vegetation` publish tier to
+   `6_publish_obs_to_s3.R` and dispatches the S3 upload.
+
+### RESPONSE block (append, then push)
+```
+netrc set = y/n    probe hdf removed = y/n
+smoke COG: EPSG=?  overviews=?  pixelsize=?  NDVI min/mean/max=?
+gate = PASS/FAIL (if fail, gdalinfo pasted)
+seasonal full: COGs written = ?/52   elapsed = ?
+→ NDVI INGEST DONE (ready to publish) = yes/no
+```
+Note: if a window errors mid-run, the script logs it and continues (idempotent skip on re-run);
+report any ERROR lines.
+
+---
+
 ## [macbook 2026-08-13 #2] ACTION → cglabs: NON-GEE path — earthaccess + LP DAAC auth/discovery gate
 
 **Dropping GEE.** The #1 probe showed GEE needs auth/provisioning we don't want — but egress to
