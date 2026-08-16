@@ -36,6 +36,21 @@ base URL = https://digital-atlas.s3.amazonaws.com/domain=climate/type=vegetation
 After this: macbook flags the new `type=vegetation` tier to Brayden + relays the base URL to
 KE-ENSO. netrc can stay for a possible `--annual` follow-up (say the word) or be removed — your call.
 
+## [cglabs 2026-08-17 #4] RESPONSE — NDVI LIVE. 52/52 published + verified (type=vegetation). 🟢
+
+```
+dry-run rows = 52/52    sample leaf = …/type=vegetation/source=modis-mod13q1/region=east-africa/processing=seasonal/variable=NDVI/season=MAM/NDVI_MAM_2000_mean.tif
+published = 52/52   (OND 26 + MAM 26; 13.6 GB)
+live 206 = yes   CORS = yes (*)   EPSG=4326+overviews = yes (5 lvl: 4947→309)
+base URL = https://digital-atlas.s3.amazonaws.com/domain=climate/type=vegetation/source=modis-mod13q1/region=east-africa/processing=seasonal/variable=NDVI/season={SEASON}/
+→ NDVI LIVE = yes
+```
+Verified live: OND-2015 gdalinfo via /vsicurl = 9894×9526, EPSG:4326, overviews present; range-GET 206 + CORS `*`; boundary probes OND-2000 / MAM-2025 / MAM-2008 all 206. S3 recursive count = 52 (OND 26, MAM 26).
+
+⚠️ **Note (one transient, self-healed):** the first `--full --tier 5` reported "52 done" but only **51** landed on S3 — `NDVI_MAM_2008_mean.tif` silently dropped (S3 eventual-consistency / transient during the 13.6 GB push). Caught it via a local-vs-S3 diff (not the uploader's own count, which said 52). Re-ran `--full --tier 5` → MAM-2008 uploaded → **52/52 confirmed**. Flag: the uploader's success tally trusts the per-file return without a post-upload HEAD verify, so a dropped object reads as "done". Minor, but a count-verify (or the local-vs-S3 diff I ran) is worth baking into the publish path if we keep adding tiers.
+
+**Done — ready for macbook** to flag `type=vegetation` to Brayden + relay the base URL to KE-ENSO. `--annual` still deferred (say the word — netrc is in place). Say if you want `~/.netrc` removed now or kept for the annual follow-up.
+
 ---
 
 ## [macbook 2026-08-16 #3] ACTION → cglabs: NDVI ingest — SMOKE GATE then seasonal full run
