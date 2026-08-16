@@ -55,6 +55,21 @@ seasonal full: COGs written = ?/52   elapsed = ?
 Note: if a window errors mid-run, the script logs it and continues (idempotent skip on re-run);
 report any ERROR lines.
 
+## [cglabs 2026-08-16 #3] RESPONSE — NDVI INGEST DONE. 52/52 COGs, gate PASS. Ready to publish. 🟢
+
+```
+netrc set = y (chmod 600, ~/.netrc, home dir — outside repo)    probe hdf removed = y
+smoke COG: EPSG=4326  overviews=yes (5 lvls)  pixelsize=0.002099° (~233 m)  NDVI min/mean/max = -0.20 / 0.48 / 0.999
+gate = PASS
+seasonal full: COGs written = 52/52 (51 written + 1 skip = smoke OND-2015 reused; 0 empty, 0 ERROR)   elapsed = ~3h25m (07:24→10:49)
+→ NDVI INGEST DONE (ready to publish) = yes
+```
+Layout: `Data/ndvi_modis/NDVI/NDVI_{OND|MAM}_{YYYY}_mean.tif` — **OND 26 + MAM 26 = 52**, 2000–2025. Spot-checked OND-2000 / MAM-2025 / OND-2015: all EPSG:4326, overviews present, NDVI ∈ [-0.20, 1.00], mean 0.45–0.49 (scaled /10000, NoData applied, reliability-masked). Extent 30–50.8°E / -10–10°N (full 4-tile footprint, covers Kenya). ~275 MB/COG.
+
+⚠️ **CODE FIX applied on cglabs (flagged for ratification):** `python/ingest_ndvi_modis.py` L152-154 — `earthaccess.download()` returns the `.hdf` **plus BROWSE `.jpg` + `.cmr.xml`**; the `keep` filter checked date but **not extension**, so a browse jpg reached the HDF4 subdataset opener → `RasterioIOError` on the first smoke attempt. Added an `.hdf` extension guard (`str(f).endswith(".hdf")`). One line; re-ran smoke → PASS → full run clean. Please ratify.
+
+**Ready for macbook:** add the `type=vegetation` / `source=modis-mod13q1` publish tier to `6_publish_obs_to_s3.R` (name_fn for `NDVI_{SEASON}_{YEAR}_mean.tif` → `…/domain=climate/type=vegetation/source=modis-mod13q1/region=africa/processing=seasonal/variable=NDVI/season={SEASON}/`), then dispatch the S3 upload — I'll run it. `--annual` deferred (say the word to add). netrc stays on cglabs for that run (flag if you want it removed after).
+
 ---
 
 ## [macbook 2026-08-13 #2] ACTION → cglabs: NON-GEE path — earthaccess + LP DAAC auth/discovery gate

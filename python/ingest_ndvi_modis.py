@@ -150,8 +150,10 @@ def build_window(year, window, bbox, out_dir, mask_reliability, overwrite, keep_
         return "empty"
     with tempfile.TemporaryDirectory() as tmp:
         files = earthaccess.download(res, local_path=os.path.join(tmp, "hdf"))
-        # keep only composites whose START date falls in the window months
-        keep = [f for f in files if d0 <= granule_date(f) <= d1]
+        # keep only .hdf (download also returns BROWSE .jpg + .cmr.xml) whose START
+        # date falls in the window months (CGLABS 2026-08-16 fix: extension guard —
+        # was passing browse jpgs to the HDF4 subdataset opener -> RasterioIOError)
+        keep = [f for f in files if str(f).endswith(".hdf") and d0 <= granule_date(f) <= d1]
         by_date = {}
         for f in keep:
             by_date.setdefault(granule_date(f), []).append(f)
