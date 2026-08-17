@@ -168,16 +168,17 @@ pacman::p_load(future, future.apply)
 # Resolve --tier (default all). --smoke always means Tier 1, one file.
 tier_arg <- parse_cli_flag(args, "tier", "character")
 if (is.null(tier_arg) || is.na(tier_arg)) tier_arg <- "all"
-if (!tier_arg %in% c("1", "2", "3", "4", "5", "6", "all")) {
-  stop(glue::glue("--tier must be 1, 2, 3, 4, 5, 6, or all (got '{tier_arg}')"))
+if (!tier_arg %in% c("1", "2", "3", "4", "5", "6", "7", "all")) {
+  stop(glue::glue("--tier must be 1, 2, 3, 4, 5, 6, 7, or all (got '{tier_arg}')"))
 }
-# Tiers 3-6 are opt-in only: NOT included in 'all' (large raster / new-domain uploads).
+# Tiers 3-7 are opt-in only: NOT included in 'all' (large raster / new-domain uploads).
 do_tier1 <- mode == "--smoke" || tier_arg %in% c("1", "all")
 do_tier2 <- mode != "--smoke" && tier_arg %in% c("2", "all")
 do_tier3 <- mode != "--smoke" && tier_arg == "3"
 do_tier4 <- mode != "--smoke" && tier_arg == "4"
 do_tier5 <- mode != "--smoke" && tier_arg == "5"
 do_tier6 <- mode != "--smoke" && tier_arg == "6"
+do_tier7 <- mode != "--smoke" && tier_arg == "7"
 
 overwrite <- parse_overwrite_flag(args)
 # AtlasDataManageR 0.0.0.9000 (currently installed) does NOT expose an
@@ -259,6 +260,8 @@ prefix_seasonal      <- paste0(climate_root, "/processing=seasonal")
 prefix_ndvi <- "domain=climate/type=vegetation/source=modis-mod13q1/region=east-africa"
 # JRC GloFAS return-period flood hazard (new type=flood). region=east-africa (Kenya crop).
 prefix_flood <- "domain=climate/type=flood/source=jrc-glofas/region=east-africa"
+# Global Flood Database observed per-year flood occurrence (type=flood, different source).
+prefix_gfd <- "domain=climate/type=flood/source=global-flood-db/region=east-africa"
 prefix_base_raster   <- "domain=boundaries/type=raster/source=chirps-grid/region=africa/processing=base-raster"
 
 # Translate the on-disk climatology label (bare year-range) to the
@@ -352,6 +355,19 @@ name_fn_flood <- function(x) {
   }
   rp <- sub("^flood-depth_rp([0-9]+)$", "\\1", base)
   sprintf("processing=return-period/variable=flood-depth/rp=%s/%s", rp, fname)
+}
+
+# GFD per-year flood occurrence COG (Tier 7, type=flood). On-disk: flooded_{YYYY}.tif ->
+# S3 leaf: processing=annual/variable=flooded/{fname}
+name_fn_gfd <- function(x) {
+  fname <- basename(x)
+  base  <- tools::file_path_sans_ext(fname)
+  bad <- !grepl("^flooded_[0-9]{4}$", base)
+  if (any(bad)) {
+    stop(sprintf("Unexpected GFD filename (expected flooded_YYYY.tif): %s",
+                 paste(fname[bad], collapse = ", ")))
+  }
+  sprintf("processing=annual/variable=flooded/%s", fname)
 }
 
 name_fn_climatology <- function(x) {
@@ -476,13 +492,27 @@ tier6_specs <- list(
   )
 )
 
+# Tier 7 (GFD per-year flood-occurrence COGs, type=flood). Opt-in ONLY (--tier 7).
+tier7_specs <- list(
+  list(
+    upload_id     = "obs-flood-gfd",
+    local_dir     = file.path(dirname(chirts_chirps_hist_dir), "flood_gfd", "GFD"),
+    s3_dir        = prefix_gfd,
+    file_pattern  = "^flooded_[0-9]{4}\\.tif$",
+    name_fn       = name_fn_gfd,
+    recursive     = FALSE,
+    tier          = 7L
+  )
+)
+
 active_specs <- c(
   if (do_tier1) tier1_specs else list(),
   if (do_tier2) tier2_specs else list(),
   if (do_tier3) tier3_specs else list(),
   if (do_tier4) tier4_specs else list(),
   if (do_tier5) tier5_specs else list(),
-  if (do_tier6) tier6_specs else list()
+  if (do_tier6) tier6_specs else list(),
+  if (do_tier7) tier7_specs else list()
 )
 
 cat("project_dir          :", project_dir, "\n")
@@ -498,6 +528,7 @@ cat("tier 3 enabled       :", do_tier3, "\n")
 cat("tier 4 enabled       :", do_tier4, "\n")
 cat("tier 5 enabled       :", do_tier5, "\n")
 cat("tier 6 enabled       :", do_tier6, "\n")
+cat("tier 7 enabled       :", do_tier7, "\n")
 cat("overwrite            :", overwrite, "\n")
 cat("workers              :", workers, "\n\n")
 

@@ -9,6 +9,47 @@ reachable from the node before writing ingests. No ingest yet.
 
 ---
 
+## [macbook 2026-08-17 #3] ACTION → cglabs: GFD observed-flood ingest (smoke → all years → publish Tier 7)
+
+Global Flood Database v1.4 (observed MODIS inundation, 2000–2018, ENSO-composable). Ingest shipped:
+**`python/ingest_flood_gfd.py`** (list 913 events from public `gfd_v1_4` GCS → cheap Kenya extent
+filter via `/vsizip//vsicurl` byte-range → warp `flooded` band to fixed Kenya grid → per-year UNION
+of flooded → COG w/ overviews). Structure verified by macbook probe (band1=flooded, EPSG:4326,
+~250 m). **No auth. UNTESTED end-to-end locally (no osgeo/rasterio on macbook — list+extent+year
+logic verified) — smoke-gate first.** Publish **Tier 7** → `domain=climate/type=flood/source=global-flood-db/region=east-africa/processing=annual/variable=flooded/`.
+
+### Steps
+1. `git pull` develop.
+2. **SMOKE** (year 2015 only — 39 events, filters to Kenya ones): `python3 python/ingest_flood_gfd.py --smoke`
+   → `Data/flood_gfd/GFD/flooded_2015.tif`. Watch the log: "+DFO_… (Kenya event N)" lines then a
+   flooded-px count + coverage.
+3. **GATE:** `gdalinfo Data/flood_gfd/GFD/flooded_2015.tif | grep -Ei 'Size is|EPSG|Overviews|Minimum|Maximum'`
+   Expect EPSG:4326, overviews, values **0/1** (min 0, max 1), Kenya extent. If 0 Kenya events in
+   2015 → try another year (e.g. `--smoke` edited, or note it); if values not 0/1 → STOP, paste.
+4. **Full:** `python3 python/ingest_flood_gfd.py`  (2000–2018 → up to 19 year-COGs; years with no
+   Kenya event are skipped). Report per-year Kenya-event counts + COGs written.
+5. **Publish + count-verify** (uploader doesn't self-verify):
+   ```bash
+   Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 7
+   Rscript R/observational/6_publish_obs_to_s3.R --full --tier 7
+   ls Data/flood_gfd/GFD/*.tif | wc -l                                  # local
+   aws s3 ls --recursive "s3://digital-atlas/domain=climate/type=flood/source=global-flood-db/region=east-africa/" | wc -l   # must equal local
+   ```
+6. Verify live: range-GET one → 206 + CORS.
+
+### RESPONSE block (append, then push)
+```
+smoke 2015: Kenya events = ?   flooded px = ?   gate = PASS/FAIL (min/max)
+full: year-COGs written = ?  (list years + Kenya-event counts)
+dry-run rows = ?   published = ?   local==S3 = yes/no
+live 206 = yes/no  CORS = yes/no
+base URL = https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=global-flood-db/region=east-africa/processing=annual/variable=flooded/
+→ GFD FLOOD LIVE = yes/no
+```
+Note: some years may have 0 Kenya events (skipped) — that's expected, report which years produced COGs.
+
+---
+
 ## [macbook 2026-08-17 #2] ACTION → cglabs: JRC flood ingest (smoke → 7 RP → publish Tier 6)
 
 Access verified (#1 🟢). Ingest shipped: **`python/ingest_flood_jrc.py`** (mosaic 4 Kenya tiles
