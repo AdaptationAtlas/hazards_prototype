@@ -195,7 +195,10 @@ write_cog <- function(rast, filename, overwrite = TRUE) {
     rast, filename,
     overwrite = overwrite,
     filetype  = "COG",
-    gdal      = c("COMPRESS=ZSTD", "COMPRESS_LEVEL=9", "OVERVIEWS=NONE")
+    # Overviews ON: consumers (esp. the Quarto dash) can't render very-high-res
+    # bases — they fetch a decimated pyramid level at zoomed-out extent.
+    gdal      = c("COMPRESS=ZSTD", "COMPRESS_LEVEL=9",
+                  "OVERVIEWS=AUTO", "OVERVIEW_RESAMPLING=AVERAGE")
   )
 }
 

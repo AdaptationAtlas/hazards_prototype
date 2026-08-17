@@ -146,7 +146,10 @@ smoke_years <- 1985L:2020L
 cog_gdal_opts <- c(
   "COMPRESS=DEFLATE",
   "PREDICTOR=2",
-  "OVERVIEWS=NONE",
+  # Overviews ON so the Quarto dash can fetch a decimated pyramid level at
+  # zoomed-out extent (it cannot render very-high-res bases).
+  "OVERVIEWS=AUTO",
+  "OVERVIEW_RESAMPLING=AVERAGE",
   "BLOCKSIZE=512"
 )
 source(file.path(project_dir, "R", "observational", "_helpers.R"))

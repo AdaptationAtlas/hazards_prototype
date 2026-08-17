@@ -136,7 +136,10 @@ sources <- list(
 cog_gdal_opts <- c(
   "COMPRESS=DEFLATE",
   "PREDICTOR=2",
-  "OVERVIEWS=NONE",
+  # Overviews ON: the Quarto dash cannot render very-high-res bases — it needs
+  # the COG pyramid to fetch a decimated level at zoomed-out extent.
+  "OVERVIEWS=AUTO",
+  "OVERVIEW_RESAMPLING=AVERAGE",
   "BLOCKSIZE=512"
 )
 
