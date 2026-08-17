@@ -9,6 +9,43 @@ reachable from the node before writing ingests. No ingest yet.
 
 ---
 
+## [macbook 2026-08-17 #2] ACTION → cglabs: JRC flood ingest (smoke → 7 RP → publish Tier 6)
+
+Access verified (#1 🟢). Ingest shipped: **`python/ingest_flood_jrc.py`** (mosaic 4 Kenya tiles
+from source.coop via /vsicurl → crop Kenya → clamp <0→NaN → COG w/ overviews). Publish **Tier 6**
+(`--tier 6`, opt-in) → `domain=climate/type=flood/source=jrc-glofas/region=east-africa/processing=return-period/variable=flood-depth/rp={RP}/`.
+**UNTESTED locally — smoke-gate first.**
+
+### Steps
+1. `git pull` develop.
+2. **SMOKE** (RP100 only): `python3 python/ingest_flood_jrc.py --smoke`
+   → `Data/flood_jrc/JRC/flood-depth_rp100.tif`.
+3. **GATE:** `gdalinfo Data/flood_jrc/JRC/flood-depth_rp100.tif | grep -Ei 'Size is|EPSG|Overviews|Minimum|Maximum'`
+   Expect EPSG:4326, overviews, depth **≥0** (no negatives — clamp applied), max ~tens of m, Kenya
+   extent. If negatives remain or CRS wrong → STOP, paste gdalinfo.
+4. **Full:** `python3 python/ingest_flood_jrc.py`  (7 RP: 10/20/50/75/100/200/500).
+5. **Publish:** `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 6` (expect 7 rows),
+   then `Rscript R/observational/6_publish_obs_to_s3.R --full --tier 6`.
+6. **VERIFY (incl. count — the uploader doesn't self-verify, NDVI MAM-2008 dropped silently):**
+   ```bash
+   aws s3 ls --recursive "s3://digital-atlas/domain=climate/type=flood/source=jrc-glofas/region=east-africa/" | wc -l   # expect 7
+   curl -s -o /dev/null -w '%{http_code}\n' -r 0-0 "https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=jrc-glofas/region=east-africa/processing=return-period/variable=flood-depth/rp=100/flood-depth_rp100.tif"  # 206
+   ```
+   Confirm local (7) == S3 (7); if short, re-run `--full --tier 6`.
+
+### RESPONSE block (append, then push)
+```
+smoke gate = PASS/FAIL (depth min/max=?)
+full ingest = ?/7 RP
+dry-run rows = ?/7   published = ?/7   S3 count == local = yes/no
+live 206 = yes/no   CORS = yes/no
+base URL = https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=jrc-glofas/region=east-africa/processing=return-period/variable=flood-depth/rp={RP}/
+→ JRC FLOOD LIVE = yes/no
+```
+GFD (observed events, `gfd_v1_4` GCS) = macbook's next follow-up ingest (bigger). Not this dispatch.
+
+---
+
 ## [macbook 2026-08-17 #1] ACTION → cglabs: flood-source access probe (JRC + GFD)
 
 Report only what you verify. Kenya bbox = `33.9,-4.7,41.9,5.5` (W,S,E,N).
