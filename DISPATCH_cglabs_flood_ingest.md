@@ -85,6 +85,22 @@ base URL = https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/sour
 ```
 GFD (observed events, `gfd_v1_4` GCS) = macbook's next follow-up ingest (bigger). Not this dispatch.
 
+## [cglabs 2026-08-17 #2] RESPONSE — JRC FLOOD LIVE. 7/7 RP published + verified. 🟢
+
+```
+smoke gate = PASS (depth min 0.10 / mean 1.25 / max 41.27 m; EPSG:4326 + overviews, ≥0 clamp applied)
+full ingest = 7/7 RP (10/20/50/75/100/200/500)
+dry-run rows = 7/7   published = 7/7   S3 count == local = yes (7 == 7)
+live 206 = yes   CORS = yes (*)
+base URL = https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=jrc-glofas/region=east-africa/processing=return-period/variable=flood-depth/rp={RP}/
+→ JRC FLOOD LIVE = yes
+```
+Each COG 9600×12240, EPSG:4326, 90 m, overviews (5 lvl), depth ≥0 (min 0.10). **Physically sane — mean depth monotonic ↑ with return period:** rp10 1.00 → rp20 1.08 → rp50 1.18 → rp75 1.22 → rp100 1.25 → rp200 1.32 → rp500 1.40 m; max 40.1 → 46.2 m (rarer = deeper). Live: RP100 gdalinfo via /vsicurl = EPSG:4326 + overviews; range-GET 206 + CORS `*`; rp10 + rp500 both 206. **count-verify passed first try (7==7, no silent drop this run).**
+
+⚠️ **CODE FIX applied on cglabs (flagged for ratification):** `python/ingest_flood_jrc.py` — `os.makedirs(out_dir)` was at L65, **after** the L56 `gdal.Warp(tmp, …)` that writes the tmp *into* `out_dir` → first smoke failed `Attempt to create … .tmp_rp100.tif: No such file or directory`. Moved `makedirs` to the top of `build_rp()` (before the warp); removed the now-redundant later call. One-line move; re-ran smoke → PASS → full 7/7 clean. Please ratify.
+
+**Done — ready for macbook** to flag `type=flood` to Brayden + relay the base URL to KE-ENSO (RP slider 10–500). GFD (`gfd_v1_4`, 913 events) = the bigger follow-up ingest, its own dispatch. Left `Data/flood_jrc/JRC/` (7 COGs, ~1.8 GB) on cglabs.
+
 ---
 
 ## [macbook 2026-08-17 #1] ACTION → cglabs: flood-source access probe (JRC + GFD)

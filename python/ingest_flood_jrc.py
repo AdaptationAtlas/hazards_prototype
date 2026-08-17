@@ -46,6 +46,7 @@ def tile_url(rp, tile):
 
 
 def build_rp(rp, out_dir, overwrite):
+    os.makedirs(out_dir, exist_ok=True)  # CGLABS 2026-08-17 fix: must exist BEFORE the tmp warp write below (was at L65, after gdal.Warp → "No such file or directory")
     out = os.path.join(out_dir, f"flood-depth_rp{rp}.tif")
     if not overwrite and os.path.exists(out) and os.path.getsize(out) > 100:
         log(f"  rp{rp}: exists, skip")
@@ -62,7 +63,6 @@ def build_rp(rp, out_dir, overwrite):
     arr[arr < 0] = np.nan   # clamp nodata / resample-edge artifacts (depth < 0 is invalid)
     prof = dict(height=arr.shape[0], width=arr.shape[1], count=1, dtype="float32",
                 crs="EPSG:4326", transform=transform, nodata=float("nan"), **COG_OPTS)
-    os.makedirs(out_dir, exist_ok=True)
     with rasterio.open(out, "w", **prof) as dst:
         dst.write(arr, 1)
     os.remove(tmp)
