@@ -168,8 +168,8 @@ pacman::p_load(future, future.apply)
 # Resolve --tier (default all). --smoke always means Tier 1, one file.
 tier_arg <- parse_cli_flag(args, "tier", "character")
 if (is.null(tier_arg) || is.na(tier_arg)) tier_arg <- "all"
-if (!tier_arg %in% c("1", "2", "3", "4", "5", "6", "7", "all")) {
-  stop(glue::glue("--tier must be 1, 2, 3, 4, 5, 6, 7, or all (got '{tier_arg}')"))
+if (!tier_arg %in% c("1", "2", "3", "4", "5", "6", "7", "8", "all")) {
+  stop(glue::glue("--tier must be 1, 2, 3, 4, 5, 6, 7, 8, or all (got '{tier_arg}')"))
 }
 # Tiers 3-7 are opt-in only: NOT included in 'all' (large raster / new-domain uploads).
 do_tier1 <- mode == "--smoke" || tier_arg %in% c("1", "all")
@@ -179,6 +179,7 @@ do_tier4 <- mode != "--smoke" && tier_arg == "4"
 do_tier5 <- mode != "--smoke" && tier_arg == "5"
 do_tier6 <- mode != "--smoke" && tier_arg == "6"
 do_tier7 <- mode != "--smoke" && tier_arg == "7"
+do_tier8 <- mode != "--smoke" && tier_arg == "8"
 
 overwrite <- parse_overwrite_flag(args)
 # AtlasDataManageR 0.0.0.9000 (currently installed) does NOT expose an
@@ -262,6 +263,8 @@ prefix_ndvi <- "domain=climate/type=vegetation/source=modis-mod13q1/region=east-
 prefix_flood <- "domain=climate/type=flood/source=jrc-glofas/region=east-africa"
 # Global Flood Database observed per-year flood occurrence (type=flood, different source).
 prefix_gfd <- "domain=climate/type=flood/source=global-flood-db/region=east-africa"
+# FEWS NET CHIRPS-ETos WRSI (crop/pasture water satisfaction; new type=agriculture).
+prefix_wrsi <- "domain=climate/type=agriculture/source=fews-wrsi/region=east-africa"
 prefix_base_raster   <- "domain=boundaries/type=raster/source=chirps-grid/region=africa/processing=base-raster"
 
 # Translate the on-disk climatology label (bare year-range) to the
@@ -368,6 +371,21 @@ name_fn_gfd <- function(x) {
                  paste(fname[bad], collapse = ", ")))
   }
   sprintf("processing=annual/variable=flooded/%s", fname)
+}
+
+# FEWS WRSI COG (Tier 8, type=agriculture). On-disk: wrsi_{crop}_{SEASON}_{YYYY}.tif ->
+# S3 leaf: processing=seasonal/variable=wrsi/crop={crop}/season={SEASON}/{fname}
+name_fn_wrsi <- function(x) {
+  fname <- basename(x)
+  base  <- tools::file_path_sans_ext(fname)
+  bad <- !grepl("^wrsi_(cropland|rangeland)_[A-Z]{3}_[0-9]{4}$", base)
+  if (any(bad)) {
+    stop(sprintf("Unexpected WRSI filename (expected wrsi_{cropland|rangeland}_{SEASON}_YYYY.tif): %s",
+                 paste(fname[bad], collapse = ", ")))
+  }
+  crop   <- sub("^wrsi_([a-z]+)_.*", "\\1", base)
+  season <- sub("^wrsi_[a-z]+_([A-Z]{3})_.*", "\\1", base)
+  sprintf("processing=seasonal/variable=wrsi/crop=%s/season=%s/%s", crop, season, fname)
 }
 
 name_fn_climatology <- function(x) {
@@ -505,6 +523,19 @@ tier7_specs <- list(
   )
 )
 
+# Tier 8 (FEWS WRSI COGs, type=agriculture). Opt-in ONLY (--tier 8).
+tier8_specs <- list(
+  list(
+    upload_id     = "obs-wrsi-fews",
+    local_dir     = file.path(dirname(chirts_chirps_hist_dir), "wrsi_fews", "WRSI"),
+    s3_dir        = prefix_wrsi,
+    file_pattern  = "^wrsi_(cropland|rangeland)_[A-Z]{3}_[0-9]{4}\\.tif$",
+    name_fn       = name_fn_wrsi,
+    recursive     = FALSE,
+    tier          = 8L
+  )
+)
+
 active_specs <- c(
   if (do_tier1) tier1_specs else list(),
   if (do_tier2) tier2_specs else list(),
@@ -512,7 +543,8 @@ active_specs <- c(
   if (do_tier4) tier4_specs else list(),
   if (do_tier5) tier5_specs else list(),
   if (do_tier6) tier6_specs else list(),
-  if (do_tier7) tier7_specs else list()
+  if (do_tier7) tier7_specs else list(),
+  if (do_tier8) tier8_specs else list()
 )
 
 cat("project_dir          :", project_dir, "\n")
@@ -529,6 +561,7 @@ cat("tier 4 enabled       :", do_tier4, "\n")
 cat("tier 5 enabled       :", do_tier5, "\n")
 cat("tier 6 enabled       :", do_tier6, "\n")
 cat("tier 7 enabled       :", do_tier7, "\n")
+cat("tier 8 enabled       :", do_tier8, "\n")
 cat("overwrite            :", overwrite, "\n")
 cat("workers              :", workers, "\n\n")
 

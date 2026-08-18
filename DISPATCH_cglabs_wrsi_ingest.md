@@ -9,6 +9,50 @@ confirm CHIRPS version before writing the ingest. No ingest yet.
 
 ---
 
+## [macbook 2026-08-18 #2] ACTION → cglabs: WRSI ingest — verify region-map/EOS on smoke → cropland run → pin rangeland codes
+
+Archive verified (#1 🟢), **CHIRPS v3.0 confirmed** (product page: "CHIRPS v3 … replacement of v2.0"
+— matches our stack). Ingest shipped: **`python/ingest_wrsi_fews.py`** (per region×year: download
+EOS dekad zip → extract `*eo.tif` → crop Kenya → mask >100→NaN → COG w/ overviews). Publish **Tier 8**
+(`--tier 8`, opt-in) → `domain=climate/type=agriculture/source=fews-wrsi/region=east-africa/processing=seasonal/variable=wrsi/crop={cropland|rangeland}/season={SEASON}/`.
+
+**⚠️ The `REGION_MAP` + EOS-dekad in the script are BEST-GUESS — you must VERIFY before the full run.**
+Currently only **cropland** (e1/e2) is active; rangeland (ee/ek/el/et) is commented out until you pin it.
+
+### Steps
+1. `git pull` develop.
+2. **VERIFY the cropland map + EOS product** (edit `python/ingest_wrsi_fews.py` REGION_MAP if wrong):
+   - Confirm from USGS pages: **e1 = short rains (OND?) or e2 = long rains (MAM)** — the product page
+     said `east1`=short rains, `east2`=long rains. Confirm which season label (OND/MAM) + which is
+     cropland. Fix the map's `(season, eos_dekad)` if my guess (e1=OND/dk36, e2=MAM/dk21) is off.
+   - Confirm the **EOS product = `*eo.tif`** (extended/end-of-season WRSI) and that the chosen
+     `eos_dekad` gives the season's final value (not a reset/zero). If EOS is better taken from the
+     last populated dekad's `*do.tif`, note it.
+3. **SMOKE** (cropland e2/MAM/2015): `python3 python/ingest_wrsi_fews.py --smoke`
+   → `Data/wrsi_fews/WRSI/wrsi_cropland_MAM_2015.tif`. `gdalinfo` gate: EPSG:4326, overviews,
+   WRSI **0–100** (not all-NaN, not status codes), Kenya extent. If all-NaN or values look like
+   253/254 → the EOS dekad/product is wrong → fix REGION_MAP, re-smoke.
+4. **PIN RANGELAND** (the #1 open item): from product pages 891/896, map **ee/ek/el/et →
+   (rangeland, season)** and report it. (Don't publish rangeland until confirmed — macbook will
+   uncomment those REGION_MAP rows once you report the mapping.)
+5. **Cropland full run:** `python3 python/ingest_wrsi_fews.py` (e1+e2 × years). Report COGs written.
+6. **Publish + count-verify:**
+   `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 8` then `--full --tier 8`;
+   `ls Data/wrsi_fews/WRSI/*.tif | wc -l` == `aws s3 ls --recursive .../type=agriculture/source=fews-wrsi/... | wc -l`.
+
+### RESPONSE block (append, then push)
+```
+map/EOS verified: e1=? e2=? (season, eos_dekad, eo-vs-do)  [edited script? y/n]
+smoke cropland MAM-2015: gdalinfo WRSI min/mean/max=?  gate=PASS/FAIL
+RANGELAND MAP: ee=? ek=? el=? et=?  → (crop=rangeland, season=?, eos_dekad=?)   [the pin]
+cropland full: COGs written = ?   published = ?/?   local==S3 = yes/no
+live 206 = yes/no  CORS = yes/no
+→ WRSI CROPLAND LIVE = yes/no
+```
+After this: macbook adds the confirmed rangeland rows + re-runs for rangeland. CHIRPS-ETos (not RFE) confirmed via the dir name.
+
+---
+
 ## [macbook 2026-08-18 #1] ACTION → cglabs: WRSI access probe (USGS FEWS NET — Croplands + Rangelands)
 
 Report only what you verify. Kenya bbox = `33.9,-4.7,41.9,5.5` (W,S,E,N). Two products:

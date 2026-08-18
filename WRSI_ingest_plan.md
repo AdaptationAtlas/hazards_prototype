@@ -20,7 +20,7 @@ Maize WRSI over rangeland is misleading (no maize, wrong calendar). FEWS NET sol
 - WRSI value classes: <50 failure · 50-60 poor · 60-80 mediocre · 80-95 average · 95-99 good ·
   99-100 very good (standard ramp).
 
-## 2. Backbone — likely CHIRPS v3.0 (confirm)
+## 2. Backbone — CHIRPS v3.0 CONFIRMED
 FEWS NET transitioned WRSI off legacy RFE-GDAS onto **CHIRPS + NOAA ETos**; the USGS portal now
 serves **CHIRPS 3.0** (prod/175). So the "CHIRPS - WRSI" products plausibly align with our v3.0
 rainfall/SPEI backbone. **⚠️ Confirm exact CHIRPS version from product metadata** (v2.0 vs v3.0) in
