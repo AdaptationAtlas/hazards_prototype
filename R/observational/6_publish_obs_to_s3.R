@@ -598,7 +598,18 @@ walk_spec <- function(spec) {
 #' Does a raster carry internal overviews? (gdalinfo "Overviews:" line.)
 cog_has_overviews <- function(path) {
   info <- suppressWarnings(system2("gdalinfo", shQuote(path), stdout = TRUE, stderr = FALSE))
-  any(grepl("Overviews:", info, fixed = TRUE))
+  # A COG smaller than one 512 block CAN'T carry overviews (nothing to downsample)
+  # and doesn't need them — the full image already IS the zoomed-out view. Treat
+  # such tiny rasters as compliant (e.g. WRSI Kenya = 80x102 @ 0.1 deg). Otherwise
+  # require a real "Overviews:" line.
+  if (any(grepl("Overviews:", info, fixed = TRUE))) return(TRUE)
+  m <- regmatches(info, regexec("Size is ([0-9]+), ([0-9]+)", info))
+  hit <- m[vapply(m, length, integer(1)) == 3L]
+  if (length(hit)) {
+    dims <- as.integer(hit[[1]][2:3])
+    if (max(dims) <= 512L) return(TRUE)   # sub-tile: overviews impossible + unneeded
+  }
+  FALSE
 }
 
 #' PUBLISH GATE — every .tif COG we publish MUST carry internal overviews, or the

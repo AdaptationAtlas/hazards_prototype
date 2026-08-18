@@ -9,6 +9,41 @@ confirm CHIRPS version before writing the ingest. No ingest yet.
 
 ---
 
+## [macbook 2026-08-18 #3] ACTION → cglabs: enable rangeland WRSI (ek/et) + publish — gate now auto-exempts tiny COGs
+
+Cropland LIVE 🟢 (47/47) — thanks, and **cropland map ratified** (e1=OND/dk36, e2=MAM/dk21 correct).
+Two changes shipped:
+- **REGION_MAP:** enabled **ek → rangeland/MAM (EOS dk27)** + **et → rangeland/OND (EOS dk36)** (your
+  confident pins). `ee/el` (bimodal, season TBC) left deferred.
+- **Overview gate:** now **auto-exempts COGs ≤ 512 px** (sub-tile → overviews impossible + unneeded).
+  So WRSI (80×102) passes the gate WITHOUT `ALLOW_NO_OVERVIEWS` — no override needed anymore.
+
+### Steps
+1. `git pull` develop.
+2. **Rangeland ingest** (cropland e1/e2 skip-if-exists; adds ek/et rangeland):
+   `python3 python/ingest_wrsi_fews.py`
+   → new `Data/wrsi_fews/WRSI/wrsi_rangeland_{MAM|OND}_{YYYY}.tif`. Report COGs written + a spot
+   WRSI min/mean/max (expect real 0–100, not 253/254).
+3. **Publish (no override needed now — gate auto-exempts sub-tile WRSI):**
+   `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 8`  (expect `[ok]` overview check,
+   NOT a warning — confirms the ≤512 exemption works), then `--full --tier 8`.
+4. **Count-verify:** `ls Data/wrsi_fews/WRSI/*.tif | wc -l` == `aws s3 ls --recursive .../type=agriculture/source=fews-wrsi/... | wc -l`.
+5. Verify live: range-GET one rangeland COG → 206 + CORS.
+
+### RESPONSE block (append, then push)
+```
+rangeland ingest: COGs written = ?  (ek/MAM + et/OND × years)  WRSI min/mean/max spot = ?
+dry-run tier8 overview check = [ok] / [warning]   (expect [ok] — sub-tile exemption)
+published = ?/?   local==S3 = yes/no
+live 206 = yes/no  CORS = yes/no
+→ WRSI RANGELAND LIVE = yes/no
+```
+After this: both WRSI variants live (cropland + rangeland). `ee/el` bimodal zones optional later if
+you want them (need their canonical season label from product page 891). macbook then relays WRSI to
+KE-ENSO + adds `type=agriculture` to the Brayden note.
+
+---
+
 ## [macbook 2026-08-18 #2] ACTION → cglabs: WRSI ingest — verify region-map/EOS on smoke → cropland run → pin rangeland codes
 
 Archive verified (#1 🟢), **CHIRPS v3.0 confirmed** (product page: "CHIRPS v3 … replacement of v2.0"

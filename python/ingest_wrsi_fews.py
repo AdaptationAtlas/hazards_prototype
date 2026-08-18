@@ -46,13 +46,14 @@ COG_OPTS = dict(driver="COG", compress="DEFLATE", predictor=2, blocksize=512,
 # Confident: e1=short rains, e2=long rains, both cropland (product page + cglabs).
 # UNVERIFIED: ee/ek/el/et = rangeland zones — season + EOS dekad TBD; cglabs to confirm/correct.
 REGION_MAP = {
-    "e1": ("east1", "cropland", "OND", 36),   # short rains, ends ~dekad 36 (Dec)  [verify]
-    "e2": ("east2", "cropland", "MAM", 21),   # long rains,  ends ~dekad 21 (Jul)  [verify]
-    # --- rangeland: UNVERIFIED, do NOT publish until cglabs confirms ---
-    # "ee": ("easte", "rangeland", "??", 36),
-    # "ek": ("eastk", "rangeland", "??", 36),
-    # "el": ("eastl", "rangeland", "??", 36),
-    # "et": ("eastt", "rangeland", "??", 36),
+    "e1": ("east1", "cropland", "OND", 36),   # short rains (VERIFIED cglabs #2: e1=OND/dk36 correct)
+    "e2": ("east2", "cropland", "MAM", 21),   # long rains  (VERIFIED cglabs #2: e2=MAM/dk21 correct)
+    # rangeland: pinned empirically by cglabs #2 (EOS dekads + real-WRSI verified):
+    "ek": ("eastk", "rangeland", "MAM", 27),  # long-rains rangeland, EOS dk27
+    "et": ("eastt", "rangeland", "OND", 36),  # short-rains rangeland, EOS dk36
+    # ee/el = bimodal/annual monitor windows (EOS dk33) — season label unconfirmed, deferred.
+    # "ee": ("easte", "rangeland", "??", 33),
+    # "el": ("eastl", "rangeland", "??", 33),
 }
 YEARS = range(2003, 2027)   # CHIRPS-ETos WRSI archive span (verify earliest on smoke)
 
