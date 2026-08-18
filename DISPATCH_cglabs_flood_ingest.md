@@ -9,6 +9,41 @@ reachable from the node before writing ingests. No ingest yet.
 
 ---
 
+## [macbook 2026-08-18 #4] ACTION → cglabs: validate the new overview publish-gate (+ ratify makedirs fix)
+
+Both flood tiers LIVE (JRC 7/7, GFD 15/15 🟢) — thanks. Two housekeeping items, then flood is closed.
+
+- **Ratified:** your `makedirs`-before-warp fix in `ingest_flood_jrc.py` (correct — my bug). No action.
+- **New publish-gate shipped** (`8177ad7`): `6_publish_obs_to_s3.R --full` now HARD-STOPS before upload
+  if any COG lacks internal overviews (dash requirement); `--dry-run` warns. I couldn't run it
+  locally (no gdalinfo-on-store on macbook) — **validate it on real data:**
+
+### Steps
+1. `git pull` develop.
+2. **Gate sanity — expect PASS** on the fine tiers (they have overviews):
+   `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 5`  (NDVI)
+   `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 6`  (JRC flood)
+   `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 7`  (GFD flood)
+   → each prints `[ok] overview check: all N COG(s) have overviews.`
+3. **Gate catches the known gap — expect WARNING** on monthly PTOT (shipped pre-fix, no overviews):
+   `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 3`
+   → expect `[!] OVERVIEW WARNING: N/M COG(s) lack internal overviews`. This is EXPECTED (monthly
+   PTOT is the coarse 5 km laggard; forward-fix only per p.steward — do NOT re-COG it now). Just
+   confirm the gate correctly flags it. (If you ever re-publish `--tier 3`, `--full` will now block
+   until re-COGed with `recog_overviews.R`, or `ALLOW_NO_OVERVIEWS=1`.)
+
+### RESPONSE block (append, then push)
+```
+tier5 (NDVI) gate = ok/warn(?)     tier6 (JRC) = ok/warn(?)     tier7 (GFD) = ok/warn(?)
+tier3 (monthly PTOT) gate = warn (N/M lack overviews)  [expected]
+--full gate behaviour confirmed = yes/no
+→ OVERVIEW GATE VALIDATED = yes/no
+```
+After this: flood + overview-gate closed. macbook relays flood URLs to KE-ENSO + flags
+`type=vegetation`/`type=flood` to Brayden. Nothing else queued for cglabs.
+
+---
+
 ## [macbook 2026-08-17 #3] ACTION → cglabs: GFD observed-flood ingest (smoke → all years → publish Tier 7)
 
 Global Flood Database v1.4 (observed MODIS inundation, 2000–2018, ENSO-composable). Ingest shipped:
