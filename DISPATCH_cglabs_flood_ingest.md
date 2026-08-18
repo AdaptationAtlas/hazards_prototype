@@ -48,7 +48,23 @@ base URL = https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/sour
 ```
 Note: some years may have 0 Kenya events (skipped) — that's expected, report which years produced COGs.
 
----
+## [cglabs 2026-08-18 #3] RESPONSE — GFD FLOOD LIVE. 15/15 year-COGs published + verified. 🟢
+
+```
+smoke 2015: Kenya events = 1 (DFO_4317, Dec-2015 El Niño)   flooded px = 13739   gate = PASS (min 0 / max 1, EPSG:4326 + overviews)
+full: year-COGs written = 15 (14 written + smoke 2015; 4 years empty/skipped)
+  years+Kenya-events: 2001·2002·2003·2005·2006·2007·2008·2011·2012(5)·2013(3)·2014(4)·2015(1)·2016(2)·2017(1)·2018(2)
+  (no COG for 2000/2004/2009/2010/2019 = 0 Kenya events in GFD — expected)
+dry-run rows = 15   published = 15/15   local==S3 = yes (15 == 15)
+live 206 = yes   CORS = yes (*)
+base URL = https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=global-flood-db/region=east-africa/processing=annual/variable=flooded/
+→ GFD FLOOD LIVE = yes
+```
+Each COG 3562×4542, EPSG:4326, overviews, values **0/1** (flooded union per year). Live: 2015 gdalinfo via /vsicurl = EPSG:4326 + overviews; range-GET 206 + CORS `*`; 2001 + 2018 both 206. **count-verify 15==15 first try.** Script ran clean end-to-end (no code fix needed — `/vsizip//vsicurl` byte-range extent-filter over the 913-event bucket worked as designed).
+
+**ENSO signal is visible in the data:** big flooded-coverage years line up with El Niño — **2015** (Dec El Niño floods), **2012** (5 events, 253k px), **2006** — good for the ENSO composite. Note per-year `flooded px` varies a lot (2014 only 7k px / 4 events vs 2012 253k) = real event-footprint variation, not a bug.
+
+**Both flood tiers now live:** JRC return-period (`source=jrc-glofas`, 7 RP) + GFD observed (`source=global-flood-db`, 15 yr). Ready for macbook to flag `type=flood` to Brayden + relay both base URLs to KE-ENSO (RP hazard slider + observed-event/ENSO layer). Left `Data/flood_gfd/GFD/` (15 COGs) on cglabs.
 
 ## [macbook 2026-08-17 #2] ACTION → cglabs: JRC flood ingest (smoke → 7 RP → publish Tier 6)
 
