@@ -9,6 +9,46 @@ reachable from the node before writing ingests. No ingest yet.
 
 ---
 
+## [macbook 2026-08-18 #5] ACTION → cglabs: backfill overviews on the 256 live SPEI COGs
+
+Great catch — the gate found a real live gap. `fix_spei_inf.R` (#6) only re-COGed the −Inf files
+(which got overviews via write_seasonal_cog); the 256 non-Inf SPEI COGs kept the old
+`OVERVIEWS=NONE`. SPEI is an actively-used dash layer → fix it. **PTOT stays the known 5 km laggard
+per p.steward — NOT touched here** (that's why the override below).
+
+`recog_overviews.R` skips files that already have overviews, so it only re-COGs the 256.
+
+### Steps
+1. `git pull` develop.
+2. **Backfill SPEI overviews** (only the ~256 missing; the 832 with overviews are skipped):
+   `Rscript R/observational/recog_overviews.R SPEI-03 SPEI-12`
+   → reports "N/544 lacked overviews and were re-COGed" per scale (expect ~101 + ~155).
+3. **Delete the SPEI S3 keys** (uploader is skip-if-exists):
+   ```bash
+   for s in SPEI-03 SPEI-12; do aws s3 rm --recursive \
+     "s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/variable=$s/"; done
+   ```
+4. **Re-publish tier 3 with the override** (PTOT still lacks overviews by design → the gate would
+   otherwise block; override lets it publish, PTOT is skip-if-exists no-op, SPEI re-uploads clean):
+   `ALLOW_NO_OVERVIEWS=1 Rscript R/observational/6_publish_obs_to_s3.R --full --tier 3`
+5. **Verify:** SPEI now has overviews live + count-verify:
+   ```bash
+   gdalinfo "/vsicurl/https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/variable=SPEI-03/SPEI-03-2015-11.tif" 2>/dev/null | grep -i Overviews
+   for s in SPEI-03 SPEI-12; do aws s3 ls --recursive ".../variable=$s/" | wc -l; done   # each 544
+   ```
+
+### RESPONSE block (append, then push)
+```
+recog: SPEI-03 re-COGed ?/544   SPEI-12 re-COGed ?/544   (expect ~101 / ~155)
+SPEI S3 deleted + republished = ?/1088   (PTOT skip-if-exists)
+live SPEI overviews present = yes/no   count SPEI-03/12 = ?/? (expect 544/544)
+→ SPEI OVERVIEWS FIXED = yes/no
+```
+After this: monthly SPEI is dash-ready; PTOT remains the accepted laggard (gate flags it, override
+to publish). macbook then relays flood/NDVI to KE-ENSO + Brayden. Nothing else queued.
+
+---
+
 ## [macbook 2026-08-18 #4] ACTION → cglabs: validate the new overview publish-gate (+ ratify makedirs fix)
 
 Both flood tiers LIVE (JRC 7/7, GFD 15/15 🟢) — thanks. Two housekeeping items, then flood is closed.
