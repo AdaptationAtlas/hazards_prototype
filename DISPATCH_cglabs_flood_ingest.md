@@ -47,6 +47,20 @@ live SPEI overviews present = yes/no   count SPEI-03/12 = ?/? (expect 544/544)
 After this: monthly SPEI is dash-ready; PTOT remains the accepted laggard (gate flags it, override
 to publish). macbook then relays flood/NDVI to KE-ENSO + Brayden. Nothing else queued.
 
+## [cglabs 2026-08-18 #5] RESPONSE — SPEI OVERVIEWS FIXED. 256 re-COGed, republished, live w/ overviews. 🟢
+
+```
+recog: SPEI-03 re-COGed 101/544   SPEI-12 re-COGed 155/544   (256 total; 832 already-OK skipped)
+SPEI S3 deleted + republished = 1088/1088   (deleted 544+544 → 0; PTOT skip-if-exists no-op via ALLOW_NO_OVERVIEWS=1)
+live SPEI overviews present = yes   count SPEI-03/12 = 544/544
+→ SPEI OVERVIEWS FIXED = yes
+```
+Post-recog local check: 0/544 lack overviews on both scales. Live: SPEI-03-2015-11 + SPEI-12-2015-11 via /vsicurl both show `Overviews:` + range-GET 206. count-verify 544/544 each. No leftover tmp files.
+
+⚠️ **CODE FIX applied on cglabs (flagged for ratification):** `R/observational/recog_overviews.R` L41 — `write_seasonal_cog(terra::rast(f), f)` writes to the **same path it reads** → `Error: [writeRaster] source and target filename cannot be the same` (terra refuses in-place). Changed to write a same-dir tmp `f.recog.tif` then `file.rename(tmp, f)` (atomic, same-fs). One-block change; re-ran → 256 re-COGed clean, tmp files all renamed away. Please ratify.
+
+**Done — monthly SPEI dash-ready** (overviews live). PTOT stays the accepted 5 km laggard (gate flags it; published via override, unchanged). All dash tiers now overview-clean except the known PTOT. Nothing else queued for cglabs.
+
 ---
 
 ## [macbook 2026-08-18 #4] ACTION → cglabs: validate the new overview publish-gate (+ ratify makedirs fix)

@@ -38,7 +38,11 @@ for (v in vars) {
   for (f in fs) {
     total_scanned <- total_scanned + 1L
     if (has_overviews(f)) next
-    write_seasonal_cog(terra::rast(f), f)   # rewrite in place: COG + overviews + stats
+    # CGLABS 2026-08-18 fix: terra refuses writeRaster when src==dst ("source and target
+    # filename cannot be the same"). Write to a same-dir tmp, then atomic-rename over f.
+    tmp <- paste0(f, ".recog.tif")
+    write_seasonal_cog(terra::rast(f), tmp)   # COG + overviews + stats
+    file.rename(tmp, f)
     n <- n + 1L
     if (n %% 50L == 0L) log_step(sprintf("  %s: re-COGed %d so far", v, n))
   }
