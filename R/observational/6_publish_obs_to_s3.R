@@ -562,6 +562,39 @@ walk_spec <- function(spec) {
   )
 }
 
+#' Does a raster carry internal overviews? (gdalinfo "Overviews:" line.)
+cog_has_overviews <- function(path) {
+  info <- suppressWarnings(system2("gdalinfo", shQuote(path), stdout = TRUE, stderr = FALSE))
+  any(grepl("Overviews:", info, fixed = TRUE))
+}
+
+#' PUBLISH GATE — every .tif COG we publish MUST carry internal overviews, or the
+#' Quarto dash can't render it at zoomed-out extent (see feedback_cogs_need_overviews).
+#' Hard-stops the run before any upload if a COG lacks overviews. The base reference
+#' raster (obs-base-raster) is exempt (not a map layer). Override: ALLOW_NO_OVERVIEWS=1.
+assert_cog_overviews <- function(specs) {
+  if (nzchar(Sys.getenv("ALLOW_NO_OVERVIEWS"))) {
+    log_step("overview gate: SKIPPED (ALLOW_NO_OVERVIEWS set)")
+    return(invisible(NULL))
+  }
+  missing <- character(0)
+  for (spec in specs) {
+    if (identical(spec$upload_id, "obs-base-raster")) next
+    w <- walk_spec(spec)
+    tifs <- w$local_path[grepl("\\.tif$", w$local_path)]
+    for (f in tifs) if (!cog_has_overviews(f)) missing <- c(missing, f)
+  }
+  if (length(missing) > 0L) {
+    stop(sprintf(
+      paste0("PUBLISH GATE FAILED: %d COG(s) lack internal overviews — the dash requires ",
+             "pyramids (feedback_cogs_need_overviews). Re-COG with OVERVIEWS=AUTO (or run ",
+             "R/observational/recog_overviews.R), then re-publish. Override with ",
+             "ALLOW_NO_OVERVIEWS=1.\nFirst offenders:\n  %s"),
+      length(missing), paste(utils::head(missing, 8), collapse = "\n  ")))
+  }
+  log_step(sprintf("overview gate: PASS — all COGs across %d spec(s) have overviews", length(specs)))
+}
+
 #' Build an S3DirUploader for one spec.
 #' AtlasDataManageR 0.0.0.9000 does not expose an `overwrite` arg; behaviour
 #' falls back to the package default (typically skip-if-exists, which gives
@@ -600,6 +633,18 @@ if (mode == "--dry-run") {
   ), by = .(tier, upload_id)]
   cat("\n=== Dry-run summary ===\n")
   print(summary)
+
+  # Pre-flight overview check (warn only in dry-run; --full hard-stops on it).
+  tif_rows <- rows[grepl("\\.tif$", local_path) & upload_id != "obs-base-raster"]
+  if (nrow(tif_rows) > 0L) {
+    no_ov <- tif_rows$local_path[!vapply(tif_rows$local_path, cog_has_overviews, logical(1))]
+    if (length(no_ov) > 0L) {
+      cat(sprintf("\n[!] OVERVIEW WARNING: %d/%d COG(s) lack internal overviews — --full will BLOCK.\n    Re-COG with OVERVIEWS=AUTO (or recog_overviews.R). e.g. %s\n",
+        length(no_ov), nrow(tif_rows), basename(no_ov[1])))
+    } else {
+      cat(sprintf("\n[ok] overview check: all %d COG(s) have overviews.\n", nrow(tif_rows)))
+    }
+  }
 
   cat("\n=== Sample S3 paths (head 3 + tail 2 per upload_id) ===\n")
   for (uid in unique(rows$upload_id)) {
@@ -749,6 +794,9 @@ if (mode == "--smoke") {
 
 if (mode == "--full") {
   log_step("=== FULL PUBLISH ===")
+
+  # PUBLISH GATE: block the upload if any COG lacks overviews (dash requirement).
+  assert_cog_overviews(active_specs)
 
   # Pre-flight: print what each spec WOULD upload, before doing it.
   for (spec in active_specs) {
