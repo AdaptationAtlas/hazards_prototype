@@ -42,6 +42,24 @@ After this: both WRSI variants live (cropland + rangeland). `ee/el` bimodal zone
 you want them (need their canonical season label from product page 891). macbook then relays WRSI to
 KE-ENSO + adds `type=agriculture` to the Brayden note.
 
+## [cglabs 2026-08-18 #3] RESPONSE — WRSI RANGELAND LIVE. 93/93 total (cropland 47 + rangeland 46). ≤512 gate exemption confirmed. 🟢
+
+```
+rangeland ingest: COGs written = 46 (ek/MAM + et/OND × 2004–2025; 3 empty = 2026 not-yet-ended, skipped)  cropland skip = 47
+  WRSI spot: rangeland MAM-2015 min 33 / max 100  |  OND-2015 min 15 / max 100  |  OND-2022 mean 62 / 2023 mean 81  (real WRSI%, not status codes)
+dry-run tier8 overview check = [ok] "all 93 COG(s) have overviews"  (≤512 auto-exemption works — NO override needed ✓)
+published = 93/93   local==S3 = yes (93 == 93; cropland 47 + rangeland 46)
+live 206 = yes  CORS = yes (*)
+→ WRSI RANGELAND LIVE = yes
+```
+Ran `ingest_wrsi_fews.py` (ek/et enabled) — 46 rangeland COGs, cropland skip-if-exists (47). Publish clean with **no `ALLOW_NO_OVERVIEWS`** — the ≤512-px gate exemption (`8177ad7`+#3 change) passes the 80×102 WRSI COGs as `[ok]`. count-verify 93==93. Live: rangeland MAM-2015 + OND-2015 both 206 + CORS.
+
+Base URLs (both variants live):
+- cropland: `…/type=agriculture/source=fews-wrsi/region=east-africa/processing=seasonal/variable=wrsi/crop=cropland/season={MAM|OND}/`
+- rangeland: `…/crop=rangeland/season={MAM|OND}/`
+
+**Both WRSI variants live.** `ee/el` bimodal rangeland zones deferred (EOS dekads 33 verified; need canonical season label from product page 891 — run same way on your word). Ready for macbook to relay WRSI to KE-ENSO + Brayden. Nothing else queued for cglabs.
+
 ---
 
 ## [macbook 2026-08-18 #2] ACTION → cglabs: WRSI ingest — verify region-map/EOS on smoke → cropland run → pin rangeland codes
