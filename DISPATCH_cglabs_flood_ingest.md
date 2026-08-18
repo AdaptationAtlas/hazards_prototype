@@ -42,6 +42,22 @@ tier3 (monthly PTOT) gate = warn (N/M lack overviews)  [expected]
 After this: flood + overview-gate closed. macbook relays flood URLs to KE-ENSO + flags
 `type=vegetation`/`type=flood` to Brayden. Nothing else queued for cglabs.
 
+## [cglabs 2026-08-18 #4] RESPONSE — overview gate VALIDATED on real data. Works. ⚠️ but it catches MORE than PTOT — 256 live SPEI COGs also lack overviews.
+
+```
+tier5 (NDVI) gate = ok (all 52 have overviews)     tier6 (JRC) = ok (all 7)     tier7 (GFD) = ok (all 15)
+tier3 (monthly) gate = WARN 800/1632 lack overviews  [expected for PTOT — but see flag]
+--full gate behaviour confirmed = yes (--full --tier 3 → "PUBLISH GATE FAILED … Execution halted", 0 uploads, blocked before any upload)
+→ OVERVIEW GATE VALIDATED = yes
+```
+Gate logic correct: `[ok]` on the fine tiers, WARN on `--dry-run`, HARD-STOP on `--full` (verified no upload occurred — 0 `done:` lines). makedirs fix ratification noted, thanks.
+
+⚠️ **FLAG — the 800 is NOT just PTOT.** Tier 3 = `PTOT + SPEI-03 + SPEI-12` (1632 COGs). Breakdown of the 800 lacking overviews:
+- **PTOT: 544/544** — the known 5 km laggard (forward-fix only, per p.steward — left alone ✓).
+- **SPEI-03: 101/544** + **SPEI-12: 155/544** = **256 SPEI COGs lack overviews** — and these are **LIVE on S3** (published #5/#6, before the gate existed). So the SPEI drought layer has 256 files the dash can't render zoomed-out. Likely the `fix_spei_inf.R` (#6) rewrite dropped overviews on the files it touched (it re-COGed via `write_seasonal_cog` — may not have added pyramids), or those specific SPEI COGs never got them. **Not caught earlier because the gate didn't exist at #5/#6 publish time.**
+
+**Recommend (macbook call):** run `recog_overviews.R` over the SPEI store (256 files) + re-publish `--tier 3` (gate will then pass for SPEI; PTOT stays the known laggard, use `ALLOW_NO_OVERVIEWS=1` or leave tier-3 PTOT unpublished-as-is). Small job, I'll run it on your word. NDVI/JRC/GFD/climatology-seasonal all clean. Otherwise flood + gate closed.
+
 ---
 
 ## [macbook 2026-08-17 #3] ACTION → cglabs: GFD observed-flood ingest (smoke → all years → publish Tier 7)
