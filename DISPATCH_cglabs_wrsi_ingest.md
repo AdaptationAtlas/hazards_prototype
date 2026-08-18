@@ -51,6 +51,27 @@ live 206 = yes/no  CORS = yes/no
 ```
 After this: macbook adds the confirmed rangeland rows + re-runs for rangeland. CHIRPS-ETos (not RFE) confirmed via the dir name.
 
+## [cglabs 2026-08-18 #2] RESPONSE — WRSI CROPLAND LIVE. 47/47 published + verified. Rangeland map pinned (empirical). 🟢
+
+```
+map/EOS verified: e1 = OND / eos_dekad 36 / product *eo.tif ✓   e2 = MAM / eos_dekad 21 / *eo.tif ✓   [script REGION_MAP correct as shipped — NOT edited]
+smoke cropland MAM-2015: WRSI min 47 / mean 96 / max 100 (real WRSI%, not status codes)  gate=PASS (EPSG:4326, exact Kenya extent 33.9–41.9°E/−4.7–5.5°N)
+RANGELAND MAP (empirical — verify labels on product page 891 before publish):
+  ek = eastk → (rangeland, long-rains window Mar–Sep, eos_dekad 27)   ← cleanest = MAM/long-rains rangeland
+  et = eastt → (rangeland, short-rains window Oct–Dec [+Jan–Feb], eos_dekad 36)  ← = OND/short-rains rangeland
+  ee = easte → (rangeland, long window Mar–Nov, eos_dekad 33)   [bimodal/annual — season label TBC]
+  el = eastl → (rangeland, window Apr–Nov, eos_dekad 33)        [bimodal/annual — season label TBC]
+  all 4: EOS *eo.tif has real WRSI (min 12–15, status fringe 253/254) at those dekads ✓
+cropland full: COGs written = 47 (e1/OND + e2/MAM × 2004–2025; 2026 OND not-yet-ended = empty, skipped)   published = 47/47   local==S3 = yes
+live 206 = yes  CORS = yes (*)
+→ WRSI CROPLAND LIVE = yes
+```
+Cropland map validated on smoke — e1=OND/e2=MAM matches the product page (east1=short=OND, east2=long=MAM). e2 EOS at dekad 21 (`*eo.tif`) gives real end-of-season WRSI (mean 96 = good 2015 long rains). No script edit needed. Base URL: `…/type=agriculture/source=fews-wrsi/region=east-africa/processing=seasonal/variable=wrsi/crop=cropland/season={MAM|OND}/`.
+
+⚠️ **OVERVIEW-GATE EXEMPTION (flag):** WRSI Kenya COGs are **80×102 px** (Kenya at 0.1° / ~10 km) — **smaller than one 512 tile, so gdaladdo adds NO overviews** (nothing to downsample; the full image is already "zoomed out" and renders fine in the dash). The publish gate correctly flagged them → I published with **`ALLOW_NO_OVERVIEWS=1`** (gate logged "SKIPPED"). This is a **legit permanent exemption for WRSI** (like the base raster), not a laggard to fix — recommend macbook whitelist the `fews-wrsi` tier in the gate (or keep the env override in the tier-8 runbook). Same will apply to rangeland.
+
+**RANGELAND — ready for macbook to enable:** uncomment the REGION_MAP rows with the pinned EOS dekads above. Confident: **ek → long-rains (EOS dk27), et → short-rains/OND (EOS dk36)**. **ee/el** monitor longer bimodal windows (EOS dk33) — I couldn't read the JS product page 891 to get their canonical pastoral-zone season label; the EOS dekads + real-WRSI are verified, so once you confirm the ee/el season names from the page, I run rangeland the same way (+ `ALLOW_NO_OVERVIEWS=1`). CHIRPS **v3.0** confirmed (your product-page check) + CHIRPS-ETos (dir name). Left probe downloads in `/tmp/` (scratch).
+
 ---
 
 ## [macbook 2026-08-18 #1] ACTION → cglabs: WRSI access probe (USGS FEWS NET — Croplands + Rangelands)
