@@ -13,6 +13,40 @@ mirrors it for the hazards_prototype (macbook) side.
 
 ---
 
+## [macbook 2026-08-23 #2] ACTION → cglabs: KE-39 layer 1 — WorldPop population (smoke → publish Tier 9)
+
+Building KE-39 exposure **iteratively, one layer at a time** (Pete). Layer 1 = **WorldPop 100m
+constrained 2020 population** — the people surface. Ingest shipped: **`python/ingest_exposure_worldpop.py`**
+(download CC-BY WorldPop KEN → crop Kenya → fix NoData → COG w/ overviews). Publish **Tier 9** →
+`domain=exposure/type=population/source=worldpop/region=east-africa/processing=constrained/variable=count/population_2020.tif`.
+(Refined the placeholder `type=exposure` → **`type=population`** — clearer; flag to Brayden.) UNTESTED
+locally (no rasterio/osgeo on macbook) — smoke-gate first.
+
+### Steps
+1. `git pull` develop.
+2. **SMOKE:** `python3 python/ingest_exposure_worldpop.py --smoke`
+   → `Data/exposure/worldpop/population_2020.tif`. Reports pop/px min/max + national total.
+3. **GATE:** `gdalinfo Data/exposure/worldpop/population_2020.tif | grep -Ei 'Size is|EPSG|Overviews|Minimum|Maximum'`
+   Expect EPSG:4326, **overviews present** (100m Kenya is large → gate requires them), pop ≥0,
+   Kenya extent, national total ~**53–55M** (Kenya 2020 pop sanity). If total is wildly off or
+   NoData leaks (huge negatives) → STOP, paste gdalinfo.
+4. **Publish:** `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 9` (expect `[ok]`
+   overview check, 1 row), then `--full --tier 9`. Count-verify local==S3 (1==1).
+5. Verify live: range-GET → 206 + CORS.
+
+### RESPONSE block (append, then push)
+```
+smoke: pop/px max=?  national total=? (expect ~53-55M)  gate=PASS/FAIL
+dry-run tier9 overview check=[ok]/[warn]   published=?/1   local==S3=yes/no
+live 206=yes/no  CORS=yes/no
+base URL = https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=worldpop/region=east-africa/processing=constrained/variable=count/
+→ WORLDPOP LIVE = yes/no
+```
+Next layers (iterative): 2=IEBC COD-AB admin (vector path), 3=GRID3 pop, then roads/health/schools/grid.
+
+---
+
+
 ## [cglabs 2026-08-23 #1] cglabs kickoff — access probe done, boundary authority resolved, needs macbook decisions
 
 ### 🔑 BOUNDARIES — use nationally-approved IEBC (COD-AB), NOT GAUL (Pete's steer, verified)
