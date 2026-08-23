@@ -168,8 +168,8 @@ pacman::p_load(future, future.apply)
 # Resolve --tier (default all). --smoke always means Tier 1, one file.
 tier_arg <- parse_cli_flag(args, "tier", "character")
 if (is.null(tier_arg) || is.na(tier_arg)) tier_arg <- "all"
-if (!tier_arg %in% c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "all")) {
-  stop(glue::glue("--tier must be 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, or all (got '{tier_arg}')"))
+if (!tier_arg %in% c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "all")) {
+  stop(glue::glue("--tier must be 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, or all (got '{tier_arg}')"))
 }
 # Tiers 3-7 are opt-in only: NOT included in 'all' (large raster / new-domain uploads).
 do_tier1 <- mode == "--smoke" || tier_arg %in% c("1", "all")
@@ -182,6 +182,7 @@ do_tier7 <- mode != "--smoke" && tier_arg == "7"
 do_tier8 <- mode != "--smoke" && tier_arg == "8"
 do_tier9 <- mode != "--smoke" && tier_arg == "9"
 do_tier10 <- mode != "--smoke" && tier_arg == "10"
+do_tier11 <- mode != "--smoke" && tier_arg == "11"
 
 overwrite <- parse_overwrite_flag(args)
 # AtlasDataManageR 0.0.0.9000 (currently installed) does NOT expose an
@@ -271,6 +272,8 @@ prefix_wrsi <- "domain=climate/type=agriculture/source=fews-wrsi/region=east-afr
 prefix_pop <- "domain=exposure/type=population/source=worldpop-constrained-2020/region=east-africa"
 # KE-39 admin backbone: IEBC COD-AB (official) GeoJSON — domain=boundaries (mirrors gaul2024 layout).
 prefix_codab <- "domain=boundaries/type=admin/source=iebc-codab/region=kenya/processing=analysis-ready"
+# KE-39 population (2nd surface): GRID3/WOPR bottom-up (KNBS microcensus) — vs worldpop constrained.
+prefix_grid3 <- "domain=exposure/type=population/source=grid3/region=east-africa"
 prefix_base_raster   <- "domain=boundaries/type=raster/source=chirps-grid/region=africa/processing=base-raster"
 
 # Translate the on-disk climatology label (bare year-range) to the
@@ -419,6 +422,19 @@ name_fn_codab <- function(x) {
   }
   lvl <- sub("^ken_(adm[12])$", "\\1", base)
   sprintf("level=%s/%s", lvl, fname)
+}
+
+# GRID3/WOPR bottom-up population COG (Tier 11, type=population/source=grid3). On-disk:
+# population_{YYYY}.tif -> S3 leaf: processing=bottom-up/variable=count/{fname}
+name_fn_grid3 <- function(x) {
+  fname <- basename(x)
+  base  <- tools::file_path_sans_ext(fname)
+  bad <- !grepl("^population_[0-9]{4}$", base)
+  if (any(bad)) {
+    stop(sprintf("Unexpected GRID3 filename (expected population_YYYY.tif): %s",
+                 paste(fname[bad], collapse = ", ")))
+  }
+  sprintf("processing=bottom-up/variable=count/%s", fname)
 }
 
 name_fn_climatology <- function(x) {
@@ -595,6 +611,19 @@ tier10_specs <- list(
   )
 )
 
+# Tier 11 (GRID3/WOPR bottom-up population COG). Opt-in ONLY (--tier 11).
+tier11_specs <- list(
+  list(
+    upload_id     = "exposure-grid3",
+    local_dir     = file.path(dirname(chirts_chirps_hist_dir), "exposure", "grid3"),
+    s3_dir        = prefix_grid3,
+    file_pattern  = "^population_[0-9]{4}\\.tif$",
+    name_fn       = name_fn_grid3,
+    recursive     = FALSE,
+    tier          = 11L
+  )
+)
+
 active_specs <- c(
   if (do_tier1) tier1_specs else list(),
   if (do_tier2) tier2_specs else list(),
@@ -605,7 +634,8 @@ active_specs <- c(
   if (do_tier7) tier7_specs else list(),
   if (do_tier8) tier8_specs else list(),
   if (do_tier9) tier9_specs else list(),
-  if (do_tier10) tier10_specs else list()
+  if (do_tier10) tier10_specs else list(),
+  if (do_tier11) tier11_specs else list()
 )
 
 cat("project_dir          :", project_dir, "\n")
@@ -625,6 +655,7 @@ cat("tier 7 enabled       :", do_tier7, "\n")
 cat("tier 8 enabled       :", do_tier8, "\n")
 cat("tier 9 enabled       :", do_tier9, "\n")
 cat("tier 10 enabled      :", do_tier10, "\n")
+cat("tier 11 enabled      :", do_tier11, "\n")
 cat("overwrite            :", overwrite, "\n")
 cat("workers              :", workers, "\n\n")
 

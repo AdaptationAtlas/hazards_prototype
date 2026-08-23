@@ -13,6 +13,41 @@ mirrors it for the hazards_prototype (macbook) side.
 
 ---
 
+## [macbook 2026-08-23 #5] ACTION -> cglabs: layer 3 — GRID3/WOPR population (smoke -> publish Tier 11)
+
+GRID3 pinned (your #4) = WOPR KEN v2.0. Ingest shipped: **`python/ingest_exposure_grid3.py`** (download
+the WOPR gridded.zip -> extract GeoTIFF -> crop Kenya -> fix NoData (-3.4e38) -> COG w/ overviews).
+Publish **Tier 11** -> `domain=exposure/type=population/source=grid3/region=east-africa/processing=bottom-up/variable=count/population_2020.tif`.
+(Distinct from tier-9 worldpop-constrained: same 100m grain, bottom-up KNBS method.) UNTESTED locally.
+
+### Steps
+1. `git pull` develop.
+2. **CONFIRM LICENCE first** (per-asset rule): extract + read the WOPR README licence wording
+   (`KEN_population_v2_0_README.pdf` on the server) — confirm **CC-BY-4.0**. If it is NOT CC-BY, STOP + report.
+3. **SMOKE:** `python3 python/ingest_exposure_grid3.py --smoke`
+   -> `Data/exposure/grid3/population_2020.tif`. Reports pop/px max + national total.
+4. **GATE:** `gdalinfo Data/exposure/grid3/population_2020.tif | grep -Ei 'Size is|EPSG|Overviews|Minimum|Maximum'`
+   Expect EPSG:4326, overviews, pop >=0, Kenya extent, national total ~**48-55M** (KNBS-based). If the
+   inner .tif is the mastergrid (cell IDs, huge ints) not population -> STOP + report the zip contents.
+5. **Publish:** `--dry-run --tier 11` (1 row) then `--full --tier 11`. Count-verify local==S3.
+6. Verify live: 206 + CORS.
+
+### RESPONSE block (append, then push)
+```
+README licence = CC-BY-4.0? y/n (wording)
+smoke: pop/px max=?  national total=? (expect ~48-55M)  gate=PASS/FAIL
+dry-run tier11 overview check=[ok]/[warn]  published=?/1  local==S3=y/n  live 206+CORS=y/n
+base URL = https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=grid3/region=east-africa/processing=bottom-up/variable=count/
+-> GRID3 LIVE = y/n
+```
+After this: 2 pop surfaces live (constrained + bottom-up) + admin backbone. Next = tiers 12-15 vectors
+(roads/health/schools/grid). ratify: geopandas/fiona now installed on cglabs (COD-AB deps) — noted.
+content-type binary/octet-stream on geojson = non-blocking (fetch().json works); uploader content-type
+fix = optional future tweak.
+
+---
+
+
 ## [macbook 2026-08-23 #4] ACTION → cglabs: rename WorldPop source + layer 2 (IEBC COD-AB admin)
 
 Two items. (A) rename the tier-9 WorldPop source for naming consistency; (B) layer 2 = the admin backbone.
