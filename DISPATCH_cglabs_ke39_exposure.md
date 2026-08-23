@@ -61,6 +61,31 @@ resource + licence (per-asset licence MUST be verified — Pete). **While runnin
 Then macbook writes the GRID3 ingest + tier 11 (`type=population/source=grid3`). Do NOT publish GRID3 yet.
 - Everything else (roads/health/schools/grid = tiers 12-15) proceeds iteratively after COD-AB lands.
 
+## [cglabs 2026-08-23 #4] RESPONSE — WorldPop renamed ✓ + COD-AB admin LIVE ✓ + GRID3 source pinned. 🟢
+
+```
+A worldpop rename: old key deleted = y   republished source=worldpop-constrained-2020 = 1/1   live 206 = y
+B codab --list: layers found = ken_admin0/1/2 + adminlines/adminpoints (auto-picked ken_admin1/ken_admin2 by adm{1,2}_pcode)   ingest: ADM1 = 47/47   ADM2 = 290/290
+B publish: dry-run rows = 2/2   published = 2/2   local==S3 = y (2==2)   live 206 + CORS = y   content-type = binary/octet-stream
+base URL = https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=iebc-codab/region=kenya/processing=analysis-ready/level=adm{1,2}/
+-> WORLDPOP RENAMED = y   COD-AB ADMIN LIVE = y
+```
+Both live + verified. COD-AB a1 (47) / a2 (290) IEBC official, EPSG:4326, made-valid. **content-type = `binary/octet-stream`** (AtlasDataManageR doesn't set `application/geo+json` from the extension) — non-blocking for `fetch().json()` as you noted; flag if you want a content-type fix in the uploader for stricter clients.
+
+⚠️ **ENV: installed `geopandas` 1.1.4 + `fiona` 1.10.1 on cglabs** — the COD-AB script needs them (weren't present; smoke failed twice until installed). Please note as deps for `ingest_exposure_admin_codab.py` (like earthaccess/libgdal-hdf4 earlier). Ratify.
+
+### C) GRID3 source PINNED (layer 3) — it's WorldPop WOPR bottom-up, ~same grain as tier-9
+GRID3 Kenya gridded population = **WOPR (WorldPop Open Population Repository) KEN v2.0** (bottom-up, KNBS
+microcensus-modelled — the GRID3-branded surface). `data.grid3.org` search only exposed the "Social
+Distancing Layers"; the actual gridded-pop raster is WОPR-hosted:
+- **URL:** `https://data.worldpop.org/repo/wopr/KEN/population/v2.0/KEN_population_v2_0_gridded.zip` (30 MB, zipped GeoTIFF) + `…/KEN_population_v2_0_mastergrid.tif` + `_agesex.zip` + `_README.pdf`
+- **Licence:** CC BY 4.0 (WOPR/WorldPop standard; README is on-server — couldn't extract text from the binary PDF headlessly, so **confirm the exact README wording** before publish, per your per-asset rule)
+- **Format/res/CRS:** GeoTIFF, **0.000833° (~100 m)**, **EPSG:4326**, Float32, **NoData −3.4e38**, extent 33.91–41.91°E / −4.68–5.03°N (**covers Kenya** ✓) — from `gdalinfo` on the downloaded mastergrid (WorldPop server has no range support, so vsicurl fails — must download to inspect).
+
+**⚠️ Dedup note stands:** GRID3/WOPR v2.0 is **the same 100 m WGS84 grain as the tier-9 WorldPop-constrained-2020** I just published — two per-pixel Kenya pop surfaces. They differ in *method* (GRID3 = bottom-up KNBS microcensus; WorldPop-constrained = top-down dasymetric), which is why Pete said build both. Just confirming they're not accidentally identical — genuinely different products, both 100 m. macbook: ship `ingest_exposure_grid3.py` + tier 11 pointing at the WOPR URL above; I bake once you confirm the README licence.
+
+**Ready for tiers 12–15** (roads/health/schools/grid vectors) as their scripts land.
+
 ---
 
 
