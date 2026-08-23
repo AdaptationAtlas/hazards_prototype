@@ -168,8 +168,8 @@ pacman::p_load(future, future.apply)
 # Resolve --tier (default all). --smoke always means Tier 1, one file.
 tier_arg <- parse_cli_flag(args, "tier", "character")
 if (is.null(tier_arg) || is.na(tier_arg)) tier_arg <- "all"
-if (!tier_arg %in% c("1", "2", "3", "4", "5", "6", "7", "8", "9", "all")) {
-  stop(glue::glue("--tier must be 1, 2, 3, 4, 5, 6, 7, 8, 9, or all (got '{tier_arg}')"))
+if (!tier_arg %in% c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "all")) {
+  stop(glue::glue("--tier must be 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, or all (got '{tier_arg}')"))
 }
 # Tiers 3-7 are opt-in only: NOT included in 'all' (large raster / new-domain uploads).
 do_tier1 <- mode == "--smoke" || tier_arg %in% c("1", "all")
@@ -181,6 +181,7 @@ do_tier6 <- mode != "--smoke" && tier_arg == "6"
 do_tier7 <- mode != "--smoke" && tier_arg == "7"
 do_tier8 <- mode != "--smoke" && tier_arg == "8"
 do_tier9 <- mode != "--smoke" && tier_arg == "9"
+do_tier10 <- mode != "--smoke" && tier_arg == "10"
 
 overwrite <- parse_overwrite_flag(args)
 # AtlasDataManageR 0.0.0.9000 (currently installed) does NOT expose an
@@ -267,7 +268,9 @@ prefix_gfd <- "domain=climate/type=flood/source=global-flood-db/region=east-afri
 # FEWS NET CHIRPS-ETos WRSI (crop/pasture water satisfaction; new type=agriculture).
 prefix_wrsi <- "domain=climate/type=agriculture/source=fews-wrsi/region=east-africa"
 # KE-39 exposure: WorldPop population (domain=exposure, new type=population).
-prefix_pop <- "domain=exposure/type=population/source=worldpop/region=east-africa"
+prefix_pop <- "domain=exposure/type=population/source=worldpop-constrained-2020/region=east-africa"
+# KE-39 admin backbone: IEBC COD-AB (official) GeoJSON — domain=boundaries (mirrors gaul2024 layout).
+prefix_codab <- "domain=boundaries/type=admin/source=iebc-codab/region=kenya/processing=analysis-ready"
 prefix_base_raster   <- "domain=boundaries/type=raster/source=chirps-grid/region=africa/processing=base-raster"
 
 # Translate the on-disk climatology label (bare year-range) to the
@@ -402,6 +405,20 @@ name_fn_worldpop <- function(x) {
                  paste(fname[bad], collapse = ", ")))
   }
   sprintf("processing=constrained/variable=count/%s", fname)
+}
+
+# IEBC COD-AB admin GeoJSON (Tier 10, domain=boundaries/type=admin). On-disk:
+# ken_adm{1,2}.geojson -> S3 leaf: level=adm{N}/{fname}. (Not a .tif -> skips overview gate.)
+name_fn_codab <- function(x) {
+  fname <- basename(x)
+  base  <- tools::file_path_sans_ext(fname)
+  bad <- !grepl("^ken_adm[12]$", base)
+  if (any(bad)) {
+    stop(sprintf("Unexpected COD-AB filename (expected ken_adm{1,2}.geojson): %s",
+                 paste(fname[bad], collapse = ", ")))
+  }
+  lvl <- sub("^ken_(adm[12])$", "\\1", base)
+  sprintf("level=%s/%s", lvl, fname)
 }
 
 name_fn_climatology <- function(x) {
@@ -565,6 +582,19 @@ tier9_specs <- list(
   )
 )
 
+# Tier 10 (IEBC COD-AB admin GeoJSON, domain=boundaries/type=admin). Opt-in ONLY (--tier 10).
+tier10_specs <- list(
+  list(
+    upload_id     = "exposure-admin-codab",
+    local_dir     = file.path(dirname(chirts_chirps_hist_dir), "exposure", "admin_codab"),
+    s3_dir        = prefix_codab,
+    file_pattern  = "^ken_adm[12]\\.geojson$",
+    name_fn       = name_fn_codab,
+    recursive     = FALSE,
+    tier          = 10L
+  )
+)
+
 active_specs <- c(
   if (do_tier1) tier1_specs else list(),
   if (do_tier2) tier2_specs else list(),
@@ -574,7 +604,8 @@ active_specs <- c(
   if (do_tier6) tier6_specs else list(),
   if (do_tier7) tier7_specs else list(),
   if (do_tier8) tier8_specs else list(),
-  if (do_tier9) tier9_specs else list()
+  if (do_tier9) tier9_specs else list(),
+  if (do_tier10) tier10_specs else list()
 )
 
 cat("project_dir          :", project_dir, "\n")
@@ -593,6 +624,7 @@ cat("tier 6 enabled       :", do_tier6, "\n")
 cat("tier 7 enabled       :", do_tier7, "\n")
 cat("tier 8 enabled       :", do_tier8, "\n")
 cat("tier 9 enabled       :", do_tier9, "\n")
+cat("tier 10 enabled      :", do_tier10, "\n")
 cat("overwrite            :", overwrite, "\n")
 cat("workers              :", workers, "\n\n")
 

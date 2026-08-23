@@ -13,6 +13,54 @@ mirrors it for the hazards_prototype (macbook) side.
 
 ---
 
+## [macbook 2026-08-23 #4] ACTION → cglabs: rename WorldPop source + layer 2 (IEBC COD-AB admin)
+
+Two items. (A) rename the tier-9 WorldPop source for naming consistency; (B) layer 2 = the admin backbone.
+
+### A) Rename WorldPop source (naming consistency, your flag)
+Tier-9 prefix changed `source=worldpop` -> **`source=worldpop-constrained-2020`** (distinct from the
+existing `worldpop2020`/`worldpop2024`). Republish (uploader is skip-if-exists, so delete old key first):
+```
+aws s3 rm --recursive "s3://digital-atlas/domain=exposure/type=population/source=worldpop/region=east-africa/"
+Rscript R/observational/6_publish_obs_to_s3.R --full --tier 9      # re-uploads under the new source=
+```
+
+### B) Layer 2 — IEBC COD-AB admin (official, CC-BY-IGO)
+Ingest shipped: **`python/ingest_exposure_admin_codab.py`** (HDX CKAN resolve -> download -> auto-detect
+adm1/adm2 by p-code field -> make-valid -> EPSG:4326 -> `ken_adm{1,2}.geojson`). Publish **Tier 10** ->
+`domain=boundaries/type=admin/source=iebc-codab/region=kenya/processing=analysis-ready/level=adm{1,2}/ken_adm{N}.geojson`.
+GeoJSON (not .tif) so it skips the overview gate. UNTESTED locally (no geopandas on macbook).
+
+Steps:
+1. `git pull` develop.
+2. **List-check** the HDX resource layers/fields (confirms auto-detect will pick right):
+   `python3 python/ingest_exposure_admin_codab.py --list`
+   (if it can't find/parse the resource, paste the layer dump — I'll fix `pick_admin`.)
+3. **Ingest:** `python3 python/ingest_exposure_admin_codab.py`
+   → must report **ADM1 47 features OK / ADM2 290 features OK** (matches your #1 verification). If counts
+   differ (e.g. picks Ilemi variant), STOP + paste.
+4. **Publish:** `Rscript R/observational/6_publish_obs_to_s3.R --dry-run --tier 10` (2 rows), then `--full --tier 10`.
+   NOTE: geojson content-type — if AtlasDataManageR doesn't set `application/geo+json`, it's non-blocking
+   (the notebook `fetch().json()` works regardless); flag if the uploader errors on the extension.
+5. Verify live: range-GET ken_adm2.geojson -> 200/206 + CORS.
+
+### RESPONSE block (append, then push)
+```
+A worldpop rename: old key deleted = y/n   republished source=worldpop-constrained-2020 = ?/1   live 206 = y/n
+B codab --list: layers found = ?            ingest: ADM1 = ?/47   ADM2 = ?/290
+B publish: dry-run rows = ?/2   published = ?/2   local==S3 = y/n   live 200/206 + CORS = y/n   content-type = ?
+base URL = https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=iebc-codab/region=kenya/processing=analysis-ready/level=adm{1,2}/
+-> WORLDPOP RENAMED = y/n   COD-AB ADMIN LIVE = y/n
+```
+
+### 2 open decisions still with macbook/Pete (do NOT block layer 2)
+- **GRID3 (layer 3):** asking Pete now — a 2nd per-pixel pop surface, or does the existing
+  `worldpop2024 population_gaul24.parquet` cover the admin-2 tabular need? Hold tier-11 (GRID3) until confirmed.
+- Everything else (roads/health/schools/grid = tiers 12-15) proceeds iteratively after COD-AB lands.
+
+---
+
+
 ## [macbook 2026-08-23 #2] ACTION → cglabs: KE-39 layer 1 — WorldPop population (smoke → publish Tier 9)
 
 Building KE-39 exposure **iteratively, one layer at a time** (Pete). Layer 1 = **WorldPop 100m
