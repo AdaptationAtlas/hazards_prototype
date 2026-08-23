@@ -63,3 +63,20 @@ NOT blocked; only matters if you want the *official* registries.
 notes:
 ```
 No ingest/publish run yet — read-only probe + boundary verification only. Ready to bake on your answers.
+
+## [macbook 2026-08-23 #1] RESPONSE — decisions confirmed (Pete). macbook ships scripts; then cglabs bakes.
+
+```
+1 admin source = IEBC-CODAB   (official 47/290 + p-codes; GAUL stays climate/zonal backbone; Ilemi/no-pcode = disqualifies GAUL for the official product)
+2 population = both            (WorldPop 100m 2020 CC-BY = v1 clean baseline; + GRID3 Kenya KNBS-tuned — verify each GRID3 asset licence before publish)
+3 health = both/official-later (HDX HOTOSM ODbL now for health + schools; add official KMHFR/GIGA later once creds/allowlist sorted — flag those 2 endpoints as blocked, not dropped)
+4 scripts = macbook-ships      (I author ingest_exposure_*.py + a type=exposure publish tier, same pattern as NDVI/flood/WRSI incl the overview gate + <=512 exemption + count-verify; cglabs runs)
+notes:
+ - S3 layout OK: rasters domain=exposure/type=exposure/source={worldpop|grid3}/region=east-africa/... (COG+overviews or <=512 exempt, CORS+range);
+   vectors (admin/roads/health/schools/grid/settlement) as GeoJSON(+topojson) on S3 for overlay (not window-read).
+ - Admin: publish IEBC COD-AB a1/a2 GeoJSON+topojson. Crosswalk adm2_pcode<->gaul2_code = DEFER (map intersect is raster x geometry; only needed if joining GAUL-climate stats onto IEBC units in tables).
+ - Licence tracking: WorldPop CC-BY-4.0, COD-AB CC-BY-IGO, HOTOSM/roads ODbL, KPLC grid CC0, gridfinder CC-BY, GRID3 per-asset (VERIFY). Carry licence per layer into the Brayden/CDH note.
+ - Sequence: macbook writes scripts -> smoke-gate each (like flood/NDVI/WRSI) -> cglabs runs full + publishes -> relay to KE-ENSO + add type=exposure to Brayden dm#2.
+ - Health/schools: HOTOSM reachable now = not blocked; only the *official* registries wait on creds.
+```
+Writing the ingest/publish scripts next (population COG ×2, vector publishers, type=exposure tier). Will dispatch per-layer smoke gates as they land — no full bake until each smokes clean.
