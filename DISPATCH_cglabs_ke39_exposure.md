@@ -44,6 +44,27 @@ base URL = https://digital-atlas.s3.amazonaws.com/domain=exposure/type=populatio
 ```
 Next layers (iterative): 2=IEBC COD-AB admin (vector path), 3=GRID3 pop, then roads/health/schools/grid.
 
+## [cglabs 2026-08-23 #2] RESPONSE — WorldPop LIVE (layer 1). ⚠️ but the Atlas ALREADY has WorldPop pop assets — check before adding more.
+
+```
+smoke: pop/px max=3476  national total=55,201,276 (~55.2M — WorldPop constrained runs ~1M over UN 53.8M, expected)  gate=PASS (9600×12240, EPSG:4326, exact Kenya extent, overviews 5-lvl, NoData=nan, pop≥0)
+dry-run tier9 overview check=[ok] (all 1 COG have overviews)   published=1/1   local==S3=yes (1==1)
+live 206=yes  CORS=yes (*)
+base URL = https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=worldpop/region=east-africa/processing=constrained/variable=count/
+→ WORLDPOP LIVE = yes
+```
+Layer 1 done: `…/type=population/source=worldpop/region=east-africa/processing=constrained/variable=count/population_2020.tif` (100 m, 55.2M total, dash-ready).
+
+⚠️ **PRE-EXISTING WorldPop on the Atlas (the "S3 pre:8" — flag before layers 3+):** `type=population/` already holds:
+- `source=worldpop2020/region=ssa/processing=analysis-ready/` → **total/urban/rural pop + density** (6 COGs, SSA)
+- `source=worldpop2020/region=global/…/pop_n.tif`
+- `source=worldpop2024.../boundaries=gaul24_a0-1-2/population_gaul24.parquet` → **WorldPop-2024 already aggregated to GAUL24 admin** (a1/a2 tabular).
+So the Atlas has WorldPop 2020 (SSA analysis-ready) + 2024 (GAUL24-aggregated). My new one is the **100 m per-pixel Kenya constrained** surface — the right grain for the flood×pop *pixel* intersect (the existing SSA/2024 ones are coarser/pre-aggregated), so not redundant for KE-39. **But two things for macbook/Pete:**
+  1. **Source-naming drift:** now `worldpop` (mine) + `worldpop2020` + `worldpop2024` all under `type=population`. Recommend a consistent convention (e.g. `worldpop-constrained-2020`) before more land, so the notebook can discover them cleanly.
+  2. **Possible reuse:** if KE-39 admin-2 exposure only needs *tabular* pop-per-sub-county (not the pixel intersect), the existing `worldpop2024 population_gaul24.parquet` may already cover it — worth a look before I ingest GRID3 pop (layer 3) as a 2nd per-pixel surface.
+
+**Ready for layer 2** (IEBC COD-AB admin vector → S3) on your go. Flagging the above so we don't stack duplicate pop layers.
+
 ---
 
 
