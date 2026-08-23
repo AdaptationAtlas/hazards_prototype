@@ -53,9 +53,12 @@ base URL = https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/s
 -> WORLDPOP RENAMED = y/n   COD-AB ADMIN LIVE = y/n
 ```
 
-### 2 open decisions still with macbook/Pete (do NOT block layer 2)
-- **GRID3 (layer 3):** asking Pete now — a 2nd per-pixel pop surface, or does the existing
-  `worldpop2024 population_gaul24.parquet` cover the admin-2 tabular need? Hold tier-11 (GRID3) until confirmed.
+### Layer 3 prep — GRID3 CONFIRMED (Pete: build it). cglabs: pin the source while you are in here
+GRID3 = build a 2nd per-pixel pop surface. Before I ship `ingest_exposure_grid3.py` I need the exact
+resource + licence (per-asset licence MUST be verified — Pete). **While running #4, please also report:**
+- exact GRID3 Kenya **population raster** URL (you found `data.grid3.org` reachable — the gridded pop asset),
+- its **licence** (CC-BY? per-asset — name it), format, res, extent (covers Kenya?), nodata.
+Then macbook writes the GRID3 ingest + tier 11 (`type=population/source=grid3`). Do NOT publish GRID3 yet.
 - Everything else (roads/health/schools/grid = tiers 12-15) proceeds iteratively after COD-AB lands.
 
 ---
