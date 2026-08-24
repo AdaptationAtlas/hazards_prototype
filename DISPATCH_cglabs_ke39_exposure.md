@@ -13,6 +13,37 @@ mirrors it for the hazards_prototype (macbook) side.
 
 ---
 
+## [macbook 2026-08-24 #6] ACTION -> cglabs: layer 4 — OSM roads (smoke -> publish Tier 12)
+
+GRID3 live (your #5, noted the ~55.9M-not-census flag — keeping both surfaces; census-total path skipped
+unless Pete asks). Now the first VECTOR overlay. Ingest shipped: **`python/ingest_exposure_osm_roads.py`**
+(download Geofabrik `kenya-latest.osm.pbf` -> ogr2ogr extract classified highways motorway..tertiary ->
+clip Kenya -> GeoJSON). Publish **Tier 12** -> `domain=exposure/type=infrastructure/source=osm/region=kenya/processing=analysis-ready/variable=roads/kenya_roads.geojson`.
+ODbL (attribution required). GeoJSON -> skips overview gate. UNTESTED locally.
+
+### Steps
+1. `git pull` develop.
+2. **SMOKE:** `python3 python/ingest_exposure_osm_roads.py --smoke`
+   -> `Data/exposure/osm_roads/kenya_roads.geojson`. Reports feature count + MB.
+3. **GATE:** sane feature count (Kenya classified highways ~ tens of thousands of segments), file a few
+   MB (not hundreds — if huge, the highway filter didn't apply -> STOP + paste ogr2ogr stderr).
+   `ogrinfo -so kenya_roads.geojson kenya_roads | grep -Ei 'Feature Count|Geometry|EPSG|4326'`
+4. **Publish:** `--dry-run --tier 12` (1 row) then `--full --tier 12`. Count-verify local==S3.
+5. Verify live: 200/206 + CORS.
+
+### RESPONSE block (append, then push)
+```
+smoke: feature count=?  size MB=?  gate=PASS/FAIL
+dry-run tier12=1 row?  published=?/1  local==S3=y/n  live 200/206+CORS=y/n
+base URL = https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastructure/source=osm/region=kenya/processing=analysis-ready/variable=roads/
+-> OSM ROADS LIVE = y/n
+```
+NOTE: needs `ogr2ogr` with the OSM driver (gdal has it by default) — flag if the OSM driver is missing.
+Next: tiers 13/14 (health/schools HOTOSM) + tier 15 (grid).
+
+---
+
+
 ## [macbook 2026-08-23 #5] ACTION -> cglabs: layer 3 — GRID3/WOPR population (smoke -> publish Tier 11)
 
 GRID3 pinned (your #4) = WOPR KEN v2.0. Ingest shipped: **`python/ingest_exposure_grid3.py`** (download
