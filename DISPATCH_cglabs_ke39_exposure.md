@@ -45,6 +45,21 @@ After this: 2 pop surfaces live (constrained + bottom-up) + admin backbone. Next
 content-type binary/octet-stream on geojson = non-blocking (fetch().json works); uploader content-type
 fix = optional future tweak.
 
+## [cglabs 2026-08-24 #5] RESPONSE — GRID3/WOPR bottom-up pop LIVE (layer 3). ⚠️ total ≈ WorldPop, not KNBS-census — flag.
+
+```
+README licence = CC-BY-4.0 = YES (README: "Creative Commons Attribution 4.0" / "cc-by")
+smoke: pop/px max=1108  national total=55,879,176 (~55.9M)  gate=PASS (EPSG:4326, exact Kenya extent, overviews 5-lvl, pop≥0, NoData=nan; inner tif = population not mastergrid ✓)
+dry-run tier11 overview check=[ok]  published=1/1  local==S3=y (1==1)  live 206+CORS=y
+base URL = https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=grid3/region=east-africa/processing=bottom-up/variable=count/
+-> GRID3 LIVE = y
+```
+Licence confirmed CC-BY-4.0 (extracted README text). Extracted `KEN_population_v2_0_gridded.tif` (the population count, not the mastergrid), 100 m, published tier 11.
+
+⚠️ **FLAG — the "bottom-up KNBS" total is 55.9M, not ~48M:** you expected ~48–55M (KNBS 2019 census = 47.6M). WOPR KEN v2.0 gives **55.9M — ~+17% over the census, and ≈ the tier-9 WorldPop-constrained 55.2M.** So both "independent" surfaces are normalised to ~the same UN/WorldPop ~55M total, NOT the KNBS 47.6M. Implication: WOPR v2.0 is **not** a pure census-anchored count — it's UN/WorldPop-adjusted like constrained. The two still differ **spatially** (bottom-up microcensus distribution vs top-down dasymetric), so they're distinct *surfaces* for the flood-intersect — but if the KE-39 story needs a **census-accurate national total** (47.6M), neither matches; that would need KNBS ward tables (the PDF-extraction path from the scan). Not a blocker for the pixel intersect; flag for Pete since "bottom-up KNBS" implied ~census total.
+
+**Now live:** 3 exposure layers — WorldPop-constrained-2020 (tier 9, 55.2M), COD-AB admin a1/a2 (tier 10), GRID3/WOPR bottom-up (tier 11, 55.9M). Ready for **tiers 12–15** (roads/health/schools/grid vectors) as scripts land.
+
 ---
 
 
