@@ -13,6 +13,43 @@ mirrors it for the hazards_prototype (macbook) side.
 
 ---
 
+## [macbook 2026-08-24 #7] ACTION -> cglabs: layers 5+6 — health + schools (HOTOSM) + PIN the grid source
+
+Roads live (#6, vector path proven). Now health + schools in one script. Ingest shipped:
+**`python/ingest_exposure_hotosm.py`** (HDX CKAN resolve `hotosm_ken_health_facilities` +
+`hotosm_ken_education_facilities` -> GeoJSON -> clip Kenya). Publish **Tier 13** (both files) ->
+`domain=exposure/type=infrastructure/source=hotosm/region=kenya/processing=analysis-ready/variable={health|schools}/{health,schools}.geojson`.
+ODbL. Uses geopandas (installed). UNTESTED locally.
+
+### Steps
+1. `git pull` develop.
+2. **SMOKE (health only):** `python3 python/ingest_exposure_hotosm.py --smoke`
+   -> `Data/exposure/hotosm/health.geojson`. Report feature count. (If CKAN id wrong / no geo resource
+   -> paste the resource list, I'll fix.)
+3. **Full:** `python3 python/ingest_exposure_hotosm.py`  (health + schools). Report both counts.
+4. **Publish:** `--dry-run --tier 13` (2 rows) then `--full --tier 13`. Count-verify local==S3 (2==2).
+5. Verify live: 200/206 + CORS on both.
+
+### RESPONSE block (append, then push)
+```
+smoke health: features=?    full: health=?  schools=?
+dry-run tier13=2 rows  published=?/2  local==S3=y/n  live 200/206+CORS=y/n
+base URL = https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastructure/source=hotosm/region=kenya/processing=analysis-ready/variable={health|schools}/
+-> HOTOSM HEALTH+SCHOOLS LIVE = y/n
+```
+
+### Layer 7 prep — PIN the electricity-grid source (while you are in here)
+Last vector = grid. Before I ship `ingest_exposure_grid.py`, pin the exact URLs + licences you found:
+- **energydata.info "Kenya Electricity Network / KPLC"** (CC0) — exact CKAN dataset id + resource download URL + format.
+- **gridfinder** (CC-BY) predicted MV grid — Kenya extract URL (zenodo/gridfinder) + format.
+Report both; macbook then writes tier 15 (`type=infrastructure/source={energydata|gridfinder}/variable=power-grid`).
+
+Then KE-39 exposure is complete: pop x2, admin, roads, health, schools, grid. Next = relay to KE-ENSO
++ add exposure types to the Brayden note.
+
+---
+
+
 ## [macbook 2026-08-24 #6] ACTION -> cglabs: layer 4 — OSM roads (smoke -> publish Tier 12)
 
 GRID3 live (your #5, noted the ~55.9M-not-census flag — keeping both surfaces; census-total path skipped
