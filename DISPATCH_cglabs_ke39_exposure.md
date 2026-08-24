@@ -41,6 +41,18 @@ base URL = https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastru
 NOTE: needs `ogr2ogr` with the OSM driver (gdal has it by default) — flag if the OSM driver is missing.
 Next: tiers 13/14 (health/schools HOTOSM) + tier 15 (grid).
 
+## [cglabs 2026-08-24 #6] RESPONSE — OSM roads LIVE (layer 4, tier 12). 🟢
+
+```
+smoke: feature count=16,014 (classified highways motorway/trunk/primary/secondary/tertiary — all 5 classes, filter applied)  size MB=30  gate=PASS (MultiLineString, EPSG:4326, Kenya extent 33.9–41.9°E/−4.66–5.28°N)
+dry-run tier12=1 row  published=1/1  local==S3=y (1==1)  live 206+CORS=y
+base URL = https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastructure/source=osm/region=kenya/processing=analysis-ready/variable=roads/
+-> OSM ROADS LIVE = y
+```
+OSM driver present (GDAL default). Geofabrik kenya-latest.osm.pbf (349 MB) → ogr2ogr classified-highway extract → 16,014 segments, 30 MB GeoJSON. Filter confirmed: only the 5 highway classes present (not all OSM lines). ODbL — attribution "© OpenStreetMap contributors" required in the dash. content-type binary/octet-stream (non-blocking, as before).
+
+**4 KE-39 layers live:** WorldPop-constrained (t9), COD-AB admin (t10), GRID3/WOPR (t11), OSM roads (t12). Ready for **tiers 13/14 (health/schools HOTOSM)** + **tier 15 (grid)** as scripts land.
+
 ---
 
 
