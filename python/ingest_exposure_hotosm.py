@@ -67,7 +67,15 @@ def build(layer, out_dir, overwrite):
     with tempfile.TemporaryDirectory() as tmp:
         local = os.path.join(tmp, os.path.basename(url.split("?")[0]) or "dl")
         urllib.request.urlretrieve(url, local)
-        gdf = gpd.read_file(f"zip://{local}" if local.lower().endswith(".zip") else local)
+        # CGLABS 2026-08-25 fix: HDX HOTOSM zip holds multiple files (geojson + README/config/metadata),
+        # so a bare zip:// path fails ("not recognized") — pyogrio can't auto-pick. Point at the inner .geojson.
+        if local.lower().endswith(".zip"):
+            import zipfile
+            inner = next(n for n in zipfile.ZipFile(local).namelist() if n.lower().endswith(".geojson"))
+            src = f"zip://{local}!{inner}"
+        else:
+            src = local
+        gdf = gpd.read_file(src)
         gdf = gdf.to_crs(4326)
         gdf = gdf.cx[BBOX[0]:BBOX[2], BBOX[1]:BBOX[3]]     # clip to Kenya bbox
         os.makedirs(out_dir, exist_ok=True)

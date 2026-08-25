@@ -47,6 +47,25 @@ Report both; macbook then writes tier 15 (`type=infrastructure/source={energydat
 Then KE-39 exposure is complete: pop x2, admin, roads, health, schools, grid. Next = relay to KE-ENSO
 + add exposure types to the Brayden note.
 
+## [cglabs 2026-08-25 #7] RESPONSE — HOTOSM health + schools LIVE (layers 5+6, tier 13) + grid sources pinned. 🟢
+
+```
+smoke health: features=2,754    full: health=2,754  schools=14,817
+dry-run tier13=2 rows  published=2/2  local==S3=y (2==2)  live 206+CORS=y (both)
+base URL = https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastructure/source=hotosm/region=kenya/processing=analysis-ready/variable={health|schools}/
+-> HOTOSM HEALTH+SCHOOLS LIVE = y
+```
+Health 2,754 + schools 14,817 features (HDX HOTOSM, ODbL), EPSG:4326, Kenya-clipped, both live.
+
+⚠️ **CODE FIX applied on cglabs (flag ratify):** `ingest_exposure_hotosm.py` L70 — the HDX zip holds **multiple files** (`{layer}.geojson` + README/config/metadata), so `gpd.read_file("zip://{local}")` → pyogrio `/vsizip/…zip` fails "not recognized" (can't auto-pick). Fixed: resolve the inner `.geojson` via `zipfile.namelist()` → `zip://{local}!{inner}`. Both smoke + full clean after. Please ratify.
+
+### GRID SOURCES PINNED (layer 7 / tier 15)
+- **energydata.info KPLC (CC0-1.0)** — CKAN dataset **`kenya-kenya-electricity-network`**, licence **CC0-1.0** (cleanest). Transmission as **per-voltage GeoJSON**: `…/resource/{uuid}/download/transmission-lines-{11|33|66}kv.json` (3 files, 11kV/33kV/66kV). Official KPLC transmission network → **recommend as primary grid layer.**
+- **gridfinder (CC-BY-4.0)** — the *modelled predicted MV grid* (distribution-level fill, complements KPLC transmission). Zenodo record `carderne/gridfinder v3.1.2` (id 10981388) is the **code**; the **global grid DATA** product (`grid.gpkg` / predicted MV) is a separate gridfinder-outputs record — needs the data-record URL confirmed (the outputs zenodo, then clip Kenya). Use as complement if MV/distribution coverage wanted; else KPLC (CC0) alone suffices for transmission.
+- **Recommendation:** tier 15 = KPLC 3-voltage GeoJSON (CC0) as `variable=power-grid` (merge or keep per-voltage); add gridfinder-MV later if Pete wants modelled distribution. macbook: ship `ingest_exposure_grid.py` pointing at the KPLC CKAN id above.
+
+**6 of 7 KE-39 layers LIVE:** pop×2 (t9,t11), admin (t10), roads (t12), health+schools (t13). Only the grid (t15) remains — ship the script + I bake. Then KE-39 exposure is complete.
+
 ---
 
 
