@@ -1,0 +1,103 @@
+# CDH v0.1.0 metadata record — MODIS NDVI (seasonal + annual) used by KE-ENSO Explorer.
+# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
+cdh_schema_version: v0.1.0
+
+id: eastafrica-ndvi-modis
+title: MODIS NDVI Vegetation Condition (East Africa)
+description: >
+  Normalized Difference Vegetation Index from MODIS MOD13Q1 (250 m, 16-day), aggregated to per-year
+  seasonal-window means and annual means over the East Africa / Kenya footprint. Vegetation-condition
+  layer of the KE-ENSO Explorer — greenness response to seasonal rainfall and ENSO.
+resource_type: dataset
+license: CC-BY-4.0                   # MODIS is unrestricted; credit NASA/USGS LP DAAC
+
+keywords: [NDVI, vegetation, MODIS, MOD13Q1, greenness, seasonal, annual, East Africa, Kenya]
+
+note: >
+  Source MODIS data are free and unrestricted; these aggregated COGs are released CC-BY-4.0 with
+  attribution to NASA LP DAAC. NDVI ranges roughly -0.2..1.0 (higher = greener).
+
+contact:
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: NASA LP DAAC / USGS EROS
+    url: https://lpdaac.usgs.gov/products/mod13q1v061/
+    roles: [licensor, producer]
+
+citation:
+  title: "MODIS/Terra Vegetation Indices 16-Day L3 Global 250 m SIN Grid (MOD13Q1)"
+  authors: [Didan, K.]
+  date: "2021"
+  publisher: NASA EOSDIS Land Processes DAAC
+  url: https://doi.org/10.5067/MODIS/MOD13Q1.061
+related_publications:
+  - doi: 10.5067/MODIS/MOD13Q1.061   # verify collection (.061)
+
+created: "2026-08-28"
+updated: "2026-08-28"
+
+spatial:
+  bbox: [33.9, -4.7, 41.9, 5.5]        # Kenya footprint of the MOD13Q1 tiles # verify (region=east-africa)
+  crs: EPSG:4326
+  geography: [kenya]
+  resolution:
+    - type: xy
+      value: 250
+      unit: meter
+      label: 250 m (MOD13Q1 native)
+
+temporal:
+  start_date: "2000-01-01"             # MOD13Q1 record start # verify against COGs
+  end_date: null
+  resolution:
+    step: P1Y
+    unit: annual
+    note: 16-day source composited to per-year seasonal-window means and annual means.
+
+dimensions:
+  - name: time
+    type: temporal
+    description: seasonal keyed {SEASON}_{YYYY} (12 windows); annual keyed {YYYY}.
+    step: P1Y
+
+variables:
+  - name: NDVI
+    dimensions: [time]
+    description: Mean NDVI over the aggregation window (higher = greener vegetation).
+    data_type: float32
+    unit: "1"
+
+processing:
+  - id: source
+    description: MODIS MOD13Q1 250 m 16-day NDVI.
+    derived_from:
+      - title: MODIS MOD13Q1 v061 (NASA LP DAAC)
+        url: https://lpdaac.usgs.gov/products/mod13q1v061/
+  - id: aggregate-cog
+    description: Composite to seasonal-window and annual means; write COG with overviews.
+    code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "python/ingest_ndvi_modis.py"}
+
+data:
+  - name: seasonal
+    description: Per-year seasonal-window mean NDVI COGs.
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=vegetation/source=modis-mod13q1/region=east-africa/", title: S3}
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    href_template: "processing=seasonal/season={season}/NDVI_{season}_{year}_mean.tif"   # verify exact partition vs name_fn_ndvi
+    processing_steps: [source, aggregate-cog]
+  - name: annual
+    description: Per-year annual mean NDVI COGs.
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=vegetation/source=modis-mod13q1/region=east-africa/", title: S3}
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    href_template: "processing=annual/NDVI_{year}_mean.tif"   # verify
+    processing_steps: [source, aggregate-cog]
+
+cdh:
+  domain: [agricultural-production, climate]
+  usage:
+    intended_uses:
+      - Vegetation-condition / greenness response to seasonal rainfall and ENSO in the KE-ENSO Explorer.
+  series: KE-ENSO Explorer vegetation layers

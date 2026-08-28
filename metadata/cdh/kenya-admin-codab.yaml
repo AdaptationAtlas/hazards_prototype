@@ -1,0 +1,84 @@
+# CDH v0.1.0 metadata record — IEBC COD-AB admin boundaries (KE-39 exposure backbone).
+# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
+cdh_schema_version: v0.1.0
+
+id: kenya-admin-codab
+title: Kenya Official Administrative Boundaries (IEBC COD-AB)
+description: >
+  Official Kenya administrative boundaries — 47 counties (adm1) and 290 sub-counties (adm2) — from
+  the OCHA Common Operational Dataset (COD-AB), source IEBC, with official adm1/adm2 p-codes. The
+  admin backbone for aggregating KE-ENSO Explorer flood/drought exposure to reporting units. Preferred
+  over GAUL for exposure because it carries p-codes and excludes disputed slivers.
+resource_type: dataset
+license: CC-BY-3.0-IGO              # HDX COD-AB (OCHA) # verify
+
+keywords: [administrative boundaries, admin, COD-AB, IEBC, counties, sub-counties, p-code, Kenya]
+
+contact:
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: OCHA / IEBC (via HDX)
+    url: https://data.humdata.org/dataset/cod-ab-ken
+    roles: [licensor, producer]
+
+citation:
+  title: "Kenya - Subnational Administrative Boundaries (COD-AB)"
+  authors: [OCHA, IEBC]
+  date: "2024"                       # verify HDX vintage
+  publisher: Humanitarian Data Exchange (HDX)
+  url: https://data.humdata.org/dataset/cod-ab-ken
+
+created: "2026-08-28"
+updated: "2026-08-28"
+
+spatial:
+  bbox: [33.9, -4.7, 41.9, 5.5]
+  crs: EPSG:4326
+  geography: [kenya]
+  geometry_column: geometry
+  resolution:
+    - type: polygon
+      unit: admin-level
+      label: adm1 (47 counties) + adm2 (290 sub-counties)
+      reference_system: IEBC COD-AB
+
+temporal:
+  date: "2024"                       # boundary vintage # verify
+  resolution: {step: null, unit: static}
+
+classes:
+  - {value: adm1, name: County, description: "47 counties, field adm1_pcode"}
+  - {value: adm2, name: Sub-county, description: "290 sub-counties, field adm2_pcode"}
+
+processing:
+  - id: source
+    description: OCHA COD-AB (source IEBC) official admin boundaries with p-codes.
+    derived_from:
+      - title: HDX cod-ab-ken
+        url: https://data.humdata.org/dataset/cod-ab-ken
+  - id: harmonise
+    description: Auto-detect adm1/adm2 layers by p-code fields, make geometry valid, force EPSG:4326, write GeoJSON.
+    code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "python/ingest_exposure_admin_codab.py"}
+
+data:
+  - name: adm1
+    description: 47 counties (adm1) GeoJSON.
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=iebc-codab/region=kenya/processing=analysis-ready/level=adm1/ken_adm1.geojson", title: S3}
+    media_type: application/geo+json
+    processing_steps: [source, harmonise]
+  - name: adm2
+    description: 290 sub-counties (adm2) GeoJSON.
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=iebc-codab/region=kenya/processing=analysis-ready/level=adm2/ken_adm2.geojson", title: S3}
+    media_type: application/geo+json
+    processing_steps: [source, harmonise]
+
+cdh:
+  domain: [boundaries]
+  usage:
+    intended_uses:
+      - Aggregating hazard-exposure to official Kenya counties / sub-counties with p-codes.
+  series: KE-ENSO Explorer exposure layers

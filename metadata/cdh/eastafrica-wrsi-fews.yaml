@@ -1,0 +1,100 @@
+# CDH v0.1.0 metadata record — FEWS NET WRSI (cropland + rangeland) used by KE-ENSO Explorer.
+# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
+cdh_schema_version: v0.1.0
+
+id: eastafrica-wrsi-fews
+title: FEWS NET Water Requirement Satisfaction Index (East Africa)
+description: >
+  Water Requirement Satisfaction Index (WRSI) for cropland and rangeland growing seasons over East
+  Africa, from USGS FEWS NET (CHIRPS v3.0 precipitation backbone). WRSI = the ratio of seasonal water
+  supplied to crop/pasture water demand (0-100 %); low values flag agricultural water deficit. The
+  crop/rangeland-monitoring layer of the KE-ENSO Explorer.
+resource_type: dataset
+license: CC0-1.0                     # USGS / US Gov public domain
+
+keywords: [WRSI, water requirement satisfaction, FEWS NET, cropland, rangeland, drought, agriculture, East Africa]
+
+note: >
+  US-Government public-domain source (USGS FEWS NET). CHIRPS v3.0 precipitation backbone keeps it
+  consistent with the CHIRPS rainfall/SPEI layers. Rangeland vs cropland use different growing-season
+  definitions (region codes / EOS dekads).
+
+contact:
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: USGS FEWS NET
+    url: https://earlywarning.usgs.gov/fews
+    roles: [licensor, producer]
+
+citation:
+  title: "Water Requirement Satisfaction Index (WRSI), FEWS NET"
+  authors: [USGS FEWS NET]
+  date: "2020"
+  publisher: USGS FEWS NET Data Portal
+  url: https://earlywarning.usgs.gov/fews/product/128
+
+created: "2026-08-28"
+updated: "2026-08-28"
+
+spatial:
+  bbox: [33.9, -4.7, 41.9, 5.5]        # Kenya # verify (region=east-africa)
+  crs: EPSG:4326
+  geography: [kenya]
+  resolution:
+    - type: xy
+      value: 0.1
+      unit: degree
+      label: ~0.1 deg (FEWS WRSI grain)   # verify
+
+temporal:
+  start_date: "2001-01-01"             # verify record start
+  end_date: null
+  resolution: {step: P1Y, unit: seasonal, note: "End-of-season WRSI per growing season, per year."}
+
+dimensions:
+  - name: time
+    type: temporal
+    description: keyed {SEASON}_{YYYY} (3-letter season code + year).
+    step: P1Y
+
+variables:
+  - name: wrsi
+    dimensions: [time]
+    description: Water Requirement Satisfaction Index (0-100 %); lower = greater water deficit.
+    data_type: uint8
+    unit: "%"
+
+processing:
+  - id: source
+    description: FEWS NET WRSI (CHIRPS precip + ETos crop water balance) for cropland and rangeland seasons.
+    derived_from:
+      - title: FEWS NET WRSI
+        url: https://earlywarning.usgs.gov/fews/product/128
+      - title: CHIRPS v3.0 precipitation
+        url: https://data.chc.ucsb.edu/products/CHIRPS/
+  - id: crop-cog
+    description: Assemble cropland/rangeland seasonal WRSI, crop East Africa, write COG with overviews.
+    code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "python/ingest_wrsi_fews.py"}
+
+data:
+  - name: wrsi
+    description: Per-season WRSI COGs for cropland and rangeland.
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=agriculture/source=fews-wrsi/region=east-africa/", title: S3}
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    href_template: "crop={crop}/season={season}/wrsi_{crop}_{season}_{year}.tif"   # crop in {cropland,rangeland}; verify partition vs name_fn_wrsi
+    processing_steps: [source, crop-cog]
+
+cdh:
+  domain: [agricultural-production]
+  commodities: [maize]   # cropland WRSI parameterised for maize; rangeland = pasture
+  usage:
+    intended_uses:
+      - Cropland (maize) and rangeland seasonal water-deficit monitoring in the KE-ENSO Explorer.
+    not_recommended_for:
+      - use: Applying cropland (maize) WRSI in pastoral/rangeland zones.
+        reason: Crop and rangeland use different water-demand parameterisations and season definitions.
+        use_instead: The rangeland WRSI product for pastoral areas.
+  series: KE-ENSO Explorer agriculture layers

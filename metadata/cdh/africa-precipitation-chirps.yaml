@@ -1,0 +1,108 @@
+# CDH v0.1.0 metadata record — CHIRPS precipitation (monthly + seasonal) used by KE-ENSO Explorer.
+# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
+# Some grid/version values marked `# verify` — confirm against the on-disk COGs before contributing.
+cdh_schema_version: v0.1.0
+
+id: africa-precipitation-chirps
+title: CHIRPS Monthly & Seasonal Precipitation (Africa)
+description: >
+  Total precipitation (PTOT) from CHIRPS v3.0, delivered as per-pixel monthly COGs and per-year
+  rolling 3-month (seasonal) sums over Africa. The rainfall backbone of the KE-ENSO Explorer's
+  seasonal/ENSO analysis; the seasonal tri-month sums align to the 12 climatological windows.
+resource_type: dataset
+license: CC-BY-4.0                   # Atlas-processed COGs; CHIRPS source is public domain (credit CHC/UCSB)
+
+keywords: [precipitation, rainfall, CHIRPS, PTOT, monthly, seasonal, Africa, ENSO, drought]
+
+note: >
+  Source CHIRPS is public domain ("no restrictions on use"); these reprocessed COGs are released
+  CC-BY-4.0 with attribution to the Climate Hazards Center, UC Santa Barbara. Seasonal = tri-month
+  sums over 12 windows (JFM..DJF).
+
+contact:
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: Climate Hazards Center, UC Santa Barbara
+    url: https://www.chc.ucsb.edu/data/chirps
+    roles: [licensor, producer]
+
+citation:
+  title: "CHIRPS: Climate Hazards Group InfraRed Precipitation with Station data"
+  authors: [Funk, C., Peterson, P., Landsfeld, M., et al.]
+  date: "2015"
+  publisher: Scientific Data
+  url: https://doi.org/10.1038/sdata.2015.66
+related_publications:
+  - doi: 10.1038/sdata.2015.66
+
+created: "2026-08-28"
+updated: "2026-08-28"
+
+spatial:
+  bbox: [-25.35, -46.95, 57.8, 40.0]   # Africa # verify against COG extent
+  crs: EPSG:4326
+  geography: [africa]
+  resolution:
+    - type: xy
+      value: 0.05
+      unit: degree
+      label: ~0.05 deg / ~5.5 km (CHIRPS native)   # verify
+
+temporal:
+  start_date: "1981-01-01"
+  end_date: null
+  resolution:
+    step: P1M
+    unit: monthly
+    note: Monthly totals; seasonal assets are per-year tri-month (3-month) sums.
+
+dimensions:
+  - name: time
+    type: temporal
+    description: monthly keyed YYYY-MM; seasonal keyed by {SEASON}_{YYYY} over 12 windows.
+    step: P1M
+
+variables:
+  - name: PTOT
+    dimensions: [time]
+    description: Total precipitation over the period.
+    data_type: float32
+    unit: mm
+
+processing:
+  - id: source
+    description: CHIRPS v3.0 quasi-global daily/monthly precipitation (station + infrared).
+    derived_from:
+      - title: CHIRPS v3.0 (Climate Hazards Center)
+        url: https://data.chc.ucsb.edu/products/CHIRPS/
+  - id: monthly-cog
+    description: Reproject/COG monthly PTOT with internal overviews.
+    code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "R/observational"}
+  - id: seasonal-sum
+    description: Per-year tri-month sums over the 12 seasonal windows (5b_make_obs_seasonal_rasters.R).
+
+data:
+  - name: monthly
+    description: Per-pixel monthly precipitation COGs.
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/", title: S3}
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    href_template: "{variable}-{year}-{month}.tif"          # e.g. PTOT-2020-04.tif
+    processing_steps: [source, monthly-cog]
+  - name: seasonal
+    description: Per-year tri-month sum COGs (12 windows).
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=seasonal/", title: S3}
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    href_template: "variable={variable}/season={season}/{variable}_{season}_{year}_sum.tif"
+    processing_steps: [source, monthly-cog, seasonal-sum]
+
+cdh:
+  domain: [climate]
+  usage:
+    intended_uses:
+      - Seasonal/ENSO rainfall analysis and anomaly context for the KE-ENSO Explorer.
+      - Denominator/driver for drought (SPEI) and vegetation/flood interpretation.
+  series: KE-ENSO Explorer climate layers

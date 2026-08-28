@@ -1,0 +1,100 @@
+# CDH v0.1.0 metadata record — SPEI drought index (3- & 12-month) used by KE-ENSO Explorer.
+# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
+cdh_schema_version: v0.1.0
+
+id: africa-spei-drought
+title: SPEI Drought Index (3- & 12-month, Africa)
+description: >
+  Standardized Precipitation-Evapotranspiration Index at 3-month (SPEI-03) and 12-month (SPEI-12)
+  accumulation, as per-pixel monthly COGs over Africa. Built from CHIRPS precipitation and a PET
+  climate water balance; negative values = drier than the reference climatology. Drought layer of
+  the KE-ENSO Explorer (short accumulation = seasonal/agricultural drought; long = hydrological).
+resource_type: dataset
+license: CC-BY-4.0
+
+keywords: [drought, SPEI, water balance, PET, standardized index, monthly, Africa, ENSO]
+
+note: >
+  Arid-cell -Inf values (zero-precip tails of the log-logistic fit) are clamped to NoData. SPEI is a
+  z-score anomaly against the fitted reference climatology, not an absolute quantity.
+
+contact:
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [licensor, processor, producer, point-of-contact]
+
+citation:
+  title: "A Multiscalar Drought Index Sensitive to Global Warming: The SPEI"
+  authors: [Vicente-Serrano, S.M., Beguería, S., López-Moreno, J.I.]
+  date: "2010"
+  publisher: Journal of Climate
+  url: https://doi.org/10.1175/2009JCLI2909.1
+related_publications:
+  - doi: 10.1175/2009JCLI2909.1
+
+created: "2026-08-28"
+updated: "2026-08-28"
+
+spatial:
+  bbox: [-25.35, -46.95, 57.8, 40.0]   # Africa # verify
+  crs: EPSG:4326
+  geography: [africa]
+  resolution:
+    - type: xy
+      value: 0.05
+      unit: degree
+      label: ~0.05 deg / ~5.5 km (CHIRPS-derived)   # verify
+
+temporal:
+  start_date: "1981-01-01"
+  end_date: null
+  resolution: {step: P1M, unit: monthly, note: "Monthly index at 3- and 12-month accumulation."}
+
+dimensions:
+  - name: time
+    type: temporal
+    description: monthly keyed YYYY-MM.
+    step: P1M
+
+variables:
+  - name: SPEI-03
+    dimensions: [time]
+    description: 3-month SPEI (seasonal / agricultural drought). Negative = drier than reference.
+    data_type: float32
+    unit: "1"
+  - name: SPEI-12
+    dimensions: [time]
+    description: 12-month SPEI (hydrological drought). Negative = drier than reference.
+    data_type: float32
+    unit: "1"
+
+processing:
+  - id: source
+    description: CHIRPS precipitation minus PET (climate water balance) -> log-logistic SPEI (SPEI R package).
+    derived_from:
+      - title: CHIRPS v3.0 precipitation
+        url: https://data.chc.ucsb.edu/products/CHIRPS/
+  - id: monthly-cog
+    description: Compute SPEI-03/12, clamp -Inf arid tails to NoData, write COG with overviews.
+    code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "R/observational/2_calculate_obs_spei.R"}
+
+data:
+  - name: monthly
+    description: Per-pixel monthly SPEI-03 and SPEI-12 COGs.
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/", title: S3}
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    href_template: "{variable}-{year}-{month}.tif"          # e.g. SPEI-03-2020-04.tif
+    processing_steps: [source, monthly-cog]
+
+cdh:
+  domain: [climate]
+  usage:
+    intended_uses:
+      - Seasonal and multi-year drought characterisation for the KE-ENSO Explorer.
+    not_recommended_for:
+      - use: Reading SPEI as an absolute precipitation or soil-moisture deficit.
+        reason: SPEI is a standardized anomaly against a fitted reference distribution.
+        use_instead: CHIRPS PTOT for absolute rainfall.
+  series: KE-ENSO Explorer climate layers

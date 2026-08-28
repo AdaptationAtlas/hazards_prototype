@@ -1,0 +1,96 @@
+# CDH v0.1.0 metadata record — JRC return-period flood hazard used by KE-ENSO Explorer.
+# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
+cdh_schema_version: v0.1.0
+
+id: eastafrica-flood-jrc
+title: JRC Return-Period River Flood Hazard (East Africa)
+description: >
+  Modelled riverine flood hazard from the JRC / GloFAS Global Flood Maps: inundation depth for a set
+  of return periods (RP10..RP500), static baseline climatology, cropped to East Africa / Kenya. The
+  MODELLED flood-prone baseline of the KE-ENSO Explorer, complementing the OBSERVED Copernicus GFM
+  extent (which answers "where/when it actually flooded"); JRC answers "how flood-prone at magnitude X".
+resource_type: dataset
+license: CC-BY-4.0                   # JRC/EC free & open data policy
+
+keywords: [flood, river flood, hazard, return period, JRC, GloFAS, inundation depth, East Africa]
+
+note: >
+  Static modelled hazard (return-period depths), NOT an observed time series and NOT scenario-projected.
+  Pair with GFM (observed extent) for the "modelled vs observed" flood story.
+
+contact:
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: European Commission Joint Research Centre (JRC)
+    url: https://data.jrc.ec.europa.eu/
+    roles: [licensor, producer]
+
+citation:
+  title: "Development and evaluation of a framework for global flood hazard mapping (JRC Global Flood Maps)"
+  authors: [Dottori, F., Salamon, P., Bianchi, A., et al.]
+  date: "2016"
+  publisher: Advances in Water Resources
+  url: https://doi.org/10.1016/j.advwatres.2016.05.002   # verify preferred JRC dataset citation
+
+created: "2026-08-28"
+updated: "2026-08-28"
+
+spatial:
+  bbox: [33.9, -4.7, 41.9, 5.5]        # Kenya crop # verify (region=east-africa)
+  crs: EPSG:4326
+  geography: [kenya]
+  resolution:
+    - type: xy
+      value: 30
+      unit: arc_second
+      label: ~30 arc-second / ~1 km   # verify (JRC global flood maps grain)
+
+temporal:
+  start_date: "1990-01-01"             # baseline climatology; static # verify
+  end_date: "1990-01-01"
+  resolution: {step: null, unit: static, note: "Static return-period hazard, not a time series."}
+
+dimensions:
+  - name: return_period
+    type: categorical
+    description: Flood recurrence interval (years).
+    values: [10, 20, 50, 75, 100, 200, 500]   # verify which RPs are held on S3
+
+variables:
+  - name: flood_depth
+    dimensions: [return_period]
+    description: Modelled inundation depth for the given return period.
+    data_type: float32
+    unit: m
+
+processing:
+  - id: source
+    description: JRC / GloFAS global river flood hazard maps (hydrodynamic modelling).
+    derived_from:
+      - title: JRC Global Flood Maps
+        url: https://data.jrc.ec.europa.eu/dataset/jrc-floods-floodmapgl_rp50y
+  - id: crop-cog
+    description: Crop to East Africa, write COG with overviews.
+    code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "python/ingest_flood_jrc.py"}
+
+data:
+  - name: return-period
+    description: Per-return-period flood-depth COGs.
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=jrc-glofas/region=east-africa/", title: S3}
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    href_template: "flood-depth_rp{return_period}.tif"   # e.g. flood-depth_rp100.tif
+    processing_steps: [source, crop-cog]
+
+cdh:
+  domain: [hydrology]
+  usage:
+    intended_uses:
+      - Static flood-prone baseline to complement observed GFM extent in the KE-ENSO Explorer.
+    not_recommended_for:
+      - use: Reading it as observed or future-scenario flooding.
+        reason: Modelled static return-period hazard, baseline climatology only.
+        use_instead: Copernicus GFM (observed extent).
+  series: KE-ENSO Explorer flood layers

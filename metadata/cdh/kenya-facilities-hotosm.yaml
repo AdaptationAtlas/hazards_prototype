@@ -1,0 +1,97 @@
+# CDH v0.1.0 metadata record — HOTOSM health + education facilities (KE-39 exposure overlay).
+# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
+cdh_schema_version: v0.1.0
+
+id: kenya-facilities-hotosm
+title: Kenya Health & Education Facilities (HOTOSM)
+description: >
+  Health facilities and education facilities (schools) for Kenya from HDX HOTOSM (OpenStreetMap-derived),
+  clipped to Kenya. The critical-asset overlay of the KE-ENSO Explorer flood/drought exposure. HOTOSM is
+  the open, working substitute for the official registries (KMHFR health / GIGA schools), whose APIs were
+  unreachable from the node.
+resource_type: dataset
+license: ODbL-1.0                    # HOTOSM / OpenStreetMap
+
+keywords: [health facilities, schools, education, infrastructure, HOTOSM, OpenStreetMap, exposure, Kenya]
+
+note: >
+  ODbL: attribution "© OpenStreetMap contributors / HOTOSM" + share-alike. OSM-derived completeness
+  varies by region; not an authoritative facility registry.
+
+contact:
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: Humanitarian OpenStreetMap Team (via HDX)
+    url: https://data.humdata.org/organization/hot
+    roles: [licensor, producer]
+
+citation:
+  title: "HOTOSM Kenya Health & Education Facilities (OpenStreetMap Export)"
+  authors: [Humanitarian OpenStreetMap Team]
+  date: "2026"                       # HDX export retrieval year
+  publisher: Humanitarian Data Exchange (HDX)
+  url: https://data.humdata.org/dataset/hotosm_ken_health_facilities
+
+created: "2026-08-28"
+updated: "2026-08-28"
+
+spatial:
+  bbox: [33.9, -4.7, 41.9, 5.5]
+  crs: EPSG:4326
+  geography: [kenya]
+  geometry_column: geometry
+  resolution:
+    - type: point
+      unit: vector
+      label: point/polygon facility features
+
+temporal:
+  date: "2026"                       # HOTOSM export snapshot # verify
+  resolution: {step: null, unit: snapshot}
+
+variables:
+  - name: health
+    description: Health facility features (HOTOSM hotosm_ken_health_facilities).
+    data_type: string
+  - name: schools
+    description: Education facility features (HOTOSM hotosm_ken_education_facilities).
+    data_type: string
+
+processing:
+  - id: source
+    description: HDX HOTOSM health + education facilities (OSM-derived).
+    derived_from:
+      - title: HDX hotosm_ken_health_facilities
+        url: https://data.humdata.org/dataset/hotosm_ken_health_facilities
+      - title: HDX hotosm_ken_education_facilities
+        url: https://data.humdata.org/dataset/hotosm_ken_education_facilities
+  - id: clip
+    description: Resolve HDX CKAN resource, force EPSG:4326, clip Kenya bbox, write GeoJSON.
+    code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "python/ingest_exposure_hotosm.py"}
+
+data:
+  - name: health
+    description: Health facilities GeoJSON.
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastructure/source=hotosm/region=kenya/processing=analysis-ready/variable=health/health.geojson", title: S3}
+    media_type: application/geo+json
+    processing_steps: [source, clip]
+  - name: schools
+    description: Education facilities (schools) GeoJSON.
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastructure/source=hotosm/region=kenya/processing=analysis-ready/variable=schools/schools.geojson", title: S3}
+    media_type: application/geo+json
+    processing_steps: [source, clip]
+
+cdh:
+  domain: [socioeconomic]
+  usage:
+    intended_uses:
+      - Health/school exposure to flood/drought when overlaid with hazard layers.
+    not_recommended_for:
+      - use: Treating counts as a complete/authoritative facility registry.
+        reason: OSM-derived; completeness varies.
+        use_instead: KMHFR (health) / GIGA (schools) official registries where accessible.
+  series: KE-ENSO Explorer exposure layers

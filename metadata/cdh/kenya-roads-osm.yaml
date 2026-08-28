@@ -1,0 +1,84 @@
+# CDH v0.1.0 metadata record — OSM classified roads (KE-39 exposure overlay).
+# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
+cdh_schema_version: v0.1.0
+
+id: kenya-roads-osm
+title: Kenya Classified Road Network (OpenStreetMap)
+description: >
+  Kenya's classified road network (motorway, trunk, primary, secondary, tertiary) extracted from the
+  OpenStreetMap Geofabrik Kenya extract. The road-access overlay of the KE-ENSO Explorer flood/drought
+  exposure — the network that matters for access, not every footpath.
+resource_type: dataset
+license: ODbL-1.0                    # OpenStreetMap — attribution + share-alike
+
+keywords: [roads, road network, infrastructure, OpenStreetMap, OSM, access, Kenya]
+
+note: >
+  ODbL: attribution "© OpenStreetMap contributors" + share-alike required. Classified highways only
+  (motorway..tertiary); footways/tracks excluded to keep the overlay light.
+
+contact:
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: OpenStreetMap contributors
+    url: https://www.openstreetmap.org/
+    roles: [licensor, producer]
+
+citation:
+  title: "OpenStreetMap (Geofabrik Kenya extract)"
+  authors: [OpenStreetMap contributors]
+  date: "2026"                       # extract retrieval year
+  publisher: OpenStreetMap / Geofabrik
+  url: https://download.geofabrik.de/africa/kenya.html
+
+created: "2026-08-28"
+updated: "2026-08-28"
+
+spatial:
+  bbox: [33.9, -4.7, 41.9, 5.5]
+  crs: EPSG:4326
+  geography: [kenya]
+  geometry_column: geometry
+  resolution:
+    - type: point
+      unit: vector
+      label: LineString features (classified highways)
+
+temporal:
+  date: "2026"                       # OSM snapshot date # verify
+  resolution: {step: null, unit: snapshot}
+
+variables:
+  - name: highway
+    description: OSM highway class (motorway, trunk, primary, secondary, tertiary).
+    data_type: string
+  - name: name
+    description: Road name (where tagged in OSM).
+    data_type: string
+
+processing:
+  - id: source
+    description: OSM Geofabrik Kenya extract (kenya-latest.osm.pbf), lines layer.
+    derived_from:
+      - title: Geofabrik Kenya OSM extract
+        url: https://download.geofabrik.de/africa/kenya-latest.osm.pbf
+  - id: extract
+    description: ogr2ogr classified highways, clip Kenya bbox, keep osm_id/name/highway, write GeoJSON.
+    code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "python/ingest_exposure_osm_roads.py"}
+
+data:
+  - name: roads
+    description: Classified road network GeoJSON (LineString).
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastructure/source=osm/region=kenya/processing=analysis-ready/variable=roads/kenya_roads.geojson", title: S3}
+    media_type: application/geo+json
+    processing_steps: [source, extract]
+
+cdh:
+  domain: [socioeconomic]
+  usage:
+    intended_uses:
+      - Road-access exposure overlay with flood/drought hazard in the KE-ENSO Explorer.
+  series: KE-ENSO Explorer exposure layers
