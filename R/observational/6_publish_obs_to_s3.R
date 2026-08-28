@@ -168,8 +168,8 @@ pacman::p_load(future, future.apply)
 # Resolve --tier (default all). --smoke always means Tier 1, one file.
 tier_arg <- parse_cli_flag(args, "tier", "character")
 if (is.null(tier_arg) || is.na(tier_arg)) tier_arg <- "all"
-if (!tier_arg %in% c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "all")) {
-  stop(glue::glue("--tier must be 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, or all (got '{tier_arg}')"))
+if (!tier_arg %in% c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "all")) {
+  stop(glue::glue("--tier must be 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, or all (got '{tier_arg}')"))
 }
 # Tiers 3-7 are opt-in only: NOT included in 'all' (large raster / new-domain uploads).
 do_tier1 <- mode == "--smoke" || tier_arg %in% c("1", "all")
@@ -185,6 +185,7 @@ do_tier10 <- mode != "--smoke" && tier_arg == "10"
 do_tier11 <- mode != "--smoke" && tier_arg == "11"
 do_tier12 <- mode != "--smoke" && tier_arg == "12"
 do_tier13 <- mode != "--smoke" && tier_arg == "13"
+do_tier14 <- mode != "--smoke" && tier_arg == "14"
 
 overwrite <- parse_overwrite_flag(args)
 # AtlasDataManageR 0.0.0.9000 (currently installed) does NOT expose an
@@ -268,6 +269,9 @@ prefix_ndvi <- "domain=climate/type=vegetation/source=modis-mod13q1/region=east-
 prefix_flood <- "domain=climate/type=flood/source=jrc-glofas/region=east-africa"
 # Global Flood Database observed per-year flood occurrence (type=flood, different source).
 prefix_gfd <- "domain=climate/type=flood/source=global-flood-db/region=east-africa"
+# Copernicus GFM (Sentinel-1 SAR) observed flood extent — replaces GFD. Recursive tree:
+# name_fn appends processing={overpass|monthly|seasonal|history}/variable={flooded|nobs|frequency|footprint}/.
+prefix_gfm <- "domain=climate/type=flood/source=glofas-gfm/region=kenya"
 # FEWS NET CHIRPS-ETos WRSI (crop/pasture water satisfaction; new type=agriculture).
 prefix_wrsi <- "domain=climate/type=agriculture/source=fews-wrsi/region=east-africa"
 # KE-39 exposure: WorldPop population (domain=exposure, new type=population).
@@ -464,6 +468,33 @@ name_fn_hotosm <- function(x) {
                  paste(fname[bad], collapse = ", ")))
   }
   sprintf("variable=%s/%s", base, fname)
+}
+
+# GFM flood COGs (Tier 14, type=flood/source=glofas-gfm). RECURSIVE tree under gfm_flood/:
+#   overpass/{ts}.tif            -> processing=overpass/variable=flooded/{ts}.tif
+#   monthly/{flooded,nobs}/*.tif -> processing=monthly/variable={flooded|nobs}/*.tif
+#   seasonal/{flooded,nobs}/*.tif-> processing=seasonal/variable={flooded|nobs}/*.tif
+#   history/{frequency,footprint}.tif -> processing=history/variable={frequency|footprint}/*.tif
+# VECTORIZED (uploader calls name_fn on the whole path vector) — per-element via vapply.
+name_fn_gfm <- function(x) {
+  valid_levels <- c("overpass", "monthly", "seasonal", "history")
+  vapply(x, function(p) {
+    parts <- strsplit(p, "/", fixed = TRUE)[[1]]
+    i <- match("gfm_flood", parts)
+    if (is.na(i) || i >= length(parts)) {
+      stop(sprintf("GFM path missing gfm_flood anchor: %s", p))
+    }
+    rel   <- parts[(i + 1):length(parts)]
+    level <- rel[1]
+    fname <- rel[length(rel)]
+    if (!level %in% valid_levels) {
+      stop(sprintf("Unexpected GFM processing level '%s' in %s", level, p))
+    }
+    var <- if (level == "overpass") "flooded"
+           else if (level == "history") tools::file_path_sans_ext(fname)
+           else rel[2]                                   # monthly/seasonal: flooded|nobs
+    sprintf("processing=%s/variable=%s/%s", level, var, fname)
+  }, character(1), USE.NAMES = FALSE)
 }
 
 name_fn_climatology <- function(x) {
@@ -679,6 +710,20 @@ tier13_specs <- list(
   )
 )
 
+# Tier 14 (Copernicus GFM Sentinel-1 flood COGs, type=flood/source=glofas-gfm). Opt-in ONLY (--tier 14).
+# RECURSIVE walk of the processing=/variable= tree; every .tif is a COG with overviews (gate applies).
+tier14_specs <- list(
+  list(
+    upload_id     = "obs-flood-gfm",
+    local_dir     = file.path(dirname(chirts_chirps_hist_dir), "exposure", "gfm_flood"),
+    s3_dir        = prefix_gfm,
+    file_pattern  = "\\.tif$",
+    name_fn       = name_fn_gfm,
+    recursive     = TRUE,
+    tier          = 14L
+  )
+)
+
 active_specs <- c(
   if (do_tier1) tier1_specs else list(),
   if (do_tier2) tier2_specs else list(),
@@ -692,7 +737,8 @@ active_specs <- c(
   if (do_tier10) tier10_specs else list(),
   if (do_tier11) tier11_specs else list(),
   if (do_tier12) tier12_specs else list(),
-  if (do_tier13) tier13_specs else list()
+  if (do_tier13) tier13_specs else list(),
+  if (do_tier14) tier14_specs else list()
 )
 
 cat("project_dir          :", project_dir, "\n")
@@ -715,6 +761,7 @@ cat("tier 10 enabled      :", do_tier10, "\n")
 cat("tier 11 enabled      :", do_tier11, "\n")
 cat("tier 12 enabled      :", do_tier12, "\n")
 cat("tier 13 enabled      :", do_tier13, "\n")
+cat("tier 14 enabled      :", do_tier14, "\n")
 cat("overwrite            :", overwrite, "\n")
 cat("workers              :", workers, "\n\n")
 
