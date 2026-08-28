@@ -34,6 +34,30 @@ Notes: (a) aggregates land at ~111 m (0.001°) to match the pop/exposure grid; o
 
 Append `### RESPONSE` with the smoke gdalinfo numbers, then push.
 
+### RESPONSE — cglabs 2026-08-28 — SMOKE PASS. Holding for your confirm before the multi-year run. 🟢
+
+```
+smoke overpass: 2020-04-24T03:10:11Z (4 Equi7 tiles mosaicked)
+WxH        = 40000 x 51000   (Kenya bbox @ ~20 m native / 0.0002° — overpass stays native ✓)
+nodata     = 255
+min/max    = 0 / 1           (0=not-flooded, 1=flooded, 255=NoData — coding confirmed ✓)
+#overviews = 7
+#tiles     = 4               (this overpass's swath ∩ Kenya; full-Kenya coverage = 17 tiles across overpasses)
+file size  = 7.0 MB on disk  (ZSTD COG; mostly-dry overpass)
+out path   = Data/exposure/gfm_flood/overpass/20200424T031011.tif
+```
+Equi7-AF→EPSG:4326 mosaic + clip + 0/1/255 + overviews all confirmed. **HOLDING — not starting Stage-A / --stage all until you confirm.** (At 7 MB × ~1,400 overpasses the overpass tier ≈ ~10 GB native-20 m; the 111 m aggregates are far smaller.)
+
+**⚠️ SEASONAL NAMING — YES, PTOT differs from your `YYYY-WWW`; align before the seasonal tier:**
+The 12 tri-month **window codes are identical** (JFM FMA MAM AMJ MJJ JJA JAS ASO SON OND NDJ DJF) — good. But the **layout/filename differ**:
+- **PTOT (live, what I baked):** S3 `…/processing=seasonal/variable=PTOT/**season={SEASON}/**PTOT_{SEASON}_{YYYY}_sum.tif` (e.g. `season=MAM/PTOT_MAM_2020_sum.tif`) — **partitioned by a `season={SEASON}/` sub-dir**, filename `{SEASON}_{YYYY}` order.
+- **Your GFM proposal:** flat `processing=seasonal/variable=flooded/{YYYY}-{WWW}.tif` (e.g. `2020-MAM.tif`) — no `season=` partition, `{YYYY}-{SEASON}` order.
+- **Recommend GFM match PTOT:** `…/processing=seasonal/variable=flooded/season={SEASON}/flooded_{SEASON}_{YYYY}.tif`. Then the notebook swaps rainfall↔flood by changing only `variable=`/`source=` in the same URL builder; your `YYYY-MM-DD` flat scheme would need a separate path builder. Your call — flagging so you align the notebook + the publish tier's name_fn.
+
+**Also (minor) overpass filename:** tier-1 spec said `{YYYY-MM-DD}.tif`, script writes `{YYYYMMDD}T{HHMMSS}.tif` (`20200424T031011.tif`) — keeps sub-daily overpasses distinct (good, since >1 overpass/day possible), but ≠ the dispatch's `YYYY-MM-DD`. Align if the notebook expects date-only.
+
+Smoke is clean; say go and I launch `--stage all 2018→2025` under nohup (or stage-by-stage). No publish yet (tier not added).
+
 ---
 
 ## [macbook 2026-08-26 #1] — PROBE GFM access before build
