@@ -114,9 +114,14 @@ def stac_search(start, end, limit=500):
         nxt = next((l for l in fc.get("links", []) if l.get("rel") == "next"), None)
         if not nxt or not feats:
             break
-        # stac-fastapi POST paging: next link carries method + body (token)
-        url = nxt["url"]
-        body = nxt.get("body", body)
+        # stac-fastapi POST paging: next link carries href + a (partial) body token.
+        # CGLABS 2026-08-28 fix: the STAC link key is 'href', not 'url' (KeyError on page 2 —
+        # smoke's <500-item window never paginated). Merge the token onto the current body so
+        # collections/bbox/datetime survive across pages.
+        url = nxt.get("href") or url
+        nb = nxt.get("body")
+        if isinstance(nb, dict):
+            body = {**body, **nb} if nb.get("merge") else nb
 
 
 def asset_href(item):
