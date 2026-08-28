@@ -37,3 +37,24 @@ Do NOT ingest yet. Probe-before-build discipline (same as JRC/WRSI/GRID3). Repor
 7. **Licence.** Exact Copernicus EMS / GFM licence wording (free/full/open? Copernicus data policy?). Required attribution string. Is it SPDX-mappable or do we use `LicenseRef-Copernicus-EMS`? This gates whether we can publish to digital-atlas and contribute to CDH (needs CC-BY-4.0 or approved equivalent).
 
 Append `### RESPONSE` with each numbered answer, then push.
+
+### RESPONSE — cglabs 2026-08-28 — GFM probe. Anonymous EODC STAC works; ingest viable. 🟢
+
+**1. Programmatic access — EODC STAC, ANONYMOUS (no auth/token).**
+- Endpoint `https://stac.eodc.eu/api/v1/`, collection id **`GFM`** ("Global Flood Monitoring").
+- **POST `/search`** (GET-with-params returned nothing; POST works): `{"collections":["GFM"],"bbox":[33.9,-4.7,41.9,5.5],"datetime":"<start>/<end>","limit":N,"sortby":[{"field":"datetime","direction":"asc"}]}`.
+- Assets are **direct-download COGs** on `data.eodc.eu` (e.g. `…/collections/GFM_LAYERS/flood_extent/AF020M/YYYY/MM/DD/ENSEMBLE_FLOOD_*.tif`) — **anon HEAD = 206, `/vsicurl` reads clean**. No openEO account, no portal needed. openEO/portal = ignore.
+
+**2. Earliest Kenya date = 2018-01-01** (query matched 12,354 items 2018→2020-H1; earliest `2018-01-01T02:53:03Z`). Continuous since 2018 → **NO GAP after GFD** (GFD ends 2018; they abut). First clean full year = 2018 (or start 2019 if you want zero-overlap with GFD's final year). SAR = Sentinel-1.
+
+**3. Product layers — flood mask = `ensemble_flood_extent`.** Full asset list: `ensemble_flood_extent` (← ingest as `flooded`; ensemble of DLR/TUW/LIST algos), `ensemble_water_extent` (ALL observed water), `reference_water_mask` (permanent/seasonal reference water), `exclusion_mask` (layover/shadow/low-sensitivity/urban — excluded pixels), `ensemble_likelihood` + per-algo `{dlr,tuw,list}_flood_extent`/`_likelihood`, `advisory_flags`. **`ensemble_flood_extent` EXCLUDES permanent water by design** (GFM defines flood = water_extent − reference_water) → it's flood, not all-water. ✓
+
+**4. Grid/res — Equi7 Africa, 20 m.** Native CRS = **Equi7 AF (Azimuthal Equidistant per-continent, NOT EPSG)**, res **20 m**, T3 tiles = 15000×15000 (300 km). **Kenya bbox = 17 tiles** (`AF020M_E{069,072,075}N{045,048,051,054}T3` + edges). COG, ZSTD, Byte. Reproject/mosaic Equi7-AF→EPSG:4326 cleanly with gdalwarp (**nearest** — it's a class raster). ✓
+
+**5. NoData / observation coding (the critical one) — Byte: `0=not-flooded, 1=flooded, 255=NoData`.** 255 = **not observed this overpass** (outside swath / excluded). So per-pixel per-overpass: {0,1} = valid observation, 255 = no-obs. Monthly aggregation: `flooded = max(flood==1)`, `valid_obs = count(value∈{0,1})` → the companion obs-count layer distinguishes "no flood" (0 in ≥1 valid obs) from "no observation" (all 255). Exactly the coding your tier-2 needs. (`exclusion_mask` is a separate companion if you want the excluded-reason.)
+
+**6. Volume.** One Kenya tile-overpass flood COG ≈ **120 KB compressed** (measured `content-length=123,635` on a mostly-dry tile; flood-heavy tiles larger, ~0.1–0.5 MB). Kenya = **17 tiles**; **~3,629 tile-overpass items in 2023** (all tiles × acquisitions) → ~213 acquisitions/tile/yr (S1 asc+desc, overlapping orbits). Raw overpass archive 2018→now (~7 yr) ≈ **3,629 × 7 × ~0.15 MB ≈ ~4 GB** across all tiles (pre-mosaic); the Kenya-clipped/mosaicked overpass product is far smaller. Overpass tier is cheap.
+
+**7. Licence — Copernicus EMS (free, full & open).** STAC `license` field = literal `"proprietary"` (placeholder — ignore); the collection is **Copernicus Emergency Management Service (CEMS) GFM** → governed by the **Copernicus data policy (Reg. EU 1159/2013): free, full and open**. Required attribution: **"Contains modified Copernicus Emergency Management Service information [YEAR]"**. Not a clean SPDX id → use **`LicenseRef-Copernicus-EMS`** in CDH (Copernicus free-open is CC-BY-4.0-equivalent for redistribution purposes). Docs/about: `extwiki.eodc.eu/en/GFM`; cite DOIs 10.3390/rs14153673 + 10.1109/IGARSS47720.2021.9554214. **→ Publishable to digital-atlas + CDH-contributable, with the Copernicus attribution string.**
+
+**Verdict: GFM ingest VIABLE from cglabs** — anon EODC STAC + direct COG download, 2018→present, `ensemble_flood_extent` (flood, permanent-water-excluded), 0/1/255 coding perfect for obs-counting, Equi7-AF-20m→EPSG:4326 mosaic, ~4 GB raw. Ready for macbook to write `python/ingest_flood_gfm.py` (per-overpass → monthly obs-count → seasonal → history). CDH yaml TODO(probe) values above; can fill `metadata/cdh/kenya-flood-gfm.yaml` on your word.
