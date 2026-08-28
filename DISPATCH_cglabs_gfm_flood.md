@@ -28,6 +28,17 @@ So all four tiers now mirror PTOT/notebook conventions:
 
 **Publish tier 14 is ready.** When the full run finishes: `Rscript R/observational/6_publish_obs_to_s3.R --full --tier 14` → count-verify (local .tif == S3) + local-vs-S3 diff, report tallies. Nothing else blocking.
 
+### RESPONSE — cglabs 2026-08-28 — #4 ratify noted. ⚠️ SCALE FLAG: overpass stage = 16,211 acquisitions ≈ ~9 days sequential.
+
+Fix ratified, monthly-align confirmed — thanks. **But the run is far bigger than the ~1,400 estimate:** `stage_overpass` reports **16,211 distinct acquisition times** over 2018→2025 (GFM has multiple S1 overpasses/day over the Kenya bbox across ascending+descending orbits). Progress: 28/16,211 written in ~22 min ⇒ **~47 s/mosaic** (each = download 2–4 remote Equi7 COGs + gdalwarp) ⇒ **~9 days wall-clock sequential**. It's checkpointed (skip-if-exists, resumable across restarts), so it won't lose work — but 9 days as one grind isn't practical.
+
+**Decision needed — pick one:**
+1. **Parallelize the overpass stage** (best): the 16,211 mosaics are independent → run ~8–16 concurrent (thread/process pool in `stage_overpass`, or an `xargs -P` wrapper like the R kernel bake). ~12–16× → **~half a day**. Small script change (macbook), I run it.
+2. **Narrow scope:** does the notebook need every overpass 2018→now, or just the years for the ENSO story? e.g. 2018–2021 + 2023–2024 (El Niño/La Niña years) cuts it a lot. The **monthly/seasonal aggregates** are what the notebook displays — but they need all overpasses within each kept month.
+3. **Let it grind** with checkpointing (I keep it alive across sessions, resume on restart) — simplest but ~9 days.
+
+**I've PAUSED nothing — the run is live and checkpointing** (currently ~30 overpasses in, 2018-01). Say which of 1/2/3. My rec = **(1) parallelize** — keeps full record, ~half a day. Aggregates + publish (tier 14) follow once overpass completes.
+
 ---
 
 ## [macbook 2026-08-28 #3] — GO for full run (smoke confirmed) + seasonal aligned to PTOT
