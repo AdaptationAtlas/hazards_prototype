@@ -10,11 +10,13 @@ description: >
   Observed flood extent for Kenya from the Copernicus Emergency Management Service GloFAS
   Global Flood Monitoring (GFM) product, which classifies flooding from every Sentinel-1 SAR
   acquisition (ensemble of the DLR, TU-Wien and LIST algorithms; permanent/reference water
-  excluded). Delivered as four tiers: per-overpass extent (~20 m), a monthly flood-occurrence
-  aggregate with a valid-observation count, a rolling 3-month (seasonal) aggregate aligned to
-  the KE-ENSO Explorer precipitation seasons, and an optional full-record history (occurrence
-  frequency + ever-flooded footprint). Replaces the MODIS Global Flood Database (ended 2018)
-  with a cloud-penetrating, continuously updated SAR record (2018 -> present).
+  excluded). Delivered primarily as ~111 m aggregates built directly from the SAR tiles: a
+  monthly flood-occurrence aggregate with a valid-observation count, a rolling 3-month (seasonal)
+  aggregate aligned to the KE-ENSO Explorer precipitation seasons, and a full-record history
+  (occurrence frequency + ever-flooded footprint). A 20 m per-acquisition archive is available
+  on demand (re-pullable from the STAC) but not routinely materialised (16,211 acquisitions).
+  Replaces the MODIS Global Flood Database (ended 2018) with a cloud-penetrating, continuously
+  updated SAR record (2018 -> present).
 resource_type: dataset
 license: LicenseRef-Copernicus-EMS   # Copernicus data policy (Reg. EU 1159/2013): free, full & open
 
@@ -114,13 +116,16 @@ processing:
       - title: Copernicus GloFAS Global Flood Monitoring (GFM), EODC STAC collection GFM
         url: https://stac.eodc.eu/api/v1/collections/GFM
   - id: mosaic-clip
-    description: Mosaic the Equi7-AF 20 m ensemble_flood_extent tiles per acquisition, reproject to EPSG:4326 (nearest), clip Kenya bbox, write COG with overviews.
+    description: >
+      Mosaic the Equi7-AF 20 m ensemble_flood_extent tiles per acquisition and warp directly onto the
+      fixed ~111 m EPSG:4326 grid (full-res read, resampleAlg=max, nodata-aware) — a coarse pixel is
+      flooded if ANY 20 m sub-pixel flooded. No 20 m overpass COG is materialised in the aggregate path.
     date: "2026-08-28"
     code:
       url: https://github.com/AdaptationAtlas/hazards_prototype
       version: python/ingest_flood_gfm.py
   - id: aggregate-monthly
-    description: Per-pixel monthly flood occurrence (max over valid overpasses) + valid-observation count, at ~111 m.
+    description: Per-pixel monthly flood occurrence (max over the month's acquisitions) + valid-observation count, at ~111 m; parallelised across months.
   - id: aggregate-seasonal
     description: Rolling 3-month occurrence + obs-count over the 12 seasonal windows.
   - id: aggregate-history
@@ -128,7 +133,7 @@ processing:
 
 data:
   - name: overpass
-    description: Per-Sentinel-1-acquisition observed flood extent, mosaicked + clipped to Kenya (~20 m).
+    description: OPT-IN 20 m per-Sentinel-1-acquisition archive (re-pullable from STAC on demand; not routinely populated).
     locations:
       - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=overpass/variable=flooded/
         title: S3

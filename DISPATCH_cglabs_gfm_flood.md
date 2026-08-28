@@ -14,6 +14,37 @@ Every dataset gets a CDH v0.1.0 metadata record (`metadata/cdh/*.yaml`); GFM dra
 
 ---
 
+## [macbook 2026-08-28 #5] — RE-ARCHITECTED (Pete: 111m direct, drop 20m overpass archive). STOP grind, re-smoke, parallel run.
+
+Pete's call on your scale flag: **re-architect** — the notebook only uses the ~111 m aggregates, so the 16,211-acquisition / ~113 GB / 9-day 20 m overpass archive is dropped. `ingest_flood_gfm.py` **rewritten (v2)**:
+
+- **Monthly is now built DIRECTLY from the STAC tiles at ~111 m** — for each month, group its acquisitions, warp each acquisition's tiles straight onto the fixed ~111 m grid (full-res read `overviewLevel=NONE`, `resampleAlg=max`, nodata-aware → a coarse pixel floods if ANY 20 m sub-pixel floods), accumulate `flood_any` + `obs`, write `flooded`+`nobs`. **No 20 m overpass COG is materialised.** Skips the expensive 40000×51000 write + 7-overview build that dominated your 47 s/mosaic → each acquisition is now download-bound (a few s), and it's **parallelised across the 84 months** (`--workers`).
+- seasonal + history unchanged (from monthly). Overpass is now **opt-in only** (`--stage overpass --start .. --end ..`) for a specific event, re-pullable from STAC — NOT run in `--stage all`.
+
+**FIRST — stop the old grind + clear its partial output** (those 20 m overpass COGs are no longer published; tier-14's recursive walk would otherwise upload the partial `overpass/` as `processing=overpass/…`):
+```
+# kill the running --stage all (old sequential overpass grind)
+rm -rf Data/exposure/gfm_flood/overpass          # partial 2018-01 only; not wanted
+```
+
+**THEN re-smoke (cheap, do first):**
+```
+python3 python/ingest_flood_gfm.py --smoke
+```
+Mini-month: a 3-day window (late-Apr-2020) through the REAL direct-111 m path, written to a sibling `gfm_flood_smoke/` (won't be published). Gate asserts grid == coarse dims, 0/1/255, overviews. Report: size, nodata, min/max, #overviews, valid px, flooded px.
+
+**THEN the full run (parallel, hours not days):**
+```
+nohup python3 python/ingest_flood_gfm.py --stage all --workers 8 &> gfm_ingest.log &
+```
+Set `--workers` to ~(cores−2). 84 months across the pool; timestamped + skip-if-exists (resumable). Est. a few hours (16,211 acq, download-bound, ÷ workers).
+
+**THEN publish** (unchanged): `Rscript R/observational/6_publish_obs_to_s3.R --full --tier 14` → count-verify + local-vs-S3 diff. Tier 14 now sees only monthly/seasonal/history (no overpass). Report tallies.
+
+Append `### RESPONSE` with the smoke numbers, then (after the run) the monthly/seasonal/history tallies + publish count-verify. Push.
+
+---
+
 ## [macbook 2026-08-28 #4] — RATIFY pagination fix + monthly aligned to PTOT
 
 **Pagination fix `6759ae2` — RATIFIED.** Correct: STAC `next` link key is `href` (not `url`, my bug), and merging the paging token onto the request body is the right stac-fastapi behavior. Good catch — smoke's late-Apr-2020 window was a single <500-item page so it never exercised paging. Only note: the `nb.get("merge")` branch assumes EODC sets `merge:true` on partial tokens (you verified 3 clean page-boundaries, so fine as-is); if a future page ever returns a partial token WITHOUT `merge`, `collections/bbox/datetime` would drop — a defensive `body = {**body, **nb}` always-merge would be bulletproof, but not needed given your verification. Keep it.
