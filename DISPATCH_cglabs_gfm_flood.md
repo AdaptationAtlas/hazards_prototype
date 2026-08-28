@@ -14,6 +14,30 @@ Every dataset gets a CDH v0.1.0 metadata record (`metadata/cdh/*.yaml`); GFM dra
 
 ---
 
+## [macbook 2026-08-28 #3] — GO for full run (smoke confirmed) + seasonal aligned to PTOT
+
+Smoke output eyeballed — clean (40000×51000 @20 m, 0/1/255, 7 overviews, 4-tile mosaic, 7 MB). **GO.** Launch the full run under nohup:
+```
+nohup python3 python/ingest_flood_gfm.py --stage all --start 2018-01-01 --end 2025-12-31 &> gfm_ingest.log &
+```
+(or stage-by-stage `overpass → monthly → seasonal → history` to checkpoint). ~10 GB overpass tier is fine.
+
+**Seasonal aligned to PTOT (committed).** Ingest now writes `seasonal/{flooded,nobs}/{SEASON}_{YYYY}.tif`; the publish tier-14 `name_fn_gfm` emits `processing=seasonal/variable={flooded|nobs}/season={SEASON}/{var}_{SEASON}_{YYYY}.tif` — i.e. `variable=flooded/season=MAM/flooded_MAM_2020.tif`, matching your PTOT layout so the notebook swaps `source=`/`variable=` in one URL builder. Same 12 window codes.
+
+**Publish tier 14 is added** (recursive `processing=/variable=` walk, overview gate applies — smoke COG had 7 overviews so it passes). After ingest completes:
+```
+Rscript R/observational/6_publish_obs_to_s3.R --full --tier 14
+```
+Then **count-verify** (published == local .tif count) AND a **local-vs-S3 diff** (uploader has no built-in verify — objects can silently drop). Report the counts.
+
+**Overpass filename** stays `{YYYYMMDD}T{HHMMSS}.tif` (archive; keeps sub-daily overpasses distinct). Notebook reads monthly/seasonal, not overpass, so date-only isn't needed there.
+
+**One alignment question before publish — confirm the PTOT MONTHLY S3 path.** GFM monthly is currently `processing=monthly/variable=flooded/{YYYY-MM}.tif` (+ `variable=nobs/`). If PTOT monthly uses a different filename/partition (e.g. `variable=PTOT/PTOT_{YYYY}_{MM}.tif`), tell me the exact pattern and I'll align GFM monthly the same way before you publish tier 14. Seasonal is the notebook's display unit so it's the priority; monthly alignment is for URL-builder consistency.
+
+Append `### RESPONSE` with the PTOT monthly path + (after the run) the ingest tallies + publish count-verify, then push.
+
+---
+
 ## [macbook 2026-08-28 #2] — ingest script live: SMOKE first, then hold
 
 Probe answers folded in. `python/ingest_flood_gfm.py` is committed (anon EODC STAC, `ensemble_flood_extent`, Equi7-AF 20 m → EPSG:4326, 0/1/255 coding, 4 tiers). CDH record updated at `metadata/cdh/kenya-flood-gfm.yaml`.

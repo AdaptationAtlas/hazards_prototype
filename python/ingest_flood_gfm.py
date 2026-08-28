@@ -8,7 +8,7 @@ then monthly, then 3-month seasonal; + optional full-record history):
 
   1. overpass  processing=overpass/variable=flooded/{YYYY-MM-DDTHHMMSSZ}.tif   (native ~20 m, per S1 acquisition swath)
   2. monthly   processing=monthly/variable={flooded,nobs}/{YYYY-MM}.tif        (~111 m: occurrence + valid-obs count)
-  3. seasonal  processing=seasonal/variable={flooded,nobs}/{YYYY-WWW}.tif       (rolling 3-month, 12 windows)
+  3. seasonal  processing=seasonal/variable={flooded,nobs}/season={SEASON}/{var}_{SEASON}_{YYYY}.tif  (rolling 3-month, 12 windows; PTOT-aligned)
   4. history   processing=history/variable={frequency,footprint}.tif           (full-record roll-up, optional layer)
 
 Source (cglabs GFM probe, DISPATCH_cglabs_gfm_flood.md #1 — anonymous, no auth):
@@ -241,8 +241,9 @@ def stage_seasonal(root, overwrite):
         if not all(k in have for k in keys):
             continue                                                            # window incomplete at record edge
         code = SEASONS[month]
-        fl_out = os.path.join(fl_s, f"{year:04d}-{code}.tif")
-        nb_out = os.path.join(nb_s, f"{year:04d}-{code}.tif")
+        # {SEASON}_{YYYY} matches PTOT seasonal order so name_fn can build the season= partition
+        fl_out = os.path.join(fl_s, f"{code}_{year:04d}.tif")
+        nb_out = os.path.join(nb_s, f"{code}_{year:04d}.tif")
         if not overwrite and os.path.exists(fl_out) and os.path.exists(nb_out):
             continue
         flood_any = np.zeros((H, W), np.uint8)
@@ -260,7 +261,7 @@ def stage_seasonal(root, overwrite):
         flooded = np.where(seen, flood_any, NODATA).astype(np.uint8)
         write_cog(fl_out, flooded, "uint8", NODATA, "nearest")
         write_cog(nb_out, np.minimum(obs, 65535).astype(np.uint16), "uint16", 0, "average")
-        log(f"  {year}-{code}: {keys} -> seasonal flooded+nobs")
+        log(f"  {code}_{year}: {keys} -> seasonal flooded+nobs")
     log("STAGE seasonal DONE")
 
 

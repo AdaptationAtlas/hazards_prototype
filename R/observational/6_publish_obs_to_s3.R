@@ -473,7 +473,7 @@ name_fn_hotosm <- function(x) {
 # GFM flood COGs (Tier 14, type=flood/source=glofas-gfm). RECURSIVE tree under gfm_flood/:
 #   overpass/{ts}.tif            -> processing=overpass/variable=flooded/{ts}.tif
 #   monthly/{flooded,nobs}/*.tif -> processing=monthly/variable={flooded|nobs}/*.tif
-#   seasonal/{flooded,nobs}/*.tif-> processing=seasonal/variable={flooded|nobs}/*.tif
+#   seasonal/{flooded,nobs}/{SEASON}_{YYYY}.tif -> processing=seasonal/variable={..}/season={SEASON}/{var}_{SEASON}_{YYYY}.tif  (PTOT-aligned)
 #   history/{frequency,footprint}.tif -> processing=history/variable={frequency|footprint}/*.tif
 # VECTORIZED (uploader calls name_fn on the whole path vector) — per-element via vapply.
 name_fn_gfm <- function(x) {
@@ -490,9 +490,20 @@ name_fn_gfm <- function(x) {
     if (!level %in% valid_levels) {
       stop(sprintf("Unexpected GFM processing level '%s' in %s", level, p))
     }
+    if (level == "seasonal") {
+      var  <- rel[2]                                     # flooded|nobs
+      base <- tools::file_path_sans_ext(fname)          # {SEASON}_{YYYY}
+      season <- sub("_.*$", "", base)
+      year   <- sub("^.*_", "", base)
+      if (!grepl("^[A-Z]{3}$", season) || !grepl("^[0-9]{4}$", year)) {
+        stop(sprintf("Unexpected GFM seasonal filename (expected {SEASON}_{YYYY}.tif): %s", fname))
+      }
+      return(sprintf("processing=seasonal/variable=%s/season=%s/%s_%s_%s.tif",
+                     var, season, var, season, year))
+    }
     var <- if (level == "overpass") "flooded"
            else if (level == "history") tools::file_path_sans_ext(fname)
-           else rel[2]                                   # monthly/seasonal: flooded|nobs
+           else rel[2]                                   # monthly: flooded|nobs
     sprintf("processing=%s/variable=%s/%s", level, var, fname)
   }, character(1), USE.NAMES = FALSE)
 }

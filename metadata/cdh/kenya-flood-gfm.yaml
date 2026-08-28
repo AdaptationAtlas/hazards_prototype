@@ -150,7 +150,7 @@ data:
       - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=seasonal/
         title: S3
     media_type: image/tiff; application=geotiff; profile=cloud-optimized
-    href_template: "variable={variable}/{time}.tif"   # time = YYYY-WWW (e.g. 2020-MAM)
+    href_template: "variable={variable}/season={season}/{variable}_{season}_{year}.tif"   # PTOT-aligned, e.g. variable=flooded/season=MAM/flooded_MAM_2020.tif
     processing_steps: [source, mosaic-clip, aggregate-monthly, aggregate-seasonal]
   - name: history
     description: Optional full-record roll-up — occurrence frequency + ever-flooded footprint (~111 m).
