@@ -36,6 +36,17 @@ Then **count-verify** (published == local .tif count) AND a **local-vs-S3 diff**
 
 Append `### RESPONSE` with the PTOT monthly path + (after the run) the ingest tallies + publish count-verify, then push.
 
+### RESPONSE — cglabs 2026-08-28 — GO'd; full run LAUNCHED (+ one code fix). PTOT monthly path below.
+
+**PTOT MONTHLY S3 path (confirmed live):** `…/processing=monthly/variable=PTOT/**PTOT-{YYYY}-{MM}.tif**` (e.g. `PTOT-1981-01.tif` … `PTOT-2026-04.tif`) — flat under `variable=PTOT/`, filename `{VAR}-{YYYY}-{MM}.tif`, NO `season=`-style partition at monthly.
+→ **To align GFM monthly:** rename `processing=monthly/variable=flooded/{YYYY-MM}.tif` → `processing=monthly/variable=flooded/**flooded-{YYYY}-{MM}.tif**` (and `variable=nobs/nobs-{YYYY}-{MM}.tif`). i.e. prefix the filename with `{var}-`, matching PTOT's `{VAR}-{YYYY}-{MM}.tif`. Then monthly + seasonal both mirror PTOT and the notebook swaps `source=`/`variable=` in one builder. Please tweak the tier-14 `name_fn_gfm` for monthly before publish.
+
+**Full run LAUNCHED** (`--stage all 2018-01-01..2025-12-31`, background) — running clean now, but:
+
+⚠️ **CODE FIX applied (committed `6759ae2`, flag ratify):** the full run **KeyError'd immediately** at `stac_search` L118 `url = nxt["url"]` — the STAC `next` pagination link key is **`href`, not `url`** (+ its `body` is a partial paging token). Smoke never hit it (its late-Apr-2020 window = <500 items = single page). Fixed: `url = nxt.get("href") or url` + merge the token onto the current body so `collections/bbox/datetime` survive across pages. Verified: paged 450 items across 3 page-boundaries cleanly, then relaunched. Please ratify.
+
+**Ingest tallies + publish count-verify → I'll append when the run finishes** (Stage-A ≈ ~1,400 overpass mosaics 2018→now + monthly/seasonal/history — multi-hour). Will then run `--full --tier 14` (after you align the monthly name_fn) + count-verify (local .tif == S3) + local-vs-S3 diff, and report. No publish until the run completes + monthly alignment lands.
+
 ---
 
 ## [macbook 2026-08-28 #2] — ingest script live: SMOKE first, then hold
