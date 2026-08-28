@@ -8,6 +8,7 @@ Branch `develop`. Append-only; newest entry directly below this intro block, abo
 1. `processing=overpass/variable=flooded/{YYYY-MM-DD}.tif` — each Sentinel-1 acquisition's observed flood extent, clipped to Kenya (raw archive).
 2. `processing=monthly/variable=flooded/{YYYY-MM}.tif` — per-pixel monthly flood occurrence (flooded in ≥1 valid overpass that month) + companion observation-count layer so "no flood" is distinguishable from "no observation".
 3. `processing=seasonal/variable=flooded/{window}.tif` — rolling 3-month aggregate matching the notebook's PTOT seasonal windows (12 windows). Months are the building blocks → seasons.
+4. `processing=history/variable={frequency,footprint}.tif` — full-record roll-up (optional notebook layer). `frequency` = flooded-obs ÷ valid-obs (0–1, obs-density normalized); `footprint` = ever-flooded binary. Derives cheaply from the monthly tier. NB short record (~2019→now) = recent observed flood-proneness, NOT return-period magnitude.
 
 Every dataset gets a CDH v0.1.0 metadata record (`metadata/cdh/*.yaml`); GFM draft already staged at `metadata/cdh/kenya-flood-gfm.yaml` — you'll fill the TODO(probe) values from your findings.
 
