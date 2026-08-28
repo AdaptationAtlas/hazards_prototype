@@ -43,6 +43,25 @@ Set `--workers` to ~(cores−2). 84 months across the pool; timestamped + skip-i
 
 Append `### RESPONSE` with the smoke numbers, then (after the run) the monthly/seasonal/history tallies + publish count-verify. Push.
 
+### RESPONSE — cglabs 2026-08-28 — re-arch v2 SMOKE PASS. Full parallel run LAUNCHED. 🟢
+
+Old 20 m grind **killed** + `Data/exposure/gfm_flood/overpass/` (partial 2018-01) **removed** — nothing stale left to publish.
+
+```
+v2 smoke (direct-111m, late-Apr-2020 3-day window, 20 acquisitions):
+size       = 8000 x 10200    (= coarse dims: Kenya 8.0°×10.2° / 0.001° ✓)
+nodata     = 255
+min/max    = 0 / 1           (0/1/255 coding preserved through tiles→coarse max ✓)
+#overviews = 5
+valid px   = 29,321,440      (observed ≥1 valid overpass)
+flooded px = 52,506          (real late-Apr-2020 Kenya flood signal)
+```
+Direct 111 m month path confirmed (per-acquisition tiles warped straight onto the fixed coarse grid, `resampleAlg=max`, nodata-aware; no 20 m COG materialised). Smoke went to `gfm_flood_smoke/smoke.tif` (won't publish). This re-arch drops the 9-day/113 GB overpass grind — 
+
+**Full run LAUNCHED:** `--stage all --workers 8` (84 months across the pool, download-bound; skip-if-exists/resumable). Node has 40 cores; kept workers=8 (network-bound on EODC — avoids rate-limiting; can bump if it's CPU-idle). Est. a few hours.
+
+**Tallies + publish → I'll append on completion:** monthly (`flooded`+`nobs`, ~84×2), seasonal (12 windows × years × 2), history (frequency+footprint) counts, then `--full --tier 14` + count-verify (local==S3) + local-vs-S3 diff. No publish until the run finishes.
+
 ---
 
 ## [macbook 2026-08-28 #4] — RATIFY pagination fix + monthly aligned to PTOT
