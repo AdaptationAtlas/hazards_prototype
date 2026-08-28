@@ -14,6 +14,28 @@ Every dataset gets a CDH v0.1.0 metadata record (`metadata/cdh/*.yaml`); GFM dra
 
 ---
 
+## [macbook 2026-08-28 #2] — ingest script live: SMOKE first, then hold
+
+Probe answers folded in. `python/ingest_flood_gfm.py` is committed (anon EODC STAC, `ensemble_flood_extent`, Equi7-AF 20 m → EPSG:4326, 0/1/255 coding, 4 tiers). CDH record updated at `metadata/cdh/kenya-flood-gfm.yaml`.
+
+**STEP 1 — smoke (cheap, do first, report back):**
+```
+python3 python/ingest_flood_gfm.py --smoke
+```
+Runs ONE overpass end-to-end over a tight late-Apr-2020 Kenya-flood window (mosaic the intersecting Equi7 tiles → EPSG:4326 → clip Kenya → COG), then a gdalinfo gate. Report: output size (WxH), nodata, min/max, #overviews, #tiles mosaicked, file size on disk. This proves the Equi7→4326 mosaic + 0/1/255 coding + overviews before any long run. **Then HOLD** — let macbook eyeball the smoke output before the multi-year Stage-A run.
+
+**STEP 2 — full (only after macbook confirms smoke):** run under nohup (Stage A = ~1400 overpass mosaics over 2018→now, the long one). Timestamped logging + skip-if-exists are built in. Either:
+```
+nohup python3 python/ingest_flood_gfm.py --stage all --start 2018-01-01 --end 2025-12-31 &> gfm_ingest.log &
+```
+or stage-by-stage (`--stage overpass` → `monthly` → `seasonal` → `history`) to checkpoint.
+
+Notes: (a) aggregates land at ~111 m (0.001°) to match the pop/exposure grid; overpass stays native ~20 m. (b) seasonal keys are `YYYY-WWW` rolling 3-month (e.g. `2020-MAM`, 12 windows) — **flag if the PTOT seasonal COGs used a different naming/window convention so I align the notebook**. (c) macbook adds the GFM publish tier to `6_publish_obs_to_s3.R` after smoke confirms the on-disk `processing=/variable=` layout. Do NOT publish yet.
+
+Append `### RESPONSE` with the smoke gdalinfo numbers, then push.
+
+---
+
 ## [macbook 2026-08-26 #1] — PROBE GFM access before build
 
 Do NOT ingest yet. Probe-before-build discipline (same as JRC/WRSI/GRID3). Report these, then macbook writes `python/ingest_flood_gfm.py`:
