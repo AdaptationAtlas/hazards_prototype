@@ -1,0 +1,149 @@
+# CDH metadata record — Kenya GFM observed flood extent (replaces GFD in KE-ENSO Explorer).
+# Standard: CGIAR Climate Data Hub v0.1.0. Validate:
+#   uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json metadata/cdh/kenya-flood-gfm.yaml
+# TODO(probe) = fill from the cglabs GFM access probe (DISPATCH_cglabs_gfm_flood.md #1).
+cdh_schema_version: v0.1.0
+
+id: kenya-flood-gfm
+title: Kenya Observed Flood Extent (Copernicus GFM, Sentinel-1)
+description: >
+  Observed flood extent for Kenya derived from the Copernicus Emergency Management
+  Service GloFAS Global Flood Monitoring (GFM) product, which classifies flooding from
+  every Sentinel-1 SAR acquisition. Delivered as three tiers: per-overpass extent, a
+  monthly flood-occurrence aggregate, and a rolling 3-month (seasonal) aggregate aligned
+  to the KE-ENSO Explorer's precipitation seasons. Replaces the MODIS-based Global Flood
+  Database (which ended 2018) with a cloud-penetrating, continuously updated SAR record.
+resource_type: dataset
+license: LicenseRef-Copernicus-EMS   # TODO(probe): confirm exact wording / SPDX-mappability
+
+keywords:
+  - flood
+  - inundation
+  - Sentinel-1
+  - SAR
+  - Kenya
+  - Copernicus
+  - GloFAS
+  - flood monitoring
+
+contact:
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: Copernicus Emergency Management Service (CEMS)
+    url: https://global-flood.emergency.copernicus.eu/
+    roles: [licensor, producer]
+
+citation:
+  title: Copernicus GloFAS Global Flood Monitoring (GFM) — Kenya observed flood extent
+  authors:
+    - Copernicus Emergency Management Service
+  date: "2026"   # TODO(probe): access/retrieval year
+  publisher: Copernicus Emergency Management Service (CEMS)
+  url: https://global-flood.emergency.copernicus.eu/technical-information/glofas-gfm/
+
+created: "2026-08-26"
+updated: "2026-08-26"
+
+spatial:
+  bbox: [33.9, -4.7, 41.9, 5.5]
+  crs: EPSG:4326
+  geography: [kenya]   # TODO: verify id against vocab/geography.json (UN M49)
+  resolution:
+    - type: xy
+      value: 20            # TODO(probe): confirm native GFM resolution (~20 m)
+      unit: meter
+      label: ~20 m (Sentinel-1 native)
+
+temporal:
+  start_date: "2019-01-01"   # TODO(probe): confirm GFM backfill start for Kenya
+  end_date: null             # open-ended (continuously updated)
+  resolution:
+    step: P1M
+    unit: monthly
+    note: >
+      Underlying observations are per Sentinel-1 overpass (irregular, ~6–12 day revisit);
+      aggregated to monthly flood occurrence and rolling 3-month seasonal windows.
+
+dimensions:
+  - name: time
+    type: temporal
+    description: Aggregation period. Overpass tier keyed YYYY-MM-DD; monthly YYYY-MM; seasonal by 3-month window.
+    step: P1M
+
+variables:
+  - name: flooded
+    dimensions: [time]
+    description: >
+      Flood occurrence, permanent/reference water excluded. Overpass tier is binary flood/
+      no-flood per valid pixel; monthly/seasonal tiers give occurrence (flooded in >=1 valid
+      overpass in the period). Companion 'nobs' layer gives valid-observation count so
+      no-flood is distinguishable from no-observation.
+    data_type: uint8
+    unit: "1"
+    note: SAR false positives possible (wind-roughened water, radar shadow, wet soil, urban).
+
+processing:
+  - id: source
+    description: >
+      Copernicus CEMS GloFAS Global Flood Monitoring — per-Sentinel-1 SAR acquisition flood
+      classification (ensemble of 3 algorithms; pixel flooded when >=2 agree), permanent
+      water excluded.
+    derived_from:
+      - title: Sentinel-1 SAR (Copernicus)
+        url: https://sentinels.copernicus.eu/web/sentinel/missions/sentinel-1
+      - title: Copernicus GloFAS Global Flood Monitoring (GFM)
+        url: https://global-flood.emergency.copernicus.eu/technical-information/glofas-gfm/
+  - id: clip-kenya
+    description: Clip each overpass observed-flood-extent to the Kenya bbox; reproject to EPSG:4326; write COG with internal overviews.
+    date: "2026-08-26"
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: python/ingest_flood_gfm.py   # TODO: pin commit once written
+  - id: aggregate-monthly
+    description: Per-pixel monthly flood occurrence (flooded in >=1 valid overpass) plus valid-observation count.
+  - id: aggregate-seasonal
+    description: Rolling 3-month occurrence aggregate matching the KE-ENSO precipitation seasons.
+
+data:
+  - name: overpass
+    description: Per-Sentinel-1-acquisition observed flood extent, clipped to Kenya.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/type=flood/source=glofas-gfm/region=kenya/processing=overpass/variable=flooded/
+        title: S3
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    href_template: "{time}.tif"   # time = YYYY-MM-DD
+    processing_steps: [source, clip-kenya]
+    nodata: 255
+  - name: monthly
+    description: Monthly flood-occurrence COGs (+ nobs companion).
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/type=flood/source=glofas-gfm/region=kenya/processing=monthly/variable=flooded/
+        title: S3
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    href_template: "{time}.tif"   # time = YYYY-MM
+    processing_steps: [source, clip-kenya, aggregate-monthly]
+    nodata: 255
+  - name: seasonal
+    description: Rolling 3-month (seasonal) flood-occurrence COGs for the notebook.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/type=flood/source=glofas-gfm/region=kenya/processing=seasonal/variable=flooded/
+        title: S3
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    processing_steps: [source, clip-kenya, aggregate-monthly, aggregate-seasonal]
+    nodata: 255
+
+cdh:
+  domain: [hydrology]
+  usage:
+    intended_uses:
+      - Overlaying observed flood extent with population and asset exposure at Kenya admin levels.
+      - Characterising seasonal/ENSO-linked flood occurrence for the KE-ENSO Explorer.
+    not_recommended_for:
+      - use: Splicing into a single continuous flood time series with the pre-2018 Global Flood Database.
+        reason: >
+          GFD is MODIS optical event-triggered at 250 m; GFM is Sentinel-1 SAR continuous at ~20 m.
+          A join introduces a methodological break — apparent post-2018 increases would be artefacts.
+        use_instead: Analyse GFM on its own; do not compute trends across the GFD/GFM boundary.
+  series: KE-ENSO Explorer exposure layers
