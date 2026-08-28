@@ -142,7 +142,7 @@ data:
       - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=monthly/
         title: S3
     media_type: image/tiff; application=geotiff; profile=cloud-optimized
-    href_template: "variable={variable}/{time}.tif"   # variable in {flooded,nobs}; time = YYYY-MM
+    href_template: "variable={variable}/{variable}-{time}.tif"   # PTOT-aligned, e.g. variable=flooded/flooded-2020-04.tif; time = YYYY-MM
     processing_steps: [source, mosaic-clip, aggregate-monthly]
   - name: seasonal
     description: Rolling 3-month (seasonal) flood occurrence + obs-count for the notebook (~111 m).

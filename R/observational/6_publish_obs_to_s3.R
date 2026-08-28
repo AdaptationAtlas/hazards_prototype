@@ -472,7 +472,7 @@ name_fn_hotosm <- function(x) {
 
 # GFM flood COGs (Tier 14, type=flood/source=glofas-gfm). RECURSIVE tree under gfm_flood/:
 #   overpass/{ts}.tif            -> processing=overpass/variable=flooded/{ts}.tif
-#   monthly/{flooded,nobs}/*.tif -> processing=monthly/variable={flooded|nobs}/*.tif
+#   monthly/{flooded,nobs}/{YYYY-MM}.tif -> processing=monthly/variable={flooded|nobs}/{var}-{YYYY-MM}.tif  (PTOT-aligned)
 #   seasonal/{flooded,nobs}/{SEASON}_{YYYY}.tif -> processing=seasonal/variable={..}/season={SEASON}/{var}_{SEASON}_{YYYY}.tif  (PTOT-aligned)
 #   history/{frequency,footprint}.tif -> processing=history/variable={frequency|footprint}/*.tif
 # VECTORIZED (uploader calls name_fn on the whole path vector) — per-element via vapply.
@@ -501,9 +501,13 @@ name_fn_gfm <- function(x) {
       return(sprintf("processing=seasonal/variable=%s/season=%s/%s_%s_%s.tif",
                      var, season, var, season, year))
     }
+    if (level == "monthly") {
+      var <- rel[2]                                      # flooded|nobs
+      # PTOT-aligned leaf: {var}-{YYYY}-{MM}.tif (e.g. flooded-2020-04.tif), mirroring PTOT-YYYY-MM.tif
+      return(sprintf("processing=monthly/variable=%s/%s-%s", var, var, fname))
+    }
     var <- if (level == "overpass") "flooded"
-           else if (level == "history") tools::file_path_sans_ext(fname)
-           else rel[2]                                   # monthly: flooded|nobs
+           else tools::file_path_sans_ext(fname)         # history: frequency|footprint
     sprintf("processing=%s/variable=%s/%s", level, var, fname)
   }, character(1), USE.NAMES = FALSE)
 }

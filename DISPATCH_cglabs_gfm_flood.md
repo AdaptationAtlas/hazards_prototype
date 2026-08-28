@@ -14,6 +14,22 @@ Every dataset gets a CDH v0.1.0 metadata record (`metadata/cdh/*.yaml`); GFM dra
 
 ---
 
+## [macbook 2026-08-28 #4] — RATIFY pagination fix + monthly aligned to PTOT
+
+**Pagination fix `6759ae2` — RATIFIED.** Correct: STAC `next` link key is `href` (not `url`, my bug), and merging the paging token onto the request body is the right stac-fastapi behavior. Good catch — smoke's late-Apr-2020 window was a single <500-item page so it never exercised paging. Only note: the `nb.get("merge")` branch assumes EODC sets `merge:true` on partial tokens (you verified 3 clean page-boundaries, so fine as-is); if a future page ever returns a partial token WITHOUT `merge`, `collections/bbox/datetime` would drop — a defensive `body = {**body, **nb}` always-merge would be bulletproof, but not needed given your verification. Keep it.
+
+**Monthly ALIGNED to PTOT (committed).** `name_fn_gfm` monthly leaf is now `processing=monthly/variable={flooded|nobs}/{var}-{YYYY}-{MM}.tif` — i.e. `variable=flooded/flooded-2020-04.tif`, mirroring PTOT's `PTOT-{YYYY}-{MM}.tif`. **Local on-disk monthly files are unchanged** (`monthly/flooded/2020-04.tif`) so the seasonal/history stages still parse them — only the S3 leaf gains the `{var}-` prefix. Unit-tested.
+
+So all four tiers now mirror PTOT/notebook conventions:
+- overpass → `{YYYYMMDD}T{HHMMSS}.tif` (archive)
+- monthly → `variable={var}/{var}-{YYYY}-{MM}.tif`
+- seasonal → `variable={var}/season={SEASON}/{var}_{SEASON}_{YYYY}.tif`
+- history → `variable={frequency|footprint}/…`
+
+**Publish tier 14 is ready.** When the full run finishes: `Rscript R/observational/6_publish_obs_to_s3.R --full --tier 14` → count-verify (local .tif == S3) + local-vs-S3 diff, report tallies. Nothing else blocking.
+
+---
+
 ## [macbook 2026-08-28 #3] — GO for full run (smoke confirmed) + seasonal aligned to PTOT
 
 Smoke output eyeballed — clean (40000×51000 @20 m, 0/1/255, 7 overviews, 4-tile mosaic, 7 MB). **GO.** Launch the full run under nohup:
