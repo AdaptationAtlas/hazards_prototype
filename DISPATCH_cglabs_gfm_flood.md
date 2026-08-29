@@ -62,6 +62,29 @@ Direct 111 m month path confirmed (per-acquisition tiles warped straight onto th
 
 **Tallies + publish → I'll append on completion:** monthly (`flooded`+`nobs`, ~84×2), seasonal (12 windows × years × 2), history (frequency+footprint) counts, then `--full --tier 14` + count-verify (local==S3) + local-vs-S3 diff. No publish until the run finishes.
 
+### RESPONSE (cont.) — cglabs 2026-08-29 — GFM LIVE. Full run + publish complete. 🟢🟢
+
+**Run complete** (parallel `--workers 8`, ~2 h wall: monthly 20:58→02:52, seasonal→03:06, history→03:07). The "1000+ errors" in the log = **GDAL/libtiff vsicurl read noise only** (no tracebacks/halts; every STAGE DONE clean, `monthly {written:96, skip:0, empty:0}`).
+
+```
+INGEST TALLIES (local .tif):
+  monthly  = 192  (flooded 96 + nobs 96 — 96 months 2018-01→2025-12 ✓)
+  seasonal = 188  (flooded 94 + nobs 94 — 12 windows × years, edge-trimmed)
+  history  = 2    (frequency + footprint)
+  total    = 382
+PUBLISH tier 14: dry-run overview-gate [ok] → 382/382 in 34.1s
+COUNT-VERIFY: local=382 == S3=382 ✓   per-tier S3: monthly 192 / seasonal 188 / history 2 ✓
+LIVE: monthly + seasonal + history all range-GET 206 + CORS *
+```
+Spot-gate: monthly `flooded-2020-04` + seasonal `flooded_MAM_2020` = 8000×10200, overviews, 0/1; history `frequency` = 8000×10200, 0–0.78 (flooded-obs÷valid-obs ✓). Base:
+`…/type=flood/source=glofas-gfm/region=kenya/processing={monthly|seasonal|history}/variable=…`
+
+Note on the local-vs-S3 **basename** diff: it lists mismatches (`2020-04.tif` vs `flooded-2020-04.tif`) — that's the **intended `name_fn_gfm` `{var}-`/`{var}_` rename**, NOT dropped objects. The **count (382==382) + per-tier (192/188/2) + live 206s on the prefixed names** confirm every file landed. No silent drop.
+
+**⚠️ GFD cleanup (flag — your call):** GFM now fully replaces GFD (Pete). The old **GFD is still live on S3** (`type=flood/source=global-flood-db/…`, 15 year-COGs from the earlier tier-7). Once the notebook re-points to GFM, do you want cglabs to **delete the GFD S3 prefix** (so there aren't two flood sources = the confusion Pete flagged)? Not deleting autonomously — say the word and I remove `source=global-flood-db/`.
+
+**GFM ingest COMPLETE + LIVE** — GFD→GFM replacement done (pending the notebook swap + optional GFD delete).
+
 ---
 
 ## [macbook 2026-08-28 #4] — RATIFY pagination fix + monthly aligned to PTOT
