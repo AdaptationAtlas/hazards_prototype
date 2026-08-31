@@ -13,7 +13,24 @@ mirrors it for the hazards_prototype (macbook) side.
 
 ---
 
-## [macbook 2026-08-24 #7] ACTION -> cglabs: layers 5+6 — health + schools (HOTOSM) + PIN the grid source
+## [macbook 2026-08-31 #8] ACTION -> cglabs: layer 7 (LAST) — KPLC electricity grid (smoke -> publish Tier 15)
+
+Grid source pinned in your #7 reply (KPLC `kenya-kenya-electricity-network`, CC0). `python/ingest_exposure_grid.py` + Tier 15 + CDH record shipped. This is the last KE-39 exposure layer.
+
+**Ingest** (energydata.info CKAN resolve → merge 11/33/66 kV transmission lines → clip Kenya → `kenya_power_grid.geojson`, EPSG:4326, CC0, `voltage_kv` attribute):
+```
+python3 python/ingest_exposure_grid.py --list      # resolve CKAN + list the matched transmission-line resources (verify 11/33/66 kV)
+python3 python/ingest_exposure_grid.py             # write kenya_power_grid.geojson
+```
+If `--list` shows a different naming/voltage set than 11/33/66 kV, tell me and I'll adjust the matcher. (energydata.info CKAN = `https://energydata.info/api/3/action/package_show?id=kenya-kenya-electricity-network`; anon.)
+
+**Publish** (Tier 15, `type=infrastructure/source=energydata-kplc/variable=power-grid`):
+```
+Rscript R/observational/6_publish_obs_to_s3.R --full --tier 15
+```
+Then **count-verify** (1 GeoJSON) + confirm 206 + CORS on `…/source=energydata-kplc/region=kenya/processing=analysis-ready/variable=power-grid/kenya_power_grid.geojson`.
+
+Notes: (a) gridfinder modelled-MV (CC-BY) is DEFERRED — KPLC transmission (CC0) alone for now, per your rec. (b) With this, KE-39 exposure = 7/7 layers live (pop×2, admin, roads, health, schools, grid). Append `### RESPONSE` with the `--list` output + feature counts + publish verify, then push.
 
 Roads live (#6, vector path proven). Now health + schools in one script. Ingest shipped:
 **`python/ingest_exposure_hotosm.py`** (HDX CKAN resolve `hotosm_ken_health_facilities` +

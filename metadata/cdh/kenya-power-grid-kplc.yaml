@@ -1,0 +1,87 @@
+# CDH v0.1.0 metadata record — KPLC electricity transmission grid (KE-39 exposure overlay).
+# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
+cdh_schema_version: v0.1.0
+
+id: kenya-power-grid-kplc
+title: Kenya Electricity Transmission Grid (KPLC)
+description: >
+  Kenya's official electricity transmission network (11 kV, 33 kV, 66 kV lines) from energydata.info
+  (KPLC / Kenya Power), merged into one line layer with a voltage attribute. The power-infrastructure
+  overlay of the KE-ENSO Explorer flood/drought exposure. gridfinder's modelled MV distribution grid
+  (CC-BY) is a deferred complement, not included here.
+resource_type: dataset
+license: CC0-1.0
+
+keywords: [electricity, transmission grid, power lines, infrastructure, KPLC, energydata, exposure, Kenya]
+
+note: >
+  Transmission lines only (11/33/66 kV) — not distribution/MV. For modelled MV coverage, add gridfinder
+  (CC-BY) later. CC0 = no attribution required.
+
+contact:
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: Kenya Power (KPLC) / energydata.info
+    url: https://energydata.info/dataset/kenya-kenya-electricity-network
+    roles: [licensor, producer]
+
+citation:
+  title: "Kenya Electricity Network (KPLC transmission lines)"
+  authors: [Kenya Power and Lighting Company]
+  date: "2026"                       # energydata.info retrieval year # verify dataset vintage
+  publisher: energydata.info
+  url: https://energydata.info/dataset/kenya-kenya-electricity-network
+
+created: "2026-08-31"
+updated: "2026-08-31"
+
+spatial:
+  bbox: [33.9, -4.7, 41.9, 5.5]
+  crs: EPSG:4326
+  geography: [kenya]
+  geometry_column: geometry
+  resolution:
+    - type: point
+      unit: vector
+      label: LineString features (transmission lines)
+
+temporal:
+  date: "2026"                       # snapshot # verify
+  resolution: {step: null, unit: snapshot}
+
+variables:
+  - name: voltage_kv
+    description: Nominal line voltage (11, 33, or 66 kV).
+    data_type: int16
+    unit: kV
+
+processing:
+  - id: source
+    description: energydata.info KPLC transmission network, per-voltage GeoJSON (11/33/66 kV).
+    derived_from:
+      - title: energydata.info kenya-kenya-electricity-network
+        url: https://energydata.info/dataset/kenya-kenya-electricity-network
+  - id: merge-clip
+    description: Resolve CKAN resources, add voltage_kv, concat 11/33/66 kV, force EPSG:4326, clip Kenya bbox, write GeoJSON.
+    code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "python/ingest_exposure_grid.py"}
+
+data:
+  - name: power-grid
+    description: Merged transmission grid GeoJSON (LineString, voltage_kv attribute).
+    locations:
+      - {url: "https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastructure/source=energydata-kplc/region=kenya/processing=analysis-ready/variable=power-grid/kenya_power_grid.geojson", title: S3}
+    media_type: application/geo+json
+    processing_steps: [source, merge-clip]
+
+cdh:
+  domain: [socioeconomic]
+  usage:
+    intended_uses:
+      - Power-infrastructure exposure to flood/drought when overlaid with hazard layers.
+    not_recommended_for:
+      - use: Treating it as the full electricity network (incl. distribution/MV).
+        reason: Transmission lines only (11/33/66 kV).
+        use_instead: gridfinder modelled MV grid for distribution-level coverage.
+  series: KE-ENSO Explorer exposure layers
