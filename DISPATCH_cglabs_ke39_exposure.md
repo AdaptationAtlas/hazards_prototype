@@ -32,6 +32,42 @@ Then **count-verify** (1 GeoJSON) + confirm 206 + CORS on `…/source=energydata
 
 Notes: (a) gridfinder modelled-MV (CC-BY) is DEFERRED — KPLC transmission (CC0) alone for now, per your rec. (b) With this, KE-39 exposure = 7/7 layers live (pop×2, admin, roads, health, schools, grid). Append `### RESPONSE` with the `--list` output + feature counts + publish verify, then push.
 
+### RESPONSE — cglabs 2026-08-31 #8 — resolve-check done. ⚠️ HOLDING on 2 items (no build/publish yet).
+
+Ran `--list`. Two things to resolve before I bake:
+
+**1. `urllib` 403 (trivial, I'll fix).** energydata.info WAF blocks the default `Python-urllib/3.x` UA → `HTTP 403 Forbidden` on both `urlopen` (CKAN) and `urlretrieve` (downloads). curl w/ a browser UA = 200. Fix = add a UA header to both requests in `ingest_exposure_grid.py`:
+```python
+UA = {"User-Agent": "Mozilla/5.0 (atlas-exposure-ingest)"}
+# CKAN:
+req = urllib.request.Request(CKAN.format(id=DATASET), headers=UA)
+with urllib.request.urlopen(req, timeout=60) as r: pkg = json.load(r)["result"]
+# downloads (urlretrieve can't set headers — swap to urlopen):
+with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=120) as resp, open(local,"wb") as fh:
+    fh.write(resp.read())
+```
+I can apply this on cglabs (1-file, mechanical) unless you'd rather ship it from macbook.
+
+**2. Voltages DIFFER — your call (this is the real hold).** Dispatch expects **11/33/66 kV**. The CKAN dataset actually carries **five** transmission voltages + an unclassified layer. Current matcher (`transmission.*?(\d{2,3})kv` on the URL) matches **all five**:
+```
+MATCHED (dedup by voltage, current matcher):
+  11kV   name='11kV Network'   fmt=geojson
+  33kV   name='33kV Network'   fmt=geojson
+  66kV   name='66kV Network'   fmt=geojson
+  132kV  name='132kV Network'  fmt=geojson   <-- not in dispatch
+  220kV  name='220kV Network'  fmt=geojson   <-- not in dispatch
+  (also present, EXCLUDED: 'Unidentified Grid Network' — no voltage digits → no match)
+```
+So if I fix the UA and run as-is, `kenya_power_grid.geojson` gets 11/33/66/132/220 — NOT the 11/33/66 the dispatch names.
+
+**My rec: include all five (11/33/66/132/220).** For a flood/drought *exposure* overlay, **132 & 220 kV are the actual national transmission backbone** — the highest-value grid assets to flag as at-risk. Dropping them would exclude the most critical infrastructure. `voltage_kv` attribute already distinguishes them, so the notebook can filter/style by voltage. "Unidentified Grid Network" stays excluded (no voltage → can't attribute cleanly; it's the modelled/uncertain layer, akin to the deferred gridfinder).
+
+**Pick one, then I build+publish tier 15 + verify:**
+- **(A) all five** 11/33/66/132/220 — matcher already does this, just fix UA (my rec).
+- **(B) restrict to 11/33/66** — I add a voltage allow-list `{11,33,66}` to the matcher.
+
+Licence unaffected (whole dataset CC0-1.0). Holding for A/B.
+
 Roads live (#6, vector path proven). Now health + schools in one script. Ingest shipped:
 **`python/ingest_exposure_hotosm.py`** (HDX CKAN resolve `hotosm_ken_health_facilities` +
 `hotosm_ken_education_facilities` -> GeoJSON -> clip Kenya). Publish **Tier 13** (both files) ->
