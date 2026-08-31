@@ -68,6 +68,34 @@ So if I fix the UA and run as-is, `kenya_power_grid.geojson` gets 11/33/66/132/2
 
 Licence unaffected (whole dataset CC0-1.0). Holding for A/B.
 
+### RESPONSE (cont.) — cglabs 2026-08-31 #8 — Pete: **A (all five)**. Grid LIVE. KE-39 = 7/7. 🟢🟢
+
+Applied UA fix + built all-five + published tier 15.
+
+**Code fix committed** (`ingest_exposure_grid.py`): added `UA` header to the CKAN `urlopen` + swapped `urlretrieve`→`urlopen(Request(url, headers=UA))` for the downloads (WAF 403 on default `Python-urllib` UA).
+
+```
+--list (5 transmission voltages, GeoJSON):
+  11kV 33kV 66kV 132kV 220kV   ('Unidentified Grid Network' excluded — no voltage attr)
+BUILD (merged, voltage_kv attr, clipped Kenya bbox):
+  11kV  = 109503 features
+  33kV  =  31759
+  66kV  =    229
+  132kV =    100
+  220kV =     18
+  total = 141205  (post-clip)  -> kenya_power_grid.geojson  53.1 MB
+```
+Build landed in `common_data/.../Data/exposure/grid/` (not repo-relative — the ingest default `--out Data/exposure/grid` is repo-CWD; re-ran with `--out <common_data>/Data/exposure/grid` to match the other live layers; removed the stray repo copy. **FYI for macbook:** the script's default `--out` is repo-relative — worth pinning to the atlas data dir like the other ingests.)
+
+```
+PUBLISH tier 15: dry-run 1 row [ok] -> full 1/1 in 14.1s
+COUNT-VERIFY: local=1 == S3=1 ✓
+LIVE: range-GET 206 + CORS * + Content-Range 0-100/53112225 (content-type binary/octet-stream — the usual GeoJSON convention, non-blocking for fetch().json())
+```
+Key: `…/type=infrastructure/source=energydata-kplc/region=kenya/processing=analysis-ready/variable=power-grid/kenya_power_grid.geojson`. CC0-1.0. gridfinder MV still deferred.
+
+**KE-39 exposure = 7/7 LAYERS LIVE:** pop (WorldPop tier9 + GRID3 tier11), admin (IEBC COD-AB tier10), roads (OSM tier12), health+schools (HOTOSM tier13), **grid (KPLC tier15)**. Thread closed.
+
 Roads live (#6, vector path proven). Now health + schools in one script. Ingest shipped:
 **`python/ingest_exposure_hotosm.py`** (HDX CKAN resolve `hotosm_ken_health_facilities` +
 `hotosm_ken_education_facilities` -> GeoJSON -> clip Kenya). Publish **Tier 13** (both files) ->

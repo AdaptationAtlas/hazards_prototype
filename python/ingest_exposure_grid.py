@@ -31,6 +31,7 @@ import urllib.request
 
 CKAN = "https://energydata.info/api/3/action/package_show?id={id}"
 DATASET = "kenya-kenya-electricity-network"
+UA = {"User-Agent": "Mozilla/5.0 (atlas-exposure-ingest)"}  # energydata WAF 403s default Python-urllib UA
 BBOX = (33.9, -4.7, 41.9, 5.5)                       # Kenya (W,S,E,N)
 # match "transmission-lines-33kv", "transmission_line_66_kv", etc. -> capture voltage
 RES_RE = re.compile(r"transmission.*?(\d{2,3})\s*kv", re.IGNORECASE)
@@ -42,7 +43,8 @@ def log(msg):
 
 def resolve_resources():
     """Return [(voltage_int, download_url, name)] for the transmission-line resources on the CKAN dataset."""
-    with urllib.request.urlopen(CKAN.format(id=DATASET), timeout=60) as r:
+    req = urllib.request.Request(CKAN.format(id=DATASET), headers=UA)
+    with urllib.request.urlopen(req, timeout=60) as r:
         pkg = json.load(r)["result"]
     out = []
     for x in pkg.get("resources", []):
@@ -75,7 +77,8 @@ def build(out_dir, overwrite):
     with tempfile.TemporaryDirectory() as tmp:
         for volt, url, name in res:
             local = os.path.join(tmp, f"{volt}kv.geojson")
-            urllib.request.urlretrieve(url, local)
+            with urllib.request.urlopen(urllib.request.Request(url, headers=UA), timeout=120) as resp, open(local, "wb") as fh:
+                fh.write(resp.read())
             g = gpd.read_file(local).to_crs(4326)
             g["voltage_kv"] = volt
             parts.append(g[["voltage_kv", "geometry"]])
