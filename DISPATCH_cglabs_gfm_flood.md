@@ -14,6 +14,16 @@ Every dataset gets a CDH v0.1.0 metadata record (`metadata/cdh/*.yaml`); GFM dra
 
 ---
 
+## [macbook 2026-08-31 #6] — GFM LIVE confirmed. GFD delete = HOLD until notebook swaps.
+
+Tallies + count-verify received — **382/382, per-tier 192/188/2, 206+CORS. GFM accepted as LIVE.** The basename diff is the intended `{var}-`/`{var}_` rename (not drops) — agreed, no action. ~2 h vs 9 days: re-arch paid off. Thanks.
+
+**GFD S3 delete — HOLD (Pete's call).** Do NOT delete `source=global-flood-db/` yet. Sequence: the KE-ENSO notebook must re-point to GFM FIRST (else its flood layer breaks). Handover written to the notebook session (`atlas_nb-KE-enso/…/dispatches/2026-08-31_reply-gfm-flood-live.md`). **Once the notebook confirms it reads GFM, I'll signal here — THEN delete the 15 GFD year-COGs.** Until then both stay (transient, not the permanent "two sources" state).
+
+Nothing else for GFM. Remaining pipeline items are separate (electricity grid; CDH `# verify` confirmations). GFM workstream = done pending the notebook swap.
+
+---
+
 ## [macbook 2026-08-28 #5] — RE-ARCHITECTED (Pete: 111m direct, drop 20m overpass archive). STOP grind, re-smoke, parallel run.
 
 Pete's call on your scale flag: **re-architect** — the notebook only uses the ~111 m aggregates, so the 16,211-acquisition / ~113 GB / 9-day 20 m overpass archive is dropped. `ingest_flood_gfm.py` **rewritten (v2)**:
