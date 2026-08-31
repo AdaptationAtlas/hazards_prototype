@@ -3,22 +3,25 @@
 ingest_exposure_grid.py — KPLC electricity transmission network -> GeoJSON (KE-39, layer 7 / last).
 
 Kenya's official electricity transmission grid for the flood/drought exposure overlay, from
-energydata.info (KPLC / Kenya Power). Three per-voltage line layers (11 kV / 33 kV / 66 kV) merged
-into one GeoJSON with a `voltage_kv` attribute. CC0-1.0 (cleanest of the grid sources).
+energydata.info (KPLC / Kenya Power). FIVE per-voltage line layers (11/33/66/132/220 kV; Pete: all
+five — 132/220 kV = the national backbone, highest-value at-risk assets) merged into one GeoJSON with
+a `voltage_kv` attribute. CC0-1.0 (cleanest of the grid sources).
 
 Resolves the resources via the energydata.info CKAN API (no fragile hardcoded UUIDs — same pattern as
-the HOTOSM/COD-AB ingests), matches the transmission-line resources by name, forces EPSG:4326, clips
-the Kenya bbox. gridfinder (modelled MV, CC-BY) is a deferred complement — not ingested here.
+the HOTOSM/COD-AB ingests), matches the "{V}kV Network" transmission resources by name, forces
+EPSG:4326, clips the Kenya bbox. The 'Unidentified Grid Network' layer (no voltage) is excluded.
+gridfinder (modelled MV, CC-BY) is a deferred complement — not ingested here. Note: energydata.info's
+WAF 403s the default Python-urllib UA, so a browser UA header is set on all requests (cglabs fix).
 
-Source (cglabs KE-39 #7 pin, non-GEE, no auth, HDX/CKAN 200):
+Source (cglabs KE-39 #7 pin, non-GEE, no auth, CKAN 200 with UA header):
   CKAN dataset  kenya-kenya-electricity-network  (energydata.info, KPLC) — CC0-1.0
-  resources     transmission-lines-{11,33,66}kv.json  (per-voltage GeoJSON)
+  resources     "{11,33,66,132,220}kV Network"  (per-voltage GeoJSON)
 
 Requires: geopandas + fiona/pyogrio. No auth.
 
 RUN (cglabs): python3 python/ingest_exposure_grid.py --list     # resolve CKAN, list matched resources (verify)
               python3 python/ingest_exposure_grid.py            # write kenya_power_grid.geojson
-Output: <out>/kenya_power_grid.geojson   (LineString, EPSG:4326, CC0 — attribute voltage_kv in {11,33,66})
+Output: <out>/kenya_power_grid.geojson   (LineString, EPSG:4326, CC0 — attribute voltage_kv in {11,33,66,132,220})
 Publish: R/observational/6_publish_obs_to_s3.R --full --tier 15  (type=infrastructure/source=energydata-kplc)
 """
 import argparse
@@ -33,7 +36,7 @@ CKAN = "https://energydata.info/api/3/action/package_show?id={id}"
 DATASET = "kenya-kenya-electricity-network"
 UA = {"User-Agent": "Mozilla/5.0 (atlas-exposure-ingest)"}  # energydata WAF 403s default Python-urllib UA
 BBOX = (33.9, -4.7, 41.9, 5.5)                       # Kenya (W,S,E,N)
-# match "transmission-lines-33kv", "transmission_line_66_kv", etc. -> capture voltage
+# match "…transmission…33kv…" (name "33kV Network" + its transmission-line URL) -> capture voltage {11,33,66,132,220}
 RES_RE = re.compile(r"transmission.*?(\d{2,3})\s*kv", re.IGNORECASE)
 
 
