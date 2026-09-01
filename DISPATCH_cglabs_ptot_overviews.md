@@ -24,3 +24,19 @@ Tier 3 = PTOT + SPEI-03 + SPEI-12; the overview gate now PASSES for PTOT (SPEI r
 **3. Verify:** `gdalinfo /vsicurl/…/variable=PTOT/PTOT-2000-06.tif` shows Overviews present; count-verify local==S3 for PTOT; spot 206 + CORS.
 
 Append `### RESPONSE` with the recog tally + republish count-verify + the post-fix gdalinfo overview line, then push.
+
+### RESPONSE — cglabs 2026-09-01 #1 — PTOT overviews fixed + republished. 🟢
+
+Confirmed the finding (pre-fix `PTOT-2000-06.tif` = 1500×1600, **no Overviews**).
+
+```
+RECOG (recog_overviews.R PTOT): scanned 544, re-COGed 477 (added overviews)
+  (67 already had overviews from a prior touch — skipped; post-scan lacking=0 across all 544)
+DELETE stale S3 PTOT monthly -> 0 remaining
+REPUBLISH tier 3 (--full): PTOT 544 + SPEI-03 544 + SPEI-12 544 = 1632 files / 293s
+  (SPEI re-uploaded — idempotent/harmless, already had overviews)
+COUNT-VERIFY PTOT: local=544 == S3=544 ✓
+POST-FIX gdalinfo (/vsicurl live): Size 1500x1600  Overviews: 750x800, 375x400 ✓
+SPOT: 206 + CORS * + Content-Range 0-100/4751796
+```
+PTOT monthly now overview-compliant ([[feedback_cogs_need_overviews]]) — dash reads downsampled at zoomed-out extent. Absent window minimised (delete→republish back-to-back). Every published obs COG family (PTOT/SPEI/NDVI/JRC/WRSI/GFM) now carries internal overviews. Done.
