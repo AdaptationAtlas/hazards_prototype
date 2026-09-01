@@ -38,14 +38,14 @@ created: "2026-08-28"
 updated: "2026-08-28"
 
 spatial:
-  bbox: [33.9, -4.7, 41.9, 5.5]        # Kenya crop # verify (region=east-africa)
+  bbox: [33.9, -4.7, 41.9, 5.5]        # Kenya crop (verified vs live COG 9600x12240 @ 0.000833 deg)
   crs: EPSG:4326
   geography: [kenya]
   resolution:
     - type: xy
-      value: 30
+      value: 3
       unit: arc_second
-      label: ~30 arc-second / ~1 km   # verify (JRC global flood maps grain)
+      label: ~3 arc-second / ~90 m (verified vs live COG)
 
 temporal:
   start_date: "1990-01-01"             # baseline climatology; static # verify
@@ -56,7 +56,7 @@ dimensions:
   - name: return_period
     type: categorical
     description: Flood recurrence interval (years).
-    values: [10, 20, 50, 75, 100, 200, 500]   # verify which RPs are held on S3
+    values: [10, 20, 50, 75, 100, 200, 500]   # verified vs live S3 (7 return periods)
 
 variables:
   - name: flood_depth
@@ -81,7 +81,7 @@ data:
     locations:
       - {url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=jrc-glofas/region=east-africa/", title: S3}
     media_type: image/tiff; application=geotiff; profile=cloud-optimized
-    href_template: "flood-depth_rp{return_period}.tif"   # e.g. flood-depth_rp100.tif
+    href_template: "processing=return-period/variable=flood-depth/rp={return_period}/flood-depth_rp{return_period}.tif"   # verified vs live S3
     processing_steps: [source, crop-cog]
 
 cdh:

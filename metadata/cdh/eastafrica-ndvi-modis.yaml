@@ -39,27 +39,27 @@ created: "2026-08-28"
 updated: "2026-08-28"
 
 spatial:
-  bbox: [33.9, -4.7, 41.9, 5.5]        # Kenya footprint of the MOD13Q1 tiles # verify (region=east-africa)
+  bbox: [30.0, -10.0, 50.77, 10.0]     # East Africa MOD13Q1 footprint (verified vs live COG 9894x9526 @ ~0.0021 deg; covers Kenya + neighbours)
   crs: EPSG:4326
-  geography: [kenya]
+  geography: [kenya]                    # region=east-africa footprint; Kenya is the focus AOI
   resolution:
     - type: xy
       value: 250
       unit: meter
-      label: 250 m (MOD13Q1 native)
+      label: ~250 m / 0.0021 deg (MOD13Q1 native)
 
 temporal:
-  start_date: "2000-01-01"             # MOD13Q1 record start # verify against COGs
+  start_date: "2000-01-01"             # MOD13Q1 record start (verified: earliest COG NDVI_MAM_2000)
   end_date: null
   resolution:
     step: P1Y
-    unit: annual
-    note: 16-day source composited to per-year seasonal-window means and annual means.
+    unit: seasonal
+    note: 16-day source composited to per-year seasonal-window (3-month) means. (No annual product published.)
 
 dimensions:
   - name: time
     type: temporal
-    description: seasonal keyed {SEASON}_{YYYY} (12 windows); annual keyed {YYYY}.
+    description: seasonal keyed {SEASON}_{YYYY} (12 windows).
     step: P1Y
 
 variables:
@@ -76,23 +76,16 @@ processing:
       - title: MODIS MOD13Q1 v061 (NASA LP DAAC)
         url: https://lpdaac.usgs.gov/products/mod13q1v061/
   - id: aggregate-cog
-    description: Composite to seasonal-window and annual means; write COG with overviews.
+    description: Composite to per-year seasonal-window means; write COG with overviews.
     code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "python/ingest_ndvi_modis.py"}
 
 data:
   - name: seasonal
-    description: Per-year seasonal-window mean NDVI COGs.
+    description: Per-year seasonal-window mean NDVI COGs (only product; no annual).
     locations:
       - {url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=vegetation/source=modis-mod13q1/region=east-africa/", title: S3}
     media_type: image/tiff; application=geotiff; profile=cloud-optimized
-    href_template: "processing=seasonal/season={season}/NDVI_{season}_{year}_mean.tif"   # verify exact partition vs name_fn_ndvi
-    processing_steps: [source, aggregate-cog]
-  - name: annual
-    description: Per-year annual mean NDVI COGs.
-    locations:
-      - {url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=vegetation/source=modis-mod13q1/region=east-africa/", title: S3}
-    media_type: image/tiff; application=geotiff; profile=cloud-optimized
-    href_template: "processing=annual/NDVI_{year}_mean.tif"   # verify
+    href_template: "processing=seasonal/variable=NDVI/season={season}/NDVI_{season}_{year}_mean.tif"   # verified vs live S3
     processing_steps: [source, aggregate-cog]
 
 cdh:

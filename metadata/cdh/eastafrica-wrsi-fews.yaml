@@ -39,17 +39,17 @@ created: "2026-08-28"
 updated: "2026-08-28"
 
 spatial:
-  bbox: [33.9, -4.7, 41.9, 5.5]        # Kenya # verify (region=east-africa)
+  bbox: [33.9, -4.7, 41.9, 5.5]        # Kenya (verified vs live COG 80x102 @ 0.1 deg)
   crs: EPSG:4326
   geography: [kenya]
   resolution:
     - type: xy
       value: 0.1
       unit: degree
-      label: ~0.1 deg (FEWS WRSI grain)   # verify
+      label: ~0.1 deg (FEWS WRSI grain, verified vs live COG)
 
 temporal:
-  start_date: "2001-01-01"             # verify record start
+  start_date: "2003-01-01"             # verified: earliest COG wrsi_cropland_MAM_2003
   end_date: null
   resolution: {step: P1Y, unit: seasonal, note: "End-of-season WRSI per growing season, per year."}
 
@@ -84,7 +84,7 @@ data:
     locations:
       - {url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=agriculture/source=fews-wrsi/region=east-africa/", title: S3}
     media_type: image/tiff; application=geotiff; profile=cloud-optimized
-    href_template: "crop={crop}/season={season}/wrsi_{crop}_{season}_{year}.tif"   # crop in {cropland,rangeland}; verify partition vs name_fn_wrsi
+    href_template: "processing=seasonal/variable=wrsi/crop={crop}/season={season}/wrsi_{crop}_{season}_{year}.tif"   # verified vs live S3; crop in {cropland,rangeland}
     processing_steps: [source, crop-cog]
 
 cdh:
