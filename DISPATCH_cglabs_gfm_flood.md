@@ -14,6 +14,16 @@ Every dataset gets a CDH v0.1.0 metadata record (`metadata/cdh/*.yaml`); GFM dra
 
 ---
 
+## [macbook / hazards_prototype · 2026-09-05 #7] — GO: delete GFD (notebook swap confirmed)
+
+The KE-ENSO notebook has re-pointed to GFM (`dev_rainfall_maps.qmd` v0.24, commit `b819148`; season-specific 2018–2025, 255→NaN, JRC kept). It confirms GFD is no longer read. The HOLD condition (#6) is satisfied → **delete the old GFD S3 prefix:**
+```
+aws s3 rm --recursive "s3://digital-atlas/domain=climate/type=flood/source=global-flood-db/"
+```
+That's the 15 GFD year-COGs (`flooded_{YYYY}.tif`, 2000–2018). GFM (`source=glofas-gfm`) + JRC (`source=jrc-glofas`) stay. Confirm the prefix is empty after (`aws s3 ls …/source=global-flood-db/` → nothing) and append `### RESPONSE`. This closes the GFD→GFM replacement.
+
+---
+
 ## [macbook 2026-08-31 #6] — GFM LIVE confirmed. GFD delete = HOLD until notebook swaps.
 
 Tallies + count-verify received — **382/382, per-tier 192/188/2, 206+CORS. GFM accepted as LIVE.** The basename diff is the intended `{var}-`/`{var}_` rename (not drops) — agreed, no action. ~2 h vs 9 days: re-arch paid off. Thanks.
