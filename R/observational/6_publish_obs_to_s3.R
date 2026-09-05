@@ -168,8 +168,8 @@ pacman::p_load(future, future.apply)
 # Resolve --tier (default all). --smoke always means Tier 1, one file.
 tier_arg <- parse_cli_flag(args, "tier", "character")
 if (is.null(tier_arg) || is.na(tier_arg)) tier_arg <- "all"
-if (!tier_arg %in% c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "all")) {
-  stop(glue::glue("--tier must be 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, or all (got '{tier_arg}')"))
+if (!tier_arg %in% c("1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11", "12", "13", "14", "15", "16", "all")) {
+  stop(glue::glue("--tier must be 1..16 or all (got '{tier_arg}')"))
 }
 # Tiers 3-7 are opt-in only: NOT included in 'all' (large raster / new-domain uploads).
 do_tier1 <- mode == "--smoke" || tier_arg %in% c("1", "all")
@@ -187,6 +187,7 @@ do_tier12 <- mode != "--smoke" && tier_arg == "12"
 do_tier13 <- mode != "--smoke" && tier_arg == "13"
 do_tier14 <- mode != "--smoke" && tier_arg == "14"
 do_tier15 <- mode != "--smoke" && tier_arg == "15"
+do_tier16 <- mode != "--smoke" && tier_arg == "16"
 
 overwrite <- parse_overwrite_flag(args)
 # AtlasDataManageR 0.0.0.9000 (currently installed) does NOT expose an
@@ -287,6 +288,8 @@ prefix_roads <- "domain=exposure/type=infrastructure/source=osm/region=kenya/pro
 prefix_hotosm <- "domain=exposure/type=infrastructure/source=hotosm/region=kenya/processing=analysis-ready"
 # KE-39 layer 7: KPLC electricity transmission grid (energydata.info, CC0). variable=power-grid.
 prefix_grid <- "domain=exposure/type=infrastructure/source=energydata-kplc/region=kenya/processing=analysis-ready"
+# KE-39 pre-cooked flood x exposure zonal tables (per adm2). Parquet -> DuckDB-WASM notebook.
+prefix_intersect <- "domain=exposure/type=intersect/region=kenya/processing=analysis-ready"
 prefix_base_raster   <- "domain=boundaries/type=raster/source=chirps-grid/region=africa/processing=base-raster"
 
 # Translate the on-disk climatology label (bare year-range) to the
@@ -470,6 +473,17 @@ name_fn_grid <- function(x) {
                  paste(fname[bad], collapse = ", ")))
   }
   sprintf("variable=power-grid/%s", fname)
+}
+
+# Zonal exposure parquet tables (Tier 16, type=intersect). On-disk: exposure_*.parquet
+# -> S3 leaf = the filename (3 flat tables). (Not a .tif -> skips overview gate.)
+name_fn_intersect <- function(x) {
+  fname <- basename(x)
+  bad <- !grepl("^exposure_(gfm_seasonal|jrc_rp|totals)\\.parquet$", fname)
+  if (any(bad)) {
+    stop(sprintf("Unexpected intersect filename: %s", paste(fname[bad], collapse = ", ")))
+  }
+  fname
 }
 
 # HOTOSM facilities GeoJSON (Tier 13, type=infrastructure/source=hotosm). On-disk:
@@ -767,6 +781,19 @@ tier15_specs <- list(
   )
 )
 
+# Tier 16 (pre-cooked flood x exposure zonal tables, type=intersect). Opt-in ONLY (--tier 16).
+tier16_specs <- list(
+  list(
+    upload_id     = "exposure-intersect",
+    local_dir     = file.path(dirname(chirts_chirps_hist_dir), "exposure", "intersect"),
+    s3_dir        = prefix_intersect,
+    file_pattern  = "^exposure_(gfm_seasonal|jrc_rp|totals)\\.parquet$",
+    name_fn       = name_fn_intersect,
+    recursive     = FALSE,
+    tier          = 16L
+  )
+)
+
 active_specs <- c(
   if (do_tier1) tier1_specs else list(),
   if (do_tier2) tier2_specs else list(),
@@ -782,7 +809,8 @@ active_specs <- c(
   if (do_tier12) tier12_specs else list(),
   if (do_tier13) tier13_specs else list(),
   if (do_tier14) tier14_specs else list(),
-  if (do_tier15) tier15_specs else list()
+  if (do_tier15) tier15_specs else list(),
+  if (do_tier16) tier16_specs else list()
 )
 
 cat("project_dir          :", project_dir, "\n")
@@ -807,6 +835,7 @@ cat("tier 12 enabled      :", do_tier12, "\n")
 cat("tier 13 enabled      :", do_tier13, "\n")
 cat("tier 14 enabled      :", do_tier14, "\n")
 cat("tier 15 enabled      :", do_tier15, "\n")
+cat("tier 16 enabled      :", do_tier16, "\n")
 cat("overwrite            :", overwrite, "\n")
 cat("workers              :", workers, "\n\n")
 
