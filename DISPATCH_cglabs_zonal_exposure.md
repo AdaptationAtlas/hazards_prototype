@@ -39,3 +39,35 @@ Rscript R/observational/6_publish_obs_to_s3.R --full --tier 16
 → 3 parquets to `domain=exposure/type=intersect/region=kenya/processing=analysis-ready/`. Count-verify (local==S3, 3==3) + 206 + CORS. Report the row counts + a sanity line (e.g. total pop_exposed for OND-2019 vs pop_total).
 
 Append `### RESPONSE` with smoke timings + head, then (after full+publish) counts + verify, then push.
+
+### RESPONSE — cglabs 2026-09-05 #1 — SMOKE ran end-to-end (after 3 unblock-fixes). ⚠️ PERF INFEASIBLE — HOLDING for optimise. 🟠
+
+Smoke produced correct-shaped outputs (A/B/totals = 290 rows each, schema matches spec). Paths all resolved as expected (no custom `--out` — everything under `<data>/exposure/…` + `<data>/flood_jrc/JRC`). **But the line-intersection perf is a hard blocker — do NOT green-light the full run yet.**
+
+**3 fixes I had to apply to get through the smoke (please ratify):**
+1. **env:** installed `lwgeom` 0.2.17 (cglabs lacked it; `st_length` on lon/lat needs it). GEOS/PROJ version-skew warnings vs sf, benign for length.
+2. **bug — `tag_adm2(x, pt=TRUE)`** passed the *whole sf* as geometry (`g <- if (pt) x …`) → `st_sf(geometry=g)` empty join → **0 points tagged** → `he_tot[…, by=adm2_pcode]` "object 'adm2_pcode' not found". Fixed → `st_geometry(x)`.
+3. **bug — HOTOSM health/schools are MIXED geometry** (health = 1976 POINT + 777 POLYGON + 1 LINE; schools = 9609 POINT + 5195 POLYGON + 13 MULTIPOLYGON — OSM building footprints, not just nodes). `vect(pts)` → "not all geometries transferred … geometry collection" coercion fail. Fixed → reduce each facility to one representative point at load (`st_point_on_surface(st_make_valid(x))`). (Facility count semantics = 1 point/facility, unchanged.)
+
+**Timings (SMOKE = 1 GFM raster + 1 JRC raster):**
+```
+load adm2 + vectors ......................  12s
+rasterize adm2->pop + STATIC totals ...... 130s   (incl. grid tag point-in-adm2 join ~86s — 141k lines, ONCE)
+  totals sane: pop 55.1M, roads 46,883 km, grid 69,092 km, health 2748, schools 14801
+A. GFM  AMJ_2018 (flooded 2,387 km2) .....  368s  (~6.1 min / raster)
+B. JRC  rp100    (prone  34,201 km2) ..... 30,073s (~8.35 HOURS / raster)   <-- !!
+```
+**The bottleneck is exactly the one you flagged: `st_intersection(lines, flood_polygon)` for `roads_km_exposed`/`grid_km_exposed` (line 152/159).** It scales with flood *area* × polygon fragmentation: GFM observed flood is small (2,387 km²) → 6 min; JRC prone is 14× larger and highly fragmented (depth-cell polygonised) → **8.35 h**. The `as.polygons(mask)` → `st_union` → `st_intersection` over 141k grid lines is O(disaster) when the flood polygon is big.
+
+**Full-run extrapolation (INFEASIBLE):**
+```
+GFM: 94 seasonal flooded rasters × ~6 min  ≈  9–10 h  (worse for high-flood seasons)
+JRC:  7 return-periods       × ~8.35 h     ≈  58 h
+TOTAL ≈ 68 h+  — not viable
+```
+
+**HOLDING.** Recommend the **rasterised-length approximation** (your option): burn roads/grid lines onto the flood grid once, compute per-cell line length, then `zonal`-sum over flooded cells × adm2 — turns the hours-long vector `st_intersection` into a seconds-long raster op (approximate, cell-resolution, but fine for a km-exposed metric). Alternatives you listed: pre-clip lines to the flood bbox before intersect, or drop `grid_km_exposed`/`roads_km_exposed` to v2. Your call — I'll re-run the smoke once you push the optimise, then do full + publish tier 16.
+
+**Minor sanity note:** `observed_pct` comes out slightly >1 (e.g. 1.0002) — GFM obs-area (flood grid cellSize) ÷ adm2 area (pop grid) grid-mismatch rounding; worth a clamp/`min(.,1)` or denominator-align when you're in there. Everything else in the heads looks right (pop_exposed populated, pop_source=worldpop, HV grid col present).
+
+**Not committing the full/publish. The 3 fixes above ARE committed** (needed for any run) — ratify or override.

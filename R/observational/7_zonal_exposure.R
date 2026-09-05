@@ -78,13 +78,16 @@ log_step(sprintf("  adm2 units: %d", nrow(adm2)))
 
 roads  <- st_read(paths$roads,  quiet = TRUE) |> st_make_valid() |> st_transform(4326)
 grid   <- st_read(paths$grid,   quiet = TRUE) |> st_make_valid() |> st_transform(4326)
-health <- st_read(paths$health, quiet = TRUE) |> st_transform(4326)
-schools<- st_read(paths$schools,quiet = TRUE) |> st_transform(4326)
+# HOTOSM facilities are MIXED geometry (POINT + POLYGON/LINE building footprints) -> reduce each
+# to one representative point (fixes vect() coercion on mixed sf; 1 point per facility semantics).
+to_pts <- function(x) st_set_geometry(x, st_point_on_surface(st_geometry(st_make_valid(x))))
+health <- st_read(paths$health, quiet = TRUE) |> st_transform(4326) |> to_pts()
+schools<- st_read(paths$schools,quiet = TRUE) |> st_transform(4326) |> to_pts()
 if (!"voltage_kv" %in% tolower(names(grid))) { names(grid) <- tolower(names(grid)) }
 
 # spatial-join each vector to its adm2 once (centroid-in-adm2 for points; st_join for lines)
 tag_adm2 <- function(x, pt = FALSE) {
-  g <- if (pt) x else st_point_on_surface(st_geometry(x))
+  g <- if (pt) st_geometry(x) else st_point_on_surface(st_geometry(x))  # pt: points already; use their geometry (was `x` = whole sf -> empty join -> 0 rows)
   j <- st_join(st_sf(geometry = g), adm2["adm2_pcode"], join = st_within)
   x$adm2_pcode <- j$adm2_pcode
   x[!is.na(x$adm2_pcode), ]
