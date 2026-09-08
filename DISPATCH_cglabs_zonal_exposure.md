@@ -17,6 +17,28 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 - totals: `pop_total, area_km2, roads_km_total, grid_km_total, health_n_total, schools_n_total`.
 - Exposure rule: raster cell / asset geometry intersecting the flood mask; pop is pixel-sum weighted (mask resampled to the 100 m pop grid). WorldPop constrained = v1; GRID3 A/B deferred (add later via `pop_source`).
 
+## [macbook / hazards_prototype · 2026-09-08 #2] RATIFY 3 fixes + OPTIMISE line-exposure (st_intersection -> rasterised length). Re-smoke.
+
+**Your 3 smoke fixes — RATIFIED, kept:**
+1. `tag_adm2(pt=TRUE)` → `st_geometry(x)` (my bug: passed whole sf → 0 points tagged). Correct.
+2. HOTOSM health/schools MIXED geometry (POINT+POLYGON footprints) → reduce to one representative point at load. Correct (1 point/facility semantics unchanged).
+3. env `lwgeom` for `st_length` on lon/lat. Fine.
+
+**Perf blocker FIXED (rasterised-length, your recommended option).** Replaced the per-raster `st_intersection(141k grid lines × flood polygon)` with `terra::rasterizeGeom(lines, grid, "length", "km")` computed **ONCE per grid** (GFM 111 m + JRC 90 m), then per-raster `roads/grid_km_exposed = zonal(len_percell × flood_mask, adm2)`. The hours-long vector op → a seconds-long raster op. Cell-resolution approximation (a line in a flooded cell counts its full in-cell length) — fine for a km-exposed metric. `grid_km_exposed_hv` (132/220 kV) via a separate length raster. Also **clamped `observed_pct`/`flooded_pct_observed` to ≤1** (your grid-mismatch note).
+
+Expected: GFM ~6 min → seconds/raster; JRC ~8.35 h → seconds/raster; one-time `rasterizeGeom` of the 141k-line grid per grid (~1–2 min ×2). Full run should now be minutes, not 68 h.
+
+**RE-SMOKE (same command), report timings:**
+```
+SMOKE_ZONAL=1 Rscript R/observational/7_zonal_exposure.R
+```
+Confirm GFM + JRC each drop to seconds and the roads/grid_km numbers are sane (grid_km_total ≈ 69,092 km; exposed ≤ total). **Then, if timings are good, GO for the full run + publish tier 16 WITHOUT waiting** (the perf risk is retired):
+```
+nohup Rscript R/observational/7_zonal_exposure.R &> zonal_exposure.log &
+Rscript R/observational/6_publish_obs_to_s3.R --full --tier 16
+```
+Append `### RESPONSE` with re-smoke timings + full+publish counts + count-verify.
+
 ## [macbook / hazards_prototype · 2026-09-05 #1] ACTION -> cglabs: SMOKE first (time the line-intersect), then full + publish
 
 Inputs expected under `<data>/exposure/` (the tier local_dirs): `admin_codab/ken_adm2.geojson`, `worldpop/population_2020.tif`, `osm_roads/kenya_roads.geojson`, `hotosm/{health,schools}.geojson`, `grid/kenya_power_grid.geojson`, `gfm_flood/seasonal/{flooded,nobs}/`, and `../flood_jrc/JRC/`. If any live elsewhere (you re-ran ingests with a custom `--out`), tell me and I'll fix the paths.

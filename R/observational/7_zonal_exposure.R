@@ -125,19 +125,23 @@ log_step(sprintf("  totals: pop %.0f, roads %.0f km, grid %.0f km, health %d, sc
 # ---- zonal engine: one flood raster -> per-adm2 metrics ----------------------
 # mask_flooded: SpatRaster logical TRUE where the asset is exposed.
 # obs_rast: SpatRaster logical TRUE where observed (GFM: value!=255; JRC: always TRUE), or NULL.
-zonal_one <- function(flood, mask_flooded, obs_rast, adm2_rast, csize) {
-  # raster metrics on the flood grid
-  fa   <- terra::zonal(csize * mask_flooded, adm2_rast, "sum", na.rm = TRUE)      # flooded km2
-  setDT(fa); setnames(fa, c("adm2_idx", "flooded_km2"))
-  if (!is.null(obs_rast)) {
-    oa <- terra::zonal(csize * obs_rast, adm2_rast, "sum", na.rm = TRUE)
-    setDT(oa); setnames(oa, c("adm2_idx", "observed_km2"))
-  } else oa <- NULL
+# lines: rasterised length (rasterizeGeom length-per-cell, precomputed ONCE per grid) x flood mask,
+# zonal-summed by adm2 — turns the hours-long vector st_intersection into a seconds-long raster op
+# (cell-resolution approx: a line in a flooded cell counts its full in-cell length). len_* are km/cell.
+zonal_one <- function(flood, mask_flooded, obs_rast, adm2_rast, csize,
+                      len_roads, len_grid, len_grid_hv) {
+  zsum <- function(x, nm) { z <- terra::zonal(x, adm2_rast, "sum", na.rm = TRUE); setDT(z); setnames(z, c("adm2_idx", nm)); z }
+  fa <- zsum(csize * mask_flooded, "flooded_km2")
+  oa <- if (!is.null(obs_rast)) zsum(csize * obs_rast, "observed_km2") else NULL
   # pop-weighted exposure (mask resampled to pop grid, nearest)
   mpop <- resample(mask_flooded, pop, method = "near")
   pe   <- terra::zonal(pop * mpop, adm2_rast_pop, "sum", na.rm = TRUE)
   setDT(pe); setnames(pe, c("adm2_idx", "pop_exposed"))
-  # facilities: point in flooded cell
+  # lines: exposed length = per-cell line length where flooded
+  rd <- zsum(len_roads   * mask_flooded, "roads_km_exposed")
+  gr <- zsum(len_grid    * mask_flooded, "grid_km_exposed")
+  gh <- zsum(len_grid_hv * mask_flooded, "grid_km_exposed_hv")
+  # facilities: point in flooded cell (keyed on adm2_pcode)
   in_flood_pts <- function(pts) {
     if (!nrow(pts)) return(data.table(adm2_pcode = character(), n = integer()))
     v <- terra::extract(mask_flooded, vect(pts))[, 2]
@@ -145,32 +149,12 @@ zonal_one <- function(flood, mask_flooded, obs_rast, adm2_rast, csize) {
     d[hit == TRUE, .(n = .N), by = adm2_pcode]
   }
   he <- in_flood_pts(health); sc <- in_flood_pts(schools)
-  # lines: length within the flooded polygon (polygonize ONLY the flooded cells —
-  # ifel()->NA elsewhere so there is no value-column to filter; robust to layer naming)
-  fp <- as.polygons(ifel(mask_flooded, 1L, NA), dissolve = TRUE)
-  line_exp <- function(lines, by_hv = FALSE) {
-    empty <- data.table(adm2_pcode = character(), km = numeric(), km_hv = numeric())
-    if (!length(fp) || !nrow(lines)) return(empty)
-    fpo <- st_make_valid(st_as_sf(fp))
-    inter <- suppressWarnings(st_intersection(lines, st_union(fpo)))
-    if (!nrow(inter)) return(empty)
-    dt <- as.data.table(inter); dt[, km := as.numeric(st_length(inter)) / 1000]
-    if (by_hv && "voltage_kv" %in% names(dt)) {
-      dt[, .(km = sum(km), km_hv = sum(km[voltage_kv >= 132])), by = adm2_pcode]
-    } else dt[, .(km = sum(km), km_hv = NA_real_), by = adm2_pcode]
-  }
-  rd <- line_exp(roads); gr <- line_exp(grid, by_hv = TRUE)
 
-  # assemble on the full adm2 key
+  # assemble on the full adm2 key (raster metrics on adm2_idx; facilities on adm2_pcode)
   r <- copy(key_dt)
-  r <- fa[r, on = "adm2_idx"]
-  if (!is.null(oa)) r <- oa[r, on = "adm2_idx"]
-  r <- pe[r, on = "adm2_idx"]
+  for (z in list(fa, oa, pe, rd, gr, gh)) if (!is.null(z)) r <- z[r, on = "adm2_idx"]
   r[he, health_n_exposed := i.n, on = "adm2_pcode"]
   r[sc, schools_n_exposed := i.n, on = "adm2_pcode"]
-  r[rd, roads_km_exposed := i.km, on = "adm2_pcode"]
-  r[gr, grid_km_exposed := i.km, on = "adm2_pcode"]
-  r[gr, grid_km_exposed_hv := i.km_hv, on = "adm2_pcode"]
   for (c in c("flooded_km2","observed_km2","pop_exposed","health_n_exposed",
               "schools_n_exposed","roads_km_exposed","grid_km_exposed","grid_km_exposed_hv"))
     if (c %in% names(r)) r[[c]] <- num0(r[[c]])
@@ -179,18 +163,30 @@ zonal_one <- function(flood, mask_flooded, obs_rast, adm2_rast, csize) {
 
 parse_gfm <- function(f) { b <- sub("\\.tif$", "", basename(f)); list(season = sub("_.*$", "", b), year = as.integer(sub("^.*_", "", b))) }
 
+# line geometries as SpatVector (once) for rasterizeGeom length-per-cell
+roads_v   <- vect(roads)
+grid_v    <- vect(grid)
+grid_hv_v <- vect(grid[which(grid$voltage_kv >= 132), ])   # which() drops NA-voltage rows
+
 # ---- A. GFM observed flood: adm2 x season x year -----------------------------
 gfm_files <- sort(list.files(paths$gfm_fl, "\\.tif$", full.names = TRUE))
 if (SMOKE) gfm_files <- gfm_files[1]
 log_step(sprintf("A. GFM seasonal: %d rasters", length(gfm_files)))
-adm2_rast_gfm <- NULL; csize_gfm <- NULL; A <- vector("list", length(gfm_files))
+adm2_rast_gfm <- NULL; csize_gfm <- NULL; len_r_gfm <- len_g_gfm <- len_gh_gfm <- NULL
+A <- vector("list", length(gfm_files))
 for (i in seq_along(gfm_files)) {
   f <- gfm_files[i]; meta <- parse_gfm(f)
   flood <- rast(f)
-  if (is.null(adm2_rast_gfm)) { adm2_rast_gfm <- rasterize(adm2_v, flood, field = "adm2_idx"); csize_gfm <- cellSize(flood, unit = "km") }
+  if (is.null(adm2_rast_gfm)) {
+    adm2_rast_gfm <- rasterize(adm2_v, flood, field = "adm2_idx"); csize_gfm <- cellSize(flood, unit = "km")
+    len_r_gfm  <- rasterizeGeom(roads_v,   flood, "length", "km")
+    len_g_gfm  <- rasterizeGeom(grid_v,    flood, "length", "km")
+    len_gh_gfm <- rasterizeGeom(grid_hv_v, flood, "length", "km")
+    log_step("  precomputed GFM-grid line-length rasters (roads/grid/grid_hv)")
+  }
   mask_flooded <- flood == 1
   obs_rast <- flood != 255
-  r <- zonal_one(flood, mask_flooded, obs_rast, adm2_rast_gfm, csize_gfm)
+  r <- zonal_one(flood, mask_flooded, obs_rast, adm2_rast_gfm, csize_gfm, len_r_gfm, len_g_gfm, len_gh_gfm)
   r[, `:=`(season = meta$season, year = meta$year)]
   A[[i]] <- r
   log_step(sprintf("  [%d/%d] %s_%d: flooded %.0f km2, pop_exp %.0f",
@@ -198,8 +194,8 @@ for (i in seq_along(gfm_files)) {
 }
 A <- rbindlist(A)
 A <- totals[, .(adm2_pcode, area_km2, pop_total)][A, on = "adm2_pcode"]
-A[, `:=`(observed_pct = fifelse(area_km2 > 0, observed_km2 / area_km2, NA_real_),
-         flooded_pct_observed = fifelse(observed_km2 > 0, flooded_km2 / observed_km2, NA_real_),
+A[, `:=`(observed_pct = pmin(fifelse(area_km2 > 0, observed_km2 / area_km2, NA_real_), 1),  # clamp grid-mismatch rounding
+         flooded_pct_observed = pmin(fifelse(observed_km2 > 0, flooded_km2 / observed_km2, NA_real_), 1),
          pop_pct = fifelse(pop_total > 0, pop_exposed / pop_total, NA_real_),
          pop_source = "worldpop")]
 Acols <- c("adm2_pcode","adm1_pcode","adm2_name","adm1_name","season","year",
@@ -211,13 +207,20 @@ A <- A[, ..Acols]
 jrc_files <- sort(list.files(paths$jrc, "flood-depth_rp[0-9]+\\.tif$", full.names = TRUE))
 if (SMOKE) jrc_files <- grep("rp100", jrc_files, value = TRUE)[1]
 log_step(sprintf("B. JRC return-period: %d rasters", length(jrc_files)))
-adm2_rast_jrc <- NULL; csize_jrc <- NULL; B <- vector("list", length(jrc_files))
+adm2_rast_jrc <- NULL; csize_jrc <- NULL; len_r_jrc <- len_g_jrc <- len_gh_jrc <- NULL
+B <- vector("list", length(jrc_files))
 for (i in seq_along(jrc_files)) {
   f <- jrc_files[i]; rp <- as.integer(sub(".*_rp([0-9]+)\\.tif$", "\\1", basename(f)))
   depth <- rast(f)
-  if (is.null(adm2_rast_jrc)) { adm2_rast_jrc <- rasterize(adm2_v, depth, field = "adm2_idx"); csize_jrc <- cellSize(depth, unit = "km") }
+  if (is.null(adm2_rast_jrc)) {
+    adm2_rast_jrc <- rasterize(adm2_v, depth, field = "adm2_idx"); csize_jrc <- cellSize(depth, unit = "km")
+    len_r_jrc  <- rasterizeGeom(roads_v,   depth, "length", "km")
+    len_g_jrc  <- rasterizeGeom(grid_v,    depth, "length", "km")
+    len_gh_jrc <- rasterizeGeom(grid_hv_v, depth, "length", "km")
+    log_step("  precomputed JRC-grid line-length rasters (roads/grid/grid_hv)")
+  }
   mask_prone <- depth > 0
-  r <- zonal_one(depth, mask_prone, NULL, adm2_rast_jrc, csize_jrc)
+  r <- zonal_one(depth, mask_prone, NULL, adm2_rast_jrc, csize_jrc, len_r_jrc, len_g_jrc, len_gh_jrc)
   setnames(r, "flooded_km2", "flood_prone_km2")
   r[, rp := rp]
   B[[i]] <- r
