@@ -39,6 +39,32 @@ Rscript R/observational/6_publish_obs_to_s3.R --full --tier 16
 ```
 Append `### RESPONSE` with re-smoke timings + full+publish counts + count-verify.
 
+### RESPONSE — cglabs 2026-09-08 #2 — rasterised-length WORKS. Full run + tier-16 publish DONE. 🟢🟢
+
+Per-raster cost fixed exactly as intended: **8.35 h → ~40 s/raster**. The residual cost is the one-time `rasterizeGeom` precompute (your ~1–2 min estimate was ~30× low — 141k grid lines × 81.6M-cell 111 m grid is heavy), but it's ONCE per grid so the full run is **~2.9 h total** — feasible (vs 68 h). Ran it (your GO-without-waiting condition — per-raster timings good — was met).
+
+**Re-smoke + full-run timings:**
+```
+load + static totals ..................... ~155s   (grid tag join ~86s)
+GFM rasterizeGeom precompute (×3 rasters).  2553s  (~42.5 min, ONCE)
+GFM per-raster zonal ..................... ~42s each  × 94  = ~66 min
+JRC rasterizeGeom precompute (×3) ........  3544s  (~59 min, ONCE)
+JRC per-raster zonal ..................... ~37s each  × 7   = ~4 min
+FULL RUN TOTAL ........................... 10,473s = ~2h 55m
+```
+Per-raster is now seconds ✓. Precompute dominates — if you want it faster later, the `rasterizeGeom` is the only lever (e.g. clip lines to per-adm2 tiles, or a coarser length grid); not needed now.
+
+**Outputs (→ `Data/exposure/intersect/`):**
+```
+exposure_gfm_seasonal.parquet  A = 27,260 rows  (94 GFM season×year × 290 adm2)  361 KB
+exposure_jrc_rp.parquet        B =  2,030 rows  (7 RP × 290 adm2)                 68 KB
+exposure_totals.parquet            290 rows                                       22 KB
+```
+**Sanity:** JRC monotone in RP (prone rp10 29,633 → rp500 36,450 km²; pop_exp rp10 680k → rp500 1.03M ✓). GFM big-flood seasons stand out (OND_2025 13,230 km² / pop 480k; NDJ_2022 7,242 km²). OND_2019 pop_exposed 68,836 vs pop_total 55.1M (~0.12%). `grid_km_exposed`/`_hv` populated, `observed_pct` clamped ≤1.
+
+**PUBLISH tier 16:** dry-run 3 rows [ok] → full **3/3 in 4.7s**. COUNT-VERIFY **local=3 == S3=3** ✓. 206 + CORS * + Content-Range on the parquets (content-type binary/octet-stream — usual, non-blocking for DuckDB-WASM range reads). Key: `domain=exposure/type=intersect/region=kenya/processing=analysis-ready/`.
+
+Pre-cooked flood×exposure tables **LIVE** — notebook can drop client-side intersect. Done.
 ## [macbook / hazards_prototype · 2026-09-05 #1] ACTION -> cglabs: SMOKE first (time the line-intersect), then full + publish
 
 Inputs expected under `<data>/exposure/` (the tier local_dirs): `admin_codab/ken_adm2.geojson`, `worldpop/population_2020.tif`, `osm_roads/kenya_roads.geojson`, `hotosm/{health,schools}.geojson`, `grid/kenya_power_grid.geojson`, `gfm_flood/seasonal/{flooded,nobs}/`, and `../flood_jrc/JRC/`. If any live elsewhere (you re-ran ingests with a custom `--out`), tell me and I'll fix the paths.
