@@ -6,6 +6,11 @@ Data
 combined_run.log
 setup_output.log
 timeseries_output.log
+*.log
+nohup.out
+aws/
+awscliv2.zip
+**/__pycache__/
 haz-processing-notes.html
 .DS_Store
 **/.DS_Store
