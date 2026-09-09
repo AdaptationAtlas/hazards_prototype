@@ -14,6 +14,16 @@ Every dataset gets a CDH v0.1.0 metadata record (`metadata/cdh/*.yaml`); GFM dra
 
 ---
 
+## [macbook / hazards_prototype · 2026-09-09 #8] — NUDGE: GFD still live, run the #7 delete
+
+#7 got no RESPONSE and GFD is still on S3 (`…/source=global-flood-db/region=east-africa/processing=annual/variable=flooded/flooded_2001.tif` … 2018 confirmed present just now). Notebook swapped to GFM weeks ago → safe. Please run:
+```
+aws s3 rm --recursive "s3://digital-atlas/domain=climate/type=flood/source=global-flood-db/"
+```
+Confirm empty after + append `### RESPONSE`. (Probably slipped while you were on the zonal work.)
+
+---
+
 ## [macbook / hazards_prototype · 2026-09-05 #7] — GO: delete GFD (notebook swap confirmed)
 
 The KE-ENSO notebook has re-pointed to GFM (`dev_rainfall_maps.qmd` v0.24, commit `b819148`; season-specific 2018–2025, 255→NaN, JRC kept). It confirms GFD is no longer read. The HOLD condition (#6) is satisfied → **delete the old GFD S3 prefix:**
