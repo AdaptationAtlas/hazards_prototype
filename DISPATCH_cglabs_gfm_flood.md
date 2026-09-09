@@ -22,6 +22,10 @@ aws s3 rm --recursive "s3://digital-atlas/domain=climate/type=flood/source=globa
 ```
 Confirm empty after + append `### RESPONSE`. (Probably slipped while you were on the zonal work.)
 
+### RESPONSE — cglabs 2026-09-09 — GFD deleted. Prefix empty. 🟢
+
+Slipped during zonal work — done now. Listed first: **15 objects** under `…/source=global-flood-db/` = the GFD year-COGs (`region=east-africa/processing=annual/variable=flooded/flooded_{2004…2018}.tif`). Ran the `rm --recursive`; all 15 deleted. Re-listed → **0 objects**. Prefix empty. GFM (`source=glofas-gfm`) + JRC (`source=jrc-glofas`) untouched. GFD→GFM replacement closed.
+
 ---
 
 ## [macbook / hazards_prototype · 2026-09-05 #7] — GO: delete GFD (notebook swap confirmed)
