@@ -58,7 +58,29 @@ Review-driven (issue #32):
 - Parent/child nesting (spec §4.8) is decided case-by-case at PR review; the website currently renders everything top-level. Submit all 13 at the top level and let review decide on nesting (population clips, admin boundaries).
 - Brayden wants a call on how child datasets are shown (UI/UX + governance).
 
+## Submitted to cdh-catalog (2026-09-14)
+
+One PR per dataset from in-repo `submit/<id>` branches (Brayden's bot convention). Main ruleset: PR + 1 approving review + code-owner review + `validate / validate` check.
+
+| record | PR | state |
+|---|---|---|
+| africa-precipitation-monthly-seasonal | [#30](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/30) | ready for review |
+| africa-spei-drought | [#31](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/31) | ready for review |
+| eastafrica-flood-jrc | [#32](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/32) | ready for review |
+| eastafrica-ndvi-modis | [#33](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/33) | ready for review |
+| eastafrica-wrsi-fews | [#34](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/34) | ready for review |
+| kenya-admin-codab | [#35](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/35) | ready for review |
+| kenya-facilities-hotosm | [#36](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/36) | ready for review |
+| kenya-flood-exposure-intersect | [#37](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/37) | draft (awaiting GFM NDJ/DJF relabel) |
+| kenya-flood-gfm | [#38](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/38) | draft (awaiting GFM NDJ/DJF relabel) |
+| kenya-population-grid3 | [#39](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/39) | ready for review |
+| kenya-population-worldpop | [#40](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/40) | ready for review |
+| kenya-power-grid-kplc | [#41](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/41) | ready for review |
+| kenya-roads-osm | [#42](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/42) | ready for review |
+
+Follow-ups owned here: after cglabs completes `DISPATCH_cglabs_gfm_flood.md #9` (GFM END-year relabel + intersect rebuild), refresh the notes / `year` dimension in `kenya-flood-gfm.yaml` and `kenya-flood-exposure-intersect.yaml`, push to their `submit/` branches, mark ready. After `DISPATCH_cglabs_seasonal_rasters.md #7` (CHIRPS NDJ rebuild), NDJ values in the precipitation record extend to 2026 (one-line follow-up on #30).
+
 ## Open review notes (flag at submission)
 - `href_template` assumes every value combination exists. Seasonal edge windows are absent where a record cannot cover all three months (CHIRPS NDJ/DJF 1981 and windows ending after 2026-04; WRSI only cropland-MAM has 2026; GFM NDJ/DJF stop at 2024). Noted in each record's `note`.
-- **GFM season-year label convention needs checking**: CHIRPS labels DJF by the year it *ends* (5b script: DJF-1998 = Dec 1997 + Jan–Feb 1998). GFM seasonal files have NDJ/DJF for 2018–2024 with monthly data 2018-01..2025-12, which is consistent with *start-year* labelling — if so, the notebook's season alignment between PTOT and GFM is off by one year for those two windows. Verify in `python/ingest_flood_gfm.py`.
+- **Season-year label bugs (both FIXED in code, commit d89054a; rebuilds dispatched):** GFM labelled NDJ/DJF by START year (now END year like CHIRPS); CHIRPS NDJ shifted only December (NDJ-Y was Nov(Y)+Dec(Y−1)+Jan(Y), notebook tracker V2-63). Records for GFM/intersect will be refreshed once cglabs republishes.
 - `eastafrica-flood-jrc` declares no `temporal` (static return-period hazard); reviewer may prefer a nominal date.
