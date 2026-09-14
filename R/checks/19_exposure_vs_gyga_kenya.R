@@ -255,7 +255,9 @@ if (skip_new) {
   for (jn in setdiff(names(nx_w), c("admin1_name", "scenario", "timeframe", "den_all_M", "den_rfall_M"))) set(nx_w, j = jn, value = round(nx_w[[jn]], 1))
   fwrite(nx_w, file.path(out_dir, "19_new_pipeline_4counties.csv"))
   add_md("2025-07 bake — % of maize VoP exposed (ENSEMBLE mean, severe, annual, usd15; denominator = harmonized usd15 tech=all)", nx_w, digits = 1,
-         note = "den_all_M < den_rfall_M for Nandi/Meru is the harmonized-file anomaly audited below; with rf-all as denominator the % are ~3x smaller for those two.")
+         note = paste("den_all_M < den_rfall_M for Nandi/Meru is the harmonized-file defect audited below (#23):",
+                      "the 2021->2015 deflator was applied to tech='all' but not to the rf-* rows, so those are still in 2021 dollars.",
+                      "tech='all' is the trustworthy slice and is what these percentages use."))
   print(nx_w)
 
   audit <- function(f) {

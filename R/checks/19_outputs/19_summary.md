@@ -1,6 +1,6 @@
 # Issue #19 — exposure vs GYGA reproduction (Kenya maize)
 
-Generated 2026-09-14 15:51 EAT by R/checks/19_exposure_vs_gyga_kenya.R
+Generated 2026-09-14 16:27 EAT by R/checks/19_exposure_vs_gyga_kenya.R
 
 ## V1 exposure — % of maize VoP exposed, severe (live notebook file)
 
@@ -148,7 +148,7 @@ V1 counties without a GYGA row: Nyandarua, Nyeri, Mombasa, Lamu. Missing yields 
 
 ## 2025-07 bake — % of maize VoP exposed (ENSEMBLE mean, severe, annual, usd15; denominator = harmonized usd15 tech=all)
 
-den_all_M < den_rfall_M for Nandi/Meru is the harmonized-file anomaly audited below; with rf-all as denominator the % are ~3x smaller for those two.
+den_all_M < den_rfall_M for Nandi/Meru is the harmonized-file defect audited below (#23): the 2021->2015 deflator was applied to tech='all' but not to the rf-* rows, so those are still in 2021 dollars. tech='all' is the trustworthy slice and is what these percentages use.
 
 | admin1_name | scenario | timeframe | den_all_M | den_rfall_M | any | dry | dry+heat | dry+heat+wet | dry+wet | heat | heat+wet | wet |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
