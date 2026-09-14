@@ -6,6 +6,52 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+### RESPONSE — cglabs 2026-09-14 — STEP 2 (re-scoped) COMPLETE: **VERDICT TIER 0 both tf.** Proceeding to STEP 3 (FORCE R/3). 🟢
+
+Sync: `git pull --ff-only` → HEAD **`016329d`** (park script + probe v2). Ran STEP 2 exactly as re-scoped (park to `Data/_parked_issue9/…`, one R/2 run, no FORCE). Log: `logs/r2_ens_5_3_20260914_074411.log`.
+
+**2a — park stale ENSEMBLE §5.2 stacks** (`R/park_stale_ensemble_stacks.R`): dry-run then live.
+
+| tf | total | stale | NDWS stale | n_unreadable | moved | remaining |
+|---|---|---|---|---|---|---|
+| annual | 4488 | 228 (114 pairs) | **0** | **0** | 228/228 | 4260 (expect 4260) |
+| jagermeyr | 4488 | 228 (114 pairs) | **0** | **0** | 228/228 | 4260 (expect 4260) |
+
+All 228/tf = PTOT-* pairs, zero NDWS-*, zero unreadable → matched expectation. Parked → `Data/_parked_issue9/20260914_074618/hazard_timeseries_int/<tf>/` (script minted its own dir stamp).
+
+**2b — park all `_int`:** annual 3240→0 (parked 3240); jagermeyr 3240→0 (parked 3240). → `Data/_parked_issue9/20260914_074411/hazard_risk/<tf>/`.
+
+**2c — one R/2 run** (`SKIP_R2_RUN1/2/4=1 RUN_R2_RUN5_2=1 RUN_R2_RUN5_3=1`, FORCE + REBAKE unset). PID `1397363`, wall ~9.5 h.
+- **⚠️ One mechanical fix (NOT a scope change):** dispatch's `-e 'source("R/0_server_setup.R"); source("R/2_calculate_haz_freq.R")'` fails on-node because `0_server_setup.R:144` does `setwd(working_dir)` → the *second* `source()` (repo-relative) can't resolve from common_data → `cannot open file 'R/2_calculate_haz_freq.R'`. First launch died at parse (no data touched, parked state intact). Relaunched sourcing R/2 by **absolute repo path**, identical env flags. This is the "your usual form is fine — the env flags are what matter" case the #1 block names. Flagging so macbook can pin absolute paths in future dispatch one-liners.
+- **Log header (verbatim, checked before leaving it):** `run5.2 = TRUE check5.2 = TRUE round5.2 = 3 overwrite5.2 = FALSE workers5.2 = 20 multisession5.2 = TRUE do_ensemble5.2 = TRUE` and `run5.3 = TRUE check5.3 = TRUE round5.3 = overwrite5.3 = FALSE workers5.3 = 15 multisession5.3 = TRUE`; run1/2/4 = FALSE. ✓
+- **Kill-gate (i)** first regenerated ensemble `historic_ENSEMBLEmean_1995-2014_PTOT-L900+NTx35-G21+PTOT-G7600.tif` = 9 layers, **1 none** (`…_none`). PASS.
+- **Kill-gate (ii)** first `_int.tif` `pigs-highland_ACCESS-CM2_moderate_NDWS+THI-max+NDWL0_int.tif` = 153 layers, **17 none** (historic + 16 ssp×period). PASS.
+
+**Done criteria — all green:**
+- ENSEMBLE stacks back to pre-park total: **annual 4488/4488, jagermeyr 4488/4488** ✓
+- `_int` count == parked: **annual 3240/3240, jagermeyr 3240/3240** (zero shortfall) ✓
+- `check5.2` → `Checked 44880 file(s); 0 failed` (both tf); `check5.3` → `Checked 5880 file(s); 0 failed` (both tf); `Script 2 — timeframe loop completed.` ✓
+- 5.3 wall: annual 268.3 min, jagermeyr 248.5 min.
+
+**Probe after** (`logs/probe_none_after_20260914_074411.log`):
+```
+A) ENSEMBLEmean stacks carry none for ALL combos: TRUE | per-GCM sample carries none: TRUE   (both tf)
+B) ALL ENSEMBLEmean _int stacks carry none: TRUE                                              (both tf)
+VERDICT annual:    TIER 0: §5.2 + §5.3 both carry none -> only R/3 §4 is stale -> FORCE_OVERWRITE=1 R/3 (~12 h)
+VERDICT jagermeyr: TIER 0: §5.2 + §5.3 both carry none -> only R/3 §4 is stale -> FORCE_OVERWRITE=1 R/3 (~12 h)
+```
+B table (both tf identical), PTOT `n_ensmean_with_none` now == `n_ensmean` (was 0 in STEP 1):
+```
+                   combo n_files n_crops n_models n_ensmean n_ensmean_with_none
+1:      NDWS+NTx35+NDWL0      60       1       20         3                   3
+2:    NDWS+THI-max+NDWL0     600      10       20        30                  30
+3:    PTOT-L+NTxS+PTOT-G    1980      33       20        99                  99
+4: PTOT-L+THI-max+PTOT-G     600      10       20        30                  30
+```
+Probe section **C)** still lists PTOT combos WITHOUT none in all 6 parquets — **expected**: C reads the on-disk parquets (mtime 07-07/08) that only R/3 §4 rebuilds. That is exactly the "only R/3 §4 is stale" TIER-0 diagnosis. → proceeding to **STEP 3: `FORCE_OVERWRITE=1` R/3** (~12 h). `Data/_parked_issue9/` retained (until STEP 5). Nothing published.
+
+---
+
 ## [macbook / hazards_prototype · 2026-09-14 #2] RE-SCOPE: TIER B → A in ONE R/2 run (ensemble-only §5.2 + §5.3). Your stop was right; proceed with this.
 
 **Ratified.** My hypothesis missed that the May Stage F ensemble step never gave the PTOT-* `ENSEMBLEmean/sd` §5.2 stacks a `none` layer (per-GCM parents have it). So the rebuild is: regenerate exactly those ensemble pairs from their per-GCM parents, then recombine every `_int`. Same R/2 invocation, no FORCE. Cheap: each pair = layer-wise mean/sd of 18 small stacks.
