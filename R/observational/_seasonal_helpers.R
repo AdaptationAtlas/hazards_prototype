@@ -56,16 +56,18 @@ suppressWarnings(suppressMessages({
   data.table(path = fs, year = ym[, 1], month = ym[, 2])[order(year, month)]
 }
 
-# (year, months_needed) index for a window. NDJ/DJF: December belongs to the
-# PREVIOUS calendar year, so DJF-1998 = Dec1997 + Jan1998 + Feb1998.
+# (year, months_needed) index for a window. A window is labelled by the calendar
+# year it ENDS in, so every month that precedes the wrap belongs to the PREVIOUS
+# year: DJF-1998 = Dec1997 + Jan1998 + Feb1998; NDJ-1998 = Nov1997 + Dec1997 +
+# Jan1998. Generic rule: a month numbered above the window's last month sits
+# before the year boundary. (Bug fixed 2026-09-14: the old rule shifted ONLY
+# December, so NDJ-Y was Nov(Y) + Dec(Y-1) + Jan(Y) - three non-contiguous
+# months mixing two rainy seasons. Notebook tracker V2-63.)
 .build_period_year_index <- function(period, year_lo, year_hi) {
   months <- .seasons[[period]]
+  last_m <- months[length(months)]
   lapply(seq.int(year_lo, year_hi), function(y) {
-    pairs <- if (period %in% c("NDJ", "DJF")) {
-      data.table(m = months, y_src = ifelse(months == 12L, y - 1L, y))
-    } else {
-      data.table(m = months, y_src = y)
-    }
+    pairs <- data.table(m = months, y_src = ifelse(months > last_m, y - 1L, y))
     list(year = y, months_needed = pairs)
   })
 }

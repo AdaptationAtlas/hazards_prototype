@@ -14,6 +14,55 @@ Every dataset gets a CDH v0.1.0 metadata record (`metadata/cdh/*.yaml`); GFM dra
 
 ---
 
+## [macbook / hazards_prototype · 2026-09-14 #9] FIX: GFM seasonal NDJ/DJF year label → END-year (PTOT convention). Relabel 28 files, rebuild intersect, republish. GO.
+
+**Bug.** `stage_seasonal` labelled a window by its FIRST month's year: `DJF_2018` = Dec 2018 + Jan–Feb 2019. The CHIRPS seasonal COGs (5b / `_seasonal_helpers.R`) label by the year the window ENDS in: `DJF_2018` = Dec 2017 + Jan–Feb 2018. The KE-ENSO notebook pairs `PTOT_{S}_{Y}` with `flooded_{S}_{Y}` by the same season/year, so **NDJ and DJF were one year out of step** (the other 10 windows start and end in the same year — unaffected). `exposure_gfm_seasonal.parquet` inherits the labels, so its NDJ/DJF rows are off too. Surfaced while enumerating dimension values for the CDH v0.3.0 records (S3 had NDJ/DJF 2018–2024 with monthly 2018-01..2025-12, only consistent with start-year labels).
+
+**Fix (this commit).** `season_label_year()` in `python/ingest_flood_gfm.py`; `stage_seasonal` now labels END-year. A guard refuses to run if stale start-year NDJ/DJF files are present (an `NDJ_2018`/`DJF_2018` cannot exist under the end-year rule when the record starts 2018-01). Probed on the pure helpers: NDJ/DJF → **2019–2025 (7 each, was 2018–2024)**; every other window unchanged; still 94 files per variable, 188 total.
+
+**Steps** (light; run in parallel with the issue #9 R/2 run or after — CPU-trivial, minutes except step 6):
+1. `git pull` (develop).
+2. Remove the 28 stale start-year files locally (same `--out` root as the original run = `<exposure root>/gfm_flood`, i.e. `dirname(chirts_chirps_hist_dir)/exposure/gfm_flood`):
+   ```
+   G=<exposure root>/gfm_flood/seasonal
+   rm -f $G/flooded/NDJ_*.tif $G/flooded/DJF_*.tif $G/nobs/NDJ_*.tif $G/nobs/DJF_*.tif
+   ```
+   (If you skip this the script exits with `stale START-year-labelled seasonal files …` — intended.)
+3. Regenerate only the missing windows (skip-if-exists keeps the other 10 seasons untouched):
+   ```
+   python3 python/ingest_flood_gfm.py --stage seasonal --out <exposure root>/gfm_flood
+   ```
+   **Gate:** `ls $G/flooded | grep -c .` → 94; `ls $G/flooded/NDJ_* $G/flooded/DJF_*` → `NDJ_2019…NDJ_2025`, `DJF_2019…DJF_2025`, no `*_2018` for either. Content check on one window (must hold by construction — flooded = max over the 3 months):
+   ```
+   python3 - <<'PY'
+   import rasterio, numpy as np, os
+   G=os.environ.get("G"); M=os.path.join(os.path.dirname(G),"monthly","flooded")
+   s=rasterio.open(f"{G}/flooded/DJF_2020.tif").read(1)
+   ms=[rasterio.open(f"{M}/{k}.tif").read(1) for k in ("2019-12","2020-01","2020-02")]
+   valid=np.any([m!=255 for m in ms],axis=0); mx=np.max([np.where(m!=255,m,0) for m in ms],axis=0)
+   assert np.array_equal(s[valid], mx[valid]) and np.all(s[~valid]==255); print("DJF_2020 == max(2019-12, 2020-01, 2020-02) OK")
+   PY
+   ```
+4. **S3: delete the stale start-year objects first** (28 objects; destructive but they are wrong data). The uploader is skip-if-exists and does NOT honour `--overwrite`, so without this step the same-named `DJF_2019…2024` would stay stale on S3:
+   ```
+   P=s3://digital-atlas/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=seasonal
+   for v in flooded nobs; do for s in NDJ DJF; do aws s3 rm --recursive "$P/variable=$v/season=$s/"; done; done
+   ```
+5. `Rscript R/observational/6_publish_obs_to_s3.R --full --tier 14` → count-verify seasonal = 188 (NDJ/DJF 2019–2025 under both variables) + local-vs-S3 diff (only the 28 new objects should have uploaded).
+6. Rebuild the intersect tables (whole script, ~3 h — only NDJ/DJF rows of table A change, but the script has no per-season switch):
+   ```
+   nohup Rscript R/observational/7_zonal_exposure.R &> zonal_relabel.log &
+   ```
+   **Gate:** A = 27,260 rows (94 × 290); `SELECT season, min(year), max(year) FROM read_parquet('…/exposure_gfm_seasonal.parquet') WHERE season IN ('NDJ','DJF') GROUP BY 1` → 2019–2025 both. B and totals byte-identical in content to before.
+7. S3: `aws s3 rm "s3://digital-atlas/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_gfm_seasonal.parquet"` then `Rscript R/observational/6_publish_obs_to_s3.R --full --tier 16` (jrc_rp / totals exist → skipped, as intended).
+8. Append `### RESPONSE` with the step-3/5/6 gate outputs and the tier-14/16 count-verify. Push.
+
+**Downstream (macbook handles after your RESPONSE):** update `metadata/cdh/kenya-flood-gfm.yaml` + `kenya-flood-exposure-intersect.yaml` notes (labels now END-year, NDJ/DJF 2019–2025) and relay to the notebook session (transparent to the notebook — it pairs by the same S/Y and its exposure UI only exposes OND/MAM; the year selector 2018–2025 stays valid).
+
+**Related, separate:** the CHIRPS side has its own NDJ bug (only December was year-shifted → NDJ-Y = Nov(Y)+Dec(Y−1)+Jan(Y)); fix committed at 3 sites, rebuild written up on HOLD in `DISPATCH_cglabs_seasonal_rasters.md #7` pending Pete's go.
+
+---
+
 ## [macbook / hazards_prototype · 2026-09-09 #8] — NUDGE: GFD still live, run the #7 delete
 
 #7 got no RESPONSE and GFD is still on S3 (`…/source=global-flood-db/region=east-africa/processing=annual/variable=flooded/flooded_2001.tif` … 2018 confirmed present just now). Notebook swapped to GFM weeks ago → safe. Please run:

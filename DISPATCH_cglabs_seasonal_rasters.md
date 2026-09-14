@@ -8,6 +8,38 @@ Producer to be written: `R/observational/5b_make_obs_seasonal_rasters.R` (+ new 
 
 ---
 
+## [macbook 2026-09-14 #7] HOLD — await Pete's GO. CHIRPS **NDJ window is wrong at 3 sites** (only December year-shifted). Fix committed; NDJ-only rebuild of tiers 1, 2, 4 written up below.
+
+**Bug.** For the two windows that straddle the year boundary the code shifted ONLY December to the previous year. Correct for DJF (Dec(Y−1)+Jan(Y)+Feb(Y)), **wrong for NDJ: NDJ-Y = Nov(Y) + Dec(Y−1) + Jan(Y)** — three non-contiguous months spanning two rainy seasons. The KE-ENSO notebook v2 found it by exact decomposition against the monthly parquet and **quarantined NDJ** (tracker V2-63: "pipeline fix = shift year labels for months ≥ 11"). SPEI-03 NDJ shows the same variance-deflation fingerprint.
+
+**Sites fixed (this commit, generic rule: every month numbered above the window's last month belongs to the previous calendar year; DJF and the 10 within-year windows unchanged — probed):**
+- `R/observational/_seasonal_helpers.R` `.build_period_year_index()` → 5b seasonal COGs (**tier 4**)
+- `R/observational/5_make_obs_map_climatologies.R` `build_period_year_index()` → climatology COGs (**tier 2**)
+- `R/observational/4_aggregate_obs_admin_periods.R` period aggregation → `obs_periods_adm{0,1}.parquet` (**tier 1**, the notebook's `chirps_county`)
+
+**Affected published objects (NDJ only):**
+- tier 4: `processing=seasonal/variable=PTOT/season=NDJ/PTOT_NDJ_{YYYY}_sum.tif` — 44 now (1982–2025); after the fix **45 (1982–2026)** because NDJ_2026 = Nov–Dec 2025 + Jan 2026 is now complete.
+- tier 2: `processing=climatology/variable={9 vars}/period=NDJ/clim={3}/stat={4}` — 108 objects.
+- tier 1: `processing=admin-periods/variable=adm0_obs.parquet`, `adm1_obs.parquet` — whole files (all periods; only `period='NDJ'` rows change).
+
+**Steps when GO (est. < 1 h total; all skip-if-exists so only NDJ recomputes):**
+1. `git pull`.
+2. Admin periods: `Rscript R/observational/4_aggregate_obs_admin_periods.R --full` (rewrites both parquets; minutes). **Gate:** for one adm1 (e.g. Turkana) `PTOT` NDJ 1998 `value_mean` == sum of monthly `value_mean` for 1997-11, 1997-12, 1998-01 from `obs_monthly_adm1.parquet`; and NDJ 1998 ≠ the old value.
+3. Seasonal: `rm Data/chirts_chirps_hist/seasonal/PTOT/PTOT_NDJ_*.tif` then `Rscript R/observational/5b_make_obs_seasonal_rasters.R --full --var PTOT` (regenerates only NDJ, ~5 min). **Gate:** 45 NDJ files, 1982–2026; pixel check `PTOT_NDJ_1998_sum` == monthly 1997-11 + 1997-12 + 1998-01 at a sample of pixels.
+4. Climatology: `rm Data/chirts_chirps_hist/maps/*/*_NDJ_*.tif` (108) then `Rscript R/observational/5_make_obs_map_climatologies.R --full` (only NDJ recomputed, ~10–15 min; `_metadata.json` regenerates). **Gate:** 108 NDJ COGs back, overviews present.
+5. **S3 deletes first** (uploader is skip-if-exists, ignores `--overwrite`):
+   ```
+   R=s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa
+   aws s3 rm --recursive "$R/processing=seasonal/variable=PTOT/season=NDJ/"
+   for v in PTOT TMAX TMIN TAVG SPEI-01 SPEI-03 SPEI-06 SPEI-12 SPEI-24; do aws s3 rm --recursive "$R/processing=climatology/variable=$v/period=NDJ/"; done
+   aws s3 rm "$R/processing=admin-periods/variable=adm0_obs.parquet"; aws s3 rm "$R/processing=admin-periods/variable=adm1_obs.parquet"
+   ```
+   (confirm `climate_root` in `6_publish_obs_to_s3.R` matches `$R` before running.)
+6. Publish: `--full --tier 1` (admin monthly + base raster exist → skipped), `--full --tier 2`, `--full --tier 4`. Count-verify: seasonal NDJ 45; climatology 1,404; admin-periods 2. Local-vs-S3 diff.
+7. `### RESPONSE` with gates + tallies; push. Macbook then tells the notebook session NDJ can be un-quarantined (V2-63) and updates the CDH precipitation record (NDJ 1982–2026).
+
+---
+
 ## [macbook 2026-08-13 #6] ACTION → cglabs: clamp SPEI -Inf pixels + re-stat + republish
 
 **Fixing the #5 caveat** (2 -Inf px break embedded STATISTICS tags). Two parts:

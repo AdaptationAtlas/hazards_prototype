@@ -26,7 +26,7 @@
 #             TAVG, SPEI-01 / 03 / 06 / 12 / 24     -> mean
 #           A year is included only if ALL months in the period are present;
 #           DJF / NDJ wrap year boundaries and attach to the year containing
-#           January.
+#           January (Nov/Dec are taken from the previous calendar year).
 #   Step B  reduce the multi-year stack pixel-wise to mean, min, max, sd in
 #           one terra::app pass that masks +-Inf pixel-years to NA (SPEI tail
 #           values otherwise contaminate the aggregate).
@@ -226,16 +226,17 @@ list_var_files <- function(var) {
 build_period_year_index <- function(period, year_lo, year_hi) {
   months <- seasons[[period]]
   years <- seq.int(year_lo, year_hi)
+  last_m <- months[length(months)]
   out <- lapply(years, function(y) {
-    # For NDJ / DJF the December belongs to the PREVIOUS calendar year.
-    pairs <- if (period %in% c("NDJ", "DJF")) {
-      data.table::data.table(
-        m = months,
-        y_src = ifelse(months == 12L, y - 1L, y)
-      )
-    } else {
-      data.table::data.table(m = months, y_src = y)
-    }
+    # A window is labelled by the year it ENDS in: every month numbered above
+    # the window's last month precedes the year boundary and belongs to the
+    # PREVIOUS calendar year (DJF-1998 = Dec1997 + Jan-Feb1998; NDJ-1998 =
+    # Nov-Dec1997 + Jan1998). Fixed 2026-09-14: the old rule shifted ONLY
+    # December, so NDJ-Y mixed Nov(Y) with Dec(Y-1) + Jan(Y) (tracker V2-63).
+    pairs <- data.table::data.table(
+      m = months,
+      y_src = ifelse(months > last_m, y - 1L, y)
+    )
     list(year = y, months_needed = pairs)
   })
   out

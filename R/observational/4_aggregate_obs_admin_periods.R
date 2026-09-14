@@ -8,9 +8,9 @@
 # Periods (long form 'period' column):
 #   annual            full calendar year (Jan-Dec)
 #   JFM FMA MAM AMJ MJJ JJA JAS ASO SON OND NDJ DJF   12 overlapping 3-month
-#                                                     seasons; DJF crosses
-#                                                     year boundary and
-#                                                     attaches to the year
+#                                                     seasons; NDJ and DJF
+#                                                     cross the year boundary
+#                                                     and attach to the year
 #                                                     containing January.
 #
 # Per-variable aggregation rule across the months in each period:
@@ -189,12 +189,17 @@ aggregate_one <- function(dt_var, var) {
     if (nrow(dt_p) == 0L) {
       return(NULL)
     }
-    # DJF / NDJ: assign December rows to the next calendar year so the
-    # season aligns to the year containing January.
-    if (period %in% c("NDJ", "DJF")) {
+    # A window is labelled by the calendar year it ENDS in, so every month that
+    # precedes the year boundary (numbered above the window's last month) is
+    # assigned to the NEXT calendar year: DJF-1998 = Dec1997 + Jan-Feb1998,
+    # NDJ-1998 = Nov-Dec1997 + Jan1998. Fixed 2026-09-14: the old rule moved
+    # ONLY December, so NDJ-Y mixed Nov(Y) with Dec(Y-1) + Jan(Y), three
+    # non-contiguous months spanning two rainy seasons (notebook tracker V2-63).
+    last_m <- months[length(months)]
+    wrap_m <- months[months > last_m]
+    if (length(wrap_m)) {
       dt_p <- copy(dt_p)
-      dt_p[month == 12L, year := year + 1L]
-      if (period == "NDJ") dt_p <- dt_p[month %in% c(11, 12, 1)]
+      dt_p[month %in% wrap_m, year := year + 1L]
     }
     by_cols <- c(zone_cols, "year")
     agg <- dt_p[, .(

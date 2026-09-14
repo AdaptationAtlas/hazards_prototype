@@ -11,7 +11,9 @@ So the monthly aggregate is built DIRECTLY from the STAC tiles at ~111 m (no 20 
 materialized), parallelized across months. Tiers:
 
   monthly   processing=monthly/variable={flooded,nobs}/{var}-{YYYY}-{MM}.tif                        (~111 m)
-  seasonal  processing=seasonal/variable={flooded,nobs}/season={SEASON}/{var}_{SEASON}_{YYYY}.tif   (rolling 3-mo, 12 windows; PTOT-aligned)
+  seasonal  processing=seasonal/variable={flooded,nobs}/season={SEASON}/{var}_{SEASON}_{YYYY}.tif   (rolling 3-mo, 12 windows; PTOT-aligned:
+            YYYY = the year the window ENDS in, so NDJ_2020 = Nov-Dec 2019 + Jan 2020 and DJF_2020 = Dec 2019 + Jan-Feb 2020 —
+            same rule as R/observational/_seasonal_helpers.R. Fixed 2026-09-14; earlier runs labelled NDJ/DJF by START year.)
   history   processing=history/variable={frequency,footprint}/*.tif                                 (full-record roll-up)
   overpass  processing=overpass/variable=flooded/{YYYYMMDD}T{HHMMSS}.tif  — OPT-IN ONLY (--stage overpass),
             20 m per-acquisition archive, re-pullable on demand for a specific event/date range.
@@ -227,6 +229,21 @@ def _month_add(year, month, k):
     return m0 // 12, m0 % 12 + 1
 
 
+def season_label_year(year, month):
+    """Calendar-year label of the 3-month window that STARTS in (year, month).
+
+    PTOT / CHIRPS convention (R/observational/_seasonal_helpers.R, 5b_make_obs_seasonal_rasters.R):
+    a window is labelled by the year it ENDS in, so the two windows that straddle the year boundary
+    take the later year — NDJ_2020 = Nov 2019 + Dec 2019 + Jan 2020, DJF_2020 = Dec 2019 + Jan 2020 +
+    Feb 2020. Every other window starts and ends in the same year, so its label is unchanged.
+
+    History: until 2026-09-14 this stage labelled by the START year (DJF_2018 = Dec 2018 + Jan-Feb
+    2019), which put GFM NDJ/DJF one year out of step with the PTOT seasonal COGs the KE-ENSO
+    notebook pairs them with (and with the exposure_gfm_seasonal.parquet built from them).
+    """
+    return _month_add(year, month, 2)[0]
+
+
 def stage_seasonal(root, overwrite):
     fl_m = os.path.join(root, "monthly", "flooded")
     nb_m = os.path.join(root, "monthly", "nobs")
@@ -235,14 +252,30 @@ def stage_seasonal(root, overwrite):
     W, H = coarse_dims()
     have = {f[:7] for f in os.listdir(fl_m)} if os.path.isdir(fl_m) else set()   # {YYYY-MM}
     log(f"STAGE seasonal | {len(have)} monthly present -> rolling 3-month windows")
+    # Guard against the pre-2026-09-14 START-year labels: an NDJ/DJF file whose year has no
+    # end-year counterpart (e.g. DJF_2018 when the record starts 2018-01) can only be a stale
+    # start-year file. Refuse rather than publish two conventions side by side.
+    first_year = min(int(ym[:4]) for ym in have) if have else None
+    for d in (fl_s, nb_s):
+        if first_year is None or not os.path.isdir(d):
+            continue
+        stale = sorted(f for f in os.listdir(d)
+                       if f.startswith(("NDJ_", "DJF_")) and f.endswith(".tif")
+                       and int(f[4:8]) <= first_year)
+        if stale:
+            raise SystemExit(
+                f"stale START-year-labelled seasonal files in {d}: {stale}\n"
+                f"  rm the NDJ_*/DJF_* files under seasonal/flooded and seasonal/nobs, then re-run "
+                f"--stage seasonal (labels are now END-year, see season_label_year()).")
     for ym in sorted(have):
         year, month = int(ym[:4]), int(ym[5:7])
         keys = [f"{y:04d}-{m:02d}" for y, m in (_month_add(year, month, k) for k in range(3))]
         if not all(k in have for k in keys):
             continue
         code = SEASONS[month]
-        fl_out = os.path.join(fl_s, f"{code}_{year:04d}.tif")
-        nb_out = os.path.join(nb_s, f"{code}_{year:04d}.tif")
+        label_year = season_label_year(year, month)   # END-year label (PTOT convention), see helper
+        fl_out = os.path.join(fl_s, f"{code}_{label_year:04d}.tif")
+        nb_out = os.path.join(nb_s, f"{code}_{label_year:04d}.tif")
         if not overwrite and os.path.exists(fl_out) and os.path.exists(nb_out):
             continue
         flood_any = np.zeros((H, W), np.uint8)
@@ -260,7 +293,7 @@ def stage_seasonal(root, overwrite):
         flooded = np.where(seen, flood_any, NODATA).astype(np.uint8)
         write_cog(fl_out, flooded, "uint8", NODATA, "nearest")
         write_cog(nb_out, np.minimum(obs, 65535).astype(np.uint16), "uint16", 0, "average")
-        log(f"  {code}_{year}: {keys} -> seasonal flooded+nobs")
+        log(f"  {code}_{label_year}: {keys} -> seasonal flooded+nobs")
     log("STAGE seasonal DONE")
 
 
