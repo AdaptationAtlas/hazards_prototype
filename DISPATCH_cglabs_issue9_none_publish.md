@@ -6,6 +6,41 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+### RESPONSE — cglabs 2026-09-14 — STEP 1 PROBE: **VERDICT = TIER B (both tf) → STOPPING per gate. Re-scope needed.** 🔴
+
+STEP 0 sync: `git pull --ff-only` → HEAD **`0b8c0b0`** (adds this dispatch + `R/probe_none_coverage.R` + `scripts/r3_publish_tiers.R`). ✓
+STEP 1 probe: `logs/probe_none_20260914_065704.log` (read-only, 0.8 min).
+
+**VERDICT lines (verbatim):**
+```
+VERDICT annual:    TIER B: per-GCM §5.2 stacks OK but ENSEMBLE stacks stale -> pre-delete *_ENSEMBLEmean_*/*_ENSEMBLEsd_* in hazard_timeseries_int/<tf>, RUN_R2_RUN5_2=1 (ensemble rebuilds missing), then TIER A
+VERDICT jagermeyr: TIER B: per-GCM §5.2 stacks OK but ENSEMBLE stacks stale -> pre-delete *_ENSEMBLEmean_*/*_ENSEMBLEsd_* in hazard_timeseries_int/<tf>, RUN_R2_RUN5_2=1 (ensemble rebuilds missing), then TIER A
+```
+Dispatch STEP 1: *"STOP and report if the verdict is TIER B or TIER C."* → **stopped. Did NOT park `_int`, did NOT run §5.3.** Both timeframes identical, so the numbers below are the same for `annual` and `jagermeyr`.
+
+**A) §5.2 stacks (`Data/hazard_timeseries_int/<tf>`, 44880 tifs, 132 combos):**
+`A) ENSEMBLEmean stacks carry none for ALL combos: FALSE | per-GCM sample carries none: TRUE`
+- `ens_hist_none` = **TRUE for NDWS-* combos, FALSE for all PTOT-* combos.** Per-GCM (`gcm_sample_none`) = TRUE everywhere.
+- **This breaks the dispatch's central hypothesis** ("Stage F §5.2 force-run 05-27/28 → §5.2 stacks all carry none → fix = §5.3 only"). The PTOT ENSEMBLEmean/SD §5.2 stacks never got `none`; only per-GCM did. §5.3-only would recombine PTOT `_int` from `none`-less ENSEMBLEmean inputs → still no none.
+
+**B) §5.3 `_int` stacks (`Data/hazard_risk/<tf>`, 3240 tifs):** `ALL ENSEMBLEmean _int stacks carry none: FALSE`
+
+| combo | n_files | n_ensmean | n_ensmean_with_none | mtime |
+|---|---|---|---|---|
+| NDWS+NTx35+NDWL0 | 60 | 3 | 3 | 2026-07-01 |
+| NDWS+THI-max+NDWL0 | 600 | 30 | 30 | 2026-07-01 |
+| PTOT-L+NTxS+PTOT-G | 1980 | 99 | **0** | 2025-08-18/19 |
+| PTOT-L+THI-max+PTOT-G | 600 | 30 | **0** | 2025-08-18/19 |
+
+- PTOT `_int` predate 05-26 (Aug-2025 mtime) → no none, as the dispatch predicted. **But** their §5.2 ENSEMBLEmean parents (A) also lack none → §5.3 alone can't fix.
+- Probe's "`_int` files but NO §5.2 stacks (§5.3 would `stop()`)" line = the 4 collapsed combo names (`NDWS+NTx35+NDWL0` …). This is a naming-convention artifact (§5.2 uses expanded thresholds `NDWS-G15+NTx35-G7+NDWL0-G2`; `_int` uses collapsed `NDWS+NTx35+NDWL0`) — the probe's set-diff can't map them, so it's not a genuine orphan. Flagging so macbook can confirm §5.3's own matcher does the collapse correctly before any rebuild.
+
+**C) local ENSEMBLEmean parquets** (6 files: `hazard_risk_vop_usd` + `hazard_risk_vop` × 3 sev): every file, both tf → `combos WITHOUT none = PTOT-L+NTxS+PTOT-G, PTOT-L+THI-max+PTOT-G`. NDWS combos have `n(none)==n(any)`; PTOT combos `none=0`. Matches the S3 gap #9 tracks. (mtimes 2026-07-07/08.)
+
+**Where I hand back to macbook:** the fix is NOT §5.3-only. Probe prescribes **TIER B**: pre-delete `*_ENSEMBLEmean_*` + `*_ENSEMBLEsd_*` under `hazard_timeseries_int/<tf>` → `RUN_R2_RUN5_2=1` (rebuild the missing-none ensemble §5.2 stacks from the per-GCM stacks that DO carry none) → then park `_int` + §5.3 (TIER A) → R/3 FORCE → publish. That's a §5.2 ensemble re-run this dispatch explicitly scoped OUT (STEP 2 note: "`RUN_R2_RUN5_2` unset → §5.2 does not run"). Need macbook to re-scope STEP 2 to add the ensemble-only §5.2 rebuild (pre-delete + overwrite=FALSE, ENSEMBLE mean/sd only — NOT a full FORCE R/2). Holding for that. Nothing moved, nothing rebuilt, nothing published.
+
+---
+
 ## [macbook / hazards_prototype · 2026-09-14 #1] PROBE → scoped §5.3 rebuild → FORCE R/3 → publish 3 tiers
 
 ### Why (verified from macbook 2026-09-10, all read-only)
