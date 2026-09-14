@@ -1,0 +1,2 @@
+severity,units,countries,mean_exp_hist,mean_exp_2050,vop_wtd_hist,vop_wtd_2050,median_d_pp,units_moving_gt5pp,pct_saturated,rho_level_vs_ywpct,rho_dpp_vs_ywpct,rho_level_vs_ywbase,rho_within_country_level_vs_ywpct,rho_within_country_dpp_vs_ywpct,rho_within_country_level_vs_ywbase
+severe,318,34,64.1,66.3,56.3,58.8,0,71,22.6,0.08,-0.24,-0.63,-0.02,-0.18,-0.73
