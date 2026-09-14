@@ -60,6 +60,7 @@ vint_root <- atlas_dirs$data_dir$hazard_risk_vop
 
 timeframes <- basename(list.dirs(int_root, recursive = FALSE))
 tf_env <- Sys.getenv("PROBE_TIMEFRAMES", "")
+timeframes <- timeframes[!grepl("^_|^errors$", timeframes)]
 if (nzchar(tf_env)) timeframes <- intersect(timeframes, strsplit(tf_env, ",")[[1]])
 if (!length(timeframes)) { .log("no timeframe dirs under %s — nothing to probe", int_root); quit(status = 2) }
 .log("timeframes: %s", paste(timeframes, collapse = ", "))
@@ -127,9 +128,12 @@ for (tf in timeframes) {
     print(b_tab, nrows = 100)
     B_ok <- nrow(ens) > 0 && all(ens$none %in% TRUE)
     .log("B) ALL ENSEMBLEmean _int stacks carry none: %s", B_ok)
-    only_a <- setdiff(a_combos, b_combos); only_b <- setdiff(b_combos, a_combos)
-    if (length(only_a)) .log("B) combos with §5.2 stacks but NO _int files (deleted/never combined): %s", paste(only_a, collapse = ", "))
-    if (length(only_b)) .log("B) combos with _int files but NO §5.2 stacks (§5.3 would stop()): %s", paste(only_b, collapse = ", "))
+    # NOTE: §5.2 stack names use the EXPANDED per-crop thresholds (e.g. NDWS-G15+NTx35-G7+NDWL0-G2,
+    # = combinations_ca$combo_name, which is also what §5.3 matches on), while _int names use the
+    # COLLAPSED combo_name_simple2 (NDWS+NTx35+NDWL0). A raw set-diff therefore always differs;
+    # informational only — it is NOT evidence that §5.3 would stop().
+    .log("B) info: %d expanded §5.2 combos vs %d collapsed _int combos (naming differs by design): _int combos = %s",
+         length(a_combos), length(b_combos), paste(b_combos, collapse = ", "))
   }
 
   ## ---- C) R/3 §4.2 ENSEMBLEmean parquets ------------------------------------

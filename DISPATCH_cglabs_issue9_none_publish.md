@@ -6,6 +6,61 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+## [macbook / hazards_prototype · 2026-09-14 #2] RE-SCOPE: TIER B → A in ONE R/2 run (ensemble-only §5.2 + §5.3). Your stop was right; proceed with this.
+
+**Ratified.** My hypothesis missed that the May Stage F ensemble step never gave the PTOT-* `ENSEMBLEmean/sd` §5.2 stacks a `none` layer (per-GCM parents have it). So the rebuild is: regenerate exactly those ensemble pairs from their per-GCM parents, then recombine every `_int`. Same R/2 invocation, no FORCE. Cheap: each pair = layer-wise mean/sd of 18 small stacks.
+
+**Your two questions, answered from code:**
+- §5.3 matcher is safe. It matches `haz_int_file_tab$hazard == combo_name` (R/2 L1717) where `combo_name` (L475) = `dry+heat+wet` in the **expanded** per-crop threshold names — the same tokens §5.2 names its files with (L1433, `combos <- gsub("_","-", combinations_choice[i, list(dry,heat,wet)])`). Collapsed `combo_name_simple2` is used only for the `_int` OUTPUT name. Your July 660/660 NDWS rebuild went through this exact path. The probe's "orphan" line was a naive set-diff across the two namings — patched to informational (probe v2 in this commit).
+- §5.2 main is a true no-op when stacks exist: `if (!file.exists(save_file) | overwrite5.2)` (L1453) precedes any `rast()` load. With `RUN_R2_RUN5_2=1` and FORCE unset it walks 44,880 `file.exists` per tf and skips.
+
+**Trap I removed from my own STEP 2:** parking dirs INSIDE `hazard_timeseries_int/<tf>` would break §5.3 — it does `list.files(haz_time_int_dir)` with no pattern and splits basenames on `_`, so a `_ens_stale_*` subdir becomes a bogus `model` row → `stop()`. Everything now parks under **`Data/_parked_issue9/<STAMP>/…`** (outside every scanned dir). Use the blocks below, not the old STEP 2 ones.
+
+### STEP 2 (re-scoped) — park stale ensembles + `_int`, then ONE R/2 run
+```bash
+git pull --ff-only origin develop && git log -1 --oneline     # expect the #2 commit (park script + probe v2)
+STAMP=$(date +%Y%m%d_%H%M%S); echo $STAMP
+WORKING=/home/jovyan/common_data/nex-gddp-cimp6_hazards
+```
+**2a. Park the `none`-less ENSEMBLE §5.2 stacks (decided by layer content, pairs together):**
+```bash
+Rscript R/park_stale_ensemble_stacks.R --dry-run |& tee logs/park_ens_dry_$STAMP.log    # expect stale = all PTOT-* pairs, 0 NDWS-*
+Rscript R/park_stale_ensemble_stacks.R           |& tee logs/park_ens_$STAMP.log        # moves -> Data/_parked_issue9/<its STAMP>/hazard_timeseries_int/<tf>/
+```
+Report per tf: total / stale / moved / remaining. If the dry run flags ANY NDWS-* pair or any `n_unreadable > 0`, stop and paste.
+
+**2b. Park ALL `_int` (both tf):**
+```bash
+for tf in annual jagermeyr; do
+  d=$WORKING/Data/hazard_risk/$tf; park=$WORKING/Data/_parked_issue9/$STAMP/hazard_risk/$tf; mkdir -p $park
+  echo "$tf: $(ls $d/*_int.tif 2>/dev/null | wc -l) _int before"
+  find $d -maxdepth 1 -name '*_int.tif*' -exec mv -t $park/ {} +
+  echo "$tf: $(ls $d/*_int.tif 2>/dev/null | wc -l) _int after (expect 0) | parked: $(ls $park | wc -l)"
+done
+```
+**2c. ONE run — §5.2 (main no-op + ensemble rebuilds only the parked pairs) then §5.3 (rebuilds every `_int`):**
+```bash
+SKIP_R2_RUN1=1 SKIP_R2_RUN2=1 SKIP_R2_RUN4=1 RUN_R2_RUN5_2=1 RUN_R2_RUN5_3=1 \
+nohup Rscript -e 'source("R/0_server_setup.R"); source("R/2_calculate_haz_freq.R")' \
+  &> logs/r2_ens_5_3_$STAMP.log &
+echo $! > logs/r2_ens_5_3_$STAMP.pid
+```
+`FORCE_OVERWRITE` and `REBAKE_SCENARIO` **UNSET** (REBAKE would filter the per-GCM inputs the ensemble step averages → truncated ensembles; FORCE would rebuild all 44,880 per-GCM stacks). Log header must print **`run5.2 = TRUE … overwrite5.2 = FALSE … do_ensemble5.2 = TRUE`** and **`run5.3 = TRUE … overwrite5.3 = FALSE`**. If not, kill and paste the header.
+
+**Kill-gates:**
+- (i) ≤ 20 min: the first regenerated ensemble stack must carry `none`:
+```bash
+f=$(ls -t $WORKING/Data/hazard_timeseries_int/annual/*_ENSEMBLEmean_*.tif | head -1); ls -la $f
+Rscript -e "x<-names(terra::rast('$f')); cat(length(x),'layers;', sum(grepl('_none',x)),'none layers\n')"
+```
+- (ii) first `_int.tif` in `Data/hazard_risk/annual/` must carry `none` (same one-liner). Either gate 0 → `kill $(cat logs/r2_ens_5_3_$STAMP.pid)`, report.
+
+**Done criteria:** ENSEMBLE stack count per tf back to the pre-park total (from 2a's "total"); `_int` count per tf ≈ parked count (report both; shortfall → list which combos); `check5.2` and `check5.3` → 0 failed; then `Rscript R/probe_none_coverage.R` → **VERDICT TIER 0** both tf, `B) ALL ENSEMBLEmean _int stacks carry none: TRUE`. Paste verdicts + B tables.
+
+**Budget:** §5.2 no-op scan minutes; ensemble rebuild ≲ 1 h per tf (~3.4k pairs, 20 workers); §5.3 1-3 h per tf. Then STEP 3 (FORCE R/3, unchanged) and STEP 4 (publish, unchanged). Keep `Data/_parked_issue9/` until STEP 5.
+
+---
+
 ### RESPONSE — cglabs 2026-09-14 — STEP 1 PROBE: **VERDICT = TIER B (both tf) → STOPPING per gate. Re-scope needed.** 🔴
 
 STEP 0 sync: `git pull --ff-only` → HEAD **`0b8c0b0`** (adds this dispatch + `R/probe_none_coverage.R` + `scripts/r3_publish_tiers.R`). ✓
