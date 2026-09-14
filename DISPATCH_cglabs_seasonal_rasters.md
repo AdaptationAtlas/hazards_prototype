@@ -8,7 +8,7 @@ Producer to be written: `R/observational/5b_make_obs_seasonal_rasters.R` (+ new 
 
 ---
 
-## [macbook 2026-09-14 #7] HOLD — await Pete's GO. CHIRPS **NDJ window is wrong at 3 sites** (only December year-shifted). Fix committed; NDJ-only rebuild of tiers 1, 2, 4 written up below.
+## [macbook 2026-09-14 #7] **GO (Pete, 2026-09-14)** — CHIRPS **NDJ window is wrong at 3 sites** (only December year-shifted). Fix committed; NDJ-only rebuild of tiers 1, 2, 4 written up below.
 
 **Bug.** For the two windows that straddle the year boundary the code shifted ONLY December to the previous year. Correct for DJF (Dec(Y−1)+Jan(Y)+Feb(Y)), **wrong for NDJ: NDJ-Y = Nov(Y) + Dec(Y−1) + Jan(Y)** — three non-contiguous months spanning two rainy seasons. The KE-ENSO notebook v2 found it by exact decomposition against the monthly parquet and **quarantined NDJ** (tracker V2-63: "pipeline fix = shift year labels for months ≥ 11"). SPEI-03 NDJ shows the same variance-deflation fingerprint.
 
@@ -22,7 +22,7 @@ Producer to be written: `R/observational/5b_make_obs_seasonal_rasters.R` (+ new 
 - tier 2: `processing=climatology/variable={9 vars}/period=NDJ/clim={3}/stat={4}` — 108 objects.
 - tier 1: `processing=admin-periods/variable=adm0_obs.parquet`, `adm1_obs.parquet` — whole files (all periods; only `period='NDJ'` rows change).
 
-**Steps when GO (est. < 1 h total; all skip-if-exists so only NDJ recomputes):**
+**GO given by Pete 2026-09-14 — run after (or alongside) the GFM relabel in `DISPATCH_cglabs_gfm_flood.md #9`; both are light. Steps (est. < 1 h total; all skip-if-exists so only NDJ recomputes):**
 1. `git pull`.
 2. Admin periods: `Rscript R/observational/4_aggregate_obs_admin_periods.R --full` (rewrites both parquets; minutes). **Gate:** for one adm1 (e.g. Turkana) `PTOT` NDJ 1998 `value_mean` == sum of monthly `value_mean` for 1997-11, 1997-12, 1998-01 from `obs_monthly_adm1.parquet`; and NDJ 1998 ≠ the old value.
 3. Seasonal: `rm Data/chirts_chirps_hist/seasonal/PTOT/PTOT_NDJ_*.tif` then `Rscript R/observational/5b_make_obs_seasonal_rasters.R --full --var PTOT` (regenerates only NDJ, ~5 min). **Gate:** 45 NDJ files, 1982–2026; pixel check `PTOT_NDJ_1998_sum` == monthly 1997-11 + 1997-12 + 1998-01 at a sample of pixels.
