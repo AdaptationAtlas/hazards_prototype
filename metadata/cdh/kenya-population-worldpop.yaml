@@ -1,97 +1,113 @@
-# CDH v0.1.0 metadata record — WorldPop constrained population (KE-39 exposure).
-# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
-cdh_schema_version: v0.1.0
+# CDH v0.3.0 metadata record — WorldPop constrained gridded population 2020, Kenya (KE-39 exposure, Adaptation Atlas).
+# Validate (cdh-metadata-standard v0.3.0 checkout):
+#   node scripts/validate-yaml.js --profile spec/schemas/profiles/cdh.schema.json <this file>
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
 extensions:
-- https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.1.0/extensions/cdh/schema.json
-- https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.1.0/extensions/datacube/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
 
 id: kenya-population-worldpop
-title: WorldPop Constrained Population 2020 (Kenya)
+title: WorldPop Constrained Gridded Population 2020 (Kenya)
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
 description: >
-  Gridded population count for Kenya, 2020, from WorldPop's constrained (top-down dasymetric)
-  100 m product. The primary population-exposure surface of the KE-ENSO Explorer flood/drought
-  overlay; paired with the GRID3/WOPR bottom-up surface (same grain, different method).
+  Gridded population count for Kenya, 2020, from WorldPop's constrained (top-down dasymetric) 100 m
+  product, cropped to Kenya and written as a Cloud Optimized GeoTIFF. The primary population-exposure
+  surface of the KE-ENSO Explorer flood and drought overlay; paired with the GRID3 / WOPR bottom-up
+  surface (record kenya-population-grid3), which has the same grain but a different method.
 resource_type: dataset
-license: CC-BY-4.0
+license: CC-BY-4.0 # WorldPop standard licence; a clip/subset, so the source licence carries through
 
 keywords:
-- population
-- WorldPop
-- constrained
-- dasymetric
-- exposure
-- 100m
-- Kenya
-- '2020'
+  [
+    population,
+    WorldPop,
+    constrained,
+    dasymetric,
+    top-down,
+    exposure,
+    100 m,
+    Kenya,
+    "2020",
+  ]
 
 note: >
-  Constrained = top-down redistribution onto built-settlement extents. National total ~55.9M is
-  UN-adjusted (WorldPop), higher than the KNBS 2019 census (47.6M); use for spatial distribution,
-  not as a census-anchored count. Compare with the GRID3/WOPR bottom-up surface.
+  Constrained = top-down redistribution of national totals onto built-settlement extents. The
+  national total (~55.9 M) is UN-adjusted and higher than the KNBS 2019 census (47.6 M); use for
+  spatial distribution, not as a census-anchored count. Compare with the GRID3 / WOPR bottom-up
+  surface.
 
 contact:
-- name: Peter Steward
-  organization: Alliance of Bioversity International and CIAT
-  email: p.steward@cgiar.org
-  roles: [processor, point-of-contact]
-- organization: WorldPop, University of Southampton
-  url: https://www.worldpop.org/
-  roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: WorldPop, University of Southampton
+    url: https://www.worldpop.org/
+    roles: [licensor, producer]
 
 citation:
-  title: "WorldPop constrained gridded population estimates (100 m)"
+  title: "WorldPop constrained individual countries 2020 (100 m), Kenya"
   authors: [WorldPop]
   date: "2020"
   publisher: WorldPop, University of Southampton
-  url: https://www.worldpop.org/
+  url: https://hub.worldpop.org/geodata/listing?id=79
 
 created: "2026-08-28"
-updated: "2026-08-28"
+updated: "2026-09-14"
 
 spatial:
   bbox: [33.9, -4.7, 41.9, 5.5]
   crs: EPSG:4326
   geography: [kenya]
   resolution:
-  - type: xy
-    value: 100
-    unit: meter
-    label: ~100 m (3 arc-second)
+    - type: xy
+      value: 100
+      unit: meter
+      label: ~100 m (3 arc-seconds)
 
 temporal:
-  resolution: {step: null, unit: annual, note: "Single 2020 estimate."}
-  start_date: "2020-01-01"
+  date: "2020"
 
 variables:
-- name: count
-  description: Estimated persons per pixel (2020).
-  data_type: float32
-  unit: count
+  - name: count
+    description: Estimated number of people per pixel, 2020.
+    data_type: float32
+    unit: "{person}"
 
 processing:
-- id: source
-  description: WorldPop constrained (top-down dasymetric) 100 m population, 2020.
-  derived_from:
-  - title: WorldPop constrained population
-    url: https://hub.worldpop.org/geodata/listing?id=79
-- id: crop-cog
-  description: Crop to Kenya, set fill to NoData, write COG with overviews.
-  code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "python/ingest_exposure_worldpop.py"}
+  - id: source
+    description: WorldPop constrained (top-down dasymetric) 100 m population count, 2020.
+    derived_from:
+      - title: WorldPop constrained individual countries 2020 (100 m)
+        url: https://hub.worldpop.org/geodata/listing?id=79
+  - id: crop-cog
+    description: Crop to Kenya, set the fill value to NoData, write a COG with overviews.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: python/ingest_exposure_worldpop.py
 
 data:
-- name: population
-  description: 2020 constrained population count COG.
-  locations:
-  - {url: "https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=worldpop-constrained-2020/region=east-africa/processing=constrained/variable=count/population_2020.tif", title: S3}
-  media_type: image/tiff; application=geotiff; profile=cloud-optimized
-  processing_steps: [source, crop-cog]
-  nodata: NaN
+  - name: population
+    description: 2020 constrained population count, single COG.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=worldpop-constrained-2020/region=east-africa/processing=constrained/variable=count/population_2020.tif
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=population/source=worldpop-constrained-2020/region=east-africa/processing=constrained/variable=count/population_2020.tif
+        title: S3
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    file_size: 48.4 MB
+    nodata: NaN
+    processing_steps: [source, crop-cog]
 
 cdh:
   domain: [socioeconomic]
-  use_cases:
-  - Population exposed to flood/drought when overlaid with hazard layers at Kenya admin levels.
-  not_recommended_for:
-  - use: Reporting census-anchored population totals.
-    reason: UN-adjusted total (~55.9M) exceeds the KNBS 2019 census (47.6M).
-    use_instead: KNBS census counts for official totals; WorldPop for spatial distribution.
+  usage:
+    intended_uses:
+      - People exposed to flood or drought when overlaid with the hazard layers at Kenya admin levels (record kenya-flood-exposure-intersect).
+    not_recommended_for:
+      - use: Reporting census-anchored population totals.
+        reason: UN-adjusted total (~55.9 M) exceeds the KNBS 2019 census (47.6 M).
+        use_instead: KNBS census counts for official totals; this surface for spatial distribution.

@@ -1,4 +1,6 @@
-# CDH v0.3.0 metadata record — SPEI drought index (3- and 12-month) monthly COGs (KE-ENSO Explorer, Adaptation Atlas).
+# CDH v0.3.0 metadata record — CHIRPS-derived monthly + seasonal precipitation COGs (KE-ENSO Explorer, Adaptation Atlas).
+# Renamed from `africa-precipitation-chirps` after review (cdh-metadata-standard#32): this is an Atlas
+# aggregation product derived from CHIRPS v3 (catalog record `chirps-v3-daily`), not a subset of it.
 # Validate (cdh-metadata-standard v0.3.0 checkout):
 #   node scripts/validate-yaml.js --profile spec/schemas/profiles/cdh.schema.json <this file>
 $schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
@@ -7,82 +9,100 @@ extensions:
   - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
   - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
 
-id: africa-spei-drought
-title: SPEI Drought Index, 3- and 12-month (Africa)
+id: africa-precipitation-monthly-seasonal
+title: Monthly and Seasonal Precipitation from CHIRPS v3 (Africa)
 series:
   name: Africa Agriculture Adaptation Atlas
   url: https://adaptationatlas.cgiar.org/
 description: >
-  Standardized Precipitation-Evapotranspiration Index at 3-month (SPEI-03) and 12-month (SPEI-12)
-  accumulation, as per-pixel monthly Cloud Optimized GeoTIFFs over Africa, 1981 to present. Built
-  from CHIRPS v3 precipitation and a potential-evapotranspiration climate water balance fitted with a
-  log-logistic distribution; negative values are drier than the reference climatology. The drought
-  layer of the KE-ENSO Explorer: the short accumulation tracks seasonal/agricultural drought, the
-  long accumulation hydrological drought.
+  Total precipitation (PTOT) aggregated from CHIRPS v3.0 and delivered as per-pixel monthly Cloud
+  Optimized GeoTIFFs and per-year rolling 3-month (seasonal) sums over Africa, 1981 to present.
+  This is the rainfall backbone of the KE-ENSO Explorer's seasonal/ENSO analysis: the twelve
+  seasonal windows (JFM, FMA, ..., DJF) are the tri-month sums the notebook compares against ENSO
+  phase and against the drought (SPEI), vegetation (NDVI) and flood layers. A derived aggregation
+  product, not a redistribution of the CHIRPS daily archive.
 resource_type: dataset
-license: CC-BY-4.0
+license: CC-BY-4.0 # Atlas-processed COGs; CHIRPS source is public domain (credit CHC / UC Santa Barbara)
 
 keywords:
   [
-    drought,
-    SPEI,
-    water balance,
-    evapotranspiration,
-    standardized index,
+    precipitation,
+    rainfall,
+    CHIRPS,
+    PTOT,
     monthly,
+    seasonal,
     Africa,
     ENSO,
+    drought,
   ]
 
 note: >
-  SPEI is a z-score anomaly against the fitted reference distribution, not an absolute deficit.
-  Arid-cell -Inf values (zero-precipitation tails of the log-logistic fit) are clamped to NoData.
+  Source CHIRPS is public domain ("no restrictions on use"); these reprocessed COGs are released
+  CC-BY-4.0 with attribution to the Climate Hazards Center, UC Santa Barbara. Seasonal windows are
+  labelled by the calendar year in which the window ends (DJF_2020 = Dec 2019 to Feb 2020). Edge
+  windows that the record cannot cover in full are absent (NDJ and DJF 1981; windows ending after
+  the latest monthly file), so not every season x year combination of the template exists.
 
 contact:
   - name: Peter Steward
     organization: Alliance of Bioversity International and CIAT
     email: p.steward@cgiar.org
-    roles: [licensor, producer, processor, point-of-contact]
+    roles: [processor, point-of-contact]
+  - organization: Climate Hazards Center, UC Santa Barbara
+    url: https://www.chc.ucsb.edu/data/chirps
+    roles: [licensor, producer]
 
 citation:
-  title: "SPEI-03 and SPEI-12 drought index from CHIRPS v3 (Africa), Africa Agriculture Adaptation Atlas"
+  title: "Monthly and seasonal precipitation from CHIRPS v3 (Africa), Africa Agriculture Adaptation Atlas"
   authors:
     - "Steward, P."
+    - "Funk, C."
+    - "Peterson, P."
+    - "Landsfeld, M."
   date: "2026"
   publisher: Alliance of Bioversity International and CIAT
 related_publications:
-  - doi: 10.1175/2009JCLI2909.1
+  - doi: 10.1038/sdata.2015.66
     citation:
-      title: "A Multiscalar Drought Index Sensitive to Global Warming: The Standardized Precipitation Evapotranspiration Index"
+      title: "The climate hazards infrared precipitation with stations - a new environmental record for monitoring extremes"
       authors:
-        - "Vicente-Serrano, S. M."
-        - "Beguería, S."
-        - "López-Moreno, J. I."
-      date: "2010"
-      publisher: Journal of Climate
-      url: https://doi.org/10.1175/2009JCLI2909.1
+        - "Funk, C."
+        - "Peterson, P."
+        - "Landsfeld, M."
+        - "Pedreros, D."
+        - "Verdin, J."
+        - "Shukla, S."
+        - "Husak, G."
+        - "Rowland, J."
+        - "Harrison, L."
+        - "Hoell, A."
+        - "Michaelsen, J."
+      date: "2015"
+      publisher: Scientific Data
+      url: https://doi.org/10.1038/sdata.2015.66
 
 created: "2026-08-28"
 updated: "2026-09-14"
 
 spatial:
-  bbox: [-20.0, -40.0, 55.0, 40.0] # Africa, on the CHIRPS 0.05 deg grid (verified vs live COG)
+  bbox: [-20.0, -40.0, 55.0, 40.0] # Africa (verified vs live COG: 1500 x 1600 cells at 0.05 deg)
   crs: EPSG:4326
   geography: [africa]
   resolution:
     - type: xy
       value: 0.05
       unit: degree
-      label: 0.05 deg (~5.5 km, CHIRPS grid)
+      label: 0.05 deg (~5.5 km, CHIRPS native)
 
 temporal:
   start_date: "1981-01"
-  end_date: null # open-ended; appended monthly with the CHIRPS precipitation record
+  end_date: null # open-ended; monthly files are appended as CHIRPS v3 is released
 
 dimensions:
   - name: time
     type: temporal
-    description: Month the index is valued for (YYYY-MM), i.e. the last month of the accumulation window; the {time} token.
+    description: Month of the monthly totals (YYYY-MM); the {time} token of the monthly asset.
     values:
       [
         "1981-01",
@@ -631,52 +651,122 @@ dimensions:
         "2026-04",
       ]
     step: P1M
+  - name: season
+    type: season
+    description: >
+      Rolling 3-month window named by the initials of its months (JFM = Jan-Mar ... DJF = Dec-Feb).
+      Each value covers three months; NDJ and DJF span the year boundary and are labelled by the
+      year in which they end.
+    values: [JFM, FMA, MAM, AMJ, MJJ, JJA, JAS, ASO, SON, OND, NDJ, DJF]
+  - name: year
+    type: temporal
+    description: Year in which a seasonal window ends; the {year} token of the seasonal asset.
+    values:
+      [
+        "1981",
+        "1982",
+        "1983",
+        "1984",
+        "1985",
+        "1986",
+        "1987",
+        "1988",
+        "1989",
+        "1990",
+        "1991",
+        "1992",
+        "1993",
+        "1994",
+        "1995",
+        "1996",
+        "1997",
+        "1998",
+        "1999",
+        "2000",
+        "2001",
+        "2002",
+        "2003",
+        "2004",
+        "2005",
+        "2006",
+        "2007",
+        "2008",
+        "2009",
+        "2010",
+        "2011",
+        "2012",
+        "2013",
+        "2014",
+        "2015",
+        "2016",
+        "2017",
+        "2018",
+        "2019",
+        "2020",
+        "2021",
+        "2022",
+        "2023",
+        "2024",
+        "2025",
+        "2026",
+      ]
+    step: P1Y
 
 variables:
-  - name: SPEI-03
-    dimensions: [time]
-    description: 3-month SPEI (seasonal / agricultural drought). Negative = drier than the reference climatology.
+  - name: PTOT
+    description: Total precipitation over the period (calendar month, or 3-month seasonal sum).
     data_type: float32
-    unit: "1"
-  - name: SPEI-12
-    dimensions: [time]
-    description: 12-month SPEI (hydrological drought). Negative = drier than the reference climatology.
-    data_type: float32
-    unit: "1"
+    unit: mm
 
 processing:
   - id: source
-    description: CHIRPS v3 monthly precipitation minus potential evapotranspiration (climate water balance).
+    description: CHIRPS v3.0 quasi-global daily/monthly precipitation (station + infrared blend).
     derived_from:
       - title: CHIRPS-3.0 data portal (Climate Hazards Center)
         url: https://data.chc.ucsb.edu/products/CHIRPS-3.0/
-      - title: Monthly precipitation from CHIRPS v3 (Africa) - Hub record africa-precipitation-monthly-seasonal
-        url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/variable=PTOT/
+      - title: CDH catalog record chirps-v3-daily
+        url: https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/tree/main/records/chirps-v3-daily
   - id: monthly-cog
-    description: Fit log-logistic SPEI at 3- and 12-month accumulation (SPEI R package), clamp -Inf arid tails to NoData, write COGs with overviews.
+    description: Monthly PTOT over the Africa window, written as COGs with internal overviews.
     code:
       url: https://github.com/AdaptationAtlas/hazards_prototype
-      version: R/observational/2_calculate_obs_spei.R
+      version: R/observational
+  - id: seasonal-sum
+    description: Per-year tri-month sums over the twelve seasonal windows, written as COGs with overviews.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: R/observational/5b_make_obs_seasonal_rasters.R
 
 data:
   - name: monthly
-    description: Per-pixel monthly SPEI-03 and SPEI-12, one COG per variable per month.
+    description: Per-pixel monthly precipitation totals, one COG per month.
     locations:
       - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/
         title: HTTPS
       - url: s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=monthly/
         title: S3
-    href_template: "variable={variable}/{variable}-{time}.tif" # e.g. variable=SPEI-03/SPEI-03-2020-04.tif
+    href_template: "variable={variable}/{variable}-{time}.tif" # e.g. variable=PTOT/PTOT-2020-04.tif
     media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    file_size: 5 MB
     processing_steps: [source, monthly-cog]
+  - name: seasonal
+    description: Per-year rolling 3-month precipitation sums, one COG per season x year.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=seasonal/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=seasonal/
+        title: S3
+    href_template: "variable={variable}/season={season}/{variable}_{season}_{year}_sum.tif" # e.g. variable=PTOT/season=MAM/PTOT_MAM_2020_sum.tif
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    processing_steps: [source, monthly-cog, seasonal-sum]
 
 cdh:
   domain: [climate]
   usage:
     intended_uses:
-      - Seasonal (SPEI-03) and multi-year (SPEI-12) drought characterisation in the KE-ENSO Explorer.
-      - Drought context for the vegetation (NDVI) and crop water-stress (WRSI) layers.
+      - Seasonal and ENSO-phase rainfall analysis and anomaly context in the KE-ENSO Explorer.
+      - Rainfall driver for interpreting the drought (SPEI), vegetation (NDVI) and flood layers.
     not_recommended_for:
-      - use: Reading SPEI as an absolute precipitation or soil-moisture deficit.
-        reason: SPEI is a standardized anomaly against a fitted reference distribution.
-        use_instead: CHIRPS precipitation totals (record africa-precipitation-monthly-seasonal) for absolute rainfall.
+      - use: Daily or sub-monthly rainfall analysis.
+        reason: Only monthly totals and 3-month sums are published here.
+        use_instead: The CHIRPS v3 daily archive (catalog record chirps-v3-daily).

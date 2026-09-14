@@ -1,90 +1,114 @@
-# CDH v0.1.0 metadata record — GRID3/WOPR bottom-up population (KE-39 exposure).
-# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
-cdh_schema_version: v0.1.0
+# CDH v0.3.0 metadata record — GRID3 / WOPR bottom-up gridded population, Kenya (KE-39 exposure, Adaptation Atlas).
+# Validate (cdh-metadata-standard v0.3.0 checkout):
+#   node scripts/validate-yaml.js --profile spec/schemas/profiles/cdh.schema.json <this file>
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
 extensions:
-- https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.1.0/extensions/cdh/schema.json
-- https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.1.0/extensions/datacube/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
 
 id: kenya-population-grid3
-title: GRID3 / WOPR Bottom-up Population (Kenya)
+title: GRID3 / WOPR Bottom-up Gridded Population 2020 (Kenya)
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
 description: >
-  Gridded population count for Kenya from the WorldPop Open Population Repository (WOPR) KEN v2.0,
-  a bottom-up, KNBS-microcensus-modelled 100 m surface (GRID3-branded). The second population-exposure
-  surface of the KE-ENSO Explorer, alongside the WorldPop constrained (top-down) product — same 100 m
-  grain, different estimation METHOD.
+  Gridded population count for Kenya from the WorldPop Open Population Repository (WOPR) KEN v2.0, a
+  bottom-up 100 m surface modelled from KNBS microcensus survey clusters (GRID3-branded), cropped to
+  Kenya and written as a Cloud Optimized GeoTIFF. The second population-exposure surface of the
+  KE-ENSO Explorer, alongside the WorldPop constrained (top-down) product (record
+  kenya-population-worldpop): same grain, different estimation method.
 resource_type: dataset
-license: CC-BY-4.0                   # WorldPop/WOPR standard CC-BY-4.0
+license: CC-BY-4.0 # WorldPop / WOPR standard licence; a clip/subset, so the source licence carries through
 
-keywords: [population, GRID3, WOPR, bottom-up, microcensus, exposure, 100m, Kenya]
+keywords:
+  [
+    population,
+    GRID3,
+    WOPR,
+    WorldPop,
+    bottom-up,
+    microcensus,
+    exposure,
+    100 m,
+    Kenya,
+    "2020",
+  ]
 
 note: >
-  Bottom-up = built up from microcensus survey clusters (not redistributed from a national total).
-  National total ~55.9M is UN-adjusted, higher than the KNBS 2019 census (47.6M). Differs from the
-  WorldPop constrained surface spatially, not in national scale; use for method comparison.
+  Bottom-up = built up from microcensus survey clusters, not redistributed from a national total. The
+  national total (~55.9 M) is UN-adjusted and higher than the KNBS 2019 census (47.6 M). Differs
+  from the WorldPop constrained surface spatially, not in national scale; use for method comparison.
 
 contact:
-- name: Peter Steward
-  organization: Alliance of Bioversity International and CIAT
-  email: p.steward@cgiar.org
-  roles: [processor, point-of-contact]
-- organization: WorldPop / GRID3, University of Southampton
-  url: https://wopr.worldpop.org/
-  roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: WorldPop / GRID3, University of Southampton
+    url: https://wopr.worldpop.org/
+    roles: [licensor, producer]
 
 citation:
-  title: "WOPR: WorldPop Open Population Repository — Kenya v2.0 (bottom-up)"
+  title: "WOPR: WorldPop Open Population Repository - Kenya population v2.0 (bottom-up)"
   authors: [WorldPop, GRID3]
   date: "2020"
   publisher: WorldPop, University of Southampton
   url: https://wopr.worldpop.org/?KEN/population
 
 created: "2026-08-28"
-updated: "2026-08-28"
+updated: "2026-09-14"
 
 spatial:
   bbox: [33.9, -4.7, 41.9, 5.5]
   crs: EPSG:4326
   geography: [kenya]
   resolution:
-  - type: xy
-    value: 100
-    unit: meter
-    label: ~100 m (0.000833 deg)
+    - type: xy
+      value: 100
+      unit: meter
+      label: ~100 m (0.000833 deg)
 
 temporal:
-  resolution: {step: null, unit: annual, note: "Single WOPR KEN v2.0 estimate."}
-  start_date: "2020-01-01"
+  date: "2020"
 
 variables:
-- name: count
-  description: Estimated persons per pixel (bottom-up).
-  data_type: float32
-  unit: count
+  - name: count
+    description: Estimated number of people per pixel, bottom-up model.
+    data_type: float32
+    unit: "{person}"
 
 processing:
-- id: source
-  description: WOPR KEN v2.0 bottom-up gridded population (KNBS microcensus-modelled), 100 m.
-  derived_from:
-  - title: WOPR KEN v2.0 gridded population
-    url: https://data.worldpop.org/repo/wopr/KEN/population/v2.0/
-- id: crop-cog
-  description: Crop to Kenya, fill (-3.4e38) to NoData, write COG with overviews.
-  code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "python/ingest_exposure_grid3.py"}
+  - id: source
+    description: WOPR KEN v2.0 bottom-up gridded population (KNBS microcensus-modelled), 100 m.
+    derived_from:
+      - title: WOPR KEN population v2.0
+        url: https://data.worldpop.org/repo/wopr/KEN/population/v2.0/
+  - id: crop-cog
+    description: Crop to Kenya, set the fill value (-3.4e38) to NoData, write a COG with overviews.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: python/ingest_exposure_grid3.py
 
 data:
-- name: population
-  description: WOPR bottom-up population count COG.
-  locations:
-  - {url: "https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=grid3/region=east-africa/processing=bottom-up/variable=count/population_2020.tif", title: S3}
-  media_type: image/tiff; application=geotiff; profile=cloud-optimized
-  processing_steps: [source, crop-cog]
-  nodata: NaN
+  - name: population
+    description: Bottom-up population count, single COG.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=grid3/region=east-africa/processing=bottom-up/variable=count/population_2020.tif
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=population/source=grid3/region=east-africa/processing=bottom-up/variable=count/population_2020.tif
+        title: S3
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    file_size: 49.2 MB
+    nodata: NaN
+    processing_steps: [source, crop-cog]
 
 cdh:
   domain: [socioeconomic]
-  use_cases:
-  - Second population-exposure surface for method comparison against WorldPop constrained.
-  not_recommended_for:
-  - use: Reporting census-anchored totals.
-    reason: UN-adjusted (~55.9M) vs KNBS 2019 census (47.6M).
-    use_instead: KNBS census for official totals.
+  usage:
+    intended_uses:
+      - Second population-exposure surface for method comparison against the WorldPop constrained product.
+    not_recommended_for:
+      - use: Reporting census-anchored population totals.
+        reason: UN-adjusted total (~55.9 M) exceeds the KNBS 2019 census (47.6 M).
+        use_instead: KNBS census counts for official totals; this surface for spatial distribution.

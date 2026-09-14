@@ -1,98 +1,161 @@
-# CDH v0.1.0 metadata record — FEWS NET WRSI (cropland + rangeland) used by KE-ENSO Explorer.
-# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
-cdh_schema_version: v0.1.0
+# CDH v0.3.0 metadata record — FEWS NET WRSI (cropland + rangeland) seasonal COGs (KE-ENSO Explorer, Adaptation Atlas).
+# Validate (cdh-metadata-standard v0.3.0 checkout):
+#   node scripts/validate-yaml.js --profile spec/schemas/profiles/cdh.schema.json <this file>
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
 extensions:
-- https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.1.0/extensions/cdh/schema.json
-- https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.1.0/extensions/datacube/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
 
 id: eastafrica-wrsi-fews
-title: FEWS NET Water Requirement Satisfaction Index (East Africa)
+title: FEWS NET Water Requirement Satisfaction Index, Cropland and Rangeland (Kenya)
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
 description: >
-  Water Requirement Satisfaction Index (WRSI) for cropland and rangeland growing seasons over East
-  Africa, from USGS FEWS NET (CHIRPS v3.0 precipitation backbone). WRSI = the ratio of seasonal water
-  supplied to crop/pasture water demand (0-100 %); low values flag agricultural water deficit. The
-  crop/rangeland-monitoring layer of the KE-ENSO Explorer.
+  End-of-season Water Requirement Satisfaction Index (WRSI) for cropland (maize) and rangeland
+  growing seasons from USGS FEWS NET, for the long rains (MAM) and short rains (OND) of every year
+  from 2003, cropped to Kenya and written as Cloud Optimized GeoTIFFs. WRSI is the ratio of
+  seasonal water supplied to crop or pasture water demand (0 to 100 percent); low values flag
+  agricultural water deficit. The crop and rangeland monitoring layer of the KE-ENSO Explorer,
+  on the same CHIRPS v3 precipitation backbone as the rainfall and SPEI layers.
 resource_type: dataset
-license: CC0-1.0                     # USGS / US Gov public domain
+license: CC0-1.0 # USGS / US Government work, public domain
 
-keywords: [WRSI, water requirement satisfaction, FEWS NET, cropland, rangeland, drought, agriculture, East Africa]
+keywords:
+  [
+    WRSI,
+    water requirement satisfaction,
+    FEWS NET,
+    cropland,
+    rangeland,
+    maize,
+    drought,
+    agriculture,
+    Kenya,
+  ]
 
 note: >
-  US-Government public-domain source (USGS FEWS NET). CHIRPS v3.0 precipitation backbone keeps it
-  consistent with the CHIRPS rainfall/SPEI layers. Rangeland vs cropland use different growing-season
-  definitions (region codes / EOS dekads).
+  Cropland and rangeland use different water-demand parameterisations and growing-season definitions
+  (FEWS NET region codes / end-of-season dekads), so the two products are not interchangeable. Not
+  every season x year combination of the template exists: the most recent season is only published
+  once FEWS NET releases its end-of-season product.
 
 contact:
-- name: Peter Steward
-  organization: Alliance of Bioversity International and CIAT
-  email: p.steward@cgiar.org
-  roles: [processor, point-of-contact]
-- organization: USGS FEWS NET
-  url: https://earlywarning.usgs.gov/fews
-  roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: USGS FEWS NET
+    url: https://earlywarning.usgs.gov/fews
+    roles: [licensor, producer]
 
 citation:
-  title: "Water Requirement Satisfaction Index (WRSI), FEWS NET"
+  title: "Water Requirement Satisfaction Index (WRSI), East Africa - FEWS NET Data Portal"
   authors: [USGS FEWS NET]
-  date: "2020"
+  date: "2026"
   publisher: USGS FEWS NET Data Portal
   url: https://earlywarning.usgs.gov/fews/product/128
 
 created: "2026-08-28"
-updated: "2026-08-28"
+updated: "2026-09-14"
 
 spatial:
-  bbox: [33.9, -4.7, 41.9, 5.5]        # Kenya (verified vs live COG 80x102 @ 0.1 deg)
+  bbox: [33.9, -4.7, 41.9, 5.5] # Kenya (verified vs live COG 80 x 102 cells at 0.1 deg)
   crs: EPSG:4326
   geography: [kenya]
   resolution:
-  - type: xy
-    value: 0.1
-    unit: degree
-    label: ~0.1 deg (FEWS WRSI grain, verified vs live COG)
+    - type: xy
+      value: 0.1
+      unit: degree
+      label: 0.1 deg (~11 km, FEWS NET WRSI grid)
 
 temporal:
-  start_date: "2003-01-01"             # verified: earliest COG wrsi_cropland_MAM_2003
-  end_date:
-  resolution: {step: P1Y, unit: seasonal, note: "End-of-season WRSI per growing season, per year."}
+  start_date: "2003"
+  end_date: null # open-ended; appended each season as FEWS NET publishes
 
 dimensions:
-- name: time
-  type: temporal
-  description: keyed {SEASON}_{YYYY} (3-letter season code + year).
+  - name: crop
+    type: land-use
+    description: Production system the water balance is parameterised for; the {crop} token. cropland = maize, rangeland = pasture.
+    values: [cropland, rangeland]
+  - name: season
+    type: season
+    description: Growing season, MAM = long rains (March to May), OND = short rains (October to December). Each value covers three months.
+    values: [MAM, OND]
+  - name: year
+    type: temporal
+    description: Calendar year of the growing season; the {year} token.
+    values:
+      [
+        "2003",
+        "2004",
+        "2005",
+        "2006",
+        "2007",
+        "2008",
+        "2009",
+        "2010",
+        "2011",
+        "2012",
+        "2013",
+        "2014",
+        "2015",
+        "2016",
+        "2017",
+        "2018",
+        "2019",
+        "2020",
+        "2021",
+        "2022",
+        "2023",
+        "2024",
+        "2025",
+        "2026",
+      ]
+    step: P1Y
+
 variables:
-- name: wrsi
-  dimensions: [time]
-  description: Water Requirement Satisfaction Index (0-100 %); lower = greater water deficit.
-  data_type: uint8
-  unit: "%"
+  - name: wrsi
+    dimensions: [crop, season, year]
+    description: End-of-season Water Requirement Satisfaction Index, 0 to 100 percent; lower = greater seasonal water deficit.
+    data_type: uint8
+    unit: percent
 
 processing:
-- id: source
-  description: FEWS NET WRSI (CHIRPS precip + ETos crop water balance) for cropland and rangeland seasons.
-  derived_from:
-  - title: FEWS NET WRSI
-    url: https://earlywarning.usgs.gov/fews/product/128
-  - title: CHIRPS v3.0 precipitation
-    url: https://data.chc.ucsb.edu/products/CHIRPS/
-- id: crop-cog
-  description: Assemble cropland/rangeland seasonal WRSI, crop East Africa, write COG with overviews.
-  code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "python/ingest_wrsi_fews.py"}
+  - id: source
+    description: FEWS NET WRSI (CHIRPS precipitation + reference evapotranspiration crop water balance) for the cropland and rangeland seasons.
+    derived_from:
+      - title: FEWS NET WRSI product page
+        url: https://earlywarning.usgs.gov/fews/product/128
+      - title: CHIRPS-3.0 data portal (Climate Hazards Center)
+        url: https://data.chc.ucsb.edu/products/CHIRPS-3.0/
+  - id: crop-cog
+    description: Assemble the cropland and rangeland end-of-season WRSI grids per season and year, crop to Kenya, write COGs with overviews.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: python/ingest_wrsi_fews.py
 
 data:
-- name: wrsi
-  description: Per-season WRSI COGs for cropland and rangeland.
-  locations:
-  - {url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=agriculture/source=fews-wrsi/region=east-africa/", title: S3}
-  media_type: image/tiff; application=geotiff; profile=cloud-optimized
-  href_template: "processing=seasonal/variable=wrsi/crop={crop}/season={season}/wrsi_{crop}_{season}_{year}.tif"     # verified vs live S3; crop in {cropland,rangeland}
-  processing_steps: [source, crop-cog]
+  - name: wrsi
+    description: End-of-season WRSI, one COG per production system x season x year.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=agriculture/source=fews-wrsi/region=east-africa/processing=seasonal/variable=wrsi/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=agriculture/source=fews-wrsi/region=east-africa/processing=seasonal/variable=wrsi/
+        title: S3
+    href_template: "crop={crop}/season={season}/wrsi_{crop}_{season}_{year}.tif" # e.g. crop=cropland/season=MAM/wrsi_cropland_MAM_2020.tif
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    file_size: 8 KB
+    processing_steps: [source, crop-cog]
 
 cdh:
   domain: [agricultural-production]
-  use_cases:
-  - Cropland (maize) and rangeland seasonal water-deficit monitoring in the KE-ENSO Explorer.
-  not_recommended_for:
-  - use: Applying cropland (maize) WRSI in pastoral/rangeland zones.
-    reason: Crop and rangeland use different water-demand parameterisations and season definitions.
-    use_instead: The rangeland WRSI product for pastoral areas.
+  usage:
+    intended_uses:
+      - Cropland (maize) and rangeland seasonal water-deficit monitoring in the KE-ENSO Explorer.
+      - Season-by-season agricultural drought context alongside SPEI and NDVI.
+    not_recommended_for:
+      - use: Applying the cropland (maize) WRSI in pastoral or rangeland zones.
+        reason: Crop and rangeland use different water-demand parameterisations and season definitions.
+        use_instead: The rangeland WRSI product for pastoral areas.

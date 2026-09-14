@@ -1,185 +1,359 @@
-# CDH metadata record — Kenya GFM observed flood extent (replaces GFD in KE-ENSO Explorer).
-# Standard: CGIAR Climate Data Hub v0.1.0. Validate:
-#   uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json metadata/cdh/kenya-flood-gfm.yaml
-# Values confirmed via cglabs GFM access probe (DISPATCH_cglabs_gfm_flood.md #1, 2026-08-28).
-cdh_schema_version: v0.1.0
+# CDH v0.3.0 metadata record — Kenya observed flood extent from Copernicus GFM (KE-ENSO Explorer, Adaptation Atlas).
+# Values confirmed via the cglabs GFM access probe (DISPATCH_cglabs_gfm_flood.md #1, 2026-08-28) and the live S3 listing (2026-09-14).
+# Validate (cdh-metadata-standard v0.3.0 checkout):
+#   node scripts/validate-yaml.js --profile spec/schemas/profiles/cdh.schema.json <this file>
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
 extensions:
-- https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.1.0/extensions/cdh/schema.json
-- https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.1.0/extensions/datacube/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
 
 id: kenya-flood-gfm
 title: Kenya Observed Flood Extent (Copernicus GFM, Sentinel-1)
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
 description: >
-  Observed flood extent for Kenya from the Copernicus Emergency Management Service GloFAS
-  Global Flood Monitoring (GFM) product, which classifies flooding from every Sentinel-1 SAR
-  acquisition (ensemble of the DLR, TU-Wien and LIST algorithms; permanent/reference water
-  excluded). Delivered primarily as ~111 m aggregates built directly from the SAR tiles: a
-  monthly flood-occurrence aggregate with a valid-observation count, a rolling 3-month (seasonal)
-  aggregate aligned to the KE-ENSO Explorer precipitation seasons, and a full-record history
-  (occurrence frequency + ever-flooded footprint). A 20 m per-acquisition archive is available
-  on demand (re-pullable from the STAC) but not routinely materialised (16,211 acquisitions).
-  Replaces the MODIS Global Flood Database (ended 2018) with a cloud-penetrating, continuously
-  updated SAR record (2018 -> present).
+  Observed flood extent for Kenya from the Copernicus Emergency Management Service Global Flood
+  Monitoring (GFM) product, which classifies flooding from every Sentinel-1 SAR acquisition
+  (ensemble of the DLR, TU Wien and LIST algorithms; permanent and reference water excluded).
+  Delivered as ~111 m aggregates built directly from the 20 m SAR tiles: a monthly flood-occurrence
+  layer with its valid-observation count, a rolling 3-month (seasonal) layer aligned to the KE-ENSO
+  Explorer precipitation seasons, and a full-record history (occurrence frequency and ever-flooded
+  footprint), 2018 to present. Replaces the MODIS Global Flood Database (ended 2018) with a
+  cloud-penetrating, continuously updated SAR record. The 20 m per-acquisition archive is not
+  materialised here (16,000+ acquisitions); it can be re-pulled from the EODC STAC on demand.
 resource_type: dataset
-license: LicenseRef-Copernicus-EMS   # Copernicus data policy (Reg. EU 1159/2013): free, full & open
+license: LicenseRef-Copernicus-EMS # Copernicus data policy (Commission Delegated Regulation (EU) No 1159/2013): free, full and open; attribution required
 
-keywords: [flood, inundation, Sentinel-1, SAR, Kenya, Copernicus, GloFAS, GFM, flood monitoring]
+keywords:
+  [
+    flood,
+    inundation,
+    Sentinel-1,
+    SAR,
+    Kenya,
+    Copernicus,
+    GloFAS,
+    GFM,
+    flood monitoring,
+    observed,
+  ]
 
 note: >
   Attribution required: "Contains modified Copernicus Emergency Management Service information
-  [year]". Pixel coding 0=not-flooded, 1=flooded, 255=not-observed (SAR gap / excluded) — 255 is
-  absence of observation, NOT dry; the nobs layer gives valid-observation count so no-flood is
-  distinguishable from no-observation. Record spans ~2018-present (short) = recent observed
-  flood-proneness, not return-period magnitude.
+  [year]". Pixel coding of the flooded layers: 0 = not flooded, 1 = flooded, 255 = not observed
+  (SAR gap or excluded) - 255 is absence of observation, NOT dry; the nobs layer gives the count of
+  valid observations so no-flood is distinguishable from no-observation. Seasonal windows are named
+  by the initials of their months and labelled by the year of their FIRST month (DJF_2018 = Dec 2018
+  to Feb 2019), so NDJ and DJF exist for 2018 to 2024 only. This differs from the CHIRPS seasonal
+  record (africa-precipitation-monthly-seasonal), which labels NDJ and DJF by the year the window
+  ends; align on those two windows with care. A ~7-year record
+  measures recent observed flood occurrence, not return-period magnitude.
 
 contact:
-- name: Peter Steward
-  organization: Alliance of Bioversity International and CIAT
-  email: p.steward@cgiar.org
-  roles: [processor, point-of-contact]
-- organization: Copernicus Emergency Management Service (CEMS)
-  url: https://global-flood.emergency.copernicus.eu/
-  roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: Copernicus Emergency Management Service (CEMS)
+    url: https://global-flood.emergency.copernicus.eu/
+    roles: [licensor, producer]
 
 citation:
-  title: Copernicus GloFAS Global Flood Monitoring (GFM) — Kenya observed flood extent
-  authors: [Copernicus Emergency Management Service]
+  title: "Copernicus Global Flood Monitoring (GFM) - Kenya observed flood extent aggregates, Africa Agriculture Adaptation Atlas"
+  authors:
+    - "Copernicus Emergency Management Service"
+    - "Steward, P."
   date: "2026"
-  publisher: Copernicus Emergency Management Service (CEMS)
+  publisher: Alliance of Bioversity International and CIAT
   url: https://global-flood.emergency.copernicus.eu/technical-information/glofas-gfm/
-
 related_publications:
-- doi: 10.3390/rs14153673
-- doi: 10.1109/IGARSS47720.2021.9554214
+  - doi: 10.3390/rs14153673
+  - doi: 10.1109/IGARSS47720.2021.9554214
 
 created: "2026-08-26"
-updated: "2026-08-28"
+updated: "2026-09-14"
 
 spatial:
   bbox: [33.9, -4.7, 41.9, 5.5]
-  crs: EPSG:4326                     # delivered; native tiling = Equi7-AF (Azimuthal Equidistant)
+  crs: EPSG:4326 # delivered grid; GFM native tiling is Equi7-AF (azimuthal equidistant), 20 m
   geography: [kenya]
   resolution:
-  - type: xy
-    value: 20
-    unit: meter
-    label: ~20 m (Sentinel-1 / Equi7-AF native; overpass tier)
-  - type: xy
-    value: 111
-    unit: meter
-    label: ~111 m / 0.001 deg (monthly, seasonal, history aggregates)
+    - type: xy
+      value: 0.001
+      unit: degree
+      label: 0.001 deg (~111 m); aggregated from 20 m Sentinel-1 tiles (a coarse pixel is flooded if any 20 m sub-pixel flooded)
 
 temporal:
-  start_date: "2018-01-01"
-  end_date:                          # open-ended (continuously updated)
-  resolution:
-    step: P1M
-    unit: monthly
-    note: >
-      Observations are per Sentinel-1 overpass (irregular ~6-12 day revisit); aggregated to
-      monthly occurrence, rolling 3-month seasonal windows, and a full-record history.
+  start_date: "2018-01"
+  end_date: null # open-ended (continuously updated from new Sentinel-1 acquisitions)
 
 dimensions:
-- name: time
-  type: temporal
-  description: >
-    Aggregation period. overpass keyed YYYY-MM-DDTHHMMSSZ; monthly YYYY-MM;
-    seasonal YYYY-{3-letter window, e.g. MAM}; history has no time token.
+  - name: time
+    type: temporal
+    description: Calendar month of the monthly aggregates (YYYY-MM); the {time} token of the monthly assets.
+    values:
+      [
+        "2018-01",
+        "2018-02",
+        "2018-03",
+        "2018-04",
+        "2018-05",
+        "2018-06",
+        "2018-07",
+        "2018-08",
+        "2018-09",
+        "2018-10",
+        "2018-11",
+        "2018-12",
+        "2019-01",
+        "2019-02",
+        "2019-03",
+        "2019-04",
+        "2019-05",
+        "2019-06",
+        "2019-07",
+        "2019-08",
+        "2019-09",
+        "2019-10",
+        "2019-11",
+        "2019-12",
+        "2020-01",
+        "2020-02",
+        "2020-03",
+        "2020-04",
+        "2020-05",
+        "2020-06",
+        "2020-07",
+        "2020-08",
+        "2020-09",
+        "2020-10",
+        "2020-11",
+        "2020-12",
+        "2021-01",
+        "2021-02",
+        "2021-03",
+        "2021-04",
+        "2021-05",
+        "2021-06",
+        "2021-07",
+        "2021-08",
+        "2021-09",
+        "2021-10",
+        "2021-11",
+        "2021-12",
+        "2022-01",
+        "2022-02",
+        "2022-03",
+        "2022-04",
+        "2022-05",
+        "2022-06",
+        "2022-07",
+        "2022-08",
+        "2022-09",
+        "2022-10",
+        "2022-11",
+        "2022-12",
+        "2023-01",
+        "2023-02",
+        "2023-03",
+        "2023-04",
+        "2023-05",
+        "2023-06",
+        "2023-07",
+        "2023-08",
+        "2023-09",
+        "2023-10",
+        "2023-11",
+        "2023-12",
+        "2024-01",
+        "2024-02",
+        "2024-03",
+        "2024-04",
+        "2024-05",
+        "2024-06",
+        "2024-07",
+        "2024-08",
+        "2024-09",
+        "2024-10",
+        "2024-11",
+        "2024-12",
+        "2025-01",
+        "2025-02",
+        "2025-03",
+        "2025-04",
+        "2025-05",
+        "2025-06",
+        "2025-07",
+        "2025-08",
+        "2025-09",
+        "2025-10",
+        "2025-11",
+        "2025-12",
+      ]
+    step: P1M
+  - name: season
+    type: season
+    description: >
+      Rolling 3-month window named by the initials of its months (JFM = Jan-Mar ... DJF = Dec-Feb).
+      Each value covers three months.
+    values: [JFM, FMA, MAM, AMJ, MJJ, JJA, JAS, ASO, SON, OND, NDJ, DJF]
+  - name: year
+    type: temporal
+    description: Year of the FIRST month of a seasonal window (DJF_2018 = Dec 2018 to Feb 2019); the {year} token of the seasonal assets.
+    values: ["2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025"]
+    step: P1Y
 
 variables:
-- name: flooded
-  dimensions: [time]
-  description: Flood occurrence (permanent/reference water excluded). 0=not-flooded, 1=flooded, 255=not-observed.
-  data_type: uint8
-  unit: "1"
-  note: SAR false positives possible (wind-roughened water, radar shadow, wet soil, urban).
-- name: nobs
-  dimensions: [time]
-  description: Count of valid observations (overpasses with value in {0,1}) in the aggregation period.
-  data_type: uint16
-  unit: "1"
-- name: frequency
-  description: History tier — flooded-months / observed-months (0-1, observation-density de-biased).
-  data_type: float32
-  unit: "1"
-- name: footprint
-  description: History tier — ever-flooded over the full record (1=flooded at least once).
-  data_type: uint8
-  unit: "1"
+  - name: flooded
+    description: Flood occurrence in the aggregation period (permanent and reference water excluded). 0 = not flooded, 1 = flooded, 255 = not observed.
+    data_type: uint8
+    unit: "1"
+    nodata: 255
+    note: SAR false positives are possible (wind-roughened water, radar shadow, wet soil, dense urban fabric).
+  - name: nobs
+    description: Count of valid Sentinel-1 observations (value 0 or 1) in the aggregation period.
+    data_type: uint16
+    unit: "1"
+  - name: frequency
+    description: Full-record flood frequency, flooded months divided by observed months (0 to 1), so observation density does not bias it.
+    data_type: float32
+    unit: "1"
+  - name: footprint
+    description: Ever-flooded footprint over the full record (1 = flooded in at least one month).
+    data_type: uint8
+    unit: "1"
 
 processing:
-- id: source
-  description: >
-    Copernicus CEMS GFM per-Sentinel-1 acquisition flood classification. Ensemble of DLR/TU-Wien/
-    LIST algorithms (pixel flooded when the ensemble agrees); flood = observed water minus reference
-    water, so permanent water is excluded.
-  derived_from:
-  - title: Sentinel-1 SAR (Copernicus)
-    url: https://sentinels.copernicus.eu/web/sentinel/missions/sentinel-1
-  - title: Copernicus GloFAS Global Flood Monitoring (GFM), EODC STAC collection GFM
-    url: https://stac.eodc.eu/api/v1/collections/GFM
-- id: mosaic-clip
-  description: >
-    Mosaic the Equi7-AF 20 m ensemble_flood_extent tiles per acquisition and warp directly onto the
-    fixed ~111 m EPSG:4326 grid (full-res read, resampleAlg=max, nodata-aware) — a coarse pixel is
-    flooded if ANY 20 m sub-pixel flooded. No 20 m overpass COG is materialised in the aggregate path.
-  date: "2026-08-28"
-  code:
-    url: https://github.com/AdaptationAtlas/hazards_prototype
-    version: python/ingest_flood_gfm.py
-- id: aggregate-monthly
-  description: Per-pixel monthly flood occurrence (max over the month's acquisitions) + valid-observation count, at ~111 m; parallelised across months.
-- id: aggregate-seasonal
-  description: Rolling 3-month occurrence + obs-count over the 12 seasonal windows.
-- id: aggregate-history
-  description: Full-record occurrence frequency (flooded-months / observed-months) + ever-flooded footprint.
+  - id: source
+    description: >
+      Copernicus CEMS GFM per-Sentinel-1-acquisition flood classification: ensemble of the DLR, TU
+      Wien and LIST algorithms (a pixel is flooded when the ensemble agrees); flood = observed water
+      minus reference water, so permanent water is excluded.
+    derived_from:
+      - title: Copernicus Global Flood Monitoring (GFM), EODC STAC collection
+        url: https://stac.eodc.eu/api/v1/collections/GFM
+      - title: Sentinel-1 SAR (Copernicus)
+        url: https://sentinels.copernicus.eu/web/sentinel/missions/sentinel-1
+  - id: mosaic-clip
+    description: >
+      Mosaic the Equi7-AF 20 m ensemble flood-extent tiles per acquisition and warp onto the fixed
+      0.001 deg EPSG:4326 Kenya grid (full-resolution read, max resampling, NoData-aware).
+    date: "2026-08-28"
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: python/ingest_flood_gfm.py
+  - id: aggregate-monthly
+    description: Per-pixel monthly flood occurrence (max over the month's acquisitions) and valid-observation count.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: python/ingest_flood_gfm.py
+  - id: aggregate-seasonal
+    description: Rolling 3-month occurrence and observation count over the twelve seasonal windows.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: python/ingest_flood_gfm.py
+  - id: aggregate-history
+    description: Full-record occurrence frequency (flooded months / observed months) and ever-flooded footprint.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: python/ingest_flood_gfm.py
 
 data:
-- name: overpass
-  description: OPT-IN 20 m per-Sentinel-1-acquisition archive (re-pullable from STAC on demand; not routinely populated).
-  locations:
-  - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=overpass/variable=flooded/
-    title: S3
-  media_type: image/tiff; application=geotiff; profile=cloud-optimized
-  href_template: "{time}.tif"             # time = YYYY-MM-DDTHHMMSSZ
-  processing_steps: [source, mosaic-clip]
-  nodata: 255
-- name: monthly
-  description: Monthly flood occurrence + valid-observation count (~111 m).
-  locations:
-  - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=monthly/
-    title: S3
-  media_type: image/tiff; application=geotiff; profile=cloud-optimized
-  href_template: "variable={variable}/{variable}-{time}.tif"     # PTOT-aligned, e.g. variable=flooded/flooded-2020-04.tif; time = YYYY-MM
-  processing_steps: [source, mosaic-clip, aggregate-monthly]
-- name: seasonal
-  description: Rolling 3-month (seasonal) flood occurrence + obs-count for the notebook (~111 m).
-  locations:
-  - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=seasonal/
-    title: S3
-  media_type: image/tiff; application=geotiff; profile=cloud-optimized
-  href_template: "variable={variable}/season={season}/{variable}_{season}_{year}.tif"     # PTOT-aligned, e.g. variable=flooded/season=MAM/flooded_MAM_2020.tif
-  processing_steps: [source, mosaic-clip, aggregate-monthly, aggregate-seasonal]
-- name: history
-  description: Optional full-record roll-up — occurrence frequency + ever-flooded footprint (~111 m).
-  locations:
-  - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=history/
-    title: S3
-  media_type: image/tiff; application=geotiff; profile=cloud-optimized
-  href_template: "variable={variable}/{variable}.tif"     # variable in {frequency,footprint}
-  processing_steps: [source, mosaic-clip, aggregate-monthly, aggregate-history]
+  - name: monthly-flooded
+    description: Monthly flood occurrence, one COG per month.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=monthly/variable=flooded/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=monthly/variable=flooded/
+        title: S3
+    href_template: "flooded-{time}.tif" # e.g. flooded-2020-04.tif
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    nodata: 255
+    processing_steps: [source, mosaic-clip, aggregate-monthly]
+  - name: monthly-nobs
+    description: Monthly valid-observation count, one COG per month.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=monthly/variable=nobs/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=monthly/variable=nobs/
+        title: S3
+    href_template: "nobs-{time}.tif" # e.g. nobs-2020-04.tif
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    processing_steps: [source, mosaic-clip, aggregate-monthly]
+  - name: seasonal-flooded
+    description: Rolling 3-month flood occurrence, one COG per season x year.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=seasonal/variable=flooded/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=seasonal/variable=flooded/
+        title: S3
+    href_template: "season={season}/flooded_{season}_{year}.tif" # e.g. season=MAM/flooded_MAM_2020.tif
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    nodata: 255
+    processing_steps:
+      [source, mosaic-clip, aggregate-monthly, aggregate-seasonal]
+  - name: seasonal-nobs
+    description: Rolling 3-month valid-observation count, one COG per season x year.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=seasonal/variable=nobs/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=seasonal/variable=nobs/
+        title: S3
+    href_template: "season={season}/nobs_{season}_{year}.tif" # e.g. season=MAM/nobs_MAM_2020.tif
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    processing_steps:
+      [source, mosaic-clip, aggregate-monthly, aggregate-seasonal]
+  - name: history-frequency
+    description: Full-record flood frequency (flooded months / observed months), single COG.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=history/variable=frequency/frequency.tif
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=history/variable=frequency/frequency.tif
+        title: S3
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    file_size: 10.1 MB
+    processing_steps:
+      [source, mosaic-clip, aggregate-monthly, aggregate-history]
+  - name: history-footprint
+    description: Ever-flooded footprint over the full record, single COG.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=history/variable=footprint/footprint.tif
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=flood/source=glofas-gfm/region=kenya/processing=history/variable=footprint/footprint.tif
+        title: S3
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    file_size: 2.4 MB
+    processing_steps:
+      [source, mosaic-clip, aggregate-monthly, aggregate-history]
+
+additional_links:
+  - name: Copernicus data and information policy
+    rel: license
+    url: https://www.copernicus.eu/en/access-data/copyright-and-licences
+    description: Terms for the free, full and open Copernicus licence (LicenseRef-Copernicus-EMS), including the attribution wording.
+  - name: Commission Delegated Regulation (EU) No 1159/2013
+    rel: about
+    url: https://eur-lex.europa.eu/eli/reg_del/2013/1159/oj
+    description: Legal basis of the Copernicus data and information policy.
+  - name: GFM technical information
+    rel: describedby
+    url: https://global-flood.emergency.copernicus.eu/technical-information/glofas-gfm/
+    description: Product description of the Copernicus Global Flood Monitoring algorithms and output layers.
 
 cdh:
   domain: [hydrology]
-  use_cases:
-  - Overlaying observed flood extent with population and asset exposure at Kenya admin levels.
-  - Characterising seasonal / ENSO-linked flood occurrence for the KE-ENSO Explorer.
-  not_recommended_for:
-  - use: Splicing into one continuous flood time series with the pre-2018 Global Flood Database.
-    reason: >
-      GFD is MODIS optical event-triggered at 250 m; GFM is Sentinel-1 SAR continuous at ~20 m.
-      A join introduces a methodological break — apparent post-2018 increases would be artefacts.
-    use_instead: Analyse GFM on its own; complement with JRC modelled return-period hazard, not GFD.
-  - use: Reading the history frequency as a return-period / design-flood magnitude.
-    reason: ~7-year SAR record captures recent observed occurrence, not rare-event magnitude.
-    use_instead: JRC Global Flood Maps (modelled return periods).
+  usage:
+    intended_uses:
+      - Overlaying observed flood extent with population and asset exposure at Kenya admin levels (record kenya-flood-exposure-intersect).
+      - Characterising seasonal and ENSO-linked flood occurrence in the KE-ENSO Explorer.
+    not_recommended_for:
+      - use: Splicing into one continuous flood time series with the pre-2018 Global Flood Database.
+        reason: >
+          GFD is MODIS optical, event-triggered, 250 m; GFM is Sentinel-1 SAR, continuous, ~20 m.
+          A join introduces a methodological break, so apparent post-2018 increases would be artefacts.
+        use_instead: Analyse GFM on its own; complement with the JRC modelled return-period hazard (record eastafrica-flood-jrc), not GFD.
+      - use: Reading the history frequency as a return-period or design-flood magnitude.
+        reason: A ~7-year SAR record captures recent observed occurrence, not rare-event magnitude.
+        use_instead: JRC Global Flood Maps (record eastafrica-flood-jrc) for modelled return periods.

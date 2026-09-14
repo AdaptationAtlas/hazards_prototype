@@ -1,126 +1,275 @@
-# CDH v0.1.0 metadata record — pre-cooked flood x exposure zonal tables (KE-ENSO Explorer).
-# Validate: uvx check-jsonschema --schemafile spec/schemas/profiles/cdh.schema.json <this>
-cdh_schema_version: v0.1.0
+# CDH v0.3.0 metadata record — pre-computed flood x exposure per-sub-county tables, Kenya (KE-ENSO Explorer, Adaptation Atlas).
+# Licence changed ODbL-1.0 -> CC-BY-4.0 after review (cdh-metadata-standard#32): derived aggregate
+# statistics, not a redistribution of the ODbL inputs; attribution of every input still required.
+# Validate (cdh-metadata-standard v0.3.0 checkout):
+#   node scripts/validate-yaml.js --profile spec/schemas/profiles/cdh.schema.json <this file>
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
 extensions:
-- https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.1.0/extensions/cdh/schema.json
-- https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.1.0/extensions/datacube/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
 
 id: kenya-flood-exposure-intersect
-title: Kenya Flood × Exposure — Per-Sub-County Tables
+title: Kenya Flood x Exposure, Per-Sub-County Tables
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
 description: >
-  Pre-computed flood × exposure intersect for Kenya, as small per-admin-2 (IEBC sub-county) parquet
-  tables so the KE-ENSO Explorer notebook reads them directly (DuckDB-WASM) instead of intersecting
-  heavy rasters/vectors client-side. Two hazard products — GFM observed flood (per season × year,
-  2018–2025) and JRC modelled return-period hazard — each crossed with population (WorldPop),
-  roads and electricity grid (length exposed), and health/school facilities (counts exposed), plus a
-  static totals table of denominators. Zonal unit = 290 IEBC adm2 units keyed by adm2_pcode.
+  Pre-computed flood x exposure statistics for Kenya's 290 IEBC sub-counties (admin 2), as three
+  small Parquet tables the KE-ENSO Explorer reads directly (DuckDB-WASM) instead of intersecting
+  heavy rasters and vectors in the browser. Two hazard products - Copernicus GFM observed flood
+  (per season x year, 2018 to 2025) and JRC modelled return-period flood hazard - are each crossed
+  with population (WorldPop constrained), classified roads and the electricity transmission grid
+  (length exposed) and health and school facilities (count exposed); a third table holds the
+  per-sub-county denominators. Tables carry no geometry: join on adm2_pcode to the boundary record
+  kenya-admin-codab.
 resource_type: dataset
-license: ODbL-1.0   # derived aggregate stats; ODbL = most-restrictive input (OSM/HOTOSM). Confirm derived-stats treatment at CDH review.
+license: CC-BY-4.0 # derived aggregate statistics; inputs and their licences are listed in the note
 
-keywords: [flood, exposure, population, infrastructure, zonal statistics, admin-2, Kenya, KE-ENSO, GFM, JRC]
+keywords:
+  [
+    flood,
+    exposure,
+    population,
+    infrastructure,
+    zonal statistics,
+    admin 2,
+    sub-county,
+    Kenya,
+    ENSO,
+    GFM,
+    JRC,
+  ]
 
 note: >
-  Derived aggregate statistics (no source geometries redistributed). Input provenance + licences:
-  GFM flood (Copernicus EMS), JRC flood (Copernicus), WorldPop population (CC-BY-4.0), OSM roads
-  (ODbL), HOTOSM health/schools (ODbL), KPLC grid (CC0), IEBC COD-AB admin (CC-BY-3.0-IGO).
-  observed_pct (A) = SAR coverage that season — low values mean sparse observation, not zero flood.
-  roads/grid km are cell-resolution (in-cell line length in flooded cells). GFM record = 2018–2025.
+  Derived aggregate statistics; no input geometry is redistributed. Please attribute the inputs:
+  Copernicus GFM and JRC Global Flood Maps (Copernicus / European Commission), WorldPop constrained
+  population (CC-BY-4.0), OpenStreetMap roads and HOTOSM facilities ((c) OpenStreetMap
+  contributors, ODbL), KPLC grid (CC0-1.0, energydata.info), IEBC COD-AB boundaries (OCHA,
+  CC-BY-3.0-IGO). In the GFM table, observed_pct is the SAR-observed share of the sub-county in that
+  season: low values mean sparse observation, not absence of flooding. Road and grid kilometres are
+  cell-resolution approximations (in-cell line length within flooded cells). Every table also
+  carries adm1_pcode, adm1_name and adm2_name label columns.
 
 contact:
-- name: Peter Steward
-  organization: Alliance of Bioversity International and CIAT
-  email: p.steward@cgiar.org
-  roles: [producer, processor, licensor, point-of-contact]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [producer, processor, licensor, point-of-contact]
 
 citation:
-  title: "Kenya flood × exposure per-sub-county tables (Adaptation Atlas / KE-ENSO Explorer)"
-  authors: [Steward, Peter]
+  title: "Kenya flood x exposure per-sub-county tables, Africa Agriculture Adaptation Atlas (KE-ENSO Explorer)"
+  authors:
+    - "Steward, P."
   date: "2026"
   publisher: Alliance of Bioversity International and CIAT
 
 created: "2026-09-09"
-updated: "2026-09-09"
+updated: "2026-09-14"
 
 spatial:
   bbox: [33.9, -4.7, 41.9, 5.5]
   crs: EPSG:4326
   geography: [kenya]
   resolution:
-  - type: polygon
-    unit: admin-level
-    label: IEBC adm2 (290 sub-counties)
-    reference_system: IEBC COD-AB
+    - type: polygon
+      value: 2
+      unit: admin-level
+      label: IEBC sub-counties (290 admin-2 units)
+      reference_system: OCHA COD-AB Kenya (IEBC), record kenya-admin-codab
 
 temporal:
-  start_date: "2018-01-01"   # GFM flood record (table A); JRC (table B) is timeless return-period
-  end_date:
-  resolution: {step: null, unit: seasonal, note: "A = 12 rolling 3-month seasons × year; B = return-period (static)."}
+  start_date: "2018" # GFM observed-flood table; the JRC return-period table is a static hazard
+  end_date: "2025"
 
 dimensions:
-- name: adm2_pcode
-  type: categorical
-  description: IEBC adm2 p-code (290); join key to the admin geometry.
-- name: season
-  type: categorical
-  description: "A only — 3-letter rolling season (JFM…DJF)."
-- name: year
-  type: temporal
-  description: "A only — 2018–2025."
-- name: rp
-  type: categorical
-  description: "B only — JRC return period (10,20,50,75,100,200,500 yr)."
+  - name: adm2_pcode
+    type: location
+    description: IEBC sub-county p-code (290 units); the join key to the boundary record.
+  - name: adm1_pcode
+    type: location
+    description: IEBC county p-code (47 units); label/roll-up key carried on every row.
+  - name: season
+    type: season
+    description: >
+      GFM table only. Rolling 3-month window named by the initials of its months (JFM = Jan-Mar ...
+      DJF = Dec-Feb); each value covers three months.
+    values: [JFM, FMA, MAM, AMJ, MJJ, JJA, JAS, ASO, SON, OND, NDJ, DJF]
+  - name: year
+    type: temporal
+    description: GFM table only. Year of the FIRST month of the seasonal window (GFM convention, DJF_2018 = Dec 2018 to Feb 2019), unlike the CHIRPS seasonal record which labels NDJ/DJF by end year.
+    values: ["2018", "2019", "2020", "2021", "2022", "2023", "2024", "2025"]
+    step: P1Y
+  - name: rp
+    type: return-period
+    description: JRC table only. Flood return period in years.
+    values: [10, 20, 50, 75, 100, 200, 500]
+    unit: year
 
 variables:
-- {name: flooded_km2, description: "A — flooded area (GFM flooded==1) per adm2×season×year.", data_type: float64, unit: km2}
-- {name: flood_prone_km2, description: "B — flood-prone area (JRC depth>0) per adm2×rp.", data_type: float64, unit: km2}
-- {name: observed_pct, description: "A — SAR-observed share of the sub-county (from GFM nobs), 0–1.", data_type: float64, unit: "1"}
-- {name: flooded_pct_observed, description: "A — flooded ÷ observed area, 0–1.", data_type: float64, unit: "1"}
-- {name: pop_exposed, description: "People in flooded cells (WorldPop constrained, pixel-sum).", data_type: float64, unit: count}
-- {name: pop_pct, description: "pop_exposed ÷ pop_total.", data_type: float64, unit: "1"}
-- {name: pop_source, description: "Population surface used (worldpop; grid3 variant deferred).", data_type: string, unit: "1"}
-- {name: roads_km_exposed, description: "Classified-highway length in flooded cells (cell-resolution).", data_type: float64, unit: km}
-- {name: grid_km_exposed, description: "Transmission-line length in flooded cells.", data_type: float64, unit: km}
-- {name: grid_km_exposed_hv, description: "132/220 kV backbone subset of grid_km_exposed.", data_type: float64, unit: km}
-- {name: health_n_exposed, description: "Health facilities in flooded cells.", data_type: int32, unit: count}
-- {name: schools_n_exposed, description: "Schools in flooded cells.", data_type: int32, unit: count}
+  - name: flooded_km2
+    dimensions: [adm2_pcode, season, year]
+    description: GFM table. Area observed flooded (GFM flooded = 1) in the sub-county over the season.
+    data_type: float64
+    unit: km2
+  - name: observed_pct
+    dimensions: [adm2_pcode, season, year]
+    description: GFM table. Share of the sub-county area with at least one valid SAR observation in the season (0 to 1).
+    data_type: float64
+    unit: "1"
+  - name: flooded_pct_observed
+    dimensions: [adm2_pcode, season, year]
+    description: GFM table. Flooded area divided by observed area (0 to 1).
+    data_type: float64
+    unit: "1"
+  - name: flood_prone_km2
+    dimensions: [adm2_pcode, rp]
+    description: JRC table. Area with modelled inundation depth > 0 at the given return period.
+    data_type: float64
+    unit: km2
+  - name: pop_exposed
+    description: GFM and JRC tables. People in flooded / flood-prone cells (WorldPop constrained 2020, pixel sum).
+    data_type: float64
+    unit: "{person}"
+  - name: pop_pct
+    description: GFM and JRC tables. pop_exposed divided by the sub-county pop_total (0 to 1).
+    data_type: float64
+    unit: "1"
+  - name: pop_source
+    description: GFM and JRC tables. Population surface used; currently always "worldpop" (the GRID3 variant is deferred).
+    data_type: string
+    unit: "1"
+  - name: roads_km_exposed
+    description: GFM and JRC tables. Classified-highway length within flooded / flood-prone cells (cell-resolution).
+    data_type: float64
+    unit: km
+  - name: grid_km_exposed
+    description: GFM and JRC tables. Transmission-line length within flooded / flood-prone cells (cell-resolution).
+    data_type: float64
+    unit: km
+  - name: grid_km_exposed_hv
+    description: GFM and JRC tables. Subset of grid_km_exposed on the 132 and 220 kV backbone.
+    data_type: float64
+    unit: km
+  - name: health_n_exposed
+    description: GFM and JRC tables. Health facilities located in flooded / flood-prone cells.
+    data_type: float64
+    unit: "{facility}"
+  - name: schools_n_exposed
+    description: GFM and JRC tables. Schools located in flooded / flood-prone cells.
+    data_type: float64
+    unit: "{facility}"
+  - name: area_km2
+    dimensions: [adm2_pcode]
+    description: Totals table. Sub-county area.
+    data_type: float64
+    unit: km2
+  - name: pop_total
+    dimensions: [adm2_pcode]
+    description: Totals table. Sub-county population (WorldPop constrained 2020, pixel sum).
+    data_type: float64
+    unit: "{person}"
+  - name: roads_km_total
+    dimensions: [adm2_pcode]
+    description: Totals table. Classified-highway length in the sub-county (cell-resolution).
+    data_type: float64
+    unit: km
+  - name: grid_km_total
+    dimensions: [adm2_pcode]
+    description: Totals table. Transmission-line length in the sub-county (cell-resolution).
+    data_type: float64
+    unit: km
+  - name: health_n_total
+    dimensions: [adm2_pcode]
+    description: Totals table. Health facilities in the sub-county.
+    data_type: float64
+    unit: "{facility}"
+  - name: schools_n_total
+    dimensions: [adm2_pcode]
+    description: Totals table. Schools in the sub-county.
+    data_type: float64
+    unit: "{facility}"
+
+joins:
+  - target: https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=iebc-codab/region=kenya/processing=analysis-ready/level=adm2/ken_adm2.geojson
+    left_fields: [adm2_pcode]
+    right_fields: [adm2_pcode]
 
 processing:
-- id: source
-  description: >
-    Zonal intersect of flood masks (GFM seasonal flooded==1; JRC return-period depth>0) with adm2,
-    population raster, roads/grid line-length rasters, and facility points. Exposure = geometry/cell
-    intersecting the flood mask; pop pixel-sum weighted; line km via rasterised per-cell length.
-  date: "2026-09-09"
-  code: {url: "https://github.com/AdaptationAtlas/hazards_prototype", version: "R/observational/7_zonal_exposure.R"}
-  derived_from:
-  - {title: "Kenya GFM observed flood", url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/"}
-  - {title: "Kenya JRC return-period flood", url: "https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=jrc-glofas/region=east-africa/"}
-  - {title: "WorldPop constrained population", url: "https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=worldpop-constrained-2020/region=east-africa/"}
-  - {title: "OSM roads / HOTOSM facilities / KPLC grid / IEBC adm2 (Atlas exposure layers)", url: "https://digital-atlas.s3.amazonaws.com/domain=exposure/"}
+  - id: source
+    description: >
+      The Hub records this table is computed from: GFM observed flood (kenya-flood-gfm, seasonal
+      flooded = 1 and nobs), JRC return-period hazard (eastafrica-flood-jrc, depth > 0), WorldPop
+      constrained population (kenya-population-worldpop), OSM roads (kenya-roads-osm), KPLC grid
+      (kenya-power-grid-kplc), HOTOSM facilities (kenya-facilities-hotosm), IEBC COD-AB sub-counties
+      (kenya-admin-codab).
+    derived_from:
+      - title: Kenya observed flood extent, Copernicus GFM (record kenya-flood-gfm)
+        url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=glofas-gfm/region=kenya/
+      - title: JRC return-period river flood hazard (record eastafrica-flood-jrc)
+        url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=jrc-glofas/region=east-africa/
+      - title: WorldPop constrained population 2020 (record kenya-population-worldpop)
+        url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=worldpop-constrained-2020/region=east-africa/
+      - title: Kenya classified roads, OpenStreetMap (record kenya-roads-osm)
+        url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastructure/source=osm/region=kenya/
+      - title: Kenya electricity transmission grid, KPLC (record kenya-power-grid-kplc)
+        url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastructure/source=energydata-kplc/region=kenya/
+      - title: Kenya health and education facilities, HOTOSM (record kenya-facilities-hotosm)
+        url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastructure/source=hotosm/region=kenya/
+      - title: Kenya administrative boundaries, IEBC COD-AB (record kenya-admin-codab)
+        url: https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=iebc-codab/region=kenya/
+  - id: zonal-intersect
+    description: >
+      Zonal intersect of the flood masks with the sub-county polygons, the population raster,
+      rasterised per-cell road and grid line length, and facility points. Exposure = geometry or
+      cell intersecting the flood mask; population is a pixel sum; line kilometres are the
+      rasterised in-cell length within flooded cells.
+    date: "2026-09-09"
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: R/observational/7_zonal_exposure.R
 
 data:
-- name: gfm_seasonal
-  description: GFM observed flood exposure per adm2 × season × year (27,260 rows).
-  locations: [{url: "https://digital-atlas.s3.amazonaws.com/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_gfm_seasonal.parquet", title: S3}]
-  media_type: application/vnd.apache.parquet
-  file_size: "361 KB"
-- name: jrc_rp
-  description: JRC modelled flood-hazard exposure per adm2 × return-period (2,030 rows).
-  locations: [{url: "https://digital-atlas.s3.amazonaws.com/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_jrc_rp.parquet", title: S3}]
-  media_type: application/vnd.apache.parquet
-  file_size: "68 KB"
-- name: totals
-  description: Per-adm2 denominators (pop_total, area_km2, roads/grid km, facility counts).
-  locations: [{url: "https://digital-atlas.s3.amazonaws.com/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_totals.parquet", title: S3}]
-  media_type: application/vnd.apache.parquet
-  file_size: "22 KB"
+  - name: gfm-seasonal
+    description: GFM observed-flood exposure per sub-county x season x year (27,260 rows).
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_gfm_seasonal.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_gfm_seasonal.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    file_size: 361 KB
+    processing_steps: [source, zonal-intersect]
+  - name: jrc-rp
+    description: JRC modelled flood-hazard exposure per sub-county x return period (2,030 rows).
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_jrc_rp.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_jrc_rp.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    file_size: 68 KB
+    processing_steps: [source, zonal-intersect]
+  - name: totals
+    description: Per-sub-county denominators - population, area, road and grid kilometres, facility counts (290 rows).
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_totals.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_totals.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    file_size: 22 KB
+    processing_steps: [source, zonal-intersect]
 
 cdh:
   domain: [socioeconomic, hydrology]
-  use_cases:
-  - Sub-county flood-exposure choropleths + ranked tables in the KE-ENSO Explorer (people/assets exposed).
-  - Comparing observed (GFM, seasonal/ENSO) vs modelled (JRC, return-period) flood exposure.
-  not_recommended_for:
-  - use: Survey-grade asset-length accounting.
-    reason: roads/grid km are cell-resolution approximations.
-    use_instead: The source vector layers with exact line-in-polygon intersection.
+  usage:
+    intended_uses:
+      - Sub-county flood-exposure choropleths and ranked tables (people and assets exposed) in the KE-ENSO Explorer.
+      - Comparing observed (GFM, seasonal / ENSO) against modelled (JRC, return-period) flood exposure.
+    not_recommended_for:
+      - use: Survey-grade accounting of road or grid length at risk.
+        reason: Road and grid kilometres are cell-resolution approximations.
+        use_instead: The source vector layers with an exact line-in-polygon intersection.
+      - use: Reading low flooded_km2 as "no flooding" in seasons with low observed_pct.
+        reason: Sparse Sentinel-1 coverage in that season, not absence of flood; check observed_pct first.
