@@ -1,0 +1,9 @@
+file,level,rows,all_lt_rfall,pct_all_lt_rfall,pct_all_eq_rfall_plus_irr
+vop_nominal-usd-2015.parquet,adm0,1815,743,40.9,28.7
+vop_nominal-usd-2015.parquet,adm1,23628,6381,27,32.3
+vop_nominal-usd-2015.parquet,adm2,213906,28884,13.5,49.1
+vop_nominal-usd-2015.parquet,ALL,239349,36008,15,46.4
+vop_intld15-2021.parquet,adm0,1760,0,0,100
+vop_intld15-2021.parquet,adm1,22912,0,0,100
+vop_intld15-2021.parquet,adm2,207424,0,0,100
+vop_intld15-2021.parquet,ALL,232096,0,0,100

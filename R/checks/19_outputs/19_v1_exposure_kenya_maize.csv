@@ -1,0 +1,2116 @@
+admin1_name,scenario,timeframe,severity,hazard,vop,vop_total,pct
+Baringo,historic,historic,severe,any,3422883,6861377,49.89
+Baringo,historic,historic,severe,dry,3422883,6861377,49.89
+Baringo,historic,historic,severe,dry+heat,0,6861377,0
+Baringo,historic,historic,severe,dry+heat+wet,0,6861377,0
+Baringo,historic,historic,severe,dry+wet,0,6861377,0
+Baringo,historic,historic,severe,heat,0,6861377,0
+Baringo,historic,historic,severe,heat+wet,0,6861377,0
+Baringo,historic,historic,severe,no hazard,3438494,6861377,50.11
+Baringo,historic,historic,severe,wet,0,6861377,0
+Baringo,ssp245,2021_2040,severe,any,3172848,6861376,46.24
+Baringo,ssp245,2021_2040,severe,dry,3169571,6861376,46.19
+Baringo,ssp245,2021_2040,severe,dry+heat,2089,6861376,0.03
+Baringo,ssp245,2021_2040,severe,dry+heat+wet,0,6861376,0
+Baringo,ssp245,2021_2040,severe,dry+wet,0,6861376,0
+Baringo,ssp245,2021_2040,severe,heat,0,6861376,0
+Baringo,ssp245,2021_2040,severe,heat+wet,0,6861376,0
+Baringo,ssp245,2021_2040,severe,no hazard,3688529,6861376,53.76
+Baringo,ssp245,2021_2040,severe,wet,1187,6861376,0.02
+Baringo,ssp245,2041_2060,severe,any,3480409,6861377,50.72
+Baringo,ssp245,2041_2060,severe,dry,3470591,6861377,50.58
+Baringo,ssp245,2041_2060,severe,dry+heat,9818,6861377,0.14
+Baringo,ssp245,2041_2060,severe,dry+heat+wet,0,6861377,0
+Baringo,ssp245,2041_2060,severe,dry+wet,0,6861377,0
+Baringo,ssp245,2041_2060,severe,heat,0,6861377,0
+Baringo,ssp245,2041_2060,severe,heat+wet,0,6861377,0
+Baringo,ssp245,2041_2060,severe,no hazard,3380968,6861377,49.28
+Baringo,ssp245,2041_2060,severe,wet,0,6861377,0
+Baringo,ssp585,2021_2040,severe,any,3471698,6861377,50.6
+Baringo,ssp585,2021_2040,severe,dry,3467829,6861377,50.54
+Baringo,ssp585,2021_2040,severe,dry+heat,3869,6861377,0.06
+Baringo,ssp585,2021_2040,severe,dry+heat+wet,0,6861377,0
+Baringo,ssp585,2021_2040,severe,dry+wet,0,6861377,0
+Baringo,ssp585,2021_2040,severe,heat,0,6861377,0
+Baringo,ssp585,2021_2040,severe,heat+wet,0,6861377,0
+Baringo,ssp585,2021_2040,severe,no hazard,3389679,6861377,49.4
+Baringo,ssp585,2021_2040,severe,wet,0,6861377,0
+Baringo,ssp585,2041_2060,severe,any,3494765,6861376,50.93
+Baringo,ssp585,2041_2060,severe,dry,3458972,6861376,50.41
+Baringo,ssp585,2041_2060,severe,dry+heat,35375,6861376,0.52
+Baringo,ssp585,2041_2060,severe,dry+heat+wet,0,6861376,0
+Baringo,ssp585,2041_2060,severe,dry+wet,0,6861376,0
+Baringo,ssp585,2041_2060,severe,heat,418,6861376,0.01
+Baringo,ssp585,2041_2060,severe,heat+wet,0,6861376,0
+Baringo,ssp585,2041_2060,severe,no hazard,3366611,6861376,49.07
+Baringo,ssp585,2041_2060,severe,wet,0,6861376,0
+Bomet,historic,historic,severe,any,1294208,11997325,10.79
+Bomet,historic,historic,severe,dry,1254944,11997325,10.46
+Bomet,historic,historic,severe,dry+heat,0,11997325,0
+Bomet,historic,historic,severe,dry+heat+wet,0,11997325,0
+Bomet,historic,historic,severe,dry+wet,0,11997325,0
+Bomet,historic,historic,severe,heat,0,11997325,0
+Bomet,historic,historic,severe,heat+wet,0,11997325,0
+Bomet,historic,historic,severe,no hazard,10703118,11997325,89.21
+Bomet,historic,historic,severe,wet,39263,11997325,0.33
+Bomet,ssp245,2021_2040,severe,any,657194,11997325,5.48
+Bomet,ssp245,2021_2040,severe,dry,557268,11997325,4.64
+Bomet,ssp245,2021_2040,severe,dry+heat,0,11997325,0
+Bomet,ssp245,2021_2040,severe,dry+heat+wet,0,11997325,0
+Bomet,ssp245,2021_2040,severe,dry+wet,0,11997325,0
+Bomet,ssp245,2021_2040,severe,heat,0,11997325,0
+Bomet,ssp245,2021_2040,severe,heat+wet,0,11997325,0
+Bomet,ssp245,2021_2040,severe,no hazard,11340132,11997325,94.52
+Bomet,ssp245,2021_2040,severe,wet,99925,11997325,0.83
+Bomet,ssp245,2041_2060,severe,any,1011434,11997326,8.43
+Bomet,ssp245,2041_2060,severe,dry,957805,11997326,7.98
+Bomet,ssp245,2041_2060,severe,dry+heat,0,11997326,0
+Bomet,ssp245,2041_2060,severe,dry+heat+wet,0,11997326,0
+Bomet,ssp245,2041_2060,severe,dry+wet,0,11997326,0
+Bomet,ssp245,2041_2060,severe,heat,0,11997326,0
+Bomet,ssp245,2041_2060,severe,heat+wet,0,11997326,0
+Bomet,ssp245,2041_2060,severe,no hazard,10985892,11997326,91.57
+Bomet,ssp245,2041_2060,severe,wet,53629,11997326,0.45
+Bomet,ssp585,2021_2040,severe,any,990389,11997326,8.26
+Bomet,ssp585,2021_2040,severe,dry,940674,11997326,7.84
+Bomet,ssp585,2021_2040,severe,dry+heat,0,11997326,0
+Bomet,ssp585,2021_2040,severe,dry+heat+wet,0,11997326,0
+Bomet,ssp585,2021_2040,severe,dry+wet,0,11997326,0
+Bomet,ssp585,2021_2040,severe,heat,0,11997326,0
+Bomet,ssp585,2021_2040,severe,heat+wet,0,11997326,0
+Bomet,ssp585,2021_2040,severe,no hazard,11006937,11997326,91.74
+Bomet,ssp585,2021_2040,severe,wet,49715,11997326,0.41
+Bomet,ssp585,2041_2060,severe,any,950026,11997325,7.92
+Bomet,ssp585,2041_2060,severe,dry,901189,11997325,7.51
+Bomet,ssp585,2041_2060,severe,dry+heat,0,11997325,0
+Bomet,ssp585,2041_2060,severe,dry+heat+wet,0,11997325,0
+Bomet,ssp585,2041_2060,severe,dry+wet,0,11997325,0
+Bomet,ssp585,2041_2060,severe,heat,0,11997325,0
+Bomet,ssp585,2041_2060,severe,heat+wet,0,11997325,0
+Bomet,ssp585,2041_2060,severe,no hazard,11047300,11997325,92.08
+Bomet,ssp585,2041_2060,severe,wet,48836,11997325,0.41
+Bungoma,historic,historic,severe,any,453270,21605935,2.1
+Bungoma,historic,historic,severe,dry,176,21605935,0
+Bungoma,historic,historic,severe,dry+heat,0,21605935,0
+Bungoma,historic,historic,severe,dry+heat+wet,0,21605935,0
+Bungoma,historic,historic,severe,dry+wet,0,21605935,0
+Bungoma,historic,historic,severe,heat,0,21605935,0
+Bungoma,historic,historic,severe,heat+wet,0,21605935,0
+Bungoma,historic,historic,severe,no hazard,21152666,21605935,97.9
+Bungoma,historic,historic,severe,wet,453093,21605935,2.1
+Bungoma,ssp245,2021_2040,severe,any,832680,21605936,3.85
+Bungoma,ssp245,2021_2040,severe,dry,0,21605936,0
+Bungoma,ssp245,2021_2040,severe,dry+heat,0,21605936,0
+Bungoma,ssp245,2021_2040,severe,dry+heat+wet,0,21605936,0
+Bungoma,ssp245,2021_2040,severe,dry+wet,0,21605936,0
+Bungoma,ssp245,2021_2040,severe,heat,0,21605936,0
+Bungoma,ssp245,2021_2040,severe,heat+wet,0,21605936,0
+Bungoma,ssp245,2021_2040,severe,no hazard,20773256,21605936,96.15
+Bungoma,ssp245,2021_2040,severe,wet,832680,21605936,3.85
+Bungoma,ssp245,2041_2060,severe,any,602967,21605936,2.79
+Bungoma,ssp245,2041_2060,severe,dry,0,21605936,0
+Bungoma,ssp245,2041_2060,severe,dry+heat,0,21605936,0
+Bungoma,ssp245,2041_2060,severe,dry+heat+wet,0,21605936,0
+Bungoma,ssp245,2041_2060,severe,dry+wet,0,21605936,0
+Bungoma,ssp245,2041_2060,severe,heat,0,21605936,0
+Bungoma,ssp245,2041_2060,severe,heat+wet,0,21605936,0
+Bungoma,ssp245,2041_2060,severe,no hazard,21002969,21605936,97.21
+Bungoma,ssp245,2041_2060,severe,wet,602967,21605936,2.79
+Bungoma,ssp585,2021_2040,severe,any,588500,21605936,2.72
+Bungoma,ssp585,2021_2040,severe,dry,176,21605936,0
+Bungoma,ssp585,2021_2040,severe,dry+heat,0,21605936,0
+Bungoma,ssp585,2021_2040,severe,dry+heat+wet,0,21605936,0
+Bungoma,ssp585,2021_2040,severe,dry+wet,0,21605936,0
+Bungoma,ssp585,2021_2040,severe,heat,0,21605936,0
+Bungoma,ssp585,2021_2040,severe,heat+wet,0,21605936,0
+Bungoma,ssp585,2021_2040,severe,no hazard,21017436,21605936,97.28
+Bungoma,ssp585,2021_2040,severe,wet,588324,21605936,2.72
+Bungoma,ssp585,2041_2060,severe,any,715994,21605936,3.31
+Bungoma,ssp585,2041_2060,severe,dry,0,21605936,0
+Bungoma,ssp585,2041_2060,severe,dry+heat,0,21605936,0
+Bungoma,ssp585,2041_2060,severe,dry+heat+wet,0,21605936,0
+Bungoma,ssp585,2041_2060,severe,dry+wet,0,21605936,0
+Bungoma,ssp585,2041_2060,severe,heat,0,21605936,0
+Bungoma,ssp585,2041_2060,severe,heat+wet,0,21605936,0
+Bungoma,ssp585,2041_2060,severe,no hazard,20889942,21605936,96.69
+Bungoma,ssp585,2041_2060,severe,wet,715994,21605936,3.31
+Busia,historic,historic,severe,any,73667,8105364,0.91
+Busia,historic,historic,severe,dry,71470,8105364,0.88
+Busia,historic,historic,severe,dry+heat,0,8105364,0
+Busia,historic,historic,severe,dry+heat+wet,0,8105364,0
+Busia,historic,historic,severe,dry+wet,0,8105364,0
+Busia,historic,historic,severe,heat,0,8105364,0
+Busia,historic,historic,severe,heat+wet,0,8105364,0
+Busia,historic,historic,severe,no hazard,8031697,8105364,99.09
+Busia,historic,historic,severe,wet,2197,8105364,0.03
+Busia,ssp245,2021_2040,severe,any,149426,8105363,1.84
+Busia,ssp245,2021_2040,severe,dry,31294,8105363,0.39
+Busia,ssp245,2021_2040,severe,dry+heat,0,8105363,0
+Busia,ssp245,2021_2040,severe,dry+heat+wet,0,8105363,0
+Busia,ssp245,2021_2040,severe,dry+wet,0,8105363,0
+Busia,ssp245,2021_2040,severe,heat,0,8105363,0
+Busia,ssp245,2021_2040,severe,heat+wet,0,8105363,0
+Busia,ssp245,2021_2040,severe,no hazard,7955938,8105363,98.16
+Busia,ssp245,2021_2040,severe,wet,118131,8105363,1.46
+Busia,ssp245,2041_2060,severe,any,78669,8105364,0.97
+Busia,ssp245,2041_2060,severe,dry,38234,8105364,0.47
+Busia,ssp245,2041_2060,severe,dry+heat,0,8105364,0
+Busia,ssp245,2041_2060,severe,dry+heat+wet,0,8105364,0
+Busia,ssp245,2041_2060,severe,dry+wet,0,8105364,0
+Busia,ssp245,2041_2060,severe,heat,0,8105364,0
+Busia,ssp245,2041_2060,severe,heat+wet,0,8105364,0
+Busia,ssp245,2041_2060,severe,no hazard,8026695,8105364,99.03
+Busia,ssp245,2041_2060,severe,wet,40435,8105364,0.5
+Busia,ssp585,2021_2040,severe,any,68695,8105363,0.85
+Busia,ssp585,2021_2040,severe,dry,30431,8105363,0.38
+Busia,ssp585,2021_2040,severe,dry+heat,0,8105363,0
+Busia,ssp585,2021_2040,severe,dry+heat+wet,0,8105363,0
+Busia,ssp585,2021_2040,severe,dry+wet,0,8105363,0
+Busia,ssp585,2021_2040,severe,heat,0,8105363,0
+Busia,ssp585,2021_2040,severe,heat+wet,0,8105363,0
+Busia,ssp585,2021_2040,severe,no hazard,8036669,8105363,99.15
+Busia,ssp585,2021_2040,severe,wet,38263,8105363,0.47
+Busia,ssp585,2041_2060,severe,any,130323,8105364,1.61
+Busia,ssp585,2041_2060,severe,dry,30455,8105364,0.38
+Busia,ssp585,2041_2060,severe,dry+heat,0,8105364,0
+Busia,ssp585,2041_2060,severe,dry+heat+wet,0,8105364,0
+Busia,ssp585,2041_2060,severe,dry+wet,0,8105364,0
+Busia,ssp585,2041_2060,severe,heat,0,8105364,0
+Busia,ssp585,2041_2060,severe,heat+wet,0,8105364,0
+Busia,ssp585,2041_2060,severe,no hazard,7975041,8105364,98.39
+Busia,ssp585,2041_2060,severe,wet,99868,8105364,1.23
+Elgeyo-Marakwet,historic,historic,severe,any,875553,7872730,11.12
+Elgeyo-Marakwet,historic,historic,severe,dry,871824,7872730,11.07
+Elgeyo-Marakwet,historic,historic,severe,dry+heat,0,7872730,0
+Elgeyo-Marakwet,historic,historic,severe,dry+heat+wet,0,7872730,0
+Elgeyo-Marakwet,historic,historic,severe,dry+wet,0,7872730,0
+Elgeyo-Marakwet,historic,historic,severe,heat,0,7872730,0
+Elgeyo-Marakwet,historic,historic,severe,heat+wet,0,7872730,0
+Elgeyo-Marakwet,historic,historic,severe,no hazard,6997177,7872730,88.88
+Elgeyo-Marakwet,historic,historic,severe,wet,3729,7872730,0.05
+Elgeyo-Marakwet,ssp245,2021_2040,severe,any,707136,7872730,8.98
+Elgeyo-Marakwet,ssp245,2021_2040,severe,dry,703407,7872730,8.93
+Elgeyo-Marakwet,ssp245,2021_2040,severe,dry+heat,0,7872730,0
+Elgeyo-Marakwet,ssp245,2021_2040,severe,dry+heat+wet,0,7872730,0
+Elgeyo-Marakwet,ssp245,2021_2040,severe,dry+wet,0,7872730,0
+Elgeyo-Marakwet,ssp245,2021_2040,severe,heat,0,7872730,0
+Elgeyo-Marakwet,ssp245,2021_2040,severe,heat+wet,0,7872730,0
+Elgeyo-Marakwet,ssp245,2021_2040,severe,no hazard,7165594,7872730,91.02
+Elgeyo-Marakwet,ssp245,2021_2040,severe,wet,3729,7872730,0.05
+Elgeyo-Marakwet,ssp245,2041_2060,severe,any,875798,7872731,11.12
+Elgeyo-Marakwet,ssp245,2041_2060,severe,dry,872070,7872731,11.08
+Elgeyo-Marakwet,ssp245,2041_2060,severe,dry+heat,0,7872731,0
+Elgeyo-Marakwet,ssp245,2041_2060,severe,dry+heat+wet,0,7872731,0
+Elgeyo-Marakwet,ssp245,2041_2060,severe,dry+wet,0,7872731,0
+Elgeyo-Marakwet,ssp245,2041_2060,severe,heat,0,7872731,0
+Elgeyo-Marakwet,ssp245,2041_2060,severe,heat+wet,0,7872731,0
+Elgeyo-Marakwet,ssp245,2041_2060,severe,no hazard,6996932,7872731,88.88
+Elgeyo-Marakwet,ssp245,2041_2060,severe,wet,3729,7872731,0.05
+Elgeyo-Marakwet,ssp585,2021_2040,severe,any,882975,7872730,11.22
+Elgeyo-Marakwet,ssp585,2021_2040,severe,dry,879246,7872730,11.17
+Elgeyo-Marakwet,ssp585,2021_2040,severe,dry+heat,0,7872730,0
+Elgeyo-Marakwet,ssp585,2021_2040,severe,dry+heat+wet,0,7872730,0
+Elgeyo-Marakwet,ssp585,2021_2040,severe,dry+wet,0,7872730,0
+Elgeyo-Marakwet,ssp585,2021_2040,severe,heat,0,7872730,0
+Elgeyo-Marakwet,ssp585,2021_2040,severe,heat+wet,0,7872730,0
+Elgeyo-Marakwet,ssp585,2021_2040,severe,no hazard,6989755,7872730,88.78
+Elgeyo-Marakwet,ssp585,2021_2040,severe,wet,3729,7872730,0.05
+Elgeyo-Marakwet,ssp585,2041_2060,severe,any,800823,7872731,10.17
+Elgeyo-Marakwet,ssp585,2041_2060,severe,dry,782622,7872731,9.94
+Elgeyo-Marakwet,ssp585,2041_2060,severe,dry+heat,2659,7872731,0.03
+Elgeyo-Marakwet,ssp585,2041_2060,severe,dry+heat+wet,0,7872731,0
+Elgeyo-Marakwet,ssp585,2041_2060,severe,dry+wet,0,7872731,0
+Elgeyo-Marakwet,ssp585,2041_2060,severe,heat,0,7872731,0
+Elgeyo-Marakwet,ssp585,2041_2060,severe,heat+wet,0,7872731,0
+Elgeyo-Marakwet,ssp585,2041_2060,severe,no hazard,7071907,7872731,89.83
+Elgeyo-Marakwet,ssp585,2041_2060,severe,wet,15543,7872731,0.2
+Embu,historic,historic,severe,any,10424537,11921461,87.44
+Embu,historic,historic,severe,dry,9935613,11921461,83.34
+Embu,historic,historic,severe,dry+heat,487983,11921461,4.09
+Embu,historic,historic,severe,dry+heat+wet,0,11921461,0
+Embu,historic,historic,severe,dry+wet,0,11921461,0
+Embu,historic,historic,severe,heat,941,11921461,0.01
+Embu,historic,historic,severe,heat+wet,0,11921461,0
+Embu,historic,historic,severe,no hazard,1496924,11921461,12.56
+Embu,historic,historic,severe,wet,0,11921461,0
+Embu,ssp245,2021_2040,severe,any,10221044,11921460,85.74
+Embu,ssp245,2021_2040,severe,dry,9366026,11921460,78.56
+Embu,ssp245,2021_2040,severe,dry+heat,844009,11921460,7.08
+Embu,ssp245,2021_2040,severe,dry+heat+wet,0,11921460,0
+Embu,ssp245,2021_2040,severe,dry+wet,0,11921460,0
+Embu,ssp245,2021_2040,severe,heat,11008,11921460,0.09
+Embu,ssp245,2021_2040,severe,heat+wet,0,11921460,0
+Embu,ssp245,2021_2040,severe,no hazard,1700417,11921460,14.26
+Embu,ssp245,2021_2040,severe,wet,0,11921460,0
+Embu,ssp245,2041_2060,severe,any,10436441,11921460,87.54
+Embu,ssp245,2041_2060,severe,dry,9235477,11921460,77.47
+Embu,ssp245,2041_2060,severe,dry+heat,1168161,11921460,9.8
+Embu,ssp245,2041_2060,severe,dry+heat+wet,0,11921460,0
+Embu,ssp245,2041_2060,severe,dry+wet,0,11921460,0
+Embu,ssp245,2041_2060,severe,heat,32802,11921460,0.28
+Embu,ssp245,2041_2060,severe,heat+wet,0,11921460,0
+Embu,ssp245,2041_2060,severe,no hazard,1485020,11921460,12.46
+Embu,ssp245,2041_2060,severe,wet,0,11921460,0
+Embu,ssp585,2021_2040,severe,any,10473980,11921461,87.86
+Embu,ssp585,2021_2040,severe,dry,9509616,11921461,79.77
+Embu,ssp585,2021_2040,severe,dry+heat,951600,11921461,7.98
+Embu,ssp585,2021_2040,severe,dry+heat+wet,0,11921461,0
+Embu,ssp585,2021_2040,severe,dry+wet,0,11921461,0
+Embu,ssp585,2021_2040,severe,heat,12764,11921461,0.11
+Embu,ssp585,2021_2040,severe,heat+wet,0,11921461,0
+Embu,ssp585,2021_2040,severe,no hazard,1447481,11921461,12.14
+Embu,ssp585,2021_2040,severe,wet,0,11921461,0
+Embu,ssp585,2041_2060,severe,any,10500179,11921461,88.08
+Embu,ssp585,2041_2060,severe,dry,8944255,11921461,75.03
+Embu,ssp585,2041_2060,severe,dry+heat,1508058,11921461,12.65
+Embu,ssp585,2041_2060,severe,dry+heat+wet,0,11921461,0
+Embu,ssp585,2041_2060,severe,dry+wet,0,11921461,0
+Embu,ssp585,2041_2060,severe,heat,47866,11921461,0.4
+Embu,ssp585,2041_2060,severe,heat+wet,0,11921461,0
+Embu,ssp585,2041_2060,severe,no hazard,1421282,11921461,11.92
+Embu,ssp585,2041_2060,severe,wet,0,11921461,0
+Garissa,historic,historic,severe,any,89994,90033,99.96
+Garissa,historic,historic,severe,dry,54591,90033,60.63
+Garissa,historic,historic,severe,dry+heat,35403,90033,39.32
+Garissa,historic,historic,severe,dry+heat+wet,0,90033,0
+Garissa,historic,historic,severe,dry+wet,0,90033,0
+Garissa,historic,historic,severe,heat,0,90033,0
+Garissa,historic,historic,severe,heat+wet,0,90033,0
+Garissa,historic,historic,severe,no hazard,39,90033,0.04
+Garissa,historic,historic,severe,wet,0,90033,0
+Garissa,ssp245,2021_2040,severe,any,89993,90032,99.96
+Garissa,ssp245,2021_2040,severe,dry,42993,90032,47.75
+Garissa,ssp245,2021_2040,severe,dry+heat,46610,90032,51.77
+Garissa,ssp245,2021_2040,severe,dry+heat+wet,0,90032,0
+Garissa,ssp245,2021_2040,severe,dry+wet,0,90032,0
+Garissa,ssp245,2021_2040,severe,heat,390,90032,0.43
+Garissa,ssp245,2021_2040,severe,heat+wet,0,90032,0
+Garissa,ssp245,2021_2040,severe,no hazard,39,90032,0.04
+Garissa,ssp245,2021_2040,severe,wet,0,90032,0
+Garissa,ssp245,2041_2060,severe,any,90000,90033,99.96
+Garissa,ssp245,2041_2060,severe,dry,16418,90033,18.24
+Garissa,ssp245,2041_2060,severe,dry+heat,73504,90033,81.64
+Garissa,ssp245,2041_2060,severe,dry+heat+wet,0,90033,0
+Garissa,ssp245,2041_2060,severe,dry+wet,0,90033,0
+Garissa,ssp245,2041_2060,severe,heat,78,90033,0.09
+Garissa,ssp245,2041_2060,severe,heat+wet,0,90033,0
+Garissa,ssp245,2041_2060,severe,no hazard,33,90033,0.04
+Garissa,ssp245,2041_2060,severe,wet,0,90033,0
+Garissa,ssp585,2021_2040,severe,any,90000,90033,99.96
+Garissa,ssp585,2021_2040,severe,dry,38774,90033,43.07
+Garissa,ssp585,2021_2040,severe,dry+heat,51220,90033,56.89
+Garissa,ssp585,2021_2040,severe,dry+heat+wet,0,90033,0
+Garissa,ssp585,2021_2040,severe,dry+wet,0,90033,0
+Garissa,ssp585,2021_2040,severe,heat,6,90033,0.01
+Garissa,ssp585,2021_2040,severe,heat+wet,0,90033,0
+Garissa,ssp585,2021_2040,severe,no hazard,33,90033,0.04
+Garissa,ssp585,2021_2040,severe,wet,0,90033,0
+Garissa,ssp585,2041_2060,severe,any,90000,90034,99.96
+Garissa,ssp585,2041_2060,severe,dry,7622,90034,8.47
+Garissa,ssp585,2041_2060,severe,dry+heat,81982,90034,91.06
+Garissa,ssp585,2041_2060,severe,dry+heat+wet,0,90034,0
+Garissa,ssp585,2041_2060,severe,dry+wet,0,90034,0
+Garissa,ssp585,2041_2060,severe,heat,397,90034,0.44
+Garissa,ssp585,2041_2060,severe,heat+wet,0,90034,0
+Garissa,ssp585,2041_2060,severe,no hazard,33,90034,0.04
+Garissa,ssp585,2041_2060,severe,wet,0,90034,0
+Homa Bay,historic,historic,severe,any,2389805,15549071,15.37
+Homa Bay,historic,historic,severe,dry,2350562,15549071,15.12
+Homa Bay,historic,historic,severe,dry+heat,0,15549071,0
+Homa Bay,historic,historic,severe,dry+heat+wet,0,15549071,0
+Homa Bay,historic,historic,severe,dry+wet,0,15549071,0
+Homa Bay,historic,historic,severe,heat,0,15549071,0
+Homa Bay,historic,historic,severe,heat+wet,0,15549071,0
+Homa Bay,historic,historic,severe,no hazard,13159266,15549071,84.63
+Homa Bay,historic,historic,severe,wet,39243,15549071,0.25
+Homa Bay,ssp245,2021_2040,severe,any,1458503,15549071,9.38
+Homa Bay,ssp245,2021_2040,severe,dry,1323983,15549071,8.51
+Homa Bay,ssp245,2021_2040,severe,dry+heat,0,15549071,0
+Homa Bay,ssp245,2021_2040,severe,dry+heat+wet,0,15549071,0
+Homa Bay,ssp245,2021_2040,severe,dry+wet,0,15549071,0
+Homa Bay,ssp245,2021_2040,severe,heat,0,15549071,0
+Homa Bay,ssp245,2021_2040,severe,heat+wet,0,15549071,0
+Homa Bay,ssp245,2021_2040,severe,no hazard,14090568,15549071,90.62
+Homa Bay,ssp245,2021_2040,severe,wet,134520,15549071,0.87
+Homa Bay,ssp245,2041_2060,severe,any,1517612,15549071,9.76
+Homa Bay,ssp245,2041_2060,severe,dry,1451626,15549071,9.34
+Homa Bay,ssp245,2041_2060,severe,dry+heat,0,15549071,0
+Homa Bay,ssp245,2041_2060,severe,dry+heat+wet,0,15549071,0
+Homa Bay,ssp245,2041_2060,severe,dry+wet,0,15549071,0
+Homa Bay,ssp245,2041_2060,severe,heat,0,15549071,0
+Homa Bay,ssp245,2041_2060,severe,heat+wet,0,15549071,0
+Homa Bay,ssp245,2041_2060,severe,no hazard,14031459,15549071,90.24
+Homa Bay,ssp245,2041_2060,severe,wet,65986,15549071,0.42
+Homa Bay,ssp585,2021_2040,severe,any,1556780,15549071,10.01
+Homa Bay,ssp585,2021_2040,severe,dry,1474090,15549071,9.48
+Homa Bay,ssp585,2021_2040,severe,dry+heat,0,15549071,0
+Homa Bay,ssp585,2021_2040,severe,dry+heat+wet,0,15549071,0
+Homa Bay,ssp585,2021_2040,severe,dry+wet,0,15549071,0
+Homa Bay,ssp585,2021_2040,severe,heat,0,15549071,0
+Homa Bay,ssp585,2021_2040,severe,heat+wet,0,15549071,0
+Homa Bay,ssp585,2021_2040,severe,no hazard,13992291,15549071,89.99
+Homa Bay,ssp585,2021_2040,severe,wet,82690,15549071,0.53
+Homa Bay,ssp585,2041_2060,severe,any,1259384,15549071,8.1
+Homa Bay,ssp585,2041_2060,severe,dry,1178796,15549071,7.58
+Homa Bay,ssp585,2041_2060,severe,dry+heat,0,15549071,0
+Homa Bay,ssp585,2041_2060,severe,dry+heat+wet,0,15549071,0
+Homa Bay,ssp585,2041_2060,severe,dry+wet,0,15549071,0
+Homa Bay,ssp585,2041_2060,severe,heat,0,15549071,0
+Homa Bay,ssp585,2041_2060,severe,heat+wet,0,15549071,0
+Homa Bay,ssp585,2041_2060,severe,no hazard,14289687,15549071,91.9
+Homa Bay,ssp585,2041_2060,severe,wet,80588,15549071,0.52
+Isiolo,historic,historic,severe,any,566419,570623,99.26
+Isiolo,historic,historic,severe,dry,506511,570623,88.76
+Isiolo,historic,historic,severe,dry+heat,59908,570623,10.5
+Isiolo,historic,historic,severe,dry+heat+wet,0,570623,0
+Isiolo,historic,historic,severe,dry+wet,0,570623,0
+Isiolo,historic,historic,severe,heat,0,570623,0
+Isiolo,historic,historic,severe,heat+wet,0,570623,0
+Isiolo,historic,historic,severe,no hazard,4204,570623,0.74
+Isiolo,historic,historic,severe,wet,0,570623,0
+Isiolo,ssp245,2021_2040,severe,any,566409,570622,99.26
+Isiolo,ssp245,2021_2040,severe,dry,479915,570622,84.1
+Isiolo,ssp245,2021_2040,severe,dry+heat,86365,570622,15.14
+Isiolo,ssp245,2021_2040,severe,dry+heat+wet,0,570622,0
+Isiolo,ssp245,2021_2040,severe,dry+wet,0,570622,0
+Isiolo,ssp245,2021_2040,severe,heat,129,570622,0.02
+Isiolo,ssp245,2021_2040,severe,heat+wet,0,570622,0
+Isiolo,ssp245,2021_2040,severe,no hazard,4213,570622,0.74
+Isiolo,ssp245,2021_2040,severe,wet,0,570622,0
+Isiolo,ssp245,2041_2060,severe,any,566342,570622,99.25
+Isiolo,ssp245,2041_2060,severe,dry,457975,570622,80.26
+Isiolo,ssp245,2041_2060,severe,dry+heat,108238,570622,18.97
+Isiolo,ssp245,2041_2060,severe,dry+heat+wet,0,570622,0
+Isiolo,ssp245,2041_2060,severe,dry+wet,0,570622,0
+Isiolo,ssp245,2041_2060,severe,heat,129,570622,0.02
+Isiolo,ssp245,2041_2060,severe,heat+wet,0,570622,0
+Isiolo,ssp245,2041_2060,severe,no hazard,4280,570622,0.75
+Isiolo,ssp245,2041_2060,severe,wet,0,570622,0
+Isiolo,ssp585,2021_2040,severe,any,566419,570623,99.26
+Isiolo,ssp585,2021_2040,severe,dry,472045,570623,82.72
+Isiolo,ssp585,2021_2040,severe,dry+heat,94374,570623,16.54
+Isiolo,ssp585,2021_2040,severe,dry+heat+wet,0,570623,0
+Isiolo,ssp585,2021_2040,severe,dry+wet,0,570623,0
+Isiolo,ssp585,2021_2040,severe,heat,0,570623,0
+Isiolo,ssp585,2021_2040,severe,heat+wet,0,570623,0
+Isiolo,ssp585,2021_2040,severe,no hazard,4204,570623,0.74
+Isiolo,ssp585,2021_2040,severe,wet,0,570623,0
+Isiolo,ssp585,2041_2060,severe,any,566419,570623,99.26
+Isiolo,ssp585,2041_2060,severe,dry,431222,570623,75.57
+Isiolo,ssp585,2041_2060,severe,dry+heat,135068,570623,23.67
+Isiolo,ssp585,2041_2060,severe,dry+heat+wet,0,570623,0
+Isiolo,ssp585,2041_2060,severe,dry+wet,0,570623,0
+Isiolo,ssp585,2041_2060,severe,heat,129,570623,0.02
+Isiolo,ssp585,2041_2060,severe,heat+wet,0,570623,0
+Isiolo,ssp585,2041_2060,severe,no hazard,4204,570623,0.74
+Isiolo,ssp585,2041_2060,severe,wet,0,570623,0
+Kajiado,historic,historic,severe,any,9094613,9331937,97.46
+Kajiado,historic,historic,severe,dry,9090865,9331937,97.42
+Kajiado,historic,historic,severe,dry+heat,3748,9331937,0.04
+Kajiado,historic,historic,severe,dry+heat+wet,0,9331937,0
+Kajiado,historic,historic,severe,dry+wet,0,9331937,0
+Kajiado,historic,historic,severe,heat,0,9331937,0
+Kajiado,historic,historic,severe,heat+wet,0,9331937,0
+Kajiado,historic,historic,severe,no hazard,237324,9331937,2.54
+Kajiado,historic,historic,severe,wet,0,9331937,0
+Kajiado,ssp245,2021_2040,severe,any,9074120,9331937,97.24
+Kajiado,ssp245,2021_2040,severe,dry,9061901,9331937,97.11
+Kajiado,ssp245,2021_2040,severe,dry+heat,12219,9331937,0.13
+Kajiado,ssp245,2021_2040,severe,dry+heat+wet,0,9331937,0
+Kajiado,ssp245,2021_2040,severe,dry+wet,0,9331937,0
+Kajiado,ssp245,2021_2040,severe,heat,0,9331937,0
+Kajiado,ssp245,2021_2040,severe,heat+wet,0,9331937,0
+Kajiado,ssp245,2021_2040,severe,no hazard,257817,9331937,2.76
+Kajiado,ssp245,2021_2040,severe,wet,0,9331937,0
+Kajiado,ssp245,2041_2060,severe,any,9096201,9331937,97.47
+Kajiado,ssp245,2041_2060,severe,dry,9054438,9331937,97.03
+Kajiado,ssp245,2041_2060,severe,dry+heat,41763,9331937,0.45
+Kajiado,ssp245,2041_2060,severe,dry+heat+wet,0,9331937,0
+Kajiado,ssp245,2041_2060,severe,dry+wet,0,9331937,0
+Kajiado,ssp245,2041_2060,severe,heat,0,9331937,0
+Kajiado,ssp245,2041_2060,severe,heat+wet,0,9331937,0
+Kajiado,ssp245,2041_2060,severe,no hazard,235736,9331937,2.53
+Kajiado,ssp245,2041_2060,severe,wet,0,9331937,0
+Kajiado,ssp585,2021_2040,severe,any,9085490,9331936,97.36
+Kajiado,ssp585,2021_2040,severe,dry,9069531,9331936,97.19
+Kajiado,ssp585,2021_2040,severe,dry+heat,15958,9331936,0.17
+Kajiado,ssp585,2021_2040,severe,dry+heat+wet,0,9331936,0
+Kajiado,ssp585,2021_2040,severe,dry+wet,0,9331936,0
+Kajiado,ssp585,2021_2040,severe,heat,0,9331936,0
+Kajiado,ssp585,2021_2040,severe,heat+wet,0,9331936,0
+Kajiado,ssp585,2021_2040,severe,no hazard,246447,9331936,2.64
+Kajiado,ssp585,2021_2040,severe,wet,0,9331936,0
+Kajiado,ssp585,2041_2060,severe,any,9089665,9331937,97.4
+Kajiado,ssp585,2041_2060,severe,dry,9022412,9331937,96.68
+Kajiado,ssp585,2041_2060,severe,dry+heat,67253,9331937,0.72
+Kajiado,ssp585,2041_2060,severe,dry+heat+wet,0,9331937,0
+Kajiado,ssp585,2041_2060,severe,dry+wet,0,9331937,0
+Kajiado,ssp585,2041_2060,severe,heat,0,9331937,0
+Kajiado,ssp585,2041_2060,severe,heat+wet,0,9331937,0
+Kajiado,ssp585,2041_2060,severe,no hazard,242272,9331937,2.6
+Kajiado,ssp585,2041_2060,severe,wet,0,9331937,0
+Kakamega,historic,historic,severe,any,1220357,20564661,5.93
+Kakamega,historic,historic,severe,dry,56587,20564661,0.28
+Kakamega,historic,historic,severe,dry+heat,0,20564661,0
+Kakamega,historic,historic,severe,dry+heat+wet,0,20564661,0
+Kakamega,historic,historic,severe,dry+wet,0,20564661,0
+Kakamega,historic,historic,severe,heat,0,20564661,0
+Kakamega,historic,historic,severe,heat+wet,0,20564661,0
+Kakamega,historic,historic,severe,no hazard,19344305,20564661,94.07
+Kakamega,historic,historic,severe,wet,1163769,20564661,5.66
+Kakamega,ssp245,2021_2040,severe,any,1876408,20564662,9.12
+Kakamega,ssp245,2021_2040,severe,dry,0,20564662,0
+Kakamega,ssp245,2021_2040,severe,dry+heat,0,20564662,0
+Kakamega,ssp245,2021_2040,severe,dry+heat+wet,0,20564662,0
+Kakamega,ssp245,2021_2040,severe,dry+wet,0,20564662,0
+Kakamega,ssp245,2021_2040,severe,heat,0,20564662,0
+Kakamega,ssp245,2021_2040,severe,heat+wet,0,20564662,0
+Kakamega,ssp245,2021_2040,severe,no hazard,18688254,20564662,90.88
+Kakamega,ssp245,2021_2040,severe,wet,1876408,20564662,9.12
+Kakamega,ssp245,2041_2060,severe,any,1380029,20564662,6.71
+Kakamega,ssp245,2041_2060,severe,dry,0,20564662,0
+Kakamega,ssp245,2041_2060,severe,dry+heat,0,20564662,0
+Kakamega,ssp245,2041_2060,severe,dry+heat+wet,0,20564662,0
+Kakamega,ssp245,2041_2060,severe,dry+wet,0,20564662,0
+Kakamega,ssp245,2041_2060,severe,heat,0,20564662,0
+Kakamega,ssp245,2041_2060,severe,heat+wet,0,20564662,0
+Kakamega,ssp245,2041_2060,severe,no hazard,19184633,20564662,93.29
+Kakamega,ssp245,2041_2060,severe,wet,1380029,20564662,6.71
+Kakamega,ssp585,2021_2040,severe,any,1437651,20564662,6.99
+Kakamega,ssp585,2021_2040,severe,dry,55476,20564662,0.27
+Kakamega,ssp585,2021_2040,severe,dry+heat,0,20564662,0
+Kakamega,ssp585,2021_2040,severe,dry+heat+wet,0,20564662,0
+Kakamega,ssp585,2021_2040,severe,dry+wet,0,20564662,0
+Kakamega,ssp585,2021_2040,severe,heat,0,20564662,0
+Kakamega,ssp585,2021_2040,severe,heat+wet,0,20564662,0
+Kakamega,ssp585,2021_2040,severe,no hazard,19127011,20564662,93.01
+Kakamega,ssp585,2021_2040,severe,wet,1382175,20564662,6.72
+Kakamega,ssp585,2041_2060,severe,any,1635837,20564662,7.95
+Kakamega,ssp585,2041_2060,severe,dry,0,20564662,0
+Kakamega,ssp585,2041_2060,severe,dry+heat,0,20564662,0
+Kakamega,ssp585,2041_2060,severe,dry+heat+wet,0,20564662,0
+Kakamega,ssp585,2041_2060,severe,dry+wet,0,20564662,0
+Kakamega,ssp585,2041_2060,severe,heat,0,20564662,0
+Kakamega,ssp585,2041_2060,severe,heat+wet,0,20564662,0
+Kakamega,ssp585,2041_2060,severe,no hazard,18928825,20564662,92.05
+Kakamega,ssp585,2041_2060,severe,wet,1635837,20564662,7.95
+Kericho,historic,historic,severe,any,232195,11142101,2.08
+Kericho,historic,historic,severe,dry,180245,11142101,1.62
+Kericho,historic,historic,severe,dry+heat,0,11142101,0
+Kericho,historic,historic,severe,dry+heat+wet,0,11142101,0
+Kericho,historic,historic,severe,dry+wet,0,11142101,0
+Kericho,historic,historic,severe,heat,0,11142101,0
+Kericho,historic,historic,severe,heat+wet,0,11142101,0
+Kericho,historic,historic,severe,no hazard,10909907,11142101,97.92
+Kericho,historic,historic,severe,wet,51949,11142101,0.47
+Kericho,ssp245,2021_2040,severe,any,281706,11142103,2.53
+Kericho,ssp245,2021_2040,severe,dry,112644,11142103,1.01
+Kericho,ssp245,2021_2040,severe,dry+heat,0,11142103,0
+Kericho,ssp245,2021_2040,severe,dry+heat+wet,0,11142103,0
+Kericho,ssp245,2021_2040,severe,dry+wet,0,11142103,0
+Kericho,ssp245,2021_2040,severe,heat,0,11142103,0
+Kericho,ssp245,2021_2040,severe,heat+wet,0,11142103,0
+Kericho,ssp245,2021_2040,severe,no hazard,10860396,11142103,97.47
+Kericho,ssp245,2021_2040,severe,wet,169063,11142103,1.52
+Kericho,ssp245,2041_2060,severe,any,222154,11142102,1.99
+Kericho,ssp245,2041_2060,severe,dry,140904,11142102,1.26
+Kericho,ssp245,2041_2060,severe,dry+heat,0,11142102,0
+Kericho,ssp245,2041_2060,severe,dry+heat+wet,0,11142102,0
+Kericho,ssp245,2041_2060,severe,dry+wet,0,11142102,0
+Kericho,ssp245,2041_2060,severe,heat,0,11142102,0
+Kericho,ssp245,2041_2060,severe,heat+wet,0,11142102,0
+Kericho,ssp245,2041_2060,severe,no hazard,10919948,11142102,98.01
+Kericho,ssp245,2041_2060,severe,wet,81250,11142102,0.73
+Kericho,ssp585,2021_2040,severe,any,242361,11142102,2.18
+Kericho,ssp585,2021_2040,severe,dry,177025,11142102,1.59
+Kericho,ssp585,2021_2040,severe,dry+heat,0,11142102,0
+Kericho,ssp585,2021_2040,severe,dry+heat+wet,0,11142102,0
+Kericho,ssp585,2021_2040,severe,dry+wet,0,11142102,0
+Kericho,ssp585,2021_2040,severe,heat,0,11142102,0
+Kericho,ssp585,2021_2040,severe,heat+wet,0,11142102,0
+Kericho,ssp585,2021_2040,severe,no hazard,10899741,11142102,97.82
+Kericho,ssp585,2021_2040,severe,wet,65336,11142102,0.59
+Kericho,ssp585,2041_2060,severe,any,195376,11142102,1.75
+Kericho,ssp585,2041_2060,severe,dry,138518,11142102,1.24
+Kericho,ssp585,2041_2060,severe,dry+heat,0,11142102,0
+Kericho,ssp585,2041_2060,severe,dry+heat+wet,0,11142102,0
+Kericho,ssp585,2041_2060,severe,dry+wet,0,11142102,0
+Kericho,ssp585,2041_2060,severe,heat,0,11142102,0
+Kericho,ssp585,2041_2060,severe,heat+wet,0,11142102,0
+Kericho,ssp585,2041_2060,severe,no hazard,10946726,11142102,98.25
+Kericho,ssp585,2041_2060,severe,wet,56858,11142102,0.51
+Kiambu,historic,historic,severe,any,6550064,8341214,78.53
+Kiambu,historic,historic,severe,dry,6550064,8341214,78.53
+Kiambu,historic,historic,severe,dry+heat,0,8341214,0
+Kiambu,historic,historic,severe,dry+heat+wet,0,8341214,0
+Kiambu,historic,historic,severe,dry+wet,0,8341214,0
+Kiambu,historic,historic,severe,heat,0,8341214,0
+Kiambu,historic,historic,severe,heat+wet,0,8341214,0
+Kiambu,historic,historic,severe,no hazard,1791150,8341214,21.47
+Kiambu,historic,historic,severe,wet,0,8341214,0
+Kiambu,ssp245,2021_2040,severe,any,6358568,8341213,76.23
+Kiambu,ssp245,2021_2040,severe,dry,6358568,8341213,76.23
+Kiambu,ssp245,2021_2040,severe,dry+heat,0,8341213,0
+Kiambu,ssp245,2021_2040,severe,dry+heat+wet,0,8341213,0
+Kiambu,ssp245,2021_2040,severe,dry+wet,0,8341213,0
+Kiambu,ssp245,2021_2040,severe,heat,0,8341213,0
+Kiambu,ssp245,2021_2040,severe,heat+wet,0,8341213,0
+Kiambu,ssp245,2021_2040,severe,no hazard,1982645,8341213,23.77
+Kiambu,ssp245,2021_2040,severe,wet,0,8341213,0
+Kiambu,ssp245,2041_2060,severe,any,6598390,8341214,79.11
+Kiambu,ssp245,2041_2060,severe,dry,6598390,8341214,79.11
+Kiambu,ssp245,2041_2060,severe,dry+heat,0,8341214,0
+Kiambu,ssp245,2041_2060,severe,dry+heat+wet,0,8341214,0
+Kiambu,ssp245,2041_2060,severe,dry+wet,0,8341214,0
+Kiambu,ssp245,2041_2060,severe,heat,0,8341214,0
+Kiambu,ssp245,2041_2060,severe,heat+wet,0,8341214,0
+Kiambu,ssp245,2041_2060,severe,no hazard,1742824,8341214,20.89
+Kiambu,ssp245,2041_2060,severe,wet,0,8341214,0
+Kiambu,ssp585,2021_2040,severe,any,6627780,8341212,79.46
+Kiambu,ssp585,2021_2040,severe,dry,6627780,8341212,79.46
+Kiambu,ssp585,2021_2040,severe,dry+heat,0,8341212,0
+Kiambu,ssp585,2021_2040,severe,dry+heat+wet,0,8341212,0
+Kiambu,ssp585,2021_2040,severe,dry+wet,0,8341212,0
+Kiambu,ssp585,2021_2040,severe,heat,0,8341212,0
+Kiambu,ssp585,2021_2040,severe,heat+wet,0,8341212,0
+Kiambu,ssp585,2021_2040,severe,no hazard,1713432,8341212,20.54
+Kiambu,ssp585,2021_2040,severe,wet,0,8341212,0
+Kiambu,ssp585,2041_2060,severe,any,6878865,8341213,82.47
+Kiambu,ssp585,2041_2060,severe,dry,6878865,8341213,82.47
+Kiambu,ssp585,2041_2060,severe,dry+heat,0,8341213,0
+Kiambu,ssp585,2041_2060,severe,dry+heat+wet,0,8341213,0
+Kiambu,ssp585,2041_2060,severe,dry+wet,0,8341213,0
+Kiambu,ssp585,2041_2060,severe,heat,0,8341213,0
+Kiambu,ssp585,2041_2060,severe,heat+wet,0,8341213,0
+Kiambu,ssp585,2041_2060,severe,no hazard,1462348,8341213,17.53
+Kiambu,ssp585,2041_2060,severe,wet,0,8341213,0
+Kilifi,historic,historic,severe,any,8807719,10167203,86.63
+Kilifi,historic,historic,severe,dry,4583838,10167203,45.08
+Kilifi,historic,historic,severe,dry+heat,3970056,10167203,39.05
+Kilifi,historic,historic,severe,dry+heat+wet,0,10167203,0
+Kilifi,historic,historic,severe,dry+wet,0,10167203,0
+Kilifi,historic,historic,severe,heat,253826,10167203,2.5
+Kilifi,historic,historic,severe,heat+wet,0,10167203,0
+Kilifi,historic,historic,severe,no hazard,1359483,10167203,13.37
+Kilifi,historic,historic,severe,wet,0,10167203,0
+Kilifi,ssp245,2021_2040,severe,any,8824244,10167201,86.79
+Kilifi,ssp245,2021_2040,severe,dry,2821908,10167201,27.76
+Kilifi,ssp245,2021_2040,severe,dry+heat,5519526,10167201,54.29
+Kilifi,ssp245,2021_2040,severe,dry+heat+wet,0,10167201,0
+Kilifi,ssp245,2021_2040,severe,dry+wet,0,10167201,0
+Kilifi,ssp245,2021_2040,severe,heat,482809,10167201,4.75
+Kilifi,ssp245,2021_2040,severe,heat+wet,0,10167201,0
+Kilifi,ssp245,2021_2040,severe,no hazard,1342958,10167201,13.21
+Kilifi,ssp245,2021_2040,severe,wet,0,10167201,0
+Kilifi,ssp245,2041_2060,severe,any,9112945,10167201,89.63
+Kilifi,ssp245,2041_2060,severe,dry,1384353,10167201,13.62
+Kilifi,ssp245,2041_2060,severe,dry+heat,7117750,10167201,70.01
+Kilifi,ssp245,2041_2060,severe,dry+heat+wet,0,10167201,0
+Kilifi,ssp245,2041_2060,severe,dry+wet,0,10167201,0
+Kilifi,ssp245,2041_2060,severe,heat,610841,10167201,6.01
+Kilifi,ssp245,2041_2060,severe,heat+wet,0,10167201,0
+Kilifi,ssp245,2041_2060,severe,no hazard,1054257,10167201,10.37
+Kilifi,ssp245,2041_2060,severe,wet,0,10167201,0
+Kilifi,ssp585,2021_2040,severe,any,8803864,10167203,86.59
+Kilifi,ssp585,2021_2040,severe,dry,2679904,10167203,26.36
+Kilifi,ssp585,2021_2040,severe,dry+heat,5616816,10167203,55.24
+Kilifi,ssp585,2021_2040,severe,dry+heat+wet,0,10167203,0
+Kilifi,ssp585,2021_2040,severe,dry+wet,0,10167203,0
+Kilifi,ssp585,2021_2040,severe,heat,507145,10167203,4.99
+Kilifi,ssp585,2021_2040,severe,heat+wet,0,10167203,0
+Kilifi,ssp585,2021_2040,severe,no hazard,1363338,10167203,13.41
+Kilifi,ssp585,2021_2040,severe,wet,0,10167203,0
+Kilifi,ssp585,2041_2060,severe,any,9351957,10167201,91.98
+Kilifi,ssp585,2041_2060,severe,dry,395447,10167201,3.89
+Kilifi,ssp585,2041_2060,severe,dry+heat,8197235,10167201,80.62
+Kilifi,ssp585,2041_2060,severe,dry+heat+wet,0,10167201,0
+Kilifi,ssp585,2041_2060,severe,dry+wet,0,10167201,0
+Kilifi,ssp585,2041_2060,severe,heat,759274,10167201,7.47
+Kilifi,ssp585,2041_2060,severe,heat+wet,0,10167201,0
+Kilifi,ssp585,2041_2060,severe,no hazard,815245,10167201,8.02
+Kilifi,ssp585,2041_2060,severe,wet,0,10167201,0
+Kirinyaga,historic,historic,severe,any,5899960,6916170,85.31
+Kirinyaga,historic,historic,severe,dry,5899960,6916170,85.31
+Kirinyaga,historic,historic,severe,dry+heat,0,6916170,0
+Kirinyaga,historic,historic,severe,dry+heat+wet,0,6916170,0
+Kirinyaga,historic,historic,severe,dry+wet,0,6916170,0
+Kirinyaga,historic,historic,severe,heat,0,6916170,0
+Kirinyaga,historic,historic,severe,heat+wet,0,6916170,0
+Kirinyaga,historic,historic,severe,no hazard,1016210,6916170,14.69
+Kirinyaga,historic,historic,severe,wet,0,6916170,0
+Kirinyaga,ssp245,2021_2040,severe,any,5737566,6916170,82.96
+Kirinyaga,ssp245,2021_2040,severe,dry,5737566,6916170,82.96
+Kirinyaga,ssp245,2021_2040,severe,dry+heat,0,6916170,0
+Kirinyaga,ssp245,2021_2040,severe,dry+heat+wet,0,6916170,0
+Kirinyaga,ssp245,2021_2040,severe,dry+wet,0,6916170,0
+Kirinyaga,ssp245,2021_2040,severe,heat,0,6916170,0
+Kirinyaga,ssp245,2021_2040,severe,heat+wet,0,6916170,0
+Kirinyaga,ssp245,2021_2040,severe,no hazard,1178604,6916170,17.04
+Kirinyaga,ssp245,2021_2040,severe,wet,0,6916170,0
+Kirinyaga,ssp245,2041_2060,severe,any,5894084,6916171,85.22
+Kirinyaga,ssp245,2041_2060,severe,dry,5894084,6916171,85.22
+Kirinyaga,ssp245,2041_2060,severe,dry+heat,0,6916171,0
+Kirinyaga,ssp245,2041_2060,severe,dry+heat+wet,0,6916171,0
+Kirinyaga,ssp245,2041_2060,severe,dry+wet,0,6916171,0
+Kirinyaga,ssp245,2041_2060,severe,heat,0,6916171,0
+Kirinyaga,ssp245,2041_2060,severe,heat+wet,0,6916171,0
+Kirinyaga,ssp245,2041_2060,severe,no hazard,1022087,6916171,14.78
+Kirinyaga,ssp245,2041_2060,severe,wet,0,6916171,0
+Kirinyaga,ssp585,2021_2040,severe,any,5849993,6916171,84.58
+Kirinyaga,ssp585,2021_2040,severe,dry,5849993,6916171,84.58
+Kirinyaga,ssp585,2021_2040,severe,dry+heat,0,6916171,0
+Kirinyaga,ssp585,2021_2040,severe,dry+heat+wet,0,6916171,0
+Kirinyaga,ssp585,2021_2040,severe,dry+wet,0,6916171,0
+Kirinyaga,ssp585,2021_2040,severe,heat,0,6916171,0
+Kirinyaga,ssp585,2021_2040,severe,heat+wet,0,6916171,0
+Kirinyaga,ssp585,2021_2040,severe,no hazard,1066178,6916171,15.42
+Kirinyaga,ssp585,2021_2040,severe,wet,0,6916171,0
+Kirinyaga,ssp585,2041_2060,severe,any,5975813,6916171,86.4
+Kirinyaga,ssp585,2041_2060,severe,dry,5975813,6916171,86.4
+Kirinyaga,ssp585,2041_2060,severe,dry+heat,0,6916171,0
+Kirinyaga,ssp585,2041_2060,severe,dry+heat+wet,0,6916171,0
+Kirinyaga,ssp585,2041_2060,severe,dry+wet,0,6916171,0
+Kirinyaga,ssp585,2041_2060,severe,heat,0,6916171,0
+Kirinyaga,ssp585,2041_2060,severe,heat+wet,0,6916171,0
+Kirinyaga,ssp585,2041_2060,severe,no hazard,940358,6916171,13.6
+Kirinyaga,ssp585,2041_2060,severe,wet,0,6916171,0
+Kisii,historic,historic,severe,any,150935,12619541,1.2
+Kisii,historic,historic,severe,dry,9734,12619541,0.08
+Kisii,historic,historic,severe,dry+heat,0,12619541,0
+Kisii,historic,historic,severe,dry+heat+wet,0,12619541,0
+Kisii,historic,historic,severe,dry+wet,0,12619541,0
+Kisii,historic,historic,severe,heat,0,12619541,0
+Kisii,historic,historic,severe,heat+wet,0,12619541,0
+Kisii,historic,historic,severe,no hazard,12468606,12619541,98.8
+Kisii,historic,historic,severe,wet,141201,12619541,1.12
+Kisii,ssp245,2021_2040,severe,any,409781,12619541,3.25
+Kisii,ssp245,2021_2040,severe,dry,0,12619541,0
+Kisii,ssp245,2021_2040,severe,dry+heat,0,12619541,0
+Kisii,ssp245,2021_2040,severe,dry+heat+wet,0,12619541,0
+Kisii,ssp245,2021_2040,severe,dry+wet,0,12619541,0
+Kisii,ssp245,2021_2040,severe,heat,0,12619541,0
+Kisii,ssp245,2021_2040,severe,heat+wet,0,12619541,0
+Kisii,ssp245,2021_2040,severe,no hazard,12209760,12619541,96.75
+Kisii,ssp245,2021_2040,severe,wet,409781,12619541,3.25
+Kisii,ssp245,2041_2060,severe,any,179162,12619541,1.42
+Kisii,ssp245,2041_2060,severe,dry,0,12619541,0
+Kisii,ssp245,2041_2060,severe,dry+heat,0,12619541,0
+Kisii,ssp245,2041_2060,severe,dry+heat+wet,0,12619541,0
+Kisii,ssp245,2041_2060,severe,dry+wet,0,12619541,0
+Kisii,ssp245,2041_2060,severe,heat,0,12619541,0
+Kisii,ssp245,2041_2060,severe,heat+wet,0,12619541,0
+Kisii,ssp245,2041_2060,severe,no hazard,12440379,12619541,98.58
+Kisii,ssp245,2041_2060,severe,wet,179162,12619541,1.42
+Kisii,ssp585,2021_2040,severe,any,244855,12619541,1.94
+Kisii,ssp585,2021_2040,severe,dry,0,12619541,0
+Kisii,ssp585,2021_2040,severe,dry+heat,0,12619541,0
+Kisii,ssp585,2021_2040,severe,dry+heat+wet,0,12619541,0
+Kisii,ssp585,2021_2040,severe,dry+wet,0,12619541,0
+Kisii,ssp585,2021_2040,severe,heat,0,12619541,0
+Kisii,ssp585,2021_2040,severe,heat+wet,0,12619541,0
+Kisii,ssp585,2021_2040,severe,no hazard,12374686,12619541,98.06
+Kisii,ssp585,2021_2040,severe,wet,244855,12619541,1.94
+Kisii,ssp585,2041_2060,severe,any,304366,12619541,2.41
+Kisii,ssp585,2041_2060,severe,dry,0,12619541,0
+Kisii,ssp585,2041_2060,severe,dry+heat,0,12619541,0
+Kisii,ssp585,2041_2060,severe,dry+heat+wet,0,12619541,0
+Kisii,ssp585,2041_2060,severe,dry+wet,0,12619541,0
+Kisii,ssp585,2041_2060,severe,heat,0,12619541,0
+Kisii,ssp585,2041_2060,severe,heat+wet,0,12619541,0
+Kisii,ssp585,2041_2060,severe,no hazard,12315175,12619541,97.59
+Kisii,ssp585,2041_2060,severe,wet,304366,12619541,2.41
+Kisumu,historic,historic,severe,any,560838,5987639,9.37
+Kisumu,historic,historic,severe,dry,560838,5987639,9.37
+Kisumu,historic,historic,severe,dry+heat,0,5987639,0
+Kisumu,historic,historic,severe,dry+heat+wet,0,5987639,0
+Kisumu,historic,historic,severe,dry+wet,0,5987639,0
+Kisumu,historic,historic,severe,heat,0,5987639,0
+Kisumu,historic,historic,severe,heat+wet,0,5987639,0
+Kisumu,historic,historic,severe,no hazard,5426801,5987639,90.63
+Kisumu,historic,historic,severe,wet,0,5987639,0
+Kisumu,ssp245,2021_2040,severe,any,236980,5987639,3.96
+Kisumu,ssp245,2021_2040,severe,dry,230394,5987639,3.85
+Kisumu,ssp245,2021_2040,severe,dry+heat,0,5987639,0
+Kisumu,ssp245,2021_2040,severe,dry+heat+wet,0,5987639,0
+Kisumu,ssp245,2021_2040,severe,dry+wet,0,5987639,0
+Kisumu,ssp245,2021_2040,severe,heat,0,5987639,0
+Kisumu,ssp245,2021_2040,severe,heat+wet,0,5987639,0
+Kisumu,ssp245,2021_2040,severe,no hazard,5750659,5987639,96.04
+Kisumu,ssp245,2021_2040,severe,wet,6586,5987639,0.11
+Kisumu,ssp245,2041_2060,severe,any,363711,5987638,6.07
+Kisumu,ssp245,2041_2060,severe,dry,357124,5987638,5.96
+Kisumu,ssp245,2041_2060,severe,dry+heat,0,5987638,0
+Kisumu,ssp245,2041_2060,severe,dry+heat+wet,0,5987638,0
+Kisumu,ssp245,2041_2060,severe,dry+wet,0,5987638,0
+Kisumu,ssp245,2041_2060,severe,heat,0,5987638,0
+Kisumu,ssp245,2041_2060,severe,heat+wet,0,5987638,0
+Kisumu,ssp245,2041_2060,severe,no hazard,5623928,5987638,93.93
+Kisumu,ssp245,2041_2060,severe,wet,6586,5987638,0.11
+Kisumu,ssp585,2021_2040,severe,any,388469,5987639,6.49
+Kisumu,ssp585,2021_2040,severe,dry,386812,5987639,6.46
+Kisumu,ssp585,2021_2040,severe,dry+heat,0,5987639,0
+Kisumu,ssp585,2021_2040,severe,dry+heat+wet,0,5987639,0
+Kisumu,ssp585,2021_2040,severe,dry+wet,0,5987639,0
+Kisumu,ssp585,2021_2040,severe,heat,0,5987639,0
+Kisumu,ssp585,2021_2040,severe,heat+wet,0,5987639,0
+Kisumu,ssp585,2021_2040,severe,no hazard,5599170,5987639,93.51
+Kisumu,ssp585,2021_2040,severe,wet,1657,5987639,0.03
+Kisumu,ssp585,2041_2060,severe,any,299542,5987639,5
+Kisumu,ssp585,2041_2060,severe,dry,292956,5987639,4.89
+Kisumu,ssp585,2041_2060,severe,dry+heat,0,5987639,0
+Kisumu,ssp585,2041_2060,severe,dry+heat+wet,0,5987639,0
+Kisumu,ssp585,2041_2060,severe,dry+wet,0,5987639,0
+Kisumu,ssp585,2041_2060,severe,heat,0,5987639,0
+Kisumu,ssp585,2041_2060,severe,heat+wet,0,5987639,0
+Kisumu,ssp585,2041_2060,severe,no hazard,5688097,5987639,95
+Kisumu,ssp585,2041_2060,severe,wet,6586,5987639,0.11
+Kitui,historic,historic,severe,any,28722934,28807206,99.71
+Kitui,historic,historic,severe,dry,26616538,28807206,92.4
+Kitui,historic,historic,severe,dry+heat,2105342,28807206,7.31
+Kitui,historic,historic,severe,dry+heat+wet,0,28807206,0
+Kitui,historic,historic,severe,dry+wet,0,28807206,0
+Kitui,historic,historic,severe,heat,1054,28807206,0
+Kitui,historic,historic,severe,heat+wet,0,28807206,0
+Kitui,historic,historic,severe,no hazard,84272,28807206,0.29
+Kitui,historic,historic,severe,wet,0,28807206,0
+Kitui,ssp245,2021_2040,severe,any,28602814,28807207,99.29
+Kitui,ssp245,2021_2040,severe,dry,25048468,28807207,86.95
+Kitui,ssp245,2021_2040,severe,dry+heat,3535822,28807207,12.27
+Kitui,ssp245,2021_2040,severe,dry+heat+wet,0,28807207,0
+Kitui,ssp245,2021_2040,severe,dry+wet,0,28807207,0
+Kitui,ssp245,2021_2040,severe,heat,18525,28807207,0.06
+Kitui,ssp245,2021_2040,severe,heat+wet,0,28807207,0
+Kitui,ssp245,2021_2040,severe,no hazard,204392,28807207,0.71
+Kitui,ssp245,2021_2040,severe,wet,0,28807207,0
+Kitui,ssp245,2041_2060,severe,any,28633726,28807206,99.4
+Kitui,ssp245,2041_2060,severe,dry,23490978,28807206,81.55
+Kitui,ssp245,2041_2060,severe,dry+heat,5121982,28807206,17.78
+Kitui,ssp245,2041_2060,severe,dry+heat+wet,0,28807206,0
+Kitui,ssp245,2041_2060,severe,dry+wet,0,28807206,0
+Kitui,ssp245,2041_2060,severe,heat,20766,28807206,0.07
+Kitui,ssp245,2041_2060,severe,heat+wet,0,28807206,0
+Kitui,ssp245,2041_2060,severe,no hazard,173480,28807206,0.6
+Kitui,ssp245,2041_2060,severe,wet,0,28807206,0
+Kitui,ssp585,2021_2040,severe,any,28738722,28807206,99.76
+Kitui,ssp585,2021_2040,severe,dry,24741670,28807206,85.89
+Kitui,ssp585,2021_2040,severe,dry+heat,3990216,28807206,13.85
+Kitui,ssp585,2021_2040,severe,dry+heat+wet,0,28807206,0
+Kitui,ssp585,2021_2040,severe,dry+wet,0,28807206,0
+Kitui,ssp585,2021_2040,severe,heat,6836,28807206,0.02
+Kitui,ssp585,2021_2040,severe,heat+wet,0,28807206,0
+Kitui,ssp585,2021_2040,severe,no hazard,68484,28807206,0.24
+Kitui,ssp585,2021_2040,severe,wet,0,28807206,0
+Kitui,ssp585,2041_2060,severe,any,28549472,28807206,99.11
+Kitui,ssp585,2041_2060,severe,dry,21730914,28807206,75.44
+Kitui,ssp585,2041_2060,severe,dry+heat,6787593,28807206,23.56
+Kitui,ssp585,2041_2060,severe,dry+heat+wet,0,28807206,0
+Kitui,ssp585,2041_2060,severe,dry+wet,0,28807206,0
+Kitui,ssp585,2041_2060,severe,heat,30965,28807206,0.11
+Kitui,ssp585,2041_2060,severe,heat+wet,0,28807206,0
+Kitui,ssp585,2041_2060,severe,no hazard,257734,28807206,0.89
+Kitui,ssp585,2041_2060,severe,wet,0,28807206,0
+Kwale,historic,historic,severe,any,3154292,3522579,89.54
+Kwale,historic,historic,severe,dry,2873988,3522579,81.59
+Kwale,historic,historic,severe,dry+heat,280304,3522579,7.96
+Kwale,historic,historic,severe,dry+heat+wet,0,3522579,0
+Kwale,historic,historic,severe,dry+wet,0,3522579,0
+Kwale,historic,historic,severe,heat,0,3522579,0
+Kwale,historic,historic,severe,heat+wet,0,3522579,0
+Kwale,historic,historic,severe,no hazard,368287,3522579,10.46
+Kwale,historic,historic,severe,wet,0,3522579,0
+Kwale,ssp245,2021_2040,severe,any,3063543,3522579,86.97
+Kwale,ssp245,2021_2040,severe,dry,2307882,3522579,65.52
+Kwale,ssp245,2021_2040,severe,dry+heat,745447,3522579,21.16
+Kwale,ssp245,2021_2040,severe,dry+heat+wet,0,3522579,0
+Kwale,ssp245,2021_2040,severe,dry+wet,0,3522579,0
+Kwale,ssp245,2021_2040,severe,heat,10214,3522579,0.29
+Kwale,ssp245,2021_2040,severe,heat+wet,0,3522579,0
+Kwale,ssp245,2021_2040,severe,no hazard,459036,3522579,13.03
+Kwale,ssp245,2021_2040,severe,wet,0,3522579,0
+Kwale,ssp245,2041_2060,severe,any,3160811,3522579,89.73
+Kwale,ssp245,2041_2060,severe,dry,1616056,3522579,45.88
+Kwale,ssp245,2041_2060,severe,dry+heat,1493401,3522579,42.4
+Kwale,ssp245,2041_2060,severe,dry+heat+wet,0,3522579,0
+Kwale,ssp245,2041_2060,severe,dry+wet,0,3522579,0
+Kwale,ssp245,2041_2060,severe,heat,51354,3522579,1.46
+Kwale,ssp245,2041_2060,severe,heat+wet,0,3522579,0
+Kwale,ssp245,2041_2060,severe,no hazard,361768,3522579,10.27
+Kwale,ssp245,2041_2060,severe,wet,0,3522579,0
+Kwale,ssp585,2021_2040,severe,any,3051484,3522579,86.63
+Kwale,ssp585,2021_2040,severe,dry,2283625,3522579,64.83
+Kwale,ssp585,2021_2040,severe,dry+heat,758924,3522579,21.54
+Kwale,ssp585,2021_2040,severe,dry+heat+wet,0,3522579,0
+Kwale,ssp585,2021_2040,severe,dry+wet,0,3522579,0
+Kwale,ssp585,2021_2040,severe,heat,8935,3522579,0.25
+Kwale,ssp585,2021_2040,severe,heat+wet,0,3522579,0
+Kwale,ssp585,2021_2040,severe,no hazard,471095,3522579,13.37
+Kwale,ssp585,2021_2040,severe,wet,0,3522579,0
+Kwale,ssp585,2041_2060,severe,any,3236496,3522578,91.88
+Kwale,ssp585,2041_2060,severe,dry,1029597,3522578,29.23
+Kwale,ssp585,2041_2060,severe,dry+heat,2082632,3522578,59.12
+Kwale,ssp585,2041_2060,severe,dry+heat+wet,0,3522578,0
+Kwale,ssp585,2041_2060,severe,dry+wet,0,3522578,0
+Kwale,ssp585,2041_2060,severe,heat,124267,3522578,3.53
+Kwale,ssp585,2041_2060,severe,heat+wet,0,3522578,0
+Kwale,ssp585,2041_2060,severe,no hazard,286082,3522578,8.12
+Kwale,ssp585,2041_2060,severe,wet,0,3522578,0
+Laikipia,historic,historic,severe,any,6668053,8845217,75.39
+Laikipia,historic,historic,severe,dry,6668053,8845217,75.39
+Laikipia,historic,historic,severe,dry+heat,0,8845217,0
+Laikipia,historic,historic,severe,dry+heat+wet,0,8845217,0
+Laikipia,historic,historic,severe,dry+wet,0,8845217,0
+Laikipia,historic,historic,severe,heat,0,8845217,0
+Laikipia,historic,historic,severe,heat+wet,0,8845217,0
+Laikipia,historic,historic,severe,no hazard,2177164,8845217,24.61
+Laikipia,historic,historic,severe,wet,0,8845217,0
+Laikipia,ssp245,2021_2040,severe,any,6472416,8845216,73.17
+Laikipia,ssp245,2021_2040,severe,dry,6472416,8845216,73.17
+Laikipia,ssp245,2021_2040,severe,dry+heat,0,8845216,0
+Laikipia,ssp245,2021_2040,severe,dry+heat+wet,0,8845216,0
+Laikipia,ssp245,2021_2040,severe,dry+wet,0,8845216,0
+Laikipia,ssp245,2021_2040,severe,heat,0,8845216,0
+Laikipia,ssp245,2021_2040,severe,heat+wet,0,8845216,0
+Laikipia,ssp245,2021_2040,severe,no hazard,2372800,8845216,26.83
+Laikipia,ssp245,2021_2040,severe,wet,0,8845216,0
+Laikipia,ssp245,2041_2060,severe,any,6792864,8845218,76.8
+Laikipia,ssp245,2041_2060,severe,dry,6792864,8845218,76.8
+Laikipia,ssp245,2041_2060,severe,dry+heat,0,8845218,0
+Laikipia,ssp245,2041_2060,severe,dry+heat+wet,0,8845218,0
+Laikipia,ssp245,2041_2060,severe,dry+wet,0,8845218,0
+Laikipia,ssp245,2041_2060,severe,heat,0,8845218,0
+Laikipia,ssp245,2041_2060,severe,heat+wet,0,8845218,0
+Laikipia,ssp245,2041_2060,severe,no hazard,2052354,8845218,23.2
+Laikipia,ssp245,2041_2060,severe,wet,0,8845218,0
+Laikipia,ssp585,2021_2040,severe,any,6708989,8845217,75.85
+Laikipia,ssp585,2021_2040,severe,dry,6708989,8845217,75.85
+Laikipia,ssp585,2021_2040,severe,dry+heat,0,8845217,0
+Laikipia,ssp585,2021_2040,severe,dry+heat+wet,0,8845217,0
+Laikipia,ssp585,2021_2040,severe,dry+wet,0,8845217,0
+Laikipia,ssp585,2021_2040,severe,heat,0,8845217,0
+Laikipia,ssp585,2021_2040,severe,heat+wet,0,8845217,0
+Laikipia,ssp585,2021_2040,severe,no hazard,2136228,8845217,24.15
+Laikipia,ssp585,2021_2040,severe,wet,0,8845217,0
+Laikipia,ssp585,2041_2060,severe,any,6838842,8845217,77.32
+Laikipia,ssp585,2041_2060,severe,dry,6838842,8845217,77.32
+Laikipia,ssp585,2041_2060,severe,dry+heat,0,8845217,0
+Laikipia,ssp585,2041_2060,severe,dry+heat+wet,0,8845217,0
+Laikipia,ssp585,2041_2060,severe,dry+wet,0,8845217,0
+Laikipia,ssp585,2041_2060,severe,heat,0,8845217,0
+Laikipia,ssp585,2041_2060,severe,heat+wet,0,8845217,0
+Laikipia,ssp585,2041_2060,severe,no hazard,2006375,8845217,22.68
+Laikipia,ssp585,2041_2060,severe,wet,0,8845217,0
+Lamu,historic,historic,severe,any,1558275,1576894,98.82
+Lamu,historic,historic,severe,dry,849891,1576894,53.9
+Lamu,historic,historic,severe,dry+heat,705346,1576894,44.73
+Lamu,historic,historic,severe,dry+heat+wet,0,1576894,0
+Lamu,historic,historic,severe,dry+wet,0,1576894,0
+Lamu,historic,historic,severe,heat,3038,1576894,0.19
+Lamu,historic,historic,severe,heat+wet,0,1576894,0
+Lamu,historic,historic,severe,no hazard,18619,1576894,1.18
+Lamu,historic,historic,severe,wet,0,1576894,0
+Lamu,ssp245,2021_2040,severe,any,1563283,1576893,99.14
+Lamu,ssp245,2021_2040,severe,dry,384904,1576893,24.41
+Lamu,ssp245,2021_2040,severe,dry+heat,1175669,1576893,74.56
+Lamu,ssp245,2021_2040,severe,dry+heat+wet,0,1576893,0
+Lamu,ssp245,2021_2040,severe,dry+wet,0,1576893,0
+Lamu,ssp245,2021_2040,severe,heat,2710,1576893,0.17
+Lamu,ssp245,2021_2040,severe,heat+wet,0,1576893,0
+Lamu,ssp245,2021_2040,severe,no hazard,13610,1576893,0.86
+Lamu,ssp245,2021_2040,severe,wet,0,1576893,0
+Lamu,ssp245,2041_2060,severe,any,1562696,1576894,99.1
+Lamu,ssp245,2041_2060,severe,dry,168799,1576894,10.7
+Lamu,ssp245,2041_2060,severe,dry+heat,1385848,1576894,87.88
+Lamu,ssp245,2041_2060,severe,dry+heat+wet,0,1576894,0
+Lamu,ssp245,2041_2060,severe,dry+wet,0,1576894,0
+Lamu,ssp245,2041_2060,severe,heat,8049,1576894,0.51
+Lamu,ssp245,2041_2060,severe,heat+wet,0,1576894,0
+Lamu,ssp245,2041_2060,severe,no hazard,14198,1576894,0.9
+Lamu,ssp245,2041_2060,severe,wet,0,1576894,0
+Lamu,ssp585,2021_2040,severe,any,1563300,1576893,99.14
+Lamu,ssp585,2021_2040,severe,dry,335726,1576893,21.29
+Lamu,ssp585,2021_2040,severe,dry+heat,1225071,1576893,77.69
+Lamu,ssp585,2021_2040,severe,dry+heat+wet,0,1576893,0
+Lamu,ssp585,2021_2040,severe,dry+wet,0,1576893,0
+Lamu,ssp585,2021_2040,severe,heat,2502,1576893,0.16
+Lamu,ssp585,2021_2040,severe,heat+wet,0,1576893,0
+Lamu,ssp585,2021_2040,severe,no hazard,13594,1576893,0.86
+Lamu,ssp585,2021_2040,severe,wet,0,1576893,0
+Lamu,ssp585,2041_2060,severe,any,1564382,1576894,99.21
+Lamu,ssp585,2041_2060,severe,dry,62552,1576894,3.97
+Lamu,ssp585,2041_2060,severe,dry+heat,1492677,1576894,94.66
+Lamu,ssp585,2041_2060,severe,dry+heat+wet,0,1576894,0
+Lamu,ssp585,2041_2060,severe,dry+wet,0,1576894,0
+Lamu,ssp585,2041_2060,severe,heat,9153,1576894,0.58
+Lamu,ssp585,2041_2060,severe,heat+wet,0,1576894,0
+Lamu,ssp585,2041_2060,severe,no hazard,12512,1576894,0.79
+Lamu,ssp585,2041_2060,severe,wet,0,1576894,0
+Machakos,historic,historic,severe,any,35345828,36273508,97.44
+Machakos,historic,historic,severe,dry,35345828,36273508,97.44
+Machakos,historic,historic,severe,dry+heat,0,36273508,0
+Machakos,historic,historic,severe,dry+heat+wet,0,36273508,0
+Machakos,historic,historic,severe,dry+wet,0,36273508,0
+Machakos,historic,historic,severe,heat,0,36273508,0
+Machakos,historic,historic,severe,heat+wet,0,36273508,0
+Machakos,historic,historic,severe,no hazard,927680,36273508,2.56
+Machakos,historic,historic,severe,wet,0,36273508,0
+Machakos,ssp245,2021_2040,severe,any,35121776,36273508,96.82
+Machakos,ssp245,2021_2040,severe,dry,35121776,36273508,96.82
+Machakos,ssp245,2021_2040,severe,dry+heat,0,36273508,0
+Machakos,ssp245,2021_2040,severe,dry+heat+wet,0,36273508,0
+Machakos,ssp245,2021_2040,severe,dry+wet,0,36273508,0
+Machakos,ssp245,2021_2040,severe,heat,0,36273508,0
+Machakos,ssp245,2021_2040,severe,heat+wet,0,36273508,0
+Machakos,ssp245,2021_2040,severe,no hazard,1151732,36273508,3.18
+Machakos,ssp245,2021_2040,severe,wet,0,36273508,0
+Machakos,ssp245,2041_2060,severe,any,35153948,36273508,96.91
+Machakos,ssp245,2041_2060,severe,dry,35153948,36273508,96.91
+Machakos,ssp245,2041_2060,severe,dry+heat,0,36273508,0
+Machakos,ssp245,2041_2060,severe,dry+heat+wet,0,36273508,0
+Machakos,ssp245,2041_2060,severe,dry+wet,0,36273508,0
+Machakos,ssp245,2041_2060,severe,heat,0,36273508,0
+Machakos,ssp245,2041_2060,severe,heat+wet,0,36273508,0
+Machakos,ssp245,2041_2060,severe,no hazard,1119560,36273508,3.09
+Machakos,ssp245,2041_2060,severe,wet,0,36273508,0
+Machakos,ssp585,2021_2040,severe,any,35366536,36273508,97.5
+Machakos,ssp585,2021_2040,severe,dry,35366536,36273508,97.5
+Machakos,ssp585,2021_2040,severe,dry+heat,0,36273508,0
+Machakos,ssp585,2021_2040,severe,dry+heat+wet,0,36273508,0
+Machakos,ssp585,2021_2040,severe,dry+wet,0,36273508,0
+Machakos,ssp585,2021_2040,severe,heat,0,36273508,0
+Machakos,ssp585,2021_2040,severe,heat+wet,0,36273508,0
+Machakos,ssp585,2021_2040,severe,no hazard,906972,36273508,2.5
+Machakos,ssp585,2021_2040,severe,wet,0,36273508,0
+Machakos,ssp585,2041_2060,severe,any,35146636,36273505,96.89
+Machakos,ssp585,2041_2060,severe,dry,35119976,36273505,96.82
+Machakos,ssp585,2041_2060,severe,dry+heat,26657,36273505,0.07
+Machakos,ssp585,2041_2060,severe,dry+heat+wet,0,36273505,0
+Machakos,ssp585,2041_2060,severe,dry+wet,0,36273505,0
+Machakos,ssp585,2041_2060,severe,heat,0,36273505,0
+Machakos,ssp585,2041_2060,severe,heat+wet,0,36273505,0
+Machakos,ssp585,2041_2060,severe,no hazard,1126872,36273505,3.11
+Machakos,ssp585,2041_2060,severe,wet,0,36273505,0
+Makueni,historic,historic,severe,any,23434214,23517116,99.65
+Makueni,historic,historic,severe,dry,23386016,23517116,99.44
+Makueni,historic,historic,severe,dry+heat,48198,23517116,0.2
+Makueni,historic,historic,severe,dry+heat+wet,0,23517116,0
+Makueni,historic,historic,severe,dry+wet,0,23517116,0
+Makueni,historic,historic,severe,heat,0,23517116,0
+Makueni,historic,historic,severe,heat+wet,0,23517116,0
+Makueni,historic,historic,severe,no hazard,82902,23517116,0.35
+Makueni,historic,historic,severe,wet,0,23517116,0
+Makueni,ssp245,2021_2040,severe,any,23394832,23517116,99.48
+Makueni,ssp245,2021_2040,severe,dry,23116744,23517116,98.3
+Makueni,ssp245,2021_2040,severe,dry+heat,278088,23517116,1.18
+Makueni,ssp245,2021_2040,severe,dry+heat+wet,0,23517116,0
+Makueni,ssp245,2021_2040,severe,dry+wet,0,23517116,0
+Makueni,ssp245,2021_2040,severe,heat,0,23517116,0
+Makueni,ssp245,2021_2040,severe,heat+wet,0,23517116,0
+Makueni,ssp245,2021_2040,severe,no hazard,122284,23517116,0.52
+Makueni,ssp245,2021_2040,severe,wet,0,23517116,0
+Makueni,ssp245,2041_2060,severe,any,23425540,23517116,99.61
+Makueni,ssp245,2041_2060,severe,dry,22678844,23517116,96.44
+Makueni,ssp245,2041_2060,severe,dry+heat,746696,23517116,3.18
+Makueni,ssp245,2041_2060,severe,dry+heat+wet,0,23517116,0
+Makueni,ssp245,2041_2060,severe,dry+wet,0,23517116,0
+Makueni,ssp245,2041_2060,severe,heat,0,23517116,0
+Makueni,ssp245,2041_2060,severe,heat+wet,0,23517116,0
+Makueni,ssp245,2041_2060,severe,no hazard,91576,23517116,0.39
+Makueni,ssp245,2041_2060,severe,wet,0,23517116,0
+Makueni,ssp585,2021_2040,severe,any,23421814,23517116,99.59
+Makueni,ssp585,2021_2040,severe,dry,23107540,23517116,98.26
+Makueni,ssp585,2021_2040,severe,dry+heat,314274,23517116,1.34
+Makueni,ssp585,2021_2040,severe,dry+heat+wet,0,23517116,0
+Makueni,ssp585,2021_2040,severe,dry+wet,0,23517116,0
+Makueni,ssp585,2021_2040,severe,heat,0,23517116,0
+Makueni,ssp585,2021_2040,severe,heat+wet,0,23517116,0
+Makueni,ssp585,2021_2040,severe,no hazard,95302,23517116,0.41
+Makueni,ssp585,2021_2040,severe,wet,0,23517116,0
+Makueni,ssp585,2041_2060,severe,any,23425704,23517117,99.61
+Makueni,ssp585,2041_2060,severe,dry,21926164,23517117,93.23
+Makueni,ssp585,2041_2060,severe,dry+heat,1499541,23517117,6.38
+Makueni,ssp585,2041_2060,severe,dry+heat+wet,0,23517117,0
+Makueni,ssp585,2041_2060,severe,dry+wet,0,23517117,0
+Makueni,ssp585,2041_2060,severe,heat,0,23517117,0
+Makueni,ssp585,2041_2060,severe,heat+wet,0,23517117,0
+Makueni,ssp585,2041_2060,severe,no hazard,91412,23517117,0.39
+Makueni,ssp585,2041_2060,severe,wet,0,23517117,0
+Mandera,historic,historic,severe,any,553058,553058,100
+Mandera,historic,historic,severe,dry,319862,553058,57.84
+Mandera,historic,historic,severe,dry+heat,233196,553058,42.16
+Mandera,historic,historic,severe,dry+heat+wet,0,553058,0
+Mandera,historic,historic,severe,dry+wet,0,553058,0
+Mandera,historic,historic,severe,heat,0,553058,0
+Mandera,historic,historic,severe,heat+wet,0,553058,0
+Mandera,historic,historic,severe,no hazard,0,553058,0
+Mandera,historic,historic,severe,wet,0,553058,0
+Mandera,ssp245,2021_2040,severe,any,553058,553058,100
+Mandera,ssp245,2021_2040,severe,dry,306867,553058,55.49
+Mandera,ssp245,2021_2040,severe,dry+heat,246191,553058,44.51
+Mandera,ssp245,2021_2040,severe,dry+heat+wet,0,553058,0
+Mandera,ssp245,2021_2040,severe,dry+wet,0,553058,0
+Mandera,ssp245,2021_2040,severe,heat,0,553058,0
+Mandera,ssp245,2021_2040,severe,heat+wet,0,553058,0
+Mandera,ssp245,2021_2040,severe,no hazard,0,553058,0
+Mandera,ssp245,2021_2040,severe,wet,0,553058,0
+Mandera,ssp245,2041_2060,severe,any,553058,553058,100
+Mandera,ssp245,2041_2060,severe,dry,299757,553058,54.2
+Mandera,ssp245,2041_2060,severe,dry+heat,253301,553058,45.8
+Mandera,ssp245,2041_2060,severe,dry+heat+wet,0,553058,0
+Mandera,ssp245,2041_2060,severe,dry+wet,0,553058,0
+Mandera,ssp245,2041_2060,severe,heat,0,553058,0
+Mandera,ssp245,2041_2060,severe,heat+wet,0,553058,0
+Mandera,ssp245,2041_2060,severe,no hazard,0,553058,0
+Mandera,ssp245,2041_2060,severe,wet,0,553058,0
+Mandera,ssp585,2021_2040,severe,any,553058,553058,100
+Mandera,ssp585,2021_2040,severe,dry,303722,553058,54.92
+Mandera,ssp585,2021_2040,severe,dry+heat,249336,553058,45.08
+Mandera,ssp585,2021_2040,severe,dry+heat+wet,0,553058,0
+Mandera,ssp585,2021_2040,severe,dry+wet,0,553058,0
+Mandera,ssp585,2021_2040,severe,heat,0,553058,0
+Mandera,ssp585,2021_2040,severe,heat+wet,0,553058,0
+Mandera,ssp585,2021_2040,severe,no hazard,0,553058,0
+Mandera,ssp585,2021_2040,severe,wet,0,553058,0
+Mandera,ssp585,2041_2060,severe,any,553058,553058,100
+Mandera,ssp585,2041_2060,severe,dry,288545,553058,52.17
+Mandera,ssp585,2041_2060,severe,dry+heat,264513,553058,47.83
+Mandera,ssp585,2041_2060,severe,dry+heat+wet,0,553058,0
+Mandera,ssp585,2041_2060,severe,dry+wet,0,553058,0
+Mandera,ssp585,2041_2060,severe,heat,0,553058,0
+Mandera,ssp585,2041_2060,severe,heat+wet,0,553058,0
+Mandera,ssp585,2041_2060,severe,no hazard,0,553058,0
+Mandera,ssp585,2041_2060,severe,wet,0,553058,0
+Marsabit,historic,historic,severe,any,2377674,2420296,98.24
+Marsabit,historic,historic,severe,dry,2358161,2420296,97.43
+Marsabit,historic,historic,severe,dry+heat,18455,2420296,0.76
+Marsabit,historic,historic,severe,dry+heat+wet,0,2420296,0
+Marsabit,historic,historic,severe,dry+wet,0,2420296,0
+Marsabit,historic,historic,severe,heat,1058,2420296,0.04
+Marsabit,historic,historic,severe,heat+wet,0,2420296,0
+Marsabit,historic,historic,severe,no hazard,42622,2420296,1.76
+Marsabit,historic,historic,severe,wet,0,2420296,0
+Marsabit,ssp245,2021_2040,severe,any,2349854,2420295,97.09
+Marsabit,ssp245,2021_2040,severe,dry,2311574,2420295,95.51
+Marsabit,ssp245,2021_2040,severe,dry+heat,37207,2420295,1.54
+Marsabit,ssp245,2021_2040,severe,dry+heat+wet,0,2420295,0
+Marsabit,ssp245,2021_2040,severe,dry+wet,0,2420295,0
+Marsabit,ssp245,2021_2040,severe,heat,1073,2420295,0.04
+Marsabit,ssp245,2021_2040,severe,heat+wet,0,2420295,0
+Marsabit,ssp245,2021_2040,severe,no hazard,70441,2420295,2.91
+Marsabit,ssp245,2021_2040,severe,wet,0,2420295,0
+Marsabit,ssp245,2041_2060,severe,any,2348722,2420296,97.04
+Marsabit,ssp245,2041_2060,severe,dry,2273930,2420296,93.95
+Marsabit,ssp245,2041_2060,severe,dry+heat,73694,2420296,3.04
+Marsabit,ssp245,2041_2060,severe,dry+heat+wet,0,2420296,0
+Marsabit,ssp245,2041_2060,severe,dry+wet,0,2420296,0
+Marsabit,ssp245,2041_2060,severe,heat,1099,2420296,0.05
+Marsabit,ssp245,2041_2060,severe,heat+wet,0,2420296,0
+Marsabit,ssp245,2041_2060,severe,no hazard,71573,2420296,2.96
+Marsabit,ssp245,2041_2060,severe,wet,0,2420296,0
+Marsabit,ssp585,2021_2040,severe,any,2377726,2420296,98.24
+Marsabit,ssp585,2021_2040,severe,dry,2327430,2420296,96.16
+Marsabit,ssp585,2021_2040,severe,dry+heat,49215,2420296,2.03
+Marsabit,ssp585,2021_2040,severe,dry+heat+wet,0,2420296,0
+Marsabit,ssp585,2021_2040,severe,dry+wet,0,2420296,0
+Marsabit,ssp585,2021_2040,severe,heat,1081,2420296,0.04
+Marsabit,ssp585,2021_2040,severe,heat+wet,0,2420296,0
+Marsabit,ssp585,2021_2040,severe,no hazard,42570,2420296,1.76
+Marsabit,ssp585,2021_2040,severe,wet,0,2420296,0
+Marsabit,ssp585,2041_2060,severe,any,2350832,2420296,97.13
+Marsabit,ssp585,2041_2060,severe,dry,2167654,2420296,89.56
+Marsabit,ssp585,2041_2060,severe,dry+heat,181751,2420296,7.51
+Marsabit,ssp585,2041_2060,severe,dry+heat+wet,0,2420296,0
+Marsabit,ssp585,2041_2060,severe,dry+wet,0,2420296,0
+Marsabit,ssp585,2041_2060,severe,heat,1427,2420296,0.06
+Marsabit,ssp585,2041_2060,severe,heat+wet,0,2420296,0
+Marsabit,ssp585,2041_2060,severe,no hazard,69464,2420296,2.87
+Marsabit,ssp585,2041_2060,severe,wet,0,2420296,0
+Meru,historic,historic,severe,any,20166708,21809166,92.47
+Meru,historic,historic,severe,dry,19929026,21809166,91.38
+Meru,historic,historic,severe,dry+heat,236270,21809166,1.08
+Meru,historic,historic,severe,dry+heat+wet,0,21809166,0
+Meru,historic,historic,severe,dry+wet,0,21809166,0
+Meru,historic,historic,severe,heat,1414,21809166,0.01
+Meru,historic,historic,severe,heat+wet,0,21809166,0
+Meru,historic,historic,severe,no hazard,1642456,21809166,7.53
+Meru,historic,historic,severe,wet,0,21809166,0
+Meru,ssp245,2021_2040,severe,any,19882544,21809162,91.17
+Meru,ssp245,2021_2040,severe,dry,19532668,21809162,89.56
+Meru,ssp245,2021_2040,severe,dry+heat,342327,21809162,1.57
+Meru,ssp245,2021_2040,severe,dry+heat+wet,0,21809162,0
+Meru,ssp245,2021_2040,severe,dry+wet,0,21809162,0
+Meru,ssp245,2021_2040,severe,heat,7547,21809162,0.03
+Meru,ssp245,2021_2040,severe,heat+wet,0,21809162,0
+Meru,ssp245,2021_2040,severe,no hazard,1926620,21809162,8.83
+Meru,ssp245,2021_2040,severe,wet,0,21809162,0
+Meru,ssp245,2041_2060,severe,any,20075668,21809164,92.05
+Meru,ssp245,2041_2060,severe,dry,19465186,21809164,89.25
+Meru,ssp245,2041_2060,severe,dry+heat,601336,21809164,2.76
+Meru,ssp245,2041_2060,severe,dry+heat+wet,0,21809164,0
+Meru,ssp245,2041_2060,severe,dry+wet,0,21809164,0
+Meru,ssp245,2041_2060,severe,heat,9146,21809164,0.04
+Meru,ssp245,2041_2060,severe,heat+wet,0,21809164,0
+Meru,ssp245,2041_2060,severe,no hazard,1733496,21809164,7.95
+Meru,ssp245,2041_2060,severe,wet,0,21809164,0
+Meru,ssp585,2021_2040,severe,any,20181370,21809163,92.54
+Meru,ssp585,2021_2040,severe,dry,19733212,21809163,90.48
+Meru,ssp585,2021_2040,severe,dry+heat,444036,21809163,2.04
+Meru,ssp585,2021_2040,severe,dry+heat+wet,0,21809163,0
+Meru,ssp585,2021_2040,severe,dry+wet,0,21809163,0
+Meru,ssp585,2021_2040,severe,heat,4121,21809163,0.02
+Meru,ssp585,2021_2040,severe,heat+wet,0,21809163,0
+Meru,ssp585,2021_2040,severe,no hazard,1627794,21809163,7.46
+Meru,ssp585,2021_2040,severe,wet,0,21809163,0
+Meru,ssp585,2041_2060,severe,any,20161406,21809163,92.44
+Meru,ssp585,2041_2060,severe,dry,19079056,21809163,87.48
+Meru,ssp585,2041_2060,severe,dry+heat,1065668,21809163,4.89
+Meru,ssp585,2041_2060,severe,dry+heat+wet,0,21809163,0
+Meru,ssp585,2041_2060,severe,dry+wet,0,21809163,0
+Meru,ssp585,2041_2060,severe,heat,16681,21809163,0.08
+Meru,ssp585,2041_2060,severe,heat+wet,0,21809163,0
+Meru,ssp585,2041_2060,severe,no hazard,1647758,21809163,7.56
+Meru,ssp585,2041_2060,severe,wet,0,21809163,0
+Migori,historic,historic,severe,any,2648067,13569659,19.51
+Migori,historic,historic,severe,dry,2638849,13569659,19.45
+Migori,historic,historic,severe,dry+heat,0,13569659,0
+Migori,historic,historic,severe,dry+heat+wet,0,13569659,0
+Migori,historic,historic,severe,dry+wet,0,13569659,0
+Migori,historic,historic,severe,heat,0,13569659,0
+Migori,historic,historic,severe,heat+wet,0,13569659,0
+Migori,historic,historic,severe,no hazard,10921592,13569659,80.49
+Migori,historic,historic,severe,wet,9218,13569659,0.07
+Migori,ssp245,2021_2040,severe,any,1330860,13569659,9.81
+Migori,ssp245,2021_2040,severe,dry,1310527,13569659,9.66
+Migori,ssp245,2021_2040,severe,dry+heat,0,13569659,0
+Migori,ssp245,2021_2040,severe,dry+heat+wet,0,13569659,0
+Migori,ssp245,2021_2040,severe,dry+wet,0,13569659,0
+Migori,ssp245,2021_2040,severe,heat,0,13569659,0
+Migori,ssp245,2021_2040,severe,heat+wet,0,13569659,0
+Migori,ssp245,2021_2040,severe,no hazard,12238799,13569659,90.19
+Migori,ssp245,2021_2040,severe,wet,20333,13569659,0.15
+Migori,ssp245,2041_2060,severe,any,1729448,13569659,12.74
+Migori,ssp245,2041_2060,severe,dry,1710406,13569659,12.6
+Migori,ssp245,2041_2060,severe,dry+heat,0,13569659,0
+Migori,ssp245,2041_2060,severe,dry+heat+wet,0,13569659,0
+Migori,ssp245,2041_2060,severe,dry+wet,0,13569659,0
+Migori,ssp245,2041_2060,severe,heat,0,13569659,0
+Migori,ssp245,2041_2060,severe,heat+wet,0,13569659,0
+Migori,ssp245,2041_2060,severe,no hazard,11840211,13569659,87.26
+Migori,ssp245,2041_2060,severe,wet,19042,13569659,0.14
+Migori,ssp585,2021_2040,severe,any,1570721,13569659,11.58
+Migori,ssp585,2021_2040,severe,dry,1560858,13569659,11.5
+Migori,ssp585,2021_2040,severe,dry+heat,0,13569659,0
+Migori,ssp585,2021_2040,severe,dry+heat+wet,0,13569659,0
+Migori,ssp585,2021_2040,severe,dry+wet,0,13569659,0
+Migori,ssp585,2021_2040,severe,heat,0,13569659,0
+Migori,ssp585,2021_2040,severe,heat+wet,0,13569659,0
+Migori,ssp585,2021_2040,severe,no hazard,11998938,13569659,88.42
+Migori,ssp585,2021_2040,severe,wet,9863,13569659,0.07
+Migori,ssp585,2041_2060,severe,any,1331799,13569659,9.81
+Migori,ssp585,2041_2060,severe,dry,1312757,13569659,9.67
+Migori,ssp585,2041_2060,severe,dry+heat,0,13569659,0
+Migori,ssp585,2041_2060,severe,dry+heat+wet,0,13569659,0
+Migori,ssp585,2041_2060,severe,dry+wet,0,13569659,0
+Migori,ssp585,2041_2060,severe,heat,0,13569659,0
+Migori,ssp585,2041_2060,severe,heat+wet,0,13569659,0
+Migori,ssp585,2041_2060,severe,no hazard,12237860,13569659,90.19
+Migori,ssp585,2041_2060,severe,wet,19042,13569659,0.14
+Mombasa,historic,historic,severe,any,66291,119011,55.7
+Mombasa,historic,historic,severe,dry,61279,119011,51.49
+Mombasa,historic,historic,severe,dry+heat,1677,119011,1.41
+Mombasa,historic,historic,severe,dry+heat+wet,0,119011,0
+Mombasa,historic,historic,severe,dry+wet,0,119011,0
+Mombasa,historic,historic,severe,heat,3335,119011,2.8
+Mombasa,historic,historic,severe,heat+wet,0,119011,0
+Mombasa,historic,historic,severe,no hazard,52720,119011,44.3
+Mombasa,historic,historic,severe,wet,0,119011,0
+Mombasa,ssp245,2021_2040,severe,any,97579,119011,81.99
+Mombasa,ssp245,2021_2040,severe,dry,57366,119011,48.2
+Mombasa,ssp245,2021_2040,severe,dry+heat,37623,119011,31.61
+Mombasa,ssp245,2021_2040,severe,dry+heat+wet,0,119011,0
+Mombasa,ssp245,2021_2040,severe,dry+wet,0,119011,0
+Mombasa,ssp245,2021_2040,severe,heat,2590,119011,2.18
+Mombasa,ssp245,2021_2040,severe,heat+wet,0,119011,0
+Mombasa,ssp245,2021_2040,severe,no hazard,21432,119011,18.01
+Mombasa,ssp245,2021_2040,severe,wet,0,119011,0
+Mombasa,ssp245,2041_2060,severe,any,100589,119011,84.52
+Mombasa,ssp245,2041_2060,severe,dry,11885,119011,9.99
+Mombasa,ssp245,2041_2060,severe,dry+heat,45634,119011,38.34
+Mombasa,ssp245,2041_2060,severe,dry+heat+wet,0,119011,0
+Mombasa,ssp245,2041_2060,severe,dry+wet,0,119011,0
+Mombasa,ssp245,2041_2060,severe,heat,43070,119011,36.19
+Mombasa,ssp245,2041_2060,severe,heat+wet,0,119011,0
+Mombasa,ssp245,2041_2060,severe,no hazard,18422,119011,15.48
+Mombasa,ssp245,2041_2060,severe,wet,0,119011,0
+Mombasa,ssp585,2021_2040,severe,any,97579,119010,81.99
+Mombasa,ssp585,2021_2040,severe,dry,55424,119010,46.57
+Mombasa,ssp585,2021_2040,severe,dry+heat,39565,119010,33.25
+Mombasa,ssp585,2021_2040,severe,dry+heat+wet,0,119010,0
+Mombasa,ssp585,2021_2040,severe,dry+wet,0,119010,0
+Mombasa,ssp585,2021_2040,severe,heat,2590,119010,2.18
+Mombasa,ssp585,2021_2040,severe,heat+wet,0,119010,0
+Mombasa,ssp585,2021_2040,severe,no hazard,21431,119010,18.01
+Mombasa,ssp585,2021_2040,severe,wet,0,119010,0
+Mombasa,ssp585,2041_2060,severe,any,108089,119011,90.82
+Mombasa,ssp585,2041_2060,severe,dry,806,119011,0.68
+Mombasa,ssp585,2041_2060,severe,dry+heat,59518,119011,50.01
+Mombasa,ssp585,2041_2060,severe,dry+heat+wet,0,119011,0
+Mombasa,ssp585,2041_2060,severe,dry+wet,0,119011,0
+Mombasa,ssp585,2041_2060,severe,heat,47766,119011,40.14
+Mombasa,ssp585,2041_2060,severe,heat+wet,0,119011,0
+Mombasa,ssp585,2041_2060,severe,no hazard,10921,119011,9.18
+Mombasa,ssp585,2041_2060,severe,wet,0,119011,0
+Murang'a,historic,historic,severe,any,8398158,10491866,80.04
+Murang'a,historic,historic,severe,dry,8398158,10491866,80.04
+Murang'a,historic,historic,severe,dry+heat,0,10491866,0
+Murang'a,historic,historic,severe,dry+heat+wet,0,10491866,0
+Murang'a,historic,historic,severe,dry+wet,0,10491866,0
+Murang'a,historic,historic,severe,heat,0,10491866,0
+Murang'a,historic,historic,severe,heat+wet,0,10491866,0
+Murang'a,historic,historic,severe,no hazard,2093708,10491866,19.96
+Murang'a,historic,historic,severe,wet,0,10491866,0
+Murang'a,ssp245,2021_2040,severe,any,8079692,10491866,77.01
+Murang'a,ssp245,2021_2040,severe,dry,8079692,10491866,77.01
+Murang'a,ssp245,2021_2040,severe,dry+heat,0,10491866,0
+Murang'a,ssp245,2021_2040,severe,dry+heat+wet,0,10491866,0
+Murang'a,ssp245,2021_2040,severe,dry+wet,0,10491866,0
+Murang'a,ssp245,2021_2040,severe,heat,0,10491866,0
+Murang'a,ssp245,2021_2040,severe,heat+wet,0,10491866,0
+Murang'a,ssp245,2021_2040,severe,no hazard,2412174,10491866,22.99
+Murang'a,ssp245,2021_2040,severe,wet,0,10491866,0
+Murang'a,ssp245,2041_2060,severe,any,8376685,10491866,79.84
+Murang'a,ssp245,2041_2060,severe,dry,8376685,10491866,79.84
+Murang'a,ssp245,2041_2060,severe,dry+heat,0,10491866,0
+Murang'a,ssp245,2041_2060,severe,dry+heat+wet,0,10491866,0
+Murang'a,ssp245,2041_2060,severe,dry+wet,0,10491866,0
+Murang'a,ssp245,2041_2060,severe,heat,0,10491866,0
+Murang'a,ssp245,2041_2060,severe,heat+wet,0,10491866,0
+Murang'a,ssp245,2041_2060,severe,no hazard,2115181,10491866,20.16
+Murang'a,ssp245,2041_2060,severe,wet,0,10491866,0
+Murang'a,ssp585,2021_2040,severe,any,8369450,10491866,79.77
+Murang'a,ssp585,2021_2040,severe,dry,8369450,10491866,79.77
+Murang'a,ssp585,2021_2040,severe,dry+heat,0,10491866,0
+Murang'a,ssp585,2021_2040,severe,dry+heat+wet,0,10491866,0
+Murang'a,ssp585,2021_2040,severe,dry+wet,0,10491866,0
+Murang'a,ssp585,2021_2040,severe,heat,0,10491866,0
+Murang'a,ssp585,2021_2040,severe,heat+wet,0,10491866,0
+Murang'a,ssp585,2021_2040,severe,no hazard,2122416,10491866,20.23
+Murang'a,ssp585,2021_2040,severe,wet,0,10491866,0
+Murang'a,ssp585,2041_2060,severe,any,8559155,10491866,81.58
+Murang'a,ssp585,2041_2060,severe,dry,8559155,10491866,81.58
+Murang'a,ssp585,2041_2060,severe,dry+heat,0,10491866,0
+Murang'a,ssp585,2041_2060,severe,dry+heat+wet,0,10491866,0
+Murang'a,ssp585,2041_2060,severe,dry+wet,0,10491866,0
+Murang'a,ssp585,2041_2060,severe,heat,0,10491866,0
+Murang'a,ssp585,2041_2060,severe,heat+wet,0,10491866,0
+Murang'a,ssp585,2041_2060,severe,no hazard,1932711,10491866,18.42
+Murang'a,ssp585,2041_2060,severe,wet,0,10491866,0
+Nairobi,historic,historic,severe,any,430758,464874,92.66
+Nairobi,historic,historic,severe,dry,430758,464874,92.66
+Nairobi,historic,historic,severe,dry+heat,0,464874,0
+Nairobi,historic,historic,severe,dry+heat+wet,0,464874,0
+Nairobi,historic,historic,severe,dry+wet,0,464874,0
+Nairobi,historic,historic,severe,heat,0,464874,0
+Nairobi,historic,historic,severe,heat+wet,0,464874,0
+Nairobi,historic,historic,severe,no hazard,34116,464874,7.34
+Nairobi,historic,historic,severe,wet,0,464874,0
+Nairobi,ssp245,2021_2040,severe,any,419374,464874,90.21
+Nairobi,ssp245,2021_2040,severe,dry,419374,464874,90.21
+Nairobi,ssp245,2021_2040,severe,dry+heat,0,464874,0
+Nairobi,ssp245,2021_2040,severe,dry+heat+wet,0,464874,0
+Nairobi,ssp245,2021_2040,severe,dry+wet,0,464874,0
+Nairobi,ssp245,2021_2040,severe,heat,0,464874,0
+Nairobi,ssp245,2021_2040,severe,heat+wet,0,464874,0
+Nairobi,ssp245,2021_2040,severe,no hazard,45500,464874,9.79
+Nairobi,ssp245,2021_2040,severe,wet,0,464874,0
+Nairobi,ssp245,2041_2060,severe,any,430854,464874,92.68
+Nairobi,ssp245,2041_2060,severe,dry,430854,464874,92.68
+Nairobi,ssp245,2041_2060,severe,dry+heat,0,464874,0
+Nairobi,ssp245,2041_2060,severe,dry+heat+wet,0,464874,0
+Nairobi,ssp245,2041_2060,severe,dry+wet,0,464874,0
+Nairobi,ssp245,2041_2060,severe,heat,0,464874,0
+Nairobi,ssp245,2041_2060,severe,heat+wet,0,464874,0
+Nairobi,ssp245,2041_2060,severe,no hazard,34020,464874,7.32
+Nairobi,ssp245,2041_2060,severe,wet,0,464874,0
+Nairobi,ssp585,2021_2040,severe,any,434665,464874,93.5
+Nairobi,ssp585,2021_2040,severe,dry,434665,464874,93.5
+Nairobi,ssp585,2021_2040,severe,dry+heat,0,464874,0
+Nairobi,ssp585,2021_2040,severe,dry+heat+wet,0,464874,0
+Nairobi,ssp585,2021_2040,severe,dry+wet,0,464874,0
+Nairobi,ssp585,2021_2040,severe,heat,0,464874,0
+Nairobi,ssp585,2021_2040,severe,heat+wet,0,464874,0
+Nairobi,ssp585,2021_2040,severe,no hazard,30209,464874,6.5
+Nairobi,ssp585,2021_2040,severe,wet,0,464874,0
+Nairobi,ssp585,2041_2060,severe,any,439797,464874,94.61
+Nairobi,ssp585,2041_2060,severe,dry,439797,464874,94.61
+Nairobi,ssp585,2041_2060,severe,dry+heat,0,464874,0
+Nairobi,ssp585,2041_2060,severe,dry+heat+wet,0,464874,0
+Nairobi,ssp585,2041_2060,severe,dry+wet,0,464874,0
+Nairobi,ssp585,2041_2060,severe,heat,0,464874,0
+Nairobi,ssp585,2041_2060,severe,heat+wet,0,464874,0
+Nairobi,ssp585,2041_2060,severe,no hazard,25077,464874,5.39
+Nairobi,ssp585,2041_2060,severe,wet,0,464874,0
+Nakuru,historic,historic,severe,any,9390636,15455004,60.76
+Nakuru,historic,historic,severe,dry,9388961,15455004,60.75
+Nakuru,historic,historic,severe,dry+heat,0,15455004,0
+Nakuru,historic,historic,severe,dry+heat+wet,0,15455004,0
+Nakuru,historic,historic,severe,dry+wet,0,15455004,0
+Nakuru,historic,historic,severe,heat,0,15455004,0
+Nakuru,historic,historic,severe,heat+wet,0,15455004,0
+Nakuru,historic,historic,severe,no hazard,6064368,15455004,39.24
+Nakuru,historic,historic,severe,wet,1675,15455004,0.01
+Nakuru,ssp245,2021_2040,severe,any,8769523,15455004,56.74
+Nakuru,ssp245,2021_2040,severe,dry,8767279,15455004,56.73
+Nakuru,ssp245,2021_2040,severe,dry+heat,0,15455004,0
+Nakuru,ssp245,2021_2040,severe,dry+heat+wet,0,15455004,0
+Nakuru,ssp245,2021_2040,severe,dry+wet,0,15455004,0
+Nakuru,ssp245,2021_2040,severe,heat,0,15455004,0
+Nakuru,ssp245,2021_2040,severe,heat+wet,0,15455004,0
+Nakuru,ssp245,2021_2040,severe,no hazard,6685481,15455004,43.26
+Nakuru,ssp245,2021_2040,severe,wet,2244,15455004,0.01
+Nakuru,ssp245,2041_2060,severe,any,9617567,15455004,62.23
+Nakuru,ssp245,2041_2060,severe,dry,9615849,15455004,62.22
+Nakuru,ssp245,2041_2060,severe,dry+heat,0,15455004,0
+Nakuru,ssp245,2041_2060,severe,dry+heat+wet,0,15455004,0
+Nakuru,ssp245,2041_2060,severe,dry+wet,0,15455004,0
+Nakuru,ssp245,2041_2060,severe,heat,0,15455004,0
+Nakuru,ssp245,2041_2060,severe,heat+wet,0,15455004,0
+Nakuru,ssp245,2041_2060,severe,no hazard,5837437,15455004,37.77
+Nakuru,ssp245,2041_2060,severe,wet,1718,15455004,0.01
+Nakuru,ssp585,2021_2040,severe,any,9641025,15455004,62.38
+Nakuru,ssp585,2021_2040,severe,dry,9639307,15455004,62.37
+Nakuru,ssp585,2021_2040,severe,dry+heat,0,15455004,0
+Nakuru,ssp585,2021_2040,severe,dry+heat+wet,0,15455004,0
+Nakuru,ssp585,2021_2040,severe,dry+wet,0,15455004,0
+Nakuru,ssp585,2021_2040,severe,heat,0,15455004,0
+Nakuru,ssp585,2021_2040,severe,heat+wet,0,15455004,0
+Nakuru,ssp585,2021_2040,severe,no hazard,5813979,15455004,37.62
+Nakuru,ssp585,2021_2040,severe,wet,1718,15455004,0.01
+Nakuru,ssp585,2041_2060,severe,any,9733825,15455004,62.98
+Nakuru,ssp585,2041_2060,severe,dry,9732107,15455004,62.97
+Nakuru,ssp585,2041_2060,severe,dry+heat,0,15455004,0
+Nakuru,ssp585,2041_2060,severe,dry+heat+wet,0,15455004,0
+Nakuru,ssp585,2041_2060,severe,dry+wet,0,15455004,0
+Nakuru,ssp585,2041_2060,severe,heat,0,15455004,0
+Nakuru,ssp585,2041_2060,severe,heat+wet,0,15455004,0
+Nakuru,ssp585,2041_2060,severe,no hazard,5721179,15455004,37.02
+Nakuru,ssp585,2041_2060,severe,wet,1718,15455004,0.01
+Nandi,historic,historic,severe,any,288735,11581161,2.49
+Nandi,historic,historic,severe,dry,13907,11581161,0.12
+Nandi,historic,historic,severe,dry+heat,0,11581161,0
+Nandi,historic,historic,severe,dry+heat+wet,0,11581161,0
+Nandi,historic,historic,severe,dry+wet,0,11581161,0
+Nandi,historic,historic,severe,heat,0,11581161,0
+Nandi,historic,historic,severe,heat+wet,0,11581161,0
+Nandi,historic,historic,severe,no hazard,11292426,11581161,97.51
+Nandi,historic,historic,severe,wet,274828,11581161,2.37
+Nandi,ssp245,2021_2040,severe,any,372948,11581161,3.22
+Nandi,ssp245,2021_2040,severe,dry,3920,11581161,0.03
+Nandi,ssp245,2021_2040,severe,dry+heat,0,11581161,0
+Nandi,ssp245,2021_2040,severe,dry+heat+wet,0,11581161,0
+Nandi,ssp245,2021_2040,severe,dry+wet,0,11581161,0
+Nandi,ssp245,2021_2040,severe,heat,0,11581161,0
+Nandi,ssp245,2021_2040,severe,heat+wet,0,11581161,0
+Nandi,ssp245,2021_2040,severe,no hazard,11208213,11581161,96.78
+Nandi,ssp245,2021_2040,severe,wet,369028,11581161,3.19
+Nandi,ssp245,2041_2060,severe,any,279780,11581160,2.42
+Nandi,ssp245,2041_2060,severe,dry,4128,11581160,0.04
+Nandi,ssp245,2041_2060,severe,dry+heat,0,11581160,0
+Nandi,ssp245,2041_2060,severe,dry+heat+wet,0,11581160,0
+Nandi,ssp245,2041_2060,severe,dry+wet,0,11581160,0
+Nandi,ssp245,2041_2060,severe,heat,0,11581160,0
+Nandi,ssp245,2041_2060,severe,heat+wet,0,11581160,0
+Nandi,ssp245,2041_2060,severe,no hazard,11301381,11581160,97.58
+Nandi,ssp245,2041_2060,severe,wet,275651,11581160,2.38
+Nandi,ssp585,2021_2040,severe,any,267811,11581162,2.31
+Nandi,ssp585,2021_2040,severe,dry,4624,11581162,0.04
+Nandi,ssp585,2021_2040,severe,dry+heat,0,11581162,0
+Nandi,ssp585,2021_2040,severe,dry+heat+wet,0,11581162,0
+Nandi,ssp585,2021_2040,severe,dry+wet,0,11581162,0
+Nandi,ssp585,2021_2040,severe,heat,0,11581162,0
+Nandi,ssp585,2021_2040,severe,heat+wet,0,11581162,0
+Nandi,ssp585,2021_2040,severe,no hazard,11313350,11581162,97.69
+Nandi,ssp585,2021_2040,severe,wet,263188,11581162,2.27
+Nandi,ssp585,2041_2060,severe,any,330814,11581161,2.86
+Nandi,ssp585,2041_2060,severe,dry,3920,11581161,0.03
+Nandi,ssp585,2041_2060,severe,dry+heat,0,11581161,0
+Nandi,ssp585,2041_2060,severe,dry+heat+wet,0,11581161,0
+Nandi,ssp585,2041_2060,severe,dry+wet,0,11581161,0
+Nandi,ssp585,2041_2060,severe,heat,0,11581161,0
+Nandi,ssp585,2041_2060,severe,heat+wet,0,11581161,0
+Nandi,ssp585,2041_2060,severe,no hazard,11250347,11581161,97.14
+Nandi,ssp585,2041_2060,severe,wet,326894,11581161,2.82
+Narok,historic,historic,severe,any,8566923,22627610,37.86
+Narok,historic,historic,severe,dry,8566923,22627610,37.86
+Narok,historic,historic,severe,dry+heat,0,22627610,0
+Narok,historic,historic,severe,dry+heat+wet,0,22627610,0
+Narok,historic,historic,severe,dry+wet,0,22627610,0
+Narok,historic,historic,severe,heat,0,22627610,0
+Narok,historic,historic,severe,heat+wet,0,22627610,0
+Narok,historic,historic,severe,no hazard,14060687,22627610,62.14
+Narok,historic,historic,severe,wet,0,22627610,0
+Narok,ssp245,2021_2040,severe,any,6989858,22627609,30.89
+Narok,ssp245,2021_2040,severe,dry,6989370,22627609,30.89
+Narok,ssp245,2021_2040,severe,dry+heat,0,22627609,0
+Narok,ssp245,2021_2040,severe,dry+heat+wet,0,22627609,0
+Narok,ssp245,2021_2040,severe,dry+wet,0,22627609,0
+Narok,ssp245,2021_2040,severe,heat,0,22627609,0
+Narok,ssp245,2021_2040,severe,heat+wet,0,22627609,0
+Narok,ssp245,2021_2040,severe,no hazard,15637752,22627609,69.11
+Narok,ssp245,2021_2040,severe,wet,487,22627609,0
+Narok,ssp245,2041_2060,severe,any,8029748,22627610,35.49
+Narok,ssp245,2041_2060,severe,dry,8029748,22627610,35.49
+Narok,ssp245,2041_2060,severe,dry+heat,0,22627610,0
+Narok,ssp245,2041_2060,severe,dry+heat+wet,0,22627610,0
+Narok,ssp245,2041_2060,severe,dry+wet,0,22627610,0
+Narok,ssp245,2041_2060,severe,heat,0,22627610,0
+Narok,ssp245,2041_2060,severe,heat+wet,0,22627610,0
+Narok,ssp245,2041_2060,severe,no hazard,14597862,22627610,64.51
+Narok,ssp245,2041_2060,severe,wet,0,22627610,0
+Narok,ssp585,2021_2040,severe,any,7997589,22627610,35.34
+Narok,ssp585,2021_2040,severe,dry,7997589,22627610,35.34
+Narok,ssp585,2021_2040,severe,dry+heat,0,22627610,0
+Narok,ssp585,2021_2040,severe,dry+heat+wet,0,22627610,0
+Narok,ssp585,2021_2040,severe,dry+wet,0,22627610,0
+Narok,ssp585,2021_2040,severe,heat,0,22627610,0
+Narok,ssp585,2021_2040,severe,heat+wet,0,22627610,0
+Narok,ssp585,2021_2040,severe,no hazard,14630021,22627610,64.66
+Narok,ssp585,2021_2040,severe,wet,0,22627610,0
+Narok,ssp585,2041_2060,severe,any,7922238,22627610,35.01
+Narok,ssp585,2041_2060,severe,dry,7922238,22627610,35.01
+Narok,ssp585,2041_2060,severe,dry+heat,0,22627610,0
+Narok,ssp585,2041_2060,severe,dry+heat+wet,0,22627610,0
+Narok,ssp585,2041_2060,severe,dry+wet,0,22627610,0
+Narok,ssp585,2041_2060,severe,heat,0,22627610,0
+Narok,ssp585,2041_2060,severe,heat+wet,0,22627610,0
+Narok,ssp585,2041_2060,severe,no hazard,14705372,22627610,64.99
+Narok,ssp585,2041_2060,severe,wet,0,22627610,0
+Nyamira,historic,historic,severe,any,52913,9540392,0.55
+Nyamira,historic,historic,severe,dry,0,9540392,0
+Nyamira,historic,historic,severe,dry+heat,0,9540392,0
+Nyamira,historic,historic,severe,dry+heat+wet,0,9540392,0
+Nyamira,historic,historic,severe,dry+wet,0,9540392,0
+Nyamira,historic,historic,severe,heat,0,9540392,0
+Nyamira,historic,historic,severe,heat+wet,0,9540392,0
+Nyamira,historic,historic,severe,no hazard,9487479,9540392,99.45
+Nyamira,historic,historic,severe,wet,52913,9540392,0.55
+Nyamira,ssp245,2021_2040,severe,any,166461,9540392,1.74
+Nyamira,ssp245,2021_2040,severe,dry,0,9540392,0
+Nyamira,ssp245,2021_2040,severe,dry+heat,0,9540392,0
+Nyamira,ssp245,2021_2040,severe,dry+heat+wet,0,9540392,0
+Nyamira,ssp245,2021_2040,severe,dry+wet,0,9540392,0
+Nyamira,ssp245,2021_2040,severe,heat,0,9540392,0
+Nyamira,ssp245,2021_2040,severe,heat+wet,0,9540392,0
+Nyamira,ssp245,2021_2040,severe,no hazard,9373931,9540392,98.26
+Nyamira,ssp245,2021_2040,severe,wet,166461,9540392,1.74
+Nyamira,ssp245,2041_2060,severe,any,58457,9540392,0.61
+Nyamira,ssp245,2041_2060,severe,dry,0,9540392,0
+Nyamira,ssp245,2041_2060,severe,dry+heat,0,9540392,0
+Nyamira,ssp245,2041_2060,severe,dry+heat+wet,0,9540392,0
+Nyamira,ssp245,2041_2060,severe,dry+wet,0,9540392,0
+Nyamira,ssp245,2041_2060,severe,heat,0,9540392,0
+Nyamira,ssp245,2041_2060,severe,heat+wet,0,9540392,0
+Nyamira,ssp245,2041_2060,severe,no hazard,9481935,9540392,99.39
+Nyamira,ssp245,2041_2060,severe,wet,58457,9540392,0.61
+Nyamira,ssp585,2021_2040,severe,any,56309,9540392,0.59
+Nyamira,ssp585,2021_2040,severe,dry,0,9540392,0
+Nyamira,ssp585,2021_2040,severe,dry+heat,0,9540392,0
+Nyamira,ssp585,2021_2040,severe,dry+heat+wet,0,9540392,0
+Nyamira,ssp585,2021_2040,severe,dry+wet,0,9540392,0
+Nyamira,ssp585,2021_2040,severe,heat,0,9540392,0
+Nyamira,ssp585,2021_2040,severe,heat+wet,0,9540392,0
+Nyamira,ssp585,2021_2040,severe,no hazard,9484083,9540392,99.41
+Nyamira,ssp585,2021_2040,severe,wet,56309,9540392,0.59
+Nyamira,ssp585,2041_2060,severe,any,78815,9540392,0.83
+Nyamira,ssp585,2041_2060,severe,dry,0,9540392,0
+Nyamira,ssp585,2041_2060,severe,dry+heat,0,9540392,0
+Nyamira,ssp585,2041_2060,severe,dry+heat+wet,0,9540392,0
+Nyamira,ssp585,2041_2060,severe,dry+wet,0,9540392,0
+Nyamira,ssp585,2041_2060,severe,heat,0,9540392,0
+Nyamira,ssp585,2041_2060,severe,heat+wet,0,9540392,0
+Nyamira,ssp585,2041_2060,severe,no hazard,9461577,9540392,99.17
+Nyamira,ssp585,2041_2060,severe,wet,78815,9540392,0.83
+Nyandarua,historic,historic,severe,any,2109423,3646011,57.86
+Nyandarua,historic,historic,severe,dry,2109423,3646011,57.86
+Nyandarua,historic,historic,severe,dry+heat,0,3646011,0
+Nyandarua,historic,historic,severe,dry+heat+wet,0,3646011,0
+Nyandarua,historic,historic,severe,dry+wet,0,3646011,0
+Nyandarua,historic,historic,severe,heat,0,3646011,0
+Nyandarua,historic,historic,severe,heat+wet,0,3646011,0
+Nyandarua,historic,historic,severe,no hazard,1536588,3646011,42.14
+Nyandarua,historic,historic,severe,wet,0,3646011,0
+Nyandarua,ssp245,2021_2040,severe,any,1968524,3646011,53.99
+Nyandarua,ssp245,2021_2040,severe,dry,1968524,3646011,53.99
+Nyandarua,ssp245,2021_2040,severe,dry+heat,0,3646011,0
+Nyandarua,ssp245,2021_2040,severe,dry+heat+wet,0,3646011,0
+Nyandarua,ssp245,2021_2040,severe,dry+wet,0,3646011,0
+Nyandarua,ssp245,2021_2040,severe,heat,0,3646011,0
+Nyandarua,ssp245,2021_2040,severe,heat+wet,0,3646011,0
+Nyandarua,ssp245,2021_2040,severe,no hazard,1677487,3646011,46.01
+Nyandarua,ssp245,2021_2040,severe,wet,0,3646011,0
+Nyandarua,ssp245,2041_2060,severe,any,2165994,3646011,59.41
+Nyandarua,ssp245,2041_2060,severe,dry,2165994,3646011,59.41
+Nyandarua,ssp245,2041_2060,severe,dry+heat,0,3646011,0
+Nyandarua,ssp245,2041_2060,severe,dry+heat+wet,0,3646011,0
+Nyandarua,ssp245,2041_2060,severe,dry+wet,0,3646011,0
+Nyandarua,ssp245,2041_2060,severe,heat,0,3646011,0
+Nyandarua,ssp245,2041_2060,severe,heat+wet,0,3646011,0
+Nyandarua,ssp245,2041_2060,severe,no hazard,1480017,3646011,40.59
+Nyandarua,ssp245,2041_2060,severe,wet,0,3646011,0
+Nyandarua,ssp585,2021_2040,severe,any,2154908,3646011,59.1
+Nyandarua,ssp585,2021_2040,severe,dry,2154908,3646011,59.1
+Nyandarua,ssp585,2021_2040,severe,dry+heat,0,3646011,0
+Nyandarua,ssp585,2021_2040,severe,dry+heat+wet,0,3646011,0
+Nyandarua,ssp585,2021_2040,severe,dry+wet,0,3646011,0
+Nyandarua,ssp585,2021_2040,severe,heat,0,3646011,0
+Nyandarua,ssp585,2021_2040,severe,heat+wet,0,3646011,0
+Nyandarua,ssp585,2021_2040,severe,no hazard,1491103,3646011,40.9
+Nyandarua,ssp585,2021_2040,severe,wet,0,3646011,0
+Nyandarua,ssp585,2041_2060,severe,any,2212640,3646010,60.69
+Nyandarua,ssp585,2041_2060,severe,dry,2212640,3646010,60.69
+Nyandarua,ssp585,2041_2060,severe,dry+heat,0,3646010,0
+Nyandarua,ssp585,2041_2060,severe,dry+heat+wet,0,3646010,0
+Nyandarua,ssp585,2041_2060,severe,dry+wet,0,3646010,0
+Nyandarua,ssp585,2041_2060,severe,heat,0,3646010,0
+Nyandarua,ssp585,2041_2060,severe,heat+wet,0,3646010,0
+Nyandarua,ssp585,2041_2060,severe,no hazard,1433370,3646010,39.31
+Nyandarua,ssp585,2041_2060,severe,wet,0,3646010,0
+Nyeri,historic,historic,severe,any,5063514,6696740,75.61
+Nyeri,historic,historic,severe,dry,5063514,6696740,75.61
+Nyeri,historic,historic,severe,dry+heat,0,6696740,0
+Nyeri,historic,historic,severe,dry+heat+wet,0,6696740,0
+Nyeri,historic,historic,severe,dry+wet,0,6696740,0
+Nyeri,historic,historic,severe,heat,0,6696740,0
+Nyeri,historic,historic,severe,heat+wet,0,6696740,0
+Nyeri,historic,historic,severe,no hazard,1633226,6696740,24.39
+Nyeri,historic,historic,severe,wet,0,6696740,0
+Nyeri,ssp245,2021_2040,severe,any,4651330,6696740,69.46
+Nyeri,ssp245,2021_2040,severe,dry,4651330,6696740,69.46
+Nyeri,ssp245,2021_2040,severe,dry+heat,0,6696740,0
+Nyeri,ssp245,2021_2040,severe,dry+heat+wet,0,6696740,0
+Nyeri,ssp245,2021_2040,severe,dry+wet,0,6696740,0
+Nyeri,ssp245,2021_2040,severe,heat,0,6696740,0
+Nyeri,ssp245,2021_2040,severe,heat+wet,0,6696740,0
+Nyeri,ssp245,2021_2040,severe,no hazard,2045410,6696740,30.54
+Nyeri,ssp245,2021_2040,severe,wet,0,6696740,0
+Nyeri,ssp245,2041_2060,severe,any,5021828,6696740,74.99
+Nyeri,ssp245,2041_2060,severe,dry,5021828,6696740,74.99
+Nyeri,ssp245,2041_2060,severe,dry+heat,0,6696740,0
+Nyeri,ssp245,2041_2060,severe,dry+heat+wet,0,6696740,0
+Nyeri,ssp245,2041_2060,severe,dry+wet,0,6696740,0
+Nyeri,ssp245,2041_2060,severe,heat,0,6696740,0
+Nyeri,ssp245,2041_2060,severe,heat+wet,0,6696740,0
+Nyeri,ssp245,2041_2060,severe,no hazard,1674912,6696740,25.01
+Nyeri,ssp245,2041_2060,severe,wet,0,6696740,0
+Nyeri,ssp585,2021_2040,severe,any,5056865,6696740,75.51
+Nyeri,ssp585,2021_2040,severe,dry,5056865,6696740,75.51
+Nyeri,ssp585,2021_2040,severe,dry+heat,0,6696740,0
+Nyeri,ssp585,2021_2040,severe,dry+heat+wet,0,6696740,0
+Nyeri,ssp585,2021_2040,severe,dry+wet,0,6696740,0
+Nyeri,ssp585,2021_2040,severe,heat,0,6696740,0
+Nyeri,ssp585,2021_2040,severe,heat+wet,0,6696740,0
+Nyeri,ssp585,2021_2040,severe,no hazard,1639875,6696740,24.49
+Nyeri,ssp585,2021_2040,severe,wet,0,6696740,0
+Nyeri,ssp585,2041_2060,severe,any,5223704,6696740,78
+Nyeri,ssp585,2041_2060,severe,dry,5223704,6696740,78
+Nyeri,ssp585,2041_2060,severe,dry+heat,0,6696740,0
+Nyeri,ssp585,2041_2060,severe,dry+heat+wet,0,6696740,0
+Nyeri,ssp585,2041_2060,severe,dry+wet,0,6696740,0
+Nyeri,ssp585,2041_2060,severe,heat,0,6696740,0
+Nyeri,ssp585,2041_2060,severe,heat+wet,0,6696740,0
+Nyeri,ssp585,2041_2060,severe,no hazard,1473036,6696740,22
+Nyeri,ssp585,2041_2060,severe,wet,0,6696740,0
+Samburu,historic,historic,severe,any,390584,438252,89.12
+Samburu,historic,historic,severe,dry,390584,438252,89.12
+Samburu,historic,historic,severe,dry+heat,0,438252,0
+Samburu,historic,historic,severe,dry+heat+wet,0,438252,0
+Samburu,historic,historic,severe,dry+wet,0,438252,0
+Samburu,historic,historic,severe,heat,0,438252,0
+Samburu,historic,historic,severe,heat+wet,0,438252,0
+Samburu,historic,historic,severe,no hazard,47668,438252,10.88
+Samburu,historic,historic,severe,wet,0,438252,0
+Samburu,ssp245,2021_2040,severe,any,380832,438251,86.9
+Samburu,ssp245,2021_2040,severe,dry,380832,438251,86.9
+Samburu,ssp245,2021_2040,severe,dry+heat,0,438251,0
+Samburu,ssp245,2021_2040,severe,dry+heat+wet,0,438251,0
+Samburu,ssp245,2021_2040,severe,dry+wet,0,438251,0
+Samburu,ssp245,2021_2040,severe,heat,0,438251,0
+Samburu,ssp245,2021_2040,severe,heat+wet,0,438251,0
+Samburu,ssp245,2021_2040,severe,no hazard,57419,438251,13.1
+Samburu,ssp245,2021_2040,severe,wet,0,438251,0
+Samburu,ssp245,2041_2060,severe,any,390797,438251,89.17
+Samburu,ssp245,2041_2060,severe,dry,390446,438251,89.09
+Samburu,ssp245,2041_2060,severe,dry+heat,351,438251,0.08
+Samburu,ssp245,2041_2060,severe,dry+heat+wet,0,438251,0
+Samburu,ssp245,2041_2060,severe,dry+wet,0,438251,0
+Samburu,ssp245,2041_2060,severe,heat,0,438251,0
+Samburu,ssp245,2041_2060,severe,heat+wet,0,438251,0
+Samburu,ssp245,2041_2060,severe,no hazard,47454,438251,10.83
+Samburu,ssp245,2041_2060,severe,wet,0,438251,0
+Samburu,ssp585,2021_2040,severe,any,384035,438251,87.63
+Samburu,ssp585,2021_2040,severe,dry,384035,438251,87.63
+Samburu,ssp585,2021_2040,severe,dry+heat,0,438251,0
+Samburu,ssp585,2021_2040,severe,dry+heat+wet,0,438251,0
+Samburu,ssp585,2021_2040,severe,dry+wet,0,438251,0
+Samburu,ssp585,2021_2040,severe,heat,0,438251,0
+Samburu,ssp585,2021_2040,severe,heat+wet,0,438251,0
+Samburu,ssp585,2021_2040,severe,no hazard,54216,438251,12.37
+Samburu,ssp585,2021_2040,severe,wet,0,438251,0
+Samburu,ssp585,2041_2060,severe,any,392424,438252,89.54
+Samburu,ssp585,2041_2060,severe,dry,390045,438252,89
+Samburu,ssp585,2041_2060,severe,dry+heat,2379,438252,0.54
+Samburu,ssp585,2041_2060,severe,dry+heat+wet,0,438252,0
+Samburu,ssp585,2041_2060,severe,dry+wet,0,438252,0
+Samburu,ssp585,2041_2060,severe,heat,0,438252,0
+Samburu,ssp585,2041_2060,severe,heat+wet,0,438252,0
+Samburu,ssp585,2041_2060,severe,no hazard,45828,438252,10.46
+Samburu,ssp585,2041_2060,severe,wet,0,438252,0
+Siaya,historic,historic,severe,any,1574192,12430368,12.66
+Siaya,historic,historic,severe,dry,1550911,12430368,12.48
+Siaya,historic,historic,severe,dry+heat,0,12430368,0
+Siaya,historic,historic,severe,dry+heat+wet,0,12430368,0
+Siaya,historic,historic,severe,dry+wet,0,12430368,0
+Siaya,historic,historic,severe,heat,0,12430368,0
+Siaya,historic,historic,severe,heat+wet,0,12430368,0
+Siaya,historic,historic,severe,no hazard,10856176,12430368,87.34
+Siaya,historic,historic,severe,wet,23281,12430368,0.19
+Siaya,ssp245,2021_2040,severe,any,1080730,12430367,8.69
+Siaya,ssp245,2021_2040,severe,dry,976122,12430367,7.85
+Siaya,ssp245,2021_2040,severe,dry+heat,0,12430367,0
+Siaya,ssp245,2021_2040,severe,dry+heat+wet,0,12430367,0
+Siaya,ssp245,2021_2040,severe,dry+wet,0,12430367,0
+Siaya,ssp245,2021_2040,severe,heat,0,12430367,0
+Siaya,ssp245,2021_2040,severe,heat+wet,0,12430367,0
+Siaya,ssp245,2021_2040,severe,no hazard,11349638,12430367,91.31
+Siaya,ssp245,2021_2040,severe,wet,104607,12430367,0.84
+Siaya,ssp245,2041_2060,severe,any,1168092,12430368,9.4
+Siaya,ssp245,2041_2060,severe,dry,1108064,12430368,8.91
+Siaya,ssp245,2041_2060,severe,dry+heat,0,12430368,0
+Siaya,ssp245,2041_2060,severe,dry+heat+wet,0,12430368,0
+Siaya,ssp245,2041_2060,severe,dry+wet,0,12430368,0
+Siaya,ssp245,2041_2060,severe,heat,0,12430368,0
+Siaya,ssp245,2041_2060,severe,heat+wet,0,12430368,0
+Siaya,ssp245,2041_2060,severe,no hazard,11262276,12430368,90.6
+Siaya,ssp245,2041_2060,severe,wet,60028,12430368,0.48
+Siaya,ssp585,2021_2040,severe,any,1111150,12430368,8.94
+Siaya,ssp585,2021_2040,severe,dry,1046385,12430368,8.42
+Siaya,ssp585,2021_2040,severe,dry+heat,0,12430368,0
+Siaya,ssp585,2021_2040,severe,dry+heat+wet,0,12430368,0
+Siaya,ssp585,2021_2040,severe,dry+wet,0,12430368,0
+Siaya,ssp585,2021_2040,severe,heat,0,12430368,0
+Siaya,ssp585,2021_2040,severe,heat+wet,0,12430368,0
+Siaya,ssp585,2021_2040,severe,no hazard,11319218,12430368,91.06
+Siaya,ssp585,2021_2040,severe,wet,64765,12430368,0.52
+Siaya,ssp585,2041_2060,severe,any,1002067,12430368,8.06
+Siaya,ssp585,2041_2060,severe,dry,903903,12430368,7.27
+Siaya,ssp585,2041_2060,severe,dry+heat,0,12430368,0
+Siaya,ssp585,2041_2060,severe,dry+heat+wet,0,12430368,0
+Siaya,ssp585,2041_2060,severe,dry+wet,0,12430368,0
+Siaya,ssp585,2041_2060,severe,heat,0,12430368,0
+Siaya,ssp585,2041_2060,severe,heat+wet,0,12430368,0
+Siaya,ssp585,2041_2060,severe,no hazard,11428301,12430368,91.94
+Siaya,ssp585,2041_2060,severe,wet,98164,12430368,0.79
+Taita Taveta,historic,historic,severe,any,6359862,6441117,98.74
+Taita Taveta,historic,historic,severe,dry,6359862,6441117,98.74
+Taita Taveta,historic,historic,severe,dry+heat,0,6441117,0
+Taita Taveta,historic,historic,severe,dry+heat+wet,0,6441117,0
+Taita Taveta,historic,historic,severe,dry+wet,0,6441117,0
+Taita Taveta,historic,historic,severe,heat,0,6441117,0
+Taita Taveta,historic,historic,severe,heat+wet,0,6441117,0
+Taita Taveta,historic,historic,severe,no hazard,81255,6441117,1.26
+Taita Taveta,historic,historic,severe,wet,0,6441117,0
+Taita Taveta,ssp245,2021_2040,severe,any,6311004,6441116,97.98
+Taita Taveta,ssp245,2021_2040,severe,dry,6311004,6441116,97.98
+Taita Taveta,ssp245,2021_2040,severe,dry+heat,0,6441116,0
+Taita Taveta,ssp245,2021_2040,severe,dry+heat+wet,0,6441116,0
+Taita Taveta,ssp245,2021_2040,severe,dry+wet,0,6441116,0
+Taita Taveta,ssp245,2021_2040,severe,heat,0,6441116,0
+Taita Taveta,ssp245,2021_2040,severe,heat+wet,0,6441116,0
+Taita Taveta,ssp245,2021_2040,severe,no hazard,130112,6441116,2.02
+Taita Taveta,ssp245,2021_2040,severe,wet,0,6441116,0
+Taita Taveta,ssp245,2041_2060,severe,any,6323592,6441117,98.18
+Taita Taveta,ssp245,2041_2060,severe,dry,6321878,6441117,98.15
+Taita Taveta,ssp245,2041_2060,severe,dry+heat,1714,6441117,0.03
+Taita Taveta,ssp245,2041_2060,severe,dry+heat+wet,0,6441117,0
+Taita Taveta,ssp245,2041_2060,severe,dry+wet,0,6441117,0
+Taita Taveta,ssp245,2041_2060,severe,heat,0,6441117,0
+Taita Taveta,ssp245,2041_2060,severe,heat+wet,0,6441117,0
+Taita Taveta,ssp245,2041_2060,severe,no hazard,117525,6441117,1.82
+Taita Taveta,ssp245,2041_2060,severe,wet,0,6441117,0
+Taita Taveta,ssp585,2021_2040,severe,any,6329260,6441118,98.26
+Taita Taveta,ssp585,2021_2040,severe,dry,6329260,6441118,98.26
+Taita Taveta,ssp585,2021_2040,severe,dry+heat,0,6441118,0
+Taita Taveta,ssp585,2021_2040,severe,dry+heat+wet,0,6441118,0
+Taita Taveta,ssp585,2021_2040,severe,dry+wet,0,6441118,0
+Taita Taveta,ssp585,2021_2040,severe,heat,0,6441118,0
+Taita Taveta,ssp585,2021_2040,severe,heat+wet,0,6441118,0
+Taita Taveta,ssp585,2021_2040,severe,no hazard,111858,6441118,1.74
+Taita Taveta,ssp585,2021_2040,severe,wet,0,6441118,0
+Taita Taveta,ssp585,2041_2060,severe,any,6288532,6441117,97.63
+Taita Taveta,ssp585,2041_2060,severe,dry,6270502,6441117,97.35
+Taita Taveta,ssp585,2041_2060,severe,dry+heat,18030,6441117,0.28
+Taita Taveta,ssp585,2041_2060,severe,dry+heat+wet,0,6441117,0
+Taita Taveta,ssp585,2041_2060,severe,dry+wet,0,6441117,0
+Taita Taveta,ssp585,2041_2060,severe,heat,0,6441117,0
+Taita Taveta,ssp585,2041_2060,severe,heat+wet,0,6441117,0
+Taita Taveta,ssp585,2041_2060,severe,no hazard,152585,6441117,2.37
+Taita Taveta,ssp585,2041_2060,severe,wet,0,6441117,0
+Tana River,historic,historic,severe,any,428874,429304,99.9
+Tana River,historic,historic,severe,dry,10951,429304,2.55
+Tana River,historic,historic,severe,dry+heat,406717,429304,94.74
+Tana River,historic,historic,severe,dry+heat+wet,0,429304,0
+Tana River,historic,historic,severe,dry+wet,0,429304,0
+Tana River,historic,historic,severe,heat,11207,429304,2.61
+Tana River,historic,historic,severe,heat+wet,0,429304,0
+Tana River,historic,historic,severe,no hazard,429,429304,0.1
+Tana River,historic,historic,severe,wet,0,429304,0
+Tana River,ssp245,2021_2040,severe,any,429264,429303,99.99
+Tana River,ssp245,2021_2040,severe,dry,3423,429303,0.8
+Tana River,ssp245,2021_2040,severe,dry+heat,406705,429303,94.74
+Tana River,ssp245,2021_2040,severe,dry+heat+wet,0,429303,0
+Tana River,ssp245,2021_2040,severe,dry+wet,0,429303,0
+Tana River,ssp245,2021_2040,severe,heat,19136,429303,4.46
+Tana River,ssp245,2021_2040,severe,heat+wet,0,429303,0
+Tana River,ssp245,2021_2040,severe,no hazard,39,429303,0.01
+Tana River,ssp245,2021_2040,severe,wet,0,429303,0
+Tana River,ssp245,2041_2060,severe,any,429298,429303,100
+Tana River,ssp245,2041_2060,severe,dry,219,429303,0.05
+Tana River,ssp245,2041_2060,severe,dry+heat,414736,429303,96.61
+Tana River,ssp245,2041_2060,severe,dry+heat+wet,0,429303,0
+Tana River,ssp245,2041_2060,severe,dry+wet,0,429303,0
+Tana River,ssp245,2041_2060,severe,heat,14342,429303,3.34
+Tana River,ssp245,2041_2060,severe,heat+wet,0,429303,0
+Tana River,ssp245,2041_2060,severe,no hazard,6,429303,0
+Tana River,ssp245,2041_2060,severe,wet,0,429303,0
+Tana River,ssp585,2021_2040,severe,any,429298,429304,100
+Tana River,ssp585,2021_2040,severe,dry,3233,429304,0.75
+Tana River,ssp585,2021_2040,severe,dry+heat,413001,429304,96.2
+Tana River,ssp585,2021_2040,severe,dry+heat+wet,0,429304,0
+Tana River,ssp585,2021_2040,severe,dry+wet,0,429304,0
+Tana River,ssp585,2021_2040,severe,heat,13064,429304,3.04
+Tana River,ssp585,2021_2040,severe,heat+wet,0,429304,0
+Tana River,ssp585,2021_2040,severe,no hazard,6,429304,0
+Tana River,ssp585,2021_2040,severe,wet,0,429304,0
+Tana River,ssp585,2041_2060,severe,any,429298,429304,100
+Tana River,ssp585,2041_2060,severe,dry,1,429304,0
+Tana River,ssp585,2041_2060,severe,dry+heat,409705,429304,95.43
+Tana River,ssp585,2041_2060,severe,dry+heat+wet,0,429304,0
+Tana River,ssp585,2041_2060,severe,dry+wet,0,429304,0
+Tana River,ssp585,2041_2060,severe,heat,19592,429304,4.56
+Tana River,ssp585,2041_2060,severe,heat+wet,0,429304,0
+Tana River,ssp585,2041_2060,severe,no hazard,6,429304,0
+Tana River,ssp585,2041_2060,severe,wet,0,429304,0
+Tharaka-Nithi,historic,historic,severe,any,7497287,8578310,87.4
+Tharaka-Nithi,historic,historic,severe,dry,6605836,8578310,77.01
+Tharaka-Nithi,historic,historic,severe,dry+heat,873607,8578310,10.18
+Tharaka-Nithi,historic,historic,severe,dry+heat+wet,0,8578310,0
+Tharaka-Nithi,historic,historic,severe,dry+wet,0,8578310,0
+Tharaka-Nithi,historic,historic,severe,heat,17843,8578310,0.21
+Tharaka-Nithi,historic,historic,severe,heat+wet,0,8578310,0
+Tharaka-Nithi,historic,historic,severe,no hazard,1081024,8578310,12.6
+Tharaka-Nithi,historic,historic,severe,wet,0,8578310,0
+Tharaka-Nithi,ssp245,2021_2040,severe,any,7368714,8578311,85.9
+Tharaka-Nithi,ssp245,2021_2040,severe,dry,6235875,8578311,72.69
+Tharaka-Nithi,ssp245,2021_2040,severe,dry+heat,1111065,8578311,12.95
+Tharaka-Nithi,ssp245,2021_2040,severe,dry+heat+wet,0,8578311,0
+Tharaka-Nithi,ssp245,2021_2040,severe,dry+wet,0,8578311,0
+Tharaka-Nithi,ssp245,2021_2040,severe,heat,21773,8578311,0.25
+Tharaka-Nithi,ssp245,2021_2040,severe,heat+wet,0,8578311,0
+Tharaka-Nithi,ssp245,2021_2040,severe,no hazard,1209598,8578311,14.1
+Tharaka-Nithi,ssp245,2021_2040,severe,wet,0,8578311,0
+Tharaka-Nithi,ssp245,2041_2060,severe,any,7454944,8578311,86.9
+Tharaka-Nithi,ssp245,2041_2060,severe,dry,5995880,8578311,69.9
+Tharaka-Nithi,ssp245,2041_2060,severe,dry+heat,1428472,8578311,16.65
+Tharaka-Nithi,ssp245,2041_2060,severe,dry+heat+wet,0,8578311,0
+Tharaka-Nithi,ssp245,2041_2060,severe,dry+wet,0,8578311,0
+Tharaka-Nithi,ssp245,2041_2060,severe,heat,30592,8578311,0.36
+Tharaka-Nithi,ssp245,2041_2060,severe,heat+wet,0,8578311,0
+Tharaka-Nithi,ssp245,2041_2060,severe,no hazard,1123367,8578311,13.1
+Tharaka-Nithi,ssp245,2041_2060,severe,wet,0,8578311,0
+Tharaka-Nithi,ssp585,2021_2040,severe,any,7469306,8578311,87.07
+Tharaka-Nithi,ssp585,2021_2040,severe,dry,6253340,8578311,72.9
+Tharaka-Nithi,ssp585,2021_2040,severe,dry+heat,1188804,8578311,13.86
+Tharaka-Nithi,ssp585,2021_2040,severe,dry+heat+wet,0,8578311,0
+Tharaka-Nithi,ssp585,2021_2040,severe,dry+wet,0,8578311,0
+Tharaka-Nithi,ssp585,2021_2040,severe,heat,27161,8578311,0.32
+Tharaka-Nithi,ssp585,2021_2040,severe,heat+wet,0,8578311,0
+Tharaka-Nithi,ssp585,2021_2040,severe,no hazard,1109006,8578311,12.93
+Tharaka-Nithi,ssp585,2021_2040,severe,wet,0,8578311,0
+Tharaka-Nithi,ssp585,2041_2060,severe,any,7525015,8578311,87.72
+Tharaka-Nithi,ssp585,2041_2060,severe,dry,5475677,8578311,63.83
+Tharaka-Nithi,ssp585,2041_2060,severe,dry+heat,2008495,8578311,23.41
+Tharaka-Nithi,ssp585,2041_2060,severe,dry+heat+wet,0,8578311,0
+Tharaka-Nithi,ssp585,2041_2060,severe,dry+wet,0,8578311,0
+Tharaka-Nithi,ssp585,2041_2060,severe,heat,40843,8578311,0.48
+Tharaka-Nithi,ssp585,2041_2060,severe,heat+wet,0,8578311,0
+Tharaka-Nithi,ssp585,2041_2060,severe,no hazard,1053296,8578311,12.28
+Tharaka-Nithi,ssp585,2041_2060,severe,wet,0,8578311,0
+Trans Nzoia,historic,historic,severe,any,1145292,25468948,4.5
+Trans Nzoia,historic,historic,severe,dry,1135138,25468948,4.46
+Trans Nzoia,historic,historic,severe,dry+heat,0,25468948,0
+Trans Nzoia,historic,historic,severe,dry+heat+wet,0,25468948,0
+Trans Nzoia,historic,historic,severe,dry+wet,0,25468948,0
+Trans Nzoia,historic,historic,severe,heat,0,25468948,0
+Trans Nzoia,historic,historic,severe,heat+wet,0,25468948,0
+Trans Nzoia,historic,historic,severe,no hazard,24323656,25468948,95.5
+Trans Nzoia,historic,historic,severe,wet,10154,25468948,0.04
+Trans Nzoia,ssp245,2021_2040,severe,any,431637,25468948,1.69
+Trans Nzoia,ssp245,2021_2040,severe,dry,412004,25468948,1.62
+Trans Nzoia,ssp245,2021_2040,severe,dry+heat,0,25468948,0
+Trans Nzoia,ssp245,2021_2040,severe,dry+heat+wet,0,25468948,0
+Trans Nzoia,ssp245,2021_2040,severe,dry+wet,0,25468948,0
+Trans Nzoia,ssp245,2021_2040,severe,heat,0,25468948,0
+Trans Nzoia,ssp245,2021_2040,severe,heat+wet,0,25468948,0
+Trans Nzoia,ssp245,2021_2040,severe,no hazard,25037311,25468948,98.31
+Trans Nzoia,ssp245,2021_2040,severe,wet,19633,25468948,0.08
+Trans Nzoia,ssp245,2041_2060,severe,any,868866,25468948,3.41
+Trans Nzoia,ssp245,2041_2060,severe,dry,858348,25468948,3.37
+Trans Nzoia,ssp245,2041_2060,severe,dry+heat,0,25468948,0
+Trans Nzoia,ssp245,2041_2060,severe,dry+heat+wet,0,25468948,0
+Trans Nzoia,ssp245,2041_2060,severe,dry+wet,0,25468948,0
+Trans Nzoia,ssp245,2041_2060,severe,heat,0,25468948,0
+Trans Nzoia,ssp245,2041_2060,severe,heat+wet,0,25468948,0
+Trans Nzoia,ssp245,2041_2060,severe,no hazard,24600082,25468948,96.59
+Trans Nzoia,ssp245,2041_2060,severe,wet,10518,25468948,0.04
+Trans Nzoia,ssp585,2021_2040,severe,any,1015577,25468948,3.99
+Trans Nzoia,ssp585,2021_2040,severe,dry,999930,25468948,3.93
+Trans Nzoia,ssp585,2021_2040,severe,dry+heat,0,25468948,0
+Trans Nzoia,ssp585,2021_2040,severe,dry+heat+wet,0,25468948,0
+Trans Nzoia,ssp585,2021_2040,severe,dry+wet,0,25468948,0
+Trans Nzoia,ssp585,2021_2040,severe,heat,0,25468948,0
+Trans Nzoia,ssp585,2021_2040,severe,heat+wet,0,25468948,0
+Trans Nzoia,ssp585,2021_2040,severe,no hazard,24453371,25468948,96.01
+Trans Nzoia,ssp585,2021_2040,severe,wet,15647,25468948,0.06
+Trans Nzoia,ssp585,2041_2060,severe,any,646832,25468948,2.54
+Trans Nzoia,ssp585,2041_2060,severe,dry,636325,25468948,2.5
+Trans Nzoia,ssp585,2041_2060,severe,dry+heat,0,25468948,0
+Trans Nzoia,ssp585,2041_2060,severe,dry+heat+wet,0,25468948,0
+Trans Nzoia,ssp585,2041_2060,severe,dry+wet,0,25468948,0
+Trans Nzoia,ssp585,2041_2060,severe,heat,0,25468948,0
+Trans Nzoia,ssp585,2041_2060,severe,heat+wet,0,25468948,0
+Trans Nzoia,ssp585,2041_2060,severe,no hazard,24822116,25468948,97.46
+Trans Nzoia,ssp585,2041_2060,severe,wet,10507,25468948,0.04
+Turkana,historic,historic,severe,any,497689,498863,99.76
+Turkana,historic,historic,severe,dry,344632,498863,69.08
+Turkana,historic,historic,severe,dry+heat,150252,498863,30.12
+Turkana,historic,historic,severe,dry+heat+wet,0,498863,0
+Turkana,historic,historic,severe,dry+wet,0,498863,0
+Turkana,historic,historic,severe,heat,2805,498863,0.56
+Turkana,historic,historic,severe,heat+wet,0,498863,0
+Turkana,historic,historic,severe,no hazard,1174,498863,0.24
+Turkana,historic,historic,severe,wet,0,498863,0
+Turkana,ssp245,2021_2040,severe,any,497962,498864,99.82
+Turkana,ssp245,2021_2040,severe,dry,197819,498864,39.65
+Turkana,ssp245,2021_2040,severe,dry+heat,296952,498864,59.53
+Turkana,ssp245,2021_2040,severe,dry+heat+wet,0,498864,0
+Turkana,ssp245,2021_2040,severe,dry+wet,0,498864,0
+Turkana,ssp245,2021_2040,severe,heat,3192,498864,0.64
+Turkana,ssp245,2021_2040,severe,heat+wet,0,498864,0
+Turkana,ssp245,2021_2040,severe,no hazard,901,498864,0.18
+Turkana,ssp245,2021_2040,severe,wet,0,498864,0
+Turkana,ssp245,2041_2060,severe,any,498501,498862,99.93
+Turkana,ssp245,2041_2060,severe,dry,73646,498862,14.76
+Turkana,ssp245,2041_2060,severe,dry+heat,421166,498862,84.43
+Turkana,ssp245,2041_2060,severe,dry+heat+wet,0,498862,0
+Turkana,ssp245,2041_2060,severe,dry+wet,0,498862,0
+Turkana,ssp245,2041_2060,severe,heat,3689,498862,0.74
+Turkana,ssp245,2041_2060,severe,heat+wet,0,498862,0
+Turkana,ssp245,2041_2060,severe,no hazard,361,498862,0.07
+Turkana,ssp245,2041_2060,severe,wet,0,498862,0
+Turkana,ssp585,2021_2040,severe,any,498155,498862,99.86
+Turkana,ssp585,2021_2040,severe,dry,159936,498862,32.06
+Turkana,ssp585,2021_2040,severe,dry+heat,334862,498862,67.13
+Turkana,ssp585,2021_2040,severe,dry+heat+wet,0,498862,0
+Turkana,ssp585,2021_2040,severe,dry+wet,0,498862,0
+Turkana,ssp585,2021_2040,severe,heat,3357,498862,0.67
+Turkana,ssp585,2021_2040,severe,heat+wet,0,498862,0
+Turkana,ssp585,2021_2040,severe,no hazard,707,498862,0.14
+Turkana,ssp585,2021_2040,severe,wet,0,498862,0
+Turkana,ssp585,2041_2060,severe,any,498546,498863,99.94
+Turkana,ssp585,2041_2060,severe,dry,38566,498863,7.73
+Turkana,ssp585,2041_2060,severe,dry+heat,456125,498863,91.43
+Turkana,ssp585,2041_2060,severe,dry+heat+wet,0,498863,0
+Turkana,ssp585,2041_2060,severe,dry+wet,0,498863,0
+Turkana,ssp585,2041_2060,severe,heat,3855,498863,0.77
+Turkana,ssp585,2041_2060,severe,heat+wet,0,498863,0
+Turkana,ssp585,2041_2060,severe,no hazard,317,498863,0.06
+Turkana,ssp585,2041_2060,severe,wet,0,498863,0
+Uasin Gishu,historic,historic,severe,any,1248983,18478980,6.76
+Uasin Gishu,historic,historic,severe,dry,1234016,18478980,6.68
+Uasin Gishu,historic,historic,severe,dry+heat,0,18478980,0
+Uasin Gishu,historic,historic,severe,dry+heat+wet,0,18478980,0
+Uasin Gishu,historic,historic,severe,dry+wet,0,18478980,0
+Uasin Gishu,historic,historic,severe,heat,0,18478980,0
+Uasin Gishu,historic,historic,severe,heat+wet,0,18478980,0
+Uasin Gishu,historic,historic,severe,no hazard,17229997,18478980,93.24
+Uasin Gishu,historic,historic,severe,wet,14967,18478980,0.08
+Uasin Gishu,ssp245,2021_2040,severe,any,738982,18478980,4
+Uasin Gishu,ssp245,2021_2040,severe,dry,715563,18478980,3.87
+Uasin Gishu,ssp245,2021_2040,severe,dry+heat,0,18478980,0
+Uasin Gishu,ssp245,2021_2040,severe,dry+heat+wet,0,18478980,0
+Uasin Gishu,ssp245,2021_2040,severe,dry+wet,0,18478980,0
+Uasin Gishu,ssp245,2021_2040,severe,heat,0,18478980,0
+Uasin Gishu,ssp245,2021_2040,severe,heat+wet,0,18478980,0
+Uasin Gishu,ssp245,2021_2040,severe,no hazard,17739998,18478980,96
+Uasin Gishu,ssp245,2021_2040,severe,wet,23419,18478980,0.13
+Uasin Gishu,ssp245,2041_2060,severe,any,1004469,18478980,5.44
+Uasin Gishu,ssp245,2041_2060,severe,dry,989502,18478980,5.35
+Uasin Gishu,ssp245,2041_2060,severe,dry+heat,0,18478980,0
+Uasin Gishu,ssp245,2041_2060,severe,dry+heat+wet,0,18478980,0
+Uasin Gishu,ssp245,2041_2060,severe,dry+wet,0,18478980,0
+Uasin Gishu,ssp245,2041_2060,severe,heat,0,18478980,0
+Uasin Gishu,ssp245,2041_2060,severe,heat+wet,0,18478980,0
+Uasin Gishu,ssp245,2041_2060,severe,no hazard,17474511,18478980,94.56
+Uasin Gishu,ssp245,2041_2060,severe,wet,14967,18478980,0.08
+Uasin Gishu,ssp585,2021_2040,severe,any,1184047,18478980,6.41
+Uasin Gishu,ssp585,2021_2040,severe,dry,1169080,18478980,6.33
+Uasin Gishu,ssp585,2021_2040,severe,dry+heat,0,18478980,0
+Uasin Gishu,ssp585,2021_2040,severe,dry+heat+wet,0,18478980,0
+Uasin Gishu,ssp585,2021_2040,severe,dry+wet,0,18478980,0
+Uasin Gishu,ssp585,2021_2040,severe,heat,0,18478980,0
+Uasin Gishu,ssp585,2021_2040,severe,heat+wet,0,18478980,0
+Uasin Gishu,ssp585,2021_2040,severe,no hazard,17294933,18478980,93.59
+Uasin Gishu,ssp585,2021_2040,severe,wet,14967,18478980,0.08
+Uasin Gishu,ssp585,2041_2060,severe,any,975707,18478980,5.28
+Uasin Gishu,ssp585,2041_2060,severe,dry,959212,18478980,5.19
+Uasin Gishu,ssp585,2041_2060,severe,dry+heat,0,18478980,0
+Uasin Gishu,ssp585,2041_2060,severe,dry+heat+wet,0,18478980,0
+Uasin Gishu,ssp585,2041_2060,severe,dry+wet,0,18478980,0
+Uasin Gishu,ssp585,2041_2060,severe,heat,0,18478980,0
+Uasin Gishu,ssp585,2041_2060,severe,heat+wet,0,18478980,0
+Uasin Gishu,ssp585,2041_2060,severe,no hazard,17503273,18478980,94.72
+Uasin Gishu,ssp585,2041_2060,severe,wet,16495,18478980,0.09
+Vihiga,historic,historic,severe,any,115882,4592309,2.52
+Vihiga,historic,historic,severe,dry,832,4592309,0.02
+Vihiga,historic,historic,severe,dry+heat,0,4592309,0
+Vihiga,historic,historic,severe,dry+heat+wet,0,4592309,0
+Vihiga,historic,historic,severe,dry+wet,0,4592309,0
+Vihiga,historic,historic,severe,heat,0,4592309,0
+Vihiga,historic,historic,severe,heat+wet,0,4592309,0
+Vihiga,historic,historic,severe,no hazard,4476427,4592309,97.48
+Vihiga,historic,historic,severe,wet,115050,4592309,2.51
+Vihiga,ssp245,2021_2040,severe,any,272221,4592309,5.93
+Vihiga,ssp245,2021_2040,severe,dry,0,4592309,0
+Vihiga,ssp245,2021_2040,severe,dry+heat,0,4592309,0
+Vihiga,ssp245,2021_2040,severe,dry+heat+wet,0,4592309,0
+Vihiga,ssp245,2021_2040,severe,dry+wet,0,4592309,0
+Vihiga,ssp245,2021_2040,severe,heat,0,4592309,0
+Vihiga,ssp245,2021_2040,severe,heat+wet,0,4592309,0
+Vihiga,ssp245,2021_2040,severe,no hazard,4320088,4592309,94.07
+Vihiga,ssp245,2021_2040,severe,wet,272221,4592309,5.93
+Vihiga,ssp245,2041_2060,severe,any,227098,4592309,4.95
+Vihiga,ssp245,2041_2060,severe,dry,0,4592309,0
+Vihiga,ssp245,2041_2060,severe,dry+heat,0,4592309,0
+Vihiga,ssp245,2041_2060,severe,dry+heat+wet,0,4592309,0
+Vihiga,ssp245,2041_2060,severe,dry+wet,0,4592309,0
+Vihiga,ssp245,2041_2060,severe,heat,0,4592309,0
+Vihiga,ssp245,2041_2060,severe,heat+wet,0,4592309,0
+Vihiga,ssp245,2041_2060,severe,no hazard,4365211,4592309,95.05
+Vihiga,ssp245,2041_2060,severe,wet,227098,4592309,4.95
+Vihiga,ssp585,2021_2040,severe,any,236064,4592309,5.14
+Vihiga,ssp585,2021_2040,severe,dry,0,4592309,0
+Vihiga,ssp585,2021_2040,severe,dry+heat,0,4592309,0
+Vihiga,ssp585,2021_2040,severe,dry+heat+wet,0,4592309,0
+Vihiga,ssp585,2021_2040,severe,dry+wet,0,4592309,0
+Vihiga,ssp585,2021_2040,severe,heat,0,4592309,0
+Vihiga,ssp585,2021_2040,severe,heat+wet,0,4592309,0
+Vihiga,ssp585,2021_2040,severe,no hazard,4356245,4592309,94.86
+Vihiga,ssp585,2021_2040,severe,wet,236064,4592309,5.14
+Vihiga,ssp585,2041_2060,severe,any,256618,4592309,5.59
+Vihiga,ssp585,2041_2060,severe,dry,0,4592309,0
+Vihiga,ssp585,2041_2060,severe,dry+heat,0,4592309,0
+Vihiga,ssp585,2041_2060,severe,dry+heat+wet,0,4592309,0
+Vihiga,ssp585,2041_2060,severe,dry+wet,0,4592309,0
+Vihiga,ssp585,2041_2060,severe,heat,0,4592309,0
+Vihiga,ssp585,2041_2060,severe,heat+wet,0,4592309,0
+Vihiga,ssp585,2041_2060,severe,no hazard,4335691,4592309,94.41
+Vihiga,ssp585,2041_2060,severe,wet,256618,4592309,5.59
+Wajir,historic,historic,severe,any,610291,610291,100
+Wajir,historic,historic,severe,dry,453526,610291,74.31
+Wajir,historic,historic,severe,dry+heat,156765,610291,25.69
+Wajir,historic,historic,severe,dry+heat+wet,0,610291,0
+Wajir,historic,historic,severe,dry+wet,0,610291,0
+Wajir,historic,historic,severe,heat,0,610291,0
+Wajir,historic,historic,severe,heat+wet,0,610291,0
+Wajir,historic,historic,severe,no hazard,0,610291,0
+Wajir,historic,historic,severe,wet,0,610291,0
+Wajir,ssp245,2021_2040,severe,any,610291,610291,100
+Wajir,ssp245,2021_2040,severe,dry,440526,610291,72.18
+Wajir,ssp245,2021_2040,severe,dry+heat,169765,610291,27.82
+Wajir,ssp245,2021_2040,severe,dry+heat+wet,0,610291,0
+Wajir,ssp245,2021_2040,severe,dry+wet,0,610291,0
+Wajir,ssp245,2021_2040,severe,heat,0,610291,0
+Wajir,ssp245,2021_2040,severe,heat+wet,0,610291,0
+Wajir,ssp245,2021_2040,severe,no hazard,0,610291,0
+Wajir,ssp245,2021_2040,severe,wet,0,610291,0
+Wajir,ssp245,2041_2060,severe,any,610291,610291,100
+Wajir,ssp245,2041_2060,severe,dry,408724,610291,66.97
+Wajir,ssp245,2041_2060,severe,dry+heat,201567,610291,33.03
+Wajir,ssp245,2041_2060,severe,dry+heat+wet,0,610291,0
+Wajir,ssp245,2041_2060,severe,dry+wet,0,610291,0
+Wajir,ssp245,2041_2060,severe,heat,0,610291,0
+Wajir,ssp245,2041_2060,severe,heat+wet,0,610291,0
+Wajir,ssp245,2041_2060,severe,no hazard,0,610291,0
+Wajir,ssp245,2041_2060,severe,wet,0,610291,0
+Wajir,ssp585,2021_2040,severe,any,610291,610291,100
+Wajir,ssp585,2021_2040,severe,dry,436551,610291,71.53
+Wajir,ssp585,2021_2040,severe,dry+heat,173740,610291,28.47
+Wajir,ssp585,2021_2040,severe,dry+heat+wet,0,610291,0
+Wajir,ssp585,2021_2040,severe,dry+wet,0,610291,0
+Wajir,ssp585,2021_2040,severe,heat,0,610291,0
+Wajir,ssp585,2021_2040,severe,heat+wet,0,610291,0
+Wajir,ssp585,2021_2040,severe,no hazard,0,610291,0
+Wajir,ssp585,2021_2040,severe,wet,0,610291,0
+Wajir,ssp585,2041_2060,severe,any,610291,610291,100
+Wajir,ssp585,2041_2060,severe,dry,348610,610291,57.12
+Wajir,ssp585,2041_2060,severe,dry+heat,261681,610291,42.88
+Wajir,ssp585,2041_2060,severe,dry+heat+wet,0,610291,0
+Wajir,ssp585,2041_2060,severe,dry+wet,0,610291,0
+Wajir,ssp585,2041_2060,severe,heat,0,610291,0
+Wajir,ssp585,2041_2060,severe,heat+wet,0,610291,0
+Wajir,ssp585,2041_2060,severe,no hazard,0,610291,0
+Wajir,ssp585,2041_2060,severe,wet,0,610291,0
+West Pokot,historic,historic,severe,any,3121696,7020258,44.47
+West Pokot,historic,historic,severe,dry,3121696,7020258,44.47
+West Pokot,historic,historic,severe,dry+heat,0,7020258,0
+West Pokot,historic,historic,severe,dry+heat+wet,0,7020258,0
+West Pokot,historic,historic,severe,dry+wet,0,7020258,0
+West Pokot,historic,historic,severe,heat,0,7020258,0
+West Pokot,historic,historic,severe,heat+wet,0,7020258,0
+West Pokot,historic,historic,severe,no hazard,3898562,7020258,55.53
+West Pokot,historic,historic,severe,wet,0,7020258,0
+West Pokot,ssp245,2021_2040,severe,any,2754086,7020258,39.23
+West Pokot,ssp245,2021_2040,severe,dry,2753576,7020258,39.22
+West Pokot,ssp245,2021_2040,severe,dry+heat,510,7020258,0.01
+West Pokot,ssp245,2021_2040,severe,dry+heat+wet,0,7020258,0
+West Pokot,ssp245,2021_2040,severe,dry+wet,0,7020258,0
+West Pokot,ssp245,2021_2040,severe,heat,0,7020258,0
+West Pokot,ssp245,2021_2040,severe,heat+wet,0,7020258,0
+West Pokot,ssp245,2021_2040,severe,no hazard,4266172,7020258,60.77
+West Pokot,ssp245,2021_2040,severe,wet,0,7020258,0
+West Pokot,ssp245,2041_2060,severe,any,3015476,7020259,42.95
+West Pokot,ssp245,2041_2060,severe,dry,2993130,7020259,42.64
+West Pokot,ssp245,2041_2060,severe,dry+heat,22347,7020259,0.32
+West Pokot,ssp245,2041_2060,severe,dry+heat+wet,0,7020259,0
+West Pokot,ssp245,2041_2060,severe,dry+wet,0,7020259,0
+West Pokot,ssp245,2041_2060,severe,heat,0,7020259,0
+West Pokot,ssp245,2041_2060,severe,heat+wet,0,7020259,0
+West Pokot,ssp245,2041_2060,severe,no hazard,4004782,7020259,57.05
+West Pokot,ssp245,2041_2060,severe,wet,0,7020259,0
+West Pokot,ssp585,2021_2040,severe,any,3034622,7020258,43.23
+West Pokot,ssp585,2021_2040,severe,dry,3032504,7020258,43.2
+West Pokot,ssp585,2021_2040,severe,dry+heat,2118,7020258,0.03
+West Pokot,ssp585,2021_2040,severe,dry+heat+wet,0,7020258,0
+West Pokot,ssp585,2021_2040,severe,dry+wet,0,7020258,0
+West Pokot,ssp585,2021_2040,severe,heat,0,7020258,0
+West Pokot,ssp585,2021_2040,severe,heat+wet,0,7020258,0
+West Pokot,ssp585,2021_2040,severe,no hazard,3985636,7020258,56.77
+West Pokot,ssp585,2021_2040,severe,wet,0,7020258,0
+West Pokot,ssp585,2041_2060,severe,any,2871949,7020258,40.91
+West Pokot,ssp585,2041_2060,severe,dry,2785294,7020258,39.68
+West Pokot,ssp585,2041_2060,severe,dry+heat,86655,7020258,1.23
+West Pokot,ssp585,2041_2060,severe,dry+heat+wet,0,7020258,0
+West Pokot,ssp585,2041_2060,severe,dry+wet,0,7020258,0
+West Pokot,ssp585,2041_2060,severe,heat,0,7020258,0
+West Pokot,ssp585,2041_2060,severe,heat+wet,0,7020258,0
+West Pokot,ssp585,2041_2060,severe,no hazard,4148309,7020258,59.09
+West Pokot,ssp585,2041_2060,severe,wet,0,7020258,0

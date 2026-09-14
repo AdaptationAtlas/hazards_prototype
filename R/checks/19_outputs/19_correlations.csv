@@ -1,0 +1,7 @@
+pair,spearman,pearson,n
+exposure any% vs GYGA rainfed % change,-0.14,-0.14,43
+exposure any% vs GYGA rainfed abs change (t/ha),0.34,0.24,43
+exposure dry% vs GYGA rainfed % change,-0.16,-0.14,43
+d exposure (pp) vs GYGA rainfed % change,-0.13,-0.08,43
+exposure any% vs GYGA BASELINE Yw,-0.91,-0.9,43
+exposure any% vs GYGA IRRIGATED % change,-0.65,-0.62,43

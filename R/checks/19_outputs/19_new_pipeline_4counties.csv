@@ -1,0 +1,9 @@
+admin1_name,scenario,timeframe,den_all_M,den_rfall_M,any,dry,dry+heat,dry+heat+wet,dry+wet,heat,heat+wet,wet
+Bungoma,historic,historic,107.4,108.2,2.5,0,0,0,0,0,0,2.5
+Bungoma,ssp585,2041-2060,107.4,108.2,8.2,0.1,0,0,0,0,0,8.1
+Meru,historic,historic,0.7,1.8,86,70.1,15.9,0,0,0,0,0
+Meru,ssp585,2041-2060,0.7,1.8,85.9,59.4,25.6,0,0,0.9,0,0
+Nandi,historic,historic,9.3,30,2,0,0,0,0,0,0,2
+Nandi,ssp585,2041-2060,9.3,30,5.3,0.4,0,0,0,0,0,4.9
+Narok,historic,historic,82.8,86.3,63.3,63.3,0,0,0,0,0,0
+Narok,ssp585,2041-2060,82.8,86.3,60.1,60.1,0,0,0,0,0,0
