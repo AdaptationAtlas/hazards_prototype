@@ -1,6 +1,6 @@
 # Issue #19 — exposure vs GYGA reproduction (Kenya maize)
 
-Generated 2026-09-14 16:27 EAT by R/checks/19_exposure_vs_gyga_kenya.R
+Generated 2026-09-15 08:33 EAT by R/checks/19_exposure_vs_gyga_kenya.R
 
 ## V1 exposure — % of maize VoP exposed, severe (live notebook file)
 
@@ -145,6 +145,26 @@ V1 counties without a GYGA row: Nyandarua, Nyeri, Mombasa, Lamu. Missing yields 
 |---|---|---|---|
 | 9.01 | -9.9 | Nyamira, Kisumu, Vihiga | 3 |
 | 3.98 | -17.1 | Kiambu, Kirinyaga | 2 |
+
+## GYGA signal decomposition — temperature vs water
+
+n = 43 counties. Counties where the water term is positive: 30. The county-to-county spread of the headline number is carried almost entirely by the water term, i.e. by projected rainfall.
+
+| component | min | median | max | sd_across_counties | cor_with_headline |
+|---|---|---|---|---|---|
+| temperature (irrigated % change) | -16.5 | -11.4 | -7 | 1.92 | 0.23 |
+| water (rainfed - irrigated, pp) | -5.8 | 2 | 37.7 | 9.05 | 0.98 |
+| headline (rainfed % change) | -18.3 | -9.3 | 24.1 | 9.29 | 1 |
+
+## Cultivar invariance of the temperature penalty (Kenya maize, SSP585 2050)
+
+`late` = +12 % thermal time, `early` = -12 %. The relative penalty is flat across the range, so cultivar-duration adaptation does not address it. Consistent with a proportional phenological acceleration but not diagnostic of the mechanism.
+
+| cultivar | counties | irrigated_pct_change | rainfed_pct_change | irrigated_yield_2050 |
+|---|---|---|---|---|
+| late | 44 | -11.82 | -7.96 | 9.12 |
+| current | 44 | -11.77 | -6.39 | 8.75 |
+| early | 44 | -11.6 | -5.81 | 8.37 |
 
 ## 2025-07 bake — % of maize VoP exposed (ENSEMBLE mean, severe, annual, usd15; denominator = harmonized usd15 tech=all)
 

@@ -1,0 +1,4 @@
+component,min,median,max,sd_across_counties,cor_with_headline
+temperature (irrigated % change),-16.5,-11.4,-7,1.92,0.23
+"water (rainfed - irrigated, pp)",-5.8,2,37.7,9.05,0.98
+headline (rainfed % change),-18.3,-9.3,24.1,9.29,1

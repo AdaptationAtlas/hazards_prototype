@@ -227,6 +227,43 @@ if (!is.null(gy)) {
   log_msg("Kenya VoP-weighted maize exposure: ", paste(kw$scenario, kw$vop_weighted_exposure_pct, collapse = " | "))
   dup <- jj[, .(counties = paste(admin1_name, collapse = ", "), n = .N), by = .(yw_base, yw_pct)][n > 1]
   add_md("GYGA bit-identical county clusters", dup)
+
+  # ---- 3b. decompose the GYGA signal into temperature and water -----------
+  # The irrigated run removes water limitation, so yield_irr_rlt_change isolates
+  # the temperature response (plus a small CO2 term, weak for maize as a C4 crop).
+  # rainfed - irrigated then approximates the contribution of projected rainfall.
+  log_msg("== 3b. decompose GYGA signal: temperature vs water ==")
+  dec <- copy(jj)[, water_pp := yw_pct - irr_pct]
+  comp <- data.table(
+    component = c("temperature (irrigated % change)", "water (rainfed - irrigated, pp)", "headline (rainfed % change)"),
+    min = round(c(min(dec$irr_pct), min(dec$water_pp), min(dec$yw_pct)), 1),
+    median = round(c(median(dec$irr_pct), median(dec$water_pp), median(dec$yw_pct)), 1),
+    max = round(c(max(dec$irr_pct), max(dec$water_pp), max(dec$yw_pct)), 1),
+    sd_across_counties = round(c(sd(dec$irr_pct), sd(dec$water_pp), sd(dec$yw_pct)), 2),
+    cor_with_headline = round(c(cor(dec$irr_pct, dec$yw_pct), cor(dec$water_pp, dec$yw_pct), 1), 2))
+  fwrite(comp, file.path(out_dir, "19_gyga_signal_decomposition.csv"))
+  add_md("GYGA signal decomposition — temperature vs water", comp,
+         note = paste0("n = ", nrow(dec), " counties. Counties where the water term is positive: ",
+                       sum(dec$water_pp > 0), ". The county-to-county spread of the headline number is carried",
+                       " almost entirely by the water term, i.e. by projected rainfall."))
+  print(comp)
+  fwrite(dec[order(-water_pp), .(admin1_name, exp_2050, temp_effect = irr_pct, water_effect = round(water_pp, 1), headline_rfd = yw_pct)],
+         file.path(out_dir, "19_gyga_decomposition_by_county.csv"))
+
+  # Cultivar invariance: GYGA ships +/-12% thermal-time cultivars. If the temperature
+  # penalty were a cycle-shortening effect a longer-cycle cultivar should recover it.
+  if ("cultivar" %in% names(gy)) {
+    cv <- gy[ssp == "SSP585" & horizon == 2050 & cycle == "both",
+             .(counties = .N, irrigated_pct_change = round(mean(yield_irr_rlt_change, na.rm = TRUE), 2),
+               rainfed_pct_change = round(mean(yield_rfd_rlt_change, na.rm = TRUE), 2),
+               irrigated_yield_2050 = round(mean(yield_irr_avg, na.rm = TRUE), 2)), by = cultivar][order(irrigated_pct_change)]
+    fwrite(cv, file.path(out_dir, "19_gyga_cultivar_invariance.csv"))
+    add_md("Cultivar invariance of the temperature penalty (Kenya maize, SSP585 2050)", cv,
+           note = paste("`late` = +12 % thermal time, `early` = -12 %. The relative penalty is flat across the range,",
+                        "so cultivar-duration adaptation does not address it. Consistent with a proportional phenological",
+                        "acceleration but not diagnostic of the mechanism."))
+    print(cv)
+  }
 }
 
 # ------------------------------------ 4. 2025-07 pipeline bake (S3) -------
