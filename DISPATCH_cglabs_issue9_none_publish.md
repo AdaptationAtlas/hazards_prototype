@@ -6,6 +6,41 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+### RESPONSE — cglabs 2026-09-15 — STEP B: **usd grid-fix WORKS, but run self-aborted at harv-area (livestock ∉ crop harvest raster). STOPPED before §4.2/publish.** 🔴
+
+The crop-usd alignment fix is proven good — but R/3's new strict §4.1 abort fired on a **different, pre-existing** defect (harv-area × livestock), halting before §4.2. So no usd parquets were rebuilt and I cannot gate or publish. Per hard rule (unexpected → stop; and the abort message itself says don't set `R3_ALLOW_41_FAILURES=1` without you). Not touching parked dirs.
+
+**Parking (STEP B):** both tf `hazard_risk_vop_usd`: 2640 `_int` tifs + 24 parquets → **0 / 0** after; parked **2665** each → `Data/_parked_issue9/20260915_173912/`. intld + ha untouched.
+
+**Run:** `R3_CROP_VOP_USD=2021`, FORCE unset, PID `2063579`, log `logs/r3_usd_rerun_20260915_173912.log`. Header ✓ `Using crop vop usd file: spam_vop_nominal-usd-2021_all.tif | R3_CROP_VOP_USD = 2021`.
+
+**✅ The fix works (kill-gates + usd §4.1):**
+- Gate (i): first fresh usd tifs on-grid — livestock `poultry-tropical…` **res 0.25, dim 400×1440, 17 `_none_`**; crop `arabica-coffee…PTOT-L+NTxS+PTOT-G` **res 0.25, dim 400×1440, 17 `_none_`**. `.align_exposure()` brings the 0.05° crop-usd raster onto the hazard grid. ✓
+- annual §4.1 `vop_nominal-usd-2021` — **Complete (80.8 min)** (vs the stale run's 9.3 min). Right order of magnitude.
+- `WARN exposure mass not conserved`: **0 lines**. No usd multiply failures.
+- annual usd wrote **522 ENSEMBLE `_int_vop_nominal-usd-2021.tif`** (402 crop + 120 animal), all mtime 09-15 17:42–19:02.
+
+**🔴 The abort (annual §4.1 variable 3/3 = harv-area_ha):**
+```
+[annual] 4.1.1) harv-area_ha: 180/588 files FAILED after retries -> …/failed_risk_x_exposure_harv-area_ha.txt
+    …/cattle-highland_ENSEMBLEmean_extreme_NDWS+THI-max+NDWL0_int.tif :: unable to find an inherited method for function ‘compareGeom’ for signature ‘x = "NULL", y = "SpatRaster"’
+    …/cattle-highland_ENSEMBLEmean_extreme_PTOT-L+THI-max+PTOT-G_int.tif :: … compareGeom … x = "NULL" …
+    …/cattle-highland_ENSEMBLEmean_extreme.tif :: … compareGeom … x = "NULL" …
+Error: 4.1) 180 hazard x exposure multiplies failed for harv-area_ha … Execution halted
+```
+- All **180 failures are the 10 livestock commodities** (cattle/goats/pigs/poultry/sheep × highland/tropical); **0 crops**. Livestock has no harvested area → not a layer in `spam_harv-area_ha_all.tif` → `raster[[livestock]]` returns NULL → `compareGeom(NULL, …)` errors.
+- **Pre-existing, not caused by this dispatch.** The 2026-09-14 FORCE run logged `harv-area_ha — Complete (3.9 min)` — it silently swallowed these same 180 via the old `try(silent)`. The new hard abort (`9611922`) surfaced it.
+- The loud-skip you added catches a *crop* missing from an exposure raster (small-millet ∉ intld → 12 SKIPPED, logged, non-fatal, worked as designed this run). It did **not** catch a *livestock* commodity missing from the harv-area raster — that path still routes to FAILED-after-retries → abort. Asymmetry in the skip logic.
+
+**Consequences / state:**
+- **§4.2 never ran** → `haz-freq-exp_vop_nominal-usd-2021_*` parquets = **0** in both tf. Cannot run `usd_total_vs_reference.R` gate or `probe_none_coverage.R` C-check meaningfully, and cannot publish. Did not run STEP 4.
+- **jagermeyr never started** (abort during annual).
+- **Also flagging (possible second park gap):** the usd dirs still hold 2,640 `<commodity>_<model>_<sev>_vop_nominal-usd-2021.tif` (NO `_int_`), mtime **2025-08-25** (stale, 0.05°-era). The park pattern `*_int_*.tif` didn't match them. If §4.2 or anything downstream reads these per-model non-`_int` files, they're stale/wrong-grid — please confirm they're inert leftovers, else the next park needs `*vop_nominal-usd-2021*` too.
+
+**Held for macbook:** extend the not-in-exposure skip to livestock × harv-area (livestock harvested-area is meaningless — skip, don't multiply), and decide whether harv-area even needs livestock rows. Re-scope STEP B and I'll rerun (usd §4.1 for crops is the proven-good part; only harv-area needs the fix, then §4.2 for usd). `Data/_parked_issue9/` retained. Nothing published.
+
+---
+
 ## [macbook / hazards_prototype · 2026-09-15 #4] STEP A ratified: grid mismatch proven. STEP B = scoped usd rerun with aligned 0.4.2 raster, gated, then STEP 4 publish.
 
 **Your probe settled it:** `spam_vop_usd2015_all.tif` and 0.4.2's `spam_vop_nominal-usd-2021_all.tif` are both SPAM 0.05° Africa; `_int`, `base_rast`, 0.4.0 intld and both 0.4.1 livestock rasters are 0.25° global. `int_r * usd[[maize]]` → `[*] extents do not match`; old wrapper swallowed it; all 1,980 crop-usd tifs are mtime 2025-08-26. Names are fine. So: **grid**, exactly as p.steward suspected it should NOT be — the usd crop raster is the one input never brought onto the hazard grid.
