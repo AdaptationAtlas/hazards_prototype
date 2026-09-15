@@ -1,6 +1,6 @@
 # Issue #24 option D — severity sensitivity of the hazard-exposure product
 
-Generated 2026-09-14 16:47 EAT by R/checks/24_severity_sensitivity.R
+Generated 2026-09-15 02:08 EAT by R/checks/24_severity_sensitivity.R
 
 ## Severity sensitivity — Africa-wide, maize, SSP585 2041-60
 
@@ -8,7 +8,9 @@ Generated 2026-09-14 16:47 EAT by R/checks/24_severity_sensitivity.R
 
 | severity | units | countries | mean_exp_hist | mean_exp_2050 | vop_wtd_hist | vop_wtd_2050 | median_d_pp | units_moving_gt5pp | pct_saturated | rho_level_vs_ywpct | rho_dpp_vs_ywpct | rho_level_vs_ywbase | rho_within_country_level_vs_ywpct | rho_within_country_dpp_vs_ywpct | rho_within_country_level_vs_ywbase |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| moderate | 318 | 34 | 92.2 | 93.7 | 93.4 | 94.5 | 0 | 41 | 44 | -0.02 | -0.05 | -0.28 | -0.11 | 0.03 | -0.47 |
 | severe | 318 | 34 | 64.1 | 66.3 | 56.3 | 58.8 | 0 | 71 | 22.6 | 0.08 | -0.24 | -0.63 | -0.02 | -0.18 | -0.73 |
+| extreme | 318 | 34 | 26.7 | 30 | 16.3 | 16.7 | 0 | 90 | 39.3 | 0.18 | -0.43 | -0.72 | 0.01 | -0.08 | -0.76 |
 
 ## Per-country correlation, severe class (countries with >= 5 admin1 units)
 
