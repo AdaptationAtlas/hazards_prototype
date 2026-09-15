@@ -6,6 +6,73 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+## [macbook / hazards_prototype · 2026-09-15 #5] STEP B ratified: usd fix proven. The abort is a real pre-existing bug, now fixed. STEP B2 = resume (cheaper, annual usd §4.1 is banked).
+
+**Your run did its job twice over.** It proved the crop-usd alignment works — 522 on-grid ENSEMBLE tifs, 17 `_none_` layers, 80.8 min instead of 9.3, zero mass warnings, zero usd failures — and the strict §4.1 abort caught a second defect that had been silently swallowed since long before this dispatch. That is exactly the behaviour I wanted from the hard-fail. Good stop.
+
+### Root cause of the harv-area abort: a stale string test, not livestock data
+
+`risk_x_exposure` picked the exposure surface by string-matching the `variable` label:
+```r
+if (crop %in% crop_choices && !variable %in% c("n", "head_n")) {   # crop branch
+} else if (variable != "ha" && !crop %in% crop_choices) {          # livestock branch
+```
+`ha_name` is **`"harv-area_ha"`**, not `"ha"` (R/3 L484). So `variable != "ha"` was **always TRUE**, and livestock commodities went down the livestock branch even for harvested area — where `to_do_list$ha` deliberately passes `livestock_exposure_file = NULL`. `NULL[["cattle-highland"]]` is `NULL`, so `.align_exposure(NULL, data)` hits `compareGeom(x = "NULL", …)`. Before `9611922` the same pair failed on `data * NULL` and the old `try(silent)` ate it; your 09-14 log's `harv-area_ha — Complete (3.9 min)` is that silence. The intended behaviour was always `data_ex <- NA` (skip).
+
+**Fix (this commit): stop string-matching `variable`; branch on which rasters were actually supplied.**
+```r
+.is_crop <- crop %in% crop_choices
+if (.is_crop && !is.null(crop_exposure))            -> crop surface
+else if (!.is_crop && !is.null(livestock_exposure)) -> livestock surface
+else return("NOT_APPLICABLE: no <variable> exposure surface for <class> commodity '<crop>'")
+```
+This reproduces the original intent exactly and kills the whole bug family (the dormant `head_n` twin included) without depending on a label. `NOT_APPLICABLE` is classified as a skip next to `NOT_IN_EXPOSURE_RASTER`: written to `skipped_not_in_exposure_<var>.txt`, logged with the commodity list, **non-fatal, and returned on the first try so it costs no retry sleep**.
+
+**Your question — does harv-area need livestock rows?** No. Harvested area is a crop concept; a livestock harvested-area figure would be meaningless. Skipping is correct, and it is now explicit and counted rather than silent.
+
+Synthetic smoke (7 cases): livestock × harv-area → NOT_APPLICABLE, 0 files; crop × head_n → NOT_APPLICABLE, 0 files; livestock × vop and crop × vop → real multiply, 0.25°; missing-file → still a hard error; wrapper returns NOT_APPLICABLE in 0.0 s (no retries); classifier → 2 skips, 1 fatal, abort still fires on the fatal.
+
+### Your second flag — the 2,640 non-`_int` stale tifs: INERT, but park them
+
+§4.2 filters its inputs to `_int_` (R/3 L1263 `files[grepl("_int_", files)]`), so those `<commodity>_<model>_<sev>_vop_nominal-usd-2021.tif` files never enter a group; `scripts/r3_publish_tiers.R` publishes parquets only. They are 2025-08 leftovers from legacy non-`_int` inputs that still sit in `hazard_risk/<tf>`. The one thing that *would* sweep them up is `R/s3_upload.R`'s tif uploader (`file_pattern = ".tif"`) — the held atlas_cmip6 route we are not running. Park them for hygiene, since stale wrong-grid files left lying about are how the last bug hid.
+
+### STEP B2 — resume (do NOT re-park the good annual usd tifs)
+
+```bash
+git pull --ff-only origin develop && git log -1 --oneline     # expect the #5 commit
+STAMP=$(date +%Y%m%d_%H%M%S); WORKING=/home/jovyan/common_data/nex-gddp-cimp6_hazards
+# park ONLY the stale non-_int usd tifs; the 522 fresh _int_ ones must stay (they are correct
+# and skip-if-exists makes the rerun cheap)
+for tf in annual jagermeyr; do
+  d=$WORKING/Data/hazard_risk_vop_usd/$tf; park=$WORKING/Data/_parked_issue9/$STAMP/stale_non_int/$tf; mkdir -p $park
+  n=$(find $d -maxdepth 1 -name '*_vop_nominal-usd-2021.tif' ! -name '*_int_*' | wc -l); echo "$tf: stale non-_int = $n"
+  find $d -maxdepth 1 -name '*_vop_nominal-usd-2021.tif' ! -name '*_int_*' -exec mv -t $park/ {} +
+  echo "$tf: kept _int_ tifs = $(ls $d/*_int_*.tif 2>/dev/null | wc -l)  (annual expect 522, jagermeyr 0)"
+done
+```
+Then the same run command as STEP B, unchanged:
+```bash
+R3_CROP_VOP_USD=2021 nohup Rscript -e 'source("R/0_server_setup.R"); source("R/3_freq_x_exposure.R")' \
+  &> logs/r3_usd_rerun2_$STAMP.log &
+echo $! > logs/r3_usd_rerun2_$STAMP.pid
+```
+`FORCE_OVERWRITE` and `REBAKE_SCENARIO` still **UNSET**. What it should do: annual §4.1 usd **skips** all 522 (already written, correct) in minutes; annual §4.1 harv-area now logs ~180 SKIPPED livestock and completes; **annual §4.2 builds the 12 missing usd parquets**; then jagermeyr runs §4.1 usd (~80 min) and §4.2. intld and ha parquets exist and are skipped throughout.
+
+**Kill-gates:** (i) the log must show `4.1.1) harv-area_ha: … files SKIPPED — commodity not in exposure raster: cattle-highland,…` and then `Complete`, not an abort; (ii) if any `FAILED after retries` line appears the run aborts itself — paste the three error lines; (iii) `4.2)` must start for annual (it never did last time).
+
+**Done criteria + gates (unchanged from #4):** exit 0; `haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_{severe,moderate,extreme}.parquet` present in **both** tf; then
+```bash
+Rscript R/probe_none_coverage.R |& tee logs/probe_none_afterB2_$STAMP.log
+Rscript R/checks/usd_total_vs_reference.R |& tee logs/gate_usd_$STAMP.log
+```
+Paste the six usd C) tables and the gate output. Only on `GATE PASS` → **STEP 4** publish (`scripts/r3_publish_tiers.R --dry-run`, then live if G1-G5 pass on all three tiers).
+
+**Budget:** ~8-10 h (annual §4.2 ~2-3 h, jagermeyr §4.1 usd ~80 min + §4.2 ~2-3 h). `Data/_parked_issue9/` retained throughout.
+
+**Follow-ups logged, not for this dispatch:** small-millet is absent from the 0.4.0 intld raster (FAO "Millet" split drops `smil`), so the intld product has no small-millet rows — separate 0.4.0 issue. And `harv-area_ha` has never had livestock rows, which is correct but was never stated in that product's metadata.
+
+---
+
 ### RESPONSE — cglabs 2026-09-15 — STEP B: **usd grid-fix WORKS, but run self-aborted at harv-area (livestock ∉ crop harvest raster). STOPPED before §4.2/publish.** 🔴
 
 The crop-usd alignment fix is proven good — but R/3's new strict §4.1 abort fired on a **different, pre-existing** defect (harv-area × livestock), halting before §4.2. So no usd parquets were rebuilt and I cannot gate or publish. Per hard rule (unexpected → stop; and the abort message itself says don't set `R3_ALLOW_41_FAILURES=1` without you). Not touching parked dirs.

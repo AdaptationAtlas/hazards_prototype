@@ -194,17 +194,27 @@ risk_x_exposure <- function(file,
     }
 
     # vop
+    # Which exposure surface applies is decided by WHICH RASTERS WERE SUPPLIED, not by
+    # string-matching `variable`. The old tests (`variable != "ha"`,
+    # `!variable %in% c("n","head_n")`) were written against short tokens that the
+    # variable names have since outgrown: ha_name is "harv-area_ha", not "ha", so
+    # `variable != "ha"` was always TRUE and livestock commodities were sent down the
+    # livestock branch even for harvested area, where livestock_exposure_file is NULL
+    # -> livestock_exposure[[crop]] is NULL -> compareGeom(NULL, ...) (issue #9,
+    # 2026-09-15; previously swallowed by the §4.1 try(silent)). Livestock have no
+    # harvested area and crops have no head count, so those pairs are NOT_APPLICABLE:
+    # returned as a classified skip, no retries, no output file.
     if (crop != "generic-crop") {
-      if (crop %in% crop_choices && !variable %in% c("n", "head_n")) {
+      .is_crop <- crop %in% crop_choices
+      if (.is_crop && !is.null(crop_exposure)) {
         exposure <- .align_exposure(crop_exposure[[crop]], data, paste(variable, crop))
         data_ex <- data * exposure
+      } else if (!.is_crop && !is.null(livestock_exposure)) {
+        exposure <- .align_exposure(livestock_exposure[[crop]], data, paste(variable, crop))
+        data_ex <- data * exposure
       } else {
-        if (variable != "ha" && !crop %in% crop_choices) {
-          exposure <- .align_exposure(livestock_exposure[[crop]], data, paste(variable, crop))
-          data_ex <- data * exposure
-        } else {
-          data_ex <- NA
-        }
+        return(sprintf("NOT_APPLICABLE: no %s exposure surface for %s commodity '%s'",
+                       variable, if (.is_crop) "crop" else "livestock", crop))
       }
 
       if (class(data_ex) == "SpatRaster") {
@@ -1041,6 +1051,7 @@ for (tx in seq_along(timeframe_choices)) {
         }
 
         last_err <- NA_character_
+        skip_msg <- NULL
         for (k in seq_len(max_tries)) {
           ok <- tryCatch(
             {
@@ -1051,7 +1062,7 @@ for (tx in seq_along(timeframe_choices)) {
               # closes, escaping the outer suppressWarnings(). Suppressing at
               # source keeps the log clean without losing real errors (errors
               # propagate through try() regardless of warning suppression).
-              suppressWarnings(
+              .res <- suppressWarnings(
                 risk_x_exposure(
                   file = f,
                   save_dir = save_dir,
@@ -1064,11 +1075,12 @@ for (tx in seq_along(timeframe_choices)) {
                   verbose = FALSE
                 )
               )
+              if (is.character(.res) && length(.res) == 1L && grepl("^NOT_APPLICABLE", .res)) skip_msg <- .res
               TRUE
             },
             error = function(e) { last_err <<- conditionMessage(e); FALSE }
           )
-          if (isTRUE(ok)) return(NULL)
+          if (isTRUE(ok)) return(if (is.null(skip_msg)) NULL else paste0(as.character(f), " :: ", skip_msg))
           Sys.sleep(sleep_sec)
         }
         # Failed after max_tries: return "<file> :: <error>" so the caller can log WHY.
@@ -1141,7 +1153,12 @@ for (tx in seq_along(timeframe_choices)) {
         # A commodity that simply is not a layer of the exposure raster (e.g. small-millet
         # absent from the 0.4.0 intld raster) is a COVERAGE GAP, not a runtime failure:
         # report it loudly, write the list, but do not abort the run.
-        .skip_mask <- grepl("NOT_IN_EXPOSURE_RASTER", failed_files, fixed = TRUE)
+        # Two classes of non-failure: a commodity absent from a supplied exposure raster
+        # (coverage gap, e.g. small-millet in the 0.4.0 intld raster) and a commodity
+        # class with no surface for this variable at all (livestock x harvested area).
+        # Both are reported and listed; neither aborts the run.
+        .skip_mask <- grepl("NOT_IN_EXPOSURE_RASTER", failed_files, fixed = TRUE) |
+          grepl("NOT_APPLICABLE", failed_files, fixed = TRUE)
         if (any(.skip_mask)) {
           skip_file <- file.path(to_do_list[[i]]$folder, paste0("skipped_not_in_exposure_", to_do_list[[i]]$variable, ".txt"))
           writeLines(failed_files[.skip_mask], skip_file)
