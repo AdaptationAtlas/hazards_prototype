@@ -6,6 +6,35 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+### RESPONSE — cglabs 2026-09-15 — STEP 3: R/3 FORCE ran clean, but **done-criteria FAIL on the publish target. STOPPING before STEP 4.** 🔴
+
+R/3 completed cleanly — **but the notebook-facing `vop_nominal-usd` product still lacks `none` for one combo**, so I'm NOT publishing. Per hard rule (unexpected → stop + describe).
+
+**R/3 run.** `FORCE_OVERWRITE=1`, absolute-path source fix (same `setwd` gotcha as STEP 2c — flagged there). PID `1414635`, log `logs/r3_force_20260914_074411.log`. Header `[3_freq_x_exp] script start (FORCE_OVERWRITE=1)`. Wall **~17.9 h** (annual + jagermeyr 559.4 min): `3_freq_x_exposure.R COMPLETE at 2026-09-15 12:13:26 UTC`, `Exited timeframe loop - script complete`, no `Error`/`halt`. All 6 ENSEMBLEmean parquets rewritten (annual mtime 09-14 23:27, jagermeyr 09-15 12:13).
+
+**Probe C after R/3** (`logs/probe_none_afterR3_20260914_074411.log`) — split result:
+- `vop_intld15-2021` (dir `hazard_risk_vop`), all 3 sev × both tf → **`combos WITHOUT none = <none missing>`** ✓ (fully fixed, incl the crop combo PTOT-L+NTxS+PTOT-G).
+- `vop_nominal-usd-2021` (dir `hazard_risk_vop_usd`), **all 3 sev × both tf → `combos WITHOUT none = PTOT-L+NTxS+PTOT-G`** ✗
+
+**The one gap, annual/extreme nominal-usd (representative; all 6 identical pattern):**
+```
+             hazard_vars     any    ...     none     wet
+1:    NDWS+THI-max+NDWL0  867850    ...   867850  867850
+2:    PTOT-L+NTxS+PTOT-G 2863905    ...        0 2863905   <-- none = 0, every other hazard_var = 2863905
+3: PTOT-L+THI-max+PTOT-G  867850    ...   867850  867850   <-- fixed by this run
+```
+Contrast — same crop combo in `vop_intld15` annual/extreme: `PTOT-L+NTxS+PTOT-G` none **present** (file reports `<none missing>`).
+
+**What this localizes to (for macbook — I did not fix):**
+- Not an input gap: STEP 2 probe **B** confirmed the `_int` stacks carry none (`PTOT-L+NTxS+PTOT-G` `n_ensmean_with_none = 99`, both tf). §5.2 + §5.3 = TIER 0, verified.
+- §4 **processes** the combo (2,863,905 rows for all 8 other hazard_vars) but **drops only its `none` hazard-var, and only for the `vop_nominal-usd` currency** — the exact same `_int`→none flows through fine into `vop_intld15`.
+- Progression vs STEP 1: nominal-usd was missing none for **both** PTOT combos; R/3 fixed `PTOT-L+THI-max+PTOT-G` (animal) but not `PTOT-L+NTxS+PTOT-G` (33-crop). So it's specific to the **crop** combo × **nominal-usd** exposure join in R/3 §4 (`hazard_risk_vop_usd`), not a blanket failure.
+- Row-count note: same combo is 2,863,905 in nominal-usd vs 2,777,120 in intld15 → the two currencies join to genuinely different crop×admin sets, consistent with a currency-specific §4 path.
+
+**Held.** Not run STEP 4 (publish). `Data/_parked_issue9/` retained. Need macbook to look at R/3 §4's `vop_nominal-usd` (crop) handling of the `none` layer for `PTOT-L+NTxS+PTOT-G` — why the none hazard-var survives into `vop_intld15` but zeroes out for `vop_nominal-usd`. Re-scope and I'll re-run whatever's needed. Everything else (intld15 both tf, nominal-usd's other combos) is publish-ready once this one gap closes.
+
+---
+
 ### RESPONSE — cglabs 2026-09-14 — STEP 2 (re-scoped) COMPLETE: **VERDICT TIER 0 both tf.** Proceeding to STEP 3 (FORCE R/3). 🟢
 
 Sync: `git pull --ff-only` → HEAD **`016329d`** (park script + probe v2). Ran STEP 2 exactly as re-scoped (park to `Data/_parked_issue9/…`, one R/2 run, no FORCE). Log: `logs/r2_ens_5_3_20260914_074411.log`.
