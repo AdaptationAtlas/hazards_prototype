@@ -6,6 +6,34 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+## [macbook / hazards_prototype · 2026-09-15 #3] STEP 3 stop ratified. Next = ONE read-only probe, then STOP and report. No rerun, no publish yet.
+
+**Your stop was right and your localisation is right:** same `_int` inputs carry `none` into `vop_intld15` but not into `vop_nominal-usd` for the 33-crop combo → the gap is inside R/3 §4.1's crop × usd exposure join, not upstream.
+
+**What I found from macbook (code + your logs), and what I could NOT verify without the node:**
+- §4.1's retry wrapper was `try(silent = TRUE)` ×3 → on failure it wrote `failed_risk_x_exposure_<var>.txt`, `warning()`ed and moved on. `write_cog` only runs on success, so a pre-existing older tif survives and §4.2 reads it as current. That is a silent-stale path regardless of WHY a multiply fails. Fixed in this commit: error text captured, §4.1 now `stop()`s if any file failed (`R3_ALLOW_41_FAILURES=1` to downgrade).
+- The crop usd exposure raster is still the S3-legacy `spam_vop_usd2015_all.tif` (R/3 L343; SPAM 0.05°, 33 crops, 2015 USD). Crop intld was repointed in July (ac0acab) to 0.4.0's base-grid output; usd was not. Livestock usd = 0.4.1 base-grid. Locally I proved terra errors on `data * exposure` when grids differ (`[*] extents do not match` / `number of rows and/or columns do not match`). **But p.steward's point stands: everything on the node should be on one grid, so I have NOT proven the grids differ there.** The alternative is a layer-name mismatch (`stop("Commodity … not found")`). Either is swallowed identically by the old wrapper.
+- Retracted: I earlier read the 2026-05-25 log's 12-second usd pass as failure evidence. That run had `FORCE_OVERWRITE=<unset>`, `overwrite4 = FALSE` → skip-if-exists. Not evidence.
+- Separate, older defect (flagged July, dispatch L201): the usd product mixes crop **2015 USD** with livestock **2021 nominal USD** under label `vop_nominal-usd21`. Fix is a repoint to 0.4.2's `spam_vop_nominal-usd-2021_all.tif`. Wired behind `R3_CROP_VOP_USD=2021`; **default unchanged (2015)** until the probe tells us the raster exists and matches.
+
+### STEP A — probe (read-only, ~1 min), then STOP and paste
+```bash
+git pull --ff-only origin develop && git log -1 --oneline     # expect the #3 commit
+Rscript R/probe_r3_usd_crop.R |& tee logs/probe_r3_usd_$(date +%Y%m%d_%H%M%S).log
+```
+It prints five sections. Paste all of it. What each settles:
+1. **GRIDS** — res/dims/extent of `base_rast`, one crop `_int`, one livestock `_int`, legacy usd2015, 0.4.0 intld-2021, 0.4.2 usd-2021 (if present), ha, both 0.4.1 livestock rasters. If legacy usd2015 res ≠ `_int` res → grid hypothesis confirmed. If equal → it is names or something else.
+2. **§4.1 OUTPUTS** — mtimes of the maize vs cattle-highland tifs in `hazard_risk_vop_usd` and `hazard_risk_vop`, crop-tif count by mtime day, and the `failed_risk_x_exposure_*.txt` line counts. Stale crop usd tifs = mtime before 2026-09-14 while livestock usd = 09-14/15.
+3. **LAYER NAMES** — `_int` crop names not present in each exposure raster.
+4. **LIVE REPRO** — `int_r * raster[[maize]]` for each raster, printing the exact error text. This is the decisive line.
+5. **R/3 LOG** — from `logs/r3_force_20260914_074411.log`: per-variable §4.1 elapsed, any "Some files failed" lines, whether usd printed `Using crop vop usd file: spam_vop_usd2015_all.tif`.
+
+**Then STOP.** Do not park, delete or rerun anything. macbook + p.steward decide the rerun scope and the usd vintage from the facts. `Data/_parked_issue9/` stays.
+
+**Also in this commit (`R/3_freq_x_exposure.R`, not yet exercised on node):** `.align_exposure()` — if an exposure layer's geometry differs from the `_int` stack it is aligned with `terra::aggregate(sum)` when exactly nested, else `resample(method="sum")`, and the mass inside the hazard extent is checked (log line if >1 % off). Same-grid input is returned untouched, so 0.4.0 / 0.4.1 paths are byte-identical to before. Synthetic smoke: same-grid dev 0 %, misaligned dev 0.01 %, nested exact, missing crop → hard error. This is insurance, not the diagnosis.
+
+---
+
 ### RESPONSE — cglabs 2026-09-15 — STEP 3: R/3 FORCE ran clean, but **done-criteria FAIL on the publish target. STOPPING before STEP 4.** 🔴
 
 R/3 completed cleanly — **but the notebook-facing `vop_nominal-usd` product still lacks `none` for one combo**, so I'm NOT publishing. Per hard rule (unexpected → stop + describe).

@@ -121,6 +121,35 @@ source(file.path(Sys.getenv("project_dir"), "R", "_helpers.R"))
 #' @seealso [future.apply::future_lapply()], [terra::rast()], [terra::writeRaster()]
 #' @export
 #'
+# Align an exposure layer to the hazard grid. The _int stacks are on base_rast
+# (0.25 deg on the nexgddp node); exposure rasters may arrive on their producer
+# grid (S3-legacy SPAM and 0.4.2 outputs are 0.05 deg). terra errors on
+# arithmetic between different geometries; until 2026-09 that error was swallowed
+# by the §4.1 retry wrapper and the stale pre-existing tif survived (issue #9,
+# nominal-usd crop combo without hazard='none'). method="sum" conserves the
+# exposure total (same convention as 0.4.0 L66 and §4.2). Same-grid input is
+# returned untouched, so existing base-grid producers (0.4.0, 0.4.1) are unaffected.
+.align_exposure <- function(x, ref, label = "") {
+  if (terra::compareGeom(x, ref, stopOnError = FALSE)) return(x)
+  # Conservation is judged on the exposure INSIDE the hazard extent: exposure outside
+  # it (e.g. SPAM cells beyond the Africa-cropped base_rast) is legitimately dropped.
+  before <- terra::global(terra::crop(x, terra::ext(ref), snap = "near"), "sum", na.rm = TRUE)$sum
+  # Exactly nested grids (integer factor, identical extent): terra::aggregate is
+  # exact, whereas GDAL-warp "sum" drops ~1.5 % at coincident cell edges (tested
+  # terra 1.9 / GDAL 3.8). Misaligned grids (the on-node SPAM 0.05 vs nexgddp
+  # 0.25 case): GDAL "sum" conserves interior mass to <0.01 %.
+  fx <- terra::res(ref) / terra::res(x)
+  nested <- all(abs(fx - round(fx)) < 1e-6) && all(round(fx) > 1) &&
+    isTRUE(all.equal(as.vector(terra::ext(x)), as.vector(terra::ext(ref)), tolerance = 1e-7))
+  x2 <- if (nested) terra::aggregate(x, fact = round(fx), fun = "sum", na.rm = TRUE) else terra::resample(x, ref, method = "sum")
+  if (!terra::compareGeom(x2, ref, stopOnError = FALSE)) x2 <- terra::resample(x2, ref, method = "sum")
+  after <- terra::global(x2, "sum", na.rm = TRUE)$sum
+  dev <- if (all(before > 0)) max(abs(after - before) / before) else 0
+  if (dev > 0.01) cat(sprintf("[%s] [3_freq_x_exp] [4.1] WARN exposure mass not conserved on resample (%s): max dev %.3f%%\n",
+                               format(Sys.time(), "%H:%M:%S"), label, 100 * dev))
+  x2
+}
+
 risk_x_exposure <- function(file,
                             save_dir,
                             variable,
@@ -167,11 +196,11 @@ risk_x_exposure <- function(file,
     # vop
     if (crop != "generic-crop") {
       if (crop %in% crop_choices && !variable %in% c("n", "head_n")) {
-        exposure <- crop_exposure[[crop]]
+        exposure <- .align_exposure(crop_exposure[[crop]], data, paste(variable, crop))
         data_ex <- data * exposure
       } else {
         if (variable != "ha" && !crop %in% crop_choices) {
-          exposure <- livestock_exposure[[crop]]
+          exposure <- .align_exposure(livestock_exposure[[crop]], data, paste(variable, crop))
           data_ex <- data * exposure
         } else {
           data_ex <- NA
@@ -192,10 +221,10 @@ risk_x_exposure <- function(file,
         # Here we need to loop through all exposure values and total
         for (crop_choice in crop_choices) {
           if (crop_choice == "generic-crop") {
-            exposure <- sum(crop_exposure)
+            exposure <- .align_exposure(sum(crop_exposure), data, paste(variable, "generic-crop"))
             save_name2 <- save_name
           } else {
-            exposure <- crop_exposure[[crop_choice]]
+            exposure <- .align_exposure(crop_exposure[[crop_choice]], data, paste(variable, crop_choice))
             save_name2 <- gsub("generic-crop", crop_choice, save_name)
           }
           data_ex <- data * exposure
@@ -340,8 +369,24 @@ cat("0.2.1.1) Using crop vop intd file:", basename(crop_vop_file), "\n")
 crop_vop_tot <- terra::rast(crop_vop_file)
 # crop_vop_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_intd15_adm_sum.parquet"))
 
-crop_vop_usd_file <- grep("vop_usd2015_all", files, value = TRUE)
-cat("0.2.1.1) Using crop vop usd file:", basename(crop_vop_usd_file), "\n")
+# Crop nominal-USD exposure. R3_CROP_VOP_USD=2021 -> 0.4.2 output `vop_nominal-usd-2021_all`
+# (2021 prices x SPAM production): matches the livestock side
+# (glw4-2020_vop_nominal-usd-2021), the published label `vop_nominal-usd21`, and
+# the exposure reference parquet (unit_full = nominal-usd-2021). Until 2026-09 this
+# pointed at the S3-legacy `spam_vop_usd2015_all.tif` (2015 USD, 0.05 deg): a
+# currency-vintage mismatch inside the usd product (issue #9 follow-up).
+# DEFAULT = "2015" (legacy, unchanged behaviour) until the repoint is decided;
+# set R3_CROP_VOP_USD=2021 to use the 0.4.2 raster.
+.crop_usd_vintage <- Sys.getenv("R3_CROP_VOP_USD", "2015")
+if (.crop_usd_vintage == "2021") {
+  crop_vop_usd_file <- grep("variable=vop_nominal-usd-2021/spam_vop_nominal-usd-2021_all\\.tif$", files, value = TRUE)
+  if (length(crop_vop_usd_file) != 1) stop("expected exactly 1 spam_vop_nominal-usd-2021_all.tif under mapspam_pro_dir/variable=vop_nominal-usd-2021/, found ", length(crop_vop_usd_file), " — run R/0.4.2_create_crop_vop_nominal_usd.R (or set R3_CROP_VOP_USD=2015 for the legacy raster)")
+} else {
+  crop_vop_usd_file <- grep("vop_usd2015_all", files, value = TRUE)
+  if (length(crop_vop_usd_file) != 1) stop("expected exactly 1 crop vop_usd2015_all tif, found ", length(crop_vop_usd_file))
+  cat("NOTE: R3_CROP_VOP_USD=2015 (default) — crop usd exposure is the legacy 2015-USD SPAM raster while livestock is 2021 nominal USD; the product label says nominal-usd-2021 (issue #9 follow-up)\n")
+}
+cat("0.2.1.1) Using crop vop usd file:", basename(crop_vop_usd_file), "| R3_CROP_VOP_USD =", .crop_usd_vintage, "\n")
 
 crop_vop_usd15_tot <- terra::rast(crop_vop_usd_file)
 # crop_vop_usd15_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_cusd15_adm_sum.parquet"))
@@ -995,8 +1040,9 @@ for (tx in seq_along(timeframe_choices)) {
           return(NULL)
         }
 
+        last_err <- NA_character_
         for (k in seq_len(max_tries)) {
-          try(
+          ok <- tryCatch(
             {
               if (!is.null(prog)) prog(basename(f))
               # suppressWarnings inside the worker: GDAL/LIBTIFF version-mismatch
@@ -1018,13 +1064,15 @@ for (tx in seq_along(timeframe_choices)) {
                   verbose = FALSE
                 )
               )
-              return(NULL)
+              TRUE
             },
-            silent = TRUE
+            error = function(e) { last_err <<- conditionMessage(e); FALSE }
           )
+          if (isTRUE(ok)) return(NULL)
           Sys.sleep(sleep_sec)
         }
-        return(as.character(f))
+        # Failed after max_tries: return "<file> :: <error>" so the caller can log WHY.
+        return(paste0(as.character(f), " :: ", last_err))
       }
       for (i in seq_along(to_do_list)) {
         .var_41_start <- Sys.time()
@@ -1089,11 +1137,21 @@ for (tx in seq_along(timeframe_choices)) {
         # Reset plan to sequential
         future::plan(sequential)
 
-        failed_files <- purrr::compact(p) # failed attempts will return their path
+        failed_files <- purrr::compact(p) # failed attempts return "<path> :: <error>"
         if (length(failed_files) > 0) {
           error_file <- file.path(to_do_list[[i]]$folder, paste0("failed_risk_x_exposure_", to_do_list[[i]]$variable, ".txt"))
           writeLines(unlist(failed_files), error_file)
-          warning(sprintf("Some files failed after retrying. See '%s'", error_file))
+          .log03(sprintf("[%s] 4.1.1) %s: %d/%d files FAILED after retries -> %s",
+                         timeframe, to_do_list[[i]]$variable, length(failed_files), .n_files_41, error_file))
+          for (.m in head(unlist(failed_files), 3)) .log03(sprintf("    %s", .m))
+          # A failed multiply leaves any pre-existing (older-vintage) tif in place and
+          # §4.2 would read it as if current. Fail hard (issue #9, 2026-09-15).
+          # R3_ALLOW_41_FAILURES=1 downgrades to a warning for a deliberate partial run.
+          if (!identical(Sys.getenv("R3_ALLOW_41_FAILURES"), "1")) {
+            stop(sprintf("4.1) %d hazard x exposure multiplies failed for %s; see %s. Fix the cause (exposure raster path / grid / layer names) and re-run; set R3_ALLOW_41_FAILURES=1 only for a deliberate partial run.",
+                         length(failed_files), to_do_list[[i]]$variable, error_file))
+          }
+          warning(sprintf("Some files failed after retrying (R3_ALLOW_41_FAILURES=1). See '%s'", error_file))
         }
 
         .var_41_elapsed <- difftime(Sys.time(), .var_41_start, units = "mins")
