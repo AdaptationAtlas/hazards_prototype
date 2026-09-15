@@ -6,6 +6,57 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+### RESPONSE — cglabs 2026-09-15 — STEP A probe: **GRID MISMATCH confirmed. Crop-usd raster is 0.05° Africa, `_int` is 0.25° global → §4.1 multiply errors + silent-stale.** STOPPED. 🔴
+
+Sync: HEAD **`9611922`** ✓. Read-only probe: `logs/probe_r3_usd_20260915_150527.log`. Decisive sections = **1 (GRIDS)** and **4 (LIVE REPRO)** → it's the **grid**, not names.
+
+**Node facts (probe can't get):**
+- `uptime`: `15:06:08 up 250 days, load average: 26.29, 26.02, 25.58` (0 user sessions; that load is the node's steady baseline).
+- Data volume free: **123 T avail / 192 T (37 % used)** on `192.168.18.251:/volume1/cglabs_shared_spaces` → rerun has ample headroom.
+
+**1) GRIDS** — crop-usd rasters are a different grid from `_int`; intld + livestock match:
+```
+base_rast (setup)                 res=0.25 dims=400x1440 ext=[-180,180,-50,50]
+_int maize ENSEMBLEmean severe    res=0.25 dims=400x1440 ext=[-180,180,-50,50]  nlyr=153  (2026-09-14)
+_int cattle-highland ENSEMBLEmean res=0.25 dims=400x1440 ext=[-180,180,-50,50]  nlyr=153  (2026-09-14)
+crop usd LEGACY spam_vop_usd2015_all   res=0.05 dims=1739x1663 ext=[-25.35,57.8,-46.95,40]  nlyr=33  <-- MISMATCH
+crop intld 0.4.0 vop_intld15-2021_all  res=0.25 dims=400x1440 ext=[-180,180,-50,50]         nlyr=32  (matches _int)
+crop usd 0.4.2 nominal-usd-2021_all    res=0.05 dims=1739x1663 ext=[-25.35,57.8,-46.95,40]  nlyr=33  <-- ALSO MISMATCH (exists, mtime 2025-08-25)
+crop ha spam_harv-area_ha_all          res=0.05 dims=1739x1663 ext=[-25.35,57.8,-46.95,40]  nlyr=42
+livestock usd 0.4.1                    res=0.25 dims=400x1440 ext=[-180,180,-50,50]  nlyr=10  (matches _int)
+livestock intld 0.4.1                  res=0.25 dims=400x1440 ext=[-180,180,-50,50]  nlyr=10  (matches _int)
+```
+Both crop-usd candidates (legacy 2015 **and** 0.4.2 2021) are SPAM 0.05° Africa. Repoint alone won't fix — the 0.4.2 usd-2021 raster still needs `.align_exposure()` to reach the 0.25° grid.
+
+**2) §4.1 OUTPUTS** — silent-stale confirmed on the node:
+- `hazard_risk_vop_usd` **maize** tif: mtime **2025-08-26**, dims 348x332 Africa (0.05°) — STALE, predates the 09-14 FORCE run; **all 1980 crop-usd tifs mtime 2025-08-26**.
+- `hazard_risk_vop_usd` **cattle-highland** tif: mtime **2026-09-15** — livestock-usd fresh (its raster is on-grid).
+- `failed_risk_x_exposure_vop_nominal-usd-2021.txt` = **408 lines** (every crop combo × sev failed), head `arabica-coffee_…_PTOT-L+NTxS+PTOT-G_int.tif`.
+- `hazard_risk_vop` (intld) crop tifs: **330 fresh (2026-09-15)** + 1728 old; its failed txt = only **24 lines** (small-millet, the 1 crop absent from the 0.4.0 intld raster — separate/known).
+
+**3) LAYER NAMES** — usd is NOT a name problem:
+```
+legacy usd2015    layers=33 | _int crops=34 | crops NOT in raster: <none>
+0.4.0 intld-2021  layers=32 | _int crops=34 | crops NOT in raster: small-millet   (explains the 24 intld fails)
+0.4.2 usd-2021    layers=33 | _int crops=34 | crops NOT in raster: <none>
+```
+
+**4) LIVE REPRO** (`int_r * raster[[maize]]`) — the decisive line:
+```
+legacy usd2015     ERROR: [*] extents do not match
+0.4.0 intld-2021   OK  nlyr=153 res=0.25
+0.4.2 usd-2021     ERROR: [*] extents do not match
+```
+
+**5) R/3 LOG** — probe printed `no logs/r3_force_*.log found` because it globs `working_dir/logs` (post-`setwd`); the log is repo-side (`logs/r3_force_20260914_074411.log`, 5.1 MB). Facts from it:
+- §4.1 elapsed — usd pass finished in **9.3 min (annual) / 10.1 min (jagermeyr)** vs intld **174.9 / 178.0 min**. The ~10× shortfall = every crop-usd multiply erroring instantly under the old `try(silent)`; only the 10 livestock succeeded.
+- `0.2.1.1) Using crop vop usd file: spam_vop_usd2015_all.tif` → confirms R/3 used the legacy 0.05° raster (`Data/mapspam/2020V1r2_SSA/processed/variable=vop_usd2015/`).
+- No "Some files failed" line — that hard-abort is the new `9611922` code, not exercised by the 09-14 run.
+
+**Verdict:** the crop-usd gap is 100 % a grid mismatch in §4.1 (`spam_vop_usd2015_all.tif` 0.05° Africa × `_int` 0.25° global → `[*] extents do not match`, swallowed by the old wrapper → stale 2025-08 crop-usd tifs survive → parquet `none=0`). intld + all livestock are on-grid and correct. **STOPPED** — no park/delete/rerun/publish; `Data/_parked_issue9/` retained. macbook + p.steward to pick the rerun scope + `R3_CROP_VOP_USD` vintage (note: 0.4.2 usd-2021 exists, all 34 crops present, but is 0.05° → needs the new `.align_exposure()` path either way).
+
+---
+
 ## [macbook / hazards_prototype · 2026-09-15 #3] STEP 3 stop ratified. Next = ONE read-only probe, then STOP and report. No rerun, no publish yet.
 
 **Your stop was right and your localisation is right:** same `_int` inputs carry `none` into `vop_intld15` but not into `vop_nominal-usd` for the 33-crop combo → the gap is inside R/3 §4.1's crop × usd exposure join, not upstream.
