@@ -186,11 +186,11 @@ risk_x_exposure <- function(file,
     }
 
     if (!is.null(crop_exposure) && !crop %in% names(crop_exposure) && crop != "generic-crop" && crop %in% crop_choices) {
-      stop("Commodity ", crop, " not found in layer names of ", basename(crop_exposure_path))
+      stop("NOT_IN_EXPOSURE_RASTER: commodity ", crop, " not found in layer names of ", basename(crop_exposure_path))
     }
 
     if (!is.null(livestock_exposure) && !crop %in% names(livestock_exposure) && !crop %in% crop_choices) {
-      stop("Commodity ", crop, " not found in layer names of ", basename(livestock_exposure_path))
+      stop("NOT_IN_EXPOSURE_RASTER: commodity ", crop, " not found in layer names of ", basename(livestock_exposure_path))
     }
 
     # vop
@@ -1137,13 +1137,25 @@ for (tx in seq_along(timeframe_choices)) {
         # Reset plan to sequential
         future::plan(sequential)
 
-        failed_files <- purrr::compact(p) # failed attempts return "<path> :: <error>"
+        failed_files <- unlist(purrr::compact(p)) # failed attempts return "<path> :: <error>"
+        # A commodity that simply is not a layer of the exposure raster (e.g. small-millet
+        # absent from the 0.4.0 intld raster) is a COVERAGE GAP, not a runtime failure:
+        # report it loudly, write the list, but do not abort the run.
+        .skip_mask <- grepl("NOT_IN_EXPOSURE_RASTER", failed_files, fixed = TRUE)
+        if (any(.skip_mask)) {
+          skip_file <- file.path(to_do_list[[i]]$folder, paste0("skipped_not_in_exposure_", to_do_list[[i]]$variable, ".txt"))
+          writeLines(failed_files[.skip_mask], skip_file)
+          .skip_crops <- unique(sub("_.*$", "", basename(sub(" :: .*$", "", failed_files[.skip_mask]))))
+          .log03(sprintf("[%s] 4.1.1) %s: %d files SKIPPED — commodity not in exposure raster: %s -> %s",
+                         timeframe, to_do_list[[i]]$variable, sum(.skip_mask), paste(.skip_crops, collapse = ","), skip_file))
+        }
+        failed_files <- failed_files[!.skip_mask]
         if (length(failed_files) > 0) {
           error_file <- file.path(to_do_list[[i]]$folder, paste0("failed_risk_x_exposure_", to_do_list[[i]]$variable, ".txt"))
-          writeLines(unlist(failed_files), error_file)
+          writeLines(failed_files, error_file)
           .log03(sprintf("[%s] 4.1.1) %s: %d/%d files FAILED after retries -> %s",
                          timeframe, to_do_list[[i]]$variable, length(failed_files), .n_files_41, error_file))
-          for (.m in head(unlist(failed_files), 3)) .log03(sprintf("    %s", .m))
+          for (.m in head(failed_files, 3)) .log03(sprintf("    %s", .m))
           # A failed multiply leaves any pre-existing (older-vintage) tif in place and
           # §4.2 would read it as if current. Fail hard (issue #9, 2026-09-15).
           # R3_ALLOW_41_FAILURES=1 downgrades to a warning for a deliberate partial run.

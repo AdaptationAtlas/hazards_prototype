@@ -6,6 +6,51 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+## [macbook / hazards_prototype · 2026-09-15 #4] STEP A ratified: grid mismatch proven. STEP B = scoped usd rerun with aligned 0.4.2 raster, gated, then STEP 4 publish.
+
+**Your probe settled it:** `spam_vop_usd2015_all.tif` and 0.4.2's `spam_vop_nominal-usd-2021_all.tif` are both SPAM 0.05° Africa; `_int`, `base_rast`, 0.4.0 intld and both 0.4.1 livestock rasters are 0.25° global. `int_r * usd[[maize]]` → `[*] extents do not match`; old wrapper swallowed it; all 1,980 crop-usd tifs are mtime 2025-08-26. Names are fine. So: **grid**, exactly as p.steward suspected it should NOT be — the usd crop raster is the one input never brought onto the hazard grid.
+
+**Decision (macbook, p.steward informed): usd crops → 0.4.2 `vop_nominal-usd-2021` via `R3_CROP_VOP_USD=2021`.** Reasons: it is the vintage the label (`vop_nominal-usd21`), the livestock side (`glw4-2020_vop_nominal-usd-2021`) and the published reference parquet (`unit_full = nominal-usd-2021`, built by 0.4.4 from the same 0.4.2 rasters) already use. All 34 `_int` crops are present in it (your section 3). `.align_exposure()` (9611922) brings it onto the 0.25° grid with GDAL "sum" (misaligned origin → interior mass conserved to ~0.01 % in tests). If p.steward overrides, the only change is `R3_CROP_VOP_USD=2015` in the command below.
+
+**Also fixed in this commit:** a commodity absent from the exposure raster (your 24 `small-millet` intld failures — 0.4.0's FAO "Millet" split drops smil) is now a **loud non-fatal skip** (`skipped_not_in_exposure_<var>.txt` + log line), not a fatal §4.1 error. Otherwise the rerun would have aborted on intld before reaching usd. small-millet missing from the intld product is a separate 0.4.0 follow-up, not this dispatch.
+
+### STEP B — scoped rerun: nominal-usd only (both timeframes), FORCE unset
+```bash
+git pull --ff-only origin develop && git log -1 --oneline        # expect the #4 commit
+STAMP=$(date +%Y%m%d_%H%M%S); WORKING=/home/jovyan/common_data/nex-gddp-cimp6_hazards
+for tf in annual jagermeyr; do
+  d=$WORKING/Data/hazard_risk_vop_usd/$tf; park=$WORKING/Data/_parked_issue9/$STAMP/hazard_risk_vop_usd/$tf; mkdir -p $park
+  echo "$tf: tifs=$(ls $d/*_int_*.tif 2>/dev/null | wc -l) parquets=$(ls $d/haz-freq-exp_vop_nominal-usd-2021_* 2>/dev/null | wc -l) before"
+  find $d -maxdepth 1 \( -name '*_int_*.tif*' -o -name 'haz-freq-exp_vop_nominal-usd-2021_*' -o -name 'failed_risk_x_exposure_*' -o -name 'skipped_not_in_exposure_*' \) -exec mv -t $park/ {} +
+  echo "$tf: tifs=$(ls $d/*_int_*.tif 2>/dev/null | wc -l) parquets=$(ls $d/haz-freq-exp_vop_nominal-usd-2021_* 2>/dev/null | wc -l) after (expect 0 0) | parked: $(ls $park | wc -l)"
+done
+```
+Park ALL usd tifs (livestock too) so the whole variable is one vintage. intld and ha dirs untouched.
+```bash
+R3_CROP_VOP_USD=2021 nohup Rscript -e 'source("R/0_server_setup.R"); source("R/3_freq_x_exposure.R")' \
+  &> logs/r3_usd_rerun_$STAMP.log &
+echo $! > logs/r3_usd_rerun_$STAMP.pid
+```
+`FORCE_OVERWRITE` **UNSET** → §1-3 skip (exist), §4.1 intld skip (exist; small-millet now SKIP-logged not fatal), §4.1 usd regenerates all parked tifs, §4.2/§4.2.1 regenerate only the parked usd parquets. Log header must show `Using crop vop usd file: spam_vop_nominal-usd-2021_all.tif | R3_CROP_VOP_USD = 2021`. If it says `spam_vop_usd2015_all.tif`, kill and report.
+
+**Kill-gates:**
+- (i) ≤ 15 min: first crop usd tif appears (e.g. `Data/hazard_risk_vop_usd/annual/arabica-coffee_ENSEMBLEmean_severe_*_int_vop_nominal-usd-2021.tif`) → `res = 0.25 0.25`, `dim = 400 1440`, names contain `_none_`, mtime = now. If it is 0.05° or lacks `_none_`, kill.
+- (ii) any `4.1.1) … FAILED after retries` line → the run aborts itself now; paste the 3 error lines it prints.
+- Watch for `WARN exposure mass not conserved` lines; a handful is fine, one per file is not (report).
+
+**Done criteria:** exit 0; §4.1 usd elapsed per tf in the same order of magnitude as intld's 175 min (not 10); `failed_risk_x_exposure_vop_nominal-usd-2021.txt` absent; `skipped_not_in_exposure_*` lists only expected commodities (intld: small-millet; usd: none expected); then:
+```bash
+Rscript R/probe_none_coverage.R |& tee logs/probe_none_afterB_$STAMP.log          # C) usd: none on ALL combos, both tf
+Rscript R/checks/usd_total_vs_reference.R |& tee logs/gate_usd_$STAMP.log         # any+none per crop vs 0.4.4 reference; must print GATE PASS
+```
+Paste C) tables for the 6 usd parquets + the gate output (median ratio, worst crops, PASS/FAIL). Also paste the intld `crop tif count by mtime day` line from your STEP A probe log (`logs/probe_r3_usd_20260915_150527.log`) — I want to confirm no intld crop tif predates 2026-09-14.
+
+### STEP 4 — publish (unchanged from #1 block): `Rscript scripts/r3_publish_tiers.R --dry-run`, paste; if all three tiers pass G1-G5, run live; paste sizes / 206s / backup prefix. Only if the gate above printed PASS.
+
+**Budget:** §4.1 usd ~3-4 h per tf (2,388 files with resample), §4.2 usd ~3-4 h per tf (6 groups, sequential). ~12-16 h total. Keep `Data/_parked_issue9/`.
+
+---
+
 ### RESPONSE — cglabs 2026-09-15 — STEP A probe: **GRID MISMATCH confirmed. Crop-usd raster is 0.05° Africa, `_int` is 0.25° global → §4.1 multiply errors + silent-stale.** STOPPED. 🔴
 
 Sync: HEAD **`9611922`** ✓. Read-only probe: `logs/probe_r3_usd_20260915_150527.log`. Decisive sections = **1 (GRIDS)** and **4 (LIVE REPRO)** → it's the **grid**, not names.
