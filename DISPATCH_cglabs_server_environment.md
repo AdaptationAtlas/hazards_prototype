@@ -6,6 +6,41 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+### RESPONSE — cglabs 2026-09-16 — `server-environment-cglabs.md` written + committed (`f58314d`). 🟢
+
+Read PASCAL ref (`origin/docs/server-environment:server-environment.md`, 208 lines), matched its 8 sections + added **§9 Atlas pipeline specifics**. Dated **September 2026**. **All internal IPs / NFS server addresses / pod hostname / PVC ids omitted** (public repo) — flagged in §7, see below.
+
+**Headline numbers:**
+| | CGlabs | (PASCAL, for contrast) |
+|---|---|---|
+| CPU | 2× Xeon **Silver 4210** @ 2.20 GHz | 2× Gold 6258R @ 2.70 |
+| Cores | **20 physical / 40 logical** (HT on) | 80 physical (HT off) |
+| RAM | **376 GiB**, **no swap** | 397 GiB, 4 GiB swap |
+| GPU | **none** | none |
+| OS | Ubuntu 24.04.3, kernel 5.4 (container) | Ubuntu 22.04, kernel 5.15 (VM) |
+| Shared store | **192 T NFS, 37 % used** | 50 T NFS |
+| R | 4.5.1, terra 1.8.70, **GDAL 3.11.3 / PROJ 9.4.1** | 4.5.1, terra 1.8-93, GDAL 3.4.3 |
+| Python | base `/opt/conda` **3.13.9, sci-ready** | empty conda; sep `sci` env needed |
+| Containers | **none** (no docker daemon, no apptainer) | apptainer 1.5.3 |
+
+**Big structural difference from PASCAL:** CGlabs is a **JupyterHub/Kubernetes single-user container**, not a VM. Consequences documented: `/` is ephemeral; **no swap** → OOM = instant kill (this is *why* R/3 §4.2 is pinned to `worker_n4.2<-1`); `who` shows no one even when busy.
+
+**Pre-filled table — corrections:**
+- `~360 GB RAM` → **376 GiB** (measured; minor).
+- `40 logical cores` ✓ but note **20 physical** (HT on), and the CPU is Xeon **Silver 4210 @2.2GHz** — materially weaker than PASCAL's Gold; PASCAL wall-clocks are ~½ our speed. Flagged so the `R/3:461` "40 cores" comment isn't read as PASCAL-equivalent.
+- Everything else in the table ✓ (project path + `Cglabs<-TRUE`, both data paths, 192 T/37 %/NFS, no GPU, JupyterHub `/home/jovyan`).
+- Two things the table didn't mention that bite: **AWS CLI not on `PATH`** (only the vendored `aws/dist/aws` v2.27.46; S3 publish actually goes through `AtlasDataManageR`/paws, not the CLI), and terra's GDAL here is **newer** than system `gdalinfo` (3.11.3 vs 3.10.3) — the reverse of PASCAL.
+
+**§9 recorded:** arrow(22.0.0)+duckdb(1.5.2) can't co-attach; `gdalCache(60000)`; `worker_n4.2<-1` OOM ceiling (no swap); `pbapply` `pboptions(type="none")`; **`0_server_setup.R` does `setwd()`** so post-setup `source("R/…")` needs absolute paths (bit me on the issue-9 runs); nohup survives; measured wall-clocks (R/3 FORCE ~18 h, R/2 ensemble+§5.3 ~9.5 h, §4.1 usd ~80 min/tf); S3 auth mechanism (~/.aws or env, never values, outside repo).
+
+**Missing vs PASCAL (install per-user if needed):** R `duckdbfs`, `gdalcubes`; Python base `duckdb`, `netCDF4`, `rioxarray`.
+
+**Your redaction question — I agree, redact.** I stripped all addresses/hostname/PVC ids from mine. Recommend scrubbing `PASCAL.CGIARAD.ORG (192.168.213.3)` + `10.10.10.2` from the PASCAL note before it merges — public repo, and it's gratuitous internal topology. Not over-cautious.
+
+**Open question (raised, not actioned):** yes — two root-level machine notes want a `docs/` dir + index, and the PASCAL `docs/server-environment` branch wants merging. Your call.
+
+---
+
 ## [macbook / hazards_prototype · 2026-09-16 #1] Write the CGlabs twin of `server-environment.md`
 
 ### The template
