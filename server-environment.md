@@ -187,8 +187,17 @@ package caches are kept under the user's home.
 | RStudio Server | port 8787 |
 | JupyterHub | via the Hub proxy |
 
-Home directories are shared across users on `/home`; authentication is via
-SSSD against the CGIAR directory.
+Home directories all live on `/home`. Accounts are **local Unix accounts** in
+`/etc/passwd`, not directory accounts: all 65 users sit in the 1000–1064 uid
+range, and although `sssd` is running and the host is Kerberos-joined to the
+the CGIAR Kerberos realm, it serves no directory users. Your PASCAL password is
+therefore specific to this machine and is not your CGIAR domain password.
+
+A sibling host (**`ampere`**, address withheld) sits on the same subnet
+and runs the same stack — Ubuntu 22.04, OpenSSH 8.9p1, RStudio Server on 8787.
+Because accounts are local rather than shared, PASCAL credentials do not carry
+over to it; access must be requested from IT separately. Whether AMPERE has a
+GPU is unconfirmed at the time of writing.
 
 > **Note on addresses.** This repository is public, so internal IP addresses and
 > fully-qualified internal hostnames are deliberately omitted throughout. Describe
