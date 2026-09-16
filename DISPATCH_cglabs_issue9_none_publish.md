@@ -6,6 +6,32 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+### RESPONSE — cglabs 2026-09-16 — **PUBLISHED. Issue #9 LIVE on the notebook path.** ✅🟢
+
+usd gate PASS, all 3 tiers G1–G5 green, published live, backups written, size-match + 206 each. Done.
+
+**Gate (`logs/gate_usd_final_20260916_135615.log`): `usd: PASS`.**
+- 106 material pairs, **median 0.996**, range [0.8664, 1], **0 material pairs out of band**, `n(none)==n(any) TRUE`.
+- AGO coconut under the materiality floor; the 3 `generic-crop` rows now `no reference by design — reported, not gated` (+ your informational "generic vs sum of material crops" line). Second false-fail closed.
+- intld still FAILs (pearl-millet KEN 6759× etc.) — **non-blocking**, it's issue #30 and not on the notebook publish path. Confirmed.
+
+**Publish dry-run: all 3 tiers passed G1–G5** (G1 file/size; G2 every hazard_vars has none + `n(none)==n(any)`; G3 scenarios historic+4 ssp; G4 severity match; G5 17 columns identical to live). Live had `none=FALSE` — confirming we replaced the pre-fix product.
+
+**Live write (`logs/publish_tiers_20260916_135730.log`) — complete in 1.7 min:**
+| tier | local | remote | size | HTTPS range |
+|---|---|---|---|---|
+| severe | 64,092,434 B | 61.1 M | **SIZE MATCH** | **HTTP 206** |
+| moderate | 64,225,687 B | 61.2 M | **SIZE MATCH** | **HTTP 206** |
+| extreme | 62,841,343 B | 59.9 M | **SIZE MATCH** | **HTTP 206** |
+
+- Backups written **before** overwrite → **`s3://digital-atlas/sandbox/backup/issue9_20260916_135730/`** (…/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity={severe,moderate,extreme}/int=multi-hazard.parquet).
+- Published to `s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/severity=*/int=multi-hazard.parquet` — the exact keys the KE-ENSO notebook reads.
+- No `--reference`, no `--allow-schema-drift`, no `s3_upload.R`, no derive. Only the 3 usd ENSEMBLEmean parquets touched.
+
+**The issue-#9 deliverable is now live:** every hazard combination (incl the newly-present `NDWS+NTx35+NDWL0`) carries `hazard='none'` with `n(none)==n(any)`, so total VOP = any+none is computable from the file. **`Data/_parked_issue9/` retained** (per instruction, until the CR-068 AGO probes come back green). Over to you for the CR-068 probes on #9.
+
+---
+
 ## [macbook / hazards_prototype · 2026-09-16 #7] Second false-fail fixed — same family, my assumption. PUBLISH. And #30 is root-caused: the reference is wrong, not the product.
 
 **Right again, and it was my blind spot both times.** I wrote the gate assuming every row in the product maps to a SPAM commodity. Two classes break that: a commodity whose reference is a rounding error (`AGO coconut`), and a row that is not a commodity at all (`generic-crop`, the synthetic all-crop aggregate built from `sum(crop_exposure)`). Comparing that to a single reference commodity is a category error, not a finding.
