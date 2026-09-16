@@ -70,19 +70,42 @@ PASCAL has around 69 user accounts and **no batch scheduler** (no Slurm, no
 PBS). Nothing stops a single job from saturating the machine, so resource
 sharing is by convention.
 
+**Your effective limit depends on how you connected.** A JupyterHub session
+runs inside a systemd cgroup and is capped by the profile chosen at spawn
+time, regardless of what `nproc` reports:
+
+| Profile | vCPU | RAM |
+|---------|------|-----|
+| Small | 8 | 32 GB |
+| Medium | 16 | 64 GB |
+| Large | 20 | 96 GB |
+
+Inside such a session `nproc` still reports 80 and CPU affinity still shows
+0–79, but `cpu.max` throttles actual throughput to the profile value. Check
+what you really have with:
+
+``` bash
+cat /sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup)/cpu.max
+```
+
+A first value of `800000` against a period of `100000` means 8 CPUs.
+
+RStudio Server and plain SSH sessions are **not** capped, so those are the
+routes to the full 80 cores and 397 GiB.
+
 Before launching heavy work, check the current load with `uptime` and pick a
 worker count deliberately rather than defaulting to all 80 cores:
 
 ``` r
 # R
-future::plan(future::multisession, workers = 16)
-data.table::setDTthreads(16)
+future::plan(future::multisession, workers = 8)   # raise only outside JupyterHub
+data.table::setDTthreads(8)
 terra::gdalCache(60000)  # already set in R/0_server_setup.R
 ```
 
 ``` bash
 # Python / OpenBLAS — one careless matrix multiply will otherwise use all 80 cores
-export OMP_NUM_THREADS=16 OPENBLAS_NUM_THREADS=16 MKL_NUM_THREADS=16
+export OMP_NUM_THREADS=8 OPENBLAS_NUM_THREADS=8 MKL_NUM_THREADS=8
 ```
 
 No global thread limits are imposed at the system or profile level. This is
@@ -181,23 +204,30 @@ package caches are kept under the user's home.
 
 ## 7) Access {#7-access}
 
-| Service | Address |
-|---------|---------|
-| SSH | port 22 |
-| RStudio Server | port 8787 |
-| JupyterHub | via the Hub proxy |
+| Service | Port | Authentication | Resource cap |
+|---------|------|----------------|--------------|
+| JupyterHub | 8000 | CGIAR directory (LDAP) | Yes — per spawn profile |
+| RStudio Server | 8787 | Local account | None |
+| SSH | 22 | Local account | None |
 
-Home directories all live on `/home`. Accounts are **local Unix accounts** in
-`/etc/passwd`, not directory accounts: all 65 users sit in the 1000–1064 uid
-range, and although `sssd` is running and the host is Kerberos-joined to the
-the CGIAR Kerberos realm, it serves no directory users. Your PASCAL password is
-therefore specific to this machine and is not your CGIAR domain password.
+JupyterHub is published to an external address and is the normal way in; the
+other two are reachable from the office network only.
+
+Home directories all live on `/home`. Authentication differs by route.
+**JupyterHub authenticates against the CGIAR directory over LDAP**, so the hub
+login is your normal CGIAR username and password, and the hub creates a
+matching local Unix account and home directory on first login. **SSH and
+RStudio Server authenticate against the local account** in `/etc/passwd`
+instead, whose password is set per machine and is not the directory one. This
+catches people out: the credentials that work in the browser will not
+necessarily work over SSH. All 65 users sit in the 1000–1064 uid range.
 
 A sibling host (**`ampere`**, address withheld) sits on the same subnet
 and runs the same stack — Ubuntu 22.04, OpenSSH 8.9p1, RStudio Server on 8787.
-Because accounts are local rather than shared, PASCAL credentials do not carry
-over to it; access must be requested from IT separately. Whether AMPERE has a
-GPU is unconfirmed at the time of writing.
+It runs its own JupyterHub instance. Local SSH credentials from PASCAL do not
+work on it, so access must be requested from IT separately. Whether AMPERE has
+a GPU is unconfirmed at the time of writing; what is confirmed is that PASCAL's
+own hub configuration defines **no GPU profile of any kind**.
 
 > **Note on addresses.** This repository is public, so internal IP addresses and
 > fully-qualified internal hostnames are deliberately omitted throughout. Describe
