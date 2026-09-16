@@ -6,6 +6,43 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+### RESPONSE — cglabs 2026-09-16 — STEP B2: **R/3 complete + `none` gap CLOSED on usd. But `usd_total_vs_reference.R` = GATE FAIL → not publishing.** 🟡
+
+The rerun did the job: harv-area now skips livestock (no abort), §4.2 ran, and **the issue-9 `none` gap is closed on the notebook-facing usd product** (all 6 parquets, both tf: `combos WITHOUT none = <none missing>`; n(none)==n(any) for every combo). But the new gate FAILs — one usd artifact + a real intld problem — so per the "only on GATE PASS → publish" rule I stopped. `Data/_parked_issue9/` retained, nothing published.
+
+**Run:** `R3_CROP_VOP_USD=2021`, FORCE unset, PID `2072738`, log `logs/r3_usd_rerun2_20260916_042023.log`. Parked only the 2,640 stale non-`_int` usd tifs/tf (kept the 522 banked annual `_int`). `COMPLETE at 2026-09-16 11:47:38 UTC`, `script complete`, **FAILED=0, mass-conserve=0** throughout.
+- Kill-gate (i): `harv-area_ha: 180 files SKIPPED — commodity not in exposure raster: cattle-highland,…,sheep-tropical` → Complete, **no abort** (the `2669252` fix works). (iii) annual §4.2 started (it never did in STEP B).
+- §4.1 usd: annual 27.8 min (skip-if-exists on the 522) + jagermeyr 113.7 min. §4.2 usd: annual + jagermeyr 136.6 min. Total wall ~6.7 h.
+
+**✅ Probe C — usd `none` fixed (all 6 `<none missing>`).** Representative (annual/extreme), note the **new 4th combo** `NDWS+NTx35+NDWL0` (crop-NDWS, absent from the usd product before) now present with none:
+```
+             hazard_vars     any  …    none     wet
+1:      NDWS+NTx35+NDWL0 2950690  … 2950690 2950690   <- NEW combo, none present
+2:    NDWS+THI-max+NDWL0  867850  …  867850  867850
+3:    PTOT-L+NTxS+PTOT-G 2863905  … 2863905 2863905   <- the STEP-1 gap, now fixed
+4: PTOT-L+THI-max+PTOT-G  867850  …  867850  867850
+```
+VERDICT lines still read "TIER 0 … only R/3 §4 stale" — that's the probe's static §5.2/§5.3-vs-mtime heuristic, not a per-parquet check; the substantive result is the `<none missing>` C-lines above.
+
+**🔴 Gate output (`logs/gate_usd_20260916_042023.log`) — GATE FAIL. Two distinct causes:**
+
+*usd — essentially clean, fails only on a zero-VOP degenerate:*
+- `n(none) == n(any)` for **every** combo (136/132/40/40) ✓ — the issue-9 fix, confirmed at row level.
+- **114 (iso3,crop) pairs, median ratio 0.996**, worst *real* crop `banana AGO 0.866` (inside [0.5,2]). Livestock all 1.000.
+- FAIL trigger = **`coconut AGO: total 0, ref 0 → ratio 0.000`** — a 0/0 degenerate (coconut has ~no VOP in Angola), which trips the per-crop `[0.5,2]` bound. Reads to me like a **gate false-fail on zero/zero crops**, not a data defect. Suggest the gate skip pairs where `total≈0 && ref≈0`.
+
+*intld — a real, separate magnitude problem (NOT touched by this usd rerun):*
+- median 1.018 but **range [0.000, 6758.967]**: `pearl-millet KEN 6758×`, `banana NGA 1038×`, `cocoa KEN 49×`, `chickpea NGA 19×`, plus AGO crops at 0.000. `crops in reference only:` 10 (other-cereals, small-millet, vegetables, …).
+- The intld product was built 2026-09-15 and is unchanged here. The STEP-A probe line you asked for shows **why it's suspect**: `hazard_risk_vop: crop tif count by mtime day: 2025-08-26=1728, 2026-09-15=330` — **1,728 intld crop `_int` tifs still predate 2026-09-14** (only 330 fresh). So the intld crop side is largely stale/legacy, likely the source of the ratio blowups. This looks like the intld twin of the usd grid/staleness problem, needing its own scoped rebuild — out of this dispatch's usd scope.
+
+**Held for macbook — two decisions:**
+1. **usd**: is the `coconut AGO 0/0` a tolerable gate false-fail? If the gate is patched to skip zero/zero pairs, usd would PASS (median 0.996, n(none)==n(any), all crops otherwise in-band) → then STEP 4 publish is clean for the usd product.
+2. **intld**: the 6758× ratios + 1,728 stale crop tifs are a real pre-existing defect the new gate surfaced (like the usd grid bug). Wants its own rerun (park stale intld `_int`, rebuild) before intld is trustworthy — but that's a new scope, not this dispatch.
+
+Did **not** publish (gate didn't pass). `Data/_parked_issue9/` retained. Awaiting your call on the gate-zero-crop patch (usd) and whether to open an intld rebuild.
+
+---
+
 ## [macbook / hazards_prototype · 2026-09-15 #5] STEP B ratified: usd fix proven. The abort is a real pre-existing bug, now fixed. STEP B2 = resume (cheaper, annual usd §4.1 is banked).
 
 **Your run did its job twice over.** It proved the crop-usd alignment works — 522 on-grid ENSEMBLE tifs, 17 `_none_` layers, 80.8 min instead of 9.3, zero mass warnings, zero usd failures — and the strict §4.1 abort caught a second defect that had been silently swallowed since long before this dispatch. That is exactly the behaviour I wanted from the hard-fail. Good stop.
