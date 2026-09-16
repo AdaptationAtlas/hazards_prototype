@@ -33,6 +33,11 @@ opt <- function(x, d) { i <- match(x, args); if (is.na(i) || i == length(args)) 
 TF  <- opt("--timeframe", "jagermeyr"); SEV <- opt("--severity", "severe"); ISO <- strsplit(opt("--iso3", "AGO,KEN,NGA"), ",")[[1]]
 MIN_REF <- as.numeric(Sys.getenv("GATE_MIN_REF", "1e5"))   # below this a national crop total is noise
 MAX_ABS <- as.numeric(Sys.getenv("GATE_MAX_ABS", "1e6"))   # product value allowed against a noise reference
+# Rows in the product that are not SPAM commodities and so can never have a reference row.
+# `generic-crop` is the synthetic all-crop aggregate (R/3 risk_x_exposure multiplies by
+# sum(crop_exposure)); its total is the sum over crops by construction, so comparing it to a
+# single reference commodity is a category error, not a finding.
+NO_REF <- strsplit(Sys.getenv("GATE_NO_REF", "generic-crop"), ",")[[1]]
 setup <- if (file.exists("R/0_server_setup.R")) "R/0_server_setup.R" else file.path(Sys.getenv("project_dir"), "R", "0_server_setup.R")
 if (nzchar(Sys.getenv("ATLAS_SETUP_SKIP"))) { .log("ATLAS_SETUP_SKIP set"); stopifnot(exists("atlas_dirs")) } else { .log("sourcing %s", setup); suppressMessages(suppressWarnings(source(setup))) }
 suppressPackageStartupMessages({ pacman::p_load(arrow, dplyr, data.table) })
@@ -71,9 +76,16 @@ for (spec in list(
   m[, ratio := total / ref]
   cat(sprintf("  crops in hazard only: %s\n  crops in reference only: %s\n",
               paste(m[is.na(ref), unique(crop)], collapse = ",") , paste(m[is.na(total), unique(crop)], collapse = ",")))
-  m[, material := !is.na(ref) & ref >= MIN_REF]
-  mm <- m[material == TRUE & !is.na(ratio) & is.finite(ratio)]
-  imm <- m[material == FALSE]
+  # Three populations, because one bound cannot serve all three:
+  #   unmatched  - no reference row at all (ref NA). Cannot be compared. Reported.
+  #   immaterial - reference present but negligible. Ratio is noise; the invented-value
+  #                check still applies, since claiming value against ~nothing is suspicious.
+  #   material   - reference is real. Ratio bound applies.
+  m[, unmatched := is.na(ref)]
+  m[, material := !unmatched & ref >= MIN_REF]
+  mm  <- m[material == TRUE & !is.na(ratio) & is.finite(ratio)]
+  imm <- m[unmatched == FALSE & material == FALSE]
+  unm <- m[unmatched == TRUE]
   # signif(), not round(): a sub-dollar reference printed as "0" is what made AGO coconut
   # look like a 0/0 degenerate rather than the tiny-denominator case it actually is.
   show <- function(d) d[, .(iso3, crop, total = signif(total, 4), ref = signif(ref, 4), ratio = signif(ratio, 4))]
@@ -86,6 +98,22 @@ for (spec in list(
   if (nrow(imm)) {
     .log("%s: %d pairs below the materiality floor (reported, not ratio-gated)", spec$lab, nrow(imm))
     print(show(imm[order(-total)])[1:min(8, .N)])
+  }
+  if (nrow(unm)) {
+    expected <- unm[crop %in% NO_REF]; unexpected <- unm[!crop %in% NO_REF]
+    if (nrow(expected)) {
+      .log("%s: %d pair(s) with no reference by design (%s) — reported, not gated", spec$lab, nrow(expected), paste(NO_REF, collapse = ","))
+      print(show(expected[order(-total)]))
+      # Eyeball check only: the aggregate should be the same order as the sum over real crops.
+      # Not gated, because the reference crop set and the raster crop set are known to differ.
+      for (cr in NO_REF) for (ii in unique(expected[crop == cr, iso3]))
+        .log("   %s %s total %.4g vs sum of material crop totals %.4g (informational)", ii, cr,
+             expected[crop == cr & iso3 == ii, total][1], sum(mm[iso3 == ii, total], na.rm = TRUE))
+    }
+    if (nrow(unexpected)) {
+      .log("%s: %d pair(s) in the product with NO reference row — coverage mismatch, reported, not gated", spec$lab, nrow(unexpected))
+      print(show(unexpected[order(-total)])[1:min(10, .N)])
+    }
   }
   invented <- imm[!is.na(total) & total > MAX_ABS]
   if (nrow(invented)) { .log("%s: %d immaterial pairs where the product claims > %.3g against a noise reference —", spec$lab, nrow(invented), MAX_ABS); print(show(invented[order(-total)])[1:min(10, .N)]) }

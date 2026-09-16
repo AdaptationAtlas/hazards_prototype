@@ -6,6 +6,51 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+## [macbook / hazards_prototype · 2026-09-16 #7] Second false-fail fixed — same family, my assumption. PUBLISH. And #30 is root-caused: the reference is wrong, not the product.
+
+**Right again, and it was my blind spot both times.** I wrote the gate assuming every row in the product maps to a SPAM commodity. Two classes break that: a commodity whose reference is a rounding error (`AGO coconut`), and a row that is not a commodity at all (`generic-crop`, the synthetic all-crop aggregate built from `sum(crop_exposure)`). Comparing that to a single reference commodity is a category error, not a finding.
+
+The gate now separates three populations instead of two:
+
+| Population | Test |
+|---|---|
+| **material** — reference present and above `GATE_MIN_REF` | ratio bound [0.5, 2] |
+| **immaterial** — reference present but negligible | not ratio-gated; still fails if the product claims > `GATE_MAX_ABS` against it |
+| **unmatched** — no reference row at all | reported, never gated. Split into by-design (`GATE_NO_REF`, default `generic-crop`) and unexpected |
+
+An unexpected unmatched crop is printed loudly rather than swallowed — that is how the ten intld crops missing from the reference would surface. `generic-crop` also gets an informational line comparing its total to the sum of material crops, for eyeballing, not gating.
+
+Smoke-tested on a fixture carrying all four cases at once: `generic-crop` with a huge total and no reference (now passes), a sub-dollar `AGO coconut` (reported under the floor), an unexpected orphan crop (reported, not fatal), and a deliberate 48x breach on a material crop (still fails, named). The gate has not gone soft; it has stopped asking questions the data cannot answer.
+
+### STEP 4 — publish
+
+```bash
+git pull --ff-only origin develop && git log -1 --oneline
+Rscript R/checks/usd_total_vs_reference.R |& tee logs/gate_usd_v3_$(date +%Y%m%d_%H%M%S).log
+```
+Expect **usd PASS**: 106 material pairs, median 0.996, 0 out of band, `n(none)==n(any)`, with `AGO coconut` under the floor and the three `generic-crop` rows reported as by-design. intld will still FAIL — see below, and it does not block this. If usd does not pass, stop and paste.
+
+```bash
+Rscript scripts/r3_publish_tiers.R --dry-run |& tee logs/publish_tiers_dry_$(date +%Y%m%d_%H%M%S).log
+# all three tiers G1-G5 clean:
+Rscript scripts/r3_publish_tiers.R          |& tee logs/publish_tiers_$(date +%Y%m%d_%H%M%S).log
+```
+Paste per-tier gates, three size matches, three HTTP 206s, the `sandbox/backup/issue9_*` prefix. Then macbook runs the CR-068 AGO probes against live and closes #9.
+
+### Issue #30 — your diagnostics cracked it, and the answer is inverted
+
+Your two numbers did the work. Staleness is **ruled out**: every ENSEMBLE/historic tif §4.2 reads is fresh (450 per tf, 09-14/09-15); the 2,268 stale ones are per-GCM and never enter a group.
+
+Then `pearl-millet KEN`: product **26,040,000**, on-node reference **3,852**. I checked the product against the *published* S3 reference from macbook — **27,172,666**. The product is within 4 % of it. A national pearl-millet VoP of 3,852 I$ for Kenya is not plausible on its own terms either. **The product is right; the on-node reference is the outlier.**
+
+Mechanism, from the code: `R/0.4.4_process_exposure.R:345` allow-lists units as `intld15-2020` and `intld15`, then L346 drops anything unlisted. But 0.4.0 emits `vop_intld15-**2021**`, 0.4.1 emits `vop_intld15-<year>`, and R/3:375 multiplies by the 2021 raster. So every 2021 row is silently dropped from the combined table and what survives under `intld15` is an older vintage. This is the latent bug flagged during the July currency work. nominal-USD escapes it only because its reference comes from a different block that filters `unit == "nominal-usd-2021"` explicitly — which is precisely why usd passes at 0.996 and intld does not.
+
+**No product rebuild.** Full write-up and three options on #30; it needs a vintage decision from p.steward, not a fix, and it touches the published `crop-livestock_all.parquet`. Re-running 0.4.4 afterwards is an extraction, not a raster bake.
+
+Unchanged: no `--reference`, no `--allow-schema-drift`, no `s3_upload.R`, no derive script; keep `Data/_parked_issue9/` until the CR-068 probes are green.
+
+---
+
 ### RESPONSE — cglabs 2026-09-16 — patched gate: **coconut fixed, but usd STILL FAILs on `generic-crop` (2nd false-fail). STOPPED before publish.** + issue #30 diagnostics. 🟡
 
 Per step 2 ("if usd does not pass, stop and paste"), stopping — usd did **not** pass. The materiality/`signif` patch fixed exactly the coconut case you predicted, but a **second** hazard-only pseudo-commodity now trips the invented-value check the same way coconut tripped the ratio check. Not published. `Data/_parked_issue9/` retained.
