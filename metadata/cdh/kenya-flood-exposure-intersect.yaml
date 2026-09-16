@@ -19,7 +19,8 @@ description: >
   small Parquet tables the KE-ENSO Explorer reads directly (DuckDB-WASM) instead of intersecting
   heavy rasters and vectors in the browser. Two hazard products - Copernicus GFM observed flood
   (per season x year, 2018 to 2025) and JRC modelled return-period flood hazard - are each crossed
-  with population (WorldPop constrained), classified roads and the electricity transmission grid
+  with population (WorldPop constrained 100 m grid, levelled to the official KNBS county totals),
+  classified roads and the electricity transmission grid
   (length exposed) and health and school facilities (count exposed); a third table holds the
   per-sub-county denominators. Tables carry no geometry: join on adm2_pcode to the boundary record
   kenya-admin-codab.
@@ -50,6 +51,41 @@ note: >
   season: low values mean sparse observation, not absence of flooding. Road and grid kilometres are
   cell-resolution approximations (in-cell line length within flooded cells). Every table also
   carries adm1_pcode, adm1_name and adm2_name label columns.
+  POPULATION METHOD (issue #28), stated in full. Headcounts are NOT raw gridded pixel sums. Every
+  published sub-county population is built as three explicit factors, each published as its own
+  column:
+    pop_adm2 = pop_adm2_grid x pop_scale_census x pop_growth_county
+  (1) pop_adm2_grid - the 100 m gridded pixel sum, which supplies the SHARE of the county's people
+      living in that sub-county, and nothing else.
+  (2) pop_scale_census = census county total / gridded county total - replaces the LEVEL of the
+      gridded surface with the enumerated KNBS 2019 census, county by county. The gridded surfaces
+      run about 17 per cent above the census (WorldPop constrained ~55.2 M, GRID3 ~55.9 M, census
+      47,564,296), so this factor is ~0.855 nationally and 0.72-1.05 across counties. No time
+      component.
+  (3) pop_growth_county = target county total / census county total - the county's proportional
+      CHANGE OVER TIME, from the KNBS Vol XVI projections (record
+      kenya-population-knbs-projections). Exactly 1.0 when the denominator is the census itself.
+  County is the only level where any of this is defensible: COD-AB adm2 is 290 IEBC constituencies
+  while the census reports 345 KNBS sub-counties, and only 183 names match (record
+  kenya-population-knbs-census); KNBS does not project below county at all.
+  FIXED-SHARE ASSUMPTION. Each sub-county's share of its county is held constant at the gridded 2020
+  distribution, so every sub-county in a county moves by exactly that county's percentage change.
+  Sub-county-specific growth is NOT represented: a fast-urbanising sub-county and a depopulating one
+  in the same county grow at the same rate here. Growth does vary between counties - the 2025
+  factors span 1.03 to 1.15 - but not within one.
+  TWO DEFINITIONS OF THE GROWTH FACTOR, recorded in pop_method:
+    county-growth-from-<base year> - pop_growth_county = projection(year) / projection(base year,
+      2020). The enumerated census remains the level and KNBS supplies only the shape of change;
+      national 2025 lands near 51.96 M because the ~2.6 per cent step KNBS puts between census night
+      (August 2019) and its own 2020 base is deliberately not imported.
+    county-level - pop_growth_county = projection(year) / census(2019), so the county total IS the
+      published official projection and national 2025 is 53,330,978 - the figure a Kenyan
+      counterpart would quote - at the cost of superseding the census anchor with the KNBS base-level
+      revision.
+  pop_source names the population vintage (knbs-census-2019, or knbs-projection-<year>);
+  pop_grid_source names the surface supplying the share. Nothing is discarded: the raw gridded
+  figures remain in pop_exposed_grid and pop_total_grid. pop_pct is identical under every option -
+  the factors cancel.
 
 contact:
   - name: Peter Steward
@@ -65,7 +101,7 @@ citation:
   publisher: Alliance of Bioversity International and CIAT
 
 created: "2026-09-09"
-updated: "2026-09-14"
+updated: "2026-09-15"
 
 spatial:
   bbox: [33.9, -4.7, 41.9, 5.5]
@@ -128,7 +164,9 @@ variables:
     data_type: float64
     unit: km2
   - name: pop_exposed
-    description: GFM and JRC tables. People in flooded / flood-prone cells (WorldPop constrained 2020, pixel sum).
+    description: >
+      GFM and JRC tables. People in flooded / flood-prone cells: the gridded exposed share of the
+      county, levelled to the KNBS county total named by pop_source.
     data_type: float64
     unit: "{person}"
   - name: pop_pct
@@ -136,7 +174,48 @@ variables:
     data_type: float64
     unit: "1"
   - name: pop_source
-    description: GFM and JRC tables. Population surface used; currently always "worldpop" (the GRID3 variant is deferred).
+    description: >
+      All tables. Which population LEVEL the headcounts carry - "knbs-census-2019" (default),
+      "knbs-projection-<year>", or the gridded source token when no levelling was applied.
+    data_type: string
+    unit: "1"
+  - name: pop_grid_source
+    description: All tables. The gridded surface supplying the within-county share; "worldpop-constrained-2020".
+    data_type: string
+    unit: "1"
+  - name: pop_exposed_grid
+    description: GFM and JRC tables. Raw gridded pixel sum over flooded / flood-prone cells, before levelling.
+    data_type: float64
+    unit: "{person}"
+  - name: pop_total_grid
+    description: All tables. Raw gridded pixel sum over the sub-county, before levelling.
+    data_type: float64
+    unit: "{person}"
+  - name: pop_scale_adm1
+    description: >
+      All tables. The factor actually applied to the gridded figures: target county total / gridded
+      county total, and identically pop_scale_census x pop_growth_county. About 0.855 for the 2019
+      census against WorldPop constrained. pop_total = pop_total_grid x this.
+    data_type: float64
+    unit: "1"
+  - name: pop_scale_census
+    description: >
+      All tables. Level component: census county total / gridded county total. Constant in time;
+      corrects the ~17 per cent gap between the gridded surface and the enumerated census.
+    data_type: float64
+    unit: "1"
+  - name: pop_growth_county
+    description: >
+      All tables. Time component: the county's proportional change from the census to the published
+      denominator year (1.0 for the census itself; 1.03-1.15 across counties for 2025). Constant
+      within a county - sub-counties do not carry their own growth rates.
+    data_type: float64
+    unit: "1"
+  - name: pop_method
+    description: >
+      All tables. How pop_growth_county was defined - "county-level" (the county total is the
+      published KNBS projection) or "county-growth-from-<base year>" (the census level carried
+      forward by county growth since that base year).
     data_type: string
     unit: "1"
   - name: roads_km_exposed
@@ -166,7 +245,9 @@ variables:
     unit: km2
   - name: pop_total
     dimensions: [adm2_pcode]
-    description: Totals table. Sub-county population (WorldPop constrained 2020, pixel sum).
+    description: >
+      All tables. Sub-county population denominator: the gridded pixel sum rescaled so each county
+      sums to the KNBS total named by pop_source.
     data_type: float64
     unit: "{person}"
   - name: roads_km_total
@@ -218,13 +299,22 @@ processing:
         url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=infrastructure/source=hotosm/region=kenya/
       - title: Kenya administrative boundaries, IEBC COD-AB (record kenya-admin-codab)
         url: https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=iebc-codab/region=kenya/
+      - title: KNBS 2019 census county totals (record kenya-population-knbs-census)
+        url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-census-2019/region=kenya/
+      - title: KNBS official county projections 2020-2045 (record kenya-population-knbs-projections)
+        url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/
   - id: zonal-intersect
     description: >
       Zonal intersect of the flood masks with the sub-county polygons, the population raster,
       rasterised per-cell road and grid line length, and facility points. Exposure = geometry or
       cell intersecting the flood mask; population is a pixel sum; line kilometres are the
-      rasterised in-cell length within flooded cells.
-    date: "2026-09-09"
+      rasterised in-cell length within flooded cells. Population figures are then rescaled county by
+      county: first onto the enumerated 2019 census level (pop_scale_census), then by the county's
+      proportional change to the denominator year (pop_growth_county), holding each sub-county's
+      share of its county fixed at the gridded distribution. The unrescaled figures are kept as
+      pop_exposed_grid / pop_total_grid and both factors are published, so any consumer can
+      reconstruct or undo the adjustment.
+    date: "2026-09-15"
     code:
       url: https://github.com/AdaptationAtlas/hazards_prototype
       version: R/observational/7_zonal_exposure.R
@@ -268,6 +358,12 @@ cdh:
       - Sub-county flood-exposure choropleths and ranked tables (people and assets exposed) in the KE-ENSO Explorer.
       - Comparing observed (GFM, seasonal / ENSO) against modelled (JRC, return-period) flood exposure.
     not_recommended_for:
+      - use: Reading pop_exposed as a raw gridded count.
+        reason: Headcounts carry the census level and, for a projection year, the county growth factor; the gridded figure is a different number.
+        use_instead: pop_exposed_grid when the unadjusted gridded pixel sum is what is wanted.
+      - use: Comparing growth between sub-counties of the same county.
+        reason: Sub-county shares are held fixed, so every sub-county in a county grows at its county's rate by construction - the differences would be an artefact.
+        use_instead: County-level comparison (pop_growth_county), or a sub-county projection from a source that actually produces one.
       - use: Survey-grade accounting of road or grid length at risk.
         reason: Road and grid kilometres are cell-resolution approximations.
         use_instead: The source vector layers with an exact line-in-polygon intersection.

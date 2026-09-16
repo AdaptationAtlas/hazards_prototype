@@ -1,9 +1,11 @@
 # CDH metadata records — KE-ENSO Explorer datasets
 
-13 CGIAR Climate Data Hub (CDH) **v0.3.0** metadata records, one per dataset the KE-ENSO Explorer uses.
+15 CGIAR Climate Data Hub (CDH) **v0.3.0** metadata records, one per dataset the KE-ENSO Explorer uses.
 Upgraded from v0.1.0 on 2026-09-14 after Brayden's review
 ([cdh-metadata-standard#32](https://github.com/CGIAR-Climate-Data-Hub/cdh-metadata-standard/issues/32)).
-**All 13 pass** the v0.3.0 schema + cross-field checks and `prettier --check` (what the catalog CI runs):
+**The original 13 pass** the v0.3.0 schema + cross-field checks and `prettier --check` (what the catalog CI runs);
+the two KNBS population records added on 2026-09-15 (issue #28) parse but have **not** been run through
+the Node validator yet — do that before contributing them to cdh-catalog:
 
 ```sh
 # one-off tooling checkout (Node >= 20)
@@ -31,6 +33,17 @@ npx prettier@3 --check $files      # catalog CI formats with prettier defaults (
 | kenya-facilities-hotosm | HOTOSM health + schools | socioeconomic | ODbL-1.0 | `…/source=hotosm/region=kenya` |
 | kenya-power-grid-kplc | KPLC transmission grid | socioeconomic | CC0-1.0 | `…/source=energydata-kplc/region=kenya` |
 | kenya-flood-exposure-intersect | Pre-cooked flood × exposure adm2 tables | socioeconomic, hydrology | **CC-BY-4.0** (was ODbL-1.0) | `domain=exposure/type=intersect/region=kenya` |
+| kenya-population-knbs-census | KNBS 2019 census counts, adm0/adm1/adm2-KNBS + age×sex | socioeconomic | LicenseRef-KNBS-Terms ⚠ | `domain=exposure/type=population/source=knbs-census-2019/region=kenya` |
+| kenya-population-knbs-projections | KNBS Vol XVI county projections 2020–2045 | socioeconomic | LicenseRef-KNBS-Terms ⚠ | `domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya` |
+
+⚠ **KNBS licence is an open question.** KNBS publishes no open-data licence: `knbs.or.ke/terms-and-conditions/`
+returns 404 and the site footer asserts "All Rights Reserved". Both records therefore carry
+`LicenseRef-KNBS-Terms` with the position stated in the `license` comment (attributed republication of
+published aggregate statistics). Confirm with KNBS — or route the age/sex table via HDX `cod-ps-ken`
+(UNFPA, CC-BY-3.0-IGO), which redistributes the same census figures under a clear licence — before
+these two go to cdh-catalog. The three-record change of 2026-09-15 also edited
+`kenya-population-worldpop`, `kenya-population-grid3` and `kenya-flood-exposure-intersect` (documenting
+the ~17 % gap against the census, and the new levelled population columns).
 
 `ensemble_season_trends.cdh.yaml` is a separate v0.0.1 draft for the CR-119 trends dataset (not part of this set; not upgraded).
 

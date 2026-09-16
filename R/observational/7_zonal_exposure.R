@@ -13,10 +13,28 @@
 #
 # Metrics (per adm2 x scenario):
 #   flooded_km2 / flood_prone_km2, observed_pct (GFM SAR coverage from nobs, 1.0 for JRC),
-#   flooded_pct_observed, pop_exposed + pop_pct (WorldPop constrained; pop_source col),
-#   health_n_exposed, schools_n_exposed, roads_km_exposed, grid_km_exposed (+ _hv 132/220 kV).
+#   flooded_pct_observed, pop_exposed + pop_pct, health_n_exposed, schools_n_exposed,
+#   roads_km_exposed, grid_km_exposed (+ _hv 132/220 kV).
 # Exposure rule: raster cell / asset geometry intersecting the flood mask
 #   (GFM: flooded==1; JRC: depth>0). Pop is pixel-sum weighted (mask resampled to the pop grid).
+#
+# POPULATION DENOMINATOR (issue #28). Sub-county headcounts are built as
+#     pop_adm2 = pop_adm2_grid x pop_scale_census x pop_growth_county
+#   i.e. the 100 m grid gives the SHARE of the county, the census gives the LEVEL, and the KNBS
+#   county projection gives the CHANGE OVER TIME. Sub-county shares are held fixed at the gridded
+#   2020 distribution, so every sub-county moves by its county's percentage change and none carries
+#   sub-county-specific growth — KNBS does not project below county, so that would be invented.
+#   Each factor is published as its own column next to the raw gridded figures
+#   (pop_exposed_grid / pop_total_grid); pop_source and pop_method say what was applied.
+#   The full method statement, including the difference between the two growth definitions, is in
+#   R/observational/_population_helpers.R.
+#     POP_SOURCE=knbs-census-2019               (default) 2019 census county totals
+#     POP_SOURCE=knbs-projection POP_YEAR=2025  KNBS Vol XVI projection for that year
+#     POP_SOURCE=grid                           no rescaling (pre-#28 behaviour)
+#     POP_METHOD=county-growth   (default) census level carried forward by county growth since
+#                                POP_BASE_YEAR (2020): national 2025 ~51.96 M, census-anchored
+#     POP_METHOD=county-level    county total IS the published projection: national 2025 53.33 M
+#   Needs python/ingest_population_knbs_census.py (and ..._projections.py for a projection year).
 #
 # SMOKE (validate + TIME the heavy line-intersect before the full ~100-raster run):
 #   SMOKE_ZONAL=1 Rscript R/observational/7_zonal_exposure.R   # 1 GFM season + 1 JRC RP -> intersect_smoke/
@@ -103,6 +121,31 @@ adm2_rast_pop <- rasterize(adm2_v, pop, field = "adm2_idx")
 pop_by_idx <- terra::zonal(pop, adm2_rast_pop, "sum", na.rm = TRUE)
 setDT(pop_by_idx); setnames(pop_by_idx, c("adm2_idx", "pop_total"))
 
+# ---- population denominator: official KNBS level x gridded share (issue #28) -
+# Headcounts take their LEVEL from the official KNBS county totals and only their within-county
+# SHARE from the 100 m grid — the gridded surfaces run ~17% above the enumerated census. The rule,
+# the reason and the admin-level constraint live in R/observational/_population_helpers.R, which
+# 7b_relevel_exposure_pop.R also uses to switch denominator without re-running this engine.
+#
+#   POP_SOURCE=knbs-census-2019  (default) county totals from the 2019 census
+#   POP_SOURCE=knbs-projection POP_YEAR=2025   county totals from KNBS Vol XVI (2020-2035/2040/2045)
+#   POP_SOURCE=grid              no rescaling; publish the gridded surface as-is (pre-#28 behaviour)
+#   POP_METHOD=county-growth     (default) census level x county growth since POP_BASE_YEAR
+#   POP_METHOD=county-level      county total IS the published projection for that year
+source(file.path(project_dir, "R", "observational", "_population_helpers.R"))
+POP_SOURCE      <- Sys.getenv("POP_SOURCE", "knbs-census-2019")
+POP_YEAR        <- Sys.getenv("POP_YEAR", "")
+POP_METHOD      <- Sys.getenv("POP_METHOD", "county-growth")
+POP_BASE_YEAR   <- as.integer(Sys.getenv("POP_BASE_YEAR", POP_PROJECTION_BASE_YEAR))
+POP_GRID_SOURCE <- "worldpop-constrained-2020"   # which grid paths$pop points at
+
+knbs <- knbs_county_totals(exp_root, POP_SOURCE, POP_YEAR, POP_METHOD, POP_BASE_YEAR)
+pop_label  <- knbs$label
+pop_method <- knbs$method
+grid_adm1 <- pop_by_idx[key_dt, on = "adm2_idx"][, .(grid_pop = sum(pop_total, na.rm = TRUE)),
+                                                 by = adm1_pcode]
+scale_dt <- pop_scale_table(grid_adm1, knbs$totals, pop_label, log_step)
+
 # ---- static totals (denominators) -------------------------------------------
 line_km <- function(x) as.numeric(sum(st_length(x))) / 1000
 totals <- key_dt[, .(adm2_pcode, adm1_pcode, adm2_name, adm1_name, adm2_idx)]
@@ -118,8 +161,15 @@ for (t in list(rd_tot, gr_tot, he_tot, sc_tot)) totals <- t[totals, on = "adm2_p
 num0 <- function(x) fifelse(is.na(x), 0, as.numeric(x))
 for (c in c("roads_km_total","grid_km_total","health_n_total","schools_n_total","pop_total","area_km2"))
   totals[[c]] <- num0(totals[[c]])
-log_step(sprintf("  totals: pop %.0f, roads %.0f km, grid %.0f km, health %d, schools %d",
-                 sum(totals$pop_total), sum(totals$roads_km_total), sum(totals$grid_km_total),
+# keep the raw gridded denominator, add the KNBS-levelled one (identical when POP_SOURCE=grid)
+setnames(totals, "pop_total", "pop_total_grid")
+totals <- scale_dt[totals, on = "adm1_pcode"]
+totals[, `:=`(pop_total = pop_total_grid * pop_scale_adm1,
+              pop_source = pop_label, pop_method = pop_method,
+              pop_grid_source = POP_GRID_SOURCE)]
+log_step(sprintf("  totals: pop %.0f [%s / %s] (grid %.0f), roads %.0f km, grid %.0f km, health %d, schools %d",
+                 sum(totals$pop_total), pop_label, pop_method, sum(totals$pop_total_grid),
+                 sum(totals$roads_km_total), sum(totals$grid_km_total),
                  sum(totals$health_n_total), sum(totals$schools_n_total)))
 
 # ---- zonal engine: one flood raster -> per-adm2 metrics ----------------------
@@ -193,13 +243,20 @@ for (i in seq_along(gfm_files)) {
                    i, length(gfm_files), meta$season, meta$year, sum(r$flooded_km2), sum(r$pop_exposed)))
 }
 A <- rbindlist(A)
-A <- totals[, .(adm2_pcode, area_km2, pop_total)][A, on = "adm2_pcode"]
+A <- totals[, .(adm2_pcode, area_km2, pop_total, pop_total_grid, pop_scale_adm1,
+                pop_scale_census, pop_growth_county)][A, on = "adm2_pcode"]
+setnames(A, "pop_exposed", "pop_exposed_grid")   # raw pixel sum, before the KNBS level is applied
 A[, `:=`(observed_pct = pmin(fifelse(area_km2 > 0, observed_km2 / area_km2, NA_real_), 1),  # clamp grid-mismatch rounding
          flooded_pct_observed = pmin(fifelse(observed_km2 > 0, flooded_km2 / observed_km2, NA_real_), 1),
-         pop_pct = fifelse(pop_total > 0, pop_exposed / pop_total, NA_real_),
-         pop_source = "worldpop")]
+         pop_exposed = pop_exposed_grid * pop_scale_adm1,
+         pop_pct = fifelse(pop_total_grid > 0, pop_exposed_grid / pop_total_grid, NA_real_),  # scale cancels
+         pop_source = pop_label,
+         pop_method = pop_method,
+         pop_grid_source = POP_GRID_SOURCE)]
 Acols <- c("adm2_pcode","adm1_pcode","adm2_name","adm1_name","season","year",
            "flooded_km2","observed_pct","flooded_pct_observed","pop_exposed","pop_pct","pop_source",
+           "pop_total","pop_exposed_grid","pop_total_grid","pop_scale_adm1","pop_scale_census",
+           "pop_growth_county","pop_method","pop_grid_source",
            "roads_km_exposed","health_n_exposed","schools_n_exposed","grid_km_exposed","grid_km_exposed_hv")
 A <- A[, ..Acols]
 
@@ -228,10 +285,18 @@ for (i in seq_along(jrc_files)) {
                    i, length(jrc_files), rp, sum(r$flood_prone_km2), sum(r$pop_exposed)))
 }
 B <- rbindlist(B)
-B <- totals[, .(adm2_pcode, pop_total)][B, on = "adm2_pcode"]
-B[, `:=`(pop_pct = fifelse(pop_total > 0, pop_exposed / pop_total, NA_real_), pop_source = "worldpop")]
+B <- totals[, .(adm2_pcode, pop_total, pop_total_grid, pop_scale_adm1, pop_scale_census,
+                pop_growth_county)][B, on = "adm2_pcode"]
+setnames(B, "pop_exposed", "pop_exposed_grid")
+B[, `:=`(pop_exposed = pop_exposed_grid * pop_scale_adm1,
+         pop_pct = fifelse(pop_total_grid > 0, pop_exposed_grid / pop_total_grid, NA_real_),
+         pop_source = pop_label,
+         pop_method = pop_method,
+         pop_grid_source = POP_GRID_SOURCE)]
 Bcols <- c("adm2_pcode","adm1_pcode","adm2_name","adm1_name","rp",
            "flood_prone_km2","pop_exposed","pop_pct","pop_source",
+           "pop_total","pop_exposed_grid","pop_total_grid","pop_scale_adm1","pop_scale_census",
+           "pop_growth_county","pop_method","pop_grid_source",
            "roads_km_exposed","health_n_exposed","schools_n_exposed","grid_km_exposed","grid_km_exposed_hv")
 B <- B[, ..Bcols]
 

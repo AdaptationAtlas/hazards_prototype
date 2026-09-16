@@ -34,10 +34,16 @@ keywords:
   ]
 
 note: >
-  Constrained = top-down redistribution of national totals onto built-settlement extents. The
-  national total (~55.9 M) is UN-adjusted and higher than the KNBS 2019 census (47.6 M); use for
+  Constrained = top-down redistribution of national totals onto built-settlement extents. Use for
   spatial distribution, not as a census-anchored count. Compare with the GRID3 / WOPR bottom-up
-  surface.
+  surface (record kenya-population-grid3).
+  DISCREPANCY AGAINST THE CENSUS: the UN-adjusted national total, ~55.2 M, is about 17 per cent
+  above the enumerated KNBS 2019 census figure of 47,564,296 (record
+  kenya-population-knbs-census). Any absolute headcount taken straight off this surface is
+  therefore ~17 per cent above what a Kenyan user will compare it against. The KE-ENSO exposure
+  tables handle this by taking the LEVEL from KNBS at county and only the within-county SHARE from
+  this grid (record kenya-flood-exposure-intersect); shares and percentages are unaffected either
+  way. An earlier version of this record quoted ~55.9 M, which is the GRID3 total, not this one.
 
 contact:
   - name: Peter Steward
@@ -109,5 +115,5 @@ cdh:
       - People exposed to flood or drought when overlaid with the hazard layers at Kenya admin levels (record kenya-flood-exposure-intersect).
     not_recommended_for:
       - use: Reporting census-anchored population totals.
-        reason: UN-adjusted total (~55.9 M) exceeds the KNBS 2019 census (47.6 M).
-        use_instead: KNBS census counts for official totals; this surface for spatial distribution.
+        reason: The UN-adjusted total (~55.2 M) runs about 17 per cent above the KNBS 2019 census (47.56 M).
+        use_instead: Record kenya-population-knbs-census for official totals (or kenya-population-knbs-projections for a later year); this surface for spatial distribution only.

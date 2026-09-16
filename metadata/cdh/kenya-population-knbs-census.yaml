@@ -1,0 +1,262 @@
+# CDH v0.3.0 metadata record — KNBS 2019 Census of Population and Housing counts, Kenya
+# (KE-39 exposure, Adaptation Atlas; issue #28).
+# Validate (cdh-metadata-standard v0.3.0 checkout):
+#   node scripts/validate-yaml.js --profile spec/schemas/profiles/cdh.schema.json <this file>
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: kenya-population-knbs-census
+title: KNBS 2019 Census Population Counts by County and Sub-county (Kenya)
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  Enumerated population from the 2019 Kenya Population and Housing Census (KNBS), as admin-level
+  tables: national, the 47 counties keyed on IEBC COD-AB adm1_pcode, the 345 KNBS sub-county rows in
+  the Bureau's own sub-county universe, and a county x 5-year age group x sex table. The official
+  denominator for anything the KE-ENSO Explorer presents to a Kenyan audience: the census total is
+  47,564,296, where the two gridded surfaces the Explorer also carries (kenya-population-worldpop
+  55.2 M, kenya-population-grid3 55.9 M) sit about 17 per cent higher.
+resource_type: dataset
+license: LicenseRef-KNBS-Terms # KNBS publishes no open-data licence; site footer asserts "All Rights Reserved". Reuse here is attributed republication of published aggregate statistics - confirm terms with KNBS before onward redistribution.
+
+keywords:
+  [
+    population,
+    census,
+    KNBS,
+    2019 Census of Population and Housing,
+    denominator,
+    exposure,
+    counties,
+    sub-counties,
+    Kenya,
+    "2019",
+  ]
+
+note: >
+  ADMIN LEVELS DIFFER BY LEVEL. County joins one-for-one with IEBC COD-AB (47 units, adm1_pcode).
+  Sub-county does NOT: COD-AB adm2 is 290 IEBC constituencies while the census reports 345 KNBS
+  sub-county rows (a different universe - constituency splits such as Embakasi East/West/Central
+  against sub-county Embakasi, plus 12 forest and national-park units such as Aberdare Forest and Mt
+  Elgon Forest). Normalised in-county name matching resolves 183 of the 290 COD-AB units, so the
+  adm2 table is published in the KNBS universe, name-keyed, with adm2_pcode_codab filled only where
+  a name matches exactly one COD-AB unit inside the same county and codab_match recording how each
+  row resolved. Use county totals plus a gridded within-county share for any adm2 denominator; do
+  not join this table to COD-AB sub-counties on name.
+  Male + Female (47,562,772) falls 1,524 short of the published Total because KNBS suppresses the
+  intersex count below national level; the residual is carried as pop_intersex.
+  The age-and-sex table comes from HDX cod-ps-ken (UNFPA, CC-BY-3.0-IGO), which redistributes the
+  same census (Volume III) with adm1 p-codes attached.
+
+contact:
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: Kenya National Bureau of Statistics (KNBS)
+    url: https://www.knbs.or.ke/
+    roles: [licensor, producer]
+
+citation:
+  title: "2019 Kenya Population and Housing Census: Population, Households and Density by Sub-county"
+  authors:
+    - "Kenya National Bureau of Statistics"
+  date: "2019"
+  publisher: Kenya National Bureau of Statistics
+  url: https://www.knbs.or.ke/reports/kenya-census-2019/
+
+created: "2026-09-15"
+updated: "2026-09-15"
+
+spatial:
+  bbox: [33.9, -4.7, 41.9, 5.5]
+  crs: EPSG:4326
+  geography: [kenya]
+  resolution:
+    - type: polygon
+      value: 1
+      unit: admin-level
+      label: counties (47 admin-1 units); a sub-county table is included in the KNBS universe
+      reference_system: OCHA COD-AB Kenya (IEBC), record kenya-admin-codab
+
+temporal:
+  date: "2019" # census night, 24/25 August 2019
+
+dimensions:
+  - name: adm1_pcode
+    type: location
+    description: IEBC county p-code (47 units); the join key to the boundary record.
+  - name: adm2_name_knbs
+    type: location
+    description: >
+      KNBS sub-county name, in the Bureau's own sub-county universe (345 rows). Not a COD-AB unit
+      and not unique on its own - unique only within a county.
+  - name: age_group
+    type: other
+    description: Age-and-sex table only. Five-year age groups, open-ended at 100+, plus "unstated".
+    values:
+      [
+        "0-4",
+        "5-9",
+        "10-14",
+        "15-19",
+        "20-24",
+        "25-29",
+        "30-34",
+        "35-39",
+        "40-44",
+        "45-49",
+        "50-54",
+        "55-59",
+        "60-64",
+        "65-69",
+        "70-74",
+        "75-79",
+        "80-84",
+        "85-89",
+        "90-94",
+        "95-99",
+        "100+",
+        "unstated",
+      ]
+  - name: sex
+    type: other
+    description: Age-and-sex table only. "total" is male + female; intersex is not disseminated sub-nationally.
+    values: [male, female, total]
+
+variables:
+  - name: pop_total
+    description: Enumerated resident population (male + female + intersex).
+    data_type: int64
+    unit: "{person}"
+  - name: pop_male
+    description: Enumerated male population.
+    data_type: int64
+    unit: "{person}"
+  - name: pop_female
+    description: Enumerated female population.
+    data_type: int64
+    unit: "{person}"
+  - name: pop_intersex
+    description: Derived residual, pop_total - pop_male - pop_female. Published by KNBS at national level only (1,524).
+    data_type: int64
+    unit: "{person}"
+  - name: households
+    description: Households enumerated (conventional plus group quarters).
+    data_type: int64
+    unit: "{household}"
+  - name: households_conventional
+    description: Conventional households.
+    data_type: int64
+    unit: "{household}"
+  - name: households_group_quarters
+    description: Group-quarters households.
+    data_type: int64
+    unit: "{household}"
+  - name: land_area_km2
+    description: Land area as published by KNBS with the census tables.
+    data_type: float64
+    unit: km2
+  - name: pop_density_km2
+    description: Derived, pop_total / land_area_km2.
+    data_type: float64
+    unit: "{person}/km2"
+  - name: adm2_pcode_codab
+    description: >
+      Sub-county table only. COD-AB adm2 p-code, filled ONLY where the KNBS name matches exactly one
+      COD-AB unit within the same county; null otherwise.
+    data_type: string
+    unit: "1"
+  - name: codab_match
+    description: Sub-county table only. How the row resolved - "unique-name", "ambiguous-name", "no-match" or "not-attempted".
+    data_type: string
+    unit: "1"
+  - name: population
+    dimensions: [adm1_pcode, age_group, sex]
+    description: Age-and-sex table only. People in the county in that age group and sex.
+    data_type: int64
+    unit: "{person}"
+
+joins:
+  - target: https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=iebc-codab/region=kenya/processing=analysis-ready/level=adm1/ken_adm1.geojson
+    left_fields: [adm1_pcode]
+    right_fields: [adm1_pcode]
+
+processing:
+  - id: source
+    description: >
+      KNBS census workbook "Population, households and density by sub-county" (counts, households,
+      land area) and, for the age-and-sex table, HDX cod-ps-ken (UNFPA) carrying the same census
+      Volume III figures with adm1 p-codes.
+    derived_from:
+      - title: 2019 Kenya Population and Housing Census - population, households and density by sub-county
+        url: https://www.knbs.or.ke/wp-content/uploads/2023/09/2019-Kenya-population-and-Housing-Census-Population-households-density-by-sub-county.xlsx
+      - title: Kenya - Subnational Population Statistics (COD-PS, UNFPA, from KNBS census Volume III)
+        url: https://data.humdata.org/dataset/cod-ps-ken
+  - id: tabulate
+    description: >
+      Parse the workbook, attach IEBC COD-AB adm1_pcode by name (crosswalk gated on census order
+      KE001..KE047), derive pop_intersex and pop_density_km2, attempt a best-effort COD-AB match for
+      sub-county rows, write parquet. Gated on the published national total (47,564,296) and on
+      county and sub-county sums reconciling to it.
+    date: "2026-09-15"
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: python/ingest_population_knbs_census.py
+
+data:
+  - name: adm0
+    description: National totals (1 row).
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-census-2019/region=kenya/processing=analysis-ready/level=adm0/population_knbs_census_adm0.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-census-2019/region=kenya/processing=analysis-ready/level=adm0/population_knbs_census_adm0.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, tabulate]
+  - name: adm1
+    description: County totals keyed on IEBC adm1_pcode (47 rows). The denominator used by the zonal exposure tables.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-census-2019/region=kenya/processing=analysis-ready/level=adm1/population_knbs_census_adm1.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-census-2019/region=kenya/processing=analysis-ready/level=adm1/population_knbs_census_adm1.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, tabulate]
+  - name: adm1-agesex
+    description: County x 5-year age group x sex (22,770 rows).
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-census-2019/region=kenya/processing=analysis-ready/level=adm1/population_knbs_census_adm1_agesex.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-census-2019/region=kenya/processing=analysis-ready/level=adm1/population_knbs_census_adm1_agesex.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, tabulate]
+  - name: adm2-knbs
+    description: KNBS sub-county rows (345), name-keyed in the KNBS universe - NOT COD-AB adm2.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-census-2019/region=kenya/processing=analysis-ready/level=adm2/population_knbs_census_adm2_knbs.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-census-2019/region=kenya/processing=analysis-ready/level=adm2/population_knbs_census_adm2_knbs.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, tabulate]
+
+cdh:
+  domain: [socioeconomic]
+  usage:
+    intended_uses:
+      - Official population denominator for exposure counts presented to Kenyan users.
+      - Levelling gridded exposure to census totals while keeping the gridded within-county share.
+      - Reconciling the ~17 per cent gap between the gridded surfaces and the enumerated census.
+    not_recommended_for:
+      - use: Joining the sub-county table to COD-AB adm2 units on name.
+        reason: The two sub-county universes differ; only 183 of 290 COD-AB units have an exact in-county name match.
+        use_instead: County totals combined with a gridded within-county share (see record kenya-flood-exposure-intersect).
+      - use: Current-year population figures.
+        reason: These are 2019 enumerated counts; Kenya's population has grown by several million since.
+        use_instead: Record kenya-population-knbs-projections for 2020-2045.

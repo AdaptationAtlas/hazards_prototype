@@ -1,0 +1,244 @@
+# CDH v0.3.0 metadata record — KNBS official population projections 2020-2045, Kenya
+# (KE-39 exposure, Adaptation Atlas; issue #28).
+# Validate (cdh-metadata-standard v0.3.0 checkout):
+#   node scripts/validate-yaml.js --profile spec/schemas/profiles/cdh.schema.json <this file>
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: kenya-population-knbs-projections
+title: KNBS Official Population Projections by County, 2020-2045 (Kenya)
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  Kenya's official cohort-component population projections, from the 2019 KPHC Analytical Report on
+  Population Projections (Volume XVI, KNBS 2022), tabulated from the report's Appendix 5 as
+  county x year x 5-year age group x sex, keyed on IEBC COD-AB adm1_pcode. National trajectory
+  48.82 M (2020), 53.33 M (2025), 57.81 M (2030), 62.16 M (2035), 66.31 M (2040), 70.18 M (2045).
+  Lets forward-framed flood and drought exposure use a population denominator for the year in
+  question instead of a 2020 surface read as current.
+resource_type: dataset
+license: LicenseRef-KNBS-Terms # KNBS publishes no open-data licence; site footer asserts "All Rights Reserved". Reuse here is attributed republication of published aggregate statistics - confirm terms with KNBS before onward redistribution.
+
+keywords:
+  [
+    population,
+    projections,
+    KNBS,
+    cohort-component,
+    denominator,
+    exposure,
+    counties,
+    Kenya,
+    2020-2045,
+  ]
+
+note: >
+  COUNTY ONLY. Volume XVI does not project below county - no sub-county name appears anywhere in the
+  report - so this record stops at county. The KE-ENSO exposure tables (record
+  kenya-flood-exposure-intersect) do carry sub-county figures for a projection year, and the way they
+  get there is stated there in full: each sub-county's share of its county is held fixed at the
+  gridded 2020 distribution and the whole county is moved by its own percentage change from this
+  table (pop_growth_county), with the enumerated census supplying the level. That means no
+  sub-county-specific growth is represented; growth varies between counties (2025 factors span 1.03
+  to 1.15) but is uniform within one. Anyone wanting genuine sub-county differentials needs a source
+  that produces them - this one does not.
+  YEAR COVERAGE IS UNEVEN. The report's annual panels cover 2020-2035; 2040 and 2045 appear only in
+  the five-yearly milestone panel, so 2036-2039 and 2041-2044 are absent.
+  TWO SOURCE DEFECTS, both handled and logged by the ingest rather than silently absorbed.
+  (1) Busia 2030, age 80+, female reads 3,120 in the 2030-2035 panel against 5,799 in the two other
+  panels that carry 2030; the printed row total (9,714) reconciles only with 5,799, so 5,799 is
+  used. (2) Kiambu's 2026-2030 panel labels its open-ended top age group "80-84" where every other
+  panel says "80+"; it is relabelled "80+", without which it would double-count against the
+  overlapping panels.
+  KNBS rounds each printed cell independently, so sums do not close exactly: age groups land within
+  five people of the printed All Ages row, and the 47 counties sum to roughly 15 to 20 people below
+  the national row in every year.
+  The identical report is also hosted as ...-Analytical-Report-on-Population-Projections-Vol-XVI.pdf
+  (2024/05, 32.9 MB); its extracted text is identical to the 2023/09 upload used here.
+
+contact:
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+  - organization: Kenya National Bureau of Statistics (KNBS)
+    url: https://www.knbs.or.ke/
+    roles: [licensor, producer]
+
+citation:
+  title: "2019 Kenya Population and Housing Census, Analytical Report on Population Projections (Volume XVI)"
+  authors:
+    - "Kenya National Bureau of Statistics"
+  date: "2022"
+  publisher: Kenya National Bureau of Statistics
+  url: https://www.knbs.or.ke/wp-content/uploads/2023/09/2019-Kenya-population-and-Housing-Census-Analytical-Report-on-Population-Projections.pdf
+
+created: "2026-09-15"
+updated: "2026-09-15"
+
+spatial:
+  bbox: [33.9, -4.7, 41.9, 5.5]
+  crs: EPSG:4326
+  geography: [kenya]
+  resolution:
+    - type: polygon
+      value: 1
+      unit: admin-level
+      label: counties (47 admin-1 units)
+      reference_system: OCHA COD-AB Kenya (IEBC), record kenya-admin-codab
+
+temporal:
+  start_date: "2020"
+  end_date: "2045"
+
+dimensions:
+  - name: adm1_pcode
+    type: location
+    description: IEBC county p-code (47 units); the join key to the boundary record.
+  - name: year
+    type: temporal
+    description: Projection year. Annual 2020-2035 plus the 2040 and 2045 milestones; 2036-2039 and 2041-2044 are not published.
+    values:
+      [
+        "2020",
+        "2021",
+        "2022",
+        "2023",
+        "2024",
+        "2025",
+        "2026",
+        "2027",
+        "2028",
+        "2029",
+        "2030",
+        "2031",
+        "2032",
+        "2033",
+        "2034",
+        "2035",
+        "2040",
+        "2045",
+      ]
+    step: P1Y
+  - name: age_group
+    type: other
+    description: Five-year age groups, open-ended at 80+.
+    values:
+      [
+        "0-4",
+        "5-9",
+        "10-14",
+        "15-19",
+        "20-24",
+        "25-29",
+        "30-34",
+        "35-39",
+        "40-44",
+        "45-49",
+        "50-54",
+        "55-59",
+        "60-64",
+        "65-69",
+        "70-74",
+        "75-79",
+        "80+",
+      ]
+  - name: sex
+    type: other
+    description: Projected sex; "total" is the report's own Total column (male + female).
+    values: [male, female, total]
+
+variables:
+  - name: population
+    dimensions: [adm1_pcode, year, age_group, sex]
+    description: Projected people in the county in that year, age group and sex.
+    data_type: int64
+    unit: "{person}"
+  - name: pop_total
+    dimensions: [adm1_pcode, year]
+    description: Totals table. All Ages, both sexes - the county denominator for a projection year.
+    data_type: int64
+    unit: "{person}"
+  - name: pop_male
+    dimensions: [adm1_pcode, year]
+    description: Totals table. All Ages, male.
+    data_type: int64
+    unit: "{person}"
+  - name: pop_female
+    dimensions: [adm1_pcode, year]
+    description: Totals table. All Ages, female.
+    data_type: int64
+    unit: "{person}"
+
+joins:
+  - target: https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=iebc-codab/region=kenya/processing=analysis-ready/level=adm1/ken_adm1.geojson
+    left_fields: [adm1_pcode]
+    right_fields: [adm1_pcode]
+
+processing:
+  - id: source
+    description: KNBS 2019 KPHC Analytical Report on Population Projections, Volume XVI, Appendix 5.
+    derived_from:
+      - title: 2019 KPHC Analytical Report on Population Projections (Volume XVI)
+        url: https://www.knbs.or.ke/wp-content/uploads/2023/09/2019-Kenya-population-and-Housing-Census-Analytical-Report-on-Population-Projections.pdf
+  - id: tabulate
+    description: >
+      Extract Appendix 5 with pdftotext -layout, parse each county block's age x sex x year panels,
+      reconcile the years that appear in more than one panel (ties broken on the row's own
+      male + female = total, so a cell contradicting its printed total loses), attach IEBC COD-AB
+      adm1_pcode, write parquet. Gated on the published national totals for all six milestone years,
+      on the 47 counties resolving in COD-AB order, and on counties summing to the national row.
+    date: "2026-09-15"
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: python/ingest_population_knbs_projections.py
+
+data:
+  - name: adm0
+    description: National projections, year x age group x sex (972 rows).
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm0/population_knbs_projections_adm0.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm0/population_knbs_projections_adm0.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, tabulate]
+  - name: adm1
+    description: County projections, county x year x age group x sex (45,684 rows).
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm1/population_knbs_projections_adm1.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm1/population_knbs_projections_adm1.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, tabulate]
+  - name: adm1-totals
+    description: County x year All Ages totals (846 rows) - the table the zonal exposure engine reads.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm1/population_knbs_projections_adm1_totals.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm1/population_knbs_projections_adm1_totals.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, tabulate]
+
+cdh:
+  domain: [socioeconomic]
+  usage:
+    intended_uses:
+      - Population denominator for a stated projection year in forward-framed exposure work.
+      - County age and sex structure for vulnerability weighting (children, older people).
+    not_recommended_for:
+      - use: Sub-county (adm2) projected denominators.
+        reason: Volume XVI projects to county only.
+        use_instead: County projection combined with a gridded within-county share, stated as such.
+      - use: Years 2036-2039 or 2041-2044.
+        reason: Not published - the annual panels stop at 2035 and only 2040 and 2045 follow.
+        use_instead: The nearest published year, or interpolate and say so.
+      - use: Reporting the 2019 enumerated baseline.
+        reason: These are projections, not census counts.
+        use_instead: Record kenya-population-knbs-census.
