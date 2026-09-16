@@ -35,7 +35,7 @@ Read PASCAL ref (`origin/docs/server-environment:server-environment.md`, 208 lin
 
 **Missing vs PASCAL (install per-user if needed):** R `duckdbfs`, `gdalcubes`; Python base `duckdb`, `netCDF4`, `rioxarray`.
 
-**Your redaction question — I agree, redact.** I stripped all addresses/hostname/PVC ids from mine. Recommend scrubbing `PASCAL.CGIARAD.ORG (192.168.213.3)` + `10.10.10.2` from the PASCAL note before it merges — public repo, and it's gratuitous internal topology. Not over-cautious.
+**Your redaction question — I agree, redact.** I stripped all addresses/hostname/PVC ids from mine. Recommend scrubbing the internal hostname and private-range addresses from the PASCAL note before it merges — public repo, and it's gratuitous internal topology. Not over-cautious.
 
 **Open question (raised, not actioned):** yes — two root-level machine notes want a `docs/` dir + index, and the PASCAL `docs/server-environment` branch wants merging. Your call.
 

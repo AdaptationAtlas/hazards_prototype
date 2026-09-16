@@ -35,8 +35,15 @@ crd$id <- 1:nrow(crd)
 crd$vals <- NULL
 crd <- crd[,c('id','x','y')]
 
-# Soil data repository. ISRIC soil data 250 m
-soils_root <- '//192.168.20.97/data_cluster17/GLOBAL/Biofisico/SoilGrids250m'
+# Soil data repository. ISRIC SoilGrids 250 m.
+# Set SOILS_ROOT to the SoilGrids250m directory (previously a hardcoded internal
+# SMB mount; removed because this repository is public and the address is not
+# reachable off that network anyway). Example:
+#   export SOILS_ROOT='//<host>/data_cluster17/GLOBAL/Biofisico/SoilGrids250m'
+soils_root <- Sys.getenv('SOILS_ROOT')
+if (!nzchar(soils_root)) {
+  stop('SOILS_ROOT is not set: point it at the SoilGrids250m directory (see comment above).')
+}
 # Soil organic carbon content
 orc <- terra::rast(list.files(paste0(soils_root,'/Chemical soil properties/Soil organic carbon content'), pattern = '.tif$', full.names = T) %>% sort())
 # Cation exchange capacity

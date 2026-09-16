@@ -159,7 +159,7 @@ Sync: HEAD **`9611922`** ✓. Read-only probe: `logs/probe_r3_usd_20260915_15052
 
 **Node facts (probe can't get):**
 - `uptime`: `15:06:08 up 250 days, load average: 26.29, 26.02, 25.58` (0 user sessions; that load is the node's steady baseline).
-- Data volume free: **123 T avail / 192 T (37 % used)** on `192.168.18.251:/volume1/cglabs_shared_spaces` → rerun has ample headroom.
+- Data volume free: **123 T avail / 192 T (37 % used)** on the shared NFS export backing `Data/` (address redacted) → rerun has ample headroom.
 
 **1) GRIDS** — crop-usd rasters are a different grid from `_int`; intld + livestock match:
 ```

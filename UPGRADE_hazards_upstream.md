@@ -62,7 +62,7 @@ reproduced here on purpose.)
 
 ## Cross-stage patterns (fix once, helps all)
 - Hardcoded absolute paths in EVERY sub-stage (`/home/jovyan`, `~/common_data`,
-  `~/Repositories/hazards`, SMB/UNC `//catalogue`, IP-mount `//192.168.20.97`) — highest-frequency defect.
+  `~/Repositories/hazards`, SMB/UNC `//catalogue`, IP-mount `//<internal-ip>`) — highest-frequency defect.
 - Silent-failure idiom everywhere (`fls<-fls[file.exists]`→unguarded `rast()`; `tryCatch→NULL`;
   unchecked `system()`/`put`/`gsutil`; magic completeness counts) → loud `stopifnot`.
 - Fragile filename/version parsing (positional split, unescaped `.` regex) — same R/2 landmine class;
