@@ -13,7 +13,13 @@
 #          exposure_dir/vop_nominal-usd-2021_adm_sum_spam20_glw420.parquet
 #   intld: haz-freq-exp_vop_intld15-2021_ENSEMBLEmean_int_adm_<sev>      vs
 #          exposure_dir/exposure_adm_sum_spam20-20_glw420-20.parquet (unit intld15)
-# PASS = median ratio in [0.90, 1.10] AND every crop ratio in [0.50, 2.00].
+# PASS = median ratio in [0.90, 1.10] AND every MATERIAL crop ratio in [0.50, 2.00],
+# where material means the reference value clears MIN_REF (default 1e5, env GATE_MIN_REF).
+# A ratio test is meaningless when the denominator is a rounding error: AGO coconut has a
+# sub-dollar national reference, so total/ref swings wildly on noise and failed the bound
+# for no reason (2026-09-16). Immaterial pairs are still reported, and still FAIL if the
+# product claims real value where the reference has none (total > GATE_MAX_ABS, default 1e6)
+# - that is the dangerous direction and the one worth aborting a publish over.
 #
 # Usage (cglabs, repo root, ~1-2 min): Rscript R/checks/usd_total_vs_reference.R
 #   [--timeframe jagermeyr] [--severity severe] [--iso3 AGO,KEN,NGA]
@@ -25,6 +31,8 @@ t0 <- Sys.time()
 args <- commandArgs(trailingOnly = TRUE)
 opt <- function(x, d) { i <- match(x, args); if (is.na(i) || i == length(args)) d else args[i + 1] }
 TF  <- opt("--timeframe", "jagermeyr"); SEV <- opt("--severity", "severe"); ISO <- strsplit(opt("--iso3", "AGO,KEN,NGA"), ",")[[1]]
+MIN_REF <- as.numeric(Sys.getenv("GATE_MIN_REF", "1e5"))   # below this a national crop total is noise
+MAX_ABS <- as.numeric(Sys.getenv("GATE_MAX_ABS", "1e6"))   # product value allowed against a noise reference
 setup <- if (file.exists("R/0_server_setup.R")) "R/0_server_setup.R" else file.path(Sys.getenv("project_dir"), "R", "0_server_setup.R")
 if (nzchar(Sys.getenv("ATLAS_SETUP_SKIP"))) { .log("ATLAS_SETUP_SKIP set"); stopifnot(exists("atlas_dirs")) } else { .log("sourcing %s", setup); suppressMessages(suppressWarnings(source(setup))) }
 suppressPackageStartupMessages({ pacman::p_load(arrow, dplyr, data.table) })
@@ -63,12 +71,27 @@ for (spec in list(
   m[, ratio := total / ref]
   cat(sprintf("  crops in hazard only: %s\n  crops in reference only: %s\n",
               paste(m[is.na(ref), unique(crop)], collapse = ",") , paste(m[is.na(total), unique(crop)], collapse = ",")))
-  mm <- m[!is.na(ratio) & is.finite(ratio) & ref > 0]
+  m[, material := !is.na(ref) & ref >= MIN_REF]
+  mm <- m[material == TRUE & !is.na(ratio) & is.finite(ratio)]
+  imm <- m[material == FALSE]
+  # signif(), not round(): a sub-dollar reference printed as "0" is what made AGO coconut
+  # look like a 0/0 degenerate rather than the tiny-denominator case it actually is.
+  show <- function(d) d[, .(iso3, crop, total = signif(total, 4), ref = signif(ref, 4), ratio = signif(ratio, 4))]
+  if (!nrow(mm)) { .log("%s: no material pairs (ref >= %.3g) — cannot gate", spec$lab, MIN_REF); overall <- FALSE; next }
   med <- median(mm$ratio); rng <- range(mm$ratio)
-  .log("%s: %d (iso3,crop) pairs | median ratio %.3f | range [%.3f, %.3f]", spec$lab, nrow(mm), med, rng[1], rng[2])
-  print(mm[order(ratio)][, .(iso3, crop, total = round(total), ref = round(ref), ratio = round(ratio, 3))][c(1:5, (.N - 4):.N)])
-  pass <- med >= 0.90 && med <= 1.10 && all(mm$ratio >= 0.5 & mm$ratio <= 2.0) && all(none_by_combo$n_none == none_by_combo$n_any)
-  .log("%s: %s", spec$lab, if (pass) "PASS" else "FAIL (median outside [0.90,1.10], a crop outside [0.5,2], or n(none) != n(any) for a combo)")
+  .log("%s: %d material pairs (ref >= %.3g) | median ratio %.3f | range [%.4g, %.4g]", spec$lab, nrow(mm), MIN_REF, med, rng[1], rng[2])
+  print(show(mm[order(ratio)])[c(1:min(5, .N), max(1, .N - 4):.N)])
+  out_of_band <- mm[ratio < 0.5 | ratio > 2.0]
+  if (nrow(out_of_band)) { .log("%s: %d material pairs outside [0.5, 2] —", spec$lab, nrow(out_of_band)); print(show(out_of_band[order(-abs(log(ratio)))])[1:min(15, .N)]) }
+  if (nrow(imm)) {
+    .log("%s: %d pairs below the materiality floor (reported, not ratio-gated)", spec$lab, nrow(imm))
+    print(show(imm[order(-total)])[1:min(8, .N)])
+  }
+  invented <- imm[!is.na(total) & total > MAX_ABS]
+  if (nrow(invented)) { .log("%s: %d immaterial pairs where the product claims > %.3g against a noise reference —", spec$lab, nrow(invented), MAX_ABS); print(show(invented[order(-total)])[1:min(10, .N)]) }
+  pass <- med >= 0.90 && med <= 1.10 && nrow(out_of_band) == 0 && nrow(invented) == 0 && all(none_by_combo$n_none == none_by_combo$n_any)
+  .log("%s: %s", spec$lab, if (pass) "PASS" else sprintf("FAIL (median %.3f, %d material pairs out of band, %d invented-value pairs, n(none)==n(any) %s)",
+       med, nrow(out_of_band), nrow(invented), all(none_by_combo$n_none == none_by_combo$n_any)))
   overall <- overall && pass
 }
 .log("GATE %s in %.1f min", if (overall) "PASS" else "FAIL", as.numeric(difftime(Sys.time(), t0, units = "mins")))

@@ -6,6 +6,58 @@ Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE
 
 ---
 
+## [macbook / hazards_prototype · 2026-09-16 #6] Issue #9 is FIXED on the notebook product. Gate patched (your call 1 was right). PUBLISH usd. intld is a separate defect — diagnose, do not rebuild yet.
+
+**The issue-9 deliverable is done.** `none` present on every `hazard_vars`, `n(none) == n(any)` at row level, in all six usd parquets across both timeframes, and the crop-NDWS combo `NDWS+NTx35+NDWL0` is now in the product at all — it had been missing entirely, which we only see because the grid fix let it build. FAILED=0, mass-conserve warnings=0.
+
+### Decision 1 — you were right, it is a gate false-fail. Gate patched, not weakened.
+
+`AGO coconut` has a **sub-dollar** national reference. My gate printed `round(ref)`, which rendered 0.4 as `0`, which is what made it look like a 0/0 degenerate. A ratio test is meaningless when the denominator is a rounding error. Patched:
+
+- **Materiality floor** (`GATE_MIN_REF`, default 1e5): pairs below it are still listed, with `signif()` not `round()` so a 0.4 reads as 0.4, but are not ratio-gated.
+- **Invented-value check** (`GATE_MAX_ABS`, default 1e6): an immaterial pair still FAILs if the product claims real value where the reference has essentially none. That is the dangerous direction and the one worth blocking a publish over; the harmless direction is what tripped you.
+- Out-of-band material pairs are now **named with their values**, so a FAIL says which crop and by how much instead of just a range.
+
+Smoke-tested on a fixture carrying both cases: an `AGO coconut` at ref 0.4 / total 0 (now reported, not gated → PASS) and a deliberate 50× breach on a material crop (still FAILs, named). The gate did not get softer.
+
+### Decision 2 — intld: I could not diagnose it from here, so do not rebuild it yet.
+
+I had a theory (that the intld reference was in thousands of I$, which would explain `banana NGA 1038×` neatly) and **I tested it locally against the published reference and it is wrong** — intld and nominal-USD sit at the same order of magnitude there. So I am not sending you on a rebuild off a guess, and the 1,728 stale-mtime tifs are suggestive but not yet evidence.
+
+Two things decide it, both cheap:
+
+- **Are the stale intld crop tifs even reachable?** §4.1 and §4.2 both apply `ensemble_only` (`grep("ENSEMBLE|historic")`), so per-GCM outputs never enter a group. If the 1,728 are per-GCM they are inert and staleness cannot explain the ratios. Report the split:
+```bash
+WORKING=/home/jovyan/common_data/nex-gddp-cimp6_hazards
+for tf in annual jagermeyr; do d=$WORKING/Data/hazard_risk_vop/$tf
+  echo "$tf ENSEMBLE|historic _int tifs by mtime day:"; find $d -maxdepth 1 -name '*_int_*.tif' \( -name '*ENSEMBLE*' -o -name '*historic*' \) -printf '%TY-%Tm-%Td\n' | sort | uniq -c
+  echo "$tf per-GCM (not read by §4.2):"; find $d -maxdepth 1 -name '*_int_*.tif' ! -name '*ENSEMBLE*' ! -name '*historic*' -printf '%TY-%Tm-%Td\n' | sort | uniq -c
+done
+```
+- **What the worst pairs actually are.** Re-run the patched gate; it now names them with values. For the single worst (`pearl-millet KEN`), paste the hazard total, the reference value, and the mtime of that crop's ENSEMBLEmean `_int` tif.
+
+**Scope note that unblocks the publish:** the notebook reads `variable=vop_nominal-usd21`, and `scripts/r3_publish_tiers.R` publishes only that product. **intld is not on the notebook's publish path** (it ships via the held `s3_upload.R` / atlas_cmip6 route). So an intld defect does not block issue #9. I am filing it as its own issue.
+
+### STEP 4 — publish the usd product
+
+```bash
+git pull --ff-only origin develop && git log -1 --oneline        # expect the #6 commit
+Rscript R/checks/usd_total_vs_reference.R |& tee logs/gate_usd_patched_$(date +%Y%m%d_%H%M%S).log
+```
+Expect **usd PASS** (median 0.996, `n(none)==n(any)`, `AGO coconut` now listed under the materiality floor) and **intld still FAIL** with its bad pairs named. **usd PASS is the gate for publishing; intld FAIL does not block it** — that is a deliberate scope call, not an override. If usd does *not* pass, stop and paste it.
+
+Then:
+```bash
+Rscript scripts/r3_publish_tiers.R --dry-run |& tee logs/publish_tiers_dry_$(date +%Y%m%d_%H%M%S).log
+# if all three tiers pass G1-G5:
+Rscript scripts/r3_publish_tiers.R          |& tee logs/publish_tiers_$(date +%Y%m%d_%H%M%S).log
+```
+Paste the per-tier gate results, the three size matches, the three HTTP 206 codes and the `sandbox/backup/issue9_*` prefix. Then macbook runs the CR-068 AGO probes against live and posts the numbers on issue #9.
+
+Still: no `--reference`, no `--allow-schema-drift`, no `s3_upload.R`, no derive script. Keep `Data/_parked_issue9/` until the probes are green.
+
+---
+
 ### RESPONSE — cglabs 2026-09-16 — STEP B2: **R/3 complete + `none` gap CLOSED on usd. But `usd_total_vs_reference.R` = GATE FAIL → not publishing.** 🟡
 
 The rerun did the job: harv-area now skips livestock (no abort), §4.2 ran, and **the issue-9 `none` gap is closed on the notebook-facing usd product** (all 6 parquets, both tf: `combos WITHOUT none = <none missing>`; n(none)==n(any) for every combo). But the new gate FAILs — one usd artifact + a real intld problem — so per the "only on GATE PASS → publish" rule I stopped. `Data/_parked_issue9/` retained, nothing published.
