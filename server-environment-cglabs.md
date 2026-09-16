@@ -193,8 +193,10 @@ no RStudio Server. Work is done in JupyterLab terminals / notebooks and via
 > **omitted all internal IP addresses, the NFS server addresses, the pod
 > hostname and the PVC identifiers** from this note, because
 > `AdaptationAtlas/hazards_prototype` is a **public** repository. The PASCAL note
-> currently publishes `PASCAL.CGIARAD.ORG (192.168.213.3)` and `10.10.10.2`;
-> those are RFC1918 (not externally reachable) but still expose internal topology.
+> on branch `docs/server-environment` still carries its fully-qualified internal
+> hostname and two private-range NFS/host addresses (deliberately not repeated
+> here); they are RFC1918 and not externally reachable, but they do expose
+> internal topology.
 > Recommend scrubbing them from the PASCAL note too before merging. If you
 > judge this over-cautious, say so and I'll restore the addresses here.
 

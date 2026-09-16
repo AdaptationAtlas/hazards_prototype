@@ -60,7 +60,7 @@ Eight sections, in this order: **1) Hardware · 2) Storage · 3) Shared use and 
 ### Two things to fix rather than copy
 
 1. **The PASCAL note says "Last updated: September 2025".** It was written 2026-09-15. Date yours correctly.
-2. **PASCAL's note puts internal addresses in a public repo** — `PASCAL.CGIARAD.ORG (192.168.213.3)` and the NFS server `10.10.10.2`. `AdaptationAtlas/hazards_prototype` is **public** (confirmed via the GitHub API). These are RFC1918 addresses so they are not reachable from outside, but they do publish internal network topology and a hostname to anyone reading the repo. **Do not put IP addresses or fully-qualified internal hostnames in your note.** Describe mounts by path and type ("NFS share, ~192 T") and leave the server address out. Flag it in your RESPONSE if you think that is over-cautious and I will take it to Pete.
+2. **PASCAL's note puts internal addresses in a public repo** — its fully-qualified internal hostname and two private-range addresses (one host, one NFS server); not repeated here, see `server-environment.md` §1-2 on branch `docs/server-environment`. `AdaptationAtlas/hazards_prototype` is **public** (confirmed via the GitHub API). These are RFC1918 addresses so they are not reachable from outside, but they do publish internal network topology and a hostname to anyone reading the repo. **Do not put IP addresses or fully-qualified internal hostnames in your note.** Describe mounts by path and type ("NFS share, ~192 T") and leave the server address out. Flag it in your RESPONSE if you think that is over-cautious and I will take it to Pete.
 
 ### Commands to gather the facts
 
