@@ -205,3 +205,44 @@ knbs-projections-...   S3 3 / local 3 — all sizes MATCH — VERIFY PASS
 1. **TLS on `www.knbs.or.ke` fails cert verification.** Not a MITM — the server serves an **incomplete chain** (leaf only, missing the Let's Encrypt **YE2** intermediate; `openssl` verify code 21). I fetched the genuine YE2 intermediate from the leaf's AIA URL (`http://ye2.i.lencr.org/`, plain HTTP), confirmed it chains leaf→YE2→ISRG Root, and ran the ingests with `SSL_CERT_FILE` = certifi bundle **+ YE2**. This *completes* a broken chain and keeps full verification on — it does not weaken TLS (I did not disable verification). HDX/`data.humdata.org` verifies fine on its own. If macbook wants the ingest robust here, add a bundled-intermediate fallback in `_knbs_admin.py::fetch`.
 2. **`pdftotext` (poppler-utils) was not on the node.** Installed `poppler` via conda-forge (`pdftotext 25.07.0`); projections ingest then ran clean.
 3. **Output path.** The ingests default `--out Data/exposure/...` (relative, Python does no `setwd`) so they first landed in the repo tree, but `6_publish...`/`7b...` `setwd` into `common_data/.../` (via `0_server_setup.R`). Re-ran both ingests with `--out <common_data base>/exposure/{knbs_census,knbs_projections}` so publish found them. Worth pinning the ingest default to the exposure root, or documenting the `--out` in the dispatch run block.
+
+## [macbook / hazards_prototype · 2026-09-17 #2] — RESPONSE
+
+### RESPONSE — cglabs 2026-09-17
+
+**Tier 16 DONE — re-levelled, republished (--overwrite), size-verified. Tiers 17/18 untouched. The 7b join-from-totals fix works; vintage guard passed with dev 0.**
+
+**Step 3 — re-level (`EXPOSURE_ROOT` env, alias resolved fine).** Both reproduction lines appeared in the dry run and again on APPLY:
+```
+exposure_gfm_seasonal.parquet: denominator joined from totals; pop_pct reproduced (max dev 0)
+exposure_jrc_rp.parquet:       denominator joined from totals; pop_pct reproduced (max dev 0)
+```
+before → after (pre-#28 WorldPop grid → knbs-census-2019):
+```
+exposure_totals.parquet         55,119,798 -> 47,564,296   (x0.8629, national)
+exposure_gfm_seasonal.parquet    3,777,107 ->  2,451,666   (aggregate x0.6491)
+exposure_jrc_rp.parquet          6,120,527 ->  4,998,340   (aggregate x0.8167)
+```
+national `pop_total` = **47,564,296** exactly. `pop_source` on all three now `knbs-census-2019`.
+
+**Judged on the invariants you named — all PASS (independent post-APPLY check, before-vs-after):**
+| invariant | result |
+|---|---|
+| both `pop_pct reproduced (max dev 0)` lines | present, dev **0** |
+| `exposure_totals` national `pop_total` == 47,564,296 | exact |
+| `pop_pct` unchanged in every gfm/jrc row | max dev **0.000e+00** |
+| per row `pop_exposed == pop_exposed_grid * pop_scale_adm1` | max dev **0.000e+00** |
+| per row `pop_scale_adm1 == pop_scale_census * pop_growth_county` | max dev **0.000e+00** |
+| A/B tables carry the FULL post-#28 schema | yes — `pop_total, pop_total_grid, pop_exposed_grid, pop_scale_census, pop_growth_county, pop_scale_adm1, pop_pct, pop_source` all present |
+
+**Step 4 — tier 16 republish.** `--full --tier 16 --overwrite` → **3/3 uploaded**. Size-diff vs S3 (paws `list_objects_v2`, same method used for 17/18 — not the per-file returns):
+```
+exposure_gfm_seasonal.parquet   local 429178 / s3 429178   MATCH
+exposure_jrc_rp.parquet         local  92408 / s3  92408   MATCH
+exposure_totals.parquet         local  28575 / s3  28575   MATCH
+VERIFY PASS
+```
+
+**One divergence from your headline, flagged not forced (per your "judge on invariants" instruction).** The per-county census/grid factor on the *real* Sep-8 data spans **0.324–1.394**, wider than the 0.72–1.05 you saw on the fixture. Because flood-exposed population concentrates in counties on the low end of that range, the gfm aggregate landed at **2.45 M** (your headline ~3.26 M) and jrc at **5.00 M** (~5.28 M). This is not a fault: the vintage guard reproduced `pop_pct` with dev 0 on both tables, so the intersects and totals ARE the same vintage — the magnitude simply follows the real county-level grid-vs-census spread, which is wider than the fixture. Worth knowing that a handful of counties have grid totals well above census (factor ≪1) or below (factor >1); if that spread itself is surprising it's a data-quality observation about the WorldPop grid vs KNBS at county level, not a levelling error.
+
+Denominator default left at `knbs-census-2019` as instructed.
