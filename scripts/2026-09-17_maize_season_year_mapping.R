@@ -22,6 +22,9 @@
 #   grouping   counties are classified by their OWN 1991-2020 climatology
 #              (ond_share = OND / (MAM + OND)) rather than a hand-drawn unimodal/bimodal list.
 #
+# ADOPTED CONVENTION (Pete, 2026-09-17): ONE national rule, production year Y <- OND(Y-1) + MAM(Y).
+# Written up in issue #34 and HANDOVER_2026-09-17_maize-season-year-mapping.md (notebook side).
+#
 # HEADLINE RESULT (see the issue for the full write-up)
 #   In the counties that actually grow Kenya's maize, same-year OND has NO relationship to yield
 #   (top-12 counties, 65% of national production: r = -0.02) while previous-year OND has the
