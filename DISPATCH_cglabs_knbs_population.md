@@ -88,6 +88,17 @@ fault. Judge the run on the invariants instead:
 - `pop_pct` unchanged in every row of gfm and jrc (the factors cancel).
 - per row, `pop_exposed == pop_exposed_grid * pop_scale_adm1`, and
   `pop_scale_adm1 == pop_scale_census * pop_growth_county`.
+
+**The check that actually settles it is already automated, so you do not have to judge the
+aggregates by eye.** `7b` recomputes `pop_pct` from the joined denominator and **aborts** if it
+does not reproduce the stored value to 1e-6, naming the table and the deviation. Because the new
+`pop_pct` is computed from the same `pop_exposed_grid / pop_total_grid` pair, a run that passes
+that guard has preserved every share exactly — which is the property the notebook depends on.
+The invariant above is an internal consistency check and would still hold if the factors
+themselves were wrong; the `pop_pct` reproduction would not.
+
+So: read the two "pop_pct reproduced (max dev ...)" lines and the national `pop_total`. If those
+are right, the gfm/jrc aggregates are right too, whatever their weighted factor turns out to be.
 - both "pop_pct reproduced (max dev ~0)" lines present.
 Then publish tier 16 only — **17 and 18 are done and verified, do not re-publish them** — and paste the size-diff verification the way you did for those two.
 
