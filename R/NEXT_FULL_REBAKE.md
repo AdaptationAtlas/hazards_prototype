@@ -2,7 +2,7 @@
 
 Several fixes are deferred to bundle into the next full hazard rebake (amortise
 the ~day of warmup). This is the pickup list so nothing is silently missed.
-Run on cglabs (live Data/ + S3). Last updated 2026-06-24 (issue sweep).
+Run on cglabs (live Data/ + S3). Last updated **2026-09-17** (post issue-#9 publish).
 
 ## ⚠️ CRITICAL — §3 and §5.3 are toggle-only (FORCE_OVERWRITE does NOT enable them)
 `run3` and `run5.3` are gated on explicit env toggles, NOT `FORCE_OVERWRITE`
@@ -15,6 +15,18 @@ FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1
 ```
 (`RUN_R2_RUN5_2=1` too if the §5.2 combo tifs in `haz_time_int_dir` also need a
 rebuild; §5.2 already runs under FORCE_OVERWRITE, so usually not separately needed.)
+
+## R/3 run controls added 2026-09 (know these before launching section 4)
+| Control | Default | Effect |
+|---|---|---|
+| `R3_CROP_VOP_USD` | `2015` | `2021` points crop nominal-USD at 0.4.2's `spam_vop_nominal-usd-2021_all`, matching the livestock side, the published label and the reference parquet. The 2026-09-16 publish used `2021`. The default is the legacy raster and is a **2015-vs-2021 currency-vintage mismatch inside the usd product** - set `2021` unless you have a reason not to. |
+| `R3_ALLOW_41_FAILURES` | unset | Downgrades the 4.1 hard abort to a warning. Deliberate partial runs only; a silent 4.1 failure is what hid the #9 bug for months. |
+| `SKIP_R3_4_1` | unset | Skip 4.1 when the tifs are already correct. |
+
+**Gate before publishing anything:** `Rscript R/checks/usd_total_vs_reference.R` compares
+`any + none` per (country, crop) against the 0.4.4 exposure reference. It splits rows into
+material, immaterial and unmatched, because one ratio bound cannot serve all three - see the
+header comment. `generic-crop` has no reference by design and is reported, not gated.
 
 ## CROSS-REPO — this rebake STARTS upstream in AdaptationAtlas/hazards (nexgddp)
 The full chain is **2 repos**: `AdaptationAtlas/hazards` (nexgddp branch) produces
@@ -75,12 +87,33 @@ consume them. So a true full rebake is:
    `5.2: N combinations x M scen_x_model | worker_n5.2=20`. If N << 20, the two-phase
    flatten in R/ISSUE_r2_5_2_parallelism.md is worth applying; if N≈15+, skip.
    (Tier A timers give per-section wall-clock to target.)
-5. **Pattern B / exposure>VoP (#9, #12) — NOT a producer fix here.** Code review found
-   NO grid/resample mismatch in our numerator; the gap is vs the STALE denominator
-   `crop-livestock_all.parquet` (vintage 2026-01-22, Brayden's republish) ± boundary
-   vintage. Probe-first (per #12), no blind re-bake. The rebake refreshes the
-   numerator (hazard_exposure) but will NOT close #12 until the denominator is
-   republished + the reconciliation probe passes. See [[project-cr068-post-bake-probes]].
+5. **Pattern B / exposure > VoP (#9, #12) — RESOLVED + PUBLISHED 2026-09-16. No longer rides this rebake.**
+   **The earlier entry here was wrong and is corrected for the record.** It said "code review
+   found NO grid/resample mismatch in our numerator". There was one. The crop nominal-USD
+   exposure raster (`spam_vop_usd2015_all.tif`, SPAM 0.05 deg Africa) was multiplied against
+   `_int` stacks on the 0.25 deg global grid, so `data * exposure` raised
+   `[*] extents do not match` for **every** crop, the 4.1 retry wrapper swallowed it with
+   `try(silent = TRUE)`, and the stale pre-existing tifs survived for 4.2 to read as current.
+   Ratios >100% and the missing `hazard='none'` both traced to that. Fixed in R/3:
+   `.align_exposure()` (aggregate when exactly nested, else `resample(method="sum")`),
+   4.1 now **aborts** on genuine failures instead of warning, and commodity/variable pairs
+   with no exposure surface (livestock x harvested area) return a classified non-fatal skip.
+   Verified on the live product: 0 exceedances in 5,281 admin1 x crop pairs across AGO/KEN/NGA,
+   NaN at adm0/adm1 = 0, adm0 = sum(adm1) exactly.
+   **Lesson worth keeping: a clean R/3 exit is not evidence of a clean run.** Check
+   `failed_risk_x_exposure_*.txt`, `skipped_not_in_exposure_*.txt`, per-variable 4.1 elapsed,
+   and output mtimes against the run start.
+
+6. **R/2.1 GCM pin (#26) — NOT yet fixed; settle before the monthly/trends product is re-baked.**
+   `R/2.1_create_monthly_haz_tables.R:189-191` pins 5 of 18 GCMs, unconditionally and outside
+   every section guard, and the same filter drops **all** historic folders (`"historical"` is
+   not in the GCM list). The published Future Projections parquet is a mixture of 18/13/5-member
+   ensembles, and NDD is wholly 5-member. The filter and the historic-folder naming at `:186`
+   (every GCM collapses to `historic_historic_historic`) must be fixed **together** - removing
+   the filter alone means one arbitrary GCM silently becomes the baseline. Anomalies also appear
+   to resolve against a 1981-2014 mean while the published key says `baseline=1995-2014`.
+   p.steward has decided **both** baseline windows stay supported and the window must appear in
+   file and folder names. Full detail on #26.
 
 ## Order
 0. Pre-conditions above (esp. hazards#19; exposure vintage; CR-115 convention state).
@@ -97,6 +130,18 @@ consume them. So a true full rebake is:
 ## POST-BAKE VALIDATION (CR-068 probes — run after publish)
 `atlas_notebooks/scripts/probe_no_hazard_arithmetic_quick.sh <ISO3>` +
 `probe_cross_parquet_vop_drift.sh <ISO3>` against canonical S3. Expect: exposure
-ratios ≤100%, `hazard='none'` rows present, NaN count → 0 (except the Luanda
-residual until hazards#19 lands). Baselines + interpretation in
-[[project-cr068-post-bake-probes]].
+ratios <=100%, `hazard='none'` rows present, NaN count -> 0 at adm0/adm1.
+Baselines + interpretation in [[project-cr068-post-bake-probes]].
+
+**Both probe scripts have bugs that read as data defects (verified 2026-09-17, live):**
+- `probe_no_hazard_arithmetic_quick.sh` hardcodes `hazard_vars='NDWS+NTx35+NDWL0'`, a **crop**
+  combination, so all ten livestock commodities report `no_hazard_row` when their data is
+  present and healthy under the heat combinations.
+- `probe_cross_parquet_vop_drift.sh` defines its admin1 sum as `admin1_name IS NOT NULL`,
+  which also picks up admin2 rows. Admin2 legitimately carries ~1.9% NaN where a crop mask is
+  empty, so the sum returns NaN and the probe reports a false admin0 mismatch. Restricted to
+  true admin1 rows it matches admin0 to the dollar.
+
+Both live in `atlas_notebooks`, reported on #9, not fixed from this repo. Prefer the
+self-contained check: `any + none` from the product itself, rather than crossing to
+`crop-livestock_all.parquet`, whose vintage differs and whose intld rows are affected by #30.
