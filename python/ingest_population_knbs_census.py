@@ -59,6 +59,8 @@ from _knbs_admin import (  # noqa: E402
     log,
     norm_name,
     resolve_county,
+    resolve_out_dir,
+    urlretrieve_checked,
     write_table,
     xlsx_table,
 )
@@ -82,7 +84,7 @@ def fetch(url, dest):
         log(f"  reusing cached {os.path.basename(dest)} ({os.path.getsize(dest)/1e3:.0f} KB)")
         return dest
     log(f"  downloading {os.path.basename(dest)} ...")
-    urllib.request.urlretrieve(url, dest)
+    urlretrieve_checked(url, dest)
     log(f"    got {os.path.getsize(dest)/1e3:.0f} KB")
     return dest
 
@@ -210,11 +212,11 @@ def parse_agesex(tmp):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=os.path.join(
-        # EXPOSURE_ROOT because the R side sources 0_server_setup.R, which setwd()s into
-        # common_data, while Python does not - so a repo-relative default lands the parquets
-        # where the publisher and the re-level script will not look (cglabs, 2026-09-17).
-        os.environ.get("EXPOSURE_ROOT", "Data/exposure"), "knbs_census"))
+    # Default resolved by _knbs_admin.resolve_out_dir: $ATLAS_EXPOSURE_DIR (or EXPOSURE_ROOT),
+    # else ./Data/exposure. The R side setwd()s into common_data and Python does not, so a
+    # repo-relative default lands the parquets where the publisher will not look (cglabs,
+    # 2026-09-17) — the resolver logs the absolute path and warns when it falls back.
+    ap.add_argument("--out", default=None)
     ap.add_argument("--format", choices=["parquet", "csv"], default="parquet")
     ap.add_argument("--no-age-sex", action="store_true", help="skip the HDX cod-ps-ken age x sex table")
     ap.add_argument("--no-codab-match", action="store_true", help="skip the best-effort adm2 name match")
@@ -225,7 +227,8 @@ def main():
     ap.add_argument("--smoke", action="store_true", help="download + parse + run the gates, write nothing")
     a = ap.parse_args()
 
-    log(f"KNBS 2019 census ingest | out={a.out} smoke={a.smoke}")
+    log(f"KNBS 2019 census ingest | smoke={a.smoke}")
+    a.out = resolve_out_dir(a.out, "knbs_census")
     os.makedirs(a.out, exist_ok=True)
     tmp = a.cache_dir or os.path.join(a.out, ".tmp")
     os.makedirs(tmp, exist_ok=True)

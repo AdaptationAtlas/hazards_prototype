@@ -25,7 +25,11 @@ Holds the three things both scripts need and neither should re-invent:
    The notebook reads parquet over DuckDB-WASM, so parquet is the publishable form.
 """
 import datetime as dt
+import os
 import re
+import ssl
+import urllib.parse
+import urllib.request
 import zipfile
 from xml.etree import ElementTree as ET
 
@@ -58,6 +62,59 @@ def explain_tls_failure(exc, url):
 
 def log(msg):
     print(f"[{dt.datetime.now():%H:%M:%S}] {msg}", flush=True)
+
+
+def resolve_out_dir(cli_out, subdir):
+    """
+    Where an ingest writes. Precedence: explicit --out, then $ATLAS_EXPOSURE_DIR/<subdir>
+    (the per-key env of R/00_paths.R, issue #29), then ./Data/exposure/<subdir>.
+
+    The relative fallback is a trap on a pipeline host and is called out loudly: the R scripts
+    setwd() into the working_dir tree before resolving `Data/`, python does not, so a bare
+    `Data/exposure/...` lands in the repo checkout where 6_publish/7b will not find it (cglabs hit
+    exactly this on 2026-09-17).
+    """
+    if cli_out:
+        out = cli_out
+    else:
+        # ATLAS_EXPOSURE_DIR is the per-key env of R/00_paths.R (issue #29); EXPOSURE_ROOT is
+        # accepted as an alias so either spelling works.
+        root = os.environ.get("ATLAS_EXPOSURE_DIR", "") or os.environ.get("EXPOSURE_ROOT", "")
+        out = os.path.join(root, subdir) if root else os.path.join("Data", "exposure", subdir)
+    resolved = os.path.abspath(out)
+    log(f"  output dir: {resolved}")
+    if not cli_out and not (os.environ.get("ATLAS_EXPOSURE_DIR") or os.environ.get("EXPOSURE_ROOT")):
+        log("  WARNING: no --out and no $ATLAS_EXPOSURE_DIR — writing to a path relative to the "
+            "current directory. On a pipeline host the R scripts read from the working_dir tree "
+            "instead; pass --out <exposure root>/" + subdir + " or set ATLAS_EXPOSURE_DIR "
+            "(alias: EXPOSURE_ROOT).")
+    return out
+
+
+def urlretrieve_checked(url, dest):
+    """urlretrieve, but turn an incomplete-chain TLS failure into an actionable message."""
+    try:
+        urllib.request.urlretrieve(url, dest)
+    except urllib.error.URLError as e:
+        if not isinstance(getattr(e, "reason", None), ssl.SSLCertVerificationError):
+            raise
+        host = urllib.parse.urlsplit(url).netloc
+        raise RuntimeError(
+            f"TLS certificate verification failed for {host}.\n"
+            "Seen on www.knbs.or.ke (cglabs, 2026-09-17): the server sends the leaf certificate "
+            "WITHOUT its intermediate, so the chain cannot be built (openssl verify error 21). That "
+            "is a server misconfiguration, not an interception.\n"
+            "Fix by COMPLETING the chain, never by disabling verification:\n"
+            "  1. read the leaf's AIA 'CA Issuers' URL:\n"
+            f"     openssl s_client -connect {host}:443 -servername {host} </dev/null 2>/dev/null "
+            "| openssl x509 -noout -text | grep -A1 'CA Issuers'\n"
+            "  2. fetch that intermediate (plain HTTP by design) and convert it:\n"
+            "     curl -sO http://<aia-host>/<file>.crt && openssl x509 -inform DER -in <file>.crt "
+            "-out inter.pem\n"
+            "  3. append it to a copy of the certifi bundle and re-run with\n"
+            "     SSL_CERT_FILE=<bundle+intermediate>.pem\n"
+            "Verify the chain really is leaf -> intermediate -> a trusted root before using it."
+        ) from e
 
 
 # ---------------------------------------------------------------------------

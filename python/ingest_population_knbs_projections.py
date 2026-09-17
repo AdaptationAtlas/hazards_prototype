@@ -54,6 +54,8 @@ from _knbs_admin import (  # noqa: E402
     PCODE_NAME,
     log,
     resolve_county,
+    resolve_out_dir,
+    urlretrieve_checked,
     write_table,
 )
 
@@ -80,7 +82,10 @@ SEXES = ("male", "female", "total")
 
 def pdf_to_text(pdf_path, txt_path):
     if not shutil.which("pdftotext"):
-        raise RuntimeError("pdftotext (poppler-utils) not on PATH — required to read the KNBS PDF")
+        raise RuntimeError(
+            "pdftotext (poppler-utils) not on PATH — required to read the KNBS PDF. Install with "
+            "`conda install -c conda-forge poppler` (what cglabs used, 2026-09-17), "
+            "`apt-get install poppler-utils`, or `brew install poppler`.")
     subprocess.run(["pdftotext", "-layout", pdf_path, txt_path], check=True)
     log(f"  pdftotext -layout -> {os.path.basename(txt_path)} "
         f"({sum(1 for _ in open(txt_path, errors='replace')):,} lines)")
@@ -187,11 +192,11 @@ def collect(lines):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default=os.path.join(
-        # EXPOSURE_ROOT because the R side sources 0_server_setup.R, which setwd()s into
-        # common_data, while Python does not - so a repo-relative default lands the parquets
-        # where the publisher and the re-level script will not look (cglabs, 2026-09-17).
-        os.environ.get("EXPOSURE_ROOT", "Data/exposure"), "knbs_projections"))
+    # Default resolved by _knbs_admin.resolve_out_dir: $ATLAS_EXPOSURE_DIR (or EXPOSURE_ROOT),
+    # else ./Data/exposure. The R side setwd()s into common_data and Python does not, so a
+    # repo-relative default lands the parquets where the publisher will not look (cglabs,
+    # 2026-09-17) — the resolver logs the absolute path and warns when it falls back.
+    ap.add_argument("--out", default=None)
     ap.add_argument("--format", choices=["parquet", "csv"], default="parquet")
     ap.add_argument("--cache-dir", default=None,
                     help="where the PDF + extracted text are kept (default <out>/.tmp, deleted on "
@@ -200,7 +205,8 @@ def main():
     ap.add_argument("--smoke", action="store_true", help="download + parse + run the gates, write nothing")
     a = ap.parse_args()
 
-    log(f"KNBS Vol XVI projections ingest | out={a.out} smoke={a.smoke}")
+    log(f"KNBS Vol XVI projections ingest | smoke={a.smoke}")
+    a.out = resolve_out_dir(a.out, "knbs_projections")
     os.makedirs(a.out, exist_ok=True)
     tmp = a.cache_dir or os.path.join(a.out, ".tmp")
     os.makedirs(tmp, exist_ok=True)
@@ -213,7 +219,7 @@ def main():
     pdf = os.path.join(tmp, "knbs_projections_vol16.pdf")
     if not (os.path.exists(pdf) and os.path.getsize(pdf) > 0):
         log("  downloading Vol XVI PDF (~17 MB) ...")
-        urllib.request.urlretrieve(PDF_URL, pdf)
+        urlretrieve_checked(PDF_URL, pdf)
     log(f"  PDF {os.path.getsize(pdf)/1e6:.1f} MB")
     txt = pdf_to_text(pdf, os.path.join(tmp, "knbs_projections_vol16.txt"))
     lines = open(txt, errors="replace").read().splitlines()
