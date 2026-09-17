@@ -34,7 +34,7 @@
 # subsidy and a 15% area expansion. Consistent with the mapping; not proof of it.
 #
 # INPUTS
-#   scripts/data/2026-09-17_knbs_maize_panel.csv   47 counties x 2019-2024, built by
+#   scripts/2026-09-17_knbs_maize_panel.csv        47 counties x 2019-2024, built by
 #                                                  scripts/2026-09-17_parse_knbs_maize_panel.py
 #   S3 admin-periods parquet (public, no credentials) via the local `duckdb` CLI
 #
@@ -45,7 +45,7 @@ suppressPackageStartupMessages({library(data.table)})
 setDTthreads(1)   # the default thread pool deadlocked on this workload under Rscript
 
 project_dir <- if (nzchar(Sys.getenv("project_dir"))) Sys.getenv("project_dir") else getwd()
-panel_csv <- file.path(project_dir, "scripts", "data", "2026-09-17_knbs_maize_panel.csv")
+panel_csv <- file.path(project_dir, "scripts", "2026-09-17_knbs_maize_panel.csv")
 cache_dir <- Sys.getenv("CACHE_DIR", tempdir())
 dir.create(cache_dir, recursive = TRUE, showWarnings = FALSE)
 S3 <- paste0("https://digital-atlas.s3.amazonaws.com/domain=climate/type=observational/",

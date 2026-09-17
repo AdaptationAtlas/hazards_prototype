@@ -1,4 +1,7 @@
-import re, sys, csv
+import os, re, sys, csv
+
+OUT = os.environ.get("OUT", os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                                                 "2026-09-17_knbs_maize_panel.csv"))
 sys.path.insert(0,'/Users/pstewarda/Documents/rprojects/hazards_prototype/python')
 from _knbs_admin import resolve_county, norm_name
 
@@ -39,7 +42,7 @@ for k,x,y in sorted(diff, key=lambda t:-abs(t[1]-t[2]))[:5]:
 
 merged = dict(a); merged.update(b)          # later report wins on overlap (revised figures)
 rows = sorted(merged.values(), key=lambda r:(r['adm1_pcode'], r['year']))
-w = csv.DictWriter(open("maize_panel.csv","w",newline=""), fieldnames=["adm1_pcode","adm1_name","year","area_ha","production_t"])
+w = csv.DictWriter(open(OUT,"w",newline=""), fieldnames=["adm1_pcode","adm1_name","year","area_ha","production_t"])
 w.writeheader(); w.writerows(rows)
 yrs = sorted({r['year'] for r in rows}); cs = sorted({r['adm1_pcode'] for r in rows})
 print(f"PANEL: {len(rows)} rows | {len(cs)} counties | years {yrs}", file=sys.stderr)
