@@ -21,7 +21,7 @@ description: >
   47,564,296, where the two gridded surfaces the Explorer also carries (kenya-population-worldpop
   55.2 M, kenya-population-grid3 55.9 M) sit about 17 per cent higher.
 resource_type: dataset
-license: LicenseRef-KNBS-Terms # KNBS publishes no open-data licence; site footer asserts "All Rights Reserved". Reuse here is attributed republication of published aggregate statistics - confirm terms with KNBS before onward redistribution.
+license: LicenseRef-KNBS-Open-License # KNBS Open License Agreement: worldwide, royalty-free, non-exclusive, derivative works and redistribution permitted, commercial and non-commercial, attribution required. KNBS additionally released this exact table on HDX under Public Domain / No restrictions - see the licence note below.
 
 keywords:
   [
@@ -37,6 +37,20 @@ keywords:
     "2019",
   ]
 
+licence_note: >
+  Evidence for the licence, recorded because knbs.or.ke itself carries no terms page (the
+  terms-and-conditions URL 404s and the footer asserts "All Rights Reserved"), which is misleading:
+  (1) KNBS operates an Open License Agreement covering its Open Data Platform, granting a worldwide,
+  royalty-free, non-exclusive licence to use, copy, modify, publish, adapt, distribute and create
+  derivative works for commercial and non-commercial purposes, subject to attribution.
+  (2) KNBS's own account on the Humanitarian Data Exchange published the SAME sub-county table used
+  here - "Distribution of Population by Sex, Number of Households, Land Area, Population Density and
+  Sub County" - under Public Domain / No restrictions
+  (https://data.humdata.org/dataset/kenya-population-per-county-from-census-report-2019).
+  (3) The same census figures are redistributed by UNFPA under CC-BY-3.0-IGO (HDX cod-ps-ken).
+  Required attribution, carried by any product derived from this record:
+  "This product was adapted from the Statistical Office of Kenya's information, which is licensed under the KNBS Open License Agreement."
+
 note: >
   ADMIN LEVELS DIFFER BY LEVEL. County joins one-for-one with IEBC COD-AB (47 units, adm1_pcode).
   Sub-county does NOT: COD-AB adm2 is 290 IEBC constituencies while the census reports 345 KNBS
@@ -51,6 +65,11 @@ note: >
   intersex count below national level; the residual is carried as pop_intersex.
   The age-and-sex table comes from HDX cod-ps-ken (UNFPA, CC-BY-3.0-IGO), which redistributes the
   same census (Volume III) with adm1 p-codes attached.
+  DO NOT SWITCH THE SOURCE TO THE HDX COPY of the sub-county table, despite its cleaner licence
+  status: that copy is defective. It carries 346 rows to this source's 345 because the Tharaka-Nithi
+  COUNTY total (393,177) appears as if it were a sub-county, inflating the national figure to
+  47,957,473 against the published 47,564,296. This ingest uses the knbs.or.ke workbook, which
+  reconciles exactly. (It also spells Kutulo as "Kotulo"; same value, harmless.)
 
 contact:
   - name: Peter Steward

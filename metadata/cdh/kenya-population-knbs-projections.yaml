@@ -21,7 +21,7 @@ description: >
   Lets forward-framed flood and drought exposure use a population denominator for the year in
   question instead of a 2020 surface read as current.
 resource_type: dataset
-license: LicenseRef-KNBS-Terms # KNBS publishes no open-data licence; site footer asserts "All Rights Reserved". Reuse here is attributed republication of published aggregate statistics - confirm terms with KNBS before onward redistribution.
+license: LicenseRef-KNBS-Open-License # KNBS Open License Agreement (worldwide, royalty-free, derivative works permitted, attribution required). Weaker footing than the census record: that agreement is scoped to the KNBS Open Data Platform, and Volume XVI is a PDF on knbs.or.ke with no licensed mirror anywhere - see the licence note.
 
 keywords:
   [
@@ -35,6 +35,18 @@ keywords:
     Kenya,
     2020-2045,
   ]
+
+licence_note: >
+  Weaker footing than the census record, and the difference is worth stating. KNBS's Open License
+  Agreement grants worldwide, royalty-free, non-exclusive rights to reuse, adapt, redistribute and
+  create derivative works with attribution - but it is scoped to data published on the KNBS Open
+  Data Platform, and Volume XVI is a PDF hosted on knbs.or.ke. Unlike the 2019 census tables, no
+  licensed mirror of these projections exists anywhere (searched HDX, open.africa and the Kenya data
+  portal, 2026-09-17): UNFPA's COD-PS covers the census, not Volume XVI. What is published here is a
+  derived tabulation of figures printed in a public national statistical report, attributed, not a
+  copy of the report. Confirm with KNBS before this record is contributed to cdh-catalog.
+  Required attribution:
+  "This product was adapted from the Statistical Office of Kenya's information, which is licensed under the KNBS Open License Agreement."
 
 note: >
   COUNTY ONLY. Volume XVI does not project below county - no sub-county name appears anywhere in the

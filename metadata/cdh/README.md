@@ -36,12 +36,19 @@ npx prettier@3 --check $files      # catalog CI formats with prettier defaults (
 | kenya-population-knbs-census | KNBS 2019 census counts, adm0/adm1/adm2-KNBS + age×sex | socioeconomic | LicenseRef-KNBS-Terms ⚠ | `domain=exposure/type=population/source=knbs-census-2019/region=kenya` |
 | kenya-population-knbs-projections | KNBS Vol XVI county projections 2020–2045 | socioeconomic | LicenseRef-KNBS-Terms ⚠ | `domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya` |
 
-⚠ **KNBS licence is an open question.** KNBS publishes no open-data licence: `knbs.or.ke/terms-and-conditions/`
-returns 404 and the site footer asserts "All Rights Reserved". Both records therefore carry
-`LicenseRef-KNBS-Terms` with the position stated in the `license` comment (attributed republication of
-published aggregate statistics). Confirm with KNBS — or route the age/sex table via HDX `cod-ps-ken`
-(UNFPA, CC-BY-3.0-IGO), which redistributes the same census figures under a clear licence — before
-these two go to cdh-catalog. The three-record change of 2026-09-15 also edited
+⚠ **KNBS licence — researched 2026-09-17, mostly resolved.** `knbs.or.ke` is misleading: its
+terms-and-conditions URL 404s and the footer asserts "All Rights Reserved". But KNBS operates an
+**Open License Agreement** (worldwide, royalty-free, non-exclusive; use, copy, modify, publish,
+adapt, distribute, derivative works; commercial and non-commercial; attribution required), and
+KNBS's **own HDX account** published the very sub-county table we ingest under **Public Domain / No
+restrictions** ([dataset](https://data.humdata.org/dataset/kenya-population-per-county-from-census-report-2019)).
+The same census figures are also redistributed by UNFPA under CC-BY-3.0-IGO. Both records now carry
+`LicenseRef-KNBS-Open-License` plus the attribution string KNBS requires.
+Residual gap: the Open License is scoped to the KNBS Open Data Platform, and **Volume XVI
+(projections) is a PDF on knbs.or.ke with no licensed mirror anywhere** — so the projections record
+rests on weaker footing than the census one and should be confirmed with KNBS before it reaches
+cdh-catalog. Do **not** switch the census ingest to the HDX copy: it double-counts Tharaka-Nithi
+(346 rows, national 47,957,473 against the published 47,564,296). The three-record change of 2026-09-15 also edited
 `kenya-population-worldpop`, `kenya-population-grid3` and `kenya-flood-exposure-intersect` (documenting
 the ~17 % gap against the census, and the new levelled population columns).
 
