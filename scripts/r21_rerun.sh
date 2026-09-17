@@ -10,6 +10,8 @@
 #
 # All env vars accepted directly too:
 #   FORCE_OVERWRITE=1 SKIP_R2_1_SEC3_4=1 bash scripts/r21_rerun.sh
+#   R21_GCMS="ACCESS-ESM1-5,MRI-ESM2-0" bash scripts/r21_rerun.sh   # dev GCM subset (issue #26; default = ALL)
+#   R21_ALLOW_UNEVEN_ENSEMBLE=1 bash scripts/r21_rerun.sh           # bypass equal-GCM-count gate
 #
 # The wrapper:
 #   1. Pre-flight: checks AWS creds + git push creds; prompts to proceed or stop
@@ -124,6 +126,8 @@ ENV_VARS=""
 [ -n "$SKIP_SEC3_2" ]      && ENV_VARS="SKIP_R2_1_SEC3_2=1 $ENV_VARS"
 [ -n "$SKIP_SEC3_3" ]      && ENV_VARS="SKIP_R2_1_SEC3_3=1 $ENV_VARS"
 [ -n "$SKIP_SEC3_4" ]      && ENV_VARS="SKIP_R2_1_SEC3_4=1 $ENV_VARS"
+[ -n "${R21_GCMS:-}" ]     && ENV_VARS="R21_GCMS='${R21_GCMS}' $ENV_VARS"
+[ -n "${R21_ALLOW_UNEVEN_ENSEMBLE:-}" ] && ENV_VARS="R21_ALLOW_UNEVEN_ENSEMBLE=1 $ENV_VARS"
 
 export SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
 export R21_SCRIPT="$HOME/atlas/hazards_prototype/R/2.1_create_monthly_haz_tables.R"

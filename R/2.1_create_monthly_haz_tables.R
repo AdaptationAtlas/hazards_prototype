@@ -28,8 +28,12 @@
 #   SKIP_R2_1_SEC3_3=1 — skip ensemble statistics (sec 3.3; includes CR-060 quantiles)
 #   SKIP_R2_1_SEC3_4=1 — skip trend computation (sec 3.4; includes CR-094 TFPW)
 #   FORCE_OVERWRITE=1  — rewrite all existing output files
+#   R21_GCMS="A,B"     — subset GCMs for dev runs (issue #26; default = ALL in indices_dir)
+#   R21_ALLOW_UNEVEN_ENSEMBLE=1 — bypass the equal-GCM-count gate (deliberate partial runs)
 #
-# TYPICAL RUNTIMES (CGlabs, 5-GCM NEX-GDDP subset):
+# TYPICAL RUNTIMES (CGlabs; measured on the old 5-GCM subset — issue #26 removed
+# it, so expect roughly 18/5 x these for sections 2-3.2; 3.3/3.4 scale less
+# directly since ensembling collapses the model dimension):
 #   Sec 2 (extraction):    ~1h  (parallel, worker_n1=5)
 #   Sec 3.1 (seasonal):    ~30 min
 #   Sec 3.2 (anomalies):   ~1-2h
@@ -179,16 +183,49 @@ round_final <- 1
 # 2) Extract hazard folders by admin boundaries ####
 ## 2.1) List hazard folders ####
 folders <- list.dirs(indices_dir, recursive = FALSE, full.names = TRUE)
-folders <- folders[!grepl("ENSEMBLE|ipyn|gadm0|hazard_comb|indices_seasonal", folders)]
+folders <- folders[!grepl("ENSEMBLE|ipyn|gadm0|hazard_comb|indices_seasonal|AgERA5", folders)]
 folders <- folders[grepl(paste0(Scenarios$Scenario, collapse = "|"), folders) & grepl(paste0(Scenarios$Time, collapse = "|"), folders)]
 
 folders <- data.table(path = folders)
-folders[, scenario := unlist(tstrsplit(basename(path), "_", keep = 1))][!grepl("historical", scenario), model := unlist(tstrsplit(basename(path), "_", keep = 2))][!grepl("historical", scenario), timeframe := paste0(unlist(tstrsplit(basename(path), "_", keep = 3:4)), collapse = "-"), by = path][grepl("historical", scenario), c("timeframe", "model") := scenario][, path_new := file.path(output_dir, paste0(scenario, "_", model, "_", timeframe)), by = .I][, path_new := gsub("historical", "historic", path_new)]
+# Issue #26: historic folders (`historical_<gcm>_<y1>_<y2>`) share the future
+# folders' 4-token shape, so one uniform parse serves both. The old historic
+# special-case set model = timeframe = "historical", which (a) collapsed all
+# historic GCM folders onto one output name (`historic_historic_historic`) and
+# (b) made the GCM subset below silently drop every historic folder.
+folders[, scenario := unlist(tstrsplit(basename(path), "_", keep = 1))]
+folders[, model := unlist(tstrsplit(basename(path), "_", keep = 2))]
+folders[, timeframe := paste0(unlist(tstrsplit(basename(path), "_", keep = 3:4)), collapse = "-"), by = path]
+folders[, path_new := file.path(output_dir, paste0(scenario, "_", model, "_", timeframe)), by = .I]
+folders[, path_new := gsub("historical", "historic", path_new)]
 
+## GCM scope (issue #26) ####
+# Default = every GCM present in indices_dir (the full production ensemble).
+# R21_GCMS="GCM-A,GCM-B" subsets for dev runs. The old hardcoded 5-GCM
+# "temporary" subset shipped published files mixing 18/13/5-member ensembles.
+gcms_env <- Sys.getenv("R21_GCMS")
+if (nzchar(gcms_env)) {
+  gcms <- trimws(strsplit(gcms_env, ",")[[1]])
+  gcms_missing <- setdiff(gcms, unique(folders$model))
+  if (length(gcms_missing) > 0) {
+    stop("R21_GCMS entries not found in indices_dir: ", paste(gcms_missing, collapse = ", "))
+  }
+  folders <- folders[model %in% gcms]
+  cat("R21_GCMS set — subsetting to", length(gcms), "GCMs:", paste(gcms, collapse = ", "), "\n")
+}
 
-## Temporarily subset folders in nex-gddp ####
-gcms <- c("MRI-ESM2-0", "ACCESS-ESM1-5", "MPI-ESM1-2-HR", "EC-Earth3", "INM-CM5-0")
-folders <- folders[model %in% gcms]
+# Ensemble-evenness gate: every scenario x timeframe must carry the same GCM
+# set, or the published product mixes ensemble sizes across periods/variables
+# (issue #26's failure mode). R21_ALLOW_UNEVEN_ENSEMBLE=1 overrides for
+# deliberate partial runs only.
+gcm_counts <- folders[, .(n_gcms = uniqueN(model)), by = .(scenario, timeframe)]
+cat("GCMs per scenario x timeframe:\n")
+print(gcm_counts)
+cat("Ensemble members (", uniqueN(folders$model), ") =",
+    paste(sort(unique(folders$model)), collapse = ", "), "\n")
+if (uniqueN(gcm_counts$n_gcms) > 1 && !nzchar(Sys.getenv("R21_ALLOW_UNEVEN_ENSEMBLE"))) {
+  stop("Uneven GCM membership across scenario x timeframe (see table above). ",
+       "Fix indices_dir completeness or set R21_ALLOW_UNEVEN_ENSEMBLE=1 to proceed deliberately.")
+}
 
 folders <- data.frame(folders)
 
@@ -331,14 +368,31 @@ files <- list.files(output_int_dir, ".parquet$", full.names = TRUE)
 files <- data.table(file = files)[, c("scenario", "model", "timeframe", "hazard", "stat") := tstrsplit(basename(file), "_", keep = 1:5)][, stat := gsub(".parquet", "", stat)]
 
 timeframes <- files[, unique(timeframe)]
-baselines <- files[grep("historic", scenario), unique(scenario)]
-# Names are assigned in the canonical order — truncated to however many
-# baselines are actually present (CGlabs CMIP6 only has 1995-2014;
-# AgERA5 1981-2022 may not be present on all setups).
-all_baseline_names <- c("1995-2014", "AgERA5 1981-2022")
-names(baselines) <- all_baseline_names[seq_along(baselines)]
 
-futures <- files[!grepl("historic", timeframe), unique(timeframe)]
+# Issue #26 guard: intermediates named historic_historic_historic_* were written
+# by the old collapsed historic parse — one arbitrary GCM masquerading as the
+# ensemble baseline. They poison every downstream baseline; delete before rerun.
+stale_hist <- files[model == "historic" | timeframe == "historic", file]
+if (length(stale_hist) > 0) {
+  stop(length(stale_hist), " stale collapsed-historic intermediates present (e.g. ",
+       basename(stale_hist[1]), "). Delete ",
+       file.path(output_int_dir, "historic_historic_historic_*"), " and re-run.")
+}
+
+# Issue #26: one baseline per historic WINDOW actually present, labelled by the
+# window itself (e.g. "1981-2014", "1995-2014") — both are kept and published
+# with the window in the name. The old positional labelling (all_baseline_names
+# = c("1995-2014", "AgERA5 1981-2022")) named whichever timeframe list.files()
+# enumerated first, mislabelling 1981-2014 anomalies as 1995-2014.
+baselines <- files[grep("historic", scenario), sort(unique(timeframe))]
+if (length(baselines) == 0) stop("No historic intermediates found — cannot compute anomaly baselines.")
+names(baselines) <- baselines
+cat("Anomaly baselines (historic windows found):", paste(baselines, collapse = ", "), "\n")
+
+# Future timeframes = everything that is not a historic window. (The old
+# `!grepl("historic", timeframe)` filter matched nothing once historic
+# intermediates carried year-range timeframes, so historic files leaked in.)
+futures <- setdiff(timeframes, baselines)
 
 if (run_sec2) {
 problem_data <- lapply(seq_along(timeframes), FUN = function(i) {
@@ -564,20 +618,17 @@ cat("3.1) Seasonal hazard calculation - Complete \n")
 ## 3.2) Add historical mean ####
 cat("3.2) Adding historical means \n")
 
-# Always compute baseline_timeframe_map — needed by file_combos (always-run)
-# and by data_ex_hist inside the sec 3.2 guard.
-# baselines contains scenario names (e.g. "historic") but monthly3_files
-# use the timeframe column (e.g. "historical"). Build the lookup here.
-baseline_timeframe_map <- setNames(
-  files[, .(timeframe = unique(timeframe)[1]), by = scenario]$timeframe,
-  files[, .(timeframe = unique(timeframe)[1]), by = scenario]$scenario
-)
+# Issue #26: baselines ARE historic window strings now (e.g. "1995-2014"), so a
+# baseline maps directly onto its haz_3months_adm_mean_<window>.parquet file.
+# The old baseline_timeframe_map (scenario -> unique(timeframe)[1]) resolved to
+# whichever historic window list.files() enumerated first — with both 1981-2014
+# and 1995-2014 on disk it computed anomalies against 1981-2014 under a
+# 1995-2014 label.
 
 if (run_sec3_2) {
 
 data_ex_hist <- lapply(baselines, FUN = function(baseline) {
-  tf <- baseline_timeframe_map[baseline]
-  data <- data.table(arrow::read_parquet(grep(paste0("_", tf, "[.]"), monthly3_files, value = TRUE)))
+  data <- data.table(arrow::read_parquet(grep(paste0("_", baseline, "[.]"), monthly3_files, value = TRUE)))
   # Include iso3 in the aggregation so it propagates through the sec 3.2 merge
   # and survives into the sec 3.3 ensemble by-clause.
   data <- data[, .(baseline_value = round(mean(value, na.rm = TRUE), round3.1)), by = c("iso3", "admin0_name", "admin1_name", "hazard", "season")]
@@ -590,14 +641,17 @@ names(data_ex_hist) <- baselines
 
 # Always compute file_combos — fast path construction needed by sec 3.3 and 3.4
 # even when sec 3.2 is skipped.
-fut_monthly3_files <- monthly3_files[!grepl("historic", monthly3_files)]
+# Issue #26: select future files by timeframe membership — monthly3_files is
+# parallel to timeframes. (The old `!grepl("historic", ...)` name filter matched
+# nothing once historic files were window-named, so they leaked in as futures.)
+fut_monthly3_files <- monthly3_files[!(timeframes %in% baselines)]
 
+# Future windows x every baseline, plus each historic window vs its own mean.
 file_combos <- data.table(rbind(
   expand.grid(data = fut_monthly3_files, baseline = baselines, stringsAsFactors = FALSE),
   rbindlist(lapply(baselines, FUN = function(baseline) {
-    tf <- baseline_timeframe_map[baseline]
     data.frame(
-      data = paste0(output_dir, "/haz_3months_adm_mean_", tf, ".parquet"),
+      data = paste0(output_dir, "/haz_3months_adm_mean_", baseline, ".parquet"),
       baseline = baseline
     )
   }))
@@ -1059,7 +1113,8 @@ t_sec3_4_start <- Sys.time()
 # save_file duplicated ACROSS combos is fine IFF those combos share the same source
 # `data` (then they land in the same group → same worker → sequential writes). Only
 # a path shared by DIFFERENT `data` files is a real cross-worker collision.
-# (file_combos legitimately repeats e.g. 1981-2014 as combo 1 and 7 — same data.)
+# (Since the issue #26 futures-leak fix, file_combos rows are unique per
+# data x baseline; the guard stays as a cheap invariant check.)
 .path_single_source <- function(path_col)
   all(tapply(file_combos$data, file_combos[[path_col]], function(d) uniqueN(d) == 1L))
 stopifnot(

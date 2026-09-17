@@ -1,8 +1,9 @@
 #!/usr/bin/env Rscript
 # CR-120: build + publish C (per-GCM interannual variability) — ensemble_season_variability.
 # Standalone (no §3.4 rerun): computes IAV from EXISTING files — per-model per-year `value`
-# from `*_anomaly-historic_seasons.parquet` + per-model `value_slope` from the member
-# `*_anomaly-historic_trends.parquet` (the SAME Theil-Sen slope B uses).
+# from `*_anomaly-1995-2014_seasons.parquet` + per-model `value_slope` from the member
+# `*_anomaly-1995-2014_trends.parquet` (the SAME Theil-Sen slope B uses).
+# Issue #26: R/2.1 names anomaly outputs by baseline window (was anomaly-historic).
 #
 # Per (GCM x iso3 x admin1 x scenario x season x hazard x period):
 #   detrend: resid = value - value_slope*(year - mean(year)) ; iav_sd = sd(resid)
@@ -59,8 +60,8 @@ ts("mode:", if (CONFIRM) "CONFIRM" else "DRY-RUN", "| aws:", AWS, "| variable:",
 
 # --- per-GCM iav_sd for one period: detrend value by its stored Theil-Sen slope, sd of residual ---
 compute_iav <- function(period) {
-  sfile <- file.path(DIR, sprintf("haz_3months_adm_mean_%s_anomaly-historic_seasons.parquet", period))
-  tfile <- file.path(DIR, sprintf("haz_3months_adm_mean_%s_anomaly-historic_trends.parquet", period))
+  sfile <- file.path(DIR, sprintf("haz_3months_adm_mean_%s_anomaly-%s_seasons.parquet", period, BASELINE_KEY))
+  tfile <- file.path(DIR, sprintf("haz_3months_adm_mean_%s_anomaly-%s_trends.parquet", period, BASELINE_KEY))
   if (!file.exists(sfile)) stop("missing seasons: ", sfile)
   if (!file.exists(tfile)) stop("missing member trends: ", tfile)
   s <- as.data.table(read_parquet(sfile, col_select = c(MKEYS, "year", "value")))

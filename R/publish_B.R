@@ -1,6 +1,7 @@
 #!/usr/bin/env Rscript
 # CR-119 / CR-117: publish B (slim trends ensemble) to canonical domain=climate keys.
-# Source = §3.4 anomaly-historic *_trends_ensemble.parquet (fresh, iso3-bearing).
+# Source = §3.4 anomaly-1995-2014 *_trends_ensemble.parquet (issue #26 window naming,
+# fresh, iso3-bearing).
 # Ships TREND MAGNITUDE only: stat in {value_slope, value_decade}, keep
 # iso3/admin/scenario/timeframe/season/hazard/stat + mean (ensemble mean) + sd
 # (across-GCM spread). 4 future periods, baseline=1995-2014. DRY-RUN by default.
@@ -15,7 +16,7 @@
 # to land when the metric is settled alongside the sandbox trend-map prototype.
 #
 # Trend metrics are baseline-invariant (anomaly = value - const) => one variant
-# (anomaly-historic) suffices. Not consumed by climateRationale; for CR-117 trend maps.
+# (anomaly-1995-2014) suffices. Not consumed by climateRationale; for CR-117 trend maps.
 #
 # Usage (cglabs):
 #   Rscript R/publish_B.R            # dry-run: checks + plan, writes slim files to /tmp, no upload
@@ -57,7 +58,8 @@ tmpdir <- file.path(tempdir(), "publishB"); dir.create(tmpdir, showWarnings = FA
 
 ts("=== pre-flight + slim (4 files) ===")
 plan <- lapply(PERIODS, function(P) {
-  local  <- file.path(DIR, sprintf("haz_3months_adm_mean_%s_anomaly-historic_trends_ensemble.parquet", P))
+  # Issue #26: R/2.1 names anomaly outputs by baseline window (anomaly-1995-2014).
+  local  <- file.path(DIR, sprintf("haz_3months_adm_mean_%s_anomaly-%s_trends_ensemble.parquet", P, BASELINE_KEY))
   target <- sprintf("%s/period=%s/baseline=%s/variable=%s.parquet", BASE, P, BASELINE_KEY, VARIABLE)
   if (!file.exists(local)) stop("missing local trends_ensemble: ", local)
   dt <- as.data.table(read_parquet(local))

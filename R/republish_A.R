@@ -16,7 +16,7 @@ ts <- function(...) cat(sprintf("[%s] ", format(Sys.time(), "%H:%M:%S")), ..., "
 DIR  <- "/home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_timeseries_mean_month"
 BASE <- "s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months"
 PERIODS <- c("1995-2014", "2021-2040", "2041-2060", "2061-2080", "2081-2100")  # historic + 4 futures
-BASELINE_KEY <- "1995-2014"   # anomaly-historic baseline == 1995-2014
+BASELINE_KEY <- "1995-2014"   # issue #26: R/2.1 names anomalies by baseline window (anomaly-1995-2014)
 CONFIRM <- nzchar(Sys.getenv("CONFIRM"))
 stamp <- format(Sys.time(), "%Y%m%d-%H%M%S")
 
@@ -63,7 +63,7 @@ s3_exists <- function(key) {
 
 ts("=== pre-flight checks (all 5 files) ===")
 plan <- lapply(PERIODS, function(P) {
-  local  <- file.path(DIR, sprintf("haz_3months_adm_mean_%s_anomaly-historic_ensemble_seasons.parquet", P))
+  local  <- file.path(DIR, sprintf("haz_3months_adm_mean_%s_anomaly-%s_ensemble_seasons.parquet", P, BASELINE_KEY))
   target <- sprintf("%s/period=%s/baseline=%s/variable=ensemble_season_timeseries.parquet", BASE, P, BASELINE_KEY)
   info <- check_file(local)
   ts(sprintf("  OK %-10s %.1f MB  rg=%d  -> %s", P, info$size_mb, info$ng, target))

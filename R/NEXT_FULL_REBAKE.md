@@ -104,16 +104,21 @@ consume them. So a true full rebake is:
    `failed_risk_x_exposure_*.txt`, `skipped_not_in_exposure_*.txt`, per-variable 4.1 elapsed,
    and output mtimes against the run start.
 
-6. **R/2.1 GCM pin (#26) — NOT yet fixed; settle before the monthly/trends product is re-baked.**
-   `R/2.1_create_monthly_haz_tables.R:189-191` pins 5 of 18 GCMs, unconditionally and outside
-   every section guard, and the same filter drops **all** historic folders (`"historical"` is
-   not in the GCM list). The published Future Projections parquet is a mixture of 18/13/5-member
-   ensembles, and NDD is wholly 5-member. The filter and the historic-folder naming at `:186`
-   (every GCM collapses to `historic_historic_historic`) must be fixed **together** - removing
-   the filter alone means one arbitrary GCM silently becomes the baseline. Anomalies also appear
-   to resolve against a 1981-2014 mean while the published key says `baseline=1995-2014`.
-   p.steward has decided **both** baseline windows stay supported and the window must appear in
-   file and folder names. Full detail on #26.
+6. **R/2.1 GCM pin (#26) — CODE FIXED 2026-09-17; needs the FORCE re-bake + republish.**
+   All three defects fixed together in `R/2.1_create_monthly_haz_tables.R`: (a) the 5-GCM pin
+   is now the `R21_GCMS` env control defaulting to ALL GCMs in `indices_dir`, with an
+   equal-GCM-count gate per scenario x timeframe (`R21_ALLOW_UNEVEN_ENSEMBLE=1` to bypass);
+   (b) historic folders parse per-GCM with the window in the name
+   (`historic_<gcm>_<y1>-<y2>`, no more `historic_historic_historic` collapse); (c) baselines
+   are keyed and labelled by the historic WINDOW actually on disk (both 1981-2014 and
+   1995-2014 kept, per p.steward), killing the positional `all_baseline_names` mislabel.
+   Anomaly outputs are now `*_anomaly-<window>_*`; the four publishers
+   (`scripts/r21_publish_to_s3.R`, `R/republish_A.R`, `R/publish_B.R`, `R/build_publish_C.R`)
+   updated to match. **Re-bake requirements:** pre-delete the whole
+   `hazard_timeseries_mean_month` dir (stale collapsed intermediates + `anomaly-historic`
+   outputs are hard-stopped by guards), audit indices_dir per-window GCM completeness first
+   (the 1981-2014 window was historically partial), then `FORCE_OVERWRITE=1` full run.
+   The published mixed 18/13/5-member rows only disappear after this re-bake. Full detail on #26.
 
 ## Order
 0. Pre-conditions above (esp. hazards#19; exposure vintage; CR-115 convention state).
