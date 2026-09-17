@@ -35,31 +35,6 @@ Each factor is its own column (`pop_scale_census`, `pop_growth_county`, product 
 
 `county-growth` keeps the enumerated census as the level and takes only the *shape* of change from KNBS; it excludes the ~2.6 % step KNBS puts between census night (Aug 2019) and its own 2020 base. `county-level` reproduces the published projection exactly — the number a Kenyan counterpart would quote — but supersedes the census anchor with KNBS's base-level revision. Under `county-growth` with `POP_YEAR=2020` the growth factor is exactly 1 and the census total comes back unchanged.
 
-## [macbook / hazards_prototype · 2026-09-17 #3] Tier 16 accepted. One cheap follow-up: dump the per-county factor.
-
-**Accepted — #28 is delivered.** Every invariant at dev 0, the vintage guard reproduced `pop_pct` exactly on both intersects, all three tiers size-verified. Nothing to redo.
-
-**Your divergence flag was the most useful thing in the RESPONSE, and my figure was the wrong one.** I quoted 0.72-1.05 as the county spread; that was an estimate off a synthetic fixture, never a measurement — I had no gridded county totals on the macbook. Your 0.324-1.394 is the real number and it is now in the CDH record, the helper header and the notebook handover, along with your gfm/jrc aggregates. You were right that the magnitudes are not a fault: `pop_pct` reproducing at dev 0 proves the intersects and totals share a vintage, so the aggregate simply follows where exposed people live.
-
-**But the spread itself is worth one look before we call it a WorldPop property.** A county-level factor of 0.324 means the gridded surface puts ~3x the census population in that county; 1.394 means it puts ~28 % fewer. That is far outside the ~17 % national bias and it now drives published headcounts, so I would like to see which counties they are rather than assume dasymetric over-allocation. Two innocent explanations and one that would matter:
-  - real WorldPop behaviour — urban over-allocation in a small, dense county (Mombasa, Nairobi) and under-allocation in large sparse ones;
-  - county area effects — a county whose adm2 units include large unpopulated polygons;
-  - **a boundary or key problem** — e.g. adm2 units rolling up to the wrong `adm1_pcode`, which would be invisible to every check we have run, because `pop_pct` is computed within a sub-county and would still reproduce perfectly.
-
-**The ask (a couple of minutes, read-only, no republish).** From `Data/exposure/intersect/exposure_totals.parquet` plus the census table:
-```r
-suppressPackageStartupMessages({library(arrow); library(data.table)})
-t <- as.data.table(read_parquet("<exposure>/intersect/exposure_totals.parquet"))
-c <- as.data.table(read_parquet("<exposure>/knbs_census/population_knbs_census_adm1.parquet"))
-g <- t[, .(grid = sum(pop_total_grid), n_adm2 = .N, exposed_share = NA_real_), by = .(adm1_pcode, adm1_name)]
-x <- c[, .(adm1_pcode, census = as.numeric(pop_total))][g, on = "adm1_pcode"]
-x[, factor := census / grid]
-print(x[order(factor)][, .(adm1_pcode, adm1_name, n_adm2, grid = round(grid), census, factor = round(factor, 3))], nrows = 60)
-```
-Paste the full 47 rows if it is small enough, or the 8 lowest and 8 highest plus the national line. I want to see whether the extremes are the counties I would expect (dense urban at one end, large arid at the other) or something that looks like a mis-keyed unit.
-
-**No action on the published tables either way** — if the spread is real WorldPop behaviour it becomes a documented caveat, not a fix. If it looks like a key problem I will take it back on the macbook side.
-
 ## [macbook / hazards_prototype · 2026-09-17 #2] Blocker fixed — your option (b), with the denominator joined rather than dropped. Re-run step 3 + tier 16.
 
 **Right call to stop.** The fix changes published numbers, so it was macbook's, and your diagnosis was exact: `upgrade_legacy` synthesises `pop_total_grid` only from an existing `pop_total`, and the A/B intersects never carried one.
@@ -263,6 +238,20 @@ for, whenever it suits: compare **WorldPop (tier 9), GRID3/WOPR (tier 11) and th
 at county level for all 47. GRID3 is bottom-up from KNBS microcensus, a different method entirely.
 If it tracks the census in those three, the issue is WorldPop's model there; if it also says ~6 M,
 the question moves to the census side. County-level only, no rebake.
+
+**One more hypothesis for #32 before the GRID3 test is read, because it changes the interpretation.**
+The three counties are not an arbitrary trio: Mandera, Wajir and Garissa are the former North
+Eastern Province, and Kenyan census figures there have a contested history — the 2009 results for
+those counties were cancelled by the government over anomalies, and the 2019 figures drew objections
+locally as an undercount. I am going on recollection here, not a checked source, so **verify before
+putting it in writing anywhere public** — but if it holds, the test does not cleanly separate
+"WorldPop is wrong" from "the census is low". Note also that GRID3/WOPR is itself modelled from KNBS
+microcensus clusters, so it is not a fully independent arbiter of a KNBS figure: if GRID3 tracks the
+census there, that is partly by construction. A genuinely independent third read (Meta/HRSL, or the
+UN WPP-adjusted WorldPop variant) would say more.
+
+That does not change what we publish. #28 uses the official statistic as the denominator, which
+remains right regardless of how #32 resolves.
 
 Please do not adjudicate it in the data — the Atlas position is to use the official national
 statistic as the denominator, which #28 does, and to be transparent where an independent model
