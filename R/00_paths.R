@@ -477,7 +477,7 @@ if (!isTRUE(getOption("atlas.paths_loaded"))) {
         ts, legacy, st[["repo_root"]]
       ))
       cat(sprintf(
-        "[%s] WARN  | that value was written into ~/.Renviron by an older 0_server_setup.R; consider removing the line.\n",
+        "[%s] WARN  | an older 0_server_setup.R wrote that into ~/.Renviron; consider removing the line.\n",
         ts
       ))
     }

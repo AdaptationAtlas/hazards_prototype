@@ -1,0 +1,170 @@
+{
+  "_comment": [
+    "Stage input declarations for R/checks/71_stage_ready.R (issue #29 item 4).",
+    "Answers 'can this host run stage X, for this shard' BEFORE a long run starts,",
+    "instead of discovering a gap eight hours in.",
+    "",
+    "Deliberately NOT a full dataset manifest. No sizes, no S3 locations, no",
+    "checksums, no provenance - those belong to issue #29 item 2, which will join",
+    "to metadata/cdh/ by dataset id. This file answers presence only.",
+    "",
+    "An input is located by EITHER:",
+    "  key      - a logical key understood by atlas_dir() in R/00_paths.R, or",
+    "  path     - a path relative to working_dir, for trees that have no key",
+    "             (metadata/data.json owns these, e.g. Data/mapspam/2020V1r2_SSA)",
+    "optionally plus:",
+    "  subpath  - appended to the resolved key",
+    "  glob     - file pattern to count (default '*')",
+    "  min_files- fail below this count (default 1)",
+    "  recursive- count below the directory too; needed for hive-partitioned trees",
+    "  optional - true = report but do not fail",
+    "",
+    "shard_axes lists the axes along which THIS stage's outputs land in disjoint",
+    "files, so a bake can be split across hosts and the parts merged. shard_env",
+    "names the environment variable that actually selects a slice, or null where",
+    "the axis partitions the output but no filter is wired up yet - a scheduler",
+    "must not assume it can split on an axis whose shard_env is null."
+  ],
+
+  "schema_version": "1.0.0",
+
+  "stages": [
+    {
+      "id": "0.4.0",
+      "script": "R/0.4.0_create_crop_vop_intld15.R",
+      "description": "Crop value of production in constant international dollars, from MapSPAM production shares x FAOStat GPV.",
+      "shard_axes": ["crop"],
+      "shard_env": { "crop": null },
+      "inputs": [
+        { "path": "Data/mapspam/2020V1r2_SSA/processed/variable=prod_t", "glob": "*.tif", "min_files": 1, "recursive": true },
+        { "key": "fao", "glob": "Value_of_Production_E_All_Area_Groups.csv" },
+        { "path": "Data/boundaries", "glob": "*.parquet", "min_files": 3 }
+      ]
+    },
+    {
+      "id": "0.4.1",
+      "script": "R/0.4.1_create_livestock_exposure.R",
+      "description": "Livestock numbers and value of production from GLW4-2020 densities x FAOStat GPV.",
+      "shard_axes": [],
+      "shard_env": {},
+      "inputs": [
+        { "key": "GLW4_2020", "glob": "*.tif", "min_files": 1, "recursive": true },
+        { "key": "afr_highlands", "glob": "afr-highlands.asc" },
+        { "key": "fao", "glob": "Value_of_Production_E_Africa.csv" },
+        { "key": "fao", "glob": "Prices_E_Africa_NOFLAG.csv" },
+        { "key": "fao", "glob": "Production_Crops_Livestock_E_Africa_NOFLAG.csv" },
+        { "key": "fao", "glob": "Deflators_E_All_Data_(Normalized).csv" },
+        { "path": "Data/boundaries", "glob": "*.parquet", "min_files": 3 }
+      ]
+    },
+    {
+      "id": "0.4.2",
+      "script": "R/0.4.2_create_crop_vop_nominal_usd.R",
+      "description": "Crop value of production in nominal USD, from MapSPAM production x FAOStat producer prices.",
+      "shard_axes": ["crop"],
+      "shard_env": { "crop": null },
+      "inputs": [
+        { "path": "Data/mapspam/2020V1r2_SSA/processed/variable=prod_t", "glob": "*.tif", "min_files": 1, "recursive": true },
+        { "key": "fao", "glob": "Value_of_Production_E_Africa.csv" },
+        { "key": "fao", "glob": "Prices_E_All_Data_(Normalized).csv" }
+      ]
+    },
+    {
+      "id": "0.4.4",
+      "script": "R/0.4.4_process_exposure.R",
+      "description": "Zonal extraction of every exposure raster to admin units; writes the unified exposure parquets.",
+      "shard_axes": ["admin_level"],
+      "shard_env": { "admin_level": null },
+      "inputs": [
+        { "path": "Data/mapspam/2020V1r2_SSA/processed", "glob": "*.tif", "min_files": 1, "recursive": true },
+        { "key": "GLW4_2020", "subpath": "processed", "glob": "*.tif", "min_files": 1, "recursive": true },
+        { "key": "atlas_pop", "glob": "*.tif", "min_files": 1 },
+        { "path": "Data/boundaries", "glob": "*.parquet", "min_files": 3 }
+      ]
+    },
+    {
+      "id": "1",
+      "script": "R/1_make_timeseries.R",
+      "description": "Aggregates raw monthly hazard indices into annual and crop-calendar timeframes.",
+      "shard_axes": ["gcm", "scenario", "timeframe"],
+      "shard_env": { "gcm": null, "scenario": null, "timeframe": null },
+      "inputs": [
+        { "key": "indices", "glob": "*", "min_files": 1 },
+        { "key": "ggcmi", "glob": "*.nc4", "min_files": 1 },
+        { "key": "sos", "glob": "sos.tif", "optional": true }
+      ]
+    },
+    {
+      "id": "2",
+      "script": "R/2_calculate_haz_freq.R",
+      "description": "Classifies hazard timeseries, computes frequencies, means and interaction stacks.",
+      "shard_axes": ["timeframe", "gcm", "scenario"],
+      "shard_env": { "timeframe": null, "gcm": null, "scenario": "REBAKE_SCENARIO" },
+      "inputs": [
+        { "key": "indices_seasonal", "glob": "*", "min_files": 1 }
+      ]
+    },
+    {
+      "id": "2.1",
+      "script": "R/2.1_create_monthly_haz_tables.R",
+      "description": "Monthly and seasonal admin tables, anomalies and trends. Reads raw monthly indices, not the seasonal tree.",
+      "shard_axes": ["timeframe", "gcm"],
+      "shard_env": { "timeframe": null, "gcm": null },
+      "inputs": [
+        { "key": "indices", "glob": "*", "min_files": 1 },
+        { "path": "Data/boundaries", "glob": "*.parquet", "min_files": 3 }
+      ]
+    },
+    {
+      "id": "2.2",
+      "script": "R/2.2_haz_change.R",
+      "description": "Admin-summarised hazard change and frequency products.",
+      "shard_axes": ["timeframe"],
+      "shard_env": { "timeframe": "R22_TIMEFRAME" },
+      "inputs": [
+        { "key": "hazard_timeseries_mean", "glob": "*", "min_files": 1 },
+        { "key": "hazard_timeseries_risk", "glob": "*", "min_files": 1 },
+        { "key": "indices_seasonal", "glob": "*", "min_files": 1 },
+        { "path": "Data/boundaries", "glob": "*.parquet", "min_files": 3 }
+      ]
+    },
+    {
+      "id": "3",
+      "script": "R/3_freq_x_exposure.R",
+      "description": "Hazard frequency x exposure. Produces the canonical hazard_exposure parquets.",
+      "shard_axes": ["timeframe", "scenario", "severity"],
+      "shard_env": { "timeframe": null, "scenario": "REBAKE_SCENARIO", "severity": null },
+      "inputs": [
+        { "key": "hazard_risk", "glob": "*", "min_files": 1 },
+        { "key": "hazard_timeseries_mean", "glob": "*", "min_files": 1 },
+        { "key": "hazard_timeseries_int", "glob": "*", "min_files": 1 },
+        { "path": "Data/mapspam/2020V1r2_SSA/processed", "glob": "*.tif", "min_files": 1, "recursive": true },
+        { "key": "GLW4_2020", "subpath": "processed", "glob": "*.tif", "min_files": 1, "recursive": true },
+        { "path": "Data/boundaries", "glob": "*.parquet", "min_files": 3 }
+      ]
+    },
+    {
+      "id": "obs.2",
+      "script": "R/observational/2_calculate_obs_spei.R",
+      "description": "SPEI from the downloaded CHIRPS/CHIRTS monthly record.",
+      "shard_axes": ["variable"],
+      "shard_env": { "variable": null },
+      "inputs": [
+        { "key": "chirts_chirps_hist", "subpath": "PTOT", "glob": "*.tif", "min_files": 1 },
+        { "key": "chirts_chirps_hist", "subpath": "TMAX", "glob": "*.tif", "min_files": 1 },
+        { "key": "chirts_chirps_hist", "subpath": "TMIN", "glob": "*.tif", "min_files": 1 }
+      ]
+    },
+    {
+      "id": "obs.3",
+      "script": "R/observational/3_extract_obs_admin.R",
+      "description": "Zonal extraction of the observational record to admin units.",
+      "shard_axes": ["admin_level", "variable"],
+      "shard_env": { "admin_level": null, "variable": null },
+      "inputs": [
+        { "key": "chirts_chirps_hist", "subpath": "PTOT", "glob": "*.tif", "min_files": 1 },
+        { "path": "Data/boundaries", "glob": "*.parquet", "min_files": 3 }
+      ]
+    }
+  ]
+}
