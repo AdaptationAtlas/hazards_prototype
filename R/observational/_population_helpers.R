@@ -44,8 +44,18 @@
 #       the number a Kenyan counterpart would quote. The 2019-to-base-year step is included, which
 #       also means the census anchor is superseded by KNBS's own base-level revision.
 #
+# YEAR MATCHING (option C, chosen 2026-09-17). The GFM table is OBSERVED floods carrying a `year`
+# (2018-2025), so a single denominator is wrong in one direction or the other: the 2019 census
+# undercounts a 2024 flood by ~9%, a 2025 projection overcounts a 2018 one. Year matching levels each
+# row against ITS OWN year's county population. Years the KNBS projections cover (2020-2035) use
+# them; 2018-2019 fall back to the census, because nothing official projects backwards from 2020 and
+# inventing it would be worse than stating the fallback. The JRC table is a return-period hazard with
+# no event year, so it takes one stated reference year instead.
+#
 # Exports:
 #   read_pop_tbl(stem)                        - read <stem>.parquet, or .csv (pyarrow-less hosts)
+#   pop_year_targets(exp_root, years, ...)    - per (county, year) target totals for year matching
+#   pop_scale_table_years(grid_adm1, tgt, ..) - per (county, year) factors, same decomposition
 #   knbs_county_totals(exp_root, source, year, method, base_year)
 #                                             - per-county target totals + the decomposition
 #   pop_scale_table(grid_adm1, knbs, label, log_fn)
@@ -188,4 +198,67 @@ pop_scale_table <- function(grid_adm1, knbs, label, log_fn = message) {
                  min(scale_dt$pop_growth_county), max(scale_dt$pop_growth_county),
                  sum(scale_dt$knbs_pop) / sum(scale_dt$census_pop)))
   scale_dt[, .(adm1_pcode, pop_scale_adm1, pop_scale_census, pop_growth_county)]
+}
+
+
+#' Target county totals for a SET of years (option C, year matching).
+#'
+#' One row per county per requested year. Years covered by the KNBS projections use them; years
+#' before the projection base fall back to the census, flagged in pop_source so the fallback is
+#' visible in the published table rather than buried here.
+#'
+#' @param years      integer vector of years needed (e.g. sort(unique(A$year)))
+#' @inheritParams knbs_county_totals
+#' @return data.table(adm1_pcode, year, census_pop, growth_ratio, knbs_pop, pop_source)
+pop_year_targets <- function(exp_root, years, pop_method = "county-growth",
+                             base_year = POP_PROJECTION_BASE_YEAR) {
+  years <- sort(unique(as.integer(years)))
+  cen <- census_county_totals(exp_root)
+  stem <- file.path(exp_root, "knbs_projections", "population_knbs_projections_adm1_totals")
+  proj <- read_pop_tbl(stem)
+  if (is.null(proj)) {
+    stop("year matching needs the projection table at ", stem,
+         " — run: python3 python/ingest_population_knbs_projections.py")
+  }
+  have <- sort(unique(proj$year))
+  out <- rbindlist(lapply(years, function(yr) {
+    if (yr %in% have) {
+      t <- knbs_county_totals(exp_root, "knbs-projection", as.character(yr), pop_method, base_year)
+      d <- copy(t$totals)
+      d[, `:=`(year = yr, pop_source = paste0("knbs-projection-", yr))]
+    } else {
+      # no published projection for this year: the enumerated census is the honest fallback
+      d <- copy(cen)
+      d[, `:=`(year = yr, growth_ratio = 1, knbs_pop = census_pop,
+               pop_source = "knbs-census-2019")]
+    }
+    d[, .(adm1_pcode, year, census_pop, growth_ratio, knbs_pop, pop_source)]
+  }))
+  out[]
+}
+
+#' Per (county, year) factors — the year-matched twin of pop_scale_table(), same decomposition.
+#'
+#' @param grid_adm1 data.table(adm1_pcode, grid_pop); the gridded surface is a fixed 2020 snapshot,
+#'   so the same gridded denominator is used for every year — only the target moves.
+#' @param targets   output of pop_year_targets()
+pop_scale_table_years <- function(grid_adm1, targets, log_fn = message) {
+  dt <- targets[grid_adm1, on = "adm1_pcode", allow.cartesian = TRUE]
+  if (dt[is.na(knbs_pop), .N]) {
+    stop(sprintf("no target total for %d county-year pairs", dt[is.na(knbs_pop), .N]))
+  }
+  if (dt[grid_pop <= 0, .N]) {
+    stop("gridded county total is zero for: ",
+         paste(unique(dt[grid_pop <= 0, adm1_pcode]), collapse = ", "))
+  }
+  dt[, `:=`(pop_scale_census  = census_pop / grid_pop,
+            pop_growth_county = knbs_pop / census_pop,
+            pop_scale_adm1    = knbs_pop / grid_pop)]
+  for (yr in sort(unique(dt$year))) {
+    d <- dt[year == yr]
+    log_fn(sprintf("  %d: national %.0f [%s] | county factors %.3f-%.3f",
+                   yr, sum(d$knbs_pop), d$pop_source[1],
+                   min(d$pop_scale_adm1), max(d$pop_scale_adm1)))
+  }
+  dt[, .(adm1_pcode, year, pop_scale_adm1, pop_scale_census, pop_growth_county, pop_source)]
 }

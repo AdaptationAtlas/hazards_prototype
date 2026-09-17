@@ -137,6 +137,11 @@ POP_SOURCE      <- Sys.getenv("POP_SOURCE", "knbs-census-2019")
 POP_YEAR        <- Sys.getenv("POP_YEAR", "")
 POP_METHOD      <- Sys.getenv("POP_METHOD", "county-growth")
 POP_BASE_YEAR   <- as.integer(Sys.getenv("POP_BASE_YEAR", POP_PROJECTION_BASE_YEAR))
+# Option C (year matching): the GFM table is observed floods carrying a year, so each row is
+# levelled against its OWN year's county population. JRC has no event year and the totals are a
+# static denominator, so both take POP_REF_YEAR. See _population_helpers.R for the full statement.
+YEAR_MATCH      <- Sys.getenv("POP_YEAR_MATCH") == "1"
+POP_REF_YEAR    <- as.integer(Sys.getenv("POP_REF_YEAR", as.integer(format(Sys.Date(), "%Y"))))
 POP_GRID_SOURCE <- "worldpop-constrained-2020"   # which grid paths$pop points at
 
 knbs <- knbs_county_totals(exp_root, POP_SOURCE, POP_YEAR, POP_METHOD, POP_BASE_YEAR)
@@ -166,6 +171,7 @@ setnames(totals, "pop_total", "pop_total_grid")
 totals <- scale_dt[totals, on = "adm1_pcode"]
 totals[, `:=`(pop_total = pop_total_grid * pop_scale_adm1,
               pop_source = pop_label, pop_method = pop_method,
+              pop_year = if (YEAR_MATCH) POP_REF_YEAR else NA_integer_,
               pop_grid_source = POP_GRID_SOURCE)]
 log_step(sprintf("  totals: pop %.0f [%s / %s] (grid %.0f), roads %.0f km, grid %.0f km, health %d, schools %d",
                  sum(totals$pop_total), pop_label, pop_method, sum(totals$pop_total_grid),
@@ -243,20 +249,32 @@ for (i in seq_along(gfm_files)) {
                    i, length(gfm_files), meta$season, meta$year, sum(r$flooded_km2), sum(r$pop_exposed)))
 }
 A <- rbindlist(A)
-A <- totals[, .(adm2_pcode, area_km2, pop_total, pop_total_grid, pop_scale_adm1,
-                pop_scale_census, pop_growth_county)][A, on = "adm2_pcode"]
+A <- totals[, .(adm2_pcode, area_km2, pop_total_grid)][A, on = "adm2_pcode"]
 setnames(A, "pop_exposed", "pop_exposed_grid")   # raw pixel sum, before the KNBS level is applied
+if (YEAR_MATCH) {
+  # one factor per county PER YEAR; pop_source varies by row (census fallback before 2020)
+  scale_years <- pop_scale_table_years(
+    grid_adm1, pop_year_targets(exp_root, sort(unique(A$year)), POP_METHOD, POP_BASE_YEAR), log_step)
+  # join on a RENAMED copy so A's own `year` (a key dimension) survives the join
+  sy <- copy(scale_years); setnames(sy, "year", ".join_year")
+  A[, .join_year := as.integer(year)]
+  A <- sy[A, on = c("adm1_pcode", ".join_year")]
+  A[, pop_year := .join_year][, .join_year := NULL]
+  A[, pop_method := paste0(pop_method, "-yearmatched")]
+} else {
+  A <- totals[, .(adm2_pcode, pop_scale_adm1, pop_scale_census, pop_growth_county)][A, on = "adm2_pcode"]
+  A[, `:=`(pop_source = pop_label, pop_method = pop_method, pop_year = NA_integer_)]
+}
 A[, `:=`(observed_pct = pmin(fifelse(area_km2 > 0, observed_km2 / area_km2, NA_real_), 1),  # clamp grid-mismatch rounding
          flooded_pct_observed = pmin(fifelse(observed_km2 > 0, flooded_km2 / observed_km2, NA_real_), 1),
+         pop_total = pop_total_grid * pop_scale_adm1,
          pop_exposed = pop_exposed_grid * pop_scale_adm1,
          pop_pct = fifelse(pop_total_grid > 0, pop_exposed_grid / pop_total_grid, NA_real_),  # scale cancels
-         pop_source = pop_label,
-         pop_method = pop_method,
          pop_grid_source = POP_GRID_SOURCE)]
 Acols <- c("adm2_pcode","adm1_pcode","adm2_name","adm1_name","season","year",
            "flooded_km2","observed_pct","flooded_pct_observed","pop_exposed","pop_pct","pop_source",
            "pop_total","pop_exposed_grid","pop_total_grid","pop_scale_adm1","pop_scale_census",
-           "pop_growth_county","pop_method","pop_grid_source",
+           "pop_growth_county","pop_method","pop_year","pop_grid_source",
            "roads_km_exposed","health_n_exposed","schools_n_exposed","grid_km_exposed","grid_km_exposed_hv")
 A <- A[, ..Acols]
 
@@ -292,11 +310,12 @@ B[, `:=`(pop_exposed = pop_exposed_grid * pop_scale_adm1,
          pop_pct = fifelse(pop_total_grid > 0, pop_exposed_grid / pop_total_grid, NA_real_),
          pop_source = pop_label,
          pop_method = pop_method,
+         pop_year = if (YEAR_MATCH) POP_REF_YEAR else NA_integer_,
          pop_grid_source = POP_GRID_SOURCE)]
 Bcols <- c("adm2_pcode","adm1_pcode","adm2_name","adm1_name","rp",
            "flood_prone_km2","pop_exposed","pop_pct","pop_source",
            "pop_total","pop_exposed_grid","pop_total_grid","pop_scale_adm1","pop_scale_census",
-           "pop_growth_county","pop_method","pop_grid_source",
+           "pop_growth_county","pop_method","pop_year","pop_grid_source",
            "roads_km_exposed","health_n_exposed","schools_n_exposed","grid_km_exposed","grid_km_exposed_hv")
 B <- B[, ..Bcols]
 

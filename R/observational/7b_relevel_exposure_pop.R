@@ -32,6 +32,11 @@
 #   POP_SOURCE=knbs-projection POP_YEAR=2025 APPLY=1 Rscript R/observational/7b_relevel_exposure_pop.R
 #   POP_METHOD=county-level ...                 published projection level (default: county-growth)
 #   POP_BASE_YEAR=2020 ...                      growth base year for county-growth
+#   POP_YEAR_MATCH=1 ...                        YEAR MATCHING (option C): level each GFM row against
+#                                               its OWN year's population, not one fixed year
+#   POP_REF_YEAR=2026 ...                       the year the JRC + totals tables use under year
+#                                               matching (JRC is a return-period hazard: no event
+#                                               year, so it needs one stated reference year)
 #   IN_DIR=/some/other/intersect ...            override the tables directory
 #   EXP_ROOT=/some/exposure ...                 name the exposure root and skip 0_server_setup.R
 # Republish afterwards: R/observational/6_publish_obs_to_s3.R --full --tier 16 --overwrite
@@ -58,6 +63,9 @@ POP_SOURCE      <- Sys.getenv("POP_SOURCE", "knbs-census-2019")
 POP_YEAR        <- Sys.getenv("POP_YEAR", "")
 POP_METHOD      <- Sys.getenv("POP_METHOD", "county-growth")
 POP_BASE_YEAR   <- as.integer(Sys.getenv("POP_BASE_YEAR", POP_PROJECTION_BASE_YEAR))
+YEAR_MATCH      <- Sys.getenv("POP_YEAR_MATCH") == "1"
+POP_REF_YEAR    <- as.integer(Sys.getenv("POP_REF_YEAR",
+                                         as.integer(format(Sys.Date(), "%Y"))))
 POP_GRID_SOURCE <- "worldpop-constrained-2020"
 APPLY           <- Sys.getenv("APPLY") == "1"
 
@@ -121,18 +129,51 @@ for (nm in names(tabs)) {
 # gridded county totals come from the per-adm2 denominators, which are static
 grid_adm1 <- unique(tabs$totals[, .(adm2_pcode, adm1_pcode, pop_total_grid)])[
   , .(grid_pop = sum(pop_total_grid, na.rm = TRUE)), by = adm1_pcode]
-knbs <- knbs_county_totals(exp_root, POP_SOURCE, POP_YEAR, POP_METHOD, POP_BASE_YEAR)
-pop_label  <- knbs$label
-pop_method <- knbs$method
-scale_dt <- pop_scale_table(grid_adm1, knbs$totals, pop_label, log_step)
+if (YEAR_MATCH) {
+  # Option C. A (GFM observed flood) is levelled row by row against its own year; B (JRC
+  # return-period) and the totals table have no event year, so they take POP_REF_YEAR.
+  if (!"year" %in% names(tabs$A)) stop("POP_YEAR_MATCH=1 but ", files[["A"]], " has no year column")
+  yrs <- sort(unique(as.integer(tabs$A$year)))
+  log_step(sprintf("YEAR MATCHING: %s years %d-%d; %s + %s pinned to reference year %d",
+                   files[["A"]], min(yrs), max(yrs), files[["B"]], files[["totals"]], POP_REF_YEAR))
+  scale_years <- pop_scale_table_years(
+    grid_adm1, pop_year_targets(exp_root, yrs, POP_METHOD, POP_BASE_YEAR), log_step)
+  ref <- pop_year_targets(exp_root, POP_REF_YEAR, POP_METHOD, POP_BASE_YEAR)
+  pop_label  <- ref$pop_source[1]
+  pop_method <- if (grepl("^knbs-census", pop_label)) "county-level"
+                else sprintf("county-growth-from-%d", POP_BASE_YEAR)
+  scale_dt <- pop_scale_table_years(grid_adm1, ref, log_step)[, year := NULL][]
+} else {
+  knbs <- knbs_county_totals(exp_root, POP_SOURCE, POP_YEAR, POP_METHOD, POP_BASE_YEAR)
+  pop_label  <- knbs$label
+  pop_method <- knbs$method
+  scale_years <- NULL
+  scale_dt <- pop_scale_table(grid_adm1, knbs$totals, pop_label, log_step)
+}
 
-relevel <- function(dt, exposed = TRUE) {
-  drop <- intersect(c("pop_scale_adm1", "pop_scale_census", "pop_growth_county"), names(dt))
+relevel <- function(dt, exposed = TRUE, by_year = FALSE) {
+  drop <- intersect(c("pop_scale_adm1", "pop_scale_census", "pop_growth_county", "pop_year"),
+                    names(dt))
   if (length(drop)) dt[, (drop) := NULL]
-  dt <- scale_dt[dt, on = "adm1_pcode"]
-  dt[, `:=`(pop_total = pop_total_grid * pop_scale_adm1,
-            pop_source = pop_label, pop_method = pop_method,
-            pop_grid_source = POP_GRID_SOURCE)]
+  if (by_year) {
+    # one factor per county PER YEAR; pop_source varies by row (census fallback for pre-2020)
+    if ("pop_source" %in% names(dt)) dt[, pop_source := NULL]
+    # join on a RENAMED copy: joining on `year` directly consumes the table's own year column,
+    # which is a key dimension of the GFM table (adm2 x season x year) and must survive untouched.
+    sy <- copy(scale_years); setnames(sy, "year", ".join_year")
+    dt[, .join_year := as.integer(year)]
+    dt <- sy[dt, on = c("adm1_pcode", ".join_year")]
+    dt[, pop_year := .join_year][, .join_year := NULL]
+    dt[, `:=`(pop_total = pop_total_grid * pop_scale_adm1,
+              pop_method = paste0(pop_method, "-yearmatched"),
+              pop_grid_source = POP_GRID_SOURCE)]
+  } else {
+    dt <- scale_dt[dt, on = "adm1_pcode"]
+    dt[, `:=`(pop_total = pop_total_grid * pop_scale_adm1,
+              pop_source = pop_label, pop_method = pop_method,
+              pop_year = if (YEAR_MATCH) POP_REF_YEAR else NA_integer_,
+              pop_grid_source = POP_GRID_SOURCE)]
+  }
   if (exposed) {
     dt[, `:=`(pop_exposed = pop_exposed_grid * pop_scale_adm1,
               pop_pct = fifelse(pop_total_grid > 0, pop_exposed_grid / pop_total_grid, NA_real_))]
@@ -143,7 +184,7 @@ relevel <- function(dt, exposed = TRUE) {
 }
 before <- vapply(tabs, function(d) if ("pop_exposed" %in% names(d)) sum(d$pop_exposed, na.rm = TRUE)
                  else sum(d$pop_total, na.rm = TRUE), numeric(1))
-tabs$A <- relevel(tabs$A)
+tabs$A <- relevel(tabs$A, by_year = YEAR_MATCH)
 tabs$B <- relevel(tabs$B)
 tabs$totals <- relevel(tabs$totals, exposed = FALSE)
 after <- vapply(tabs, function(d) if ("pop_exposed" %in% names(d)) sum(d$pop_exposed, na.rm = TRUE)
@@ -155,7 +196,12 @@ for (nm in names(tabs)) {
 }
 nat <- sum(tabs$totals$pop_total)
 log_step(sprintf("  national pop_total now %.0f [%s / %s]", nat, pop_label, pop_method))
-if (!is.null(knbs$totals) && abs(nat - sum(knbs$totals$knbs_pop)) > 1) {
+if (YEAR_MATCH) {
+  chk <- tabs$A[, .(n = uniqueN(pop_source)), by = pop_year][order(pop_year)]
+  log_step(sprintf("  year-matched rows: %s", paste(sprintf("%d(%s)", chk$pop_year,
+                   tabs$A[, .(s = pop_source[1]), by = pop_year][order(pop_year)]$s), collapse = " ")))
+}
+if (!YEAR_MATCH && !is.null(knbs$totals) && abs(nat - sum(knbs$totals$knbs_pop)) > 1) {
   stop(sprintf("national total %.0f does not match the %s table (%.0f)", nat, pop_label,
                sum(knbs$totals$knbs_pop)))
 }

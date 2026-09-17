@@ -25,6 +25,8 @@ blk_totals <- grab('^setnames\\(totals, "pop_total", "pop_total_grid"\\)',
 blk_A <- grab("^A <- totals\\[, \\.\\(adm2_pcode, area_km2", "^A <- A\\[, \\.\\.Acols\\]")
 
 log_step <- function(m) cat("   [script] ", m, "\n", sep = "")
+YEAR_MATCH   <- FALSE          # single-year path first; the year-matched path is tested below
+POP_REF_YEAR <- NA_integer_
 source(file.path(REPO, "R/observational/_population_helpers.R"))
 exp_root <- SP                       # holds knbs_census/ + knbs_projections/ from the ingests
 
@@ -120,5 +122,32 @@ stopifnot(grepl("POP_SOURCE must be", err(knbs_county_totals(exp_root, "nonsense
           grepl("no knbs-census-2019 total for", err(pop_scale_table(
             rbind(grid_adm1, data.table(adm1_pcode = "KE099", grid_pop = 10)),
             knbs$totals, "knbs-census-2019", log_step))))
+
+# ---- option C: year matching (2026-09-17) ----------------------------------
+# The GFM table carries observed-flood years, so each row must be levelled against its OWN year.
+cat("\n-- year matching (option C) --\n")
+yrs <- 2018:2025
+tgt <- pop_year_targets(exp_root, yrs, "county-growth")
+sy  <- pop_scale_table_years(grid_adm1, tgt, function(m) invisible(m))
+stopifnot(nrow(sy) == 47 * length(yrs),
+          setequal(unique(sy$year), yrs))
+nat <- tgt[, .(n = sum(knbs_pop)), by = year][order(year)]
+print(nat[, .(year, national = round(n), source = tgt[, .(s = pop_source[1]), by = year][order(year)]$s)])
+stopifnot(
+  # pre-2020 has no published projection: the census is the stated fallback, not an extrapolation
+  all(tgt[year < 2020, pop_source] == "knbs-census-2019"),
+  abs(nat[year == 2018, n] - 47564296) < 1,
+  abs(nat[year == 2019, n] - 47564296) < 1,
+  # the base year is a fixed point: growth 1.0, so it reproduces the census exactly
+  abs(nat[year == 2020, n] - 47564296) < 1,
+  # and from there it rises monotonically with the KNBS trajectory
+  all(diff(nat[year >= 2020, n]) > 0),
+  abs(nat[year == 2025, n] - 51964059) < 2000,
+  # decomposition still multiplies back, per county-year
+  all(abs(sy$pop_scale_census * sy$pop_growth_county - sy$pop_scale_adm1) < 1e-12),
+  # a year the projections do not cover falls back rather than inventing a number
+  pop_year_targets(exp_root, 2017L, "county-growth")$pop_source[1] == "knbs-census-2019")
+cat("   year-matched factors span", sprintf("%.4f-%.4f", min(sy$pop_scale_adm1), max(sy$pop_scale_adm1)),
+    "across 47 counties x", length(yrs), "years\n")
 
 cat("\nPROBE PASSED\n")

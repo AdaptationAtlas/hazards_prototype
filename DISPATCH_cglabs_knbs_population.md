@@ -35,6 +35,48 @@ Each factor is its own column (`pop_scale_census`, `pop_growth_county`, product 
 
 `county-growth` keeps the enumerated census as the level and takes only the *shape* of change from KNBS; it excludes the ~2.6 % step KNBS puts between census night (Aug 2019) and its own 2020 base. `county-level` reproduces the published projection exactly — the number a Kenyan counterpart would quote — but supersedes the census anchor with KNBS's base-level revision. Under `county-growth` with `POP_YEAR=2020` the growth factor is exactly 1 and the census total comes back unchanged.
 
+## [macbook / hazards_prototype · 2026-09-17 #4] Pete chose year matching (option C). One more 7b run + tier-16 republish.
+
+**Decision made, and it changes what tier 16 carries.** Pete picked **option C, year matching**, with `county-growth` as the growth definition. The reasoning: the GFM table is OBSERVED floods carrying a year, so any single fixed denominator is wrong in one direction — the 2019 census undercounts a 2024 flood by ~9 %, a 2025 projection overcounts a 2018 one by about as much. Each GFM row is now levelled against **its own year's** county population.
+
+- **2020-2025** → that year's KNBS projection (census level × county growth since the 2020 base).
+- **2018-2019** → the enumerated census, stated as a fallback in `pop_source`. KNBS publishes nothing before its 2020 base and back-extrapolating would be inventing a number.
+- **JRC + totals** → one stated reference year (`POP_REF_YEAR`, defaults to the current year), because a return-period hazard has no event year and the totals are a static denominator.
+
+New column `pop_year` records the year used on every row. `pop_method` gains a `-yearmatched` suffix. **`pop_source` now VARIES BY ROW in the GFM table** — that is expected, and the notebook briefing has been updated to say so.
+
+Wired into both `7b_relevel_exposure_pop.R` (what you run) and `7_zonal_exposure.R` (so a future full re-run does not silently revert to a single year). Validator extended and passing.
+
+**Run — tier 16 only, again. Tiers 17/18 stay untouched.**
+```
+git pull --ff-only origin develop && git log -1 --oneline
+export EXPOSURE_ROOT=<common_data base>/exposure
+POP_YEAR_MATCH=1 Rscript R/observational/7b_relevel_exposure_pop.R            # DRY RUN
+POP_YEAR_MATCH=1 APPLY=1 Rscript R/observational/7b_relevel_exposure_pop.R
+Rscript R/observational/6_publish_obs_to_s3.R --full --tier 16 --overwrite
+```
+`POP_REF_YEAR` defaults to the current year (2026) for JRC + totals; pass it explicitly if you would rather pin it.
+
+**Expected, and note this is a re-level of the tables you already re-levelled** — `7b` always works from the `*_grid` columns, so running it twice is not compounding:
+```
+YEAR MATCHING: exposure_gfm_seasonal.parquet years 2018-2025; ... pinned to reference year 2026
+  2018: national 47,564,296 [knbs-census-2019]
+  2019: national 47,564,296 [knbs-census-2019]
+  2020: national 47,564,296 [knbs-projection-2020]     <- growth 1.0 at the base year, by construction
+  2021: national 48,444,249 [knbs-projection-2021]
+  ...
+  2025: national 51,964,059 [knbs-projection-2025]
+```
+GFM `pop_exposed` will rise relative to the census-only run — later flood years now carry more people — while `pop_pct` stays unchanged as always.
+
+**Invariants to judge it on (same as before, plus two):**
+- `pop_pct` unchanged in every row.
+- per row `pop_exposed == pop_exposed_grid * pop_scale_adm1`, `pop_scale_adm1 == pop_scale_census * pop_growth_county`.
+- `pop_year` present on all three tables; in GFM it equals `year` on every row.
+- 2018, 2019 and 2020 all land on the census national total (2020 by construction, since growth is 1.0 at the base year) — if 2020 differs from the census, the growth base is wrong.
+
+Paste a short `### RESPONSE` with the per-year national lines, the before→after, and the tier-16 upload + size-diff.
+
 ## [macbook / hazards_prototype · 2026-09-17 #2] Blocker fixed — your option (b), with the denominator joined rather than dropped. Re-run step 3 + tier 16.
 
 **Right call to stop.** The fix changes published numbers, so it was macbook's, and your diagnosis was exact: `upgrade_legacy` synthesises `pop_total_grid` only from an existing `pop_total`, and the A/B intersects never carried one.

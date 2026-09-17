@@ -77,6 +77,17 @@ note: >
   Sub-county-specific growth is NOT represented: a fast-urbanising sub-county and a depopulating one
   in the same county grow at the same rate here. Growth does vary between counties - the 2025
   factors span 1.03 to 1.15 - but not within one.
+  YEAR MATCHING (the published default from 2026-09-17). The GFM table records OBSERVED floods and
+  carries a year, so a single fixed denominator is wrong in one direction or the other: the 2019
+  census undercounts a 2024 flood by roughly 9 per cent, and a 2025 projection overcounts a 2018 one
+  by a similar margin. Each GFM row is therefore levelled against ITS OWN year's county population,
+  and pop_year records which year was used. Years the KNBS projections cover (2020 onward) use them;
+  2018 and 2019 fall back to the enumerated census, because nothing official projects backwards from
+  the 2020 base and inventing a figure would be worse than stating the fallback. Consequence for
+  consumers: pop_source VARIES BY ROW in the GFM table - "knbs-census-2019" for 2018-2019 and
+  "knbs-projection-<year>" thereafter - so do not read one value and assume it applies to the file.
+  The JRC table is a return-period hazard with no event year, and the totals table is a static
+  denominator, so both take a single stated reference year (pop_year, same on every row).
   TWO DEFINITIONS OF THE GROWTH FACTOR, recorded in pop_method:
     county-growth-from-<base year> - pop_growth_county = projection(year) / projection(base year,
       2020). The enumerated census remains the level and KNBS supplies only the shape of change;
@@ -219,8 +230,16 @@ variables:
     description: >
       All tables. How pop_growth_county was defined - "county-level" (the county total is the
       published KNBS projection) or "county-growth-from-<base year>" (the census level carried
-      forward by county growth since that base year).
+      forward by county growth since that base year). The suffix "-yearmatched" marks rows levelled
+      against their own year rather than one fixed year.
     data_type: string
+    unit: "1"
+  - name: pop_year
+    description: >
+      All tables. The year whose county population was used as the denominator. Varies by row in the
+      GFM table (it follows the flood year); a single stated reference year in the JRC and totals
+      tables, which have no event year.
+    data_type: int32
     unit: "1"
   - name: roads_km_exposed
     description: GFM and JRC tables. Classified-highway length within flooded / flood-prone cells (cell-resolution).

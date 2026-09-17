@@ -49,13 +49,22 @@ Applies to `exposure_gfm_seasonal.parquet`, `exposure_jrc_rp.parquet`, `exposure
 | `pop_pct` | **unchanged, bit-for-bit** | Every share, ranking, choropleth and "% of sub-county exposed" is unaffected. The factors cancel. |
 | `pop_exposed` | same column, **new values** | Falls, but NOT by one flat factor — see the note under this table. GFM exposed fell ~35 %, JRC ~18 %. |
 | `pop_total` | same column, **new values** | National now exactly 47,564,296. |
-| `pop_source` | **new values** | Was always `"worldpop"`. Now `"knbs-census-2019"` or `"knbs-projection-<year>"`. |
+| `pop_source` | **new values, AND varies by row** | Was always `"worldpop"`. In the GFM table it now follows each row's flood year: `"knbs-census-2019"` for 2018-2019, `"knbs-projection-<year>"` from 2020. **Do not read one row and assume it applies to the file.** JRC and totals carry a single value. |
+| `pop_year` | new | The year whose population was used. Follows `year` in the GFM table; a single reference year in JRC and totals. |
 | `pop_method` | new | `"county-level"` or `"county-growth-from-2020"` — how the time factor was defined. |
 | `pop_exposed_grid` | new | The old raw gridded pixel sum, i.e. today's `pop_exposed`. |
 | `pop_total_grid` | new | The old raw gridded denominator. |
 | `pop_scale_census` | new | Census county total / gridded county total (~0.855; constant in time). |
 | `pop_growth_county` | new | County proportional change (1.0 for the census; 1.031-1.151 across counties for 2025). |
 | `pop_grid_source` | new | `"worldpop-constrained-2020"` — which surface supplied the share. |
+
+**Denominators are year-matched (decided 2026-09-17).** The GFM table is observed floods, so each
+row is counted against the population of *its own year* rather than one fixed year — a 2018 flood
+against 2018 population, a 2024 flood against 2024. `pop_year` says which, and `pop_source` moves
+with it. 2018 and 2019 fall back to the census because KNBS publishes no projection before its 2020
+base. JRC is a return-period hazard with no event year, so it and the totals table carry one stated
+reference year. Practical effect for the Explorer: a time series of "people exposed" now reflects
+population growth as well as flood extent, which is what a reader assumes it already did.
 
 **The change is not one flat percentage, and this matters for any copy you write.** The levelling
 factor is per county and spans **0.324-1.394** on the real grid — WorldPop exceeds the census
@@ -128,7 +137,10 @@ the values and the `pop_source` / `pop_method` strings would move.
 - Format absolute headcounts from `pop_exposed` / `pop_total`, and caption them from `pop_source`
   (a `"worldpop"` value would mean a stale cached object — the published tables all read
   `knbs-census-2019` as of 2026-09-17).
-- `pop_*_grid`, `pop_scale_*`, `pop_growth_county`, `pop_method` and `pop_grid_source` are all
+- Never aggregate `pop_exposed` across years without saying so: each year now carries its own
+  denominator, so a multi-year total mixes population vintages. Summing is still correct for
+  "people exposed across these events"; it is not a count of distinct people.
+- `pop_*_grid`, `pop_scale_*`, `pop_growth_county`, `pop_method`, `pop_year` and `pop_grid_source` are all
   present on S3 now; treat them as optional only if you also read cached copies from before
   2026-09-17.
 
