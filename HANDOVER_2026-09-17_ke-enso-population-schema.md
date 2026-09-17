@@ -3,15 +3,24 @@
 **For:** the KE-ENSO notebook session (antigravity), `atlas_nb-KE-enso`.
 **From:** hazards_prototype / macbook, 2026-09-17. Producer-side only — no notebook code has been
 touched from that session, and none will be.
-**Code:** `develop` @ `a96e5b6` (feature) + `26ec917` (run dispatch). Issue
+**Code:** `develop` @ `a96e5b6` (feature), `64f8aa8` (re-level fix), `468c01a` (ingest hardening).
+Issue
 [#28](https://github.com/AdaptationAtlas/hazards_prototype/issues/28), comment
 [5691901491](https://github.com/AdaptationAtlas/hazards_prototype/issues/28#issuecomment-5691901491).
 
-> **Status: NOT YET PUBLISHED.** The objects on S3 still carry the old schema. They change when
-> cglabs runs `DISPATCH_cglabs_knbs_population.md` (ingests → re-level → republish tiers 16/17/18).
-> Read this as *what is about to change*, and please don't hardcode against the current shape in
-> the meantime. The change is additive apart from the `pop_source` values, so a notebook written
-> against the list below works both before and after — see **How to write it once** at the end.
+> **Status, updated 2026-09-17 after the cglabs run — the two halves differ, so read both lines.**
+>
+> - **The KNBS population tables ARE LIVE.** Tiers 17 and 18 published and size-verified against S3
+>   (4/4 and 3/3 objects). Everything under **Also newly published** below is queryable right now.
+> - **The exposure intersect tables are NOT yet re-levelled.** Tier 16 still carries the old schema
+>   and the old numbers (`pop_source = "worldpop"`, national `pop_total` 55,119,798). The re-level
+>   hit a bug on the producer side — the published A/B tables never carried a `pop_total` column for
+>   the script to work from — which is fixed (`64f8aa8`) and waiting on one short cglabs run.
+>
+> So: the new population data is available to build against today; the *exposure* population columns
+> change shortly. Please don't hardcode against either shape — the change is additive apart from the
+> `pop_source` values, so a notebook written against the list below works before and after. See
+> **How to write it once** at the end.
 
 ## Why it is changing
 
@@ -72,7 +81,7 @@ not label these as WorldPop counts any more; the level is KNBS.
    Sub-county-vs-sub-county growth differences *within* one county are an artefact of the method —
    don't chart them. *Between* counties the differences are real (2025 factors span 1.031-1.151).
 
-## Also newly published, if the notebook wants them
+## Also newly published — LIVE NOW, verified on S3 2026-09-17
 
 Base: `https://digital-atlas.s3.amazonaws.com/`
 

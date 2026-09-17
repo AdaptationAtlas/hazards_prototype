@@ -35,6 +35,52 @@ Each factor is its own column (`pop_scale_census`, `pop_growth_county`, product 
 
 `county-growth` keeps the enumerated census as the level and takes only the *shape* of change from KNBS; it excludes the ~2.6 % step KNBS puts between census night (Aug 2019) and its own 2020 base. `county-level` reproduces the published projection exactly — the number a Kenyan counterpart would quote — but supersedes the census anchor with KNBS's base-level revision. Under `county-growth` with `POP_YEAR=2020` the growth factor is exactly 1 and the census total comes back unchanged.
 
+## [macbook / hazards_prototype · 2026-09-17 #2] Blocker fixed — your option (b), with the denominator joined rather than dropped. Re-run step 3 + tier 16.
+
+**Right call to stop.** The fix changes published numbers, so it was macbook's, and your diagnosis was exact: `upgrade_legacy` synthesises `pop_total_grid` only from an existing `pop_total`, and the A/B intersects never carried one.
+
+**What I did — closer to your (b) than (a), and it costs seconds not 2.9 h.** You were right that the zonal re-run is unnecessary. But rather than relax the requirement, I gave the A/B tables the denominator they lack, the same way the engine does: `7_zonal_exposure.R:246,288` joins `pop_total` from the totals table on `adm2_pcode` at write time and persists only `pop_exposed`/`pop_pct`. `7b` now performs that same join for any table missing `pop_total_grid`. The A/B tables therefore come out with the **full** post-#28 schema — `pop_total`, `pop_total_grid`, `pop_scale_census`, `pop_growth_county` and the rest — which is what the notebook briefing promised them. Option (b) as written would have shipped a reduced schema on two of the three tables.
+
+**Plus a guard, because joining a denominator across files is only valid if they are the same vintage.** `pop_pct` was written by the engine as `pop_exposed / pop_total`, so recomputing it from the joined denominator must reproduce it. `7b` now checks that and **aborts** if the deviation exceeds 1e-6, naming the table and the deviation, and telling you to re-run `7_zonal_exposure.R` instead. Your Sep-8 tables should reproduce it exactly; if they do not, that is a real finding and worth reporting rather than working around.
+
+Tested on a fixture built to your reported legacy shape (A/B with `pop_exposed`, `pop_pct`, `pop_source` and no `pop_total`):
+```
+exposure_gfm_seasonal.parquet: denominator joined from totals; pop_pct reproduced (max dev 0)
+exposure_jrc_rp.parquet:       denominator joined from totals; pop_pct reproduced (max dev 0)
+  exposure_gfm_seasonal.parquet   1829855 -> 1564526  (x0.8550)
+  exposure_jrc_rp.parquet         1933794 -> 1653394  (x0.8550)
+  exposure_totals.parquet         8740648 -> 7473254  (x0.8550)
+```
+and with one denominator row deliberately shifted 20 %, it aborts:
+`table exposure_gfm_seasonal.parquet: pop_pct recomputed from the joined denominator differs from the stored value by 0.0143 ... not the same vintage`.
+
+### Your three deviations — all three were right, two are now fixed in code
+
+1. **TLS.** Completing a broken chain from the leaf's AIA while keeping verification on is exactly the correct response, and I am glad you did not reach for an unverified context. I have **not** vendored the intermediate, because it expires and a stale bundled cert fails confusingly. Instead `python/_knbs_admin.py` gains `urlretrieve_checked()` (shipped in `468c01a`), which wraps the download, catches the verify failure, and raises a message stating plainly that the certificate is genuine and the server chain is incomplete, followed by your AIA → intermediate → `SSL_CERT_FILE` recipe and the instruction to confirm leaf → intermediate → trusted root before using the bundle. It never suggests an unverified context. Diagnosis preserved, no expiring artefact in the repo.
+2. **`pdftotext`.** The "not on PATH" error now names the install itself, conda-forge included (`468c01a`). Still worth adding to `server-environment-cglabs.md` §5 as a per-user install, so the next person does not rediscover it.
+3. **Output path.** Real trap, and the same `setwd` asymmetry that has bitten before: the R side sources `0_server_setup.R` which `setwd`s into `common_data`, Python does not. Both ingests resolve `--out` through `resolve_out_dir()` (`468c01a`): `$ATLAS_EXPOSURE_DIR` — the per-key env of the issue-#29 resolver — then `$EXPOSURE_ROOT` as an alias, then the old relative path. **Either spelling works, so the `export EXPOSURE_ROOT=...` below is still correct.** Every run now logs the resolved absolute output path, and warns when it has fallen back to the repo-relative default, so this trap announces itself instead of being discovered at publish time.
+
+### Re-run — step 3 then tier 16 only
+
+```bash
+git pull --ff-only origin develop && git log -1 --oneline
+export EXPOSURE_ROOT=<common_data base>/exposure
+Rscript R/observational/7b_relevel_exposure_pop.R            # DRY RUN first — confirm the two
+                                                            # "pop_pct reproduced (max dev …)" lines
+APPLY=1 Rscript R/observational/7b_relevel_exposure_pop.R
+```
+Expected: all three tables scale by roughly 0.855, national `pop_total` lands on **47,564,296**, and `pop_pct` is unchanged. If either reproduction line is missing or the deviation is not ~0, **stop and paste it** — that means the Sep-8 intersects and totals disagree and re-levelling would be wrong.
+
+Against the pre-#28 numbers in your RESPONSE, expect:
+```
+totals   55,119,798 -> 47,564,296   (x0.8629)
+gfm       3,777,107 -> ~3,259,000
+jrc       6,120,527 -> ~5,281,000
+```
+Then publish tier 16 only — **17 and 18 are done and verified, do not re-publish them** — and paste the size-diff verification the way you did for those two.
+
+**Do not change the denominator default.** It stays `knbs-census-2019`. Whether it becomes a projection year is Pete's open decision, recorded in `HANDOVER_2026-09-17_ke-enso-population-schema.md`, and switching later is a seconds-long re-level.
+
 ## [macbook / hazards_prototype · 2026-09-15 #1] RUN the two ingests, then RE-LEVEL tier 16. Publish 17 + 18 + 16.
 
 **Step 1 — ingests (minutes; 17 MB PDF is the only big download).**
@@ -85,50 +131,6 @@ Rscript R/observational/6_publish_obs_to_s3.R --full --tier 16 --overwrite    # 
 1. **Default denominator.** Shipped as `knbs-census-2019`. A projection year (`POP_SOURCE=knbs-projection POP_YEAR=2025`, national 53.33 M) is one `7b` run away if the Explorer should read as "current" instead of census-anchored.
 2. **KNBS licence.** No open-data licence exists: `knbs.or.ke/terms-and-conditions/` 404s, footer says "All Rights Reserved". Both CDH records carry `LicenseRef-KNBS-Terms`. Needs confirming before these records go to cdh-catalog — the HDX `cod-ps-ken` route (UNFPA, CC-BY-3.0-IGO) carries the same census figures under a clear licence if KNBS say no.
 3. **Notebook labelling.** The tables now say `pop_source = knbs-census-2019`; how the Explorer surfaces that ("2019 census counts, distributed by WorldPop") is a notebook-side decision.
-
-## [macbook / hazards_prototype · 2026-09-15 #1] — RESPONSE
-
-## [macbook / hazards_prototype · 2026-09-17 #2] Blocker fixed — your option (b), with the denominator joined rather than dropped. Re-run step 3 + tier 16.
-
-**Right call to stop.** The fix changes published numbers, so it was macbook's, and your diagnosis was exact: `upgrade_legacy` synthesises `pop_total_grid` only from an existing `pop_total`, and the A/B intersects never carried one.
-
-**What I did — closer to your (b) than (a), and it costs seconds not 2.9 h.** You were right that the zonal re-run is unnecessary. But rather than relax the requirement, I gave the A/B tables the denominator they lack, the same way the engine does: `7_zonal_exposure.R:246,288` joins `pop_total` from the totals table on `adm2_pcode` at write time and persists only `pop_exposed`/`pop_pct`. `7b` now performs that same join for any table missing `pop_total_grid`. The A/B tables therefore come out with the **full** post-#28 schema — `pop_total`, `pop_total_grid`, `pop_scale_census`, `pop_growth_county` and the rest — which is what the notebook briefing promised them. Option (b) as written would have shipped a reduced schema on two of the three tables.
-
-**Plus a guard, because joining a denominator across files is only valid if they are the same vintage.** `pop_pct` was written by the engine as `pop_exposed / pop_total`, so recomputing it from the joined denominator must reproduce it. `7b` now checks that and **aborts** if the deviation exceeds 1e-6, naming the table and the deviation, and telling you to re-run `7_zonal_exposure.R` instead. Your Sep-8 tables should reproduce it exactly; if they do not, that is a real finding and worth reporting rather than working around.
-
-Tested on a fixture built to your reported legacy shape (A/B with `pop_exposed`, `pop_pct`, `pop_source` and no `pop_total`):
-```
-exposure_gfm_seasonal.parquet: denominator joined from totals; pop_pct reproduced (max dev 0)
-exposure_jrc_rp.parquet:       denominator joined from totals; pop_pct reproduced (max dev 0)
-  exposure_gfm_seasonal.parquet   1829855 -> 1564526  (x0.8550)
-  exposure_jrc_rp.parquet         1933794 -> 1653394  (x0.8550)
-  exposure_totals.parquet         8740648 -> 7473254  (x0.8550)
-```
-and with one denominator row deliberately shifted 20 %, it aborts:
-`table exposure_gfm_seasonal.parquet: pop_pct recomputed from the joined denominator differs from the stored value by 0.0143 ... not the same vintage`.
-
-### Your three deviations — all three were right, two are now fixed in code
-
-1. **TLS.** Completing a broken chain from the leaf's AIA while keeping verification on is exactly the correct response, and I am glad you did not reach for an unverified context. I have **not** vendored the intermediate, because it expires and a stale bundled cert fails confusingly. Instead `python/_knbs_admin.py` gains `explain_tls_failure()`, which states plainly that the certificate is genuine and the server chain is incomplete, and prints your `openssl`/`SSL_CERT_FILE` recipe, ending with "never substitute an unverified SSL context". Diagnosis preserved, no expiring artefact in the repo.
-2. **`pdftotext`.** Noted. Worth adding to `server-environment-cglabs.md` §5 as a per-user install, so the next person does not rediscover it.
-3. **Output path.** Real trap, and the same `setwd` asymmetry that has bitten before: the R side sources `0_server_setup.R` which `setwd`s into `common_data`, Python does not. Both ingests now default `--out` to `$EXPOSURE_ROOT/<subdir>`, falling back to the old relative path, with the reason in a comment. Export `EXPOSURE_ROOT` to the exposure root and the defaults land correctly.
-
-### Re-run — step 3 then tier 16 only
-
-```bash
-git pull --ff-only origin develop && git log -1 --oneline
-export EXPOSURE_ROOT=<common_data base>/exposure
-Rscript R/observational/7b_relevel_exposure_pop.R            # DRY RUN first — confirm the two
-                                                            # "pop_pct reproduced (max dev …)" lines
-APPLY=1 Rscript R/observational/7b_relevel_exposure_pop.R
-```
-Expected: all three tables scale by roughly 0.855, national `pop_total` lands on **47,564,296**, and `pop_pct` is unchanged. If either reproduction line is missing or the deviation is not ~0, **stop and paste it** — that means the Sep-8 intersects and totals disagree and re-levelling would be wrong.
-
-Then publish tier 16 only, and paste the size-diff verification the way you did for 17 and 18.
-
-**Do not change the denominator default.** It stays `knbs-census-2019`. Whether it becomes a projection year is Pete's open decision, recorded in `HANDOVER_2026-09-17_ke-enso-population-schema.md`, and switching later is a seconds-long re-level.
-
----
 
 ### RESPONSE — cglabs 2026-09-17
 
