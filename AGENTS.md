@@ -23,10 +23,18 @@ that README, and repoint any reference from a file that stays.
 
 Work is split across two machines and coordinated through `DISPATCH_cglabs_*.md` files (append-only, **newest block on top**):
 
-- **macbook** — authors code, writes dispatch blocks describing what to run.
+- **macbook** — authors code, writes dispatch blocks describing what to run. Working practice on
+  that side: arm a persistent watch on `origin/develop` so a cglabs push arrives as a notification
+  rather than being polled for (300 s interval; **check the commit author, since your own pushes
+  echo back** — `peetmate` is the node, `Pete Steward` is a macbook session); write the dispatch to
+  the shape below; and end the turn with a short copy-paste prompt the user can hand straight to
+  the cglabs session.
 - **CGlabs** (this node; `R/0_server_setup.R` sets `Cglabs <- TRUE`) — owns the live data under `/home/jovyan/common_data/nex-gddp-cimp6_hazards`, runs and validates the pipeline, publishes to `s3://digital-atlas`, and reports back by prepending a `### RESPONSE` block to the dispatch it answers.
 
 Operating rules that have proven load-bearing:
+- **State expectations as invariants, not exact figures**, wherever the value is data-dependent. A
+  gate that expects a slightly wrong number turns a correct run into a false failure — that happened
+  three times in one week.
 - **Stop at every gate a dispatch names.** If anything deviates from the dispatch's stated expectation, stop at that step and describe what you see — do **not** improvise a fix. (This caught a stale-ensemble tier, a silent grid mismatch, a NULL-exposure abort, and two gate false-fails.)
 - After committing a `### RESPONSE`, **verify it landed on `origin/develop`** (`git fetch`; `git log origin/develop..HEAD` empty; `git show origin/develop:<file> | grep -c <marker>`). Push races have happened.
 - Commit trailer: `Co-Authored-By: <your own model name> <noreply@anthropic.com>` — sign as whatever model you actually are, so the record stays accurate across sessions and machines.
