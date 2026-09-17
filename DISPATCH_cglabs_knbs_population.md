@@ -73,10 +73,22 @@ Expected: all three tables scale by roughly 0.855, national `pop_total` lands on
 
 Against the pre-#28 numbers in your RESPONSE, expect:
 ```
-totals   55,119,798 -> 47,564,296   (x0.8629)
-gfm       3,777,107 -> ~3,259,000
-jrc       6,120,527 -> ~5,281,000
+totals   55,119,798 -> 47,564,296   exactly (x0.86293 nationally)
+gfm       3,777,107 -> roughly 3.2-3.3 M   ) NOT the national factor - see below
+jrc       6,120,527 -> roughly 5.2-5.4 M   )
 ```
+**Correcting myself on those last two.** The levelling factor is per COUNTY (census/grid, spanning
+0.72-1.05), not one national number. `exposure_totals` sums over every county, so it lands on the
+national census total exactly. The gfm/jrc sums are weighted by *where the exposed people are* —
+flood exposure concentrates in a handful of counties — so their aggregate factor is a weighted mix
+that will NOT equal 0.86293, and a few per cent either side of my figures above is expected, not a
+fault. Judge the run on the invariants instead:
+
+- `exposure_totals` national `pop_total` == **47,564,296** exactly.
+- `pop_pct` unchanged in every row of gfm and jrc (the factors cancel).
+- per row, `pop_exposed == pop_exposed_grid * pop_scale_adm1`, and
+  `pop_scale_adm1 == pop_scale_census * pop_growth_county`.
+- both "pop_pct reproduced (max dev ~0)" lines present.
 Then publish tier 16 only — **17 and 18 are done and verified, do not re-publish them** — and paste the size-diff verification the way you did for those two.
 
 **Do not change the denominator default.** It stays `knbs-census-2019`. Whether it becomes a projection year is Pete's open decision, recorded in `HANDOVER_2026-09-17_ke-enso-population-schema.md`, and switching later is a seconds-long re-level.
