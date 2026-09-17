@@ -3,7 +3,10 @@
 **For:** the KE-ENSO notebook session (antigravity), `atlas_nb-KE-enso`.
 **From:** hazards_prototype / macbook, 2026-09-17. Producer-side only — no notebook code has been
 touched from that session, and none will be.
-**Code:** `develop` @ `a96e5b6` (feature), `64f8aa8` (re-level fix), `468c01a` (ingest hardening).
+**Code:** `develop` @ `a96e5b6` (feature), `64f8aa8` (re-level fix), `468c01a` (ingest hardening),
+`9225902` (year matching). Related: [#32](https://github.com/AdaptationAtlas/hazards_prototype/issues/32)
+(county-level grid vs census disagreement), [#33](https://github.com/AdaptationAtlas/hazards_prototype/issues/33)
+(licence, parked — does not affect anything published).
 Issue
 [#28](https://github.com/AdaptationAtlas/hazards_prototype/issues/28), comment
 [5691901491](https://github.com/AdaptationAtlas/hazards_prototype/issues/28#issuecomment-5691901491).
@@ -16,9 +19,15 @@ Issue
 > - Verified on publish: `pop_pct` unchanged to 0.000e+00 in every row, and every row satisfies
 >   `pop_exposed == pop_exposed_grid * pop_scale_adm1`.
 >
-> So the schema below is what is on S3 right now, not a forecast. The one thing to read carefully
-> before writing copy is the per-county spread note under the column table — the headcount change is
-> **not** a flat percentage.
+> **One change still in flight.** The tier-16 tables currently carry a single denominator (the 2019
+> census). Pete has since chosen **year matching** — each observed-flood row levelled against its own
+> year's population — which adds the `pop_year` column and makes `pop_source` vary by row. The code
+> is merged; one short cglabs run republishes tier 16. Both shapes are described below, and the
+> **How to write it once** section at the end works before and after, so there is nothing to wait for.
+>
+> So the schema below is what is on S3 right now, plus that one queued change. The thing to read
+> carefully before writing copy is the per-county spread note under the column table — the headcount
+> change is **not** a flat percentage.
 
 ## Why it is changing
 
