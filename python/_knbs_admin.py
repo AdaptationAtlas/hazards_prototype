@@ -33,6 +33,29 @@ MAIN_NS = "http://schemas.openxmlformats.org/spreadsheetml/2006/main"
 REL_NS = "http://schemas.openxmlformats.org/officeDocument/2006/relationships"
 
 
+def explain_tls_failure(exc, url):
+    """KNBS serves an incomplete certificate chain (leaf only, no issuing intermediate), so
+    strict verification fails with code 21 even though the certificate is genuine. Do NOT
+    disable verification, and do NOT vendor the intermediate into this repo - it expires.
+    Complete the chain from the leaf's own AIA extension and keep verification on.
+    Recorded 2026-09-17 by cglabs, who hit this on the first real run."""
+    return (
+        "TLS verification failed for {}: {}\n".format(url, exc)
+        + "  The KNBS server sends its leaf certificate without the issuing intermediate, so the\n"
+          "  chain cannot be built locally. The certificate is genuine; this is a server\n"
+          "  misconfiguration, not an interception.\n"
+          "  Fix it without weakening TLS - fetch the intermediate named in the leaf's AIA\n"
+          "  extension, append it to a trust bundle, and point SSL_CERT_FILE at that bundle:\n"
+          "    openssl s_client -connect www.knbs.or.ke:443 -servername www.knbs.or.ke </dev/null \\\n"
+          "      2>/dev/null | openssl x509 -noout -text | grep -A1 'CA Issuers'\n"
+          "    curl -s <that URL> | openssl x509 -inform DER -out /tmp/knbs_intermediate.pem\n"
+          "    cat \"$(python3 -c 'import certifi;print(certifi.where())')\" /tmp/knbs_intermediate.pem \\\n"
+          "      > /tmp/knbs_bundle.pem\n"
+          "    SSL_CERT_FILE=/tmp/knbs_bundle.pem python3 <this script>\n"
+          "  Never substitute an unverified SSL context."
+    )
+
+
 def log(msg):
     print(f"[{dt.datetime.now():%H:%M:%S}] {msg}", flush=True)
 

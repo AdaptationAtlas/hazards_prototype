@@ -210,7 +210,11 @@ def parse_agesex(tmp):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="Data/exposure/knbs_census")
+    ap.add_argument("--out", default=os.path.join(
+        # EXPOSURE_ROOT because the R side sources 0_server_setup.R, which setwd()s into
+        # common_data, while Python does not - so a repo-relative default lands the parquets
+        # where the publisher and the re-level script will not look (cglabs, 2026-09-17).
+        os.environ.get("EXPOSURE_ROOT", "Data/exposure"), "knbs_census"))
     ap.add_argument("--format", choices=["parquet", "csv"], default="parquet")
     ap.add_argument("--no-age-sex", action="store_true", help="skip the HDX cod-ps-ken age x sex table")
     ap.add_argument("--no-codab-match", action="store_true", help="skip the best-effort adm2 name match")

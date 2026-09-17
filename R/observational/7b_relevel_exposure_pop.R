@@ -21,6 +21,11 @@
 #   exposure_gfm_seasonal.parquet  exposure_jrc_rp.parquet  exposure_totals.parquet
 # Tables written by the pre-#28 engine (no *_grid columns) are upgraded in place: their existing
 # pop_total / pop_exposed ARE the gridded sums, so they are copied into the _grid columns first.
+# NOTE the asymmetry, found on the real Sep-8 tables (cglabs, 2026-09-17): only exposure_totals
+# carries a per-row pop_total. The two intersect tables (A, B) were published with pop_exposed /
+# pop_pct / pop_source and NO pop_total, so their gridded denominator has to be recovered from the
+# totals table by adm2_pcode. That join also gives a free consistency check: the stored pop_pct must
+# equal pop_exposed_grid / pop_total_grid, because that is exactly how the engine computed it.
 #
 # DRY RUN BY DEFAULT — prints what would change and writes nothing. Set APPLY=1 to rewrite.
 #   POP_SOURCE=knbs-projection POP_YEAR=2025 Rscript R/observational/7b_relevel_exposure_pop.R
@@ -68,19 +73,44 @@ log_step(sprintf("re-levelling %s | POP_SOURCE=%s%s POP_METHOD=%s | %s", in_dir,
 tabs <- lapply(paths, function(p) as.data.table(read_parquet(p)))
 names(tabs) <- names(files)
 
-# legacy tables (pre-#28): the existing pop columns are the raw gridded sums
-upgrade_legacy <- function(dt, exposed = TRUE) {
+# legacy tables (pre-#28): the existing pop columns are the raw gridded sums.
+# The section-A/B intersects never carried a per-row `pop_total` — the engine joins the
+# denominator from the totals table on adm2_pcode at write time and persists only
+# pop_exposed/pop_pct (7_zonal_exposure.R:246,288). So a legacy A/B table cannot
+# synthesise pop_total_grid from itself; take it from totals the same way the engine does.
+upgrade_legacy <- function(dt, exposed = TRUE, denom = NULL) {
   if (!"pop_total_grid" %in% names(dt) && "pop_total" %in% names(dt)) {
     dt[, pop_total_grid := as.numeric(pop_total)]
+  }
+  if (!"pop_total_grid" %in% names(dt) && !is.null(denom) && "adm2_pcode" %in% names(dt)) {
+    dt <- denom[dt, on = "adm2_pcode"]
   }
   if (exposed && !"pop_exposed_grid" %in% names(dt) && "pop_exposed" %in% names(dt)) {
     dt[, pop_exposed_grid := as.numeric(pop_exposed)]
   }
   dt
 }
-tabs$A <- upgrade_legacy(tabs$A)
-tabs$B <- upgrade_legacy(tabs$B)
 tabs$totals <- upgrade_legacy(tabs$totals, exposed = FALSE)
+# denominators must be the SAME vintage as the intersects they are joined into. pop_pct was
+# written as pop_exposed/pop_total by the engine, so recomputing it from the joined denominator
+# must reproduce it. If it does not, the two files disagree and re-levelling would be wrong.
+.denom <- unique(tabs$totals[, .(adm2_pcode, pop_total_grid)])
+for (nm in c("A", "B")) {
+  had_pct <- "pop_pct" %in% names(tabs[[nm]])
+  old_pct <- if (had_pct) tabs[[nm]]$pop_pct else NULL
+  tabs[[nm]] <- upgrade_legacy(tabs[[nm]], denom = .denom)
+  if (had_pct && "pop_total_grid" %in% names(tabs[[nm]])) {
+    chk <- tabs[[nm]][, fifelse(pop_total_grid > 0, pop_exposed_grid / pop_total_grid, NA_real_)]
+    dev <- max(abs(chk - old_pct), na.rm = TRUE)
+    if (!is.finite(dev) || dev > 1e-6) {
+      stop(sprintf(paste("table %s: pop_pct recomputed from the joined denominator differs from the",
+                         "stored value by %.3g. The intersect and totals tables are not the same",
+                         "vintage — re-run 7_zonal_exposure.R rather than re-levelling."),
+                   files[[nm]], dev))
+    }
+    log_step(sprintf("%s: denominator joined from totals; pop_pct reproduced (max dev %.2g)", files[[nm]], dev))
+  }
+}
 for (nm in names(tabs)) {
   need <- c("adm1_pcode", "pop_total_grid")
   miss <- setdiff(need, names(tabs[[nm]]))

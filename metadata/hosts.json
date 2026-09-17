@@ -1,0 +1,133 @@
+{
+  "_comment": [
+    "Host profiles for R/00_paths.R (issue #29). Adding a machine is a stanza here,",
+    "not an edit to R code.",
+    "",
+    "Resolution precedence, highest first:",
+    "  1. per-key env  ATLAS_<KEY>_DIR   e.g. ATLAS_WORKING_DIR, ATLAS_INDICES_DIR",
+    "  2. root env     ATLAS_COMMON_DATA, then COMMON_DATA (shared with hazards_upstream);",
+    "                  ATLAS_HOST=<id> forces a profile regardless of detection",
+    "  3.              ATLAS_CLIMDAT_SOURCE",
+    "  4. the matched host stanza below",
+    "  5. defaults.trees / defaults.raw, with {common_data} expanded",
+    "",
+    "RULE: every host except cglabs pins BOTH trees to the same working_dir.",
+    "The nexgddp/atlas_delta fork only ever applied inside the CGlabs branch of the",
+    "old chain; letting the defaults template apply elsewhere would move the data",
+    "out from under every non-CGlabs checkout."
+  ],
+
+  "schema_version": "1.0.0",
+
+  "defaults": {
+    "climdat_source": "nexgddp",
+    "trees": {
+      "nexgddp": {
+        "working_dir": "{common_data}/nex-gddp-cimp6_hazards",
+        "indices": "{common_data}/atlas_nex-gddp_hazards/cmip6/indices",
+        "indices_seasonal": "{common_data}/atlas_nex-gddp_hazards/cmip6/indices_seasonal"
+      },
+      "atlas_delta": {
+        "working_dir": "{common_data}/hazards_prototype",
+        "indices": "{common_data}/atlas_hazards/cmip6/indices",
+        "indices_seasonal": "{common_data}/atlas_hazards/cmip6/indices_seasonal"
+      }
+    },
+    "raw": {
+      "sos_raw": "{common_data}/atlas_sos/seasonal_mean",
+      "isimip_raw": "{common_data}/isimip",
+      "chirts_raw": "{common_data}/chirts",
+      "chirps_raw": "{common_data}/chirps_wrld",
+      "cropsuite_raw": "{common_data}/atlas_cropSuite"
+    }
+  },
+
+  "hosts": [
+    {
+      "id": "cglabs",
+      "status": "verified",
+      "description": "CGIAR JupyterHub / Kubernetes container. The only host that forks working_dir on climdat_source, and the only one carrying the monthly index trees.",
+      "match": { "project_dir": ["/home/jovyan/atlas/hazards_prototype"] },
+      "common_data": "/home/jovyan/common_data",
+      "flags": { "Cglabs": true },
+      "capabilities": {
+        "shape": "container",
+        "cpu_physical": 20,
+        "cpu_logical": 40,
+        "cpu_model": "Xeon Silver 4210",
+        "ram_gib": 376,
+        "swap_gib": 0,
+        "bulk_store_tb": 192,
+        "bulk_free_tb": 123,
+        "notes": "No swap. Hard OOM ceiling - a stage that overcommits is killed, not slowed, which is why at least one stage is pinned to a single worker here."
+      }
+    },
+    {
+      "id": "afrilabs",
+      "status": "UNVERIFIED",
+      "description": "Afrilabs / PASCAL VM. Roughly 4x the cores and 2x the per-core clock of CGlabs, so the preferred target for CPU-bound stages once data is staged.",
+      "match": { "project_dir": ["/home/psteward/rprojects/hazards_prototype"] },
+      "common_data": "/cluster01/workspace/atlas",
+      "trees": {
+        "nexgddp": { "working_dir": "/cluster01/workspace/atlas/hazards_prototype" },
+        "atlas_delta": { "working_dir": "/cluster01/workspace/atlas/hazards_prototype" }
+      },
+      "flags": { "Aflabs": true },
+      "capabilities": {
+        "shape": "vm",
+        "cpu_physical": 80,
+        "cpu_logical": 80,
+        "cpu_model": "Xeon Gold 6258R",
+        "ram_gib": 397,
+        "swap_gib": 4,
+        "bulk_store_tb": 50,
+        "bulk_free_tb": 23,
+        "notes": "Bulk store is roughly a quarter of CGlabs' free space, so a full mirror is not viable - stage per-shard working sets."
+      },
+      "_unverified": [
+        "working_dir is carried over verbatim from the old R/0_server_setup.R:135 and has NOT been confirmed on the node.",
+        "Two descriptions of this filesystem disagree: /cluster01 is documented as holding Data, Projects and Workspace trees,",
+        "while the working note refers to common_space/Workspace/common (shared data) and common_space/Workspace/atlas (Atlas tree).",
+        "Establish on the node whether common_space is a second mount or another view of the same export, then correct",
+        "common_data and both trees here and flip status to verified. No R code changes for this."
+      ]
+    },
+    {
+      "id": "mac-pstewarda",
+      "status": "verified",
+      "description": "Development laptop. Holds a partial staged copy of the setup-downloadable inputs, which makes it a usable second host for cross-host equivalence checks.",
+      "match": { "project_dir": ["/Users/pstewarda/Documents/rprojects/hazards_prototype"] },
+      "common_data": "/Users/pstewarda/Documents/rprojects/common_data",
+      "trees": {
+        "nexgddp": { "working_dir": "{common_data}/hazards_prototype" },
+        "atlas_delta": { "working_dir": "{common_data}/hazards_prototype" }
+      },
+      "capabilities": {
+        "shape": "laptop",
+        "notes": "No monthly index trees. Suitable for the 0.4.x exposure chain and for resolver tests, not for R/1-R/3."
+      }
+    },
+    {
+      "id": "win-d",
+      "status": "legacy",
+      "description": "Windows checkout on D:. Carried over from the old chain; not known to be in current use.",
+      "match": { "project_dir": ["D:/rprojects/hazards_prototype"] },
+      "common_data": "D:/common_data",
+      "trees": {
+        "nexgddp": { "working_dir": "{common_data}/hazards_prototype" },
+        "atlas_delta": { "working_dir": "{common_data}/hazards_prototype" }
+      }
+    },
+    {
+      "id": "win-c",
+      "status": "legacy",
+      "description": "Windows checkout on C:. Note the common_data root sits under C:/rprojects, not at the drive root - this asymmetry is inherited, not a typo.",
+      "match": { "project_dir": ["C:/rprojects/hazards_prototype"] },
+      "common_data": "C:/rprojects/common_data",
+      "trees": {
+        "nexgddp": { "working_dir": "{common_data}/hazards_prototype" },
+        "atlas_delta": { "working_dir": "{common_data}/hazards_prototype" }
+      }
+    }
+  ]
+}

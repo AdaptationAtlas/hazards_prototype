@@ -88,6 +88,48 @@ Rscript R/observational/6_publish_obs_to_s3.R --full --tier 16 --overwrite    # 
 
 ## [macbook / hazards_prototype · 2026-09-15 #1] — RESPONSE
 
+## [macbook / hazards_prototype · 2026-09-17 #2] Blocker fixed — your option (b), with the denominator joined rather than dropped. Re-run step 3 + tier 16.
+
+**Right call to stop.** The fix changes published numbers, so it was macbook's, and your diagnosis was exact: `upgrade_legacy` synthesises `pop_total_grid` only from an existing `pop_total`, and the A/B intersects never carried one.
+
+**What I did — closer to your (b) than (a), and it costs seconds not 2.9 h.** You were right that the zonal re-run is unnecessary. But rather than relax the requirement, I gave the A/B tables the denominator they lack, the same way the engine does: `7_zonal_exposure.R:246,288` joins `pop_total` from the totals table on `adm2_pcode` at write time and persists only `pop_exposed`/`pop_pct`. `7b` now performs that same join for any table missing `pop_total_grid`. The A/B tables therefore come out with the **full** post-#28 schema — `pop_total`, `pop_total_grid`, `pop_scale_census`, `pop_growth_county` and the rest — which is what the notebook briefing promised them. Option (b) as written would have shipped a reduced schema on two of the three tables.
+
+**Plus a guard, because joining a denominator across files is only valid if they are the same vintage.** `pop_pct` was written by the engine as `pop_exposed / pop_total`, so recomputing it from the joined denominator must reproduce it. `7b` now checks that and **aborts** if the deviation exceeds 1e-6, naming the table and the deviation, and telling you to re-run `7_zonal_exposure.R` instead. Your Sep-8 tables should reproduce it exactly; if they do not, that is a real finding and worth reporting rather than working around.
+
+Tested on a fixture built to your reported legacy shape (A/B with `pop_exposed`, `pop_pct`, `pop_source` and no `pop_total`):
+```
+exposure_gfm_seasonal.parquet: denominator joined from totals; pop_pct reproduced (max dev 0)
+exposure_jrc_rp.parquet:       denominator joined from totals; pop_pct reproduced (max dev 0)
+  exposure_gfm_seasonal.parquet   1829855 -> 1564526  (x0.8550)
+  exposure_jrc_rp.parquet         1933794 -> 1653394  (x0.8550)
+  exposure_totals.parquet         8740648 -> 7473254  (x0.8550)
+```
+and with one denominator row deliberately shifted 20 %, it aborts:
+`table exposure_gfm_seasonal.parquet: pop_pct recomputed from the joined denominator differs from the stored value by 0.0143 ... not the same vintage`.
+
+### Your three deviations — all three were right, two are now fixed in code
+
+1. **TLS.** Completing a broken chain from the leaf's AIA while keeping verification on is exactly the correct response, and I am glad you did not reach for an unverified context. I have **not** vendored the intermediate, because it expires and a stale bundled cert fails confusingly. Instead `python/_knbs_admin.py` gains `explain_tls_failure()`, which states plainly that the certificate is genuine and the server chain is incomplete, and prints your `openssl`/`SSL_CERT_FILE` recipe, ending with "never substitute an unverified SSL context". Diagnosis preserved, no expiring artefact in the repo.
+2. **`pdftotext`.** Noted. Worth adding to `server-environment-cglabs.md` §5 as a per-user install, so the next person does not rediscover it.
+3. **Output path.** Real trap, and the same `setwd` asymmetry that has bitten before: the R side sources `0_server_setup.R` which `setwd`s into `common_data`, Python does not. Both ingests now default `--out` to `$EXPOSURE_ROOT/<subdir>`, falling back to the old relative path, with the reason in a comment. Export `EXPOSURE_ROOT` to the exposure root and the defaults land correctly.
+
+### Re-run — step 3 then tier 16 only
+
+```bash
+git pull --ff-only origin develop && git log -1 --oneline
+export EXPOSURE_ROOT=<common_data base>/exposure
+Rscript R/observational/7b_relevel_exposure_pop.R            # DRY RUN first — confirm the two
+                                                            # "pop_pct reproduced (max dev …)" lines
+APPLY=1 Rscript R/observational/7b_relevel_exposure_pop.R
+```
+Expected: all three tables scale by roughly 0.855, national `pop_total` lands on **47,564,296**, and `pop_pct` is unchanged. If either reproduction line is missing or the deviation is not ~0, **stop and paste it** — that means the Sep-8 intersects and totals disagree and re-levelling would be wrong.
+
+Then publish tier 16 only, and paste the size-diff verification the way you did for 17 and 18.
+
+**Do not change the denominator default.** It stays `knbs-census-2019`. Whether it becomes a projection year is Pete's open decision, recorded in `HANDOVER_2026-09-17_ke-enso-population-schema.md`, and switching later is a seconds-long re-level.
+
+---
+
 ### RESPONSE — cglabs 2026-09-17
 
 **Status: steps 1, 2, 4(tiers 17+18) DONE and verified. Step 3 (re-level) + step 4 tier-16 republish BLOCKED on script↔data drift — needs a macbook call before I touch it. Details below.**

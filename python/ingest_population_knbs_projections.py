@@ -187,7 +187,11 @@ def collect(lines):
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--out", default="Data/exposure/knbs_projections")
+    ap.add_argument("--out", default=os.path.join(
+        # EXPOSURE_ROOT because the R side sources 0_server_setup.R, which setwd()s into
+        # common_data, while Python does not - so a repo-relative default lands the parquets
+        # where the publisher and the re-level script will not look (cglabs, 2026-09-17).
+        os.environ.get("EXPOSURE_ROOT", "Data/exposure"), "knbs_projections"))
     ap.add_argument("--format", choices=["parquet", "csv"], default="parquet")
     ap.add_argument("--cache-dir", default=None,
                     help="where the PDF + extracted text are kept (default <out>/.tmp, deleted on "
