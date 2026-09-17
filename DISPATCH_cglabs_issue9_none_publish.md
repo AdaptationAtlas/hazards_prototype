@@ -2,7 +2,7 @@
 
 Branch `develop`. Append-only; newest on top. cglabs runs, appends `### RESPONSE`, pushes.
 **Authorship:** probe + publish script authored by **macbook / hazards_prototype**; **cglabs runs on-node** (owns the data) + publishes.
-**Tracks:** [hazards_prototype#9](https://github.com/AdaptationAtlas/hazards_prototype/issues/9) (bjyberg). Supersedes the publish half of `DISPATCH_cglabs_avail_fix.md` (2026-07-09 "PUBLISH-READY, holding for go").
+**Tracks:** [hazards_prototype#9](https://github.com/AdaptationAtlas/hazards_prototype/issues/9) (bjyberg). Supersedes the publish half of `archive/dispatches/DISPATCH_cglabs_avail_fix.md` (2026-07-09 "PUBLISH-READY, holding for go").
 
 ---
 

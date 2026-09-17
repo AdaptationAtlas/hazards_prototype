@@ -62,7 +62,7 @@ consume them. So a true full rebake is:
    (`haz_classes.csv` @16dce34). §3 + §5.3 regen with the corrected threshold +
    R/3 §4 across vop, vop_usd, ha, BOTH axes (annual + jagermeyr). Validate:
    poultry_highland Extreme exposure should DROP (89 is a higher bar than 79).
-   Publish hazard_risk_vop family → close #13. (Background: DISPATCH_poultry_thi_rebake.md.)
+   Publish hazard_risk_vop family → close #13. (Background: archive/dispatches/DISPATCH_poultry_thi_rebake.md.)
 2. **Desert PTOT mask (CR-093) — ✅ ALREADY DONE + PUBLISHED 2026-06-24.** R/2.2 masks
    baseline `PTOT < 100 mm/yr` (default on); shipped to domain=climate, ISSUE closed.
    A full bake re-runs R/2.2 → the mask carries automatically (no action). OPTIONAL:

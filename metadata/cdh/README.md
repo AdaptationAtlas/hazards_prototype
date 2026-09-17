@@ -91,7 +91,7 @@ One PR per dataset from in-repo `submit/<id>` branches (Brayden's bot convention
 | kenya-power-grid-kplc | [#41](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/41) | ready for review |
 | kenya-roads-osm | [#42](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/42) | ready for review |
 
-Follow-ups owned here: after cglabs completes `DISPATCH_cglabs_gfm_flood.md #9` (GFM END-year relabel + intersect rebuild), refresh the notes / `year` dimension in `kenya-flood-gfm.yaml` and `kenya-flood-exposure-intersect.yaml`, push to their `submit/` branches, mark ready. After `DISPATCH_cglabs_seasonal_rasters.md #7` (CHIRPS NDJ rebuild), NDJ values in the precipitation record extend to 2026 (one-line follow-up on #30).
+Follow-ups owned here: after cglabs completes `archive/dispatches/DISPATCH_cglabs_gfm_flood.md #9` (GFM END-year relabel + intersect rebuild), refresh the notes / `year` dimension in `kenya-flood-gfm.yaml` and `kenya-flood-exposure-intersect.yaml`, push to their `submit/` branches, mark ready. After `DISPATCH_cglabs_seasonal_rasters.md #7` (CHIRPS NDJ rebuild), NDJ values in the precipitation record extend to 2026 (one-line follow-up on #30).
 
 ## Open review notes (flag at submission)
 - `href_template` assumes every value combination exists. Seasonal edge windows are absent where a record cannot cover all three months (CHIRPS NDJ/DJF 1981 and windows ending after 2026-04; WRSI only cropland-MAM has 2026; GFM NDJ/DJF stop at 2024). Noted in each record's `note`.

@@ -601,7 +601,7 @@ do_ensemble2 <- TRUE
 # Default OFF (steady state). Enable with RUN_R2_RUN3=1 for a targeted §3 regen
 # (e.g. the poultry-THI partial rebake: enable §3, leave FORCE_OVERWRITE unset,
 # and pre-delete the poultry-highland_* stacks so only those regenerate — see
-# DISPATCH_poultry_thi_rebake.md). Mirrors the SKIP_R2_RUN{1,2,4} env pattern.
+# archive/dispatches/DISPATCH_poultry_thi_rebake.md). Mirrors the SKIP_R2_RUN{1,2,4} env pattern.
 run3 <- identical(Sys.getenv("RUN_R2_RUN3"), "1")
 check3 <- TRUE
 overwrite3 <- .force_overwrite_r2
@@ -624,7 +624,7 @@ multisession4 <- TRUE
 # RUN_R2_RUN5_2=1 decouples RUN from OVERWRITE: the section runs (do5.2_main on)
 # while overwrite5.2 stays FALSE unless FORCE_OVERWRITE — so a targeted/selective
 # regen (pre-delete the artifacts to rebuild, file.exists-gated) is possible
-# without a full all-crops re-bake. Mirrors RUN_R2_RUN3. See DISPATCH_poultry_thi_rebake.md.
+# without a full all-crops re-bake. Mirrors RUN_R2_RUN3. See archive/dispatches/DISPATCH_poultry_thi_rebake.md.
 .run5_2_toggle <- identical(Sys.getenv("RUN_R2_RUN5_2"), "1")
 run5.2 <- .force_overwrite_r2 || .run5_2_toggle
 do5.2_main <- .force_overwrite_r2 || .run5_2_toggle # Set to F if you only want to run the ensembling step

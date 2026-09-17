@@ -22,7 +22,7 @@ Accuracy note: monthly warp reads source at FULL resolution (overviewLevel=NONE)
 + srcNodata=255, so a ~111 m pixel is flooded if ANY 20 m sub-pixel flooded (no under-detection from
 reading class-raster overviews).
 
-Source (cglabs GFM probe, DISPATCH_cglabs_gfm_flood.md #1 — anonymous, no auth):
+Source (cglabs GFM probe, archive/dispatches/DISPATCH_cglabs_gfm_flood.md #1 — anonymous, no auth):
   STAC  https://stac.eodc.eu/api/v1/  collection=GFM  (POST /search, bbox+datetime)
   asset ensemble_flood_extent  (Byte: 0=not-flooded, 1=flooded, 255=NoData/not-observed; excludes permanent water)
   grid  Equi7-AF 20 m -> reproject EPSG:4326 with gdalwarp. Licence Copernicus EMS free/full/open.
