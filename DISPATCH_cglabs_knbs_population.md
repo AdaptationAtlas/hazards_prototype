@@ -85,3 +85,56 @@ Rscript R/observational/6_publish_obs_to_s3.R --full --tier 16 --overwrite    # 
 1. **Default denominator.** Shipped as `knbs-census-2019`. A projection year (`POP_SOURCE=knbs-projection POP_YEAR=2025`, national 53.33 M) is one `7b` run away if the Explorer should read as "current" instead of census-anchored.
 2. **KNBS licence.** No open-data licence exists: `knbs.or.ke/terms-and-conditions/` 404s, footer says "All Rights Reserved". Both CDH records carry `LicenseRef-KNBS-Terms`. Needs confirming before these records go to cdh-catalog — the HDX `cod-ps-ken` route (UNFPA, CC-BY-3.0-IGO) carries the same census figures under a clear licence if KNBS say no.
 3. **Notebook labelling.** The tables now say `pop_source = knbs-census-2019`; how the Explorer surfaces that ("2019 census counts, distributed by WorldPop") is a notebook-side decision.
+
+## [macbook / hazards_prototype · 2026-09-15 #1] — RESPONSE
+
+### RESPONSE — cglabs 2026-09-17
+
+**Status: steps 1, 2, 4(tiers 17+18) DONE and verified. Step 3 (re-level) + step 4 tier-16 republish BLOCKED on script↔data drift — needs a macbook call before I touch it. Details below.**
+
+**Step 1 — ingests (both parquet, no CSV fallback).** Gate lines as expected:
+```
+census   GATES OK: total 47,564,296; 47 counties in COD-AB order; county and sub-county sums reconcile
+proj     GATES OK: no panel conflicts; 47 counties in COD-AB order; national totals match the
+                   published 48.8/53.3/57.8/62.2/66.3/70.2 M; counties sum to national; ages sum to All Ages
+```
+Both expected KNBS-PDF-defect lines fired on the projections run (SOURCE LABEL fixed: Kiambu 80-84→80+; SOURCE TYPO resolved: KE040 2030 80+ female 3,120→5,799). Outputs written to `common_data/.../Data/exposure/{knbs_census,knbs_projections}/` (see path note below).
+
+**Step 2 — levelling probe:** `PROBE PASSED`. county-level 2025 national 53,330,964; county-growth 2025 national 51,964,059; growth ratios span 1.031–1.151 — all as documented.
+
+**Step 3 — re-level tier 16: BLOCKED (did not run, nothing rewritten).**
+```
+re-levelling Data/exposure/intersect | POP_SOURCE=knbs-census-2019 POP_METHOD=county-growth | DRY RUN
+Error: table exposure_gfm_seasonal.parquet lacks pop_total_grid — cannot re-level; re-run 7_zonal_exposure.R
+```
+Root cause — schema drift, not a flaky run. The tier-16 intersect tables on this node (dated Sep 8) do **not** match what step 3 assumes:
+
+| table | pop cols present | pop_total? |
+|---|---|---|
+| `exposure_totals.parquet` | `pop_total` | yes |
+| `exposure_gfm_seasonal.parquet` (A) | `pop_exposed`, `pop_pct`, `pop_source` | **no** |
+| `exposure_jrc_rp.parquet` (B) | `pop_exposed`, `pop_pct`, `pop_source` | **no** |
+
+`7b_relevel_exposure_pop.R::upgrade_legacy` synthesises `pop_total_grid` only from an existing `pop_total` (line 73); the A/B tables carry `pop_exposed`/`pop_pct` only, so no `pop_total_grid` is created and the guard at line 85 rejects them. The dispatch's step-3 note ("their current pop_total/pop_exposed ARE the gridded sums") holds for `exposure_totals` but **not** for the two exposure intersects — they never carried a per-row `pop_total`.
+
+Pre-#28 state confirmed on those tables (they are still raw WorldPop grid, un-levelled): `pop_source = worldpop`; `exposure_totals` national `pop_total = 55,119,798`; gfm `pop_exposed` Σ = 3,777,107; jrc `pop_exposed` Σ = 6,120,527.
+
+**Pete's call (why I stopped rather than patch — two-node model):** the fix changes published numbers, so it's macbook's. Two options I can see:
+  a. Re-run `7_zonal_exposure.R` so the intersect tables are re-emitted with the `*_grid` columns (and a per-row `pop_total` on A/B) that `7b` expects — the ~2.9 h path.
+  b. Relax `7b` for section-A/B tables: they only need `pop_exposed_grid` × county factor; `pop_pct` is invariant under levelling (dispatch confirms the factors cancel), so the `pop_total_grid` requirement and the `pop_pct` recompute at line 108 are unnecessary for these two tables. Seconds, no zonal re-run. But it's a change to your levelling logic — your decision.
+
+**Step 4 — publish.**
+- Tier 17 (KNBS census): dry-run 4 files → **--full uploaded 4/4**.
+- Tier 18 (KNBS projections): **--full uploaded 3/3**.
+- Tier 16: **NOT published** (blocked by step 3 above).
+
+Verify (paws `list_objects_v2` size-diff vs local, not the per-file returns):
+```
+knbs-census-2019       S3 4 / local 4 — all sizes MATCH — VERIFY PASS
+knbs-projections-...   S3 3 / local 3 — all sizes MATCH — VERIFY PASS
+```
+
+**Things that surprised me / deviations, all resolved:**
+1. **TLS on `www.knbs.or.ke` fails cert verification.** Not a MITM — the server serves an **incomplete chain** (leaf only, missing the Let's Encrypt **YE2** intermediate; `openssl` verify code 21). I fetched the genuine YE2 intermediate from the leaf's AIA URL (`http://ye2.i.lencr.org/`, plain HTTP), confirmed it chains leaf→YE2→ISRG Root, and ran the ingests with `SSL_CERT_FILE` = certifi bundle **+ YE2**. This *completes* a broken chain and keeps full verification on — it does not weaken TLS (I did not disable verification). HDX/`data.humdata.org` verifies fine on its own. If macbook wants the ingest robust here, add a bundled-intermediate fallback in `_knbs_admin.py::fetch`.
+2. **`pdftotext` (poppler-utils) was not on the node.** Installed `poppler` via conda-forge (`pdftotext 25.07.0`); projections ingest then ran clean.
+3. **Output path.** The ingests default `--out Data/exposure/...` (relative, Python does no `setwd`) so they first landed in the repo tree, but `6_publish...`/`7b...` `setwd` into `common_data/.../` (via `0_server_setup.R`). Re-ran both ingests with `--out <common_data base>/exposure/{knbs_census,knbs_projections}` so publish found them. Worth pinning the ingest default to the exposure root, or documenting the `--out` in the dispatch run block.
