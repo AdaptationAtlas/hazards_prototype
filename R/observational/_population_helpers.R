@@ -18,7 +18,9 @@
 #
 #   pop_scale_census  = census_county_2019 / gridded_county
 #         Replaces the LEVEL of the gridded surface with the enumerated census, county by county.
-#         Constant (~0.855 nationally, 0.72-1.05 across counties); no time component.
+#         Constant in time. ~0.855 nationally, but MEASURED 0.324-1.394 across counties on the
+#         real WorldPop grid (cglabs, 2026-09-17) - a much wider spread than the national figure
+#         suggests, so aggregate change for any subset depends on WHERE that subset's people are.
 #   pop_growth_county = target_county_total / census_county_2019
 #         The county's proportional change over time. 1.0 for the census itself.
 #

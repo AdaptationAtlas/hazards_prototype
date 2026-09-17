@@ -60,8 +60,12 @@ note: >
   (2) pop_scale_census = census county total / gridded county total - replaces the LEVEL of the
       gridded surface with the enumerated KNBS 2019 census, county by county. The gridded surfaces
       run about 17 per cent above the census (WorldPop constrained ~55.2 M, GRID3 ~55.9 M, census
-      47,564,296), so this factor is ~0.855 nationally and 0.72-1.05 across counties. No time
-      component.
+      47,564,296), so this factor is ~0.855 nationally but spans 0.324-1.394 across individual
+      counties (measured on the published grid, 2026-09-17): WorldPop exceeds the census by up to
+      threefold in some counties and falls below it in others. Any aggregate therefore moves by a
+      weighted mix of county factors, not by the national one - flood-exposed population sits mostly
+      in low-factor counties, so the GFM exposed total fell about 35 per cent where the national
+      denominator fell 14 per cent. No time component.
   (3) pop_growth_county = target county total / census county total - the county's proportional
       CHANGE OVER TIME, from the KNBS Vol XVI projections (record
       kenya-population-knbs-projections). Exactly 1.0 when the denominator is the census itself.

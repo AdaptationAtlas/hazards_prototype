@@ -8,19 +8,17 @@ Issue
 [#28](https://github.com/AdaptationAtlas/hazards_prototype/issues/28), comment
 [5691901491](https://github.com/AdaptationAtlas/hazards_prototype/issues/28#issuecomment-5691901491).
 
-> **Status, updated 2026-09-17 after the cglabs run — the two halves differ, so read both lines.**
+> **Status: LIVE as of 2026-09-17. All three tiers published and size-verified on S3.**
 >
-> - **The KNBS population tables ARE LIVE.** Tiers 17 and 18 published and size-verified against S3
->   (4/4 and 3/3 objects). Everything under **Also newly published** below is queryable right now.
-> - **The exposure intersect tables are NOT yet re-levelled.** Tier 16 still carries the old schema
->   and the old numbers (`pop_source = "worldpop"`, national `pop_total` 55,119,798). The re-level
->   hit a bug on the producer side — the published A/B tables never carried a `pop_total` column for
->   the script to work from — which is fixed (`64f8aa8`) and waiting on one short cglabs run.
+> - Tier 17 (KNBS census tables) and tier 18 (KNBS projections) — 4/4 and 3/3 objects.
+> - Tier 16 (exposure intersects) — re-levelled and republished, 3/3 objects. `pop_source` on all
+>   three is now `knbs-census-2019`; national `pop_total` is exactly 47,564,296.
+> - Verified on publish: `pop_pct` unchanged to 0.000e+00 in every row, and every row satisfies
+>   `pop_exposed == pop_exposed_grid * pop_scale_adm1`.
 >
-> So: the new population data is available to build against today; the *exposure* population columns
-> change shortly. Please don't hardcode against either shape — the change is additive apart from the
-> `pop_source` values, so a notebook written against the list below works before and after. See
-> **How to write it once** at the end.
+> So the schema below is what is on S3 right now, not a forecast. The one thing to read carefully
+> before writing copy is the per-county spread note under the column table — the headcount change is
+> **not** a flat percentage.
 
 ## Why it is changing
 
@@ -49,7 +47,7 @@ Applies to `exposure_gfm_seasonal.parquet`, `exposure_jrc_rp.parquet`, `exposure
 | Column | Status | Note |
 |---|---|---|
 | `pop_pct` | **unchanged, bit-for-bit** | Every share, ranking, choropleth and "% of sub-county exposed" is unaffected. The factors cancel. |
-| `pop_exposed` | same column, **new values** | Drops ~14.5 % (×0.855) under the census default. |
+| `pop_exposed` | same column, **new values** | Falls, but NOT by one flat factor — see the note under this table. GFM exposed fell ~35 %, JRC ~18 %. |
 | `pop_total` | same column, **new values** | National now exactly 47,564,296. |
 | `pop_source` | **new values** | Was always `"worldpop"`. Now `"knbs-census-2019"` or `"knbs-projection-<year>"`. |
 | `pop_method` | new | `"county-level"` or `"county-growth-from-2020"` — how the time factor was defined. |
@@ -58,6 +56,14 @@ Applies to `exposure_gfm_seasonal.parquet`, `exposure_jrc_rp.parquet`, `exposure
 | `pop_scale_census` | new | Census county total / gridded county total (~0.855; constant in time). |
 | `pop_growth_county` | new | County proportional change (1.0 for the census; 1.031-1.151 across counties for 2025). |
 | `pop_grid_source` | new | `"worldpop-constrained-2020"` — which surface supplied the share. |
+
+**The change is not one flat percentage, and this matters for any copy you write.** The levelling
+factor is per county and spans **0.324-1.394** on the real grid — WorldPop exceeds the census
+threefold in some counties and undershoots in others. `exposure_totals` sums over all 47, so the
+national denominator moves by the national ~0.855. But `pop_exposed` is weighted by *where exposed
+people live*, and flood exposure concentrates in low-factor counties, so measured on publish
+(2026-09-17): GFM exposed **3,777,107 → 2,451,666** (×0.649) and JRC **6,120,527 → 4,998,340**
+(×0.817). Do not write "counts are ~14 % lower" anywhere — that holds only for the national total.
 
 Identity that always holds: `pop_total = pop_total_grid × pop_scale_census × pop_growth_county`, and
 `pop_scale_adm1` is that product. Nothing is discarded — the pre-change numbers remain available
@@ -120,9 +126,10 @@ the values and the `pop_source` / `pop_method` strings would move.
 
 - Drive every share, ratio and ranking off `pop_pct` — it does not move under any of these options.
 - Format absolute headcounts from `pop_exposed` / `pop_total`, and caption them from `pop_source`
-  (falling back to "WorldPop constrained 2020" if the column still reads `"worldpop"`, i.e. the
-  republish has not happened yet).
-- Treat `pop_*_grid`, `pop_scale_*`, `pop_growth_county`, `pop_method` and `pop_grid_source` as
-  optional: present after the republish, absent before it.
+  (a `"worldpop"` value would mean a stale cached object — the published tables all read
+  `knbs-census-2019` as of 2026-09-17).
+- `pop_*_grid`, `pop_scale_*`, `pop_growth_county`, `pop_method` and `pop_grid_source` are all
+  present on S3 now; treat them as optional only if you also read cached copies from before
+  2026-09-17.
 
 Questions back to the pipeline side go through Pete rather than directly between sessions.
