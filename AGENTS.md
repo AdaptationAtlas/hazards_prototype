@@ -2,9 +2,14 @@
 
 R project for a climate-hazards processing pipeline (Africa Agriculture Adaptation Atlas).
 
-**Start here:** `HANDOVER_<latest date>.md` at the repository root — current state, what is in
-flight, and what to pick up next. Then `R/NEXT_FULL_REBAKE.md` if you are touching R/2 or R/3,
-and `README.md` for the science pipeline.
+**Start here:** the newest **session** handover at the repository root, `HANDOVER_<date>.md` —
+current state, what is in flight, and what to pick up next. Then `R/NEXT_FULL_REBAKE.md` if you
+are touching R/2 or R/3, and `README.md` for the science pipeline.
+
+Two handover shapes, distinguished by the filename:
+- `HANDOVER_<date>.md` — **session** handover. The entry point. One current at a time.
+- `HANDOVER_<date>_<topic>.md` — **topic briefing** for a specific consumer, e.g. a schema change
+  a notebook needs to know about. Read when that topic is yours; not an entry point.
 
 Sections 1 and 3 below apply to any agent on any machine. **Section 2 is CGlabs-specific**;
 the equivalent for the Afrilabs/PASCAL box is `server-environment.md` on branch
