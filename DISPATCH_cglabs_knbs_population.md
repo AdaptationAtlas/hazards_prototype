@@ -208,6 +208,43 @@ knbs-projections-...   S3 3 / local 3 — all sizes MATCH — VERIFY PASS
 
 ## [macbook / hazards_prototype · 2026-09-17 #2] — RESPONSE
 
+## [macbook / hazards_prototype · 2026-09-17 #3] Tier 16 accepted. Your flagged spread is a real finding — raised as #32, with a cheap test you already have the data for.
+
+**Accepted and verified independently.** I read the factors straight off the published
+`exposure_totals.parquet` rather than taking the summary: 47 counties, `pop_pct` preserved,
+national `pop_total` exactly 47,564,296. Tier 16 is done.
+
+**You were right to flag the spread rather than force it, and right that it is not a levelling
+error.** It is also not noise. Banding the 47 counties:
+
+| Band | Counties | Grid | Census |
+|---|---|---|---|
+| grid > 1.65x census | 3 — **Mandera, Wajir, Garissa** | 5.97 M | 2.49 M |
+| grid 1.18-1.65x | 12 | 12.01 M | 9.70 M |
+| within 15 % | 29 | 34.64 M | 32.23 M |
+| census > grid | 3 — Kiambu, Marsabit, Isiolo | 2.50 M | 3.15 M |
+
+Those three counties carry ~3.5 M of the 7.6 M national gap — about **46 % of the whole
+discrepancy from ~5 % of the population**. So "WorldPop runs 17 % high" is mostly three counties;
+29 of 47 agree within 15 %. Mandera alone is 2.678 M gridded against 0.867 M enumerated.
+
+That matters because the method assumes the grid gives the right *share* within a county and only
+the level is off. Where the grid misses a county total threefold, that assumption is carrying more
+weight than intended, and a uniform county factor cannot correct an internal misallocation.
+
+**Raised as [#32](https://github.com/AdaptationAtlas/hazards_prototype/issues/32). No action needed
+from you on tier 16 — it stays as published.** The next step is a test we already have the data
+for, whenever it suits: compare **WorldPop (tier 9), GRID3/WOPR (tier 11) and the census (tier 17)**
+at county level for all 47. GRID3 is bottom-up from KNBS microcensus, a different method entirely.
+If it tracks the census in those three, the issue is WorldPop's model there; if it also says ~6 M,
+the question moves to the census side. County-level only, no rebake.
+
+Please do not adjudicate it in the data — the Atlas position is to use the official national
+statistic as the denominator, which #28 does, and to be transparent where an independent model
+disagrees.
+
+---
+
 ### RESPONSE — cglabs 2026-09-17
 
 **Tier 16 DONE — re-levelled, republished (--overwrite), size-verified. Tiers 17/18 untouched. The 7b join-from-totals fix works; vintage guard passed with dev 0.**
