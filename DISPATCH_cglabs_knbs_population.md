@@ -339,3 +339,52 @@ VERIFY PASS
 **One divergence from your headline, flagged not forced (per your "judge on invariants" instruction).** The per-county census/grid factor on the *real* Sep-8 data spans **0.324–1.394**, wider than the 0.72–1.05 you saw on the fixture. Because flood-exposed population concentrates in counties on the low end of that range, the gfm aggregate landed at **2.45 M** (your headline ~3.26 M) and jrc at **5.00 M** (~5.28 M). This is not a fault: the vintage guard reproduced `pop_pct` with dev 0 on both tables, so the intersects and totals ARE the same vintage — the magnitude simply follows the real county-level grid-vs-census spread, which is wider than the fixture. Worth knowing that a handful of counties have grid totals well above census (factor ≪1) or below (factor >1); if that spread itself is surprising it's a data-quality observation about the WorldPop grid vs KNBS at county level, not a levelling error.
 
 Denominator default left at `knbs-census-2019` as instructed.
+
+## [macbook / hazards_prototype · 2026-09-17 #4] — RESPONSE
+
+### RESPONSE — cglabs 2026-09-17
+
+**Tier 16 re-levelled with year matching (option C, `county-growth`), republished --overwrite, size-verified. Tiers 17/18 untouched. Every invariant PASS.**
+
+**Per-year national lines — match your expected values exactly (KNBS county sums, grid-independent):**
+```
+2018: 47,564,296 [knbs-census-2019]
+2019: 47,564,296 [knbs-census-2019]
+2020: 47,564,296 [knbs-projection-2020]   <- growth 1.0 at base year
+2021: 48,444,249 [knbs-projection-2021]
+2022: 49,324,198 [knbs-projection-2022]
+2023: 50,204,153 [knbs-projection-2023]
+2024: 51,084,104 [knbs-projection-2024]
+2025: 51,964,059 [knbs-projection-2025]
+2026: 52,837,534 [knbs-projection-2026]   <- ref year, JRC + totals
+```
+2018 / 2019 / 2020 all land on the census total — growth base is correct.
+
+**before → after** (from the census-only tables I published in the #2 run; `7b` works off `*_grid`, so this is a re-level not a compounding):
+```
+exposure_gfm_seasonal.parquet   2,451,666 -> 2,610,673   (aggregate x1.0649 — later flood years now carry more people)
+exposure_jrc_rp.parquet         4,998,340 -> 5,668,271   (pinned to ref year 2026)
+exposure_totals.parquet        47,564,296 -> 52,837,534  (pinned to ref year 2026)
+```
+
+**Invariants — all PASS (independent post-APPLY check, before-vs-after):**
+| invariant | result |
+|---|---|
+| `pop_pct` unchanged, every row (gfm + jrc) | max dev **0.000e+00** |
+| `pop_exposed == pop_exposed_grid * pop_scale_adm1` | max dev **0.000e+00** |
+| `pop_scale_adm1 == pop_scale_census * pop_growth_county` | max dev **2.2e-16** (fp epsilon) |
+| `pop_year` present on all three tables | yes |
+| GFM `pop_year == year` on every row | yes |
+| GFM `year` + `season` still present (the consumed-column bug check) | yes |
+| 2018 / 2019 / 2020 == 47,564,296 | exact |
+
+GFM `pop_source` correctly varies by row: `knbs-census-2019` (2018-19) + `knbs-projection-2020..2025`; `pop_year` spans 2018-2025. JRC + totals pinned `knbs-projection-2026`, `pop_year` 2026.
+
+**Tier 16 republish.** `--full --tier 16 --overwrite` → **3/3 uploaded**. Size-diff vs S3 (paws `list_objects_v2`, same method as 17/18):
+```
+exposure_gfm_seasonal.parquet   local 466377 / s3 466377   MATCH
+exposure_jrc_rp.parquet         local  94113 / s3  94113   MATCH
+exposure_totals.parquet         local  29977 / s3  29977   MATCH
+VERIFY PASS
+```
+Took `POP_REF_YEAR` default (2026). Nothing surprised me this run — the county-factor spread widens with year (0.324-1.394 at 2018 → 0.377-1.603 at 2026) as expected since projections grow the numerator.
