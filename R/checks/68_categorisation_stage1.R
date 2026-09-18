@@ -159,14 +159,15 @@ resolve_dir <- function(label, resolved, candidates) {
   NA_character_
 }
 
-class_candidates <- c(
-  "/home/jovyan/common_data/hazards_prototype/Data/hazard_timeseries_class",
-  "/home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_timeseries_class"
-)
-int_candidates <- c(
-  "/home/jovyan/common_data/hazards_prototype/Data/hazard_timeseries_int",
-  "/home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_timeseries_int"
-)
+# Fallback candidates, resolved from metadata/hosts.json rather than hardcoded.
+#
+# NOTE THE ORDER. This call site prefers atlas_delta and falls back to nexgddp -
+# the OPPOSITE of R/observational/2..6, which probe nexgddp first. That is not a
+# mistake to tidy up: this check was written against the atlas_delta tree, and
+# flipping the order would silently change which tree it reports on. prefer=
+# pins it.
+class_candidates <- atlas_candidates("hazard_timeseries_class", prefer = "atlas_delta")
+int_candidates <- atlas_candidates("hazard_timeseries_int", prefer = "atlas_delta")
 
 class_dir <- resolve_dir("class-dir",
                          atlas_dirs$data_dir$hazard_timeseries_class,

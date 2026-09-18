@@ -32,9 +32,7 @@ ALLOW <- c(
   "R/archive/push_to_s3_eia_climate_prioritization.R",
   # Legacy interactive runbook. The publish layer needs its own holistic
   # revision (issue #29 puts it explicitly out of scope), so leave it be.
-  "R/push_to_s3.R",
-  # Pending issue #29 P3 - resolve_dir() candidate vectors.
-  "R/checks/68_categorisation_stage1.R"
+  "R/push_to_s3.R"
 )
 
 root <- local({
