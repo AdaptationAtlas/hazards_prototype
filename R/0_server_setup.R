@@ -453,13 +453,41 @@ hazard_timeseries_s3 <- atlas_dirs$s3_dir$hazard_timeseries
 # 2.2.2) Create an S3FileSystem object for anonymous read access ######
 s3 <- s3fs::S3FileSystem$new(anonymous = TRUE)
 
-# 3) Download data ####
-# Each subsection downloads data if it does not already exist locally.
-# The 'update' flag can be toggled if you want to force a re-download.
+# 3) Data acquisition ####
+# ---------------------------------------------------------------------------
+# Paths are DECLARED here unconditionally. Data is FETCHED on demand.
+#
+# This section used to download ~15 datasets on every single setup, whether or
+# not the run needed them. A laptop that only wanted to read one parquet still
+# pulled the entire FAOSTAT bulk release first. Worse, a failure in any one
+# block aborted setup for everyone - §3.12 (GGCMI) did exactly that on every
+# host where the folder did not already hold precisely 40 files, because it used
+# the magrittr `.` placeholder in a native `|>` pipe, which is a hard error.
+#
+# Acquisition now lives in ONE place - R/00_acquire.R, driven by the per-dataset
+# recipes in metadata/catalogue/<id>.json - and runs only when asked:
+#
+#   atlas_require("mapspam-2020v1r2")        # from any script; idempotent
+#   atlas_require_stage("3")                 # everything one stage consumes
+#   ATLAS_PREFETCH=all Rscript ...           # the old eager behaviour
+#   ATLAS_PREFETCH=faostat-bulk,glps Rscript ...
+#
+# Every fetch appends a receipt to <working_dir>/Data/_acquisition/<id>.jsonl
+# recording when, from where, how many files and how many bytes - so a copy can
+# be traced and recreated rather than guessed at.
+#
+# The declarations below are load-bearing and stay unconditional: geo_files_local
+# alone is read by 27 other scripts. They name where a file WOULD be, whether or
+# not it is present.
+# ---------------------------------------------------------------------------
 
-# 3.1) Geoboundaries #####
+source(file.path(project_dir, "R", "00_paths.R"))
+source(file.path(project_dir, "R", "00_acquire.R"))
+
+# 3.0) File path declarations (no I/O) #####
 update <- FALSE
 
+# 3.0.1) Geoboundaries ######
 admin_levels <- atlas_data$boundaries$params$level
 regions <- atlas_data$boundaries$params$region[[2]] # 1 = 'global', 2 = 'africa'
 
@@ -475,58 +503,7 @@ geo_files_s3 <- file.path(
 geo_files_local <- file.path(boundaries_dir, basename(geo_files_s3))
 names(geo_files_local) <- c("admin0", "admin1", "admin2")
 
-lapply(seq_along(geo_files_local), FUN = function(i) {
-  file <- geo_files_local[i]
-  # Download each file from S3 if it doesn't exist locally or if update=TRUE
-  if (!file.exists(file) | update == TRUE) {
-    s3$file_download(geo_files_s3[i], file, overwrite = update)
-  }
-})
-
-# 3.2) Mapspam #####
-update <- FALSE
-# 3.2.1) Processed data ####
-# Construct the S3 folder path
-folder_path <- "domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=atlas-harmonized/"
-
-# List .csv files from the specified S3 bucket location
-files_s3 <- s3$dir_ls(file.path(bucket_name_s3, folder_path), recurse = TRUE)
-files_local <- gsub(file.path(bucket_name_s3, folder_path), paste0(mapspam_pro_dir, "/"), files_s3)
-
-# Download files if missing or if update=TRUE
-for (i in seq_along(files_local)) {
-  file <- files_local[i]
-  save_dir <- dirname(file)
-  if (!dir.exists(save_dir)) {
-    dir.create(save_dir, recursive = TRUE)
-  }
-  if (!file.exists(file) || update == TRUE) {
-    cat("3.2.1) Downloading mapspam processed files", i, "/", length(files_local), "     \r")
-    s3$file_download(files_s3[i], file, overwrite = TRUE)
-  }
-}
-
-# 3.2.2) Raw data ####
-# Construct the S3 folder path
-folder_path <- atlas_data$mapspam_2020v1r2$s3$path_pattern
-
-# List .csv files from the specified S3 bucket location
-files_s3 <- s3$dir_ls(file.path(bucket_name_s3, folder_path), recurse = TRUE)
-files_s3 <- files_s3[grepl(".csv", files_s3) & !grepl("index", files_s3)]
-files_local <- gsub(file.path(bucket_name_s3, folder_path), paste0(mapspam_dir, "/"), files_s3)
-
-# Download files if missing or if update=TRUE
-for (i in seq_along(files_local)) {
-  file <- files_local[i]
-  if (!file.exists(file) || update == TRUE) {
-    cat("3.2.2) Downloading mapspam raw files", i, "/", length(files_local), "     \r")
-    s3$file_download(files_s3[i], file, overwrite = TRUE)
-  }
-}
-
-# 3.4) GLW #####
-update <- FALSE
-# Download Global Livestock Density (GLW4) if missing
+# 3.0.2) GLW (2015 vintage) ######
 glw_names <- c(
   poultry = "Ch", sheep = "Sh", pigs = "Pg", horses = "Ho",
   goats = "Gt", ducks = "Dk", buffalo = "Bf", cattle = "Ct"
@@ -537,221 +514,53 @@ glw_codes <- c(
 )
 glw_files <- file.path(glw_dir, paste0("5_", glw_names, "_2015_Da.tif"))
 
-for (i in seq_along(glw_files)) {
-  glw_file <- glw_files[i]
-  if (!file.exists(glw_file) || update == TRUE) {
-    api_url <- paste0("https://dataverse.harvard.edu/api/access/datafile/", glw_codes[i])
-    # Download directly from the Dataverse API
-    response <- httr::GET(url = api_url, httr::write_disk(glw_file, overwrite = TRUE))
-    if (httr::status_code(response) == 200) {
-      print(paste0("File ", i, " downloaded successfully."))
-    } else {
-      print(paste("Failed to download file ", i, ". Status code:", httr::status_code(response)))
-    }
-  }
-}
-
-# 3.5) FAOSTAT #####
-update <- FALSE
-# 3.5.1) Deflators ######
+# 3.0.3) FAOSTAT ######
 def_file <- paste0(fao_dir, "/Deflators_E_All_Data_(Normalized).csv")
-
-if (!file.exists(def_file) || update == TRUE) {
-  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Deflators_E_All_Data_(Normalized).zip"
-  zip_file_path <- file.path(fao_dir, basename(url))
-
-  download.file(url, zip_file_path, mode = "wb")
-  unzip(zip_file_path, exdir = fao_dir)
-  unlink(zip_file_path)
-}
-
-# 3.5.2) Producer prices ######
 fao_econ_file <- file.path(fao_dir, "Prices_E_Africa_NOFLAG.csv")
-if (!file.exists(fao_econ_file) || update == TRUE) {
-  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip"
-  zip_file_path <- file.path(fao_dir, "Prices_E_Africa.zip")
-
-  download.file(url, zip_file_path, mode = "wb")
-  unzip(zip_file_path, exdir = fao_dir)
-  unlink(zip_file_path)
-}
-
 fao_econ_file_world <- file.path(fao_dir, "Prices_E_All_Data_(Normalized).csv")
-if (!file.exists(fao_econ_file_world) || update == TRUE) {
-  url <- "https://bulks-faostat.fao.org/production/Prices_E_All_Data_(Normalized).zip"
-  zip_file_path <- file.path(fao_dir, basename(url))
-
-  download.file(url, zip_file_path, mode = "wb")
-  unzip(zip_file_path, exdir = fao_dir)
-  unlink(zip_file_path)
-}
-
-# 3.5.3) Production ######
 prod_file <- file.path(fao_dir, "Production_Crops_Livestock_E_Africa_NOFLAG.csv")
-if (!file.exists(prod_file) || update == TRUE) {
-  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip"
-  zip_file_path <- file.path(fao_dir, "Production_E_Africa.zip")
-
-  download.file(url, zip_file_path, mode = "wb")
-  unzip(zip_file_path, exdir = fao_dir)
-  unlink(zip_file_path)
-}
-
 prod_file_world <- file.path(fao_dir, "Production_Crops_Livestock_E_All_Area_Groups.csv")
-if (!file.exists(prod_file_world) || update == TRUE) {
-  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_All_Area_Groups.zip"
-  zip_file_path <- file.path(fao_dir, "Production_Crops_Livestock_E_All_Area_Groups.zip")
-
-  download.file(url, zip_file_path, mode = "wb")
-  unzip(zip_file_path, exdir = fao_dir)
-  unlink(zip_file_path)
-}
-
-# 3.5.4) Value of production #####
 vop_file <- file.path(fao_dir, "Value_of_Production_E_Africa.csv")
-if (!file.exists(vop_file) || update == TRUE) {
-  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip"
-  zip_file_path <- file.path(fao_dir, "Value_of_Production_E_Africa.zip")
-
-  download.file(url, zip_file_path, mode = "wb")
-  unzip(zip_file_path, exdir = fao_dir)
-  unlink(zip_file_path)
-}
-
 vop_file_world <- file.path(fao_dir, "Value_of_Production_E_All_Area_Groups.csv")
-if (!file.exists(vop_file_world) || update == TRUE) {
-  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_All_Area_Groups.zip"
-  zip_file_path <- file.path(fao_dir, "Value_of_Production_E_All_Area_Groups.zip")
-
-  download.file(url, zip_file_path, mode = "wb")
-  unzip(zip_file_path, exdir = fao_dir)
-  unlink(zip_file_path)
-}
-
-# 3.5.5) Trade (Crops & Livestock) #####
 # Note: FAOSTAT's canonical filename uses 'CropsLivestock' (no underscore),
-# unlike 'Crops_Livestock' in §3.5.3. Match the upstream spelling.
+# unlike 'Crops_Livestock' above. Match the upstream spelling.
 trade_file <- file.path(fao_dir, "Trade_CropsLivestock_E_Africa_NOFLAG.csv")
-if (!file.exists(trade_file) || update == TRUE) {
-  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Trade_CropsLivestock_E_Africa.zip"
-  zip_file_path <- file.path(fao_dir, "Trade_CropsLivestock_E_Africa.zip")
-
-  download.file(url, zip_file_path, mode = "wb")
-  unzip(zip_file_path, exdir = fao_dir)
-  unlink(zip_file_path)
-}
-
 trade_file_world <- file.path(fao_dir, "Trade_CropsLivestock_E_All_Area_Groups.csv")
-if (!file.exists(trade_file_world) || update == TRUE) {
-  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Trade_CropsLivestock_E_All_Area_Groups.zip"
-  zip_file_path <- file.path(fao_dir, "Trade_CropsLivestock_E_All_Area_Groups.zip")
 
-  download.file(url, zip_file_path, mode = "wb")
-  unzip(zip_file_path, exdir = fao_dir)
-  unlink(zip_file_path)
-}
-
-# 3.6) Highlands map #####
-update <- FALSE
+# 3.0.4) Highlands map ######
 afr_highlands_file <- file.path(afr_highlands_dir, "afr-highlands.asc")
-if (!file.exists(afr_highlands_file) || update == TRUE) {
-  s3$file_download(file.path(bucket_name_s3, "afr_highlands/afr-highlands.asc"), afr_highlands_file, overwrite = TRUE)
-}
 
-# 3.8) Human population #####
-folder_path <- "population/worldpop_2020/"
-files_s3 <- s3$dir_ls(file.path(bucket_name_s3, folder_path))
-files_s3 <- files_s3[grepl("pop.tif", files_s3)]
-files_local <- gsub(file.path(bucket_name_s3, folder_path), paste0(hpop_dir, "/"), files_s3)
-
-for (i in seq_along(files_local)) {
-  file <- files_local[i]
-  if (!file.exists(file) || update == TRUE) {
-    s3$file_download(files_s3[i], file)
+# 3.1) On-demand acquisition #####
+.atlas_prefetch <- Sys.getenv("ATLAS_PREFETCH", unset = "")
+if (nzchar(.atlas_prefetch)) {
+  .atlas_ids <- if (identical(tolower(trimws(.atlas_prefetch)), "all")) {
+    names(Filter(
+      function(r) identical(r$transfer$strategy, "pull-from-origin") && !is.null(r$acquire),
+      atlas_catalogue()
+    ))
+  } else {
+    trimws(strsplit(.atlas_prefetch, ",", fixed = TRUE)[[1]])
   }
-}
-
-# 3.9) GLPS #####
-local_dir <- glps_dir
-files_s3 <- s3$dir_ls(file.path(bucket_name_s3, basename(local_dir)))
-files_local <- file.path(local_dir, basename(files_s3))
-
-for (i in seq_along(files_local)) {
-  file <- files_local[i]
-  if (!file.exists(file) || update == TRUE) {
-    s3$file_download(files_s3[i], file)
+  cat(sprintf("ATLAS_PREFETCH: acquiring %d dataset(s)\n", length(.atlas_ids)))
+  for (.id in .atlas_ids) {
+    tryCatch(
+      atlas_require(.id),
+      error = function(e) {
+        # One dataset failing must not abort setup for everything else -
+        # the old section 3 did exactly that.
+        cat("  prefetch FAILED for ", .id, ": ", conditionMessage(e), "\n", sep = "")
+      }
+    )
   }
+  rm(.atlas_ids)
+} else {
+  cat("Data acquisition is on demand - nothing was downloaded.\n")
+  cat("  atlas_require(\"<dataset-id>\")  fetch one dataset\n")
+  cat("  atlas_require_stage(\"<stage>\")  fetch what a stage consumes\n")
+  cat("  ATLAS_PREFETCH=all               restore the old eager behaviour\n")
+  cat("  Rscript R/checks/73_catalogue.R --status   what this host already has\n")
 }
-
-# 3.10) Cattle heatstress #####
-local_dir <- cattle_heatstress_dir
-files_s3 <- s3$dir_ls(file.path(bucket_name_s3, basename(local_dir)))
-files_local <- file.path(local_dir, basename(files_s3))
-
-for (i in seq_along(files_local)) {
-  file <- files_local[i]
-  if (!file.exists(file) || update == TRUE) {
-    s3$file_download(files_s3[i], file)
-  }
-}
-
-# 3.11) SOS #####
-local_dir <- sos_dir
-files_s3 <- s3$dir_ls(file.path(bucket_name_s3, basename(local_dir)))
-files_local <- file.path(local_dir, basename(files_s3))
-
-for (i in seq_along(files_local)) {
-  file <- files_local[i]
-  if (!file.exists(file) || update == TRUE) {
-    s3$file_download(files_s3[i], file)
-  }
-}
-
-# 3.12) GGCMI crop calendars #####
-update <- FALSE
-# If folder has fewer than ~40 files, re-check for updates
-if (length(list.files(ggcmi_dir)) != 40) {
-  url <- "https://www.pik-potsdam.de/~jonasjae/GGCMI_Phase3_crop_calendar"
-  webpage <- rvest::read_html(url)
-
-  file_links <- webpage |>
-    rvest::html_nodes("a") |>
-    rvest::html_attr("href") |>
-    grep("\\.nc4$", ., value = TRUE) # Only keep .nc4 files
-
-  file_links <- file.path(url, file_links)
-
-  for (i in seq_along(file_links)) {
-    cat(sprintf("\rDownloading GGCMI file %d/%d", i, length(file_links)))
-    file <- file.path(ggcmi_dir, basename(file_links[i]))
-    if (!file.exists(file) || update == TRUE) {
-      download.file(file_links[i], file)
-    }
-  }
-}
-
-# 3.13) Hydrobasins #####
-# Download wmo basin boundaries in JSON format
-if (!file.exists(file.path(hydrobasins_dir, "wmobb_rivnets_Q00_01.json"))) {
-  url <- "https://grdc.bafg.de/downloads/wmobb_json.zip"
-  local_path <- file.path(hydrobasins_dir, basename(url))
-  download.file(url, local_path)
-  unzip(local_path, exdir = dirname(local_path))
-  unlink(local_path)
-}
-
-# 3.14) Solution tables #####
-update <- FALSE
-local_dir <- solution_tables_dir
-files_s3 <- s3$dir_ls(file.path(bucket_name_s3, basename(local_dir)))
-files_local <- file.path(local_dir, basename(files_s3))
-
-for (i in seq_along(files_local)) {
-  file <- files_local[i]
-  if (!file.exists(file) || update == TRUE) {
-    s3$file_download(files_s3[i], file)
-  }
-}
+rm(.atlas_prefetch)
 
 # 4) Set data URLs ####
 # 4.1) hazard class #####

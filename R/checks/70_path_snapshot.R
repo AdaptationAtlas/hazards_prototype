@@ -198,6 +198,12 @@ for (n in sort(ls(g, all.names = TRUE))) {
   v <- tryCatch(get(n, envir = g), error = function(e) NULL)
   if (is.character(v) && length(v) == 1L && !is.na(v)) {
     add(paste0("global:", n), v)
+  } else if (is.character(v) && length(v) > 1L && length(v) <= 32L && !anyNA(v)) {
+    # Short character VECTORS are path declarations too - geo_files_local (3)
+    # and glw_files (8) are read by 27 and 3 other scripts respectively. A
+    # scalar-only sweep silently misses them, which would let the gate pass
+    # while a load-bearing vector changed underneath it.
+    add(paste0("globalvec:", n), paste(v, collapse = " | "))
   } else if (is.logical(v) && length(v) == 1L && !is.na(v)) {
     add(paste0("flag:", n), as.character(v))
   }
