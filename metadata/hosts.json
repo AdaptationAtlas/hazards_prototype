@@ -16,9 +16,7 @@
     "old chain; letting the defaults template apply elsewhere would move the data",
     "out from under every non-CGlabs checkout."
   ],
-
   "schema_version": "1.0.0",
-
   "defaults": {
     "climdat_source": "nexgddp",
     "trees": {
@@ -41,15 +39,20 @@
       "cropsuite_raw": "{common_data}/atlas_cropSuite"
     }
   },
-
   "hosts": [
     {
       "id": "cglabs",
       "status": "verified",
       "description": "CGIAR JupyterHub / Kubernetes container. The only host that forks working_dir on climdat_source, and the only one carrying the monthly index trees.",
-      "match": { "project_dir": ["/home/jovyan/atlas/hazards_prototype"] },
+      "match": {
+        "project_dir": [
+          "/home/jovyan/atlas/hazards_prototype"
+        ]
+      },
       "common_data": "/home/jovyan/common_data",
-      "flags": { "Cglabs": true },
+      "flags": {
+        "Cglabs": true
+      },
       "capabilities": {
         "shape": "container",
         "cpu_physical": 20,
@@ -59,20 +62,32 @@
         "swap_gib": 0,
         "bulk_store_tb": 192,
         "bulk_free_tb": 123,
-        "notes": "No swap. Hard OOM ceiling - a stage that overcommits is killed, not slowed, which is why at least one stage is pinned to a single worker here."
+        "notes": "No swap. Hard OOM ceiling - a stage that overcommits is killed, not slowed, which is why at least one stage is pinned to a single worker here. Source: server-environment-cglabs.md (on develop).",
+        "gpu": false,
+        "scheduler": "none"
       }
     },
     {
       "id": "afrilabs",
       "status": "UNVERIFIED",
       "description": "Afrilabs / PASCAL VM. Roughly 4x the cores and 2x the per-core clock of CGlabs, so the preferred target for CPU-bound stages once data is staged.",
-      "match": { "project_dir": ["/home/psteward/rprojects/hazards_prototype"] },
+      "match": {
+        "project_dir": [
+          "/home/psteward/rprojects/hazards_prototype"
+        ]
+      },
       "common_data": "/cluster01/workspace/atlas",
       "trees": {
-        "nexgddp": { "working_dir": "/cluster01/workspace/atlas/hazards_prototype" },
-        "atlas_delta": { "working_dir": "/cluster01/workspace/atlas/hazards_prototype" }
+        "nexgddp": {
+          "working_dir": "/cluster01/workspace/atlas/hazards_prototype"
+        },
+        "atlas_delta": {
+          "working_dir": "/cluster01/workspace/atlas/hazards_prototype"
+        }
       },
-      "flags": { "Aflabs": true },
+      "flags": {
+        "Aflabs": true
+      },
       "capabilities": {
         "shape": "vm",
         "cpu_physical": 80,
@@ -82,25 +97,48 @@
         "swap_gib": 4,
         "bulk_store_tb": 50,
         "bulk_free_tb": 23,
-        "notes": "Bulk store is roughly a quarter of CGlabs' free space, so a full mirror is not viable - stage per-shard working sets."
+        "gpu": false,
+        "scheduler": "none",
+        "shared_users": 69,
+        "recommended_threads": 8,
+        "gdal_r": "3.4.3",
+        "proj_r": "8.2.1",
+        "gdal_python": "3.13.3",
+        "container_runtime": "apptainer",
+        "notes": [
+          "NPROC LIES INSIDE JUPYTERHUB. A hub session runs in a systemd cgroup capped by the spawn profile (Small 8 vCPU/32 GB, Medium 16/64, Large 20/96), but nproc still reports 80 and affinity still shows 0-79. Anything calling detectCores() will oversubscribe by up to 10x. Check the real limit with: cat /sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup)/cpu.max - a first value of 800000 against a period of 100000 means 8 CPUs.",
+          "RStudio Server and plain SSH are NOT capped; those are the routes to the full 80 cores and 397 GiB.",
+          "No batch scheduler (no Slurm, no PBS) and ~69 accounts, so nothing stops one job saturating the machine. Sharing is by convention: pick a worker count deliberately, check uptime first, and export OMP_NUM_THREADS/OPENBLAS_NUM_THREADS/MKL_NUM_THREADS.",
+          "No GPU and no CUDA. A sibling host 'ampere' may be GPU-equipped but is unconfirmed and needs separate IT access.",
+          "R's terra and sf link against the old system GDAL 3.4.3 / PROJ 8.2.1, while the python env carries GDAL 3.13.3. Relevant to COG and Zarr work.",
+          "Bulk store is roughly a quarter of CGlabs' free space, so a full mirror is not viable - stage per-shard working sets.",
+          "Source: server-environment.md, issue #27, branch docs/server-environment (NOT yet merged to develop). Figures taken from the live machine, September 2025, and will drift."
+        ]
       },
       "_unverified": [
-        "working_dir is carried over verbatim from the old R/0_server_setup.R:135 and has NOT been confirmed on the node.",
-        "Two descriptions of this filesystem disagree: /cluster01 is documented as holding Data, Projects and Workspace trees,",
-        "while the working note refers to common_space/Workspace/common (shared data) and common_space/Workspace/atlas (Atlas tree).",
-        "Establish on the node whether common_space is a second mount or another view of the same export, then correct",
-        "common_data and both trees here and flip status to verified. No R code changes for this."
+        "PATHS are unverified; the CAPABILITIES above come from the documented note (issue #27).",
+        "working_dir and common_data are carried verbatim from the old R/0_server_setup.R:135 and have NOT been confirmed on the node.",
+        "Two descriptions disagree: /cluster01 is documented as holding Data, Projects and Workspace trees, while the working note refers to common_space/Workspace/common (shared data) and common_space/Workspace/atlas (Atlas tree).",
+        "Resolve with DISPATCH_pascal_issue29_profile.md, then correct common_data and both trees here and flip status to verified. No R changes needed."
       ]
     },
     {
       "id": "mac-pstewarda",
       "status": "verified",
       "description": "Development laptop. Holds a partial staged copy of the setup-downloadable inputs, which makes it a usable second host for cross-host equivalence checks.",
-      "match": { "project_dir": ["/Users/pstewarda/Documents/rprojects/hazards_prototype"] },
+      "match": {
+        "project_dir": [
+          "/Users/pstewarda/Documents/rprojects/hazards_prototype"
+        ]
+      },
       "common_data": "/Users/pstewarda/Documents/rprojects/common_data",
       "trees": {
-        "nexgddp": { "working_dir": "{common_data}/hazards_prototype" },
-        "atlas_delta": { "working_dir": "{common_data}/hazards_prototype" }
+        "nexgddp": {
+          "working_dir": "{common_data}/hazards_prototype"
+        },
+        "atlas_delta": {
+          "working_dir": "{common_data}/hazards_prototype"
+        }
       },
       "capabilities": {
         "shape": "laptop",
@@ -111,22 +149,38 @@
       "id": "win-d",
       "status": "legacy",
       "description": "Windows checkout on D:. Carried over from the old chain; not known to be in current use.",
-      "match": { "project_dir": ["D:/rprojects/hazards_prototype"] },
+      "match": {
+        "project_dir": [
+          "D:/rprojects/hazards_prototype"
+        ]
+      },
       "common_data": "D:/common_data",
       "trees": {
-        "nexgddp": { "working_dir": "{common_data}/hazards_prototype" },
-        "atlas_delta": { "working_dir": "{common_data}/hazards_prototype" }
+        "nexgddp": {
+          "working_dir": "{common_data}/hazards_prototype"
+        },
+        "atlas_delta": {
+          "working_dir": "{common_data}/hazards_prototype"
+        }
       }
     },
     {
       "id": "win-c",
       "status": "legacy",
       "description": "Windows checkout on C:. Note the common_data root sits under C:/rprojects, not at the drive root - this asymmetry is inherited, not a typo.",
-      "match": { "project_dir": ["C:/rprojects/hazards_prototype"] },
+      "match": {
+        "project_dir": [
+          "C:/rprojects/hazards_prototype"
+        ]
+      },
       "common_data": "C:/rprojects/common_data",
       "trees": {
-        "nexgddp": { "working_dir": "{common_data}/hazards_prototype" },
-        "atlas_delta": { "working_dir": "{common_data}/hazards_prototype" }
+        "nexgddp": {
+          "working_dir": "{common_data}/hazards_prototype"
+        },
+        "atlas_delta": {
+          "working_dir": "{common_data}/hazards_prototype"
+        }
       }
     }
   ]
