@@ -70,8 +70,9 @@ terra::gdalCache(60000)
               format(Sys.time(), "%H:%M:%S"), msg))
   flush.console()
 }
-.log041(sprintf("script start (FORCE_OVERWRITE=%s)",
-                Sys.getenv("FORCE_OVERWRITE", "<unset>")))
+.log041(sprintf("script start (FORCE_OVERWRITE=%s -> overwrite=%s)",
+                Sys.getenv("FORCE_OVERWRITE", "<unset>"),
+                atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)))
 
 # b) Load base raster ####
 .log041("loading base raster")
@@ -180,7 +181,7 @@ mask_ls_file <- paste0(glw_int_dir, "/livestock_masks.tif")
 # Set FORCE_OVERWRITE=1 in env to force regen of all gated outputs.
 # Used by the issue #9 rebake runbook so the v9 mass-conserving fix
 # actually lands in livestock_masks.tif + livestock_number_number.tif.
-overwrite_glw <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+overwrite_glw <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 .log041(sprintf("livestock_masks.tif exists=%s, overwrite_glw=%s",
                 file.exists(mask_ls_file), overwrite_glw))
 if (!file.exists(mask_ls_file) || overwrite_glw == TRUE) {
@@ -590,7 +591,7 @@ for (i in seq_along(vop_list)) {
 .log041("computing livestock_no + shoat_prop")
 livestock_no_file <- paste0(glw_pro_dir, "/livestock_number_number.tif")
 shoat_prop_file <- paste0(glw_int_dir, "/shoat_prop.tif")
-overwrite_glw <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+overwrite_glw <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 
 .log041(sprintf("livestock_number_number.tif exists=%s, overwrite_glw=%s",
                 file.exists(livestock_no_file), overwrite_glw))

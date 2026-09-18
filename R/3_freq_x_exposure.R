@@ -40,8 +40,9 @@
               format(Sys.time(), "%H:%M:%S"), msg))
   flush.console()
 }
-.log03(sprintf("script start (FORCE_OVERWRITE=%s)",
-               Sys.getenv("FORCE_OVERWRITE", "<unset>")))
+.log03(sprintf("script start (FORCE_OVERWRITE=%s -> overwrite=%s)",
+               Sys.getenv("FORCE_OVERWRITE", "<unset>"),
+               atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)))
 
 # a) Install and load packages ####
 packages <- c(
@@ -362,7 +363,7 @@ names(boundaries_index) <- names(Geographies)
 .rebake_keep <- trimws(strsplit(Sys.getenv("REBAKE_SCENARIO", ""), ",", fixed = TRUE)[[1]])
 .rebake_keep <- .rebake_keep[nzchar(.rebake_keep)]
 .rebake_scope <- function(files) files   # never filter: inputs are multi-scenario stacks
-overwrite <- nzchar(Sys.getenv("FORCE_OVERWRITE"))   # scoping = pre-delete + overwrite=FALSE (fails safe)
+overwrite <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)   # scoping = pre-delete + overwrite=FALSE (fails safe)
 if (length(.rebake_keep)) cat("WARNING: REBAKE_SCENARIO is IGNORED in R/3 - inputs are multi-scenario stacks (filtering truncates future layers). Scope by pre-delete + overwrite=FALSE instead.\n")
 
 ### d.2.1) Crops (MapSPAM) #####
@@ -438,21 +439,21 @@ cat("0.2.2.2) Using livestock vop usd file:", basename(livestock_vop_usd_file), 
 # e) Controls ####
 # e.1) Hazard frequency ####
 run1 <- FALSE
-overwrite1 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+overwrite1 <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 worker_n1 <- 5
 multisession1 <- TRUE
 round1 <- 3
 version1 <- 2
 # e.2) Hazard means ####
 run2 <- FALSE
-overwrite2 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+overwrite2 <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 worker_n2 <- 5
 multisession2 <- TRUE
 round2 <- 2
 version2 <- 2
 # e.3) (To Do!) Hazard timeseries ####
 run3 <- FALSE
-overwrite3 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+overwrite3 <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 worker_n3 <- 5
 multisession3 <- TRUE
 round3 <- 2
@@ -482,7 +483,7 @@ multisession4 <- TRUE
 round4 <- 2
 version4 <- 1
 
-overwrite4 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+overwrite4 <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 do_vop <- TRUE
 round_vop <- 0
 vop_name <- "vop_intld15-2021"

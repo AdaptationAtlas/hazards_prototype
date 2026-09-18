@@ -30,8 +30,9 @@ terra::gdalCache(60000)
               format(Sys.time(), "%H:%M:%S"), msg))
   flush.console()
 }
-.log044(sprintf("script start (FORCE_OVERWRITE=%s)",
-                Sys.getenv("FORCE_OVERWRITE", "<unset>")))
+.log044(sprintf("script start (FORCE_OVERWRITE=%s -> overwrite=%s)",
+                Sys.getenv("FORCE_OVERWRITE", "<unset>"),
+                atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)))
 
 # b) Load functions & wrappers ####
 source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
@@ -88,7 +89,7 @@ names(boundaries_index)<-names(Geographies)
 # Set FORCE_OVERWRITE=1 in env to force regen of all gated outputs.
 # Used by the issue #9 rebake runbook so the v9 mass-conserving fix
 # actually lands in every parquet.
-overwrite_spam <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+overwrite_spam <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 version_spam<-1
 source_year_spam<-list(spam_year=2020,fao_price="varies")
 
@@ -223,7 +224,7 @@ future::plan(future::sequential)
 
 # 2) Livestock (GLW) extraction by vector boundaries #####
 version_glw<-"glw4-2020_atlasv1"
-overwrite_glw <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+overwrite_glw <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 
 # 0.4.1 writes its livestock outputs under glw2020_pro_dir
 # (Data/GLW4_2020/processed), not glw_pro_dir (the 2015 GLW4 dir).

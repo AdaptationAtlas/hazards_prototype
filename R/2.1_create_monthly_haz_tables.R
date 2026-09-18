@@ -163,7 +163,7 @@ cat(sprintf("Section controls: sec2=%s 3.1=%s 3.2=%s 3.3=%s 3.4=%s\n",
 round1 <- 1
 version1 <- 1
 worker_n1 <- 5
-overwrite1 <- nzchar(Sys.getenv("FORCE_OVERWRITE")) # set FORCE_OVERWRITE=1 to regenerate
+overwrite1 <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE) # set FORCE_OVERWRITE=1 to regenerate
 
 # Data QC checks
 max_rain <- 3000 # Max acceptable value for monthly rainfall
@@ -172,7 +172,7 @@ exclude_flagged <- FALSE # Exclude combinations of admin x timeframe x scenario 
 
 ### Section 3 - Summarization of monthly hazards ####
 worker_n2 <- 20
-overwrite2 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+overwrite2 <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 round3.1 <- 3
 round3.3 <- 3
 round3.4 <- 3

@@ -30,7 +30,7 @@ suppressWarnings(suppressMessages({ library(arrow); library(data.table) }))
 source(file.path(Sys.getenv("project_dir"), "R", "0_server_setup.R"))
 source(file.path(Sys.getenv("project_dir"), "R", "_helpers.R"))   # write_parquet_pushdown
 
-overwrite <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+overwrite <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 timeframes <- c("annual", "jagermeyr")
 vop_dirs <- c(
   atlas_dirs$data_dir$hazard_risk_vop,

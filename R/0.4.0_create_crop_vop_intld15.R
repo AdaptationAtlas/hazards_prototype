@@ -25,8 +25,10 @@ terra::gdalCache(60000)
   cat(sprintf("[%s] [0.4.0] %s\n", format(Sys.time(), "%H:%M:%S"), msg))
   flush.console()
 }
-overwrite_crop <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
-.log040(sprintf("script start (FORCE_OVERWRITE=%s)", Sys.getenv("FORCE_OVERWRITE", "<unset>")))
+overwrite_crop <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
+.log040(sprintf("script start (FORCE_OVERWRITE=%s -> overwrite=%s)",
+                Sys.getenv("FORCE_OVERWRITE", "<unset>"),
+                atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)))
 
 ms_codes_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv"
 spam2fao_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv"

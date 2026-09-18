@@ -577,7 +577,7 @@ Thresholds_U_ss <- Thresholds_U_ss[grepl(paste(if (any(grepl("NTx", interaction_
 # This fails safe (a missed delete = under-refresh, not re-shipping future to prod),
 # unlike a global overwrite=TRUE which would re-write future at any un-filtered input.
 # The .rebake_scope input filter is an extra belt (skip processing other scenarios).
-.force_overwrite_r2 <- nzchar(Sys.getenv("FORCE_OVERWRITE"))
+.force_overwrite_r2 <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 if (length(.rebake_keep)) cat("REBAKE_SCENARIO active (input filter) - keeping only:", .rebake_keep, "\n")
 
 ### 0.3.1) Classify hazards ####
