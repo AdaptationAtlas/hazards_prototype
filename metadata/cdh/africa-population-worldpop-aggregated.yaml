@@ -1,0 +1,155 @@
+# CDH v0.3.0 record - WorldPop 2020 population aggregated to ~9 km for Africa, with the rural and
+# urban split. DISTINCT from kenya-population-worldpop, which is the 100 m constrained surface
+# clipped to Kenya: ~90x finer grain, different variable set. Do not substitute one for the other.
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: africa-population-worldpop-aggregated
+title: Human Population, Total, Rural and Urban, Africa 2020 (WorldPop, aggregated)
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  WorldPop 2020 gridded population for Africa, aggregated to 5 arc-minutes (about 9 km), as counts
+  and densities and split into total, rural and urban. The human-exposure denominator of the Atlas
+  exposure chain, read by the admin-extraction stage. The rural and urban layers are the only
+  settlement split the Atlas holds at continental scale.
+resource_type: dataset
+license: CC-BY-4.0 # WorldPop standard licence; an aggregation of the source, so the licence carries through
+keywords:
+  [
+    population,
+    gridded population,
+    rural population,
+    urban population,
+    exposure,
+    denominator,
+    WorldPop,
+    africa,
+  ]
+
+note: >
+  NOT INTERCHANGEABLE WITH kenya-population-worldpop. That record is WorldPop's constrained 100 m
+  surface clipped to Kenya; this one is aggregated to 5 arc-minutes, roughly 9 km, and covers the
+  continent. The grain differs by about ninety times, so a count read off this grid cannot be
+  compared with, or substituted for, one read off the 100 m surface. They are separate records by
+  the standard's own rule that a different-resolution representation is a separate dataset.
+  THE RURAL AND URBAN SPLIT IS THE UNDERUSED PART. Every exposure figure the Atlas publishes is
+  computed against TOTAL population, so a flood over a large city and one over a pastoral county are
+  read through the same denominator. rural_pop and urban_pop have been published here since 2024 and
+  nothing in the exposure chain consumes them. A rural-weighted exposure variant is the obvious use
+  and would be a more honest number for an agricultural audience.
+  AGGREGATED, NOT NATIVE. These are not WorldPop's published rasters; they are an Atlas aggregation
+  of them onto the 0.0833 degree grid the exposure chain works on. Population counts sum under
+  aggregation, so totals are preserved, but any within-pixel distribution is gone - do not use this
+  for settlement-level questions.
+  LEGACY FLAT PREFIX, AND IT HOLDS MORE THAN THIS RECORD DESCRIBES. The objects live under
+  s3://digital-atlas/population/worldpop_2020/ rather than the hive layout used elsewhere. Three
+  further objects sit in the same prefix and are NOT part of this record because their provenance
+  could not be established: population_adminALL.parquet and
+  population-admin2aggregated_adminALL.parquet (admin aggregates, producing code unidentified),
+  population_2017_admALL.parquet (a 2017 vintage mixed in with 2020 rasters), and
+  locana_metadata_pop.xlsx. There is also a zero-byte object at the prefix root. Identify these
+  before cataloguing or reading them.
+  NODATA IS NaN, NOT ZERO. Absence of data and zero population are distinct here and a naive sum or
+  mean over the raster will propagate NaN rather than treating it as no people.
+
+contact:
+  - organization: WorldPop, University of Southampton
+    url: https://www.worldpop.org/
+    roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+
+citation:
+  title: Global High Resolution Population Denominators Project
+  authors:
+    - "WorldPop"
+  date: "2020"
+  publisher: University of Southampton
+  url: https://www.worldpop.org/
+
+created: "2026-09-18"
+updated: "2026-09-18"
+
+spatial:
+  bbox: [-17.584, -34.833, 51.416, 27.334] # from the live raster, 828 x 746 cells
+  crs: EPSG:4326
+  geography: [africa]
+  resolution:
+    - type: xy
+      value: 0.083333
+      unit: degree
+      label: 5 arc-minutes (~9 km)
+
+temporal:
+  date: "2020"
+
+dimensions:
+  - name: settlement
+    type: settlement
+    description: Settlement split. Total is the sum of rural and urban.
+    values: [total, rural, urban]
+
+variables:
+  - name: pop
+    dimensions: [settlement]
+    description: Population count per cell. Counts sum under aggregation, so continental totals are preserved.
+    data_type: float32
+    unit: "{person}"
+  - name: pop-density
+    dimensions: [settlement]
+    description: Population per unit area, derived from the count layer.
+    data_type: float32
+    unit: "{person}/km2"
+
+processing:
+  - id: source
+    description: >
+      WorldPop models gridded population counts from census data and settlement layers, published as
+      high-resolution national and continental rasters.
+    derived_from:
+      - title: WorldPop Global High Resolution Population Denominators
+        url: https://www.worldpop.org/
+  - id: aggregate
+    description: >
+      Aggregate the WorldPop surface onto the 0.0833 degree Atlas exposure grid, summing counts, and
+      split into rural and urban using the settlement classification.
+
+data:
+  - name: gridded-population
+    description: >
+      Count and density rasters at 5 arc-minutes, one file per settlement class. Naming is
+      <settlement>_pop.tif and <settlement>_pop-density.tif, with total_pop.tif the all-settlement
+      count.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/population/worldpop_2020/
+        title: HTTPS
+      - url: s3://digital-atlas/population/worldpop_2020/
+        title: S3
+    media_type: image/tiff; application=geotiff
+    processing_steps: [source, aggregate]
+
+cdh:
+  domain: [socioeconomic]
+  usage:
+    intended_uses:
+      - Human-exposure denominator for continental hazard-exposure products.
+      - Rural-weighted exposure, using the rural layer instead of the total, for agricultural framing.
+    not_recommended_for:
+      - use: Substituting this for the 100 m constrained surface, or comparing counts between them.
+        reason: >
+          About ninety times coarser, and an aggregation rather than the native product. Record
+          kenya-population-worldpop is the 100 m surface for Kenya.
+        use_instead: Use the 100 m record where grain matters; use this one where continental coverage does.
+      - use: Settlement-level or within-pixel questions.
+        reason: Aggregation preserves totals but destroys the within-pixel distribution.
+        use_instead: The native WorldPop resolution from the provider.
+      - use: Treating NoData as zero population.
+        reason: NoData is NaN here, so absence of data and absence of people are different states and a naive aggregate propagates NaN.
+        use_instead: Mask explicitly, and decide per analysis whether NaN means no people or no observation.

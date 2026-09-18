@@ -36,6 +36,19 @@ keywords:
   ]
 
 note: >
+  NOT USED BY ANY ATLAS PRODUCT, AND NOT SUBMITTED TO THE CATALOG (decision 2026-09-18).
+  GRID3 was published to Atlas storage as an alternative population surface and nothing ever
+  consumed it. The Kenya exposure chain reads WorldPop and only WorldPop: 7_zonal_exposure.R fixes
+  the grid at worldpop-constrained-2020, and POP_SOURCE selects between census levelling, projection
+  levelling and no levelling - never between gridded providers. The continental chain likewise reads
+  the aggregated WorldPop surface (record africa-population-worldpop-aggregated).
+  This record is therefore kept LOCAL: it documents an object that is public on S3, which should not
+  be left undocumented, but it is not offered to the Hub as a dataset the Atlas uses. If GRID3 is
+  ever wired in, the record is ready; if the objects are removed from S3, this record goes with them.
+  The methodological contrast is still worth knowing: GRID3/WOPR is bottom-up from microcensus and
+  building footprints, WorldPop constrained is top-down dasymetric. They fail in different places,
+  and both run about 17 per cent above the enumerated 2019 census nationally.
+
   Bottom-up = built up from microcensus survey clusters, not redistributed from a national total.
   Differs from the WorldPop constrained surface spatially, not in national scale; use for method
   comparison.
