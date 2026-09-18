@@ -1,6 +1,5 @@
-# CDH v0.3.0 FEDERATED record, DRAFT - passes --draft only, not yet submittable.
-# Promotion: fill the missing fields until it passes WITHOUT --draft, then git mv to metadata/cdh/.
-# Validate: node scripts/validate-yaml.js --draft --profile spec/schemas/profiles/cdh.schema.json <this file>
+# CDH v0.3.0 FEDERATED record - the Atlas cites these bulletins but does not host them.
+# Promoted from draft 2026-09-18 on an EXPLICIT WORKING ASSUMPTION of openness - see the licence note.
 $schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
 cdh_schema_version: v0.3.0
 extensions:
@@ -9,10 +8,12 @@ extensions:
 id: kenya-market-prices-ndma
 title: Kenya Drought Early Warning Bulletins - Market Prices and Terms of Trade (NDMA)
 description: >
-  County-level market indicators from Kenya's National Drought Management Authority monthly National
-  Drought Early Warning Bulletins, including staple and livestock prices and the pastoral terms of
-  trade. A federated record - the Adaptation Atlas cites these bulletins but does not host them.
+  Market indicators from the National Drought Management Authority's monthly Drought Early Warning
+  bulletins - staple and livestock prices and the pastoral terms of trade - published both as a
+  national bulletin and as per-county bulletins for the arid and semi-arid counties. A federated
+  record: the Adaptation Atlas cites these bulletins but does not host them.
 resource_type: dataset
+license: LicenseRef-KE-Gov-Statistics-Assumed-Open # WORKING ASSUMPTION, not a grant anyone made: NDMA publishes no terms, and Kenyan government early-warning bulletins issued for public drought response are treated as open pending evidence otherwise. Decision by the Atlas data owner, 2026-09-18.
 keywords:
   [market prices, terms of trade, drought early warning, pastoral, kenya, ndma]
 
@@ -35,7 +36,7 @@ access: public
 contact:
   - organization: National Drought Management Authority (NDMA), Kenya
     url: https://ndma.go.ke/
-    roles: [producer]
+    roles: [licensor, producer]
   - name: Peter Steward
     organization: Alliance of Bioversity International and CIAT
     email: p.steward@cgiar.org
@@ -50,6 +51,17 @@ processing:
       - title: NDMA National Drought Early Warning Bulletins
         url: https://knowledgeweb.ndma.go.ke/Public/Resources/Default.aspx?ID=7
 
+citation:
+  title: National and County Drought Early Warning Bulletins
+  authors:
+    - "National Drought Management Authority"
+  date: "2026"
+  publisher: National Drought Management Authority, Republic of Kenya
+  url: https://knowledgeweb.ndma.go.ke/Public/Resources/Default.aspx?ID=7
+
+created: "2026-09-18"
+updated: "2026-09-18"
+
 data:
   - name: ndma-bulletins
     description: Monthly National Drought Early Warning Bulletins (PDF).
@@ -57,6 +69,15 @@ data:
       - url: https://knowledgeweb.ndma.go.ke/Public/Resources/Default.aspx?ID=7
         title: HTTPS
     media_type: application/pdf
+
+additional_links:
+  - name: NDMA drought early warning bulletin library
+    rel: license
+    url: https://knowledgeweb.ndma.go.ke/Public/Resources/Default.aspx?ID=7
+    description: >
+      The bulletin library. It states no terms of use, which is the basis for the assumed-open
+      working position in the licence note - this link documents the ABSENCE of stated terms, not
+      the presence of a grant.
 
 cdh:
   domain: [socioeconomic]

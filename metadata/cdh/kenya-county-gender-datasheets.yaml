@@ -1,7 +1,5 @@
-# CDH v0.3.0 FEDERATED record, DRAFT - passes --draft only, not yet submittable.
-# BLOCKED ON LICENCE: no party has published terms for these sheets. license is deliberately
-# OMITTED rather than guessed - a wrong licence is worse than a visible gap.
-# Validate: node scripts/validate-yaml.js --draft --profile spec/schemas/profiles/cdh.schema.json <this file>
+# CDH v0.3.0 FEDERATED record - the Atlas cites these sheets but does not host them.
+# Promoted from draft 2026-09-18 on an EXPLICIT WORKING ASSUMPTION of openness - see the licence note.
 $schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
 cdh_schema_version: v0.3.0
 extensions:
@@ -18,6 +16,7 @@ description: >
   A federated record - the Adaptation Atlas reads these sheets but does not host or redistribute
   them.
 resource_type: dataset
+license: LicenseRef-KE-Gov-Statistics-Assumed-Open # WORKING ASSUMPTION, not a grant anyone made: the sheets carry no rights notice, and Kenyan official statistics published for public planning are treated as open pending evidence otherwise. Decision by the Atlas data owner, 2026-09-18. Revisit if any party states terms.
 keywords:
   [
     gender,
@@ -31,7 +30,12 @@ keywords:
   ]
 
 note: >
-  LICENCE - DELIBERATELY UNSTATED, DO NOT GUESS ONE. Every page of a sheet was read and the raw PDF
+  LICENCE - AN EXPLICIT WORKING ASSUMPTION, NOT A GRANT. No party has published terms for these
+  sheets. The Atlas treats them as open pending evidence otherwise, a decision taken by the data
+  owner on 2026-09-18 and recorded here so it is visible rather than implied: LicenseRef-KE-Gov-
+  Statistics-Assumed-Open means "no rights stated, treated as open", NOT "the publishers granted an
+  open licence". Anyone relying on these figures commercially should confirm with the publishers
+  first. The evidence behind the assumption follows. Every page of a sheet was read and the raw PDF
   scanned: there is NO copyright notice, NO "all rights reserved" and NO ISBN. That is materially
   better footing than the KNBS census projections (record kenya-population-knbs-projections, whose
   Volume XVI reserves rights in terms) - but absence of a notice is NOT a grant, and copyright
@@ -86,9 +90,7 @@ created: "2026-09-18"
 updated: "2026-09-18"
 
 spatial:
-  # bbox omitted deliberately: cdh-metadata-standard v0.3.0 --draft mode false-fails
-  # spatial.bbox (stripPresence removes the minItems/maxItems that discriminate the oneOf, so
-  # neither the flat nor the nested form validates). Restore [33.9, -4.7, 41.9, 5.5] at promotion.
+  bbox: [33.9, -4.7, 41.9, 5.5] # restored on promotion; --draft false-fails it, see cdh-metadata-standard#33
   crs: EPSG:4326
   geography: [kenya]
 
@@ -124,6 +126,17 @@ variables:
     data_type: float64
     unit: "1"
 
+citation:
+  title: County Gender Data Sheets, 2025
+  authors:
+    - "Kenya National Bureau of Statistics"
+    - "State Department for Gender and Affirmative Action"
+    - "Council of Governors"
+    - "UN Women"
+  date: "2025"
+  publisher: Kenya National Bureau of Statistics
+  url: https://www.knbs.or.ke/reports/county-gender-datasheets-2025/
+
 processing:
   - id: source
     description: >
@@ -155,6 +168,15 @@ data:
         title: HTTPS
     media_type: application/pdf
     processing_steps: [source]
+
+additional_links:
+  - name: County Gender Datasheets 2025 - publication page
+    rel: license
+    url: https://www.knbs.or.ke/reports/county-gender-datasheets-2025/
+    description: >
+      The publication page for the sheets. It states no terms of use, which is the basis for the
+      assumed-open working position recorded in the licence note - this link documents the ABSENCE
+      of stated terms, not the presence of a grant.
 
 cdh:
   domain: [socioeconomic]
