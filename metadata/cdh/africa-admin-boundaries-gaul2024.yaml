@@ -1,0 +1,167 @@
+# CDH v0.3.0 record - FAO GAUL 2024 administrative boundaries as used across the Atlas.
+# The zonal backbone: every admin-extracted product in the hazard stack aggregates onto these units.
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: africa-admin-boundaries-gaul2024
+title: Administrative Boundaries, Africa (FAO GAUL 2024)
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  Administrative boundaries at national, first and second subnational level from FAO's Global
+  Administrative Unit Layers 2024 release, prepared for the Africa Agriculture Adaptation Atlas as
+  analysis-ready vectors and as rasterised zonal layers at three resolutions. The zonal backbone of
+  the Atlas: every admin-aggregated product in the hazard and exposure stack is summarised onto these
+  units, so a change here propagates to every table downstream.
+resource_type: dataset
+license: CC-BY-4.0 # FAO GAUL 2024; note FAO's own caveats on third-party country data and authoritativeness
+keywords:
+  [administrative boundaries, admin units, GAUL, FAO, zonal statistics, africa]
+
+note: >
+  FAO'S OWN DISCLAIMER MATTERS HERE, AND IT IS NOT BOILERPLATE. FAO states that GAUL should NOT be
+  considered an authoritative or official representation of subnational boundaries. This dataset is
+  a consistent global frame for aggregation, not a statement about where borders lie. Anything
+  published from it inherits that position, which should be stated wherever the units are shown.
+  THIRD-PARTY COUNTRY DATA MAY CARRY ITS OWN TERMS. The release as a whole is CC-BY-4.0, but FAO
+  notes that some country-level data inside GAUL comes from third parties under different terms, with
+  the applicable licence recorded per country in the FAO catalogue. For a continental product this is
+  a latent condition rather than a live one, but it should be checked before any single country's
+  boundaries are redistributed on their own.
+  DISPUTED TERRITORIES ARE AN OPEN CONVENTION QUESTION, NOT A DEFECT HERE. A disputed_areas parquet
+  sits alongside the boundaries, and admin extraction currently produces duplicate rows for disputed
+  slivers - the Ilemi Triangle, Abyei and similar - because a sliver can be claimed by more than one
+  admin0. The fix is an Atlas-wide extraction convention rather than a change to this dataset, and it
+  is escalated rather than patched. Tracked as CR-115.
+  THREE RESOLUTIONS, AND THEY ARE NOT INTERCHANGEABLE. The rasterised zonal layers exist at 0.05,
+  0.0833 and 0.25 degrees. A zonal statistic computed on one grid will not match the same statistic
+  on another, because the cells assigned to a unit differ along every boundary. Match the zonal
+  raster to the grid of the data being summarised - 0.0833 for the aggregated population and MapSPAM
+  layers, 0.05 for the finer observational products.
+  ONE STRAY OBJECT. A .tif.aux.xml sidecar is published beside the adm1 0.05 degree raster; it is a
+  GDAL statistics cache, not data, and should not be catalogued or read as a layer.
+
+contact:
+  - organization: Food and Agriculture Organization of the United Nations (FAO)
+    url: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+    roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+
+citation:
+  title: Global Administrative Unit Layers (GAUL) 2024
+  authors:
+    - "Food and Agriculture Organization of the United Nations"
+  date: "2024"
+  publisher: Food and Agriculture Organization of the United Nations
+  url: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+
+created: "2026-09-18"
+updated: "2026-09-18"
+
+spatial:
+  bbox: [-26.0, -35.0, 58.0, 38.0] # Africa
+  crs: EPSG:4326
+  geography: [africa]
+
+temporal:
+  date: "2024"
+
+dimensions:
+  - name: level
+    type: admin-level
+    description: Administrative level - adm0 national, adm1 first subnational, adm2 second subnational.
+    values: [adm0, adm1, adm2]
+  - name: resolution
+    type: grid-resolution
+    description: >
+      Cell size of the rasterised zonal layer, as the file-name suffix. res-05 is 0.05 degrees,
+      res-083 is 0.0833 degrees and res-25 is 0.25 degrees.
+    values: [res-05, res-083, res-25]
+
+variables:
+  - name: admin_unit
+    dimensions: [level]
+    description: >
+      Administrative unit geometry and attributes, keyed by GAUL code with names at each level.
+    data_type: string
+    unit: "1"
+  - name: zone_id
+    dimensions: [level, resolution]
+    description: >
+      Rasterised administrative unit identifier per cell, for zonal aggregation. Cells are assigned
+      to exactly one unit, so boundary cells differ between resolutions.
+    data_type: int32
+    unit: "1"
+
+processing:
+  - id: source
+    description: >
+      FAO compiles administrative unit layers from national and third-party sources into a consistent
+      global frame and publishes them as the GAUL release.
+    derived_from:
+      - title: Global Administrative Unit Layers (GAUL) 2024
+        url: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+  - id: prepare
+    description: >
+      Subset to Africa, harmonise attributes and write analysis-ready vectors in three formats.
+  - id: rasterise
+    description: >
+      Burn each administrative level onto the Atlas grids at 0.05, 0.0833 and 0.25 degrees for zonal
+      aggregation.
+
+data:
+  - name: analysis-ready-vectors
+    description: >
+      Africa boundaries per level, published as GeoJSON, GeoPackage and Parquet. Parquet is the one
+      the pipeline reads; the others are for external consumers.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=analysis-ready/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=analysis-ready/
+        title: S3
+    href_template: "level={level}/atlas_gaul24_{level}_africa.parquet" # also .geojson and .gpkg
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, prepare]
+  - name: rasterised-zones
+    description: Rasterised zonal layers, one per administrative level and grid resolution.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=rasterized/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=rasterized/
+        title: S3
+    media_type: image/tiff; application=geotiff
+    processing_steps: [source, prepare, rasterise]
+  - name: global-raw
+    description: >
+      The unsubsetted global release as received, including a variant with water bodies removed at
+      adm2. Retained as the provenance of the Africa subset.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=gaul2024/region=global/processing=raw/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=global/processing=raw/
+        title: S3
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source]
+
+cdh:
+  domain: [boundaries]
+  usage:
+    intended_uses:
+      - Zonal aggregation of hazard, exposure and observational products to admin units.
+      - A consistent continental admin frame for joining tabular statistics to geography.
+    not_recommended_for:
+      - use: Treating these boundaries as authoritative or official.
+        reason: FAO states explicitly that GAUL is not an authoritative representation of subnational boundaries.
+        use_instead: A national statistical agency's own boundaries where legal or official status matters - for Kenya, record kenya-admin-codab.
+      - use: Comparing zonal statistics computed at different grid resolutions.
+        reason: >
+          Cells are assigned to exactly one unit, so which cells fall inside a unit differs between
+          the 0.05, 0.0833 and 0.25 degree layers, and boundary units shift most.
+        use_instead: Match the zonal raster to the grid of the data being summarised, and say which was used.
