@@ -658,7 +658,7 @@ check5.3 <- TRUE
 round5.3 <- NULL
 
 ### 0.3.6) Choose timeframes to loop through ####
-if (exists("indices_dir2")) {
+if (dir.exists(indices_dir2)) {
   timeframes <- basename(list.dirs(indices_dir2, recursive = FALSE))
 } else {
   timeframes <- basename(list.dirs(path = atlas_dirs$data_dir$hazard_timeseries_class, recursive = FALSE))

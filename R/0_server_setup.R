@@ -56,10 +56,13 @@ timeframe_choices <- c(
   # "sos_secondary_fixed_5"
 )
 
-# 0.3) Set climate date source ####
-# nexgddp or atlas_delta
-climdat_source <- "atlas_delta"
-climdat_source <- "nexgddp"
+# 0.3) Set climate data source ####
+# "nexgddp" or "atlas_delta". Was two unconditional assignments where the second
+# always won, so the first was dead code and switching source meant editing this
+# file. Now a real setting: override with ATLAS_CLIMDAT_SOURCE=atlas_delta.
+# The default in metadata/hosts.json is "nexgddp", which is what line 2 of the
+# old pair resolved to, so behaviour is unchanged.
+# (resolved just below, once project_dir is known)
 
 # 0.3) Record R-project location #####
 # Function to add or update an environment variable in the .Renviron file
@@ -101,65 +104,54 @@ if (!nzchar(Sys.getenv("project_dir"))) {
 # Confirm project_dir was set
 (project_dir <- Sys.getenv("project_dir"))
 
-# 0.4) Change working directory according to compute facility #####
-Cglabs <- FALSE
-if (project_dir == "/home/jovyan/atlas/hazards_prototype") {
-  # cglabs environment
-  if (climdat_source == "atlas_delta") {
-    working_dir <- "/home/jovyan/common_data/hazards_prototype"
-  }
+# The resolver. Pure - no setwd, no dir.create, no network; it only reads
+# metadata/hosts.json and sets options(). Sourced here because everything from
+# section 0.4 onward resolves through it.
+source(file.path(project_dir, "R", "00_paths.R"))
 
-  if (climdat_source == "nexgddp") {
-    working_dir <- "/home/jovyan/common_data/nex-gddp-cimp6_hazards"
-  }
-  Cglabs <- TRUE
-}
+climdat_source <- atlas_climdat_source()
 
-# Local environment on Windows or Mac
-if (project_dir == "D:/rprojects/hazards_prototype") {
-  working_dir <- "D:/common_data/hazards_prototype"
-}
+# 0.4) Resolve this host and set the working directory #####
+# Was a chain of five string equalities on project_dir with no else branch, so
+# an unrecognised machine left working_dir undefined and died with
+# "object 'working_dir' not found". Host profiles now live in
+# metadata/hosts.json and a new machine is a stanza there, not a code edit.
+#
+# atlas_describe() prints how everything resolved and warns when a profile is
+# marked UNVERIFIED or when a stale ~/.Renviron project_dir disagrees with the
+# located repo.
+working_dir <- atlas_working_dir()
 
-if (project_dir == "C:/rprojects/hazards_prototype") {
-  working_dir <- "C:/rprojects/common_data/hazards_prototype"
-}
+# Retained because downstream code branches on them. Derived from the resolved
+# host rather than from a literal path comparison.
+Cglabs <- identical(atlas_host_id(), "cglabs")
+Aflabs <- identical(atlas_host_id(), "afrilabs")
 
-if (project_dir == "/Users/pstewarda/Documents/rprojects/hazards_prototype") {
-  working_dir <- "/Users/pstewarda/Documents/rprojects/common_data/hazards_prototype"
-}
-
-# Afrilabs environment
-Aflabs <- FALSE
-if (project_dir == "/home/psteward/rprojects/hazards_prototype") {
-  Aflabs <- TRUE
-  working_dir <- "/cluster01/workspace/atlas/hazards_prototype"
-}
-
-# Create working_dir if needed
 if (!dir.exists(working_dir)) {
   dir.create(working_dir, recursive = TRUE)
 }
 
-# Set the working directory
 setwd(working_dir)
 
 # 0.5) Indices directory (raw monthly hazard data) ####
-if (Cglabs) {
-  if (climdat_source == "atlas_delta") {
-    # For cglabs users
-    indices_dir <- "/home/jovyan/common_data/atlas_hazards/cmip6/indices"
-    indices_dir2 <- "/home/jovyan/common_data/atlas_hazards/cmip6/indices_seasonal"
-  }
+# These used to be set only inside `if (Cglabs)`, so everywhere else they were
+# UNDEFINED and R/1, R/2, R/2.1, R/2.2 and R/3 failed with an unhelpful
+# "object 'indices_dir' not found". They are now resolved on every host.
+#
+# Defined-but-absent is strictly better than undefined: the path is reportable,
+# and a script that genuinely needs the data calls
+# atlas_dir("indices", require = TRUE) and gets an error naming the missing tree.
+indices_dir <- atlas_dir("indices")
+indices_dir2 <- atlas_dir("indices_seasonal")
 
-  if (climdat_source == "nexgddp") {
-    # For cglabs users
-    indices_dir <- "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices"
-    indices_dir2 <- "/home/jovyan/common_data/atlas_nex-gddp_hazards/cmip6/indices_seasonal"
-  }
-} else {
+if (!dir.exists(indices_dir)) {
   cat(
-    "Indice files are currently only available in CGlabs. Download functionality for the raw data is on the to-do list.\n",
-    "See https://github.com/AdaptationAtlas/hazards if you need to replicate monthly hazard data creation.\n"
+    "Monthly hazard indices are not staged on this host.\n",
+    "  expected at: ", indices_dir, "\n",
+    "  They are regenerated, not downloaded - see\n",
+    "  metadata/catalogue/nexgddp-indices-monthly.json for the command,\n",
+    "  or point at an existing copy with ATLAS_INDICES_DIR=/path\n",
+    sep = ""
   )
 }
 cat("Climate data source = ", climdat_source, "\n")
@@ -415,18 +407,20 @@ if (!dir.exists(solution_tables_dir)) {
   dir.create(solution_tables_dir, recursive = TRUE)
 }
 
-# Special handling for Cglabs environment (common_data paths)
-if (Cglabs) {
-  # Additional directory paths in cglabs environment
-  sos_raw_dir <- "/home/jovyan/common_data/atlas_sos/seasonal_mean"
-  isimip_raw_dir <- "/home/jovyan/common_data/isimip"
-  chirts_raw_dir <- "/home/jovyan/common_data/chirts"
-  chirps_raw_dir <- "/home/jovyan/common_data/chirps_wrld"
+# Raw source trees that sit outside Data/, under the shared bulk store.
+# These were also CGlabs-only literals, leaving them undefined elsewhere -
+# R/1.2_create_isimip_timeseries.R:13 uses isimip_raw_dir unguarded. Resolved on
+# every host now, from the same host profile as everything else.
+sos_raw_dir <- atlas_dir("sos_raw")
+isimip_raw_dir <- atlas_dir("isimip_raw")
+chirts_raw_dir <- atlas_dir("chirts_raw")
+chirps_raw_dir <- atlas_dir("chirps_raw")
+cropsuite_raw_dir <- atlas_dir("cropsuite_raw")
 
-  cropsuite_raw_dir <- "/home/jovyan/common_data/atlas_cropSuite"
-  if (!dir.exists(isimip_raw_dir)) {
-    dir.create(isimip_raw_dir, recursive = TRUE)
-  }
+# Only create it where the bulk store actually exists, so a laptop without one
+# does not acquire a stray empty ~/common_data/isimip.
+if (dir.exists(atlas_common_data()) && !dir.exists(isimip_raw_dir)) {
+  dir.create(isimip_raw_dir, recursive = TRUE)
 }
 
 # 2.2) Cloud directories (Atlas s3 bucket) #####
@@ -481,7 +475,6 @@ s3 <- s3fs::S3FileSystem$new(anonymous = TRUE)
 # not it is present.
 # ---------------------------------------------------------------------------
 
-source(file.path(project_dir, "R", "00_paths.R"))
 source(file.path(project_dir, "R", "00_acquire.R"))
 
 # 3.0) File path declarations (no I/O) #####
