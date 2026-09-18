@@ -30,13 +30,13 @@ val <- function(f, default = NULL) {
 }
 
 .t0 <- Sys.time(); .tl <- .t0
-say <- function(...) {
+say <- function(..., level = "INFO") {
   now <- Sys.time()
-  cat(sprintf("[%s] +%5.1fs (Δ%4.1fs) | %s\n",
+  cat(sprintf("[%s] +%5.1fs (Δ%4.1fs) %-5s| %s\n",
               format(now, "%Y-%m-%d %H:%M:%S"),
               as.numeric(difftime(now, .t0, units = "secs")),
               as.numeric(difftime(now, .tl, units = "secs")),
-              paste0(..., collapse = "")))
+              level, paste0(..., collapse = "")))
   .tl <<- now
   flush.console()
 }
@@ -75,9 +75,16 @@ resolve <- function(t) {
   base
 }
 
+# A truncated TIFF opens fine - the header is intact - and only fails when pixels
+# are actually read. So rast() succeeding proves nothing; the stats call is where
+# corruption surfaces, and it must not kill the run. A fingerprint that dies on
+# the first bad file cannot tell you WHICH files are bad, which is most of the
+# point. Unreadable is a first-class result, reported and counted.
 fp_raster <- function(f) {
   r <- try(terra::rast(f), silent = TRUE)
-  if (inherits(r, "try-error")) return(list(shape = "<unreadable>", value = "<unreadable>"))
+  if (inherits(r, "try-error")) {
+    return(list(shape = "<unopenable>", value = "<unopenable>", bad = TRUE))
+  }
   shape <- paste(
     sprintf("dim=%s", paste(dim(r), collapse = "x")),
     sprintf("ext=%s", paste(round(as.vector(terra::ext(r)), 6), collapse = ",")),
@@ -89,19 +96,25 @@ fp_raster <- function(f) {
   # Per-layer summary. Rounded so a cross-platform ULP difference in the last
   # bits does not masquerade as a real divergence, but tight enough that a real
   # one still shows.
-  s <- terra::global(r, fun = "sum", na.rm = TRUE)[, 1]
-  nna <- terra::global(!is.na(r), fun = "sum", na.rm = TRUE)[, 1]
-  value <- paste(
-    sprintf("sum=%s", paste(signif(s, 10), collapse = "|")),
-    sprintf("n_nonNA=%s", paste(nna, collapse = "|")),
-    sep = " "
-  )
-  list(shape = shape, value = value)
+  stats <- tryCatch({
+    st <- suppressWarnings(terra::global(r, fun = "sum", na.rm = TRUE)[, 1])
+    nn <- suppressWarnings(terra::global(!is.na(r), fun = "sum", na.rm = TRUE)[, 1])
+    paste(
+      sprintf("sum=%s", paste(signif(st, 10), collapse = "|")),
+      sprintf("n_nonNA=%s", paste(nn, collapse = "|")),
+      sep = " "
+    )
+  }, error = function(e) {
+    paste0("<CORRUPT: ", sub("\\s+", " ", substr(conditionMessage(e), 1, 120)), ">")
+  })
+  list(shape = shape, value = stats, bad = startsWith(stats, "<CORRUPT"))
 }
 
 fp_parquet <- function(f) {
   d <- try(arrow::read_parquet(f), silent = TRUE)
-  if (inherits(d, "try-error")) return(list(shape = "<unreadable>", value = "<unreadable>"))
+  if (inherits(d, "try-error")) {
+    return(list(shape = "<unreadable>", value = "<unreadable>", bad = TRUE))
+  }
   cols <- names(d)
   types <- vapply(d, function(x) class(x)[1], character(1))
   shape <- paste(
@@ -116,7 +129,7 @@ fp_parquet <- function(f) {
     sum(as.numeric(d[[cn]]), na.rm = TRUE)
   }, numeric(1))
   value <- paste(sprintf("%s=%s", cols[num], signif(sums[num], 10)), collapse = "|")
-  list(shape = shape, value = value)
+  list(shape = shape, value = value, bad = FALSE)
 }
 
 `%||%` <- function(a, b) if (is.null(a) || length(a) == 0L || is.na(a[1])) b else a
@@ -137,6 +150,7 @@ for (t in targets) {
   for (f in fs) {
     rel <- sub(paste0("^", gsub("([.|()\\^{}+$*?\\[\\]])", "\\\\\\1", atlas_working_dir()), "/"), "", f)
     fpr <- if (grepl("\\.parquet$", f)) fp_parquet(f) else fp_raster(f)
+    if (isTRUE(fpr$bad)) say("  UNREADABLE: ", rel, level = "WARN")
     rows[[length(rows) + 1L]] <- data.frame(
       artefact = rel, bytes = file.size(f), shape = fpr$shape, value = fpr$value
     )
@@ -151,5 +165,13 @@ con <- file(out, "w")
 writeLines(paste(names(df), collapse = "\t"), con)
 writeLines(do.call(paste, c(unname(as.list(df)), sep = "\t")), con)
 close(con)
+bad <- grepl("^<", df$value)
 say("wrote ", nrow(df), " artefact rows to ", out)
+if (any(bad)) {
+  say(sum(bad), " artefact(s) could not be read - listed below and marked in the TSV.",
+      level = "WARN")
+  for (a in df$artefact[bad]) cat("    ", a, "\n", sep = "")
+  say("A short/truncated tile means the local copy is damaged, not that the hosts ",
+      "disagree. Re-fetch before treating any diff as meaningful.", level = "WARN")
+}
 say("compare with: diff -u <other-host>.tsv ", out)
