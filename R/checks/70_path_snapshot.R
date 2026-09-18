@@ -169,6 +169,69 @@ if (has("--resolver-only")) {
 }
 
 # -----------------------------------------------------------------------------
+# Mode C: compare two snapshots against the real gate
+# -----------------------------------------------------------------------------
+# "The diff must be empty" stopped being the right gate once section 3 was
+# rewritten: that legitimately drops four loop-scratch globals, and the harness
+# itself now captures a new globalvec: row type. Eyeballing a diff that is
+# expected to be non-empty is how a real regression gets waved through.
+#
+# The gate that actually matters is narrower and checkable:
+#   NO path value may CHANGE. Keys may disappear only if they are declared
+#   expendable; new keys are fine.
+#
+#   Rscript R/checks/70_path_snapshot.R --compare pre.tsv post.tsv
+if (has("--compare")) {
+  i <- match("--compare", args)
+  f1 <- args[i + 1L]; f2 <- args[i + 2L]
+  if (is.na(f1) || is.na(f2)) stop("usage: --compare <pre.tsv> <post.tsv>")
+  a <- read.delim(f1, colClasses = "character")
+  b <- read.delim(f2, colClasses = "character")
+
+  # Loop scratch from the old section 3. Verified to have no downstream reader:
+  # files_local has none at all; files_s3 is assigned locally where used;
+  # folder_path only ever appears as a data.frame column; local_dir only as a
+  # named function argument.
+  EXPENDABLE <- paste0("global:", c("files_local", "files_s3", "folder_path", "local_dir"))
+
+  m <- merge(a, b, by = "key", all = TRUE, suffixes = c(".pre", ".post"))
+  changed <- m[!is.na(m$value.pre) & !is.na(m$value.post) & m$value.pre != m$value.post, ]
+  dropped <- m[!is.na(m$value.pre) & is.na(m$value.post), ]
+  added   <- m[is.na(m$value.pre) & !is.na(m$value.post), ]
+  bad_drop <- dropped[!dropped$key %in% EXPENDABLE, ]
+
+  say("pre=", nrow(a), " rows   post=", nrow(b), " rows")
+  say("changed=", nrow(changed), "  dropped=", nrow(dropped),
+      " (", nrow(bad_drop), " unexpected)  added=", nrow(added))
+
+  if (nrow(changed)) {
+    cat("\nCHANGED VALUES - this is the failure condition:\n")
+    for (j in seq_len(nrow(changed))) {
+      cat(sprintf("  %s\n    pre : %s\n    post: %s\n",
+                  changed$key[j], changed$value.pre[j], changed$value.post[j]))
+    }
+  }
+  if (nrow(bad_drop)) {
+    cat("\nUNEXPECTEDLY DROPPED:\n")
+    for (k in bad_drop$key) cat("  ", k, "\n", sep = "")
+  }
+  if (nrow(added)) {
+    cat("\nAdded (informational, not a failure):\n")
+    for (k in head(added$key, 40)) cat("  ", k, "\n", sep = "")
+    if (nrow(added) > 40) cat("  ... and ", nrow(added) - 40, " more\n", sep = "")
+  }
+
+  if (nrow(changed) == 0L && nrow(bad_drop) == 0L) {
+    cat("\n")
+    say("PASS - no path value changed, no unexpected key disappeared")
+    quit(save = "no", status = 0L)
+  }
+  cat("\n")
+  say("FAIL")
+  quit(save = "no", status = 1L)
+}
+
+# -----------------------------------------------------------------------------
 # Mode B: full setup snapshot on this host
 # -----------------------------------------------------------------------------
 out <- val("--out")
@@ -193,8 +256,15 @@ add <- function(key, value) {
 # Layer 1 + 2 in one pass. Sweep globalenv() for every length-1 character and
 # every logical flag, rather than naming them. This is the guarantee: a new
 # entry in `subdirs` shows up here automatically.
+# This script's own variables live in the same globalenv as setup's, so they
+# would otherwise be swept up and reported as "changed paths" - `out` differs
+# between any two runs by construction, which would fail the gate every time.
+HARNESS_INTERNAL <- c("args", "out", "repo_root", "f1", "f2", "has", "val", "ts",
+                      "say", "write_tsv", "add", "rows", "golden", "ids", "srcs",
+                      "script", "kv", "exp", "bad", "m", "df", "con", "j", "k")
+
 g <- globalenv()
-for (n in sort(ls(g, all.names = TRUE))) {
+for (n in sort(setdiff(ls(g, all.names = TRUE), HARNESS_INTERNAL))) {
   v <- tryCatch(get(n, envir = g), error = function(e) NULL)
   if (is.character(v) && length(v) == 1L && !is.na(v)) {
     add(paste0("global:", n), v)
