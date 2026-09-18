@@ -1,0 +1,165 @@
+# CDH v0.3.0 record, DRAFT - metadata authored, PUBLICATION PENDING.
+# The monthly index rasters this record describes are NOT on cloud storage. `data` is deliberately
+# absent and the record therefore passes --draft only. Add the locations when they are published,
+# then it passes strict and can be promoted to metadata/cdh/.
+# Validate: node scripts/validate-yaml.js --draft --profile spec/schemas/profiles/cdh.schema.json <this file>
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: nexgddp-indices-monthly
+title: Monthly Agro-Climatic Hazard Indices from NEX-GDDP-CMIP6
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  Monthly agro-climatic hazard index rasters computed per GCM from NASA's NEX-GDDP-CMIP6 downscaled
+  climate projections: heat stress, water stress, waterlogging, dry spells, aridity, livestock and
+  human thermal comfort, precipitation and temperature. 45 index codes in total, for a historical
+  window and four SSP scenarios across four future timeframes. This is the raw climate layer the
+  whole Atlas hazard stack is built from - every hazard frequency, every hazard-exposure product and
+  every trend downstream begins here.
+resource_type: dataset
+license: CC-BY-4.0 # Atlas-computed indices; NEX-GDDP-CMIP6 input is a US Government work with no access constraints
+keywords:
+  [
+    climate indices,
+    hazard indices,
+    heat stress,
+    water stress,
+    waterlogging,
+    aridity,
+    CMIP6,
+    NEX-GDDP,
+    downscaled climate,
+    africa,
+  ]
+
+note: >
+  PUBLICATION PENDING - THIS IS WHY THE RECORD IS A DRAFT. The monthly index rasters are not on cloud
+  storage. They exist on compute infrastructure only, and `data` is deliberately omitted rather than
+  pointed at something approximate. When they are published, add the locations and the record passes
+  strict validation as it stands.
+  DO NOT CONFUSE WITH WHAT IS ALREADY ON S3. A prefix exists at
+  domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=global/ but it holds something
+  DIFFERENT: ANNUAL analysis-ready rasters for only 5 of the 18 GCMs, published as a
+  bias-correction QA subset. It is neither the monthly cadence nor the full ensemble described here.
+  Treating it as this dataset would silently narrow an 18-member ensemble to 5 and an index from
+  monthly to annual. If that subset is to be catalogued it needs its own record.
+  ENSEMBLE MEMBERSHIP IS LOAD-BEARING. Published products have previously mixed 18-member, 13-member
+  and 5-member ensembles without recording which was used, and the fix was to stamp membership into
+  the product (issue 26). Any record of a derived layer should carry the ensemble actually used, not
+  the ensemble available.
+  REGENERATION COST IS UNMEASURED. These are computed, not fetched, and the wall-clock cost of
+  rebuilding them on a host that does not already hold them has never been measured. Size it on a
+  single GCM before committing to a full rebuild.
+
+access: restricted
+access_note: >
+  Held on Atlas compute infrastructure and not distributed. Regenerable from the public
+  NEX-GDDP-CMIP6 archive with the Atlas index code, which is the intended route until the rasters are
+  published.
+
+contact:
+  - organization: Alliance of Bioversity International and CIAT
+    url: https://alliancebioversityciat.org/
+    roles: [licensor, producer]
+  - organization: NASA Center for Climate Simulation
+    url: https://www.nccs.nasa.gov/services/data-collections/land-based-products/nex-gddp-cmip6
+    roles: [producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+
+citation:
+  title: NASA Earth Exchange Global Daily Downscaled Projections (NEX-GDDP-CMIP6)
+  authors:
+    - "NASA Center for Climate Simulation"
+  date: "2026"
+  publisher: NASA Center for Climate Simulation
+
+created: "2026-09-18"
+updated: "2026-09-18"
+
+spatial:
+  crs: EPSG:4326
+  geography: [africa]
+
+dimensions:
+  - name: month
+    type: temporal
+    description: Calendar month of the index value.
+    step: P1M
+  - name: scenario
+    type: scenario
+    description: Emissions pathway. The historical window carries no SSP.
+    values: [historic, ssp126, ssp245, ssp370, ssp585]
+  - name: timeframe
+    type: timeframe
+    description: Twenty-year future window; the historical window is separate.
+    values: [2021_2040, 2041_2060, 2061_2080, 2081_2100]
+  - name: gcm
+    type: model
+    description: >
+      Source global climate model. The full ensemble is 18 members. Which members a derived product
+      actually used must be recorded on that product, not inferred from this list.
+
+variables:
+  - name: heat-indices
+    dimensions: [month, scenario, timeframe, gcm]
+    description: >
+      Heat-stress family, 37 codes: NTx20 to NTx50 counting days above a temperature threshold,
+      HSH_max and HSH_mean for human heat stress after Steadman, THI_max and THI_mean for cattle
+      thermal humidity, and TMAX.
+    data_type: float32
+    unit: day
+  - name: water-indices
+    dimensions: [month, scenario, timeframe, gcm]
+    description: >
+      Water-balance family: NDWS number of water-stress days, NDWL0 number of waterlogging days at
+      0 per cent, NDD number of dry days, and TAI Thornthwaite's Aridity Index.
+    data_type: float32
+    unit: day
+  - name: climate-variables
+    dimensions: [month, scenario, timeframe, gcm]
+    description: >
+      Underlying climate: PTOT total precipitation, TAVG mean temperature, TMIN minimum temperature.
+    data_type: float32
+    unit: mm
+
+processing:
+  - id: source
+    description: >
+      NASA downscales CMIP6 global climate model output to a daily 0.25 degree grid and bias-corrects
+      it, publishing NEX-GDDP-CMIP6.
+    derived_from:
+      - title: NEX-GDDP-CMIP6
+        url: https://www.nccs.nasa.gov/services/data-collections/land-based-products/nex-gddp-cmip6
+  - id: indices
+    description: >
+      Compute agro-climatic indices from the daily fields, per GCM, per scenario, per timeframe, at
+      monthly cadence.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards
+      version: 04_indices
+
+cdh:
+  domain: [climate]
+  usage:
+    intended_uses:
+      - Deriving hazard frequencies and hazard-exposure products across the Atlas hazard stack.
+      - Seasonal and long-term trend analysis of agro-climatic stress.
+    not_recommended_for:
+      - use: Substituting the annual 5-GCM subset already on S3 for this dataset.
+        reason: >
+          That subset is a bias-correction QA product at annual cadence for 5 of 18 models. Using it
+          in place of this would narrow the ensemble and coarsen the cadence without any record of it.
+        use_instead: Wait for these rasters to be published, or regenerate from the public archive with the Atlas index code.
+      - use: Reporting a derived layer without stating which ensemble members produced it.
+        reason: >
+          Published products have previously mixed 18, 13 and 5-member ensembles with no record of
+          which was used.
+        use_instead: Stamp ensemble membership into any derived product, per issue 26.
