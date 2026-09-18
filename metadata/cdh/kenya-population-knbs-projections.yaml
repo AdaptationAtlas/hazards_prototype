@@ -10,9 +10,6 @@ extensions:
 
 id: kenya-population-knbs-projections
 title: KNBS Official Population Projections by County, 2020-2045 (Kenya)
-series:
-  name: Africa Agriculture Adaptation Atlas
-  url: https://adaptationatlas.cgiar.org/
 description: >
   Kenya's official cohort-component population projections, from the 2019 KPHC Analytical Report on
   Population Projections (Volume XVI, KNBS 2022), tabulated from the report's Appendix 5 as
@@ -37,6 +34,20 @@ keywords:
   ]
 
 note: >
+  FEDERATED RECORD - NOTHING IS HOSTED BY THE ATLAS (decision 2026-09-18).
+  This record links to the KNBS publications and carries NO digital-atlas asset. Publishing the
+  projection tables to S3 is on hold pending written permission from KNBS (info@knbs.or.ke /
+  directorgeneral@knbs.or.ke). If that permission is granted, the derived tables become a SEPARATE
+  record with derived_from pointing at this one, rather than assets on this record.
+  HOW THE ATLAS USES THIS WITHOUT REDISTRIBUTING IT. The exposure chain applies projections as a
+  dimensionless growth ratio on a census anchor, never as absolute published values:
+  R/observational/_population_helpers.R, POP_METHOD=county-growth (the default at
+  7_zonal_exposure.R:138 and 7b_relevel_exposure_pop.R:64) computes
+  projection_county(year) / projection_county(2020) and multiplies the CC0 census count by it, so
+  no published artifact reproduces a KNBS projection. The alternative POP_METHOD=county-level
+  reproduces the official county total exactly and must NOT be used for anything published. Ratios
+  are read from the Summary Report, which carries no rights reservation, rather than from Volume XVI.
+
   LICENCE - CORRECTED 2026-09-18, READ BEFORE REUSE OR REDISTRIBUTION.
   This record previously claimed the KNBS Open License Agreement. That was WRONG. Volume XVI was
   read directly on 2026-09-18 and its copyright page states: "(c) 2022 Kenya National Bureau of
@@ -94,7 +105,7 @@ contact:
   - name: Peter Steward
     organization: Alliance of Bioversity International and CIAT
     email: p.steward@cgiar.org
-    roles: [processor, point-of-contact]
+    roles: [point-of-contact]
   - organization: Kenya National Bureau of Statistics (KNBS)
     url: https://www.knbs.or.ke/
     roles: [licensor, producer]
@@ -128,7 +139,10 @@ temporal:
 dimensions:
   - name: adm1_pcode
     type: location
-    description: IEBC county p-code (47 units); the join key to the boundary record.
+    description: >
+      County identifier. KNBS publishes county NAMES; the p-code is an Atlas-side addition,
+      mapped to IEBC COD-AB adm1 (record kenya-admin-codab) so county figures can be joined to
+      boundaries. It is not part of the source publication.
   - name: year
     type: temporal
     description: Projection year. Annual 2020-2035 plus the 2040 and 2045 milestones; 2036-2039 and 2041-2044 are not published.
@@ -204,11 +218,6 @@ variables:
     data_type: int64
     unit: "{person}"
 
-joins:
-  - target: https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=iebc-codab/region=kenya/processing=analysis-ready/level=adm1/ken_adm1.geojson
-    left_fields: [adm1_pcode]
-    right_fields: [adm1_pcode]
-
 processing:
   - id: source
     description: KNBS 2019 KPHC Analytical Report on Population Projections, Volume XVI, Appendix 5.
@@ -228,33 +237,29 @@ processing:
       version: python/ingest_population_knbs_projections.py
 
 data:
-  - name: adm0
-    description: National projections, year x age group x sex (972 rows).
+  - name: analytical-report-volume-xvi
+    description: >
+      2019 Kenya Population and Housing Census, Analytical Report on Population Projections,
+      Volume XVI - the authoritative publication, carrying county projections by year, five-year age
+      group and sex. All rights reserved; see the licence note before any reuse beyond analysis.
     locations:
-      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm0/population_knbs_projections_adm0.parquet
+      - url: https://www.knbs.or.ke/wp-content/uploads/2023/09/2019-Kenya-population-and-Housing-Census-Analytical-Report-on-Population-Projections.pdf
         title: HTTPS
-      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm0/population_knbs_projections_adm0.parquet
-        title: S3
-    media_type: application/vnd.apache.parquet
-    processing_steps: [source, tabulate]
-  - name: adm1
-    description: County projections, county x year x age group x sex (45,684 rows).
+    media_type: application/pdf
+    file_size: 16 MB
+    processing_steps: [source]
+  - name: summary-report
+    description: >
+      Summary Report on Kenya's Population Projections - a five-page extract carrying county totals
+      for 2020-2025, 2030, 2035, 2040 and 2045, plus labour-force and household projections. Unlike
+      Volume XVI it carries NO copyright page and no rights reservation, so it is the document the
+      Atlas reads growth ratios from.
     locations:
-      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm1/population_knbs_projections_adm1.parquet
+      - url: https://www.knbs.or.ke/wp-content/uploads/2023/09/2019-Kenya-population-and-Housing-Census-Summary-Report-on-Kenyas-Population-Projections.pdf
         title: HTTPS
-      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm1/population_knbs_projections_adm1.parquet
-        title: S3
-    media_type: application/vnd.apache.parquet
-    processing_steps: [source, tabulate]
-  - name: adm1-totals
-    description: County x year All Ages totals (846 rows) - the table the zonal exposure engine reads.
-    locations:
-      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm1/population_knbs_projections_adm1_totals.parquet
-        title: HTTPS
-      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm1/population_knbs_projections_adm1_totals.parquet
-        title: S3
-    media_type: application/vnd.apache.parquet
-    processing_steps: [source, tabulate]
+    media_type: application/pdf
+    file_size: 134 kB
+    processing_steps: [source]
 
 additional_links:
   - name: 2019 Kenya Population and Housing Census, Volume XVI - copyright statement
