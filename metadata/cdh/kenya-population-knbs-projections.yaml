@@ -34,11 +34,14 @@ keywords:
   ]
 
 note: >
-  FEDERATED RECORD - NOTHING IS HOSTED BY THE ATLAS (decision 2026-09-18).
-  This record links to the KNBS publications and carries NO digital-atlas asset. Publishing the
-  projection tables to S3 is on hold pending written permission from KNBS (info@knbs.or.ke /
-  directorgeneral@knbs.or.ke). If that permission is granted, the derived tables become a SEPARATE
-  record with derived_from pointing at this one, rather than assets on this record.
+  MIXED-STATUS RECORD - READ BEFORE REUSE (decision 2026-09-18).
+  The source documents are KNBS publications, linked here and not hosted by the Atlas. Three DERIVED
+  parquet tables were published to digital-atlas BEFORE the licence was correctly established; they
+  reproduce KNBS figures, so they are NOT open data. They are documented here deliberately: leaving
+  a public object undocumented is worse than describing its true status. They must not be treated
+  as open data, and this record must NOT be submitted to cdh-catalog, until written permission
+  exists from KNBS (info@knbs.or.ke / directorgeneral@knbs.or.ke). Permission request is deferred
+  as of 2026-09-18, so this state persists by decision, not by oversight.
   HOW THE ATLAS USES THIS WITHOUT REDISTRIBUTING IT. The exposure chain applies projections as a
   dimensionless growth ratio on a census anchor, never as absolute published values:
   R/observational/_population_helpers.R, POP_METHOD=county-growth (the default at
@@ -260,6 +263,43 @@ data:
     media_type: application/pdf
     file_size: 134 kB
     processing_steps: [source]
+
+  - name: adm0-derived-pending-clearance
+    description: >
+      DERIVED TABLE, PENDING LICENCE CLEARANCE - national totals by year, age group and sex, parsed
+      from Volume XVI. Published to S3 before the licence was correctly established. It reproduces
+      KNBS figures, so it is NOT open data and must not be treated as such until written permission
+      exists. Documented here rather than left undocumented-but-public.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm0/population_knbs_projections_adm0.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm0/population_knbs_projections_adm0.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, tabulate]
+  - name: adm1-derived-pending-clearance
+    description: >
+      DERIVED TABLE, PENDING LICENCE CLEARANCE - county by year, age group and sex, parsed from
+      Volume XVI. Same status as the adm0 table above.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm1/population_knbs_projections_adm1.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm1/population_knbs_projections_adm1.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, tabulate]
+  - name: adm1-totals-derived-pending-clearance
+    description: >
+      DERIVED TABLE, PENDING LICENCE CLEARANCE - county by year, All Ages both sexes. This is the
+      zonal denominator input, and it is the closest of the three to a verbatim reproduction of the
+      published county projection table. Same status as above.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm1/population_knbs_projections_adm1_totals.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya/processing=analysis-ready/level=adm1/population_knbs_projections_adm1_totals.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, tabulate]
 
 additional_links:
   - name: 2019 Kenya Population and Housing Census, Volume XVI - copyright statement

@@ -1,0 +1,177 @@
+# CDH v0.3.0 FEDERATED record, DRAFT - passes --draft only, not yet submittable.
+# BLOCKED ON LICENCE: no party has published terms for these sheets. license is deliberately
+# OMITTED rather than guessed - a wrong licence is worse than a visible gap.
+# Validate: node scripts/validate-yaml.js --draft --profile spec/schemas/profiles/cdh.schema.json <this file>
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: kenya-county-gender-datasheets
+title: Kenya County Gender Data Sheets, 2025
+description: >
+  Gender and social-inclusion indicators for all 47 Kenyan counties, published as one data sheet per
+  county in October 2025. Indicators cover health and fertility, education, economic participation,
+  political representation, disability and attitudes to intimate-partner violence, drawn largely
+  from the 2022 Kenya Demographic and Health Survey, the 2019 census and the 2022 general election.
+  A federated record - the Adaptation Atlas reads these sheets but does not host or redistribute
+  them.
+resource_type: dataset
+keywords:
+  [
+    gender,
+    social inclusion,
+    gesi,
+    disaggregation,
+    county,
+    kenya,
+    knbs,
+    un women,
+  ]
+
+note: >
+  LICENCE - DELIBERATELY UNSTATED, DO NOT GUESS ONE. Every page of a sheet was read and the raw PDF
+  scanned: there is NO copyright notice, NO "all rights reserved" and NO ISBN. That is materially
+  better footing than the KNBS census projections (record kenya-population-knbs-projections, whose
+  Volume XVI reserves rights in terms) - but absence of a notice is NOT a grant, and copyright
+  subsists automatically. Worse, there is no single party whose terms could be pointed at: these are
+  a six-way co-publication. The KNBS Open License Agreement does NOT reach them, being scoped to
+  data published on the KNBS Open Data Platform, while these are PDFs on knbs.or.ke - the same gap
+  already established for Volume XVI. UN Women co-publishes under the Women Count programme and
+  normally releases CC-BY-3.0-IGO, which is a signal and not a statement. Settle with UN Women Kenya
+  or the State Department for Gender before anything derived from these is published.
+  EDITION. The October 2025 set, all 47 county sheets. Not the 2019 ten-county pilot, and not a mix.
+  VINTAGE IS NOT UNIFORM AND IS NOT RECOVERABLE FROM THE SHEETS AS EXTRACTED. Indicators mix 2022
+  KDHS, 2019 census-derived figures and 2022 election results. The Atlas extraction strips any
+  trailing year from indicator labels, so no per-indicator reference year survives in the derived
+  table. Treating the whole table as "2022" is wrong for some indicators.
+  BLANK IS NOT ZERO. The extraction serves a series only where at least 40 of 47 counties agree with
+  the modal national value; non-matching county rows are dropped individually. So a served series can
+  be silently missing up to seven counties, and a missing county-series is a parse or gate drop -
+  NEVER an observed zero. Only 10 of 35 series reach all 47 counties; the worst is households with
+  an elderly member at 40/47. Per-county row counts run 22-35.
+  COVERAGE IS ASYMMETRIC WITHIN AN INDICATOR. One code can have 47 counties for male and 46 for
+  female. Do not compute a sex ratio or a gender gap without checking both sides are present for
+  that county.
+  CHART-ONLY INDICATORS ARE ABSENT BY METHOD. Antenatal-visit and vaccination charts and internet
+  usage are dropped by the gate. Their absence reflects the extraction, not the source.
+  LABELS ARE NOT DEFINITIONS. The canonical label is the longest string seen across the 47 sheets
+  and several remain truncated mid-sentence. Do not lift them into variable descriptions.
+  COLUMN-ORDER FRAGILITY. Values are read Kenya-then-County from the printed header. A future
+  edition that flips that header would swap every value silently; the coverage gate catches it only
+  if the national column also becomes inconsistent.
+
+access: public
+
+contact:
+  - organization: Kenya National Bureau of Statistics (KNBS)
+    url: https://www.knbs.or.ke/
+    roles: [licensor, producer]
+  - organization: State Department for Gender and Affirmative Action, Ministry of Gender, Culture and Children Services
+    roles: [licensor, producer]
+  - organization: Council of Governors
+    roles: [licensor, producer]
+  - organization: UN Women (Women Count)
+    url: https://data.unwomen.org/women-count
+    roles: [licensor, producer]
+  - organization: SDGs Kenya Forum
+    roles: [producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [point-of-contact]
+
+created: "2026-09-18"
+updated: "2026-09-18"
+
+spatial:
+  # bbox omitted deliberately: cdh-metadata-standard v0.3.0 --draft mode false-fails
+  # spatial.bbox (stripPresence removes the minItems/maxItems that discriminate the oneOf, so
+  # neither the flat nor the nested form validates). Restore [33.9, -4.7, 41.9, 5.5] at promotion.
+  crs: EPSG:4326
+  geography: [kenya]
+
+dimensions:
+  - name: county
+    type: location
+    description: >
+      County name as printed on the sheet, 47 counties. The sheets carry names, not p-codes; any
+      p-code is an Atlas-side addition mapped to IEBC COD-AB adm1 (record kenya-admin-codab).
+  - name: indicator_code
+    type: indicator
+    description: >
+      Stable indicator code as printed (A3, B1, D10 and so on). The extraction keys on this code and
+      never on label text - keying on labels fragmented a single indicator into 142 near-duplicate
+      variants in an earlier attempt. 24 codes are served.
+  - name: sub
+    type: subseries
+    description: >
+      Splits a code by sex, or by measure variant such as Gross against Net Attendance Ratio. 35
+      series across the 24 codes.
+
+variables:
+  - name: county_value
+    dimensions: [county, indicator_code, sub]
+    description: The county figure for that indicator series, as printed on the county sheet.
+    data_type: float64
+    unit: "1"
+  - name: kenya
+    dimensions: [indicator_code, sub]
+    description: >
+      The national figure printed alongside the county figure. Also the gate key - a series is served
+      only where at least 40 counties agree with the modal national value.
+    data_type: float64
+    unit: "1"
+
+processing:
+  - id: source
+    description: >
+      KNBS, the State Department for Gender and Affirmative Action, the Council of Governors, UN
+      Women (Women Count) and the SDGs Kenya Forum compile county indicators, largely from KDHS 2022,
+      the 2019 census and the 2022 general election, and publish one PDF data sheet per county.
+    derived_from:
+      - title: County Gender Datasheets 2025 (KNBS)
+        url: https://www.knbs.or.ke/reports/county-gender-datasheets-2025/
+  - id: extract
+    description: >
+      Deterministic text extraction from the 47 PDFs - pymupdf get_text("blocks"), two-column split
+      on x0 < 320, sorted by page, column and y, keyed on the printed indicator code, values read
+      Kenya-then-County per the printed header, then gated at 40 of 47 counties agreeing with the
+      modal national value. No language model touches a number.
+    code:
+      url: https://github.com/AdaptationAtlas/atlas_notebooks
+      version: data/KE-enso-explorer/_sources/gesi_extract.py
+
+data:
+  - name: county-data-sheets
+    description: >
+      47 county gender data sheets, October 2025, one PDF per county, roughly 12 pages each. Linked,
+      not hosted. Acquisition is NOT scripted in a public repository - the raw PDFs, the URL list and
+      the download script sit on project OneDrive, so this dataset is reproducible by transform but
+      not by fetch.
+    locations:
+      - url: https://www.knbs.or.ke/reports/county-gender-datasheets-2025/
+        title: HTTPS
+    media_type: application/pdf
+    processing_steps: [source]
+
+cdh:
+  domain: [socioeconomic]
+  usage:
+    intended_uses:
+      - Gender and social-inclusion disaggregation of county-level exposure in the KE-ENSO Explorer.
+    not_recommended_for:
+      - use: Reading a missing county-series as a zero or as a low value.
+        reason: >
+          Series are gated at 40 of 47 counties and non-matching rows are dropped individually, so
+          absence is a parse or gate artefact rather than an observation.
+        use_instead: Check per-series county coverage before mapping or ranking; only 10 of 35 series are complete.
+      - use: Treating the table as a single reference year, such as 2022.
+        reason: >
+          The sheets mix KDHS 2022, 2019 census-derived and 2022 election vintages, and the
+          extraction strips trailing years from labels, so no per-indicator year survives.
+        use_instead: Recover the reference year per indicator from the source sheet before making any temporal claim.
+      - use: Computing a sex ratio or gender gap without checking both sides.
+        reason: Coverage is asymmetric within a code - one sex can have 47 counties and the other 46.
+        use_instead: Require both sexes present for that county, or drop the county from the comparison.
