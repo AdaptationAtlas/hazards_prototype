@@ -168,6 +168,16 @@ if (has("--resolver-only")) {
   quit(save = "no", status = 0L)
 }
 
+# Layer 1 + 2 in one pass. Sweep globalenv() for every length-1 character and
+# every logical flag, rather than naming them. This is the guarantee: a new
+# entry in `subdirs` shows up here automatically.
+# This script's own variables live in the same globalenv as setup's, so they
+# would otherwise be swept up and reported as "changed paths" - `out` differs
+# between any two runs by construction, which would fail the gate every time.
+HARNESS_INTERNAL <- c("args", "out", "repo_root", "f1", "f2", "has", "val", "ts",
+                      "say", "write_tsv", "add", "rows", "golden", "ids", "srcs",
+                      "script", "kv", "exp", "bad", "m", "df", "con", "j", "k")
+
 # -----------------------------------------------------------------------------
 # Mode C: compare two snapshots against the real gate
 # -----------------------------------------------------------------------------
@@ -192,7 +202,27 @@ if (has("--compare")) {
   # files_local has none at all; files_s3 is assigned locally where used;
   # folder_path only ever appears as a data.frame column; local_dir only as a
   # named function argument.
-  EXPENDABLE <- paste0("global:", c("files_local", "files_s3", "folder_path", "local_dir"))
+  # Two classes of key may legitimately disappear.
+  #
+  # (a) Loop scratch left behind by the OLD section 3 - never outputs, just
+  #     whatever the last iteration happened to leave in globalenv:
+  #       files_local  - no downstream reader at all
+  #       files_s3     - assigned locally everywhere it is used
+  #       folder_path  - only ever a data.frame column (folders_x_hazards$folder_path)
+  #       local_dir    - only ever a named function argument
+  #       file, save_dir, glw_file - loop bodies: file <- files_local[i],
+  #                      save_dir <- dirname(file), glw_file <- glw_files[i].
+  #                      Nothing can depend on a leftover loop index named `file`;
+  #                      it is also a base R function name.
+  #
+  # (b) This harness's own variables. A snapshot taken before the sweep learned
+  #     to exclude them will show them dropping. Not a path regression.
+  EXPENDABLE <- c(
+    paste0("global:", c("files_local", "files_s3", "folder_path", "local_dir",
+                        "file", "save_dir", "glw_file")),
+    paste0("global:", HARNESS_INTERNAL),
+    paste0("globalvec:", HARNESS_INTERNAL)
+  )
 
   m <- merge(a, b, by = "key", all = TRUE, suffixes = c(".pre", ".post"))
   changed <- m[!is.na(m$value.pre) & !is.na(m$value.post) & m$value.pre != m$value.post, ]
@@ -253,15 +283,6 @@ add <- function(key, value) {
   )
 }
 
-# Layer 1 + 2 in one pass. Sweep globalenv() for every length-1 character and
-# every logical flag, rather than naming them. This is the guarantee: a new
-# entry in `subdirs` shows up here automatically.
-# This script's own variables live in the same globalenv as setup's, so they
-# would otherwise be swept up and reported as "changed paths" - `out` differs
-# between any two runs by construction, which would fail the gate every time.
-HARNESS_INTERNAL <- c("args", "out", "repo_root", "f1", "f2", "has", "val", "ts",
-                      "say", "write_tsv", "add", "rows", "golden", "ids", "srcs",
-                      "script", "kv", "exp", "bad", "m", "df", "con", "j", "k")
 
 g <- globalenv()
 for (n in sort(setdiff(ls(g, all.names = TRUE), HARNESS_INTERNAL))) {
