@@ -3,9 +3,14 @@
 15 CGIAR Climate Data Hub (CDH) **v0.3.0** metadata records, one per dataset the KE-ENSO Explorer uses.
 Upgraded from v0.1.0 on 2026-09-14 after Brayden's review
 ([cdh-metadata-standard#32](https://github.com/CGIAR-Climate-Data-Hub/cdh-metadata-standard/issues/32)).
-**The original 13 pass** the v0.3.0 schema + cross-field checks and `prettier --check` (what the catalog CI runs);
-the two KNBS population records added on 2026-09-15 (issue #28) parse but have **not** been run through
-the Node validator yet — do that before contributing them to cdh-catalog:
+**All 15 pass** the v0.3.0 schema + cross-field checks and `prettier --check` (what the catalog CI runs),
+re-verified 2026-09-18. The two KNBS population records added on 2026-09-15 (issue #28) had never been
+run through the Node validator and **failed** on first run: a hand-rolled top-level `licence_note:` key
+(rejected by the profile's `unevaluatedProperties: false`) and the missing
+`additional_links[{rel: license}]` that `license: LicenseRef-*` requires. Both fixed 2026-09-18 —
+`licence_note` folded into `note` under a `LICENCE EVIDENCE.` lead, licence link added
+(`https://kenya.opendataforafrica.org/gdlkmgb`; that page 403s to automated fetches, so the licence
+text is unread — worth a human eyeball before submission). Commands:
 
 ```sh
 # one-off tooling checkout (Node >= 20)

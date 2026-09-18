@@ -36,7 +36,8 @@ keywords:
     2020-2045,
   ]
 
-licence_note: >
+note: >
+  LICENCE EVIDENCE.
   Weaker footing than the census record, and the difference is worth stating. KNBS's Open License
   Agreement grants worldwide, royalty-free, non-exclusive rights to reuse, adapt, redistribute and
   create derivative works with attribution - but it is scoped to data published on the KNBS Open
@@ -48,7 +49,6 @@ licence_note: >
   Required attribution:
   "This product was adapted from the Statistical Office of Kenya's information, which is licensed under the KNBS Open License Agreement."
 
-note: >
   COUNTY ONLY. Volume XVI does not project below county - no sub-county name appears anywhere in the
   report - so this record stops at county. The KE-ENSO exposure tables (record
   kenya-flood-exposure-intersect) do carry sub-county figures for a projection year, and the way they
@@ -237,6 +237,18 @@ data:
         title: S3
     media_type: application/vnd.apache.parquet
     processing_steps: [source, tabulate]
+
+additional_links:
+  - name: KNBS Open License Agreement (Open Data Platform terms of use)
+    rel: license
+    url: https://kenya.opendataforafrica.org/gdlkmgb
+    description: >
+      Worldwide, royalty-free, non-exclusive licence to use, copy, modify, translate, publish,
+      adapt, distribute and create derivative works and value-added products, for commercial and
+      non-commercial purposes, subject to attribution. UNCONFIRMED FOR THIS RECORD: the agreement
+      is scoped to data published on the KNBS Open Data Platform, and Volume XVI is a PDF on
+      knbs.or.ke with no licensed mirror, so its coverage is still being confirmed with KNBS
+      (hazards_prototype issue 33).
 
 cdh:
   domain: [socioeconomic]

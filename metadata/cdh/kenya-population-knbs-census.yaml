@@ -37,7 +37,8 @@ keywords:
     "2019",
   ]
 
-licence_note: >
+note: >
+  LICENCE EVIDENCE.
   Evidence for the licence, recorded because knbs.or.ke itself carries no terms page (the
   terms-and-conditions URL 404s and the footer asserts "All Rights Reserved"), which is misleading:
   (1) KNBS operates an Open License Agreement covering its Open Data Platform, granting a worldwide,
@@ -51,7 +52,6 @@ licence_note: >
   Required attribution, carried by any product derived from this record:
   "This product was adapted from the Statistical Office of Kenya's information, which is licensed under the KNBS Open License Agreement."
 
-note: >
   ADMIN LEVELS DIFFER BY LEVEL. County joins one-for-one with IEBC COD-AB (47 units, adm1_pcode).
   Sub-county does NOT: COD-AB adm2 is 290 IEBC constituencies while the census reports 345 KNBS
   sub-county rows (a different universe - constituency splits such as Embakasi East/West/Central
@@ -264,6 +264,22 @@ data:
         title: S3
     media_type: application/vnd.apache.parquet
     processing_steps: [source, tabulate]
+
+additional_links:
+  - name: KNBS Open License Agreement (Open Data Platform terms of use)
+    rel: license
+    url: https://kenya.opendataforafrica.org/gdlkmgb
+    description: >
+      Worldwide, royalty-free, non-exclusive licence to use, copy, modify, translate, publish,
+      adapt, distribute and create derivative works and value-added products, for commercial and
+      non-commercial purposes, subject to attribution. Scoped to data published on the KNBS Open
+      Data Platform.
+  - name: KNBS release of the same sub-county table on HDX (Public Domain, No restrictions)
+    rel: about
+    url: https://data.humdata.org/dataset/kenya-population-per-county-from-census-report-2019
+    description: >
+      KNBS's own Humanitarian Data Exchange account published the identical sub-county table with
+      no restrictions, corroborating the open licence for this record.
 
 cdh:
   domain: [socioeconomic]
