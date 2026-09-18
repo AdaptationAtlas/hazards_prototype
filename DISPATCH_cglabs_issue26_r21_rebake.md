@@ -1,6 +1,64 @@
 # DISPATCH — issue #26: R/2.1 GCM pin + historic collapse + baseline mislabel → full re-bake
 
-**Status: WAITING FOR CGLABS. Newest block on top; append replies as dated blocks.**
+**Status: WAITING FOR MACBOOK — re-bake succeeded, but the n_models uniformity gate (Step-4 [2] AND probe) fails on a pre-existing all-NaN residue. NOT PUBLISHED. Newest block on top; append replies as dated blocks.**
+
+---
+
+## [cglabs 2026-09-18] Re-bake COMPLETE + validated. STOPPED before publish: n_models gate trips on pre-existing all-NaN rows (not a #26 regression). Need a GO/fix.
+
+**TL;DR.** The rebake did everything #26 targeted: GCM pin gone (18 members everywhere), historic collapse gone, both baselines present and genuinely different (mislabel dead), no partial ensembles. It ran clean, exit 0, ~12 h. **But** both the Step-4 assertion and `probe_r21_outputs.R` demand `n_models` be a *single uniform value (18)* per file, and every future file also carries **68,112 all-NaN rows with n_models=0**. Those zeros are **pre-existing structural** (same admin×hazard combos are NaN in the pre-#26 backup), not something this rebake introduced. Probe exits 1, publish is gated behind it, so **I did not publish**. Your call: relax the gate to accept `n_models ∈ {0,18} where 0 ⟺ all-NaN`, or drop/mask those NaN admin×hazard rows upstream.
+
+### Step 1 — audit indices_dir (PASS, did NOT set R21_ALLOW_UNEVEN_ENSEMBLE)
+
+| check | result |
+|---|---|
+| historical 1981-2014 folders | 18 |
+| historical 1995-2014 folders | 18 |
+| every ssp{126,245,370,585} × {2021_2040,2041_2060,2061_2080,2081_2100} | 18 each |
+| 1981-2014 per-hazard EMPTY check (9 hazards) | none empty |
+| tif-count uniformity across the 18 folders | uniform (HSH/THI 816, other 7 hazards 408) |
+
+1981-2014 is complete — no short window.
+
+### Step 2 — backup + clear
+
+`hazard_timeseries_mean_month` (16G, 6255 files) → `hazard_timeseries_mean_month_pre_issue26_bak`; fresh dir + `intermediate/` recreated. Disk fine (123T free).
+
+### Step 3 — run + early kill-gate (PASS)
+
+`GCMs per scenario x timeframe` = **18** for all 18 rows; `Ensemble members ( 18 )`; `Folders included` = **324** (18 × [16 ssp + 2 historic]), 4-token names. No evenness-gate stop. Log `logs/R21_pushdown_20260918_045834.log` (auto-committed+pushed by the wrapper).
+
+Per-section elapsed (checked, not just exit 0): §2 extraction ~folders in ≈3.5 h; §2.4 merge (4 monthly tables, 118,661,760 rows each); §3.1 seasonal (all 6 windows/periods); §3.2/3.3 ensembles+anomalies; §3.4 trends START 15:51:49 → END 16:51:30 UTC = **59.7 min**, all 10 combos done (9.3–36.9 min each), Rcpp kernel enabled. `COMPLETE ... exit: 0` 16:51:50 UTC. **Zero** error/fail/cannot/uneven lines in the whole log.
+
+### Step 4 — validation
+
+- **[1] intermediates — PASS.** 2916 files; historic-as-model rows = 0 (collapse dead); historic timeframes = 2 windows × 162 each (equal); `uniqueN(model)` = **18** for all 18 scenario×timeframe rows.
+- **[2] canonical ensemble n_models — FAIL (see diagnosis).** `haz_3months_adm_mean_2041-2060_anomaly-1981-2014_ensemble_seasons`: n_models table = `18 → 6,909,048 rows` **and** `0 → 68,112 rows`. Assertion `all(n_models==18)` halts.
+- **[3] baselines differ — PASS.** PTOT baseline windows differ in **100%** of iso3×season; `baseline_name` = `1981-2014` and `1995-2014` in the respective files. Mislabel is dead.
+- **Shape:** 10 `_seasons`, 10 `_ensemble_seasons`, 20 `_ensemble*`, 60 `_trends*`, 72 total; all mtimes post run start.
+
+### Probe (Step 5, read-only) — EXIT 1
+
+`38 passed, 10 failed`. All 10 fails are section 3 "n_models uniformity": `MIXED/zero n_models {0,18} — issue #26 failure mode`, one per `_ensemble_seasons` file. Everything else PASS (pruned columns absent, q17/q83 populated, pushdown stats on all 5 keys, row counts). `Fix failures before running r21_publish_to_s3.R` — so I stopped.
+
+### Diagnosis of the n_models=0 rows — pre-existing, benign, NOT a #26 regression
+
+Definitive check across all 10 `_ensemble_seasons` files:
+- `n_models ∈ {0,18}` only — **no partial ensembles** (no 5, no 13, nothing in 1..17).
+- **0 rows** where a *finite* value came from `n_models<18` (every real number uses all 18 models).
+- **0 rows** where `n_models==0` but data is present — every n_models=0 row is **all-NaN** (mean/sd/quantiles/anomaly all NaN).
+
+The 68,112 zero rows per future file are confined to small admin1 units × water-type hazards — `NDWL0` 30,960 + `NDWS` 30,960, then `NDD`/`NTx35`/`TAVG` 2,064 each; e.g. Congo / Point-Noire, NDWL0. These admin×hazard combos have no valid extraction, so all 18 GCMs are NaN → ensemble n_models=0.
+
+**Same residue exists in the pre-#26 backup**: `..._2041-2060_anomaly-1995-2014_ensemble_seasons` in `_pre_issue26_bak` has **61,920 all-NaN rows**, dominated by the same `NDWL0`/`NDWS` (27,864 each). So it predates this rebake (it used a `models` column, not `n_models`, which is why the probe's schema check couldn't have caught it before).
+
+### What I need from you (macbook) before I publish
+
+Pick one; both are your code:
+- **(a) Relax the gate** — treat `n_models ∈ {0,18}` as valid where `0 ⟺ all-NaN` (assert "no *partial* ensembles" and "no finite value from <18 models" instead of "uniformly 18"). Fastest; data is already correct. Update both Step-4 and `probe_r21_outputs.R §3`.
+- **(b) Drop/mask** the all-NaN admin×hazard rows upstream (in §3.2/3.3 ensemble build) so `n_models` is uniformly 18. Changes row counts; needs a re-run of §3.2+ (fast, `--skip-sec2 --skip-sec3-1`).
+
+Outputs are staged on-node and validated; the `_pre_issue26_bak` is intact for rollback. I have **not** touched S3. Say the word and I finish Step 5 publish + Step 6 verify.
 
 ---
 
