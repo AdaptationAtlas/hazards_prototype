@@ -12,7 +12,8 @@
 #   usd  : haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_<sev>  vs
 #          exposure_dir/vop_nominal-usd-2021_adm_sum_spam20_glw420.parquet
 #   intld: haz-freq-exp_vop_intld15-2021_ENSEMBLEmean_int_adm_<sev>      vs
-#          exposure_dir/exposure_adm_sum_spam20-20_glw420-20.parquet (unit intld15)
+#          exposure_dir/exposure_adm_sum_spam20-20_glw420-20.parquet (unit intld15-2021,
+#          or the pre-#30-fix `intld15` - the gate reports which it matched)
 # PASS = median ratio in [0.90, 1.10] AND every MATERIAL crop ratio in [0.50, 2.00],
 # where material means the reference value clears MIN_REF (default 1e5, env GATE_MIN_REF).
 # A ratio test is meaningless when the denominator is a rounding error: AGO coconut has a
@@ -48,17 +49,35 @@ haz_total <- function(pq) {
     dplyr::filter(iso3 %in% ISO, is.na(admin1_name), scenario == "historic", hazard %in% c("any", "none")) |>
     dplyr::select(iso3, crop, hazard_vars, hazard, value) |> dplyr::collect() |> as.data.table()
 }
+# `unit_keep` is ordered PREFERRED VINTAGE FIRST. Accepting several vintages keeps
+# the gate runnable across a migration, but silently accepting one is how #30 went
+# unnoticed: the gate and the product were comparing unlike vintages and nothing
+# said so. So say which vintage was actually matched, and warn when it is not the
+# decided one (p.steward 2026-09-18: the vintage stays in the name).
 ref_total <- function(pq, unit_keep) {
   d <- arrow::open_dataset(pq) |>
     dplyr::filter(iso3 %in% ISO, is.na(admin1_name), exposure == "vop") |>
     dplyr::select(iso3, crop, unit, tech, value) |> dplyr::collect() |> as.data.table()
+  present <- d[, sort(unique(unit))]
+  matched <- intersect(unit_keep, present)
+  if (!length(matched)) {
+    .log("  reference units present = [%s]; NONE of the accepted units [%s] is there",
+         paste(present, collapse = ","), paste(unit_keep, collapse = ","))
+  } else {
+    .log("  reference unit matched = %s (accepted %s | present %s)",
+         paste(matched, collapse = ","), paste(unit_keep, collapse = ","), paste(present, collapse = ","))
+    if (!identical(matched, unit_keep[1])) {
+      .log("  WARNING: matched on `%s`, not the decided vintage `%s` - gate and product may be on unlike vintages (#30)",
+           paste(matched, collapse = ","), unit_keep[1])
+    }
+  }
   d <- d[unit %in% unit_keep & (tech == "all" | is.na(tech))]
   d[, .(ref = sum(value, na.rm = TRUE)), by = .(iso3, crop)]
 }
 overall <- TRUE
 for (spec in list(
   list(lab = "usd",   dir = atlas_dirs$data_dir$hazard_risk_vop_usd, var = "vop_nominal-usd-2021", ref = file.path(ref_dir, "vop_nominal-usd-2021_adm_sum_spam20_glw420.parquet"), units = c("nominal-usd-2021", "usd")),
-  list(lab = "intld", dir = atlas_dirs$data_dir$hazard_risk_vop,     var = "vop_intld15-2021",     ref = file.path(ref_dir, "exposure_adm_sum_spam20-20_glw420-20.parquet"),    units = c("intld15", "intld15-2021", "intld15-2020")))) {
+  list(lab = "intld", dir = atlas_dirs$data_dir$hazard_risk_vop,     var = "vop_intld15-2021",     ref = file.path(ref_dir, "exposure_adm_sum_spam20-20_glw420-20.parquet"),    units = c("intld15-2021", "intld15", "intld15-2020")))) {
   cat(sprintf("\n=== %s | %s | %s | %s ===\n", spec$lab, TF, SEV, paste(ISO, collapse = ",")))
   pq <- file.path(spec$dir, TF, sprintf("haz-freq-exp_%s_ENSEMBLEmean_int_adm_%s.parquet", spec$var, SEV))
   if (!file.exists(pq)) { .log("%s: MISSING %s", spec$lab, pq); overall <- FALSE; next }

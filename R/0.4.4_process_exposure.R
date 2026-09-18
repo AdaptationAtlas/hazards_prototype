@@ -341,8 +341,47 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
   )
   
   # Subset units
-  exposure_adm_sum_tab[,unique(unit)]
-  units<-c(number="number",ha="ha",t="t",usd="nominal-usd-2020",intld15="intld15-2020",intld15="intld15")
+  # ---------------------------------------------------------------------------
+  # Issue #30. p.steward decision 2026-09-18: THE VINTAGE STAYS IN THE NAME -
+  # the same call made for the #26 baseline windows. A unit label that hides
+  # which vintage it describes cannot be reconciled against anything.
+  #
+  # What stood here was the defect. `units` was c(<harmonised label> = <source
+  # unit>); the subset kept rows whose unit matched a VALUE, and a rename loop
+  # further down rewrote the survivor to the vintage-less NAME:
+  #     nominal-usd-2020 -> usd    intld15-2020 -> intld15    intld15 -> intld15
+  # When 0.4.0 and 0.4.1 moved to `intld15-2021` / `nominal-usd-2021`, neither
+  # was in the list. Every current row was dropped by the subset, and what
+  # survived under the label `intld15` was an older on-disk vintage (the
+  # S3-legacy spam_vop_intld15_all.tif). So the published crop-livestock_all
+  # carried `intld15` rows of one vintage while the S3 key beside it claimed
+  # `vop_intld15-2021`, and the publish gate compared unlike vintages. The
+  # rename also disagreed with this block's own sidecar, which records
+  # unique(unit) BEFORE the loop ran. nominal-USD escaped the whole thing only
+  # because section 3.2 filters `unit == "nominal-usd-2021"` explicitly.
+  #
+  # Now: an explicit expected-unit list, NO renaming, and a hard stop when an
+  # expected unit is missing from the extraction. A silent drop cost months
+  # here; an abort costs one log line. EXPOSURE_UNITS_LENIENT=1 downgrades the
+  # stop to a warning for a deliberate partial run.
+  units <- strsplit(Sys.getenv("EXPOSURE_UNITS",
+                               "number,ha,t,nominal-usd-2021,intld15-2021"), ",")[[1]]
+  present_units <- exposure_adm_sum_tab[, sort(unique(unit))]
+  missing_units <- setdiff(units, present_units)
+  dropped_units <- setdiff(present_units, units)
+  .log044(sprintf("section 3.1: units present in extraction = %s", paste(present_units, collapse = ", ")))
+  .log044(sprintf("section 3.1: units kept (EXPOSURE_UNITS) = %s", paste(units, collapse = ", ")))
+  if (length(dropped_units)) {
+    .log044(sprintf("section 3.1: units DROPPED = %s", paste(dropped_units, collapse = ", ")))
+  }
+  if (length(missing_units)) {
+    .msg <- sprintf(paste0("section 3.1: expected unit(s) absent from the extraction: %s (present: %s). ",
+                           "This is the issue #30 failure mode - a producer changed vintage and the ",
+                           "combined table would silently carry an older one. Re-bake 0.4.0/0.4.1/0.4.2, ",
+                           "or set EXPOSURE_UNITS to the vintages actually on disk."),
+                    paste(missing_units, collapse = ", "), paste(present_units, collapse = ", "))
+    if (nzchar(Sys.getenv("EXPOSURE_UNITS_LENIENT"))) .log044(paste("WARNING -", .msg)) else stop(.msg)
+  }
   exposure_adm_sum_tab<-exposure_adm_sum_tab[unit %in% units]
   
   
@@ -381,10 +420,9 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
 
     write_json(attr_info, attr_file, pretty = TRUE)
 
-    # Harmonize unit naming
-    for(k in 1:length(units)){
-      exposure_adm_sum_tab[unit==units[k],unit:=names(units)[k]]
-    }
+    # No unit renaming: the vintage stays in the name (see the subset above).
+    # `unit` reaches the parquet exactly as the producer wrote it, which is also
+    # what this block's sidecar already recorded.
 
     exposure_adm_sum_tab[,crop:=gsub("_| ","-",crop)]
 

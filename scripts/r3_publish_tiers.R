@@ -39,6 +39,8 @@
 #   Rscript scripts/r3_publish_tiers.R --reference               # tiers + exposure reference
 #   Rscript scripts/r3_publish_tiers.R --reference-only
 #   Rscript scripts/r3_publish_tiers.R --sidecar-only            # ship .json only, parquet untouched
+#   Rscript scripts/r3_publish_tiers.R --reference-only --allow-unit-vintage-change
+#                                                                # intld15 -> intld15-2021 migration (#30)
 #   flags: --timeframe jagermeyr (default) | --allow-schema-drift (G5 -> warn) | --skip-gates
 
 t0 <- Sys.time()
@@ -57,6 +59,14 @@ ALLOW_DRIFT <- flag("--allow-schema-drift")
 # should not cost three ~190 MB re-uploads of byte-identical parquets, nor put a
 # known-good live object through an overwrite for no change.
 SIDECAR_ONLY <- flag("--sidecar-only")
+# Issue #30 / p.steward 2026-09-18: the reference's `unit` values move from the
+# vintage-less labels (`intld15`, `usd`) to the vintages the producers actually
+# emit (`intld15-2021`, `nominal-usd-2021`). That is an INTENDED change and the
+# distinct(unit) gate below will rightly fail on it, so it needs its own flag
+# rather than --skip-gates, which would wave through the schema and row checks
+# too. The flag still refuses to lose or invent a unit: cardinality must match,
+# because a vanishing unit is exactly how #30 stayed hidden.
+ALLOW_UNIT_VINTAGE <- flag("--allow-unit-vintage-change")
 DO_REF      <- flag("--reference") || flag("--reference-only")
 DO_TIERS    <- !flag("--reference-only")
 TF          <- opt("--timeframe", "jagermeyr")
@@ -226,7 +236,20 @@ if (DO_REF) {
           a <- sort((dl |> dplyr::distinct(!!rlang::sym(col)) |> dplyr::collect())[[col]])
           b <- sort((dr |> dplyr::distinct(!!rlang::sym(col)) |> dplyr::collect())[[col]])
           if (setequal(a, b)) .log("  ok: distinct(%s) identical = %s", col, paste(a, collapse = ","))
-          else { .log("  FAIL distinct(%s): live=[%s] local=[%s]", col, paste(a, collapse = ","), paste(b, collapse = ",")); ok <- FALSE }
+          else if (col == "unit" && ALLOW_UNIT_VINTAGE && length(a) == length(b)) {
+            .log("  unit vintage change ALLOWED (--allow-unit-vintage-change), %d -> %d units:", length(a), length(b))
+            .log("    live  = [%s]", paste(a, collapse = ","))
+            .log("    local = [%s]", paste(b, collapse = ","))
+            .log("    gone  = [%s]  new = [%s]", paste(setdiff(a, b), collapse = ","), paste(setdiff(b, a), collapse = ","))
+          }
+          else {
+            .log("  FAIL distinct(%s): live=[%s] local=[%s]", col, paste(a, collapse = ","), paste(b, collapse = ","))
+            if (col == "unit" && ALLOW_UNIT_VINTAGE) {
+              .log("    --allow-unit-vintage-change given but cardinality differs (%d live vs %d local) - a unit is being lost or invented, which is the #30 failure mode. Refusing.",
+                   length(a), length(b))
+            }
+            ok <- FALSE
+          }
         }
         nl <- nrow(dl); nr <- nrow(dr)
         if (abs(nr - nl) / nl <= 0.25) .log("  ok: rows local %d vs live %d", nr, nl)

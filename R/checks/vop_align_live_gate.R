@@ -42,9 +42,19 @@ REFRESH <- nzchar(Sys.getenv("GATE_REFRESH"))
 YEARS   <- 2019:2023   # matches the vop_intld15-2021 window used by 0.4.0 / 0.4.1
 FAO_EL  <- "Gross Production Value (constant 2014-2016 thousand I$)"
 FAO_URL <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip"
-LIVE    <- paste0("https://digital-atlas.s3.amazonaws.com/domain=exposure/type=combined/",
+# Default target is the CANONICAL reference `crop-livestock_all`, the object
+# scripts/r3_publish_tiers.R --reference publishes and R/checks/usd_total_vs_reference.R
+# gates against. The sibling `variable=vop_intld15-2021.parquet` is that same table
+# filtered to unit intld15 (bit-identical 768,818 rows) but has no producer in this
+# repo - an orphan published 2025-11-03. Override with GATE_LIVE_URL.
+LIVE    <- Sys.getenv("GATE_LIVE_URL", paste0(
+                  "https://digital-atlas.s3.amazonaws.com/domain=exposure/type=combined/",
                   "source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/",
-                  "variable=vop_intld15-2021.parquet")
+                  "variable=crop-livestock_all.parquet"))
+# Which unit carries constant international dollars. Issue #30 / p.steward 2026-09-18:
+# the vintage belongs IN the name, so the intended value is `intld15-2021`. The
+# vintage-less `intld15` is the pre-fix survivor of the 0.4.4 allow-list rename.
+UNIT_I  <- strsplit(Sys.getenv("GATE_UNIT_INTLD", "intld15-2021,intld15"), ",")[[1]]
 
 # MapSPAM-Africa is clipped to SSA, so North Africa has a real FAOStat crop GPV and a
 # structurally-zero product. GLW4 is global, so the same countries DO carry livestock.
@@ -69,18 +79,43 @@ repo <- if (file.exists("metadata/SPAM2010_FAO_crops.csv")) "." else Sys.getenv(
 }
 crop_f <- file.path(CACHE, "live_crop_vop_adm0.csv")
 lvst_f <- file.path(CACHE, "live_lvst_vop_adm0.csv")
+.unit_sql <- paste(sprintf("'%s'", UNIT_I), collapse = ", ")
 if (REFRESH || !file.exists(crop_f)) .step("extract live crop VoP (adm0)", .dd(sprintf(
   "SELECT iso3, admin0_name, crop, unit, sum(value) AS grid_vop FROM read_parquet('%s')
-   WHERE admin1_name IS NULL AND admin2_name IS NULL AND tech = 'all' GROUP BY ALL ORDER BY iso3, crop;",
-  LIVE), crop_f))
+   WHERE admin1_name IS NULL AND admin2_name IS NULL AND tech = 'all'
+     AND exposure = 'vop' AND unit IN (%s) GROUP BY ALL ORDER BY iso3, crop;",
+  LIVE, .unit_sql), crop_f))
 if (REFRESH || !file.exists(lvst_f)) .step("extract live livestock VoP (adm0)", .dd(sprintf(
   "SELECT iso3, admin0_name, crop, unit, sum(value) AS grid_vop FROM read_parquet('%s')
-   WHERE admin1_name IS NULL AND admin2_name IS NULL AND tech IS NULL GROUP BY ALL ORDER BY iso3, crop;",
-  LIVE), lvst_f))
-crop_p <- fread(crop_f); lvst_p <- fread(lvst_f)
+   WHERE admin1_name IS NULL AND admin2_name IS NULL AND tech IS NULL
+     AND exposure = 'vop' AND unit IN (%s) GROUP BY ALL ORDER BY iso3, crop;",
+  LIVE, .unit_sql), lvst_f))
+# duckdb's CSV writer emits the literal `NULL` for an all-NULL group. That is a
+# genuine "no data" (crop-livestock_all keeps rows whose value is NA), not a zero,
+# so it must parse to NA and land in the unmatched population rather than being
+# read as the string "NULL" - which silently types grid_vop character and blows up
+# the first sum().
+.NA_STR <- c("NULL", "NA", "")
+crop_p <- fread(crop_f, na.strings = .NA_STR); lvst_p <- fread(lvst_f, na.strings = .NA_STR)
+stopifnot(is.numeric(crop_p$grid_vop), is.numeric(lvst_p$grid_vop))
+.units_seen <- unique(c(crop_p$unit, lvst_p$unit))
 .log("product: %d crop rows (%d crops) + %d livestock rows | unit=%s",
-     nrow(crop_p), uniqueN(crop_p$crop), nrow(lvst_p),
-     paste(unique(c(crop_p$unit, lvst_p$unit)), collapse = ","))
+     nrow(crop_p), uniqueN(crop_p$crop), nrow(lvst_p), paste(.units_seen, collapse = ","))
+if (!nrow(crop_p) && !nrow(lvst_p)) {
+  stop("no rows for unit in [", paste(UNIT_I, collapse = ","), "] at ", LIVE,
+       " - check GATE_UNIT_INTLD against the published `unit` values")
+}
+# Issue #30 signature: the S3 key asserts a vintage the rows do not carry. A key
+# reading vop_intld15-2021 over rows reading `intld15` is the 0.4.4 allow-list
+# rename, and it means gate and product are comparing unlike vintages.
+.key_vintage <- regmatches(LIVE, regexpr("intld15-[0-9]{4}", LIVE))
+if (length(.key_vintage) && !(.key_vintage %in% .units_seen)) {
+  .log("VINTAGE MISMATCH: S3 key asserts `%s` but rows carry `%s` (issue #30 signature)",
+       .key_vintage, paste(.units_seen, collapse = ","))
+}
+if (identical(.units_seen, "intld15")) {
+  .log("NOTE: unit is the vintage-less `intld15` - pre-fix 0.4.4 survivor, not intld15-2021")
+}
 
 # -------------------------------------------------------------- reference side
 zipf <- file.path(CACHE, "vop.zip"); csvf <- file.path(CACHE, "Value_of_Production_E_Africa_NOFLAG.csv")
