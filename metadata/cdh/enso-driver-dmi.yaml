@@ -28,6 +28,13 @@ keywords:
   ]
 
 note: >
+  CURRENT ATLAS CONSUMPTION HAS NOT CAUGHT UP WITH THIS RECORD (2026-09-18). This record describes
+  the CPC ERSSTv6 series, which is the source the Atlas should read and the one that is openly
+  licensed. The KE-ENSO notebook staging still fetches DMI from NOAA PSL's HadISST-based file and
+  feeds it to the analogue engine, and the driver display falls back to an ERSST-based value only for
+  the most recent point - a mid-series reconstruction switch, which is the very failure mode this
+  record warns against. So the non-commercial HadISST encumbrance described below is LIVE in the
+  consuming notebook until that migration happens. Tracked as hazards_prototype issue 36.
   SOURCE CHOICE IS DELIBERATE. The widely cited DMI series served by NOAA PSL is computed from
   HadISST, which is Crown Copyright, Met Office, released under the UK Non-Commercial Government
   Licence - downloads permitted for private study and scientific research, any other use requiring a

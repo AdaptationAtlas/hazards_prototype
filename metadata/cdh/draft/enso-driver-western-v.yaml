@@ -24,9 +24,16 @@ keywords:
 
 note: >
   DRAFT - THE DEFINITION IS ESTABLISHED, THE SERVED PRODUCT IS NOT. Researched 2026-09-18.
-  WHAT IT IS. The "Western V" is a gradient index over Pacific sea-surface temperatures - the
-  east-west SST contrast across the V-shaped warm region - developed by Funk and colleagues to
-  predict East African rainfall. A negative gradient is associated with frequent East African
+  WHAT THE LITERATURE MEANS BY IT. Funk and colleagues describe a "Western V" gradient over Pacific
+  sea-surface temperatures - an east-west contrast across the V-shaped warm region - used to predict
+  East African rainfall.
+  WHAT THE ATLAS ACTUALLY CONSUMES IS NOT THAT (established 2026-09-18 by inspecting the staged
+  file). The served table carries TWO SEPARATE standardised columns, not two legs of one gradient:
+  wnp_std_mam (Western North Pacific, MAM) and wep_std_ond (West Equatorial Pacific, OND). The
+  notebook reads only wnp_std_mam; wep_std_ond has no call sites. So the live axis is a single
+  standardised area average, not a computed gradient. Either the producer named the index after one
+  leg, or the gradient framing does not apply to this series - unresolved, and it must be settled
+  before this record is promoted, because the two are different quantities. A negative gradient is associated with frequent East African
   droughts, and because it responds to recent La Nina conditions it supports lead times of roughly
   eight months, which is why it earns a place beside ENSO and IOD rather than duplicating them.
   Funk attributes the multi-decadal warming of the Western V region to climate change rather than
@@ -34,7 +41,24 @@ note: >
   its anomalies as stationary.
   WHAT IS STILL MISSING, AND WHY THIS IS STILL A DRAFT. Unlike RONI and DMI, no agency serves a
   Western V time series: there is no CPC or PSL file to point data[].locations at. The index is
-  computed, not fetched. Before promotion, record (a) the exact box coordinates and base period the
+  computed, not fetched - and not computed in any public repository. The only file carrying these
+  columns, driver_indices.parquet, is produced by the D409 pipeline and merely staged for the
+  notebook; its key-value metadata is a bare pandas schema with empty attributes, so box, base period
+  and SST product are recorded nowhere in any artifact anyone here can read. The builder and the
+  supporting documentation sit on D409 project storage, indexed by its own DATA_CATALOG.md.
+  THE NORMALISATION DIFFERS FROM THE OTHER TWO AXES, WHATEVER THE WINDOW TURNS OUT TO BE. The
+  _std_mam and _std_ond suffixes indicate SEASON-SPECIFIC standardisation, structurally unlike the
+  fixed monthly climatology behind RONI and DMI. So even if the window proves to be 1991-2020, this
+  axis is not normalised the same way, and a distance metric combining them is not combining like
+  with like.
+  THE SERIES IS ALREADY KNOWN TO DIVERGE FROM THE PUBLISHED INDEX. The staging README records that it
+  reproduces Funk's sign and the post-1997 regime shift but at -0.50 against a published -0.70 -
+  about 29 per cent low - and attributes the difference to a domain and/or product gap. That is not
+  "basis unrecorded"; it is "basis known to differ, by a documented amount". Recovering that
+  documentation is the concrete task.
+  NO PRODUCT LABEL, THOUGH THE PRODUCER WAS PRODUCT-AWARE. The same staged file distinguishes
+  dmi_hadisst from dmi_ersst and nino34_anom_noaa from nino34_std_ersst. The Western V columns carry
+  no product suffix at all - one series, unlabelled. Before promotion, record (a) the exact box coordinates and base period the
   Atlas uses and the specific paper they come from, (b) whether the Atlas computes it or takes it
   from a collaborator, and (c) the licence of the SST product underneath - if that is HadISST, the
   UK Non-Commercial Government Licence applies and the constraint documented in record
