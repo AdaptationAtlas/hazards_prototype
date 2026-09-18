@@ -1,0 +1,163 @@
+# CDH v0.3.0 FEDERATED record - the Atlas reads this through the FDW API but does not host or
+# redistribute it. Third-party series inside FDW may carry their own terms: see the licence note.
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: kenya-market-prices-fews
+title: Kenya Retail and Wholesale Market Prices (FEWS NET Data Warehouse)
+description: >
+  Staple and livestock market prices for Kenya from the FEWS NET Data Warehouse market price facts:
+  42 counties by market by product, 12 products, retail and wholesale, in Kenyan shillings, 2000 to
+  2026. Pulled through the FDW API. The price basis behind the Kenya ENSO Explorer's market panel and
+  behind the pastoral terms of trade shown there, which the Atlas derives rather than reads.
+resource_type: dataset
+license: LicenseRef-FEWSNET-Data-Use-Policy # no SPDX id fits: FEWS NET publishes data as a public service under USAID's open-data policy (ADS 579) with attribution required, and some series are third-party and carry their own terms. See the licence note.
+keywords:
+  [
+    market prices,
+    retail prices,
+    wholesale prices,
+    terms of trade,
+    staple foods,
+    livestock,
+    fews net,
+    kenya,
+  ]
+
+note: >
+  LICENCE IS A POLICY, NOT A CREATIVE COMMONS GRANT. FEWS NET provides data as a public service,
+  managed under USAID's policy on sharing Agency-funded data (ADS 579). Attribution is required, in
+  the manner indicated in the metadata accompanying the data, prominently on any visual that uses it,
+  with a link to the FEWS NET website, and without claiming or implying that FEWS NET endorses the
+  use. FEWS NET disclaims liability and makes no guarantee of accuracy or completeness.
+  THE CLAUSE THAT MATTERS FOR REDISTRIBUTION. FEWS NET states that "some data are provided by third
+  parties, and may not be redistributed or reused without the consent of the original data provider,
+  or may be subject to additional terms and conditions", and instructs users to check the primary
+  source's own policy. Market price series are commonly collected by national agencies rather than by
+  FEWS NET itself, so this clause is live for this dataset: reading the prices for analysis is
+  unencumbered, republishing the series as an Atlas data product needs the originating agency
+  identified first. Nothing derived from this is published by the Atlas today.
+  TERMS OF TRADE IS OURS, NOT THEIRS. The pastoral terms of trade shown in the Explorer is computed
+  here as goat price divided by maize price. It is not an NDMA figure and it is not published by
+  FEWS NET in that form. It is a ratio, so it moves with either leg - a fall can mean cheaper
+  livestock or dearer grain, which have opposite implications - and it should never be read as a
+  price index.
+  NOT NDMA. Kenya's National Drought Management Authority publishes drought early warning bulletins
+  carrying market prices and terms of trade, and an earlier version of the Atlas metadata wrongly
+  named them as a source. No NDMA bulletin is fetched, parsed or mirrored anywhere. The NDMA
+  bulletins remain a candidate source, held as a local draft record.
+  COVERAGE IS UNEVEN. 42 of 47 counties appear, markets within a county vary, and a product is not
+  quoted in every market in every month. Absence is a gap in market reporting, not a zero price.
+
+access: public
+
+contact:
+  - organization: Famine Early Warning Systems Network (FEWS NET), USAID
+    url: https://fews.net/
+    roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [point-of-contact]
+
+citation:
+  title: FEWS NET Data Warehouse, market price facts
+  authors:
+    - "Famine Early Warning Systems Network"
+  date: "2026"
+  publisher: United States Agency for International Development (USAID)
+  url: https://fews.net/
+
+created: "2026-09-18"
+updated: "2026-09-18"
+
+spatial:
+  bbox: [33.9, -4.7, 41.9, 5.5]
+  crs: EPSG:4326
+  geography: [kenya]
+
+temporal:
+  start_date: "2000"
+  end_date: null
+
+dimensions:
+  - name: month
+    type: temporal
+    description: Month of the price observation.
+    step: P1M
+  - name: market
+    type: location
+    description: Reporting market, nested within a county. Markets present vary by county and by period.
+  - name: product
+    type: product
+    description: Traded commodity, 12 in total, covering staple cereals, pulses and livestock.
+  - name: price_type
+    type: price-type
+    description: Whether the quote is retail or wholesale.
+    values: [retail, wholesale]
+
+variables:
+  - name: price
+    dimensions: [month, market, product, price_type]
+    description: >
+      Observed market price in Kenyan shillings. Nominal, not deflated - any multi-year comparison
+      needs a deflator applied first.
+    data_type: float64
+    unit: KES
+
+processing:
+  - id: source
+    description: >
+      FEWS NET and partner agencies collect market prices and load them into the FEWS NET Data
+      Warehouse, which serves them publicly through the FDW API and the Data Explorer.
+    derived_from:
+      - title: FEWS NET Data Warehouse
+        url: https://help.fews.net/fdw/about-the-fews-net-data-warehouse
+      - title: FEWS NET API
+        url: https://help.fews.net/fdw/fews-net-api
+
+data:
+  - name: fdw-market-price-facts
+    description: >
+      Market price facts for Kenya, retrieved through the FDW API. 27,406 observations as staged for
+      the Kenya ENSO Explorer. Not republished by the Atlas.
+    locations:
+      - url: https://help.fews.net/fdw/fews-net-api
+        title: HTTPS
+    media_type: application/json
+    processing_steps: [source]
+
+additional_links:
+  - name: FEWS NET data and information use and attribution policy
+    rel: license
+    url: https://help.fews.net/fdp/data-and-information-use-and-attribution-policy
+    description: >
+      Attribution requirements, disclaimer of liability, and the clause that third-party data inside
+      the warehouse may not be redistributed without the original provider's consent.
+  - name: FEWS NET data attribution guidance
+    rel: about
+    url: https://fews.net/data-attribution
+    description: Citation formats FEWS NET asks users to follow when reproducing its data or graphics.
+
+cdh:
+  domain: [socioeconomic]
+  usage:
+    intended_uses:
+      - Showing how staple and livestock prices moved through past ENSO-linked seasons in the Kenya ENSO Explorer.
+      - Deriving a pastoral terms-of-trade ratio as a proxy for purchasing power in pastoral counties.
+    not_recommended_for:
+      - use: Republishing the price series as an Atlas data product.
+        reason: >
+          FEWS NET warns that third-party series inside the warehouse may not be redistributed
+          without the original provider's consent, and market prices are commonly collected by
+          national agencies rather than by FEWS NET.
+        use_instead: Read for analysis, publish derived indicators, and identify the originating agency before redistributing any series.
+      - use: Comparing prices across years without deflating.
+        reason: Values are nominal Kenyan shillings over a 26-year span.
+        use_instead: Apply a deflator, or compare a ratio such as terms of trade, which is unit-free.
+      - use: Reading a missing market-month as a zero or a low price.
+        reason: Coverage is uneven - 42 of 47 counties, and products are not quoted in every market every month.
+        use_instead: Treat gaps as unreported and check per-market coverage before mapping or ranking.

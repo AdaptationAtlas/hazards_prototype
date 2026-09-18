@@ -1,5 +1,6 @@
-# CDH v0.3.0 FEDERATED record - the Atlas cites these bulletins but does not host them.
-# Promoted from draft 2026-09-18 on an EXPLICIT WORKING ASSUMPTION of openness - see the licence note.
+# CDH v0.3.0 FEDERATED record, DRAFT - a CANDIDATE source, NOT currently ingested by anything.
+# Demoted from strict 2026-09-18: the Atlas reads FEWS NET FDW for market prices, not NDMA
+# bulletins. See record kenya-market-prices-fews for what is actually used.
 $schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
 cdh_schema_version: v0.3.0
 extensions:
@@ -13,11 +14,24 @@ description: >
   national bulletin and as per-county bulletins for the arid and semi-arid counties. A federated
   record: the Adaptation Atlas cites these bulletins but does not host them.
 resource_type: dataset
-license: LicenseRef-KE-Gov-Statistics-Assumed-Open # WORKING ASSUMPTION, not a grant anyone made: NDMA publishes no terms, and Kenyan government early-warning bulletins issued for public drought response are treated as open pending evidence otherwise. Decision by the Atlas data owner, 2026-09-18.
+# license withheld while this is a candidate rather than a source:
+# license: LicenseRef-KE-Gov-Statistics-Assumed-Open # WORKING ASSUMPTION, not a grant anyone made: NDMA publishes no terms, and Kenyan government early-warning bulletins issued for public drought response are treated as open pending evidence otherwise. Decision by the Atlas data owner, 2026-09-18.
 keywords:
   [market prices, terms of trade, drought early warning, pastoral, kenya, ndma]
 
 note: >
+  NOT CURRENTLY INGESTED - THIS IS A CANDIDATE SOURCE (corrected 2026-09-18).
+  An earlier version of this record implied the Atlas reads these bulletins. It does not. The Kenya
+  ENSO Explorer's market prices come entirely from the FEWS NET Data Warehouse - see record
+  kenya-market-prices-fews - and no code anywhere fetches, parses or mirrors an NDMA bulletin. The
+  pastoral terms of trade shown in the Explorer is DERIVED from FEWS prices (goat divided by maize),
+  not read from NDMA.
+  The record is kept as a draft because the bulletins are a genuinely valuable and largely untapped
+  source: the per-county Drought Early Warning bulletins carry market and terms-of-trade detail that
+  the national bulletin only summarises, and nothing else covers the arid and semi-arid counties at
+  that cadence. If they are ever ingested, this record is the starting point - but it should not be
+  submitted to a catalog describing a dataset nobody reads.
+
   DRAFT - BLOCKED ON TWO THINGS. (a) No licence is published for NDMA bulletins; confirm with NDMA
   before asserting one. As of 2026-09-18 the terms could not even be checked: ndma.go.ke presents an
   EXPIRED TLS CERTIFICATE, so the site cannot be fetched over a verified connection. That is a
