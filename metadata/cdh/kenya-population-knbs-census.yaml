@@ -21,7 +21,7 @@ description: >
   47,564,296, where the two gridded surfaces the Explorer also carries (kenya-population-worldpop
   55.2 M, kenya-population-grid3 55.9 M) sit about 17 per cent higher.
 resource_type: dataset
-license: LicenseRef-KNBS-Open-License # KNBS Open License Agreement: worldwide, royalty-free, non-exclusive, derivative works and redistribution permitted, commercial and non-commercial, attribution required. KNBS additionally released this exact table on HDX under Public Domain / No restrictions - see the licence note below.
+license: CC0-1.0 # KNBS's own HDX account released this exact table as Public Domain / No restrictions (HDX license_id other-pd-nr), verified 2026-09-18 against the HDX API. The KNBS Open License Agreement covers the same content on the KNBS Open Data Platform. Attribution is not required by CC0 but is given anyway - see the licence evidence in the note.
 
 keywords:
   [
@@ -38,7 +38,16 @@ keywords:
   ]
 
 note: >
-  LICENCE EVIDENCE.
+  LICENCE EVIDENCE. Verified 2026-09-18 against the HDX API: the dataset
+  "Kenya: Population Per County and sub county from Census Report", published by KNBS's OWN HDX
+  organisation (Kenya National Bureau of Statistics), carries license_id other-pd-nr, "Public Domain
+  / No restrictions (CC0)", and its resource is the identical workbook this record ingests
+  ("Distribution of Population by Sex, Number of Households, Land Area, Population Density and Sub
+  County.xlsx"). That is an explicit act of dedication by the rights holder over this content, so
+  CC0-1.0 is asserted here rather than a LicenseRef. Note that KNBS census VOLUMES carry a general
+  "All rights reserved" notice; it does not govern this table, which KNBS itself released without
+  restriction. Attribution is given as a courtesy though CC0 does not require it.
+  The supporting evidence gathered earlier still stands:
   Evidence for the licence, recorded because knbs.or.ke itself carries no terms page (the
   terms-and-conditions URL 404s and the footer asserts "All Rights Reserved"), which is misleading:
   (1) KNBS operates an Open License Agreement covering its Open Data Platform, granting a worldwide,

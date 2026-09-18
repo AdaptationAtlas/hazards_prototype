@@ -21,7 +21,7 @@ description: >
   Lets forward-framed flood and drought exposure use a population denominator for the year in
   question instead of a 2020 surface read as current.
 resource_type: dataset
-license: LicenseRef-KNBS-Open-License # KNBS Open License Agreement (worldwide, royalty-free, derivative works permitted, attribution required). Weaker footing than the census record: that agreement is scoped to the KNBS Open Data Platform, and Volume XVI is a PDF on knbs.or.ke with no licensed mirror anywhere - see the licence note.
+license: LicenseRef-KNBS-All-Rights-Reserved # CORRECTED 2026-09-18. Volume XVI states "All rights reserved ... without the prior written permission of the Bureau". This is NOT an open licence and the earlier LicenseRef-KNBS-Open-License claim on this record was wrong. Redistribution of derived tables requires written permission from KNBS - see the licence note.
 
 keywords:
   [
@@ -37,6 +37,24 @@ keywords:
   ]
 
 note: >
+  LICENCE - CORRECTED 2026-09-18, READ BEFORE REUSE OR REDISTRIBUTION.
+  This record previously claimed the KNBS Open License Agreement. That was WRONG. Volume XVI was
+  read directly on 2026-09-18 and its copyright page states: "(c) 2022 Kenya National Bureau of
+  Statistics. All rights reserved. No part of this publication may be reproduced, distributed, or
+  transmitted in any form or by any means ... without the prior written permission of the Bureau."
+  The KNBS Open License Agreement is scoped to data published on the KNBS Open Data Platform and
+  does not reach a PDF published on knbs.or.ke, and a search of HDX on 2026-09-18 found NO licensed
+  mirror of these projections anywhere - the UNFPA COD-PS product (cod-ps-ken, CC-BY-3.0-IGO) carries
+  the 2019 census only and contains no projections, so there is no openly licensed substitute.
+  CONSEQUENCE. Extracting these figures for analysis is ordinary research use. REDISTRIBUTING them,
+  including as the derived parquet files this record points at, needs written permission from KNBS
+  (info@knbs.or.ke / directorgeneral@knbs.or.ke, the addresses given in the report). Until that
+  permission exists this record must NOT be submitted to cdh-catalog, and the published derivatives
+  should be treated as pending clearance rather than as open data. Tracked in hazards_prototype
+  issue 33.
+  This constraint does NOT apply to the census counts - record kenya-population-knbs-census is
+  CC0-1.0, released without restriction by KNBS's own HDX account.
+
   LICENCE EVIDENCE.
   Weaker footing than the census record, and the difference is worth stating. KNBS's Open License
   Agreement grants worldwide, royalty-free, non-exclusive rights to reuse, adapt, redistribute and
@@ -239,16 +257,23 @@ data:
     processing_steps: [source, tabulate]
 
 additional_links:
-  - name: KNBS Open License Agreement (Open Data Platform terms of use)
+  - name: 2019 Kenya Population and Housing Census, Volume XVI - copyright statement
     rel: license
+    url: https://www.knbs.or.ke/wp-content/uploads/2023/09/2019-Kenya-population-and-Housing-Census-Analytical-Report-on-Population-Projections.pdf
+    description: >
+      The report's own copyright page, page 3 - "(c) 2022 Kenya National Bureau of Statistics. All
+      rights reserved. No part of this publication may be reproduced, distributed, or transmitted in
+      any form or by any means, including photocopying, recording or other electronic or mechanical
+      methods, without the prior written permission of the Bureau except in the brief quotations
+      embodied in reviews and certain other non-commercial uses permitted by the copyright laws."
+      Read directly from the PDF on 2026-09-18.
+  - name: KNBS Open License Agreement (Open Data Platform terms of use)
+    rel: about
     url: https://kenya.opendataforafrica.org/gdlkmgb
     description: >
-      Worldwide, royalty-free, non-exclusive licence to use, copy, modify, translate, publish,
-      adapt, distribute and create derivative works and value-added products, for commercial and
-      non-commercial purposes, subject to attribution. UNCONFIRMED FOR THIS RECORD: the agreement
-      is scoped to data published on the KNBS Open Data Platform, and Volume XVI is a PDF on
-      knbs.or.ke with no licensed mirror, so its coverage is still being confirmed with KNBS
-      (hazards_prototype issue 33).
+      The open agreement that covers KNBS data published on the Open Data Platform. It does NOT
+      reach Volume XVI, which is published as a PDF on knbs.or.ke under the all-rights-reserved
+      notice above. Recorded to show which licence was checked and rejected for this record.
 
 cdh:
   domain: [socioeconomic]
