@@ -38,8 +38,11 @@ note: >
   Atlas uses and the specific paper they come from, (b) whether the Atlas computes it or takes it
   from a collaborator, and (c) the licence of the SST product underneath - if that is HadISST, the
   UK Non-Commercial Government Licence applies and the constraint documented in record
-  enso-driver-dmi carries over verbatim. Computing it from ERSSTv6 instead would keep all three
-  driver axes on one reconstruction and one climatology, and would avoid the encumbrance entirely.
+  enso-driver-dmi carries over verbatim. A non-commercial licence is ACCEPTABLE for this record if
+  that is what the underlying SST product requires - data-owner decision, 2026-09-18 - so the
+  licence is not the blocker; the missing box definition and source product are. Computing it from
+  ERSSTv6 instead would still be preferable on method grounds, keeping all three driver axes on one
+  reconstruction and one climatology, and would avoid the encumbrance as a side effect.
 
 contact:
   - name: Peter Steward
