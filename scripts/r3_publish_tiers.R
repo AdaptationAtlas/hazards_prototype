@@ -38,6 +38,7 @@
 #   Rscript scripts/r3_publish_tiers.R --tiers severe            # subset
 #   Rscript scripts/r3_publish_tiers.R --reference               # tiers + exposure reference
 #   Rscript scripts/r3_publish_tiers.R --reference-only
+#   Rscript scripts/r3_publish_tiers.R --sidecar-only            # ship .json only, parquet untouched
 #   flags: --timeframe jagermeyr (default) | --allow-schema-drift (G5 -> warn) | --skip-gates
 
 t0 <- Sys.time()
@@ -51,6 +52,11 @@ opt  <- function(x, default) { i <- match(x, args); if (is.na(i) || i == length(
 DRY_RUN     <- flag("--dry-run")
 SKIP_GATES  <- flag("--skip-gates")
 ALLOW_DRIFT <- flag("--allow-schema-drift")
+# Ship only the `.json` sidecar for each tier, leaving the live parquet untouched.
+# The #26 membership stamp can be applied to sidecars on disk in seconds, so it
+# should not cost three ~190 MB re-uploads of byte-identical parquets, nor put a
+# known-good live object through an overwrite for no change.
+SIDECAR_ONLY <- flag("--sidecar-only")
 DO_REF      <- flag("--reference") || flag("--reference-only")
 DO_TIERS    <- !flag("--reference-only")
 TF          <- opt("--timeframe", "jagermeyr")
@@ -121,6 +127,20 @@ if (DO_TIERS) for (tier in TIERS) {
   cat(sprintf("\n--- %s ---\n", toupper(tier)))
   local_f <- file.path(local_tier_dir, sprintf("haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_%s.parquet", tier))
   s3_key  <- sprintf("%s/severity=%s/int=multi-hazard.parquet", S3_BASE, tier)
+
+  if (SIDECAR_ONLY) {
+    sc_local <- paste0(local_f, ".json")
+    if (!file.exists(sc_local)) { .log("  SIDECAR-ONLY FAIL: missing %s (run scripts/stamp_ensemble_membership.R first)", sc_local); next }
+    em <- tryCatch(jsonlite::read_json(sc_local, simplifyVector = TRUE)$ensemble, error = function(e) NULL)
+    if (is.null(em)) { .log("  SIDECAR-ONLY FAIL: %s has no `ensemble` block - nothing worth publishing", basename(sc_local)); next }
+    .log("  sidecar: ensemble = %d GCMs [%s]", em$n_members, paste(em$members, collapse = ","))
+    if (!identical(as.integer(em$n_members), 18L)) {
+      .log("  SIDECAR-ONLY FAIL: %d members, not 18 - refusing to publish a partial-ensemble claim (#26)", em$n_members); next
+    }
+    finish_upload(sc_local, sprintf("s3://%s/%s.json", BUCKET, s3_key))
+    .log("  %s sidecar done in %s", tier, .elapsed(t_tier))
+    next
+  }
 
   # G1
   if (!file.exists(local_f)) { .log("  G1 FAIL: missing %s (has R/3 §4.2 run for %s?)", local_f, TF); next }
