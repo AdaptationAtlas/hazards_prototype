@@ -1,0 +1,196 @@
+# CDH v0.3.0 record - the Atlas hazard x exposure product. The flagship published output.
+# READ THE NOTE BEFORE USE: the published currency basis is NOMINAL USD 2021, not the Atlas
+# standard constant international dollars, and an open defect affects the livestock counterpart.
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: africa-hazard-exposure-nexgddp
+title: Hazard Frequency crossed with Crop Value of Production, Sub-Saharan Africa
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  The Atlas hazard-exposure product: the frequency of each agro-climatic hazard crossed with the
+  value of crop production exposed to it, by administrative unit, crop, hazard, scenario and
+  timeframe, for Sub-Saharan Africa. Built from NEX-GDDP-CMIP6 hazard indices and MapSPAM-derived
+  crop value of production. This is the layer the Atlas notebooks read to answer "how much
+  production is exposed to this hazard, where, and how does that change under future scenarios".
+resource_type: dataset
+license: CC-BY-4.0 # derived product; principal inputs (MapSPAM Adaptation Atlas SSA, GAUL 2024) are CC-BY-4.0
+keywords:
+  [
+    hazard exposure,
+    climate risk,
+    value of production,
+    crop exposure,
+    CMIP6,
+    NEX-GDDP,
+    sub-saharan africa,
+  ]
+
+note: >
+  CURRENCY BASIS - THE MOST IMPORTANT THING TO KNOW. What is published is
+  variable=vop_nominal-usd21, value of production in NOMINAL 2021 US dollars. That is NOT the Atlas
+  standard basis, which is constant 2015 international dollars (vop_intld15). Nominal values are not
+  deflated, so a change between timeframes mixes price change with production change, and figures
+  are not comparable with any Atlas product quoted in constant international dollars.
+  AND THERE IS AN OPEN DEFECT ON THE CURRENCY ALIGNMENT. A live-artifact gate run on 2026-09-18 found
+  crop value of production reconciling to FAOSTAT at a ratio of 1.007 but the LIVESTOCK counterpart
+  at 1.198 - a 20 per cent discrepancy that has not been explained. A previous mismatch of the same
+  kind, nominal USD against constant international dollars, produced roughly a sevenfold error in
+  cattle exposure. THIS RECORD MUST BE UPDATED WHEN THAT FIX LANDS: the currency basis, the affected
+  variables and this caveat all change together. Tracked as hazards_prototype issue 30.
+  ONLY ONE EXPOSURE VARIABLE IS PUBLISHED. Despite the product being designed to carry crop,
+  livestock and population exposure, the live prefix holds exposure_var = vop only. There is no
+  published population or livestock exposure tier under this source. Do not infer their existence
+  from the schema.
+  ONLY THE ENSEMBLE MEAN IS PUBLISHED. model = ENSEMBLEmean throughout; no per-model files exist
+  here. Ensemble membership has previously varied between 18, 13 and 5 members across products
+  without being recorded, which is why membership is now stamped into the product metadata - check
+  it rather than assuming 18. Tracked as hazards_prototype issue 26.
+  ONLY THE JAGERMEYR CROP CALENDAR IS PUBLISHED. period = jagermeyr; no annual or alternative
+  calendar variant is present under this source.
+  SCALE. Each severity file holds roughly 68 million rows at about 62 MB compressed. Query it with
+  predicate pushdown - reading it whole into memory is not the intended access pattern.
+  BASELINE. The historic window is 1995-2014, which is the end of the CMIP6 historical run, not a
+  WMO 1991-2020 normal. Comparisons against a 1991-2020 baseline are not possible from this source.
+
+contact:
+  - organization: Alliance of Bioversity International and CIAT
+    url: https://alliancebioversityciat.org/
+    roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+
+citation:
+  title: Africa Agriculture Adaptation Atlas hazard-exposure product
+  authors:
+    - "Alliance of Bioversity International and CIAT"
+  date: "2026"
+  publisher: Alliance of Bioversity International and CIAT
+  url: https://adaptationatlas.cgiar.org/
+
+created: "2026-09-18"
+updated: "2026-09-18"
+
+spatial:
+  bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present
+  crs: EPSG:4326
+  geography: [sub-saharan-africa]
+
+temporal:
+  start_date: "1995"
+  end_date: "2100"
+
+dimensions:
+  - name: severity
+    type: severity
+    description: Hazard severity tier. One file per tier.
+    values: [moderate, severe, extreme]
+  - name: scenario
+    type: scenario
+    description: Emissions pathway; historic is the CMIP6 historical run.
+    values: [historic, ssp126, ssp245, ssp370, ssp585]
+  - name: timeframe
+    type: timeframe
+    description: Twenty-year window. 1995-2014 is the historical baseline.
+    values: [1995-2014, 2021-2040, 2041-2060, 2061-2080, 2081-2100]
+  - name: crop
+    type: commodity
+    description: Crop, 44 present, from the MapSPAM Adaptation Atlas SSA crop list.
+  - name: hazard
+    type: hazard
+    description: Agro-climatic hazard, 9 present, plus multi-hazard interactions.
+  - name: gaul2_code
+    type: location
+    description: >
+      Second-level administrative unit, as the GAUL 2024 code and the join key to the boundaries
+      (record africa-admin-boundaries-gaul2024). Rows also carry iso3, admin0_name, admin1_name,
+      admin2_name and the adm0 and adm1 GAUL codes. 55 countries present.
+
+variables:
+  - name: value
+    dimensions: [severity, scenario, timeframe, crop, hazard, gaul2_code]
+    description: >
+      Value of crop production exposed to the hazard at that severity, in NOMINAL 2021 US dollars.
+      Read exposure_var and exposure_unit on each row rather than assuming the basis.
+    data_type: double
+    unit: USD
+  - name: exposure_unit
+    dimensions: [severity]
+    description: >
+      The currency basis of `value`, carried per row. Currently nominal-usd-2021 throughout. This
+      column exists precisely because the basis has changed before and must not be assumed.
+    data_type: string
+    unit: "1"
+
+joins:
+  - target: https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=analysis-ready/level=adm2/atlas_gaul24_a2_africa.parquet
+    left_fields: [gaul2_code]
+    right_fields: [gaul2_code]
+
+processing:
+  - id: source
+    description: >
+      Monthly agro-climatic hazard indices computed per GCM from NEX-GDDP-CMIP6, and crop value of
+      production distributed from FAOSTAT across MapSPAM production shares.
+    derived_from:
+      - title: Monthly hazard indices from NEX-GDDP-CMIP6 (record nexgddp-indices-monthly)
+        url: https://github.com/AdaptationAtlas/hazards
+      - title: MapSPAM2020_AdaptationAtlas_SSA (record mapspam2020-adaptation-atlas-ssa)
+        url: https://doi.org/10.7910/DVN/Z0HK7R
+  - id: frequency
+    description: >
+      Convert hazard indices to the frequency with which each severity threshold is exceeded, per
+      scenario, timeframe and admin unit.
+  - id: exposure
+    description: >
+      Cross hazard frequency with crop value of production to give exposed value, and aggregate onto
+      GAUL 2024 administrative units.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: R/3_freq_x_exposure.R
+
+data:
+  - name: hazard-exposure-by-severity
+    description: >
+      One parquet per severity tier, roughly 68 million rows and 62 MB each. Published by
+      scripts/r3_publish_tiers.R.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/
+        title: S3
+    href_template: "severity={severity}/int=multi-hazard.parquet" # e.g. severity=severe/int=multi-hazard.parquet
+    media_type: application/vnd.apache.parquet
+    file_size: 62 MB
+    processing_steps: [source, frequency, exposure]
+
+cdh:
+  domain: [agricultural-production, climate]
+  usage:
+    intended_uses:
+      - Quantifying how much crop production value is exposed to a given hazard, by admin unit and scenario.
+      - Comparing exposure between emissions pathways and future timeframes.
+    not_recommended_for:
+      - use: Comparing exposed value between timeframes as though it were a real-terms change.
+        reason: >
+          Values are NOMINAL 2021 US dollars and are not deflated, so a difference between timeframes
+          mixes price change with production and hazard change.
+        use_instead: Compare hazard frequency directly, or wait for a constant international dollar release (issue 30).
+      - use: Combining these figures with any Atlas product quoted in constant international dollars.
+        reason: >
+          Different currency basis. A previous crop-versus-livestock mismatch of exactly this kind
+          produced roughly a sevenfold error in cattle exposure.
+        use_instead: Check exposure_unit on both sides and convert, or use products on one basis throughout.
+      - use: Reading this as covering population or livestock exposure.
+        reason: Only exposure_var = vop is published under this source; no population or livestock tier exists.
+        use_instead: The observational exposure products for population, or wait for those tiers to be published.
+      - use: Benchmarking against a WMO 1991-2020 normal.
+        reason: The historical window is 1995-2014, the end of the CMIP6 historical run.
+        use_instead: Use 1995-2014 as the stated baseline and say so.
