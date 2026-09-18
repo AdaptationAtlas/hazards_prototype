@@ -46,40 +46,37 @@ log_step <- function(msg) {
 #' Used by --smoke so it can run in seconds. --full still sources the full
 #' setup script.
 bootstrap_minimal <- function() {
-  log_step("bootstrap_minimal: resolving project / working dirs")
-  if (!requireNamespace("pacman", quietly = TRUE)) install.packages("pacman")
-  library(pacman)
-  pacman::p_load(
-    terra, data.table, glue, httr2, rvest, jsonlite, digest, fs,
-    future, future.apply, furrr, progressr
-  )
+  # Shared implementation: R/observational/_bootstrap.R. Replaces a local copy
+  # of the five-host project_dir switch; host profiles now live in
+  # metadata/hosts.json. Every argument below reproduces this script's previous
+  # behaviour exactly - the six copies were NOT identical.
+  local({
+    fa <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+    base <- if (length(fa)) {
+      dirname(normalizePath(sub("^--file=", "", fa[1]), mustWork = FALSE))
+    } else {
+      getwd()
+    }
+    cand <- c(
+      file.path(base, "_bootstrap.R"),
+      "R/observational/_bootstrap.R",
+      file.path(Sys.getenv("project_dir"), "R", "observational", "_bootstrap.R")
+    )
+    hit <- cand[file.exists(cand)][1]
+    if (is.na(hit)) stop("_bootstrap.R not found from ", base)
+    source(normalizePath(hit), local = FALSE)
+  })
 
-  project_dir <- if (nzchar(Sys.getenv("project_dir"))) Sys.getenv("project_dir") else getwd()
-  working_dir <- switch(project_dir,
-    "/home/jovyan/atlas/hazards_prototype" = "/home/jovyan/common_data/hazards_prototype",
-    "D:/rprojects/hazards_prototype" = "D:/common_data/hazards_prototype",
-    "C:/rprojects/hazards_prototype" = "C:/rprojects/common_data/hazards_prototype",
-    "/Users/pstewarda/Documents/rprojects/hazards_prototype" =
-      "/Users/pstewarda/Documents/rprojects/common_data/hazards_prototype",
-    "/home/psteward/rprojects/hazards_prototype" = "/cluster01/workspace/atlas/hazards_prototype",
-    stop(glue::glue("Unknown project_dir '{project_dir}'. Add a mapping to bootstrap_minimal()."))
-  )
-  if (!dir.exists(working_dir)) dir.create(working_dir, recursive = TRUE)
-  setwd(working_dir)
-
-  chirts_chirps_hist_dir <- file.path("Data", "chirts_chirps_hist")
-  if (!dir.exists(chirts_chirps_hist_dir)) dir.create(chirts_chirps_hist_dir, recursive = TRUE)
-
-  # Only source the helpers we actually need (set_parallel_plan, check_tif_integrity).
-  source(file.path(project_dir, "R", "haz_functions.R"))
-
-  terra::gdalCache(60000)
-  options(timeout = 600)
-
-  list(
-    project_dir            = project_dir,
-    working_dir            = working_dir,
-    chirts_chirps_hist_dir = chirts_chirps_hist_dir
+  atlas_bootstrap_minimal(
+    packages = c(terra, data.table, glue, httr2, rvest, jsonlite, digest, fs,
+                 future, future.apply, furrr, progressr),
+    probe                = NULL,
+    prefer               = "atlas_delta", # PRESERVED BUG - see _bootstrap.R header
+    gdal_cache           = 60000L,
+    set_timeout          = TRUE,
+    create_hist_dir      = TRUE,
+    source_haz_functions = TRUE,
+    log = log_step
   )
 }
 

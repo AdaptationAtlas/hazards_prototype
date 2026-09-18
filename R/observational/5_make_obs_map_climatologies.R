@@ -67,39 +67,32 @@ collect_warnings <- function(expr, label) {
 }
 
 bootstrap_minimal <- function() {
-  log_step("bootstrap_minimal: resolving project / working dirs")
-  if (!requireNamespace("pacman", quietly = TRUE)) {
-    install.packages("pacman", repos = "https://cloud.r-project.org")
-  }
-  library(pacman)
-  pacman::p_load(terra, data.table, glue, jsonlite, fs)
+  # Shared implementation: R/observational/_bootstrap.R. Replaces a local copy
+  # of the five-host project_dir switch; host profiles now live in
+  # metadata/hosts.json. Every argument below reproduces this script's previous
+  # behaviour exactly - the six copies were NOT identical.
+  local({
+    fa <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+    base <- if (length(fa)) {
+      dirname(normalizePath(sub("^--file=", "", fa[1]), mustWork = FALSE))
+    } else {
+      getwd()
+    }
+    cand <- c(
+      file.path(base, "_bootstrap.R"),
+      "R/observational/_bootstrap.R",
+      file.path(Sys.getenv("project_dir"), "R", "observational", "_bootstrap.R")
+    )
+    hit <- cand[file.exists(cand)][1]
+    if (is.na(hit)) stop("_bootstrap.R not found from ", base)
+    source(normalizePath(hit), local = FALSE)
+  })
 
-  project_dir <- if (nzchar(Sys.getenv("project_dir"))) Sys.getenv("project_dir") else getwd()
-  candidates <- switch(project_dir,
-    "/home/jovyan/atlas/hazards_prototype" = c(
-      "/home/jovyan/common_data/nex-gddp-cimp6_hazards",
-      "/home/jovyan/common_data/hazards_prototype"
-    ),
-    "D:/rprojects/hazards_prototype" = "D:/common_data/hazards_prototype",
-    "C:/rprojects/hazards_prototype" = "C:/rprojects/common_data/hazards_prototype",
-    "/Users/pstewarda/Documents/rprojects/hazards_prototype" =
-      "/Users/pstewarda/Documents/rprojects/common_data/hazards_prototype",
-    "/home/psteward/rprojects/hazards_prototype" = "/cluster01/workspace/atlas/hazards_prototype",
-    stop(glue::glue("Unknown project_dir '{project_dir}'. Add a mapping."))
-  )
-  has_data <- vapply(candidates, function(p) {
-    dir.exists(file.path(p, "Data/chirts_chirps_hist/PTOT"))
-  }, logical(1))
-  working_dir <- if (any(has_data)) candidates[has_data][1] else candidates[1]
-  log_step(sprintf("  selected working_dir: %s", working_dir))
-  if (!dir.exists(working_dir)) dir.create(working_dir, recursive = TRUE)
-  setwd(working_dir)
-
-  chirts_chirps_hist_dir <- file.path("Data", "chirts_chirps_hist")
-  terra::gdalCache(60000)
-  list(
-    project_dir = project_dir, working_dir = working_dir,
-    chirts_chirps_hist_dir = chirts_chirps_hist_dir
+  atlas_bootstrap_minimal(
+    packages = c(terra, data.table, glue, jsonlite, fs),
+    probe      = "Data/chirts_chirps_hist/PTOT",
+    gdal_cache = 60000L,
+    log = log_step
   )
 }
 
