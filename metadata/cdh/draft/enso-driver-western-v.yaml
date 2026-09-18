@@ -23,13 +23,23 @@ keywords:
   ]
 
 note: >
-  DRAFT - BLOCKED ON A SOURCE. This is the least standardised index in the KE-ENSO Explorer driver
-  set: unlike RONI (NOAA CPC) and DMI (NOAA PSL), it has no single canonical published time series,
-  and the notebook stages it through its own builder. Before promotion, establish and record (a) the
-  exact SST box definition and the paper it comes from, (b) whether an authoritative series is
-  published anywhere or whether the Atlas computes it, and (c) the licence of whichever SST product
-  it is computed from - if that product is HadISST, the UK Non-Commercial Government Licence applies
-  and the constraint in record enso-driver-dmi carries over verbatim.
+  DRAFT - THE DEFINITION IS ESTABLISHED, THE SERVED PRODUCT IS NOT. Researched 2026-09-18.
+  WHAT IT IS. The "Western V" is a gradient index over Pacific sea-surface temperatures - the
+  east-west SST contrast across the V-shaped warm region - developed by Funk and colleagues to
+  predict East African rainfall. A negative gradient is associated with frequent East African
+  droughts, and because it responds to recent La Nina conditions it supports lead times of roughly
+  eight months, which is why it earns a place beside ENSO and IOD rather than duplicating them.
+  Funk attributes the multi-decadal warming of the Western V region to climate change rather than
+  to Pacific decadal variability, so this index carries a trend as well as a signal - do not treat
+  its anomalies as stationary.
+  WHAT IS STILL MISSING, AND WHY THIS IS STILL A DRAFT. Unlike RONI and DMI, no agency serves a
+  Western V time series: there is no CPC or PSL file to point data[].locations at. The index is
+  computed, not fetched. Before promotion, record (a) the exact box coordinates and base period the
+  Atlas uses and the specific paper they come from, (b) whether the Atlas computes it or takes it
+  from a collaborator, and (c) the licence of the SST product underneath - if that is HadISST, the
+  UK Non-Commercial Government Licence applies and the constraint documented in record
+  enso-driver-dmi carries over verbatim. Computing it from ERSSTv6 instead would keep all three
+  driver axes on one reconstruction and one climatology, and would avoid the encumbrance entirely.
 
 contact:
   - name: Peter Steward
@@ -40,8 +50,18 @@ contact:
 processing:
   - id: source
     description: >
-      Area-averaged sea-surface-temperature anomalies over the Western V region, as defined in the
-      Funk et al. literature on East African rainfall decline. Exact definition to be recorded.
+      An east-west gradient of sea-surface-temperature anomalies across the Pacific Western V region,
+      as defined in the Funk et al. literature on East African rainfall. Exact box coordinates, base
+      period and underlying SST product still to be recorded - see the note.
+    derived_from:
+      - title: >
+          Funk et al. (2018), Examining the role of unusually warm Indo-Pacific sea-surface
+          temperatures in recent African droughts, Q. J. R. Meteorol. Soc.
+        url: https://doi.org/10.1002/qj.3266
+      - title: >
+          Funk (2023), Frequent but Predictable Droughts in East Africa Driven by a Walker
+          Circulation Intensification, Earth's Future
+        url: https://doi.org/10.1029/2022EF003454
 
 cdh:
   domain: [climate]

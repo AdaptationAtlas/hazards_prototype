@@ -18,7 +18,10 @@ keywords:
 
 note: >
   DRAFT - BLOCKED ON TWO THINGS. (a) No licence is published for NDMA bulletins; confirm with NDMA
-  before asserting one. (b) The indicators are published as monthly PDF bulletins, not as a
+  before asserting one. As of 2026-09-18 the terms could not even be checked: ndma.go.ke presents an
+  EXPIRED TLS CERTIFICATE, so the site cannot be fetched over a verified connection. That is a
+  reproducibility problem as much as a licensing one - an automated ingest would have to disable
+  certificate verification to reach it, which is not something to build into a pipeline. (b) The indicators are published as monthly PDF bulletins, not as a
   machine-readable series, so any time series is reconstructed by extraction - record who extracts
   it, with what code, and over which months, before promotion.
   TERMS OF TRADE IS A RATIO, NOT A PRICE. It expresses how much staple a pastoralist obtains per

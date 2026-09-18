@@ -1,6 +1,5 @@
-# CDH v0.3.0 FEDERATED record, DRAFT - passes --draft only, not yet submittable.
-# Promotion: fill the missing fields until it passes WITHOUT --draft, then git mv to metadata/cdh/.
-# Validate: node scripts/validate-yaml.js --draft --profile spec/schemas/profiles/cdh.schema.json <this file>
+# CDH v0.3.0 FEDERATED record - the Atlas cites this dataset but does not host it.
+# Promoted from draft 2026-09-18: licence confirmed CC0-1.0 via the Dryad API.
 $schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
 cdh_schema_version: v0.3.0
 extensions:
@@ -14,6 +13,7 @@ description: >
   primarily 1980-2022. A federated record - the Adaptation Atlas cites this dataset but does not
   host or redistribute it.
 resource_type: dataset
+license: CC0-1.0 # confirmed 2026-09-18 via the Dryad API: license = https://spdx.org/licenses/CC0-1.0.html
 keywords:
   [
     crop production,
@@ -27,10 +27,10 @@ keywords:
 doi: 10.5061/dryad.vq83bk42w
 
 note: >
-  DRAFT - BLOCKED ON LICENCE CONFIRMATION. The Dryad landing page does not state an explicit licence;
-  Dryad's platform default is CC0-1.0 but that was not confirmed on the page itself, so no licence is
-  asserted here rather than guessing one. Confirm with Dryad or the authors, then set license and
-  promote.
+  LICENCE CONFIRMED 2026-09-18. The Dryad landing page does not print a licence, which is why this
+  record was initially held as a draft. The Dryad API settles it: the dataset record returns
+  license = https://spdx.org/licenses/CC0-1.0.html, at version 12, last modified 2026-07-17. CC0
+  requires no attribution; the citation below is given anyway.
   Quantities are metric tonnes, areas hectares, yields metric tonnes per hectare. Coverage is jagged
   across countries, crops and years - check per-country completeness before treating any national
   series as continuous.
@@ -38,7 +38,7 @@ note: >
 contact:
   - organization: NASA Harvest / University of Maryland
     url: https://github.com/HarvestStat/HarvestStat-Africa
-    roles: [producer]
+    roles: [licensor, producer]
   - organization: Famine Early Warning Systems Network (FEWS NET)
     url: https://fews.net/
     roles: [producer]
