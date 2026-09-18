@@ -170,7 +170,9 @@ if (climdat_source == "atlas_delta") {
     if (Cglabs) {
       # Derive the nexgddp base raster from the canonical CGlabs source.
       target_ext <- ext(-180, 180, -50, 50)
-      base_rast <- terra::rast("/home/jovyan/common_data/nex-gddp-cmip6/pr/ssp126/ACCESS-CM2/pr_2021-01-01.tif")
+      base_rast <- terra::rast(file.path(
+        atlas_common_data(), "nex-gddp-cmip6/pr/ssp126/ACCESS-CM2/pr_2021-01-01.tif"
+      ))
       base_rast_cropped <- crop(base_rast, target_ext)
       terra::writeRaster(base_rast_cropped, base_rast_path, overwrite = TRUE)
       base_rast <- terra::rast(base_rast_path)

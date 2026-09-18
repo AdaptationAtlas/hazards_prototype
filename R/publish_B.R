@@ -24,7 +24,22 @@
 suppressMessages({ library(arrow); library(data.table); library(duckdb); library(DBI) })
 ts <- function(...) cat(sprintf("[%s] ", format(Sys.time(), "%H:%M:%S")), ..., "\n", sep = "")
 
-DIR  <- "/home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_timeseries_mean_month"
+# Resolve the hazard_timeseries_mean_month tree instead of hardcoding the CGlabs
+# path. HAZ_MEAN_MONTH_DIR still wins, so an ad-hoc run can point elsewhere.
+local({
+  fa <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+  base <- if (length(fa)) {
+    dirname(normalizePath(sub("^--file=", "", fa[1]), mustWork = FALSE))
+  } else {
+    getwd()
+  }
+  cand <- c(file.path(base, "00_paths.R"), "R/00_paths.R",
+            file.path(Sys.getenv("project_dir"), "R", "00_paths.R"))
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("R/00_paths.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
+DIR <- Sys.getenv("HAZ_MEAN_MONTH_DIR", unset = atlas_dir("hazard_timeseries_mean_month", absolute = TRUE))
 BASE <- "s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months"
 PERIODS <- c("2021-2040", "2041-2060", "2061-2080", "2081-2100")  # 4 futures
 BASELINE_KEY <- "1995-2014"

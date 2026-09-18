@@ -23,7 +23,22 @@ ts("compiled kernel + sourced helpers")
 
 round3.3 <- 3L
 by_cols <- c("iso3","admin0_name","admin1_name","scenario","timeframe","year","hazard","season","baseline_name")
-DEFAULT_DIR <- "/home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/hazard_timeseries_mean_month"
+# Resolve the hazard_timeseries_mean_month tree instead of hardcoding the CGlabs
+# path. HAZ_MEAN_MONTH_DIR still wins, so an ad-hoc run can point elsewhere.
+local({
+  fa <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+  base <- if (length(fa)) {
+    dirname(normalizePath(sub("^--file=", "", fa[1]), mustWork = FALSE))
+  } else {
+    getwd()
+  }
+  cand <- c(file.path(base, "00_paths.R"), "R/00_paths.R",
+            file.path(Sys.getenv("project_dir"), "R", "00_paths.R"))
+  hit <- cand[file.exists(cand)][1]
+  if (is.na(hit)) stop("R/00_paths.R not found from ", base)
+  source(normalizePath(hit), local = FALSE)
+})
+DEFAULT_DIR <- Sys.getenv("HAZ_MEAN_MONTH_DIR", unset = atlas_dir("hazard_timeseries_mean_month", absolute = TRUE))
 args <- commandArgs(trailingOnly = TRUE)
 in_file <- if (length(args) >= 1) args[[1]] else
   file.path(DEFAULT_DIR, "haz_3months_adm_mean_1995-2014_anomaly-historic_seasons.parquet")
