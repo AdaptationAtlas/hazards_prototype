@@ -81,8 +81,8 @@ bootstrap_minimal <- function() {
   })
 
   atlas_bootstrap_minimal(
-    packages = c(terra, data.table, glue, jsonlite, fs,
-                 future, future.apply, progressr, SPEI),
+    packages = c("terra", "data.table", "glue", "jsonlite", "fs", "future",
+                 "future.apply", "progressr", "SPEI"),
     probe         = file.path("Data", "chirts_chirps_hist", "PTOT"),
     require_probe = "Run R/observational/1_get_chirps_chirts.R --full before computing SPEI.",
     gdal_cache    = 60000L,

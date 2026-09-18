@@ -93,7 +93,7 @@ bootstrap_minimal <- function() {
   })
 
   atlas_bootstrap_minimal(
-    packages = c(terra, data.table, glue, jsonlite, arrow, sf, geoarrow, fs),
+    packages = c("terra", "data.table", "glue", "jsonlite", "arrow", "sf", "geoarrow", "fs"),
     probe         = file.path("Data", "chirts_chirps_hist", "PTOT"),
     require_probe = "Run R/observational/1_get_chirps_chirts.R --full before computing admin extract.",
     gdal_cache    = 60000L,

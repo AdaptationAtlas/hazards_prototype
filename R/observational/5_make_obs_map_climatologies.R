@@ -89,7 +89,7 @@ bootstrap_minimal <- function() {
   })
 
   atlas_bootstrap_minimal(
-    packages = c(terra, data.table, glue, jsonlite, fs),
+    packages = c("terra", "data.table", "glue", "jsonlite", "fs"),
     probe      = "Data/chirts_chirps_hist/PTOT",
     gdal_cache = 60000L,
     log = log_step

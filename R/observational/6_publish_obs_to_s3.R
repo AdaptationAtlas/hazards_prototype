@@ -95,7 +95,7 @@ bootstrap_minimal <- function() {
   })
 
   atlas_bootstrap_minimal(
-    packages = c(data.table, glue, jsonlite, fs, arrow),
+    packages = c("data.table", "glue", "jsonlite", "fs", "arrow"),
     probe      = file.path("Data", "chirts_chirps_hist"),
     gdal_cache = NULL,
     log = log_step

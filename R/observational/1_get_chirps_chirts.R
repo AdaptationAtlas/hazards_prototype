@@ -68,8 +68,8 @@ bootstrap_minimal <- function() {
   })
 
   atlas_bootstrap_minimal(
-    packages = c(terra, data.table, glue, httr2, rvest, jsonlite, digest, fs,
-                 future, future.apply, furrr, progressr),
+    packages = c("terra", "data.table", "glue", "httr2", "rvest", "jsonlite", "digest",
+                 "fs", "future", "future.apply", "furrr", "progressr"),
     probe                = NULL,
     prefer               = "atlas_delta", # PRESERVED BUG - see _bootstrap.R header
     gdal_cache           = 60000L,

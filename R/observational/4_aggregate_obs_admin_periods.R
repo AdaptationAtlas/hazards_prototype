@@ -69,7 +69,7 @@ bootstrap_minimal <- function() {
   })
 
   atlas_bootstrap_minimal(
-    packages = c(data.table, arrow, glue, jsonlite),
+    packages = c("data.table", "arrow", "glue", "jsonlite"),
     # NOTE: this one probes a FILE, not a directory.
     probe      = "Data/chirts_chirps_hist/admin/obs_monthly_adm0.parquet",
     gdal_cache = NULL,
