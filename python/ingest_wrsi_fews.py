@@ -13,9 +13,9 @@ Verified (cglabs WRSI dispatch #1, 2026-08-18):
   0.1 deg / EPSG:4326 / Int16 / NoData -9999 / values 0-100 (WRSI %) + status codes 253/254 (>100).
   CHIRPS v3.0 confirmed (product page). East Africa season codes: east1/e1 short rains, east2/e2 long rains.
 
-⚠️ REGION_MAP + EOS_DEKAD below are BEST-GUESS — cglabs MUST verify/correct them against USGS
-  product pages 899 (croplands) / 891 (rangelands) during --smoke BEFORE the full run. Do not
-  publish rangeland tiles until the ee/ek/el/et -> (rangeland, season) map is confirmed.
+REGION_MAP fixed 2026-09-18 (atlas_nb-KE-enso dispatch, FEWS W_images.pdf Table 1, 2025-02-03):
+  e1/e2 are RANGELAND (Sep-Jan / Feb-Jul), ee/et are MAIZE cropland (Mar-Nov / Oct-Feb).
+  Previous map had cropland/rangeland swapped. ek (Ethiopian belg sorghum, ~0% of Kenya) dropped.
 
 Requires: gdal (osgeo) + rasterio + numpy + urllib + zipfile. No auth.
 
@@ -42,18 +42,15 @@ BBOX = (33.9, -4.7, 41.9, 5.5)          # Kenya (W,S,E,N) — matches other tier
 COG_OPTS = dict(driver="COG", compress="DEFLATE", predictor=2, blocksize=512,
                 overview_resampling="average")
 
-# code -> (regiondir, crop, season, eos_dekad).  ⚠️ VERIFY on --smoke (see header).
-# Confident: e1=short rains, e2=long rains, both cropland (product page + cglabs).
-# UNVERIFIED: ee/ek/el/et = rangeland zones — season + EOS dekad TBD; cglabs to confirm/correct.
+# code -> (regiondir, crop, season, eos_dekad). FEWS Table 1 (East Africa rows):
+#   e1 Rangeland Sep-Jan | e2 Rangeland Feb-Jul | ee Maize Mar-Nov | et Maize Oct-Feb
 REGION_MAP = {
-    "e1": ("east1", "cropland", "OND", 36),   # short rains (VERIFIED cglabs #2: e1=OND/dk36 correct)
-    "e2": ("east2", "cropland", "MAM", 21),   # long rains  (VERIFIED cglabs #2: e2=MAM/dk21 correct)
-    # rangeland: pinned empirically by cglabs #2 (EOS dekads + real-WRSI verified):
-    "ek": ("eastk", "rangeland", "MAM", 27),  # long-rains rangeland, EOS dk27
-    "et": ("eastt", "rangeland", "OND", 36),  # short-rains rangeland, EOS dk36
-    # ee/el = bimodal/annual monitor windows (EOS dk33) — season label unconfirmed, deferred.
-    # "ee": ("easte", "rangeland", "??", 33),
-    # "el": ("eastl", "rangeland", "??", 33),
+    "e1": ("east1", "rangeland", "OND", 36),  # short rains, EOS dk36
+    "e2": ("east2", "rangeland", "MAM", 21),  # long rains, EOS dk21
+    "ee": ("easte", "cropland",  "MAM", 33),  # maize long rains (Mar-Nov), EOS dk33
+    "et": ("eastt", "cropland",  "OND", 36),  # maize short rains (Oct-Feb), EOS dk36
+    # ek dropped: Ethiopian-highland belg sorghum, ~0% of Kenya bbox.
+    # el (grains, Mar-Nov, dk33): optional sorghum companion to ee, not requested.
 }
 YEARS = range(2003, 2027)   # CHIRPS-ETos WRSI archive span (verify earliest on smoke)
 
@@ -121,7 +118,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="Data/wrsi_fews/WRSI")
     ap.add_argument("--overwrite", action="store_true")
-    ap.add_argument("--smoke", action="store_true", help="one region (e2 cropland MAM), one year (2015)")
+    ap.add_argument("--smoke", action="store_true", help="one region (e2 rangeland MAM), one year (2015)")
     a = ap.parse_args()
     os.makedirs(a.out, exist_ok=True)
     import tempfile
