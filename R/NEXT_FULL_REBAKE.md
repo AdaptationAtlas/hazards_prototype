@@ -51,13 +51,12 @@ consume them. So a true full rebake is:
   source URLs are the coupling to mind. (Merge scoping is a separate project.)
 
 ## ⛔ PRE-CONDITIONS / DEPENDENCIES (check BEFORE launching)
-- **hazards#19 — historic (1995-2014) NDWS rasters saturated (~0.95 every pixel).**
-  UPSTREAM (`AdaptationAtlas/hazards`). A full rebake re-derives NDWS/NDWL0 hazard
-  from these inputs → **re-propagates the saturation + the Luanda NaN signature**
-  and the broken historic-vs-future comparability into the new products. Either
-  (a) wait for the upstream fix, or (b) rebake but treat NDWS/NDWL0 **historic** as
-  known-bad and flag it (don't silently republish saturated drought-historic).
-  This is the single biggest gate on a clean full rebake.
+- **hazards#19 NDWS saturation — ✅ RESOLVED LIVE (verified 2026-09-18).** The
+  de-saturated NDWS shipped inside the issue-#9 publish on 2026-09-16 and was
+  verified on the published parquet (historic dry-union 0.1616 vs ~1.0 saturated;
+  futures rise monotonically with forcing). The FIXED indices are what a rebake
+  now re-derives from — this gate is CLEARED, do NOT re-run R/2/R/3 just for
+  NDWS (see DISPATCH_cglabs_track1_ndws_resume.md: sidecar/metadata gaps only).
 - **CR-115 / #11 disputed-territory dedup — CONDITIONAL.** If Brayden's convention
   (`data-management#3`) is SET by rebake time: wire `haz_functions.R::aggregate_disputedRegions()`
   into the adm0 admin-extraction (R/3 + R/observational) and apply, so disputed
@@ -120,8 +119,21 @@ consume them. So a true full rebake is:
    (the 1981-2014 window was historically partial), then `FORCE_OVERWRITE=1` full run.
    The published mixed 18/13/5-member rows only disappear after this re-bake. Full detail on #26.
 
+7. **VoP const-I$ publish ("Gap C", #30) — validated 2026-07 chain NEVER published.**
+   Node QAQC went green 2026-07-08 (livestock 1.00 242/242, crop 0.99 36/50, outliers
+   accepted) but `domain=hazard_exposure/.../variable=vop_intld15` on S3 is still the
+   2025-06/07 vintage — live livestock measures 1.198 vs FAOStat const-I$
+   (species-structured: poultry 1.370 … cattle 1.058). Publishing it = the ~7× cattle
+   currency fix finally going live, a wholesale overwrite of ~3,345 objects.
+   **BLOCKED on p.steward's #30 unit/allow-list decision** (`intld15` vs
+   `intld15-2021` — the `0.4.4:345` allow-list drop is baked into the published
+   artifact) or reference and product ship on different vintages. Gate to re-run
+   pre- and post-publish: `R/checks/vop_align_live_gate.R` (live-artifact twin of
+   `qaqc_vop_vs_faostat.R`, ~15 s, any machine). Detail: memory
+   project_vop_currency_mismatch + #30 comment 2026-09-18.
+
 ## Order
-0. Pre-conditions above (esp. hazards#19; exposure vintage; CR-115 convention state).
+0. Pre-conditions above (exposure vintage; CR-115 convention state).
 1. R/2 (`FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1`, both axes, nohup+log;
    run the terra-probe first).
 2. R/3 §4.1+§4.2 (vop, vop_usd, ha, both axes).
