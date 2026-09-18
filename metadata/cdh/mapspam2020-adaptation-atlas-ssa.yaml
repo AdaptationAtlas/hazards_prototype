@@ -1,0 +1,214 @@
+# CDH v0.3.0 record - MapSPAM2020 Adaptation Atlas SSA. An Atlas-authored regional adaptation of
+# IFPRI MapSPAM 2020, and the largest uncatalogued input under the whole exposure chain.
+# NOT the same dataset as the Hub's `spam2020` record, which is IFPRI's GLOBAL v2r2 release.
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: mapspam2020-adaptation-atlas-ssa
+title: MapSPAM 2020 Adaptation Atlas, Sub-Saharan Africa
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  Spatially disaggregated crop statistics for Sub-Saharan Africa: 42 crops across six production
+  systems, harmonised to FAOSTAT country totals, as physical area, harvested area, production, yield
+  and value of production. A regional adaptation of IFPRI's MapSPAM 2020 built for the Africa
+  Agriculture Adaptation Atlas, supplementing the global release with national and sub-national
+  sources. This is the crop-production basis of the Atlas exposure chain: every crop value-of-
+  production layer, and through them the hazard-exposure product, is distributed across these
+  production shares.
+resource_type: dataset
+license: CC-BY-4.0 # as published on CGSpace by the Alliance of Bioversity International and CIAT
+doi: 10.7910/DVN/Z0HK7R
+keywords:
+  [
+    crop production,
+    harvested area,
+    physical area,
+    yield,
+    value of production,
+    MapSPAM,
+    SPAM,
+    sub-saharan africa,
+    food security,
+  ]
+
+note: >
+  NOT THE SAME DATASET AS THE HUB'S `spam2020` RECORD, DESPITE THE NAME. That record describes
+  IFPRI's GLOBAL MapSPAM 2020 v2r2, licensed CC-BY-SA-4.0 and published as zarr. This one is the
+  Atlas's Sub-Saharan Africa adaptation, licensed CC-BY-4.0 and published as GeoTIFF. Different
+  scope, different licence, different format, different DOI. Do not substitute one for the other,
+  and note that the share-alike term on the global release does NOT reach the Atlas exposure chain,
+  which consumes this product.
+  THREE PROCESSING LEVELS, AND THEY ARE NOT INTERCHANGEABLE. `raw` holds the released CSVs, one file
+  per variable and technology code (P_TA, P_TH, P_TI and so on). `analysis-ready` holds rasterised
+  GeoTIFFs. `atlas-harmonized` holds the Atlas value-of-production layers derived from them. The VoP
+  chain reads `analysis-ready/variable=prod_t` and writes into `atlas-harmonized`.
+  FILE NAMING DIFFERS BETWEEN LEVELS. The irrigated system is `irrigated` under `analysis-ready` and
+  `irr` under `atlas-harmonized`. Anything templating a path across both levels must special-case it;
+  the token values below are given per level for that reason.
+  CURRENCY BASIS IS A KNOWN TRAP. Several value-of-production variables coexist - vop_intld15,
+  vop_usd2015, vop_nominal-usd15, vop_nominal-usd21 - and they are NOT interchangeable. A past
+  mismatch between the crop and livestock currency bases produced roughly a sevenfold error in cattle
+  exposure. Constant international dollars (vop_intld15) is the Atlas standard; check the livestock
+  counterpart is on the same basis before combining. Tracked as hazards_prototype issue 30.
+  THREE OBJECTS ARE PUBLISHED UNDER A MALFORMED KEY. Directly beneath `region=ssa/` there are three
+  parquet objects whose path reads `processing=atlas-harmonizedvariable=<name>.parquet`, missing the
+  separator between the two hive fields: crop-livestock_all, vop_intld15-2021 and
+  vop_nominal-usd-2021. They are not reachable by a hive-partitioned scan and should be republished
+  or removed rather than left as a trap for the next reader.
+
+contact:
+  - organization: Alliance of Bioversity International and CIAT
+    url: https://alliancebioversityciat.org/
+    roles: [licensor, producer]
+  - organization: International Food Policy Research Institute (IFPRI)
+    url: https://www.ifpri.org/
+    roles: [producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+
+citation:
+  title: MapSPAM2020_AdaptationAtlas_SSA
+  authors:
+    - "Wood-Sichra, U."
+    - "Steward, P. R."
+    - "Rosenstock, T. S."
+    - "Youngberg, B."
+    - "Guo, Z."
+    - "Zhou, S."
+  date: "2026"
+  publisher: Alliance of Bioversity International and CIAT
+  url: https://doi.org/10.7910/DVN/Z0HK7R
+related_publications:
+  - doi: 10.7910/DVN/Z0HK7R
+
+created: "2026-09-18"
+updated: "2026-09-18"
+
+spatial:
+  bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa
+  crs: EPSG:4326
+  geography: [sub-saharan-africa]
+
+temporal:
+  date: "2020"
+
+dimensions:
+  - name: production_system
+    type: production-system
+    description: >
+      Production system, as the file-name suffix under analysis-ready. The atlas-harmonized level
+      spells the irrigated system `irr` instead of `irrigated`; otherwise the values match.
+    values: [all, irrigated, rf-all, rf-highinput, rf-lowinput, rf-subsistence]
+
+variables:
+  - name: prod_t
+    dimensions: [production_system]
+    description: Crop production, one band per crop.
+    data_type: float32
+    unit: t
+  - name: harv-area_ha
+    dimensions: [production_system]
+    description: Harvested area, one band per crop.
+    data_type: float32
+    unit: ha
+  - name: phys-area_ha
+    dimensions: [production_system]
+    description: Physical area, one band per crop.
+    data_type: float32
+    unit: ha
+  - name: yield_kgha
+    dimensions: [production_system]
+    description: Yield, one band per crop.
+    data_type: float32
+    unit: kg/ha
+  - name: vop_intld15
+    dimensions: [production_system]
+    description: >
+      Value of production in constant 2015 international dollars - the Atlas standard basis, and the
+      one the exposure chain expects.
+    data_type: float32
+    unit: "[IUSD]"
+  - name: vop_usd2015
+    dimensions: [production_system]
+    description: Value of production in 2015 US dollars. Not interchangeable with vop_intld15.
+    data_type: float32
+    unit: USD
+
+processing:
+  - id: source
+    description: >
+      IFPRI's Spatial Production Allocation Model disaggregates subnational crop statistics onto a
+      grid; the Atlas adaptation extends the 2020 release for Sub-Saharan Africa with additional
+      national and sub-national sources and harmonises the result to FAOSTAT country totals.
+    derived_from:
+      - title: MapSPAM2020_AdaptationAtlas_SSA (CGSpace)
+        url: https://cgspace.cgiar.org/items/5736e3ff-aadc-4999-8922-8bac50b1c916
+      - title: MapSPAM, Spatial Production Allocation Model
+        url: https://www.mapspam.info/
+  - id: rasterise
+    description: Rasterise the released CSVs to GeoTIFF, one file per variable and production system.
+  - id: vop
+    description: >
+      Distribute FAOSTAT gross production value across pixels by each crop's production share, so
+      that the country total reconstructs the FAOSTAT figure.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: R/0.4.0_create_crop_vop_intld15.R
+
+data:
+  - name: raw-csv
+    description: The released CSVs, one per variable and technology code.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=raw/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=raw/
+        title: S3
+    media_type: text/csv
+    processing_steps: [source]
+  - name: analysis-ready
+    description: Rasterised GeoTIFFs, one file per production system within each variable directory.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=analysis-ready/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=analysis-ready/
+        title: S3
+    href_template: "variable={variable}/spam_{variable}_{production_system}.tif" # e.g. variable=prod_t/spam_prod_t_rf-all.tif
+    media_type: image/tiff; application=geotiff
+    processing_steps: [source, rasterise]
+  - name: atlas-harmonized-vop
+    description: >
+      Atlas value-of-production layers derived from the production rasters. Note the irrigated system
+      is spelled `irr` here, not `irrigated`.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=atlas-harmonized/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=atlas-harmonized/
+        title: S3
+    media_type: image/tiff; application=geotiff
+    processing_steps: [source, rasterise, vop]
+
+cdh:
+  domain: [agricultural-production]
+  usage:
+    intended_uses:
+      - Distributing FAOSTAT gross production value across pixels to build crop value-of-production layers.
+      - Weighting hazard exposure by where crops are actually grown, rather than by land area.
+    not_recommended_for:
+      - use: Substituting the Hub's `spam2020` record's data for this one, or vice versa.
+        reason: >
+          That record is IFPRI's global v2r2 release under CC-BY-SA-4.0 as zarr; this is the Atlas's
+          Sub-Saharan Africa adaptation under CC-BY-4.0 as GeoTIFF. Different scope, licence, format
+          and DOI.
+        use_instead: Choose deliberately, and state which in any derived product.
+      - use: Mixing value-of-production variables across currency bases.
+        reason: >
+          vop_intld15, vop_usd2015, vop_nominal-usd15 and vop_nominal-usd21 are not interchangeable,
+          and a past crop-versus-livestock mismatch produced roughly a sevenfold error in cattle exposure.
+        use_instead: Constant international dollars (vop_intld15) throughout, with the livestock counterpart checked to match.
