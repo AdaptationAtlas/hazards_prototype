@@ -1,111 +1,152 @@
-# CDH metadata records — KE-ENSO Explorer datasets
+# CDH metadata records
 
-15 CGIAR Climate Data Hub (CDH) **v0.3.0** metadata records, one per dataset the KE-ENSO Explorer uses.
-Upgraded from v0.1.0 on 2026-09-14 after Brayden's review
-([cdh-metadata-standard#32](https://github.com/CGIAR-Climate-Data-Hub/cdh-metadata-standard/issues/32)).
-**All 15 pass** the v0.3.0 schema + cross-field checks and `prettier --check` (what the catalog CI runs),
-re-verified 2026-09-18. The two KNBS population records added on 2026-09-15 (issue #28) had never been
-run through the Node validator and **failed** on first run: a hand-rolled top-level `licence_note:` key
-(rejected by the profile's `unevaluatedProperties: false`) and the missing
-`additional_links[{rel: license}]` that `license: LicenseRef-*` requires. Both fixed 2026-09-18 —
-`licence_note` folded into `note` under a `LICENCE EVIDENCE.` lead, licence link added
-(`https://kenya.opendataforafrica.org/gdlkmgb`; that page 403s to automated fetches, so the licence
-text is unread — worth a human eyeball before submission). Commands:
+CGIAR Climate Data Hub (CDH) **v0.3.0** metadata records for the datasets the Adaptation Atlas
+publishes, reads or cites. **25 records validate against the strict profile; 3 are drafts.**
 
-```sh
-# one-off tooling checkout (Node >= 20)
-git clone --depth 1 --branch v0.3.0 https://github.com/CGIAR-Climate-Data-Hub/cdh-metadata-standard.git /tmp/cdh-std
-(cd /tmp/cdh-std && npm ci)
+Last updated 2026-09-18.
 
-# validate (zsh: use an array — an unquoted $VAR list does not word-split)
-files=(metadata/cdh/*.yaml); files=(${files:#*ensemble_season_trends*})
-node /tmp/cdh-std/scripts/validate-yaml.js --profile /tmp/cdh-std/spec/schemas/profiles/cdh.schema.json $files
-npx prettier@3 --check $files      # catalog CI formats with prettier defaults (no .prettierrc)
+```
+metadata/cdh/*.yaml         strict — pass the full profile, submittable to cdh-catalog
+metadata/cdh/draft/*.yaml   drafts — pass `--draft` only, each names its own blocker
 ```
 
-| record | dataset | cdh.domain | licence | S3 prefix |
-|---|---|---|---|---|
-| africa-precipitation-monthly-seasonal | CHIRPS-derived PTOT monthly + seasonal (was `africa-precipitation-chirps`) | climate | CC-BY-4.0 | `domain=climate/type=observational/source=chirps-chirts-era5/…/variable=PTOT` |
-| africa-spei-drought | SPEI-03 / SPEI-12 | climate | CC-BY-4.0 | `…/variable=SPEI-03\|SPEI-12` |
-| eastafrica-ndvi-modis | MODIS MOD13Q1 NDVI, MAM + OND means 2000–2025 | agricultural-production, climate | CC-BY-4.0 | `domain=climate/type=vegetation/source=modis-mod13q1` |
-| eastafrica-flood-jrc | JRC return-period flood depth (7 RPs) | hydrology | CC-BY-4.0 | `domain=climate/type=flood/source=jrc-glofas` |
-| eastafrica-wrsi-fews | FEWS WRSI cropland + rangeland, MAM + OND | agricultural-production | CC0-1.0 | `domain=climate/type=agriculture/source=fews-wrsi` |
-| kenya-flood-gfm | Copernicus GFM observed flood (monthly, seasonal, history) | hydrology | LicenseRef-Copernicus-EMS (+ `rel: license` link) | `domain=climate/type=flood/source=glofas-gfm/region=kenya` |
-| kenya-population-worldpop | WorldPop constrained 2020 | socioeconomic | CC-BY-4.0 | `domain=exposure/type=population/source=worldpop-constrained-2020` |
-| kenya-population-grid3 | GRID3/WOPR bottom-up 2020 | socioeconomic | CC-BY-4.0 | `domain=exposure/type=population/source=grid3` |
-| kenya-admin-codab | IEBC COD-AB adm1/adm2 | boundaries | CC-BY-3.0-IGO | `domain=boundaries/type=admin/source=iebc-codab/region=kenya` |
-| kenya-roads-osm | OSM classified highways | socioeconomic | ODbL-1.0 | `domain=exposure/type=infrastructure/source=osm/region=kenya` |
-| kenya-facilities-hotosm | HOTOSM health + schools | socioeconomic | ODbL-1.0 | `…/source=hotosm/region=kenya` |
-| kenya-power-grid-kplc | KPLC transmission grid | socioeconomic | CC0-1.0 | `…/source=energydata-kplc/region=kenya` |
-| kenya-flood-exposure-intersect | Pre-cooked flood × exposure adm2 tables | socioeconomic, hydrology | **CC-BY-4.0** (was ODbL-1.0) | `domain=exposure/type=intersect/region=kenya` |
-| kenya-population-knbs-census | KNBS 2019 census counts, adm0/adm1/adm2-KNBS + age×sex | socioeconomic | LicenseRef-KNBS-Terms ⚠ | `domain=exposure/type=population/source=knbs-census-2019/region=kenya` |
-| kenya-population-knbs-projections | KNBS Vol XVI county projections 2020–2045 | socioeconomic | LicenseRef-KNBS-Terms ⚠ | `domain=exposure/type=population/source=knbs-projections-2020-2045/region=kenya` |
+The directory is the state. The profile sets `unevaluatedProperties: false`, so no `draft:` key can
+exist on a record; promotion is the same file passing without `--draft`, then `git mv` up one level.
 
-⚠ **KNBS licence — researched 2026-09-17, mostly resolved.** `knbs.or.ke` is misleading: its
-terms-and-conditions URL 404s and the footer asserts "All Rights Reserved". But KNBS operates an
-**Open License Agreement** (worldwide, royalty-free, non-exclusive; use, copy, modify, publish,
-adapt, distribute, derivative works; commercial and non-commercial; attribution required), and
-KNBS's **own HDX account** published the very sub-county table we ingest under **Public Domain / No
-restrictions** ([dataset](https://data.humdata.org/dataset/kenya-population-per-county-from-census-report-2019)).
-The same census figures are also redistributed by UNFPA under CC-BY-3.0-IGO. Both records now carry
-`LicenseRef-KNBS-Open-License` plus the attribution string KNBS requires.
-Residual gap: the Open License is scoped to the KNBS Open Data Platform, and **Volume XVI
-(projections) is a PDF on knbs.or.ke with no licensed mirror anywhere** — so the projections record
-rests on weaker footing than the census one and should be confirmed with KNBS before it reaches
-cdh-catalog. Do **not** switch the census ingest to the HDX copy: it double-counts Tharaka-Nithi
-(346 rows, national 47,957,473 against the published 47,564,296). The three-record change of 2026-09-15 also edited
-`kenya-population-worldpop`, `kenya-population-grid3` and `kenya-flood-exposure-intersect` (documenting
-the ~17 % gap against the census, and the new levelled population columns).
+## Validating (this is exactly what catalog CI runs)
 
-`ensemble_season_trends.cdh.yaml` is a separate v0.0.1 draft for the CR-119 trends dataset (not part of this set; not upgraded).
+```sh
+git clone --depth 1 --branch v0.3.0 \
+  https://github.com/CGIAR-Climate-Data-Hub/cdh-metadata-standard.git /tmp/cdh-std
+(cd /tmp/cdh-std && npm ci)
 
-## What changed v0.1.0 → v0.3.0 (2026-09-14)
+# strict — zsh: use an array, an unquoted $VAR list does not word-split
+files=(metadata/cdh/*.yaml); files=(${files:#*ensemble_season_trends*})
+node /tmp/cdh-std/scripts/validate-yaml.js \
+  --profile /tmp/cdh-std/spec/schemas/profiles/cdh.schema.json $files
 
-Schema-driven (every record):
-- `$schema:` line added; `cdh_schema_version` and all extension URLs → `v0.3.0`.
-- `temporal.resolution` removed (cadence now lives on `type: temporal` dimensions with a `step`); snapshots use `temporal.date`, spans use `start_date` + `end_date` (`null` = open-ended).
-- `cdh.use_cases` → `cdh.usage.intended_uses`; `cdh.not_recommended_for` → `cdh.usage.not_recommended_for`.
-- Every `href_template` token now has a matching `dimensions[]` entry **with its values enumerated from the live S3 listing** (the cross-field check Brayden flagged). Monthly axes list every `YYYY-MM`; seasons are a domain axis (`type: season`), years a temporal axis with `step: P1Y`.
-- `{variable}` expands over *all* `variables[]`, so GFM is split into per-variable assets (monthly-flooded, monthly-nobs, seasonal-*, history-*). The unpopulated 20 m `overpass` asset and second resolution entry were dropped.
-- `variables[].unit` is now required; vector records use `"1"` for categorical columns, `{person}` / `{facility}` UCUM annotations for counts.
-- Author lists are block lists of quoted `"Surname, I."` strings — a YAML flow list `[Funk, C.]` silently splits into two authors (bug present in the v0.1.0 records).
-- Added `series: Africa Agriculture Adaptation Atlas`, HTTPS + S3 `locations`, per-file `file_size`, `updated: 2026-09-14`.
+# drafts
+node /tmp/cdh-std/scripts/validate-yaml.js --draft \
+  --profile /tmp/cdh-std/spec/schemas/profiles/cdh.schema.json metadata/cdh/draft/*.yaml
 
-Review-driven (issue #32):
-- **Renamed** `africa-precipitation-chirps` → `africa-precipitation-monthly-seasonal`: an aggregation product, not a child of CHIRPS; `derived_from` links to the catalog record `chirps-v3-daily`.
-- **Licence** `kenya-flood-exposure-intersect` ODbL-1.0 → CC-BY-4.0 (derived aggregate statistics; inputs attributed in `note`). `kenya-roads-osm` / `kenya-facilities-hotosm` keep ODbL-1.0 (clips) and gain a `rel: license` link.
-- `LicenseRef-Copernicus-EMS` (GFM) now carries the required `additional_links[] rel: license` → Copernicus data policy.
-- NDVI record corrected: only MAM and OND are published (52 files), not 12 windows / annual.
+npx prettier@3 --check $files metadata/cdh/draft/*.yaml   # prettier DEFAULTS, no .prettierrc
+```
 
-## Contribution route (Brayden, issue #32 + email 2026-09-10/11)
+Schema errors short-circuit: cross-field rules only run once the schema passes, so a record can look
+nearly clean and then fail again. `uvx check-jsonschema` alone is **not** enough — it misses the
+cross-field checks.
 
-- PR into [CGIAR-Climate-Data-Hub/cdh-catalog](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog), layout `records/<id>/<id>.yaml`, **one PR per dataset** so each can be reviewed/edited independently. CI: `Validate records` (v0.3.0 profile + cross-field) and `Format` (prettier defaults).
-- Parent/child nesting (spec §4.8) is decided case-by-case at PR review; the website currently renders everything top-level. Submit all 13 at the top level and let review decide on nesting (population clips, admin boundaries).
-- Brayden wants a call on how child datasets are shown (UI/UX + governance).
+## Records
 
-## Submitted to cdh-catalog (2026-09-14)
-
-One PR per dataset from in-repo `submit/<id>` branches (Brayden's bot convention). Main ruleset: PR + 1 approving review + code-owner review + `validate / validate` check.
-
-| record | PR | state |
+| record | licence | status |
 |---|---|---|
-| africa-precipitation-monthly-seasonal | [#30](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/30) | ready for review |
-| africa-spei-drought | [#31](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/31) | ready for review |
-| eastafrica-flood-jrc | [#32](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/32) | ready for review |
-| eastafrica-ndvi-modis | [#33](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/33) | ready for review |
-| eastafrica-wrsi-fews | [#34](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/34) | ready for review |
-| kenya-admin-codab | [#35](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/35) | ready for review |
-| kenya-facilities-hotosm | [#36](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/36) | ready for review |
-| kenya-flood-exposure-intersect | [#37](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/37) | draft (awaiting GFM NDJ/DJF relabel) |
-| kenya-flood-gfm | [#38](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/38) | draft (awaiting GFM NDJ/DJF relabel) |
-| kenya-population-grid3 | [#39](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/39) | ready for review |
-| kenya-population-worldpop | [#40](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/40) | ready for review |
-| kenya-power-grid-kplc | [#41](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/41) | ready for review |
-| kenya-roads-osm | [#42](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog/pull/42) | ready for review |
+| `africa-precipitation-monthly-seasonal` | CC-BY-4.0 | **merged** (#30) |
+| `africa-spei-drought` | CC-BY-4.0 | PR #31 |
+| `eastafrica-flood-jrc` | CC-BY-4.0 | PR #32 — federated to Source Cooperative |
+| `eastafrica-ndvi-modis` | CC-BY-4.0 | PR #33 |
+| `eastafrica-wrsi-fews` | CC0-1.0 | PR #34 |
+| `kenya-admin-codab` | CC-BY-3.0-IGO | PR #35 |
+| `kenya-facilities-hotosm` | ODbL-1.0 | PR #36 |
+| `kenya-flood-exposure-intersect` | CC-BY-4.0 | PR #37 *(draft — awaiting GFM relabel)* |
+| `kenya-flood-gfm` | LicenseRef-Copernicus-EMS | PR #38 *(draft — awaiting GFM relabel)* |
+| `kenya-population-worldpop` | CC-BY-4.0 | PR #40 |
+| `kenya-power-grid-kplc` | CC0-1.0 | PR #41 |
+| `kenya-roads-osm` | ODbL-1.0 | PR #42 |
+| `enso-driver-roni` | CC0-1.0 | PR #43 — first federated record |
+| `enso-driver-dmi` | CC0-1.0 | PR #44 — federated |
+| `kenya-population-knbs-census` | CC0-1.0 | PR #45 |
+| `harveststat-crop-production` | CC0-1.0 | PR #46 — federated |
+| `kenya-food-insecurity-ipc` | CC-BY-NC-SA-3.0-IGO | PR #47 — federated, **NC + share-alike** |
+| `kenya-county-gender-datasheets` | LicenseRef-KE-Gov-Statistics-Assumed-Open | PR #48 — federated |
+| `kenya-market-prices-fews` | LicenseRef-FEWSNET-Data-Use-Policy | PR #50 — federated |
+| `mapspam2020-adaptation-atlas-ssa` | CC-BY-4.0 | not submitted |
+| `africa-admin-boundaries-gaul2024` | CC-BY-4.0 | not submitted |
+| `africa-population-worldpop-aggregated` | CC-BY-4.0 | not submitted |
+| `africa-hazard-exposure-nexgddp` | CC-BY-4.0 | not submitted — **see the defect note** |
+| `kenya-population-knbs-projections` | LicenseRef-KNBS-All-Rights-Reserved | **must not be submitted** — see below |
+| `kenya-population-grid3` | CC-BY-4.0 | **retired** — PR #39 closed, kept local |
 
-Follow-ups owned here: after cglabs completes `archive/dispatches/DISPATCH_cglabs_gfm_flood.md #9` (GFM END-year relabel + intersect rebuild), refresh the notes / `year` dimension in `kenya-flood-gfm.yaml` and `kenya-flood-exposure-intersect.yaml`, push to their `submit/` branches, mark ready. After `DISPATCH_cglabs_seasonal_rasters.md #7` (CHIRPS NDJ rebuild), NDJ values in the precipitation record extend to 2026 (one-line follow-up on #30).
+Drafts, each blocked on one fact:
 
-## Open review notes (flag at submission)
-- `href_template` assumes every value combination exists. Seasonal edge windows are absent where a record cannot cover all three months (CHIRPS NDJ/DJF 1981 and windows ending after 2026-04; WRSI only cropland-MAM has 2026; GFM NDJ/DJF stop at 2024). Noted in each record's `note`.
-- **Season-year label bugs (both FIXED in code, commit d89054a; rebuilds dispatched):** GFM labelled NDJ/DJF by START year (now END year like CHIRPS); CHIRPS NDJ shifted only December (NDJ-Y was Nov(Y)+Dec(Y−1)+Jan(Y), notebook tracker V2-63). Records for GFM/intersect will be refreshed once cglabs republishes.
-- `eastafrica-flood-jrc` declares no `temporal` (static return-period hazard); reviewer may prefer a nominal date.
+| draft | blocker |
+|---|---|
+| `enso-driver-western-v` | box coordinates, base period and SST product — all D409-side, not in any repository |
+| `kenya-market-prices-ndma` | nothing ingests it; kept as a candidate source |
+| `nexgddp-indices-monthly` | publication pending — the monthly rasters are not on cloud storage |
+
+`ensemble_season_trends.cdh.yaml` is a separate **v0.0.1 draft** for the CR-119 trends dataset. Not
+part of this set, not upgraded, still carries `license: ""` and `citation: ""` TODOs. Do not surface it.
+
+## Conventions established here
+
+**Federated records.** A dataset the Atlas cites but does not host gets a normal, strict-passing
+record pointing at the provider: `data[].locations` is the provider's URL, there is no
+`digital-atlas` entry, `series:` is omitted (it marks Atlas products), the provider is
+`licensor`/`producer` and we are `point-of-contact` only — never `processor` or `custodian`, since we
+process nothing and hold nothing. Volatility goes in `note`: CPC revises RONI, HadISST reissues, IPC
+re-analyses. A processed copy of ours is a **separate** record with `derived_from`, not an asset on
+the federated one.
+
+**National subsets are first-class.** The CDH plans them, so a Kenya-scoped resource is its own
+record rather than a child of a continental one. A different-resolution representation is likewise a
+separate record — `kenya-population-worldpop` (100 m) and `africa-population-worldpop-aggregated`
+(~9 km) are ninety times apart in grain and must not be substituted.
+
+**Never assert a licence you cannot evidence.** An absent licence is a visible gap; a guessed one is
+a wrong claim. Where a rights holder has published nothing and the data owner decides to proceed, say
+so explicitly: `LicenseRef-KE-Gov-Statistics-Assumed-Open` means *"no rights stated, treated as
+open"*, **not** *"the publishers granted an open licence"*, and the mandatory `rel: license` link
+documents the **absence** of terms.
+
+**Verify the ingest before authoring a source record.** A filename is not evidence. `kenya-market-prices-ndma`
+was authored from a bulletin filename and submitted before anyone checked what the pipeline reads —
+it reads FEWS NET. PR #49 was closed and the record demoted.
+
+## Licence findings worth not re-deriving
+
+- **KNBS census is `CC0-1.0`.** KNBS's own HDX organisation released the identical workbook under
+  `license_id: other-pd-nr`, "Public Domain / No restrictions". Verified against the HDX API.
+- **KNBS Volume XVI projections are All Rights Reserved.** Read from the PDF: *"© 2022 KNBS. All
+  rights reserved … without the prior written permission of the Bureau."* The Open License Agreement
+  is scoped to the Open Data **Platform** and does not reach a PDF on knbs.or.ke. No licensed mirror
+  exists — UNFPA's `cod-ps-ken` is census-only. **Analysis is fine; redistribution is not.** The
+  pipeline already does the safe thing: `POP_METHOD=county-growth` (the default) applies projections
+  as a dimensionless ratio on a CC0 census anchor. `POP_METHOD=county-level` reproduces the published
+  table and must not be used for anything published.
+- **HarvestStat is `CC0-1.0`** — the Dryad landing page prints no licence, the **API** does. For
+  Dryad-hosted datasets the API is authoritative where the page is silent.
+- **IPC is `CC-BY-NC-SA-3.0-IGO`** — non-commercial *and* share-alike, the only such licence here.
+  Cite and link freely; folding phases into a CC-BY-4.0 Atlas layer is not possible.
+- **HadISST is UK Non-Commercial Government Licence.** The DMI axis was moved to NOAA CPC's ERSSTv6
+  series to avoid it — which also put RONI and DMI on one reconstruction and one 1991-2020 base
+  period, a correctness fix rather than a licence dodge. The consuming notebook has not migrated yet
+  (hazards_prototype#36).
+- **MapSPAM: ours is not IFPRI's.** `MapSPAM2020_AdaptationAtlas_SSA` is CC-BY-4.0 with DOI
+  10.7910/DVN/Z0HK7R. The Hub's `spam2020` record is IFPRI's **global v2r2** under CC-BY-SA-4.0.
+  Different scope, licence, format and DOI — the share-alike does **not** reach our exposure chain.
+
+## Known upstream bug
+
+`--draft` rejects `spatial.bbox` in both permitted forms while the strict profile accepts both:
+`stripPresence()` removes the `minItems`/`maxItems` that discriminate the `oneOf`. Reported as
+[cdh-metadata-standard#33](https://github.com/CGIAR-Climate-Data-Hub/cdh-metadata-standard/issues/33)
+with a reproducer. Workaround: omit `bbox` from drafts and restore it at promotion.
+
+## Contribution route
+
+PR into [`cdh-catalog`](https://github.com/CGIAR-Climate-Data-Hub/cdh-catalog), layout
+`records/<id>/<id>.yaml`, **one PR per dataset**, from in-repo `submit/<id>` branches. CI is
+`Validate records` and `Format`. Main ruleset needs an approving review plus code-owner review, and
+Pete cannot self-approve.
+
+**Gotcha:** the catalog clone is shallow. `git checkout submit/<id>` fails until
+`git fetch origin submit/<id>:refs/remotes/origin/submit/<id>` — and a chained command will carry on
+regardless, so verify the branch updated before marking a PR ready.
+
+## Open questions raised with the Hub
+
+- Should federated records be segregated — directory, keyword, or `resource_type` convention? (#43/#44)
+- Should licence **class** surface in the UI, now that NC/SA records sit beside permissive ones? (#47)
+- Will the Hub carry **assumed-open** records at all, or should they be withheld pending confirmation? (#48)
+- `records/mapspam2020/mapspam2020.yaml` has `id: spam2020`, breaking `records/<id>/<id>.yaml`. Any
+  id-to-path resolution misses it.
