@@ -1,4 +1,5 @@
-# CDH v0.3.0 metadata record — JRC / GloFAS return-period river-flood hazard, Kenya crop (KE-ENSO Explorer, Adaptation Atlas).
+# CDH v0.3.0 record - JRC / GloFAS return-period river-flood hazard, global, federated to the
+# cloud-optimized Source Cooperative publication. The Atlas holds a provisional Kenya crop.
 # Validate (cdh-metadata-standard v0.3.0 checkout):
 #   node scripts/validate-yaml.js --profile spec/schemas/profiles/cdh.schema.json <this file>
 $schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
@@ -8,14 +9,16 @@ extensions:
   - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
 
 id: eastafrica-flood-jrc
-title: JRC Return-Period River Flood Hazard (Kenya)
+title: JRC / GloFAS Return-Period River Flood Hazard (Global)
 series:
   name: Africa Agriculture Adaptation Atlas
   url: https://adaptationatlas.cgiar.org/
 description: >
-  Modelled riverine flood hazard from the JRC / GloFAS Global Flood Maps: inundation depth for seven
-  return periods (10 to 500 years), a static baseline climatology, cropped to the Kenya window and
-  written as Cloud Optimized GeoTIFFs. The MODELLED flood-prone baseline of the KE-ENSO Explorer,
+  Modelled global riverine flood hazard from the JRC / GloFAS Global Flood Maps (CEMS-GLOFAS v2.1.2):
+  inundation depth for seven return periods, 10 to 500 years, at 3 arc-seconds, as a static baseline
+  climatology. Published as Cloud Optimized GeoTIFFs with internal overviews on Source Cooperative,
+  which is the canonical read location. The Adaptation Atlas additionally holds a provisional Kenya
+  crop of the same data. Within the KE-ENSO Explorer this is the MODELLED flood-prone baseline
   complementing the OBSERVED Copernicus GFM extent (record kenya-flood-gfm): JRC answers "how
   flood-prone at magnitude X", GFM answers "where and when it actually flooded".
 resource_type: dataset
@@ -35,16 +38,26 @@ keywords:
   ]
 
 note: >
+  FEDERATED TO THE CLOUD-OPTIMIZED UPSTREAM (2026-09-18, following review on cdh-catalog#32).
+  The full global product is already published as COGs with internal overviews under CC-BY-4.0 on
+  Source Cooperative, at the same seven return periods and the same 3 arc-second resolution as the
+  Atlas crop. The canonical asset in this record is therefore the global collection, not our subset.
+  The Kenya crop is retained as a provisional second asset because the KE-ENSO Explorer currently
+  reads it, but it carries no information the global collection lacks and the performance argument
+  for keeping it is untested. Measuring that is the open task; retiring the duplicate is the likely
+  outcome.
   Static modelled hazard (return-period depths); not an observed time series and not
-  scenario-projected, so no temporal coverage is declared. A subset (Kenya crop) of the global JRC
-  product, unchanged in value. Pair with the GFM observed extent for the "modelled vs observed"
-  flood story.
+  scenario-projected, so no temporal coverage is declared. Pair with the GFM observed extent for the
+  "modelled vs observed" flood story.
 
 contact:
   - name: Peter Steward
     organization: Alliance of Bioversity International and CIAT
     email: p.steward@cgiar.org
     roles: [processor, point-of-contact]
+  - organization: Source Cooperative / Radiant Earth Foundation
+    url: https://source.coop/nlebovits/jrc-glofas
+    roles: [processor]
   - organization: European Commission Joint Research Centre (JRC)
     url: https://data.jrc.ec.europa.eu/
     roles: [licensor, producer]
@@ -68,9 +81,9 @@ created: "2026-08-28"
 updated: "2026-09-14"
 
 spatial:
-  bbox: [33.9, -4.7, 41.9, 5.5] # Kenya crop (verified vs live COG 9600 x 12240 cells at 3 arc-seconds)
+  bbox: [-170.0, -59.99, 179.97, 80.0] # global extent of the canonical Source Cooperative collection; the Atlas crop covers [33.9, -4.7, 41.9, 5.5]
   crs: EPSG:4326
-  geography: [kenya]
+  geography: [world, kenya]
   resolution:
     - type: xy
       value: 3
@@ -97,6 +110,8 @@ processing:
     derived_from:
       - title: JRC Global Flood Maps (JRC Data Catalogue)
         url: https://data.jrc.ec.europa.eu/dataset/jrc-floods-floodmapgl_rp50y
+      - title: Global riverine flood hazard maps, JRC CEMS-GLOFAS v2.1.2 (Source Cooperative)
+        url: https://source.coop/nlebovits/jrc-glofas
   - id: crop-cog
     description: Crop to the Kenya window and write one COG per return period with internal overviews.
     code:
@@ -104,8 +119,24 @@ processing:
       version: python/ingest_flood_jrc.py
 
 data:
-  - name: return-period
-    description: Flood-depth COGs, one per return period.
+  - name: global-cog
+    description: >
+      The full global product as cloud-optimized GeoTIFFs with internal overviews, one collection per
+      return period, published on Source Cooperative. Same seven return periods, same 3 arc-second
+      resolution and same CC-BY-4.0 terms as the subset below - this is the canonical thing to read.
+    locations:
+      - url: https://data.source.coop/nlebovits/jrc-glofas/
+        title: HTTPS
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    processing_steps: [source]
+  - name: kenya-crop
+    description: >
+      A Kenya-window crop of the same data, held on Atlas storage and read by the KE-ENSO Explorer.
+      PROVISIONAL, and kept only for as long as it earns its place: it adds no information over the
+      global collection above, and exists solely on the expectation that a smaller window renders
+      faster in the browser. That trade-off has NOT been measured. If the global COGs perform
+      acceptably over range requests, this asset should be retired rather than maintained as a
+      duplicate.
     locations:
       - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=flood/source=jrc-glofas/region=east-africa/processing=return-period/variable=flood-depth/
         title: HTTPS

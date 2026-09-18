@@ -45,7 +45,10 @@ note: >
   already established for Volume XVI. UN Women co-publishes under the Women Count programme and
   normally releases CC-BY-3.0-IGO, which is a signal and not a statement. Settle with UN Women Kenya
   or the State Department for Gender before anything derived from these is published.
-  EDITION. The October 2025 set, all 47 county sheets. Not the 2019 ten-county pilot, and not a mix.
+  EDITION. The October 2025 set, all 47 county sheets, uploaded to knbs.or.ke in April and May 2026.
+  Not the 2019 ten-county pilot, and not a mix. A static cross-section, not an ongoing series.
+  SIZE. The Atlas extraction yields 1,578 rows: 35 indicator series across 24 stable codes, long
+  format, county level only.
   VINTAGE IS NOT UNIFORM AND IS NOT RECOVERABLE FROM THE SHEETS AS EXTRACTED. Indicators mix 2022
   KDHS, 2019 census-derived figures and 2022 election results. The Atlas extraction strips any
   trailing year from indicator labels, so no per-indicator reference year survives in the derived
@@ -149,9 +152,11 @@ processing:
   - id: extract
     description: >
       Deterministic text extraction from the 47 PDFs - pymupdf get_text("blocks"), two-column split
-      on x0 < 320, sorted by page, column and y, keyed on the printed indicator code, values read
-      Kenya-then-County per the printed header, then gated at 40 of 47 counties agreeing with the
-      modal national value. No language model touches a number.
+      on x0 < 320, sorted by page, column and y, keyed on the printed indicator code
+      (^([A-E]\d{1,2})\s*[:.]), values read Kenya-then-County per the printed header, then gated:
+      a county row is dropped where its extracted national reference value does not match the modal
+      national value for that code and sub-series, and a series is served only where at least 40 of
+      47 counties survive. No language model touches a number, and nothing is transcribed by hand.
     code:
       url: https://github.com/AdaptationAtlas/atlas_notebooks
       version: data/KE-enso-explorer/_sources/gesi_extract.py
