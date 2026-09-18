@@ -66,7 +66,7 @@ if (nzchar(Sys.getenv("ATLAS_SETUP_SKIP"))) {
   .log("sourcing %s", setup)
   suppressMessages(suppressWarnings(source(setup)))
 }
-suppressPackageStartupMessages({ pacman::p_load(s3fs, arrow, dplyr, data.table) })
+suppressPackageStartupMessages({ pacman::p_load(s3fs, arrow, dplyr, data.table, jsonlite) })
 
 BUCKET  <- "digital-atlas"
 S3_BASE <- sprintf(paste0(
@@ -161,6 +161,29 @@ if (DO_TIERS) for (tier in TIERS) {
          paste(sort(unique(live_n$hazard_vars)), collapse = ", "))
   }
   finish_upload(local_f, bu$s3_url)
+
+  # Issue #26 ask 4: ensemble membership exists nowhere in the parquet's columns,
+  # so for this product the sidecar is not an extra - it is the only place a
+  # consumer can see whether they are reading an 18-member or a 5-member
+  # ensemble. Ship it with the tier. Missing or unstamped is reported loudly but
+  # does not abort: the parquet itself is unaffected and already verified above.
+  sc_local <- paste0(local_f, ".json")
+  if (file.exists(sc_local)) {
+    em <- tryCatch(jsonlite::read_json(sc_local, simplifyVector = TRUE)$ensemble,
+                   error = function(e) NULL)
+    if (is.null(em)) {
+      .log("  sidecar WARN: %s has no `ensemble` block - R/3 predates the #26 stamp, membership unrecorded",
+           basename(sc_local))
+    } else {
+      .log("  sidecar: ensemble = %d GCMs [%s]", em$n_members, paste(em$members, collapse = ","))
+      if (!identical(as.integer(em$n_members), 18L)) {
+        .log("  sidecar WARN: %d members, not 18 - published product is a partial ensemble (#26)", em$n_members)
+      }
+    }
+    finish_upload(sc_local, paste0(bu$s3_url, ".json"))
+  } else {
+    .log("  sidecar MISSING (%s) - published parquet records no ensemble membership", basename(sc_local))
+  }
   .log("  %s done in %s", tier, .elapsed(t_tier))
 }
 

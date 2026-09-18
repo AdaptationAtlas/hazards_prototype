@@ -1268,6 +1268,29 @@ for (tx in seq_along(timeframe_choices)) {
 
         files <- list.files(folder, ".tif$", full.names = TRUE)
 
+        # Issue #26 ask 4: nothing in the parquet records WHICH GCMs an ENSEMBLE
+        # aggregate is over, so a 5-member and an 18-member product are
+        # indistinguishable once published. Read the membership off the per-GCM
+        # `_int` stacks in this folder NOW, before the ensemble_only4.2 filter
+        # below drops them, and stamp it into the sidecar. Parsed with the same
+        # anchored tstrsplit field-2 rule §4.2 already applies to `model` rather
+        # than a regex over GCM names, which carry their own hyphen traps
+        # (ACCESS-ESM1-5, MPI-ESM1-2-HR, TaiESM1).
+        .ens_members <- sort(setdiff(
+          unique(unlist(data.table::tstrsplit(
+            basename(files[grepl("_int_", files)]), "_", keep = 2, fixed = TRUE))),
+          c("ENSEMBLE", "ENSEMBLEmean", "ENSEMBLEsd", "historic")
+        ))
+        ensemble_info <- list(
+          n_members    = length(.ens_members),
+          members      = .ens_members,
+          derived_from = "model token of the per-GCM _int stacks present in the hazard_risk folder at extraction time",
+          folder       = basename(folder)
+        )
+        .log03(sprintf("[%s] 4.2) ensemble membership: %d GCMs (%s)", timeframe,
+                       length(.ens_members),
+                       if (length(.ens_members)) paste(.ens_members, collapse = ",") else "NONE FOUND"))
+
         if (!do_ensemble_sd4.2) {
           files <- files[!grepl("ENSEMBLEsd", files)]
         }
@@ -1448,6 +1471,7 @@ for (tx in seq_along(timeframe_choices)) {
                 season_type = timeframe,
                 field_descriptions = field_descriptions,
                 filters = filters,
+                ensemble = ensemble_info,
                 format = ".parquet",
                 date_created = Sys.time(),
                 version = version4,
