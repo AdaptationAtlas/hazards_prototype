@@ -1,0 +1,80 @@
+# CDH v0.3.0 FEDERATED record - the Atlas cites this index but does not host it.
+# Validate: node scripts/validate-yaml.js --profile spec/schemas/profiles/cdh.schema.json <this file>
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+
+id: enso-driver-roni
+title: NOAA CPC Relative Oceanic Nino Index (RONI)
+description: >
+  The Nino 3.4 sea-surface-temperature anomaly expressed relative to the tropical-mean SST anomaly,
+  published monthly by the NOAA Climate Prediction Center as overlapping three-month windows. A
+  federated record: the Adaptation Atlas cites this index but does not host or redistribute it.
+resource_type: dataset
+license: CC0-1.0 # work of the US Government, public domain
+keywords:
+  [enso, roni, sea surface temperature, climate index, seasonal forecasting]
+
+note: >
+  CPC REVISES PAST VALUES, so a refetch changes history - pin and record the fetch date with any
+  analysis. RONI differs from the Nino 3.4 anomaly by up to 0.567 degC on a time-trending gap
+  (about +0.20 degC in 1981-1995 falling to about -0.30 degC in 2015-2025), so mixing RONI and
+  Nino 3.4 in one analogue-season comparison biases matches toward older years. Values are
+  three-month means labelled by their centre month.
+
+access: public
+
+contact:
+  - organization: NOAA Climate Prediction Center
+    url: https://www.cpc.ncep.noaa.gov/
+    roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [point-of-contact]
+
+citation:
+  title: Relative Oceanic Nino Index (RONI)
+  authors:
+    - "NOAA Climate Prediction Center"
+  date: "2026"
+  publisher: NOAA National Weather Service, Climate Prediction Center
+  url: https://www.cpc.ncep.noaa.gov/data/indices/RONI.ascii.txt
+
+created: "2026-09-18"
+updated: "2026-09-18"
+
+temporal:
+  start_date: "1950-01"
+  end_date: null
+
+processing:
+  - id: source
+    description: >
+      CPC computes the Nino 3.4 SST anomaly and subtracts the tropical-mean (20S-20N) SST anomaly,
+      publishing overlapping three-month means as a fixed-width ASCII table.
+    derived_from:
+      - title: NOAA CPC RONI
+        url: https://www.cpc.ncep.noaa.gov/data/indices/RONI.ascii.txt
+
+data:
+  - name: roni-ascii
+    description: Fixed-width ASCII table, one row per overlapping three-month window.
+    locations:
+      - url: https://www.cpc.ncep.noaa.gov/data/indices/RONI.ascii.txt
+        title: HTTPS
+    media_type: text/plain
+    processing_steps: [source]
+
+cdh:
+  domain: [climate]
+  usage:
+    intended_uses:
+      - Selecting analogue seasons for Kenyan seasonal outlooks in the KE-ENSO Explorer.
+    not_recommended_for:
+      - use: Mixing RONI with the raw Nino 3.4 anomaly in one time series or distance metric.
+        reason: >
+          The two differ by up to 0.567 degC and the gap trends over time, so a mixed series biases
+          analogue matching toward older years.
+        use_instead: One index end to end, RONI throughout.

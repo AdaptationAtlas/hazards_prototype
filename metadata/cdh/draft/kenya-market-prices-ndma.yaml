@@ -1,0 +1,59 @@
+# CDH v0.3.0 FEDERATED record, DRAFT - passes --draft only, not yet submittable.
+# Promotion: fill the missing fields until it passes WITHOUT --draft, then git mv to metadata/cdh/.
+# Validate: node scripts/validate-yaml.js --draft --profile spec/schemas/profiles/cdh.schema.json <this file>
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+
+id: kenya-market-prices-ndma
+title: Kenya Drought Early Warning Bulletins - Market Prices and Terms of Trade (NDMA)
+description: >
+  County-level market indicators from Kenya's National Drought Management Authority monthly National
+  Drought Early Warning Bulletins, including staple and livestock prices and the pastoral terms of
+  trade. A federated record - the Adaptation Atlas cites these bulletins but does not host them.
+resource_type: dataset
+keywords:
+  [market prices, terms of trade, drought early warning, pastoral, kenya, ndma]
+
+note: >
+  DRAFT - BLOCKED ON TWO THINGS. (a) No licence is published for NDMA bulletins; confirm with NDMA
+  before asserting one. (b) The indicators are published as monthly PDF bulletins, not as a
+  machine-readable series, so any time series is reconstructed by extraction - record who extracts
+  it, with what code, and over which months, before promotion.
+  TERMS OF TRADE IS A RATIO, NOT A PRICE. It expresses how much staple a pastoralist obtains per
+  animal sold, so it moves with either leg; a fall can mean cheaper livestock or dearer grain, and
+  the two have different implications. Do not read it as a price index.
+  FEWS NET publishes a separate Kenya Price Bulletin covering overlapping markets - a different
+  product with a different methodology, not a substitute.
+
+access: public
+
+contact:
+  - organization: National Drought Management Authority (NDMA), Kenya
+    url: https://ndma.go.ke/
+    roles: [producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [point-of-contact]
+
+processing:
+  - id: source
+    description: >
+      NDMA county drought monitors collect market prices; the authority publishes them monthly in the
+      National Drought Early Warning Bulletin along with the pastoral terms of trade.
+    derived_from:
+      - title: NDMA National Drought Early Warning Bulletins
+        url: https://knowledgeweb.ndma.go.ke/Public/Resources/Default.aspx?ID=7
+
+data:
+  - name: ndma-bulletins
+    description: Monthly National Drought Early Warning Bulletins (PDF).
+    locations:
+      - url: https://knowledgeweb.ndma.go.ke/Public/Resources/Default.aspx?ID=7
+        title: HTTPS
+    media_type: application/pdf
+
+cdh:
+  domain: [socioeconomic]

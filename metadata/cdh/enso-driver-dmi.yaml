@@ -1,0 +1,128 @@
+# CDH v0.3.0 FEDERATED record - the Atlas cites this index but does not host it.
+# NON-COMMERCIAL licence inherited from HadISST. Read the licence note before reuse.
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+
+id: enso-driver-dmi
+title: Indian Ocean Dipole Mode Index (DMI, HadISST-based)
+description: >
+  Monthly Dipole Mode Index for the Indian Ocean: the anomalous sea-surface-temperature gradient
+  between the western equatorial Indian Ocean (50E-70E, 10S-10N) and the south-eastern equatorial
+  Indian Ocean (90E-110E, 10S-0N), computed from the Met Office Hadley Centre HadISST dataset and
+  served as monthly time series by NOAA PSL. A federated record: the Adaptation Atlas cites this
+  index but does not host or redistribute it.
+resource_type: dataset
+license: LicenseRef-UK-NCGL-2.0 # inherited from HadISST - see the licence note. NOT an open licence.
+keywords:
+  [
+    indian ocean dipole,
+    iod,
+    dmi,
+    sea surface temperature,
+    climate index,
+    hadisst,
+  ]
+
+note: >
+  LICENCE - READ BEFORE REUSE. The underlying HadISST data are Crown Copyright, Met Office, released
+  under the UK Non-Commercial Government Licence: the material may be downloaded for private study
+  and scientific research, and any other use requires a licence from the Met Office IPR officer
+  (ipr@metoffice.gov.uk). This is NOT an open licence and it does not match the CC-BY-4.0 terms of
+  most Adaptation Atlas products. Citing DMI values is fine; baking them into a published Atlas
+  artifact (a parquet or COG that ships the numbers) is a licensing question, not a technical one.
+  As of 2026-09-18 no Adaptation Atlas producer stage ingests any sea-surface-temperature index,
+  verified by grep across every tracked R, shell and Python source, so nothing downstream inherits
+  this restriction today.
+  DATA SHAPE. NOAA PSL serves the western and eastern poles as separate time series; the DMI is
+  their difference. Take both poles from the same source and vintage rather than mixing providers.
+  KNOWN GAP. In the KE-ENSO Explorer staging as of 2026-09-15, DMI is NULL for all of 2025 in both
+  seasons, so 2025 cannot be used as an analogue year - and a z-scored analogue distance computed
+  over a NULL axis fails SILENTLY rather than erroring.
+
+access: public
+
+contact:
+  - organization: Met Office Hadley Centre
+    url: https://www.metoffice.gov.uk/hadobs/hadisst/
+    roles: [licensor, producer]
+  - organization: NOAA Physical Sciences Laboratory
+    url: https://psl.noaa.gov/
+    roles: [producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [point-of-contact]
+
+citation:
+  title: >
+    Global analyses of sea surface temperature, sea ice, and night marine air temperature since the
+    late nineteenth century
+  authors:
+    - "Rayner, N. A."
+    - "Parker, D. E."
+    - "Horton, E. B."
+    - "Folland, C. K."
+    - "Alexander, L. V."
+    - "Rowell, D. P."
+    - "Kent, E. C."
+    - "Kaplan, A."
+  date: "2003"
+  publisher: "Journal of Geophysical Research: Atmospheres"
+  url: https://doi.org/10.1029/2002JD002670
+related_publications:
+  - doi: 10.1029/2002JD002670
+
+created: "2026-09-18"
+updated: "2026-09-18"
+
+temporal:
+  start_date: "1870-01"
+  end_date: null
+
+processing:
+  - id: source
+    description: >
+      Met Office Hadley Centre produces HadISST; NOAA PSL area-averages the two dipole poles from it
+      and publishes monthly time series, the difference of which is the Dipole Mode Index.
+    derived_from:
+      - title: Met Office Hadley Centre HadISST
+        url: https://www.metoffice.gov.uk/hadobs/hadisst/
+      - title: NOAA PSL Dipole Mode Index monthly time series
+        url: https://psl.noaa.gov/data/timeseries/month/DMI/
+
+data:
+  - name: dmi-monthly
+    description: Monthly DMI pole time series as published by NOAA PSL.
+    locations:
+      - url: https://psl.noaa.gov/data/timeseries/month/DMI/
+        title: HTTPS
+    media_type: text/plain
+    processing_steps: [source]
+
+additional_links:
+  - name: UK Non-Commercial Government Licence v2.0
+    rel: license
+    url: https://www.nationalarchives.gov.uk/doc/non-commercial-government-licence/version/2/
+    description: >
+      Crown Copyright licence under which HadISST is released. Non-commercial use only; other uses
+      require a separate licence from the Met Office.
+
+cdh:
+  domain: [climate]
+  usage:
+    intended_uses:
+      - Characterising Indian Ocean Dipole state when selecting analogue seasons for Kenyan seasonal outlooks.
+    not_recommended_for:
+      - use: Including DMI values in a redistributed Atlas data product.
+        reason: >
+          HadISST is Crown Copyright under a Non-Commercial Government Licence, which is incompatible
+          with the open licences the Atlas publishes under.
+        use_instead: Cite the index and link to the provider; compute and display without redistributing the series.
+      - use: Weighting IOD and ENSO equally in an unscaled analogue distance.
+        reason: >
+          For Kenya OND the two axes have very different spread (ENSO sd about 1.179 against IOD
+          about 0.362), so an unscaled squared distance lets ENSO dominate by roughly ten to one -
+          backwards for the season IOD matters most in.
+        use_instead: Z-score each driver axis before computing distance.
