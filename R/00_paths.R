@@ -88,7 +88,14 @@ if (!isTRUE(getOption("atlas.paths_loaded"))) {
       }
     }
 
-    # (4) explicit env, then the legacy variable 0_server_setup.R used to write
+    # (4) explicit env, then the legacy variable 0_server_setup.R used to write.
+    #
+    # ATLAS_PROJECT_DIR is checked FIRST and that ordering is load-bearing:
+    # R applies ~/.Renviron AFTER the shell environment, so on a host whose
+    # .Renviron sets project_dir (PASCAL does), `project_dir=... Rscript ...`
+    # is silently ignored - the file wins. ATLAS_PROJECT_DIR is not in anyone's
+    # .Renviron, so it survives. Use it, Sys.setenv() inside the call, or
+    # R_ENVIRON_USER.
     for (v in c("ATLAS_PROJECT_DIR", "project_dir")) {
       p <- Sys.getenv(v, unset = "")
       if (nzchar(p)) return(path.expand(p))

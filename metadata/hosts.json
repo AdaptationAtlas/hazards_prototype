@@ -69,20 +69,20 @@
     },
     {
       "id": "afrilabs",
-      "status": "UNVERIFIED",
-      "description": "Afrilabs / PASCAL VM. Roughly 4x the cores and 2x the per-core clock of CGlabs, so the preferred target for CPU-bound stages once data is staged.",
+      "status": "verified",
+      "description": "Afrilabs / PASCAL VM. Roughly 4x the cores and 2x the per-core clock of CGlabs, so the preferred target for CPU-bound stages. Paths confirmed on the node 2026-09-18 (issue #29 comment).",
       "match": {
         "project_dir": [
           "/home/psteward/rprojects/hazards_prototype"
         ]
       },
-      "common_data": "/cluster01/workspace/atlas",
+      "common_data": "/cluster01/Workspace/common",
       "trees": {
         "nexgddp": {
-          "working_dir": "/cluster01/workspace/atlas/hazards_prototype"
+          "working_dir": "/cluster01/Workspace/atlas/hazards_prototype"
         },
         "atlas_delta": {
-          "working_dir": "/cluster01/workspace/atlas/hazards_prototype"
+          "working_dir": "/cluster01/Workspace/atlas/hazards_prototype"
         }
       },
       "flags": {
@@ -112,15 +112,16 @@
           "No GPU and no CUDA. A sibling host 'ampere' may be GPU-equipped but is unconfirmed and needs separate IT access.",
           "R's terra and sf link against the old system GDAL 3.4.3 / PROJ 8.2.1, while the python env carries GDAL 3.13.3. Relevant to COG and Zarr work.",
           "Bulk store is roughly a quarter of CGlabs' free space, so a full mirror is not viable - stage per-shard working sets.",
-          "Source: server-environment.md, issue #27, branch docs/server-environment (NOT yet merged to develop). Figures taken from the live machine, September 2025, and will drift."
+          "Paths verified on the node 2026-09-18. common_space is a root-owned symlink to /cluster01, not a second mount. Workspace and workspace are the same inode - the export is case-insensitive, so the old lowercase spelling was never the problem; common_data simply pointed at the wrong subtree (atlas, which holds only hazards_prototype, instead of common).",
+          "Raw climate trees live under common/climate/ with node-local names (chirts_era5, chirps, cmip6/nex-gddp-cmip6_raw), hence the per-host raw overrides above. isimip, atlas_sos and atlas_cropSuite are genuinely absent - those stages cannot run here until staged.",
+          "GOTCHA: ~/.Renviron on this node sets project_dir, and R applies .Renviron AFTER the shell environment, so `project_dir=... Rscript ...` is silently ignored. Use ATLAS_PROJECT_DIR (which the resolver checks first), Sys.setenv() inside the call, or R_ENVIRON_USER.",
+          "Source: server-environment.md (issue #27, now on develop via 7836677). Hardware figures from September 2025 and will drift."
         ]
       },
-      "_unverified": [
-        "PATHS are unverified; the CAPABILITIES above come from the documented note (issue #27).",
-        "working_dir and common_data are carried verbatim from the old R/0_server_setup.R:135 and have NOT been confirmed on the node.",
-        "Two descriptions disagree: /cluster01 is documented as holding Data, Projects and Workspace trees, while the working note refers to common_space/Workspace/common (shared data) and common_space/Workspace/atlas (Atlas tree).",
-        "Resolve with DISPATCH_pascal_issue29_profile.md, then correct common_data and both trees here and flip status to verified. No R changes needed."
-      ]
+      "raw": {
+        "chirts_raw": "/cluster01/Workspace/common/climate/chirts_era5",
+        "chirps_raw": "/cluster01/Workspace/common/climate/chirps"
+      }
     },
     {
       "id": "mac-pstewarda",
