@@ -47,7 +47,54 @@
       "date": "2026-09-18",
       "change": "Record created. Flagged the unpinned rolling release.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-09-18",
+      "change": "Acquisition recipe registered, transcribed from 0_server_setup.R section 3.5. Note the upstream spelling inconsistency: 'Crops_Livestock' for production but 'CropsLivestock' for trade.",
+      "ref": "#29"
     }
   ],
-  "schema_version": "1.0.0"
+  "schema_version": "1.0.0",
+  "acquire": {
+    "method": "http-zip",
+    "source": "https://fenixservices.fao.org/faostat/static/bulkdownloads",
+    "files": [
+      {
+        "url": "https://fenixservices.fao.org/faostat/static/bulkdownloads/Deflators_E_All_Data_(Normalized).zip",
+        "expect": "Deflators_E_All_Data_(Normalized).csv"
+      },
+      {
+        "url": "https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip",
+        "expect": "Prices_E_Africa_NOFLAG.csv"
+      },
+      {
+        "url": "https://bulks-faostat.fao.org/production/Prices_E_All_Data_(Normalized).zip",
+        "expect": "Prices_E_All_Data_(Normalized).csv"
+      },
+      {
+        "url": "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip",
+        "expect": "Production_Crops_Livestock_E_Africa_NOFLAG.csv"
+      },
+      {
+        "url": "https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_All_Area_Groups.zip",
+        "expect": "Production_Crops_Livestock_E_All_Area_Groups.csv"
+      },
+      {
+        "url": "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip",
+        "expect": "Value_of_Production_E_Africa.csv"
+      },
+      {
+        "url": "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_All_Area_Groups.zip",
+        "expect": "Value_of_Production_E_All_Area_Groups.csv"
+      },
+      {
+        "url": "https://fenixservices.fao.org/faostat/static/bulkdownloads/Trade_CropsLivestock_E_Africa.zip",
+        "expect": "Trade_CropsLivestock_E_Africa_NOFLAG.csv"
+      },
+      {
+        "url": "https://fenixservices.fao.org/faostat/static/bulkdownloads/Trade_CropsLivestock_E_All_Area_Groups.zip",
+        "expect": "Trade_CropsLivestock_E_All_Area_Groups.csv"
+      }
+    ]
+  }
 }

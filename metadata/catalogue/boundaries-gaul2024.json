@@ -53,7 +53,26 @@
       "date": "2026-09-18",
       "change": "Record created from the existing metadata/data.json entry.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-09-18",
+      "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
+      "ref": "#29"
     }
   ],
-  "schema_version": "1.0.0"
+  "schema_version": "1.0.0",
+  "acquire": {
+    "method": "s3-glue",
+    "source": "s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region={region}/processing=analysis-ready/level=adm{level}/atlas_gaul24_a{level}_{region}.parquet",
+    "params": {
+      "region": [
+        "africa"
+      ],
+      "level": [
+        "0",
+        "1",
+        "2"
+      ]
+    }
+  }
 }

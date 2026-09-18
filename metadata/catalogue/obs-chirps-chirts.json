@@ -11,7 +11,8 @@
     "type": "public-http",
     "url": "https://data.chc.ucsb.edu/",
     "checksum_manifest": null,
-    "license": "public domain (CHC/UCSB)"
+    "license": null,
+    "license_owner": "cdh"
   },
   "transfer": {
     "strategy": "pull-from-origin",
@@ -48,7 +49,23 @@
       "date": "2026-09-18",
       "change": "Record created. Note this is the one dataset in the repo that already has a real per-file checksum manifest - the pattern the rest should follow.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-09-18",
+      "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
+      "ref": "#29"
+    },
+    {
+      "date": "2026-09-18",
+      "change": "origin.license cleared - the CDH record owns licence, citation and caveats (one owner per field).",
+      "ref": "#29"
     }
   ],
-  "schema_version": "1.0.0"
+  "schema_version": "1.0.0",
+  "acquire": {
+    "method": "script",
+    "command": "Rscript R/observational/1_get_chirps_chirts.R --full",
+    "runnable": false,
+    "note": "That script already maintains its own per-file manifest.csv with sha256 and uses it as a resume gate - the pattern the rest of the catalogue should converge on."
+  }
 }

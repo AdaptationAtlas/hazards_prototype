@@ -1,0 +1,54 @@
+{
+  "id": "cattle-heatstress",
+  "title": "Cattle heat stress layers",
+  "description": "Pre-computed cattle heat-stress surfaces used by the livestock heat work.",
+  "class": "external-raw",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-s3",
+    "url": "s3://digital-atlas/cattle_heatstress",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "Small, public, fetched per host by the shared downloader.",
+    "approx_size": "< 1 G",
+    "regenerate_with": null
+  },
+  "location": {
+    "key": "cattle_heatstress",
+    "path": null,
+    "subpath": null,
+    "glob": "*",
+    "recursive": false
+  },
+  "produced_by": [],
+  "consumed_by": [],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/cattle_heatstress",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "acquire": {
+    "method": "s3-dir",
+    "source": "s3://digital-atlas/cattle_heatstress",
+    "flatten": true
+  },
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created with its acquisition recipe, transcribed from 0_server_setup.R section 3.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

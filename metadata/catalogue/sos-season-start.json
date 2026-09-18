@@ -1,0 +1,58 @@
+{
+  "id": "sos-season-start",
+  "title": "Start of season (SOS)",
+  "description": "Season start dates driving the crop-calendar timeframes.",
+  "class": "external-raw",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-s3",
+    "url": "s3://digital-atlas/sos",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "Small, public, fetched per host by the shared downloader.",
+    "approx_size": "< 1 G",
+    "regenerate_with": null
+  },
+  "location": {
+    "key": "sos",
+    "path": null,
+    "subpath": null,
+    "glob": "*",
+    "recursive": false
+  },
+  "produced_by": [],
+  "consumed_by": [
+    "1"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/sos",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "Data/sos/sos.tif is built by R/0.2_create_sos_rast.R from a CGlabs-only raw tree (atlas_sos/seasonal_mean); the S3 copy and the derived raster are not the same thing."
+  ],
+  "acquire": {
+    "method": "s3-dir",
+    "source": "s3://digital-atlas/sos",
+    "flatten": true
+  },
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created with its acquisition recipe, transcribed from 0_server_setup.R section 3.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

@@ -49,7 +49,18 @@
       "date": "2026-09-18",
       "change": "Record created; back-filled from the existing CDH record and ingest script.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-09-18",
+      "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
+      "ref": "#29"
     }
   ],
-  "schema_version": "1.0.0"
+  "schema_version": "1.0.0",
+  "acquire": {
+    "method": "script",
+    "command": "python python/ingest_wrsi_fews.py",
+    "runnable": false,
+    "note": "Registered ingest. The script is the definition of the dataset; do not fetch these by any other route."
+  }
 }

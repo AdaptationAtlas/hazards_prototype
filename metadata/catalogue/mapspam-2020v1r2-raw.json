@@ -1,0 +1,60 @@
+{
+  "id": "mapspam-2020v1r2-raw",
+  "title": "MapSPAM 2020 V1r2 (SSA) \u2014 raw CSV release",
+  "schema_version": "1.0.0",
+  "description": "The raw MapSPAM CSV release, as distinct from the Atlas-harmonised rasters. Kept separate because the two are fetched from different prefixes and used by different code.",
+  "class": "external-raw",
+  "version": "2020V1r2",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-s3",
+    "url": "s3://digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=raw/",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "On Atlas S3; fetched per host.",
+    "approx_size": "< 1 G",
+    "regenerate_with": null
+  },
+  "location": {
+    "key": null,
+    "path": "Data/mapspam/2020V1r2_SSA",
+    "subpath": null,
+    "glob": "*.csv",
+    "recursive": false
+  },
+  "produced_by": [],
+  "consumed_by": [],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=raw/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "acquire": {
+    "method": "s3-dir",
+    "source": "s3://digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=raw/",
+    "recurse": true,
+    "pattern": "\\.csv",
+    "exclude": "index",
+    "flatten": true,
+    "target": {
+      "path": "Data/mapspam/2020V1r2_SSA"
+    }
+  },
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created with its acquisition recipe, transcribed from 0_server_setup.R section 3.2.2.",
+      "ref": "#29"
+    }
+  ]
+}

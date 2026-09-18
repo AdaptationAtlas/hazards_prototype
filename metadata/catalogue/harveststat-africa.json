@@ -1,0 +1,42 @@
+{
+  "schema_version": "1.0.0",
+  "id": "harveststat-africa",
+  "title": "HarvestStat Africa subnational crop statistics",
+  "description": "Subnational harvested area and production statistics, cited as a comparator for MapSPAM-derived exposure.",
+  "class": "referenced",
+  "version": "n/a",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://github.com/HarvestStat/HarvestStat",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "Cited, not held. Nothing is stored on any Atlas host and nothing is republished; consult the source directly.",
+    "approx_size": null,
+    "regenerate_with": null
+  },
+  "location": null,
+  "produced_by": [],
+  "consumed_by": [],
+  "atlas_s3": null,
+  "cdh_record": null,
+  "cdh_draft": null,
+  "completeness": {
+    "min_files": 0
+  },
+  "gaps": [
+    "Referenced by Atlas outputs but not inventoried, versioned or archived by this project - if the source moves, the citation breaks."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created with class=referenced so cited-but-not-held data is visible rather than absent.",
+      "ref": "#29"
+    }
+  ]
+}

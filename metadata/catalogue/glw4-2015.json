@@ -45,7 +45,50 @@
       "date": "2026-09-18",
       "change": "Record created and marked superseded.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-09-18",
+      "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
+      "ref": "#29"
     }
   ],
-  "schema_version": "1.0.0"
+  "schema_version": "1.0.0",
+  "acquire": {
+    "method": "http-file",
+    "source": "https://dataverse.harvard.edu/api/access/datafile/",
+    "files": [
+      {
+        "url": "https://dataverse.harvard.edu/api/access/datafile/6786792",
+        "dest": "5_Ch_2015_Da.tif"
+      },
+      {
+        "url": "https://dataverse.harvard.edu/api/access/datafile/6769626",
+        "dest": "5_Sh_2015_Da.tif"
+      },
+      {
+        "url": "https://dataverse.harvard.edu/api/access/datafile/6769654",
+        "dest": "5_Pg_2015_Da.tif"
+      },
+      {
+        "url": "https://dataverse.harvard.edu/api/access/datafile/6769681",
+        "dest": "5_Ho_2015_Da.tif"
+      },
+      {
+        "url": "https://dataverse.harvard.edu/api/access/datafile/6769696",
+        "dest": "5_Gt_2015_Da.tif"
+      },
+      {
+        "url": "https://dataverse.harvard.edu/api/access/datafile/6769700",
+        "dest": "5_Dk_2015_Da.tif"
+      },
+      {
+        "url": "https://dataverse.harvard.edu/api/access/datafile/6770179",
+        "dest": "5_Bf_2015_Da.tif"
+      },
+      {
+        "url": "https://dataverse.harvard.edu/api/access/datafile/6769711",
+        "dest": "5_Ct_2015_Da.tif"
+      }
+    ]
+  }
 }

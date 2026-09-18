@@ -44,7 +44,18 @@
       "date": "2026-09-18",
       "change": "Record created. Confirmed the bucket and MD5 index are publicly reachable anonymously.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-09-18",
+      "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
+      "ref": "#29"
     }
   ],
-  "schema_version": "1.0.0"
+  "schema_version": "1.0.0",
+  "acquire": {
+    "method": "script",
+    "command": "Rscript hazards_upstream/R/01_download_data/download_manual_nex_gddpCMIP6.R",
+    "runnable": false,
+    "note": "Pulls from the public NEX-GDDP-CMIP6 bucket. Honours COMMON_DATA and the GCMS/SSPS/YRS shard variables, so fetch only the slice a run needs. Verify against the published MD5 index rather than trusting file counts."
+  }
 }

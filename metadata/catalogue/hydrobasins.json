@@ -1,0 +1,57 @@
+{
+  "id": "hydrobasins",
+  "title": "WMO hydrological basin boundaries (GRDC)",
+  "description": "WMO basin polygons used for basin-level summaries of the ISIMIP water variables.",
+  "class": "external-raw",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://grdc.bafg.de/downloads/wmobb_json.zip",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "Small, public, fetched per host by the shared downloader.",
+    "approx_size": "< 1 G",
+    "regenerate_with": null
+  },
+  "location": {
+    "key": "hydrobasins",
+    "path": null,
+    "subpath": null,
+    "glob": "*.json",
+    "recursive": false
+  },
+  "produced_by": [],
+  "consumed_by": [
+    "1.2"
+  ],
+  "atlas_s3": null,
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "acquire": {
+    "method": "http-zip",
+    "source": "https://grdc.bafg.de/downloads/wmobb_json.zip",
+    "files": [
+      {
+        "url": "https://grdc.bafg.de/downloads/wmobb_json.zip",
+        "expect": "wmobb_rivnets_Q00_01.json"
+      }
+    ]
+  },
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created with its acquisition recipe, transcribed from 0_server_setup.R section 3.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

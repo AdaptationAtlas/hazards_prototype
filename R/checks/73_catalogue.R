@@ -46,7 +46,7 @@ repo_root <- local({
 source(file.path(repo_root, "R", "00_paths.R"))
 
 cat_dir <- file.path(repo_root, "metadata", "catalogue")
-files <- sort(list.files(cat_dir, pattern = "\\.json$", full.names = TRUE))
+files <- sort(list.files(cat_dir, pattern = "^[^_].*\\.json$", full.names = TRUE))
 if (!length(files)) stop("no catalogue records under ", cat_dir)
 recs <- lapply(files, function(f) jsonlite::fromJSON(f, simplifyVector = FALSE))
 names(recs) <- vapply(recs, function(r) r$id, character(1))
@@ -82,9 +82,45 @@ probe <- function(r) {
   list(state = state, n = n, dir = d)
 }
 
-cdh_exists <- function(id) {
-  if (is.null(id)) return(NA)
-  any(file.exists(file.path(repo_root, "metadata", "cdh", paste0(id, c(".yaml", ".cdh.yaml")))))
+# R1/R2: a file-existence probe produced a false green - timeseries-mean-month
+# reported "cdh: yes" while pointing at a v0.0.1 draft with empty license and
+# citation and no data block. Report a STATE, not a boolean.
+#
+# Deliberately regex over the YAML rather than taking a yaml/Node dependency:
+# this has to run on a bare R install. Full schema validation belongs to
+# cdh-metadata-standard's validate-yaml.js, which this does not replace.
+CDH_CURRENT <- "v0.3.0"
+
+cdh_state <- function(id) {
+  if (is.null(id)) return("none")
+  f <- file.path(repo_root, "metadata", "cdh", paste0(id, c(".yaml", ".cdh.yaml")))
+  f <- f[file.exists(f)]
+  if (!length(f)) return("missing-file")
+  txt <- readLines(f[1], warn = FALSE)
+  ver <- sub('.*cdh_schema_version:\\s*"?([^"\\s]+)"?.*', "\\1",
+             grep("cdh_schema_version:", txt, value = TRUE)[1])
+  empty_field <- function(k) {
+    any(grepl(paste0("^", k, ':\\s*""'), txt))
+  }
+  has_data <- any(grepl("^data:", txt))
+  if (is.na(ver) || !nzchar(ver)) return("draft")
+  if (!identical(ver, CDH_CURRENT)) return("stale-version")
+  if (empty_field("license") || empty_field("citation") || !has_data) return("draft")
+  "authored-valid"
+}
+
+cdh_field <- function(id, key) {
+  if (is.null(id)) return(NA_character_)
+  f <- file.path(repo_root, "metadata", "cdh", paste0(id, c(".yaml", ".cdh.yaml")))
+  f <- f[file.exists(f)]
+  if (!length(f)) return(NA_character_)
+  txt <- readLines(f[1], warn = FALSE)
+  hit <- grep(paste0("^", key, ":"), txt, value = TRUE)[1]
+  if (is.na(hit)) return(NA_character_)
+  v <- trimws(sub(paste0("^", key, ":\\s*"), "", hit))
+  v <- sub("\\s+#.*$", "", v)
+  v <- gsub('^"|"$', "", v)
+  if (!nzchar(v)) NA_character_ else v
 }
 
 # ---- single record ----------------------------------------------------------
@@ -141,7 +177,7 @@ tab <- do.call(rbind, lapply(recs, function(r) {
     here = p$state,
     n = if (is.na(p$n)) "" else as.character(p$n),
     s3 = if (is.null(r$atlas_s3)) "-" else if (isTRUE(r$atlas_s3$complete)) "yes" else "partial",
-    cdh = if (is.null(r$cdh_record)) "-" else if (isTRUE(cdh_exists(r$cdh_record))) "yes" else "BROKEN",
+    cdh = cdh_state(r$cdh_record),
     transfer = r$transfer$strategy,
     gaps = length(r$gaps %||% list())
   )
@@ -191,7 +227,20 @@ if (has("--transfer")) {
 }
 
 if (has("--gaps")) {
-  cat("\nDatasets with recorded gaps.\n\n")
+  # Ranked, not alphabetical. Atlas data that is PUBLISHED with no outward-facing
+  # metadata is a more serious gap than an unpublished intermediate, because
+  # someone can already download it and has nothing telling them what it is.
+  cat("\n== 1. PUBLISHED TO ATLAS S3 WITH NO USABLE CDH RECORD ==\n")
+  cat("   Downloadable today, with no licence, citation or caveats attached.\n\n")
+  pub <- Filter(function(r) !is.null(r$atlas_s3) &&
+                  !cdh_state(r$cdh_record) %in% c("authored-valid"), recs)
+  if (!length(pub)) cat("   none\n\n")
+  for (r in pub) {
+    cat(sprintf("   %-28s cdh: %-14s %s\n", r$id, cdh_state(r$cdh_record),
+                r$atlas_s3$prefix))
+  }
+
+  cat("\n== 2. RECORDED GAPS, BY DATASET ==\n\n")
   any_gap <- FALSE
   for (r in recs) {
     if (!length(r$gaps %||% list())) next
@@ -201,6 +250,14 @@ if (has("--gaps")) {
     cat("\n")
   }
   if (!any_gap) cat("  none recorded\n\n")
+
+  cat("== 3. NO ACQUISITION RECIPE ==\n")
+  cat("   Cannot be fetched or rebuilt automatically on a new host.\n\n")
+  noacq <- Filter(function(r) is.null(r$acquire) &&
+                    !identical(r$class, "referenced"), recs)
+  if (!length(noacq)) cat("   none\n")
+  for (r in noacq) cat(sprintf("   %s\n", r$id))
+  cat("\n")
   quit(save = "no", status = 0L)
 }
 
@@ -254,6 +311,40 @@ if (has("--render")) {
          sprintf("Rendered %s on host `%s`.", format(Sys.Date()), atlas_host_id()))
   writeLines(L, out)
   cat("wrote ", out, " (", nrow(tab), " datasets)\n", sep = "")
+
+  # R6: a generated, joined projection for downstream consumers (the notebooks).
+  # The point is that atlas_notebooks reads THIS rather than becoming a third
+  # store of licences and citations. Generated - never hand-edited.
+  proj <- lapply(recs, function(r) {
+    list(
+      id = r$id,
+      title = r$title,
+      description = r$description,
+      class = r$class,
+      version = r$version,
+      status = r$status,
+      published = !is.null(r$atlas_s3),
+      s3_prefix = if (is.null(r$atlas_s3)) NULL else r$atlas_s3$prefix,
+      origin_url = r$origin$url,
+      transfer = r$transfer$strategy,
+      cdh_record = r$cdh_record,
+      cdh_state = cdh_state(r$cdh_record),
+      # read through to the owning store rather than duplicating
+      license = cdh_field(r$cdh_record, "license"),
+      citation_title = cdh_field(r$cdh_record, "title"),
+      gaps = unlist(r$gaps %||% list())
+    )
+  })
+  pj <- file.path(repo_root, "metadata", "catalogue", "_projection.json")
+  writeLines(jsonlite::toJSON(
+    list(generated = format(Sys.time(), "%Y-%m-%dT%H:%M:%S%z"),
+         generated_on_host = atlas_host_id(),
+         note = paste("Generated by R/checks/73_catalogue.R --render.",
+                      "Do not hand-edit and do not copy these fields into another store;",
+                      "licence and citation are read through to metadata/cdh/."),
+         datasets = unname(proj)),
+    auto_unbox = TRUE, pretty = TRUE, null = "null"), pj)
+  cat("wrote ", pj, "\n", sep = "")
   quit(save = "no", status = 0L)
 }
 
@@ -270,8 +361,8 @@ for (i in seq_len(nrow(tab))) {
               if (tab$gaps[i] > 0) sprintf("%d", tab$gaps[i]) else ""))
 }
 cat("\n")
-cat(sprintf("%d datasets. here: %d present, %d partial, %d empty, %d absent.\n",
+cat(sprintf("%d datasets. here: %d present, %d partial, %d empty, %d absent, %d not held.\n",
             nrow(tab), sum(tab$here == "present"), sum(tab$here == "partial"),
-            sum(tab$here == "empty"), sum(tab$here == "absent")))
+            sum(tab$here == "empty"), sum(tab$here == "absent"), sum(tab$here == "n/a")))
 cat("  --gaps for what needs attention, --orphans for metadata cross-checks,\n")
 cat("  --transfer for how each reaches a new host, --dataset <id> for one record.\n\n")

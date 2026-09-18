@@ -53,7 +53,18 @@
       "date": "2026-09-18",
       "change": "Record created. Confirmed the S3 copy is a 5-GCM annual subset, not the monthly tree, so S3 is not a sync route for this dataset.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-09-18",
+      "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
+      "ref": "#29"
     }
   ],
-  "schema_version": "1.0.0"
+  "schema_version": "1.0.0",
+  "acquire": {
+    "method": "script",
+    "command": "cd hazards_upstream/R && GCMS=<gcm> SCENARIO=<historical|future> YRS=<a:b> Rscript 04_indices/calc_<INDEX>.R",
+    "runnable": false,
+    "note": "REGENERATED, not downloaded. Requires nexgddp-cmip6-raw first. This is the command that recreates the dataset on a new host."
+  }
 }

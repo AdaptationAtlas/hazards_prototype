@@ -29,7 +29,7 @@ are meant to be visible, not silently absent.
   "title":       "human name",
   "description": "what it is, in a sentence or two",
 
-  "class":       "external-raw | derived | published",
+  "class":       "external-raw | derived | published | referenced",
   "version":     "vintage or release, e.g. '2020V1r2', 'v1.1', '0.4.1'",
   "status":      "current | superseded | deprecated | unverified",
   "supersedes":    ["<id>"],
@@ -58,6 +58,7 @@ are meant to be visible, not silently absent.
   "atlas_s3":   { "prefix": "s3://digital-atlas/...", "complete": true,
                   "note": "..." },          // or null if not published
   "cdh_record": "<cdh id> | null",
+  "cdh_draft":  "metadata/cdh/draft/<id>.yaml | null",  // pre-publication CDH draft
 
   "completeness": { "min_files": 1 },
   "gaps":       ["anything known to be unverified or missing"],
@@ -74,3 +75,44 @@ are meant to be visible, not silently absent.
   inputs are already like this; `R/0_server_setup.R` §3 does it today.
 - **`must-transfer`** — genuinely irreproducible, or so expensive to recompute that
   copying wins. Keep this list short and justify every entry.
+
+## class values
+
+- **`external-raw`** — an input fetched from outside the project.
+- **`derived`** — computed by a pipeline stage from other datasets.
+- **`published`** — pushed to Atlas S3 for outside consumption.
+- **`referenced`** — cited by Atlas outputs but neither held nor republished
+  here. `location` is `null`. These exist so cited-but-not-held data is visible
+  in the catalogue rather than silently absent; a reader of a notebook can see
+  it, so the catalogue should too.
+
+## One owner per field
+
+The catalogue and the CDH records overlap. To stop them disagreeing:
+
+| Field group | Owner |
+|---|---|
+| licence, attribution, citation, caveats, intended uses, spatial, temporal, dimensions, variables, assets, processing | **CDH record** — referenced by id |
+| host location, transfer strategy, produced_by / consumed_by, status, supersedes, completeness, gaps, changelog | **catalogue** — CDH has no concept of these |
+| title, description | catalogue as fallback; CDH wins for display where `cdh_record` is set |
+| `origin.license` | cleared where a CDH record exists (`license_owner: "cdh"`) |
+
+Where a dataset needs CDH-owned fields before it is published, add a draft at
+`metadata/cdh/draft/<id>.yaml` and point `cdh_draft` at it, rather than copying
+licence and citation into the catalogue record. That keeps one owner per field
+and gives the draft a promotion path.
+
+## cdh_state
+
+Derived, never stored. `R/checks/73_catalogue.R` reports:
+
+| state | meaning |
+|---|---|
+| `authored-valid` | schema v0.3.0, non-empty licence and citation, has a `data:` block |
+| `draft` | present but incomplete — empty licence/citation, or no `data:` block |
+| `stale-version` | an older schema version than the current v0.3.0 |
+| `missing-file` | the record names a CDH id with no file behind it |
+| `none` | no CDH record claimed |
+
+A plain file-existence check is not enough: it reported `yes` for a v0.0.1 draft
+carrying empty licence and citation TODOs.
