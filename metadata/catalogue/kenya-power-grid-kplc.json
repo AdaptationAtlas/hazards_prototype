@@ -1,0 +1,53 @@
+{
+  "id": "kenya-power-grid-kplc",
+  "title": "Kenya electricity network (KPLC)",
+  "description": "Kenya Power transmission and distribution network, for grid exposure to flooding.",
+  "class": "published",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://energydata.info/",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.",
+    "approx_size": null,
+    "regenerate_with": "python/ingest_exposure_grid.py"
+  },
+  "location": {
+    "key": null,
+    "path": "Data/exposure/grid",
+    "subpath": null,
+    "glob": "*.geojson",
+    "recursive": true
+  },
+  "produced_by": [
+    "python/ingest_exposure_grid.py"
+  ],
+  "consumed_by": [
+    "obs.6"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=exposure/type=infrastructure/source=kplc/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "kenya-power-grid-kplc",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created; back-filled from the existing CDH record and ingest script.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

@@ -1,0 +1,53 @@
+{
+  "id": "kenya-flood-exposure-intersect",
+  "title": "Kenya flood exposure intersections",
+  "description": "Population, roads, facilities and grid intersected with observed GFM flood extent and modelled JRC return periods.",
+  "class": "published",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "computed",
+    "url": null,
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Recompute from the ingested layers.",
+    "approx_size": null,
+    "regenerate_with": "R/observational/7_zonal_exposure.R"
+  },
+  "location": {
+    "key": null,
+    "path": "Data/exposure/intersect",
+    "subpath": null,
+    "glob": "*.parquet",
+    "recursive": true
+  },
+  "produced_by": [
+    "R/observational/7_zonal_exposure.R"
+  ],
+  "consumed_by": [
+    "obs.6"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=exposure/type=flood-exposure/source=atlas/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "kenya-flood-exposure-intersect",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created; back-filled from the existing CDH record and ingest script.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

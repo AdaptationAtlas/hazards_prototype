@@ -1,0 +1,52 @@
+{
+  "id": "livestock-vop",
+  "title": "Livestock numbers and value of production",
+  "description": "GLW4-2020 densities distributed against FAOStat gross production value, plus livestock masks and highland/shoat splits.",
+  "class": "derived",
+  "version": "0.4.1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "computed",
+    "url": null,
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Deterministic from GLW4-2020 plus FAOSTAT - but only where GLW4-2020 is present, which is its own gap.",
+    "approx_size": "< 1 G",
+    "regenerate_with": "R/0.4.1_create_livestock_exposure.R"
+  },
+  "location": {
+    "key": "GLW4_2020",
+    "path": null,
+    "subpath": "processed",
+    "glob": "*.tif",
+    "recursive": true
+  },
+  "produced_by": [
+    "0.4.1"
+  ],
+  "consumed_by": [
+    "0.4.4",
+    "3"
+  ],
+  "atlas_s3": null,
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "Blocked on the glw4-2020 origin gap. Empty on the laptop."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

@@ -1,0 +1,55 @@
+{
+  "id": "eastafrica-ndvi-modis",
+  "title": "MODIS NDVI (MOD13Q1)",
+  "description": "Vegetation condition from MODIS MOD13Q1 v061, seasonal means, for the KE-ENSO vegetation layer.",
+  "class": "published",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "restricted",
+    "url": "https://lpdaac.usgs.gov/ (via NASA Earthdata earthaccess)",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.",
+    "approx_size": null,
+    "regenerate_with": "python/ingest_ndvi_modis.py"
+  },
+  "location": {
+    "key": null,
+    "path": "Data/ndvi_modis/NDVI",
+    "subpath": null,
+    "glob": "*.tif",
+    "recursive": true
+  },
+  "produced_by": [
+    "python/ingest_ndvi_modis.py"
+  ],
+  "consumed_by": [
+    "obs.6"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=climate/type=vegetation/source=modis/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "eastafrica-ndvi-modis",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "Requires NASA Earthdata credentials, so a new host cannot regenerate it unattended."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created; back-filled from the existing CDH record and ingest script.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

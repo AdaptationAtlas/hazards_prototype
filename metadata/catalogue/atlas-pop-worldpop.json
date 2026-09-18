@@ -1,0 +1,51 @@
+{
+  "id": "atlas-pop-worldpop",
+  "title": "Human population (WorldPop 2020)",
+  "description": "WorldPop 2020 population rasters used as the human-exposure denominator.",
+  "class": "external-raw",
+  "version": "worldpop_2020",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-s3",
+    "url": "s3://digital-atlas/population/worldpop_2020/",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "On Atlas S3, fetched by 0_server_setup.R section 3.8.",
+    "approx_size": "< 1 G",
+    "regenerate_with": null
+  },
+  "location": {
+    "key": "atlas_pop",
+    "path": null,
+    "subpath": null,
+    "glob": "*.tif",
+    "recursive": false
+  },
+  "produced_by": [],
+  "consumed_by": [
+    "0.4.4"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/population/worldpop_2020/",
+    "complete": true,
+    "note": "Legacy flat prefix, not hive-partitioned."
+  },
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

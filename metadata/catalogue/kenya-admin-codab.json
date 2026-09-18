@@ -1,0 +1,53 @@
+{
+  "id": "kenya-admin-codab",
+  "title": "Kenya admin boundaries (COD-AB / IEBC)",
+  "description": "Official Kenyan county and sub-county boundaries from the humanitarian COD-AB release, used for the KE-ENSO county-level views.",
+  "class": "published",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://data.humdata.org/dataset/cod-ab-ken",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.",
+    "approx_size": null,
+    "regenerate_with": "python/ingest_exposure_admin_codab.py"
+  },
+  "location": {
+    "key": null,
+    "path": "Data/exposure/admin_codab",
+    "subpath": null,
+    "glob": "*.geojson",
+    "recursive": true
+  },
+  "produced_by": [
+    "python/ingest_exposure_admin_codab.py"
+  ],
+  "consumed_by": [
+    "obs.6"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=boundaries/type=admin/source=cod-ab-ken/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "kenya-admin-codab",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created; back-filled from the existing CDH record and ingest script.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

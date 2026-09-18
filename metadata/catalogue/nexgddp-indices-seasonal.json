@@ -1,0 +1,52 @@
+{
+  "id": "nexgddp-indices-seasonal",
+  "title": "Seasonal / timeframe-aggregated hazard indices",
+  "description": "Annual and crop-calendar (jagermeyr) aggregations of the monthly indices, per GCM plus ENSEMBLE mean/sd. Written by R/1 and read by R/2 and R/2.2.",
+  "class": "derived",
+  "version": "nexgddp",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "computed",
+    "url": null,
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "One R/1 run from the monthly indices. Cheaper to recompute than to move.",
+    "approx_size": null,
+    "regenerate_with": "R/1_make_timeseries.R"
+  },
+  "location": {
+    "key": "indices_seasonal",
+    "path": null,
+    "subpath": null,
+    "glob": "*",
+    "recursive": true
+  },
+  "produced_by": [
+    "1"
+  ],
+  "consumed_by": [
+    "2",
+    "2.2"
+  ],
+  "atlas_s3": null,
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "CGlabs-only today."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

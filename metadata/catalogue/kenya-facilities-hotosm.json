@@ -1,0 +1,53 @@
+{
+  "id": "kenya-facilities-hotosm",
+  "title": "Kenya health and education facilities (HOT OSM)",
+  "description": "Health facility and school point layers from the Humanitarian OpenStreetMap Team exports for Kenya.",
+  "class": "published",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://data.humdata.org/",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.",
+    "approx_size": null,
+    "regenerate_with": "python/ingest_exposure_hotosm.py"
+  },
+  "location": {
+    "key": null,
+    "path": "Data/exposure/hotosm",
+    "subpath": null,
+    "glob": "*.geojson",
+    "recursive": true
+  },
+  "produced_by": [
+    "python/ingest_exposure_hotosm.py"
+  ],
+  "consumed_by": [
+    "obs.6"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=exposure/type=infrastructure/source=hotosm/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "kenya-facilities-hotosm",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created; back-filled from the existing CDH record and ingest script.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

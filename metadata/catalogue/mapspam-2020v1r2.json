@@ -1,0 +1,54 @@
+{
+  "id": "mapspam-2020v1r2",
+  "title": "MapSPAM 2020 V1r2 (SSA)",
+  "description": "Crop production, harvested area, physical area and value-of-production rasters for sub-Saharan Africa, raw and Atlas-harmonised.",
+  "class": "external-raw",
+  "version": "2020V1r2",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-s3",
+    "url": "s3://digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "On Atlas S3 already; every host fetches its own copy.",
+    "approx_size": "a few G",
+    "regenerate_with": null
+  },
+  "location": {
+    "key": null,
+    "path": "Data/mapspam/2020V1r2_SSA",
+    "subpath": null,
+    "glob": "*.tif",
+    "recursive": true
+  },
+  "produced_by": [],
+  "consumed_by": [
+    "0.4.0",
+    "0.4.2",
+    "0.4.4",
+    "3"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/",
+    "complete": true,
+    "note": "Both processing=raw and processing=atlas-harmonized."
+  },
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created from the existing metadata/data.json entry.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

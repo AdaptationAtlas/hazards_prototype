@@ -116,3 +116,50 @@ the artefact list itself will show it.
   Its `working_dir` is copied verbatim from the old `R/0_server_setup.R:135` and has not
   been confirmed on that node. Two descriptions of that filesystem disagree. Correcting it
   is a JSON edit, no R changes.
+
+---
+
+## Block D — size the regenerate-instead-of-transfer route
+
+Decision taken: the monthly indices are **regenerated on the target host**, not copied.
+The reasoning is in `metadata/catalogue/nexgddp-indices-monthly.json` — CGlabs runs no SSH
+daemon, PASCAL's SSH is office-network-only, and the S3 copy is a 5-GCM *annual* subset,
+not the monthly tree. Meanwhile NEX-GDDP-CMIP6 raw is public, anonymous and MD5-indexed,
+so any host can fetch it directly.
+
+What is unmeasured is the wall-clock cost. Size it on **one GCM** before anyone commits to
+a full rebuild.
+
+```bash
+cd <hazards_prototype>/hazards_upstream/R
+
+# D1. How much raw input does one GCM-year actually need?
+#     Read-only: counts and sums remote Content-Length, downloads nothing.
+curl -sS https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/index_v1.1_md5.txt \
+  | grep '/EC-Earth3/historical/' | wc -l
+
+# D2. Time 04_indices for a single GCM, single year, single month, on CGlabs,
+#     so PASCAL's 80 cores at ~2x clock can be extrapolated from a known point.
+#     Writes indices for that slice only - keep COMMON_DATA pointing somewhere
+#     scratch if you do not want it landing in the production tree.
+GCMS=EC-Earth3 SCENARIO=historical YRS=2010:2010 MONTHS=01 \
+  /usr/bin/time -v Rscript 04_indices/calc_PTOT.R 2>&1 | tail -20
+```
+
+**Report back:** the file count from D1, and the elapsed/peak-RSS from D2.
+
+That gives the two numbers needed to decide whether a full PASCAL regeneration is hours or
+weeks — and therefore whether `must-transfer` has to come back onto the table for this one
+dataset after all.
+
+### Secondary, only if regeneration turns out to be infeasible
+
+```bash
+# Can a CGlabs pod even open an outbound connection to PASCAL's SSH port?
+# Expect this to FAIL - CGlabs runs no sshd and PASCAL's SSH is documented as
+# office-network-only. Recorded so the answer is on file rather than assumed.
+timeout 8 bash -c 'cat < /dev/null > /dev/tcp/<pascal-host>/22' \
+  && echo "REACHABLE" || echo "NOT REACHABLE"
+```
+
+Substitute the PASCAL hostname locally — **do not commit it**, this repo is public.

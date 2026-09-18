@@ -1,0 +1,53 @@
+{
+  "id": "faostat-bulk",
+  "title": "FAOSTAT bulk tables",
+  "description": "Deflators, producer prices, production, value of production and trade, Africa and world aggregates. Underpins every value-of-production calculation.",
+  "class": "external-raw",
+  "version": "rolling",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://bulks-faostat.fao.org/ and https://fenixservices.fao.org/faostat/static/bulkdownloads/",
+    "checksum_manifest": null,
+    "license": "CC-BY-4.0"
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "Public bulk downloads, small, fetched by 0_server_setup.R section 3.5.",
+    "approx_size": "< 1 G",
+    "regenerate_with": null
+  },
+  "location": {
+    "key": "fao",
+    "path": null,
+    "subpath": null,
+    "glob": "*.csv",
+    "recursive": false
+  },
+  "produced_by": [],
+  "consumed_by": [
+    "0.4.0",
+    "0.4.1",
+    "0.4.2",
+    "0.4.3",
+    "0.4.5"
+  ],
+  "atlas_s3": null,
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 5
+  },
+  "gaps": [
+    "ROLLING RELEASE, NO VERSION PIN. FAOSTAT rewrites these URLs in place, so two hosts that ran setup months apart hold different data with no way to tell from the filename. This is a live reproducibility risk for value-of-production outputs."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created. Flagged the unpinned rolling release.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

@@ -1,0 +1,59 @@
+{
+  "id": "nexgddp-indices-monthly",
+  "title": "Monthly hazard indices (NEX-GDDP-CMIP6)",
+  "description": "Per-GCM monthly hazard index rasters (NTx, NDWS, NDWL, PTOT, THI, HSH, TAI ...) computed from NEX-GDDP-CMIP6. The raw input to R/1, R/2, R/2.1, R/2.2 and R/3.",
+  "class": "derived",
+  "version": "nexgddp",
+  "status": "current",
+  "supersedes": [
+    "atlas-delta-indices-monthly"
+  ],
+  "superseded_by": null,
+  "origin": {
+    "type": "computed",
+    "url": null,
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Derived from a public archive that any host can fetch directly. Regenerating on the target host avoids both a host-to-host link (CGlabs runs no SSH daemon) and paying to park it on Atlas S3. PASCAL has ~4x the cores at ~2x the clock, so it is also likely the faster route.",
+    "approx_size": "not separately measured; the nexgddp working tree on CGlabs is ~637 G in total",
+    "regenerate_with": "hazards_upstream R/01_download_data -> R/04_indices (COMMON_DATA + GCMS/SSPS/YRS shard vars)"
+  },
+  "location": {
+    "key": "indices",
+    "path": null,
+    "subpath": null,
+    "glob": "*",
+    "recursive": true
+  },
+  "produced_by": [
+    "hazards_upstream 04_indices"
+  ],
+  "consumed_by": [
+    "1",
+    "2.1"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=global/",
+    "complete": false,
+    "note": "PARTIAL AND DIFFERENT. S3 carries ANNUAL analysis-ready tifs for only 5 GCMs (the bias-correction QA subset). The MONTHLY tifs this pipeline consumes are not published at all. Do not mistake one for the other."
+  },
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "CGlabs-only today. Never staged on PASCAL or the laptop.",
+    "Wall-clock cost of regeneration on PASCAL is unmeasured - size it on one GCM before committing to a full rebuild."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created. Confirmed the S3 copy is a 5-GCM annual subset, not the monthly tree, so S3 is not a sync route for this dataset.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

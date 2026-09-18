@@ -1,0 +1,49 @@
+{
+  "id": "ggcmi-crop-calendars",
+  "title": "GGCMI Phase 3 crop calendars",
+  "description": "Planting and maturity dates per crop, used to build the jagermeyr crop-calendar timeframe.",
+  "class": "external-raw",
+  "version": "phase3_v1.01",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://www.pik-potsdam.de/~jonasjae/GGCMI_Phase3_crop_calendar",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "Small public archive.",
+    "approx_size": "< 1 G",
+    "regenerate_with": null
+  },
+  "location": {
+    "key": "ggcmi",
+    "path": null,
+    "subpath": null,
+    "glob": "*.nc4",
+    "recursive": false
+  },
+  "produced_by": [],
+  "consumed_by": [
+    "1"
+  ],
+  "atlas_s3": null,
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 40
+  },
+  "gaps": [
+    "Setup gates the download on a bare file count of 40, not on a manifest."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

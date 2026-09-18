@@ -1,0 +1,53 @@
+{
+  "id": "hazard-exposure",
+  "title": "Hazard x exposure (published)",
+  "description": "The canonical hazard-exposure product: hazard frequency crossed with crop, livestock and population exposure, by admin unit, scenario, model and severity. The largest single file the Atlas notebooks read.",
+  "class": "published",
+  "version": "nex-gddp-cmip6",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "computed",
+    "url": null,
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Output of R/3; rebuild rather than move. The published copy on Atlas S3 is the distribution channel, not a sync route.",
+    "approx_size": "tens of G locally",
+    "regenerate_with": "R/3_freq_x_exposure.R"
+  },
+  "location": {
+    "key": "hazard_risk_vop_usd",
+    "path": null,
+    "subpath": null,
+    "glob": "*",
+    "recursive": true
+  },
+  "produced_by": [
+    "3"
+  ],
+  "consumed_by": [],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/",
+    "complete": false,
+    "note": "Published per severity tier by scripts/r3_publish_tiers.R."
+  },
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "No CDH record yet, despite being the flagship published product."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created. Flagged the missing CDH record.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

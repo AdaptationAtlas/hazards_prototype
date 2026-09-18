@@ -1,0 +1,50 @@
+{
+  "id": "nexgddp-cmip6-raw",
+  "title": "NEX-GDDP-CMIP6 daily downscaled climate (raw)",
+  "description": "NASA daily downscaled CMIP6 projections. The ultimate upstream source for every hazard index in this pipeline.",
+  "class": "external-raw",
+  "version": "v1.1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-s3",
+    "url": "s3://nex-gddp-cmip6 (us-west-2, anonymous)",
+    "checksum_manifest": "https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/index_v1.1_md5.txt",
+    "license": "public domain (NASA)"
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "Public, anonymous, no egress cost to us, and ships a per-file MD5 index of 36,165 entries. Any host fetches it directly; never copy it host-to-host.",
+    "approx_size": "tens of TB for the full archive; only the needed variables/GCMs/years are pulled",
+    "regenerate_with": null
+  },
+  "location": {
+    "key": null,
+    "path": "(hazards_upstream COMMON_DATA/nex-gddp-cmip6)",
+    "subpath": null,
+    "glob": "*.nc",
+    "recursive": true
+  },
+  "produced_by": [],
+  "consumed_by": [
+    "hazards_upstream 02_preprocess_data",
+    "hazards_upstream 04_indices"
+  ],
+  "atlas_s3": null,
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "Per-host on-disk footprint not inventoried; the pipeline only needs a subset."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created. Confirmed the bucket and MD5 index are publicly reachable anonymously.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

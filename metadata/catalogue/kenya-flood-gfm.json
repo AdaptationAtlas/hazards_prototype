@@ -1,0 +1,55 @@
+{
+  "id": "kenya-flood-gfm",
+  "title": "Kenya observed flood extent (Copernicus GFM)",
+  "description": "Observed Sentinel-1 flood extent from the Copernicus Global Flood Monitoring service, aggregated to monthly and seasonal layers. The OBSERVED counterpart to the modelled JRC return-period hazard.",
+  "class": "published",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://stac.eodc.eu/",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.",
+    "approx_size": null,
+    "regenerate_with": "python/ingest_flood_gfm.py"
+  },
+  "location": {
+    "key": null,
+    "path": "Data/exposure/gfm_flood",
+    "subpath": null,
+    "glob": "*.tif",
+    "recursive": true
+  },
+  "produced_by": [
+    "python/ingest_flood_gfm.py"
+  ],
+  "consumed_by": [
+    "obs.6"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=climate/type=flood/source=copernicus-gfm/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "kenya-flood-gfm",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "Seasonal NDJ and DJF windows stop at 2024; edge windows that cannot be covered in full are absent by design."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created; back-filled from the existing CDH record and ingest script.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

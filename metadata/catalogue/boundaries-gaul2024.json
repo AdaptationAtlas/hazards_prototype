@@ -1,0 +1,59 @@
+{
+  "id": "boundaries-gaul2024",
+  "title": "Atlas admin boundaries (GAUL 2024)",
+  "description": "Admin 0/1/2 boundaries for the Atlas, as analysis-ready parquet and as 0.05 degree rasterised zonal layers.",
+  "class": "external-raw",
+  "version": "gaul2024",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-s3",
+    "url": "s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "Small, already on Atlas S3, fetched independently by 0_server_setup.R section 3.1.",
+    "approx_size": "< 1 G",
+    "regenerate_with": null
+  },
+  "location": {
+    "key": null,
+    "path": "Data/boundaries",
+    "subpath": null,
+    "glob": "*.parquet",
+    "recursive": false
+  },
+  "produced_by": [],
+  "consumed_by": [
+    "0.4.0",
+    "0.4.1",
+    "0.4.4",
+    "2.1",
+    "2.2",
+    "3",
+    "obs.3"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 3
+  },
+  "gaps": [
+    "Disputed-territory duplicate rows are an open Atlas-wide convention question (CR-115), not a data defect here."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created from the existing metadata/data.json entry.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

@@ -1,0 +1,53 @@
+{
+  "id": "obs-spei",
+  "title": "SPEI drought indices (observational)",
+  "description": "SPEI at 1, 3, 6, 12 and 24 month accumulations derived from the observational CHIRPS/CHIRTS record.",
+  "class": "published",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "computed",
+    "url": null,
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "One obs.2 run from the observational record.",
+    "approx_size": null,
+    "regenerate_with": "R/observational/2_calculate_obs_spei.R"
+  },
+  "location": {
+    "key": "chirts_chirps_hist",
+    "path": null,
+    "subpath": "SPEI-03",
+    "glob": "*.tif",
+    "recursive": false
+  },
+  "produced_by": [
+    "obs.2"
+  ],
+  "consumed_by": [
+    "obs.3"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "africa-spei-drought",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

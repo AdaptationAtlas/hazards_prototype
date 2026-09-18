@@ -1,0 +1,53 @@
+{
+  "id": "timeseries-mean-month",
+  "title": "Monthly and seasonal hazard timeseries by admin unit",
+  "description": "Monthly and rolling 3-month hazard means by admin unit, with anomalies against the 1995-2014 baseline, ensemble spread and trend statistics. Drives the notebooks' Future Projections view.",
+  "class": "published",
+  "version": "nex-gddp-cmip6",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "computed",
+    "url": null,
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Output of R/2.1.",
+    "approx_size": null,
+    "regenerate_with": "R/2.1_create_monthly_haz_tables.R"
+  },
+  "location": {
+    "key": "hazard_timeseries_mean_month",
+    "path": null,
+    "subpath": null,
+    "glob": "*.parquet",
+    "recursive": false
+  },
+  "produced_by": [
+    "2.1"
+  ],
+  "consumed_by": [],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "ensemble_season_trends",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "Its CDH record is still at schema v0.0.1 with no data block, while every other record is v0.3.0."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

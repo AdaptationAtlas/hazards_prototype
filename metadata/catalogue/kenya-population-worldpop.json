@@ -1,0 +1,53 @@
+{
+  "id": "kenya-population-worldpop",
+  "title": "Kenya population (WorldPop 2020, constrained 100 m)",
+  "description": "Constrained 2020 WorldPop population raster for Kenya, the population denominator for the KE-ENSO exposure work.",
+  "class": "published",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://data.worldpop.org/",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.",
+    "approx_size": null,
+    "regenerate_with": "python/ingest_exposure_worldpop.py"
+  },
+  "location": {
+    "key": null,
+    "path": "Data/exposure/worldpop",
+    "subpath": null,
+    "glob": "*.tif",
+    "recursive": true
+  },
+  "produced_by": [
+    "python/ingest_exposure_worldpop.py"
+  ],
+  "consumed_by": [
+    "obs.6"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=exposure/type=population/source=worldpop/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "kenya-population-worldpop",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created; back-filled from the existing CDH record and ingest script.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

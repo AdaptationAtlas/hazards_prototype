@@ -1,0 +1,53 @@
+{
+  "id": "kenya-population-grid3",
+  "title": "Kenya population (GRID3 / WOPR v2.0)",
+  "description": "GRID3 population estimates for Kenya from the WorldPop WOPR release, an alternative population denominator to WorldPop constrained.",
+  "class": "published",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://wopr.worldpop.org/",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.",
+    "approx_size": null,
+    "regenerate_with": "python/ingest_exposure_grid3.py"
+  },
+  "location": {
+    "key": null,
+    "path": "Data/exposure/grid3",
+    "subpath": null,
+    "glob": "*.tif",
+    "recursive": true
+  },
+  "produced_by": [
+    "python/ingest_exposure_grid3.py"
+  ],
+  "consumed_by": [
+    "obs.6"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=exposure/type=population/source=grid3/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "kenya-population-grid3",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created; back-filled from the existing CDH record and ingest script.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

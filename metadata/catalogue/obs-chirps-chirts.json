@@ -1,0 +1,54 @@
+{
+  "id": "obs-chirps-chirts",
+  "title": "Observational monthly climate record (CHIRPS v3 / CHIRTS-ERA5)",
+  "description": "Monthly precipitation totals and temperature from CHIRPS v3 and CHIRTS-ERA5 over Africa, 1981 to present, as COGs, plus seasonal sums.",
+  "class": "published",
+  "version": "CHIRPS v3",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://data.chc.ucsb.edu/",
+    "checksum_manifest": null,
+    "license": "public domain (CHC/UCSB)"
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "Public HTTP archive; R/observational/1 already maintains a per-file manifest with sha256 and uses it as a resume gate.",
+    "approx_size": null,
+    "regenerate_with": "R/observational/1_get_chirps_chirts.R"
+  },
+  "location": {
+    "key": "chirts_chirps_hist",
+    "path": null,
+    "subpath": null,
+    "glob": "*",
+    "recursive": true
+  },
+  "produced_by": [
+    "obs.1"
+  ],
+  "consumed_by": [
+    "obs.2",
+    "obs.3"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "africa-precipitation-monthly-seasonal",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created. Note this is the one dataset in the repo that already has a real per-file checksum manifest - the pattern the rest should follow.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

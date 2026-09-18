@@ -1,0 +1,56 @@
+{
+  "id": "kenya-population-knbs-census",
+  "title": "Kenya 2019 census population (KNBS)",
+  "description": "Population by county and sub-county from the 2019 Kenya Population and Housing Census.",
+  "class": "published",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://www.knbs.or.ke/",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.",
+    "approx_size": null,
+    "regenerate_with": "python/ingest_population_knbs_census.py"
+  },
+  "location": {
+    "key": null,
+    "path": "Data/exposure/knbs_census",
+    "subpath": null,
+    "glob": "*.parquet",
+    "recursive": true
+  },
+  "produced_by": [
+    "python/ingest_population_knbs_census.py"
+  ],
+  "consumed_by": [
+    "obs.6"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=exposure/type=population/source=knbs-census-2019/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "kenya-population-knbs-census",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "KNBS publishes no open licence, so redistribution terms are unresolved.",
+    "Cannot be joined at admin 2 - only 183 of 290 sub-counties match the Atlas boundary set."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created; back-filled from the existing CDH record and ingest script.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

@@ -1,0 +1,57 @@
+{
+  "id": "kenya-population-knbs-projections",
+  "title": "Kenya population projections (KNBS)",
+  "description": "County population projections from KNBS Volume XVI, used to grow census counts to the analysis year.",
+  "class": "published",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://www.knbs.or.ke/",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.",
+    "approx_size": null,
+    "regenerate_with": "python/ingest_population_knbs_projections.py"
+  },
+  "location": {
+    "key": null,
+    "path": "Data/exposure/knbs_projections",
+    "subpath": null,
+    "glob": "*.parquet",
+    "recursive": true
+  },
+  "produced_by": [
+    "python/ingest_population_knbs_projections.py"
+  ],
+  "consumed_by": [
+    "obs.6"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=exposure/type=population/source=knbs-projections/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "kenya-population-knbs-projections",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "Source is a PDF with two known transcription defects.",
+    "No open licence.",
+    "County-growth and county-level projection methods differ by roughly 1.4 M people."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created; back-filled from the existing CDH record and ingest script.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

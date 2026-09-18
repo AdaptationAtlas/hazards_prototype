@@ -1,0 +1,52 @@
+{
+  "id": "exposure-admin-tables",
+  "title": "Unified exposure tables by admin unit",
+  "description": "Crop, livestock and human-population exposure summed to admin 0/1/2. The denominator behind every hazard-exposure percentage.",
+  "class": "derived",
+  "version": "spam20-20_glw420-20",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "computed",
+    "url": null,
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "One 0.4.4 run from inputs that are all pull-from-origin.",
+    "approx_size": "< 1 G",
+    "regenerate_with": "R/0.4.4_process_exposure.R"
+  },
+  "location": {
+    "key": "exposure",
+    "path": null,
+    "subpath": null,
+    "glob": "*.parquet",
+    "recursive": false
+  },
+  "produced_by": [
+    "0.4.4"
+  ],
+  "consumed_by": [
+    "4",
+    "4.1"
+  ],
+  "atlas_s3": null,
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "Chosen as the cross-host equivalence proof for issue #29 because every input is pull-from-origin."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

@@ -1,0 +1,55 @@
+{
+  "id": "eastafrica-wrsi-fews",
+  "title": "WRSI water requirement satisfaction index (FEWS NET)",
+  "description": "Cropland and rangeland water requirement satisfaction index from USGS/FEWS NET, for the KE-ENSO agriculture layer.",
+  "class": "published",
+  "version": "1",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "public-http",
+    "url": "https://edcintl.cr.usgs.gov/",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.",
+    "approx_size": null,
+    "regenerate_with": "python/ingest_wrsi_fews.py"
+  },
+  "location": {
+    "key": null,
+    "path": "Data/wrsi_fews/WRSI",
+    "subpath": null,
+    "glob": "*.tif",
+    "recursive": true
+  },
+  "produced_by": [
+    "python/ingest_wrsi_fews.py"
+  ],
+  "consumed_by": [
+    "obs.6"
+  ],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=climate/type=agriculture/source=fews-wrsi/",
+    "complete": true,
+    "note": null
+  },
+  "cdh_record": "eastafrica-wrsi-fews",
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "Only the cropland-MAM series extends to 2026; other series stop earlier."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created; back-filled from the existing CDH record and ingest script.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

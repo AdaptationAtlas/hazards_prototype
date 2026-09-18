@@ -1,0 +1,52 @@
+{
+  "id": "crop-vop-intld15",
+  "title": "Crop value of production, constant international dollars",
+  "description": "MapSPAM production shares x FAOStat gross production value, in constant 2015 international dollars.",
+  "class": "derived",
+  "version": "0.4.0",
+  "status": "current",
+  "supersedes": [],
+  "superseded_by": null,
+  "origin": {
+    "type": "computed",
+    "url": null,
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "regenerate",
+    "rationale": "Deterministic from MapSPAM plus FAOSTAT.",
+    "approx_size": "< 1 G",
+    "regenerate_with": "R/0.4.0_create_crop_vop_intld15.R"
+  },
+  "location": {
+    "key": null,
+    "path": "Data/mapspam/2020V1r2_SSA/processed/variable=vop_intld15",
+    "subpath": null,
+    "glob": "*.tif",
+    "recursive": true
+  },
+  "produced_by": [
+    "0.4.0"
+  ],
+  "consumed_by": [
+    "0.4.4",
+    "3"
+  ],
+  "atlas_s3": null,
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "Currency basis must stay aligned with the livestock counterpart - a past mismatch (nominal USD vs constant international dollars) produced a roughly 7x error in cattle exposure."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

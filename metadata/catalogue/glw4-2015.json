@@ -1,0 +1,51 @@
+{
+  "id": "glw4-2015",
+  "title": "GLW4 gridded livestock densities (2015 vintage)",
+  "description": "Earlier GLW4 vintage, downloaded from Harvard Dataverse by 0_server_setup.R section 3.4.",
+  "class": "external-raw",
+  "version": "GLW4-2015",
+  "status": "superseded",
+  "supersedes": [],
+  "superseded_by": "glw4-2020",
+  "origin": {
+    "type": "dataverse",
+    "url": "https://dataverse.harvard.edu/api/access/datafile/<id> (8 species ids in 0_server_setup.R section 3.4)",
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "Still auto-downloaded by setup.",
+    "approx_size": "< 1 G",
+    "regenerate_with": null
+  },
+  "location": {
+    "key": "GLW4",
+    "path": null,
+    "subpath": null,
+    "glob": "*.tif",
+    "recursive": false
+  },
+  "produced_by": [],
+  "consumed_by": [],
+  "atlas_s3": {
+    "prefix": "s3://digital-atlas/domain=exposure/type=livestock/source=glw4/",
+    "complete": false,
+    "note": "Published by R/s3_upload.R."
+  },
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "Superseded by GLW4-2020 for exposure work but still downloaded on every fresh setup."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created and marked superseded.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}

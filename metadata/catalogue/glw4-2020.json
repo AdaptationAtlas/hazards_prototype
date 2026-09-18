@@ -1,0 +1,54 @@
+{
+  "id": "glw4-2020",
+  "title": "GLW4 gridded livestock densities (2020 vintage)",
+  "description": "Gridded Livestock of the World v4, 2020 reference year. Density rasters feeding livestock numbers and value of production.",
+  "class": "external-raw",
+  "version": "GLW4-2020",
+  "status": "current",
+  "supersedes": [
+    "glw4-2015"
+  ],
+  "superseded_by": null,
+  "origin": {
+    "type": "unknown",
+    "url": null,
+    "checksum_manifest": null,
+    "license": null
+  },
+  "transfer": {
+    "strategy": "pull-from-origin",
+    "rationale": "Small enough to fetch per host once the origin is pinned down.",
+    "approx_size": "a few G",
+    "regenerate_with": null
+  },
+  "location": {
+    "key": "GLW4_2020",
+    "path": null,
+    "subpath": null,
+    "glob": "*.tif",
+    "recursive": false
+  },
+  "produced_by": [],
+  "consumed_by": [
+    "0.4.1",
+    "0.4.4",
+    "3"
+  ],
+  "atlas_s3": null,
+  "cdh_record": null,
+  "completeness": {
+    "min_files": 1
+  },
+  "gaps": [
+    "ORIGIN NOT PINNED. 0_server_setup.R downloads the 2015 vintage from Harvard Dataverse but never fetches GLW4-2020, so on CGlabs it was staged by some other route. Until this is recorded, GLW4-2020 is effectively must-transfer and cannot be reproduced on a new host.",
+    "Empty on the laptop, which is why stage 0.4.4 reports NOT READY there."
+  ],
+  "changelog": [
+    {
+      "date": "2026-09-18",
+      "change": "Record created. Flagged the missing origin - this is the clearest reproducibility gap the catalogue has surfaced so far.",
+      "ref": "#29"
+    }
+  ],
+  "schema_version": "1.0.0"
+}
