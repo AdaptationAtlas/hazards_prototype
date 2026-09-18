@@ -1,24 +1,24 @@
 {
   "id": "glw4-2020",
   "title": "GLW4 gridded livestock densities (2020 vintage)",
-  "description": "Gridded Livestock of the World v4, 2020 reference year. Density rasters feeding livestock numbers and value of production.",
+  "description": "Gridded Livestock of the World v4, 2020 reference year, 10 km. FAO GLW4 dysymmetric DENSITY rasters (animals per km2), the input to livestock numbers and value of production.",
   "class": "external-raw",
-  "version": "GLW4-2020",
+  "version": "GLW4-2020 (D-DA, 10 km)",
   "status": "current",
   "supersedes": [
     "glw4-2015"
   ],
   "superseded_by": null,
   "origin": {
-    "type": "unknown",
-    "url": null,
+    "type": "public-http",
+    "url": "https://data.apps.fao.org/catalog//iso/9d1e149b-d63f-4213-978b-317a8eb42d02",
     "checksum_manifest": null,
-    "license": null
+    "license": "CC-BY-4.0"
   },
   "transfer": {
     "strategy": "pull-from-origin",
-    "rationale": "Small enough to fetch per host once the origin is pinned down.",
-    "approx_size": "a few G",
+    "rationale": "Public FAO release on Google Cloud Storage, CC-BY-4.0, ~70 MB for the six species. Every host fetches its own copy.",
+    "approx_size": "~70 MB (6 files, 6-13 MB each)",
     "regenerate_with": null
   },
   "location": {
@@ -37,18 +37,54 @@
   "atlas_s3": null,
   "cdh_record": null,
   "completeness": {
-    "min_files": 1
+    "min_files": 6
   },
   "gaps": [
-    "ORIGIN NOT PINNED. 0_server_setup.R downloads the 2015 vintage from Harvard Dataverse but never fetches GLW4-2020, so on CGlabs it was staged by some other route. Until this is recorded, GLW4-2020 is effectively must-transfer and cannot be reproduced on a new host.",
-    "Empty on the laptop, which is why stage 0.4.4 reports NOT READY there."
+    "Confirm on-disk filenames on a host that already holds these files. list.files(glw_dir, '.tif$') globs the whole directory, so a second copy under different names would be stacked alongside the first and silently double the species set. Evidence the products match: a fresh fetch reproduces a cattle density global sum of 2.0384e7, the exact value documented for the CGlabs copy at R/0.4.1_create_livestock_exposure.R:101.",
+    "These are per-km2 DENSITY, not per-pixel counts; 0.4.1 multiplies by cellSize to convert. The 2015 vintage was already per-pixel. Do not mix them."
   ],
   "changelog": [
     {
       "date": "2026-09-18",
       "change": "Record created. Flagged the missing origin - this is the clearest reproducibility gap the catalogue has surfaced so far.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-09-18",
+      "change": "Origin pinned to the FAO data catalogue (GLW4-2020, 10 km, CC-BY-4.0) and an acquire recipe added - this was the last dataset with no way to reproduce it on a new host. All six species endpoints verified reachable (HTTP 200). Verified end to end on the laptop: 6 files fetched through atlas_require(), all parse at 0.0833 deg global extent, the 0.4.1 first-token species mapping resolves with no NA, and cattle sums to 2.0384e7 as documented.",
+      "ref": "#29"
     }
   ],
-  "schema_version": "1.0.0"
+  "schema_version": "1.0.0",
+  "acquire": {
+    "method": "http-file",
+    "source": "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.<SPECIES>.tif",
+    "files": [
+      {
+        "url": "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.CTL.tif",
+        "dest": "Ct_2020_Da.tif"
+      },
+      {
+        "url": "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.SHP.tif",
+        "dest": "Sh_2020_Da.tif"
+      },
+      {
+        "url": "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.GTS.tif",
+        "dest": "Gt_2020_Da.tif"
+      },
+      {
+        "url": "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.PGS.tif",
+        "dest": "Pg_2020_Da.tif"
+      },
+      {
+        "url": "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.CHK.tif",
+        "dest": "Ch_2020_Da.tif"
+      },
+      {
+        "url": "https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.BFL.tif",
+        "dest": "Bf_2020_Da.tif"
+      }
+    ],
+    "note": "Filenames matter. R/0.4.1_create_livestock_exposure.R takes the FIRST underscore-separated token of each filename as the species code (Ct/Sh/Gt/Pg/Ch/Bf) and maps it to a long name, so dest names must start with that code. Note this differs from the 2015 vintage, whose '5_Ct_2015_Da.tif' naming would yield a first token of '5'. GLW4-2020.D-DA.GLEAM3-ALL-LU.tif is a land-use layer, not a species, and is deliberately not fetched - it would be picked up by the list.files() glob and corrupt the stack. Horses and ducks have no GLW4-2020 release; the pipeline subsets to poultry/sheep/pigs/goats/cattle anyway."
+  }
 }

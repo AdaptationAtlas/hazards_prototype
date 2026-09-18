@@ -25,7 +25,7 @@ The **here** column reflects one host only — whichever machine rendered this. 
 | [`ggcmi-crop-calendars`](../metadata/catalogue/ggcmi-crop-calendars.json) | external-raw | phase3_v1.01 | current | empty (0) | - | none | pull-from-origin |
 | [`glps`](../metadata/catalogue/glps.json) | external-raw | 1 | current | present (1) | yes | none | pull-from-origin |
 | [`glw4-2015`](../metadata/catalogue/glw4-2015.json) | external-raw | GLW4-2015 | superseded | present (8) | partial | none | pull-from-origin |
-| [`glw4-2020`](../metadata/catalogue/glw4-2020.json) | external-raw | GLW4-2020 | current | empty (0) | - | none | pull-from-origin |
+| [`glw4-2020`](../metadata/catalogue/glw4-2020.json) | external-raw | GLW4-2020 (D-DA, 10 km) | current | present (6) | - | none | pull-from-origin |
 | [`hydrobasins`](../metadata/catalogue/hydrobasins.json) | external-raw | 1 | current | empty (0) | - | none | pull-from-origin |
 | [`mapspam-2020v1r2`](../metadata/catalogue/mapspam-2020v1r2.json) | external-raw | 2020V1r2 | current | present (48) | yes | none | pull-from-origin |
 | [`mapspam-2020v1r2-raw`](../metadata/catalogue/mapspam-2020v1r2-raw.json) | external-raw | 2020V1r2 | current | empty (0) | yes | none | pull-from-origin |
@@ -72,7 +72,7 @@ How a dataset reaches a new host. The monthly indices are `regenerate`, not `mus
 - **ggcmi-crop-calendars** — Small public archive.
 - **glps** — Small, public, fetched per host by the shared downloader.
 - **glw4-2015** — Still auto-downloaded by setup.
-- **glw4-2020** — Small enough to fetch per host once the origin is pinned down.
+- **glw4-2020** — Public FAO release on Google Cloud Storage, CC-BY-4.0, ~70 MB for the six species. Every host fetches its own copy.
 - **hadisst-dmi** — Cited, not held. Nothing is stored on any Atlas host and nothing is republished; consult the source directly.
 - **harveststat-africa** — Cited, not held. Nothing is stored on any Atlas host and nothing is republished; consult the source directly.
 - **hydrobasins** — Small, public, fetched per host by the shared downloader.
@@ -158,8 +158,8 @@ Recorded in the catalogue, surfaced here so they are not invisible.
 
 ### glw4-2020
 
-- ORIGIN NOT PINNED. 0_server_setup.R downloads the 2015 vintage from Harvard Dataverse but never fetches GLW4-2020, so on CGlabs it was staged by some other route. Until this is recorded, GLW4-2020 is effectively must-transfer and cannot be reproduced on a new host.
-- Empty on the laptop, which is why stage 0.4.4 reports NOT READY there.
+- Confirm on-disk filenames on a host that already holds these files. list.files(glw_dir, '.tif$') globs the whole directory, so a second copy under different names would be stacked alongside the first and silently double the species set. Evidence the products match: a fresh fetch reproduces a cattle density global sum of 2.0384e7, the exact value documented for the CGlabs copy at R/0.4.1_create_livestock_exposure.R:101.
+- These are per-km2 DENSITY, not per-pixel counts; 0.4.1 multiplies by cellSize to convert. The 2015 vintage was already per-pixel. Do not mix them.
 
 ### hadisst-dmi
 
