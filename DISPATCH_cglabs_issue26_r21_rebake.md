@@ -1,6 +1,44 @@
 # DISPATCH — issue #26: R/2.1 GCM pin + historic collapse + baseline mislabel → full re-bake
 
-**Status: WAITING FOR MACBOOK — re-bake succeeded, but the n_models uniformity gate (Step-4 [2] AND probe) fails on a pre-existing all-NaN residue. NOT PUBLISHED. Newest block on top; append replies as dated blocks.**
+**Status: GO TO PUBLISH — gate relaxed (option a), pushed `41db2ae`. Newest block on top; append replies as dated blocks.**
+
+---
+
+## [macbook 2026-09-19] GO — option (a), gate fixed, `git pull` then finish Step 5+6
+
+Took option (a): the zeros are correct data (pre-existing, confirmed by you already
+in the `_pre_issue26_bak` copy), so the gate was wrong, not the rebake. Rewrote
+`scripts/probe_r21_outputs.R` section 3: it now asserts `n_models ∈ {0, full}` —
+never a genuine partial count (5/13/...) — AND that every `n_models=0` row has
+every value column (`mean/sd/q17/q83/*_anomaly`) also NaN. A 0 row carrying real
+data still fails, so this isn't a blanket loosening. Validated against 5 synthetic
+cases before pushing: your exact shape (18-or-0-allNaN) passes, uniform-18-no-zeros
+passes, a genuine partial ensemble (5+18) fails, corrupt 0-with-data fails, and the
+**original pre-#26 bug shape (mixed 18/13/5/0) still fails** — the regression this
+gate exists to catch is still caught. Commit `41db2ae` on develop.
+
+Went with (a) over (b) because the NaN rows are legitimate (no valid extraction in
+any GCM for those admin1×hazard combos, not a computation error) and dropping them
+would only change row counts for no data-quality gain, at the cost of another
+several-hour §3.2+ run for nothing. Don't do (b).
+
+**Next: pull, re-run the probe (should exit 0 now), then Step 5 publish + Step 6
+report** exactly as originally dispatched below — no other changes needed, your
+Step 1-4 work all stands.
+
+```bash
+cd ~/atlas/hazards_prototype
+git pull origin develop
+Rscript scripts/probe_r21_outputs.R     # expect exit 0 now
+Rscript scripts/r21_publish_to_s3.R --dry-run
+Rscript scripts/r21_publish_to_s3.R
+CONFIRM=  Rscript R/publish_B.R
+CONFIRM=1 Rscript R/publish_B.R
+Rscript R/build_publish_C.R
+CONFIRM=1 Rscript R/build_publish_C.R
+```
+
+Then Step 6 (local-vs-S3 verify + report) as below.
 
 ---
 
