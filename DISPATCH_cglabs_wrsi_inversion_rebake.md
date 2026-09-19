@@ -1,3 +1,84 @@
+### RESPONSE (cglabs, 2026-09-18) — Blocks A–C done, **stopped at the Block C gate**, Block D NOT run
+
+**Outcome.** The rebake worked and the inversion is gone from 93 of 94 files, but one stale file
+survived `--overwrite`: `wrsi_cropland_MAM_2026.tif` still holds the OLD `e2` (rangeland) content under
+the cropland label. That is the inverted signature the gate names, so nothing was published. Details and
+the two-step unblock are at the bottom. Nothing committed to the store or S3; only this block.
+
+**Node notes.** Repo checkout is `/home/jovyan/atlas/hazards_prototype` (`develop` @ `ad312da`, fix
+`c6a5e3d` present). Store is `<common_data>/Data/wrsi_fews/WRSI` — the ingest's repo-relative
+`--out` default was overridden with that absolute path (AGENTS.md §2 trap). No `aws` CLI on this node;
+the S3 listing below was taken read-only via `paws.storage`.
+
+**Block A — smoke.** Run with `--out` pointed at a scratch dir so the store was not touched (the
+store already held a `wrsi_rangeland_MAM_2015.tif` from the old `ek` bake, so an in-place smoke without
+`--overwrite` would have been a no-op "exists, skip").
+
+```
+[14:16:01]   rangeland/MAM/2015: -> .../wrsi_rangeland_MAM_2015.tif (WRSI% min 47 / mean 96 / max 100)
+[14:16:01] DONE: {'written': 1, 'skip': 0, 'empty': 0}
+```
+
+Filename says `rangeland`. 80x102 grid, 63.5% valid over the Kenya bbox.
+
+**Block B — full `--overwrite` ingest.** `logs/wrsi_full_20260918_1416.log` (1m40s wall).
+
+```
+[14:17:08]     no zip w202636e1.zip (HTTPError)
+[14:18:04]     no zip w202633ee.zip (HTTPError)
+[14:18:31]     no zip w202636et.zip (HTTPError)
+[14:18:31] DONE: {'written': 93, 'skip': 0, 'empty': 3}
+```
+
+Written per prefix: `cropland_MAM` 23, `cropland_OND` 23, `rangeland_MAM` 24, `rangeland_OND` 23.
+The three `no zip` lines are all 2026 EOS dekads (dk33 / dk36) that have not happened yet — expected.
+No `no *eo.tif`, no `ERROR`, no `all-NaN`. The three old `.tif.aux.xml` sidecars were removed by GDAL
+on overwrite; `obs-wrsi-fews_uploadReport.json` (Aug 18) is still in the store.
+
+**Block C — sanity.** Valid % per prefix, n / min / median / max, old bake vs new:
+
+| prefix | old bake (Aug 18) | new bake |
+|---|---|---|
+| `cropland_MAM` | 24 / 53.2 / 63.2 / 63.5 | 24 / 36.1 / 44.7 / **63.5** |
+| `cropland_OND` | 23 / 42.7 / 58.5 / 61.7 | 23 / 25.3 / 42.0 / 47.8 |
+| `rangeland_MAM` | 23 / 7.7 / 9.5 / 9.5 | 24 / 53.2 / 63.2 / 63.5 |
+| `rangeland_OND` | 23 / 25.3 / 42.0 / 47.8 | 23 / 42.7 / 58.5 / 61.7 |
+
+Rangeland now 43–64 %, cropland 25–48 %. The old `rangeland_MAM` 8–10 % (the Marsabit symptom) is gone.
+Every file passes the gate except the one below (the bold 63.5 max).
+
+**Gate failure — `wrsi_cropland_MAM_2026.tif`.**
+
+- Only `.tif` in the store with mtime older than the run start (Aug 18 12:55). `--overwrite` never
+  reached it: the new `ee` code has no 2026 zip yet (`w202633ee.zip` 404), so `build()` returned
+  `empty` and left the path alone. Old `e2` (mislabelled cropland/MAM) did have a 2026 file (dk21).
+- Pixel-identical to the new `wrsi_rangeland_MAM_2026.tif` (NaN-aware `numpy.array_equal` = True).
+  Valid 63.5 % vs 36–47 % for every real `cropland_MAM` year. Rangeland data under the cropland label.
+- Store now has 94 tifs; S3 has 93 objects (24 / 23 / 23 / 23 by `crop=/season=`). The same stale
+  object is already on S3 at `.../crop=cropland/season=MAM/wrsi_cropland_MAM_2026.tif`. Block D would
+  re-upload it and never remove it — the uploader adds/overwrites, it does not delete. Pre-publish
+  basename diff local vs S3: only `wrsi_rangeland_MAM_2026.tif` missing on S3 (new, correct).
+
+Root cause is general, not a one-off: `--overwrite` only replaces paths the new run successfully writes.
+Any (code, year) the OLD map produced that the NEW map cannot is left as stale content under the new
+label. This recurs every year for `cropland_MAM` until dk33 passes (late Nov), because `e2` (dk21) is
+always ahead of `ee` (dk33).
+
+**To unblock (awaiting your call — not improvised here):**
+
+1. Park or delete local `wrsi_cropland_MAM_2026.tif` (I can `mv` it to a `_parked_wrsi_stale/` sibling).
+2. Delete the S3 object
+   `domain=climate/type=agriculture/source=fews-wrsi/region=east-africa/processing=seasonal/variable=wrsi/crop=cropland/season=MAM/wrsi_cropland_MAM_2026.tif`
+   (publish script cannot; needs an explicit `paws` `delete_object`, or your say-so on which tool).
+3. Optional hardening in `python/ingest_wrsi_fews.py::build()`: when `overwrite` is set and
+   `fetch_eos_tif` returns `None`, remove an existing `out` (or at least log it as `STALE`). Otherwise
+   this repeats at every year boundary.
+4. Then Block D + the local-vs-S3 diff (via `paws` on this node).
+
+Say go on 1–2 and I run 1, 2, 4 in one pass.
+
+---
+
 # Dispatch: WRSI cropland/rangeland inversion — rebake + republish
 
 **Status:** fix landed on `develop` @ `c6a5e3d`. Nothing re-baked or republished yet.
