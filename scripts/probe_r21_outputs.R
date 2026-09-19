@@ -11,8 +11,12 @@
 #      4 future periods + the baseline's own window each
 #   2. CR-060 quantile columns present (q17_anomaly, q83_anomaly, n_models;
 #      q50 was pruned by CR-119 and must NOT be present)
-#   3. n_models is a single uniform value in every file (issue #26: the published
-#      product previously mixed 18/13/5/0-member rows inside one file)
+#   3. n_models is EITHER the full ensemble size OR 0 (issue #26: the published
+#      product previously mixed 18/13/5-member rows — a genuine PARTIAL ensemble
+#      inside one file). n_models=0 is legitimate where every value column is
+#      also NaN (some small admin1 x hazard combos have no valid extraction in
+#      ANY GCM — confirmed pre-existing on the 2026-09-18 cglabs rebake, present
+#      in the pre-#26 backup too); a 0 row carrying real data still fails.
 #   4. Pushdown stats populated (min/max on filter columns via parquet_metadata)
 #   5. Row counts plausible (> 0)
 #
@@ -81,17 +85,48 @@ if (!is.na(f_test) && file.exists(f_test)) {
 }
 
 # ---- 3. n_models uniformity (issue #26) ----
+# n_models must be EITHER the full ensemble size OR 0 — never a partial count
+# (5, 13, ...; that was the #26 failure mode). n_models=0 is legitimate: some
+# small admin1 x hazard combos (mostly NDWL0/NDWS in tiny units) have no valid
+# extraction in ANY GCM. Confirmed on the 2026-09-18 cglabs rebake: the same
+# all-NaN residue (61,920 rows) is already present in the pre-#26 backup under
+# the old `models` column — it predates this fix and is not a regression. So a
+# 0-row is only valid if every value column is ALSO NaN for that row; a 0 with
+# real data, or any count other than {0, full}, is a genuine defect.
 cat("\n--- 3. n_models uniformity per file ---\n")
+VALUE_COLS <- c("mean", "sd", "q17", "q83",
+                "mean_anomaly", "sd_anomaly", "q17_anomaly", "q83_anomaly")
 n_models_seen <- integer(0)
 for (f in all_files) {
-  nm <- data.table(arrow::read_parquet(f, col_select = "n_models"))[, sort(unique(n_models))]
-  if (length(nm) == 1 && nm > 0) {
-    ok(sprintf("%s: n_models uniformly %d", basename(f), nm))
-    n_models_seen <- union(n_models_seen, nm)
-  } else {
-    fail(sprintf("%s: MIXED/zero n_models {%s} — issue #26 failure mode",
+  d <- data.table(arrow::read_parquet(f, col_select = c("n_models", VALUE_COLS)))
+  nm <- sort(unique(d$n_models))
+  full_candidates <- nm[nm > 0]
+
+  if (length(full_candidates) > 1) {
+    fail(sprintf("%s: PARTIAL ensembles present {%s} — issue #26 failure mode",
                  basename(f), paste(nm, collapse = ",")))
+    next
   }
+  if (length(full_candidates) == 0) {
+    fail(sprintf("%s: no rows with n_models > 0 — degenerate file", basename(f)))
+    next
+  }
+  full <- full_candidates[1]
+  if (!all(nm %in% c(0, full))) {
+    fail(sprintf("%s: unexpected n_models values {%s} outside {0,%d}",
+                 basename(f), paste(nm, collapse = ","), full))
+    next
+  }
+
+  zero_has_data <- d[n_models == 0, any(sapply(.SD, function(x) any(!is.na(x)))), .SDcols = VALUE_COLS]
+  if (length(zero_has_data) > 0 && isTRUE(zero_has_data)) {
+    fail(sprintf("%s: n_models=0 rows carry non-NA values — not a clean all-NaN gap", basename(f)))
+    next
+  }
+
+  n_zero <- d[n_models == 0, .N]
+  ok(sprintf("%s: n_models %d (full) or 0-all-NaN (%d rows)", basename(f), full, n_zero))
+  n_models_seen <- union(n_models_seen, full)
 }
 if (length(n_models_seen) == 1) {
   ok(sprintf("single ensemble size across all files: %d members", n_models_seen))
