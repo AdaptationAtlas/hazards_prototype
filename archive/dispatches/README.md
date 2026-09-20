@@ -23,5 +23,4 @@ Anything still in flight lives at the repository root.
 | `DISPATCH_cglabs_phase2.md` · `DISPATCH_cglabs_sfcwind.md` | Upstream Stage-0 migration, wind availability | Validated on real data; `sfcWind` present for all 18 GCMs |
 | `DISPATCH_poultry_thi_rebake.md` | poultry_highland THI threshold 79 → 89 | Metadata fixed; published outputs still need the re-bake, tracked as issue #13 |
 | `DISPATCH_desert_mask.md` | Desert masking | Closed |
-| `DISPATCH_cglabs_issue26_r21_rebake.md` | R/2.1 GCM pin, historic collapse, baseline mislabel (#26) | Re-baked and published 2026-09-20. Live product verified 18 members everywhere; the only other count is 0 on all-NaN rows, a residue proven present in the pre-#26 backup |
 | `HANDOVER_*.md` | Session handovers, Jun–Sep 2026 | Superseded by the current handover at the repository root |
