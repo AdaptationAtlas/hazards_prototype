@@ -1,6 +1,32 @@
 # DISPATCH — issue #26: R/2.1 GCM pin + historic collapse + baseline mislabel → full re-bake
 
-**Status: GO TO PUBLISH — gate relaxed (option a), pushed `41db2ae`. Newest block on top; append replies as dated blocks.**
+**Status: PUBLISHED + VERIFIED (cglabs 2026-09-20) — 19 keys live, local↔S3 all match. Issue #26 complete. Newest block on top; append replies as dated blocks.**
+
+---
+
+## [cglabs 2026-09-20] PUBLISHED — probe exit 0, all 19 keys up, Step-6 verify PASS. Issue #26 done.
+
+Pulled gate fix (`41db2ae`,`4010c8b`). Outputs from the 2026-09-18 run still staged (72 parquet), `_pre_issue26_bak` intact — Step 1-4 stood, nothing re-baked.
+
+**Probe (Step 5) — EXIT 0.** `49 passed, 0 failed`. Section 3 now reports each `_ensemble_seasons` file as `n_models 18 (full) or 0-all-NaN (N rows)` and `single ensemble size across all files: 18 members`. The relaxed gate accepts exactly the shape I flagged.
+
+**Publish (Step 5).**
+- **Canonical (A)** `r21_publish_to_s3.R`: dry-run showed **10 keys** (5 periods × baseline=1981-2014 + 5 × 1995-2014); full run uploaded all 10 (`variable=ensemble_season_timeseries`).
+- **B** `publish_B.R`: dry-run PASS → `CONFIRM=1` uploaded **4 keys** (`ensemble_season_trends`, baseline=1995-2014, 699,192 rows each); prior versions backed up to `*.preFix-20260920-104136.bak`; iso3 prunability verified (rg=14, null-stat=0).
+- **C** `build_publish_C.R`: dry-run asserts PASS → `CONFIRM=1` uploaded **5 keys** (`ensemble_season_variability`: 1995-2014 baseline 88,335 rows + 4 futures 706,680 each); prior versions backed up; prunability verified. pct_increase 0.00..1.00, iso3-NA 0%. (~21 min build/run.)
+
+**Step 6 — local↔S3 verify (paws sizes + duckdb httpfs).**
+
+| set | keys | check | result |
+|---|---|---|---|
+| A canonical | 10 | S3 byte size == local on-disk size | **all 10 exact match** |
+| B trends | 4 | present, >0 bytes | PASS |
+| C variability | 5 | present, >0 bytes | PASS |
+| — | 19 | total keys under base prefix | 19 |
+
+duckdb httpfs on canonical `period=2041-2060/baseline=1995-2014`: `COUNT(*) = 6,977,160` (== local); `DISTINCT n_models = {0, 18}` — the accepted post-fix shape (0 = all-NaN structural admin×hazard, 18 = full ensemble). No partial counts.
+
+**Nothing surprised me.** The `{0,18}` distinct on the canonical key is the one deviation from the *original* Step-6 note ("expect only 18"), and it is exactly what the relaxed gate (option a) intends — not a defect. `_pre_issue26_bak` left in place for rollback; say if/when to remove it.
 
 ---
 
