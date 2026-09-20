@@ -490,6 +490,100 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
       )
     }
   
+
+  # 3.3) Constant international dollar twin of 3.2 ####
+  # ---------------------------------------------------------------------------
+  # Issue #30. `variable=vop_intld15-2021.parquet` has been live under
+  # domain=exposure/type=combined since 2025-11-03 with NO producer anywhere in
+  # this repo - an S3 key asserting a vintage that nothing in the pipeline
+  # maintains, and whose rows in fact carry the vintage-less `intld15`. It is
+  # the const-I$ member of the per-unit family that 3.2 already writes for
+  # nominal USD, so it gets the same producer rather than being left orphaned.
+  #
+  # Same shape as 3.2 deliberately: rebuilt from the raw extractions, so it
+  # filters the SOURCE unit and never goes near 3.1's combined table. That is
+  # the property which kept nominal USD correct while the combined table
+  # silently carried a legacy vintage.
+  #
+  # Publishing it is a separate, still-held decision: no uploader in this repo
+  # writes the type=combined per-unit keys (scripts/r3_publish_tiers.R ships
+  # crop-livestock_all only), so this block refreshes the LOCAL artifact and
+  # the S3 object stays stale until a publish route is authorised.
+
+  file<-paste0(exposure_dir,"/vop_intld15-2021_adm_sum_spam20_glw420.parquet")
+
+  if(!file.exists(file)|overwrite_glw|overwrite_spam){
+
+      exposure_adm_sum_tab<-rbind(
+        spam_extracted,
+        glw_extracted
+      )
+
+      # Subset units. Abort rather than write an empty or wrong-vintage file:
+      # a silent drop here is exactly how #30 stayed hidden for months.
+      .unit_intld <- Sys.getenv("EXPOSURE_UNIT_INTLD", "intld15-2021")
+      .present <- exposure_adm_sum_tab[, sort(unique(unit))]
+      .log044(sprintf("section 3.3: unit kept = %s (present in extraction: %s)",
+                      .unit_intld, paste(.present, collapse = ", ")))
+      if (!.unit_intld %in% .present) {
+        .msg <- sprintf(paste0("section 3.3: unit `%s` absent from the extraction (present: %s). ",
+                               "Re-bake 0.4.0/0.4.1, or set EXPOSURE_UNIT_INTLD to the vintage ",
+                               "actually on disk."),
+                        .unit_intld, paste(.present, collapse = ", "))
+        if (nzchar(Sys.getenv("EXPOSURE_UNITS_LENIENT"))) .log044(paste("WARNING -", .msg)) else stop(.msg)
+      }
+      exposure_adm_sum_tab<-exposure_adm_sum_tab[unit==.unit_intld]
+      if (!nrow(exposure_adm_sum_tab)) {
+        stop(sprintf("section 3.3: no rows left after filtering to unit `%s` - refusing to write an empty %s",
+                     .unit_intld, basename(file)))
+      }
+      .log044(sprintf("section 3.3: %d rows, %d crops", nrow(exposure_adm_sum_tab),
+                      exposure_adm_sum_tab[, uniqueN(crop)]))
+
+      # Order to optimize parquet performance
+      exposure_adm_sum_tab<-exposure_adm_sum_tab[order(iso3,admin0_name,admin1_name,admin2_name,exposure,unit,tech,crop)]
+
+      filter_colnames<-c("crop","stat","exposure","unit","tech")
+      filters <- lapply(filter_colnames, function(split_col) {
+        unique(exposure_adm_sum_tab[[split_col]])
+      })
+      names(filters) <- filter_colnames
+
+      attr_info <- list(
+        source = list(input_raster1=atlas_data$mapspam_2020v1r2$name,
+                      input_raster2="GLW4",
+                      extraction_vect=atlas_data$boundaries$name),
+        source_year = list(input_raster1=c(spam_year=2020,fao_gpv=2021),input_raster2=c(glw_year=2020,fao_gpv=2021)),
+        date_created = Sys.time(),
+        field_descriptions = field_descriptions,
+        filters = filters,
+        version = list(input_version1=version_spam,input_version2=version_glw),
+        parent_script = "R/0.4.4_process_exposure.R - section 3.3",
+        variable = exposure_adm_sum_tab[,unique(exposure)],
+        unit = exposure_adm_sum_tab[,unique(unit)],
+        technology = exposure_adm_sum_tab[,unique(tech)],
+        stat = "sum",  # MapSPAM + GLW extractions both use FUN="sum" (see L343 note)
+        notes = paste0("Value of production in CONSTANT 2015 INTERNATIONAL DOLLARS, 2021 vintage ",
+                       "(FAOStat gross production value, const I$, distributed across MapSPAM crop ",
+                       "production shares and GLW4 livestock head shares). The const-I$ twin of the ",
+                       "nominal-USD table written by section 3.2. The vintage is carried in the unit ",
+                       "string on every row and is not rewritten - see issue #30.")
+      )
+
+      attr_file<-paste0(file,".json")
+
+      write_json(attr_info, attr_file, pretty = TRUE)
+
+      exposure_adm_sum_tab[,crop:=gsub("_| ","-",crop)]
+
+      write_parquet_pushdown(
+        exposure_adm_sum_tab, file,
+        sort_by         = c("iso3", "admin0_name", "admin1_name", "admin2_name",
+                            "exposure", "unit", "tech", "crop"),
+        verify_stats_on = c("iso3", "exposure", "unit", "crop")
+      )
+    }
+
 # 4) Population ######
 .log044("section 4: Worldpop hpop harmonize + admin extract")
 overwrite_pop<-T
