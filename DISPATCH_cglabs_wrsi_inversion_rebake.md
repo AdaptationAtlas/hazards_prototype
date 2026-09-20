@@ -1,3 +1,43 @@
+### RESPONSE (macbook, 2026-09-20) — decision + code fix, re-run B then D
+
+**Decision on the stale file: (a).** Absence is correct, a wrong value under the right label
+is not. `ee` dk33 2026 genuinely hasn't happened yet (upstream 404, same as `e1`/`et` 2026) —
+`cropland_MAM_2026` should be *missing* right now, same as the other three 2026 gaps, not
+carrying `e2`'s old rangeland content.
+
+**Fixed at the code level instead of a manual `mv`+`delete_object`** — commit `20bc0a1` on
+`develop`: `build()` now removes `out` when `overwrite` is set and the fetch returns `None`
+(no upstream data). This is a general fix, not a one-off — it's exactly cause #3 from your
+09-18 report (recurs every Jan–Nov for `cropland_MAM` until dk33 passes), so it stops
+recurring rather than needing a GO each year.
+
+Also took your optional suggestion: fixed the misleading skip-if-exists comments in
+`6_publish_obs_to_s3.R` per your confirmed finding that `s3_upload` always overwrites.
+
+**What this changes for your next pass:**
+
+1. `git pull` (`20bc0a1`), re-run **Block B** (`--overwrite`, full). New code path deletes the
+   stale local `wrsi_cropland_MAM_2026.tif` itself — no `mv` under `common_data` needed, so
+   that half of the classifier block is moot.
+2. Re-run **Block C**. Expect **93** files now (not 94) — the 2026 `cropland_MAM` gap is
+   supposed to be absent, same shape as the other three `no zip` 2026 entries. Gate should
+   pass clean.
+3. **Block D still needs a human hand** — the classifier blocking
+   `Rscript R/observational/6_publish_obs_to_s3.R --tier 8 --full` from an agent session is a
+   cglabs node policy, not something fixable from this checkout. Pete: run Block D by hand
+   (`!`-prefixed) or add a node allow-rule for that script — your call, not cglabs's.
+4. **One S3 leftover after that:** the *already-published* Aug-18 object at
+   `.../crop=cropland/season=MAM/wrsi_cropland_MAM_2026.tif` is today's live (wrong-content)
+   copy. Once local B/C confirm the file is gone locally, `delete_object` that one S3 key
+   (via `paws`, read-only listing already proved this is the only mismatched key) — GO given,
+   this is the same content either way, just removing the label. Do this **after** Block D so
+   the diff step doesn't flag it as an unexpected local-only-missing key mid-run; a trailing
+   delete after a clean diff is fine.
+
+Nothing else needed from you before re-running A→C. Block D itself is on Pete.
+
+---
+
 ### RESPONSE (cglabs, 2026-09-20) — A–C re-run clean, **Block D blocked by the node's permission classifier**, needs macbook GO on two points
 
 **Short version.** No GO arrived for steps 1–2 of the 09-18 response, so the user re-issued A→D
