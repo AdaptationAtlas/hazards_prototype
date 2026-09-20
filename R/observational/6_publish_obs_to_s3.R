@@ -49,10 +49,13 @@
 #               --tier. Stops after the checks; do NOT run --full from here.
 #   --full      Upload every file selected by --tier. Per-tier upload via
 #               AtlasDataManageR::S3DirUploader$upload_files_parallel + a
-#               $save_report() audit log. Idempotent (overwrite = FALSE) so
-#               re-runs after a partial failure are cheap.
+#               $save_report() audit log. NOT skip-if-exists — every run
+#               always overwrites (confirmed cglabs 2026-09-20); re-runs
+#               after a partial failure just re-put everything, which is
+#               cheap only because the files are small.
 #   --tier N    Restrict to Tier 1, 2, or 'all' (default). Ignored by --smoke.
-#   --overwrite Re-upload files that already exist on S3.
+#   --overwrite No-op — retained for forward-compatibility; every run already
+#               overwrites regardless of this flag.
 #
 # Parallel flags (workers, cpu-fraction, mem-fraction, mem-budget) follow the
 # pipeline-wide convention in R/observational/_helpers.R. Uploads are
@@ -124,7 +127,7 @@ usage <- function() {
     "                      Tier 17 = KNBS census tables; Tier 18 = KNBS projections.\n",
     "                      Tiers 3..18 are OPT-IN ONLY (--tier N), not in 'all'.\n",
     "                      Ignored by --smoke (always Tier 1).\n",
-    "  --overwrite         Re-upload files already on S3.\n",
+    "  --overwrite         No-op (every run already overwrites; see header).\n",
     sep = ""
   )
 }
@@ -187,16 +190,16 @@ do_tier18 <- mode != "--smoke" && tier_arg == "18"
 
 overwrite <- parse_overwrite_flag(args)
 # AtlasDataManageR 0.0.0.9000 (currently installed) does NOT expose an
-# `overwrite` arg on either S3DirUploader$new() or upload_files_parallel().
-# The flag is parsed for forward-compatibility but emits a warning so the
-# user knows it's not honoured at the package level. If you need true
-# re-upload semantics, delete the target S3 keys first with the AWS CLI.
+# `overwrite` arg on either S3DirUploader$new() or upload_files_parallel(),
+# and `AtlasDataManageR:::s3_upload` is an unconditional put_object/multipart
+# with no exists-check anywhere in S3DirUploader (confirmed cglabs 2026-09-20,
+# WRSI republish dispatch). Every run always overwrites; the flag below is
+# parsed for forward-compatibility only and does not change behaviour.
 if (overwrite) {
   log_step(paste(
-    "WARNING: --overwrite is not honoured by AtlasDataManageR 0.0.0.9000",
-    "(no overwrite arg on S3DirUploader). Upload will follow the package",
-    "default (typically: skip-if-exists). Delete S3 keys manually if you",
-    "need a forced re-upload."
+    "NOTE: --overwrite is a no-op — AtlasDataManageR 0.0.0.9000 always",
+    "overwrites (unconditional put_object, no skip-if-exists in",
+    "S3DirUploader). This run behaves identically with or without the flag."
   ))
 }
 
@@ -975,10 +978,10 @@ assert_cog_overviews <- function(specs) {
 }
 
 #' Build an S3DirUploader for one spec.
-#' AtlasDataManageR 0.0.0.9000 does not expose an `overwrite` arg; behaviour
-#' falls back to the package default (typically skip-if-exists, which gives
-#' free idempotency on re-runs). See the `--overwrite` warning emitted up
-#' near the CLI parsing block for forced-overwrite workarounds.
+#' AtlasDataManageR 0.0.0.9000 does not expose an `overwrite` arg; the
+#' underlying `s3_upload` is an unconditional put_object/multipart with no
+#' exists-check, so every upload always overwrites S3 (confirmed cglabs
+#' 2026-09-20). See the `--overwrite` note near the CLI parsing block.
 build_uploader <- function(spec) {
   AtlasDataManageR::S3DirUploader$new(
     upload_id    = spec$upload_id,
@@ -1195,8 +1198,8 @@ if (mode == "--full") {
     log_step(sprintf("=== Uploading: %s (tier %d) ===", spec$upload_id, spec$tier))
     t0 <- Sys.time()
     uploader <- build_uploader(spec)
-    # Idempotency: S3DirUploader's default overwrite=FALSE skips objects
-    # already on S3. --overwrite flips that.
+    # No skip-if-exists here: S3DirUploader always overwrites (see the
+    # --overwrite no-op note above). Not idempotent w.r.t. S3 state.
     uploader$upload_files_parallel(workers)
     uploader$save_report()
     walk <- walk_spec(spec)

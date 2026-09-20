@@ -92,6 +92,9 @@ def build(code, year, out_dir, overwrite, tmpdir):
         log(f"  {crop}/{season}/{year}: exists, skip"); return "skip"
     tif = fetch_eos_tif(code, year, eos_dekad, tmpdir)
     if tif is None:
+        if overwrite and os.path.exists(out):
+            os.remove(out)
+            log(f"  {crop}/{season}/{year}: no upstream data, removed stale {os.path.basename(out)}")
         return "empty"
     # crop Kenya + reproject-safe (already EPSG:4326) via gdalwarp
     warped = gdal.Warp("", tif, format="MEM", outputBounds=BBOX, outputBoundsSRS="EPSG:4326",
