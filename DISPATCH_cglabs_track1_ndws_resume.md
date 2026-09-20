@@ -3,7 +3,7 @@
 > 🛑 **DO NOT FIRE ANY STEP IN THIS FILE YET.**
 > The cglabs node is running the issue #26 R/2.1 FORCE rebake until ~2026-09-19
 > (`logs/R21_pushdown_20260918_045834.log`). Nothing here runs until **both**:
-> 1. `DISPATCH_cglabs_issue26_r21_rebake.md` reports the rebake **done**, and
+> 1. `archive/dispatches/DISPATCH_cglabs_issue26_r21_rebake.md` reports the rebake **done**, and
 > 2. **p.steward gives an explicit GO** on this file.
 >
 > Steps 1 and 2 are minutes of light I/O. Step 3 is a publish and needs its own GO.
@@ -230,7 +230,7 @@ and paste the **tail plus any FAIL/WARN lines**, not just the verdict.
 
 ## COPY-PASTE PROMPT FOR CGLABS
 
-> 🛑 **FIRE ONLY AFTER** `DISPATCH_cglabs_issue26_r21_rebake.md` reports the #26 R/2.1
+> 🛑 **FIRE ONLY AFTER** `archive/dispatches/DISPATCH_cglabs_issue26_r21_rebake.md` reports the #26 R/2.1
 > rebake **done**, **and** p.steward has given an explicit GO on
 > `DISPATCH_cglabs_track1_ndws_resume.md`. Until both hold, do not run this.
 
