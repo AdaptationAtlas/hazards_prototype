@@ -103,21 +103,12 @@ consume them. So a true full rebake is:
    `failed_risk_x_exposure_*.txt`, `skipped_not_in_exposure_*.txt`, per-variable 4.1 elapsed,
    and output mtimes against the run start.
 
-6. **R/2.1 GCM pin (#26) — CODE FIXED 2026-09-17; needs the FORCE re-bake + republish.**
-   All three defects fixed together in `R/2.1_create_monthly_haz_tables.R`: (a) the 5-GCM pin
-   is now the `R21_GCMS` env control defaulting to ALL GCMs in `indices_dir`, with an
-   equal-GCM-count gate per scenario x timeframe (`R21_ALLOW_UNEVEN_ENSEMBLE=1` to bypass);
-   (b) historic folders parse per-GCM with the window in the name
-   (`historic_<gcm>_<y1>-<y2>`, no more `historic_historic_historic` collapse); (c) baselines
-   are keyed and labelled by the historic WINDOW actually on disk (both 1981-2014 and
-   1995-2014 kept, per p.steward), killing the positional `all_baseline_names` mislabel.
-   Anomaly outputs are now `*_anomaly-<window>_*`; the four publishers
-   (`scripts/r21_publish_to_s3.R`, `R/republish_A.R`, `R/publish_B.R`, `R/build_publish_C.R`)
-   updated to match. **Re-bake requirements:** pre-delete the whole
-   `hazard_timeseries_mean_month` dir (stale collapsed intermediates + `anomaly-historic`
-   outputs are hard-stopped by guards), audit indices_dir per-window GCM completeness first
-   (the 1981-2014 window was historically partial), then `FORCE_OVERWRITE=1` full run.
-   The published mixed 18/13/5-member rows only disappear after this re-bake. Full detail on #26.
+6. **R/2.1 GCM pin (#26) — ✅ DONE, CLOSED 2026-09-20.** Re-baked (18 GCMs, both
+   historic windows), published (19 S3 keys: 10 canonical + 4 trends + 5 variability),
+   independently verified (duckdb httpfs on the live canonical key: `n_models`
+   distinct = `{0, 18}` only, zero partial counts, 68,112 legitimate all-NaN rows
+   where no GCM has valid extraction for a given admin1×hazard combo). No further
+   action. Full trail: `archive/dispatches/DISPATCH_cglabs_issue26_r21_rebake.md`.
 
 7. **VoP const-I$ publish ("Gap C", #30) — validated 2026-07 chain NEVER published.**
    Node QAQC went green 2026-07-08 (livestock 1.00 242/242, crop 0.99 36/50, outliers
