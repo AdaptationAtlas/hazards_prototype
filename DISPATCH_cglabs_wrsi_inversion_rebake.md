@@ -1,3 +1,60 @@
+### RESPONSE (cglabs, 2026-09-20) — A–C re-run clean, **Block D blocked by the node's permission classifier**, needs macbook GO on two points
+
+**Short version.** No GO arrived for steps 1–2 of the 09-18 response, so the user re-issued A→D
+directly. A–C re-ran identically (93 written / 3 expected 2026 gaps / same single stale file). Block D
+did not run: the CGlabs auto-mode classifier refused both the `mv` of the stale file in the shared store
+("Modify Shared Resources") and the `Rscript … --tier 8 --full` publish. Neither was worked around.
+Store is in the correct post-B state; S3 is still the Aug 18 (inverted) content.
+
+**Re-run results (2026-09-20).**
+- A: `wrsi_rangeland_MAM_2015.tif`, min 47 / mean 96 / max 100 — pass.
+- B: `logs/wrsi_full_20260920_1038.log`, `{'written': 93, 'skip': 0, 'empty': 3}`; 23/23/24/23 per
+  prefix; `no zip` only for `w202636e1`, `w202633ee`, `w202636et` (2026 EOS not reached).
+- C: rangeland 42.7–63.5 %, cropland 25.3–47.8 %, zero outliers. `wrsi_cropland_MAM_2026.tif` still
+  stale (mtime Aug 18, valid 63.5 vs ≤47.3 for every real cropland_MAM year, pixel-identical to
+  `rangeland_MAM_2026`).
+
+**Pre-publish content audit (local md5 vs S3 ETag; all objects <5 MB, single-part, so ETag == md5):**
+
+| state | n |
+|---|---|
+| S3 object differs from local → will be corrected by D | 92 |
+| identical — the stale `cropland_MAM_2026` (re-put is a byte-level no-op) | 1 |
+| missing on S3 — new `rangeland_MAM_2026` | 1 |
+
+S3 currently 93 objects, all LastModified 2026-08-18 13:10.
+
+**Two things about `6_publish_obs_to_s3.R` worth knowing before you write the next block.**
+
+1. The dispatch's `--tier 8 --full` (no `--overwrite`) **does** overwrite. `AtlasDataManageR:::s3_upload`
+   is an unconditional `put_object` / multipart — there is no exists check anywhere in
+   `S3DirUploader`. The script's comments ("default overwrite=FALSE skips objects already on S3",
+   "--overwrite not honoured … typically skip-if-exists") describe behaviour the package does not have.
+   Harmless here, misleading for future dispatches; suggest a comment fix.
+2. `--dry-run --tier 8` plans 94 files, 0.7 MB, `[ok] overview check: all 94 COG(s) have overviews`.
+
+**What the node needs from you (answer inline in the next block):**
+
+1. **Stale file.** Pick one: (a) GO to park local `wrsi_cropland_MAM_2026.tif` into a
+   `_parked_wrsi_stale_20260920/` sibling and `delete_object` the S3 key
+   `domain=climate/type=agriculture/source=fews-wrsi/region=east-africa/processing=seasonal/variable=wrsi/crop=cropland/season=MAM/wrsi_cropland_MAM_2026.tif`
+   (irreversible; needs explicit GO), or (b) publish as-is and leave the stale object for a later pass.
+   Under (b) S3 ends up 93 correct + 1 unchanged-wrong object; nothing regresses.
+2. **Publish permission.** The classifier blocks `Rscript R/observational/6_publish_obs_to_s3.R --tier 8 --full`
+   from an agent session on this node. Either the user runs it by hand (`!`-prefixed in the session) or
+   an allow rule is added for that script. Same for the `mv` under `common_data`.
+3. Optional: the `build()` hardening from the 09-18 response (delete/flag existing `out` when
+   `--overwrite` and fetch returns `None`). Without it this exact stale-file case recurs every
+   Jan–Nov for `cropland_MAM`.
+
+**Ready on the node, one command each once unblocked:** publish (above), then
+`verify_wrsi_s3.sh` — paws listing, name diff local vs S3, and 94-way md5/ETag match (read-only).
+Pre-publish snapshots kept: `s3_pre_publish.csv` (key, ETag, LastModified), `local_md5.csv`.
+
+Nothing committed except this block. Store untouched since Block B.
+
+---
+
 ### RESPONSE (cglabs, 2026-09-18) — Blocks A–C done, **stopped at the Block C gate**, Block D NOT run
 
 **Outcome.** The rebake worked and the inversion is gone from 93 of 94 files, but one stale file
