@@ -37,12 +37,23 @@ note: >
   standard basis, which is constant 2015 international dollars (vop_intld15). Nominal values are not
   deflated, so a change between timeframes mixes price change with production change, and figures
   are not comparable with any Atlas product quoted in constant international dollars.
-  AND THERE IS AN OPEN DEFECT ON THE CURRENCY ALIGNMENT. A live-artifact gate run on 2026-09-18 found
-  crop value of production reconciling to FAOSTAT at a ratio of 1.007 but the LIVESTOCK counterpart
-  at 1.198 - a 20 per cent discrepancy that has not been explained. A previous mismatch of the same
-  kind, nominal USD against constant international dollars, produced roughly a sevenfold error in
-  cattle exposure. THIS RECORD MUST BE UPDATED WHEN THAT FIX LANDS: the currency basis, the affected
-  variables and this caveat all change together. Tracked as hazards_prototype issue 30.
+  AN OPEN CURRENCY-ALIGNMENT DEFECT SITS UPSTREAM OF THIS PRODUCT RATHER THAN IN IT. The gate run on
+  2026-09-18 that found crop value of production reconciling to FAOSTAT at 1.007 and the LIVESTOCK
+  counterpart at 1.198 was run against a DIFFERENT dataset - the exposure denominator
+  domain=exposure/type=combined/.../variable=crop-livestock_all.parquet, which carries crop and
+  livestock value of production in constant international dollars and has no CDH record of its own.
+  Neither ratio is a measurement of this artifact. What is published here is crop exposure in nominal
+  2021 US dollars, and it has not been reconciled against FAOSTAT at all.
+  The connection is real but indirect. Both sides derive from the same MapSPAM and GLW4 value-of-
+  production rasters, and consumers divide this product by that denominator. The denominator is
+  MULTI-UNIT: its usd rows are nominal-usd-2021 and share this product's basis, its intld15 rows are
+  constant international dollars and do not. Select on the unit columns rather than assuming - and
+  note that in that object `unit` is vintage-less (`intld15`, `usd`) while `unit_full` carries the
+  vintage (`intld15-2021`, `nominal-usd-2021`), so `unit` alone is not enough to identify the basis.
+  A previous mismatch of this kind, in the upstream livestock chain, produced roughly a sevenfold
+  error in cattle exposure. THIS RECORD MUST BE UPDATED WHEN THE FIX LANDS: the currency basis, the
+  S3 path if the published prefix changes, both currency not_recommended_for entries and this caveat
+  all change together. Tracked as hazards_prototype issue 30.
   ONLY ONE EXPOSURE VARIABLE IS PUBLISHED. Despite the product being designed to carry crop,
   livestock and population exposure, the live prefix holds exposure_var = vop only. There is no
   published population or livestock exposure tier under this source. Do not infer their existence
@@ -76,7 +87,7 @@ citation:
   url: https://adaptationatlas.cgiar.org/
 
 created: "2026-09-18"
-updated: "2026-09-18"
+updated: "2026-09-20"
 
 spatial:
   bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present
@@ -185,8 +196,8 @@ cdh:
         use_instead: Compare hazard frequency directly, or wait for a constant international dollar release (issue 30).
       - use: Combining these figures with any Atlas product quoted in constant international dollars.
         reason: >
-          Different currency basis. A previous crop-versus-livestock mismatch of exactly this kind
-          produced roughly a sevenfold error in cattle exposure.
+          Different currency basis. A previous crop-versus-livestock mismatch of exactly this kind,
+          in the upstream livestock chain, produced roughly a sevenfold error in cattle exposure.
         use_instead: Check exposure_unit on both sides and convert, or use products on one basis throughout.
       - use: Reading this as covering population or livestock exposure.
         reason: Only exposure_var = vop is published under this source; no population or livestock tier exists.
