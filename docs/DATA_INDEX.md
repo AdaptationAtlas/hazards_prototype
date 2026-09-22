@@ -134,7 +134,7 @@ Recorded in the catalogue, surfaced here so they are not invisible.
 
 ### eastafrica-wrsi-fews
 
-- Only the cropland-MAM series extends to 2026; other series stop earlier.
+- Only the rangeland-MAM series (FEWS e2, end-of-season dekad 21) extends to 2026; the other three series reach 2026 once their end-of-season dekad (33/36) is published, typically late November to January.
 
 ### exposure-admin-tables
 
@@ -227,4 +227,4 @@ Recorded in the catalogue, surfaced here so they are not invisible.
 
 ---
 
-Rendered 2026-09-18 on host `mac-pstewarda`.
+Rendered 2026-09-22 on host `mac-pstewarda`.

@@ -42,7 +42,7 @@
     "min_files": 1
   },
   "gaps": [
-    "Only the cropland-MAM series extends to 2026; other series stop earlier."
+    "Only the rangeland-MAM series (FEWS e2, end-of-season dekad 21) extends to 2026; the other three series reach 2026 once their end-of-season dekad (33/36) is published, typically late November to January."
   ],
   "changelog": [
     {
@@ -54,6 +54,16 @@
       "date": "2026-09-18",
       "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-09-18",
+      "change": "Cropland/rangeland labels found inverted: REGION_MAP served FEWS e1/e2 (rangeland) as cropland and ek/et as rangeland. Fixed in python/ingest_wrsi_fews.py (e1/e2 -> rangeland, ee/et -> cropland, ek dropped).",
+      "ref": "c6a5e3d"
+    },
+    {
+      "date": "2026-09-20",
+      "change": "Rebaked all 93 files with the corrected map and republished in place to S3 (93/93 md5 verified); the stale cropland_MAM_2026 object was deleted. Ingest now removes a stale local file when --overwrite finds no upstream product.",
+      "ref": "20bc0a1"
     }
   ],
   "schema_version": "1.0.0",

@@ -37,9 +37,15 @@ keywords:
 
 note: >
   Cropland and rangeland use different water-demand parameterisations and growing-season definitions
-  (FEWS NET region codes / end-of-season dekads), so the two products are not interchangeable. Not
-  every season x year combination of the template exists: the most recent season is only published
-  once FEWS NET releases its end-of-season product.
+  (FEWS NET region codes / end-of-season dekads), so the two products are not interchangeable. The
+  {crop} x {season} cells map to FEWS NET East Africa region codes as follows (FEWS NET zip-product
+  instructions, Table 1, 2025-02-03): rangeland OND = e1 (Sep-Jan), rangeland MAM = e2 (Feb-Jul),
+  cropland OND = et (maize, Oct-Feb), cropland MAM = ee (maize, Mar-Nov). Not every season x year
+  combination of the template exists: the most recent season is only published once FEWS NET
+  releases its end-of-season product. PROVENANCE: objects published between 2026-08-18 and
+  2026-09-20 had the cropland and rangeland labels swapped (e1/e2 served as cropland, ek/et as
+  rangeland); every object was replaced in place on 2026-09-20 and copies fetched before that date
+  should be discarded.
 
 contact:
   - name: Peter Steward
@@ -58,7 +64,7 @@ citation:
   url: https://earlywarning.usgs.gov/fews/product/128
 
 created: "2026-08-28"
-updated: "2026-09-14"
+updated: "2026-09-20"
 
 spatial:
   bbox: [33.9, -4.7, 41.9, 5.5] # Kenya (verified vs live COG 80 x 102 cells at 0.1 deg)
@@ -77,11 +83,11 @@ temporal:
 dimensions:
   - name: crop
     type: land-use
-    description: Production system the water balance is parameterised for; the {crop} token. cropland = maize, rangeland = pasture.
+    description: Production system the water balance is parameterised for; the {crop} token. cropland = maize (FEWS NET regions ee/et), rangeland = pasture (FEWS NET regions e1/e2).
     values: [cropland, rangeland]
   - name: season
     type: season
-    description: Growing season, MAM = long rains (March to May), OND = short rains (October to December). Each value covers three months.
+    description: Growing season label. MAM = the long-rains season, OND = the short-rains season. These are Atlas labels for FEWS NET's own monitoring windows, which are longer than three months and differ by production system (rangeland Feb-Jul / Sep-Jan, maize Mar-Nov / Oct-Feb); each value is the end-of-season WRSI of that window.
     values: [MAM, OND]
   - name: year
     type: temporal
@@ -118,8 +124,8 @@ dimensions:
 variables:
   - name: wrsi
     dimensions: [crop, season, year]
-    description: End-of-season Water Requirement Satisfaction Index, 0 to 100 percent; lower = greater seasonal water deficit.
-    data_type: uint8
+    description: End-of-season Water Requirement Satisfaction Index, 0 to 100 percent; lower = greater seasonal water deficit. FEWS NET status codes (253/254) and outside-zone cells are NaN.
+    data_type: float32
     unit: percent
 
 processing:
@@ -131,7 +137,7 @@ processing:
       - title: CHIRPS-3.0 data portal (Climate Hazards Center)
         url: https://data.chc.ucsb.edu/products/CHIRPS-3.0/
   - id: crop-cog
-    description: Assemble the cropland and rangeland end-of-season WRSI grids per season and year, crop to Kenya, write COGs with overviews.
+    description: Fetch the end-of-season dekad product for each FEWS NET region code (e1, e2, ee, et), map region code to production system and season, mask status codes to NaN, crop to Kenya, write COGs with overviews.
     code:
       url: https://github.com/AdaptationAtlas/hazards_prototype
       version: python/ingest_wrsi_fews.py
