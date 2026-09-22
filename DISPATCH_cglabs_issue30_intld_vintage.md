@@ -387,3 +387,69 @@ product and denominator agree and the exposure *fraction* is fine, but the *abso
 is wrong for that crop. Smells like a 0.4.2 price-fill miss on pearl-millet. Candidate for its own
 issue.
 
+
+---
+
+## Block E — schema fix + row profile (2026-09-22, writes locally, nothing to S3)
+
+Pete decided: `unit_full := unit` in §3.1/3.2/3.3, and the five hive columns in §3.1. Both
+are on `develop` now. This block re-runs 0.4.4 with them and profiles the output against the
+live object so the 0.704 row ratio gets explained. **Still no publish.**
+
+**Landmine, again:** §3.1 and §3.3 are skip-if-exists and their outputs now exist from Block C.
+Move them aside first, exactly as in Block C. Do not use `FORCE_OVERWRITE`.
+
+```bash
+cd <hazards_prototype>
+git fetch origin && git checkout develop && git pull --ff-only
+git log --oneline -3          # expect "feat(0.4.4): unit_full + hive columns" at or near HEAD
+
+STAMP=$(date +%Y%m%d-%H%M%S)
+cd <exposure_dir>
+mkdir -p _pre30_backup
+for f in exposure_adm_sum_spam20-20_glw420-20.parquet vop_intld15-2021_adm_sum_spam20_glw420.parquet vop_nominal-usd-2021_adm_sum_spam20_glw420.parquet; do
+  [ -e "$f" ]      && mv "$f"      "_pre30_backup/$f.$STAMP"
+  [ -e "$f.json" ] && mv "$f.json" "_pre30_backup/$f.json.$STAMP"
+done
+cd <hazards_prototype>
+nohup Rscript R/0.4.4_process_exposure.R > logs/0.4.4_issue30_E_$STAMP.log 2>&1 &
+```
+
+Expect a new line `section 3.1: 19 columns -> iso3, ..., type`. Then, once the run exits 0:
+
+```bash
+Rscript -e '
+  suppressPackageStartupMessages({library(arrow); library(data.table)})
+  source("R/0_server_setup.R")
+  live_cols <- c("iso3","admin0_name","admin1_name","admin2_name","gaul0_code","gaul1_code","gaul2_code",
+                 "crop","value","stat","exposure","unit","tech","unit_full","domain","processing","region","source","type")
+  p <- file.path(exposure_dir, "exposure_adm_sum_spam20-20_glw420-20.parquet")
+  cols <- names(arrow::open_dataset(p)$schema)
+  cat("local-only:", setdiff(cols, live_cols), "\nlive-only :", setdiff(live_cols, cols), "\n")   # both must be empty
+  d <- as.data.table(read_parquet(p))[exposure == "vop"]
+  print(d[, .N, by = .(domain, type, source, region, processing)])                                 # one row, live values
+  print(d[, .(n = .N, null_rows = sum(is.na(value)), zero_rows = sum(value == 0, na.rm = TRUE),
+              admin_units = uniqueN(fcoalesce(gaul2_code, gaul1_code, gaul0_code)), countries = uniqueN(iso3),
+              adm0 = sum(is.na(admin1_name)), adm1 = sum(!is.na(admin1_name) & is.na(admin2_name)),
+              adm2 = sum(!is.na(admin2_name))), by = unit])
+  print(d[unit == "intld15-2021", .N, by = .(crop, tech)][order(crop, tech)])
+'
+```
+
+**Live comparators for the intld15 unit** (from the published `crop-livestock_all`, 2026-09-22):
+768,818 rows · 409,254 NULL · 180,266 zero · **7,245 admin units** · 55 countries ·
+adm0/adm1/adm2 rows **5,830 / 75,896 / 687,092** · 32 crops × 3 techs + 10 livestock (`tech` NULL).
+
+**Report back:** both `setdiff`s (must be empty), the hive-value row, the per-unit profile, and
+the per-crop × tech counts. The question the profile answers: where do the ~228k missing intld
+rows go - fewer admin units, fewer adm2 rows, or fewer NULL rows per crop? Do not guess; the
+numbers say.
+
+Then the dry run of the publisher, which is read-only and will show what the gates now say:
+
+```bash
+Rscript scripts/r3_publish_tiers.R --reference-only --allow-unit-vintage-change --dry-run
+```
+
+**Expect** the column gate to pass and the row gate to still FAIL on 0.704 until the profile
+explains it. Paste the gate output verbatim. **STOP.** No publish.
