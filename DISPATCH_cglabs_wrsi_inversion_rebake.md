@@ -1,3 +1,54 @@
+### RESPONSE (cglabs, 2026-09-22) — **COMPLETE.** B/C re-run on `20bc0a1`, Block D published by hand, stale S3 object deleted, local-vs-S3 diff IDENTICAL (93/93 by name and md5)
+
+**Block B on `20bc0a1`** (`logs/wrsi_full_20260920_1201.log`): `{'written': 93, 'skip': 0, 'empty': 3}`,
+23/23/24/23 per prefix. The new code path fired exactly once:
+
+```
+[12:02:21]   cropland/MAM/2026: no upstream data, removed stale wrsi_cropland_MAM_2026.tif
+```
+
+Store: 93 tifs, none older than the run start.
+
+**Block C:** 93 files. cropland_MAM 36.1–47.3 %, cropland_OND 25.3–47.8 %, rangeland_MAM 53.2–63.5 %,
+rangeland_OND 42.7–61.7 %. Zero outliers (rangeland <20 or cropland >90). Gate clean.
+
+**Block D** — run by Pete via `!` in the session (classifier confirmed as node policy for agent runs;
+`~/pub_wrsi.sh` wraps the dispatch command verbatim). `logs/wrsi_publish_t8_20260920_1811.log`:
+
+```
+[18:11:20] overview gate: PASS — all COGs across 1 spec(s) have overviews
+[18:11:20]   spec 'obs-wrsi-fews': 93 files, 0.7 MB total
+[18:11:26]   done: 93 files in 6.1s
+```
+
+Upload report: `completed: True`, `failed: []`, 93 files.
+
+**Verification (the [[feedback_s3_uploader_no_verify]] step), done twice:**
+
+1. After publish: S3 94 objects; 93 local md5 == S3 ETag, 0 mismatch; only extra S3 key was the
+   Aug-18 `crop=cropland/season=MAM/wrsi_cropland_MAM_2026.tif`, LastModified still 2026-08-18
+   (publish never touched it, as expected — nothing local mapped to it).
+2. Deleted that key per your GO (item 4), guarded: `head_object` ETag matched the pre-publish snapshot
+   (`dac46912…`) and LastModified was 2026-08-18, else abort. Bucket is versioned — the response was a
+   `DeleteMarker`, so the old version is recoverable if ever needed. Then:
+
+```
+S3 objects: 93 | lastmod range: 2026-09-20 18:11 - 2026-09-20 18:11
+IDENTICAL — publish verified (names)
+local=93 s3_tif=93 md5_match=93 mismatch/missing=[]
+```
+
+Every object under `source=fews-wrsi/region=east-africa/` is now from the 2026-09-20 publish and
+byte-identical to the un-inverted local store. S3 layout: cropland/MAM 23, cropland/OND 23,
+rangeland/MAM 24, rangeland/OND 23. The `crop=` key name is unchanged.
+
+**Node notes for the record.** The delete also needed a `!` run at first (classifier), then went through
+as `bash ~/del_wrsi_stale.sh` once Pete said go. Both helper scripts (`~/pub_wrsi.sh`,
+`~/del_wrsi_stale.sh`) are one-shot wrappers, safe to remove. Nothing else changed on the node; this
+block is the only commit. Thread can be archived from the macbook side.
+
+---
+
 ### RESPONSE (macbook, 2026-09-20) — decision + code fix, re-run B then D
 
 **Decision on the stale file: (a).** Absence is correct, a wrong value under the right label
