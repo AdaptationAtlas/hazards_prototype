@@ -425,6 +425,23 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
     # `unit` reaches the parquet exactly as the producer wrote it, which is also
     # what this block's sidecar already recorded.
 
+    # Canonical-object columns (issue #30, p.steward 2026-09-22). The published
+    # crop-livestock_all was built from `main`, whose 0.4.4 preserved the
+    # pre-flatten unit in `unit_full` and whose publish step stamped the five
+    # hive keys of the S3 path onto every row. Consumers read both, and
+    # scripts/r3_publish_tiers.R refuses a schema that differs from live. `unit`
+    # already carries the vintage here, so `unit_full` is an identical copy kept
+    # for back-compat, not a second source of truth. The hive values are the
+    # S3 key the publisher writes to (REF_KEY there) - change them together.
+    exposure_adm_sum_tab[, unit_full := unit]
+    exposure_adm_sum_tab[, `:=`(domain     = "exposure",
+                                type       = "combined",
+                                source     = "glw4-2020_spam2020AA",
+                                region     = "ssa",
+                                processing = "atlas-harmonized")]
+    .log044(sprintf("section 3.1: %d columns -> %s", ncol(exposure_adm_sum_tab),
+                    paste(names(exposure_adm_sum_tab), collapse = ", ")))
+
     exposure_adm_sum_tab[,crop:=gsub("_| ","-",crop)]
 
     write_parquet_pushdown(
@@ -480,6 +497,7 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
       
       write_json(attr_info, attr_file, pretty = TRUE)
       
+      exposure_adm_sum_tab[, unit_full := unit]   # back-compat copy, see section 3.1
       exposure_adm_sum_tab[,crop:=gsub("_| ","-",crop)]
 
       write_parquet_pushdown(
@@ -574,6 +592,7 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
 
       write_json(attr_info, attr_file, pretty = TRUE)
 
+      exposure_adm_sum_tab[, unit_full := unit]   # back-compat copy, see section 3.1
       exposure_adm_sum_tab[,crop:=gsub("_| ","-",crop)]
 
       write_parquet_pushdown(
