@@ -453,3 +453,79 @@ Rscript scripts/r3_publish_tiers.R --reference-only --allow-unit-vintage-change 
 
 **Expect** the column gate to pass and the row gate to still FAIL on 0.704 until the profile
 explains it. Paste the gate output verbatim. **STOP.** No publish.
+
+---
+
+## cglabs response — Block E complete, STOPPED (2026-09-22)
+
+Ran 0.4.4 @ `4fbfe3b` (`595090a` present), FORCE_OVERWRITE unset. Moved all 3 parquets +
+sidecars to `_pre30_backup/` (stamp `20260922-114812`). New schema line verbatim:
+
+```
+section 3.1: 19 columns -> iso3, admin0_name, admin1_name, admin2_name, gaul0_code, gaul1_code, gaul2_code, crop, value, stat, exposure, unit, tech, unit_full, domain, type, source, region, processing
+```
+
+### Profiling one-liner
+```
+local-only:            (empty)
+live-only :            (empty)
+--- hive row ---
+  domain=exposure  type=combined  source=glw4-2020_spam2020AA  region=ssa  processing=atlas-harmonized   N=1602970
+--- per-unit profile ---
+  unit              n        null_rows  zero_rows  admin_units  countries  adm0    adm1    adm2
+  intld15-2021      541130   255347     140274     5093         55         6678    74200   460252
+  nominal-usd-2021  1061840  259100     527998     5093         55         13104   145600  903136
+```
+Per-crop × tech (intld15-2021): uniform **5,105 rows/combo**, 32 crops × {all,irr,rf-all} +
+10 livestock (tech NULL) = 106 combos = 541,130. No per-crop sparsity.
+
+### The 0.704, explained (measured, not guessed)
+It is **admin-unit count, entirely in adm2.** Node 5,093 admin units vs live 7,245 →
+5093/7245 = **0.703**. adm2 deficit = live 687,092 − node 460,252 = **226,840** ≈ the ~228k
+missing rows. Same 55 countries, same 42 crops, same 3-tech structure. NULL/zero do **not**
+explain it (node has *fewer* NULLs: 255k vs live 409k). The node's admin boundaries carry
+fewer adm2 polygons than whatever produced the live object.
+
+### Publisher dry-run (verbatim)
+```
+FAIL columns: local-only=[domain,processing,region,source,type] live-only=[]
+ok: distinct(exposure) identical = harv-area,number,phys-area,prod,vop
+unit vintage change ALLOWED (--allow-unit-vintage-change), 5 -> 5 units:
+  live  = [ha,intld15,number,t,usd]
+  local = [ha,intld15-2021,nominal-usd-2021,number,t]
+  gone  = [intld15,usd]  new = [intld15-2021,nominal-usd-2021]
+ok: distinct(stat) identical = sum
+FAIL rows: local 5584870 vs live 7847746 (>25% apart)
+ABORT reference: gate failure, nothing uploaded
+```
+
+### Two corrections to Block E's premise
+
+**1. The column gate does NOT pass — `595090a`'s hive columns are the wrong fix.** The
+profiling `setdiff` is empty only because the block's hardcoded `live_cols` list *includes*
+the 5 hive columns. The real live **stored** schema is **14 columns** (verified with
+`read_parquet(..., hive_partitioning=false)`): `iso3, admin0_name, admin1_name, admin2_name,
+gaul0_code, gaul1_code, gaul2_code, crop, value, stat, exposure, unit, tech, unit_full`. The
+5 hive columns (`domain, type, source, region, processing`) are **not stored in the file** —
+DuckDB synthesizes them from the Hive-partitioned S3 key path
+(`domain=…/type=…/source=…/region=…/processing=…/`). The publisher downloads to a flat temp,
+reads the 14 stored columns, and correctly reports the node's 5 stored hive columns as
+`local-only` → column gate FAIL. **Recommendation:** keep `unit_full := unit` (correct — live
+stores it), but **revert the 5 hive columns** in §3.1 — they belong in the publish-time S3
+key, and storing them in the file duplicates/conflicts with the path partitioning.
+
+**2. Both gates FAIL, not just rows.** Columns fail on the 5 hive cols above; rows fail at
+**0.712 total** (5584870 / 7847746). The `0.704` in the block is the vop-only ratio
+(541130 / 768818) — the publisher gates on total rows. The row FAIL is the real adm2
+boundary-count gap and is **not fixable from this repo's code**: the node needs the finer
+admin boundary set (7,245 admin units) that produced the live object. Until the node extracts
+against that boundary vintage, the reference publish row gate will keep failing regardless of
+the schema fix.
+
+### STOP — nothing published
+New parquets local only (common_data); 3 prior outputs in `_pre30_backup/` stamp
+`20260922-114812`. Nothing to S3.
+
+### duckdb note (unchanged from Block D)
+Node still has no real `duckdb` CLI; ran the schema checks via `python-duckdb` + a `-csv -c`
+shim. Recommend installing a proper duckdb CLI on the node.
