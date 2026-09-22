@@ -190,3 +190,52 @@ Two things that are **not** fixed by publishing the above and need their own dec
    see `scripts/r3_publish_tiers.R:29`. Something between the producer and the canonical
    object is adding it. Until that is identified, a re-published file may *lose* a column
    consumers are using. Worth establishing before the publish, not after.
+
+---
+
+## cglabs response — Blocks A→D complete, STOPPED before publish (2026-09-20)
+
+Ran on `develop` @ `0ddfa53` (`99fdf73` present). **Nothing written to S3.**
+
+### Block A — audit
+- `vop_file = TRUE` → FAO bulk on disk, Block B skipped.
+- The audit one-liner returns `character(0)` **only because it lists `atlas_dirs$data_dir$exposure`** (= `Data/exposure`, holds knbs parquets only). The real VoP source tifs live in `mapspam_pro_dir` / `glw2020_pro_dir`. Both target vintages present there: `intld15-2021` + `nominal-usd-2021`, crop and livestock. Suggest fixing the Block A command to list those dirs.
+- **Caveat found:** MapSPAM `intld15-2021` crop is baked for only **3/6 technologies** (`all,irr,rf-all`; missing `rf-highinput/lowinput/subsistence`); `nominal-usd-2021` has all 6. Does not block — the gate reads `tech=="all"`, present — but see row counts below. Looks like a partial 0.4.0/0.4.1 intld bake.
+
+### Block C — re-run 0.4.4
+Moved stale combined parquet + sidecar (mtime 2026-07-07) to `Data/exposure/_pre30_backup/` (stamp `20260920-162700`). Run completed clean in **~3 min** — sections 1/2 reloaded per-file parquets from the `variable=…/` subdirs (no re-extraction). §3.1/§3.3 verbatim:
+
+```
+section 3.1: units present in extraction = ha, intld15, intld15-2015, intld15-2020, intld15-2021, nominal-usd-2015, nominal-usd-2020, nominal-usd-2021, nominal-usd15, nominal-usd21, number, t, usd2015
+section 3.1: units kept (EXPOSURE_UNITS) = number, ha, t, nominal-usd-2021, intld15-2021
+section 3.1: units DROPPED = intld15, intld15-2015, intld15-2020, nominal-usd-2015, nominal-usd-2020, nominal-usd15, nominal-usd21, usd2015
+section 3.3: unit kept = intld15-2021 (present in extraction: ...)
+section 3.3: 541130 rows, 42 crops
+```
+
+Legacy bare `intld15` dropped; no abort, no rename. Post-run unit table:
+
+```
+== exposure_adm_sum_spam20-20_glw420-20.parquet ==
+   vop  intld15-2021      541130
+   vop  nominal-usd-2021 1061840   (+ ha/number/t rows)
+== vop_intld15-2021_adm_sum_spam20_glw420.parquet ==
+   vop  intld15-2021      541130
+```
+
+No bare `intld15`, no bare `usd`. The vop split 541130 vs 1061840 (~½) is the 3/6-tech gap showing in row counts.
+
+### Block D — gates
+- **`usd_total_vs_reference.R` → PASS.** `reference unit matched = intld15-2021 (accepted intld15-2021,intld15,intld15-2020 | present intld15-2021,nominal-usd-2021)` — matched preferred vintage, **no** "matched on `intld15`" warning. intld: 99 material pairs, **median ratio 1.000, range [0.9598, 1]**. The 6,759× gate is fixed.
+- **`vop_align_live_gate.R` → UNCHANGED, as predicted.** unit=`intld15` (NOTE: vintage-less pre-fix survivor). CROP **PASS median 1.007**; LIVESTOCK **FAIL median 1.198**; OVERALL FAIL. Live object untouched (Last-Modified 2026-01-21) → **nothing republished**. (Node had no `duckdb` CLI — conda-forge `duckdb` pkg is a metapackage with no binary; ran via `python-duckdb` + a `-csv -c` shim. Recommend installing a real duckdb CLI on the node for future gate runs.)
+
+### Answer to the open question — what adds `unit_full`
+**0.4.4 itself used to.** Commit `bb5c5f7` §3.1:
+```r
+exposure_adm_sum_tab[,unit_full:=unit]                      # keep vintage-ful copy
+exposure_adm_sum_tab[unit==units[k],unit:=names(units)[k]]  # then flatten unit to vintage-less
+```
+`unit_full` = preserved-vintage column; `unit` got flattened — the flattening is exactly what hid #30. Fix `99fdf73` deleted **both** lines. So old 0.4.4 = `unit` vintage-less + `unit_full` vintage-ful; fixed 0.4.4 = `unit` vintage-ful, **no `unit_full`**. A republish is semantically clean but **drops `unit_full`**. In-repo consumer = `R/misc/rebake_parquets_for_pushdown.R` (sorts/verifies on `unit_full`, would break); `R/3_freq_x_exposure.R:386` is comment only. External consumers unknown. **Decide before publish:** emit `unit_full` as a copy of `unit` for back-compat, or drop deliberately.
+
+### Awaiting Pete
+No publish performed. Blockers for the authorised publish: (1) intld15-2021 crop 3/6-tech partial bake; (2) `unit_full` drop-on-republish. Both are your call.
