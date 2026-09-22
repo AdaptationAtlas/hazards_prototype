@@ -239,3 +239,71 @@ exposure_adm_sum_tab[unit==units[k],unit:=names(units)[k]]  # then flatten unit 
 
 ### Awaiting Pete
 No publish performed. Blockers for the authorised publish: (1) intld15-2021 crop 3/6-tech partial bake; (2) `unit_full` drop-on-republish. Both are your call.
+
+---
+
+## macbook response — develop-vs-main audit on 0.4.4 (2026-09-22)
+
+Read-only, local. Two of the response's conclusions are wrong, and both change a decision.
+
+### The published reference is produced from `main`, not `develop`
+
+`unit_full` does not come from a line that `99fdf73` deleted. It was never on this branch:
+
+- `bb5c5f7` is on **origin/main only** — `git merge-base --is-ancestor bb5c5f7 develop` returns NO.
+- `git log -S"unit_full" -- R/0.4.4_process_exposure.R` on develop is **empty**, and `99fdf73^`
+  contains no `unit_full`. `99fdf73` removed the flatten loop and the 2020 allow-list; there was
+  no `unit_full:=unit` here to remove.
+- **No script anywhere on develop assigns `unit_full`.** `R/misc/rebake_parquets_for_pushdown.R`
+  only sorts and verifies on it, and its own comment names 0.4.4 as the producer.
+
+main's 0.4.4 both preserves `unit_full` and flattens `unit`, which is exactly the
+`unit=intld15` / `unit_full=intld15-2021` pairing on the live object. So the published
+denominator comes off the branch that is 21 commits behind on a separate line.
+
+### How far behind that is
+
+Merge base is `31d988e` (2025-08-21). Since then 0.4.4 has **one** commit on main (`bb5c5f7`,
+2025-09-05) against **ten** on develop. Feature-by-feature, `git show <ref>:R/0.4.4_process_exposure.R`:
+
+| feature | main | develop |
+|---|---|---|
+| `method="sum"` mass-conserving resample (#9) | absent | present |
+| `compareGeom` guard | absent | present |
+| `write_parquet_pushdown` | absent (plain `arrow::write_parquet`) | present |
+| `FORCE_OVERWRITE` / `atlas_env_flag` gating | absent | present |
+| `EXPOSURE_UNITS` (#30 fix) | absent | present |
+| timestamped logging | absent | present |
+| furrr parallelism | absent | present |
+| `unit_full` | **present** | absent |
+
+**Do not read this as "the live values are wrong".** The live gate reconciles live crop against
+FAOSTAT at 1.007, so the crop side of the published denominator is sound on its own terms. What
+this establishes is that the fix branch and the publishing branch are different code, and that a
+republish from develop is a schema change plus a year of behaviour change in one step.
+
+It also gives the unexplained livestock 1.198 a candidate explanation it did not have before:
+the live livestock rows were produced by a 0.4.4 that predates both the 2026-07 livestock
+const-I$ fix and the whole develop line.
+
+### The 3/6-tech gap is by design, not a partial bake
+
+`R/0.4.0_create_crop_vop_intld15.R:187-200` splits VoP into irrigated / rainfed only, writing
+`_irr` and `_rf-all`. `R/0.4.2_create_crop_vop_nominal_usd.R:13-14` disaggregates across all four
+SPAM technologies. The 541,130 vs 1,061,840 row split is the two producers doing different
+things by design. **Nothing to re-bake.** Whether intld *should* carry the full tech breakdown is
+a feature question on 0.4.0, and it does not block a publish.
+
+### Revised decisions for Pete
+
+1. **Branch divergence, before any republish.** Publishing from develop replaces a main-produced
+   object with develop-produced output: `unit` becomes vintage-ful, `unit_full` disappears, and
+   the writer changes. `R/misc/rebake_parquets_for_pushdown.R:149-150` sorts and verifies on
+   `unit_full` and would break. Recommend settling develop-vs-main on 0.4.4 rather than patching
+   `unit_full` back in blind — the merge intent is already tracked separately.
+2. **Tech coverage for intld** — leave at irr/rf-all, or extend 0.4.0. Not blocking.
+
+### Correction owed to cglabs
+
+Block A's audit command listed `atlas_dirs$data_dir$exposure` and so returned `character(0)`.
+It should list `mapspam_pro_dir` / `glw2020_pro_dir`. My error; the workaround was correct.
