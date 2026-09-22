@@ -282,9 +282,8 @@ FAOSTAT at 1.007, so the crop side of the published denominator is sound on its 
 this establishes is that the fix branch and the publishing branch are different code, and that a
 republish from develop is a schema change plus a year of behaviour change in one step.
 
-It also gives the unexplained livestock 1.198 a candidate explanation it did not have before:
-the live livestock rows were produced by a 0.4.4 that predates both the 2026-07 livestock
-const-I$ fix and the whole develop line.
+(The livestock 1.198 is resolved by measurement in the double-check section below - it is
+the pre-`05c0b0e` 0.4.1 mislabel, live.)
 
 ### The 3/6-tech gap is by design, not a partial bake
 
@@ -299,11 +298,92 @@ a feature question on 0.4.0, and it does not block a publish.
 1. **Branch divergence, before any republish.** Publishing from develop replaces a main-produced
    object with develop-produced output: `unit` becomes vintage-ful, `unit_full` disappears, and
    the writer changes. `R/misc/rebake_parquets_for_pushdown.R:149-150` sorts and verifies on
-   `unit_full` and would break. Recommend settling develop-vs-main on 0.4.4 rather than patching
-   `unit_full` back in blind — the merge intent is already tracked separately.
+   `unit_full`; on a missing column it **warns and skips**, it does not break (`reorder_table`
+   L310-320, `verify_stats` L272-278). **Superseded** - see the double-check section below for the
+   proportionate fix; a branch reconciliation is not needed for this.
 2. **Tech coverage for intld** — leave at irr/rf-all, or extend 0.4.0. Not blocking.
 
 ### Correction owed to cglabs
 
 Block A's audit command listed `atlas_dirs$data_dir$exposure` and so returned `character(0)`.
 It should list `mapspam_pro_dir` / `glw2020_pro_dir`. My error; the workaround was correct.
+
+---
+
+## macbook double-check of the above (2026-09-22, later)
+
+Re-verified every recommendation adversarially. Two were wrong, one was overstated, and the
+probes closed the livestock question.
+
+### Livestock 1.198 — CLOSED by measurement
+
+Live `crop-livestock_all`, admin0, `tech IS NULL`, AGO/KEN/ETH/NGA, every `*-tropical`
+species-system: the `intld15` value **equals the `usd` value to the dollar**, and equals the
+sibling `variable=vop_nominal-usd-2021.parquet` too (20/20 pairs, ratio 1.0000). The published
+"constant international dollar" livestock rows are nominal USD relabelled. That is the
+pre-`05c0b0e` 0.4.1 bug (`vop_usd_nominal` written under every label) baked into the live
+denominator. 1.198 = nominal-2021 ÷ FAO constant-2015-I$, species-structured because price
+inflation differs by species. Not a new defect; republishing from the post-fix chain fixes it.
+
+### main never had the #30 bug
+
+main's 0.4.4 allow-list (`bb5c5f7`) is already `usd="nominal-usd-2021", intld15="intld15-2021"`
+- correct vintages, flattened, with `unit_full` preserved. develop's pre-fix map stayed at the
+2020 vintages and would have **dropped every 2021 row**, so develop could not have produced the
+live object under any reading. Provenance from main is now airtight, and #30 is a
+develop-only regression created when develop diverged at `31d988e` and never received
+`bb5c5f7`. develop's `99fdf73` supersedes the map part (explicit list, no flatten, hard stop);
+the only thing develop still lacks relative to main's 0.4.4 is the `unit_full` column.
+
+### Corrections to my earlier section
+
+- **"would break"** was wrong. `rebake_parquets_for_pushdown.R` warns and skips a missing sort or
+  verify column. Fixed in place above.
+- **"settle develop-vs-main on 0.4.4 first"** was overstated. The 0.4.4 gap is one commit whose
+  substance develop already supersedes. Proportionate fix: emit `unit_full := unit` in §3.1/3.2/3.3
+  on develop - zero information loss now that `unit` carries the vintage, and it restores the
+  column consumers read.
+- For the record, **neither branch** has an in-repo publisher for the `type=combined` parquets.
+  main's `push_to_s3.R` uploads the VoP **rasters** to the mapspam/glw processed prefixes, not
+  these tables. `rebake_parquets_for_pushdown.R` says "renamed at publish time" - a step outside
+  this repo.
+
+### What WILL fail at publish, measured against the live object
+
+`scripts/r3_publish_tiers.R --reference` gates require identical column sets and rows within
+25 %. Both fail on the node's new output:
+
+1. **Columns.** Live carries `unit_full` **and** five hive columns (`domain, processing, region,
+   source, type`) that 0.4.4 has never written on either branch - the extraction appends only
+   `exposure, unit, tech`. `unit_full := unit` closes one; the five need a decision (add them in
+   §3.1, or add them in the publisher).
+2. **Rows.** Live `vop/intld15` = 768,818, node = 541,130 (0.704). Same ratio on usd
+   (1,508,624 → 1,061,840). Crop count is identical (42 = 32 crop + 10 livestock both sides), so it
+   is not coverage. **NA-dropping is ruled out arithmetically:** live is 53 % NULL / 23 % zero /
+   23 % real; dropping NULLs would give 0.47, dropping NULLs+zeros 0.23, neither 0.70. Neither
+   branch's 0.4.4 drops NAs, and `admin_extract_wrap` is functionally identical across branches.
+   Lead: develop rewrote the inner `admin_extract` kernel (`R/haz_functions.R`, 143 deletions).
+
+### Ask for cglabs (read-only, on the new §3.1 output)
+
+```r
+library(arrow); library(data.table); source("R/0_server_setup.R")
+d <- as.data.table(read_parquet(file.path(exposure_dir, "exposure_adm_sum_spam20-20_glw420-20.parquet")))[exposure == "vop"]
+d[, .(n = .N, null_rows = sum(is.na(value)), zero_rows = sum(value == 0, na.rm = TRUE),
+      admin_units = uniqueN(fcoalesce(gaul2_code, gaul1_code, gaul0_code)), countries = uniqueN(iso3),
+      adm0 = sum(is.na(admin1_name)), adm1 = sum(!is.na(admin1_name) & is.na(admin2_name)), adm2 = sum(!is.na(admin2_name))), by = unit]
+d[, .N, by = .(unit, crop, tech)][order(unit, crop, tech)]
+```
+
+Live comparators: intld15 → 7,245 admin units, 55 countries, adm0/adm1/adm2 rows
+5,830 / 75,896 / 687,092. Report the same for the new file so the 0.70 is explained before
+anyone touches the publisher.
+
+### Separate lead, not #30 - do not chase here
+
+Live nominal-USD pearl-millet is ~6 kUSD for KEN and ~52 kUSD for ETH against 27 M and 310 M I$
+respectively; the published hazard product carries the same tiny values (KEN any+none ≈ 5.9 k), so
+product and denominator agree and the exposure *fraction* is fine, but the *absolute* nominal value
+is wrong for that crop. Smells like a 0.4.2 price-fill miss on pearl-millet. Candidate for its own
+issue.
+
