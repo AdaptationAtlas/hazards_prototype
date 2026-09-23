@@ -820,13 +820,13 @@ first time; `usd_total_vs_reference.R` still PASS naming `intld15-2021`; live ga
 ## Block G — after Block F finishes: name both resolutions, produce the 0.25° set (2026-09-23)
 
 Pete's decision: **the exposure tables exist at both 0.05° and 0.25°, resolution explicit in every
-name.** Code at `1e1dfb6`: `EXPOSURE_ZONAL_RES=0.05|0.25` (required, no default), every 0.4.4 output
+name.** Code at **`8d8f611`** (`1e1dfb6` carried only the gate and publisher halves - its 0.4.4 half is `8d8f611`; pull to that or later): `EXPOSURE_ZONAL_RES=0.05|0.25` (required, no default), every 0.4.4 output
 suffixed `_res-05` / `_res-25` (Atlas precedent: `gaul24_a0_res-05.tif`), per-tif caches and
 sidecars included. **Still no publish.** Wait for Block F to exit 0 and report F5-F7 first.
 
 ### G1 - Block F's outputs ARE the 0.05° set; rename rather than rerun
 
-Block F ran the pre-`1e1dfb6` code, so its files are unsuffixed. Content is exactly what the new
+Block F ran the pre-`8d8f611` code, so its files are unsuffixed. Content is exactly what the new
 code writes at 0.05° (same grid, same inputs, same schema); only the names and one sidecar field
 differ. Renaming saves the hours a rerun would cost.
 
@@ -860,7 +860,7 @@ extract fresh at 0.25°); kill-gate on the §0 line; a0 already refreshed in F1.
 
 ```bash
 cd <hazards_prototype>
-git fetch origin && git checkout develop && git pull --ff-only     # expect 1e1dfb6 or later
+git fetch origin && git checkout develop && git pull --ff-only     # expect 8d8f611 or later; verify: grep -c EXPOSURE_ZONAL_RES R/0.4.4_process_exposure.R  -> 4
 STAMP=$(date +%Y%m%d-%H%M%S)
 EXPOSURE_ZONAL_RES=0.25 FORCE_OVERWRITE=1 nohup Rscript R/0.4.4_process_exposure.R > logs/0.4.4_issue30_G_$STAMP.log 2>&1 &
 sleep 300; grep -m1 "section 0: zonal base" logs/0.4.4_issue30_G_$STAMP.log     # expect base_rast_nexgddp.tif | res 0.25x0.25 | tag res-25
