@@ -133,12 +133,12 @@ files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
 files<-grep("variable",files,value=T)
 # Both resolutions of the exposure rasters sit side by side (suffix res-05 / res-25).
 # Keep this grid's files plus untagged native ones (prod_t, harv-area, ...); never the other grid's.
-.n_files0 <- length(files)
+.n_files0 <- length(files); .files_all <- files   # pre-filter listing, for the twin check below
 files <- files[!grepl("_res-[0-9]{2}\\.tif$", files) | grepl(paste0("_", .zonal_res_tag, "\\.tif$"), files)]
 .log044(sprintf("section 1: %d tifs -> %d after keeping %s + untagged", .n_files0, length(files), .zonal_res_tag))
 # A legacy UNTAGGED twin of a tagged raster (pre-2026-09-23 output left on disk) would be
 # extracted as a second "native" copy and double the rows. Refuse; move it aside.
-.twins <- intersect(sub("_res-[0-9]{2}\\.tif$", ".tif", files[grepl("_res-[0-9]{2}\\.tif$", files)]), files[!grepl("_res-[0-9]{2}\\.tif$", files)])
+.twins <- intersect(sub("_res-[0-9]{2}\\.tif$", ".tif", .files_all[grepl("_res-[0-9]{2}\\.tif$", .files_all)]), .files_all[!grepl("_res-[0-9]{2}\\.tif$", .files_all)])   # ANY tagged twin, either grid
 if (length(.twins)) stop("section 1: untagged legacy twin(s) of tagged rasters present - move aside before extracting:\n  ", paste(basename(.twins), collapse = "\n  "))
 # Remove yield (one reason for this is that stat<-"mean" returns NA and needs debugging)
 files<-files[!grepl("yield",files)]
@@ -280,12 +280,12 @@ if (!file.exists(livestock_no_file)) {
 }
 
 files <- list.files(glw2020_pro_dir, ".tif$", recursive = TRUE, full.names = TRUE)
-.n_files0 <- length(files)
+.n_files0 <- length(files); .files_all <- files   # pre-filter listing, for the twin check below
 files <- files[!grepl("_res-[0-9]{2}\\.tif$", files) | grepl(paste0("_", .zonal_res_tag, "\\.tif$"), files)]
 .log044(sprintf("section 2: %d tifs -> %d after keeping %s + untagged", .n_files0, length(files), .zonal_res_tag))
 # A legacy UNTAGGED twin of a tagged raster (pre-2026-09-23 output left on disk) would be
 # extracted as a second "native" copy and double the rows. Refuse; move it aside.
-.twins <- intersect(sub("_res-[0-9]{2}\\.tif$", ".tif", files[grepl("_res-[0-9]{2}\\.tif$", files)]), files[!grepl("_res-[0-9]{2}\\.tif$", files)])
+.twins <- intersect(sub("_res-[0-9]{2}\\.tif$", ".tif", .files_all[grepl("_res-[0-9]{2}\\.tif$", .files_all)]), .files_all[!grepl("_res-[0-9]{2}\\.tif$", .files_all)])   # ANY tagged twin, either grid
 if (length(.twins)) stop("section 2: untagged legacy twin(s) of tagged rasters present - move aside before extracting:\n  ", paste(basename(.twins), collapse = "\n  "))
 
 # v9: parallel GLW extraction, mirroring the MapSPAM block above.
