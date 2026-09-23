@@ -716,8 +716,16 @@ dispatch, after Pete's grid decision - two re-extractions would be one too many.
 > at 0.25 native resolution deliberately — are you downscaling it?" The hazards are not touched,
 > but the 0.05° zonal grid makes §1/§2 sum-resample the 0.25° VoP rasters (0.4.0/0.4.1) up to
 > 0.05°, i.e. it does downscale the exposure rasters by area within each 0.25° cell. That is a
-> design decision, not a caveat, and it conflicts with the 0.25°-native choice. Block F stays
-> written but is not authorised. Resolution below when Pete decides.
+> design decision, not a caveat, and it conflicts with the 0.25°-native choice.
+>
+> **Update, same day: the run had already started. Let it finish - do not kill it.** Nothing it
+> writes is irreversible or read by another script: Block E's 0.25° §3 outputs are in
+> `_pre30_backup/`, the per-tif `*_adm_sum.parquet` caches have no reader outside 0.4.4, the
+> hazard-grid `<level>_zonal.tif` files are protected by the `res-0050` tag (F5 proves it), and
+> the tifs are untouched. Its output is option A and is useful regardless: it exercises the
+> `unit_full`/no-hive schema path, tests the row gate, and gives a 0.05° table to compare against
+> the 0.25° one at adm0/adm1 before choosing A vs B. **Publish nothing.** If Pete chooses B, one
+> further `FORCE_OVERWRITE=1` run at 0.25° regenerates everything; only node hours are spent.
 
 Pete's decision: **go**. Code is on `develop` at `abe93e7`. This block writes locally, takes
 hours, and **still does not publish**. It ends with the publisher's dry-run.
