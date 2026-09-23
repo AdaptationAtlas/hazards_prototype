@@ -392,6 +392,11 @@ issue.
 
 ## Block E — schema fix + row profile (2026-09-22, writes locally, nothing to S3)
 
+> **Premise corrected 2026-09-23 (see the macbook response after cglabs's Block E report):** the
+> five hive columns are NOT stored in the live file and the column gate was never going to pass
+> with them. `595090a` is reverted in `c44a49e`; `unit_full` stays. The `live_cols` list below is
+> therefore 5 columns too long - the stored live schema is 14.
+
 Pete decided: `unit_full := unit` in §3.1/3.2/3.3, and the five hive columns in §3.1. Both
 are on `develop` now. This block re-runs 0.4.4 with them and profiles the output against the
 live object so the 0.704 row ratio gets explained. **Still no publish.**
@@ -529,3 +534,87 @@ New parquets local only (common_data); 3 prior outputs in `_pre30_backup/` stamp
 ### duckdb note (unchanged from Block D)
 Node still has no real `duckdb` CLI; ran the schema checks via `python-duckdb` + a `-csv -c`
 shim. Recommend installing a proper duckdb CLI on the node.
+
+---
+
+## macbook response to Block E (2026-09-23)
+
+Verified both corrections read-only against S3 and git before accepting them. One holds
+entirely, one holds in its measurement but not in its conclusion.
+
+### 1. Hive columns - cglabs is right, `595090a` reverted (`c44a49e`)
+
+`parquet_schema()` over the live object: **14 stored columns**, `unit_full` included, no
+`domain/type/source/region/processing`. `read_parquet(..., hive_partitioning=false)` → 14;
+`hive_partitioning=true` → 19. DuckDB synthesises the five from the `key=value/` path segments.
+My earlier DESCRIBE ran with partitioning on and I took the 19 as stored. Wrong; reverted.
+`unit_full := unit` stays in §3.1/3.2/3.3 - the live file does store that one.
+
+### 2. The 0.704 - the measurement holds, the "not fixable from this repo" does not
+
+Per crop × tech combo, verified on the live object (maize / intld15 / all):
+
+| level | GAUL24 vector | live rows (codes) | node rows |
+|---|---|---|---|
+| adm0 | 55 | 55 (55) | **63** |
+| adm1 | 719 (715 codes) | 716 (712) | 700 |
+| adm2 | 6,670 (6,666 codes) | 6,482 (6,478) | 4,342 |
+| total | 7,444 | 7,253 | 5,105 |
+
+So the loss is adm1 **and** adm2, and adm0 *gains* 8 rows. Cause of the loss, established
+on both branches:
+
+- **Same vector.** `metadata/data.json` names the same GAUL24 analysis-ready parquets on main and
+  develop (the diff is JSON formatting only).
+- **Same extraction.** `admin_extract` in `R/haz_functions.R` is byte-identical across branches
+  (34 lines; the 143-line diff in that file is other functions).
+- **Different zonal grid.** `0_server_setup.R` §0.6: on `atlas_delta` (main's run)
+  `base_rast_path = metadata/base_raster.tif`, **0.05°**; on `nexgddp` (develop's run)
+  `base_rast_path = Data/base_rast.tif`, **0.25°**. 0.4.4 §0 rasterises the three GAUL24 layers
+  onto that grid (`touches=TRUE`, `overwrite_boundary_zones<-T`, so no stale cache) and §1 then
+  resamples SPAM 0.05° → 0.25° with `method="sum"`. At 0.25° roughly a third of adm2 polygons and
+  16 adm1 polygons never own a cell, so they never get a row. Live already shows the same effect
+  at 0.05° on a smaller scale (3 adm1 / 188 adm2 short of the vector).
+
+That is a code-path choice inside this repo, not a missing boundary product. 0.4.4 has no reason to
+use the **hazard** grid: it extracts exposure rasters that ship at 0.05°. **Fix direction, for
+Pete to decide:** 0.4.4 §0 takes a 0.05° zonal base independent of `climdat_source` -
+`metadata/base_raster.tif`, or the published pre-rasterised `gaul24_a{level}_res-05.tif`
+(`data.json` → `raster_boundaries`, "rasterized to meet the resolution requirements of the
+Adaptation Atlas (0.05 degrees) ... useful for zonal extractions") which skips the rasterise step
+entirely. §1's `compareGeom` resample becomes extent-only. R/3 stays at 0.25° - that is the
+hazard × exposure product and is a separate grid decision. **Cost:** §1 and §2 must re-extract on
+the new grid, which is the hours-long path (per-file parquets aside or `FORCE_OVERWRITE=1`), and
+the row count should land near the live 7,253/combo and pass the 25 % gate.
+
+### 3. The +8 adm0 rows - unexplained, needs the node file
+
+The vector has exactly 55 adm0 polygons and `admin_extract` is identical, so 63 rows with
+`admin1_name` NA per combo did not come from either. Two candidates I cannot test from here: a
+**stale local boundary parquet** under `boundaries_dir` (setup's download is skip-if-exists; an
+older GAUL24 cut with disputed slivers as extra adm0 rows - the CR-115 pattern), or something in
+the adm1/adm2 layers producing rows with NA `admin1_name`. Ask below.
+
+### Decisions for Pete
+
+1. **Zonal grid for 0.4.4:** move to 0.05° (`base_raster.tif` or the `res-05` rasters)? This is the
+   actual fix for the row gate and for 2,140 adm2 units that currently would publish with no
+   exposure rows. Recommend yes.
+2. Nothing else changes: `unit_full` in, hive columns out, publish still held.
+
+### Ask for cglabs (read-only, ~1 min)
+
+```r
+suppressPackageStartupMessages({library(arrow); library(data.table)}); source("R/0_server_setup.R")
+d <- as.data.table(read_parquet(file.path(exposure_dir, "exposure_adm_sum_spam20-20_glw420-20.parquet")))
+d <- d[exposure == "vop" & unit == "intld15-2021" & crop == "maize" & tech == "all"]
+print(d[is.na(admin1_name), .(iso3, admin0_name, gaul0_code, gaul1_code, gaul2_code, admin2_name)][order(iso3)])   # expect 63 rows; which 8 are extra?
+for (f in geo_files_local) cat(basename(f), "mtime", format(file.mtime(f)), "rows", nrow(arrow::read_parquet(f)), "
+")
+cat("zonal base:", base_rast_path, "res", paste(terra::res(terra::rast(base_rast_path)), collapse = "x"), "
+")
+```
+
+Live comparators: GAUL24 on S3 a0/a1/a2 = 55 / 719 / 6,670 rows; live per-combo adm0 = exactly 55,
+one per iso3. **Report the 63-row table and the three mtimes verbatim. STOP - no publish.**
+
