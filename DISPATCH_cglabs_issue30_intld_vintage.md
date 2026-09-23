@@ -814,3 +814,71 @@ Rscript scripts/r3_publish_tiers.R --reference-only --allow-unit-vintage-change 
 **Expect:** columns identical (14); `distinct(unit)` 5 → 5 allowed; **rows within 25 %** for the
 first time; `usd_total_vs_reference.R` still PASS naming `intld15-2021`; live gate unchanged
 (nothing republished). Paste all three verbatim. **STOP - no publish.**
+
+---
+
+## Block G — after Block F finishes: name both resolutions, produce the 0.25° set (2026-09-23)
+
+Pete's decision: **the exposure tables exist at both 0.05° and 0.25°, resolution explicit in every
+name.** Code at `1e1dfb6`: `EXPOSURE_ZONAL_RES=0.05|0.25` (required, no default), every 0.4.4 output
+suffixed `_res-05` / `_res-25` (Atlas precedent: `gaul24_a0_res-05.tif`), per-tif caches and
+sidecars included. **Still no publish.** Wait for Block F to exit 0 and report F5-F7 first.
+
+### G1 - Block F's outputs ARE the 0.05° set; rename rather than rerun
+
+Block F ran the pre-`1e1dfb6` code, so its files are unsuffixed. Content is exactly what the new
+code writes at 0.05° (same grid, same inputs, same schema); only the names and one sidecar field
+differ. Renaming saves the hours a rerun would cost.
+
+```bash
+cd <exposure_dir>
+for b in exposure_adm_sum_spam20-20_glw420-20 vop_nominal-usd-2021_adm_sum_spam20_glw420 vop_intld15-2021_adm_sum_spam20_glw420 hpop_adm_sum; do
+  [ -e "$b.parquet" ]      && mv "$b.parquet"      "${b}_res-05.parquet"
+  [ -e "$b.parquet.json" ] && mv "$b.parquet.json" "${b}_res-05.parquet.json"
+done
+cd <hpop_int_dir>; [ -e hpop_atlas.tif ] && mv hpop_atlas.tif hpop_atlas_res-05.tif
+cd <hazards_prototype>
+# stamp the sidecars with the zonal_grid block the new code writes
+Rscript -e '
+  source("R/0_server_setup.R"); library(jsonlite)
+  for (f in Sys.glob(file.path(exposure_dir, "*_res-05.parquet.json"))) {
+    j <- read_json(f); j$zonal_grid <- list(resolution_deg = 0.05, tag = "res-05", base_raster = "base_raster.tif",
+      note = "Admin zones rasterised at this resolution; inputs on a coarser grid were sum-resampled (area-weighted) to it in sections 1/2. Produced by Block F (pre-suffix code), renamed in Block G.")
+    write_json(j, f, pretty = TRUE, auto_unbox = TRUE); cat("stamped", basename(f), "\n") }'
+ls -l <exposure_dir>/*_res-05.parquet*
+```
+
+Orphans from Block F you may delete once G1 is verified: the unsuffixed per-tif
+`*_adm_sum.parquet(.json)` caches under `mapspam_pro_dir`/`glw2020_pro_dir`, and
+`<boundaries_int_dir>/*_zonal_res-0050.tif` (old tag format). **Never** the plain `*_zonal.tif`.
+
+### G2 - the 0.25° set: one FORCE run
+
+Same landmines as Block F: `FORCE_OVERWRITE=1` required (caches are per-resolution now, but
+sections 3/4 are still skip-if-exists on names that do not yet exist - harmless - and §1/§2 must
+extract fresh at 0.25°); kill-gate on the §0 line; a0 already refreshed in F1.
+
+```bash
+cd <hazards_prototype>
+git fetch origin && git checkout develop && git pull --ff-only     # expect 1e1dfb6 or later
+STAMP=$(date +%Y%m%d-%H%M%S)
+EXPOSURE_ZONAL_RES=0.25 FORCE_OVERWRITE=1 nohup Rscript R/0.4.4_process_exposure.R > logs/0.4.4_issue30_G_$STAMP.log 2>&1 &
+sleep 300; grep -m1 "section 0: zonal base" logs/0.4.4_issue30_G_$STAMP.log     # expect base_rast_nexgddp.tif | res 0.25x0.25 | tag res-25
+```
+
+If `EXPOSURE_ZONAL_RES` is unset the script **stops by design** with the two accepted values.
+
+### G3 - when G2 exits 0
+
+```bash
+ls -l <exposure_dir>/*_res-25.parquet* <exposure_dir>/*_res-05.parquet*        # both sets present
+Rscript R/checks/usd_total_vs_reference.R --res 0.25         # like-for-like with the 0.25° hazard product
+Rscript R/checks/usd_total_vs_reference.R --res 0.05         # informational
+Rscript scripts/r3_publish_tiers.R --reference-only --res 0.05 --allow-unit-vintage-change --dry-run
+Rscript scripts/r3_publish_tiers.R --reference-only --res 0.25 --allow-unit-vintage-change --dry-run   # expect REFUSED: --allow-res-change needed
+```
+
+**Expect:** res-05 dry-run passes columns (14) and rows (~0.99 of live); res-25 dry-run is
+**refused** before any gate - that refusal is the guard working, the resolution-explicit S3 key is
+Pete's pending decision. Per combo, res-25 should show 55 / ~696 / ~4,338 (+4 dup-code rows) with
+the a0 fix in - no 63. Paste all verbatim. **STOP - no publish.**
