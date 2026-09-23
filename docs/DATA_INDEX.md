@@ -15,7 +15,7 @@ The **here** column reflects one host only — whichever machine rendered this. 
 | [`crop-vop-intld15`](../metadata/catalogue/crop-vop-intld15.json) | derived | 0.4.0 | current | present (6) | - | none | regenerate |
 | [`exposure-admin-tables`](../metadata/catalogue/exposure-admin-tables.json) | derived | spam20-20_glw420-20 | current | empty (0) | - | none | regenerate |
 | [`livestock-vop`](../metadata/catalogue/livestock-vop.json) | derived | 0.4.1 | current | empty (0) | - | none | regenerate |
-| [`nexgddp-indices-monthly`](../metadata/catalogue/nexgddp-indices-monthly.json) | derived | nexgddp | current | absent | partial | none | regenerate |
+| [`nexgddp-indices-monthly`](../metadata/catalogue/nexgddp-indices-monthly.json) | derived | nexgddp | current | absent | partial | none | must-transfer |
 | [`nexgddp-indices-seasonal`](../metadata/catalogue/nexgddp-indices-seasonal.json) | derived | nexgddp | current | absent | - | none | regenerate |
 | [`afr-highlands`](../metadata/catalogue/afr-highlands.json) | external-raw | 1 | current | present (1) | yes | none | pull-from-origin |
 | [`atlas-pop-worldpop`](../metadata/catalogue/atlas-pop-worldpop.json) | external-raw | worldpop_2020 | current | present (3) | yes | none | pull-from-origin |
@@ -85,7 +85,7 @@ How a dataset reaches a new host. The monthly indices are `regenerate`, not `mus
 - **solution-tables** — Small, public, fetched per host by the shared downloader.
 - **sos-season-start** — Small, public, fetched per host by the shared downloader.
 
-### regenerate (21)
+### regenerate (20)
 
 - **crop-vop-intld15** — Deterministic from MapSPAM plus FAOSTAT.
 - **eastafrica-flood-jrc** — Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.
@@ -104,13 +104,13 @@ How a dataset reaches a new host. The monthly indices are `regenerate`, not `mus
 - **kenya-power-grid-kplc** — Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.
 - **kenya-roads-osm** — Re-run the ingest against its public origin rather than copying; the ingest is the definition of the dataset.
 - **livestock-vop** — Deterministic from GLW4-2020 plus FAOSTAT - but only where GLW4-2020 is present, which is its own gap.
-- **nexgddp-indices-monthly** — Derived from a public archive that any host can fetch directly. Regenerating on the target host avoids both a host-to-host link (CGlabs runs no SSH daemon) and paying to park it on Atlas S3. PASCAL has ~4x the cores at ~2x the clock, so it is also likely the faster route.
 - **nexgddp-indices-seasonal** — One R/1 run from the monthly indices. Cheaper to recompute than to move.
 - **obs-spei** — One obs.2 run from the observational record.
 - **timeseries-mean-month** — Output of R/2.1.
 
-### must-transfer (0)
+### must-transfer (1)
 
+- **nexgddp-indices-monthly** — CORRECTED 2026-09-23. Previously marked 'regenerate' on the reasoning that NEX-GDDP-CMIP6 is public so any host could rebuild locally. That is wrong in practice: the daily source across 18 GCMs, 4 SSPs and the full year range is tens of TB, against 23 T free on PASCAL's /cluster01, and the compute to run 04_indices over it is prohibitive. Regenerating is only sensible for a narrow slice (a few GCM-years), not the archive. The monthly indices must move as bytes.
 
 ## Open gaps
 
@@ -210,8 +210,9 @@ Recorded in the catalogue, surfaced here so they are not invisible.
 
 ### nexgddp-indices-monthly
 
-- CGlabs-only today. Never staged on PASCAL or the laptop.
-- Wall-clock cost of regeneration on PASCAL is unmeasured - size it on one GCM before committing to a full rebuild.
+- CGlabs-only. No route to PASCAL is established: CGlabs runs no SSH daemon and PASCAL's SSH is office-network-only, so direct rsync is not available in either direction. An outbound connection FROM a CGlabs pod TO PASCAL:22 has never been tested and is the one cheap thing to try first.
+- CHECK WHETHER THIS IS NEEDED AT ALL before moving it. R/3_freq_x_exposure.R reads only hazard_risk, hazard_timeseries_int and hazard_timeseries_mean (lines 519-521). PASCAL already holds the first two; only hazard_timeseries_mean is absent. Transferring that one derived directory may be far smaller than the indices, and is sufficient unless R/2 itself is to be re-run on PASCAL.
+- Atlas S3 carries only a 5-GCM ANNUAL subset under region=global, not the monthly tree, so S3 is not an existing copy to pull from.
 
 ### nexgddp-indices-seasonal
 
@@ -227,4 +228,4 @@ Recorded in the catalogue, surfaced here so they are not invisible.
 
 ---
 
-Rendered 2026-09-22 on host `mac-pstewarda`.
+Rendered 2026-09-23 on host `mac-pstewarda`.
