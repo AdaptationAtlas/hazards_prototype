@@ -39,7 +39,8 @@
 #   Rscript scripts/r3_publish_tiers.R --reference               # tiers + exposure reference
 #   Rscript scripts/r3_publish_tiers.R --reference-only
 #   Rscript scripts/r3_publish_tiers.R --sidecar-only            # ship .json only, parquet untouched
-#   Rscript scripts/r3_publish_tiers.R --reference-only --res 0.05 --allow-unit-vintage-change
+#   Rscript scripts/r3_publish_tiers.R --reference-only --res 0.05 --allow-unit-vintage-change   # -> ..._res-05.parquet + legacy alias
+#   Rscript scripts/r3_publish_tiers.R --reference-only --res 0.25 --allow-unit-vintage-change --allow-res-change   # -> ..._res-25.parquet (first publish gates vs legacy)
 #                                                                # intld15 -> intld15-2021 migration (#30)
 #   flags: --timeframe jagermeyr (default) | --allow-schema-drift (G5 -> warn) | --skip-gates
 
@@ -68,20 +69,20 @@ SIDECAR_ONLY <- flag("--sidecar-only")
 # because a vanishing unit is exactly how #30 stayed hidden.
 ALLOW_UNIT_VINTAGE <- flag("--allow-unit-vintage-change")
 DO_REF      <- flag("--reference") || flag("--reference-only")
-# p.steward 2026-09-23: the reference exists at two zonal resolutions, res-05 (Atlas
-# exposure grid, what the live object was built on) and res-25 (NEX-GDDP hazard grid,
-# what R/3 is on). --res is REQUIRED with --reference: the file it picks is named for
-# it. The live S3 key carries no resolution and holds a 0.05 deg table, so publishing
-# anything else to it is a silent semantic change: refused unless --allow-res-change
-# is given, until the resolution-explicit key convention is decided.
+# p.steward 2026-09-23 (issue #30): the reference exists at two zonal resolutions,
+# res-05 (Atlas exposure grid, what the live object was built on) and res-25
+# (NEX-GDDP hazard grid, what R/3 is on). --res is REQUIRED with --reference and
+# selects both the local file and the S3 key: each resolution publishes to its
+# own key, variable=crop-livestock_all_<tag>.parquet. The legacy unsuffixed key
+# is kept as a deprecated alias of res-05 and is rewritten only on a res-05
+# publish. The first publish of a suffixed key has no live twin to gate against,
+# so the gates fall back to the legacy key as baseline; when that baseline is a
+# different resolution the row-count gate cannot be meaningful and needs
+# --allow-res-change to become informational. Columns and distinct() still gate.
 REF_RES     <- opt("--res", "")
 ALLOW_RES_CHANGE <- flag("--allow-res-change")
-if (DO_REF && !REF_RES %in% c("0.05", "0.25")) stop("--reference needs --res 0.05 | 0.25 (the reference file is named for its zonal grid)")
+if (DO_REF && !REF_RES %in% c("0.05", "0.25")) stop("--reference needs --res 0.05 | 0.25 (the reference file and its S3 key are named for the zonal grid)")
 REF_RES_TAG <- if (nzchar(REF_RES)) sprintf("res-%02d", round(as.numeric(REF_RES) * 100)) else ""
-if (DO_REF && REF_RES != "0.05" && !ALLOW_RES_CHANGE) {
-  stop("--res ", REF_RES, " to the live key, which holds a 0.05 deg table and carries no resolution in its name. ",
-       "Pass --allow-res-change only once the resolution-explicit S3 key convention is decided.")
-}
 DO_TIERS    <- !flag("--reference-only")
 TF          <- opt("--timeframe", "jagermeyr")
 TIERS       <- strsplit(opt("--tiers", "severe,moderate,extreme"), ",")[[1]]
@@ -102,8 +103,9 @@ BUCKET  <- "digital-atlas"
 S3_BASE <- sprintf(paste0(
   "domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/",
   "variable=vop_nominal-usd21/period=%s/model=ENSEMBLEmean"), TF)
-REF_KEY <- paste0("domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/",
-                  "processing=atlas-harmonized/variable=crop-livestock_all.parquet")
+REF_KEY_LEGACY <- paste0("domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/",
+                         "processing=atlas-harmonized/variable=crop-livestock_all.parquet")   # deprecated alias of res-05
+REF_KEY <- if (nzchar(REF_RES_TAG)) sub("crop-livestock_all\\.parquet$", paste0("crop-livestock_all_", REF_RES_TAG, ".parquet"), REF_KEY_LEGACY) else REF_KEY_LEGACY
 local_tier_dir <- file.path(atlas_dirs$data_dir$hazard_risk_vop_usd, TF)
 local_ref_dir  <- if (exists("exposure_dir")) exposure_dir else atlas_dirs$data_dir$exposure
 local_ref      <- file.path(local_ref_dir, sprintf("exposure_adm_sum_spam20-20_glw420-20%s.parquet", if (nzchar(REF_RES_TAG)) paste0("_", REF_RES_TAG) else ""))
@@ -233,11 +235,18 @@ if (DO_TIERS) for (tier in TIERS) {
 
 ## ------------------------------------------------------------ reference ----
 if (DO_REF) {
-  cat("\n--- EXPOSURE REFERENCE (crop-livestock_all) ---\n")
-  if (!file.exists(local_ref)) { .log("  FAIL: missing %s (has 0.4.4 run?)", local_ref) }
+  cat(sprintf("\n--- EXPOSURE REFERENCE (crop-livestock_all, %s) ---\n", REF_RES_TAG))
+  .log("  target key = %s", REF_KEY)
+  if (!file.exists(local_ref)) { .log("  FAIL: missing %s (has 0.4.4 run with EXPOSURE_RES=%s?)", local_ref, REF_RES) }
   else {
     .log("  local %s (%.0f MB, mtime %s)", basename(local_ref), file.size(local_ref) / 1e6, format(file.mtime(local_ref), "%Y-%m-%d %H:%M"))
     bu <- backup_then_upload(local_ref, REF_KEY, "reference")
+    baseline_is_other_res <- FALSE
+    if (is.null(bu$live_tmp) && s3_exists(sprintf("s3://%s/%s", BUCKET, REF_KEY_LEGACY))) {
+      .log("  first publish of %s: gating against the legacy unsuffixed key as baseline", REF_RES_TAG)
+      bu$live_tmp <- download_live(sprintf("s3://%s/%s", BUCKET, REF_KEY_LEGACY))
+      baseline_is_other_res <- REF_RES != "0.05"   # the legacy object is a 0.05 deg table
+    }
     ok <- TRUE
     if (!SKIP_GATES) {
       if (is.null(bu$live_tmp)) { .log("  FAIL: no live reference to compare against - refusing to publish blind"); ok <- FALSE }
@@ -267,10 +276,28 @@ if (DO_REF) {
         }
         nl <- nrow(dl); nr <- nrow(dr)
         if (abs(nr - nl) / nl <= 0.25) .log("  ok: rows local %d vs live %d", nr, nl)
-        else { .log("  FAIL rows: local %d vs live %d (>25%% apart)", nr, nl); ok <- FALSE }
+        else if (baseline_is_other_res && ALLOW_RES_CHANGE) {
+          .log("  rows local %d vs baseline %d (%.2fx) - INFORMATIONAL: baseline is the 0.05 deg legacy object and this is %s (--allow-res-change)", nr, nl, nr / nl, REF_RES_TAG)
+        }
+        else {
+          .log("  FAIL rows: local %d vs live %d (>25%% apart)", nr, nl)
+          if (baseline_is_other_res) .log("    baseline is a different resolution; pass --allow-res-change if that is the intended reason")
+          ok <- FALSE
+        }
       }
     }
-    if (ok) finish_upload(local_ref, bu$s3_url) else .log("  ABORT reference: gate failure, nothing uploaded")
+    if (ok) {
+      finish_upload(local_ref, bu$s3_url)
+      ref_sidecar <- paste0(local_ref, ".json")
+      if (file.exists(ref_sidecar)) finish_upload(ref_sidecar, paste0(bu$s3_url, ".json"))
+      else .log("  sidecar MISSING (%s) - zonal_grid unrecorded on S3", basename(ref_sidecar))
+      if (REF_RES == "0.05") {
+        .log("  res-05 also refreshes the deprecated unsuffixed alias %s", REF_KEY_LEGACY)
+        bu2 <- backup_then_upload(local_ref, REF_KEY_LEGACY, "reference alias")
+        finish_upload(local_ref, bu2$s3_url)
+        if (file.exists(ref_sidecar)) finish_upload(ref_sidecar, paste0(bu2$s3_url, ".json"))
+      }
+    } else .log("  ABORT reference: gate failure, nothing uploaded")
   }
 }
 
