@@ -707,3 +707,95 @@ dispatch, after Pete's grid decision - two re-extractions would be one too many.
 - develop `d905555`+: `unit_full` in, hive columns out. Nothing published.
 - **Pending Pete:** 0.05° zonal grid for 0.4.4 (recommended). On go: one dispatch = a0 refresh +
   grid change + §0-§2 re-extraction + §3 + gates + publisher dry-run.
+
+---
+
+## Block F — 0.05° zonal grid + a0 refresh + full 0.4.4 re-extraction (2026-09-23)
+
+Pete's decision: **go**. Code is on `develop` at `abe93e7`. This block writes locally, takes
+hours, and **still does not publish**. It ends with the publisher's dry-run.
+
+### What changed and why you can trust it before spending hours
+
+`R/0.4.4_process_exposure.R` §0 now rasterises GAUL24 onto a **0.05°** grid
+(`metadata/base_raster.tif`, the grid the live object was built on) regardless of
+`climdat_source`. Probe on the macbook, real GAUL24 parquets from S3, the §0 block lifted
+verbatim by line number:
+
+| grid | admin0 | admin1 | admin2 | matches |
+|---|---|---|---|---|
+| 0.05° `base_raster.tif` | 55 | 712 | 6,478 | **live** distinct codes (55 / 712 / 6,478) |
+| 0.25° `base_rast_nexgddp.tif` | 55 | 696 | 4,338 | **your Block E** less stale-a0 + dup-code rows (63 / 700 / 4,342) |
+
+The zonal cache is now written as `<level>_zonal_res-0050.tif`. **The plain
+`<level>_zonal.tif` files are the hazard-grid cache shared with R/2.1, R/2.2, R/3, R/3.1 -
+this run must not touch them.** Their mtimes are checked at the end.
+
+### Landmines for this block
+
+1. **`FORCE_OVERWRITE=1` is REQUIRED this time**, and only this time. §1/§2 cache one
+   `*_adm_sum.parquet` per input tif with `overwrite = overwrite_spam/glw`; without the flag
+   the run reloads the old **0.25°** extractions and the new grid changes nothing. Everything in
+   0.4.4 is meant to regenerate here. Do not set it for any other script.
+2. **Refresh the local a0 first** (Block A of the previous response: local a0 = 63 rows vs S3 55).
+   `force = TRUE` maps to `overwrite = TRUE` in `R/00_acquire.R:283`.
+3. **Kill-gate.** Within the first ~5 min the log must show
+   `section 0: zonal base = .../metadata/base_raster.tif | res 0.05x0.05 | ... | tag res-0050`
+   and three `*_zonal_res-0050.tif` files must appear in `boundaries_int_dir`. If the res line
+   says 0.25 or the tag is not `res-0050`, **kill it** - the override did not take.
+
+### Run
+
+```bash
+cd <hazards_prototype>
+git fetch origin && git checkout develop && git pull --ff-only
+git log --oneline -1                        # expect abe93e7 or later
+
+# F1. a0 refresh, verify 55 / 719 / 6670
+Rscript -e 'source("R/0_server_setup.R"); atlas_acquire("boundaries-gaul2024", force = TRUE)
+  for (f in geo_files_local) cat(basename(f), nrow(arrow::read_parquet(f)), "\n")'
+
+# F2. record the hazard-grid zonal cache mtimes BEFORE the run
+Rscript -e 'source("R/0_server_setup.R"); for (l in c("admin0","admin1","admin2")) { f <- file.path(boundaries_int_dir, paste0(l, "_zonal.tif")); cat(f, if (file.exists(f)) format(file.mtime(f)) else "ABSENT", "\n") }' | tee logs/zonal_mtimes_before.txt
+
+# F3. move the three section-3 outputs aside (same as Blocks C/E), then run with FORCE
+STAMP=$(date +%Y%m%d-%H%M%S)
+cd <exposure_dir>; mkdir -p _pre30_backup
+for f in exposure_adm_sum_spam20-20_glw420-20.parquet vop_intld15-2021_adm_sum_spam20_glw420.parquet vop_nominal-usd-2021_adm_sum_spam20_glw420.parquet; do
+  [ -e "$f" ]      && mv "$f"      "_pre30_backup/$f.$STAMP"
+  [ -e "$f.json" ] && mv "$f.json" "_pre30_backup/$f.json.$STAMP"
+done
+cd <hazards_prototype>
+FORCE_OVERWRITE=1 nohup Rscript R/0.4.4_process_exposure.R > logs/0.4.4_issue30_F_$STAMP.log 2>&1 &
+
+# F4. kill-gate after ~5 min
+grep -m1 "section 0: zonal base" logs/0.4.4_issue30_F_$STAMP.log
+ls -l <boundaries_int_dir>/*_zonal_res-0050.tif
+```
+
+Report the section-0 line and the per-section elapsed times as they land (§1 and §2 are the
+long ones). When the run exits 0:
+
+```bash
+# F5. hazard-grid cache untouched?
+Rscript -e 'source("R/0_server_setup.R"); for (l in c("admin0","admin1","admin2")) { f <- file.path(boundaries_int_dir, paste0(l, "_zonal.tif")); cat(f, if (file.exists(f)) format(file.mtime(f)) else "ABSENT", "\n") }' | diff logs/zonal_mtimes_before.txt - && echo "hazard-grid zonal cache UNCHANGED"
+
+# F6. profile, same one-liner as Block E - expect per combo 55 / ~716 / ~6482, admin_units ~7245, rows ~768k (intld15-2021)
+Rscript -e '
+  suppressPackageStartupMessages({library(arrow); library(data.table)}); source("R/0_server_setup.R")
+  p <- file.path(exposure_dir, "exposure_adm_sum_spam20-20_glw420-20.parquet")
+  cat("columns:", paste(names(arrow::open_dataset(p)$schema), collapse=","), "\n")     # expect the 14 live columns, unit_full included, NO domain/type/...
+  d <- as.data.table(read_parquet(p))[exposure == "vop"]
+  print(d[, .(n = .N, null_rows = sum(is.na(value)), admin_units = uniqueN(fcoalesce(gaul2_code, gaul1_code, gaul0_code)), countries = uniqueN(iso3),
+              adm0 = sum(is.na(admin1_name)), adm1 = sum(!is.na(admin1_name) & is.na(admin2_name)), adm2 = sum(!is.na(admin2_name))), by = unit])
+'
+
+# F7. gates + publisher dry-run (read-only)
+Rscript R/checks/usd_total_vs_reference.R
+Rscript R/checks/vop_align_live_gate.R
+Rscript scripts/r3_publish_tiers.R --reference-only --allow-unit-vintage-change --dry-run
+```
+
+**Expect:** columns identical (14); `distinct(unit)` 5 → 5 allowed; **rows within 25 %** for the
+first time; `usd_total_vs_reference.R` still PASS naming `intld15-2021`; live gate unchanged
+(nothing republished). Paste all three verbatim. **STOP - no publish.**
