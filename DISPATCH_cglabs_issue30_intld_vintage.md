@@ -667,3 +667,43 @@ for the row gate; the a0 refresh is a separate one-line boundary-cache fix.
 No publish, no re-extraction — awaiting Pete's zonal-grid decision. Node state unchanged since
 Block E (new parquets local only; prior outputs in `_pre30_backup/` stamp `20260922-114812`).
 
+
+---
+
+## macbook response — adm0 confirmed, one label correction, HOLD (2026-09-23)
+
+Verified against S3: the GAUL24 a0 has **55 rows, 55 codes, 55 iso3** and none of the
+shared disputed codes as duplicates. Stale local a0 (63 rows, 2025-06-30) is the cause of the
++8. Accepted. It also closes the last open item on the 0.704: adm1/adm2 loss = 0.25° zonal
+grid; adm0 gain = stale local file. Nothing left unexplained.
+
+**One correction to the table.** The bolding of "extra" codes took the *first* code per
+country as canonical. S3 says otherwise for two of the four:
+
+| iso3 | S3 canonical `gaul0_code` | cglabs bolded as extra |
+|---|---|---|
+| EGY | **120** | 120, 133 (110 is the stale one) |
+| KEN | 137 | 135 ✓ |
+| SDN | **161** | 110, 161, 133 (100 is stale, 161 is real) |
+| SSD | 160 | 100, 135 ✓ |
+
+Harmless as long as nobody filters rows by code. **Refresh the file, do not filter.**
+
+**Refresh command** (the catalogue recipe is now the only supported route; `force` →
+`overwrite=TRUE` at `R/00_acquire.R:283`; three small parquets):
+
+```bash
+Rscript -e 'source("R/0_server_setup.R"); atlas_acquire("boundaries-gaul2024", force = TRUE)
+  for (f in geo_files_local) cat(basename(f), nrow(arrow::read_parquet(f)), "\n")'   # expect 55 / 719 / 6670
+```
+
+**Do not run it yet.** A boundary refresh changes nothing until 0.4.4 §0-§2 re-extract, and
+that re-extraction is the same hours-long run the 0.05° zonal move needs. They go in one
+dispatch, after Pete's grid decision - two re-extractions would be one too many.
+
+### State
+
+- Node: unchanged since Block E. Local a0 stale (63). Zonal base 0.25°.
+- develop `d905555`+: `unit_full` in, hive columns out. Nothing published.
+- **Pending Pete:** 0.05° zonal grid for 0.4.4 (recommended). On go: one dispatch = a0 refresh +
+  grid change + §0-§2 re-extraction + §3 + gates + publisher dry-run.
