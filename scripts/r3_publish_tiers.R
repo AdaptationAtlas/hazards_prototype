@@ -16,7 +16,7 @@
 #
 # LOCAL SOURCES (working_dir-relative after 0_server_setup.R):
 #   <hazard_risk_vop_usd>/<timeframe>/haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_<tier>.parquet
-#   <exposure_dir>/exposure_adm_sum_spam20-20_glw420-20.parquet            (--reference)
+#   <exposure_dir>/exposure_adm_sum_spam20-20_glw420-20_res-05.parquet     (--reference --res 0.05)
 #
 # GATES (per tier; any FAIL aborts that tier, nothing uploaded):
 #   G1 local file exists and is > 10 MB
@@ -39,7 +39,7 @@
 #   Rscript scripts/r3_publish_tiers.R --reference               # tiers + exposure reference
 #   Rscript scripts/r3_publish_tiers.R --reference-only
 #   Rscript scripts/r3_publish_tiers.R --sidecar-only            # ship .json only, parquet untouched
-#   Rscript scripts/r3_publish_tiers.R --reference-only --allow-unit-vintage-change
+#   Rscript scripts/r3_publish_tiers.R --reference-only --res 0.05 --allow-unit-vintage-change
 #                                                                # intld15 -> intld15-2021 migration (#30)
 #   flags: --timeframe jagermeyr (default) | --allow-schema-drift (G5 -> warn) | --skip-gates
 
@@ -68,6 +68,20 @@ SIDECAR_ONLY <- flag("--sidecar-only")
 # because a vanishing unit is exactly how #30 stayed hidden.
 ALLOW_UNIT_VINTAGE <- flag("--allow-unit-vintage-change")
 DO_REF      <- flag("--reference") || flag("--reference-only")
+# p.steward 2026-09-23: the reference exists at two zonal resolutions, res-05 (Atlas
+# exposure grid, what the live object was built on) and res-25 (NEX-GDDP hazard grid,
+# what R/3 is on). --res is REQUIRED with --reference: the file it picks is named for
+# it. The live S3 key carries no resolution and holds a 0.05 deg table, so publishing
+# anything else to it is a silent semantic change: refused unless --allow-res-change
+# is given, until the resolution-explicit key convention is decided.
+REF_RES     <- opt("--res", "")
+ALLOW_RES_CHANGE <- flag("--allow-res-change")
+if (DO_REF && !REF_RES %in% c("0.05", "0.25")) stop("--reference needs --res 0.05 | 0.25 (the reference file is named for its zonal grid)")
+REF_RES_TAG <- if (nzchar(REF_RES)) sprintf("res-%02d", round(as.numeric(REF_RES) * 100)) else ""
+if (DO_REF && REF_RES != "0.05" && !ALLOW_RES_CHANGE) {
+  stop("--res ", REF_RES, " to the live key, which holds a 0.05 deg table and carries no resolution in its name. ",
+       "Pass --allow-res-change only once the resolution-explicit S3 key convention is decided.")
+}
 DO_TIERS    <- !flag("--reference-only")
 TF          <- opt("--timeframe", "jagermeyr")
 TIERS       <- strsplit(opt("--tiers", "severe,moderate,extreme"), ",")[[1]]
@@ -92,7 +106,7 @@ REF_KEY <- paste0("domain=exposure/type=combined/source=glw4-2020_spam2020AA/reg
                   "processing=atlas-harmonized/variable=crop-livestock_all.parquet")
 local_tier_dir <- file.path(atlas_dirs$data_dir$hazard_risk_vop_usd, TF)
 local_ref_dir  <- if (exists("exposure_dir")) exposure_dir else atlas_dirs$data_dir$exposure
-local_ref      <- file.path(local_ref_dir, "exposure_adm_sum_spam20-20_glw420-20.parquet")
+local_ref      <- file.path(local_ref_dir, sprintf("exposure_adm_sum_spam20-20_glw420-20%s.parquet", if (nzchar(REF_RES_TAG)) paste0("_", REF_RES_TAG) else ""))
 
 cat(sprintf("\n=== issue #9 publish: tiers=%s | timeframe=%s | reference=%s | %s ===\n",
             paste(TIERS, collapse = ","), TF, DO_REF, if (DRY_RUN) "[DRY RUN]" else "LIVE WRITE"))

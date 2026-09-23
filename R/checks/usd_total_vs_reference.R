@@ -23,7 +23,7 @@
 # - that is the dangerous direction and the one worth aborting a publish over.
 #
 # Usage (cglabs, repo root, ~1-2 min): Rscript R/checks/usd_total_vs_reference.R
-#   [--timeframe jagermeyr] [--severity severe] [--iso3 AGO,KEN,NGA]
+#   [--timeframe jagermeyr] [--severity severe] [--iso3 AGO,KEN,NGA] [--res 0.25|0.05]
 # arrow only (no duckdb: the two clash on CGlabs).
 
 t0 <- Sys.time()
@@ -32,6 +32,10 @@ t0 <- Sys.time()
 args <- commandArgs(trailingOnly = TRUE)
 opt <- function(x, d) { i <- match(x, args); if (is.na(i) || i == length(args)) d else args[i + 1] }
 TF  <- opt("--timeframe", "jagermeyr"); SEV <- opt("--severity", "severe"); ISO <- strsplit(opt("--iso3", "AGO,KEN,NGA"), ",")[[1]]
+# Reference resolution (p.steward 2026-09-23): 0.4.4 writes every table once per zonal grid,
+# suffixed res-05 / res-25. The hazard product is on the 0.25 deg NEX-GDDP grid, so the
+# like-for-like comparison is res-25; --res 0.05 compares against the Atlas exposure grid instead.
+RES <- opt("--res", "0.25"); RES_TAG <- sprintf("res-%02d", round(as.numeric(RES) * 100))
 MIN_REF <- as.numeric(Sys.getenv("GATE_MIN_REF", "1e5"))   # below this a national crop total is noise
 MAX_ABS <- as.numeric(Sys.getenv("GATE_MAX_ABS", "1e6"))   # product value allowed against a noise reference
 # Rows in the product that are not SPAM commodities and so can never have a reference row.
@@ -76,9 +80,9 @@ ref_total <- function(pq, unit_keep) {
 }
 overall <- TRUE
 for (spec in list(
-  list(lab = "usd",   dir = atlas_dirs$data_dir$hazard_risk_vop_usd, var = "vop_nominal-usd-2021", ref = file.path(ref_dir, "vop_nominal-usd-2021_adm_sum_spam20_glw420.parquet"), units = c("nominal-usd-2021", "usd")),
-  list(lab = "intld", dir = atlas_dirs$data_dir$hazard_risk_vop,     var = "vop_intld15-2021",     ref = file.path(ref_dir, "exposure_adm_sum_spam20-20_glw420-20.parquet"),    units = c("intld15-2021", "intld15", "intld15-2020")))) {
-  cat(sprintf("\n=== %s | %s | %s | %s ===\n", spec$lab, TF, SEV, paste(ISO, collapse = ",")))
+  list(lab = "usd",   dir = atlas_dirs$data_dir$hazard_risk_vop_usd, var = "vop_nominal-usd-2021", ref = file.path(ref_dir, sprintf("vop_nominal-usd-2021_adm_sum_spam20_glw420_%s.parquet", RES_TAG)), units = c("nominal-usd-2021", "usd")),
+  list(lab = "intld", dir = atlas_dirs$data_dir$hazard_risk_vop,     var = "vop_intld15-2021",     ref = file.path(ref_dir, sprintf("exposure_adm_sum_spam20-20_glw420-20_%s.parquet", RES_TAG)),    units = c("intld15-2021", "intld15", "intld15-2020")))) {
+  cat(sprintf("\n=== %s | %s | %s | %s | reference %s ===\n", spec$lab, TF, SEV, paste(ISO, collapse = ","), RES_TAG))
   pq <- file.path(spec$dir, TF, sprintf("haz-freq-exp_%s_ENSEMBLEmean_int_adm_%s.parquet", spec$var, SEV))
   if (!file.exists(pq)) { .log("%s: MISSING %s", spec$lab, pq); overall <- FALSE; next }
   if (!file.exists(spec$ref)) { .log("%s: MISSING reference %s", spec$lab, spec$ref); overall <- FALSE; next }
