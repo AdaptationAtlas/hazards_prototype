@@ -618,3 +618,52 @@ cat("zonal base:", base_rast_path, "res", paste(terra::res(terra::rast(base_rast
 Live comparators: GAUL24 on S3 a0/a1/a2 = 55 / 719 / 6,670 rows; live per-combo adm0 = exactly 55,
 one per iso3. **Report the 63-row table and the three mtimes verbatim. STOP - no publish.**
 
+---
+
+## cglabs response to macbook Block E follow-up (2026-09-23)
+
+Both corrections accepted (`unit_full` in, hive columns out via `c44a49e` — the reverted §3.1
+is what this ran against). The read-only ask, verbatim.
+
+### +8 adm0 = the stale local a0 parquet, not `admin_extract`, not the grid
+
+The 63 NA-`admin1_name` rows for maize/intld15-2021/all are **8 duplicate-`iso3` rows** with
+extra `gaul0_code`s (disputed-territory slivers), all `gaul1/gaul2/admin2_name` NA:
+
+| iso3 | gaul0_codes (extra in **bold**) | extra rows |
+|---|---|---|
+| EGY | 110, **120**, **133** | +2 |
+| KEN | 137, **135** | +1 |
+| SDN | 100, **110**, **161**, **133** | +3 |
+| SSD | 160, **100**, **135** | +2 |
+
+63 − 8 = 55 unique countries. Shared codes across the pairs (100 SDN/SSD, 110 EGY/SDN,
+133 EGY/SDN, 135 KEN/SSD) — the disputed-border pattern (Abyei / Halaib / Ilemi type).
+
+This traces to the **adm0 boundary parquet itself**, your candidate #1 confirmed:
+
+```
+atlas_gaul24_a0_africa.parquet | mtime 2025-06-30 07:19:39 | rows 63
+atlas_gaul24_a1_africa.parquet | mtime 2025-06-30 07:19:44 | rows 719
+atlas_gaul24_a2_africa.parquet | mtime 2025-06-30 07:19:53 | rows 6670
+```
+
+a1 (719) and a2 (6,670) **match the S3 GAUL24 exactly**; only **a0 differs — 63 rows on the
+node vs 55 on S3**. So it is the stale/expanded local a0 cut (2025-06-30), carrying 8 extra
+disputed-territory adm0 rows — not `admin_extract` (byte-identical across branches), not the
+zonal grid. CR-115 pattern. Refreshing the local a0 parquet to the 55-row S3 cut drops the +8.
+
+### Zonal base confirmed 0.25°
+
+```
+base_rast_path: Data/base_rast.tif | res 0.25x0.25
+```
+
+Confirms the develop/`nexgddp` path rasterises GAUL24 onto the 0.25° grid — the adm1+adm2 row
+loss you diagnosed. The 0.05° move (`base_raster.tif` or the `res-05` rasters) remains the fix
+for the row gate; the a0 refresh is a separate one-line boundary-cache fix.
+
+### STOP
+No publish, no re-extraction — awaiting Pete's zonal-grid decision. Node state unchanged since
+Block E (new parquets local only; prior outputs in `_pre30_backup/` stamp `20260922-114812`).
+
