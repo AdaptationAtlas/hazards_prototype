@@ -882,3 +882,96 @@ Rscript scripts/r3_publish_tiers.R --reference-only --res 0.25 --allow-unit-vint
 **refused** before any gate - that refusal is the guard working, the resolution-explicit S3 key is
 Pete's pending decision. Per combo, res-25 should show 55 / ~696 / ~4,338 (+4 dup-code rows) with
 the a0 fix in - no 63. Paste all verbatim. **STOP - no publish.**
+
+---
+
+## Block H — Phase 2: exposure rasters + tables at both resolutions (2026-09-23)
+
+Pete's decisions: (a) S3 keys `variable=crop-livestock_all_res-05.parquet` / `_res-25.parquet`,
+legacy unsuffixed key kept as a deprecated alias of res-05; (b) **go** on rasters at both
+resolutions; (c) `R/4_roi.R` is legacy, left alone. Code: pipeline **`6f902ac`**, publisher
+**`1606196`**. Run **after Block G is reported**. Hours. **Still no publish** - ends at dry-runs.
+
+### What changed (read before running)
+
+- `0_server_setup.R` → `exposure_grid()`: `EXPOSURE_RES=0.05|0.25` **required**, no default,
+  hard-stop naming both. (`EXPOSURE_ZONAL_RES` still accepted as an alias.)
+- 0.4.0 / 0.4.1 / 0.4.2 write **tagged** rasters: `spam_vop_intld15-2021_all_res-25.tif`,
+  `glw4-2020_vop_intld15-2021_res-25.tif`, `livestock_number_number_res-25.tif`,
+  `spam_vop_nominal-usd-2021_all_res-25.tif` ... and the `res-05` set. 0.4.2 no longer hardcodes
+  the 0.05 raster; at 0.25 it sum-resamples SPAM prod_t first.
+- 0.4.4 keeps this grid's tagged rasters + untagged native inputs, and **refuses to run if an
+  untagged legacy twin of a tagged raster is on disk** (it would be extracted twice). H3 handles it.
+- **R/3 is BREAKING until H2 completes at 0.25**: it now reads `*_res-25.tif` (tag derived from
+  its own hazard grid) and hard-stops if absent. Do not run R/3 in between.
+
+### H1 - pull and verify
+
+```bash
+cd <hazards_prototype>
+git fetch origin && git checkout develop && git pull --ff-only
+git log --oneline -1                                             # 1606196 or later
+grep -c "exposure_grid <- function" R/0_server_setup.R           # 1
+grep -c "exposure_grid(caller" R/0.4.0_create_crop_vop_intld15.R R/0.4.1_create_livestock_exposure.R R/0.4.2_create_crop_vop_nominal_usd.R R/0.4.4_process_exposure.R   # 1 each
+```
+
+### H2 - producers, both resolutions (the long part)
+
+Order inside each resolution: 0.4.1 (livestock, slowest), 0.4.0, 0.4.2. `FORCE_OVERWRITE=1` so
+intermediates regenerate on the right grid. Kill-gate: each script's first log line prints
+`exposure grid = <raster> | res <r> | tag <tag>` - check it matches before letting it run on.
+
+```bash
+STAMP=$(date +%Y%m%d-%H%M%S)
+for RES in 0.25 0.05; do
+  for S in 0.4.1_create_livestock_exposure 0.4.0_create_crop_vop_intld15 0.4.2_create_crop_vop_nominal_usd; do
+    echo "== $S @ $RES =="
+    EXPOSURE_RES=$RES FORCE_OVERWRITE=1 Rscript R/$S.R > logs/${S}_res${RES}_$STAMP.log 2>&1 || { echo "FAILED $S @ $RES - stop and report"; break 2; }
+    grep -m1 "exposure grid =" logs/${S}_res${RES}_$STAMP.log
+  done
+done
+```
+
+Report per script × resolution: the grid line, elapsed, exit code. Expect under
+`mapspam_pro_dir/variable=vop_intld15-2021/` six tifs (all/irr/rf-all × res-25/res-05), under
+`glw2020_pro_dir` both `livestock_number_number_res-*.tif` and both tagged VoP tifs per unit.
+
+### H3 - move the untagged legacy outputs aside (0.4.4 refuses otherwise)
+
+```bash
+Rscript -e 'source("R/0_server_setup.R")
+  leg <- c(Sys.glob(file.path(mapspam_pro_dir, "variable=vop_*", "spam_vop_*_*.tif")), Sys.glob(file.path(glw2020_pro_dir, "variable=vop_*", "glw4-2020_vop_*.tif")), file.path(glw2020_pro_dir, "livestock_number_number.tif"))
+  leg <- leg[file.exists(leg) & !grepl("_res-[0-9]{2}\\.tif$", leg)]
+  dir.create(file.path(exposure_dir, "_pre30_backup", "legacy_untagged_rasters"), recursive = TRUE, showWarnings = FALSE)
+  for (f in leg) { to <- file.path(exposure_dir, "_pre30_backup", "legacy_untagged_rasters", basename(f)); file.rename(f, to); cat("moved", basename(f), "\n") }
+  cat(length(leg), "legacy rasters moved\n")'
+```
+
+### H4 - tables, both resolutions
+
+```bash
+for RES in 0.25 0.05; do
+  EXPOSURE_RES=$RES FORCE_OVERWRITE=1 Rscript R/0.4.4_process_exposure.R > logs/0.4.4_res${RES}_$STAMP.log 2>&1 || { echo "FAILED 0.4.4 @ $RES"; break; }
+  grep -E "section 0: zonal base|section 1: .* after keeping|section 2: .* after keeping|section 3.3: [0-9]+ rows" logs/0.4.4_res${RES}_$STAMP.log
+done
+ls -l <exposure_dir>/*_res-25.parquet* <exposure_dir>/*_res-05.parquet*
+```
+
+The Block F/G tables are superseded by these (the 0.05 set is now built from **native** 0.05
+rasters, not upsampled 0.25 ones - the intld/livestock numbers at adm2 will differ from Block F).
+
+### H5 - gates and dry-runs (read-only)
+
+```bash
+Rscript R/checks/usd_total_vs_reference.R --res 0.25
+Rscript R/checks/usd_total_vs_reference.R --res 0.05
+Rscript R/qaqc_vop_vs_faostat.R                      # picks res-25, national totals unchanged
+Rscript scripts/r3_publish_tiers.R --reference-only --res 0.05 --allow-unit-vintage-change --dry-run
+Rscript scripts/r3_publish_tiers.R --reference-only --res 0.25 --allow-unit-vintage-change --allow-res-change --dry-run
+```
+
+**Expect:** both usd gates PASS naming `intld15-2021`; QAQC livestock ~1.00, crop ~0.99;
+res-05 dry-run: target key `..._res-05.parquet`, "first publish ... gating against the legacy
+unsuffixed key", 14 columns identical, rows within 25 %, would also refresh the alias;
+res-25 dry-run: rows reported **informational** (~0.70, --allow-res-change), columns identical.
+Paste all verbatim. **STOP - no publish.** R/3 is not re-run in this block.
