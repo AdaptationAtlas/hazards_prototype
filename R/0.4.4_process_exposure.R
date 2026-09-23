@@ -60,14 +60,36 @@ source(file.path(project_dir, "R", "_helpers.R"))
   # sections 1/2: mass-conserving, area-weighted within each 0.25deg cell, so
   # their sub-national split is coarser than the grid suggests. Nominal-USD
   # (0.4.2) and prod/area inputs are native 0.05deg. R/3 stays on the hazard grid.
-  zonal_base_path <- Sys.getenv("EXPOSURE_ZONAL_BASE_RAST",
-                                file.path(project_dir, "metadata", "base_raster.tif"))
+  # p.steward 2026-09-23: the exposure tables exist at BOTH resolutions, with
+  # the resolution explicit in every output name. One resolution per
+  # invocation, chosen by EXPOSURE_ZONAL_RES = 0.05 | 0.25. No default: a run
+  # that does not say which grid it is on is how the live 0.05deg reference
+  # and the 0.25deg product came to disagree without anyone noticing.
+  #   0.05 -> metadata/base_raster.tif        (Atlas exposure grid; live reference)
+  #   0.25 -> metadata/base_rast_nexgddp.tif  (NEX-GDDP hazard grid; R/3)
+  # EXPOSURE_ZONAL_BASE_RAST overrides the raster for a deliberate experiment.
+  # Suffix follows the Atlas precedent gaul24_a{level}_res-05.tif: res-05, res-25.
+  .zonal_res_req <- Sys.getenv("EXPOSURE_ZONAL_RES", "")
+  .zonal_defaults <- c("0.05" = file.path(project_dir, "metadata", "base_raster.tif"),
+                       "0.25" = file.path(project_dir, "metadata", "base_rast_nexgddp.tif"))
+  zonal_base_path <- Sys.getenv("EXPOSURE_ZONAL_BASE_RAST", "")
+  if (!nzchar(zonal_base_path)) {
+    if (!.zonal_res_req %in% names(.zonal_defaults)) {
+      stop("section 0: set EXPOSURE_ZONAL_RES to one of ", paste(names(.zonal_defaults), collapse = " | "),
+           " (got '", .zonal_res_req, "'). Every exposure table is written once per resolution, ",
+           "with the resolution in its name; a run must say which grid it is on.")
+    }
+    zonal_base_path <- .zonal_defaults[[.zonal_res_req]]
+  }
   if (!file.exists(zonal_base_path)) {
-    stop("section 0: zonal base raster not found: ", zonal_base_path,
-         " (set EXPOSURE_ZONAL_BASE_RAST or restore metadata/base_raster.tif)")
+    stop("section 0: zonal base raster not found: ", zonal_base_path)
   }
   base_rast <- terra::rast(zonal_base_path)
-  .zonal_res_tag <- paste0("res-", gsub("\\.", "", formatC(terra::res(base_rast)[1], format = "f", digits = 3)))
+  .zonal_res_deg <- terra::res(base_rast)[1]
+  if (nzchar(.zonal_res_req) && !isTRUE(all.equal(as.numeric(.zonal_res_req), .zonal_res_deg, tolerance = 1e-6))) {
+    stop(sprintf("section 0: EXPOSURE_ZONAL_RES=%s but %s has res %.6f", .zonal_res_req, zonal_base_path, .zonal_res_deg))
+  }
+  .zonal_res_tag <- sprintf("res-%02d", round(.zonal_res_deg * 100))
   .log044(sprintf("section 0: zonal base = %s | res %s | ext %s | tag %s",
                   zonal_base_path, paste(signif(terra::res(base_rast), 4), collapse = "x"),
                   paste(signif(as.vector(terra::ext(base_rast)), 6), collapse = ","), .zonal_res_tag))
@@ -199,7 +221,7 @@ spam_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
 
   result <- admin_extract_wrap(data = data,
                                save_dir = dirname(file),
-                               filename = file_base,
+                               filename = paste0(file_base, "_", .zonal_res_tag),   # per-tif cache is resolution-specific
                                FUN = stat,
                                append_vals = c(exposure = var, unit = unit, tech = tech),
                                var_name = "crop",
@@ -208,7 +230,7 @@ spam_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
                                boundaries_index = boundaries_index,
                                overwrite = overwrite_spam)
   
-  attr_file<-file.path(dirname(file),paste0(file_base,"_adm_",stat,".parquet.json"))
+  attr_file<-file.path(dirname(file),paste0(file_base,"_",.zonal_res_tag,"_adm_",stat,".parquet.json"))
   
   filter_colnames<-c("crop","stat","exposure","unit","tech")
   filters <- lapply(filter_colnames, function(split_col) {
@@ -305,7 +327,7 @@ glw_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
 
     result <- admin_extract_wrap(data = data,
                                  save_dir = dirname(file),
-                                 filename = file_base,
+                                 filename = paste0(file_base, "_", .zonal_res_tag),   # per-tif cache is resolution-specific
                                  FUN = stat,
                                  append_vals = c(exposure = var, unit = unit, tech = tech),
                                  var_name = "crop",
@@ -314,7 +336,7 @@ glw_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
                                  boundaries_index = boundaries_index,
                                  overwrite = overwrite_glw)
     
-    attr_file<-file.path(dirname(file),paste0(file_base,"_adm_",stat,".parquet.json"))
+    attr_file<-file.path(dirname(file),paste0(file_base,"_",.zonal_res_tag,"_adm_",stat,".parquet.json"))
     
     filter_colnames<-c("crop","stat","exposure","unit","tech")
     filters <- lapply(filter_colnames, function(split_col) {
@@ -365,7 +387,7 @@ future::plan(future::sequential)
 # 3) Combine exposure totals by admin areas ####
 .log044("section 3: merging MapSPAM + GLW exposure tables by admin areas")
   # 3.1) Original recipe ####
-file<-paste0(exposure_dir,"/exposure_adm_sum_spam20-20_glw420-20.parquet")
+file<-paste0(exposure_dir,"/exposure_adm_sum_spam20-20_glw420-20_",.zonal_res_tag,".parquet")
 
 if(!file.exists(file)|overwrite_glw|overwrite_spam){
   
@@ -436,6 +458,7 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
                     extraction_vect=atlas_data$boundaries$name),
       source_year = list(input_raster1=c(spam_year=2020,fao_vop="see unit"),input_raster2=c(glw_year=2020,fao_price="see unit")),
       date_created = Sys.time(),
+      zonal_grid = list(resolution_deg = .zonal_res_deg, tag = .zonal_res_tag, base_raster = basename(zonal_base_path), note = "Admin zones rasterised at this resolution; inputs on a coarser grid were sum-resampled (area-weighted) to it in sections 1/2."),
       field_descriptions = field_descriptions,
       filters = filters,
       version = list(input_version1=version_spam,input_version2=version_glw),
@@ -487,7 +510,7 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
   
   # 3.2) Specific data for economic returns notebook ####
   
-  file<-paste0(exposure_dir,"/vop_nominal-usd-2021_adm_sum_spam20_glw420.parquet")
+  file<-paste0(exposure_dir,"/vop_nominal-usd-2021_adm_sum_spam20_glw420_",.zonal_res_tag,".parquet")
   
   if(!file.exists(file)|overwrite_glw|overwrite_spam){
       
@@ -514,6 +537,7 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
                       extraction_vect=atlas_data$boundaries$name),
         source_year = list(input_raster1=c(spam_year=2020,fao_vop=2021),input_raster2=c(glw_year=2020,fao_price=2021)),
         date_created = Sys.time(),
+        zonal_grid = list(resolution_deg = .zonal_res_deg, tag = .zonal_res_tag, base_raster = basename(zonal_base_path), note = "Admin zones rasterised at this resolution; inputs on a coarser grid were sum-resampled (area-weighted) to it in sections 1/2."),
         field_descriptions = field_descriptions,
         filters = filters,
         version = list(input_version1=version_spam,input_version2=version_glw),
@@ -560,7 +584,7 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
   # crop-livestock_all only), so this block refreshes the LOCAL artifact and
   # the S3 object stays stale until a publish route is authorised.
 
-  file<-paste0(exposure_dir,"/vop_intld15-2021_adm_sum_spam20_glw420.parquet")
+  file<-paste0(exposure_dir,"/vop_intld15-2021_adm_sum_spam20_glw420_",.zonal_res_tag,".parquet")
 
   if(!file.exists(file)|overwrite_glw|overwrite_spam){
 
@@ -605,6 +629,7 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
                       extraction_vect=atlas_data$boundaries$name),
         source_year = list(input_raster1=c(spam_year=2020,fao_gpv=2021),input_raster2=c(glw_year=2020,fao_gpv=2021)),
         date_created = Sys.time(),
+        zonal_grid = list(resolution_deg = .zonal_res_deg, tag = .zonal_res_tag, base_raster = basename(zonal_base_path), note = "Admin zones rasterised at this resolution; inputs on a coarser grid were sum-resampled (area-weighted) to it in sections 1/2."),
         field_descriptions = field_descriptions,
         filters = filters,
         version = list(input_version1=version_spam,input_version2=version_glw),
@@ -639,7 +664,7 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
 .log044("section 4: Worldpop hpop harmonize + admin extract")
 overwrite_pop<-T
   ## 4.1) Harmonize to atlas base raster ####
-hpop_file<-paste0(hpop_int_dir,"/hpop_atlas.tif")
+hpop_file<-paste0(hpop_int_dir,"/hpop_atlas_",.zonal_res_tag,".tif")
 if(!file.exists(hpop_file)|overwrite_pop==T){
   local_files<-list.files(hpop_dir,".tif",full.names = T)
   hpop<-terra::rast(local_files)
@@ -665,7 +690,7 @@ if(!file.exists(hpop_file)|overwrite_pop==T){
 
   ## 4.2) Extraction ####
 version_hpop<-1
-file<-paste0(exposure_dir,"/hpop_adm_sum.parquet")
+file<-paste0(exposure_dir,"/hpop_adm_sum_",.zonal_res_tag,".parquet")
 
 if(!file.exists(file)|overwrite_pop==T){  
   
@@ -680,7 +705,7 @@ if(!file.exists(file)|overwrite_pop==T){
   
   hpop_extracted<-admin_extract_wrap(data=data,
                              save_dir=dirname(file),
-                             filename =var,
+                             filename = paste0(var, "_", .zonal_res_tag),   # per-tif cache is resolution-specific
                              FUN=stat,
                              append_vals=c(exposure=var,unit=unit),
                              var_name="type",
