@@ -76,7 +76,11 @@ terra::gdalCache(60000)
 
 # b) Load base raster ####
 .log041("loading base raster")
-base_rast <- terra::rast(base_rast_path)
+# Grid = exposure_grid() (0_server_setup.R): EXPOSURE_RES = 0.05 | 0.25, required;
+# every output below carries .eg$tag (res-05 / res-25). Issue #30, p.steward 2026-09-23.
+.eg <- exposure_grid(caller = "0.4.1")
+.log041(sprintf("exposure grid = %s | res %.4f | tag %s", basename(.eg$path), .eg$res_deg, .eg$tag))
+base_rast <- .eg$rast
 
 # 1) Load geographies ####
 .log041("loading geoboundaries (admin0)")
@@ -177,7 +181,7 @@ glw2atlas <- data.table(
 )
 
 # 2.4) Load high/low mask
-mask_ls_file <- paste0(glw_int_dir, "/livestock_masks.tif")
+mask_ls_file <- paste0(glw_int_dir, "/livestock_masks_", .eg$tag, ".tif")
 # Set FORCE_OVERWRITE=1 in env to force regen of all gated outputs.
 # Used by the issue #9 rebake runbook so the v9 mass-conserving fix
 # actually lands in livestock_masks.tif + livestock_number_number.tif.
@@ -580,7 +584,7 @@ for (i in seq_along(vop_list)) {
   # Split between highland and tropical zones
   glw_vop_usd_split <- split_livestock(data = glw_vop, livestock_mask_high, livestock_mask_low)
   unit <- gsub(paste0(dataset_name, "_"), "", names(vop_list)[i])
-  save_file <- file.path(glw_pro_dir, paste0("variable=", unit), paste0(names(vop_list)[i], ".tif"))
+  save_file <- file.path(glw_pro_dir, paste0("variable=", unit), paste0(names(vop_list)[i], "_", .eg$tag, ".tif"))
   ensure_dir(dirname(save_file))
   terra::writeRaster(round(glw_vop_usd_split, 0), save_file, overwrite = TRUE)
   .log041(sprintf("    wrote %s", save_file))
@@ -589,8 +593,8 @@ for (i in seq_along(vop_list)) {
 
 # 6) Livestock Numbers ######
 .log041("computing livestock_no + shoat_prop")
-livestock_no_file <- paste0(glw_pro_dir, "/livestock_number_number.tif")
-shoat_prop_file <- paste0(glw_int_dir, "/shoat_prop.tif")
+livestock_no_file <- paste0(glw_pro_dir, "/livestock_number_number_", .eg$tag, ".tif")
+shoat_prop_file <- paste0(glw_int_dir, "/shoat_prop_", .eg$tag, ".tif")
 overwrite_glw <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 
 .log041(sprintf("livestock_number_number.tif exists=%s, overwrite_glw=%s",

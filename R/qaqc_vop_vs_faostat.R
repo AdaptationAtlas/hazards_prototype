@@ -70,8 +70,16 @@ report <- list()
 # LIVESTOCK
 # =============================================================================
 .qlog("LIVESTOCK: FAO I$ GPV + gridded VoP")
-ls_vop_file <- file.path(glw2020_pro_dir, "variable=vop_intld15-2021", "glw4-2020_vop_intld15-2021.tif")
-if (file.exists(ls_vop_file)) {
+# Exposure rasters carry a resolution tag (res-05 / res-25, issue #30). National totals are
+# grid-independent, so any tag serves; default to the hazard grid (0.25), legacy untagged last.
+.qtag <- sprintf("res-%02d", round(as.numeric(Sys.getenv("EXPOSURE_RES", "0.25")) * 100))
+.first_existing <- function(...) { fs <- c(...); fs <- fs[file.exists(fs)]; if (length(fs)) fs[1] else NA_character_ }
+ls_vop_file <- .first_existing(
+  file.path(glw2020_pro_dir, "variable=vop_intld15-2021", paste0("glw4-2020_vop_intld15-2021_", .qtag, ".tif")),
+  Sys.glob(file.path(glw2020_pro_dir, "variable=vop_intld15-2021", "glw4-2020_vop_intld15-2021_res-*.tif")),
+  file.path(glw2020_pro_dir, "variable=vop_intld15-2021", "glw4-2020_vop_intld15-2021.tif"))
+if (!is.na(ls_vop_file)) .qlog(sprintf("livestock VoP raster: %s", basename(ls_vop_file)))
+if (!is.na(ls_vop_file) && file.exists(ls_vop_file)) {
   # FAO livestock GPV uses indigenous meat items (matches 0.4.1)
   lps2fao_ind <- lps2fao
   lps2fao_ind[grep("Meat", lps2fao_ind)] <- paste0(lps2fao_ind[grep("Meat", lps2fao_ind)], " (indigenous)")
@@ -108,7 +116,9 @@ if (file.exists(ls_vop_file)) {
 .qlog("CROP: FAO I$ GPV + gridded VoP (national totals)")
 # Prefer the 0.4.0 FAOStat-const-I$ output (what R/3 now uses); fall back to the
 # S3-legacy file if 0.4.0 hasn't been run yet (so the QAQC still reports something).
-crop_vop_file <- Sys.glob(file.path(mapspam_pro_dir, "variable=vop_intld15-2021", "spam_vop_intld15-2021_all.tif"))
+crop_vop_file <- Sys.glob(file.path(mapspam_pro_dir, "variable=vop_intld15-2021", paste0("spam_vop_intld15-2021_all_", .qtag, ".tif")))
+if (!length(crop_vop_file)) crop_vop_file <- Sys.glob(file.path(mapspam_pro_dir, "variable=vop_intld15-2021", "spam_vop_intld15-2021_all_res-*.tif"))[1]
+if (!length(crop_vop_file) || is.na(crop_vop_file[1])) crop_vop_file <- Sys.glob(file.path(mapspam_pro_dir, "variable=vop_intld15-2021", "spam_vop_intld15-2021_all.tif"))
 if (!length(crop_vop_file)) crop_vop_file <- Sys.glob(file.path(mapspam_pro_dir, "variable=vop_intld15", "*intld15_all*.tif"))
 if (length(crop_vop_file)) {
   spam2fao <- fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv")

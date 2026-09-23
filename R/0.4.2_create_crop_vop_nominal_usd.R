@@ -56,11 +56,14 @@ source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/
 
 ### 1.1 Base Raster ####
 
-# The base_rast_path value is set in script 0, however we have not yet implemented this workflow globally so we have hardcoded in
-# the Atlas Africa base raster
-# base_rast<-terra::rast(base_rast_path)
-
-base_rast <- terra::rast("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif")
+# Grid = exposure_grid() (0_server_setup.R): EXPOSURE_RES = 0.05 | 0.25, required.
+# Until 2026-09-23 this script hardcoded the 0.05 deg atlas_delta base raster
+# while 0.4.0/0.4.1 sat on base_rast_path (0.25 deg under nexgddp), so the
+# nominal-USD rasters were on a different grid from everything R/3 stacks them
+# with. Now every output carries .eg$tag (res-05 / res-25). Issue #30.
+.eg <- exposure_grid(caller = "0.4.2")
+cat(sprintf("exposure grid = %s | res %.4f | tag %s\n", basename(.eg$path), .eg$res_deg, .eg$tag))
+base_rast <- .eg$rast
 
 ### 1.2 Admin Boundaries #####
 file <- geo_files_local[1]
@@ -217,6 +220,18 @@ spam_files[, variable := tstrsplit(basename(path), "_", keep = 2)][, tech := gsu
 
 prod_rast <- lapply(spam_files$path, rast)
 names(prod_rast) <- spam_files$tech
+# SPAM prod_t is native 0.05 deg. On a coarser grid, sum-resample (mass-conserving,
+# issue #9 pattern, mirrors 0.4.0) before multiplying by the price raster.
+prod_rast <- lapply(prod_rast, function(r) {
+  if (terra::compareGeom(r, base_rast, stopOnError = FALSE)) return(r)
+  .src <- terra::global(r, "sum", na.rm = TRUE)[, 1]
+  r2 <- terra::resample(r, base_rast, method = "sum")
+  .dst <- terra::global(r2, "sum", na.rm = TRUE)[, 1]
+  if (any(abs(.dst / .src - 1) > 0.005, na.rm = TRUE)) {
+    warning(sprintf("[0.4.2] SPAM prod mass not conserved on resample: max dev %.3f%%", 100 * max(abs(.dst / .src - 1), na.rm = TRUE)))
+  }
+  r2
+})
 
 ## 3) Infer missing prices ####
 # Ok so now we want to estimate a sensible nominal value in usd from the most recent data available
@@ -312,7 +327,7 @@ for (i in seq_along(price_usd_list)) {
   }))
   names(final_price_rast) <- crop_names
 
-  price_save_file <- file.path(mapspam_pro_dir, "fao_prices", paste0("crop_price_", names(price_usd_list)[i], "-t.tif"))
+  price_save_file <- file.path(mapspam_pro_dir, "fao_prices", paste0("crop_price_", names(price_usd_list)[i], "-t_", .eg$tag, ".tif"))
   ensure_dir(dirname(price_save_file))
   terra::writeRaster(final_price_rast, price_save_file, overwrite = TRUE)
 
@@ -338,7 +353,7 @@ for (i in seq_along(price_usd_list)) {
     save_file <- file.path(
       mapspam_pro_dir,
       paste0("variable=vop_", names(price_usd_list)[i]),
-      paste0("spam_vop_", names(price_usd_list)[i], "_", names(prod_rast)[j], ".tif")
+      paste0("spam_vop_", names(price_usd_list)[i], "_", names(prod_rast)[j], "_", .eg$tag, ".tif")
     )
     ensure_dir(dirname(save_file))
     terra::writeRaster(prod_vop, save_file, overwrite = TRUE)

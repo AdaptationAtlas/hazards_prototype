@@ -39,11 +39,14 @@ geoboundaries <- arrow::read_parquet(geo_files_local[1]) |> sf::st_as_sf() |> te
 geoboundaries <- terra::aggregate(geoboundaries, "iso3")
 
 # 2) MapSPAM production ------------------------------------------------------
-# base_rast_path = the hazard/exposure grid used by 0.4.1 livestock + R/3.
-# (The 92cb0b0 original used the atlas_delta base raster; that would put crop
-# VoP on a different grid than livestock and break the R/3 crop+livestock stack.)
+# Grid = exposure_grid() (0_server_setup.R): EXPOSURE_RES = 0.05 | 0.25, required.
+# Outputs are written once per resolution with the tag in the name (res-05 /
+# res-25); R/3 reads the tag matching its hazard grid, 0.4.4 the tag matching
+# its zonal grid (issue #30, p.steward 2026-09-23).
+.eg <- exposure_grid(caller = "0.4.0")
+.log040(sprintf("exposure grid = %s | res %.4f | tag %s", basename(.eg$path), .eg$res_deg, .eg$tag))
 .log040("loading base raster + rasterizing admin0")
-base_rast <- terra::rast(base_rast_path)
+base_rast <- .eg$rast
 admin_rast <- terra::rasterize(geoboundaries, base_rast, field = "iso3")
 
 ms_codes <- data.table::fread(ms_codes_url)[, Code := toupper(Code)][, Code_ifpri_2020 := toupper(Code_ifpri_2020)]
@@ -178,7 +181,7 @@ spam_vop_intd$coffee <- NULL
 
 out_dir <- file.path(mapspam_pro_dir, "variable=vop_intld15-2021")
 ensure_dir(out_dir)
-save_file <- file.path(out_dir, "spam_vop_intld15-2021_all.tif")
+save_file <- file.path(out_dir, paste0("spam_vop_intld15-2021_all_", .eg$tag, ".tif"))
 if (!file.exists(save_file) || overwrite_crop) {
   .log040(sprintf("writing %s", save_file))
   terra::writeRaster(round(spam_vop_intd * 1000, 1), save_file, overwrite = TRUE)   # thousand I$ -> I$
@@ -196,8 +199,8 @@ sub_dat <- spam_vop_intd_i
 sub_dat[is.na(sub_dat)] <- 0
 spam_vop_intd_r <- spam_vop_intd - sub_dat
 
-f_i <- file.path(out_dir, "spam_vop_intld15-2021_irr.tif")
-f_r <- file.path(out_dir, "spam_vop_intld15-2021_rf-all.tif")
+f_i <- file.path(out_dir, paste0("spam_vop_intld15-2021_irr_", .eg$tag, ".tif"))
+f_r <- file.path(out_dir, paste0("spam_vop_intld15-2021_rf-all_", .eg$tag, ".tif"))
 if (!file.exists(f_i) || overwrite_crop) terra::writeRaster(round(spam_vop_intd_i * 1000, 1), f_i, overwrite = TRUE)
 if (!file.exists(f_r) || overwrite_crop) terra::writeRaster(round(spam_vop_intd_r * 1000, 1), f_r, overwrite = TRUE)
 

@@ -69,27 +69,8 @@ source(file.path(project_dir, "R", "_helpers.R"))
   #   0.25 -> metadata/base_rast_nexgddp.tif  (NEX-GDDP hazard grid; R/3)
   # EXPOSURE_ZONAL_BASE_RAST overrides the raster for a deliberate experiment.
   # Suffix follows the Atlas precedent gaul24_a{level}_res-05.tif: res-05, res-25.
-  .zonal_res_req <- Sys.getenv("EXPOSURE_ZONAL_RES", "")
-  .zonal_defaults <- c("0.05" = file.path(project_dir, "metadata", "base_raster.tif"),
-                       "0.25" = file.path(project_dir, "metadata", "base_rast_nexgddp.tif"))
-  zonal_base_path <- Sys.getenv("EXPOSURE_ZONAL_BASE_RAST", "")
-  if (!nzchar(zonal_base_path)) {
-    if (!.zonal_res_req %in% names(.zonal_defaults)) {
-      stop("section 0: set EXPOSURE_ZONAL_RES to one of ", paste(names(.zonal_defaults), collapse = " | "),
-           " (got '", .zonal_res_req, "'). Every exposure table is written once per resolution, ",
-           "with the resolution in its name; a run must say which grid it is on.")
-    }
-    zonal_base_path <- .zonal_defaults[[.zonal_res_req]]
-  }
-  if (!file.exists(zonal_base_path)) {
-    stop("section 0: zonal base raster not found: ", zonal_base_path)
-  }
-  base_rast <- terra::rast(zonal_base_path)
-  .zonal_res_deg <- terra::res(base_rast)[1]
-  if (nzchar(.zonal_res_req) && !isTRUE(all.equal(as.numeric(.zonal_res_req), .zonal_res_deg, tolerance = 1e-6))) {
-    stop(sprintf("section 0: EXPOSURE_ZONAL_RES=%s but %s has res %.6f", .zonal_res_req, zonal_base_path, .zonal_res_deg))
-  }
-  .zonal_res_tag <- sprintf("res-%02d", round(.zonal_res_deg * 100))
+  .eg <- exposure_grid(caller = "0.4.4 section 0")   # EXPOSURE_RES (or EXPOSURE_ZONAL_RES) = 0.05 | 0.25, required
+  zonal_base_path <- .eg$path; base_rast <- .eg$rast; .zonal_res_deg <- .eg$res_deg; .zonal_res_tag <- .eg$tag
   .log044(sprintf("section 0: zonal base = %s | res %s | ext %s | tag %s",
                   zonal_base_path, paste(signif(terra::res(base_rast), 4), collapse = "x"),
                   paste(signif(as.vector(terra::ext(base_rast)), 6), collapse = ","), .zonal_res_tag))
@@ -150,6 +131,15 @@ source_year_spam<-list(spam_year=2020,fao_price="varies")
 
 files<-list.files(mapspam_pro_dir,".tif$",recursive=T,full.names=T)
 files<-grep("variable",files,value=T)
+# Both resolutions of the exposure rasters sit side by side (suffix res-05 / res-25).
+# Keep this grid's files plus untagged native ones (prod_t, harv-area, ...); never the other grid's.
+.n_files0 <- length(files)
+files <- files[!grepl("_res-[0-9]{2}\\.tif$", files) | grepl(paste0("_", .zonal_res_tag, "\\.tif$"), files)]
+.log044(sprintf("section 1: %d tifs -> %d after keeping %s + untagged", .n_files0, length(files), .zonal_res_tag))
+# A legacy UNTAGGED twin of a tagged raster (pre-2026-09-23 output left on disk) would be
+# extracted as a second "native" copy and double the rows. Refuse; move it aside.
+.twins <- intersect(sub("_res-[0-9]{2}\\.tif$", ".tif", files[grepl("_res-[0-9]{2}\\.tif$", files)]), files[!grepl("_res-[0-9]{2}\\.tif$", files)])
+if (length(.twins)) stop("section 1: untagged legacy twin(s) of tagged rasters present - move aside before extracting:\n  ", paste(basename(.twins), collapse = "\n  "))
 # Remove yield (one reason for this is that stat<-"mean" returns NA and needs debugging)
 files<-files[!grepl("yield",files)]
 
@@ -193,6 +183,7 @@ set_parallel_plan(n_cores = spam_workers, use_multisession = TRUE)
 spam_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
   file <- files[i]
   file_base <- gsub(".tif", "", basename(file))
+  file_base <- sub("_res-[0-9]{2}$", "", file_base)   # tag re-applied by the cache name below
   cat(sprintf("[%s] [0.4.4] MapSPAM %d/%d %s\n",
               format(Sys.time(), "%H:%M:%S"),
               i, .n_spam, basename(file)))
@@ -283,12 +274,19 @@ overwrite_glw <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
 
 # 0.4.1 writes its livestock outputs under glw2020_pro_dir
 # (Data/GLW4_2020/processed), not glw_pro_dir (the 2015 GLW4 dir).
-livestock_no_file <- file.path(glw2020_pro_dir, "livestock_number_number.tif")
+livestock_no_file <- file.path(glw2020_pro_dir, paste0("livestock_number_number_", .zonal_res_tag, ".tif"))   # 0.4.1 output for THIS grid
 if (!file.exists(livestock_no_file)) {
   stop("Run script 0.4.1_create_livestock_exposure.R first")
 }
 
 files <- list.files(glw2020_pro_dir, ".tif$", recursive = TRUE, full.names = TRUE)
+.n_files0 <- length(files)
+files <- files[!grepl("_res-[0-9]{2}\\.tif$", files) | grepl(paste0("_", .zonal_res_tag, "\\.tif$"), files)]
+.log044(sprintf("section 2: %d tifs -> %d after keeping %s + untagged", .n_files0, length(files), .zonal_res_tag))
+# A legacy UNTAGGED twin of a tagged raster (pre-2026-09-23 output left on disk) would be
+# extracted as a second "native" copy and double the rows. Refuse; move it aside.
+.twins <- intersect(sub("_res-[0-9]{2}\\.tif$", ".tif", files[grepl("_res-[0-9]{2}\\.tif$", files)]), files[!grepl("_res-[0-9]{2}\\.tif$", files)])
+if (length(.twins)) stop("section 2: untagged legacy twin(s) of tagged rasters present - move aside before extracting:\n  ", paste(basename(.twins), collapse = "\n  "))
 
 # v9: parallel GLW extraction, mirroring the MapSPAM block above.
 glw_workers <- min(8L, length(files))
@@ -310,6 +308,7 @@ glw_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
     }
 
     file_base<-gsub(".tif","",basename(file))
+    file_base <- sub("_res-[0-9]{2}$", "", file_base)   # tag re-applied by the cache name below
     var<-unlist(tstrsplit(basename(file),"_",keep=2))
     unit<-gsub(".tif","",unlist(tstrsplit(basename(file),"_",keep=3)))
     tech<-NA

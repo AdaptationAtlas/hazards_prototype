@@ -316,6 +316,10 @@ Geographies <- lapply(seq_along(geo_files_local), FUN = function(i) {
 names(Geographies) <- names(geo_files_local)
 
 base_rast <- terra::rast(base_rast_path) + 0
+# Exposure rasters exist at two resolutions (res-05 / res-25, issue #30); this script
+# stacks them with hazards on base_rast, so it reads the tag that matches THAT grid.
+.r3_tag <- res_tag_of(base_rast)
+cat("0.2) hazard grid res", paste(terra::res(base_rast), collapse = "x"), "-> reading exposure rasters tagged", .r3_tag, "\n")
 
 boundaries_zonal <- lapply(seq_along(Geographies), FUN = function(i) {
   file_path <- file.path(boundaries_int_dir, paste0(names(Geographies)[i], "_zonal.tif"))
@@ -373,8 +377,8 @@ files <- list.files(mapspam_pro_dir, ".tif$", recursive = TRUE, full.names = TRU
 # Crop VoP now = FAOStat const-I$ distributed by SPAM production share (0.4.0,
 # reinstated 2026-07-07), matching the livestock const-I$ basis. Supersedes the
 # S3-legacy `spam_vop_intld15_all.tif` (was NOT FAOStat-I$-aligned, QAQC 1.21).
-crop_vop_file <- grep("vop_intld15-2021_all", files, value = TRUE)
-if (length(crop_vop_file) != 1) stop("expected exactly 1 crop vop_intld15-2021_all tif, found ", length(crop_vop_file), " — run R/0.4.0_create_crop_vop_intld15.R")
+crop_vop_file <- grep(paste0("vop_intld15-2021_all_", .r3_tag, "\\.tif$"), files, value = TRUE)
+if (length(crop_vop_file) != 1) stop("expected exactly 1 crop vop_intld15-2021_all_", .r3_tag, " tif, found ", length(crop_vop_file), " — run R/0.4.0_create_crop_vop_intld15.R with EXPOSURE_RES matching this hazard grid")
 cat("0.2.1.1) Using crop vop intd file:", basename(crop_vop_file), "\n")
 
 crop_vop_tot <- terra::rast(crop_vop_file)
@@ -390,8 +394,8 @@ crop_vop_tot <- terra::rast(crop_vop_file)
 # set R3_CROP_VOP_USD=2021 to use the 0.4.2 raster.
 .crop_usd_vintage <- Sys.getenv("R3_CROP_VOP_USD", "2015")
 if (.crop_usd_vintage == "2021") {
-  crop_vop_usd_file <- grep("variable=vop_nominal-usd-2021/spam_vop_nominal-usd-2021_all\\.tif$", files, value = TRUE)
-  if (length(crop_vop_usd_file) != 1) stop("expected exactly 1 spam_vop_nominal-usd-2021_all.tif under mapspam_pro_dir/variable=vop_nominal-usd-2021/, found ", length(crop_vop_usd_file), " — run R/0.4.2_create_crop_vop_nominal_usd.R (or set R3_CROP_VOP_USD=2015 for the legacy raster)")
+  crop_vop_usd_file <- grep(paste0("variable=vop_nominal-usd-2021/spam_vop_nominal-usd-2021_all_", .r3_tag, "\\.tif$"), files, value = TRUE)
+  if (length(crop_vop_usd_file) != 1) stop("expected exactly 1 spam_vop_nominal-usd-2021_all_", .r3_tag, ".tif under mapspam_pro_dir/variable=vop_nominal-usd-2021/, found ", length(crop_vop_usd_file), " — run R/0.4.2_create_crop_vop_nominal_usd.R with EXPOSURE_RES matching this hazard grid (or set R3_CROP_VOP_USD=2015 for the legacy raster)")
 } else {
   crop_vop_usd_file <- grep("vop_usd2015_all", files, value = TRUE)
   if (length(crop_vop_usd_file) != 1) stop("expected exactly 1 crop vop_usd2015_all tif, found ", length(crop_vop_usd_file))
@@ -411,7 +415,7 @@ cat("0.2.1.2) Using crop harvested area file:", basename(crop_ha_file), "\n")
 #### d.2.2.1) Livestock Numbers (GLW) ######
 # 0.4.1 writes its livestock outputs under glw2020_pro_dir
 # (Data/GLW4_2020/processed), not glw_pro_dir (the 2015 GLW4 dir).
-livestock_no_file <- file.path(glw2020_pro_dir, "livestock_number_number.tif")
+livestock_no_file <- file.path(glw2020_pro_dir, paste0("livestock_number_number_", .r3_tag, ".tif"))
 livestock_no <- terra::rast(livestock_no_file)
 cat("0.2.2.1) Using livestock number file:", basename(livestock_no_file), "\n")
 
@@ -423,7 +427,7 @@ cat("0.2.2.1) Using livestock number file:", basename(livestock_no_file), "\n")
 livestock_vop_file <- file.path(
   glw2020_pro_dir,
   "variable=vop_intld15-2021",
-  "glw4-2020_vop_intld15-2021.tif"
+  paste0("glw4-2020_vop_intld15-2021_", .r3_tag, ".tif")
 )
 livestock_vop <- terra::rast(livestock_vop_file)
 cat("0.2.2.2) Using livestock vop intd file:", basename(livestock_vop_file), "\n")
@@ -431,7 +435,7 @@ cat("0.2.2.2) Using livestock vop intd file:", basename(livestock_vop_file), "\n
 livestock_vop_usd_file <- file.path(
   glw2020_pro_dir,
   "variable=vop_nominal-usd-2021",
-  "glw4-2020_vop_nominal-usd-2021.tif"
+  paste0("glw4-2020_vop_nominal-usd-2021_", .r3_tag, ".tif")
 )
 livestock_vop_usd <- terra::rast(livestock_vop_usd_file)
 cat("0.2.2.2) Using livestock vop usd file:", basename(livestock_vop_usd_file), "\n")

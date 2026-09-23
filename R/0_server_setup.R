@@ -190,6 +190,41 @@ if (climdat_source == "atlas_delta") {
   }
 }
 
+# 0.7) Exposure grid (issue #30, p.steward 2026-09-23) ####
+# Exposure RASTERS (0.4.0 / 0.4.1 / 0.4.2) and exposure TABLES (0.4.4) exist at
+# two resolutions, chosen per run by EXPOSURE_RES = 0.05 | 0.25 and stated in
+# every output name (suffix res-05 / res-25 - the Atlas precedent is
+# gaul24_a{level}_res-05.tif). No default: a run that does not say which grid
+# it is on is how a 0.05 deg reference and a 0.25 deg product came to disagree
+# without anyone noticing. R/3 stays on base_rast_path (the hazard grid) and
+# reads the tag that matches it (res_tag_of). Pure: defining this does no I/O.
+exposure_grid <- function(res = Sys.getenv("EXPOSURE_RES", Sys.getenv("EXPOSURE_ZONAL_RES", "")),
+                          override = Sys.getenv("EXPOSURE_ZONAL_BASE_RAST", ""),
+                          caller = "exposure_grid") {
+  defaults <- c("0.05" = file.path(project_dir, "metadata", "base_raster.tif"),
+                "0.25" = file.path(project_dir, "metadata", "base_rast_nexgddp.tif"))
+  path <- override
+  if (!nzchar(path)) {
+    if (!res %in% names(defaults)) {
+      stop(caller, ": set EXPOSURE_RES to one of ", paste(names(defaults), collapse = " | "),
+           " (got '", res, "'). Every exposure raster and table is written once per resolution, ",
+           "with the resolution in its name; a run must say which grid it is on.")
+    }
+    path <- defaults[[res]]
+  }
+  if (!file.exists(path)) stop(caller, ": exposure grid raster not found: ", path)
+  r <- terra::rast(path); deg <- terra::res(r)[1]
+  if (nzchar(res) && !isTRUE(all.equal(as.numeric(res), deg, tolerance = 1e-6))) {
+    stop(sprintf("%s: EXPOSURE_RES=%s but %s has res %.6f", caller, res, path, deg))
+  }
+  list(path = path, res_deg = deg, tag = sprintf("res-%02d", round(deg * 100)), rast = r)
+}
+# Tag of an existing grid (path or SpatRaster): "res-05", "res-25", ...
+res_tag_of <- function(x) {
+  r <- if (inherits(x, "SpatRaster")) x else terra::rast(x)
+  sprintf("res-%02d", round(terra::res(r)[1] * 100))
+}
+
 # 1) Setup workspace ####
 # Increase download timeout (in seconds) to avoid timeouts during large data pulls
 options(timeout = 600)
