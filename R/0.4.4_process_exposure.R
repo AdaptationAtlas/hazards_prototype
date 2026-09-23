@@ -44,8 +44,37 @@ source(file.path(project_dir, "R", "_helpers.R"))
 
 # 0) Load and prepare admin rasters ####
 .log044("section 0: loading admin rasters + geographies")
-  ## 0.0) Base rast ####
-  base_rast <- terra::rast(base_rast_path)
+  ## 0.0) Zonal base raster ####
+  # Issue #30, p.steward 2026-09-23. This script extracts EXPOSURE rasters
+  # (MapSPAM 0.05deg, GLW 0.083deg) onto admin units. It has no reason to use
+  # the HAZARD grid, and under climdat_source = nexgddp `base_rast_path` IS the
+  # hazard grid (0.25deg). Rasterising GAUL24 at 0.25deg loses about a third of
+  # adm2 polygons and 16 adm1 polygons - they never own a cell, so they never
+  # get a row (node 4,342 adm2 vs live 6,482 per crop x tech). The live
+  # crop-livestock_all was built at 0.05deg (main, atlas_delta base).
+  #
+  # So the zonal grid is fixed at 0.05deg here regardless of climdat_source,
+  # defaulting to the atlas_delta base raster the live object was built on.
+  # EXPOSURE_ZONAL_BASE_RAST overrides it for a deliberate experiment. Inputs
+  # that 0.4.0/0.4.1 already resampled to 0.25deg are sum-resampled back up in
+  # sections 1/2: mass-conserving, area-weighted within each 0.25deg cell, so
+  # their sub-national split is coarser than the grid suggests. Nominal-USD
+  # (0.4.2) and prod/area inputs are native 0.05deg. R/3 stays on the hazard grid.
+  zonal_base_path <- Sys.getenv("EXPOSURE_ZONAL_BASE_RAST",
+                                file.path(project_dir, "metadata", "base_raster.tif"))
+  if (!file.exists(zonal_base_path)) {
+    stop("section 0: zonal base raster not found: ", zonal_base_path,
+         " (set EXPOSURE_ZONAL_BASE_RAST or restore metadata/base_raster.tif)")
+  }
+  base_rast <- terra::rast(zonal_base_path)
+  .zonal_res_tag <- paste0("res-", gsub("\\.", "", formatC(terra::res(base_rast)[1], format = "f", digits = 3)))
+  .log044(sprintf("section 0: zonal base = %s | res %s | ext %s | tag %s",
+                  zonal_base_path, paste(signif(terra::res(base_rast), 4), collapse = "x"),
+                  paste(signif(as.vector(terra::ext(base_rast)), 6), collapse = ","), .zonal_res_tag))
+  if (exists("base_rast_path") && !isTRUE(all.equal(terra::res(terra::rast(base_rast_path)), terra::res(base_rast)))) {
+    .log044(sprintf("section 0: NOTE hazard grid (base_rast_path) is %s deg; this script's zonal grid is %s deg by design",
+                    signif(terra::res(terra::rast(base_rast_path))[1], 4), signif(terra::res(base_rast)[1], 4)))
+  }
 
   ## 0.1) Geographies #####
 overwrite_boundary_zones<-T
@@ -60,10 +89,14 @@ Geographies<-lapply(1:length(geo_files_local),FUN=function(i){
 })
 names(Geographies)<-names(geo_files_local)
 
-base_rast<-terra::rast(base_rast_path)+0
+base_rast<-terra::rast(zonal_base_path)+0
 
+# The zonal rasters are cached under a RESOLUTION-TAGGED name. The plain
+# `<name>_zonal.tif` in boundaries_int_dir is the HAZARD-grid cache shared with
+# R/2.1, R/2.2, R/3 and R/3.1 (all 0.25deg under nexgddp); writing a 0.05deg
+# raster there would silently hand them the wrong grid.
 boundaries_zonal<-lapply(1:length(Geographies),FUN=function(i){
-  file_path<-file.path(boundaries_int_dir,paste0(names(Geographies)[i],"_zonal.tif"))
+  file_path<-file.path(boundaries_int_dir,paste0(names(Geographies)[i],"_zonal_",.zonal_res_tag,".tif"))
   if(!file.exists(file_path)|overwrite_boundary_zones==T){
     zones<-Geographies[[i]]
     zone_rast <- rasterize(
