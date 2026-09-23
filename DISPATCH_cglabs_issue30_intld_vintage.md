@@ -712,6 +712,13 @@ dispatch, after Pete's grid decision - two re-extractions would be one too many.
 
 ## Block F — 0.05° zonal grid + a0 refresh + full 0.4.4 re-extraction (2026-09-23)
 
+> **HOLD — do not run Block F (2026-09-23, later).** Pete: "I thought I had decided to run nexgddp
+> at 0.25 native resolution deliberately — are you downscaling it?" The hazards are not touched,
+> but the 0.05° zonal grid makes §1/§2 sum-resample the 0.25° VoP rasters (0.4.0/0.4.1) up to
+> 0.05°, i.e. it does downscale the exposure rasters by area within each 0.25° cell. That is a
+> design decision, not a caveat, and it conflicts with the 0.25°-native choice. Block F stays
+> written but is not authorised. Resolution below when Pete decides.
+
 Pete's decision: **go**. Code is on `develop` at `abe93e7`. This block writes locally, takes
 hours, and **still does not publish**. It ends with the publisher's dry-run.
 
