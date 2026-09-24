@@ -280,13 +280,23 @@ if (!file.exists(livestock_no_file)) {
 }
 
 files <- list.files(glw2020_pro_dir, ".tif$", recursive = TRUE, full.names = TRUE)
-.n_files0 <- length(files); .files_all <- files   # pre-filter listing, for the twin check below
-files <- files[!grepl("_res-[0-9]{2}\\.tif$", files) | grepl(paste0("_", .zonal_res_tag, "\\.tif$"), files)]
-.log044(sprintf("section 2: %d tifs -> %d after keeping %s + untagged", .n_files0, length(files), .zonal_res_tag))
-# A legacy UNTAGGED twin of a tagged raster (pre-2026-09-23 output left on disk) would be
-# extracted as a second "native" copy and double the rows. Refuse; move it aside.
-.twins <- intersect(sub("_res-[0-9]{2}\\.tif$", ".tif", .files_all[grepl("_res-[0-9]{2}\\.tif$", .files_all)]), .files_all[!grepl("_res-[0-9]{2}\\.tif$", .files_all)])   # ANY tagged twin, either grid
-if (length(.twins)) stop("section 2: untagged legacy twin(s) of tagged rasters present - move aside before extracting:\n  ", paste(basename(.twins), collapse = "\n  "))
+.n_files0 <- length(files)
+# 0.4.1 is the ONLY producer under glw2020_pro_dir and every one of its outputs now
+# carries a resolution tag, so an untagged tif here is always a legacy leftover
+# (e.g. the old-layout variable=number_number/*.tif) and would be extracted as a
+# second copy: Block H's res-05 table came out exactly one `number` block
+# (87,036 rows) larger than live for this reason. Unlike section 1 there are no
+# legitimate untagged native inputs here - keep THIS tag only, refuse anything else.
+.untagged <- files[!grepl("_res-[0-9]{2}\\.tif$", files)]
+if (length(.untagged)) stop("section 2: untagged legacy raster(s) under glw2020_pro_dir - 0.4.1 writes tagged files only; move these aside:\n  ",
+                            paste(sub(paste0("^", glw2020_pro_dir, "/?"), "", .untagged), collapse = "\n  "))
+files <- files[grepl(paste0("_", .zonal_res_tag, "\\.tif$"), files)]
+.log044(sprintf("section 2: %d tifs -> %d tagged %s", .n_files0, length(files), .zonal_res_tag))
+# Exactly one livestock-number raster, and it must be the one section 0's grid asked for.
+.num <- files[grepl("number_number", basename(files))]
+if (!identical(normalizePath(.num, mustWork = FALSE), normalizePath(livestock_no_file, mustWork = FALSE))) {
+  stop("section 2: expected exactly one livestock number raster (", basename(livestock_no_file), "), found: ", paste(basename(.num), collapse = ", "))
+}
 
 # v9: parallel GLW extraction, mirroring the MapSPAM block above.
 glw_workers <- min(8L, length(files))
