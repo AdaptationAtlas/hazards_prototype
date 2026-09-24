@@ -975,3 +975,57 @@ res-05 dry-run: target key `..._res-05.parquet`, "first publish ... gating again
 unsuffixed key", 14 columns identical, rows within 25 %, would also refresh the alias;
 res-25 dry-run: rows reported **informational** (~0.70, --allow-res-change), columns identical.
 Paste all verbatim. **STOP - no publish.** R/3 is not re-run in this block.
+
+---
+
+## cglabs response — Block H complete, STOPPED at H5 (2026-09-23)
+
+Ran @ `9bdbe63`, no publish, R/3 not run. Everything per expectation bar the usd side of one
+gate (stale R/3 product, not a Block H defect — detail at end).
+
+### H1 — grep
+`exposure_grid <- function` in setup = 1; `exposure_grid(caller` in 0.4.0/0.4.1/0.4.2/0.4.4 = 1 each.
+
+### H2 — producers ×2 res (grid line | elapsed | exit)
+```
+0.4.1 @0.25  rc=0  93s   base_rast_nexgddp.tif | res 0.2500 | tag res-25
+0.4.0 @0.25  rc=0  193s  base_rast_nexgddp.tif | res 0.2500 | tag res-25
+0.4.2 @0.25  rc=0  209s  base_rast_nexgddp.tif | res 0.2500 | tag res-25
+0.4.1 @0.05  rc=0  173s  base_raster.tif       | res 0.0500 | tag res-05
+0.4.0 @0.05  rc=0  338s  base_raster.tif       | res 0.0500 | tag res-05
+0.4.2 @0.05  rc=0  419s  base_raster.tif       | res 0.0500 | tag res-05
+```
+
+### H3 — 52 legacy untagged rasters moved to `_pre30_backup/legacy_untagged_rasters/`.
+
+### H4 — tables ×2 res (rc=0, twin-guard passed, no refusal)
+```
+@0.25: §0 tag res-25 | §1 66->45 keep res-25+untagged, extract 39 | §2 15->8 | §3.1 14 cols | §3.3 540282 rows
+@0.05: §0 tag res-05 | §1 66->45 keep res-05+untagged, extract 39 | §2 15->8 | §3.1 14 cols | §3.3 768818 rows
+```
+8 tagged parquets written (`exposure_adm_sum…`, `vop_intld15-2021…`, `vop_nominal-usd-2021…`,
+`hpop…` × res-05/res-25). res-05 intld = 768,818 (live-exact); res-25 = 540,282.
+
+### H5 — gates + dry-runs
+- `usd_total_vs_reference --res 0.25`: **intld PASS** (median 1.000, [0.9598,1], names `intld15-2021`);
+  usd FAIL (1 material pair out) → overall GATE FAIL.
+- `--res 0.05`: **intld PASS** (median 0.999, [0.7952,1.231]); usd FAIL (7 out) → GATE FAIL.
+- `qaqc_vop_vs_faostat` (res-25): **livestock median 1.00 (242/242), crop median 0.99 (36/50)** — as expected.
+- **res-05 dry-run:** target `crop-livestock_all_res-05.parquet`; no live object (first publish),
+  gating against legacy unsuffixed key; `ok: 14 columns identical`; `ok: rows local 7934782 vs
+  live 7847746` (**PASS**, 1.011x); would also refresh the deprecated unsuffixed alias.
+- **res-25 dry-run:** target `crop-livestock_all_res-25.parquet`; first publish vs legacy baseline;
+  `ok: 14 columns identical`; `rows local 5576118 vs baseline 7847746 (0.71x) - INFORMATIONAL:
+  baseline is the 0.05 deg legacy object and this is res-25 (--allow-res-change)`.
+
+### One deviation — usd side of usd_total_vs_reference (not a Block H defect)
+The **intld side passes both resolutions** and names `intld15-2021`. The **usd side fails both** —
+same stale-R/3 issue flagged in Block F: the gate compares the fresh reference against the old-grid
+`haz-freq-exp_vop_nominal-usd-2021` product, which is not re-run (per the "do not run R/3" rule).
+`qaqc_vop_vs_faostat` confirms the **reference itself is sound** (crop 0.99 / livestock 1.00), so
+this is a stale-product artifact that clears when R/3 is eventually re-run — Pete's separate call.
+
+### STOP
+Both resolution reference sets built and named; res-05 row gate passes for publish; res-25
+informational as designed. Nothing on S3. New tagged parquets local only; legacy rasters + prior
+tables in `_pre30_backup/`. duckdb still via `python-duckdb` + shim (no CLI on node).
