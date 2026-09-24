@@ -1029,3 +1029,74 @@ this is a stale-product artifact that clears when R/3 is eventually re-run — P
 Both resolution reference sets built and named; res-05 row gate passes for publish; res-25
 informational as designed. Nothing on S3. New tagged parquets local only; legacy rasters + prior
 tables in `_pre30_backup/`. duckdb still via `python-duckdb` + shim (no CLI on node).
+
+---
+
+## macbook response to Block H — one number to close before publish (2026-09-24)
+
+Verified from here: S3 untouched (legacy key Last-Modified 2026-01-21; `_res-05` / `_res-25`
+keys 404). Both resolution sets built, res-25 intld = 540,282 = Block E's 541,130 minus exactly
+the 8 stale-a0 rows × 106 combos (848) - the a0 refresh landed as predicted. res-05 intld =
+768,818 = live to the row. Good.
+
+### The row gate passed on the wrong number
+
+res-05 total **7,934,782** vs live **7,847,746** = **+87,036 = exactly live's `number` block**
+(12 species-systems × 7,253). Live, per exposure × unit, for comparison:
+
+| exposure | unit | crops | rows |
+|---|---|---|---|
+| harv-area | ha | 42 | 1,827,756 |
+| phys-area | ha | 42 | 1,827,756 |
+| prod | t | 42 | 1,827,756 |
+| number | number | 12 | 87,036 |
+| vop | intld15 | 42 | 768,818 |
+| vop | usd | 43 | 1,508,624 |
+
+0.4.1 writes exactly one livestock-number raster, so the second copy is a **legacy file under
+`glw2020_pro_dir`** that §2 admitted as an untagged "native" input. Your §2 count fits: 15 tifs
+listed → 8 kept at *both* resolutions = 6 tagged VoP + the tagged number + **one untagged
+leftover**. Prime suspect: the old-layout `variable=number_number/*.tif` (main's 0.4.4 read it
+there). H3's glob covered `variable=vop_*` and the root `livestock_number_number.tif`, not that
+subdir, and the twin guard cannot see it because the base name differs. **Hypothesis until you list
+the files** - the fix below is correct either way.
+
+### Fix - `d85763c`
+
+§2 now keeps **only** this grid's tagged rasters and **stops** naming any untagged tif under
+`glw2020_pro_dir` (0.4.1 is its only producer and writes tagged files only), then checks that
+exactly one livestock-number raster survives and that it is the one §0 asked for. §1 unchanged.
+
+### Ask (short: list, move, re-run 0.4.4 twice, re-dry-run)
+
+```bash
+cd <hazards_prototype> && git fetch origin && git checkout develop && git pull --ff-only   # d85763c or later
+
+# I1. what did section 2 see? (paste)
+Rscript -e 'source("R/0_server_setup.R"); cat(sub(paste0("^", glw2020_pro_dir, "/?"), "", list.files(glw2020_pro_dir, ".tif$", recursive = TRUE, full.names = TRUE)), sep = "\n")'
+
+# I2. per exposure x unit on the res-05 table, vs the live table above (paste)
+Rscript -e 'suppressPackageStartupMessages({library(arrow); library(data.table)}); source("R/0_server_setup.R")
+  d <- as.data.table(read_parquet(file.path(exposure_dir, "exposure_adm_sum_spam20-20_glw420-20_res-05.parquet"), col_select = c("exposure","unit","crop")))
+  print(d[, .(crops = uniqueN(crop), rows = .N), by = .(exposure, unit)][order(exposure, unit)])'
+
+# I3. move every UNTAGGED tif under glw2020_pro_dir aside (0.4.4 now refuses otherwise)
+Rscript -e 'source("R/0_server_setup.R")
+  f <- list.files(glw2020_pro_dir, ".tif$", recursive = TRUE, full.names = TRUE); f <- f[!grepl("_res-[0-9]{2}\\.tif$", f)]
+  to <- file.path(exposure_dir, "_pre30_backup", "legacy_untagged_rasters", "glw2020"); dir.create(to, recursive = TRUE, showWarnings = FALSE)
+  for (x in f) { file.rename(x, file.path(to, basename(x))); cat("moved", sub(paste0("^", glw2020_pro_dir, "/?"), "", x), "\n") }; cat(length(f), "moved\n")'
+
+# I4. tables again, both resolutions (FORCE so section 2 re-extracts; minutes, not hours)
+STAMP=$(date +%Y%m%d-%H%M%S)
+for RES in 0.25 0.05; do EXPOSURE_RES=$RES FORCE_OVERWRITE=1 Rscript R/0.4.4_process_exposure.R > logs/0.4.4_res${RES}_I_$STAMP.log 2>&1 || { echo "FAILED @ $RES"; break; }
+  grep -E "section 2: .* tagged|section 3.3: [0-9]+ rows" logs/0.4.4_res${RES}_I_$STAMP.log; done
+
+# I5. dry-runs again (read-only)
+Rscript scripts/r3_publish_tiers.R --reference-only --res 0.05 --allow-unit-vintage-change --dry-run
+Rscript scripts/r3_publish_tiers.R --reference-only --res 0.25 --allow-unit-vintage-change --allow-res-change --dry-run
+```
+
+**Expect:** I2 shows `number` at 174,072 before the fix; after I4 the res-05 dry-run reports rows
+**local 7,847,746 vs live 7,847,746** - identical, not 1.011x - and `number` = 87,036. If the
+extra block is anything other than a second `number` copy, stop and paste I1/I2; the hypothesis
+is wrong and I want to see the listing before touching anything else. **STOP - no publish.**
