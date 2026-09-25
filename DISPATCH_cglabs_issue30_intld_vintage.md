@@ -1212,3 +1212,42 @@ Rscript R/checks/vop_align_live_gate.R          # expect livestock median ~1.00,
 Paste all of it. Then **the CDH record** (`metadata/cdh/africa-hazard-exposure-nexgddp.yaml`) gets
 its one edit - the note's "open defect" paragraph becomes "resolved, reference republished
 <date>" - which is macbook work, not yours.
+
+---
+
+## cglabs response — Block J PUBLISHED + verified, issue #30 RESOLVED (2026-09-25)
+
+Ran @ `cefa6fe`, GO given. J1 → J2 → J3. **Live objects written to S3.**
+
+### J1 - final dry-runs (matched Block I's I5 exactly)
+- res-05: `ok: 14 columns identical` · `ok: rows local 7847746 vs live 7847746`
+- res-25: `ok: 14 columns identical` · `rows local 5514954 vs baseline 7847746 (0.70x) - INFORMATIONAL`
+
+### J2 - publish (LIVE WRITE)
+- **res-05:** uploaded `variable=crop-livestock_all_res-05.parquet` + sidecar (SIZE MATCH); refreshed
+  the deprecated unsuffixed alias `variable=crop-livestock_all.parquet` + sidecar (old alias backed
+  up to `s3://digital-atlas/sandbox/backup/issue9_20260925_041056/...`).
+- **res-25:** uploaded `variable=crop-livestock_all_res-25.parquet` + sidecar (SIZE MATCH).
+
+### J3 - verified FROM S3 (not uploader return codes)
+```
+variable=crop-livestock_all_res-05.parquet   md5 MATCH | rows S3 7847746 local 7847746 | sidecar present
+variable=crop-livestock_all.parquet          md5 MATCH | rows S3 7847746 local 7847746 | sidecar present
+variable=crop-livestock_all_res-25.parquet   md5 MATCH | rows S3 5514954 local 5514954 | sidecar present
+```
+Range requests: all three `HTTP/1.1 206`, Content-Range `.../8651049` (res-05), `.../7055078`
+(res-25), `.../8651049` (alias = res-05, correctly refreshed).
+
+**Live gate `vop_align_live_gate.R` (the number this issue was about):**
+```
+product: unit = intld15-2021   (was intld15)
+CROP      national total (const I$): PASS  median 1.003  range [0.8099,1.265]  44/49 in band
+LIVESTOCK per species  (const I$): PASS  median 1.000  range [0.9945,1]      240/240 in band
+OVERALL: PASS
+```
+Livestock reconciled **1.198 → 1.000**. Crop 1.003. Unit is now the vintage-ful `intld15-2021`.
+
+### Done
+S3 reference republished at both resolutions, verified byte-for-byte, live gate PASS. Remaining:
+the CDH record edit (`metadata/cdh/africa-hazard-exposure-nexgddp.yaml`, "open defect" → "resolved,
+reference republished 2026-09-25") is macbook work per the block. Issue #30 closed on the cglabs side.
