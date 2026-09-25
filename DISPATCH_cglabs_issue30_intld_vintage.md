@@ -1152,11 +1152,12 @@ Nothing on S3. New tables local only; legacy untagged rasters in `_pre30_backup/
 
 ---
 
-## Block J — PUBLISH the exposure reference at both resolutions (2026-09-25) — **GATED ON PETE'S GO**
+## Block J — PUBLISH the exposure reference at both resolutions (2026-09-25) — **AUTHORISED**
+
+> **GO given by p.steward 2026-09-25 ("publish").** J1 → J2 → J3, in order. Stop on any J1 difference from Block I's I5.
 
 Everything upstream is closed: res-05 table = live on rows (7,847,746) and columns (14), `number`
-= 87,036, res-25 informational as designed, both dry-runs green at `696d1e1`+. **Do not run this
-block until Pete has said "publish" in so many words.** It writes to S3.
+= 87,036, res-25 informational as designed, both dry-runs green at `696d1e1`+. It writes to S3.
 
 ### What it writes
 
