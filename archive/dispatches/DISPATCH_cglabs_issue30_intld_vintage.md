@@ -1251,3 +1251,21 @@ Livestock reconciled **1.198 → 1.000**. Crop 1.003. Unit is now the vintage-fu
 S3 reference republished at both resolutions, verified byte-for-byte, live gate PASS. Remaining:
 the CDH record edit (`metadata/cdh/africa-hazard-exposure-nexgddp.yaml`, "open defect" → "resolved,
 reference republished 2026-09-25") is macbook work per the block. Issue #30 closed on the cglabs side.
+
+---
+
+## macbook close-out (2026-09-25)
+
+Independently verified from here after Block J: all three keys 200 with sidecars, Last-Modified
+2026-09-25 04:11, range requests 206; `unit` on both resolutions is `intld15-2021` /
+`nominal-usd-2021` and equals `unit_full`; sidecars carry `zonal_grid` (res-05 → base_raster.tif,
+res-25 → base_rast_nexgddp.tif). CDH record updated in one edit (`e44ac5c`): defect paragraph →
+resolved, both resolutions named, res-25 identified as the one to divide this product by, strict
+v0.3.0 validation and prettier clean.
+
+**Issue #30 is closed.** Thread archived. Left open, each its own item:
+- R/3 re-run (usd side of `usd_total_vs_reference.R` compares a stale product; nominal-USD rasters
+  are now genuinely on 0.25°, so the usd hazard product would shift slightly).
+- CDH record for the exposure denominator itself (none exists).
+- Publisher for the per-unit family keys (`variable=vop_intld15-2021.parquet` etc.), or their removal.
+- 0.4.2 nominal-USD pearl-millet (~6 kUSD KEN vs 27 M I$) - price-fill miss, separate issue.
