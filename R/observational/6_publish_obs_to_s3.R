@@ -573,22 +573,29 @@ name_fn_gfm <- function(x) {
   }, character(1), USE.NAMES = FALSE)
 }
 
+# S3DirUploader calls name_fn on the WHOLE path vector, so this must be
+# vectorised. The previous scalar version took strsplit(...)[[1]] - the first
+# file's tokens - and stamped every one of the 1,404 climatology COGs into the
+# single partition variable=PTOT/period=annual/clim=wmo_1991-2020/stat=max/
+# (confirmed on S3 2026-09-25). Re-publish + delete of the stale keys pending.
 name_fn_climatology <- function(x) {
-  fname <- basename(x)
-  base  <- tools::file_path_sans_ext(fname)
-  parts <- strsplit(base, "_", fixed = TRUE)[[1]]
-  if (length(parts) != 4L) {
-    stop(sprintf(
-      "Unexpected climatology filename shape (expected 4 underscore-tokens): %s",
-      fname
-    ))
-  }
-  var    <- parts[1]
-  period <- parts[2]
-  clim   <- parts[3]
-  stat   <- parts[4]
-  sprintf("variable=%s/period=%s/clim=%s/stat=%s/%s",
-          var, period, clim_translate(clim), stat, fname)
+  vapply(x, function(path) {
+    fname <- basename(path)
+    base  <- tools::file_path_sans_ext(fname)
+    parts <- strsplit(base, "_", fixed = TRUE)[[1]]
+    if (length(parts) != 4L) {
+      stop(sprintf(
+        "Unexpected climatology filename shape (expected 4 underscore-tokens): %s",
+        fname
+      ))
+    }
+    var    <- parts[1]
+    period <- parts[2]
+    clim   <- parts[3]
+    stat   <- parts[4]
+    sprintf("variable=%s/period=%s/clim=%s/stat=%s/%s",
+            var, period, clim_translate(clim), stat, fname)
+  }, character(1), USE.NAMES = FALSE)
 }
 
 # Tier-1 + Tier-2 upload specs. Each entry has the inputs S3DirUploader
