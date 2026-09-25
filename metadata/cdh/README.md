@@ -3,7 +3,7 @@
 CGIAR Climate Data Hub (CDH) **v0.3.0** metadata records for the datasets the Adaptation Atlas
 publishes, reads or cites. **25 records validate against the strict profile; 3 are drafts.**
 
-Last updated 2026-09-18.
+Last updated 2026-09-25.
 
 ```
 metadata/cdh/*.yaml         strict — pass the full profile, submittable to cdh-catalog
@@ -62,7 +62,7 @@ cross-field checks.
 | `mapspam2020-adaptation-atlas-ssa` | CC-BY-4.0 | not submitted |
 | `africa-admin-boundaries-gaul2024` | CC-BY-4.0 | not submitted |
 | `africa-population-worldpop-aggregated` | CC-BY-4.0 | not submitted |
-| `africa-hazard-exposure-nexgddp` | CC-BY-4.0 | not submitted — **see the defect note** |
+| `africa-hazard-exposure-nexgddp` | CC-BY-4.0 | not submitted — denominator defect resolved 2026-09-25 (#30) |
 | `kenya-population-knbs-projections` | LicenseRef-KNBS-All-Rights-Reserved | **must not be submitted** — see below |
 | `kenya-population-grid3` | CC-BY-4.0 | **retired** — PR #39 closed, kept local |
 
