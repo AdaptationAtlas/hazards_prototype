@@ -1149,3 +1149,65 @@ back to **87,036**; all other exposure×unit match live.
 res-05 reference now byte-matches live on row count and columns; res-25 informational as designed.
 Nothing on S3. New tables local only; legacy untagged rasters in `_pre30_backup/`. (usd side of
 `usd_total_vs_reference` still the stale-R/3 artifact from Block H - unchanged, Pete's R/3 call.)
+
+---
+
+## Block J — PUBLISH the exposure reference at both resolutions (2026-09-25) — **GATED ON PETE'S GO**
+
+Everything upstream is closed: res-05 table = live on rows (7,847,746) and columns (14), `number`
+= 87,036, res-25 informational as designed, both dry-runs green at `696d1e1`+. **Do not run this
+block until Pete has said "publish" in so many words.** It writes to S3.
+
+### What it writes
+
+| local | S3 key | gate baseline |
+|---|---|---|
+| `exposure_adm_sum_spam20-20_glw420-20_res-05.parquet` (+ `.json`) | `variable=crop-livestock_all_res-05.parquet` (+ `.json`) **and** the legacy unsuffixed key (deprecated alias) | legacy key |
+| `exposure_adm_sum_spam20-20_glw420-20_res-25.parquet` (+ `.json`) | `variable=crop-livestock_all_res-25.parquet` (+ `.json`) | legacy key, rows informational |
+
+Backups of anything overwritten go to `s3://digital-atlas/sandbox/backup/issue9_<STAMP>/...`
+(the publisher does that itself; `s3fs` upload with `ACL = "public-read"`, never `s3_file_copy`).
+
+### J1 - one last dry-run pair, immediately before (state can drift)
+
+```bash
+cd <hazards_prototype> && git fetch origin && git checkout develop && git pull --ff-only
+Rscript scripts/r3_publish_tiers.R --reference-only --res 0.05 --allow-unit-vintage-change --dry-run
+Rscript scripts/r3_publish_tiers.R --reference-only --res 0.25 --allow-unit-vintage-change --allow-res-change --dry-run
+```
+Both must still say `ok: 14 columns identical` and res-05 `rows local 7847746 vs live 7847746`.
+If anything differs from Block I's I5, **stop**.
+
+### J2 - publish (LIVE WRITE)
+
+```bash
+Rscript scripts/r3_publish_tiers.R --reference-only --res 0.05 --allow-unit-vintage-change 2>&1 | tee logs/publish_ref_res-05_$(date +%Y%m%d-%H%M%S).log
+Rscript scripts/r3_publish_tiers.R --reference-only --res 0.25 --allow-unit-vintage-change --allow-res-change 2>&1 | tee logs/publish_ref_res-25_$(date +%Y%m%d-%H%M%S).log
+```
+
+### J3 - verify from S3, not from the uploader's return codes (the upload path has no verify step)
+
+```bash
+Rscript -e '
+  suppressPackageStartupMessages({library(arrow); library(data.table); library(s3fs)}); source("R/0_server_setup.R")
+  base <- "s3://digital-atlas/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/"
+  chk <- function(local, key) {
+    tmp <- tempfile(fileext = ".parquet"); s3fs::s3_file_download(paste0(base, key), tmp)
+    a <- tools::md5sum(local); b <- tools::md5sum(tmp)
+    cat(sprintf("%-38s md5 %s | rows S3 %d local %d | sidecar %s\n", key, if (a == b) "MATCH" else "MISMATCH", nrow(read_parquet(tmp)), nrow(read_parquet(local)),
+        if (s3fs::s3_file_exists(paste0(base, key, ".json"))) "present" else "MISSING")) }
+  chk(file.path(exposure_dir, "exposure_adm_sum_spam20-20_glw420-20_res-05.parquet"), "variable=crop-livestock_all_res-05.parquet")
+  chk(file.path(exposure_dir, "exposure_adm_sum_spam20-20_glw420-20_res-05.parquet"), "variable=crop-livestock_all.parquet")
+  chk(file.path(exposure_dir, "exposure_adm_sum_spam20-20_glw420-20_res-25.parquet"), "variable=crop-livestock_all_res-25.parquet")'
+# public read + range requests (the notebook reads over HTTPS with DuckDB-WASM):
+for k in crop-livestock_all_res-05 crop-livestock_all_res-25 crop-livestock_all; do
+  curl -sI -r 0-99 "https://digital-atlas.s3.amazonaws.com/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=$k.parquet" | grep -E "^HTTP|Content-Range"; done
+```
+**Expect:** three `MATCH`, sidecars present, `HTTP/1.1 206` on all three. Then the live gate from
+any machine - livestock should now reconcile, this is the number the whole issue was about:
+```bash
+Rscript R/checks/vop_align_live_gate.R          # expect livestock median ~1.00, crop ~1.007; unit intld15-2021
+```
+Paste all of it. Then **the CDH record** (`metadata/cdh/africa-hazard-exposure-nexgddp.yaml`) gets
+its one edit - the note's "open defect" paragraph becomes "resolved, reference republished
+<date>" - which is macbook work, not yours.
