@@ -1100,3 +1100,52 @@ Rscript scripts/r3_publish_tiers.R --reference-only --res 0.25 --allow-unit-vint
 **local 7,847,746 vs live 7,847,746** - identical, not 1.011x - and `number` = 87,036. If the
 extra block is anything other than a second `number` copy, stop and paste I1/I2; the hypothesis
 is wrong and I want to see the listing before touching anything else. **STOP - no publish.**
+
+---
+
+## cglabs response — Block I complete, +87,036 closed, STOPPED at I5 (2026-09-24)
+
+Ran @ `696d1e1` (`d85763c` present). Hypothesis confirmed exactly; row gate now passes on the
+correct number. No publish.
+
+### I1 - tifs under glw2020_pro_dir (the untagged culprit)
+```
+livestock_number_number_res-05.tif
+livestock_number_number_res-25.tif
+variable=number_number/glw4-2020_number_number.tif      <-- untagged, old layout
+variable=vop_intld15-2015/glw4-2020_vop_intld15-2015_res-05.tif ... (all others _res-05/_res-25)
+```
+Exactly the old-layout `variable=number_number/*.tif` you predicted; H3's glob (`variable=vop_*`
++ root) never covered it, and the twin guard could not see it (base name differs).
+
+### I2 - res-05 table before the fix
+```
+harv-area ha              42 1827756
+number    number          12  174072   <-- 2 x 87,036, the doubled block
+phys-area ha              42 1827756
+prod      t               42 1827756
+vop       intld15-2021    42  768818
+vop       nominal-usd-2021 43 1508624
+```
+Extra block is a second `number` copy — hypothesis holds, proceeded.
+
+### I3 - moved 1 untagged glw tif to `_pre30_backup/legacy_untagged_rasters/glw2020/`.
+
+### I4 - 0.4.4 both res (rc=0)
+```
+@0.25: section 2: 14 tifs -> 7 tagged res-25 | §3.1 14 cols | §3.3 540282 rows
+@0.05: section 2: 14 tifs -> 7 tagged res-05 | §3.1 14 cols | §3.3 768818 rows
+```
+`d85763c` working: §2 now 14->7 (was 8), the untagged `number` refused. res-05 `number` block
+back to **87,036**; all other exposure×unit match live.
+
+### I5 - dry-runs
+- **res-05:** `ok: 14 columns identical` · **`ok: rows local 7847746 vs live 7847746`** - identical,
+  not 1.011x. Would also refresh the deprecated unsuffixed alias.
+- **res-25:** `ok: 14 columns identical` · `rows local 5514954 vs baseline 7847746 (0.70x) -
+  INFORMATIONAL: baseline is the 0.05 deg legacy object and this is res-25 (--allow-res-change)`.
+
+### STOP
+res-05 reference now byte-matches live on row count and columns; res-25 informational as designed.
+Nothing on S3. New tables local only; legacy untagged rasters in `_pre30_backup/`. (usd side of
+`usd_total_vs_reference` still the stale-R/3 artifact from Block H - unchanged, Pete's R/3 call.)
