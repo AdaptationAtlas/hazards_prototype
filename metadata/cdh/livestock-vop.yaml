@@ -1,0 +1,119 @@
+# CDH v0.3.0 record - Livestock Value of Production (GLW4 / FAOSTAT) for Adaptation Atlas SSA
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: livestock-vop
+title: Gridded Livestock of the World (GLW4) Value of Production (Adaptation Atlas SSA)
+description: >
+  Spatial density distribution and economic value of production for major livestock species
+  (cattle, sheep, goats, camels, pigs, chickens) across Sub-Saharan Africa. Based on FAO Gridded
+  Livestock of the World v4 (GLW4 2020) downscaled to 1 km / 5-minute resolution, harmonised to
+  FAOSTAT country production values and national livestock populations, expressed in constant 2015
+  international dollars (vop_intld15).
+resource_type: dataset
+license: CC-BY-4.0 # FAO open data licensing
+keywords:
+  [
+    livestock density,
+    value of production,
+    glw4,
+    faostat,
+    pastoralism,
+    rangeland,
+    cattle,
+    shoats,
+    camels,
+    sub-saharan africa,
+    exposure,
+  ]
+
+note: >
+  Attribution: "Data provided by FAO Gridded Livestock of the World (GLW4) and compiled for the African Agriculture Adaptation Atlas (AAAA)."
+  CURRENCY BASIS MUST REMAIN CONSTANT INTERNATIONAL DOLLARS (vop_intld15). Several value-of-production
+  metrics coexist (nominal USD, constant 2015 international dollars). To avoid severe distortions
+  when pairing livestock with MapSPAM crop VoP, both portfolios must be evaluated on the identical
+  constant 2015 international dollar basis. Past unit mismatches produced ~7x errors in cattle exposure.
+  DENSITY VS PIXEL COUNTS. GLW4-2020 layers represent per-km2 animal density (D-DA), not raw counts
+  per grid cell. Spatial aggregation across county administrative polygons must weight by grid-cell
+  land area (excluding open waterbodies).
+  LIVESTOCK VULNERABILITY LAGS. Unlike annual field crops which fail within a single dry dekad,
+  pastoral herds exhibit biological inertia: mortality, distress sales, and conception deficits lag
+  rainfall anomalies by 6 to 12 months.
+
+access: public
+
+contact:
+  - organization: Food and Agriculture Organization of the United Nations (FAO)
+    url: https://www.fao.org/livestock-systems/global-distributions/en/
+    roles: [producer, licensor]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+
+citation:
+  title: Gridded Livestock of the World (GLW4) Value of Production, SSA 2020
+  authors:
+    - "Gilbert, M."
+    - "Nicolas, G."
+    - "Cinardi, G."
+    - "Van Boeckel, T. P."
+    - "Vanwambeke, S. O."
+    - "Wint, G. R. W."
+    - "Robinson, T. P."
+    - "Steward, P."
+  date: "2026"
+  publisher: Food and Agriculture Organization of the United Nations (FAO) / Adaptation Atlas
+  url: https://doi.org/10.1038/sdata.2018.227
+
+related_publications:
+  - doi: 10.1038/sdata.2018.227
+
+created: "2026-09-25"
+updated: "2026-09-25"
+
+spatial:
+  bbox: [-26.0, -35.0, 58.0, 28.0]
+  crs: EPSG:4326
+  geography: [sub-saharan-africa, kenya]
+  resolution:
+    - label: 1 km (0.008333 deg)
+      value: 0.008333
+      unit: deg
+
+temporal:
+  date: "2020"
+
+variables:
+  - name: vop_intld15
+    description: Gross value of livestock production in constant 2015 international dollars.
+    unit: Intl$
+  - name: cattle_density
+    description: Cattle animal density per square kilometre.
+    unit: head/km2
+  - name: shoats_density
+    description: Sheep and goat animal density per square kilometre.
+    unit: head/km2
+  - name: camel_density
+    description: Camel animal density per square kilometre.
+    unit: head/km2
+
+data:
+  - name: exposure_vop_parquet
+    description: County and sub-county crop and livestock value of production baseline table.
+    s3: s3://digital-atlas/domain=exposure/type=economic/exposure_vop.parquet
+    media_type: application/vnd.apache.parquet
+
+cdh:
+  domain: [agriculture, exposure]
+  usage:
+    intended_uses:
+      - Weighting multi-hazard climate exposure by economic rangeland capital.
+      - Comparing baseline pastoral livestock wealth against crop production across counties.
+    not_recommended_for:
+      - use: Tracking real-time intra-annual livestock herd movements or nomad grazing ranges.
+        reason: GLW4 models structural spatial density, not seasonal migratory tracking.
+        use_instead: High-frequency dekadal MODIS NDVI pasture anomaly tracking and NDMA drought bulletins.

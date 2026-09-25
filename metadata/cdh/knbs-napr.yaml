@@ -1,0 +1,123 @@
+# CDH v0.3.0 record - KNBS National Agricultural Production Reports (NAPR)
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: knbs-napr
+title: KNBS National Agricultural Production Reports (Crops, Livestock & Products)
+description: >
+  Audited subnational agricultural statistics from the Kenya National Bureau of Statistics (KNBS)
+  National Agricultural Production Reports (NAPR 2023/24 and 2024/25 editions). Contains county-level
+  annual area harvested (ha), production (t), and gross farm-gate value (KES) across 22 major food
+  and cash commodities (maize, beans, sorghum, tea, coffee, potatoes, pyrethrum, wheat, dairy milk,
+  beef), cross-verified via dual-engine deterministic parsing (PyMuPDF) and additivity gates.
+resource_type: dataset
+license: LicenseRef-KNBS # Official statistics of the Republic of Kenya
+keywords:
+  [
+    knbs,
+    napr,
+    crop production,
+    livestock population,
+    farm gate value,
+    agricultural statistics,
+    kenya counties,
+    adm1,
+    maize,
+    beans,
+    pastoralism,
+  ]
+
+note: >
+  Attribution: "Data extracted deterministically from the Kenya National Bureau of Statistics (KNBS) National Agricultural Production Reports (2023/24, 2024/25), Republic of Kenya."
+  PROJECT RULE D1 COMPLIANCE: ZERO LLM INFERENCE. Every number served from this dataset is parsed
+  directly from published government PDF tables by deterministic code (_sources/napr_extract.py) and
+  passed through an automated machine additivity gate. No language model reads, types, or imputes any
+  numerical value.
+  BLANK IS NOT ZERO. KNBS data is compiled from administrative expert-estimates. Missing county-years
+  represent unobserved reporting gaps, never zero production. Records with missing data are preserved
+  as null and never imputed as false zeroes.
+  CROSS-EDITION REBASE (2025 EDITION PRIORITY). Where reporting years overlap between the 2023/24
+  and 2024/25 editions, the latest edition is prioritised because it incorporates KNBS retrospective
+  prior-year revisions.
+  ADMINISTRATIVE ESTIMATES VS CENSUS SURVEYS. NAPR figures represent annual ministerial and county
+  directorate of agriculture administrative estimates, not full-enumeration agricultural censuses.
+
+access: public
+
+contact:
+  - organization: Kenya National Bureau of Statistics (KNBS)
+    url: https://www.knbs.or.ke/
+    roles: [producer, licensor]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+
+citation:
+  title: National Agricultural Production Reports (2023/24, 2024/25)
+  authors:
+    - "Kenya National Bureau of Statistics (KNBS)"
+  date: "2025"
+  publisher: Republic of Kenya, Kenya National Bureau of Statistics, Nairobi
+  url: https://www.knbs.or.ke/
+
+created: "2026-09-25"
+updated: "2026-09-25"
+
+spatial:
+  bbox: [33.9, -4.7, 41.9, 5.5]
+  crs: EPSG:4326
+  geography: [kenya]
+
+temporal:
+  start_date: "2019"
+  end_date: "2024"
+
+dimensions:
+  - name: year
+    type: temporal
+    description: Calendar/crop harvest year (2019-2024).
+  - name: county
+    type: categorical
+    description: Kenya 47 counties (ADM1).
+  - name: commodity
+    type: categorical
+    description: Agricultural commodity or livestock species.
+
+variables:
+  - name: area_ha
+    description: Area harvested in hectares.
+    unit: ha
+  - name: production_t
+    description: Production quantity in metric tonnes.
+    unit: t
+  - name: value_ksh
+    description: Gross farm-gate economic value in Kenya Shillings.
+    unit: KES
+  - name: head
+    description: Total livestock population count (head).
+    unit: head
+
+data:
+  - name: knbs_napr_county_production_parquet
+    description: County-level crop area, production and farm-gate value table.
+    s3: s3://digital-atlas/domain=agriculture/type=production/knbs_napr_county_production.parquet
+    media_type: application/vnd.apache.parquet
+  - name: knbs_napr_livestock_parquet
+    description: County-level livestock population census estimates.
+    s3: s3://digital-atlas/domain=agriculture/type=livestock/knbs_napr_livestock.parquet
+    media_type: application/vnd.apache.parquet
+
+cdh:
+  domain: [agriculture]
+  usage:
+    intended_uses:
+      - Constructing empirical historical crop balance sheets paired with ENSO/IOD phases.
+      - Evaluating county-level production deviation during climate shock years.
+    not_recommended_for:
+      - use: Sub-county spatial allocation or field-level crop model validation without Level 2 downscaling.
+        reason: Administrative estimates are compiled at county level and lack GPS field coordinates.
+        use_instead: Satellite remote sensing NDVI and WRSI proxies for sub-county spatial heterogeneity.

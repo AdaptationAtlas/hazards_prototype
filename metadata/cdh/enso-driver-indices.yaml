@@ -1,0 +1,145 @@
+# CDH v0.3.0 record - Ocean climate teleconnection drivers for KE-ENSO Explorer
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: enso-driver-indices
+title: Ocean Climate Teleconnection Drivers (Pacific RONI, Indian Ocean DMI & Western-V)
+description: >
+  Harmonised multi-decadal monthly and seasonal time series of primary equatorial ocean-atmosphere
+  climate teleconnection drivers governing Kenyan rainfall: NOAA CPC Relative Oceanic Niño Index
+  (RONI) for Pacific ENSO state; NOAA CPC / HadISST Dipole Mode Index (DMI) for Indian Ocean Dipole
+  state; and Funk et al. Western-V SST index for MAM Long Rains teleconnections. Standardised and
+  compiled into analysis-ready parquet tables (1950 to present).
+resource_type: dataset
+license: CC0-1.0 # US Government public domain (NOAA CPC) combined with open academic indices
+keywords:
+  [
+    enso,
+    roni,
+    oceanic nino index,
+    indian ocean dipole,
+    iod,
+    dmi,
+    western v,
+    teleconnections,
+    sea surface temperature,
+    kenya rainfall,
+    seasonal forecasting,
+  ]
+
+note: >
+  Attribution: "Data provided by NOAA Climate Prediction Center (CPC) and compiled for the African Agriculture Adaptation Atlas (AAAA)."
+  RELATIVE OCEANIC NINO INDEX (RONI) OVER RAW NINO 3.4. CPC computes RONI by subtracting the
+  tropical-mean (20S-20N) SST anomaly from the Nino 3.4 anomaly. This detrending removes secular
+  tropical ocean warming (~+0.6 degC since 1950) that otherwise causes historical cool baselines to
+  register as artificial permanent El Nino conditions. Always use RONI for multi-decadal analogue
+  selection.
+  INDIAN OCEAN DIPOLE (IOD) DOMINANCE IN SHORT RAINS. The DMI is the primary physical forcing of
+  Kenyan rainfall variability during the October-December (OND) Short Rains. Warm ENSO and positive
+  IOD co-occur frequently but can decouple; off-diagonal states (El Nino + negative IOD) produce
+  subdued anomalies.
+  SEASONAL ASYMMETRY AND LONG RAINS (MAM) DECOUPLING. Pacific ENSO indices exhibit weak correlation
+  with Kenyan rainfall during the March-May (MAM) Long Rains (r ~ 0.08). The Western-V index
+  captures western Pacific warm pool gradients that govern convective subsidence over the Horn of
+  Africa, providing independent predictive skill where ENSO fails.
+  Z-SCORE STANDARDIZATION REQUIREMENT. Pacific SST anomalies (~0.5-2.5 degC) and regional rainfall
+  anomalies exhibit a 10.6:1 variance distortion ratio. Multi-driver analogue selection must use
+  z-score standardisation across all driver dimensions to ensure equal physical weighting.
+
+access: public
+
+contact:
+  - organization: NOAA Climate Prediction Center
+    url: https://www.cpc.ncep.noaa.gov/
+    roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+
+citation:
+  title: Ocean Climate Teleconnection Drivers (RONI, DMI, Western-V), 1950-2026
+  authors:
+    - "NOAA Climate Prediction Center"
+    - "Funk, C."
+    - "Steward, P."
+  date: "2026"
+  publisher: African Agriculture Adaptation Atlas / NOAA CPC
+  url: https://www.cpc.ncep.noaa.gov/data/indices/
+
+related_publications:
+  - doi: 10.1002/qj.3266
+  - doi: 10.1029/2022EF003454
+  - doi: 10.1038/35044055
+
+created: "2026-09-25"
+updated: "2026-09-25"
+
+spatial:
+  bbox: [-180.0, -20.0, 180.0, 20.0]
+  crs: EPSG:4326
+  geography: [global-oceans, equatorial-pacific, indian-ocean]
+
+temporal:
+  start_date: "1950-01"
+  end_date: null
+
+dimensions:
+  - name: month
+    type: temporal
+    description: Calendar month of observation (1950 to present).
+    step: P1M
+  - name: season
+    type: categorical
+    description: Three-month seasonal rolling window (MAM, OND, etc.).
+
+variables:
+  - name: nino34_anom_noaa
+    dimensions: [month]
+    description: Unadjusted NOAA CPC Nino 3.4 SST anomaly relative to 1991-2020 base period.
+    unit: Cel
+  - name: roni
+    dimensions: [season]
+    description: Relative Oceanic Nino Index (Nino 3.4 minus tropical-mean anomaly).
+    unit: Cel
+  - name: dmi_ersst
+    dimensions: [month]
+    description: Dipole Mode Index computed from NOAA ERSSTv6 (WTIO minus SETIO).
+    unit: Cel
+  - name: dmi_hadisst
+    dimensions: [month]
+    description: Dipole Mode Index computed from Met Office HadISST.
+    unit: Cel
+  - name: wnp_std_mam
+    dimensions: [season]
+    description: Standardised Western North Pacific SST index for MAM Long Rains teleconnections.
+    unit: dimensionless
+  - name: wep_std_ond
+    dimensions: [season]
+    description: Standardised West Equatorial Pacific SST index for OND Short Rains.
+    unit: dimensionless
+
+data:
+  - name: driver_indices_parquet
+    description: Monthly multi-driver table combining Pacific, Indian Ocean, and Western-V indices.
+    s3: s3://digital-atlas/domain=climate/type=teleconnections/driver_indices.parquet
+    media_type: application/vnd.apache.parquet
+  - name: enso_drivers_seasonal_parquet
+    description: Seasonal rolling windows for RONI, DMI, and ENSO state classifications.
+    s3: s3://digital-atlas/domain=climate/type=teleconnections/enso_drivers_seasonal.parquet
+    media_type: application/vnd.apache.parquet
+
+cdh:
+  domain: [climate]
+  usage:
+    intended_uses:
+      - Selecting historical analogue seasons for Kenyan seasonal outlooks.
+      - Evaluating conditional probability distributions of rainfall anomalies.
+      - Quantifying seasonal teleconnection asymmetry between OND and MAM.
+    not_recommended_for:
+      - use: Deterministic point-forecasts of county rainfall from ocean index values alone.
+        reason: Ocean drivers alter conditional probability distributions; local weather is mediated by topography and synoptic meteorology.
+        use_instead: Ensemble probabilistic scenarios combined with official KMSA statutory outlooks.
