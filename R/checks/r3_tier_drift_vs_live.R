@@ -1,0 +1,170 @@
+#!/usr/bin/env Rscript
+# R/checks/r3_tier_drift_vs_live.R
+# =================================
+# Value-drift gate for the R/3 hazard_exposure tiers (publisher gate G6).
+#
+# The publisher's G1-G5 check size, none/any parity, scenarios, severity and
+# column names. None of them looks at a value, so a product that has shifted
+# (new exposure grid, wrong raster grep-matched, a stale tif that survived
+# parking) would ship unobserved. This compares a freshly baked tier against the
+# tier currently live and says, in populations, how much moved and where.
+#
+# What is compared (both files, identical filter):
+#   scenario == "historic", admin0 rows (admin1_name NA), hazard in {any, none}.
+#   T(iso3, crop, hazard_vars) = sum(any + none) = total exposed value of that
+#   crop in that country, because freq_any + freq_none = 1 per pixel. T must be
+#   the same for every hazard_vars of a (iso3, crop); the spread is reported.
+#   T is then collapsed to (iso3, crop) and the two sides are full-joined.
+#
+# Populations (a single ratio bound cannot serve all of them - #9 lesson):
+#   material    live T >= min_live and iso3 not in small_iso3   -> gated on tol_pair, median on tol_median
+#   small       iso3 in small_iso3 (narrow / border-heavy)       -> own table, gated on tol_small only
+#   immaterial  live T <  min_live                               -> reported, gated on flips only
+#   unmatched   (iso3, crop) present on one side only            -> must be empty
+#   flips       material on one side, ~0 on the other            -> must be empty (the dangerous direction)
+#   livestock   crop matches cattle|sheep|goats|pigs|poultry     -> control: inputs are renames, ratio ~ 1 (tol_control)
+#   totals      continental sum per crop                        -> gated on tol_total
+#   parity      row count, distinct(hazard_vars), distinct(scenario) identical
+#
+# Why these defaults (2026-09-26, p.steward): the 0.4.2 crop nominal-USD raster
+# moved from 0.05 deg (aligned in-flight by R/3) to native 0.25 deg. Production is
+# mass-conserved either way; what changes is which country's price a border cell
+# gets. That nets out continentally (tol_total 5 %), is small for most countries
+# (tol_pair 25 %, median 3 %), and can be large for narrow countries (GMB, SWZ,
+# RWA...), which is why they are reported in their own table rather than used to
+# widen the main bound. A FAIL on the material population, on livestock, or a
+# flip is a defect, not an expected shift.
+#
+# arrow + data.table only: duckdb and arrow cannot both be attached on CGlabs.
+#
+# Usage - standalone (node, ~1 min; also how intld / ha tiers are gated new vs parked):
+#   Rscript R/checks/r3_tier_drift_vs_live.R --local <new.parquet> --live <old.parquet>
+#     [--tol-pair 0.25] [--tol-median 0.03] [--tol-total 0.05] [--tol-small 0.5]
+#     [--tol-control 0.02] [--min-live 1e6] [--small-iso3 GMB,SWZ,...]
+#   exit 0 = PASS, 1 = FAIL, 2 = usage.
+# Usage - from scripts/r3_publish_tiers.R: source() this file (defines tier_drift()
+#   and print_drift(); the CLI block below only runs when this file is the script).
+
+suppressPackageStartupMessages({ library(arrow); library(dplyr); library(data.table) })
+
+DRIFT_SMALL_ISO3_DEFAULT <- c("GMB", "SWZ", "LSO", "BDI", "RWA", "DJI", "GNQ", "GNB",
+                              "TGO", "BEN", "SLE", "CPV", "COM", "STP", "MUS", "SYC")
+DRIFT_LIVESTOCK_RE <- "cattle|sheep|goats|pigs|poultry"
+
+.drift_ts  <- function() format(Sys.time(), "%Y-%m-%d %H:%M:%S")
+.drift_log <- function(fmt, ...) cat(sprintf("[%s] [gate-drift] %s\n", .drift_ts(), sprintf(fmt, ...)))
+
+# admin0 historic any+none totals per (iso3, crop, hazard_vars), plus parity facts.
+.drift_read <- function(f) {
+  ds <- arrow::open_dataset(f)
+  d <- ds |>
+    dplyr::filter(scenario == "historic", is.na(admin1_name), hazard %in% c("any", "none")) |>
+    dplyr::select(iso3, crop, hazard_vars, hazard, value) |>
+    dplyr::collect() |> as.data.table()
+  if (!nrow(d)) stop("no admin0 historic any/none rows in ", f)
+  t_hv <- d[, .(T = sum(value, na.rm = TRUE)), by = .(iso3, crop, hazard_vars)]
+  # T is invariant across hazard_vars by construction; report the worst spread.
+  spread <- t_hv[, .(spread = if (max(T) > 0) (max(T) - min(T)) / max(T) else 0), by = .(iso3, crop)]
+  t_ic <- t_hv[, .(T = mean(T)), by = .(iso3, crop)]
+  list(
+    T = t_ic,
+    max_spread = spread[, max(spread)],
+    n_rows = nrow(ds),
+    hazard_vars = sort(unique(d$hazard_vars)),
+    scenarios = sort((ds |> dplyr::distinct(scenario) |> dplyr::collect())$scenario)
+  )
+}
+
+tier_drift <- function(local_f, live_f,
+                       tol_pair = 0.25, tol_median = 0.03, tol_total = 0.05,
+                       tol_small = 0.5, tol_control = 0.02,
+                       min_live = 1e6, small_iso3 = DRIFT_SMALL_ISO3_DEFAULT,
+                       flip_frac = 0.01) {
+  stopifnot(file.exists(local_f), file.exists(live_f))
+  a <- .drift_read(live_f); b <- .drift_read(local_f)
+  j <- merge(a$T, b$T, by = c("iso3", "crop"), all = TRUE, suffixes = c("_live", "_local"))
+  j[, ratio := T_local / T_live]
+  j[, livestock := grepl(DRIFT_LIVESTOCK_RE, crop)]
+  j[, small := iso3 %in% small_iso3]
+
+  unmatched <- j[is.na(T_live) | is.na(T_local)]
+  m <- j[!is.na(T_live) & !is.na(T_local)]
+  # A flip: real value on one side, essentially nothing on the other.
+  flips <- m[(T_live >= min_live & T_local <= flip_frac * T_live) |
+             (T_local >= min_live & T_live <= flip_frac * T_local)]
+  material   <- m[T_live >= min_live & !small & !livestock]
+  smallpop   <- m[T_live >= min_live & small & !livestock]
+  immaterial <- m[T_live <  min_live]
+  control    <- m[livestock & T_live >= min_live]
+  totals <- m[livestock == FALSE, .(T_live = sum(T_live), T_local = sum(T_local)), by = crop][T_live >= min_live]
+  totals[, ratio := T_local / T_live]
+
+  g <- function(gate, population, ok, detail) data.table(gate = gate, population = population,
+                                                         result = ifelse(ok, "ok", "FAIL"), detail = detail)
+  med <- if (nrow(material)) median(material$ratio) else NA_real_
+  gates <- rbindlist(list(
+    g("parity", "rows",        a$n_rows == b$n_rows, sprintf("live %d vs local %d", a$n_rows, b$n_rows)),
+    g("parity", "hazard_vars", setequal(a$hazard_vars, b$hazard_vars),
+      sprintf("live %d vs local %d distinct", length(a$hazard_vars), length(b$hazard_vars))),
+    g("parity", "scenarios",   setequal(a$scenarios, b$scenarios), paste(b$scenarios, collapse = ",")),
+    g("spread", "T across hazard_vars", max(a$max_spread, b$max_spread) < 1e-6,
+      sprintf("max relative spread live %.2e local %.2e (0 expected: freq_any + freq_none = 1)", a$max_spread, b$max_spread)),
+    g("unmatched", "(iso3, crop) one side only", nrow(unmatched) == 0, sprintf("%d pairs", nrow(unmatched))),
+    g("flips", sprintf("material one side, <= %.0f%% other", 100 * flip_frac), nrow(flips) == 0, sprintf("%d pairs", nrow(flips))),
+    g("total", sprintf("continental per crop (live >= %s)", format(min_live, big.mark = ",")),
+      nrow(totals) > 0 && all(abs(totals$ratio - 1) <= tol_total),
+      sprintf("%d crops; ratio range [%s, %s]; tol %.0f%%", nrow(totals), signif(min(totals$ratio), 4), signif(max(totals$ratio), 4), 100 * tol_total)),
+    g("material", "pairs within tol_pair", nrow(material) > 0 && all(abs(material$ratio - 1) <= tol_pair),
+      sprintf("%d pairs; %d outside +/-%.0f%%; range [%s, %s]", nrow(material), sum(abs(material$ratio - 1) > tol_pair), 100 * tol_pair,
+              signif(min(material$ratio), 4), signif(max(material$ratio), 4))),
+    g("material", "median within tol_median", !is.na(med) && abs(med - 1) <= tol_median,
+      sprintf("median %s; tol %.0f%%", signif(med, 4), 100 * tol_median)),
+    g("small-country", "pairs within tol_small", nrow(smallpop) == 0 || all(abs(smallpop$ratio - 1) <= tol_small),
+      sprintf("%d pairs (%s); %d outside +/-%.0f%%", nrow(smallpop), paste(sort(unique(smallpop$iso3)), collapse = ","),
+              if (nrow(smallpop)) sum(abs(smallpop$ratio - 1) > tol_small) else 0L, 100 * tol_small)),
+    g("livestock", "control ~ 1 (inputs are renames)", nrow(control) == 0 || all(abs(control$ratio - 1) <= tol_control),
+      sprintf("%d pairs; range [%s, %s]; tol %.0f%%", nrow(control),
+              if (nrow(control)) signif(min(control$ratio), 4) else NA, if (nrow(control)) signif(max(control$ratio), 4) else NA, 100 * tol_control))
+  ))
+  list(pass = all(gates$result == "ok"), gates = gates,
+       material = material[order(abs(ratio - 1), decreasing = TRUE)],
+       small = smallpop[order(abs(ratio - 1), decreasing = TRUE)],
+       immaterial = immaterial, unmatched = unmatched, flips = flips,
+       livestock = control[order(abs(ratio - 1), decreasing = TRUE)], totals = totals[order(abs(ratio - 1), decreasing = TRUE)],
+       params = list(tol_pair = tol_pair, tol_median = tol_median, tol_total = tol_total, tol_small = tol_small,
+                     tol_control = tol_control, min_live = min_live, small_iso3 = small_iso3))
+}
+
+# Prints with signif(), never round(): round() showed 0.4 as 0 once and sent a
+# diagnosis the wrong way for a round trip.
+print_drift <- function(res, label = "", n_worst = 10, log = .drift_log) {
+  fmt <- function(d) { d <- copy(d); for (c in c("T_live", "T_local", "ratio")) if (c %in% names(d)) d[[c]] <- signif(d[[c]], 4); d }
+  log("G6 value drift %s: %s", label, if (res$pass) "PASS" else "FAIL")
+  print(res$gates, nrows = 50)
+  if (nrow(res$totals))   { cat("\n  continental totals per crop (worst first):\n"); print(head(fmt(res$totals), n_worst), nrows = n_worst) }
+  if (nrow(res$material)) { cat("\n  material pairs, worst", n_worst, "of", nrow(res$material), ":\n"); print(head(fmt(res$material[, .(iso3, crop, T_live, T_local, ratio)]), n_worst), nrows = n_worst) }
+  if (nrow(res$small))    { cat("\n  small-country pairs (informational population), worst", n_worst, ":\n"); print(head(fmt(res$small[, .(iso3, crop, T_live, T_local, ratio)]), n_worst), nrows = n_worst) }
+  if (nrow(res$livestock)){ cat("\n  livestock control, worst", n_worst, ":\n"); print(head(fmt(res$livestock[, .(iso3, crop, T_live, T_local, ratio)]), n_worst), nrows = n_worst) }
+  if (nrow(res$flips))    { cat("\n  FLIPS:\n"); print(fmt(res$flips[, .(iso3, crop, T_live, T_local, ratio)]), nrows = 50) }
+  if (nrow(res$unmatched)){ cat("\n  UNMATCHED:\n"); print(fmt(res$unmatched[, .(iso3, crop, T_live, T_local)]), nrows = 50) }
+  cat(sprintf("\n  immaterial pairs (live < %s): %d, not gated except for flips\n", format(res$params$min_live, big.mark = ","), nrow(res$immaterial)))
+  invisible(res$pass)
+}
+
+# ---------------------------------------------------------------- CLI --------
+if (sys.nframe() == 0L || nzchar(Sys.getenv("DRIFT_CLI"))) {
+  args <- commandArgs(trailingOnly = TRUE)
+  opt <- function(x, d) { i <- match(x, args); if (is.na(i) || i == length(args)) d else args[i + 1] }
+  local_f <- opt("--local", ""); live_f <- opt("--live", "")
+  if (!nzchar(local_f) || !nzchar(live_f)) { cat("usage: --local <new.parquet> --live <old.parquet> [--tol-pair --tol-median --tol-total --tol-small --tol-control --min-live --small-iso3]\n"); quit(status = 2) }
+  t0 <- Sys.time()
+  .drift_log("local = %s", local_f); .drift_log("live  = %s", live_f)
+  res <- tier_drift(local_f, live_f,
+                    tol_pair = as.numeric(opt("--tol-pair", "0.25")), tol_median = as.numeric(opt("--tol-median", "0.03")),
+                    tol_total = as.numeric(opt("--tol-total", "0.05")), tol_small = as.numeric(opt("--tol-small", "0.5")),
+                    tol_control = as.numeric(opt("--tol-control", "0.02")), min_live = as.numeric(opt("--min-live", "1e6")),
+                    small_iso3 = strsplit(opt("--small-iso3", paste(DRIFT_SMALL_ISO3_DEFAULT, collapse = ",")), ",")[[1]])
+  print_drift(res, label = basename(local_f))
+  .drift_log("done in %.1f min", as.numeric(difftime(Sys.time(), t0, units = "mins")))
+  quit(status = if (res$pass) 0 else 1)
+}

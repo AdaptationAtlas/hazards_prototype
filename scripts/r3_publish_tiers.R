@@ -24,16 +24,21 @@
 #   G3 scenarios = historic + ssp126/245/370/585 (historic rows live INSIDE this file)
 #   G4 severity column == tier
 #   G5 column names identical to the live object (schema drift breaks notebook SQL)
-# Reference (--reference, OPT-IN, currently DEFERRED): columns + distinct(exposure/unit/stat)
-#   identical to live, rows within 25 %. Expected to FAIL on the column gate until the
-#   producer->canonical drift is resolved (0.4.4 emits no `unit_full`; row counts/tech
-#   levels differ) - see atlas_notebooks .../2026-05-26_exposure-producer-drift.md.
+#   G6 VALUE drift vs the live object (R/checks/r3_tier_drift_vs_live.R): admin0 historic
+#      any+none totals per (iso3, crop), in populations - continental per-crop total,
+#      material pairs (+ median), small/border-heavy countries in their own table,
+#      livestock as a "must not move" control, zero flips, zero unmatched, row/scenario
+#      parity. G1-G5 never look at a value; G6 is what notices a shifted product.
+#      --allow-value-drift demotes G6 to WARN (like --allow-schema-drift for G5).
+# Reference (--reference --res 0.05|0.25): columns + distinct(exposure/unit/stat) identical
+#   to live, rows within 25 %. Published at both resolutions 2026-09-25 (#30); the unsuffixed
+#   key is the deprecated alias of res-05.
 #
 # Convention: back up the live object to sandbox/backup/issue9_<STAMP>/... then
 # upload with ACL="public-read" (download+upload, NEVER s3_file_copy - strips ACL).
 #
 # Usage:
-#   Rscript scripts/r3_publish_tiers.R --dry-run                 # gates + backup plan, no writes
+#   Rscript scripts/r3_publish_tiers.R --dry-run                 # gates G1-G6 + backup plan, no writes
 #   Rscript scripts/r3_publish_tiers.R                           # severe,moderate,extreme
 #   Rscript scripts/r3_publish_tiers.R --tiers severe            # subset
 #   Rscript scripts/r3_publish_tiers.R --reference               # tiers + exposure reference
@@ -43,6 +48,9 @@
 #   Rscript scripts/r3_publish_tiers.R --reference-only --res 0.25 --allow-unit-vintage-change --allow-res-change   # -> ..._res-25.parquet (first publish gates vs legacy)
 #                                                                # intld15 -> intld15-2021 migration (#30)
 #   flags: --timeframe jagermeyr (default) | --allow-schema-drift (G5 -> warn) | --skip-gates
+#          --allow-value-drift (G6 -> warn) | --drift-tol-pair 0.25 | --drift-tol-median 0.03
+#          --drift-tol-total 0.05 | --drift-tol-small 0.5 | --drift-tol-control 0.02
+#          --drift-min-live 1e6 | --drift-small-iso3 GMB,SWZ,...   (see the check's header for why)
 
 t0 <- Sys.time()
 .ts  <- function() format(Sys.time(), "%Y-%m-%d %H:%M:%S")
@@ -55,6 +63,21 @@ opt  <- function(x, default) { i <- match(x, args); if (is.na(i) || i == length(
 DRY_RUN     <- flag("--dry-run")
 SKIP_GATES  <- flag("--skip-gates")
 ALLOW_DRIFT <- flag("--allow-schema-drift")
+# G6 (p.steward 2026-09-26, #30 follow-up): the crop nominal-USD raster moved from
+# 0.05 deg (aligned in-flight) to native 0.25 deg, so the usd product shifts by
+# border-cell price assignment. That shift is expected and small; a wrong raster,
+# a stale tif that survived parking, or livestock moving is not. Bound it
+# explicitly rather than reach for --skip-gates. Defaults: continental per-crop
+# within 5 %, material pairs within 25 % with median within 3 %, small countries
+# in their own table (50 %), livestock control within 2 %.
+ALLOW_VALUE_DRIFT <- flag("--allow-value-drift")
+DRIFT <- list(tol_pair    = as.numeric(opt("--drift-tol-pair", "0.25")),
+              tol_median  = as.numeric(opt("--drift-tol-median", "0.03")),
+              tol_total   = as.numeric(opt("--drift-tol-total", "0.05")),
+              tol_small   = as.numeric(opt("--drift-tol-small", "0.5")),
+              tol_control = as.numeric(opt("--drift-tol-control", "0.02")),
+              min_live    = as.numeric(opt("--drift-min-live", "1e6")),
+              small_iso3  = opt("--drift-small-iso3", ""))
 # Ship only the `.json` sidecar for each tier, leaving the live parquet untouched.
 # The #26 membership stamp can be applied to sidecars on disk in seconds, so it
 # should not cost three ~190 MB re-uploads of byte-identical parquets, nor put a
@@ -98,6 +121,12 @@ if (nzchar(Sys.getenv("ATLAS_SETUP_SKIP"))) {
   suppressMessages(suppressWarnings(source(setup)))
 }
 suppressPackageStartupMessages({ pacman::p_load(s3fs, arrow, dplyr, data.table, jsonlite) })
+# G6 lives in its own file so it can be run standalone on the node (new vs parked
+# tier, e.g. the unpublished intld / ha tiers) and unit-tested off-node on a fixture.
+.drift_src <- if (exists("project_dir")) file.path(project_dir, "R", "checks", "r3_tier_drift_vs_live.R") else "R/checks/r3_tier_drift_vs_live.R"
+if (!file.exists(.drift_src)) stop("G6 needs ", .drift_src)
+source(.drift_src)
+if (!nzchar(DRIFT$small_iso3)) DRIFT$small_iso3 <- DRIFT_SMALL_ISO3_DEFAULT else DRIFT$small_iso3 <- strsplit(DRIFT$small_iso3, ",")[[1]]
 
 BUCKET  <- "digital-atlas"
 S3_BASE <- sprintf(paste0(
@@ -205,6 +234,15 @@ if (DO_TIERS) for (tier in TIERS) {
     live_n <- arrow::open_dataset(bu$live_tmp) |> dplyr::count(hazard_vars, hazard) |> dplyr::collect()
     .log("  info: live has none rows? %s | live hazard_vars = %s", "none" %in% live_n$hazard,
          paste(sort(unique(live_n$hazard_vars)), collapse = ", "))
+    # G6 value drift vs live (populations + bounds; see R/checks/r3_tier_drift_vs_live.R)
+    t6 <- Sys.time()
+    g6 <- tier_drift(local_f, bu$live_tmp,
+                     tol_pair = DRIFT$tol_pair, tol_median = DRIFT$tol_median, tol_total = DRIFT$tol_total,
+                     tol_small = DRIFT$tol_small, tol_control = DRIFT$tol_control,
+                     min_live = DRIFT$min_live, small_iso3 = DRIFT$small_iso3)
+    print_drift(g6, label = tier, log = function(fmt, ...) .log(paste0("  ", fmt), ...))
+    .log("  G6 %s in %s", if (g6$pass) "ok" else if (ALLOW_VALUE_DRIFT) "WARN (allowed)" else "FAIL", .elapsed(t6))
+    if (!g6$pass && !ALLOW_VALUE_DRIFT) { .log("  ABORT %s: value drift outside the stated bounds (read the populations above; --allow-value-drift only after the cause is understood)", tier); next }
   }
   finish_upload(local_f, bu$s3_url)
 
@@ -224,6 +262,16 @@ if (DO_TIERS) for (tier in TIERS) {
       .log("  sidecar: ensemble = %d GCMs [%s]", em$n_members, paste(em$members, collapse = ","))
       if (!identical(as.integer(em$n_members), 18L)) {
         .log("  sidecar WARN: %d members, not 18 - published product is a partial ensemble (#26)", em$n_members)
+      }
+      # Membership must not change silently between publishes either.
+      live_sc <- paste0(bu$s3_url, ".json")
+      if (s3_exists(live_sc)) {
+        tmp_sc <- tempfile(fileext = ".json"); s3fs::s3_file_download(live_sc, tmp_sc)
+        em_live <- tryCatch(jsonlite::read_json(tmp_sc, simplifyVector = TRUE)$ensemble, error = function(e) NULL)
+        if (is.null(em_live)) .log("  sidecar info: live sidecar has no `ensemble` block")
+        else if (setequal(em_live$members, em$members)) .log("  sidecar ok: membership identical to live (%d GCMs)", length(em$members))
+        else .log("  sidecar WARN: membership differs from live - gone [%s] new [%s]",
+                  paste(setdiff(em_live$members, em$members), collapse = ","), paste(setdiff(em$members, em_live$members), collapse = ","))
       }
     }
     finish_upload(sc_local, paste0(bu$s3_url, ".json"))
