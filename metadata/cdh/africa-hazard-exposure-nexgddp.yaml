@@ -41,7 +41,8 @@ note: >
   THE DENOMINATOR THIS PRODUCT IS DIVIDED BY WAS DEFECTIVE AND WAS REPUBLISHED ON 2026-09-25
   (hazards_prototype issue 30). Consumers divide this product by the exposure denominator
   domain=exposure/type=combined/.../variable=crop-livestock_all*.parquet (crop and livestock value of
-  production; no CDH record of its own yet). Until 2026-09-25 that object's livestock rows labelled
+  production; records africa-exposure-combined-res25 and africa-exposure-combined-res05). Until
+  2026-09-25 that object's livestock rows labelled
   constant international dollars held nominal US dollar values, so livestock reconciled to FAOSTAT at
   1.198; after republication livestock reconciles at 1.000 (240 of 240 species-country pairs within
   0.90-1.10) and crop at 1.003. Its `unit` column now carries the vintage (`intld15-2021`,
@@ -90,7 +91,7 @@ citation:
   url: https://adaptationatlas.cgiar.org/
 
 created: "2026-09-18"
-updated: "2026-09-25"
+updated: "2026-09-26"
 
 spatial:
   bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present
@@ -158,6 +159,8 @@ processing:
         url: https://github.com/AdaptationAtlas/hazards
       - title: MapSPAM2020_AdaptationAtlas_SSA (record mapspam2020-adaptation-atlas-ssa)
         url: https://doi.org/10.7910/DVN/Z0HK7R
+      - title: Combined crop and livestock exposure on the 0.25 degree hazard grid, the denominator (record africa-exposure-combined-res25)
+        url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=crop-livestock_all_res-25.parquet
   - id: frequency
     description: >
       Convert hazard indices to the frequency with which each severity threshold is exceeded, per

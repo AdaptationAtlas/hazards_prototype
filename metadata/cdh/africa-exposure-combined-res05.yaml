@@ -1,0 +1,225 @@
+# CDH v0.3.0 record - the combined crop + livestock exposure table on the 0.05 degree Atlas
+# exposure grid: the notebook "Key Facts" denominator, and what the deprecated unsuffixed key
+# variable=crop-livestock_all.parquet aliases. Its 0.25 degree sibling is
+# africa-exposure-combined-res25, the one to divide the hazard product by. Separate records
+# because they resolve different sets of administrative units.
+$schema: https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/schemas/profiles/cdh.schema.json
+cdh_schema_version: v0.3.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.3.0/extensions/datacube/schema.json
+
+id: africa-exposure-combined-res05
+title: Crop and Livestock Exposure by Administrative Unit, Sub-Saharan Africa, on the 0.05 degree Atlas Grid
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  One table of what is exposed, per administrative unit: MapSPAM 2020 crop production, harvested
+  area, physical area and value of production, and GLW4 2020 livestock numbers and value of
+  production, summed onto GAUL 2024 country, first- and second-level units for Sub-Saharan Africa.
+  Zonal statistics are computed on the 0.05 degree Atlas exposure grid, which resolves nearly every
+  second-level unit, so this is the complete per-unit table of exposure totals and the denominator
+  the Atlas notebooks use for country and first-level "Key Facts". Value of production is carried on
+  two bases in one table, constant 2015 international dollars and nominal 2021 US dollars,
+  distinguished by the unit column.
+resource_type: dataset
+license: CC-BY-4.0 # derived product; principal inputs MapSPAM Adaptation Atlas SSA (CC-BY-4.0) and GAUL 2024 (CC-BY-4.0)
+keywords:
+  [
+    exposure,
+    value of production,
+    crop production,
+    livestock,
+    MapSPAM,
+    GLW4,
+    administrative units,
+    sub-saharan africa,
+  ]
+
+note: >
+  NOT THE DENOMINATOR FOR THE HAZARD PRODUCT. africa-hazard-exposure-nexgddp is built on the 0.25
+  degree grid and populates about 2,100 fewer second-level units than this table resolves; dividing
+  it by this table gives exposure shares above 100 per cent in small units. Divide it by the 0.25
+  degree sibling, africa-exposure-combined-res25. Use this table where completeness of small units
+  matters and the hazard product is not involved.
+  THE UNSUFFIXED KEY IS A DEPRECATED ALIAS OF THIS TABLE. variable=crop-livestock_all.parquet is
+  rewritten with the same bytes whenever this table is published; readers should move to the
+  resolution-explicit key.
+  THE TABLE IS MULTI-UNIT. SELECT ON `unit`. Rows with unit intld15-2021 are value of production in
+  constant 2015 international dollars, the Atlas standard basis; rows with unit nominal-usd-2021 are
+  nominal 2021 US dollars. The two must not be summed or compared. unit_full is an identical copy of
+  unit kept for older readers; unit carries the vintage since 2026-09-25 (before that it read intld15
+  and usd).
+  ROW POPULATION. Crop rows exist per technology (all, irr, rf-all, rf-highinput, rf-lowinput,
+  rf-subsistence); the whole-crop figure is tech = all. Livestock rows (cattle, sheep, goats, pigs,
+  poultry, each split highland / tropical, plus total-highland and total-tropical) have no technology
+  and carry number and vop only. Every row is a sum (stat = sum).
+  KNOWN DEFECT IN THE intld15-2021 ROWS FOR MILLET. FAOSTAT reports one item, Millet; the upstream
+  step that distributes its value places all of it on pearl-millet and none on small-millet, so
+  pearl-millet is inflated wherever finger millet dominates (Kenya, Ethiopia) and small-millet is
+  absent from the constant-dollar rows. The nominal-usd-2021 rows price each SPAM crop separately
+  and are not affected. Tracked as hazards_prototype issue 38.
+  HISTORY. Until 2026-09-25 this was the only published exposure table and its livestock
+  constant-dollar rows held nominal US dollar values, so livestock reconciled to FAOSTAT at 1.198
+  (hazards_prototype issue 30). Republished from the corrected chain on 2026-09-25: livestock now
+  reconciles at 1.000 (240 of 240 species-country pairs within 0.90-1.10), crop at 1.003, row count
+  unchanged.
+
+contact:
+  - organization: Alliance of Bioversity International and CIAT
+    url: https://alliancebioversityciat.org/
+    roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact]
+
+citation:
+  title: Africa Agriculture Adaptation Atlas combined crop and livestock exposure table, 0.05 degree grid
+  authors:
+    - "Alliance of Bioversity International and CIAT"
+  date: "2026"
+  publisher: Alliance of Bioversity International and CIAT
+  url: https://adaptationatlas.cgiar.org/
+
+created: "2026-09-26"
+updated: "2026-09-26"
+
+spatial:
+  bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present
+  crs: EPSG:4326
+  geography: [sub-saharan-africa]
+  resolution:
+    - type: xy
+      value: 0.05
+      unit: degree
+      label: 0.05 degree (Atlas exposure grid; zonal statistics only, the table itself is per administrative unit)
+
+temporal:
+  date: "2020" # MapSPAM 2020 and GLW4 2020 physical quantities; values are 2019-2023 median FAOSTAT prices and production values
+
+dimensions:
+  - name: exposure
+    type: variable
+    description: What is being counted.
+    values: [prod, harv-area, phys-area, vop, number]
+  - name: unit
+    type: unit
+    description: >
+      Unit of `value`, and for vop the currency basis. Select on this column; the constant-dollar and
+      nominal-dollar rows must not be combined.
+    values: [t, ha, intld15-2021, nominal-usd-2021, number]
+  - name: tech
+    type: technology
+    description: MapSPAM production system for crop rows; tech = all is the whole crop. Absent for livestock rows.
+    values: [all, irr, rf-all, rf-highinput, rf-lowinput, rf-subsistence]
+  - name: crop
+    type: commodity
+    description: >
+      Commodity, 54 present: 42 MapSPAM crops plus livestock species split highland / tropical
+      (cattle, sheep, goats, pigs, poultry) and their totals.
+  - name: gaul2_code
+    type: location
+    description: >
+      Administrative unit as the GAUL 2024 code. Country rows carry gaul0_code only, first-level rows
+      gaul0 and gaul1, second-level rows all three; admin1_name and admin2_name are null above their
+      level. 55 countries, 712 first-level and 6,478 second-level units are present on this grid.
+
+variables:
+  - name: value
+    dimensions: [exposure, unit, tech, crop, gaul2_code]
+    description: The exposure total for that commodity and unit, summed over the cells the unit owns on the 0.05 degree grid.
+    data_type: double
+    unit: "1"
+  - name: unit_full
+    dimensions: [unit]
+    description: Identical copy of `unit`, kept for readers written before the vintage moved into `unit`.
+    data_type: string
+    unit: "1"
+
+joins:
+  - target: https://digital-atlas.s3.amazonaws.com/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=analysis-ready/level=adm2/atlas_gaul24_a2_africa.parquet
+    left_fields: [gaul2_code]
+    right_fields: [gaul2_code]
+
+processing:
+  - id: source
+    description: >
+      MapSPAM 2020 Adaptation Atlas SSA production, harvested and physical area rasters; GLW4 2020
+      livestock density rasters; FAOSTAT gross production value, producer prices and production for
+      the currency layers.
+    derived_from:
+      - title: MapSPAM2020_AdaptationAtlas_SSA (record mapspam2020-adaptation-atlas-ssa)
+        url: https://doi.org/10.7910/DVN/Z0HK7R
+      - title: Gridded Livestock of the World 4, 2020
+        url: https://www.fao.org/livestock-systems/global-distributions/en/
+      - title: FAOSTAT Value of Agricultural Production, Producer Prices, Crops and livestock products
+        url: https://www.fao.org/faostat/en/#data
+  - id: value
+    description: >
+      Crop value in constant 2015 international dollars distributes FAOSTAT gross production value
+      across pixels by each crop's production share; crop nominal 2021 US dollars multiply SPAM
+      production by the FAOSTAT producer price (five-year median, filled from neighbours, region,
+      continent, then world); livestock values distribute FAOSTAT national values by GLW4 head share.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: R/0.4.0_create_crop_vop_intld15.R, R/0.4.1_create_livestock_vop.R, R/0.4.2_create_crop_vop_nominal_usd.R
+  - id: zonal
+    description: >
+      Rasterise GAUL 2024 units onto the 0.05 degree Atlas exposure grid (EXPOSURE_RES=0.05), sum
+      every exposure raster per unit, and stack the results into one table with the unit vintage kept
+      in the name.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype
+      version: R/0.4.4_process_exposure.R
+
+data:
+  - name: crop-livestock-all-res-05
+    description: >
+      One parquet, about 7.8 million rows and 9 MB, sorted for predicate pushdown. A JSON sidecar
+      beside it records the zonal grid, source versions and per-column descriptions. Published by
+      scripts/r3_publish_tiers.R --reference-only --res 0.05, which also refreshes the deprecated
+      alias.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=crop-livestock_all_res-05.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=crop-livestock_all_res-05.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    file_size: 9 MB
+    processing_steps: [source, value, zonal]
+  - name: crop-livestock-all-alias
+    description: >
+      Deprecated unsuffixed alias of the 0.05 degree table, byte-identical to it. Kept for readers
+      written before 2026-09-25; new readers should use the resolution-explicit key.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=crop-livestock_all.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=crop-livestock_all.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    file_size: 9 MB
+    processing_steps: [source, value, zonal]
+
+cdh:
+  domain: [agricultural-production]
+  usage:
+    intended_uses:
+      - Total crop and livestock value, production, area and head per administrative unit, complete to second level.
+      - The country and first-level "Key Facts" denominator in the Atlas notebooks.
+    not_recommended_for:
+      - use: Dividing africa-hazard-exposure-nexgddp by this table.
+        reason: >
+          The hazard product is on the 0.25 degree grid and populates about 2,100 fewer second-level
+          units; shares come out above 100 per cent in small units.
+        use_instead: africa-exposure-combined-res25, the same table on the hazard grid.
+      - use: Summing or comparing rows across the two vop units.
+        reason: intld15-2021 is constant 2015 international dollars; nominal-usd-2021 is nominal 2021 US dollars.
+        use_instead: Filter on `unit` and stay on one basis.
+      - use: Pearl-millet or small-millet figures in the intld15-2021 rows.
+        reason: Upstream allocation places all FAOSTAT Millet value on pearl-millet (hazards_prototype issue 38).
+        use_instead: The nominal-usd-2021 rows for millet, or wait for the corrected republish.
+      - use: Reading the unsuffixed key as a distinct dataset.
+        reason: It is a byte-identical alias of this table and will not be maintained separately.
+        use_instead: variable=crop-livestock_all_res-05.parquet.

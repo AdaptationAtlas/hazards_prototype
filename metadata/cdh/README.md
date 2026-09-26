@@ -1,9 +1,9 @@
 # CDH metadata records
 
 CGIAR Climate Data Hub (CDH) **v0.3.0** metadata records for the datasets the Adaptation Atlas
-publishes, reads or cites. **25 records validate against the strict profile; 3 are drafts.**
+publishes, reads or cites. **27 records validate against the strict profile; 3 are drafts.**
 
-Last updated 2026-09-25.
+Last updated 2026-09-26.
 
 ```
 metadata/cdh/*.yaml         strict — pass the full profile, submittable to cdh-catalog
@@ -63,8 +63,15 @@ cross-field checks.
 | `africa-admin-boundaries-gaul2024` | CC-BY-4.0 | not submitted |
 | `africa-population-worldpop-aggregated` | CC-BY-4.0 | not submitted |
 | `africa-hazard-exposure-nexgddp` | CC-BY-4.0 | not submitted — denominator defect resolved 2026-09-25 (#30) |
+| `africa-exposure-combined-res25` | CC-BY-4.0 | not submitted — the denominator for the hazard product (0.25° grid); millet caveat (#38) |
+| `africa-exposure-combined-res05` | CC-BY-4.0 | not submitted — 0.05° Atlas grid, aliases the unsuffixed `crop-livestock_all` key |
 | `kenya-population-knbs-projections` | LicenseRef-KNBS-All-Rights-Reserved | **must not be submitted** — see below |
 | `kenya-population-grid3` | CC-BY-4.0 | **retired** — PR #39 closed, kept local |
+
+Not in the count above: `enso-driver-indices`, `knbs-napr` and `livestock-vop` (added 2026-09-25) do
+**not** yet pass the strict profile as of 2026-09-26 — `data[].s3` instead of `data[].locations`,
+`spatial.resolution` without `type`, `cdh.domain` and `spatial.geography` values outside the enums.
+Run the validator above before submitting any of them.
 
 Drafts, each blocked on one fact:
 
