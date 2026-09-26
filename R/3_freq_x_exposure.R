@@ -384,22 +384,27 @@ cat("0.2.1.1) Using crop vop intd file:", basename(crop_vop_file), "\n")
 crop_vop_tot <- terra::rast(crop_vop_file)
 # crop_vop_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_vop15_intd15_adm_sum.parquet"))
 
-# Crop nominal-USD exposure. R3_CROP_VOP_USD=2021 -> 0.4.2 output `vop_nominal-usd-2021_all`
-# (2021 prices x SPAM production): matches the livestock side
-# (glw4-2020_vop_nominal-usd-2021), the published label `vop_nominal-usd21`, and
-# the exposure reference parquet (unit_full = nominal-usd-2021). Until 2026-09 this
-# pointed at the S3-legacy `spam_vop_usd2015_all.tif` (2015 USD, 0.05 deg): a
-# currency-vintage mismatch inside the usd product (issue #9 follow-up).
-# DEFAULT = "2015" (legacy, unchanged behaviour) until the repoint is decided;
-# set R3_CROP_VOP_USD=2021 to use the 0.4.2 raster.
-.crop_usd_vintage <- Sys.getenv("R3_CROP_VOP_USD", "2015")
+# Crop nominal-USD exposure. DEFAULT R3_CROP_VOP_USD=2021 -> 0.4.2 output
+# `spam_vop_nominal-usd-2021_all_<tag>` (2021 prices x SPAM production, on this
+# hazard grid since issue #30): matches the livestock side
+# (glw4-2020_vop_nominal-usd-2021), the published label `vop_nominal-usd21`, the
+# CDH record (nominal 2021 USD) and the exposure reference parquet
+# (unit = nominal-usd-2021). The 2026-09-16 publish already used 2021.
+# Until 2026-09-26 the default was "2015": the S3-legacy `spam_vop_usd2015_all.tif`
+# (2015 USD, 0.05 deg), a currency-vintage mismatch inside the usd product (issue
+# #9 follow-up). That raster was retired with the #30 clean-up (moved to
+# `_pre30_backup/`, whose deletion was authorised), so "2015" is now an explicit
+# opt-in that stops unless the file has been restored under mapspam_pro_dir.
+.crop_usd_vintage <- Sys.getenv("R3_CROP_VOP_USD", "2021")
 if (.crop_usd_vintage == "2021") {
   crop_vop_usd_file <- grep(paste0("variable=vop_nominal-usd-2021/spam_vop_nominal-usd-2021_all_", .r3_tag, "\\.tif$"), files, value = TRUE)
-  if (length(crop_vop_usd_file) != 1) stop("expected exactly 1 spam_vop_nominal-usd-2021_all_", .r3_tag, ".tif under mapspam_pro_dir/variable=vop_nominal-usd-2021/, found ", length(crop_vop_usd_file), " — run R/0.4.2_create_crop_vop_nominal_usd.R with EXPOSURE_RES matching this hazard grid (or set R3_CROP_VOP_USD=2015 for the legacy raster)")
-} else {
+  if (length(crop_vop_usd_file) != 1) stop("expected exactly 1 spam_vop_nominal-usd-2021_all_", .r3_tag, ".tif under mapspam_pro_dir/variable=vop_nominal-usd-2021/, found ", length(crop_vop_usd_file), " — run R/0.4.2_create_crop_vop_nominal_usd.R with EXPOSURE_RES matching this hazard grid")
+} else if (.crop_usd_vintage == "2015") {
   crop_vop_usd_file <- grep("vop_usd2015_all", files, value = TRUE)
-  if (length(crop_vop_usd_file) != 1) stop("expected exactly 1 crop vop_usd2015_all tif, found ", length(crop_vop_usd_file))
-  cat("NOTE: R3_CROP_VOP_USD=2015 (default) — crop usd exposure is the legacy 2015-USD SPAM raster while livestock is 2021 nominal USD; the product label says nominal-usd-2021 (issue #9 follow-up)\n")
+  if (length(crop_vop_usd_file) != 1) stop("R3_CROP_VOP_USD=2015: expected exactly 1 legacy crop vop_usd2015_all tif, found ", length(crop_vop_usd_file), " — the legacy 2015-USD SPAM raster was retired 2026-09 (issue #30 clean-up); restore it under mapspam_pro_dir or unset R3_CROP_VOP_USD to use the 2021 raster")
+  cat("NOTE: R3_CROP_VOP_USD=2015 (explicit opt-in) — crop usd exposure is the legacy 2015-USD SPAM raster while livestock is 2021 nominal USD; the product label says nominal-usd-2021 (issue #9 follow-up)\n")
+} else {
+  stop("R3_CROP_VOP_USD must be 2021 (default) or 2015, got '", .crop_usd_vintage, "'")
 }
 cat("0.2.1.1) Using crop vop usd file:", basename(crop_vop_usd_file), "| R3_CROP_VOP_USD =", .crop_usd_vintage, "\n")
 

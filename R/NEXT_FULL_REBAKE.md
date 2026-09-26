@@ -19,7 +19,7 @@ rebuild; §5.2 already runs under FORCE_OVERWRITE, so usually not separately nee
 ## R/3 run controls added 2026-09 (know these before launching section 4)
 | Control | Default | Effect |
 |---|---|---|
-| `R3_CROP_VOP_USD` | `2015` | `2021` points crop nominal-USD at 0.4.2's `spam_vop_nominal-usd-2021_all`, matching the livestock side, the published label and the reference parquet. The 2026-09-16 publish used `2021`. The default is the legacy raster and is a **2015-vs-2021 currency-vintage mismatch inside the usd product** - set `2021` unless you have a reason not to. |
+| `R3_CROP_VOP_USD` | `2021` (since 2026-09-26) | Crop nominal-USD = 0.4.2's `spam_vop_nominal-usd-2021_all_<res-tag>` (native on the hazard grid since #30), matching the livestock side, the published label, the CDH record and the reference parquet. The 2026-09-16 publish used `2021`. `2015` is an explicit opt-in for the legacy `spam_vop_usd2015_all.tif` (2015 USD, 0.05 deg, a **currency-vintage mismatch inside the usd product**); that raster was retired with the #30 clean-up and the branch hard-stops unless it is restored under `mapspam_pro_dir`. |
 | `R3_ALLOW_41_FAILURES` | unset | Downgrades the 4.1 hard abort to a warning. Deliberate partial runs only; a silent 4.1 failure is what hid the #9 bug for months. |
 | `SKIP_R3_4_1` | unset | Skip 4.1 when the tifs are already correct. |
 
