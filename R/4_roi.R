@@ -77,7 +77,9 @@ if(F){
 
 # 1) Load data ####
   ## 1.1) Crops - MapSPAM ####
-    file<-file.path(atlas_dirs$data_dir$exposure,"vop_nominal-usd-2021_adm_sum_spam20_glw420.parquet")
+    # 0.4.4 §3.2 writes this once per zonal grid with the tag in the name (#30); the notebook-facing
+    # copy is the 0.05 deg Atlas grid one.
+    file<-file.path(atlas_dirs$data_dir$exposure,"vop_nominal-usd-2021_adm_sum_spam20_glw420_res-05.parquet")
 
     exposure<-data.table(arrow::read_parquet(file))
     exposure<-exposure[,exposure:=paste0(exposure,"_",unit)

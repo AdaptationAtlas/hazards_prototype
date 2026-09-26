@@ -47,6 +47,8 @@
 #   Rscript scripts/r3_publish_tiers.R --reference-only --res 0.05 --allow-unit-vintage-change   # -> ..._res-05.parquet + legacy alias
 #   Rscript scripts/r3_publish_tiers.R --reference-only --res 0.25 --allow-unit-vintage-change --allow-res-change   # -> ..._res-25.parquet (first publish gates vs legacy)
 #                                                                # intld15 -> intld15-2021 migration (#30)
+#   Rscript scripts/r3_publish_tiers.R --family-only --res 0.05 --allow-unit-vintage-change      # vop_nominal-usd-2021 + vop_intld15-2021 -> _res-05 + alias
+#   Rscript scripts/r3_publish_tiers.R --family-only --res 0.25 --allow-unit-vintage-change --allow-res-change   # -> _res-25 (first publish gates vs legacy)
 #   flags: --timeframe jagermeyr (default) | --allow-schema-drift (G5 -> warn) | --skip-gates
 #          --allow-value-drift (G6 -> warn) | --drift-tol-pair 0.25 | --drift-tol-median 0.03
 #          --drift-tol-total 0.05 | --drift-tol-small 0.5 | --drift-tol-control 0.02
@@ -104,9 +106,20 @@ DO_REF      <- flag("--reference") || flag("--reference-only")
 # --allow-res-change to become informational. Columns and distinct() still gate.
 REF_RES     <- opt("--res", "")
 ALLOW_RES_CHANGE <- flag("--allow-res-change")
-if (DO_REF && !REF_RES %in% c("0.05", "0.25")) stop("--reference needs --res 0.05 | 0.25 (the reference file and its S3 key are named for the zonal grid)")
+# --family (p.steward 2026-09-26, #30 follow-up): the two single-unit twins 0.4.4
+# §3.2 / §3.3 write next to the reference, vop_nominal-usd-2021 and
+# vop_intld15-2021. Their S3 keys have been live since 2025-11-03 with no producer
+# in this repo (unit still `usd` / `intld15`), and the KE-ENSO ROI notebook reads
+# vop_nominal-usd-2021 directly. They go through the SAME code path and gates as
+# the reference: res-tagged key per resolution, unsuffixed key = deprecated alias
+# of res-05, --allow-unit-vintage-change for the label move, --allow-res-change on
+# the first res-25 publish. The third family key, vop_nominal-usd-2015, has no
+# producer at all and is retired by hand (dispatch), not by this script.
+DO_FAMILY   <- flag("--family") || flag("--family-only")
+FAMILY      <- c("vop_nominal-usd-2021", "vop_intld15-2021")
+if ((DO_REF || DO_FAMILY) && !REF_RES %in% c("0.05", "0.25")) stop("--reference / --family need --res 0.05 | 0.25 (the table and its S3 key are named for the zonal grid)")
 REF_RES_TAG <- if (nzchar(REF_RES)) sprintf("res-%02d", round(as.numeric(REF_RES) * 100)) else ""
-DO_TIERS    <- !flag("--reference-only")
+DO_TIERS    <- !(flag("--reference-only") || flag("--family-only"))
 TF          <- opt("--timeframe", "jagermeyr")
 TIERS       <- strsplit(opt("--tiers", "severe,moderate,extreme"), ",")[[1]]
 STAMP       <- format(Sys.time(), "%Y%m%d_%H%M%S")
@@ -134,15 +147,20 @@ S3_BASE <- sprintf(paste0(
   "variable=vop_nominal-usd21/period=%s/model=ENSEMBLEmean"), TF)
 REF_KEY_LEGACY <- paste0("domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/",
                          "processing=atlas-harmonized/variable=crop-livestock_all.parquet")   # deprecated alias of res-05
-REF_KEY <- if (nzchar(REF_RES_TAG)) sub("crop-livestock_all\\.parquet$", paste0("crop-livestock_all_", REF_RES_TAG, ".parquet"), REF_KEY_LEGACY) else REF_KEY_LEGACY
+# variable=<name>.parquet -> variable=<name>_<res-tag>.parquet (no tag: the legacy key itself)
+res_key <- function(key_legacy) if (nzchar(REF_RES_TAG)) sub("\\.parquet$", paste0("_", REF_RES_TAG, ".parquet"), key_legacy) else key_legacy
+REF_KEY <- res_key(REF_KEY_LEGACY)
 local_tier_dir <- file.path(atlas_dirs$data_dir$hazard_risk_vop_usd, TF)
 local_ref_dir  <- if (exists("exposure_dir")) exposure_dir else atlas_dirs$data_dir$exposure
 local_ref      <- file.path(local_ref_dir, sprintf("exposure_adm_sum_spam20-20_glw420-20%s.parquet", if (nzchar(REF_RES_TAG)) paste0("_", REF_RES_TAG) else ""))
+family_local   <- function(name) file.path(local_ref_dir, sprintf("%s_adm_sum_spam20_glw420_%s.parquet", name, REF_RES_TAG))   # 0.4.4 §3.2 / §3.3
+family_key_legacy <- function(name) sub("crop-livestock_all", name, REF_KEY_LEGACY, fixed = TRUE)
 
-cat(sprintf("\n=== issue #9 publish: tiers=%s | timeframe=%s | reference=%s | %s ===\n",
-            paste(TIERS, collapse = ","), TF, DO_REF, if (DRY_RUN) "[DRY RUN]" else "LIVE WRITE"))
+cat(sprintf("\n=== issue #9 publish: tiers=%s | timeframe=%s | reference=%s | family=%s | %s ===\n",
+            paste(TIERS, collapse = ","), TF, DO_REF, DO_FAMILY, if (DRY_RUN) "[DRY RUN]" else "LIVE WRITE"))
 .log("local tier dir = %s", local_tier_dir)
 .log("local reference = %s", local_ref)
+if (DO_FAMILY) for (f in FAMILY) .log("local family %s = %s", f, family_local(f))
 
 s3_exists <- function(url) !is.null(tryCatch(suppressWarnings(s3fs::s3_file_info(url)), error = function(e) NULL))
 download_live <- function(url) {
@@ -281,72 +299,80 @@ if (DO_TIERS) for (tier in TIERS) {
   .log("  %s done in %s", tier, .elapsed(t_tier))
 }
 
-## ------------------------------------------------------------ reference ----
-if (DO_REF) {
-  cat(sprintf("\n--- EXPOSURE REFERENCE (crop-livestock_all, %s) ---\n", REF_RES_TAG))
-  .log("  target key = %s", REF_KEY)
-  if (!file.exists(local_ref)) { .log("  FAIL: missing %s (has 0.4.4 run with EXPOSURE_RES=%s?)", local_ref, REF_RES) }
-  else {
-    .log("  local %s (%.0f MB, mtime %s)", basename(local_ref), file.size(local_ref) / 1e6, format(file.mtime(local_ref), "%Y-%m-%d %H:%M"))
-    bu <- backup_then_upload(local_ref, REF_KEY, "reference")
-    baseline_is_other_res <- FALSE
-    if (is.null(bu$live_tmp) && s3_exists(sprintf("s3://%s/%s", BUCKET, REF_KEY_LEGACY))) {
-      .log("  first publish of %s: gating against the legacy unsuffixed key as baseline", REF_RES_TAG)
-      bu$live_tmp <- download_live(sprintf("s3://%s/%s", BUCKET, REF_KEY_LEGACY))
-      baseline_is_other_res <- REF_RES != "0.05"   # the legacy object is a 0.05 deg table
-    }
-    ok <- TRUE
-    if (!SKIP_GATES) {
-      if (is.null(bu$live_tmp)) { .log("  FAIL: no live reference to compare against - refusing to publish blind"); ok <- FALSE }
-      else {
-        lc <- schema_of(bu$live_tmp); oc <- schema_of(local_ref)
-        if (!identical(lc, oc)) { .log("  FAIL columns: local-only=[%s] live-only=[%s]", paste(setdiff(oc, lc), collapse = ","), paste(setdiff(lc, oc), collapse = ",")); ok <- FALSE }
-        else .log("  ok: %d columns identical", length(oc))
-        dl <- arrow::open_dataset(bu$live_tmp); dr <- arrow::open_dataset(local_ref)
-        for (col in c("exposure", "unit", "stat")) if (col %in% oc) {
-          a <- sort((dl |> dplyr::distinct(!!rlang::sym(col)) |> dplyr::collect())[[col]])
-          b <- sort((dr |> dplyr::distinct(!!rlang::sym(col)) |> dplyr::collect())[[col]])
-          if (setequal(a, b)) .log("  ok: distinct(%s) identical = %s", col, paste(a, collapse = ","))
-          else if (col == "unit" && ALLOW_UNIT_VINTAGE && length(a) == length(b)) {
-            .log("  unit vintage change ALLOWED (--allow-unit-vintage-change), %d -> %d units:", length(a), length(b))
-            .log("    live  = [%s]", paste(a, collapse = ","))
-            .log("    local = [%s]", paste(b, collapse = ","))
-            .log("    gone  = [%s]  new = [%s]", paste(setdiff(a, b), collapse = ","), paste(setdiff(b, a), collapse = ","))
-          }
-          else {
-            .log("  FAIL distinct(%s): live=[%s] local=[%s]", col, paste(a, collapse = ","), paste(b, collapse = ","))
-            if (col == "unit" && ALLOW_UNIT_VINTAGE) {
-              .log("    --allow-unit-vintage-change given but cardinality differs (%d live vs %d local) - a unit is being lost or invented, which is the #30 failure mode. Refusing.",
-                   length(a), length(b))
-            }
-            ok <- FALSE
-          }
-        }
-        nl <- nrow(dl); nr <- nrow(dr)
-        if (abs(nr - nl) / nl <= 0.25) .log("  ok: rows local %d vs live %d", nr, nl)
-        else if (baseline_is_other_res && ALLOW_RES_CHANGE) {
-          .log("  rows local %d vs baseline %d (%.2fx) - INFORMATIONAL: baseline is the 0.05 deg legacy object and this is %s (--allow-res-change)", nr, nl, nr / nl, REF_RES_TAG)
+## ------------------------------------------------ reference + family ----
+# One code path for every table under the type=combined prefix: the canonical
+# multi-unit reference (crop-livestock_all) and the --family single-unit twins.
+# Gates: columns identical to live; distinct(exposure/unit/stat) identical (unit
+# may change vintage 1:1 with --allow-unit-vintage-change); rows within 25 % of
+# live, or informational with --allow-res-change when the only baseline is the
+# legacy 0.05 deg key. A res-05 publish also rewrites the unsuffixed alias.
+publish_table <- function(local_f, key_legacy, label) {
+  key <- res_key(key_legacy)
+  cat(sprintf("\n--- %s (%s) ---\n", toupper(label), REF_RES_TAG))
+  .log("  target key = %s", key)
+  if (!file.exists(local_f)) { .log("  FAIL: missing %s (has 0.4.4 run with EXPOSURE_RES=%s?)", local_f, REF_RES); return(invisible(FALSE)) }
+  .log("  local %s (%.0f MB, mtime %s)", basename(local_f), file.size(local_f) / 1e6, format(file.mtime(local_f), "%Y-%m-%d %H:%M"))
+  bu <- backup_then_upload(local_f, key, label)
+  baseline_is_other_res <- FALSE
+  if (is.null(bu$live_tmp) && s3_exists(sprintf("s3://%s/%s", BUCKET, key_legacy))) {
+    .log("  first publish of %s: gating against the legacy unsuffixed key as baseline", REF_RES_TAG)
+    bu$live_tmp <- download_live(sprintf("s3://%s/%s", BUCKET, key_legacy))
+    baseline_is_other_res <- REF_RES != "0.05"   # every legacy object under this prefix is a 0.05 deg table
+  }
+  ok <- TRUE
+  if (!SKIP_GATES) {
+    if (is.null(bu$live_tmp)) { .log("  FAIL: no live %s to compare against - refusing to publish blind", label); ok <- FALSE }
+    else {
+      lc <- schema_of(bu$live_tmp); oc <- schema_of(local_f)
+      if (!identical(lc, oc)) { .log("  FAIL columns: local-only=[%s] live-only=[%s]", paste(setdiff(oc, lc), collapse = ","), paste(setdiff(lc, oc), collapse = ",")); ok <- FALSE }
+      else .log("  ok: %d columns identical", length(oc))
+      dl <- arrow::open_dataset(bu$live_tmp); dr <- arrow::open_dataset(local_f)
+      for (col in c("exposure", "unit", "stat")) if (col %in% oc) {
+        a <- sort((dl |> dplyr::distinct(!!rlang::sym(col)) |> dplyr::collect())[[col]])
+        b <- sort((dr |> dplyr::distinct(!!rlang::sym(col)) |> dplyr::collect())[[col]])
+        if (setequal(a, b)) .log("  ok: distinct(%s) identical = %s", col, paste(a, collapse = ","))
+        else if (col == "unit" && ALLOW_UNIT_VINTAGE && length(a) == length(b)) {
+          .log("  unit vintage change ALLOWED (--allow-unit-vintage-change), %d -> %d units:", length(a), length(b))
+          .log("    live  = [%s]", paste(a, collapse = ","))
+          .log("    local = [%s]", paste(b, collapse = ","))
+          .log("    gone  = [%s]  new = [%s]", paste(setdiff(a, b), collapse = ","), paste(setdiff(b, a), collapse = ","))
         }
         else {
-          .log("  FAIL rows: local %d vs live %d (>25%% apart)", nr, nl)
-          if (baseline_is_other_res) .log("    baseline is a different resolution; pass --allow-res-change if that is the intended reason")
+          .log("  FAIL distinct(%s): live=[%s] local=[%s]", col, paste(a, collapse = ","), paste(b, collapse = ","))
+          if (col == "unit" && ALLOW_UNIT_VINTAGE) {
+            .log("    --allow-unit-vintage-change given but cardinality differs (%d live vs %d local) - a unit is being lost or invented, which is the #30 failure mode. Refusing.",
+                 length(a), length(b))
+          }
           ok <- FALSE
         }
       }
-    }
-    if (ok) {
-      finish_upload(local_ref, bu$s3_url)
-      ref_sidecar <- paste0(local_ref, ".json")
-      if (file.exists(ref_sidecar)) finish_upload(ref_sidecar, paste0(bu$s3_url, ".json"))
-      else .log("  sidecar MISSING (%s) - zonal_grid unrecorded on S3", basename(ref_sidecar))
-      if (REF_RES == "0.05") {
-        .log("  res-05 also refreshes the deprecated unsuffixed alias %s", REF_KEY_LEGACY)
-        bu2 <- backup_then_upload(local_ref, REF_KEY_LEGACY, "reference alias")
-        finish_upload(local_ref, bu2$s3_url)
-        if (file.exists(ref_sidecar)) finish_upload(ref_sidecar, paste0(bu2$s3_url, ".json"))
+      nl <- nrow(dl); nr <- nrow(dr)
+      if (abs(nr - nl) / nl <= 0.25) .log("  ok: rows local %d vs live %d%s", nr, nl, if (nr == nl) " (identical)" else "")
+      else if (baseline_is_other_res && ALLOW_RES_CHANGE) {
+        .log("  rows local %d vs baseline %d (%.2fx) - INFORMATIONAL: baseline is the 0.05 deg legacy object and this is %s (--allow-res-change)", nr, nl, nr / nl, REF_RES_TAG)
       }
-    } else .log("  ABORT reference: gate failure, nothing uploaded")
+      else {
+        .log("  FAIL rows: local %d vs live %d (>25%% apart)", nr, nl)
+        if (baseline_is_other_res) .log("    baseline is a different resolution; pass --allow-res-change if that is the intended reason")
+        ok <- FALSE
+      }
+    }
   }
+  if (!ok) { .log("  ABORT %s: gate failure, nothing uploaded", label); return(invisible(FALSE)) }
+  finish_upload(local_f, bu$s3_url)
+  sidecar <- paste0(local_f, ".json")
+  if (file.exists(sidecar)) finish_upload(sidecar, paste0(bu$s3_url, ".json"))
+  else .log("  sidecar MISSING (%s) - zonal_grid unrecorded on S3", basename(sidecar))
+  if (REF_RES == "0.05") {
+    .log("  res-05 also refreshes the deprecated unsuffixed alias %s", key_legacy)
+    bu2 <- backup_then_upload(local_f, key_legacy, paste(label, "alias"))
+    finish_upload(local_f, bu2$s3_url)
+    if (file.exists(sidecar)) finish_upload(sidecar, paste0(bu2$s3_url, ".json"))
+  }
+  invisible(TRUE)
 }
+
+if (DO_REF) publish_table(local_ref, REF_KEY_LEGACY, "exposure reference (crop-livestock_all)")
+if (DO_FAMILY) for (f in FAMILY) publish_table(family_local(f), family_key_legacy(f), paste("family", f))
 
 .log("complete in %s%s", .elapsed(t0), if (DRY_RUN) " [DRY RUN - nothing written]" else "")

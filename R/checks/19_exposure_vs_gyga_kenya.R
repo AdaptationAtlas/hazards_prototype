@@ -276,8 +276,16 @@ if (skip_new) {
   f_hist <- fetch(paste0(hz_base, "model=historic/severity=severe/interaction.parquet"), file.path(cache, "hazexp_usd15_annual_historic_severe.parquet"))
   f_ens  <- fetch(paste0(hz_base, "model=ENSEMBLE/severity=severe/interaction.parquet"), file.path(cache, "hazexp_usd15_annual_ENSEMBLE_severe.parquet"))
   ex_base <- paste0(s3, "domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/")
-  f_usd15 <- fetch(paste0(ex_base, "variable=vop_nominal-usd-2015.parquet"), file.path(cache, "vop_nominal-usd-2015.parquet"))
-  f_intl  <- fetch(paste0(ex_base, "variable=vop_intld15-2021.parquet"),     file.path(cache, "vop_intld15-2021.parquet"))
+  # 2026-09-26 (#30 follow-up): variable=vop_nominal-usd-2015.parquet is RETIRED from S3 - it had no
+  # producer in this repo (0.4.2 writes 2015-USD rasters, never a table) and asserted a vintage nobody
+  # maintains (#23 documents its tech=all < rf-all defect). This section only runs with a cached copy;
+  # otherwise use --skip-new-pipeline. The 2025-07 vop_usd15 numerator it pairs with is the held
+  # atlas_cmip6 route, so there is no current-vintage replacement for this comparison.
+  # vop_intld15-2021 is now the res-05 twin of crop-livestock_all_res-05 (unit intld15-2021).
+  f_usd15 <- file.path(cache, "vop_nominal-usd-2015.parquet")
+  if (!file.exists(f_usd15)) stop("vop_nominal-usd-2015.parquet is retired from S3 and not cached at ", f_usd15, " - run with --skip-new-pipeline")
+  f_intl  <- tryCatch(fetch(paste0(ex_base, "variable=vop_intld15-2021_res-05.parquet"), file.path(cache, "vop_intld15-2021_res-05.parquet")),
+                      error = function(e) fetch(paste0(ex_base, "variable=vop_intld15-2021.parquet"), file.path(cache, "vop_intld15-2021.parquet")))   # unsuffixed = deprecated res-05 alias
 
   rd <- function(f) open_dataset(f) %>% filter(admin0_name == "Kenya", crop == "maize", hazard_vars == "NDWS+NTx35+NDWL0", admin1_name %in% focus, is.na(admin2_name)) %>% collect() %>% as.data.table()
   nx <- rbind(rd(f_hist), rd(f_ens), fill = TRUE)

@@ -115,6 +115,9 @@ ex <- rbindlist(lapply(severities, function(s) rbind(extract_one("historic", s, 
 ex <- ex[is.finite(value)]   # historic files carry some NaN cells (see #12)
 log_msg("exposure rows: ", nrow(ex), "; admin1 units: ", uniqueN(paste(ex$admin0_name, ex$admin1_name)))
 
+# 2026-09-26: vop_nominal-usd-2015.parquet is retired from S3 (no producer, unmaintained vintage, #23);
+# this reads check 19's cached copy only, matching the held 2025-07 vop_usd15 numerator above.
+if (!file.exists(file.path(cache, "vop_nominal-usd-2015.parquet"))) stop("vop_nominal-usd-2015.parquet retired from S3 and not in ISSUE19_CACHE; the usd15 comparison has no current-vintage successor")
 den <- as.data.table(read_parquet(file.path(cache, "vop_nominal-usd-2015.parquet")))[
   exposure == "vop" & crop == "maize" & tech == "all" & !is.na(admin1_name) & is.na(admin2_name),
   .(admin0_name, admin1_name, vop_total = value)]
