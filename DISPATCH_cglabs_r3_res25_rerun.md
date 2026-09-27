@@ -181,6 +181,7 @@ a widened bound); publisher dry-run G1-G6 ok for all three tiers, G6 tables past
 
 ```bash
 cd <hazards_prototype>; export STAMP=$(cat logs/r3_res25_stamp.txt)
+Rscript scripts/stamp_ensemble_membership.R --timeframe jagermeyr        # membership from the hazard_risk source folder; must say 18 everywhere
 Rscript scripts/r3_publish_tiers.R 2>&1 | tee logs/publish_tiers_res25_$STAMP.log     # no --allow-*, no --skip-gates, no --reference
 ```
 Then **verify from S3, not from the uploader** (s3fs may multipart, so ETag is not md5 - re-download):
@@ -270,3 +271,91 @@ Worst pairs: ZWE wheat 112×, ZMB wheat 22.8×, oilpalm 5–21× across COD/CMR/
 
 **Not proceeding to C. Not passing `--allow-value-drift`.** Need your call on the G6 drift
 (esp. wheat/oilpalm and the spread invariant) before the full re-bake.
+
+---
+
+## macbook response — G6 FAIL is REAL and sits in 0.4.2's price fill; Block C is HELD (2026-09-27)
+
+Good stop. G6 did exactly what it was built for, and the read in your point 2 is right: the shift is in
+the **crop nominal-USD exposure raster**, not in R/3. Verified from here against S3, read-only
+(duckdb httpfs, admin0, tech = all, finite values): the old `variable=vop_nominal-usd-2021.parquet`
+(2025-11-03, built from the 2025-08 0.4.2 rasters live was built from) vs the reference republished on
+2026-09-25 at **both** resolutions:
+
+| crop | old (M USD) | new res-05 | new res-25 | r05 | r25 |
+|---|---:|---:|---:|---:|---:|
+| wheat | 3,224 | 12,412 | 12,453 | 3.85 | 3.86 |
+| oilpalm | 5,316 | 18,963 | 18,842 | 3.57 | 3.54 |
+| plantain | 19,801 | 34,611 | 34,405 | 1.75 | 1.74 |
+| cowpea | 8,005 | 5,278 | 5,267 | 0.66 | 0.66 |
+| cassava | 48,253 | 57,594 | 56,930 | 1.19 | 1.18 |
+| everything else | | | | 0.97-1.04 | 0.97-1.04 |
+
+**r05 == r25 to two decimals → the grid is innocent.** The per-country ratios are region-shaped
+constants: oilpalm **20.37×** in TZA/BDI/COD/MDG (all `East_Africa` in `regions`), **5.84×** in
+AGO/GNQ/STP/CMR/GAB/CAF/COG/NAM (`Central_Africa`), cassava **2.11×** in CAF/COG/GAB/SDN/CMR, ZWE wheat
+**112.6×**, ZMB wheat **22.8×**. That is the signature of `add_nearby()` (`R/haz_functions.R`, sourced from
+GitHub `main` at run time): the fill chain own → 5-yr median → **mean of neighbours** → **mean of region**
+→ **mean of continent** → world median, with `mean()` everywhere. One absurd producer price (Zimbabwe's
+USD-converted series is the obvious candidate for wheat; something in East Africa for oil palm fruit) is
+inherited by every country in its region that has no own price. ZMB inherits ZWE through the neighbour
+mean. 735 material pairs: 72 outside ±25 % at res-05, 138 at res-25 (the latter adds the genuine
+border-cell shifts), median 1.00 on both.
+
+**What this means:** (a) the R/3 rebuild is internally correct — `usd_total_vs_reference` PASS says
+product == reference, and the livestock control at exactly 1 says the multiply is clean. (b) The
+**republished reference itself** (`crop-livestock_all_res-05`, `_res-25` and the alias, `unit =
+nominal-usd-2021` rows) has carried these values live since 2026-09-25; its `intld15-2021` rows come
+from 0.4.0 (no producer prices) and are unaffected, as is the live hazard product (2026-09-16). (c) The
+2026-09-16 hazard product was built from 0.4.2 rasters dated 2025-08; between then and Block H the price
+inputs or the fill changed (FAO CSVs, or `main`'s `haz_functions.R`) — Block B2 below finds out which.
+(d) `usd_total_vs_reference`'s AGO/KEN/NGA default is blind to this by construction; it now takes
+`--iso3 all`.
+
+**Corrections to the dispatch, all on develop after `b34fdaa`:**
+- Sidecar: you are right, raw R/3 output never carried 18. Root cause is worse than "stamped later":
+  §4.2 derived membership from per-GCM `_int` tifs **left over in the output folder** by pre-`ensemble_only`
+  runs, so any parked/clean folder yields 0 — and Block C's parking would have zeroed every tier.
+  R/3 §4.2 and `scripts/stamp_ensemble_membership.R` now read the **source** folder
+  (`hazard_risk/<tf>`, the R/2 §5.3 per-GCM stacks) and fall back to the output folder. Block D gains
+  `stamp_ensemble_membership.R` before the publisher; the Block B `n_members == 18` expectation is
+  withdrawn for raw output and applies after the stamp.
+- G6 "spread": my invariant was wrong — some hazard_vars combinations carry no rows for some crops, on
+  live too (your 1.00). Now informational; the pair total is the max over defined combinations.
+
+**Block C is HELD.** Re-baking R/3 against contaminated exposure rasters would only reproduce the
+contamination in the product. Order is now: B2 (below) → fix 0.4.2's fill → re-run 0.4.2 at both
+resolutions → 0.4.4 at both → republish the reference (`--reference-only`, both res) → then C.
+Decisions for Pete are listed after B2.
+
+### Block B2 — price-fill probe (read-only, ~1-3 min, paste everything)
+
+```bash
+cd <hazards_prototype> && git fetch origin && git checkout develop && git pull --ff-only && git log -1 --oneline
+Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); for (f in list.files(fao_dir, "\\.csv$", full.names = TRUE)) cat(sprintf("%-55s %s %6.0f MB\n", basename(f), format(file.mtime(f), "%Y-%m-%d %H:%M"), file.size(f)/1e6))'
+EXPOSURE_RES=0.25 Rscript R/checks/probe_042_price_fill.R 2>&1 | tee logs/probe_042_$(date +%Y%m%d_%H%M%S).log
+Rscript R/checks/usd_total_vs_reference.R --res 0.25 --severity severe --iso3 all 2>&1 | tail -25
+```
+**Expect:** the probe runs 0.4.2 §1 and §3 only (its log says so), writes nothing, and prints (i) the
+FAO file mtimes and price observations per year — say whether 2022/2023 have prices; (ii) the fill-source
+counts; (iii) the top-30 prices vs the world median — **wheat ZWE and oil palm fruit in one East African
+country should be at the top, in the hundreds or thousands of times the world price**; (iv) per suspect
+crop, every country's final price, its source, and the raw FAO series for the odd ones. The `--iso3 all`
+gate is informational (product and reference share the rasters, so it should PASS; if it does not, say
+so). **STOP.** Nothing else runs until the fill is fixed.
+
+### For Pete — decisions
+
+1. **The 2026-09-25 reference publish carries these nominal-USD values live** (both resolutions + alias).
+   The `intld15-2021` rows and the live hazard product are unaffected. Options: leave until the corrected
+   republish (days), or roll the `nominal-usd-2021` rows back — there is no clean object to roll back to
+   (the pre-#30 backup has the livestock-in-nominal bug in its intld rows). Recommend: leave, fix fast,
+   say so in the two new CDH records' `note` meanwhile.
+2. **Fix shape for 0.4.2** (value-changing, needs GO): (a) discard own prices outside a sane band around
+   the world median before any averaging (e.g. 1/5-5×; Zimbabwe-type currency artefacts); (b) `median`
+   instead of `mean` in neighbour / region / continent fills; (c) log every fill source so the next
+   contamination is visible in the run log; (d) a per-crop cross-basis check (nominal ÷ intld per
+   country in a band) as an exposure gate — the same check that would have caught #38.
+3. Then re-run 0.4.2 → 0.4.4 (both res) → `--reference-only` republish (gates: columns, distinct,
+   rows identical to the 2026-09-25 objects; plus old-key vs new per-crop ratios inside ±25 % except
+   documented corrections) → Block C.

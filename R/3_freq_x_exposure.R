@@ -1286,15 +1286,23 @@ for (tx in seq_along(timeframe_choices)) {
         # anchored tstrsplit field-2 rule §4.2 already applies to `model` rather
         # than a regex over GCM names, which carry their own hyphen traps
         # (ACCESS-ESM1-5, MPI-ESM1-2-HR, TaiESM1).
-        .ens_members <- sort(setdiff(
+        # Read from the SOURCE folder (hazard_risk/<tf>, the R/2 §5.3 per-GCM stacks
+        # this section's inputs were built from), not from this output folder: §4.1
+        # runs with ensemble_only, so per-GCM tifs sit in the output folder only as
+        # leftovers of older runs, and a parked/clean output folder yields n_members
+        # = 0 (seen 2026-09-26). Fall back to the output folder if the source is empty.
+        .ens_from <- function(dir) sort(setdiff(
           unique(unlist(data.table::tstrsplit(
-            basename(files[grepl("_int_", files)]), "_", keep = 2, fixed = TRUE))),
+            basename(list.files(dir, "_int.*\\.tif$")), "_", keep = 2, fixed = TRUE))),
           c("ENSEMBLE", "ENSEMBLEmean", "ENSEMBLEsd", "historic")
         ))
+        .ens_members <- .ens_from(to_do_list[[v]]$source_dir)
+        .ens_src <- "per-GCM _int stacks in the hazard_risk source folder"
+        if (!length(.ens_members)) { .ens_members <- .ens_from(folder); .ens_src <- "per-GCM _int tifs left in the output folder (source folder had none)" }
         ensemble_info <- list(
           n_members    = length(.ens_members),
           members      = .ens_members,
-          derived_from = "model token of the per-GCM _int stacks present in the hazard_risk folder at extraction time",
+          derived_from = paste("model token of", .ens_src, "at extraction time"),
           folder       = basename(folder)
         )
         .log03(sprintf("[%s] 4.2) ensemble membership: %d GCMs (%s)", timeframe,

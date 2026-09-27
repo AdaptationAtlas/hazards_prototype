@@ -32,6 +32,11 @@ t0 <- Sys.time()
 args <- commandArgs(trailingOnly = TRUE)
 opt <- function(x, d) { i <- match(x, args); if (is.na(i) || i == length(args)) d else args[i + 1] }
 TF  <- opt("--timeframe", "jagermeyr"); SEV <- opt("--severity", "severe"); ISO <- strsplit(opt("--iso3", "AGO,KEN,NGA"), ",")[[1]]
+# `--iso3 all` gates every country. The three-country default is a smoke sample and
+# is BLIND to a country-specific input defect: 2026-09-26 it passed while wheat in
+# ZWE/ZMB and oilpalm across Central Africa had moved 5-112x (G6 caught it). admin0
+# rows only, so the full set costs seconds more.
+ISO_ALL <- identical(tolower(ISO), "all")
 # Reference resolution (p.steward 2026-09-23): 0.4.4 writes every table once per zonal grid,
 # suffixed res-05 / res-25. The hazard product is on the 0.25 deg NEX-GDDP grid, so the
 # like-for-like comparison is res-25; --res 0.05 compares against the Atlas exposure grid instead.
@@ -48,9 +53,10 @@ if (nzchar(Sys.getenv("ATLAS_SETUP_SKIP"))) { .log("ATLAS_SETUP_SKIP set"); stop
 suppressPackageStartupMessages({ pacman::p_load(arrow, dplyr, data.table) })
 ref_dir <- if (exists("exposure_dir")) exposure_dir else atlas_dirs$data_dir$exposure
 
+iso_filter <- function(d) if (ISO_ALL) d else dplyr::filter(d, iso3 %in% ISO)
 haz_total <- function(pq) {
-  arrow::open_dataset(pq) |>
-    dplyr::filter(iso3 %in% ISO, is.na(admin1_name), scenario == "historic", hazard %in% c("any", "none")) |>
+  arrow::open_dataset(pq) |> iso_filter() |>
+    dplyr::filter(is.na(admin1_name), scenario == "historic", hazard %in% c("any", "none")) |>
     dplyr::select(iso3, crop, hazard_vars, hazard, value) |> dplyr::collect() |> as.data.table()
 }
 # `unit_keep` is ordered PREFERRED VINTAGE FIRST. Accepting several vintages keeps
@@ -59,8 +65,8 @@ haz_total <- function(pq) {
 # said so. So say which vintage was actually matched, and warn when it is not the
 # decided one (p.steward 2026-09-18: the vintage stays in the name).
 ref_total <- function(pq, unit_keep) {
-  d <- arrow::open_dataset(pq) |>
-    dplyr::filter(iso3 %in% ISO, is.na(admin1_name), exposure == "vop") |>
+  d <- arrow::open_dataset(pq) |> iso_filter() |>
+    dplyr::filter(is.na(admin1_name), exposure == "vop") |>
     dplyr::select(iso3, crop, unit, tech, value) |> dplyr::collect() |> as.data.table()
   present <- d[, sort(unique(unit))]
   matched <- intersect(unit_keep, present)

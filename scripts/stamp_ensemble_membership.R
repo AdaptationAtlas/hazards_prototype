@@ -56,11 +56,17 @@ for (root in roots) for (tf in TFS) {
   folder <- file.path(root, tf)
   if (!dir.exists(folder)) { .log("skip (absent): %s", folder); next }
   t1 <- Sys.time()
-  members <- ensemble_membership(folder)
+  # 2026-09-26: prefer the SOURCE folder (hazard_risk/<tf>, the R/2 §5.3 per-GCM
+  # stacks R/3 §4.1 multiplied). Per-GCM tifs in the OUTPUT folders are leftovers of
+  # pre-ensemble_only runs and vanish when the folder is parked for a re-bake.
+  src_folder <- file.path(atlas_dirs$data_dir$hazard_risk, tf)
+  members <- if (dir.exists(src_folder)) ensemble_membership(src_folder) else character(0)
+  src_lab <- "hazard_risk source folder"
+  if (!length(members)) { members <- ensemble_membership(folder); src_lab <- "output folder leftovers" }
   sidecars <- list.files(folder, "\\.parquet\\.json$", full.names = TRUE)
-  .log("%s/%s: %d members, %d sidecars", basename(root), tf, length(members), length(sidecars))
+  .log("%s/%s: %d members (from %s), %d sidecars", basename(root), tf, length(members), src_lab, length(sidecars))
   if (!length(members)) {
-    .log("  NONE FOUND - no per-GCM _int stacks in this folder, so membership is not derivable here. NOT stamping.")
+    .log("  NONE FOUND - no per-GCM _int stacks in %s or %s, so membership is not derivable. NOT stamping.", src_folder, folder)
     fail <- TRUE; next
   }
   .log("  members = %s", paste(members, collapse = ","))
