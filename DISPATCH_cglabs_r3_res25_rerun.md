@@ -208,3 +208,65 @@ for s in severe moderate extreme; do
 Paste all of it. Retain `Data/_parked_r3_res25_$STAMP/` and the `sandbox/backup/issue9_<STAMP>/`
 objects the publisher wrote until told they can go. The CDH record edit
 (`metadata/cdh/africa-hazard-exposure-nexgddp.yaml`, `updated:` + a note sentence) is macbook work.
+
+---
+
+## cglabs response — Blocks A + B run, STOP at G6 (cglabs 2026-09-27)
+
+**STAMP = `20260926_185444`.** Repo at `b34fdaa`. Block C NOT started; nothing written to S3;
+parked set intact at `Data/_parked_r3_res25_20260926_185444/`. `DISPATCH_cglabs_family_keys.md` untouched.
+
+### Block A — clean
+Preflight green on every substantive gate. The lone process-gate FAIL was two months-old zombie
+babysitter shells (pids 2289981/2394838, R/2 jobs long finished, `until ! pgrep -f 2_calculate_haz_freq`
+loops matching themselves); killed with your OK, gate then clean. `compareGeom(base_rast,
+base_rast_nexgddp) = TRUE` → R/3 multiplies directly. All 6 inputs 1 file, res-25 except crop_ha
+(native 0.05, geom FALSE → align predicted). Legacy usd2015 absent, `_pre30_backup` absent.
+
+### Block B mechanics — clean
+Launch 18:55 → complete 20:29 (**1h34m**). Header: `overwrite4=FALSE`, all inputs res-25,
+`R3_CROP_VOP_USD=2021`, no WARN/Error/mass-not-conserved. jagermeyr vop_nominal-usd-2021 rebuild
+**23.6 min** (not the single-digit silent-fail signature). §4.1 severe usd **174 tifs == 174 parked**;
+no `failed_*`. §4.2 severe parquet/json mtime 20:06/20:07 > launch. No `.align_exposure` fired (ha was
+skip-if-exists, outputs existed, so align never needed).
+
+**Sidecar note (not blocking):** rebuilt severe sidecar has `ensemble.n_members = [0]`, `members = []`.
+Not a regression — the parked *live* 2026-09-16 sidecar is `n_members = None`, and node-side moderate/
+extreme siblings too. No node-side raw sidecar ever carries 18; that is stamped later by
+`scripts/stamp_ensemble_membership.R` and verified on S3. R/3 L1295 writes `length(.ens_members)`,
+empty at §4.2. The Block-B expectation "sidecar n_members == 18" cannot hold on raw node output.
+
+`usd_total_vs_reference --res 0.25 --severity severe`: **usd PASS** (median 0.997, range [0.9598,1]),
+intld PASS (1.000). But this samples only **AGO/KEN/NGA**.
+
+### Block B GATE — G6 value drift vs LIVE: **FAIL. ABORTED. This is the STOP.**
+G1–G5 ok. G6 severe FAIL — large, crop-specific, crop-side only:
+
+| gate | result | detail |
+|---|---|---|
+| parity rows/vars/scen | ok | 67,952,655 ==; 4==4; scenarios match |
+| spread (freq_any+freq_none=1) | **FAIL** | live 1.00 vs local **0.941** |
+| unmatched | ok | 0 |
+| flips | **FAIL** | 1 — ZWE wheat **112×** |
+| total continental/crop (5%) | **FAIL** | 33 crops, ratio [0.659, **3.879**] |
+| material pairs ±25% | **FAIL** | 629 pairs, **82 outside**, range [0.419, **112.3**] |
+| material median (3%) | ok | median 1 |
+| small-country ±50% | **FAIL** | 175 pairs, 15 outside |
+| livestock control (2%) | **ok** | range **[1,1]** — untouched |
+
+Worst continental crops: **wheat 3.88×, oilpalm 3.57×, plantain 1.74×**, cowpea 0.66×.
+Worst pairs: ZWE wheat 112×, ZMB wheat 22.8×, oilpalm 5–21× across COD/CMR/TZA/MDG/GAB/AGO/CAF/COG.
+
+**Read of it:**
+1. Livestock control exactly 1 → multiply mechanics and livestock path fine; the **crop USD exposure** moved.
+2. usd_total_vs_reference PASS = rebuilt product is internally consistent with the **new res-25 reference
+   exposure**. G6 compares vs the **2026-09-16 live** product. So the res-25 crop-USD exposure raster
+   differs from what live was built on — concentrated in wheat/oilpalm/plantain. Points at the **#30
+   exposure rebake**, not R/3 logic.
+3. The 3-country reference check missed it — worst offenders (ZWE/ZMB/COD/CMR) not in the sampled trio,
+   and wheat/oilpalm minor there.
+4. The **spread FAIL** (any+none = 0.941 locally) is separate and concerning — possible partition
+   integrity issue, not just a value shift. Wants a macbook read.
+
+**Not proceeding to C. Not passing `--allow-value-drift`.** Need your call on the G6 drift
+(esp. wheat/oilpalm and the spread invariant) before the full re-bake.
