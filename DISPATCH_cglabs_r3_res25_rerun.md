@@ -359,3 +359,51 @@ so). **STOP.** Nothing else runs until the fill is fixed.
 3. Then re-run 0.4.2 → 0.4.4 (both res) → `--reference-only` republish (gates: columns, distinct,
    rows identical to the 2026-09-25 objects; plus old-key vs new per-crop ratios inside ±25 % except
    documented corrections) → Block C.
+
+---
+
+## cglabs response — Block B2 done, root cause confirmed in 0.4.2 fill; C stays HELD (2026-09-27)
+
+Repo at `fc398be`. B2 read-only, wrote only its log (`logs/probe_042_20260927_112448.log`). Your
+diagnosis is confirmed at the source.
+
+**FAO inputs:** Prices refreshed **2026-05-15** (`Prices_E_Africa_NOFLAG.csv`, `Prices_E_All_Data_
+(Normalized).csv` 214 MB); VoP `All_Data` still **2025-08-21**. So the price CSVs changed since the
+2025-08 rasters live was built from. Producer-price obs/year: `2021:199 2022:222 2023:167` — 2022 and
+2023 both have prices and both sit inside the fill windows.
+
+**Fill sources y2021 (1705 rows):** continent mean 501 · region mean 401 · neighbours mean 398 · own
+2019-23 median 251 · own 2014-23 median 100 · world median 54. Only **21 %** carry an own price; **76 %**
+come off the mean-fill chain — high leverage for one bad own price.
+
+**Smoking gun (top prices vs world median):**
+
+| iso3 | crop | source | final USD/t | world | ratio |
+|---|---|---|---:|---:|---:|
+| ZWE | wheat | own 2019-23 median | 33,790 | 292.8 | **115×** |
+| ZMB | wheat | neighbours mean | 11,680 | 292.8 | 39.9× |
+| BWA | wheat | neighbours mean | 11,520 | 292.8 | 39.3× |
+| BDI/COD + 14 E.Afr | oilpalm | nbr/region mean | 4,638 | 149 | 31.1× |
+| AGO/CMR/… | oilpalm | continent mean | 1,330 | 149 | 8.93× |
+
+**Mechanism, confirmed:**
+1. Unfiltered artefact in own median: raw FAO ZWE wheat `2021:421, 2022:67170` (rest NA in window) →
+   median of the 2 points = 33,790. One Zimbabwe currency-conversion year survives because the window
+   is 2 points.
+2. `mean()` propagates it: ZMB/BWA (no own wheat price) inherit ZWE via neighbours mean → ~11.7k.
+   Wheat region means: Southern 7,139 (ZWE drag) vs Central 664 / East 482 / West 313 / North 306.
+3. Single-member region = that member: oilpalm East Africa has only RWA own (`2022:4820, 2023:4456` →
+   4,638); region mean over East Africa = RWA alone = 4,638, spread to 17 countries. Central/Southern/
+   North oilp own = NaN → continent mean 1,330 (itself inflated by RWA/ZWE) → 8.9× for the rest.
+
+**`usd_total_vs_reference --iso3 all` (severe, res-25): FAIL, but benign.** usd median 0.997, 1226
+material pairs, range [0.4442, 1.008]; only **2 pairs outside [0.5,2]** (UGA oilpalm 0.458 — res-25
+border-cell shift at the materiality floor). intld PASS (0.999). Product vs new reference agree to
+0.997 because both carry the contaminated rasters — blind to the fill bug by construction, as you noted.
+The FAIL is 2 marginal border pairs, not the price problem.
+
+**Block C stays HELD.** Confirms the fix belongs in 0.4.2's `add_nearby`: band-filter own prices vs
+world median **before any averaging** (kills ZWE wheat 67170 and RWA oilp 4638 at source), median not
+mean in neighbour/region/continent, log every fill source. The oilpalm case shows band-filtering own
+prices is the primary lever (median alone won't help a single-member region); both are needed.
+Awaiting Pete's GO on the fix shape (decision 2).
