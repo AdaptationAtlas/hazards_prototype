@@ -407,3 +407,103 @@ world median **before any averaging** (kills ZWE wheat 67170 and RWA oilp 4638 a
 mean in neighbour/region/continent, log every fill source. The oilpalm case shows band-filtering own
 prices is the primary lever (median alone won't help a single-member region); both are needed.
 Awaiting Pete's GO on the fix shape (decision 2).
+
+---
+
+## macbook response — fix built and replay-validated; Block C0 (GO-gated) corrects the exposure before C (2026-09-27)
+
+B2 nailed it: ZWE wheat 2022 = 67,170 surviving a two-point median, RWA oil palm fruit as the only
+`East_Africa` own price, `mean()` carrying both. 76 % of country x crop prices come off the fill chain,
+so the chain's robustness is the product's.
+
+**Fix on develop (this commit):**
+- **`R/price_fill.R`** (new, sourced by 0.4.2 by PATH — `haz_functions.R` comes from GitHub `main` at
+  run time, so a fix there would not reach a node run): `clip_prices_to_world_band()` drops any own
+  observation outside `[1/band, band]` x the world median **for that crop and year** before any
+  averaging (`PRICE_BAND`, default 5), returning the dropped rows for the log; `fill_price_robust()`
+  fills neighbours → region (excl. self) → continent → world with **medians** and writes a
+  `price_source` per row (`PRICE_FILL_STAT=mean` reproduces the old behaviour for A/B only).
+- **`R/0.4.2_create_crop_vop_nominal_usd.R` §3** uses both, prints the dropped observations and the
+  ten prices furthest from world per vintage, and writes
+  `mapspam_pro_dir/fao_prices/crop_price_<vintage>-t_fill-sources_<tag>.csv` as the audit trail.
+  Synthetic replay of your B2 numbers: ZWE wheat 33,796 → 421 (own 2021 stands), ZMB 17,108 → 420
+  (neighbours median), TZA oil palm 4,638 → 152 (continent median), RWA's own price clipped.
+- **`R/checks/vop_cross_basis_gate.R`** (new): nominal ÷ intld per (iso3, crop) on one 0.4.4 table.
+  Wide by design (material pairs within [1/10, 10], per-crop median within [1/5, 5]; the 2026-09-25
+  object's legitimate spread is 0.2-4.0) — it exists to catch a broken side, and on the live res-25
+  object it FAILS on exactly the B2 set (ZWE wheat 122x, ZMB 45x, oil palm 41-47x). The same gate
+  would have caught #38 from the other side.
+- CDH records for both resolutions now carry a "known defect in the nominal-usd-2021 rows, correction
+  in progress" paragraph naming the affected crops (decision 1: leave live, fix fast).
+
+### Block C0 — regenerate the nominal-USD exposure and republish the reference (GO-gated: writes rasters, tables and S3)
+
+> GO line goes here (Pete, decision 2 = fix shape as above).
+
+C0-1 park + re-run 0.4.2 at both resolutions (FORCE irrelevant to 0.4.2 — it always writes):
+```bash
+cd <hazards_prototype> && git fetch origin && git checkout develop && git pull --ff-only && git log -1 --oneline
+export STAMP=$(cat logs/r3_res25_stamp.txt); P=Data/_parked_r3_res25_$STAMP/mapspam_nominal_usd; mkdir -p $P
+Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); cat(normalizePath(mapspam_pro_dir), "\n")'   # confirm the dir, then:
+mv <mapspam_pro_dir>/variable=vop_nominal-usd-2015 <mapspam_pro_dir>/variable=vop_nominal-usd-2020 <mapspam_pro_dir>/variable=vop_nominal-usd-2021 <mapspam_pro_dir>/fao_prices $P/
+ls <mapspam_pro_dir> | grep -c 'vop_nominal-usd'      # expect 0 - the parked dirs must be OUTSIDE mapspam_pro_dir or 0.4.4 §1 will still see them
+for RES in 0.25 0.05; do EXPOSURE_RES=$RES Rscript R/0.4.2_create_crop_vop_nominal_usd.R > logs/0.4.2_res${RES}_fix_$STAMP.log 2>&1 || { echo "FAILED 0.4.2 @ $RES - stop"; break; }
+  grep -E 'exposure grid =|price clip:|fill sources:' logs/0.4.2_res${RES}_fix_$STAMP.log; done
+EXPOSURE_RES=0.25 Rscript R/checks/probe_042_price_fill.R --top 15 2>&1 | grep -A18 'top 15 prices'
+```
+**Expect:** `price clip` line names the dropped observations — **ZWE whea 2022 and RWA oilp 2022/2023 must
+be among them**; fill-source counts print per vintage; the probe's top-15 ratios to world are all
+**inside 5x**. Anything above 5x: STOP and paste.
+
+C0-2 targeted 0.4.4 at both resolutions (only the nominal-USD extractions are missing, so no FORCE):
+```bash
+Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); stamp <- readLines("/home/jovyan/atlas/hazards_prototype/logs/r3_res25_stamp.txt")
+  dst <- file.path("Data", paste0("_parked_r3_res25_", stamp), "exposure_tables"); dir.create(dst, recursive = TRUE, showWarnings = FALSE)
+  f <- list.files(exposure_dir, "^(exposure_adm_sum_spam20-20_glw420-20|vop_nominal-usd-2021_adm_sum_spam20_glw420)_res-(05|25)\\.parquet(\\.json)?$", full.names = TRUE)
+  stopifnot(all(file.rename(f, file.path(dst, basename(f))))); cat("parked", length(f), "§3 outputs (expect 8)\n")'
+for RES in 0.25 0.05; do EXPOSURE_RES=$RES Rscript R/0.4.4_process_exposure.R > logs/0.4.4_res${RES}_fix_$STAMP.log 2>&1 || { echo "FAILED 0.4.4 @ $RES - stop"; break; }
+  grep -E 'section 1:|section 2:|section 3.1:|section 3.3' logs/0.4.4_res${RES}_fix_$STAMP.log; done
+```
+**Expect:** §1 extracts only the nominal-USD tifs (the others reload their caches; minutes, not hours);
+§3.1 14 columns; `vop_intld15-2021` twin untouched (skip-if-exists — it did not change).
+
+C0-3 gates (paste all):
+```bash
+Rscript R/checks/vop_cross_basis_gate.R --res 0.25;  Rscript R/checks/vop_cross_basis_gate.R --res 0.05
+Rscript R/qaqc_vop_vs_faostat.R 2>&1 | tail -8                                    # intld side must be unchanged
+# new nominal-USD table vs the LAST GOOD publication (variable=vop_nominal-usd-2021.parquet, 2025-11-03, built from the 2025-08 prices)
+Rscript -e '
+  suppressPackageStartupMessages({library(arrow); library(dplyr); library(data.table); library(s3fs)}); source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R")
+  old <- tempfile(fileext = ".parquet"); s3_file_download("s3://digital-atlas/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=vop_nominal-usd-2021.parquet", old)
+  rd <- function(f) open_dataset(f) |> filter(is.na(admin1_name), exposure == "vop", tech == "all") |> select(iso3, crop, value) |> collect() |> as.data.table()
+  o <- rd(old)[is.finite(value)]; n <- rd(file.path(exposure_dir, "vop_nominal-usd-2021_adm_sum_spam20_glw420_res-05.parquet"))[is.finite(value)]
+  m <- merge(o, n, by = c("iso3", "crop"), suffixes = c("_old", "_new"))[value_old >= 1e6][, ratio := value_new / value_old]
+  cat(sprintf("material pairs %d | median %.3f | outside +/-25%%: %d\n", nrow(m), median(m$ratio), sum(abs(m$ratio - 1) > 0.25)))
+  print(m[, .(n = .N, r = signif(sum(value_new) / sum(value_old), 3)), by = crop][order(-abs(log(r)))][1:12])
+  print(m[order(-abs(log(ratio)))][1:15, .(iso3, crop, old = signif(value_old / 1e6, 3), new = signif(value_new / 1e6, 3), ratio = signif(ratio, 3))])'
+Rscript scripts/r3_publish_tiers.R --reference-only --res 0.05 --allow-unit-vintage-change --dry-run
+Rscript scripts/r3_publish_tiers.R --reference-only --res 0.25 --allow-unit-vintage-change --allow-res-change --dry-run
+Rscript scripts/r3_publish_tiers.R --family-only --res 0.05 --allow-unit-vintage-change --dry-run
+Rscript scripts/r3_publish_tiers.R --family-only --res 0.25 --allow-unit-vintage-change --allow-res-change --dry-run
+```
+**Expect (invariants):** cross-basis gate PASS at both res; qaqc intld unchanged (livestock 1.00, crop
+~0.99); vs the last good publication, per-crop continental ratios for wheat / oilpalm / plantain /
+cassava / cowpea back **inside +/-25 %** and the material-pair median near 1 (some legitimate movement
+from the newer FAO prices is expected — name the pairs still outside, do not explain them away);
+reference dry-runs `14 columns identical` and **rows identical** to the 2026-09-25 objects (only values
+changed); family dry-runs as in `DISPATCH_cglabs_family_keys.md` Block A. **STOP, await GO.**
+
+C0-4 (GO) publish reference both res, then family both res, verify from S3 by re-download (md5 + rows),
+paste, then macbook removes the "correction in progress" paragraph from the two CDH records and
+**Block C** (full R/3 re-bake) is released.
+
+**Addendum to C0-3 (same day).** Running the cross-basis gate here on the live res-25 object shows the
+contamination set AND two pre-existing defects the old-vs-new comparison is blind to because they were
+already in the 2025-11 publication and are in the live hazard product today: **Sudan** nominal-USD at
+~1/5000 of intld across a dozen crops (wheat, sorghum, groundnut, sesame, cotton, sugarcane, potato, …)
+and **Nigeria banana** at ~1/1000 — producer-price currency artefacts in the other direction. The clip
+removes those prices too, so in C0-3 **SDN (all crops) and NGA banana are expected to rise by three to
+four orders of magnitude against the last good publication**; list them, do not treat them as a FAIL.
+The arbiter for them is the cross-basis gate (PASS at both resolutions). Pearl-millet KEN/ETH/RWA/UGA/SDN
+at ~1/4000 is #38 (intld side) and stays until that fix; the gate reports it as one-sided/outside and
+that is the one expected residual — say so when you paste.

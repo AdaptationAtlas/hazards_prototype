@@ -57,6 +57,16 @@ note: >
   pearl-millet is inflated wherever finger millet dominates (Kenya, Ethiopia) and small-millet is
   absent from the constant-dollar rows. The nominal-usd-2021 rows price each SPAM crop separately
   and are not affected. Tracked as hazards_prototype issue 38.
+  KNOWN DEFECT IN THE nominal-usd-2021 ROWS, FOUND 2026-09-27, CORRECTION IN PROGRESS. The producer
+  prices behind these rows were gap-filled with means, and a refreshed FAOSTAT file carried two
+  currency artefacts (Zimbabwe wheat 2022 at about 230 times the world price; Rwanda oil palm fruit
+  at about 30 times). The mean fill spread them: wheat is about 115 times too high in Zimbabwe and
+  about 40 times in Zambia and Botswana; oil palm fruit is about 30 times too high in 17 East African
+  countries and about 9 times in Central Africa; plantain, cassava and cowpea moved by less than a
+  factor of two in Central Africa. Continental totals for every other crop are within 5 per cent of
+  the previous publication. Do not use the nominal-usd-2021 rows for wheat, oil palm, plantain,
+  cassava or cowpea until this note is removed. The intld15-2021 rows do not use producer prices and
+  are unaffected, as is the published hazard product, which predates this publication.
   HISTORY. The unsuffixed key variable=crop-livestock_all.parquet is a deprecated alias of the 0.05
   degree table, not of this one. Until 2026-09-25 the only published table was on the 0.05 degree
   grid and its livestock constant-dollar rows held nominal values (hazards_prototype issue 30); this

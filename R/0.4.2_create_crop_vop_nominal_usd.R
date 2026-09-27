@@ -238,11 +238,30 @@ prod_rast <- lapply(prod_rast, function(r) {
 # We will use production amount and price to get this as conversion of iusd15 to nominal usd seems to give unrealistically low values
 year_sets <- list(y2021 = 2019:2023, y2015 = 2014:2016, y2020 = 2019:2020)
 
+# 2026-09-27 (G6 stop, DISPATCH_cglabs_r3_res25_rerun.md): own prices are CLIPPED to a
+# band around the world median for the same crop and year BEFORE any averaging, and
+# the neighbour / region / continent fills are MEDIANS, not means, each row saying
+# where its price came from. A refreshed FAO file carried Zimbabwe wheat 2022 at
+# 67,170 USD/t (world ~290) and Rwanda oil palm fruit at ~4,600 (world ~150); the
+# old mean fill pushed the first into Zambia and Botswana (~40x) and the second
+# into 17 East African countries (~30x). The hand-picked NA list in 1.7.1.1 is kept
+# but is no longer what protects the product. R/price_fill.R is sourced by PATH:
+# haz_functions.R above comes from GitHub main, where a fix would not reach a run.
+source(file.path(project_dir, "R", "price_fill.R"))
+PRICE_BAND      <- as.numeric(Sys.getenv("PRICE_BAND", PRICE_BAND_DEFAULT))   # keep own prices within [1/band, band] x world
+PRICE_FILL_STAT <- Sys.getenv("PRICE_FILL_STAT", "median")                      # "mean" reproduces the pre-2026-09-27 behaviour (A/B only)
+.clip <- clip_prices_to_world_band(prod_merge[, .(iso3, atlas_name, year, price_usd)],
+                                   world = prod_price_world[, .(atlas_name, year, price_usd)], band = PRICE_BAND)
+prod_merge_clean <- merge(prod_merge[, !"price_usd"], .clip$kept[, .(iso3, atlas_name, year, price_usd)], by = c("iso3", "atlas_name", "year"), all.x = TRUE)
+cat(sprintf("[0.4.2] price clip: band %.1fx world median (PRICE_BAND) dropped %d of %d own observations; fill statistic = %s\n",
+            PRICE_BAND, nrow(.clip$dropped), prod_merge[!is.na(price_usd), .N], PRICE_FILL_STAT))
+if (nrow(.clip$dropped)) print(.clip$dropped[1:min(40, .N)], nrows = 40)
+
 price_usd_list <- lapply(seq_along(year_sets), function(i) {
   ymin <- min(year_sets[[i]])
   ymax <- max(year_sets[[i]])
-  # Median values for the year set
-  prod_merge_recent <- prod_merge[
+  # Median values for the year set (own prices already clipped)
+  prod_merge_recent <- prod_merge_clean[
     year %in% year_sets[[i]], .(
       price_usd = median(price_usd, na.rm = TRUE),
       production_t = median(production_t, na.rm = TRUE)
@@ -251,7 +270,7 @@ price_usd_list <- lapply(seq_along(year_sets), function(i) {
   ]
 
   # Values are often missing, is there a value from a longer time series?
-  price_any <- prod_merge[
+  price_any <- prod_merge_clean[
     year %in% (ymin - 5):ymax, .(
       price_median = median(price_usd, na.rm = TRUE),
       price_min = min(price_usd, na.rm = TRUE),
@@ -265,26 +284,44 @@ price_usd_list <- lapply(seq_along(year_sets), function(i) {
   # Merge median price from longer time-series
   prod_merge_recent <- merge(prod_merge_recent, price_any[, .(price_median, iso3, atlas_name)], all.x = TRUE)
 
-  prod_merge_recent <- add_nearby(data = prod_merge_recent, group_field = "atlas_name", value_field = "price_usd", neighbors = african_neighbors, regions = regions)
-
   prod_price_global_recent <- prod_price_world[year %in% year_sets[[i]], .(price_usd_global = median(price_usd, na.rm = TRUE)), .(atlas_name)]
 
-  prod_merge_recent <- merge(prod_merge_recent, prod_price_global_recent, by = "atlas_name", all.x = TRUE)
-
-  unique(prod_merge_recent[, .(atlas_name, price_usd_continent, price_usd_global)])
-
-  prod_merge_recent[, price_usd_final := price_usd][is.na(price_usd_final), price_usd_final := price_median][is.na(price_usd_final), price_usd_final := price_usd_neighbors][is.na(price_usd_final), price_usd_final := price_usd_region][is.na(price_usd_final), price_usd_final := price_usd_continent][is.na(price_usd_final), price_usd_final := price_usd_global][, vop_usd_nominal := production_t * price_usd_global][, year := names(year_sets)[i]]
+  # Fill chain: own window median -> own longer-series median -> neighbours -> region -> continent -> world.
+  # The longer-series step sits between own and neighbours, so it is applied to the own column
+  # before the spatial fills are computed on the OTHER countries' own prices.
+  prod_merge_recent[, price_usd_own_window := price_usd]
+  prod_merge_recent[is.na(price_usd), price_usd := price_median]
+  prod_merge_recent <- fill_price_robust(prod_merge_recent, value_field = "price_usd", group_field = "atlas_name",
+                                         neighbors = african_neighbors, regions = regions,
+                                         world = prod_price_global_recent[, .(atlas_name, price_world = price_usd_global)],
+                                         stat = PRICE_FILL_STAT)
+  prod_merge_recent[price_source == "own" & is.na(price_usd_own_window), price_source := "own longer-series median"]
+  prod_merge_recent[price_source == "own", price_source := "own window median"]
+  prod_merge_recent[, price_usd := price_usd_own_window][, price_usd_own_window := NULL]
+  prod_merge_recent[, vop_usd_nominal := production_t * price_usd_global][, year := names(year_sets)[i]]
 
   # Hack tea
   if (ymax == 2023) {
     tea_median <- prod_merge_recent[atlas_name == "teas", mean(price_median, na.rm = TRUE)]
-    prod_merge_recent[atlas_name == "teas" & price_usd_final < 600, price_usd_final := tea_median]
+    prod_merge_recent[atlas_name == "teas" & price_usd_final < 600, `:=`(price_usd_final = tea_median, price_source = "tea floor")]
   }
 
   prod_merge_recent
 })
 
 names(price_usd_list) <- paste0("nominal-usd-", gsub("y", "", names(year_sets)))
+
+# Audit trail: where every price came from, and the ones furthest from the world median.
+ensure_dir(file.path(mapspam_pro_dir, "fao_prices"))
+for (nm in names(price_usd_list)) {
+  p <- price_usd_list[[nm]]
+  cat(sprintf("[0.4.2] %s fill sources: %s\n", nm, paste(sprintf("%s=%d", names(table(p$price_source)), as.integer(table(p$price_source))), collapse = " | ")))
+  top <- p[is.finite(price_usd_final / price_usd_global)][order(-abs(log(price_usd_final / price_usd_global)))][1:min(10, .N),
+           .(iso3, atlas_name, price_source, price_usd_final = signif(price_usd_final, 4), price_usd_global = signif(price_usd_global, 4), ratio_world = signif(price_usd_final / price_usd_global, 3))]
+  cat(sprintf("[0.4.2] %s furthest from world median (expect all within %.0fx):\n", nm, PRICE_BAND)); print(top, nrows = 10)
+  fwrite(p[, .(iso3, atlas_name, price_source, price_usd, price_median, price_usd_neighbors, price_usd_region, price_usd_continent, price_usd_global, price_usd_final, production_t)],
+         file.path(mapspam_pro_dir, "fao_prices", paste0("crop_price_", nm, "-t_fill-sources_", .eg$tag, ".csv")))
+}
 
 ## 4) Multiply mapspam production by price ####
 
