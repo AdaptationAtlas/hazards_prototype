@@ -438,7 +438,7 @@ so the chain's robustness is the product's.
 
 ### Block C0 — regenerate the nominal-USD exposure and republish the reference (GO-gated: writes rasters, tables and S3)
 
-> GO line goes here (Pete, decision 2 = fix shape as above).
+> **GO given by p.steward 2026-09-28 for C0-4: publish reference (both res + alias) AND family keys (both res + aliases).** C0-1..C0-3 are complete and clean (`1abcb4c`, `5f25e32`). Run C0-4 as written, verify from S3 by re-download, paste, STOP. The retirement of `vop_nominal-usd-2015` stays in `DISPATCH_cglabs_family_keys.md` Block C and has its own GO.
 
 C0-1 park + re-run 0.4.2 at both resolutions (FORCE irrelevant to 0.4.2 — it always writes):
 ```bash
