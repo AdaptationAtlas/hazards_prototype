@@ -9,7 +9,7 @@ were out of scope.
 
 Everything here is derived from the Africa Agriculture Adaptation Atlas observational climate
 layer, which is public. Section 3 explains how to pull the same input tables yourself; section 5
-links the scripts that build them. Section 6 (added 2026-09-28) covers variability and extremes.
+links the scripts that build them. Section 6 (added 2026-09-28) covers variability and extremes. Section 7 shows why series ending in 2017 give decreasing trends and series ending in 2025 do not.
 
 ---
 
@@ -503,3 +503,47 @@ PET from CHIRTS temperature, fitted on 1991–2020.
 - Threshold counts in the 2021–2025 block rest on five seasons.
 - Everything here is about seasonal totals. Intensity, wet-day frequency, dry-spell length and
   onset timing need daily data (CHIRPS v3 daily or pentads) and are not covered.
+
+---
+
+## 7. Reconciliation with published decreasing trends (end-year sensitivity)
+
+Added 2026-09-28. Muthoni et al. (2019, *Theor. Appl. Climatol.*, <https://doi.org/10.1007/s00704-018-2712-1>)
+report decreasing annual rainfall of −4 to −10 mm/yr over central-south Kenya from CHIRPS v2 for
+**1981–2017**. Re-running the Theil-Sen / Mann-Kendall analysis on the CHIRPS v3 county series
+used here, truncated at 2017, reproduces that result: annual totals decline by 6–7 mm/yr
+(60–70 mm/decade) in Machakos, Makueni, Kitui and Embu with p between 0.05 and 0.10, and MAM
+and OND both slope downward. Extending the same series to 2025 removes the decline entirely.
+The disagreement between the published trend and the flat trend in section 2 is therefore the
+end year of the record, not the data product or the method: the eight seasons 2018–2025 include
+the wettest MAM (2018), the wettest OND (2019, 2023) and three further well-above-baseline long
+rains in most of these counties.
+
+| Zone | Season | Sen slope 1981-2017 (mm/decade) | MK p | Sen slope 1981-2025 (mm/decade) | MK p |
+|---|---|---:|---:|---:|---:|
+| Kenya | annual | -19 | 0.46 | 15 | 0.38 |
+| Machakos | annual | -63 | 0.07 | 6 | 0.85 |
+| Makueni | annual | -69 | 0.10 | 5 | 0.78 |
+| Kitui | annual | -69 | 0.05 | -8 | 0.82 |
+| Embu | annual | -64 | 0.08 | 9 | 0.81 |
+| Tharaka-Nithi | annual | -23 | 0.50 | 43 | 0.30 |
+| Meru | annual | 31 | 0.47 | 67 | 0.07 |
+| Kenya | MAM | -20 | 0.13 | -3 | 0.87 |
+| Machakos | MAM | -30 | 0.20 | -1 | 0.99 |
+| Makueni | MAM | -10 | 0.54 | 6 | 0.73 |
+| Kitui | MAM | -21 | 0.27 | -2 | 0.93 |
+| Embu | MAM | -50 | 0.03 | -12 | 0.45 |
+| Tharaka-Nithi | MAM | -20 | 0.40 | 10 | 0.67 |
+| Meru | MAM | 8 | 0.84 | 34 | 0.21 |
+| Kenya | OND | 3 | 0.82 | 7 | 0.44 |
+| Machakos | OND | -26 | 0.20 | -6 | 0.66 |
+| Makueni | OND | -33 | 0.10 | -2 | 0.90 |
+| Kitui | OND | -45 | 0.04 | -15 | 0.35 |
+| Embu | OND | -14 | 0.44 | -6 | 0.75 |
+| Tharaka-Nithi | OND | 8 | 0.82 | 8 | 0.67 |
+| Meru | OND | 40 | 0.24 | 28 | 0.25 |
+
+Data: [`data/ke_eastern_ptot_endyear_sensitivity.csv`](data/ke_eastern_ptot_endyear_sensitivity.csv).
+The comparison is indicative: the published analysis is per pixel at 0.05° over Eastern and
+Southern Africa on annual totals; this one is a county zonal mean. The sign reversal with end
+year is the point, not the exact magnitudes.
