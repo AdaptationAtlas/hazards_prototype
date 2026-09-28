@@ -568,3 +568,61 @@ cross-basis gate — the named arbiter — is not green because of the pre-exist
 this shape does not reach. Decision for you: (a) extend the clip / add a low-side band on the
 VoP-derived price (SDN/NGA), or (b) scope SDN/NGA out explicitly like pearl-millet #38 so the gate's
 expected residual is defined and PASSES. Then re-run C0-1..C0-3 and issue the second GO.
+
+---
+
+## macbook response — SDN/NGA are an intld-side SPAM-footprint defect, not a price; gate now says which side; re-run C0-3 gates only (2026-09-28)
+
+Both flags accepted: the bare `Rscript R/0.4.x.R` runner was wrong (setup must be sourced first — as
+you did) and the two `vop_nominal-usd15/21` short-name dirs are inert. Thank you for not re-running
+the unchanged fix.
+
+**Your read is right, and the mechanism is now known.** From the live table, admin0, `tech = all`:
+
+| | SPAM 2020 production | intld15-2021 | nominal-usd-2021 | implied USD/t |
+|---|---:|---:|---:|---:|
+| SDN all crops | **0.05 Mt** | 5.86 B I$ | 0.02 B USD | ordinary |
+| SDN wheat | 0.0 kt | 142.6 M | 0.012 M | 499 |
+| SDN groundnut | 5.9 kt | 1,912 M | 4.6 M | 780 |
+| NGA banana | 1.5 kt | 2,599 M | 0.74 M | 480 |
+| NGA plantain | 6,478 kt | **0** | 6,299 M | 972 |
+| ETH all crops (control) | 44 Mt | 8.75 B | 10.9 B | |
+
+The nominal side is sound — SDN/NGA producer prices are ordinary, which is why the clip never touched
+them. The **intld side** is the defect: 0.4.0 distributes the national FAOSTAT value over the SPAM
+footprint by production *share*, so where SPAM holds almost nothing (Sudan: 0.05 Mt against ~15 Mt in
+FAOSTAT; Nigeria bananas coded as plantain) the whole national value lands on a sliver. Same family as
+#38. Filed as **#39**. Not reachable from 0.4.2 and out of this dispatch's scope; both CDH denominator
+records now say the SDN and NGA-banana constant-dollar rows must not be used.
+
+**Gate change (`R/checks/vop_cross_basis_gate.R`, this commit).** Both bases share the SPAM footprint,
+so nominal ÷ SPAM tonnage is an implied price comparable across countries per crop. An out-of-band pair
+whose implied price sits within 5x the crop median has a sound nominal side and is reported as an
+**intld-side residual** (SPAM footprint #39, millet split #38) — not a FAIL unless
+`--fail-on-intld-side`. A pair whose implied price is off is a nominal-side FAIL. On the live res-25
+object this yields: nominal-side FAIL = exactly the G6 set (ZWE/ZMB wheat, oil-palm block); intld-side
+residual = SDN x13, NGA banana, pearl-millet x6. On your regenerated tables the nominal-side list must
+be **empty**.
+
+**Your new movers** (BDI/RWA arabica-coffee ~15x up, GIN sweet-potato 8x, GIN cotton 5.7x, COD coffee
+4.4x up; ZWE/MRT/GIN sugarcane 0.07-0.10 down, sugarcane 0.49 continental, cowpea 0.66) are the clip
+working in both directions on prices that were themselves artefacts (Zimbabwe sugarcane 1,960 -> 141;
+coffee quoted per kg of cherry rather than per tonne of green bean gets clipped low-side and refilled).
+Accepted; they go into the CDH note as "changed against the previous publication" once C0-4 lands.
+No re-bake needed — the regenerated tables are unchanged.
+
+### C0-3 (gates only, re-run; minutes)
+
+```bash
+cd <hazards_prototype> && git fetch origin && git checkout develop && git pull --ff-only && git log -1 --oneline
+Rscript R/checks/vop_cross_basis_gate.R --res 0.25;  Rscript R/checks/vop_cross_basis_gate.R --res 0.05
+```
+The gate auto-detects 0.4.2's audit CSV (`mapspam_pro_dir/fao_prices/crop_price_nominal-usd-2021-t_fill-sources_<tag>.csv`,
+written by C0-1) as its INDEPENDENT world-price reference and logs `world price reference: <path> (N crops)`;
+if it logs the `WARN: no world-price reference` fallback instead, STOP - the side test is then blind to a
+majority-contaminated crop (oil palm on the live object) and the result means nothing.
+**Expect:** `ok: no material pair outside [1/10, 10] has its nominal side off`, `ok: every per-crop
+median within [1/5, 5]`, a `residual:` block listing SDN, NGA banana and the pearl-millet countries
+with sound implied prices, **GATE PASS** at both resolutions. Anything in the nominal-side FAIL block:
+STOP and paste it. Then STOP for the second GO — C0-4 (publish reference + family, both res) is
+unchanged from the block above.

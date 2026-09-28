@@ -60,6 +60,13 @@ note: >
   pearl-millet is inflated wherever finger millet dominates (Kenya, Ethiopia) and small-millet is
   absent from the constant-dollar rows. The nominal-usd-2021 rows price each SPAM crop separately
   and are not affected. Tracked as hazards_prototype issue 38.
+  KNOWN DEFECT IN THE intld15-2021 ROWS FOR SUDAN (ALL CROPS) AND NIGERIA BANANA. The constant-dollar
+  chain places the national FAOSTAT value on the MapSPAM footprint by production share; MapSPAM 2020
+  holds almost no production for Sudan (0.05 million tonnes against FAOSTAT's roughly 15) and codes
+  Nigeria's banana-family production as plantain, so the whole national value sits on a sliver of
+  cells and every unit holding one of them is grossly overstated. Sudan and Nigeria-banana
+  constant-dollar rows must not be used; the nominal-usd-2021 rows for the same pairs are sound.
+  Tracked as hazards_prototype issue 39.
   KNOWN DEFECT IN THE nominal-usd-2021 ROWS, FOUND 2026-09-27, CORRECTION IN PROGRESS. The producer
   prices behind these rows were gap-filled with means, and a refreshed FAOSTAT file carried two
   currency artefacts (Zimbabwe wheat 2022 at about 230 times the world price; Rwanda oil palm fruit
