@@ -9,7 +9,7 @@ were out of scope.
 
 Everything here is derived from the Africa Agriculture Adaptation Atlas observational climate
 layer, which is public. Section 3 explains how to pull the same input tables yourself; section 5
-links the scripts that build them.
+links the scripts that build them. Section 6 (added 2026-09-28) covers variability and extremes.
 
 ---
 
@@ -270,6 +270,236 @@ All in [AdaptationAtlas/hazards_prototype](https://github.com/AdaptationAtlas/ha
 | 6 | [`R/observational/6_publish_obs_to_s3.R`](../../../R/observational/6_publish_obs_to_s3.R) | Publishes the parquets and COGs to `s3://digital-atlas` |
 | This analysis | [`R/misc/ke_eastern_rainfall_trends.R`](../../../R/misc/ke_eastern_rainfall_trends.R) | Pulls the parquet, computes the baseline, anomalies, Theil-Sen / Mann-Kendall trends and the figures in this folder. Run: `Rscript R/misc/ke_eastern_rainfall_trends.R <out_dir>` |
 
+| Section 6 | [`R/misc/ke_eastern_rainfall_variability.R`](../../../R/misc/ke_eastern_rainfall_variability.R) | Variability, extremes and whiplash statistics and figures. Run after the trends script: `Rscript R/misc/ke_eastern_rainfall_variability.R <out_dir>` |
+
 Boundaries: GAUL 2024 (FAO), as staged by the Atlas (`atlas_gaul24_a1_africa.parquet`).
 Upstream rainfall data: Funk et al. (2015) *Sci. Data* 2:150066 (CHIRPS); v3 documentation at
 <https://www.chc.ucsb.edu/data/chirps3>.
+
+---
+
+## 6. Variability and extremes
+
+Added 2026-09-28. Same data, zones, seasons and 1991-2020 baseline as above. Asks whether the
+*spread* and the *tails* of the seasonal-total distribution have shifted, which a trend in the
+mean cannot show. Script: [`R/misc/ke_eastern_rainfall_variability.R`](../../../R/misc/ke_eastern_rainfall_variability.R).
+
+### 6.1 Headline
+
+- **No statistically robust change in interannual variability.** The standard deviation of
+  seasonal totals is higher in 2003–2025 than in 1981–2002 in 12 of 14 zone-seasons (ratio
+  1.0–1.34), but a Brown-Forsythe test on detrended residuals is non-significant everywhere
+  (p > 0.4), and there is no monotonic trend in the size of departures from trend (all MK p > 0.1).
+  The rolling-CV jump visible after about 2010 in MAM is produced by a handful of extreme wet
+  seasons (2018, 2020, 2024), not by a broad widening of the distribution.
+- **No change in the frequency of dry, failed or drought seasons.** Seasons below the 1991–2020
+  20th percentile occur at close to the expected 1-in-5 rate in every block, and logistic trends
+  in dry, failed (< 75 % of mean) and SPEI-03 ≤ −1 seasons are all non-significant (p > 0.1).
+- **Wet extremes have clustered recently in MAM.** In 2011–2025, 30–60 % of long-rains seasons in
+  these counties exceeded the baseline 80th percentile (expected 20 %), the same signal that
+  produces the 1991–2025 MAM wetting trend in section 2.3. OND wet extremes show no such shift.
+- **Whiplash.** Large season-to-season reversals (|Δz| > 2 with sign change) are more frequent
+  in 2003–2025 than 1981–2002 in five of seven zones (e.g. Kenya 2 → 5, Embu 3 → 5, Meru 1 → 4),
+  but the mean absolute season-to-season swing shows no significant trend. The 2018–2020
+  sequence (record MAM 2018, dry MAM 2019, record OND 2019) is the clearest example.
+- **The 2020–2022 Horn of Africa drought is muted in these counties' CHIRPS totals.** In Kitui,
+  Makueni and Machakos only MAM 2022 falls below the 20th percentile; OND 2020, MAM 2021, OND 2021
+  and OND 2022 are near or above the 1991–2020 median in CHIRPS v3 (table 6.6). The five-season
+  failure narrative applies to the northern and north-eastern ASAL counties, not the eastern
+  midlands; and seasonal totals can hide late onset and long dry spells within a season. This is
+  the point where daily-resolution indices (onset, dry-spell length) are needed rather than totals.
+
+![Rolling CV](figures/ke_eastern_ptot_rolling_cv.png)
+
+### 6.2 Variability: halves comparison and trend in |residual|
+
+Residuals are from a Theil-Sen fit over 1981–2025, so a trend in the mean cannot register as a
+variance change. Brown-Forsythe = one-way ANOVA on |residual − group median| for 1981–2002 vs
+2003–2025. The last two columns are the Theil-Sen slope of |residual| vs year (as % of the
+1991–2020 SD per decade) and its Mann-Kendall p.
+
+|     Zone      | Season | SD 1981-2002 (mm) | SD 2003-2025 (mm) | CV 1981-2002 | CV 2003-2025 | SD ratio | Brown-Forsythe p | \|resid\| trend (% of SD / decade) | MK p |
+|---------------|--------|------------------:|------------------:|-------------:|-------------:|---------:|-----------------:|-----------------------------------:|-----:|
+| Kenya         | MAM    | 85                | 98                | 0.3          | 0.34         | 1.16     | 0.63             | 4.6                                | 0.48 |
+| Embu          | MAM    | 159               | 212               | 0.3          | 0.42         | 1.33     | 0.44             | 4.0                                | 0.55 |
+| Kitui         | MAM    | 111               | 111               | 0.43         | 0.46         | 1.01     | 0.95             | -0.6                               | 0.9  |
+| Machakos      | MAM    | 149               | 173               | 0.41         | 0.47         | 1.17     | 0.84             | -5.7                               | 0.38 |
+| Makueni       | MAM    | 131               | 132               | 0.43         | 0.43         | 1.01     | 0.92             | -3.2                               | 0.67 |
+| Meru          | MAM    | 182               | 229               | 0.35         | 0.38         | 1.26     | 0.67             | 6.1                                | 0.35 |
+| Tharaka-Nithi | MAM    | 161               | 216               | 0.3          | 0.38         | 1.34     | 0.41             | 9.2                                | 0.1  |
+| Kenya         | OND    | 114               | 116               | 0.5          | 0.47         | 1.01     | 0.78             | -1.1                               | 0.7  |
+| Embu          | OND    | 151               | 200               | 0.36         | 0.47         | 1.33     | 0.61             | -3.3                               | 0.41 |
+| Kitui         | OND    | 150               | 168               | 0.37         | 0.46         | 1.12     | 0.88             | -6.2                               | 0.3  |
+| Machakos      | OND    | 146               | 182               | 0.38         | 0.5          | 1.24     | 0.81             | -3.7                               | 0.39 |
+| Makueni       | OND    | 134               | 180               | 0.34         | 0.48         | 1.34     | 0.67             | -2.7                               | 0.48 |
+| Meru          | OND    | 280               | 269               | 0.42         | 0.38         | 0.96     | 0.91             | 0.6                                | 0.91 |
+| Tharaka-Nithi | OND    | 221               | 237               | 0.39         | 0.4          | 1.07     | 0.82             | -1.1                               | 0.79 |
+
+### 6.3 Extremes: frequency of dry and wet seasons
+
+Thresholds fixed from the 1991–2020 distribution, so 20 % of seasons are expected in each tail.
+Odds ratio per decade is from a logistic regression of the indicator on year (1981–2025).
+
+|     Zone      | Season | Indicator | Events (of 45) | Rate 1981-2002 | Rate 2003-2025 | Odds ratio / decade |  p   |
+|---------------|--------|-----------|---------------:|---------------:|---------------:|--------------------:|-----:|
+| Kenya         | MAM    | dry       | 9              | 0.18           | 0.22           | 1.1                 | 0.75 |
+| Embu          | MAM    | dry       | 7              | 0.14           | 0.17           | 0.99                | 0.97 |
+| Kitui         | MAM    | dry       | 9              | 0.18           | 0.22           | 0.95                | 0.86 |
+| Machakos      | MAM    | dry       | 7              | 0.18           | 0.13           | 0.91                | 0.78 |
+| Makueni       | MAM    | dry       | 9              | 0.18           | 0.22           | 0.95                | 0.86 |
+| Meru          | MAM    | dry       | 9              | 0.23           | 0.17           | 1.0                 | 1.0  |
+| Tharaka-Nithi | MAM    | dry       | 8              | 0.18           | 0.17           | 1.03                | 0.93 |
+| Kenya         | MAM    | wet       | 15             | 0.36           | 0.3            | 1.04                | 0.88 |
+| Embu          | MAM    | wet       | 15             | 0.41           | 0.26           | 0.81                | 0.4  |
+| Kitui         | MAM    | wet       | 15             | 0.36           | 0.3            | 1.01                | 0.96 |
+| Machakos      | MAM    | wet       | 14             | 0.36           | 0.26           | 0.91                | 0.69 |
+| Makueni       | MAM    | wet       | 14             | 0.32           | 0.3            | 0.99                | 0.96 |
+| Meru          | MAM    | wet       | 11             | 0.18           | 0.3            | 1.61                | 0.1  |
+| Tharaka-Nithi | MAM    | wet       | 13             | 0.27           | 0.3            | 1.27                | 0.35 |
+| Kenya         | OND    | dry       | 9              | 0.27           | 0.13           | 0.62                | 0.13 |
+| Embu          | OND    | dry       | 8              | 0.14           | 0.22           | 0.98                | 0.95 |
+| Kitui         | OND    | dry       | 9              | 0.18           | 0.22           | 1.01                | 0.98 |
+| Machakos      | OND    | dry       | 7              | 0.09           | 0.22           | 1.05                | 0.87 |
+| Makueni       | OND    | dry       | 7              | 0.14           | 0.17           | 0.83                | 0.57 |
+| Meru          | OND    | dry       | 12             | 0.27           | 0.26           | 0.82                | 0.45 |
+| Tharaka-Nithi | OND    | dry       | 11             | 0.27           | 0.22           | 0.74                | 0.27 |
+| Kenya         | OND    | wet       | 8              | 0.14           | 0.22           | 1.23                | 0.49 |
+| Embu          | OND    | wet       | 12             | 0.32           | 0.22           | 0.75                | 0.28 |
+| Kitui         | OND    | wet       | 14             | 0.41           | 0.22           | 0.7                 | 0.17 |
+| Machakos      | OND    | wet       | 11             | 0.27           | 0.22           | 0.82                | 0.46 |
+| Makueni       | OND    | wet       | 15             | 0.41           | 0.26           | 0.86                | 0.54 |
+| Meru          | OND    | wet       | 8              | 0.18           | 0.17           | 1.14                | 0.67 |
+| Tharaka-Nithi | OND    | wet       | 8              | 0.18           | 0.17           | 1.1                 | 0.74 |
+
+Failed (< 75 % of mean) and drought (SPEI-03 ≤ −1 at season end) indicators are in
+[`data/ke_eastern_ptot_extremes_trend.csv`](data/ke_eastern_ptot_extremes_trend.csv); none is
+significant.
+
+![Extremes by block](figures/ke_eastern_ptot_extremes_by_block.png)
+
+### 6.4 Extremes by block (Kenya and the three lower-eastern counties)
+
+Full table for all seven zones in [`data/ke_eastern_ptot_extremes_by_block.csv`](data/ke_eastern_ptot_extremes_by_block.csv).
+
+|   Zone   | Season |   Block   | Seasons | Dry (<p20) | Wet (>p80) | Failed (<75%) | SPEI-03 <= -1 | Expected dry or wet |
+|----------|--------|-----------|--------:|-----------:|-----------:|--------------:|--------------:|--------------------:|
+| Kenya    | MAM    | 1981-1990 | 10      | 2          | 6          | 2             | 1             | 2                   |
+| Kenya    | MAM    | 1991-2000 | 10      | 2          | 1          | 2             | 1             | 2                   |
+| Kenya    | MAM    | 2001-2010 | 10      | 1          | 2          | 1             | 1             | 2                   |
+| Kenya    | MAM    | 2011-2020 | 10      | 3          | 3          | 3             | 1             | 2                   |
+| Kenya    | MAM    | 2021-2025 | 5       | 1          | 3          | 1             | 0             | 1                   |
+| Kenya    | OND    | 1981-1990 | 10      | 3          | 1          | 4             | 1             | 2                   |
+| Kenya    | OND    | 1991-2000 | 10      | 3          | 2          | 4             | 1             | 2                   |
+| Kenya    | OND    | 2001-2010 | 10      | 2          | 1          | 3             | 2             | 2                   |
+| Kenya    | OND    | 2011-2020 | 10      | 1          | 3          | 1             | 0             | 2                   |
+| Kenya    | OND    | 2021-2025 | 5       | 0          | 1          | 1             | 0             | 1                   |
+| Kitui    | MAM    | 1981-1990 | 10      | 2          | 6          | 2             | 1             | 2                   |
+| Kitui    | MAM    | 1991-2000 | 10      | 2          | 2          | 3             | 2             | 2                   |
+| Kitui    | MAM    | 2001-2010 | 10      | 3          | 1          | 5             | 1             | 2                   |
+| Kitui    | MAM    | 2011-2020 | 10      | 1          | 3          | 2             | 1             | 2                   |
+| Kitui    | MAM    | 2021-2025 | 5       | 1          | 3          | 1             | 1             | 1                   |
+| Kitui    | OND    | 1981-1990 | 10      | 2          | 6          | 2             | 1             | 2                   |
+| Kitui    | OND    | 1991-2000 | 10      | 2          | 3          | 2             | 1             | 2                   |
+| Kitui    | OND    | 2001-2010 | 10      | 3          | 1          | 4             | 2             | 2                   |
+| Kitui    | OND    | 2011-2020 | 10      | 1          | 2          | 1             | 0             | 2                   |
+| Kitui    | OND    | 2021-2025 | 5       | 1          | 2          | 1             | 0             | 1                   |
+| Machakos | MAM    | 1981-1990 | 10      | 1          | 6          | 2             | 1             | 2                   |
+| Machakos | MAM    | 1991-2000 | 10      | 3          | 2          | 4             | 2             | 2                   |
+| Machakos | MAM    | 2001-2010 | 10      | 1          | 0          | 1             | 1             | 2                   |
+| Machakos | MAM    | 2011-2020 | 10      | 2          | 4          | 3             | 2             | 2                   |
+| Machakos | MAM    | 2021-2025 | 5       | 0          | 2          | 0             | 0             | 1                   |
+| Machakos | OND    | 1981-1990 | 10      | 1          | 4          | 1             | 1             | 2                   |
+| Machakos | OND    | 1991-2000 | 10      | 1          | 2          | 2             | 1             | 2                   |
+| Machakos | OND    | 2001-2010 | 10      | 4          | 1          | 5             | 1             | 2                   |
+| Machakos | OND    | 2011-2020 | 10      | 1          | 3          | 3             | 1             | 2                   |
+| Machakos | OND    | 2021-2025 | 5       | 0          | 1          | 0             | 0             | 1                   |
+| Makueni  | MAM    | 1981-1990 | 10      | 2          | 6          | 2             | 1             | 2                   |
+| Makueni  | MAM    | 1991-2000 | 10      | 2          | 1          | 2             | 2             | 2                   |
+| Makueni  | MAM    | 2001-2010 | 10      | 3          | 1          | 3             | 2             | 2                   |
+| Makueni  | MAM    | 2011-2020 | 10      | 1          | 4          | 1             | 1             | 2                   |
+| Makueni  | MAM    | 2021-2025 | 5       | 1          | 2          | 1             | 1             | 1                   |
+| Makueni  | OND    | 1981-1990 | 10      | 1          | 6          | 1             | 1             | 2                   |
+| Makueni  | OND    | 1991-2000 | 10      | 2          | 2          | 3             | 1             | 2                   |
+| Makueni  | OND    | 2001-2010 | 10      | 4          | 2          | 6             | 2             | 2                   |
+| Makueni  | OND    | 2011-2020 | 10      | 0          | 2          | 1             | 0             | 2                   |
+| Makueni  | OND    | 2021-2025 | 5       | 0          | 3          | 0             | 0             | 1                   |
+
+### 6.5 Whiplash: season-to-season swings
+
+Seasons ordered chronologically (MAM, OND, MAM, …). Swing = z(t) − z(t−1). "Big flip" = |swing| > 2
+with a sign reversal.
+
+|     Zone      | Mean \|swing\| 1981-2002 | Mean \|swing\| 2003-2025 | MK p (trend in \|swing\|) | Big flips 1981-2002 | Big flips 2003-2025 |
+|---------------|-------------------------:|-------------------------:|--------------------------:|--------------------:|--------------------:|
+| Kenya         | 0.93                     | 0.98                     | 0.82                      | 2                   | 5                   |
+| Embu          | 0.91                     | 1.02                     | 0.56                      | 3                   | 5                   |
+| Kitui         | 0.97                     | 1.03                     | 0.99                      | 6                   | 5                   |
+| Machakos      | 1.07                     | 1.16                     | 0.67                      | 6                   | 6                   |
+| Makueni       | 1.01                     | 1.06                     | 0.52                      | 3                   | 4                   |
+| Meru          | 0.92                     | 0.94                     | 0.57                      | 1                   | 4                   |
+| Tharaka-Nithi | 0.97                     | 0.99                     | 0.5                       | 3                   | 4                   |
+
+![Whiplash](figures/ke_eastern_ptot_whiplash.png)
+
+### 6.6 The 2020–2023 seasons in the lower-eastern counties
+
+|   Zone   | Season | Year | Total (mm) |   z   | SPEI-03 | Dry (<p20) |
+|----------|--------|-----:|-----------:|------:|--------:|------------|
+| Kitui    | MAM    | 2020 | 411        | 1.8   | 1.45    |            |
+| Kitui    | OND    | 2020 | 384        | 0.09  | 0.2     |            |
+| Kitui    | MAM    | 2021 | 199        | -0.31 | -0.43   |            |
+| Kitui    | OND    | 2021 | 469        | 0.62  | 0.71    |            |
+| Kitui    | MAM    | 2022 | 141        | -0.88 | -1.21   | yes        |
+| Kitui    | OND    | 2022 | 289        | -0.5  | -0.35   |            |
+| Kitui    | MAM    | 2023 | 304        | 0.74  | 0.82    |            |
+| Kitui    | OND    | 2023 | 688        | 1.99  | 1.58    |            |
+| Machakos | MAM    | 2020 | 585        | 2.04  | 1.67    |            |
+| Machakos | OND    | 2020 | 312        | -0.29 | -0.29   |            |
+| Machakos | MAM    | 2021 | 361        | 0.29  | 0.3     |            |
+| Machakos | OND    | 2021 | 330        | -0.19 | -0.02   |            |
+| Machakos | MAM    | 2022 | 258        | -0.51 | -0.78   |            |
+| Machakos | OND    | 2022 | 303        | -0.34 | -0.18   |            |
+| Machakos | MAM    | 2023 | 320        | -0.03 | 0.13    |            |
+| Machakos | OND    | 2023 | 527        | 0.91  | 1.08    |            |
+| Makueni  | MAM    | 2020 | 458        | 1.59  | 1.43    |            |
+| Makueni  | OND    | 2020 | 407        | 0.25  | 0.37    |            |
+| Makueni  | MAM    | 2021 | 286        | 0.08  | -0.18   |            |
+| Makueni  | OND    | 2021 | 417        | 0.31  | 0.38    |            |
+| Makueni  | MAM    | 2022 | 185        | -0.81 | -1.18   | yes        |
+| Makueni  | OND    | 2022 | 292        | -0.44 | -0.34   |            |
+| Makueni  | MAM    | 2023 | 279        | 0.02  | 0.11    |            |
+| Makueni  | OND    | 2023 | 634        | 1.6   | 1.46    |            |
+
+### 6.7 Files added
+
+| File | Content |
+|---|---|
+| [`data/ke_eastern_ptot_season_flags.csv`](data/ke_eastern_ptot_season_flags.csv) | every zone × season × year with z-score, SPEI-03 at season end and dry / wet / failed / drought flags |
+| [`data/ke_eastern_ptot_rolling15_variability.csv`](data/ke_eastern_ptot_rolling15_variability.csv) | 15-year centred rolling mean, sd, CV |
+| [`data/ke_eastern_ptot_variability_tests.csv`](data/ke_eastern_ptot_variability_tests.csv) | table 6.2 in full |
+| [`data/ke_eastern_ptot_extremes_by_block.csv`](data/ke_eastern_ptot_extremes_by_block.csv), [`data/ke_eastern_ptot_extremes_trend.csv`](data/ke_eastern_ptot_extremes_trend.csv) | tables 6.3 / 6.4 in full |
+| [`data/ke_eastern_ptot_whiplash.csv`](data/ke_eastern_ptot_whiplash.csv), [`data/ke_eastern_ptot_dry_runs.csv`](data/ke_eastern_ptot_dry_runs.csv) | swing statistics; runs of ≥ 3 consecutive dry seasons (only 1983–84 and 1986–87 qualify) |
+| [`data/ke_all_counties_ptot_variability_tests.csv`](data/ke_all_counties_ptot_variability_tests.csv), [`data/ke_all_counties_ptot_extremes_trend.csv`](data/ke_all_counties_ptot_extremes_trend.csv) | same for all 48 counties |
+| [`data/kenya_spei03_season_end.csv`](data/kenya_spei03_season_end.csv) | SPEI-03 zonal mean at May and December, all counties + Kenya, from the `admin-monthly` parquet |
+
+SPEI-03 extract (DuckDB):
+
+```sql
+INSTALL httpfs; LOAD httpfs; SET s3_region = 'us-east-1';
+SELECT admin1_name, year, CASE month WHEN 5 THEN 'MAM' WHEN 12 THEN 'OND' END AS period, value_mean AS spei03
+FROM read_parquet('s3://digital-atlas/domain=climate/type=observational/source=chirps-chirts-era5/region=africa/processing=admin-monthly/variable=adm1_obs.parquet',
+                  hive_partitioning = false)
+WHERE admin0_name = 'Kenya' AND variable = 'SPEI-03' AND month IN (5, 12);
+```
+
+Note that a zonal *mean* of a standardised index is damped relative to pixel values (SPEI-03 of
+−1 averaged over a county is a widespread moderate drought), and the SPEI here uses Hargreaves
+PET from CHIRTS temperature, fitted on 1991–2020.
+
+### Caveats specific to this section
+
+- 45 seasons split into two halves of 22–23 gives little power to detect a variance change of
+  less than about 50 %; the sd ratios of 1.2–1.3 seen here are within what sampling alone produces.
+- Threshold counts in the 2021–2025 block rest on five seasons.
+- Everything here is about seasonal totals. Intensity, wet-day frequency, dry-spell length and
+  onset timing need daily data (CHIRPS v3 daily or pentads) and are not covered.
