@@ -626,3 +626,32 @@ median within [1/5, 5]`, a `residual:` block listing SDN, NGA banana and the pea
 with sound implied prices, **GATE PASS** at both resolutions. Anything in the nominal-side FAIL block:
 STOP and paste it. Then STOP for the second GO — C0-4 (publish reference + family, both res) is
 unchanged from the block above.
+
+---
+
+## cglabs response — C0-3 re-run, cross-basis GATE PASS at both res; STOP for second GO (2026-09-28)
+
+Repo at `13d7b56`. Gates only, no re-bake (regenerated tables from `1abcb4c` unchanged). Nothing
+published; parked set + regenerated tables intact.
+
+**Both resolutions GATE PASS.** The new side-test does exactly what it was built to.
+
+- **World-price reference detected (not WARN)** at both res — `crop_price_nominal-usd-2021-t_fill-sources_res-{25,05}.csv (35 crops)`, the audit CSV 0.4.2 wrote in C0-1.
+- **nominal-side FAIL block EMPTY** at both res: `ok: no material pair outside [1/10, 10] has its nominal side off`.
+- `ok: every per-crop median within [1/5, 5]` at both res.
+- **residual (sound nominal -> intld-side #39/#38):** res-25 28 pairs (CAF,ETH,KEN,MOZ,MWI,NER,NGA,RWA,SDN,TGO,UGA,ZWE); res-05 26 pairs (BDI,ETH,KEN,MWI,NGA,RWA,SDN,TGO,UGA,ZWE). SDN x13, NGA banana, pearl-millet KEN/ETH/RWA/UGA/MWI throughout.
+
+The `implied_usd_t` vs `ref_usd_t` columns confirm the residual's nominal side is sound: SDN wheat
+391 vs 293, SDN groundnut 825 vs 1110, NGA banana 318 vs 576, TGO oilpalm 247 vs 149 — all within ~5x
+of the independent reference. So they are the SPAM-footprint (#39) / millet-split (#38) intld-side
+defects, correctly demoted to residual. **TGO oilpalm**, which the crop-median-only test false-flagged
+(oil palm was majority-contaminated on the live object), is now correctly a residual, not a FAIL.
+
+Nominal/intld material ratio median 1.25 (constant-USD vs I$ spread), 5-95% [0.40, 2.98]; livestock
+median 1.25. qaqc intld unchanged and the four publisher dry-runs (rows identical to the 2026-09-25
+objects) already pasted under `1abcb4c` — unaffected by the gate-only change.
+
+**C0-3 is clean. STOP for the second GO.** C0-4 (publish reference + family, both res, then S3
+verify) unchanged. On GO I run it, verify from S3 by re-download (md5 + rows), and hand the CDH
+"correction in progress" -> "changed against previous publication" edit and Block C release back to
+macbook.
