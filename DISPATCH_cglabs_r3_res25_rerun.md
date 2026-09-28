@@ -655,3 +655,43 @@ objects) already pasted under `1abcb4c` — unaffected by the gate-only change.
 verify) unchanged. On GO I run it, verify from S3 by re-download (md5 + rows), and hand the CDH
 "correction in progress" -> "changed against previous publication" edit and Block C release back to
 macbook.
+
+---
+
+## cglabs response — C0-4 PUBLISHED, all six verified from S3; STOP for Block C release (2026-09-28)
+
+Repo at `684c24e`. GO (`p.steward 2026-09-28`) executed. Published reference (both res + alias) and
+family keys (both res + aliases). `vop_nominal-usd-2015` NOT touched (family-keys Block C, own GO).
+
+**One operational note.** First attempt ran the publishes in the foreground and the 2-min shell cap
+SIGTERM'd the reference res-05 mid-run — after it had backed up the original live object to
+`sandbox/backup/issue9_20260928_142229/` and uploaded the primary key (verified 206), but before the
+alias/sidecar. The original 2026-09-25 object is preserved in that backup. Re-ran the full four-step
+sequence in the background (publisher is idempotent: backup -> gate -> upload -> verify per object); the
+already-uploaded primary was overwritten with identical bytes. All four steps then completed OK. The
+live pre-C0-4 objects are in **two** backup dirs: `issue9_20260928_142229` (res-05 reference only, the
+true originals) and `issue9_<second-run stamp>` (the rest). Retain both until told otherwise.
+
+**Publish gates (all four steps):** 14 columns identical; distinct exposure/unit/stat identical;
+reference rows identical to live (res-05 7,847,746 / res-25 5,514,954); family res-05 rows identical
+(nominal 1,508,624 / intld 768,818); family res-25 rows 0.70x baseline (INFORMATIONAL — baseline is the
+0.05deg legacy object, `--allow-res-change`). Every object SIZE MATCH + HTTP 206 on upload.
+
+**Independent S3 verify (re-download, md5 + rows):**
+
+| key | md5 | rows S3==local | sidecar | HTTP |
+|---|---|---|---|---|
+| crop-livestock_all_res-05   | MATCH | 7,847,746 | present | 206 |
+| crop-livestock_all_res-25   | MATCH | 5,514,954 | present | 206 |
+| vop_nominal-usd-2021_res-05 | MATCH | 1,508,624 | present | 206 |
+| vop_intld15-2021_res-05     | MATCH | 768,818   | present | 206 |
+| vop_nominal-usd-2021_res-25 | MATCH | 1,060,176 | present | 206 |
+| vop_intld15-2021_res-25     | MATCH | 540,282   | present | 206 |
+
+Aliases (res-05 content) all 206, Last-Modified 2026-09-28 14:25-14:26:
+`crop-livestock_all`, `vop_nominal-usd-2021`, `vop_intld15-2021`.
+
+**STOP.** C0-4 complete and verified. Over to macbook: swap the two CDH records'
+"correction in progress" paragraph for "changed against the previous publication" (new movers already
+listed under `1abcb4c`; SDN/NGA-banana constant-dollar rows remain unusable, #39), then **release
+Block C** (full R/3 re-bake). Block C not started; `DISPATCH_cglabs_family_keys.md` untouched.
