@@ -507,3 +507,64 @@ four orders of magnitude against the last good publication**; list them, do not 
 The arbiter for them is the cross-basis gate (PASS at both resolutions). Pearl-millet KEN/ETH/RWA/UGA/SDN
 at ~1/4000 is #38 (intld side) and stays until that fix; the gate reports it as one-sided/outside and
 that is the one expected residual — say so when you paste.
+
+---
+
+## cglabs response — C0-1..C0-3 run; high-side contamination FIXED, but cross-basis gate FAILS on SDN/NGA; STOP before C0-4 (2026-09-28)
+
+Repo at `08fdaf6` (dd3ce9f ancestor, fix present). STAMP `20260926_185444`. Node-local writes only;
+nothing published. Parked set + regenerated tables intact.
+
+**Runner correction (flag).** The C0-1/C0-2 commands run 0.4.2/0.4.4 as bare `Rscript R/0.4.x.R`, which
+die immediately: `could not find function "exposure_grid"` — that function is in `0_server_setup.R:201`,
+and both scripts only `source()` `haz_functions.R` from `main` (0.4.4 line 1 even says "run
+0_server_setup.R before executing"). Ran them the Block-B/probe way,
+`Rscript -e 'source(0_server_setup.R); source(0.4.x.R)'`. Runner-only; no science change.
+
+**Parking wrinkle (flag).** `mapspam_pro_dir` held two extra legacy short-naming dirs the mv list did
+not name — `variable=vop_nominal-usd15`, `variable=vop_nominal-usd21` (Sep 23 11:28, `_adm_sum.parquet`
+only, **no .tif**). So `grep -c vop_nominal-usd` read 2, not 0. Verified inert: 0.4.4 §1 is a recursive
+`.tif` glob (line 132) and these hold no tif; nothing in the C0 chain reads that naming (the
+`r3_publish_tiers.R` `vop_nominal-usd21` hits are the S3 key). Left them in place. No `nominal-usd` tif
+remained anywhere under `mapspam_pro_dir` after parking.
+
+**C0-1 — clip fired, targets dropped.** `dropped 99 of 3295 own observations; band 5x; fill = median`,
+identical at both res. Dropped list includes **ZWE whea 2022 = 67,167** and **RWA oilp 2022/2023 =
+4,819/4,455**, plus the whole ZWE-2022 currency block and ZWE/RWA sugarcane. Probe top-15 post-fix: no
+crop above 5x high-side; the two furthest are low-side GIN/SLE millet 0.16 (genuine cheap crop).
+Fill sources y2021 now all median (continent 452 · neighbours 514 · region 394 · own window 246 · own
+longer 99).
+
+**C0-2 — 0.4.4 both res.** §1 66->45 tifs, 39-file extraction ~1 min each (minutes, not hours); §3.1
+14 columns; units kept number/ha/t/nominal-usd-2021/intld15-2021; intld twin reloaded from cache.
+
+**C0-3 gates:**
+- qaqc intld **unchanged**: livestock median 1.00 (242/242 within 0.9-1.1), crop 0.99 (36/50; worst
+  DZA edge 0.00). Good.
+- vs last-good (res-05): 736 material pairs, **median 1.000**, **140 outside +/-25%**. The **high-side
+  contamination is fixed** — continental ratios oilpalm 1.06 (was 3.57x), plantain 1.17 (1.74x),
+  cassava 1.11 (1.19x), wheat ~1.0 (was 3.88x, not in worst-12). New movers to name: BDI/RWA
+  arabica-coffee ~15x up, GIN sweet-potato 8.35x up, GIN cotton 5.65x up, COD coffee 4.4x up, ZWE/MRT/
+  GIN sugarcane ~0.07-0.10 down (ZWE clipped, 1960->141), sugarcane continental 0.49, cowpea 0.66.
+- **cross-basis gate FAILS at BOTH res** (res-25: 28 pairs outside [1/10,10]; res-05: 26). Per-crop
+  medians all within [1/5,5]. Out-of-band set: **SDN ~13 crops** (wheat 1.6e-4, sorghum, groundnut,
+  sesame, cotton, sugarcane, potato, banana…), **NGA banana** 7.3e-4, **pearl-millet KEN/ETH/RWA/UGA/
+  SDN/MWI** (#38, intld side).
+- 4 publisher dry-runs: structural gates PASS — 14 columns identical, distinct exposure/unit/stat
+  identical, rows identical to the 2026-09-25 objects (reference 7,847,746 / 5,514,954; family
+  1,508,624 / 768,818; res-25 family 0.70x baseline = res-change informational).
+
+**The problem: the addendum's SDN/NGA model is wrong.** They were expected to rise 3-4 orders of
+magnitude as the clip removed their prices, leaving pearl-millet as the one residual. Instead SDN/NGA
+**barely moved** — SDN wheat 28,687->22,484 (0.78x), NGA banana 2.86M->1.90M (0.67x), most ~1.0x — and
+**they are not in the clip's dropped-99 list.** The clip removes *high-side* producer-price artefacts
+(ZWE/RWA), which is exactly the G6 contamination and it is gone. SDN/NGA are a *low-side* nominal-VoP/
+exchange artefact (SDN's applied nominal wheat price is ~0.04 USD/t, implying the tiny value comes from
+the FAO Value_of_Production/exchange path, not the Prices_E producer-price series the band clip
+touches). So the cross-basis arbiter still FAILS on them.
+
+**STOP before C0-4.** The fix does what it was scoped to (kills the G6 contamination) but the
+cross-basis gate — the named arbiter — is not green because of the pre-existing SDN/NGA low-side defect
+this shape does not reach. Decision for you: (a) extend the clip / add a low-side band on the
+VoP-derived price (SDN/NGA), or (b) scope SDN/NGA out explicitly like pearl-millet #38 so the gate's
+expected residual is defined and PASSES. Then re-run C0-1..C0-3 and issue the second GO.
