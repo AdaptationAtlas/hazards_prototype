@@ -64,16 +64,18 @@ note: >
   cells and every unit holding one of them is grossly overstated. Sudan and Nigeria-banana
   constant-dollar rows must not be used; the nominal-usd-2021 rows for the same pairs are sound.
   Tracked as hazards_prototype issue 39.
-  KNOWN DEFECT IN THE nominal-usd-2021 ROWS, FOUND 2026-09-27, CORRECTION IN PROGRESS. The producer
-  prices behind these rows were gap-filled with means, and a refreshed FAOSTAT file carried two
-  currency artefacts (Zimbabwe wheat 2022 at about 230 times the world price; Rwanda oil palm fruit
-  at about 30 times). The mean fill spread them: wheat is about 115 times too high in Zimbabwe and
-  about 40 times in Zambia and Botswana; oil palm fruit is about 30 times too high in 17 East African
-  countries and about 9 times in Central Africa; plantain, cassava and cowpea moved by less than a
-  factor of two in Central Africa. Continental totals for every other crop are within 5 per cent of
-  the previous publication. Do not use the nominal-usd-2021 rows for wheat, oil palm, plantain,
-  cassava or cowpea until this note is removed. The intld15-2021 rows do not use producer prices and
-  are unaffected, as is the published hazard product, which predates this publication.
+  CHANGED AGAINST THE PREVIOUS PUBLICATION (2026-09-28). The nominal-usd-2021 rows were republished
+  after a producer-price defect found on 2026-09-27: the 2026-09-25 publication had gap-filled prices
+  with means and a refreshed FAOSTAT file carried two currency artefacts (Zimbabwe wheat 2022 at about
+  230 times the world price, Rwanda oil palm fruit at about 30 times), which the fill spread to
+  Zambia, Botswana and 17 East African countries. Prices are now clipped to a band around the world
+  median before averaging and filled with medians. Against the 2025-11 publication (the last sound
+  one) continental totals are within a few per cent for almost every crop; named exceptions are
+  sugarcane (about half: Zimbabwe, Mauritania and Guinea had prices ten times world), cowpea (0.66,
+  a FAOSTAT price update) and, per country, arabica coffee in Burundi and Rwanda (about 15 times up,
+  previously priced per kilogram of cherry), sweet potato and cotton in Guinea (5 to 8 times up).
+  Rows for wheat, oil palm, plantain and cassava are back within a quarter of the 2025-11 values.
+  The intld15-2021 rows do not use producer prices and did not change.
   HISTORY. The unsuffixed key variable=crop-livestock_all.parquet is a deprecated alias of the 0.05
   degree table, not of this one. Until 2026-09-25 the only published table was on the 0.05 degree
   grid and its livestock constant-dollar rows held nominal values (hazards_prototype issue 30); this

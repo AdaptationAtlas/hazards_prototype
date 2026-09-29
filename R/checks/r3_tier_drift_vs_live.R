@@ -80,15 +80,30 @@ DRIFT_LIVESTOCK_RE <- "cattle|sheep|goats|pigs|poultry"
   )
 }
 
+# expected: optional data.table (iso3, crop, ratio_expected) - the ratio by which the
+# EXPOSURE input of that pair changed between what the live product was built from
+# and what the new product was built from (new / old, admin0, tech = all). R/3 is a
+# linear multiply of hazard frequency by exposure, so the product must move by the
+# same factor: every bound below is then applied to ratio / ratio_expected, and the
+# continental total to the exposure-weighted expected total. Pairs absent from the
+# table expect 1. Produced on the node by R/checks/r3_expected_drift_from_exposure.R.
 tier_drift <- function(local_f, live_f,
                        tol_pair = 0.25, tol_median = 0.03, tol_total = 0.05,
                        tol_small = 0.5, tol_control = 0.02,
                        min_live = 1e6, small_iso3 = DRIFT_SMALL_ISO3_DEFAULT,
-                       flip_frac = 0.01) {
+                       flip_frac = 0.01, expected = NULL) {
   stopifnot(file.exists(local_f), file.exists(live_f))
   a <- .drift_read(live_f); b <- .drift_read(local_f)
   j <- merge(a$T, b$T, by = c("iso3", "crop"), all = TRUE, suffixes = c("_live", "_local"))
-  j[, ratio := T_local / T_live]
+  j[, ratio_raw := T_local / T_live]
+  j[, ratio_expected := 1]
+  if (!is.null(expected)) {
+    e <- as.data.table(expected)[is.finite(ratio_expected) & ratio_expected > 0, .(iso3, crop, ratio_expected)]
+    j <- merge(j[, !"ratio_expected"], e, by = c("iso3", "crop"), all.x = TRUE)
+    j[is.na(ratio_expected), ratio_expected := 1]
+  }
+  # Every bound is applied to the product's move net of its input's move.
+  j[, ratio := ratio_raw / ratio_expected]
   j[, livestock := grepl(DRIFT_LIVESTOCK_RE, crop)]
   j[, small := iso3 %in% small_iso3]
 
@@ -101,8 +116,9 @@ tier_drift <- function(local_f, live_f,
   smallpop   <- m[T_live >= min_live & small & !livestock]
   immaterial <- m[T_live <  min_live]
   control    <- m[livestock & T_live >= min_live]
-  totals <- m[livestock == FALSE, .(T_live = sum(T_live), T_local = sum(T_local)), by = crop][T_live >= min_live]
-  totals[, ratio := T_local / T_live]
+  totals <- m[livestock == FALSE, .(T_live = sum(T_live), T_local = sum(T_local), T_expected = sum(T_live * ratio_expected)), by = crop][T_live >= min_live]
+  totals[, ratio_raw := T_local / T_live]
+  totals[, ratio := T_local / T_expected]   # net of the expected input move
 
   g <- function(gate, population, ok, detail) data.table(gate = gate, population = population,
                                                          result = ifelse(ok, "ok", "FAIL"), detail = detail)
@@ -132,6 +148,9 @@ tier_drift <- function(local_f, live_f,
       sprintf("%d pairs; range [%s, %s]; tol %.0f%%", nrow(control),
               if (nrow(control)) signif(min(control$ratio), 4) else NA, if (nrow(control)) signif(max(control$ratio), 4) else NA, 100 * tol_control))
   ))
+  n_exp <- if (is.null(expected)) 0L else m[ratio_expected != 1, .N]
+  gates <- rbind(gates, g("expected", "pairs with an expected input move", TRUE,
+                          if (n_exp) sprintf("%d material+immaterial pairs carry ratio_expected != 1; bounds applied net of it", n_exp) else "none supplied (every pair expects 1)"))
   list(pass = all(gates$result == "ok"), gates = gates,
        material = material[order(abs(ratio - 1), decreasing = TRUE)],
        small = smallpop[order(abs(ratio - 1), decreasing = TRUE)],
@@ -144,14 +163,15 @@ tier_drift <- function(local_f, live_f,
 # Prints with signif(), never round(): round() showed 0.4 as 0 once and sent a
 # diagnosis the wrong way for a round trip.
 print_drift <- function(res, label = "", n_worst = 10, log = .drift_log) {
-  fmt <- function(d) { d <- copy(d); for (c in c("T_live", "T_local", "ratio")) if (c %in% names(d)) d[[c]] <- signif(d[[c]], 4); d }
+  fmt <- function(d) { d <- copy(d); for (c in c("T_live", "T_local", "ratio", "ratio_raw", "ratio_expected")) if (c %in% names(d)) d[[c]] <- signif(d[[c]], 4); d }
   log("G6 value drift %s: %s", label, if (res$pass) "PASS" else "FAIL")
   print(res$gates, nrows = 50)
   if (nrow(res$totals))   { cat("\n  continental totals per crop (worst first):\n"); print(head(fmt(res$totals), n_worst), nrows = n_worst) }
-  if (nrow(res$material)) { cat("\n  material pairs, worst", n_worst, "of", nrow(res$material), ":\n"); print(head(fmt(res$material[, .(iso3, crop, T_live, T_local, ratio)]), n_worst), nrows = n_worst) }
-  if (nrow(res$small))    { cat("\n  small-country pairs (informational population), worst", n_worst, ":\n"); print(head(fmt(res$small[, .(iso3, crop, T_live, T_local, ratio)]), n_worst), nrows = n_worst) }
-  if (nrow(res$livestock)){ cat("\n  livestock control, worst", n_worst, ":\n"); print(head(fmt(res$livestock[, .(iso3, crop, T_live, T_local, ratio)]), n_worst), nrows = n_worst) }
-  if (nrow(res$flips))    { cat("\n  FLIPS:\n"); print(fmt(res$flips[, .(iso3, crop, T_live, T_local, ratio)]), nrows = 50) }
+  cols <- c("iso3", "crop", "T_live", "T_local", "ratio_raw", "ratio_expected", "ratio")
+  if (nrow(res$material)) { cat("\n  material pairs, worst", n_worst, "of", nrow(res$material), "(ratio = raw / expected):\n"); print(head(fmt(res$material[, ..cols]), n_worst), nrows = n_worst) }
+  if (nrow(res$small))    { cat("\n  small-country pairs (informational population), worst", n_worst, ":\n"); print(head(fmt(res$small[, ..cols]), n_worst), nrows = n_worst) }
+  if (nrow(res$livestock)){ cat("\n  livestock control, worst", n_worst, ":\n"); print(head(fmt(res$livestock[, ..cols]), n_worst), nrows = n_worst) }
+  if (nrow(res$flips))    { cat("\n  FLIPS:\n"); print(fmt(res$flips[, ..cols]), nrows = 50) }
   if (nrow(res$unmatched)){ cat("\n  UNMATCHED:\n"); print(fmt(res$unmatched[, .(iso3, crop, T_live, T_local)]), nrows = 50) }
   cat(sprintf("\n  immaterial pairs (live < %s): %d, not gated except for flips\n", format(res$params$min_live, big.mark = ","), nrow(res$immaterial)))
   invisible(res$pass)
@@ -161,15 +181,17 @@ print_drift <- function(res, label = "", n_worst = 10, log = .drift_log) {
 if (sys.nframe() == 0L || nzchar(Sys.getenv("DRIFT_CLI"))) {
   args <- commandArgs(trailingOnly = TRUE)
   opt <- function(x, d) { i <- match(x, args); if (is.na(i) || i == length(args)) d else args[i + 1] }
-  local_f <- opt("--local", ""); live_f <- opt("--live", "")
-  if (!nzchar(local_f) || !nzchar(live_f)) { cat("usage: --local <new.parquet> --live <old.parquet> [--tol-pair --tol-median --tol-total --tol-small --tol-control --min-live --small-iso3]\n"); quit(status = 2) }
+  local_f <- opt("--local", ""); live_f <- opt("--live", ""); exp_f <- opt("--expected", "")
+  if (!nzchar(local_f) || !nzchar(live_f)) { cat("usage: --local <new.parquet> --live <old.parquet> [--expected <iso3,crop,ratio_expected csv>] [--tol-pair --tol-median --tol-total --tol-small --tol-control --min-live --small-iso3]\n"); quit(status = 2) }
   t0 <- Sys.time()
   .drift_log("local = %s", local_f); .drift_log("live  = %s", live_f)
+  expected <- if (nzchar(exp_f)) { .drift_log("expected input moves from %s", exp_f); data.table::fread(exp_f) } else NULL
   res <- tier_drift(local_f, live_f,
                     tol_pair = as.numeric(opt("--tol-pair", "0.25")), tol_median = as.numeric(opt("--tol-median", "0.03")),
                     tol_total = as.numeric(opt("--tol-total", "0.05")), tol_small = as.numeric(opt("--tol-small", "0.5")),
                     tol_control = as.numeric(opt("--tol-control", "0.02")), min_live = as.numeric(opt("--min-live", "1e6")),
-                    small_iso3 = strsplit(opt("--small-iso3", paste(DRIFT_SMALL_ISO3_DEFAULT, collapse = ",")), ",")[[1]])
+                    small_iso3 = strsplit(opt("--small-iso3", paste(DRIFT_SMALL_ISO3_DEFAULT, collapse = ",")), ",")[[1]],
+                    expected = expected)
   print_drift(res, label = basename(local_f))
   .drift_log("done in %.1f min", as.numeric(difftime(Sys.time(), t0, units = "mins")))
   quit(status = if (res$pass) 0 else 1)

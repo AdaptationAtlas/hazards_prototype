@@ -79,7 +79,12 @@ DRIFT <- list(tol_pair    = as.numeric(opt("--drift-tol-pair", "0.25")),
               tol_small   = as.numeric(opt("--drift-tol-small", "0.5")),
               tol_control = as.numeric(opt("--drift-tol-control", "0.02")),
               min_live    = as.numeric(opt("--drift-min-live", "1e6")),
-              small_iso3  = opt("--drift-small-iso3", ""))
+              small_iso3  = opt("--drift-small-iso3", ""),
+              # csv iso3,crop,ratio_expected: how much each pair's EXPOSURE input moved between
+              # what live was built from and what this bake used (R/3 is a linear multiply, so
+              # the product must move by the same factor). Made on the node by
+              # R/checks/r3_expected_drift_from_exposure.R. Absent = every pair expects 1.
+              expected    = opt("--drift-expected", ""))
 # Ship only the `.json` sidecar for each tier, leaving the live parquet untouched.
 # The #26 membership stamp can be applied to sidecars on disk in seconds, so it
 # should not cost three ~190 MB re-uploads of byte-identical parquets, nor put a
@@ -140,6 +145,13 @@ suppressPackageStartupMessages({ pacman::p_load(s3fs, arrow, dplyr, data.table, 
 if (!file.exists(.drift_src)) stop("G6 needs ", .drift_src)
 source(.drift_src)
 if (!nzchar(DRIFT$small_iso3)) DRIFT$small_iso3 <- DRIFT_SMALL_ISO3_DEFAULT else DRIFT$small_iso3 <- strsplit(DRIFT$small_iso3, ",")[[1]]
+DRIFT_EXPECTED <- NULL
+if (nzchar(DRIFT$expected)) {
+  if (!file.exists(DRIFT$expected)) stop("--drift-expected file not found: ", DRIFT$expected)
+  DRIFT_EXPECTED <- data.table::fread(DRIFT$expected)
+  stopifnot(all(c("iso3", "crop", "ratio_expected") %in% names(DRIFT_EXPECTED)))
+  .log("G6 expected input moves: %s (%d pairs, %d with ratio != 1)", DRIFT$expected, nrow(DRIFT_EXPECTED), sum(abs(DRIFT_EXPECTED$ratio_expected - 1) > 1e-9))
+} else .log("G6 expected input moves: none supplied (every pair expects 1)")
 
 BUCKET  <- "digital-atlas"
 S3_BASE <- sprintf(paste0(
@@ -257,7 +269,7 @@ if (DO_TIERS) for (tier in TIERS) {
     g6 <- tier_drift(local_f, bu$live_tmp,
                      tol_pair = DRIFT$tol_pair, tol_median = DRIFT$tol_median, tol_total = DRIFT$tol_total,
                      tol_small = DRIFT$tol_small, tol_control = DRIFT$tol_control,
-                     min_live = DRIFT$min_live, small_iso3 = DRIFT$small_iso3)
+                     min_live = DRIFT$min_live, small_iso3 = DRIFT$small_iso3, expected = DRIFT_EXPECTED)
     print_drift(g6, label = tier, log = function(fmt, ...) .log(paste0("  ", fmt), ...))
     .log("  G6 %s in %s", if (g6$pass) "ok" else if (ALLOW_VALUE_DRIFT) "WARN (allowed)" else "FAIL", .elapsed(t6))
     if (!g6$pass && !ALLOW_VALUE_DRIFT) { .log("  ABORT %s: value drift outside the stated bounds (read the populations above; --allow-value-drift only after the cause is understood)", tier); next }

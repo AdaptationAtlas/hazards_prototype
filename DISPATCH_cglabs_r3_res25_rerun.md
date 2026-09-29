@@ -695,3 +695,52 @@ Aliases (res-05 content) all 206, Last-Modified 2026-09-28 14:25-14:26:
 "correction in progress" paragraph for "changed against the previous publication" (new movers already
 listed under `1abcb4c`; SDN/NGA-banana constant-dollar rows remain unusable, #39), then **release
 Block C** (full R/3 re-bake). Block C not started; `DISPATCH_cglabs_family_keys.md` untouched.
+
+---
+
+## macbook response — C0-4 verified from here; Block C RELEASED with three amendments (2026-09-29)
+
+Independently verified: all nine keys (`crop-livestock_all{,_res-05,_res-25}`, `vop_nominal-usd-2021{,_res-05,_res-25}`,
+`vop_intld15-2021{,_res-05,_res-25}`) HTTP 206, Last-Modified 2026-09-28 14:25-14:26; res-25 ZWE wheat and COD oil palm
+back at ordinary values; the ROI notebook's own query returns rows with the single label `vop_nominal-usd-2021`.
+Both CDH denominator records now read "changed against the previous publication" (the #38 and #39
+paragraphs stay). The two backup dirs stay. Good handling of the shell cap - background is the right
+default for anything that uploads.
+
+**Block C is released**, with three amendments to the block as originally written:
+
+1. **Park the Block B probe outputs too.** They were built from the contaminated nominal-USD rasters
+   (pre-C0-1). The original text says "keep the probe's severe files"; that is now wrong. In the parking
+   step drop the `if (v == "hazard_risk_vop_usd" && tf == "jagermeyr") f <- f[!grepl(...)]` line so that
+   `hazard_risk_vop_usd/jagermeyr` is emptied like every other dir. "left behind" must be **0 everywhere**.
+2. **G6 needs the expected input moves.** The live product (2026-09-16) was built from the 2025-08
+   rasters; this bake uses the corrected ones, and the corrected exposure legitimately differs from the
+   old one for ~140 material pairs (your C0-3 table). R/3 is a linear multiply, so the product must move
+   by exactly the exposure's factor - that is the invariant, and G6 now applies its bounds net of it.
+   Before the publisher dry-run, produce the per-pair ratios:
+   ```bash
+   # old = the 2025-11-03 object the live product corresponds to. The S3 key was republished on 09-28, so
+   # use the copy the publisher backed up BEFORE C0-4 (the first-run dir holds the res-05 reference only;
+   # the family alias backup is in the second-run dir). Print the dir listing first and pick the alias:
+   Rscript -e 'library(s3fs); print(s3fs::s3_dir_ls("s3://digital-atlas/sandbox/backup/", recurse = FALSE))'
+   Rscript -e 'library(s3fs); d <- "s3://digital-atlas/sandbox/backup/issue9_<second-run STAMP>/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/"; print(s3fs::s3_dir_ls(d))'
+   Rscript -e 'library(s3fs); s3fs::s3_file_download("s3://digital-atlas/sandbox/backup/issue9_<second-run STAMP>/domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=vop_nominal-usd-2021.parquet", "logs/vop_nominal-usd-2021_2025-11-03.parquet")'
+   Rscript R/checks/r3_expected_drift_from_exposure.R --res 0.25 --old logs/vop_nominal-usd-2021_2025-11-03.parquet --out logs/r3_expected_drift_usd_res-25.csv
+   ```
+   **Expect:** the downloaded old object has `unit = usd` and 1,508,624 rows (that is the 2025-11 file;
+   if it says `nominal-usd-2021` you fetched the new one - stop); the script's largest expected moves
+   are your C0-3 list (BDI/RWA arabica-coffee ~15x, GIN sweet-potato/cotton, ZWE/MRT/GIN sugarcane
+   ~0.1, oil palm/wheat ~1) and the median is ~1.0. Then every publisher call in C and D takes
+   `--drift-expected logs/r3_expected_drift_usd_res-25.csv`. G6's tables now print `ratio_raw`,
+   `ratio_expected` and `ratio` (= raw / expected); the bounds apply to the last one. Livestock control
+   still expects exactly 1 (its rasters did not change).
+3. **Stamp before publish, already in Block D.** `scripts/stamp_ensemble_membership.R --timeframe jagermeyr`
+   must say 18 everywhere; it reads the `hazard_risk` source folder now.
+
+Everything else in Block C stands: full usd + intld + ha, both timeframes, FORCE unset, `R3_CROP_VOP_USD`
+default; header check at T+5 min (`spam_vop_nominal-usd-2021_all_res-25.tif | R3_CROP_VOP_USD = 2021`,
+`overwrite4= FALSE`, no mass-conservation WARN); per-variable §4.1 elapsed in the known order of
+magnitude; `failed_*` absent; at exit `usd_total_vs_reference.R --res 0.25 --iso3 all` both sides
+(usd: expect PASS or only marginal border pairs, as in B2; intld PASS), the intld/ha new-vs-parked drift
+at tight bounds, `stamp --dry-run` 18 everywhere, then `r3_publish_tiers.R --dry-run --drift-expected
+logs/r3_expected_drift_usd_res-25.csv` for all three tiers with G6 tables pasted. **STOP, await GO for D.**
