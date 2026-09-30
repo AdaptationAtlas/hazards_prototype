@@ -817,3 +817,54 @@ concentrated coffee/#38/#39 movers (widen only those, or accept as documented, o
 factor by frequency); fix the stamp `_int` regex; then re-run the publisher dry-run for the GO. SYC
 coconut -> 0 wants a glance. Parked set + two C0-4 backup dirs retained; `DISPATCH_cglabs_family_keys.md`
 untouched.
+
+---
+
+## macbook response — bake accepted; G6's basis re-done properly; stamp regex fixed; re-run the dry-run for GO D (2026-09-30)
+
+The re-bake is sound and I accept every reading in your response: §4.1 elapsed real, no failures, product
+vs new reference 0.997 with one border pair, intld unchanged, livestock byte-identical, ha "drift" = a
+partial parked baseline. Two of the three G6 failures were mine; the third is a real, small, pre-existing
+defect. All on develop in this commit.
+
+1. **Livestock in the expected CSV - mine.** Fixed twice over: `r3_expected_drift_from_exposure.R`
+   drops livestock rows, and `tier_drift()` now always judges the livestock control raw (live == local),
+   whatever expected-move input is given.
+2. **Concentrated movers - mine, but the mechanism is the zonal grid, not frequency weighting.**
+   `any + none` sums to the full exposure per pixel, so the admin0 product total IS the exposure total
+   regardless of hazard frequency. What the CSV mixed in is that its "old" table is 0.05 deg zonal while
+   the live product was zonal at 0.25 deg: for small countries (RWA, GAB, BDI) that difference dwarfs the
+   price change, hence "expected 87x, product barely moved". The clean invariant is the one your
+   `usd_total_vs_reference` already measured: **product == the exposure table it was built from, on the
+   same grid**. G6 now takes `--drift-exposure <the res-25 §3.2 twin>` and applies every bound to
+   `T_local / exposure_new` per pair (raw live-vs-local drift still printed for information). The CSV
+   route stays for the CLI but is no longer what the publisher uses.
+3. **SYC coconut -> 0 is real and pre-existing (#40).** On the res-25 reference SYC has production
+   (6.9 kt) but **NaN** on both vop bases: 0.4.0 and 0.4.2 rasterise the country value tables with
+   `rasterize()` at `touches = FALSE`, and no 0.25 deg cell centre lies inside the Seychelles; the live
+   product had SYC only because its 0.05 deg raster was aligned after pricing. Fix (`touches = TRUE`)
+   rides the next 0.4.x republish. For this publish the flip is accepted by name:
+   `--drift-allow-flips SYC:coconut` (reported, excluded from the gated populations). COM/CPV/MUS/STP are
+   fine. If any other pair shows as a flip, that is a STOP.
+4. **Stamp regex - yours to find, mine to own.** Source stacks end `_int.tif`; both the stamp script and
+   R/3 §4.2 now match `_int(_|\.tif$)` and return `character(0)` instead of erroring on an empty match.
+   Thanks also for the `for (v in named_vector)` catch in the drift one-liner - noted, `seq_along` it is.
+
+### Block D pre-step (read-only, minutes) - then STOP for GO
+
+```bash
+cd <hazards_prototype> && git fetch origin && git checkout develop && git pull --ff-only && git log -1 --oneline
+Rscript scripts/stamp_ensemble_membership.R --timeframe jagermeyr --dry-run
+TWIN=$(Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); cat(file.path(exposure_dir, "vop_nominal-usd-2021_adm_sum_spam20_glw420_res-25.parquet"))' 2>/dev/null)
+ls -la "$TWIN"
+Rscript scripts/r3_publish_tiers.R --dry-run --drift-exposure "$TWIN" --drift-allow-flips SYC:coconut 2>&1 | tee logs/publish_dryrun_res25_$(date +%Y%m%d_%H%M%S).log
+```
+**Expect:** stamp dry-run finds **18 members from the hazard_risk source folder** for `hazard_risk_vop` and
+`hazard_risk_vop_usd`, no mismatch, exit 0. Publisher: G1-G5 ok as before; G6 `basis` line names the twin;
+**livestock control range [1, 1]**; material pairs net of the exposure within +/-25 % with median ~1
+(this is your 0.997 seen pair by pair - the only candidates for the band are border pairs of small
+countries, which sit in their own table); continental totals within 5 %; `flips` **0** with
+`(+1 allowed: SYC:coconut)`; unmatched 0; **G6 ok** on all three tiers. Paste the G6 tables. Anything
+in the FAIL column: STOP. Then **STOP for GO** - Block D itself (stamp for real, publish, verify from S3
+by re-download, CR-068 probes) is unchanged from the block above, plus `--drift-exposure "$TWIN"
+--drift-allow-flips SYC:coconut` on the publisher call.

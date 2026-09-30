@@ -87,31 +87,61 @@ DRIFT_LIVESTOCK_RE <- "cattle|sheep|goats|pigs|poultry"
 # same factor: every bound below is then applied to ratio / ratio_expected, and the
 # continental total to the exposure-weighted expected total. Pairs absent from the
 # table expect 1. Produced on the node by R/checks/r3_expected_drift_from_exposure.R.
+# exposure_new: optional path to the exposure table THIS bake multiplied by (0.4.4 §3.2
+# twin on the SAME zonal grid as the product, e.g. vop_nominal-usd-2021_adm_sum_..._res-25).
+# Because freq_any + freq_none = 1 per pixel, the product's admin0 any+none total IS the
+# exposure total: T_local / exposure_new must be ~1 for every pair, whatever the exposure
+# did against the live product. This is the clean form of the "expected move" idea - the
+# CSV route (`expected`, kept for the CLI) mixes in the zonal-grid difference between a
+# 0.05 deg old table and the 0.25 deg live product, which for small countries dwarfs the
+# price change (2026-09-30: RWA/GAB coffee "expected" 87x/8x). When exposure_new is given
+# the bounds below apply to T_local / exposure_new; the raw live-vs-local drift is still
+# printed for information.
+# flip_allow: "ISO3:crop" pairs whose live -> ~0 flip is explained and accepted (reported, not FAIL).
 tier_drift <- function(local_f, live_f,
                        tol_pair = 0.25, tol_median = 0.03, tol_total = 0.05,
                        tol_small = 0.5, tol_control = 0.02,
                        min_live = 1e6, small_iso3 = DRIFT_SMALL_ISO3_DEFAULT,
-                       flip_frac = 0.01, expected = NULL) {
+                       flip_frac = 0.01, expected = NULL, exposure_new = NULL, flip_allow = character(0)) {
   stopifnot(file.exists(local_f), file.exists(live_f))
   a <- .drift_read(live_f); b <- .drift_read(local_f)
   j <- merge(a$T, b$T, by = c("iso3", "crop"), all = TRUE, suffixes = c("_live", "_local"))
   j[, ratio_raw := T_local / T_live]
   j[, ratio_expected := 1]
-  if (!is.null(expected)) {
+  j[, livestock := grepl(DRIFT_LIVESTOCK_RE, crop)]
+  basis <- "live product (every pair expects 1)"
+  if (!is.null(exposure_new)) {
+    stopifnot(file.exists(exposure_new))
+    ex <- arrow::open_dataset(exposure_new) |>
+      dplyr::filter(is.na(admin1_name), exposure == "vop") |>
+      dplyr::select(iso3, crop, tech, value) |> dplyr::collect() |> as.data.table()
+    ex <- ex[(tech == "all" | is.na(tech)) & is.finite(value), .(E_new = sum(value)), by = .(iso3, crop)]
+    j <- merge(j, ex, by = c("iso3", "crop"), all.x = TRUE)
+    # expected move = what the exposure input actually is now, relative to the live product
+    j[!is.na(E_new) & T_live > 0, ratio_expected := E_new / T_live]
+    basis <- sprintf("exposure input %s (bounds on T_local / exposure_new)", basename(exposure_new))
+  } else if (!is.null(expected)) {
     e <- as.data.table(expected)[is.finite(ratio_expected) & ratio_expected > 0, .(iso3, crop, ratio_expected)]
     j <- merge(j[, !"ratio_expected"], e, by = c("iso3", "crop"), all.x = TRUE)
     j[is.na(ratio_expected), ratio_expected := 1]
+    basis <- "expected-move csv (bounds on ratio_raw / ratio_expected)"
   }
-  # Every bound is applied to the product's move net of its input's move.
+  # Livestock rasters never change in a crop-price fix and are not in 0.4.2; the control is
+  # always judged raw (live == local), never net of any expected move.
+  j[livestock == TRUE, ratio_expected := 1]
   j[, ratio := ratio_raw / ratio_expected]
-  j[, livestock := grepl(DRIFT_LIVESTOCK_RE, crop)]
   j[, small := iso3 %in% small_iso3]
 
   unmatched <- j[is.na(T_live) | is.na(T_local)]
   m <- j[!is.na(T_live) & !is.na(T_local)]
   # A flip: real value on one side, essentially nothing on the other.
-  flips <- m[(T_live >= min_live & T_local <= flip_frac * T_live) |
-             (T_local >= min_live & T_live <= flip_frac * T_local)]
+  flips_all <- m[(T_live >= min_live & T_local <= flip_frac * T_live) |
+                 (T_local >= min_live & T_live <= flip_frac * T_local)]
+  flips_all[, allowed := paste0(iso3, ":", crop) %in% flip_allow]
+  flips <- flips_all[allowed == FALSE]
+  # An allowed flip is explained elsewhere; keep it out of every gated population so it
+  # does not fail the continental total or the pair band on top of being reported.
+  m <- m[!paste0(iso3, ":", crop) %in% flips_all[allowed == TRUE, paste0(iso3, ":", crop)]]
   material   <- m[T_live >= min_live & !small & !livestock]
   smallpop   <- m[T_live >= min_live & small & !livestock]
   immaterial <- m[T_live <  min_live]
@@ -132,7 +162,8 @@ tier_drift <- function(local_f, live_f,
       sprintf("max relative spread among non-zero combos live %.2e local %.2e; pairs missing a combo live %d local %d",
               a$max_spread, b$max_spread, a$n_partial, b$n_partial)),
     g("unmatched", "(iso3, crop) one side only", nrow(unmatched) == 0, sprintf("%d pairs", nrow(unmatched))),
-    g("flips", sprintf("material one side, <= %.0f%% other", 100 * flip_frac), nrow(flips) == 0, sprintf("%d pairs", nrow(flips))),
+    g("flips", sprintf("material one side, <= %.0f%% other", 100 * flip_frac), nrow(flips) == 0,
+      sprintf("%d pairs%s", nrow(flips), if (any(flips_all$allowed)) sprintf(" (+%d allowed: %s)", sum(flips_all$allowed), paste(flips_all[allowed == TRUE, paste0(iso3, ":", crop)], collapse = ",")) else "")),
     g("total", sprintf("continental per crop (live >= %s)", format(min_live, big.mark = ",")),
       nrow(totals) > 0 && all(abs(totals$ratio - 1) <= tol_total),
       sprintf("%d crops; ratio range [%s, %s]; tol %.0f%%", nrow(totals), signif(min(totals$ratio), 4), signif(max(totals$ratio), 4), 100 * tol_total)),
@@ -148,13 +179,13 @@ tier_drift <- function(local_f, live_f,
       sprintf("%d pairs; range [%s, %s]; tol %.0f%%", nrow(control),
               if (nrow(control)) signif(min(control$ratio), 4) else NA, if (nrow(control)) signif(max(control$ratio), 4) else NA, 100 * tol_control))
   ))
-  n_exp <- if (is.null(expected)) 0L else m[ratio_expected != 1, .N]
-  gates <- rbind(gates, g("expected", "pairs with an expected input move", TRUE,
-                          if (n_exp) sprintf("%d material+immaterial pairs carry ratio_expected != 1; bounds applied net of it", n_exp) else "none supplied (every pair expects 1)"))
+  n_exp <- m[ratio_expected != 1, .N]
+  gates <- rbind(gates, g("basis", "what the bounds are judged against", TRUE,
+                          sprintf("%s; %d pairs carry an expected move != 1", basis, n_exp)))
   list(pass = all(gates$result == "ok"), gates = gates,
        material = material[order(abs(ratio - 1), decreasing = TRUE)],
        small = smallpop[order(abs(ratio - 1), decreasing = TRUE)],
-       immaterial = immaterial, unmatched = unmatched, flips = flips,
+       immaterial = immaterial, unmatched = unmatched, flips = flips, flips_allowed = flips_all[allowed == TRUE],
        livestock = control[order(abs(ratio - 1), decreasing = TRUE)], totals = totals[order(abs(ratio - 1), decreasing = TRUE)],
        params = list(tol_pair = tol_pair, tol_median = tol_median, tol_total = tol_total, tol_small = tol_small,
                      tol_control = tol_control, min_live = min_live, small_iso3 = small_iso3))
@@ -172,6 +203,7 @@ print_drift <- function(res, label = "", n_worst = 10, log = .drift_log) {
   if (nrow(res$small))    { cat("\n  small-country pairs (informational population), worst", n_worst, ":\n"); print(head(fmt(res$small[, ..cols]), n_worst), nrows = n_worst) }
   if (nrow(res$livestock)){ cat("\n  livestock control, worst", n_worst, ":\n"); print(head(fmt(res$livestock[, ..cols]), n_worst), nrows = n_worst) }
   if (nrow(res$flips))    { cat("\n  FLIPS:\n"); print(fmt(res$flips[, ..cols]), nrows = 50) }
+  if (nrow(res$flips_allowed)) { cat("\n  flips ALLOWED by name (explained elsewhere):\n"); print(fmt(res$flips_allowed[, ..cols]), nrows = 50) }
   if (nrow(res$unmatched)){ cat("\n  UNMATCHED:\n"); print(fmt(res$unmatched[, .(iso3, crop, T_live, T_local)]), nrows = 50) }
   cat(sprintf("\n  immaterial pairs (live < %s): %d, not gated except for flips\n", format(res$params$min_live, big.mark = ","), nrow(res$immaterial)))
   invisible(res$pass)
@@ -181,17 +213,19 @@ print_drift <- function(res, label = "", n_worst = 10, log = .drift_log) {
 if (sys.nframe() == 0L || nzchar(Sys.getenv("DRIFT_CLI"))) {
   args <- commandArgs(trailingOnly = TRUE)
   opt <- function(x, d) { i <- match(x, args); if (is.na(i) || i == length(args)) d else args[i + 1] }
-  local_f <- opt("--local", ""); live_f <- opt("--live", ""); exp_f <- opt("--expected", "")
-  if (!nzchar(local_f) || !nzchar(live_f)) { cat("usage: --local <new.parquet> --live <old.parquet> [--expected <iso3,crop,ratio_expected csv>] [--tol-pair --tol-median --tol-total --tol-small --tol-control --min-live --small-iso3]\n"); quit(status = 2) }
+  local_f <- opt("--local", ""); live_f <- opt("--live", ""); exp_f <- opt("--expected", ""); expo_f <- opt("--exposure", ""); allow_f <- opt("--allow-flips", "")
+  if (!nzchar(local_f) || !nzchar(live_f)) { cat("usage: --local <new.parquet> --live <old.parquet> [--exposure <0.4.4 twin this bake used>] [--expected <iso3,crop,ratio_expected csv>] [--allow-flips ISO3:crop,...] [--tol-pair --tol-median --tol-total --tol-small --tol-control --min-live --small-iso3]\n"); quit(status = 2) }
   t0 <- Sys.time()
   .drift_log("local = %s", local_f); .drift_log("live  = %s", live_f)
   expected <- if (nzchar(exp_f)) { .drift_log("expected input moves from %s", exp_f); data.table::fread(exp_f) } else NULL
+  exposure_new <- if (nzchar(expo_f)) { .drift_log("exposure input = %s", expo_f); expo_f } else NULL
+  flip_allow <- if (nzchar(allow_f)) strsplit(allow_f, ",")[[1]] else character(0)
   res <- tier_drift(local_f, live_f,
                     tol_pair = as.numeric(opt("--tol-pair", "0.25")), tol_median = as.numeric(opt("--tol-median", "0.03")),
                     tol_total = as.numeric(opt("--tol-total", "0.05")), tol_small = as.numeric(opt("--tol-small", "0.5")),
                     tol_control = as.numeric(opt("--tol-control", "0.02")), min_live = as.numeric(opt("--min-live", "1e6")),
                     small_iso3 = strsplit(opt("--small-iso3", paste(DRIFT_SMALL_ISO3_DEFAULT, collapse = ",")), ",")[[1]],
-                    expected = expected)
+                    expected = expected, exposure_new = exposure_new, flip_allow = flip_allow)
   print_drift(res, label = basename(local_f))
   .drift_log("done in %.1f min", as.numeric(difftime(Sys.time(), t0, units = "mins")))
   quit(status = if (res$pass) 0 else 1)

@@ -49,7 +49,15 @@ rd <- function(f) arrow::open_dataset(f) |> dplyr::filter(is.na(admin1_name), ex
 o <- rd(OLD)[(tech == "all" | is.na(tech)) & is.finite(value) & value > 0, .(old = sum(value)), by = .(iso3, crop)]
 n <- rd(NEW)[(tech == "all" | is.na(tech)) & is.finite(value) & value > 0, .(new = sum(value)), by = .(iso3, crop)]
 m <- merge(o, n, by = c("iso3", "crop"))
+# Livestock is not priced by 0.4.2 and its rasters did not change; the old (0.05 deg) vs new
+# (0.25 deg) livestock rows differ only by zonal grid, which the live product already carries.
+# Leaving them in made G6's livestock control fail on a byte-identical product (2026-09-30).
+m <- m[!grepl("cattle|sheep|goats|pigs|poultry|total-", crop)]
 m[, ratio_expected := new / old]
+# NOTE (2026-09-30): this CSV is superseded for the publisher by --drift-exposure <new twin>,
+# which compares the product with the exposure it was built from on the SAME zonal grid. The
+# old-table route mixes in the 0.05 -> 0.25 deg zonal difference, which for small countries
+# (RWA, GAB, BDI) dwarfs the price change. Kept for the CLI and for diagnostics.
 .log("old %s (%d pairs) | new %s (%d pairs) | matched %d", basename(OLD), nrow(o), basename(NEW), nrow(n), nrow(m))
 .log("ratio_expected: median %.3f | 5-95%% [%.3f, %.3f] | %d pairs beyond +/-25%% (old >= 1e6: %d)",
      median(m$ratio_expected), quantile(m$ratio_expected, 0.05), quantile(m$ratio_expected, 0.95),

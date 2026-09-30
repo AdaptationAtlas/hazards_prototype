@@ -84,7 +84,14 @@ DRIFT <- list(tol_pair    = as.numeric(opt("--drift-tol-pair", "0.25")),
               # what live was built from and what this bake used (R/3 is a linear multiply, so
               # the product must move by the same factor). Made on the node by
               # R/checks/r3_expected_drift_from_exposure.R. Absent = every pair expects 1.
-              expected    = opt("--drift-expected", ""))
+              expected    = opt("--drift-expected", ""),
+              # PREFERRED over --drift-expected: the 0.4.4 §3.2 twin this bake multiplied by, on the
+              # same zonal grid (vop_nominal-usd-2021_adm_sum_spam20_glw420_res-25.parquet). Because
+              # freq_any + freq_none = 1 per pixel, product any+none must equal it pair by pair.
+              exposure    = opt("--drift-exposure", ""),
+              # "ISO3:crop,..." live -> ~0 flips that are explained (e.g. an island with no 0.25 deg
+              # cell centre); reported, not FAIL.
+              allow_flips = opt("--drift-allow-flips", ""))
 # Ship only the `.json` sidecar for each tier, leaving the live parquet untouched.
 # The #26 membership stamp can be applied to sidecars on disk in seconds, so it
 # should not cost three ~190 MB re-uploads of byte-identical parquets, nor put a
@@ -152,6 +159,9 @@ if (nzchar(DRIFT$expected)) {
   stopifnot(all(c("iso3", "crop", "ratio_expected") %in% names(DRIFT_EXPECTED)))
   .log("G6 expected input moves: %s (%d pairs, %d with ratio != 1)", DRIFT$expected, nrow(DRIFT_EXPECTED), sum(abs(DRIFT_EXPECTED$ratio_expected - 1) > 1e-9))
 } else .log("G6 expected input moves: none supplied (every pair expects 1)")
+DRIFT_EXPOSURE <- if (nzchar(DRIFT$exposure)) { if (!file.exists(DRIFT$exposure)) stop("--drift-exposure file not found: ", DRIFT$exposure); .log("G6 basis: exposure input %s (preferred; overrides --drift-expected)", DRIFT$exposure); DRIFT$exposure } else NULL
+DRIFT_FLIPS <- if (nzchar(DRIFT$allow_flips)) strsplit(DRIFT$allow_flips, ",")[[1]] else character(0)
+if (length(DRIFT_FLIPS)) .log("G6 flips allowed by name: %s", paste(DRIFT_FLIPS, collapse = ","))
 
 BUCKET  <- "digital-atlas"
 S3_BASE <- sprintf(paste0(
@@ -269,7 +279,8 @@ if (DO_TIERS) for (tier in TIERS) {
     g6 <- tier_drift(local_f, bu$live_tmp,
                      tol_pair = DRIFT$tol_pair, tol_median = DRIFT$tol_median, tol_total = DRIFT$tol_total,
                      tol_small = DRIFT$tol_small, tol_control = DRIFT$tol_control,
-                     min_live = DRIFT$min_live, small_iso3 = DRIFT$small_iso3, expected = DRIFT_EXPECTED)
+                     min_live = DRIFT$min_live, small_iso3 = DRIFT$small_iso3, expected = DRIFT_EXPECTED,
+                     exposure_new = DRIFT_EXPOSURE, flip_allow = DRIFT_FLIPS)
     print_drift(g6, label = tier, log = function(fmt, ...) .log(paste0("  ", fmt), ...))
     .log("  G6 %s in %s", if (g6$pass) "ok" else if (ALLOW_VALUE_DRIFT) "WARN (allowed)" else "FAIL", .elapsed(t6))
     if (!g6$pass && !ALLOW_VALUE_DRIFT) { .log("  ABORT %s: value drift outside the stated bounds (read the populations above; --allow-value-drift only after the cause is understood)", tier); next }

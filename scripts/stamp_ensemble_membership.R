@@ -40,9 +40,13 @@ suppressMessages(suppressWarnings(source(setup)))
 # --- the derivation. Mirrors R/3_freq_x_exposure.R §4.2 exactly. -------------
 ensemble_membership <- function(folder) {
   files <- list.files(folder, ".tif$", full.names = TRUE)
+  # Source stacks (hazard_risk/<tf>) end in `_int.tif`; §4.1 outputs carry `_int_<variable>`.
+  # Match both. An empty match must return character(0), not error inside tstrsplit
+  # (2026-09-30: `_int_` alone matched nothing in the source folder and crashed).
+  int_files <- basename(files[grepl("_int(_|\\.tif$)", basename(files))])
+  if (!length(int_files)) return(character(0))
   sort(setdiff(
-    unique(unlist(data.table::tstrsplit(
-      basename(files[grepl("_int_", files)]), "_", keep = 2, fixed = TRUE))),
+    unique(unlist(data.table::tstrsplit(int_files, "_", keep = 2, fixed = TRUE))),
     c("ENSEMBLE", "ENSEMBLEmean", "ENSEMBLEsd", "historic")
   ))
 }

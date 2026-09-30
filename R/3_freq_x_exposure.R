@@ -1291,11 +1291,12 @@ for (tx in seq_along(timeframe_choices)) {
         # runs with ensemble_only, so per-GCM tifs sit in the output folder only as
         # leftovers of older runs, and a parked/clean output folder yields n_members
         # = 0 (seen 2026-09-26). Fall back to the output folder if the source is empty.
-        .ens_from <- function(dir) sort(setdiff(
-          unique(unlist(data.table::tstrsplit(
-            basename(list.files(dir, "_int.*\\.tif$")), "_", keep = 2, fixed = TRUE))),
-          c("ENSEMBLE", "ENSEMBLEmean", "ENSEMBLEsd", "historic")
-        ))
+        .ens_from <- function(dir) {
+          .f <- basename(list.files(dir, "_int(_.*)?\\.tif$"))   # source stacks end `_int.tif`; §4.1 outputs `_int_<variable>.tif`
+          if (!length(.f)) return(character(0))
+          sort(setdiff(unique(unlist(data.table::tstrsplit(.f, "_", keep = 2, fixed = TRUE))),
+                       c("ENSEMBLE", "ENSEMBLEmean", "ENSEMBLEsd", "historic")))
+        }
         .ens_members <- .ens_from(to_do_list[[v]]$source_dir)
         .ens_src <- "per-GCM _int stacks in the hazard_risk source folder"
         if (!length(.ens_members)) { .ens_members <- .ens_from(folder); .ens_src <- "per-GCM _int tifs left in the output folder (source folder had none)" }
