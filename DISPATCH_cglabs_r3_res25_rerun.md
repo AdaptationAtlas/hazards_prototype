@@ -868,3 +868,52 @@ countries, which sit in their own table); continental totals within 5 %; `flips`
 in the FAIL column: STOP. Then **STOP for GO** - Block D itself (stamp for real, publish, verify from S3
 by re-download, CR-068 probes) is unchanged from the block above, plus `--drift-exposure "$TWIN"
 --drift-allow-flips SYC:coconut` on the publisher call.
+
+---
+
+## cglabs response — Block D pre-step: stamp PASS, G6 now green except it still gates generic-crop; STOP (2026-09-30)
+
+Repo `53257ed`. Read-only; nothing published. Your three fixes all work — one pair-class left, and the
+sibling gate already exempts it.
+
+**stamp --timeframe jagermeyr --dry-run: PASS.** 18 members from the **hazard_risk source folder** for
+both `hazard_risk_vop` and `hazard_risk_vop_usd` (ACCESS-CM2 … TaiESM1), 9 sidecars each, no mismatch,
+exit 0. The `_int(_|\.tif$)` fix resolves the crash.
+
+**Publisher --dry-run --drift-exposure "$TWIN" --drift-allow-flips SYC:coconut** (TWIN =
+`vop_nominal-usd-2021_adm_sum_spam20_glw420_res-25.parquet`, Sep 28 12:40 — the corrected twin).
+G1-G5 ok. G6, all three tiers:
+
+| gate | result |
+|---|---|
+| parity rows / hazard_vars / scenarios | ok (67,952,655 == ; 4==4) |
+| unmatched | ok — 0 |
+| **flips** | **ok — 0 pairs (+1 allowed: SYC:coconut)** |
+| **total** continental per crop (5%) | **ok — 33 crops, ratio [1, 1.005]** |
+| material median (3%) | ok — median 1 |
+| **livestock control (2%)** | **ok — range [1, 1]** |
+| basis | ok — `T_local / exposure_new`, twin named, 1045 pairs carry an expected move |
+| material pairs ±25% | **FAIL — 5/629 outside, range [0.5006, 1.365]** |
+| small-country ±50% | **FAIL — 1/178 outside** |
+
+Livestock is exactly [1,1] (the raw-control fix), the SYC:coconut flip is accepted, and the concentrated
+movers vanished now the basis is the twin on the same grid — totals sit at [1, 1.005]. All confirmed
+across severe/moderate/extreme.
+
+**The only remaining FAIL is `generic-crop`, and every breaching pair is generic-crop** — material: ZWE
+0.501, UGA 0.668, ERI 0.683, CMR 1.365, GAB 1.281; small-country: STP 1.542 — each with
+`ratio_expected = 1`, because **generic-crop has no row in the exposure twin**, so G6 falls back to
+live-vs-local for it. And live-vs-local it genuinely moved: generic-crop is the all-crops sum, so ZWE
+halving (sugarcane 1,960 -> 141 + the wheat clip, summed across components) is the intended correction,
+not drift. `usd_total_vs_reference` already classifies this exact class as **"no reference by design
+(generic-crop) — reported, not gated."**
+
+**Fix is yours and small:** exclude `generic-crop` from G6's gated material/small-country populations
+(report it alongside, like the sibling gate), or point it at the twin's all-crop aggregate if one exists.
+With generic-crop out, G6 passes all three tiers — everything else is already green. Not a re-bake issue;
+not passing `--allow-value-drift`.
+
+**STOP — Block D held for GO.** On the fix I re-run this same dry-run to confirm, then Block D (stamp for
+real, publish the three usd tiers with `--drift-exposure "$TWIN" --drift-allow-flips SYC:coconut`, S3
+re-download verify, CR-068 probes). Parked set + backup dirs retained; `DISPATCH_cglabs_family_keys.md`
+untouched.
