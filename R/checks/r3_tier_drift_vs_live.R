@@ -50,6 +50,11 @@ suppressPackageStartupMessages({ library(arrow); library(dplyr); library(data.ta
 DRIFT_SMALL_ISO3_DEFAULT <- c("GMB", "SWZ", "LSO", "BDI", "RWA", "DJI", "GNQ", "GNB",
                               "TGO", "BEN", "SLE", "CPV", "COM", "STP", "MUS", "SYC")
 DRIFT_LIVESTOCK_RE <- "cattle|sheep|goats|pigs|poultry"
+# `generic-crop` is the synthetic all-crop aggregate: it has no row in the exposure
+# reference (usd_total_vs_reference exempts it as "no reference by design"), so with an
+# --drift-exposure basis it falls back to live-vs-local and legitimately moves with the
+# summed price corrections. Report it, never gate it. Env-overridable, mirrors GATE_NO_REF.
+DRIFT_NO_REF <- strsplit(Sys.getenv("DRIFT_NO_REF", "generic-crop"), ",")[[1]]
 
 .drift_ts  <- function() format(Sys.time(), "%Y-%m-%d %H:%M:%S")
 .drift_log <- function(fmt, ...) cat(sprintf("[%s] [gate-drift] %s\n", .drift_ts(), sprintf(fmt, ...)))
@@ -131,6 +136,7 @@ tier_drift <- function(local_f, live_f,
   j[livestock == TRUE, ratio_expected := 1]
   j[, ratio := ratio_raw / ratio_expected]
   j[, small := iso3 %in% small_iso3]
+  j[, noref := crop %in% DRIFT_NO_REF]
 
   unmatched <- j[is.na(T_live) | is.na(T_local)]
   m <- j[!is.na(T_live) & !is.na(T_local)]
@@ -142,11 +148,12 @@ tier_drift <- function(local_f, live_f,
   # An allowed flip is explained elsewhere; keep it out of every gated population so it
   # does not fail the continental total or the pair band on top of being reported.
   m <- m[!paste0(iso3, ":", crop) %in% flips_all[allowed == TRUE, paste0(iso3, ":", crop)]]
-  material   <- m[T_live >= min_live & !small & !livestock]
-  smallpop   <- m[T_live >= min_live & small & !livestock]
-  immaterial <- m[T_live <  min_live]
+  material   <- m[T_live >= min_live & !small & !livestock & !noref]
+  smallpop   <- m[T_live >= min_live & small & !livestock & !noref]
+  norefpop   <- m[T_live >= min_live & noref]
+  immaterial <- m[T_live <  min_live & !noref]
   control    <- m[livestock & T_live >= min_live]
-  totals <- m[livestock == FALSE, .(T_live = sum(T_live), T_local = sum(T_local), T_expected = sum(T_live * ratio_expected)), by = crop][T_live >= min_live]
+  totals <- m[livestock == FALSE & noref == FALSE, .(T_live = sum(T_live), T_local = sum(T_local), T_expected = sum(T_live * ratio_expected)), by = crop][T_live >= min_live]
   totals[, ratio_raw := T_local / T_live]
   totals[, ratio := T_local / T_expected]   # net of the expected input move
 
@@ -177,7 +184,10 @@ tier_drift <- function(local_f, live_f,
               if (nrow(smallpop)) sum(abs(smallpop$ratio - 1) > tol_small) else 0L, 100 * tol_small)),
     g("livestock", "control ~ 1 (inputs are renames)", nrow(control) == 0 || all(abs(control$ratio - 1) <= tol_control),
       sprintf("%d pairs; range [%s, %s]; tol %.0f%%", nrow(control),
-              if (nrow(control)) signif(min(control$ratio), 4) else NA, if (nrow(control)) signif(max(control$ratio), 4) else NA, 100 * tol_control))
+              if (nrow(control)) signif(min(control$ratio), 4) else NA, if (nrow(control)) signif(max(control$ratio), 4) else NA, 100 * tol_control)),
+    g("no-reference", sprintf("%s: reported, not gated", paste(DRIFT_NO_REF, collapse = ",")), TRUE,
+      sprintf("%d pairs (synthetic all-crop aggregate, no exposure row); range [%s, %s]", nrow(norefpop),
+              if (nrow(norefpop)) signif(min(norefpop$ratio), 4) else NA, if (nrow(norefpop)) signif(max(norefpop$ratio), 4) else NA))
   ))
   n_exp <- m[ratio_expected != 1, .N]
   gates <- rbind(gates, g("basis", "what the bounds are judged against", TRUE,
@@ -186,6 +196,7 @@ tier_drift <- function(local_f, live_f,
        material = material[order(abs(ratio - 1), decreasing = TRUE)],
        small = smallpop[order(abs(ratio - 1), decreasing = TRUE)],
        immaterial = immaterial, unmatched = unmatched, flips = flips, flips_allowed = flips_all[allowed == TRUE],
+       noref = norefpop[order(abs(ratio - 1), decreasing = TRUE)],
        livestock = control[order(abs(ratio - 1), decreasing = TRUE)], totals = totals[order(abs(ratio - 1), decreasing = TRUE)],
        params = list(tol_pair = tol_pair, tol_median = tol_median, tol_total = tol_total, tol_small = tol_small,
                      tol_control = tol_control, min_live = min_live, small_iso3 = small_iso3))
@@ -202,6 +213,7 @@ print_drift <- function(res, label = "", n_worst = 10, log = .drift_log) {
   if (nrow(res$material)) { cat("\n  material pairs, worst", n_worst, "of", nrow(res$material), "(ratio = raw / expected):\n"); print(head(fmt(res$material[, ..cols]), n_worst), nrows = n_worst) }
   if (nrow(res$small))    { cat("\n  small-country pairs (informational population), worst", n_worst, ":\n"); print(head(fmt(res$small[, ..cols]), n_worst), nrows = n_worst) }
   if (nrow(res$livestock)){ cat("\n  livestock control, worst", n_worst, ":\n"); print(head(fmt(res$livestock[, ..cols]), n_worst), nrows = n_worst) }
+  if (!is.null(res$noref) && nrow(res$noref)) { cat("\n  no-reference (generic-crop; reported, not gated), worst", n_worst, ":\n"); print(head(fmt(res$noref[, ..cols]), n_worst), nrows = n_worst) }
   if (nrow(res$flips))    { cat("\n  FLIPS:\n"); print(fmt(res$flips[, ..cols]), nrows = 50) }
   if (nrow(res$flips_allowed)) { cat("\n  flips ALLOWED by name (explained elsewhere):\n"); print(fmt(res$flips_allowed[, ..cols]), nrows = 50) }
   if (nrow(res$unmatched)){ cat("\n  UNMATCHED:\n"); print(fmt(res$unmatched[, .(iso3, crop, T_live, T_local)]), nrows = 50) }
