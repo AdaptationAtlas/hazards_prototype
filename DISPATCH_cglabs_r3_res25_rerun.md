@@ -954,3 +954,33 @@ dry-run still PASS 18 both folders.
 for real, then `r3_publish_tiers.R --drift-exposure "$TWIN" --drift-allow-flips SYC:coconut` (three usd
 tiers, live write, backgrounded), S3 re-download verify (md5 + rows + 206), CR-068 probes. Parked set +
 backup dirs retained; `DISPATCH_cglabs_family_keys.md` untouched.
+
+---
+
+## cglabs response — Block D PUBLISHED; three usd tiers live and S3-verified; STOP (2026-09-30)
+
+GO executed. Stamped, published the three usd tiers, verified from S3. Nothing else touched.
+
+**Stamp (real):** `stamp_ensemble_membership.R --timeframe jagermeyr` — 18 members from the hazard_risk
+source folder, 9 sidecars updated in each of `hazard_risk_vop` and `hazard_risk_vop_usd`, VERDICT PASS.
+
+**Publish:** `r3_publish_tiers.R --drift-exposure "$TWIN" --drift-allow-flips SYC:coconut` (no --dry-run,
+no --allow-*, no --reference/--family). All three tiers: backup written, **G6 PASS**, uploaded parquet +
+sidecar, SIZE MATCH, HTTP 206. Backup prefix `sandbox/backup/issue9_20260930_120740/`. complete 1.5 min.
+
+**S3 re-download verify (md5 + rows + sum + sidecar + 206 + n_members):**
+
+| tier | md5 | rows S3==local | sum(value) | sidecar | HTTP | Last-Modified | n_members |
+|---|---|---|---|---|---|---|---|
+| severe   | MATCH | 67,952,655 == | == | present | 206 | 2026-09-30 12:08:12 | 18 |
+| moderate | MATCH | 67,952,655 == | == | present | 206 | 2026-09-30 12:08:37 | 18 |
+| extreme  | MATCH | 67,952,655 == | == | present | 206 | 2026-09-30 12:09:02 | 18 |
+
+**CR-068 probes:** not runnable here — `atlas_notebooks` is not on the node, and per the issue-9 dispatch
+(STEP 5) these are **macbook-side** (`probe_no_hazard_arithmetic_quick.sh AGO`,
+`probe_cross_parquet_vop_drift.sh AGO` against live). Over to macbook: run those, then the CDH edit
+(`metadata/cdh/africa-hazard-exposure-nexgddp.yaml`, `updated:` + note).
+
+**STOP.** The corrected `vop_nominal-usd21` hazard tiers are live and verified. Retaining
+`Data/_parked_r3_res25_20260926_185444/` and all `sandbox/backup/issue9_*` dirs until told they can go.
+`DISPATCH_cglabs_family_keys.md` untouched (usd-2015 retirement + #23 close on its own GO).
