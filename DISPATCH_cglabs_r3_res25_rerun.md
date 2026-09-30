@@ -744,3 +744,76 @@ magnitude; `failed_*` absent; at exit `usd_total_vs_reference.R --res 0.25 --iso
 (usd: expect PASS or only marginal border pairs, as in B2; intld PASS), the intld/ha new-vs-parked drift
 at tight bounds, `stamp --dry-run` 18 everywhere, then `r3_publish_tiers.R --dry-run --drift-expected
 logs/r3_expected_drift_usd_res-25.csv` for all three tiers with G6 tables pasted. **STOP, await GO for D.**
+
+---
+
+## cglabs response — Block C re-bake COMPLETE and sound; G6 FAILS on the gate's own expected-drift normalization, not the product; STOP before D (2026-09-30)
+
+Repo `b5548a2`. Full re-bake done (2026-09-30 06:03), both timeframes, node-local; nothing published.
+Expected-drift CSV: `/home/jovyan/common_data/nex-gddp-cimp6_hazards/logs/r3_expected_drift_usd_res-25.csv`
+(1394 rows; median 1.010; largest moves = the C0-3 set — BDI/RWA arabica ~15x, ZWE sugarcane 0.072,
+GIN sweet-potato 8.6x, oil palm/wheat ~1). Old object verified `unit=usd`, 1,508,624 rows before use.
+
+**Amendments applied.** (1) Parked everything incl the Block B probe severe-usd outputs (dropped the
+keep-probe line); left-behind 0 in every dir except one stray non-output `selected_files.zip` +
+`.ipynb_checkpoints` in `hazard_risk_vop_usd/jagermeyr`, moved to `_parked.../_stray_nonoutput/` (not
+R/3 outputs, cannot affect skip-if-exists). (3) stamp is Block D — see the bug below.
+
+**Re-bake mechanics: clean.** Header `overwrite4=FALSE`, all inputs res-25,
+`spam_vop_nominal-usd-2021_all_res-25.tif | R3_CROP_VOP_USD=2021`. §4.1 elapsed all real, no
+single-digit fails: annual intld 60.6 / usd 85.9 / ha 135.5; jagermeyr intld 63.5 / usd 91.0 / ha 140.9
+min. No `failed_*`, no WARN, no mass-not-conserved.
+
+**usd_total_vs_reference --res 0.25 --iso3 all (product vs NEW reference):** usd median **0.997**, 1223
+material pairs, **1** border pair out of band (BDI plantain 0.444, materiality floor); intld PASS 0.999.
+Both severities identical. -> the re-bake matches the current corrected exposure; the linear multiply is
+right.
+
+**intld/ha new-vs-parked drift (tight):** intld15-2021 **PASS** all three severities. harv-area_ha
+**FAIL** - but the parked ha jagermeyr was a **partial** build (Block A inventory: 424 int tifs vs 4020
+in annual); the re-bake built it fully, so rows are 52,331,355 vs parked 46,516,760 and the overlap
+drifts only +/-2-5% (continental [0.977, 1.034]). Not a regression - the parked baseline was
+incomplete. (Also fixed a bug in the dispatch's own drift one-liner: `for (v in named_vector)` drops the
+names, so `atlas_dirs$data_dir[[names(v)[1]]]` errored; iterate `seq_along(V)` with `d <- names(V)[i]`.)
+
+**stamp_ensemble_membership.R --dry-run: crashes**, and the membership is genuinely **18**. Root cause is
+a regex bug: `ensemble_membership()` filters `grepl("_int_", files)`, but the SOURCE per-GCM stacks in
+`hazard_risk/<tf>` end in `_int.tif` (int at the end, e.g.
+`arabica-coffee_ACCESS-CM2_extreme_PTOT-L+NTxS+PTOT-G_int.tif`), not `_int_`. Zero matches ->
+`tstrsplit(..., keep=2)` errors on an empty vector ("between 0 and 0") before the fallback can fire.
+Verified independently by tokenising `*_int.tif`: **18 GCMs in both timeframes** (ACCESS-CM2 … TaiESM1).
+Needs `_int(\\.tif)?$` (or `_int` without the trailing underscore) for the source layout. Block-D blocker.
+
+**Publisher G6 (--drift-expected, all three tiers): FAIL - but the cause is the normalization, not the
+bake.** G1-G5 ok; drift-expected is applied (1392 pairs carry ratio_expected != 1; `ratio = raw/expected`).
+Two distinct problems, both in G6/the CSV:
+
+1. **Livestock control is broken by the CSV, not by the data.** `ratio_raw = 1.0000 exactly` for every
+   livestock pair (T_live == T_local - livestock is byte-identical to live, as it must be). It FAILS only
+   because the expected-drift CSV carries `ratio_expected != 1` for livestock crops (MWI goats-highland
+   0.290 -> ratio 3.444; ZMB cattle 1.744 -> 0.573; range [0.573, 3.444]). The CSV is built from the
+   nominal-usd exposure table, which includes livestock, and its OLD (2025-11-03, 0.05deg) vs NEW (res-25)
+   livestock values differ by grid - but 0.4.2 is crop-only and livestock did not change, so livestock
+   must be EXCLUDED from the expected CSV (or the control must read `ratio_raw`). This one is spurious.
+2. **For spatially-concentrated crop movers the admin0 product ratio != the pure exposure ratio.** G6
+   assumes R/3's linear multiply makes product-drift == exposure-drift per (iso3, crop); true pointwise,
+   but the admin0 any/none total is hazard-frequency-weighted, so where exposure moved a lot in a few
+   cells the freq-weighted total moves less. Worst: robusta-coffee continental net 0.719 (raw 1.049,
+   expected 1.459); pigeonpea 0.846. Material: 71/629 outside +/-25%, worst RWA/GAB robusta-coffee
+   (expected 87x / 8x, product barely moved -> ratio 0.014 / 0.101), SDN cotton/sorghum, SS D tea/cotton -
+   the #38/#39 set where the expected factor is huge and concentrated. Median net ratio 0.9995; most
+   crops net 0.98-1.0 (the invariant holds where exposure moved uniformly).
+   One genuine flip to note: **SYC coconut** live 1.339M -> local **0** (dropped out of the re-bake).
+
+**Read.** The re-bake is correct: it matches the new reference exposure to 0.997, livestock is exactly
+1, intld unchanged, ha only "moves" because its parked baseline was partial. G6 cannot pass as
+configured because (a) livestock is wrongly in the expected CSV and (b) the expected factor is a pure
+per-(iso3,crop) exposure ratio while G6 compares freq-weighted admin0 totals. Not passing
+`--allow-value-drift`.
+
+**STOP - Block D held.** For macbook: exclude livestock (and ideally all non-crop) rows from the
+expected-drift CSV or gate the livestock control on `ratio_raw`; decide how G6 should treat the
+concentrated coffee/#38/#39 movers (widen only those, or accept as documented, or weight the expected
+factor by frequency); fix the stamp `_int` regex; then re-run the publisher dry-run for the GO. SYC
+coconut -> 0 wants a glance. Parked set + two C0-4 backup dirs retained; `DISPATCH_cglabs_family_keys.md`
+untouched.
