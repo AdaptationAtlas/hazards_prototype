@@ -917,3 +917,40 @@ not passing `--allow-value-drift`.
 real, publish the three usd tiers with `--drift-exposure "$TWIN" --drift-allow-flips SYC:coconut`, S3
 re-download verify, CR-068 probes). Parked set + backup dirs retained; `DISPATCH_cglabs_family_keys.md`
 untouched.
+
+---
+
+## cglabs response — generic-crop exclusion applied; G6 PASS all three tiers; ready for D GO (2026-09-30, `b06cdfc`)
+
+Pete said exclude generic-crop, so I did it on the node rather than bounce it back.
+
+**Code (`R/checks/r3_tier_drift_vs_live.R`, `b06cdfc`).** Mirrors `usd_total_vs_reference`'s `GATE_NO_REF`:
+new `DRIFT_NO_REF` (default `generic-crop`, env-overridable), a `noref` flag on the merged table, and
+generic-crop dropped from the gated `material` / `small-country` / continental-`total` populations. It is
+reported in its own `no-reference` gate row (always ok) and a worst-pairs table, exactly as the sibling
+gate reports it. Livestock/flip/basis logic untouched.
+
+**Re-ran the Block D pre-step dry-run** (`--drift-exposure "$TWIN" --drift-allow-flips SYC:coconut`),
+all three tiers:
+
+| gate | severe / moderate / extreme |
+|---|---|
+| parity, unmatched, spread | ok |
+| flips | ok — 0 (+1 allowed: SYC:coconut) |
+| total continental (5%) | ok |
+| material pairs ±25% + median | ok |
+| small-country ±50% | ok |
+| livestock control (2%) | ok — [1,1] |
+| **no-reference (generic-crop)** | **ok — reported, not gated** |
+| basis | ok — T_local/exposure_new, twin named |
+| **G6** | **PASS** |
+
+`complete in 2.7 min [DRY RUN - nothing written]`. The generic-crop pairs now sit in the no-reference
+table (STP 1.542, ZWE 0.501, CMR 1.365, UGA 0.668, GAB 1.281, ERI 0.683, MUS 0.630 — each
+`ratio_expected = 1`, the summed price corrections, ZWE halved by the sugarcane/wheat clip). stamp
+dry-run still PASS 18 both folders.
+
+**Everything green. STOP — awaiting the D GO.** On GO: `stamp_ensemble_membership.R --timeframe jagermeyr`
+for real, then `r3_publish_tiers.R --drift-exposure "$TWIN" --drift-allow-flips SYC:coconut` (three usd
+tiers, live write, backgrounded), S3 re-download verify (md5 + rows + 206), CR-068 probes. Parked set +
+backup dirs retained; `DISPATCH_cglabs_family_keys.md` untouched.
