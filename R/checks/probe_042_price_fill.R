@@ -40,6 +40,7 @@ run_lines <- function(a, b) {
   for (e in ex) {
     txt <- paste(deparse(e), collapse = " ")
     if (grepl("0_server_setup", txt, fixed = TRUE)) next          # already sourced, and cwd has moved
+    if (grepl("fwrite(", txt, fixed = TRUE)) { .log("skipped (read-only): %s", substr(txt, 1, 70)); next }   # section 3 writes the audit CSV the cross-basis gate reads; a probe must not touch it
     eval(e, envir = globalenv())
   }
 }

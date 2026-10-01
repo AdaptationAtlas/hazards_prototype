@@ -167,9 +167,47 @@ team; if not, SDN intld rows should be absent, not inflated).
    nominal twin (the usd tiers WILL move where prices changed - that is the expected input move) and
    `stamp_ensemble_membership.R` before publish; intld tiers' publication is a separate GO (rebake item 7).
 
+## Implementation record (2026-10-01, the item-2 session)
+
+Code is on `develop` (`715057f`, `95b2159`, `94a98fa`); the node runbook is
+`DISPATCH_cglabs_exposure_intld_fixes.md`. Decisions the implementing session took inside the brief:
+
+- **Banana / plantain: pooled.** FAOSTAT reports Nigeria's 7.4 Mt as "Bananas" with no Plantains item
+  at all; Uganda the other way round (11.2 Mt Plantains, no Bananas); SPAM codes Nigeria as plantain.
+  The two FAO items form one allocation group split by SPAM banana + plantain share
+  (`VOP_POOLED_ITEMS` in `R/vop_allocate.R`), and the coverage guard judges the pooled pair (NGA ≈ 1.0,
+  not 1.5 kt / 7 Mt). Cost: inside a country the two crops carry the same I$ per tonne. The nominal
+  chain still prices them as separate items.
+- **Generic grouping instead of a millet block.** Groups are connected components of the SPAM-layer ↔
+  FAO-item graph from `metadata/SPAM2010_FAO_crops.csv` (placeholders fixed there, not in the join):
+  coffee, millet, the pooled musa group, and rapeseed = "Rape or colza seed" + "Mustard seed" (FAO
+  renamed the item; 0.4.0 had been getting mustard seed only). Coffee's result is identical to the old
+  hand-written split.
+- **`terra::classify()` ID leak** (found by the fixture): unmatched admin IDs stayed as values, so every
+  country × crop with no GPV row carried its admin ID (thousand I$) as a spurious value on a one-sided
+  pair. `others = NA` now; those tiny intld pairs disappear in the old-vs-new report.
+- **Tea floor removed** from 0.4.2: it was a one-crop basis guard by hand; the general one covers tea
+  (KEN own 2,705 USD/t implied; fills 1,900-2,300).
+- **The basis guard's fallback price is country-invariant per item**, because the constant-I$ GPV is
+  production × one international price: the guard reduces to "keep an own price while it is within 4×
+  of the item's cross-country median own price". On the 2026-05-14 files it moves 37 rows: high-side
+  auction / product-form (KEN coffee 4,146 → 782; BDI / SLE tobacco 8,990 / 5,777 → 1,251), Eritrea's
+  exchange-rate highs, and low-side exchange-rate regimes (Angola on 8 crops, Guinea 5, Sudan 3) plus
+  NGA oil palm 45.8 → 190 and groundnut 151 → 719, TUN bean / sorghum. Pete reads the list in Block B.
+- **Effect on the nominal product** (macbook, FAO tables only, before coastal gain): all-crops 0.82×;
+  per crop cowpea 0.34, coffee 0.39, plantain 0.46, coconut 0.54, sesame 0.58, yams 0.66, cassava 0.77
+  (FAO's own implied prices in NGA / CMR / GHA / CIV replace high fills), sugarcane 1.15, sugar beet 1.18.
+  The KEN auction coffee price no longer propagates to ETH (4,269 → 782 own). Old-vs-new table in the
+  macbook scratchpad (`old_vs_new_fill_2021.csv`); the node reproduces it in Block B.
+- **`touches = TRUE` also returns value to coastal cells** whose centre is offshore (both bases, res-25),
+  not only SYC: a small positive move for coastal countries, stated as expected in the dispatch.
+- Open for Pete at the GO: Sudan's scope in SPAM SSA (the guard blanks it either way; only the CDH wording
+  depends on the answer); the 4× band's low-side catches.
+
 ## Reuse
 
-`R/price_fill.R`, `R/checks/vop_cross_basis_gate.R`, `R/checks/probe_042_price_fill.R`,
+`R/price_fill.R`, `R/vop_allocate.R`, `R/checks/vop_cross_basis_gate.R`, `R/checks/probe_042_price_fill.R`,
+`R/checks/probe_040_allocation.R`, `R/checks/exposure_pair_drift.R`, `R/checks/fixture_price_fill.R`, `R/checks/fixture_vop_allocate.R`,
 `R/checks/r3_tier_drift_vs_live.R` (`tier_drift(exposure_new=)`), `scripts/r3_publish_tiers.R`
 (`--reference-only`, `--family-only`, `--drift-exposure`, `--drift-allow-flips`), fixtures in the macbook
 scratchpad (`drift_fixture.R`, `price_fill_fixture.R`). Node gotchas: AGENTS.md §2.
