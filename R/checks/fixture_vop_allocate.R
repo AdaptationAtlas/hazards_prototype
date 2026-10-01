@@ -81,4 +81,10 @@ ok(all(c("wheat", "maize") %in% names(vop)), "fully guarded / unvalued crops sti
 chk <- vop_check_totals(vop, admin, zones, alloc, groups)
 print(chk)
 ok(all(chk[iso3 != "ZZZ", ok]), "conservation: every allocated (country, group) zonal sum == allocated GPV; every guarded one is 0 / NA")
+
+## #40: a polygon smaller than a cell owns no cell centre -> rasterize() without touches gives NA
+isl <- vect("POLYGON ((4.2 4.2, 4.4 4.2, 4.4 4.4, 4.2 4.4, 4.2 4.2))", crs = "EPSG:4326"); isl$iso3 <- "SYC"; isl$price <- 500
+r0 <- rasterize(isl, admin, field = "price")
+r1 <- rasterize(isl, admin, field = "price", touches = TRUE)
+ok(all(is.na(values(r0))) && sum(!is.na(values(r1))) == 1 && values(r1)[!is.na(values(r1))] == 500, "#40: a sub-cell polygon (Seychelles-shaped) rasterises to nothing without touches and to its one touched cell with touches = TRUE")
 cat("\nALL VOP-ALLOCATE FIXTURE ASSERTIONS PASSED\n")

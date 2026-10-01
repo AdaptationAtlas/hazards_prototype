@@ -49,7 +49,12 @@ geoboundaries <- terra::aggregate(geoboundaries, "iso3")
 .log040(sprintf("exposure grid = %s | res %.4f | tag %s", basename(.eg$path), .eg$res_deg, .eg$tag))
 .log040("loading base raster + rasterizing admin0")
 base_rast <- .eg$rast
-admin_rast <- terra::rasterize(geoboundaries, base_rast, field = "iso3")
+# touches = TRUE (#40, 2026-10-01): a polygon that owns no cell CENTRE at 0.25 deg (the
+# Seychelles) had no zone here, so its SPAM production (sum-resampled from 0.05 deg, present
+# in the cell) got no national total and a NaN share; coastal cells whose centre is offshore
+# were likewise outside every zone and their value was redistributed inland. 0.4.4 rasterises
+# its zones with touches = TRUE already; this matches it.
+admin_rast <- terra::rasterize(geoboundaries, base_rast, field = "iso3", touches = TRUE)
 
 # SPAM layers are the long SPAM names ("pearl millet", "arabica coffee", ...); the mapping
 # table says which FAO item(s) each one is valued under. 2026-10-01: the layer set comes from

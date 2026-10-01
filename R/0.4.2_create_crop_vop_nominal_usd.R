@@ -411,8 +411,14 @@ for (i in seq_along(price_usd_list)) {
 
   crop_names <- sort(names(final_price_cast)[-1])
 
+  # touches = TRUE (#40, 2026-10-01): rasterize() fills only cells whose centre a polygon
+  # contains; at 0.25 deg no cell centre falls inside the Seychelles, so the price raster was
+  # NA there while SPAM production (sum-resampled from 0.05 deg) was present -> NA x prod = NA,
+  # SYC coconut 1.34 M USD -> 0 in the R/3 re-bake. Coastal cells with an offshore centre lost
+  # their value the same way. A border cell now takes the value of a touching country; harmless,
+  # since production already sits in one country's cells and 0.4.4 zones use touches = TRUE too.
   final_price_rast <- terra::rast(lapply(crop_names, FUN = function(NAME) {
-    terra::rasterize(final_price_vect, base_rast, field = NAME)
+    terra::rasterize(final_price_vect, base_rast, field = NAME, touches = TRUE)
   }))
   names(final_price_rast) <- crop_names
 
