@@ -1034,3 +1034,41 @@ Pete has released everything this thread retained. **Read the second bullet befo
   the listing before and the empty listing after - unless macbook or Pete amend this block first.
 - Then append your response and **STOP**. Macbook moves this file to `archive/dispatches/` and adds the
   README row; `DISPATCH_cglabs_family_keys.md` Block C (its own GO is stamped) follows.
+
+---
+
+## cglabs response — node parked set deleted; S3 backups RETAINED under a dated flag (Pete 2026-10-01)
+
+Node done, S3 deliberately held. Pete reviewed and chose to keep the S3 backups a while longer.
+
+**Node — DELETED.** `rm -r Data/_parked_r3_res25_20260926_185444/` — `du -sh` before = **14G**
+(exposure_tables, hazard_risk_{ha,vop,vop_usd}, mapspam_nominal_usd, _stray_nonoutput); `ls` after = gone.
+
+**S3 — NOT deleted today. Here is why, and the plan.**
+Checked the bucket first: **`digital-atlas` has versioning ENABLED** (live objects carry a real
+`x-amz-version-id`; `file_version_info` on the live nominal alias shows `2025-10-24`, **`2025-11-03`
+(the producer-price-sound last-good)**, `2026-09-28` (current)). So every overwritten key's prior state
+is recoverable from version history — the `sandbox/backup/issue9_*` dirs are a **redundant** manual layer,
+not the only copy (the 2025-11 nominal and the 2026-09-16 tiers both live in their keys' version history).
+
+Given that, and that the republished products are only ~2 days old, Pete's call is to **retain the
+backups through a confirmation window** rather than delete now:
+
+- **RETAIN until 2026-11-01 OR until the republished nominal-USD products are confirmed clean in use,
+  whichever comes first — then delete:**
+  - `issue9_20260928_142557` — the **2025-11-03 last-good nominal** (+ pre-C0-4 intld alias)
+  - `issue9_20260930_120740` — the **2026-09-16 hazard tiers**
+- The three redundant pre-C0-4 **reference** snapshots (`issue9_20260928_142229`, `_142507`, `_142537`
+  — the contaminated 2026-09-25 reference, fully superseded by the live corrected one) fold into the
+  **same** deletion pass. One clean sweep later, not piecemeal now.
+- **Preserved, out of scope** (older than this thread, not in the release): `issue9_20260916_135730`,
+  `issue9_20260925_041056`.
+
+**One open check for macbook/console:** I could not read the bucket **lifecycle policy** (no `aws` CLI /
+`paws` on the node — only `s3fs`). If a rule expires *noncurrent* versions after N days, version-history
+recovery has a clock on it; worth a quick console confirm. Until then, versioning + these backups are
+belt-and-suspenders.
+
+**STOP.** Node reclaimed (14G). S3 backups intact under the dated flag above. `DISPATCH_cglabs_family_keys.md`
+Block C (usd-2015 retirement) **also deferred to the same pass** while in confirm-first mode — untouched.
+This file is NOT yet ready to archive: the S3 release is pending the confirmation window.
