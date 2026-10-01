@@ -23,6 +23,15 @@ rebuild; §5.2 already runs under FORCE_OVERWRITE, so usually not separately nee
 | `R3_ALLOW_41_FAILURES` | unset | Downgrades the 4.1 hard abort to a warning. Deliberate partial runs only; a silent 4.1 failure is what hid the #9 bug for months. |
 | `SKIP_R3_4_1` | unset | Skip 4.1 when the tifs are already correct. |
 
+**R/3 was fully re-run on 2026-09-30** (usd + intld + ha, both timeframes, against the res-25 exposure
+rasters and the corrected producer prices; `DISPATCH_cglabs_r3_res25_rerun.md`). The three usd tiers
+were republished the same day behind the new G6 value-drift gate (`scripts/r3_publish_tiers.R
+--drift-exposure <0.4.4 §3.2 twin> --drift-allow-flips ...`); the intld and ha products were rebuilt on
+the node but are not published. A future bake inherits: park (`mv`) R/3 outputs rather than FORCE,
+derive G6's basis from the exposure twin the bake used, stamp ensemble membership from the
+`hazard_risk` source folder before publishing, and run `R/checks/vop_cross_basis_gate.R` on the 0.4.4
+tables (nominal / intld per pair, with the world-price reference) before any exposure republish.
+
 **Gate before publishing anything:** `Rscript R/checks/usd_total_vs_reference.R` compares
 `any + none` per (country, crop) against the 0.4.4 exposure reference. It splits rows into
 material, immaterial and unmatched, because one ratio bound cannot serve all three - see the

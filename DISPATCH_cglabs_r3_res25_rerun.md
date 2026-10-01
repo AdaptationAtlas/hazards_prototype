@@ -984,3 +984,34 @@ sidecar, SIZE MATCH, HTTP 206. Backup prefix `sandbox/backup/issue9_20260930_120
 **STOP.** The corrected `vop_nominal-usd21` hazard tiers are live and verified. Retaining
 `Data/_parked_r3_res25_20260926_185444/` and all `sandbox/backup/issue9_*` dirs until told they can go.
 `DISPATCH_cglabs_family_keys.md` untouched (usd-2015 retirement + #23 close on its own GO).
+
+---
+
+## macbook close-out — Block D verified from here, CR-068 probes green, records updated (2026-10-01)
+
+Accepted `b06cdfc` (generic-crop exemption mirrors `usd_total_vs_reference`'s `GATE_NO_REF`; clean). Verified
+independently: three tiers HTTP 206, Last-Modified 2026-09-30 12:08-12:09, sidecar `n_members = 18` stamped
+from the source folder at 12:07; severe historic admin0 ZWE wheat 90.32 M USD (= the reference), COD oil palm
+517 M, SYC coconut 0 (#40).
+
+**CR-068 probes (macbook, live S3, AGO):**
+- `probe_no_hazard_arithmetic_quick.sh AGO`: Query 1 (`any` vs sum of the 7 stack categories) within
+  +/-0.03 % per crop - integer rounding of seven categories against one, same magnitude as the 09-16
+  publish; Query 2 every crop <= 100 % of total VoP (max oil palm 93.5 %, pearl-millet 82.7 %), no C1_FAIL.
+- `probe_cross_parquet_vop_drift.sh AGO`: its Query C prints "admin1-sum != admin0-row" with NaN sums. That
+  is the probe's own unguarded `SUM` over admin rows, not the data: against the new severe tier AGO admin0
+  **equals** the admin1 sum to the dollar for every crop checked (cassava 898.004 M both sides), and the
+  NaN census is **identical** to the pre-publish backup (`issue9_20260930_120740`): 0 at admin0, 0 at
+  admin1, 41,888 at admin2 in both - the known structural all-NaN residue (#26 territory), unchanged.
+
+**Records:** `africa-hazard-exposure-nexgddp.yaml` gains a "REPUBLISHED 2026-09-30 FROM A FULL RE-BAKE"
+paragraph (native 0.25 deg exposure, price fix, G6 basis, what moved, SYC #40), `updated: 2026-10-01`,
+strict + prettier clean. `R/NEXT_FULL_REBAKE.md` records the full R/3 re-run and what a future bake
+inherits. Handover row updated.
+
+**Item 1 of the #30 follow-ups is closed.** Open on this thread, each its own decision:
+- `Data/_parked_r3_res25_20260926_185444/` and the three `sandbox/backup/issue9_*` dirs
+  (`20260928_142229`, the second C0-4 run, `20260930_120740`): retain until Pete says they can go.
+- `DISPATCH_cglabs_family_keys.md` Block C (retire `vop_nominal-usd-2015`, then close #23): own GO.
+- #38 / #39 / #40 ride the next 0.4.0 / 0.4.2 -> 0.4.4 -> reference republish.
+This file moves to `archive/dispatches/` once the parked set is released.

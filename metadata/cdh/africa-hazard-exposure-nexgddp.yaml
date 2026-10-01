@@ -48,6 +48,18 @@ note: >
   0.90-1.10) and crop at 1.003. Its `unit` column now carries the vintage (`intld15-2021`,
   `nominal-usd-2021`) and equals `unit_full`. Neither ratio is a measurement of this artifact, whose
   own basis is unchanged: crop exposure in nominal 2021 US dollars.
+  REPUBLISHED 2026-09-30 FROM A FULL RE-BAKE. All three severity tiers were rebuilt against exposure
+  rasters produced natively on the 0.25 degree hazard grid (the previous publication aligned a 0.05
+  degree crop raster in flight) and against corrected producer prices: the 2026-09-25 exposure carried
+  two FAOSTAT currency artefacts spread by a mean-based gap fill (Zimbabwe wheat, Rwanda oil palm
+  fruit; hazards_prototype dispatch 2026-09-27), and prices are now clipped to a band around the world
+  median and filled with medians. Per country and crop the product's total exposed value equals its
+  exposure denominator (crop-livestock_all_res-25, nominal-usd-2021 rows) to within a few per cent;
+  the publish gate measures exactly that, plus zero livestock movement and ensemble membership of 18.
+  Against the 2026-09-16 publication values moved by the exposure's own factor: wheat, oil palm,
+  plantain and cassava within a quarter; sugarcane roughly halved (artefact prices removed); arabica
+  coffee in Burundi and Rwanda about fifteen times up; Seychelles coconut is absent on this grid
+  (hazards_prototype issue 40). Sudan and Nigeria-banana rows are sound on this nominal basis.
   THE DENOMINATOR EXISTS AT TWO RESOLUTIONS, EXPLICIT IN THE KEY. variable=crop-livestock_all_res-25
   is extracted on the 0.25 degree NEX-GDDP hazard grid - THE SAME GRID AS THIS PRODUCT - and is the
   one to divide by; variable=crop-livestock_all_res-05 is on the 0.05 degree Atlas exposure grid and
@@ -91,7 +103,7 @@ citation:
   url: https://adaptationatlas.cgiar.org/
 
 created: "2026-09-18"
-updated: "2026-09-26"
+updated: "2026-10-01"
 
 spatial:
   bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present
