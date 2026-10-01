@@ -1,5 +1,5 @@
 ﻿code_spam2010,short_spam2010,long_spam2010,code_fao,name_fao,name_fao_val
-32,acof,arabica coffee,656,"Coffee, green (split into acof and rcof)","Coffee, green (split into acof and rcof)"
+32,acof,arabica coffee,656,"Coffee, green (split into acof and rcof)","Coffee, green"
 ,coff,coffee,656,"Coffee, green","Coffee, green"
 37,bana,banana,486,Bananas,Bananas
 4,barl,barley,44,Barley,Barley
@@ -57,9 +57,9 @@
 38,plnt,plantain,489,Plantains,Plantains and cooking bananas
 5,pmil,pearl millet,79,Millet (split into pmil and smil),Millet
 9,pota,potato,116,Potatoes,Potatoes
-25,rape,rapeseed,270,Rapeseed,Rapeseed
+25,rape,rapeseed,270,Rapeseed,Rape or colza seed
 25,rape,rapeseed,292,Mustard seed,Mustard seed
-33,rcof,robusta coffee,656,"Coffee, green (split into acof and rcof)","Coffee, green (split into acof and rcof)"
+33,rcof,robusta coffee,656,"Coffee, green (split into acof and rcof)","Coffee, green"
 42,rest,rest of crops,161,"Sugar crops, nes","Sugar crops, nes"
 42,rest,rest of crops,216,"Brazil nuts, with shell","Brazil nuts, with shell"
 42,rest,rest of crops,217,"Cashew nuts, with shell","Cashew nuts, with shell"
@@ -88,7 +88,7 @@
 42,rest,rest of crops,839,Gums Natural,Gums Natural
 2,rice,rice,27,"Rice, paddy",Rice
 26,sesa,sesameseed,289,Sesame seed,Sesame seed
-6,smil,small millet,79,Millet (split into pmil and smil),Millet (split into pmil and smil)
+6,smil,small millet,79,Millet (split into pmil and smil),Millet
 7,sorg,sorghum,83,Sorghum,Sorghum
 20,soyb,soybean,236,Soybeans,Soya beans
 29,sugb,sugarbeet,157,Sugar beet,Sugar beet
