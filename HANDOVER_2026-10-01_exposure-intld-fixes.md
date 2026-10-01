@@ -140,8 +140,32 @@ which puts it on a consistent basis), with `price_source = "basis fallback"` and
 to expect on that list: coffee (BDI, NGA, KEN), cocoa (NGA, CMR), tea, tobacco, seed cotton, coconuts, sugar
 cane. This is the per-pair cross-basis gate turned into a correction at source.
 
-Open questions for Pete: (a) accept implied-primary / producer-fallback; (b) coverage-guard threshold
-and NA-vs-fallback for #39; (c) whether Sudan is in the SPAM SSA release's scope at all.
+**Decisions taken 2026-10-01 (Pete):**
+- (a) implied-primary / producer-price fallback / 5× clip: **confirmed**.
+- Basis guard: **yes, flag + basis fallback** (country beyond 4× the item's cross-country nominal ÷ intld
+  median → item-median factor × the country's constant-I$ value, `price_source = "basis fallback"`, logged).
+- #18 stance for the next R/3 bake: **accept the 0.25° one-cell-one-zone allocation as is and document it**
+  (CDH records already carry it); revisit with the method review. No R/3 zonal change in the #13 rebake.
+
+Still open for the implementing session: (b) coverage-guard threshold and NA-vs-fallback for #39 (start at
+10 %, NA with a logged reason); (c) whether Sudan is in the SPAM SSA release's scope at all (ask the SPAM
+team; if not, SDN intld rows should be absent, not inflated).
+
+## Scope of the item-2 session, consolidated
+
+1. `R/price_fill.R` + 0.4.2 §3: implied price primary (GPV current US$ ÷ production, 2019-23 median,
+   clipped 5× vs World GPV ÷ production per item-year), producer price fallback (clipped vs world PP
+   median), median fill chain, basis guard, `price_source` per row, audit CSV.
+2. 0.4.0: compound-item split by SPAM share (millet; check banana/plantain), coverage guard (#39).
+3. 0.4.0 + 0.4.2: `rasterize(touches = TRUE)` (#40).
+4. Node: 0.4.0 + 0.4.2 at both resolutions → park caches/§3 outputs outside `mapspam_pro_dir` → 0.4.4 at
+   both → gates: `vop_cross_basis_gate.R --fail-on-intld-side` both res (nominal-side empty, intld
+   residual gone except documented), `qaqc_vop_vs_faostat.R` unchanged, old-vs-new per pair (expected
+   movers listed by name: the implied-price additions, basis fallbacks, millet, SDN, NGA banana, SYC),
+   publisher dry-runs → GO → publish reference + family → CDH records updated, #38/#39/#40 closed.
+5. Then the #13 full R/2 + R/3 rebake on the final exposure, with G6 `--drift-exposure` against the new
+   nominal twin (the usd tiers WILL move where prices changed - that is the expected input move) and
+   `stamp_ensemble_membership.R` before publish; intld tiers' publication is a separate GO (rebake item 7).
 
 ## Reuse
 
