@@ -74,7 +74,7 @@ pacman::p_load(char = packages)
 terra::gdalCache(60000)
 
 # b) Load/create functions & wrappers ####
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
 source(file.path(Sys.getenv("project_dir"), "R", "_helpers.R"))
 
 #' Multiply Hazard Freq Raster by Exposure and Save Output

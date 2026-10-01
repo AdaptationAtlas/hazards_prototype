@@ -42,7 +42,7 @@ pacman::p_load(data.table,
               future.apply)
 
 # Load functions & wrappers
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
 
 # Test avloss function
 if(F){

@@ -17,7 +17,7 @@
 # ==============================================================================
 
 pacman::p_load(terra, data.table, httr, countrycode, wbstats, arrow, geoarrow, dplyr, tidyr, pbapply)
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
 options(scipen = 999)
 terra::gdalCache(60000)
 
@@ -30,8 +30,8 @@ overwrite_crop <- atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)
                 Sys.getenv("FORCE_OVERWRITE", "<unset>"),
                 atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)))
 
-ms_codes_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv"
-spam2fao_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv"
+ms_codes_url <- file.path(Sys.getenv("project_dir", getwd()), "metadata", "SpamCodes.csv")
+spam2fao_url <- file.path(Sys.getenv("project_dir", getwd()), "metadata", "SPAM2010_FAO_crops.csv")
 
 # 1) Geographies -------------------------------------------------------------
 .log040("loading geoboundaries (admin0)")

@@ -164,18 +164,17 @@ atlas_iso3 <- geoboundaries$iso3
 # Load base raster for resampling
 base_raster <- "base_raster.tif"
 if (!file.exists(base_raster)) {
-  url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
-  httr::GET(url, write_disk(base_raster, overwrite = TRUE))
+  file.copy(file.path(Sys.getenv("project_dir", getwd()), "metadata", "base_raster.tif"), base_raster)   # repo copy, not GitHub main
 }
 
 base_rast <- terra::mask(terra::rast(base_raster), geoboundaries)
 
 # Load SPAM codes ####
-ms_codes <- data.table::fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv")[, Code := toupper(Code)]
+ms_codes <- data.table::fread(file.path(Sys.getenv("project_dir", getwd()), "metadata", "SpamCodes.csv"))[, Code := toupper(Code)]
 crops <- tolower(ms_codes[compound == "no" & !is.na(Code), Code])
 
 # Load file for translation of spam to fao stat names/codes ####
-spam2fao <- fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv")
+spam2fao <- fread(file.path(Sys.getenv("project_dir", getwd()), "metadata", "SPAM2010_FAO_crops.csv"))
 spam2fao <- spam2fao[short_spam2010 %in% crops]
 
 # Are all crops represented in fao name conversion sheet?

@@ -38,8 +38,24 @@ if (!interactive()) {
   }
 }
 
-# Source additional functions used in this workflow from GitHub
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+# Source the helper library from THIS checkout. Until 2026-10-01 this (and every
+# numbered script) loaded haz_functions.R and the metadata CSVs from GitHub `main`
+# at run time, so a fix on `develop` never reached a node run (the 2026-09-27
+# producer-price fix had to live in a new file for that reason). project_dir is
+# not set yet at this point, so resolve the repo root here: the env var if a
+# previous setup persisted it, else the directory above this file, else getwd().
+.hp_root <- local({
+  cands <- c(Sys.getenv("project_dir"))
+  fa <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+  if (length(fa)) cands <- c(cands, dirname(dirname(normalizePath(sub("^--file=", "", fa[1]), mustWork = FALSE))))
+  of <- tryCatch(sys.frame(1)$ofile, error = function(e) NULL)
+  if (!is.null(of)) cands <- c(cands, dirname(dirname(normalizePath(of, mustWork = FALSE))))
+  cands <- c(cands, getwd())
+  cands <- cands[nzchar(cands) & file.exists(file.path(cands, "R", "haz_functions.R"))]
+  if (!length(cands)) stop("0_server_setup.R: cannot locate the hazards_prototype checkout (need R/haz_functions.R); run from the repo root or set project_dir")
+  cands[1]
+})
+source(file.path(.hp_root, "R", "haz_functions.R"))
 
 # 0.2) Set timeframes #####
 # Possible timeframe calculations, e.g., "annual", "sos_primary_fixed_3", etc.
@@ -160,7 +176,7 @@ cat("Climate data source = ", climdat_source, "\n")
 if (climdat_source == "atlas_delta") {
   ## DEV NOTE - NEED TO UPDATE WITH MASKED BASE RAST ###
   # Load a reference/base raster used for resampling or extent alignment
-  base_rast_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/base_raster.tif"
+  base_rast_url <- file.path(project_dir, "metadata", "base_raster.tif")
   base_rast <- terra::rast(base_rast_url)
   base_rast_path <- file.path(project_dir, "metadata", "base_raster.tif")
 } else {
@@ -594,20 +610,20 @@ rm(.atlas_prefetch)
 
 # 4) Set data URLs ####
 # 4.1) hazard class #####
-haz_class_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_classes.csv"
+haz_class_url <- file.path(project_dir, "metadata", "haz_classes.csv")
 
 # 4.2) hazard metadata #####
-haz_meta_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/haz_metadata.csv"
+haz_meta_url <- file.path(project_dir, "metadata", "haz_metadata.csv")
 
 # 4.3) mapspam codes #####
-ms_codes_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv"
-spam2fao_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv"
+ms_codes_url <- file.path(project_dir, "metadata", "SpamCodes.csv")
+spam2fao_url <- file.path(project_dir, "metadata", "SPAM2010_FAO_crops.csv")
 
 # 4.4) ecocrop ####
-ecocrop_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/ecocrop.csv"
+ecocrop_url <- file.path(project_dir, "metadata", "ecocrop.csv")
 
 # 4.5) isimip metadata #####
-isimip_meta_url <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/isimip_water_var_metadata.csv"
+isimip_meta_url <- file.path(project_dir, "metadata", "isimip_water_var_metadata.csv")
 
 # ---------------------------------------------------------------------------------------------
 # End of script

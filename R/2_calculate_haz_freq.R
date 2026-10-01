@@ -104,7 +104,7 @@ terra::gdalCache(60000)
 if (!interactive()) pbapply::pboptions(type = "none")
 
 # Source functions from github
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
 
 ## 0.2) Set up workspace #####
 ### 0.2.1) Set scenarios,time frames & crops/livestock ####

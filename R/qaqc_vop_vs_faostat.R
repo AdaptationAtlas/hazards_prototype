@@ -30,7 +30,7 @@ suppressWarnings(suppressMessages({
 }))
 
 .qlog("sourcing haz_functions + 0_server_setup.R")
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
 source(file.path(Sys.getenv("project_dir"), "R", "0_server_setup.R"))
 
 YEARS <- 2019:2023   # match the vop_intld15-2021 window (year_sets$y2021)
@@ -121,7 +121,7 @@ if (!length(crop_vop_file)) crop_vop_file <- Sys.glob(file.path(mapspam_pro_dir,
 if (!length(crop_vop_file) || is.na(crop_vop_file[1])) crop_vop_file <- Sys.glob(file.path(mapspam_pro_dir, "variable=vop_intld15-2021", "spam_vop_intld15-2021_all.tif"))
 if (!length(crop_vop_file)) crop_vop_file <- Sys.glob(file.path(mapspam_pro_dir, "variable=vop_intld15", "*intld15_all*.tif"))
 if (length(crop_vop_file)) {
-  spam2fao <- fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv")
+  spam2fao <- fread(file.path(Sys.getenv("project_dir", getwd()), "metadata", "SPAM2010_FAO_crops.csv"))
   spam_map <- setNames(spam2fao$name_fao_val, spam2fao$short_spam2010)
   spam_map <- spam_map[!is.na(spam_map) & nzchar(spam_map)]
   fao_cr <- fao_gpv_i(spam_map)

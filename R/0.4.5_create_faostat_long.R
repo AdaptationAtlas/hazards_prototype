@@ -126,7 +126,7 @@ spice_patterns <- c(
 
 # Translation tables ####
 spam2fao <- fread(
-  "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv"
+  file.path(Sys.getenv("project_dir", getwd()), "metadata", "SPAM2010_FAO_crops.csv")
 )
 
 # Atlas livestock-name -> FAOSTAT Item-name lookup. For meats we list BOTH

@@ -50,7 +50,7 @@
 
 ## 0 - functions and libraries
 pacman::p_load(terra, geoarrow, arrow, countrycode, data.table)
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
 
 ## 1 - Read and subset initial data ####
 
@@ -79,12 +79,12 @@ atlas_iso3 <- geoboundaries$iso3
 target_year <- c(2009:2023)
 
 ### 1.4 Load SPAM codes #####
-path_spamCode <- "https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SpamCodes.csv"
+path_spamCode <- file.path(Sys.getenv("project_dir", getwd()), "metadata", "SpamCodes.csv")
 ms_codes <- data.table::fread(path_spamCode)[, Code := toupper(Code)][!is.na(Code)][, code_low := tolower(Code)]
 crops <- tolower(ms_codes[compound == "no", Code])
 
 ### 1.5 Load file for translation of spam to FAO stat names/codes #####
-spam2fao <- fread("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/metadata/SPAM2010_FAO_crops.csv")[
+spam2fao <- fread(file.path(Sys.getenv("project_dir", getwd()), "metadata", "SPAM2010_FAO_crops.csv"))[
   short_spam2010 %in% crops & name_fao != "Mustard seed" &
     !(short_spam2010 %in% c("rcof", "smil", "pmil", "acof"))
 ]

@@ -4,9 +4,10 @@
 # Sourced by every numbered pipeline script (0_server_setup.R, 0.4.x,
 # 1_make_timeseries.R, 2_calculate_haz_freq.R, 3_freq_x_exposure.R,
 # 3.1_season_weightings.R, and the observational scripts under R/observational/).
-# Pure functions only — no top-level side effects. Loaded both locally
-# (`source("R/haz_functions.R")`) and from GitHub via:
-#   source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+# Pure functions only — no top-level side effects. Loaded from THIS checkout:
+#   source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))
+# (Until 2026-10-01 scripts loaded it from GitHub `main` at run time, so develop
+# fixes never reached a node run. Do not reintroduce a raw.githubusercontent URL.)
 #
 # Function categories (search by name to locate; not all listed):
 #   * Threshold / classification: ThreshFun, classify_haz, ...

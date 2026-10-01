@@ -50,7 +50,7 @@ pacman::p_load(
 )
 
 # Source additional functions used in this workflow from GitHub
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
 
 
 ## 1.2) Set directories ####

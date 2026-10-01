@@ -1,7 +1,7 @@
 # Please run 0_server_setup.R before executing this script
 # To generate crop & livestock vop you will need to run scripts 0.4.1 & 0.4.2
 # a) Load R functions & packages ####
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
 
 # List of packages to be loaded
 packages <- c("terra",
@@ -35,7 +35,7 @@ terra::gdalCache(60000)
                 atlas_env_flag("FORCE_OVERWRITE", strict = TRUE)))
 
 # b) Load functions & wrappers ####
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
 # Shared parquet-writer for DuckDB-WASM pushdown (multi-row-group + stats).
 # Sourced after 0_server_setup.R so project_dir is defined.
 pacman::p_load(DBI, duckdb)

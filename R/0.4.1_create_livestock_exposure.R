@@ -56,7 +56,7 @@
 pacman::p_load(terra, data.table, httr, countrycode, wbstats, arrow, geoarrow, ggplot2, dplyr, tidyr, pbapply)
 
 # Load functions & wrappers
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
 options(scipen = 999)
 
 # v9: bump GDAL block-cache budget so the resample / mask / aggregate

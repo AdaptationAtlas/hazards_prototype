@@ -9,7 +9,7 @@
 
 # First run server_setup script
 # 0) Load R functions & packages ####
-source(url("https://raw.githubusercontent.com/AdaptationAtlas/hazards_prototype/main/R/haz_functions.R"))
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
 
 load_and_install_packages <- function(packages) {
   for (package in packages) {
