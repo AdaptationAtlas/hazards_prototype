@@ -1032,6 +1032,7 @@ Pete has released everything this thread retained. **Read the second bullet befo
   `issue9_20260930_120740` = **the 2026-09-16 hazard tiers**, the last pre-re-bake product. Together
   they are a few hundred MB. Delete per the GO with `s3fs::s3_dir_delete()` on each prefix and paste
   the listing before and the empty listing after - unless macbook or Pete amend this block first.
+- **Added 2026-10-01 (#9 and #12 closed):** the same pass also removes the node's `Data/_parked_issue9/` (pre-09-16 hazard_exposure outputs, retained for Brayden's confirmation, no longer needed) - `du -sh` before, `ls` after.
 - Then append your response and **STOP**. Macbook moves this file to `archive/dispatches/` and adds the
   README row; `DISPATCH_cglabs_family_keys.md` Block C (its own GO is stamped) follows.
 
