@@ -56,14 +56,14 @@ yrs <- prod_merge[!is.na(price_usd), .(n_prices = .N), by = year][order(year)]
 
 ## The y2021 fill table ------------------------------------------------------
 p <- copy(price_usd_list[["nominal-usd-2021"]])
-p[, source := fifelse(!is.na(price_usd), "own 2019-23 median",
-              fifelse(!is.na(price_median), "own 2014-23 median",
-              fifelse(!is.na(price_usd_neighbors), "neighbours mean",
-              fifelse(!is.na(price_usd_region), "region mean",
-              fifelse(!is.na(price_usd_continent), "continent mean", "world median")))))]
+p[, source := price_source]   # 2026-10-01: the script names the source per row (implied / producer / fills / basis fallback)
 p[, ratio_world := price_usd_final / price_usd_global]
 .log("--- fill sources, y2021 (%d country x crop rows)", nrow(p))
 print(p[, .N, by = source][order(-N)])
+if ("value_intd15" %in% names(p)) {
+  .log("--- basis fallbacks (own price replaced by the item-median nominal/intld factor x constant-I$ value)")
+  print(p[source == "basis fallback", .(iso3, atlas_name, price_usd_own = signif(price_usd, 4), price_usd_final = signif(price_usd_final, 4), basis_ratio, basis_median, production_t = signif(production_t, 4))][order(atlas_name, iso3)], nrows = 80)
+}
 
 ## Outliers vs world -----------------------------------------------------------
 .log("--- top %d prices vs the world median (|log ratio|), all crops", TOP)
@@ -83,8 +83,8 @@ for (cr in CROPS) {
     raw <- dcast(prod_merge[atlas_name == cr & iso3 %in% odd & year >= 2014, .(iso3, year, price_usd = signif(price_usd, 4))], iso3 ~ year, value.var = "price_usd")
     print(raw, nrows = 60)
   }
-  # region / neighbour means that would be inherited by the fill
-  .log("%s: region means (mean over member countries' own prices)", cr)
+  # region / neighbour medians that would be inherited by the fill
+  .log("%s: region medians (over member countries' own prices)", cr)
   print(p[atlas_name == cr, .(price_usd_region = signif(unique(price_usd_region), 4)[1], price_usd_continent = signif(unique(price_usd_continent), 4)[1],
                               price_usd_global = signif(unique(price_usd_global), 4)[1]),
           by = .(region = sapply(iso3, function(i) { r <- names(regions)[sapply(regions, function(X) i %in% X)]; if (length(r)) r[1] else NA_character_ }))])

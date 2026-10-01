@@ -29,10 +29,36 @@
 #                                A single-country region is still that country, so the
 #                                clip is the primary lever and the median the second.
 #
+# 2026-10-01 (price-method decision, HANDOVER_2026-10-01_exposure-intld-fixes.md item 3):
+#   implied_price()              FAOSTAT gross production value (current thousand US$) /
+#                                production -> USD/t. Where FAO publishes a producer price
+#                                this EQUALS it (ratio 1.000 on 973 country-item-years); its
+#                                extra content is FAO's imputation of prices it does not
+#                                publish, so it covers 68 % of (country, crop) pairs and 81 %
+#                                of production after the clip, against 30 % / 41 % for the
+#                                producer-price file. Clipped against World GPV / World
+#                                production per item-year, never against the producer-price
+#                                world median (they differ per item: plantain 0.2x, tea 5x).
+#   own_price_window()           the own value per (iso3, crop) for a year window: implied
+#                                window median -> producer-price window median -> the same
+#                                two over a longer series, with the source named.
+#   apply_basis_guard()          within-item consistency: nominal (price x FAO production)
+#                                over the country's constant-I$ GPV, against the item's
+#                                cross-country median of that ratio. A country beyond
+#                                [1/band, band] x the median carries a different price BASIS
+#                                (auction green coffee vs cherry, tea leaf vs made tea,
+#                                seed cotton vs lint, export parity vs farm gate), which no
+#                                price source fixes; it falls back to the item-median factor
+#                                x its own constant-I$ value, price_source = "basis fallback".
+#
 # 0.4.2 sources this file by path (project_dir), not from GitHub main like
 # haz_functions.R, so a fix here reaches the node run. Pure functions, no I/O.
 
 PRICE_BAND_DEFAULT <- 5
+BASIS_BAND_DEFAULT <- 4      # Pete 2026-10-01: start at 4x the item's cross-country median
+BASIS_MIN_N_DEFAULT <- 5     # an item median over fewer own-priced countries is not a reference
+OWN_SOURCES <- c("fao gpv implied", "fao producer price",
+                 "fao gpv implied longer-series", "fao producer price longer-series")
 
 # prices: data.table with iso3, atlas_name, year, price_usd (own observations, NA allowed)
 # world:  data.table with atlas_name, year, price_usd (world-file observations; all
@@ -100,4 +126,77 @@ fill_price_robust <- function(data, value_field = "price_usd", group_field = "at
   data.table::setnames(d, c("value", "group", "fill_neighbors", "fill_region", "fill_continent", "fill_world", "fill_final"),
                        c(value_field, group_field, paste0(value_field, c("_neighbors", "_region", "_continent", "_global", "_final"))))
   d
+}
+
+
+# gpv: gross production value in thousand currency units (FAOSTAT), prod: tonnes.
+# USD/t where both are positive and finite, NA otherwise (a zero or missing production
+# must not become an infinite or zero price that the clip would then judge).
+implied_price <- function(gpv, prod, gpv_unit = 1000) {
+  ok <- is.finite(gpv) & is.finite(prod) & gpv > 0 & prod > 0
+  out <- rep(NA_real_, length(gpv))
+  out[ok] <- gpv[ok] * gpv_unit / prod[ok]
+  out
+}
+
+# implied, producer: data.tables iso3, atlas_name, year, price_usd (already clipped; NA allowed)
+# years: the window; long_years: the longer series tried when the window has nothing.
+# One row per (iso3, atlas_name) seen in either input, with the four candidate medians,
+# the chosen `price_usd` and `price_source` in OWN_SOURCES (NA price -> source NA: the
+# spatial fill chain names the source from here on).
+own_price_window <- function(implied, producer, years, long_years = years) {
+  stopifnot(all(years %in% long_years))
+  med <- function(d, yrs, nm) {
+    d[year %in% yrs & !is.na(price_usd), stats::setNames(list(stats::median(price_usd)), nm), by = .(iso3, atlas_name)]
+  }
+  parts <- list(med(implied, years, "price_usd_implied"), med(producer, years, "price_usd_producer"),
+                med(implied, long_years, "price_usd_implied_long"), med(producer, long_years, "price_usd_producer_long"))
+  grid <- unique(data.table::rbindlist(list(implied[, .(iso3, atlas_name)], producer[, .(iso3, atlas_name)])))
+  out <- Reduce(function(a, b) merge(a, b, by = c("iso3", "atlas_name"), all.x = TRUE), parts, grid)
+  out[, price_usd := price_usd_implied][, price_source := data.table::fifelse(!is.na(price_usd), OWN_SOURCES[1], NA_character_)]
+  out[is.na(price_usd) & !is.na(price_usd_producer), `:=`(price_usd = price_usd_producer, price_source = OWN_SOURCES[2])]
+  out[is.na(price_usd) & !is.na(price_usd_implied_long), `:=`(price_usd = price_usd_implied_long, price_source = OWN_SOURCES[3])]
+  out[is.na(price_usd) & !is.na(price_usd_producer_long), `:=`(price_usd = price_usd_producer_long, price_source = OWN_SOURCES[4])]
+  out[]
+}
+
+# data: one row per (iso3, atlas_name) after the fill chain, with value_field (USD/t, the
+#       price that will be used), price_source, prod_field (FAO production, t) and
+#       intld_field (FAO GPV constant I$, in units of intld_unit).
+# The ratio price x prod / (intld x intld_unit) is a price-level-times-deflator factor: ~1-2
+# for most food crops, and NOT expected to be 1. Within one item it should be similar across
+# countries, because the constant-I$ GPV uses ONE international price per item; a country
+# far from the item's median therefore has its own price on a different basis. Only rows
+# whose price is an OWN value (guard_sources) are corrected: a fill is another country's
+# basis already. Rows with a filled price outside the band are returned in `info_fills`
+# for the log, uncorrected. Items with fewer than min_n own-priced countries are skipped.
+# Note what the fallback price IS: FAO's constant-I$ GPV is production x ONE international
+# price per item, so intld / production is the same for every country and the fallback
+# reduces to (item median ratio) x (international price) - one consistent USD/t per item,
+# country-invariant. Equivalently the guard keeps an own price only while it sits within
+# band x the item's cross-country median own price. On the 2026-05-14 FAO files at 4x it
+# moves 37 of 1,705 y2021 rows: high-side auction / product-form prices (KEN coffee 4,146,
+# BDI and SLE tobacco 9,000 / 5,800) and Eritrea's exchange-rate highs, and low-side
+# exchange-rate regimes (Angola on 8 crops, Sudan 3, Guinea 5) - see the dispatch's probe
+# output for the list.
+# Returns list(data, flagged, medians, info_fills).
+apply_basis_guard <- function(data, value_field = "price_usd_final", prod_field = "production_t", intld_field = "value_intd15",
+                              intld_unit = 1000, band = BASIS_BAND_DEFAULT, min_n = BASIS_MIN_N_DEFAULT,
+                              guard_sources = OWN_SOURCES) {
+  stopifnot(band > 1, all(c("iso3", "atlas_name", "price_source", value_field, prod_field, intld_field) %in% names(data)))
+  d <- data.table::copy(data)
+  d[, basis_ratio := get(value_field) * get(prod_field) / (get(intld_field) * intld_unit)]
+  d[!is.finite(basis_ratio) | basis_ratio <= 0, basis_ratio := NA_real_]
+  med <- d[price_source %in% guard_sources & !is.na(basis_ratio), .(basis_median = stats::median(basis_ratio), basis_n = .N), by = atlas_name]
+  d <- merge(d, med, by = "atlas_name", all.x = TRUE)
+  d[, basis_out := !is.na(basis_ratio) & !is.na(basis_median) & basis_n >= min_n & (basis_ratio > band * basis_median | basis_ratio < basis_median / band)]
+  flagged <- d[basis_out & price_source %in% guard_sources,
+               .(iso3, atlas_name, price_source, price_was = get(value_field), basis_ratio = signif(basis_ratio, 3), basis_median = signif(basis_median, 3), basis_n,
+                 price_now = basis_median * get(intld_field) * intld_unit / get(prod_field))][order(atlas_name, -abs(log(basis_ratio / basis_median)))]
+  info_fills <- d[basis_out & !price_source %in% guard_sources,
+                  .(iso3, atlas_name, price_source, price = get(value_field), basis_ratio = signif(basis_ratio, 3), basis_median = signif(basis_median, 3))][order(atlas_name, iso3)]
+  d[basis_out & price_source %in% guard_sources, `:=`(price_tmp__ = basis_median * get(intld_field) * intld_unit / get(prod_field), price_source = "basis fallback")]
+  d[price_source == "basis fallback", (value_field) := price_tmp__]
+  d[, c("price_tmp__", "basis_out", "basis_n") := NULL]
+  list(data = d[], flagged = flagged, medians = med[order(atlas_name)], info_fills = info_fills)
 }

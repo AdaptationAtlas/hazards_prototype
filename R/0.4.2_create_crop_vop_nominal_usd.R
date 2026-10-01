@@ -3,7 +3,7 @@
 # Author(s): Peter Steward, African Agricultural Adaptation Atlas
 # Affiliation: Alliance of Bioversity International and CIAT
 # Date Created: 2024-05-30
-# Last Updated: 2025-07-14
+# Last Updated: 2026-10-01
 # ==============================================================================
 
 # Description:
@@ -41,9 +41,13 @@
 # - Intermediate tables for FAO–SPAM merging, price inference, and QA
 
 # Notes:
-# - VoP is calculated in nominal USD using FAOSTAT production × inferred price.
-# - Regional and global price medians are used where country-level data are missing.
-# - Coffee and millet prices are split manually into arabica/robusta and pearl/small millet.
+# - VoP is calculated in nominal USD using SPAM production × inferred price.
+# - The price is FAOSTAT's implied price (GPV current US$ / production) where available,
+#   its producer price as first fallback, then neighbour / region / continent / world
+#   MEDIANS; a within-item basis guard replaces auction / product-form / exchange-rate
+#   prices with the item-median factor × the country's constant-I$ value (section 3,
+#   R/price_fill.R; decision 2026-10-01).
+# - Coffee and millet prices are duplicated onto arabica/robusta and pearl/small millet.
 # - Output rasters are aligned to the Atlas base raster for downstream harmonization.
 
 # ==============================================================================
@@ -146,6 +150,32 @@ value_intd_world <- value_intd_world[Area == "World" & Element == element & Item
 prod_value_intd_world_fao <- merge(value_intd_world, data.table(Item = spam2fao_formatted, atlas_name = names(spam2fao_formatted)), all.x = TRUE)
 prod_value_intd_world_fao <- melt(prod_value_intd_world_fao[, !"Item"], id.vars = c("atlas_name"), value.name = value_name, variable.name = "year")
 
+#### 1.6.3) current US$ (the implied-price numerator, 2026-10-01) ####
+# Price method (HANDOVER_2026-10-01_exposure-intld-fixes.md item 3, Pete 2026-10-01): the own
+# nominal price is FAO's gross production value in CURRENT US$ divided by production. Where a
+# producer price is published the two are identical; where it is not, FAO's imputation still
+# reaches the GPV, so coverage rises from 30 % to 68 % of (country, crop) pairs. Clipped against
+# the World GPV / World production unit value per item-year (1.6.3.2), never against the
+# producer-price world median - they differ per item (plantain 0.2x, yams 0.25x, tea 5x).
+#### 1.6.3.1) Africa ####
+element <- "Gross Production Value (current thousand US$)"
+value_name <- "value_cusd"
+prod_value_cusd_africa_fao <- prepare_fao_data(
+  file = path_vop_africa_fao,
+  spam2fao_formatted,
+  elements = element,
+  remove_countries = remove_countries,
+  keep_years = target_year,
+  atlas_iso3 = atlas_iso3
+)
+prod_value_cusd_africa_fao <- melt(prod_value_cusd_africa_fao, id.vars = c("iso3", "atlas_name"), value.name = value_name, variable.name = "year")
+
+#### 1.6.3.2) World: GPV current US$ / production per item-year -> world implied price ####
+value_cusd_world <- fread(path_vop_world_fao)
+value_cusd_world <- value_cusd_world[Area == "World" & Element == element & Item %in% spam2fao_formatted, c("Item", paste0("Y", target_year)), with = FALSE]
+prod_value_cusd_world_fao <- merge(value_cusd_world, data.table(Item = spam2fao_formatted, atlas_name = names(spam2fao_formatted)), all.x = TRUE)
+prod_value_cusd_world_fao <- melt(prod_value_cusd_world_fao[, !"Item"], id.vars = c("atlas_name"), value.name = value_name, variable.name = "year")
+
 ### 1.7 Load Producer Prices #####
 #### 1.7.1) Africa ####
 
@@ -207,8 +237,16 @@ prod_ton_world_fao <- merge(prod_world, data.table(Item = spam2fao_formatted, at
 
 prod_ton_world_fao <- melt(prod_ton_world_fao[, !"Item"], id.vars = c("atlas_name"), value.name = "production_t", variable.name = "year")
 
+# World implied price per item-year (USD/t): the clip reference for the implied own prices.
+source(file.path(project_dir, "R", "price_fill.R"))   # by PATH: a develop fix must reach the node run
+prod_price_world_implied <- merge(prod_value_cusd_world_fao, prod_ton_world_fao, by = c("atlas_name", "year"))
+prod_price_world_implied[, price_usd := implied_price(value_cusd, production_t)]
+prod_price_world_implied <- prod_price_world_implied[!is.na(price_usd), .(atlas_name, year = as.integer(gsub("Y", "", year)), price_usd)]
+if (nrow(prod_price_world_implied) == 0) stop("[0.4.2] world implied price table is empty: check Value_of_Production_E_All_Area_Groups.csv has 'Gross Production Value (current thousand US$)' for Area == World")
+
 ### 1.9) Merge datasets ####
 prod_merge <- merge(prod_value_usd_africa_fao, prod_value_intd_africa_fao, all.x = TRUE)
+prod_merge <- merge(prod_merge, prod_value_cusd_africa_fao, all.x = TRUE)
 prod_merge <- merge(prod_merge, prod_price_africa_fao, all.x = TRUE)
 prod_merge <- merge(prod_merge, prod_ton_africa_fao, all.x = TRUE)
 prod_merge[, year := as.integer(gsub("Y", "", year))]
@@ -234,92 +272,106 @@ prod_rast <- lapply(prod_rast, function(r) {
 })
 
 ## 3) Infer missing prices ####
-# Ok so now we want to estimate a sensible nominal value in usd from the most recent data available
-# We will use production amount and price to get this as conversion of iusd15 to nominal usd seems to give unrealistically low values
+# Nominal price per (country, crop) for each year window. Chain (Pete 2026-10-01, item 3 of
+# HANDOVER_2026-10-01_exposure-intld-fixes.md; evidence in R/checks/probe_price_method_deepdive.R):
+#   1. own IMPLIED price  = FAO GPV current US$ / FAO production, window median, after a
+#      [1/PRICE_BAND, PRICE_BAND] clip against World GPV / World production for the same item-year
+#   2. own PRODUCER price (FAOSTAT USD/t), window median, clipped against the world producer-price
+#      median for the same crop-year                                   (first fallback)
+#   3. the same two over a longer series (window start - 5 .. window end)
+#   4. neighbours -> region -> continent -> world MEDIANS of other countries' own prices
+#      (R/price_fill.R, 2026-09-27: medians, not means, after the clip)
+#   5. basis guard: within an item, a country whose nominal / constant-I$ ratio sits beyond
+#      BASIS_BAND x the item's cross-country median carries a different price basis (auction
+#      vs farm gate, cherry vs green bean, leaf vs made tea); it falls back to the item-median
+#      factor x its own constant-I$ GPV, price_source = "basis fallback".
+# Every row says where its price came from (price_source), and the audit CSV in
+# mapspam_pro_dir/fao_prices carries every candidate. The 2026-09-27 lesson stands: an
+# unclipped own value (ZWE wheat 2022 at 67,170 USD/t, identical in both FAO series) spread by a
+# mean fill broke the product; the clip is the primary lever, the median the second, and the
+# basis guard the third. The hand-picked NA list in 1.7.1.1 is kept but no longer load-bearing.
+# The pre-2026-10-01 "tea floor" hack (price < 600 -> mean of own prices) is gone: it was a
+# one-crop basis guard by hand, and the general one now covers tea with the rest.
 year_sets <- list(y2021 = 2019:2023, y2015 = 2014:2016, y2020 = 2019:2020)
 
-# 2026-09-27 (G6 stop, DISPATCH_cglabs_r3_res25_rerun.md): own prices are CLIPPED to a
-# band around the world median for the same crop and year BEFORE any averaging, and
-# the neighbour / region / continent fills are MEDIANS, not means, each row saying
-# where its price came from. A refreshed FAO file carried Zimbabwe wheat 2022 at
-# 67,170 USD/t (world ~290) and Rwanda oil palm fruit at ~4,600 (world ~150); the
-# old mean fill pushed the first into Zambia and Botswana (~40x) and the second
-# into 17 East African countries (~30x). The hand-picked NA list in 1.7.1.1 is kept
-# but is no longer what protects the product. R/price_fill.R is sourced by PATH:
-# haz_functions.R above comes from GitHub main, where a fix would not reach a run.
-source(file.path(project_dir, "R", "price_fill.R"))
 PRICE_BAND      <- as.numeric(Sys.getenv("PRICE_BAND", PRICE_BAND_DEFAULT))   # keep own prices within [1/band, band] x world
 PRICE_FILL_STAT <- Sys.getenv("PRICE_FILL_STAT", "median")                      # "mean" reproduces the pre-2026-09-27 behaviour (A/B only)
-.clip <- clip_prices_to_world_band(prod_merge[, .(iso3, atlas_name, year, price_usd)],
-                                   world = prod_price_world[, .(atlas_name, year, price_usd)], band = PRICE_BAND)
-prod_merge_clean <- merge(prod_merge[, !"price_usd"], .clip$kept[, .(iso3, atlas_name, year, price_usd)], by = c("iso3", "atlas_name", "year"), all.x = TRUE)
-cat(sprintf("[0.4.2] price clip: band %.1fx world median (PRICE_BAND) dropped %d of %d own observations; fill statistic = %s\n",
-            PRICE_BAND, nrow(.clip$dropped), prod_merge[!is.na(price_usd), .N], PRICE_FILL_STAT))
-if (nrow(.clip$dropped)) print(.clip$dropped[1:min(40, .N)], nrows = 40)
+BASIS_BAND      <- as.numeric(Sys.getenv("BASIS_BAND", BASIS_BAND_DEFAULT))   # within-item nominal/intld band around the item median
+BASIS_MIN_N     <- as.integer(Sys.getenv("BASIS_MIN_N", BASIS_MIN_N_DEFAULT)) # own-priced countries an item needs before its median is a reference
+
+# 3.1) Own prices, clipped against the matching world reference
+prod_merge[, price_implied := implied_price(value_cusd, production_t)]
+.clip_impl <- clip_prices_to_world_band(prod_merge[, .(iso3, atlas_name, year, price_usd = price_implied)],
+                                        world = prod_price_world_implied[, .(atlas_name, year, price_usd)], band = PRICE_BAND)
+.clip_pp   <- clip_prices_to_world_band(prod_merge[, .(iso3, atlas_name, year, price_usd)],
+                                        world = prod_price_world[, .(atlas_name, year, price_usd)], band = PRICE_BAND)
+cat(sprintf("[0.4.2] price clip, band %.1fx world (PRICE_BAND): implied dropped %d of %d own observations (vs World GPV/production); producer price dropped %d of %d (vs world producer-price median); fill statistic = %s\n",
+            PRICE_BAND, nrow(.clip_impl$dropped), prod_merge[!is.na(price_implied), .N], nrow(.clip_pp$dropped), prod_merge[!is.na(price_usd), .N], PRICE_FILL_STAT))
+if (nrow(.clip_impl$dropped)) { cat("[0.4.2] implied prices clipped (worst 25):\n"); print(.clip_impl$dropped[1:min(25, .N)], nrows = 25) }
+if (nrow(.clip_pp$dropped))   { cat("[0.4.2] producer prices clipped (worst 25):\n"); print(.clip_pp$dropped[1:min(25, .N)], nrows = 25) }
+# the per-(country, crop) grid every window fills: everything FAO reports production or value for
+price_grid <- unique(prod_merge[, .(iso3, atlas_name)])
 
 price_usd_list <- lapply(seq_along(year_sets), function(i) {
-  ymin <- min(year_sets[[i]])
-  ymax <- max(year_sets[[i]])
-  # Median values for the year set (own prices already clipped)
-  prod_merge_recent <- prod_merge_clean[
-    year %in% year_sets[[i]], .(
-      price_usd = median(price_usd, na.rm = TRUE),
-      production_t = median(production_t, na.rm = TRUE)
-    ),
-    .(atlas_name, iso3)
-  ]
+  yrs <- year_sets[[i]]; ymin <- min(yrs); ymax <- max(yrs); long <- (ymin - 5):ymax
+  nm <- names(year_sets)[i]
 
-  # Values are often missing, is there a value from a longer time series?
-  price_any <- prod_merge_clean[
-    year %in% (ymin - 5):ymax, .(
-      price_median = median(price_usd, na.rm = TRUE),
-      price_min = min(price_usd, na.rm = TRUE),
-      price_max = max(price_usd, na.rm = TRUE),
-      price_tail = tail(price_usd[!is.na(price_usd)], 1),
-      price_n = sum(!is.na(price_usd))
-    ),
-    .(atlas_name, iso3)
-  ]
+  # 3.2) window medians of what the row is priced against: FAO production, constant-I$ GPV
+  recent <- prod_merge[year %in% yrs, .(production_t = median(production_t, na.rm = TRUE),
+                                        value_intd15 = median(value_intd15, na.rm = TRUE)), by = .(atlas_name, iso3)]
+  recent <- merge(price_grid, recent, by = c("iso3", "atlas_name"), all.x = TRUE)
 
-  # Merge median price from longer time-series
-  prod_merge_recent <- merge(prod_merge_recent, price_any[, .(price_median, iso3, atlas_name)], all.x = TRUE)
+  # 3.3) own price: implied -> producer -> longer series of each
+  own <- own_price_window(.clip_impl$kept, .clip_pp$kept, years = yrs, long_years = long)
+  recent <- merge(recent, own, by = c("iso3", "atlas_name"), all.x = TRUE)
 
-  prod_price_global_recent <- prod_price_world[year %in% year_sets[[i]], .(price_usd_global = median(price_usd, na.rm = TRUE)), .(atlas_name)]
+  # 3.4) world references for the window: implied (the fill-chain tail and the gate's reference) and producer price
+  w_impl <- prod_price_world_implied[year %in% yrs, .(price_world = median(price_usd, na.rm = TRUE)), by = atlas_name]
+  w_pp   <- prod_price_world[year %in% yrs, .(price_usd_global_pp = median(price_usd, na.rm = TRUE)), by = atlas_name]
 
-  # Fill chain: own window median -> own longer-series median -> neighbours -> region -> continent -> world.
-  # The longer-series step sits between own and neighbours, so it is applied to the own column
-  # before the spatial fills are computed on the OTHER countries' own prices.
-  prod_merge_recent[, price_usd_own_window := price_usd]
-  prod_merge_recent[is.na(price_usd), price_usd := price_median]
-  prod_merge_recent <- fill_price_robust(prod_merge_recent, value_field = "price_usd", group_field = "atlas_name",
-                                         neighbors = african_neighbors, regions = regions,
-                                         world = prod_price_global_recent[, .(atlas_name, price_world = price_usd_global)],
-                                         stat = PRICE_FILL_STAT)
-  prod_merge_recent[price_source == "own" & is.na(price_usd_own_window), price_source := "own longer-series median"]
-  prod_merge_recent[price_source == "own", price_source := "own window median"]
-  prod_merge_recent[, price_usd := price_usd_own_window][, price_usd_own_window := NULL]
-  prod_merge_recent[, vop_usd_nominal := production_t * price_usd_global][, year := names(year_sets)[i]]
+  # 3.5) spatial fills on the other countries' OWN prices (medians), source named per row
+  own_source <- recent[, .(iso3, atlas_name, own_source = price_source)]
+  recent[, price_source := NULL]
+  recent <- fill_price_robust(recent, value_field = "price_usd", group_field = "atlas_name",
+                              neighbors = african_neighbors, regions = regions, world = w_impl, stat = PRICE_FILL_STAT)
+  recent <- merge(recent, own_source, by = c("iso3", "atlas_name"), all.x = TRUE)
+  recent[price_source == "own", price_source := own_source][, own_source := NULL]
+  recent <- merge(recent, w_pp, by = "atlas_name", all.x = TRUE)
 
-  # Hack tea
-  if (ymax == 2023) {
-    tea_median <- prod_merge_recent[atlas_name == "teas", mean(price_median, na.rm = TRUE)]
-    prod_merge_recent[atlas_name == "teas" & price_usd_final < 600, `:=`(price_usd_final = tea_median, price_source = "tea floor")]
-  }
+  # 3.6) basis guard (own prices only; fills outside the band are logged, not changed)
+  bg <- apply_basis_guard(recent, value_field = "price_usd_final", prod_field = "production_t", intld_field = "value_intd15",
+                          intld_unit = 1000, band = BASIS_BAND, min_n = BASIS_MIN_N)
+  recent <- bg$data
+  cat(sprintf("[0.4.2] %s basis guard (band %gx the item median of nominal/intld, items with >= %d own-priced countries): %d own prices replaced by the item-median factor x constant-I$ value; %d filled prices outside the band left as they are\n",
+              nm, BASIS_BAND, BASIS_MIN_N, nrow(bg$flagged), nrow(bg$info_fills)))
+  if (nrow(bg$flagged)) print(bg$flagged[, .(iso3, atlas_name, price_source, price_was = signif(price_was, 4), price_now = signif(price_now, 4), basis_ratio, basis_median, basis_n)], nrows = 60)
+  if (nrow(bg$info_fills)) print(bg$info_fills[1:min(20, .N)], nrows = 20)
 
-  prod_merge_recent
+  recent[, vop_usd_nominal := production_t * price_usd_global][, year := nm]
+  recent
 })
 
 names(price_usd_list) <- paste0("nominal-usd-", gsub("y", "", names(year_sets)))
 
-# Audit trail: where every price came from, and the ones furthest from the world median.
+# Audit trail: where every price came from, and the ones furthest from the world reference.
 ensure_dir(file.path(mapspam_pro_dir, "fao_prices"))
 for (nm in names(price_usd_list)) {
   p <- price_usd_list[[nm]]
-  cat(sprintf("[0.4.2] %s fill sources: %s\n", nm, paste(sprintf("%s=%d", names(table(p$price_source)), as.integer(table(p$price_source))), collapse = " | ")))
+  src <- p[, .N, by = price_source][order(-N)]
+  cat(sprintf("[0.4.2] %s fill sources: %s\n", nm, paste(sprintf("%s=%d", src$price_source, src$N), collapse = " | ")))
+  if ("production_t" %in% names(p)) {
+    own_share <- p[!is.na(production_t), sum(production_t[price_source %in% c(OWN_SOURCES, "basis fallback")], na.rm = TRUE) / sum(production_t, na.rm = TRUE)]
+    cat(sprintf("[0.4.2] %s own (incl. basis fallback) prices cover %.0f%% of rows and %.0f%% of FAO production\n", nm,
+                100 * p[, mean(price_source %in% c(OWN_SOURCES, "basis fallback"))], 100 * own_share))
+  }
   top <- p[is.finite(price_usd_final / price_usd_global)][order(-abs(log(price_usd_final / price_usd_global)))][1:min(10, .N),
            .(iso3, atlas_name, price_source, price_usd_final = signif(price_usd_final, 4), price_usd_global = signif(price_usd_global, 4), ratio_world = signif(price_usd_final / price_usd_global, 3))]
-  cat(sprintf("[0.4.2] %s furthest from world median (expect all within %.0fx):\n", nm, PRICE_BAND)); print(top, nrows = 10)
-  fwrite(p[, .(iso3, atlas_name, price_source, price_usd, price_median, price_usd_neighbors, price_usd_region, price_usd_continent, price_usd_global, price_usd_final, production_t)],
+  cat(sprintf("[0.4.2] %s furthest from the world implied price (own values within %.0fx by construction; a basis fallback may sit outside):\n", nm, PRICE_BAND)); print(top, nrows = 10)
+  if (p[, any(!is.finite(price_usd_final))]) cat(sprintf("[0.4.2] WARN %s: %d rows with no price at all: %s\n", nm, p[!is.finite(price_usd_final), .N],
+                                                        p[!is.finite(price_usd_final), paste(unique(atlas_name), collapse = ",")]))
+  fwrite(p[, .(iso3, atlas_name, price_source, price_usd_implied, price_usd_producer, price_usd_implied_long, price_usd_producer_long, price_usd,
+               price_usd_neighbors, price_usd_region, price_usd_continent, price_usd_global, price_usd_global_pp,
+               basis_ratio, basis_median, price_usd_final, production_t, value_intd15)],
          file.path(mapspam_pro_dir, "fao_prices", paste0("crop_price_", nm, "-t_fill-sources_", .eg$tag, ".csv")))
 }
 
