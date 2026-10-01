@@ -35,6 +35,9 @@ Operating rules that have proven load-bearing:
 - **State expectations as invariants, not exact figures**, wherever the value is data-dependent. A
   gate that expects a slightly wrong number turns a correct run into a false failure — that happened
   three times in one week.
+- **Judge a re-baked product against the input it was built from, on the same grid** — not against
+  the live object. Live-vs-new drift is a report; product-vs-input is the gate (the G6 lesson,
+  2026-09-30). A gate's reference must be independent of the table it judges.
 - **Stop at every gate a dispatch names.** If anything deviates from the dispatch's stated expectation, stop at that step and describe what you see — do **not** improvise a fix. (This caught a stale-ensemble tier, a silent grid mismatch, a NULL-exposure abort, and two gate false-fails.)
 - After committing a `### RESPONSE`, **verify it landed on `origin/develop`** (`git fetch`; `git log origin/develop..HEAD` empty; `git show origin/develop:<file> | grep -c <marker>`). Push races have happened.
 - Commit trailer: `Co-Authored-By: <your own model name> <noreply@anthropic.com>` — sign as whatever model you actually are, so the record stays accurate across sessions and machines.
@@ -47,6 +50,17 @@ Operating rules that have proven load-bearing:
 - **Data is in `common_data`, not repo-relative.** The container `/` is ephemeral — never write outputs there. Ingest `--out` defaults are repo-relative (a known trap); pass an absolute `common_data` path.
 - **Long jobs:** `nohup Rscript … & ` survives; logs go in `logs/<name>_<STAMP>.log` (+ `.pid`).
 - **`arrow` and `duckdb` cannot both be attached in one R session.** AWS CLI is not on `PATH` (S3 goes through `AtlasDataManageR`/paws).
+- **The interactive shell kills foreground commands after about two minutes.** Anything that uploads
+  or runs longer than a gate check goes in the background (`nohup … &`, log to `logs/`); a publish was
+  SIGTERM'd mid-run on 2026-09-28.
+- **`R/0.4.x` scripts need setup sourced first.** Bare `Rscript R/0.4.2_….R` dies on `exposure_grid`;
+  run `Rscript -e 'source("<abs>/R/0_server_setup.R"); source("<abs>/R/0.4.2_….R")'`.
+- **Until the sourcing fix lands, several scripts load code from GitHub `main` at run time**
+  (`haz_functions.R`, `SpamCodes.csv`, `SPAM2010_FAO_crops.csv`, …). A fix on `develop` to those files
+  does not reach a node run. Put fixes in files sourced by path (`file.path(project_dir, …)`).
+- **`s3://digital-atlas` is versioned**: noncurrent versions are kept at least 270 days (the two newest
+  always), so an overwritten key is recoverable from version history; manual `sandbox/backup/` copies are
+  belt-and-braces.
 
 ### 3) Repo hygiene
 

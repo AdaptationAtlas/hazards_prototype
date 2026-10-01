@@ -119,18 +119,19 @@ consume them. So a true full rebake is:
    where no GCM has valid extraction for a given admin1×hazard combo). No further
    action. Full trail: `archive/dispatches/DISPATCH_cglabs_issue26_r21_rebake.md`.
 
-7. **VoP const-I$ publish ("Gap C", #30) — validated 2026-07 chain NEVER published.**
-   Node QAQC went green 2026-07-08 (livestock 1.00 242/242, crop 0.99 36/50, outliers
-   accepted) but `domain=hazard_exposure/.../variable=vop_intld15` on S3 is still the
-   2025-06/07 vintage — live livestock measures 1.198 vs FAOStat const-I$
-   (species-structured: poultry 1.370 … cattle 1.058). Publishing it = the ~7× cattle
-   currency fix finally going live, a wholesale overwrite of ~3,345 objects.
-   **BLOCKED on p.steward's #30 unit/allow-list decision** (`intld15` vs
-   `intld15-2021` — the `0.4.4:345` allow-list drop is baked into the published
-   artifact) or reference and product ship on different vintages. Gate to re-run
-   pre- and post-publish: `R/checks/vop_align_live_gate.R` (live-artifact twin of
-   `qaqc_vop_vs_faostat.R`, ~15 s, any machine). Detail: memory
-   project_vop_currency_mismatch + #30 comment 2026-09-18.
+7. **VoP const-I$ hazard product ("Gap C", #30) — #30 CLOSED 2026-09-25; the intld hazard tiers
+   are still unpublished, now blocked on #38/#39/#40 rather than on #30.** The exposure reference
+   went live with vintage-ful units at both resolutions (2026-09-25, nominal rows corrected
+   2026-09-28; livestock reconciles 1.000), and R/3 was fully re-baked 2026-09-30, so
+   `haz-freq-exp_vop_intld15-2021_*` exists on the node for both timeframes. It must not be
+   published until the intld side's known misallocations are fixed in one 0.4.x pass — millet
+   split (#38), FAO value over a negligible SPAM footprint: Sudan, Nigeria banana (#39), Seychelles
+   NaN from `rasterize(touches = FALSE)` (#40) — with `R/checks/vop_cross_basis_gate.R
+   --fail-on-intld-side` green at both resolutions. The old `domain=hazard_exposure/.../
+   variable=vop_intld15` prefix (2025-06/07, 3,345 objects, pre-currency-fix) is still what is live
+   for constant dollars; publishing the rebuilt tiers there is the wholesale overwrite this item
+   always was, and needs its own GO and the `s3_upload.R` route decision. Gates: `vop_align_live_gate.R`
+   (reference vs FAOSTAT), `vop_cross_basis_gate.R`, then G6 against the intld twin.
 
 ## Order
 0. Pre-conditions above (exposure vintage; CR-115 convention state).

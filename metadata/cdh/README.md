@@ -62,9 +62,9 @@ cross-field checks.
 | `mapspam2020-adaptation-atlas-ssa` | CC-BY-4.0 | not submitted |
 | `africa-admin-boundaries-gaul2024` | CC-BY-4.0 | not submitted |
 | `africa-population-worldpop-aggregated` | CC-BY-4.0 | not submitted |
-| `africa-hazard-exposure-nexgddp` | CC-BY-4.0 | not submitted — denominator defect resolved 2026-09-25 (#30) |
-| `africa-exposure-combined-res25` | CC-BY-4.0 | not submitted — the denominator for the hazard product (0.25° grid); millet caveat (#38) |
-| `africa-exposure-combined-res05` | CC-BY-4.0 | not submitted — 0.05° Atlas grid, aliases the unsuffixed `crop-livestock_all` key |
+| `africa-hazard-exposure-nexgddp` | CC-BY-4.0 | not submitted — republished 2026-09-30 from a full R/3 re-bake on native 0.25° exposure (#30 follow-ups) |
+| `africa-exposure-combined-res25` | CC-BY-4.0 | not submitted — the denominator for the hazard product (0.25° grid); nominal rows corrected 2026-09-28; intld caveats #38 (millet), #39 (Sudan, Nigeria banana), #40 (Seychelles) |
+| `africa-exposure-combined-res05` | CC-BY-4.0 | not submitted — 0.05° Atlas grid, aliases the unsuffixed `crop-livestock_all` key; same caveats |
 | `kenya-population-knbs-projections` | LicenseRef-KNBS-All-Rights-Reserved | **must not be submitted** — see below |
 | `kenya-population-grid3` | CC-BY-4.0 | **retired** — PR #39 closed, kept local |
 
