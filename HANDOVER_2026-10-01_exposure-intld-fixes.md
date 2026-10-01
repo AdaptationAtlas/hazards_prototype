@@ -61,23 +61,62 @@ Code, in `R/0.4.0_create_crop_vop_intld15.R` unless said otherwise:
 
 Budget: code half a day; node run under an hour per resolution for 0.4.x + 0.4.4; dispatch round trips.
 
-## Item 3 — method discussion: where should nominal prices come from?
+## Item 3 — nominal price source: evidence (deep dive 2026-10-01, `R/checks/probe_price_method_deepdive.R`)
 
-Today 0.4.2 prices SPAM tonnage with FAOSTAT **producer prices (USD/t)**, and 76 % of country × crop prices
-are gap-fills (continent 452, neighbours 514, region 394, own 345 of 1,705 on 2026-09-28). `R/price_fill.R`
-clips own prices to [1/5, 5]× the world median per crop-year and fills with medians, which removed the
-Zimbabwe/Rwanda artefacts, but the product's quality is still dominated by the fill.
+Question: price SPAM tonnage with FAOSTAT **producer prices** (USD/t, today) or with the **implied price** =
+FAOSTAT gross production value (current thousand US$) ÷ FAOSTAT production, per country × item × year?
+Measured on the FAOSTAT bulk files of 2026-05-14 (the ones the node uses), 31 SPAM items, 54 African
+countries, window 2019-2023, world-band clip 5×.
 
-Proposal to discuss before the item-2 bake: derive the nominal price as **FAOSTAT nominal gross production
-value ÷ FAOSTAT production** per country × crop × year (an implied farm-gate price), falling back to the
-producer-price chain only where GPV is missing. The nominal GPV file (`Value_of_Production_E_Africa.csv`,
-"Gross Production Value (current thousand US$)") is already loaded in 0.4.2 §1.6 and never used; its coverage is
-far better than the price file's, and it mirrors how the intld chain is anchored, so the two bases would differ
-only by the deflator/PPP factor rather than by data source. Keep the band clip as a guard on the implied
-price. Value-changing for the nominal product → its own GO, and the cross-basis gate's band could then tighten.
+**What the implied price is.** Where a producer price exists, GPV current US$ ÷ production **equals it
+exactly** (973 country-item-years, ratio 1.000, IQR [1.000, 1.000]). FAO's own note: "Value of gross
+production has been compiled by multiplying gross production in physical terms by output prices at farm
+gate", converted "using official exchange rates as prevailing in the respective years" (QV methodology).
+So the implied price is not an independent measurement; its only extra content is **FAO's imputation of
+prices it does not publish** (PP methodology §1.6: related-commodity prices, the country's producer price
+index, ARIMAX on the series), which flows into GPV but not into the price file.
 
-Open questions for Pete: (a) accept implied prices as the primary source; (b) coverage-guard threshold and
-NA-vs-fallback for #39; (c) whether Sudan is in the SPAM SSA release's scope at all.
+| | producer price | implied (GPV ÷ production) |
+|---|---|---|
+| (iso3, item) pairs with an own value, of 868 with production | 262 (30 %), 41 % of production | 591 (68 %), 83 % of production |
+| … surviving the 5× world-band clip | 254, 41 % of production | 523, **81 %** of production |
+| pairs left to the neighbour/region/continent fill chain | 614 | **344** |
+| own values clipped away as artefacts | 47 of 991 (4.7 %) | 417 of 2,922 (14.3 %) |
+| within-pair CV 2019-23 (pairs with ≥ 3 years) | 0.160 (n = 213) | 0.108 (n = 589) |
+| nominal ÷ constant-I$ GPV per pair after clip: median, 5-95 %, beyond [1/5, 5] | 1.49, [0.57, 3.49], 1.2 % | 1.16, [0.29, 3.68], 2.7 % |
+
+Countries with **no producer price at all** in the window but implied prices: AGO, CMR, COG, ETH, GNB,
+GNQ, MWI, SDN, SYC, TZA, ERI, CAF, SLE, BWA. The pairs the implied method adds are the heavy ones:
+NGA yams (60 Mt), NGA cassava (58 Mt), ETH maize (11.6 Mt), NGA oil palm fruit, AGO/TZA/MWI/CMR cassava,
+ETH wheat and sorghum, GHA/CMR plantain. Today every one of those is a regional or continental mean.
+
+**What it does not fix, and what it adds.** (a) The ZWE 2022 artefact is in both series identically
+(67,170 USD/t; FAO used the official rate on a hyperinflating currency) - the clip stays essential.
+(b) Current-US$ GPV carries **low-side** exchange-rate artefacts the price file does not: Sudan (wheat
+56 → 1.6 USD/t over 2019-23, 78 % of its implied values clipped), GNB, SYC, ERI, MDG, ZWE, COG, GIN, CPV,
+AGO - hence 14.3 % clipped vs 4.7 %. Two-sided clip, which `R/price_fill.R` already is. (c) The clip
+reference must match the method: the world producer-price median and the World GPV ÷ production unit
+value differ by item (plantain 0.20×, yams 0.25×, cowpea 0.27×, tea leaves 5.2× - leaf vs made-tea
+units), so implied values are clipped against World GPV ÷ production per item-year, producer prices
+against the world producer-price median, never crosswise. (d) The low 5 % tail of nominal ÷ intld (0.29)
+is largely real: in low-income countries nominal USD sits below constant international dollars (price
+level ratio), e.g. NGA cassava 74 USD/t, NGA oil palm 45 USD/t survive a 5× clip legitimately - the
+cross-basis band cannot tighten much either way. (e) NGA Bananas has production (4.9-7.4 Mt) but no
+current-US$ GPV in any year (constant I$ exists), so #39's banana pair stays a fill under both methods.
+
+**Recommendation (unchanged by the evidence, sharpened):** implied price as the **primary own value**
+(GPV current US$ ÷ production, 2019-23 median, clipped 5× against World GPV ÷ production per item-year),
+**producer price as first fallback** (clipped against the world producer-price median), then the existing
+median neighbour → region → continent → world chain, with `price_source` recording which level was used
+(`fao gpv implied` / `fao producer price` / fills). Expected effect: fills fall from 71 % to 40 % of pairs
+and from ~59 % to ~19 % of production; the heavy pairs above move from regional means to FAO's own
+country figures. Value-changing for the nominal product → its own GO, in the item-2 pass; the publish
+gates (G6 against the exposure twin, cross-basis with the independent world reference) are already in
+place. Caveat to state in the CDH note: the "own" nominal price is FAO's valuation, including FAO's
+imputations, converted at official exchange rates.
+
+Open questions for Pete: (a) accept implied-primary / producer-fallback; (b) coverage-guard threshold
+and NA-vs-fallback for #39; (c) whether Sudan is in the SPAM SSA release's scope at all.
 
 ## Reuse
 
