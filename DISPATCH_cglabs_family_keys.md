@@ -91,6 +91,8 @@ ROI notebook's own query must still return rows - macbook runs it over HTTPS wit
 ## Block C - retire `vop_nominal-usd-2015` (LIVE DELETE - GO-gated, after Block B is verified)
 
 > **GO given by p.steward 2026-10-01 for Block C.** Prerequisite met: the ROI notebook (`atlas_nb-KE-enso`, our repo) was moved to the `_res-05` key the same day. Run as written, paste the backup key and the 404, STOP. Macbook then closes #23.
+>
+> **DEFERRED the same day (Pete, via the R/3 dispatch RELEASE response):** runs in the single S3 clean-up pass on **2026-11-01**, or earlier once the republished nominal-USD products are confirmed clean in use, together with the retained `sandbox/backup/issue9_*` dirs. The bucket is versioned, so the deleted object stays recoverable from version history. #23 stays open until then.
 
 Backup first, then delete, then prove it is gone. The publisher never deletes; this is the only place
 a delete happens, and it is one key.
