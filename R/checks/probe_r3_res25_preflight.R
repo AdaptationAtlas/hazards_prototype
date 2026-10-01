@@ -49,7 +49,10 @@ ok(.vint %in% c("", "2021"), "R3_CROP_VOP_USD unset or 2021 (got '%s'); the defa
 ## 6) nothing else running ------------------------------------------------------
 .log("--- processes")
 procs <- tryCatch(suppressWarnings(system2("pgrep", c("-af", "Rscript"), stdout = TRUE)), error = function(e) character(0))
-procs <- procs[!grepl(sprintf("^%d ", Sys.getpid()), procs) & !grepl("probe_r3_res25_preflight", procs)]
+# Keep only real R interpreters: `pgrep -af` also returns shell wrappers whose command line merely
+# mentions Rscript (an idle `r21_rerun.sh` bash+tail loop, the pgrep shell itself) - 2026-10-01.
+procs <- procs[grepl("^[0-9]+ +(\\S*/)?(Rscript|R) ", procs)]
+procs <- procs[!grepl(sprintf("^%d ", Sys.getpid()), procs) & !grepl("probe_r3_res25_preflight|pgrep", procs)]
 ok(length(procs) == 0, "no other Rscript running (%d found)", length(procs)); for (p in procs) .log("     %s", p)
 
 ## 1-3) grids and inputs, resolved as R/3 does -----------------------------------

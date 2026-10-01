@@ -24,4 +24,5 @@ Anything still in flight lives at the repository root.
 | `DISPATCH_cglabs_phase2.md` · `DISPATCH_cglabs_sfcwind.md` | Upstream Stage-0 migration, wind availability | Validated on real data; `sfcWind` present for all 18 GCMs |
 | `DISPATCH_poultry_thi_rebake.md` | poultry_highland THI threshold 79 → 89 | Metadata fixed; published outputs still need the re-bake, tracked as issue #13 |
 | `DISPATCH_desert_mask.md` | Desert masking | Closed |
+| `DISPATCH_cglabs_local_sourcing.md` | Scripts load `haz_functions.R` and metadata from the checkout, not GitHub `main` (2026-10-01) | Verified on the node the same day: no run-time URLs, root resolved from repo root and elsewhere, develop's `haz_classes.csv` (THI 89) read, probe outputs unchanged |
 | `HANDOVER_*.md` | Session handovers, Jun–Sep 2026 | Superseded by the current handover at the repository root |
