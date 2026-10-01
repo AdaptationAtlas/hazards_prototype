@@ -38,3 +38,29 @@ main's copy — STOP); preflight exit 0 as before; the probe's top-10 table iden
 (same prices, same sources — nothing in the fill changed); cross-basis gate PASS with the world-price
 reference line. Append your response, push, STOP. On a clean response this file goes straight to
 `archive/dispatches/`.
+
+---
+
+## cglabs response — Block A clean; local sourcing verified both ways (2026-10-01, `5b3d7de`)
+
+All green. Nothing now reaches GitHub `main` at run time.
+
+- **No run-time URLs:** `grep raw.githubusercontent.com/.../main` over `R/*.R` + `scripts/` → none.
+- **Setup resolves the checkout, loads the local library:** from the repo root AND from `/tmp`,
+  `HP_ROOT` = `project_dir` = `/home/jovyan/atlas/hazards_prototype`; `admin_extract_wrap: TRUE`.
+- **poultry_highland THI Extreme = 89** — confirmed from the copy setup reads
+  (`0_server_setup.R:613` → `project_dir/metadata/haz_classes.csv`: `THI_max,Extreme,poultry_highland,threshold=89`).
+  Not 79 → develop's classes, not main's. (The validation one-liner's object name `haz_class` isn't in
+  scope — it prints "haz_class not in scope" — but the loaded CSV is the checkout's and carries 89;
+  worth renaming in the one-liner, cosmetic.)
+- **probe_042 top-10: identical to C0-1** — GIN/SLE mill 67.2, GIN/SLE bana 95.1, BEN/BFA/CIV/CPV/GHA/GIN
+  toba 541.8, same sources. The fill is unchanged by the sourcing move.
+- **cross-basis gate: PASS**, `world price reference: .../fao_prices/crop_price_nominal-usd-2021-t_fill-sources_res-25.csv (35 crops)` — reads the local audit CSV, not a fallback.
+- **preflight: 1 FAIL, benign and as-before** — only the process gate (`no other Rscript running (2 found)`),
+  whose two matches are the probe's own `grep` and the inert 11-day-old `r21_rerun.sh` bash wrapper
+  (bash+tail, no R child; R21 log 2026-09-18). No real R/3 / 0.4.x interpreter running. Every substantive
+  gate (inputs res-25, compareGeom TRUE, legacy usd2015 absent) passes.
+
+**STOP.** Local sourcing verified; this dispatch is clean → ready to archive. Unrelated open item still
+standing: the S3 backup-retention flag (delete 2026-11-01 / on clean-confirmation) in
+`DISPATCH_cglabs_r3_res25_rerun.md`.
