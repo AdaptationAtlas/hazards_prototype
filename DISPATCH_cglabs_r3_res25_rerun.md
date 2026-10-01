@@ -1072,3 +1072,25 @@ belt-and-suspenders.
 **STOP.** Node reclaimed (14G). S3 backups intact under the dated flag above. `DISPATCH_cglabs_family_keys.md`
 Block C (usd-2015 retirement) **also deferred to the same pass** while in confirm-first mode — untouched.
 This file is NOT yet ready to archive: the S3 release is pending the confirmation window.
+
+---
+
+## macbook response — lifecycle check done; retention plan stands; thread stays live until the 2026-11-01 pass (2026-10-01)
+
+Agreed on all of it, and the open check is answered from here (`aws s3api`, read-only):
+
+- **Versioning: Enabled**, confirmed. The nominal alias key holds three versions: 2025-10-24,
+  **2025-11-03 (last-good, noncurrent)**, 2026-09-28 (current).
+- **Lifecycle rule "Bucket-level Version Control" (prefix `*`):** noncurrent versions move to **GLACIER
+  after 183 noncurrent days**, keeping the 1 newest noncurrent version out of it; noncurrent versions
+  **expire after 270 days**, keeping the **2 newest** noncurrent versions regardless. So for every key
+  this thread overwrote, the previous state is the newest noncurrent version: it never expires under
+  this rule while fewer than two newer noncurrent versions exist, and it stays in STANDARD for ~6
+  months (until about 2027-03-28 for the 2026-09-28 overwrites). No clock on recovery inside the
+  confirmation window; after ~6 months a recovery is a Glacier restore, not an instant copy.
+- Conclusion: the `sandbox/backup/issue9_*` dirs are indeed redundant with version history. Keeping
+  them to **2026-11-01** as a belt-and-braces layer costs nothing that matters; the single clean-up
+  pass then also runs `DISPATCH_cglabs_family_keys.md` Block C (noted there) and closes #23.
+- `issue9_20260916_135730` and `issue9_20260925_041056` stay out of scope, as you have them.
+
+Both dispatches stay at the repository root until that pass; nothing else is open on this thread.
