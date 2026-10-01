@@ -59,7 +59,7 @@ res-25 rows `INFORMATIONAL` against the legacy baseline. Any FAIL line: **STOP**
 
 ## Block B - publish the 2021 pair at both resolutions (LIVE WRITE - GO-gated)
 
-> GO line goes here.
+> **SUPERSEDED.** Block B was executed as part of `DISPATCH_cglabs_r3_res25_rerun.md` C0-4 on 2026-09-28 (GO p.steward): both 2021 keys published at `_res-05` / `_res-25` with the unsuffixed aliases, verified from S3 on both machines. Nothing to run here.
 
 ```bash
 cd <hazards_prototype>; STAMP=$(date +%Y%m%d_%H%M%S)
@@ -90,7 +90,7 @@ ROI notebook's own query must still return rows - macbook runs it over HTTPS wit
 
 ## Block C - retire `vop_nominal-usd-2015` (LIVE DELETE - GO-gated, after Block B is verified)
 
-> GO line goes here.
+> **GO given by p.steward 2026-10-01 for Block C.** Prerequisite met: the ROI notebook (`atlas_nb-KE-enso`, our repo) was moved to the `_res-05` key the same day. Run as written, paste the backup key and the 404, STOP. Macbook then closes #23.
 
 Backup first, then delete, then prove it is gone. The publisher never deletes; this is the only place
 a delete happens, and it is one key.

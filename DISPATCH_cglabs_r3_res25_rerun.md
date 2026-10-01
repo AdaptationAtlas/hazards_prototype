@@ -1015,3 +1015,22 @@ inherits. Handover row updated.
 - `DISPATCH_cglabs_family_keys.md` Block C (retire `vop_nominal-usd-2015`, then close #23): own GO.
 - #38 / #39 / #40 ride the next 0.4.0 / 0.4.2 -> 0.4.4 -> reference republish.
 This file moves to `archive/dispatches/` once the parked set is released.
+
+---
+
+## RELEASE — parked set and backups may go (p.steward 2026-10-01); thread closes on your response
+
+Pete has released everything this thread retained. **Read the second bullet before deleting.**
+
+- **Node:** `rm -r Data/_parked_r3_res25_20260926_185444/` (all R/3 §4 outputs built before the res-25
+  re-bake, the Block B probe outputs, the pre-C0 nominal-USD raster dirs and the pre-C0 exposure tables).
+  Print `du -sh` before and `ls` after.
+- **S3, `sandbox/backup/`:** released too, but note what each holds, since nothing else does:
+  `issue9_20260928_142229` = the original 2026-09-25 res-05 reference (first C0-4 attempt);
+  `issue9_<second C0-4 run stamp>` = the pre-C0-4 copies of the reference (res-25 + alias) **and the
+  2025-11-03 family keys - the last producer-price-sound nominal table before the fix**;
+  `issue9_20260930_120740` = **the 2026-09-16 hazard tiers**, the last pre-re-bake product. Together
+  they are a few hundred MB. Delete per the GO with `s3fs::s3_dir_delete()` on each prefix and paste
+  the listing before and the empty listing after - unless macbook or Pete amend this block first.
+- Then append your response and **STOP**. Macbook moves this file to `archive/dispatches/` and adds the
+  README row; `DISPATCH_cglabs_family_keys.md` Block C (its own GO is stamped) follows.
