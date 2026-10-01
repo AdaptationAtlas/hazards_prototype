@@ -115,6 +115,31 @@ gates (G6 against the exposure twin, cross-basis with the independent world refe
 place. Caveat to state in the CDH note: the "own" nominal price is FAO's valuation, including FAO's
 imputations, converted at official exchange rates.
 
+**Decision 2026-10-01 (Pete): implied primary, producer-price fallback, 5× clip - CONFIRMED.**
+
+**What it does not fix: the price BASIS problem (Pete's question).** Where a producer price exists the
+implied price equals it, so whatever basis FAO recorded is inherited - auction or export-parity prices for
+some countries, farm-gate for others, and different product forms (coffee cherry vs green bean, tea leaf vs
+made tea, seed cotton vs lint). Measured with the constant-I$ GPV as yardstick (it uses one international
+price per item, so a wide cross-country spread of nominal ÷ intld inside one item means inconsistent basis,
+not economics):
+
+| item | countries | nominal ÷ intld, min → max | spread |
+|---|---:|---|---:|
+| Coffee, green | 16 | NGA 0.06 (133 USD/t) … BDI 0.13 (268, cherry) … ETH 0.37 … CIV 0.53 … **KEN 1.98 (4,269, auction green)** | 33× |
+| Cocoa beans | 9 | NGA 0.09 … GHA 0.37 … CIV 1.23 … CMR 2.26 | 25× |
+| Tea leaves / tobacco / seed cotton / coconuts / sugar cane | | 0.01-0.08 → 1.3-7.8 | 50-490× |
+| Maize (control) | 25 | AGO 0.39 → RWA 1.83 | 4.7× |
+
+Maize's spread is the genuine PPP range; coffee's is product form and market level. Neither method changes
+this. **Proposed guard for the 0.4.x pass (item 2 scope, Pete to confirm):** a within-item cross-country
+consistency check - for each (country, item), nominal ÷ intld against the item's cross-country median; a
+country beyond a band (start at 4×) is a basis mismatch and falls back from its own price to the fill chain
+(or, better for the known product-form items, to the item median factor × the country's constant-I$ value,
+which puts it on a consistent basis), with `price_source = "basis fallback"` and a logged list. Cash crops
+to expect on that list: coffee (BDI, NGA, KEN), cocoa (NGA, CMR), tea, tobacco, seed cotton, coconuts, sugar
+cane. This is the per-pair cross-basis gate turned into a correction at source.
+
 Open questions for Pete: (a) accept implied-primary / producer-fallback; (b) coverage-guard threshold
 and NA-vs-fallback for #39; (c) whether Sudan is in the SPAM SSA release's scope at all.
 
