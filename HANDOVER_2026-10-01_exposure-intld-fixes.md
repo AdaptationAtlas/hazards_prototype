@@ -205,6 +205,65 @@ Code is on `develop` (`715057f`, `95b2159`, `94a98fa`); the node runbook is
   gap, recorded as such in the CDH records, not as "out of scope". Open for Pete at the GO: the 4× band's
   low-side catches (keep two-sided as decided, or flag high-side only).
 
+## Evidence — the eight material basis-fallback pairs (2026-10-02)
+
+Pete's question on the guard's low-side catches: what should the value actually be, with citable
+evidence? Of the 37 rows the guard moves at y2021, eight carry 9.1 B of the 9.5 B USD swing (own → fallback):
+NGA groundnut (4.3 Mt), AGO cassava (9.9 Mt), NGA oil palm fruit (10.5 Mt), AGO banana (4.3 Mt), AGO maize
+(3.0 Mt), SDN millet, banana, wheat (0.7-1.1 Mt). Researched with three parallel web agents + the FAO bulk
+files; probe `R/checks/probe_price_stale_slc.R` reproduces the FAO-internal half.
+
+**Mechanism, settled.** None of the eight has a FAOSTAT producer price in the window (Sudan: none after
+2013; Nigeria and Angola: none at all, PPI flag E). FAO's gross production value in current local
+currency per tonne is therefore an imputation, and it is **frozen**: Sudan millet 2,742 SDG/t in 2019,
+2020 and 2021 — exactly the 2013 producer price — while the GDP deflator went ×37; Angola cassava
+28,374 → 25,350 AOA/t against ×2.06; Nigeria groundnut 46k → 51k NGN/t (+9.5 %) against wholesale
++150 %. FAO then converts at the current-year **official** rate (QV methodology note). So the implied USD
+price is a stale local number divided by a depreciating currency: not a measurement, not a genuine low
+price level, and — Angola's agent made the direction explicit — **not a parallel-rate artefact either**: an
+overvalued official rate *inflates* USD values, it cannot deflate them. A second FAO defect for Sudan: its
+2023 annual SDG rate (1,451.88) contradicts its own monthly series (573-800). Across all 1,435 (country,
+item) pairs the same test (real SLC/t 2019→2023 < 0.5) marks 44 pairs, 3.3 % of production: Sudan 13 of 30,
+Angola 8 of 24, then Ghana 5, Sierra Leone 5, Kenya 4.
+
+**Independent prices vs our numbers (USD/t; "fallback" = item-median factor × constant-I$ value, what the
+guard puts in; "old" = the pre-2026-10 fill chain).**
+
+| pair | FAO implied | fallback | old | independent evidence (level, period, source) | supportable farm-gate range | verdict on fallback |
+|---|---:|---:|---:|---|---|---|
+| SDN millet | 60 → 2 | 411 | 363 | WFP/HDX wholesale 8 markets 378-633 (2019-22, parallel rate), FAO CFSAM 2019 354, FEWS retail 2022-23 700-1,300 | 350-650 | inside |
+| SDN wheat | 56 → 2 | 350 | 391 | WFP wholesale 413 (2019) / 369 / 535 / 833 (2022 H1); Salam farm-gate 360-405 (2020/21), 840 (2021/22); Gezira traders 546-585 (2022); import unit value 233-408 | 330-600 (2019-21), 550-850 (2022-23) | inside, low for 2022-23 |
+| SDN banana | 106 → 3 | 432 | 468 | 2013 producer price 1,028; export unit value 698 (2019), 583 (2021); WB VCA 2020: domestic 30-65 % below international | 400-700 | inside |
+| AGO cassava | 78 → 37 | 254 | 234 | MINFIN retail 611-1,076 (2019-23); INE/FPMA producing provinces 340-652 (2022); Malanje 2025 farm gate: traders buy 263, producers direct 470; WB ASPR 2021: farm gate ≈ export parity | 150-300 | inside, upper end |
+| AGO banana | 130 → 84 | 432 | 309 | MINFIN retail 454-689 (2019-23); export unit value 500-585 (2022-23); WB ASPR: farm gate ≈ FOB less transport | 200-350 | **too high (retail level)** |
+| AGO maize | 122 → 64 | 336 | 385 | FEWS/Andulo harvest-time 110-150 (2023), lean season ~400; commercial lots ~250; official 2025/26 reference 307; WB ASPR 2018-19: farm gate above import parity | 200-350 | inside |
+| NGA groundnut (in shell) | 151 → 79 | 719 | 547 | WFP/HDX wholesale shelled 15 markets, ×0.70 in-shell, official rate: 547 / 586 / 815 / 990 / 653 (2019-23); Daily Trust in-shell bags 195-449 (2020-21) | 550-990 wholesale; farm gate 15-20 % below | inside |
+| NGA oil palm fruit | 53 → 33 | 190 | 248 | no FFB series; derived from WFP + NBS palm-oil retail (1,672-2,580 USD/t) and Businessday CPO wholesale (950k-1.2 M NGN/t, 2023) at 20 % OER × 0.65 grower share: 159-252; at 10 % OER (traditional processors) 80-126 | 150-200 (industrial) / 80-125 (traditional) | inside; product form (FFB, not CPO) matters |
+
+Sources (all public): FAOSTAT bulk QV / QCL / PP / Exchange_rate (bulks-faostat.fao.org) and the QV and
+PP methodology notes (files-faostat.fao.org/production/QV/QV_e.pdf, PP/PP_e.pdf); World Bank
+PA.NUS.FCRF (api.worldbank.org); WFP food prices on HDX for Sudan and Nigeria
+(data.humdata.org/dataset/wfp-food-prices-for-sudan, -for-nigeria); FEWS NET Sudan outlooks 2020-23 and
+Angola remote-monitoring reports 2023-24 (fews.net); FAO CFSAM Sudan 2019; World Bank Sudan Agriculture
+Value Chain Analysis 2020 and Angola Agriculture Support Policy Review 2021 (documents.worldbank.org);
+IMF CR 21/142 (Sudan) and the 2024 Nigeria Article IV; MINFIN Angola "Preços Vigiados" 2021 and 2023
+(ucm.minfin.gov.ao); FAO GIEWS FPMA domestic price API for Angola (INE series); NBS Nigeria Selected Food
+Price Watch Nov-2019, Nov-2020, Jan-2022, Dec-2023; Agostinho 2026, J. Dev. Agric. Econ. 18(3)
+(Malanje cassava); Businessday 2023-07-07 and 2024-06-28 (Nigerian CPO); Nairametrics / Vanguard /
+Expansão / Novo Jornal for parallel rates. The agents' extracts (WFP CSVs, pdftotext files) sit in the
+macbook scratchpad, uncommitted.
+
+**Reading.** Seven of eight fallback values sit inside the independently supported range; the guard is
+doing what it should, and the item-median × constant-I$ route is a defensible estimator for a pair whose
+FAO value is a frozen imputation. The one miss is **AGO banana at 432**, which is a retail-level number:
+farm gate is 200-350 (old fill 309 was closer). Proposed: an evidence pin for AGO banana at 300 USD/t
+(midpoint, cited above) in a small `price_source = "evidence pin"` list in 0.4.2 §3, applied after the
+guard; nothing else pinned. Second proposal, a general rule from the mechanism: **reject an own implied
+price whose real local-currency unit value fell by more than half over the window** (FAO's SLC series
+against FAO's own deflator; `probe_price_stale_slc.R` logic) *before* the guard — it catches the 44 stale
+pairs, 36 of which the guard does not see because they sit inside the 4× band (Ghana, Sierra Leone,
+Kenya, Ethiopia). Those rows would then take the producer price or the fill chain. Both await Pete.
+
 ## Reuse
 
 `R/price_fill.R`, `R/vop_allocate.R`, `R/checks/vop_cross_basis_gate.R`, `R/checks/probe_042_price_fill.R`,
