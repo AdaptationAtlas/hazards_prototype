@@ -59,6 +59,7 @@ BASIS_BAND_DEFAULT <- 4      # Pete 2026-10-01: start at 4x the item's cross-cou
 BASIS_MIN_N_DEFAULT <- 5     # an item median over fewer own-priced countries is not a reference
 OWN_SOURCES <- c("fao gpv implied", "fao producer price",
                  "fao gpv implied longer-series", "fao producer price longer-series")
+STALE_REAL_RATIO_DEFAULT <- 0.5   # Pete 2026-10-02: an own implied price whose real local-currency unit value fell by more than half is a frozen imputation
 
 # prices: data.table with iso3, atlas_name, year, price_usd (own observations, NA allowed)
 # world:  data.table with atlas_name, year, price_usd (world-file observations; all
@@ -199,4 +200,50 @@ apply_basis_guard <- function(data, value_field = "price_usd_final", prod_field 
   d[price_source == "basis fallback", (value_field) := price_tmp__]
   d[, c("price_tmp__", "basis_out", "basis_n") := NULL]
   list(data = d[], flagged = flagged, medians = med[order(atlas_name)], info_fills = info_fills)
+}
+
+
+# 2026-10-02 (evidence in HANDOVER_2026-10-01_exposure-intld-fixes.md, "Evidence" section;
+# probe R/checks/probe_price_stale_slc.R). Where FAO publishes no producer price it carries a
+# frozen local-currency price forward (Sudan millet: the 2013 price, 2,742 SDG/t, in 2019, 2020
+# and 2021 while the GDP deflator went x37) and converts it at the current official exchange
+# rate, so the implied USD price decays with the currency. A stale numerator, not a measurement.
+# Test: FAO's GPV in current STANDARD LOCAL CURRENCY per tonne, first to last year of the
+# window, divided by the country's GDP deflator ratio over the same years. Below `max_real_ratio`
+# the pair's implied prices are rejected for every year of the window (the producer price, the
+# longer series or the fill chain take over). 44 of 1,435 pairs (3.3 % of production) on the
+# 2026-05-14 files: Sudan 13, Angola 8, Ghana 5, Sierra Leone 5, Kenya 4, Ethiopia 3.
+# slc:  data.table iso3, atlas_name, year, value_slc (GPV current thousand SLC), production_t
+# defl: data.table iso3, year, deflator (GDP deflator, SLC, any base year)
+# Returns list(stale = iso3/atlas_name/slc_ratio/defl_ratio/real_ratio/n_years/verdict for every pair
+#              with >= 2 years of SLC value, is_stale = the stale subset's keys).
+stale_local_price <- function(slc, defl, years, max_real_ratio = STALE_REAL_RATIO_DEFAULT, min_years = 2) {
+  stopifnot(all(c("iso3", "atlas_name", "year", "value_slc", "production_t") %in% names(slc)), all(c("iso3", "year", "deflator") %in% names(defl)))
+  d <- data.table::as.data.table(slc)[year %in% years & is.finite(value_slc) & is.finite(production_t) & value_slc > 0 & production_t > 0]
+  d[, slc_t := value_slc / production_t]
+  d <- merge(d, data.table::as.data.table(defl)[, .(iso3, year, deflator)], by = c("iso3", "year"), all.x = TRUE)
+  d <- d[is.finite(deflator) & deflator > 0]
+  pair <- d[order(year), .(n_years = .N, year_first = year[1], year_last = year[.N],
+                           slc_ratio = slc_t[.N] / slc_t[1], defl_ratio = deflator[.N] / deflator[1]), by = .(iso3, atlas_name)]
+  pair <- pair[n_years >= min_years & year_last > year_first]
+  pair[, real_ratio := slc_ratio / defl_ratio]
+  pair[, verdict := data.table::fifelse(real_ratio < max_real_ratio, "stale local price", "moves with the price level")]
+  list(stale = pair[order(real_ratio)], is_stale = pair[verdict == "stale local price", .(iso3, atlas_name)])
+}
+
+# pins: metadata/price_pins.csv (iso3, atlas_name, price_usd_t, evidence, source): the few
+# (country, crop) prices set by hand from cited independent evidence where the general chain is
+# shown to be wrong. Applied LAST, so the audit CSV keeps what the chain would have produced.
+apply_price_pins <- function(data, pins, value_field = "price_usd_final") {
+  d <- data.table::copy(data)
+  if (is.null(pins) || !nrow(pins)) return(list(data = d, applied = pins))
+  stopifnot(all(c("iso3", "atlas_name", "price_usd_t") %in% names(pins)))
+  pins <- data.table::as.data.table(pins)[, .(iso3, atlas_name, price_pin = as.numeric(price_usd_t))]
+  d <- merge(d, pins, by = c("iso3", "atlas_name"), all.x = TRUE)
+  applied <- d[!is.na(price_pin), .(iso3, atlas_name, price_was = get(value_field), source_was = price_source, price_pin)]
+  d[!is.na(price_pin), `:=`(price_chain = get(value_field), source_chain = price_source)]
+  d[!is.na(price_pin), (value_field) := price_pin]
+  d[!is.na(price_pin), price_source := "evidence pin"]
+  d[, price_pin := NULL]
+  list(data = d[], applied = applied)
 }

@@ -176,6 +176,28 @@ value_cusd_world <- value_cusd_world[Area == "World" & Element == element & Item
 prod_value_cusd_world_fao <- merge(value_cusd_world, data.table(Item = spam2fao_formatted, atlas_name = names(spam2fao_formatted)), all.x = TRUE)
 prod_value_cusd_world_fao <- melt(prod_value_cusd_world_fao[, !"Item"], id.vars = c("atlas_name"), value.name = value_name, variable.name = "year")
 
+#### 1.6.4) current SLC (local currency) GPV + GDP deflators: the stale-local-price test (2026-10-02) ####
+# Where FAO has no producer price it carries a frozen local-currency price forward and converts it
+# at the current official rate (Sudan millet: the 2013 price for 2019-21 while the deflator went x37).
+# R/price_fill.R::stale_local_price() rejects an implied price whose REAL local unit value fell by
+# more than half over the window. Evidence: HANDOVER_2026-10-01_exposure-intld-fixes.md, "Evidence".
+element <- "Gross Production Value (current thousand SLC)"
+value_name <- "value_slc"
+prod_value_slc_africa_fao <- prepare_fao_data(
+  file = path_vop_africa_fao,
+  spam2fao_formatted,
+  elements = element,
+  remove_countries = remove_countries,
+  keep_years = target_year,
+  atlas_iso3 = atlas_iso3
+)
+prod_value_slc_africa_fao <- melt(prod_value_slc_africa_fao, id.vars = c("iso3", "atlas_name"), value.name = value_name, variable.name = "year")
+
+gdp_deflator <- fread(def_file, encoding = "Latin-1")[Item == "GDP Deflator" & Element == "Value Standard Local Currency, 2015 prices" & Year %in% target_year]
+gdp_deflator[, iso3 := countrycode(sourcevar = as.numeric(gsub("[']", "", `Area Code (M49)`)), origin = "un", destination = "iso3c", warn = FALSE)]
+gdp_deflator <- gdp_deflator[!is.na(iso3) & iso3 %in% atlas_iso3, .(iso3, year = as.integer(Year), deflator = Value)]
+if (!nrow(gdp_deflator)) stop("[0.4.2] GDP deflator table is empty: check ", def_file)
+
 ### 1.7 Load Producer Prices #####
 #### 1.7.1) Africa ####
 
@@ -247,6 +269,7 @@ if (nrow(prod_price_world_implied) == 0) stop("[0.4.2] world implied price table
 ### 1.9) Merge datasets ####
 prod_merge <- merge(prod_value_usd_africa_fao, prod_value_intd_africa_fao, all.x = TRUE)
 prod_merge <- merge(prod_merge, prod_value_cusd_africa_fao, all.x = TRUE)
+prod_merge <- merge(prod_merge, prod_value_slc_africa_fao, all.x = TRUE)
 prod_merge <- merge(prod_merge, prod_price_africa_fao, all.x = TRUE)
 prod_merge <- merge(prod_merge, prod_ton_africa_fao, all.x = TRUE)
 prod_merge[, year := as.integer(gsub("Y", "", year))]
@@ -299,8 +322,19 @@ PRICE_FILL_STAT <- Sys.getenv("PRICE_FILL_STAT", "median")                      
 BASIS_BAND      <- as.numeric(Sys.getenv("BASIS_BAND", BASIS_BAND_DEFAULT))   # within-item nominal/intld band around the item median
 BASIS_MIN_N     <- as.integer(Sys.getenv("BASIS_MIN_N", BASIS_MIN_N_DEFAULT)) # own-priced countries an item needs before its median is a reference
 
-# 3.1) Own prices, clipped against the matching world reference
+# 3.0) Stale local prices: reject the implied price of a pair whose real local-currency unit value
+#      fell by more than STALE_REAL_RATIO over the window (frozen imputation x depreciating official rate)
+STALE_REAL_RATIO <- as.numeric(Sys.getenv("STALE_REAL_RATIO", STALE_REAL_RATIO_DEFAULT))
+.stale <- stale_local_price(prod_merge[, .(iso3, atlas_name, year, value_slc, production_t)], gdp_deflator, years = 2019:2023, max_real_ratio = STALE_REAL_RATIO)
 prod_merge[, price_implied := implied_price(value_cusd, production_t)]
+prod_merge[, stale_local_price := FALSE]
+prod_merge[.stale$is_stale, on = c("iso3", "atlas_name"), stale_local_price := TRUE]
+cat(sprintf("[0.4.2] stale local price test (real SLC/t ratio over 2019-2023 < %.2f, STALE_REAL_RATIO): %d of %d pairs rejected as frozen imputations; countries %s\n",
+            STALE_REAL_RATIO, nrow(.stale$is_stale), nrow(.stale$stale), paste(sprintf("%s(%d)", names(table(.stale$is_stale$iso3)), as.integer(table(.stale$is_stale$iso3))), collapse = " ")))
+if (nrow(.stale$is_stale)) print(.stale$stale[verdict == "stale local price", .(iso3, atlas_name, n_years, slc_ratio = signif(slc_ratio, 3), defl_ratio = signif(defl_ratio, 3), real_ratio = signif(real_ratio, 3))], nrows = 60)
+prod_merge[stale_local_price == TRUE, price_implied := NA_real_]
+
+# 3.1) Own prices, clipped against the matching world reference
 .clip_impl <- clip_prices_to_world_band(prod_merge[, .(iso3, atlas_name, year, price_usd = price_implied)],
                                         world = prod_price_world_implied[, .(atlas_name, year, price_usd)], band = PRICE_BAND)
 .clip_pp   <- clip_prices_to_world_band(prod_merge[, .(iso3, atlas_name, year, price_usd)],
@@ -309,6 +343,8 @@ cat(sprintf("[0.4.2] price clip, band %.1fx world (PRICE_BAND): implied dropped 
             PRICE_BAND, nrow(.clip_impl$dropped), prod_merge[!is.na(price_implied), .N], nrow(.clip_pp$dropped), prod_merge[!is.na(price_usd), .N], PRICE_FILL_STAT))
 if (nrow(.clip_impl$dropped)) { cat("[0.4.2] implied prices clipped (worst 25):\n"); print(.clip_impl$dropped[1:min(25, .N)], nrows = 25) }
 if (nrow(.clip_pp$dropped))   { cat("[0.4.2] producer prices clipped (worst 25):\n"); print(.clip_pp$dropped[1:min(25, .N)], nrows = 25) }
+PRICE_PINS <- fread(file.path(project_dir, "metadata", "price_pins.csv"))
+cat(sprintf("[0.4.2] evidence pins loaded: %d (%s)\n", nrow(PRICE_PINS), paste(PRICE_PINS[, paste0(iso3, ":", atlas_name, "=", price_usd_t)], collapse = ", ")))
 # the per-(country, crop) grid every window fills: everything FAO reports production or value for
 price_grid <- unique(prod_merge[, .(iso3, atlas_name)])
 
@@ -347,6 +383,11 @@ price_usd_list <- lapply(seq_along(year_sets), function(i) {
   if (nrow(bg$flagged)) print(bg$flagged[, .(iso3, atlas_name, price_source, price_was = signif(price_was, 4), price_now = signif(price_now, 4), basis_ratio, basis_median, basis_n)], nrows = 60)
   if (nrow(bg$info_fills)) print(bg$info_fills[1:min(20, .N)], nrows = 20)
 
+  # 3.7) evidence pins (metadata/price_pins.csv): cited independent evidence overrides the chain for a named few
+  pn <- apply_price_pins(recent, PRICE_PINS, value_field = "price_usd_final")
+  recent <- pn$data
+  if (nrow(pn$applied)) { cat(sprintf("[0.4.2] %s evidence pins applied: %d\n", nm, nrow(pn$applied))); print(pn$applied, nrows = 20) }
+  recent[, stale_local_price := FALSE]; if (nrow(.stale$is_stale)) recent[.stale$is_stale, on = c("iso3", "atlas_name"), stale_local_price := TRUE]
   recent[, vop_usd_nominal := production_t * price_usd_global][, year := nm]
   recent
 })
@@ -360,9 +401,9 @@ for (nm in names(price_usd_list)) {
   src <- p[, .N, by = price_source][order(-N)]
   cat(sprintf("[0.4.2] %s fill sources: %s\n", nm, paste(sprintf("%s=%d", src$price_source, src$N), collapse = " | ")))
   if ("production_t" %in% names(p)) {
-    own_share <- p[!is.na(production_t), sum(production_t[price_source %in% c(OWN_SOURCES, "basis fallback")], na.rm = TRUE) / sum(production_t, na.rm = TRUE)]
+    own_share <- p[!is.na(production_t), sum(production_t[price_source %in% c(OWN_SOURCES, "basis fallback", "evidence pin")], na.rm = TRUE) / sum(production_t, na.rm = TRUE)]
     cat(sprintf("[0.4.2] %s own (incl. basis fallback) prices cover %.0f%% of rows and %.0f%% of FAO production\n", nm,
-                100 * p[, mean(price_source %in% c(OWN_SOURCES, "basis fallback"))], 100 * own_share))
+                100 * p[, mean(price_source %in% c(OWN_SOURCES, "basis fallback", "evidence pin"))], 100 * own_share))
   }
   top <- p[is.finite(price_usd_final / price_usd_global)][order(-abs(log(price_usd_final / price_usd_global)))][1:min(10, .N),
            .(iso3, atlas_name, price_source, price_usd_final = signif(price_usd_final, 4), price_usd_global = signif(price_usd_global, 4), ratio_world = signif(price_usd_final / price_usd_global, 3))]
@@ -371,7 +412,7 @@ for (nm in names(price_usd_list)) {
                                                         p[!is.finite(price_usd_final), paste(unique(atlas_name), collapse = ",")]))
   fwrite(p[, .(iso3, atlas_name, price_source, price_usd_implied, price_usd_producer, price_usd_implied_long, price_usd_producer_long, price_usd,
                price_usd_neighbors, price_usd_region, price_usd_continent, price_usd_global, price_usd_global_pp,
-               basis_ratio, basis_median, price_usd_final, production_t, value_intd15)],
+               basis_ratio, basis_median, stale_local_price, price_usd_final, production_t, value_intd15)],
          file.path(mapspam_pro_dir, "fao_prices", paste0("crop_price_", nm, "-t_fill-sources_", .eg$tag, ".csv")))
 }
 

@@ -1,7 +1,8 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
 **Status:** code on `develop` — `715057f` (0.4.2 price chain), `95b2159` (0.4.0 allocation groups +
-coverage guard + mapping table), `94a98fa` (`touches = TRUE`), plus the probes and this file. Blocks A
+coverage guard + mapping table), `94a98fa` (`touches = TRUE`), the 2026-10-02 stale-price test + evidence
+pins commit, plus the probes and this file. Blocks A
 and B are read-only and runnable now. **Block C is value-changing and GO-gated; Block D writes to S3
 and is GO-gated separately.** Do not start either without the GO line in this file.
 
@@ -29,6 +30,14 @@ decisions: `HANDOVER_2026-10-01_exposure-intld-fixes.md`.
   a GPV-derived nominal side). Measured on the macbook with the same 2026-05-14 FAO files: own
   prices cover 83 % of FAO production (was 56 %); 37 basis fallbacks at y2021; all-crops nominal
   total 0.82× the previous method.
+- **Added 2026-10-02 (Pete GO after the evidence review):** (i) a **stale-local-price test** before the
+  clip — FAO's GPV in current local currency per tonne over the window against the country's GDP
+  deflator (FAO Deflators bulk); a pair whose real local unit value fell by more than half is a frozen
+  imputation (Sudan millet = the 2013 price for 2019-21) and its implied prices are rejected for every
+  year (27 of 564 pairs on the macbook: SDN 8, AGO 7, GHA 4, SLE 4, EGY/ETH/KEN/LSO 1); (ii) **evidence
+  pins**, `metadata/price_pins.csv`, cited per row, applied last — one row today, AGO banana 300 USD/t.
+  Basis fallbacks drop to 26-27; all-crops nominal total 0.83× (was 0.82× before these two). Methods
+  text for the records and notebooks: `docs/methods/nominal_price_method.md`.
 - `R/0.4.0_create_crop_vop_intld15.R` + new `R/vop_allocate.R`: GPV is distributed per **allocation
   group** — the SPAM layers sharing a FAO item (Millet → pearl + small millet; Coffee → arabica +
   robusta), items a SPAM crop spans (rapeseed = rape or colza seed + mustard seed), and the pooled
@@ -109,7 +118,8 @@ df -h <common_data mount>
 cd <hazards_prototype>; STAMP=$(date +%Y%m%d_%H%M%S); echo $STAMP > logs/intld_fixes_stamp.txt
 nohup bash -c "EXPOSURE_RES=0.25 Rscript R/checks/probe_042_price_fill.R --crops coff,plnt,cowp,cass,teas,toba --top 25 > logs/probe042_$STAMP.log 2>&1; EXPOSURE_RES=0.25 Rscript R/checks/probe_040_allocation.R > logs/probe040_$STAMP.log 2>&1" > /dev/null 2>&1 &
 # when both logs end with 'done in': paste
-grep -E 'price clip|basis guard|fill sources|own \(incl|skipped|WARN|Error|done in' logs/probe042_$STAMP.log
+grep -E 'stale local price test|evidence pins|price clip|basis guard|fill sources|own \(incl|skipped|WARN|Error|done in' logs/probe042_$STAMP.log
+grep -A30 'stale local price test' logs/probe042_$STAMP.log
 grep -A45 'basis fallbacks' logs/probe042_$STAMP.log
 grep -A30 'top 25 prices' logs/probe042_$STAMP.log
 grep -E 'allocation groups|allocation table|guarded countries|not judged|coverage distribution|^   n=|Error|done in' logs/probe040_$STAMP.log
@@ -121,18 +131,22 @@ grep -A40 'SPAM national tonnage inside' logs/probe040_$STAMP.log
 **Expect (probe_042, the nominal side):**
 - `skipped (read-only): fwrite(...)` lines present — the live audit CSV is untouched (the gate's
   reference stays what Block A read).
+- `stale local price test`: **between 15 and 40 pairs** rejected, **SDN and AGO the two largest
+  groups** (macbook: 27 of 564 — SDN 8, AGO 7, GHA 4, SLE 4). `evidence pins loaded: 1 (AGO:bana=300)`
+  and `evidence pins applied: 1` per year set.
 - `fill sources`: `fao gpv implied` is the largest own class; `own (incl. basis fallback) prices
-  cover ... ≥ 75 % of FAO production` (macbook: 32 % of rows, 83 % of production); basis fallbacks
-  **between 20 and 60 rows**, and the list contains **KEN coff, BDI toba, SLE toba, SDN whea, AGO on
-  several crops** (macbook: 37 rows). Clip line: implied dropped **≤ 15 %** of own observations
-  (macbook: 893 of 8,341), producer price unchanged from the 2026-09-27 run (99 of 3,295).
+  cover ... ≥ 75 % of FAO production` (macbook: 81 %); basis fallbacks **between 15 and 45 rows**, and
+  the list contains **KEN coff, BDI toba, NGA grou, NGA oilp, GIN on several crops**, and **no SDN or
+  AGO row** (those are now stale-rejected upstream; macbook: 27 rows). Clip line: implied dropped
+  **≤ 15 %** of own observations (macbook: 842 of 7,994), producer price unchanged from the
+  2026-09-27 run (99 of 3,295).
 - the top-25 vs world table: no own price beyond 5× by construction; what sits beyond is a basis
   fallback or a fill (plantain in Sahelian countries at ~970 USD/t from the old neighbour chain is
   the known one). **No `WARN ...: rows with no price at all`.**
-- For Pete's eye (paste it whole): the basis-fallback table. Low-side rows (AGO, SDN, GIN, NGA oilp /
-  grou, TUN) are exchange-rate regimes or genuinely low price levels pulled up to the item's
-  consistent basis; high-side rows (KEN coff, ERI, BDI/SLE toba, GNB sorg) are auction / product-form
-  / exchange-rate highs pulled down. The band is Pete's decision; this is what it does on real data.
+- Paste the basis-fallback table whole. Pete reviewed the macbook version on 2026-10-02 against
+  independent price evidence (handover, "Evidence" section): 7 of the 8 material rows sit inside the
+  supportable farm-gate range; the eighth (AGO banana) is pinned. The node's table should match the
+  macbook's row for row if the FAO files are the same vintage.
 
 **Expect (probe_040, the intld side):**
 - groups table shows **acof+rcof, pmil+smil, banpl, rape** (plus the many-item ocer / rest / vege);
@@ -288,7 +302,7 @@ for R in 0.25 0.05; do Rscript scripts/r3_publish_tiers.R --family-only --res $R
      ≈ 0.5; highest sugar beet / sugarcane ≈ 1.2; material movers include NGA cass / cowp / cnut,
      CMR+GHA+CIV plnt, ETH+KEN coff down, GIN mill / bana, ZMB+AGO+COG sugc up. **The same per-country
      factors must appear at both resolutions** (prices are per country; only the coastal term
-     differs). SYC appears on res-25.
+     differs). SYC appears on res-25. AGO banana nominal = 300 USD/t × SPAM tonnage (the pin).
    - If `appears` / `disappears` on intld lists a country other than SDN with several crops, STOP:
      that is a guarded country Block B should have shown.
 4. **Publisher dry-runs**: columns and `distinct(exposure, unit, stat)` identical to live at both
@@ -362,6 +376,11 @@ until Pete releases it.
 ## Block E — records and issues (macbook side; nothing to run on the node)
 
 After D's response: the three CDH records (`metadata/cdh/africa-exposure-combined-res25.yaml`, `-res05`,
-`africa-hazard-exposure-nexgddp.yaml`) lose their #38 / #39 / #40 paragraphs and gain a "changed
-against the previous publication" paragraph quoting C3's pair-drift numbers; `metadata/cdh/README.md`
-row updated; #38, #39, #40 closed with the C3 gate lines; this file archived; the handover updated.
+`africa-hazard-exposure-nexgddp.yaml`) lose their #38 / #39 / #40 paragraphs, gain a "changed
+against the previous publication" paragraph quoting C3's pair-drift numbers and cite
+`docs/methods/nominal_price_method.md` for the price method; `metadata/cdh/README.md` row updated;
+`README.md` VoP section points at the methods doc; the KE-ENSO notebook repo's
+`data/economicReturns/text/methods.en.md` (ours) is rewritten from the methods doc (it still describes
+the producer-price mean method); `atlas_notebooks` notified (relay only); #38, #39, #40 closed with the
+C3 gate lines; this file archived; the handover updated. The consumer list lives at the end of the
+methods doc.

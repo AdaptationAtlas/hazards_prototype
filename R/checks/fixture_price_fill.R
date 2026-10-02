@@ -108,4 +108,32 @@ ok(all(!bg$flagged$price_source %in% c("neighbours median", "region median", "co
 ok(nrow(bg$info_fills) >= 1 && "RWA" %in% bg$info_fills[atlas_name == "coff", iso3], "RWA coffee (filled, intld inconsistent) reported as info, not corrected")
 ok(all(is.finite(r[!is.na(production_t), price_usd_final]) & r[!is.na(production_t), price_usd_final] > 0), "every priced row finite and positive")
 ok(all(c("basis_ratio", "basis_median") %in% names(r)), "audit columns present")
+
+## 5) stale local price (2026-10-02): frozen SLC numerator x depreciating official rate --------
+# SDN wheat: SLC/t flat at 2,572 while the deflator goes 282 -> 10,502; ZAF wheat: SLC/t tracks the deflator
+slc <- rbind(data.table(iso3 = "SDN", atlas_name = "whea", year = yrs, value_slc = 2572 * c(726, 718, 676, 476, 378), production_t = c(726, 718, 676, 476, 378) * 1e3),
+             data.table(iso3 = "ZAF", atlas_name = "whea", year = yrs, value_slc = c(4000, 4300, 4600, 5200, 5100) * 2000, production_t = 2000e3),
+             data.table(iso3 = "KEN", atlas_name = "coff", year = yrs, value_slc = c(450, 455, 460, 500, 520) * 40, production_t = 40e3),
+             data.table(iso3 = "TZA", atlas_name = "whea", year = 2016, value_slc = 100, production_t = 100e3))   # one year only -> not judged
+defl <- rbind(data.table(iso3 = "SDN", year = yrs, deflator = c(282, 470, 1578, 3422, 10502)), data.table(iso3 = "ZAF", year = yrs, deflator = c(100, 104, 110, 118, 125)),
+              data.table(iso3 = "KEN", year = yrs, deflator = c(100, 105, 111, 119, 128)), data.table(iso3 = "TZA", year = yrs, deflator = 100))
+st <- stale_local_price(slc, defl, years = yrs)
+print(st$stale)
+ok(nrow(st$is_stale) == 1 && st$is_stale$iso3 == "SDN", "SDN wheat is the only stale pair (real SLC/t x0.03); ZAF and KEN move with the price level; TZA (one year) not judged")
+ok(st$stale[iso3 == "SDN", real_ratio] < 0.05 && st$stale[iso3 == "ZAF", abs(real_ratio - 1.02) < 0.05], "ratios computed first-to-last year over the deflator ratio")
+# rejected BEFORE the clip: SDN wheat then has no own value at all and takes the fill chain, not the guard
+raw2 <- copy(raw); raw2[st$is_stale, on = c("iso3", "atlas_name"), price_implied := NA_real_]
+ci2 <- clip_prices_to_world_band(raw2[, .(iso3, atlas_name, year, price_usd = price_implied)], world_impl, band = 5)
+own2 <- own_price_window(ci2$kept, cp$kept, years = yrs, long_years = (min(yrs) - 5):max(yrs))
+ok(is.na(own2[iso3 == "SDN" & atlas_name == "whea", price_usd]), "stale SDN wheat has no own price left -> fill chain (the guard is no longer what rescues it)")
+
+## 6) evidence pins (metadata/price_pins.csv shape): applied last, chain result kept in the audit columns
+pins <- data.table(iso3 = "BDI", atlas_name = "coff", price_usd_t = 1500, evidence = "fixture", source = "fixture")
+pn <- apply_price_pins(r, pins)
+ok(pn$data[iso3 == "BDI" & atlas_name == "coff", price_usd_final] == 1500 && pn$data[iso3 == "BDI" & atlas_name == "coff", price_source] == "evidence pin" &&
+   pn$data[iso3 == "BDI" & atlas_name == "coff", source_chain] == "basis fallback" && nrow(pn$applied) == 1 && pn$applied$source_was == "basis fallback", "pin overrides the chain, keeps what the chain said (price_chain / source_chain)")
+ok(pn$data[iso3 == "KEN" & atlas_name == "coff", price_source] == "basis fallback", "unpinned rows untouched")
+ok(nrow(apply_price_pins(r, pins[0])$applied) == 0 && identical(apply_price_pins(r, NULL)$data$price_usd_final, r$price_usd_final), "no pins -> no change")
+real_pins <- fread(file.path(root, "metadata", "price_pins.csv"))
+ok(all(c("iso3", "atlas_name", "price_usd_t", "evidence", "source") %in% names(real_pins)) && all(is.finite(real_pins$price_usd_t)) && all(nchar(real_pins$source) > 20), "metadata/price_pins.csv has the expected columns and a source on every row")
 cat("\nALL PRICE-FILL FIXTURE ASSERTIONS PASSED\n")

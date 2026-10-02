@@ -262,7 +262,15 @@ guard; nothing else pinned. Second proposal, a general rule from the mechanism: 
 price whose real local-currency unit value fell by more than half over the window** (FAO's SLC series
 against FAO's own deflator; `probe_price_stale_slc.R` logic) *before* the guard — it catches the 44 stale
 pairs, 36 of which the guard does not see because they sit inside the 4× band (Ghana, Sierra Leone,
-Kenya, Ethiopia). Those rows would then take the producer price or the fill chain. Both await Pete.
+Kenya, Ethiopia). Those rows would then take the producer price or the fill chain.
+
+**GO 2026-10-02 (Pete): both implemented**, with the instruction that the dataset methods and the
+notebooks be updated from this evidence. `R/price_fill.R::stale_local_price()` + 0.4.2 §1.6.4 / §3.0
+(27 of 564 pairs rejected on the macbook; SDN 8, AGO 7, GHA 4, SLE 4), `metadata/price_pins.csv` + 
+`apply_price_pins()` (AGO banana 300). Effect: basis fallbacks 37 → 27, all-crops nominal 0.82× → 0.83×,
+own share 83 % → 81 %. The methods text is `docs/methods/nominal_price_method.md`, with the list of
+consumers to update after Block D (CDH records ×3, README, KE-ENSO notebook methods, atlas_notebooks
+notified).
 
 ## Reuse
 
