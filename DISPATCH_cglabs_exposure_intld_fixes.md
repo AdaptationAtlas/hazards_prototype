@@ -54,9 +54,9 @@ gate; a number quoted from the macbook run is an example of what the same files 
 a target. **If anything deviates from a stated expectation, stop at that step and describe what you
 see — do not improvise a fix.**
 
-**Still to settle with Pete (ask when you reach them, do not decide node-side):** (a) whether Sudan is in
-the MapSPAM 2020 SSA release's scope at all — with the guard its intld rows come out NA either way, so
-the question is only whether the CDH record says "out of scope" or "coverage guard"; (b) the basis
+**Settled 2026-10-02 (Pete): Sudan is IN scope** — its intld rows come out NA by the coverage guard
+(a SPAM 2020 SSA data gap, 0.05 Mt against ~15 Mt), and the CDH record will say so, not "out of scope".
+**Still to settle (ask when you reach it, do not decide node-side):** (b) the basis
 guard at 4× also catches low-side exchange-rate regimes (Angola on 8 crops, Guinea 5, Sudan 3) and
 two Nigeria pairs (oil palm 45.8 → 190 USD/t, groundnut 151 → 719) — Block B prints the full list for
 Pete to read before the GO.

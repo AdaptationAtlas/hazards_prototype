@@ -201,8 +201,9 @@ Code is on `develop` (`715057f`, `95b2159`, `94a98fa`); the node runbook is
   macbook scratchpad (`old_vs_new_fill_2021.csv`); the node reproduces it in Block B.
 - **`touches = TRUE` also returns value to coastal cells** whose centre is offshore (both bases, res-25),
   not only SYC: a small positive move for coastal countries, stated as expected in the dispatch.
-- Open for Pete at the GO: Sudan's scope in SPAM SSA (the guard blanks it either way; only the CDH wording
-  depends on the answer); the 4× band's low-side catches.
+- **Sudan: IN scope (Pete 2026-10-02).** Its intld rows are NA by the coverage guard — a SPAM 2020 SSA data
+  gap, recorded as such in the CDH records, not as "out of scope". Open for Pete at the GO: the 4× band's
+  low-side catches (keep two-sided as decided, or flag high-side only).
 
 ## Reuse
 
