@@ -1,5 +1,62 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## cglabs response — Block A clean except the FAO-vintage gate; STOPPED before Block B (2026-10-03, 16473c5)
+
+Repo at `16473c5`, develop, clean tree. Block A read-only, done. Everything passes **except** the FAO
+file-vintage expectation — stopped there rather than run B against example numbers conditioned on a
+different vintage (AGENTS.md §41; the block's own "any other vintage: STOP").
+
+**Clean:**
+- No real R running. (The only match is a months-old inert `r21_rerun.sh` bash wrapper — bash+tail, no
+  R child, R21 log 2026-09-18 — same zombie noted before; not writing anything. Left it; prior kill was
+  classifier-denied.) No `0.4.x` env set.
+- `fixture_price_fill.R` → `ALL PRICE-FILL FIXTURE ASSERTIONS PASSED`; `fixture_vop_allocate.R` →
+  `ALL VOP-ALLOCATE FIXTURE ASSERTIONS PASSED`.
+- Cross-basis BEFORE state, **GATE PASS both resolutions**, reading
+  `fao_prices/crop_price_nominal-usd-2021-t_fill-sources_<tag>.csv`:
+  - res-25: 1360 pairs / 1007 material / 48 one-sided; residual 28 material pairs (CAF,ETH,KEN,MOZ,MWI,
+    NER,NGA,RWA,SDN,TGO,UGA,ZWE).
+  - res-05: 1374 / 1008 / 44 one-sided; residual 26 material pairs (BDI,ETH,KEN,MWI,NGA,RWA,SDN,TGO,
+    UGA,ZWE). SDN + NGA + pearl-millet countries present — the state this pass removes.
+- Inventory (what C parks): `variable=vop_intld15-2021` 24 files/74 MB · `vop_nominal-usd-2021`
+  36/105.5 · `vop_nominal-usd-2015` 36/105.4 · `vop_nominal-usd-2020` 36/105.2 · `fao_prices` 12/86.6;
+  **6 §3 tables + 6 sidecars** (exposure_adm_sum + vop_nominal-usd-2021 adm_sum mtime 2026-09-28 12:40-43;
+  vop_intld15-2021 adm_sum mtime 2026-09-24 19:50-55); 42 per-tif `_adm_sum.parquet` caches in the two
+  vop dirs.
+- common_data: NFS mount, 192 T, **123 T free (37 % used)**. Ample.
+
+**DEVIATION — FAO file vintage (the stop):**
+```
+Value_of_Production_E_Africa.csv                 2026-05-15  15 MB
+Value_of_Production_E_All_Data.csv               2025-08-21  71 MB   <-- ~10 months older + size
+Value_of_Production_E_All_Area_Groups.csv        2026-05-15  17 MB
+Prices_E_Africa_NOFLAG.csv                       2026-05-15   6 MB
+Prices_E_All_Data_(Normalized).csv               2026-05-15 214 MB
+Production_Crops_Livestock_E_Africa_NOFLAG.csv   2026-05-15  13 MB
+Production_Crops_Livestock_E_All_Area_Groups.csv 2026-05-15  23 MB
+```
+Two issues vs the block's expectation ("every other FAO file present with the 2026-05-14 mtime; any
+other vintage: STOP"):
+1. **Every file is 2026-05-15, not 2026-05-14** — one day off. Almost certainly download/copy skew of
+   the same FAO release, but it is not the stated figure, so flagging rather than assuming.
+2. **`Value_of_Production_E_All_Data.csv` is 2025-08-21, 71 MB** — present (so 0.4.0 will not auto-download),
+   but ~10 months older than the rest, and the block warns 0.4.0 "downloads it otherwise — 1 GB". 71 MB
+   vs ~1 GB suggests the node's copy may not be what the macbook measured on. Since the implied-price
+   method is GPV ÷ production, the VoP vintage is exactly what sets Block B's stale-price / basis-fallback
+   numbers.
+
+**Not running Block B, not planning C's download, until this is resolved** — the Block B example numbers
+(and the "row for row if same vintage" claim) are conditioned on the FAO set. Questions for macbook/Pete:
+- Is the node's 2026-05-15 set the same FAO release you measured as 2026-05-14 (then B's invariant ranges
+  apply and I proceed)?
+- Is `Value_of_Production_E_All_Data.csv` 2025-08-21 (71 MB) the file you ran 0.4.0/0.4.2 against, or do
+  you want a fresh ~1 GB pull first (planned, not a surprise mid-background-job)?
+
+**STOP.** Node idle, nothing written, nothing published. Separately still open from the prior thread:
+the S3 backup-retention flag (delete 2026-11-01 / on clean-confirmation) in the archived r3_res25 dispatch.
+
+---
+
 **Status:** code on `develop` — `715057f` (0.4.2 price chain), `95b2159` (0.4.0 allocation groups +
 coverage guard + mapping table), `94a98fa` (`touches = TRUE`), the 2026-10-02 stale-price test + evidence
 pins commit, plus the probes and this file. Blocks A
