@@ -115,27 +115,27 @@ if (length(.unmapped)) .log040(sprintf("WARN: SPAM layers with no FAO item in %s
                 paste(sprintf("%s (%d layers, %d items)", .multi$group, .multi$layers, .multi$items), collapse = "; ")))
 
 # 3) FAOStat GPV (constant I$) -----------------------------------------------
-vop_file_world <- file.path(fao_dir, "Value_of_Production_E_All_Data.csv")
-if (!file.exists(vop_file_world)) {
-  .log040("downloading FAOStat Value_of_Production_E_All_Data")
-  url <- "https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_All_Data.zip"
-  zip_file_path <- file.path(fao_dir, basename(url))
-  download.file(url, zip_file_path, mode = "wb")
-  unzip(zip_file_path, exdir = fao_dir)
-  unlink(zip_file_path)
-}
+# 2026-10-03: read the AFRICA bulk file, the same vintage every other FAO input of this pass and
+# both gates use (0.4.2, qaqc_vop_vs_faostat.R, the basis guard). Until now 0.4.0 alone read
+# Value_of_Production_E_All_Data.csv, which on the node was a 2025-08 copy against a 2026-05 set
+# everywhere else: the constant-I$ product would have been judged against a different release than
+# it was built from. The Africa file carries the constant-I$ element for every country 0.4.0 can
+# allocate (DISPATCH_cglabs_exposure_intld_fixes.md, cglabs Block A response 2026-10-03).
+vop_file_africa <- file.path(fao_dir, "Value_of_Production_E_Africa.csv")
+if (!file.exists(vop_file_africa)) stop("[0.4.0] missing ", vop_file_africa, " - stage the FAOSTAT QV Africa bulk file (same vintage as the Prices / Production files)")
+.log040(sprintf("FAOStat GPV source: %s (mtime %s, %.0f MB)", basename(vop_file_africa), format(file.mtime(vop_file_africa), "%Y-%m-%d %H:%M"), file.size(vop_file_africa) / 1e6))
 
 target_year <- 2019:2023   # match livestock 0.4.1 year_set y2021 + qaqc window
 element <- "Gross Production Value (constant 2014-2016 thousand I$)"
 .log040("loading FAOStat GPV (constant I$)")
-prod_value_i <- fread(vop_file_world, encoding = "Latin-1")
+prod_value_i <- fread(vop_file_africa, encoding = "Latin-1")
 cols <- c("Item", "Element", "Area", "Area Code (M49)", paste0("Y", target_year))
 prod_value_i <- prod_value_i[Element %in% element, ..cols]
 prod_value_i[, M49 := as.numeric(gsub("[']", "", `Area Code (M49)`))]
 prod_value_i[, iso3 := countrycode(sourcevar = M49, origin = "un", destination = "iso3c")]
-prod_value_i <- prod_value_i[!is.na(iso3)]
+prod_value_i <- prod_value_i[!is.na(iso3) & !Area %in% c("Ethiopia PDR", "Sudan (former)")]   # pre-split entities, as 0.4.2 / qaqc
 
-prod_value_i[grep("Maize", Item), Item := "Maize (corn)"]
+prod_value_i[Item %in% c("Maize", "Maize (corn)"), Item := "Maize (corn)"]   # exact: grep("Maize") would also fold "Maize, green" (vegetables) into maize
 y_cols <- grep("^Y\\d{4}$", names(prod_value_i), value = TRUE)
 prod_value_i <- prod_value_i[, lapply(.SD, sum, na.rm = TRUE), by = .(iso3, Item), .SDcols = y_cols]
 
@@ -152,7 +152,7 @@ fao_prod <- fread(prod_file, encoding = "Latin-1")[Element == "Production" & Uni
 fao_prod[, M49 := as.numeric(gsub("[']", "", `Area Code (M49)`))]
 fao_prod[, iso3 := countrycode(sourcevar = M49, origin = "un", destination = "iso3c", warn = FALSE)]
 fao_prod <- fao_prod[!is.na(iso3) & !Area %in% c("Ethiopia PDR", "Sudan (former)")]
-fao_prod[grep("Maize", Item), Item := "Maize (corn)"]
+fao_prod[Item %in% c("Maize", "Maize (corn)"), Item := "Maize (corn)"]
 fao_prod <- fao_prod[Item %in% unique(groups$item), c("iso3", "Item", paste0("Y", target_year)), with = FALSE]
 fao_prod[, prod_t := apply(.SD, 1, median, na.rm = TRUE), .SDcols = paste0("Y", target_year)]
 fao_prod <- fao_prod[is.finite(prod_t) & prod_t > 0, .(iso3, Item, prod_t)]

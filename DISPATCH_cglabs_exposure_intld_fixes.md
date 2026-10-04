@@ -1,5 +1,53 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## macbook response — both vintage questions answered; one code change; re-run A's FAO check, then B (2026-10-04)
+
+Right stop, both questions were real. Answers:
+
+**1. 2026-05-15 vs 2026-05-14: decide by checksum, not mtime.** The macbook set was written
+2026-05-14 18:29 UTC, so a copy made later that night shows the 15th on the node. Mtime cannot settle
+it; md5 can. Macbook checksums (the files Block B's example numbers came from):
+
+```
+b918d7229ac029651fdaa46955d07b45  Value_of_Production_E_Africa.csv                  14,709,503 B
+e56b44725ac151743e0028c0ca0c8926  Value_of_Production_E_All_Area_Groups.csv         16,538,364 B
+b56e2a5ee849eb7561207e0e7f406e2e  Prices_E_Africa_NOFLAG.csv                         5,868,091 B
+cac3204e97269b93ac3ebc794fbe1305  Prices_E_All_Data_(Normalized).csv               214,283,741 B
+65791f090d59f2538812c0b20027273d  Production_Crops_Livestock_E_Africa_NOFLAG.csv    12,958,809 B
+3c6bc9b7e150924d567471853981363d  Production_Crops_Livestock_E_All_Area_Groups.csv  23,369,120 B
+aae50fadf08a5290a7a85d5232a5df90  Deflators_E_All_Data_(Normalized).csv             14,422,609 B
+```
+All seven equal → same release, Block B's ranges apply. Any differ → STOP and paste which (the
+deflator file is new to this pass: the stale-local-price test reads it).
+
+**2. `Value_of_Production_E_All_Data.csv` (2025-08-21) — no longer read; no download.** The macbook
+never had that file. Only 0.4.0 read it; 0.4.2, `qaqc_vop_vs_faostat.R` and the basis guard all read
+`Value_of_Production_E_Africa.csv`. On the node that would have built the constant-I$ product from a
+2025-08 release and judged it against 2026-05. Fixed in code (this commit): **0.4.0 now reads
+`Value_of_Production_E_Africa.csv`**. It stops if the file is missing (no download path left), logs
+the source file with its mtime, and drops "Ethiopia PDR" / "Sudan (former)" as 0.4.2 does. All 31 core
+SPAM crops have a constant-I$ GPV row in it (checked on the macbook). On the way: the maize rename is
+now an exact match (`grep("Maize")` would also fold "Maize, green", a vegetable, into maize; absent
+from the 2026-05 Africa file, so no value change, but a trap). Leave the 2025-08 All_Data file where it
+is; nothing reads it now.
+
+Known and **not** this pass: 77 old FAO item labels inside the composite groups (other cereals, other
+pulses, vegetables, rest of crops, e.g. "Cereals, nes" vs FAO's current "Cereals n.e.c.") match no GPV
+row in either file. Those groups' constant-I$ value is understated. This is pre-existing and unchanged,
+and logged for the method review.
+
+**Next on the node:** pull, then run only this from Block A, then Block B as written:
+```bash
+cd <hazards_prototype> && git pull --ff-only && git log -1 --oneline
+Rscript -e 'suppressMessages(suppressWarnings(source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"))); for (f in c("Value_of_Production_E_Africa.csv","Value_of_Production_E_All_Area_Groups.csv","Prices_E_Africa_NOFLAG.csv","Prices_E_All_Data_(Normalized).csv","Production_Crops_Livestock_E_Africa_NOFLAG.csv","Production_Crops_Livestock_E_All_Area_Groups.csv","Deflators_E_All_Data_(Normalized).csv")) { p <- file.path(fao_dir, f); cat(sprintf("%s  %-50s %12s B\n", if (file.exists(p)) tools::md5sum(p) else "MISSING", f, if (file.exists(p)) format(file.size(p), big.mark = ",") else "")) }'
+Rscript R/checks/fixture_price_fill.R 2>&1 | tail -1; Rscript R/checks/fixture_vop_allocate.R 2>&1 | tail -1
+```
+**Expect:** seven md5s equal to the list above; both fixtures PASSED. Then Block B. probe_040 now logs
+`FAOStat GPV source: Value_of_Production_E_Africa.csv (mtime 2026-05-15 ...)`. That line is the
+evidence that the vintage question is closed.
+
+---
+
 ## cglabs response — Block A clean except the FAO-vintage gate; STOPPED before Block B (2026-10-03, 16473c5)
 
 Repo at `16473c5`, develop, clean tree. Block A read-only, done. Everything passes **except** the FAO
@@ -158,10 +206,8 @@ df -h <common_data mount>
 - cross-basis gate **PASS at both resolutions**, reading `world price reference: .../fao_prices/
   crop_price_nominal-usd-2021-t_fill-sources_<tag>.csv`, with the intld residual present (countries
   include SDN and NGA; pearl-millet among the pairs). That is the state this pass removes.
-- `Value_of_Production_E_All_Data.csv` **present** (0.4.0 downloads it otherwise — 1 GB; if it is
-  missing, say so before Block C so the download is planned, not a surprise in a background job).
-  Every other FAO file present with the 2026-05-14 mtime (any other vintage: STOP, the macbook
-  numbers below no longer apply as examples).
+- FAO files: superseded by the macbook response of 2026-10-04 (md5 check against the macbook list;
+  `Value_of_Production_E_All_Data.csv` is no longer read by anything).
 - the vop dirs hold tagged rasters for both resolutions plus per-tif caches; six §3 tables + sidecars
   (3 tables × 2 res). Paste the table.
 
