@@ -39,6 +39,11 @@ needs no price; the two bases must not be summed or compared.
    seven crops is the canonical case). Producer prices are clipped against the world producer-price
    median for the same crop-year. Never crosswise: the two world references differ per item (plantain
    0.2×, yams 0.25×, tea leaves 5×).
+3b. **Window clip.** The window median of a surviving own value is judged once more against the
+   window's world reference (implied or producer, matching its source), same 5× band. The per-year clip
+   keeps a year whose world price spiked, so a window median could still sit beyond 5× (GNB sorghum
+   6.7×, ERI sesame 5.5×, RWA sugarcane 6.2×). 14 window values at y2021; the cleared rows go to the fill
+   chain. Added 2026-10-04 after the node's Block B review.
 4. **Own producer price** (FAOSTAT "Producer Price (USD/tonne)", window median, clipped) as first fallback.
 5. **Longer series** (window start − 5 … window end) of steps 1 and 4.
 6. **Spatial fills**, each a **median** over other countries' own prices: neighbours → region → continent
@@ -49,9 +54,9 @@ needs no price; the two bases must not be summed or compared.
    a different price *basis* (auction green coffee vs cherry, tea leaf vs made tea, seed cotton vs lint,
    export parity vs farm gate) and takes the item-median factor × its own constant-I$ value. Because the
    constant-I$ GPV is production × one international price per item, that fallback is one consistent
-   USD/t per item. 26 rows on the 2026-05-14 files: high-side KEN coffee (4,146 → 782), BDI tobacco
-   (8,990 → 1,094), Eritrea's exchange-rate highs; low-side Guinea, Niger, Tunisia and two Nigeria pairs
-   (oil palm fruit 46 → 190, groundnut 151 → 737). Independent evidence puts 7 of the 8 material
+   USD/t per item. 18 rows at y2021 on the 2026-05-14 files (after the stale test and the window clip):
+   high-side KEN coffee (4,146 → 925), BDI tobacco (8,990 → 1,094), ERI lentil; low-side Guinea, Niger,
+   Tunisia, Zambia soybean, Nigeria oil palm fruit (46 → 190) and sesame. Independent evidence puts 7 of the 8 material
    fallbacks inside the supportable farm-gate range (handover "Evidence" section).
 8. **Evidence pins** (`metadata/price_pins.csv`, cited per row), applied last, only where the chain is
    shown wrong by independent evidence. One today: Angola banana 300 USD/t (the item-median fallback,
@@ -69,7 +74,7 @@ ratio and the stale flag.
 
 | | previous method (producer prices, median fills) | this method |
 |---|---|---|
-| own (incl. basis fallback / pin) share of FAO production | 56 % | 81 % |
+| own (incl. basis fallback / pin) share of FAO production | 56 % | 80 % |
 | rows on the spatial fill chain | 1,360 of 1,705 | 1,167 of 1,705 |
 | all-crops continental nominal total | 1.00 | **0.83** |
 | per-crop continental ratio, lowest | | cowpea 0.34, coffee 0.39, plantain 0.46, coconut 0.54 |

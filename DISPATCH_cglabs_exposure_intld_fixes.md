@@ -1,5 +1,61 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## macbook response — Block B read: one wrong invariant, one real gap, one probe bug; all fixed; GO C pending Pete (2026-10-04)
+
+Good stop. All three points measured again on the macbook (same seven md5s, local SPAM rasters):
+
+**1. Guarded share 19.5 %: the invariant was wrong, the values were right.** SPAM 2020 SSA has no North
+Africa. Those 104 pairs were NA before this pass too (0 ÷ 0), and they stay NA. 0.4.0 now labels them
+`country outside the SPAM release` and reports the guarded share over the 207.6 B I$ inside the
+release. Macbook result: **26 guarded pairs, 7.31 B I$ = 3.5 %** (SDN 19, ZWE 3, BEN/DJI/GAB/KEN 1).
+North Africa is reported separately (5 countries, 104 pairs, 41.1 B I$, "NA by design"). **Restated
+invariant: inside-release guarded share < 5 %.**
+
+**2. GNB sorghum / ERI sesame beyond 5× world (your NOTE 1): a real gap, now closed.** Each survives
+the per-year clip because the world price spikes in some years. Each sits just inside the 4× basis band
+(3.90× and 3.97×). So the window median lands at 6.7× and 5.5× world, and the log's "own values within
+5× by construction" was false. 0.4.2 §3.4b now clips the **window** value once more, against the window
+world reference that matches its source. y2021: **14 own values → fill chain**: high side ERI sorg /
+sesa / whea, GNB sorg, RWA sugc (6.2×); low side GHA cnut, MWI coff, MDG + NGA grou, GIN sesa / swpo,
+CMR soyb, AGO + BFA swpo. Consequences:
+- **Basis fallbacks 27 → 17-18.** Several low-side rows are now caught one step earlier by the clip.
+- **Uganda / Tanzania / DR Congo sugarcane fall** (161 → 38, 82 → 42, 144 → 93 USD/t). Their
+  neighbour median had been carrying Rwanda's 285. World sugarcane is ~46.
+- **Evidence check of the eight researched pairs:** 6 inside the supported range. NGA groundnut sits
+  at 742 (neighbours median; evidence 470-990). AGO maize is at 385 against 200-350, from an old
+  producer price. SDN millet is at 329 against 350-650. Both misses are within ~10 % of the band edge.
+- **All-crops nominal total unchanged** at 0.83× the previous method.
+- **Own share 81 % → 80 %** of FAO production.
+
+**3. Coverage line missing (your NOTE 2): a probe bug.** probe_042 skipped every expression containing
+`fwrite`, which included the whole audit loop and its prints. It now masks `fwrite` instead. The loop
+runs, and the CSV is still not written (macbook: audit-CSV mtime unchanged).
+
+**Item (b), basis guard low side: settled 2026-10-02.** Pete GO'd it after an evidence review of the
+eight material pairs (handover, "Evidence" section). The stale-price test and the AGO banana pin came
+out of that review. Nothing left open there.
+
+**Revised Block C expectations (C1 log):**
+- 0.4.2 per year set: `window clip:` 7-20 rows; `basis guard:` 10-30 rows.
+- 0.4.2 coverage: `own ... cover ≥ 75 % of FAO production`.
+- 0.4.0: `allocation table: ... outside the SPAM release: ... (DZA,EGY,LBY,MAR,TUN) ... guarded ...
+  < 5 %`.
+
+Everything else in C is as written.
+
+**Before C, on the node (1 min, read-only, paste the greps):**
+```bash
+cd <hazards_prototype> && git pull --ff-only && git log -1 --oneline
+EXPOSURE_RES=0.25 Rscript R/checks/probe_042_price_fill.R --crops sorg,sugc --top 10 2>&1 | grep -E 'window clip|basis guard|fill sources|own \(incl|fwrite masked|WARN|Error' | grep -v '^ '
+EXPOSURE_RES=0.25 Rscript R/checks/probe_040_allocation.R 2>&1 | grep -E 'allocation table|done in'
+```
+**Expect:** `nominal-usd-2021 own ... cover 80 % of FAO production` (±2). `y2021 window clip: 14`.
+`y2021 basis guard: 18`. probe_040: `outside the SPAM release 104 pairs (DZA,EGY,LBY,MAR,TUN)` and
+`guarded 26 pairs ... (3.5%)`. Same files, so same numbers. Any difference: STOP. If they match,
+**wait for the GO line in Block C**.
+
+---
+
 ## cglabs response — vintage closed (7/7 md5 match); Block B run; probe_040 guarded share 19.5% not <5% (North Africa); STOP for Pete (2026-10-04, 564834a)
 
 Repo `564834a`, develop. FAO md5s all match → Block B ran. Nominal side (probe_042) is as the briefing
@@ -232,10 +288,9 @@ see — do not improvise a fix.**
 
 **Settled 2026-10-02 (Pete): Sudan is IN scope** — its intld rows come out NA by the coverage guard
 (a SPAM 2020 SSA data gap, 0.05 Mt against ~15 Mt), and the CDH record will say so, not "out of scope".
-**Still to settle (ask when you reach it, do not decide node-side):** (b) the basis
-guard at 4× also catches low-side exchange-rate regimes (Angola on 8 crops, Guinea 5, Sudan 3) and
-two Nigeria pairs (oil palm 45.8 → 190 USD/t, groundnut 151 → 719) — Block B prints the full list for
-Pete to read before the GO.
+**Settled 2026-10-02 (Pete): the basis guard's low-side catches**, after an evidence review of the eight
+material pairs (handover, "Evidence" section) — kept, with the stale-local-price test upstream and one
+cited pin.
 
 ---
 
@@ -316,7 +371,8 @@ grep -A40 'SPAM national tonnage inside' logs/probe040_$STAMP.log
 **Expect (probe_040, the intld side):**
 - groups table shows **acof+rcof, pmil+smil, banpl, rape** (plus the many-item ocer / rest / vege);
   no `WARN: SPAM layers with no FAO item`.
-- `allocation table: ... guarded N ...` with the **guarded share of continental GPV below 5 %**; the
+- `allocation table: ... guarded N ...` with the **guarded share of GPV INSIDE the SPAM release below 5 %**
+  (North Africa reported separately as `outside the SPAM release`, NA by design; restated 2026-10-04); the
   guarded list contains **SDN on every material crop** (sorg, grou, sesa, whea, pmil+smil, sugc, ...)
   and nothing for **KEN / ETH / UGA / TZA pmil+smil**, nothing for **NGA banpl** (pooled coverage
   ≈ 1: SPAM 6.5 Mt vs FAO 6.4 Mt), nothing for SYC cnut.

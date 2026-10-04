@@ -365,6 +365,21 @@ price_usd_list <- lapply(seq_along(year_sets), function(i) {
   w_impl <- prod_price_world_implied[year %in% yrs, .(price_world = median(price_usd, na.rm = TRUE)), by = atlas_name]
   w_pp   <- prod_price_world[year %in% yrs, .(price_usd_global_pp = median(price_usd, na.rm = TRUE)), by = atlas_name]
 
+  # 3.4b) window clip (cglabs Block B 2026-10-04): the per-year clip keeps a year whose world price
+  # spiked, so the window MEDIAN can still sit beyond the band against the window world reference
+  # (GNB sorghum 1,491 = 6.7x, ERI sesame 3,091 = 5.5x, both just inside the 4x basis band). The own
+  # value is judged once more on the window, against the reference that matches its source.
+  recent <- merge(recent, w_impl[, .(atlas_name, .w_impl = price_world)], by = "atlas_name", all.x = TRUE)
+  recent <- merge(recent, w_pp[, .(atlas_name, .w_pp = price_usd_global_pp)], by = "atlas_name", all.x = TRUE)
+  recent[, .ref := data.table::fifelse(grepl("implied", price_source), .w_impl, .w_pp)]
+  .wc <- recent[!is.na(price_usd) & is.finite(.ref) & (price_usd > PRICE_BAND * .ref | price_usd < .ref / PRICE_BAND)]
+  if (nrow(.wc)) {
+    cat(sprintf("[0.4.2] %s window clip: %d own window values beyond %.0fx the window world reference -> fill chain\n", nm, nrow(.wc), PRICE_BAND))
+    print(.wc[, .(iso3, atlas_name, price_source, price_usd = signif(price_usd, 4), world = signif(.ref, 4), ratio = signif(price_usd / .ref, 3))], nrows = 40)
+    recent[.wc, on = c("iso3", "atlas_name"), `:=`(price_usd = NA_real_, price_source = NA_character_)]
+  }
+  recent[, c(".w_impl", ".w_pp", ".ref") := NULL]
+
   # 3.5) spatial fills on the other countries' OWN prices (medians), source named per row
   own_source <- recent[, .(iso3, atlas_name, own_source = price_source)]
   recent[, price_source := NULL]

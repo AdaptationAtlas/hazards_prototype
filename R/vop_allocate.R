@@ -72,7 +72,7 @@ vop_item_groups <- function(spam2fao, layers, pooled = VOP_POOLED_ITEMS) {
 # fao_prod_t (sum over items; NA if none), spam_prod_t (sum over layers; 0 if none), coverage =
 # spam / fao, guarded (TRUE -> value_alloc NA) and reason in
 #   {"ok", "no FAO production: coverage not judged", "SPAM has no production for the group",
-#    "SPAM covers < min_coverage of FAO production"}.
+#    "SPAM covers < min_coverage of FAO production", "country outside the SPAM release"}.
 vop_allocation_table <- function(gpv, fao_prod, spam_prod, groups, min_coverage = VOP_COVERAGE_MIN_DEFAULT) {
   stopifnot(all(c("iso3", "Item", "value") %in% names(gpv)), all(c("iso3", "layer", "prod_t") %in% names(spam_prod)))
   gi <- unique(groups[, .(item, group)])
@@ -91,6 +91,13 @@ vop_allocation_table <- function(gpv, fao_prod, spam_prod, groups, min_coverage 
   a[is.na(coverage), reason := "no FAO production: coverage not judged"]
   a[!is.na(coverage) & coverage < min_coverage, reason := sprintf("SPAM covers < %.0f%% of FAO production", 100 * min_coverage)]
   a[spam_prod_t <= 0, reason := "SPAM has no production for the group"]
+  # a country with no SPAM production in ANY group is outside the release's footprint (SPAM 2020
+  # Adaptation Atlas is SSA: North Africa is absent). Same outcome (NA), different reason, and it
+  # must not count against the guard's share (cglabs Block B 2026-10-04: 104 of 130 guarded pairs)
+  ctry <- data.table::as.data.table(spam_prod)[, .(spam_country_t = sum(prod_t, na.rm = TRUE)), by = iso3]
+  a <- merge(a, ctry, by = "iso3", all.x = TRUE)
+  a[is.na(spam_country_t) | spam_country_t <= 0, reason := "country outside the SPAM release"]
+  a[, spam_country_t := NULL]
   a[, guarded := reason != "ok" & reason != "no FAO production: coverage not judged"]
   a[, value_alloc := data.table::fifelse(guarded, NA_real_, gpv)]
   data.table::setorder(a, iso3, group)

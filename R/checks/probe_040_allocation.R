@@ -38,12 +38,13 @@ stopifnot(exists("alloc"), exists("groups"), exists("spam_nat"))
 
 .log("--- allocation groups with more than one layer or item")
 print(groups[, .(layers = paste(unique(layer), collapse = " + "), items = paste(unique(item), collapse = " + ")), by = group][grepl("\\+", layers) | grepl("\\+", items)], nrows = 20)
-.log("--- allocation table: %d pairs | guarded %d | not judged %d | continental GPV %.2f B I$, of which guarded %.2f B I$ (%.1f%%)",
-     nrow(alloc), alloc[guarded == TRUE, .N], alloc[grepl("not judged", reason), .N], sum(alloc$gpv) / 1e6, alloc[guarded == TRUE, sum(gpv)] / 1e6, 100 * alloc[guarded == TRUE, sum(gpv)] / sum(alloc$gpv))
+.out <- alloc[reason == "country outside the SPAM release"]; .in <- alloc[reason != "country outside the SPAM release"]
+.log("--- allocation table: %d pairs | outside the SPAM release %d pairs (%s), %.2f B I$ | inside: GPV %.2f B I$, guarded %d pairs %.2f B I$ (%.1f%%) | not judged %d",
+     nrow(alloc), nrow(.out), paste(sort(unique(.out$iso3)), collapse = ","), sum(.out$gpv) / 1e6, sum(.in$gpv) / 1e6, .in[guarded == TRUE, .N], .in[guarded == TRUE, sum(gpv)] / 1e6, 100 * .in[guarded == TRUE, sum(gpv)] / sum(.in$gpv), alloc[grepl("not judged", reason), .N])
 show <- function(d) d[, .(iso3, group, gpv_MI = round(gpv / 1e3, 1), fao_kt = round(fao_prod_t / 1e3, 1), spam_kt = round(spam_prod_t / 1e3, 1), coverage = signif(coverage, 3), guarded, reason)]
-.log("--- every guarded pair (value will be NA)"); print(show(alloc[guarded == TRUE][order(iso3, -gpv)]), nrows = 300)
+.log("--- every guarded pair INSIDE the SPAM release (value will be NA)"); print(show(.in[guarded == TRUE][order(iso3, -gpv)]), nrows = 300)
 .log("--- share of each country's crop GPV blanked by the guard (countries with any)")
-print(alloc[, .(gpv_B = round(sum(gpv) / 1e6, 2), guarded_B = round(sum(gpv[guarded]) / 1e6, 2), share = round(sum(gpv[guarded]) / sum(gpv), 3), n_guarded = sum(guarded), n = .N), by = iso3][n_guarded > 0][order(-share)], nrows = 60)
+print(.in[, .(gpv_B = round(sum(gpv) / 1e6, 2), guarded_B = round(sum(gpv[guarded]) / 1e6, 2), share = round(sum(gpv[guarded]) / sum(gpv), 3), n_guarded = sum(guarded), n = .N), by = iso3][n_guarded > 0][order(-share)], nrows = 60)
 .log("--- coverage distribution over allocated pairs (SPAM national t / FAO production t)")
 cv <- alloc[guarded == FALSE & is.finite(coverage), coverage]
 cat(sprintf("   n=%d | 5%%=%.2f 25%%=%.2f median=%.2f 75%%=%.2f 95%%=%.2f | pairs with coverage < 0.5: %d, > 2: %d\n", length(cv), quantile(cv, .05), quantile(cv, .25), median(cv), quantile(cv, .75), quantile(cv, .95), sum(cv < .5), sum(cv > 2)))

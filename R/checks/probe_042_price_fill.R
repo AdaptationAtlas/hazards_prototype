@@ -40,12 +40,16 @@ run_lines <- function(a, b) {
   for (e in ex) {
     txt <- paste(deparse(e), collapse = " ")
     if (grepl("0_server_setup", txt, fixed = TRUE)) next          # already sourced, and cwd has moved
-    if (grepl("fwrite(", txt, fixed = TRUE)) { .log("skipped (read-only): %s", substr(txt, 1, 70)); next }   # section 3 writes the audit CSV the cross-basis gate reads; a probe must not touch it
     eval(e, envir = globalenv())
   }
 }
 run_lines(1, cut_2 - 1)
+# Section 3 writes the audit CSV the cross-basis gate reads; a probe must not touch it. Mask fwrite
+# for section 3 rather than skipping expressions that contain it: the audit loop also prints the
+# coverage and outlier lines the dispatch reads (cglabs Block B 2026-10-04: "own ... cover" missing).
+fwrite <- function(...) { .log("read-only: fwrite masked (audit CSV not written)"); invisible(NULL) }
 run_lines(cut_3, cut_4 - 1)
+rm(fwrite)
 stopifnot(exists("prod_merge"), exists("price_usd_list"))
 
 ## FAO inputs actually read -------------------------------------------------

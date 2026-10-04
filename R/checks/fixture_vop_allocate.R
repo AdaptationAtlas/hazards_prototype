@@ -62,6 +62,8 @@ ok(a("BBB", "whea")$guarded && is.na(a("BBB", "whea")$value_alloc) && grepl("< 1
 ok(a("BBB", "maiz")$guarded && a("BBB", "maiz")$reason == "SPAM has no production for the group", "B maize guarded: nothing in SPAM to distribute onto")
 ok(!a("BBB", "sorg")$guarded && a("BBB", "sorg")$value_alloc == 60 && grepl("not judged", a("BBB", "sorg")$reason), "B sorghum allocated with 'coverage not judged' (no FAO production row)")
 ok(nrow(alloc[iso3 == "CCC"]) == 0 && nrow(alloc[iso3 == "ZZZ"]) == 1, "C has no GPV row (nothing to allocate); the off-grid FAO country stays in the table but gets no raster")
+ok(a("ZZZ", "whea")$reason == "country outside the SPAM release" && a("ZZZ", "whea")$guarded, "a country with no SPAM production at all is labelled outside the release (North Africa), not a coverage failure")
+ok(a("BBB", "maiz")$reason == "SPAM has no production for the group", "a covered country missing one crop keeps the group-level reason")
 
 ## rasters
 vop <- vop_allocate_rasters(spam_all, admin, zones, alloc, groups, spam_prod)

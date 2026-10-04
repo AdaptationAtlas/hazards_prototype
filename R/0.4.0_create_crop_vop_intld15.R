@@ -162,10 +162,13 @@ fao_prod <- fao_prod[is.finite(prod_t) & prod_t > 0, .(iso3, Item, prod_t)]
 spam_nat <- spam_prod_admin0_ex$all[, .(iso3, layer = as.character(Code), prod_t = prod)]
 alloc <- vop_allocation_table(prod_value_i, fao_prod, spam_nat, groups, min_coverage = VOP_COVERAGE_MIN)
 alloc <- alloc[iso3 %in% iso3_levels$iso3]            # FAO countries off this grid cannot be allocated
-.guarded <- alloc[guarded == TRUE][order(-gpv)]
+.outside <- alloc[reason == "country outside the SPAM release"]
+.guarded <- alloc[guarded == TRUE & reason != "country outside the SPAM release"][order(-gpv)]
 .unjudged <- alloc[reason == "no FAO production: coverage not judged"]
-.log040(sprintf("allocation table: %d (iso3, group) pairs with GPV | %d guarded (NA, not distributed; VOP_COVERAGE_MIN=%.2f) holding %.2f B I$ | %d allocated without a FAO production row (coverage not judged)",
-                nrow(alloc), nrow(.guarded), VOP_COVERAGE_MIN, sum(.guarded$gpv) / 1e6, nrow(.unjudged)))
+.covered_gpv <- alloc[reason != "country outside the SPAM release", sum(gpv)]
+.log040(sprintf("allocation table: %d (iso3, group) pairs with GPV | outside the SPAM release: %d pairs in %d countries (%s), %.2f B I$, NA by design | inside: %.2f B I$, of which guarded %d pairs %.2f B I$ = %.1f%% (VOP_COVERAGE_MIN=%.2f) | %d allocated without a FAO production row (coverage not judged)",
+                nrow(alloc), nrow(.outside), uniqueN(.outside$iso3), paste(sort(unique(.outside$iso3)), collapse = ","), sum(.outside$gpv) / 1e6,
+                .covered_gpv / 1e6, nrow(.guarded), sum(.guarded$gpv) / 1e6, 100 * sum(.guarded$gpv) / .covered_gpv, VOP_COVERAGE_MIN, nrow(.unjudged)))
 if (nrow(.guarded)) {
   cat("[0.4.0] guarded pairs (value left NA):\n")
   print(.guarded[, .(iso3, group, gpv_kI = round(gpv), fao_prod_t = round(fao_prod_t), spam_prod_t = round(spam_prod_t), coverage = signif(coverage, 3), reason)], nrows = 200)
