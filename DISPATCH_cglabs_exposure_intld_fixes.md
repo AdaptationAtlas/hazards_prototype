@@ -1,5 +1,67 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## cglabs response — vintage closed (7/7 md5 match); Block B run; probe_040 guarded share 19.5% not <5% (North Africa); STOP for Pete (2026-10-04, 564834a)
+
+Repo `564834a`, develop. FAO md5s all match → Block B ran. Nominal side (probe_042) is as the briefing
+describes; the intld side (probe_040) has one deviation from a stated expectation — the guarded share —
+driven by North Africa, so stopping for Pete per the block's own "anything guarded that is NOT Sudan:
+list it, Pete sees it before C".
+
+**Vintage — closed.** All seven FAO md5s equal the macbook list (VoP Africa `b918d722…`, VoP
+All_Area_Groups `e56b4472…`, Prices Africa NOFLAG `b56e2a5e…`, Prices All_Data `cac3204e…`, Prod Africa
+NOFLAG `65791f09…`, Prod All_Area_Groups `3c6bc9b7…`, Deflators All_Data `aae50fad…`). Both fixtures
+`… ASSERTIONS PASSED`. probe_040 logs `FAOStat GPV source: Value_of_Production_E_Africa.csv (mtime
+2026-05-15 17:55, 15 MB)` — the 0.4.0 fix reads the Africa file, not the 2025-08 All_Data.
+
+**probe_042 (nominal) — matches, two small notes.**
+- stale local price test: **27 of 564** rejected, SDN(8) + AGO(7) the two largest (also GHA 4, SLE 4,
+  EGY/ETH/KEN/LSO 1). SDN all 8 at real_ratio ~0.022 (deflator 37.3 — the hyperinflation freeze).
+- clip: implied dropped **842 of 7994** (≤15%), producer price **99 of 3295** (unchanged from 2026-09-27).
+- evidence pins loaded 1 (AGO:bana=300), applied 1 per year set. Basis guard y2021 27 own replaced /
+  4 filled-left (y2015 23/3, y2020 22/5). `skipped (read-only): fwrite(...)` — audit CSV untouched.
+- fill sources y2021: fao gpv implied 469 (largest own class), neighbours median 589, region 313,
+  continent 265, **basis fallback 26**, gpv-implied longer 19, producer 8, producer longer 15, pin 1.
+- basis-fallback list (26 rows) contains KEN coff, BDI toba, NGA grou, NGA oilp, GIN ×5 (bana, mill,
+  plnt, sesa, swpo) and **no SDN or AGO** (stale-rejected upstream) — as the briefing predicts. Full
+  table in the node paste.
+- NOTE 1: two **own gpv-implied** prices sit just past 5× the *display* world-median — GNB sorg 6.68×
+  (1491 vs 223), ERI sesa 5.52× (3091 vs 560), both tiny producers. The clip is against World
+  GPV/production per item-year, a different denominator than the display world-median, so this may be a
+  display artefact rather than a clip miss — flagging, not asserting.
+- NOTE 2: the "own (incl. basis fallback) prices cover ≥ 75 % of FAO production" line the block expects
+  did not appear in the probe output (only the row-count fill-sources table). Can't confirm the 81%
+  figure from this run.
+
+**probe_040 (intld) — named cases correct; guarded share is the deviation.**
+- groups 39 over 42 layers; compound acof+rcof, banpl, pmil+smil, rape present; no "SPAM layers with no
+  FAO item" WARN.
+- **Named #38/#39/#40 all behave as intended:** NGA banpl pooled coverage **1.02, not guarded**
+  (banana 6 kt + plantain 6485 kt — the Nigeria-coded-as-plantain case); KEN/ETH/TZA/UGA pmil+smil
+  0.94–1.32, **not guarded**; SYC cnut **1.44, not guarded** (touches); SDN grou/pmil+smil/sesa/sorg/
+  sugc/whea **guarded** (coverage 0.00008–0.0135 — the settled in-scope-NA case).
+- coverage distribution over 889 allocated pairs: 5% 0.76 / 25% 0.93 / **median 1.01** / 75% 1.28 /
+  95% 4.91; <0.5: 13, >2: 108. Median within [0.7, 1.4] ✓.
+- **DEVIATION — guarded share 19.5 %, not < 5 %.** 130 guarded (iso3, group) pairs holding 48.46 B of
+  248.78 B I$. The guarded list is **dominated by North Africa**: DZA 21, EGY 25, LBY 14, MAR 26, TUN 18
+  (≈ 104 of 130), every one with **`spam_kt = 0`** — SPAM-2020-**SSA** does not cover North Africa, so the
+  guard NA's it, but the continental GPV denominator (read from the all-Africa FAO file) includes it.
+  Non-North-Africa guarded: SDN 19 (expected), ZWE 3, BEN/DJI/GAB/KEN 1 each (GAB oilp coverage 0.0485,
+  KEN rape 0, the rest 0).
+
+**Read.** The SSA crop side is right — every named defect (#38/#39/#40) is fixed and nothing SSA is
+wrongly guarded. The 19.5 % is North Africa being correctly excluded from an SSA product while its GPV
+still sits in the "continental" denominator. Two readings, Pete's call, do **not** decide node-side:
+(a) expected — North Africa is out of the SSA exposure by design, and the "< 5 %" invariant should be
+restated against an SSA-only denominator (then this is a PASS); or (b) the denominator should exclude
+North Africa before the share is computed. Either way the crop values that ship are unaffected.
+
+**STOP — Block C not started (GO-gated).** Node idle, nothing written/published. For the GO, please also
+settle the still-open item (b) from the briefing (basis guard catching AGO/GIN/SDN low-side and the two
+NGA pairs) using the basis-fallback table above, plus the North-Africa guarded-share reading. Separately
+open from the prior thread: the S3 backup-retention flag (2026-11-01 / clean-confirmation).
+
+---
+
 ## macbook response — both vintage questions answered; one code change; re-run A's FAO check, then B (2026-10-04)
 
 Right stop, both questions were real. Answers:
