@@ -120,6 +120,30 @@ show <- function(x) x[, .(iso3, crop, nominal = signif(nominal, 4), intld = sign
 out_pair <- material[ratio > BAND | ratio < 1 / BAND][order(-abs(log(ratio)))]
 out_nominal <- out_pair[nominal_side_ok == FALSE]
 out_intld   <- out_pair[nominal_side_ok == TRUE]
+# 2026-10-05 (cglabs C3 stop): a pair 0.4.0 allocated NO constant-I$ value to nationally (no FAO GPV row
+# for it, or guarded) can still show intld value in this table on the 0.25 deg grid - neighbours' value
+# in border cells that 0.4.4's zones assign to it (the accepted #18 one-cell-one-zone allocation): TCD
+# yams (no FAO record, 461 kt in SPAM, ratio 184), BEN bean. Classified from 0.4.0's allocation audit
+# CSV (an input to the table, independent of it) and reported, not failed.
+ALLOC_CSV <- opt("--allocation", "")
+if (!nzchar(ALLOC_CSV) && exists("mapspam_pro_dir")) {
+  cand <- file.path(mapspam_pro_dir, "fao_prices", sprintf("crop_vop_intld15-2021_allocation_%s.csv", RES_TAG))
+  if (file.exists(cand)) ALLOC_CSV <- cand
+}
+spill <- out_intld[0]
+if (nzchar(ALLOC_CSV) && file.exists(ALLOC_CSV) && nrow(out_intld)) {
+  al <- fread(ALLOC_CSV)
+  codes_all <- fread(file.path(repo_root, "metadata", "SpamCodes.csv"))[!is.na(Code) & Code != "", .(code = tolower(Code), crop = gsub(" ", "-", tolower(Fullname)))]
+  al <- al[, .(code = unlist(strsplit(sub("^banpl$", "bana+plnt", group), "\\+"))), by = .(iso3, group, value_alloc)]
+  al <- merge(al, codes_all, by = "code")
+  allocated <- al[!is.na(value_alloc) & value_alloc > 0, .(iso3, crop)]
+  out_intld[, nationally_allocated := paste(iso3, crop) %in% allocated[, paste(iso3, crop)]]
+  spill <- out_intld[nationally_allocated == FALSE]
+  out_intld <- out_intld[nationally_allocated == TRUE]
+  .log("allocation audit: %s (%d allocated pairs)", ALLOC_CSV, nrow(allocated))
+  if (nrow(spill)) { .log("info: %d out-of-band pairs have NO national constant-I$ allocation (border spill on this grid, #18) - reported, not gated: %s",
+                          nrow(spill), paste(spill[, paste0(iso3, ":", crop)], collapse = ",")); print(show(spill), nrows = 25) }
+} else if (nrow(out_intld)) .log("WARN: no allocation audit CSV (pass --allocation <0.4.0 crop_vop_intld15-2021_allocation_<tag>.csv>); border-spill pairs cannot be told apart")
 out_crop <- per_crop[n >= MIN_N_CROP & (med > BAND_CROP | med < 1 / BAND_CROP)]
 cat("\nper-crop medians (worst first):\n"); print(per_crop[1:min(15, .N)][, .(crop, n, med = signif(med, 3), lo = signif(lo, 3), hi = signif(hi, 3))], nrows = 15)
 if (nrow(out_nominal)) {

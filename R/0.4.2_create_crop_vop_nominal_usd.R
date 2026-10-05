@@ -377,7 +377,18 @@ price_usd_list <- lapply(seq_along(year_sets), function(i) {
   }
   recent[, c(".w_impl", ".w_pp", ".ref") := NULL]
 
-  # 3.5) spatial fills on the other countries' OWN prices (medians), source named per row
+  # 3.5) basis guard on the OWN prices, BEFORE the spatial fill (2026-10-05, cglabs C3 stop: GNB
+  #      plantain took GIN's raw own price, 30.6 USD/t, as its "neighbours median" although the guard
+  #      had rejected that price for GIN itself). A rejected own price is removed from the pool the
+  #      fills draw on; the flagged country gets its basis fallback after the fill.
+  bg <- apply_basis_guard(recent, value_field = "price_usd", prod_field = "production_t", intld_field = "value_intd15",
+                          intld_unit = 1000, band = BASIS_BAND, min_n = BASIS_MIN_N)
+  .fallback <- bg$flagged[, .(iso3, atlas_name, price_fallback = price_now)]
+  recent <- bg$data
+  if (nrow(.fallback)) recent[.fallback, on = c("iso3", "atlas_name"), price_usd := NA_real_]
+  recent[price_source == "basis fallback", price_source := NA_character_]
+
+  # 3.6) spatial fills on the other countries' OWN prices (medians), source named per row
   own_source <- recent[, .(iso3, atlas_name, own_source = price_source)]
   recent[, price_source := NULL]
   recent <- fill_price_robust(recent, value_field = "price_usd", group_field = "atlas_name",
@@ -385,15 +396,18 @@ price_usd_list <- lapply(seq_along(year_sets), function(i) {
   recent <- merge(recent, own_source, by = c("iso3", "atlas_name"), all.x = TRUE)
   recent[price_source == "own", price_source := own_source][, own_source := NULL]
   recent <- merge(recent, w_pp, by = "atlas_name", all.x = TRUE)
-
-  # 3.6) basis guard (own prices only; fills outside the band are logged, not changed)
-  bg <- apply_basis_guard(recent, value_field = "price_usd_final", prod_field = "production_t", intld_field = "value_intd15",
-                          intld_unit = 1000, band = BASIS_BAND, min_n = BASIS_MIN_N)
-  recent <- bg$data
-  cat(sprintf("[0.4.2] %s basis guard (band %gx the item median of nominal/intld, items with >= %d own-priced countries): %d own prices replaced by the item-median factor x constant-I$ value; %d filled prices outside the band left as they are\n",
-              nm, BASIS_BAND, BASIS_MIN_N, nrow(bg$flagged), nrow(bg$info_fills)))
+  if (nrow(.fallback)) {
+    recent <- merge(recent, .fallback, by = c("iso3", "atlas_name"), all.x = TRUE)
+    recent[!is.na(price_fallback), `:=`(price_usd_final = price_fallback, price_source = "basis fallback")][, price_fallback := NULL]
+  }
+  # filled prices outside the band: logged, not changed (a fill is another country's basis already)
+  .info <- recent[!price_source %in% c(OWN_SOURCES, "basis fallback") & is.finite(basis_median) & is.finite(value_intd15) & value_intd15 > 0 & production_t > 0]
+  .info[, r := price_usd_final * production_t / (value_intd15 * 1000)]
+  .info <- .info[r > BASIS_BAND * basis_median | r < basis_median / BASIS_BAND]
+  cat(sprintf("[0.4.2] %s basis guard (band %gx the item median of nominal/intld, items with >= %d own-priced countries, applied BEFORE the fill): %d own prices replaced by the item-median factor x constant-I$ value; %d filled prices outside the band left as they are\n",
+              nm, BASIS_BAND, BASIS_MIN_N, nrow(bg$flagged), nrow(.info)))
   if (nrow(bg$flagged)) print(bg$flagged[, .(iso3, atlas_name, price_source, price_was = signif(price_was, 4), price_now = signif(price_now, 4), basis_ratio, basis_median, basis_n)], nrows = 60)
-  if (nrow(bg$info_fills)) print(bg$info_fills[1:min(20, .N)], nrows = 20)
+  if (nrow(.info)) print(.info[1:min(20, .N), .(iso3, atlas_name, price_source, price = signif(price_usd_final, 4), ratio = signif(r, 3), basis_median = signif(basis_median, 3))], nrows = 20)
 
   # 3.7) evidence pins (metadata/price_pins.csv): cited independent evidence overrides the chain for a named few
   pn <- apply_price_pins(recent, PRICE_PINS, value_field = "price_usd_final")
