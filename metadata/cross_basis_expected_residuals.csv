@@ -1,0 +1,4 @@
+iso3,crop,reason,decided
+ETH,tea,"SPAM 2020 SSA holds 10.5 kt of Ethiopian tea against FAOSTAT's 75.9 kt (coverage 0.14, above the 10 % guard): FAO's constant-I$ value sits on a seventh of FAO's tonnage, so intld per tonne is ~7x FAO's unit value. A SPAM-vs-FAO tonnage disagreement, not an allocation error.","Pete Steward 2026-10-05"
+TGO,oilpalm,"SPAM 2020 SSA holds 571 kt of Togolese oil palm fruit against FAOSTAT's 120 kt (coverage 4.8): FAO's constant-I$ value is spread over ~5x FAO's tonnage while the nominal side prices all of SPAM's tonnage. A SPAM-vs-FAO tonnage disagreement.","Pete Steward 2026-10-05"
+GNB,maize,"FAO's implied price for Guinea-Bissau maize is 1,166 USD/t, 5.8x FAO's constant-I$ unit value (inside the 5x world clip and the 4x basis band separately); with SPAM coverage 1.75 the two compound past the 10x gate band. Price level, not allocation.","Pete Steward 2026-10-05"

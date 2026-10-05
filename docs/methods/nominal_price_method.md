@@ -49,7 +49,9 @@ needs no price; the two bases must not be summed or compared.
 6. **Spatial fills**, each a **median** over other countries' own prices: neighbours → region → continent
    → world. Medians since 2026-09-27, when a mean-based fill spread one Zimbabwe artefact to Zambia and
    Botswana and one Rwanda oil-palm price to 17 East African countries.
-7. **Basis guard (within item).** ratio = price × FAO production ÷ (FAO constant-I$ GPV × 1000), per
+7. **Basis guard (within item), applied to own prices BEFORE step 6's fills** (since 2026-10-05: run after
+   the fill, a rejected own price still fed its neighbours' medians, e.g. GIN plantain at 30.6 USD/t into
+   GNB, KEN auction coffee into UGA and TZA). ratio = price × FAO production ÷ (FAO constant-I$ GPV × 1000), per
    country; item median over own-priced countries (≥ 5). A country beyond [1/4, 4] × the median carries
    a different price *basis* (auction green coffee vs cherry, tea leaf vs made tea, seed cotton vs lint,
    export parity vs farm gate) and takes the item-median factor × its own constant-I$ value. Because the

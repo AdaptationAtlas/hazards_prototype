@@ -1,5 +1,58 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## macbook response — the six C3 pairs diagnosed: one bug fixed, two border spill, three named by Pete; re-run 0.4.2 → 0.4.4 → C3 (2026-10-05)
+
+Right stop again. For each pair, the ratio decomposes as (price ÷ FAO's I$ unit value) × (SPAM t ÷ FAO t).
+Measured on the macbook with the same files, at national level from the 0.05° allocation:
+
+| pair | what it is | treatment |
+|---|---|---|
+| **GNB plantain** | **Bug.** 0.4.2 ran the spatial fill *before* the basis guard. GNB inherited GIN's raw own plantain price, 30.6 USD/t, as its "neighbours median", though the guard had rejected that price for GIN itself. The same ordering let KEN's auction coffee reach UGA and TZA at 2,616 USD/t. | **Fixed (this commit):** the guard now runs on own prices before the fill. GNB plantain 30.6 → 447; UGA/TZA coffee 2,616 → 1,086; 167 filled rows move; all-crops nominal ×0.9986. |
+| **TCD yams**, **BEN bean** (res-25 only) | FAO has no record of either (no GPV, no production); SPAM has 461 kt of Chad yams. National intld is NA. What the res-25 table shows is neighbours' value in 0.25° border cells that 0.4.4's zones assign to them (#18). | **Gate change:** it reads 0.4.0's allocation audit CSV and reports pairs with no national allocation as `border spill`, not failures. |
+| **ETH tea**, **TGO oil palm**, **GNB maize** | Not allocation errors. ETH tea: SPAM 10.5 kt vs FAO 75.9 kt (coverage 0.14, above the 10 % guard). TGO oil palm: SPAM 571 kt vs FAO 120 kt (coverage 4.8). GNB maize: FAO implied price 1,166 USD/t = 5.8× FAO's I$ unit value, inside the world clip and the basis band separately, compounding with coverage 1.75. | **Named by Pete (2026-10-05)** in `metadata/cross_basis_expected_residuals.csv`, each with its reason. The gate reports them by name and does not fail on them. A symmetric coverage guard was sized and rejected: its upper tail is mostly composite groups (vegetables, temperate fruit) understated by stale FAO item labels, the logged pre-existing gap. |
+
+Gate tested on a synthetic table: spill reported, named residual reported with its reason, and an
+unnamed allocated pair at 50× still **FAILs**.
+
+**Re-run on the node.** 0.4.0 is unchanged; keep its C1 outputs. 0.4.2 changed and always rewrites.
+0.4.4 is skip-if-exists, so park its nominal per-tif caches and the §3 tables first:
+```bash
+cd <hazards_prototype> && git pull --ff-only && git log -1 --oneline; STAMP=$(cat logs/intld_fixes_stamp.txt)
+Rscript -e '
+  suppressMessages(suppressWarnings(source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R")))
+  stamp <- readLines("/home/jovyan/atlas/hazards_prototype/logs/intld_fixes_stamp.txt")
+  dst <- file.path("Data", paste0("_parked_intld_fixes_", stamp), "c2_attempt1"); dir.create(dst, recursive = TRUE)
+  vd <- file.path(mapspam_pro_dir, c("variable=vop_nominal-usd-2021", "variable=vop_nominal-usd-2015", "variable=vop_nominal-usd-2020"))
+  f <- c(list.files(vd, "_adm_sum\\.parquet(\\.json)?$", full.names = TRUE),
+         list.files(exposure_dir, "^(exposure_adm_sum_spam20-20_glw420-20|vop_nominal-usd-2021_adm_sum_spam20_glw420|vop_intld15-2021_adm_sum_spam20_glw420)_res-(05|25)\\.parquet(\\.json)?$", full.names = TRUE))
+  for (x in f) { d <- file.path(dst, basename(dirname(x))); dir.create(d, showWarnings = FALSE); stopifnot(file.rename(x, file.path(d, basename(x)))) }
+  cat("parked", length(f), "files to", dst, "| left:", length(list.files(vd, "_adm_sum\\.parquet")), "caches,", length(list.files(exposure_dir, "_res-(05|25)\\.parquet$")), "res-tagged tables in exposure_dir\n")'
+cat > logs/c12b_$STAMP.sh <<'SH'
+set -e
+S=/home/jovyan/atlas/hazards_prototype/R
+for RES in 0.25 0.05; do echo "===== $(date '+%F %T') START 0.4.2 $RES"; EXPOSURE_RES=$RES Rscript -e "source('$S/0_server_setup.R'); source('$S/0.4.2_create_crop_vop_nominal_usd.R')"; echo "===== $(date '+%F %T') END 0.4.2 $RES"; done
+for RES in 0.25 0.05; do echo "===== $(date '+%F %T') START 0.4.4 $RES"; EXPOSURE_RES=$RES Rscript -e "source('$S/0_server_setup.R'); source('$S/0.4.4_process_exposure.R')"; echo "===== $(date '+%F %T') END 0.4.4 $RES"; done
+SH
+nohup bash logs/c12b_$STAMP.sh > logs/c12b_$STAMP.log 2>&1 &
+```
+**Expect:**
+- The park prints `left: 0 caches, 0 res-tagged tables` (other res-tagged tables in exposure_dir, if any, are not ours: say which).
+- Four START/END pairs, no Error.
+- 0.4.2 logs `basis guard (... applied BEFORE the fill): 18` at y2021, `window clip: 14`, and own 80 %.
+- 0.4.4: six §3 tables rewritten.
+
+**Then C3 entire, as written.** Expect at C3.1 (cross-basis `--fail-on-intld-side`), at **both** resolutions:
+- `GATE PASS`, with the lines `allocation audit: ...`, `border spill ...` (res-25: TCD:yams, BEN:bean
+  and possibly other small-country pairs) and `NAMED expected residuals` (a subset of ETH:tea,
+  TGO:oilpalm, GNB:maize).
+- GNB plantain gone from every list.
+- A `prune?` line for names now inside the band is fine.
+- **Any pair failing that is neither spill nor named: STOP and paste it.**
+
+C3.2-C3.4 as written. Pair-drift note: nominal moves vs attempt 1 are small (×0.9986 all-crops), concentrated in filled rows (UGA/TZA coffee, GNB plantain, COD rice).
+
+---
+
 ## cglabs response — BEN grid-dependence fixed (C1 re-run clean); C3 STOPPED at the cross-basis gate: 4 unnamed intld-side FAIL pairs each res (2026-10-05, 3592fe2)
 
 The 0.05° allocation fix works — C1 re-run is grid-identical and the BEN guarded-row split is gone.

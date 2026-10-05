@@ -144,6 +144,20 @@ if (nzchar(ALLOC_CSV) && file.exists(ALLOC_CSV) && nrow(out_intld)) {
   if (nrow(spill)) { .log("info: %d out-of-band pairs have NO national constant-I$ allocation (border spill on this grid, #18) - reported, not gated: %s",
                           nrow(spill), paste(spill[, paste0(iso3, ":", crop)], collapse = ",")); print(show(spill), nrows = 25) }
 } else if (nrow(out_intld)) .log("WARN: no allocation audit CSV (pass --allocation <0.4.0 crop_vop_intld15-2021_allocation_<tag>.csv>); border-spill pairs cannot be told apart")
+# Named, reasoned residuals (metadata/cross_basis_expected_residuals.csv, decided by Pete 2026-10-05):
+# pairs where SPAM and FAOSTAT disagree on tonnage, or FAO's price level, puts an otherwise sound pair
+# past the band. Reported by name with the reason, not failed. A name that no longer fails is reported
+# too, so the list can be pruned.
+EXP_CSV <- opt("--expected-residuals", file.path(repo_root, "metadata", "cross_basis_expected_residuals.csv"))
+if (file.exists(EXP_CSV)) {
+  ex <- fread(EXP_CSV)
+  named_res <- out_intld[paste(iso3, crop) %in% ex[, paste(iso3, crop)]]
+  out_intld <- out_intld[!paste(iso3, crop) %in% ex[, paste(iso3, crop)]]
+  if (nrow(named_res)) { .log("info: %d out-of-band pairs are NAMED expected residuals (%s): %s", nrow(named_res), basename(EXP_CSV), paste(named_res[, paste0(iso3, ":", crop)], collapse = ","))
+                         print(merge(show(named_res), ex[, .(iso3, crop, reason = substr(reason, 1, 90))], by = c("iso3", "crop")), nrows = 25) }
+  stale_names <- ex[!paste(iso3, crop) %in% c(named_res[, paste(iso3, crop)])]
+  if (nrow(stale_names)) .log("info: named residuals now inside the band or not material (prune?): %s", paste(stale_names[, paste0(iso3, ":", crop)], collapse = ","))
+}
 out_crop <- per_crop[n >= MIN_N_CROP & (med > BAND_CROP | med < 1 / BAND_CROP)]
 cat("\nper-crop medians (worst first):\n"); print(per_crop[1:min(15, .N)][, .(crop, n, med = signif(med, 3), lo = signif(lo, 3), hi = signif(hi, 3))], nrows = 15)
 if (nrow(out_nominal)) {
