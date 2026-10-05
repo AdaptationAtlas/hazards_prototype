@@ -419,7 +419,7 @@ grep -A40 'SPAM national tonnage inside' logs/probe040_$STAMP.log
 
 ## Block C — rebuild 0.4.0 + 0.4.2 at both resolutions, 0.4.4 at both, gates (GO-GATED; writes node Data/, nothing to S3; ~1.5-3 h)
 
-**GO line (Pete fills in):** `GO C: ______ (date)`
+**GO line (Pete fills in):** `GO C: Pete Steward, 2026-10-05 (macbook session; after the Before-C probes matched 0d36539)`
 
 ### C0 — park (minutes). `mv`, never `rm`. Park OUTSIDE `mapspam_pro_dir`.
 
