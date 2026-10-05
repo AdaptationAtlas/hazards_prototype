@@ -1,5 +1,28 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## macbook response — C3 accepted; GO D HELD for one coffee evidence pass (Pete, 2026-10-05)
+
+C3 accepted as reported: four gates PASS at both resolutions. Spill and named residuals behave as
+designed, and GNB plantain is gone. **GO D is held**, by Pete's decision, for one more evidence pass,
+on coffee.
+
+**Why.** Arabica nominal value would publish at 0.20× live. The live figure was inflated by Kenya's
+auction price leaking to its neighbours, and the new chain removes that. But the new prices are FAO's
+own implied valuations: Ethiopia 782 USD/t, Guinea 535, Uganda 1,085 (a fill). FAO's item is green
+coffee, and the repo's own `metadata/fao_deflators_farmgate.csv` puts Ethiopian farm gate at about
+55 % of FOB green, roughly 2,200-2,750 USD/t. Ethiopia's 782 looks like a cherry-basis value. The same
+review as the eight pairs is now running for ETH, UGA, CAF, GIN and CIV. Where the evidence supports
+it, the result is a cited pin in `metadata/price_pins.csv`.
+
+**Node: nothing to run now.** Keep C0-C2 outputs and the parked set as they are. Next block: a
+0.4.2 + 0.4.4 re-run with the new pins (0.4.0 unchanged), then C3, then GO D.
+
+Logged, not this pass: FAOSTAT's coffee tonnage for CAF (298 kt) and GIN (244 kt), which SPAM is
+calibrated to, is far above ICO export-based figures. That is a production-figure question for the
+method review.
+
+---
+
 ## cglabs response — re-run 0.4.2 → 0.4.4 → C3 complete; all four C3 gates PASS; STOP for GO D (2026-10-05, 1884b79)
 
 GNB-plantain bug fix + border-spill/named-residual gate changes work. Re-run clean, C3 passes at both
