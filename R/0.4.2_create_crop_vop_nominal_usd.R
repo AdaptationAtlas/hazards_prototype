@@ -283,16 +283,13 @@ prod_rast <- lapply(spam_files$path, rast)
 names(prod_rast) <- spam_files$tech
 # SPAM prod_t is native 0.05 deg. On a coarser grid, sum-resample (mass-conserving,
 # issue #9 pattern, mirrors 0.4.0) before multiplying by the price raster.
-prod_rast <- lapply(prod_rast, function(r) {
-  if (terra::compareGeom(r, base_rast, stopOnError = FALSE)) return(r)
-  .src <- terra::global(r, "sum", na.rm = TRUE)[, 1]
-  r2 <- terra::resample(r, base_rast, method = "sum")
-  .dst <- terra::global(r2, "sum", na.rm = TRUE)[, 1]
-  if (any(abs(.dst / .src - 1) > 0.005, na.rm = TRUE)) {
-    warning(sprintf("[0.4.2] SPAM prod mass not conserved on resample: max dev %.3f%%", 100 * max(abs(.dst / .src - 1), na.rm = TRUE)))
-  }
-  r2
-})
+# 2026-10-05: price x production runs on SPAM's native 0.05 deg grid at BOTH resolutions and the
+# value rasters are sum-resampled to the output grid afterwards, as 0.4.0 does. Multiplying on 0.25
+# deg gave every cell ONE country's price for production that straddles a border (BEN cowpea at 0.25
+# deg is 4x its 0.05 deg tonnage: Nigerian border production).
+source(file.path(project_dir, "R", "vop_allocate.R"))   # rasterize_country(), resample_sum_checked()
+alloc_grid <- exposure_grid(res = "0.05", caller = "0.4.2 allocation grid")$rast
+prod_rast <- lapply(prod_rast, function(r) resample_sum_checked(r, alloc_grid, "0.4.2 prod to 0.05"))
 
 ## 3) Infer missing prices ####
 # Nominal price per (country, crop) for each year window. Chain (Pete 2026-10-01, item 3 of
@@ -467,20 +464,20 @@ for (i in seq_along(price_usd_list)) {
 
   crop_names <- sort(names(final_price_cast)[-1])
 
-  # touches = TRUE (#40, 2026-10-01): rasterize() fills only cells whose centre a polygon
-  # contains; at 0.25 deg no cell centre falls inside the Seychelles, so the price raster was
-  # NA there while SPAM production (sum-resampled from 0.05 deg) was present -> NA x prod = NA,
-  # SYC coconut 1.34 M USD -> 0 in the R/3 re-bake. Coastal cells with an offshore centre lost
-  # their value the same way. A border cell now takes the value of a touching country; harmless,
-  # since production already sits in one country's cells and 0.4.4 zones use touches = TRUE too.
-  final_price_rast <- terra::rast(lapply(crop_names, FUN = function(NAME) {
-    terra::rasterize(final_price_vect, base_rast, field = NAME, touches = TRUE)
-  }))
+  # #40 (2026-10-01): at 0.25 deg no cell centre falls inside the Seychelles, so a centre-only price
+  # raster was NA there (SYC coconut 1.34 M USD -> 0). Since 2026-10-05 the price raster is built on
+  # 0.05 deg (centre rule, touches as cover) and the value raster is sum-resampled afterwards, so a
+  # 0.25 deg border cell no longer prices both countries' production at one country's price.
+  # Centre rule, touches only as cover (rasterize_country): small islands (SYC, #40) and coastal cells
+  # with an offshore centre get their country's price; land-border cells keep the centre's country.
+  final_price_rast <- terra::rast(lapply(crop_names, FUN = function(NAME) rasterize_country(final_price_vect, alloc_grid, field = NAME)))
   names(final_price_rast) <- crop_names
 
   price_save_file <- file.path(mapspam_pro_dir, "fao_prices", paste0("crop_price_", names(price_usd_list)[i], "-t_", .eg$tag, ".tif"))
   ensure_dir(dirname(price_save_file))
-  terra::writeRaster(final_price_rast, price_save_file, overwrite = TRUE)
+  # the saved price raster is on the OUTPUT grid (informational); the multiplication below stays on 0.05
+  terra::writeRaster(if (terra::compareGeom(alloc_grid, base_rast, stopOnError = FALSE)) final_price_rast else terra::rast(lapply(crop_names, function(NAME) rasterize_country(final_price_vect, base_rast, field = NAME))) |> stats::setNames(crop_names),
+                     price_save_file, overwrite = TRUE)
 
   # Multiply national VoP by glw cell proportion
   for (j in seq_along(prod_rast)) {
@@ -499,7 +496,7 @@ for (i in seq_along(price_usd_list)) {
     }
 
     prod_vop <- prod_rast_focus * final_price_rast
-    prod_vop <- round(prod_vop, 0)
+    prod_vop <- round(resample_sum_checked(prod_vop, base_rast, "0.4.2 vop"), 0)
 
     save_file <- file.path(
       mapspam_pro_dir,

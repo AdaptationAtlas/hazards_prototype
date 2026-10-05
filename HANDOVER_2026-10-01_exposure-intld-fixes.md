@@ -199,8 +199,11 @@ Code is on `develop` (`715057f`, `95b2159`, `94a98fa`); the node runbook is
   (FAO's own implied prices in NGA / CMR / GHA / CIV replace high fills), sugarcane 1.15, sugar beet 1.18.
   The KEN auction coffee price no longer propagates to ETH (4,269 → 782 own). Old-vs-new table in the
   macbook scratchpad (`old_vs_new_fill_2021.csv`); the node reproduces it in Block B.
-- **`touches = TRUE` also returns value to coastal cells** whose centre is offshore (both bases, res-25),
-  not only SYC: a small positive move for coastal countries, stated as expected in the dispatch.
+- **`touches = TRUE` replaced 2026-10-05** (cglabs Block C stop): allocating on 0.25° made national SPAM
+  totals grid-dependent (BEN cowpea 5.8 kt at 0.05°, 25.1 kt at 0.25°: Nigerian border cells), so the
+  coverage guard disagreed between resolutions. 0.4.0 and 0.4.2 now allocate and price on 0.05° at both
+  resolutions and sum-resample the result; country rasters use the centre rule with touches as cover
+  (SYC, offshore-centre coast). res-25 is the aggregate of res-05 by construction.
 - **Sudan: IN scope (Pete 2026-10-02).** Its intld rows are NA by the coverage guard — a SPAM 2020 SSA data
   gap, recorded as such in the CDH records, not as "out of scope". Open for Pete at the GO: the 4× band's
   low-side catches (keep two-sided as decided, or flag high-side only).

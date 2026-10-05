@@ -89,4 +89,27 @@ isl <- vect("POLYGON ((4.2 4.2, 4.4 4.2, 4.4 4.4, 4.2 4.4, 4.2 4.2))", crs = "EP
 r0 <- rasterize(isl, admin, field = "price")
 r1 <- rasterize(isl, admin, field = "price", touches = TRUE)
 ok(all(is.na(values(r0))) && sum(!is.na(values(r1))) == 1 && values(r1)[!is.na(values(r1))] == 500, "#40: a sub-cell polygon (Seychelles-shaped) rasterises to nothing without touches and to its one touched cell with touches = TRUE")
+
+## 2026-10-05: the BEN / NGA cowpea stop. A coarse cell straddling a border carries both countries'
+## production but belongs to one: allocating on the coarse grid moves the neighbour's tonnage into the
+## small country. Fine grid 10 x 1 (border at x = 5.7), coarse grid 2 x 1; country 2 is the big producer.
+g2 <- rast(nrows = 1, ncols = 10, xmin = 0, xmax = 10, ymin = 0, ymax = 1, crs = "EPSG:4326")
+two <- vect(c("POLYGON ((0 0, 5.7 0, 5.7 1, 0 1, 0 0))", "POLYGON ((5.7 0, 10 0, 10 1, 5.7 1, 5.7 0))"), crs = "EPSG:4326")
+two$id <- c(1, 2)
+prod_f <- rast(g2); values(prod_f) <- c(rep(1, 5), 1, rep(100, 4))   # country 1: 6 t, country 2: 400 t
+gc <- rast(nrows = 1, ncols = 2, xmin = 0, xmax = 10, ymin = 0, ymax = 1, crs = "EPSG:4326")
+zf <- rasterize_country(two, g2, field = "id"); zc <- rasterize_country(two, gc, field = "id")
+tf <- zonal(prod_f, zf, fun = "sum"); tc <- zonal(resample_sum_checked(prod_f, gc), zc, fun = "sum")
+ok(tf[tf[, 1] == 1, 2] == 6 && sum(tc[tc[, 1] == 1, 2]) == 5 && sum(tc[, 2]) == 406, "national tonnage depends on the grid when cells straddle a border (6 t fine, 5 t coarse here; BEN cowpea 5.8 kt vs 25.1 kt on the real grids) - so allocate on the fine grid")
+ok(values(zf)[6, 1] == 1 && sum(values(zf)[, 1] == 1) == 6, "centre rule on land: cell [5,6] (centre 5.5) belongs to country 1")
+isl2 <- vect("POLYGON ((8.2 0.2, 8.4 0.2, 8.4 0.4, 8.2 0.4, 8.2 0.2))", crs = "EPSG:4326"); isl2$id <- 3
+three <- rbind(two[1], isl2)
+rc3 <- rasterize_country(three, g2, field = "id")
+ok(values(rc3)[9, 1] == 3 && all(is.na(values(rc3)[c(7, 8, 10), 1])), "an island with no cell centre still gets its touched cell (#40), nothing else is filled")
+lab <- rasterize_country(two, g2, field = "id", labels = data.frame(ID = 1:2, iso3 = c("AAA", "BBB")))
+ok(identical(levels(lab)[[1]]$iso3, c("AAA", "BBB")), "labels attached for zonal()-by-iso3")
+## resample_sum_checked conserves mass and is a no-op on the same grid
+fine <- rast(nrows = 10, ncols = 10, xmin = 0, xmax = 1, ymin = 0, ymax = 1, crs = "EPSG:4326"); values(fine) <- 1:100
+coarse <- rast(nrows = 2, ncols = 2, xmin = 0, xmax = 1, ymin = 0, ymax = 1, crs = "EPSG:4326")
+ok(abs(global(resample_sum_checked(fine, coarse), "sum", na.rm = TRUE)[1, 1] / 5050 - 1) < 0.005 && identical(resample_sum_checked(fine, fine), fine), "sum-resample conserves the total within 0.5 % (the pipeline tolerance); same grid returns the input")
 cat("\nALL VOP-ALLOCATE FIXTURE ASSERTIONS PASSED\n")

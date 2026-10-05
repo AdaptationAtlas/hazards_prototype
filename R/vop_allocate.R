@@ -154,3 +154,34 @@ vop_check_totals <- function(vop_rast, admin_rast, zones, alloc, groups, tol = 1
   chk[, ok := data.table::fifelse(!is.na(value_alloc), is.finite(ratio) & abs(ratio - 1) <= tol, is.na(zonal_sum) | zonal_sum == 0)]
   chk[]
 }
+
+
+# Country-table rasterisation shared by 0.4.0 and 0.4.2 (2026-10-05). Each cell goes to the polygon
+# that contains its CENTRE; touches = TRUE only FILLS cells no centre claimed (coastal cells whose centre
+# is offshore, islands smaller than a cell - the Seychelles, #40). Used on the 0.05 deg allocation grid.
+# Why the allocation grid is 0.05 (cglabs Block C stop, 2026-10-05): a 0.25 deg cell holds SPAM
+# production from both sides of a border but belongs to ONE country. Benin's border cells carry
+# Nigerian cowpea: BEN SPAM cowpea is 5.8 kt at 0.05 deg and 25.1 kt at 0.25 deg (identical under the
+# centre rule and touches = TRUE - the rule is not the cause, the coarse cell is), so the coverage guard
+# answered differently on the two grids (0.043 vs 0.186). Allocate and price on 0.05, then sum-resample.
+# v: SpatVector; grid: SpatRaster template; field: column to burn (numeric) or, if `labels` is
+# given, an id column whose levels are attached from `labels` (data.frame ID, <label>).
+rasterize_country <- function(v, grid, field, labels = NULL) {
+  centre <- terra::rasterize(v, grid, field = field, touches = FALSE)
+  touch  <- terra::rasterize(v, grid, field = field, touches = TRUE)
+  r <- terra::cover(centre, touch)
+  if (!is.null(labels)) levels(r) <- labels
+  r
+}
+
+# Sum-resample a value raster to the output grid with a mass check (the issue #9 pattern). A no-op
+# when the grids already match.
+resample_sum_checked <- function(r, to, caller = "resample", tol = 0.005) {
+  if (terra::compareGeom(r, to, stopOnError = FALSE)) return(r)
+  src <- terra::global(r, "sum", na.rm = TRUE)[, 1]
+  out <- terra::resample(r, to, method = "sum")
+  dst <- terra::global(out, "sum", na.rm = TRUE)[, 1]
+  dev <- abs(dst / src - 1); dev[!is.finite(dev)] <- 0
+  if (any(dev > tol)) warning(sprintf("[%s] mass not conserved on resample: max dev %.3f%% (layer %s)", caller, 100 * max(dev), names(r)[which.max(dev)]))
+  out
+}

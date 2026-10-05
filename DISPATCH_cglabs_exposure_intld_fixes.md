@@ -1,5 +1,64 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## macbook response — BEN stop explained and fixed: allocate on 0.05 deg at both resolutions; re-run C1 after parking attempt 1 (2026-10-05)
+
+Right stop. The res-25 run had a real grid dependence, and it would have shipped two answers for one pair.
+
+**Mechanism (measured on the macbook, same SPAM file):** a 0.25 deg cell holds SPAM production from both
+sides of a border but belongs to one country. Benin's border cells carry Nigerian cowpea: BEN SPAM
+cowpea is **5.8 kt at 0.05 deg and 25.1 kt at 0.25 deg**. The result is the same under the centre rule
+and under `touches = TRUE`, so the rasterize rule is not the cause; the coarse cell is. Potato, tobacco,
+millet and coffee in BEN move the same way, because Nigeria is next door.
+
+**Fix (this commit):** 0.4.0 and 0.4.2 now allocate and price on SPAM's native **0.05 deg grid at both
+resolutions**. At res-25 they sum-resample the finished value rasters to the output grid
+(`resample_sum_checked`, 0.5 % mass check). National totals, the coverage guard and the allocation
+are identical on both grids by construction. res-25 is the aggregate of res-05. Country rasters use
+the centre rule, with touches only filling cells no centre claimed: offshore-centre coastal cells and
+the Seychelles (#40). Both helpers are in `R/vop_allocate.R`; the fixture covers the mechanism.
+
+**Macbook validation, res-25 end-to-end into the scratchpad:**
+- probe_040 at **both** resolutions: `guarded 27 pairs 7.36 B I$ = 3.5%`, guarded tables
+  **identical**. That is your res-05 figure: BEN cowpea is guarded on both grids now (coverage 0.043).
+- 0.4.0 res-25: `allocation grid 0.05 deg ... 55 of 55 countries own cells`; `allocation check: 888
+  pairs conserved to 1e-6, 131 guarded pairs empty; continental total 200.28 B I$`. Output raster
+  total **200.28 B I$**, so nothing is lost on the resample. SYC coconut 783,000 I$, exactly FAO's GPV.
+- 0.4.2 res-25: window clip 14/10/7, basis guard 18/18/19, own 80/83/81 %, the same as your run. No
+  mass-check warning.
+
+**One thing that WILL look odd in C3, and is expected:** on the **res-25 table only**, BEN cowpea
+intld shows **~7.7 M I$**. That is Nigerian/Togolese value in 0.25 deg cells that 0.4.4's zones assign to
+Benin (the accepted #18 one-cell-one-zone allocation), not Benin's own value, which is NA. res-05: BEN
+cowpea intld absent. The same border-spill pattern can show for other small countries' guarded
+pairs at res-25. **Do not stop on it**; list any such pair in C3.
+
+**Re-run C1 (C0's park stays as it is; attempt 1's 0.4.0 outputs would be skipped-if-exists, so park
+them first):**
+```bash
+cd <hazards_prototype> && git pull --ff-only && git log -1 --oneline; STAMP=$(cat logs/intld_fixes_stamp.txt)
+Rscript -e '
+  suppressMessages(suppressWarnings(source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R")))
+  stamp <- readLines("/home/jovyan/atlas/hazards_prototype/logs/intld_fixes_stamp.txt")
+  dst <- file.path("Data", paste0("_parked_intld_fixes_", stamp), "c1_attempt1"); dir.create(dst, recursive = TRUE)
+  f <- c(list.files(file.path(mapspam_pro_dir, "variable=vop_intld15-2021"), "\\.tif$", full.names = TRUE),
+         list.files(file.path(mapspam_pro_dir, "fao_prices"), "^crop_vop_intld15-2021_allocation_res-(05|25)\\.csv$", full.names = TRUE))
+  stopifnot(all(file.rename(f, file.path(dst, basename(f))))); cat("parked", length(f), "attempt-1 files to", dst, "\n")
+  cat("left in vop_intld15-2021:", length(list.files(file.path(mapspam_pro_dir, "variable=vop_intld15-2021"), "\\.tif$")), "\n")'
+nohup bash logs/c1_$STAMP.sh > logs/c1b_$STAMP.log 2>&1 &
+```
+**Expect:**
+- The park prints `parked 8` (6 tifs + 2 CSVs) and `left in vop_intld15-2021: 0`.
+- The C1 log shows four START/END pairs and no Error.
+- 0.4.0 logs `allocation grid 0.05 deg ... 55 of 55` at both resolutions, and `guarded 27 pairs 7.36
+  B I$ = 3.5%` at **both**. The two allocation CSVs are **identical** in their guarded rows: diff them
+  and paste the result. Any difference: STOP.
+- No `mass not conserved` warning.
+- 0.4.2 numbers as in your attempt 1.
+
+Then C2 and C3 as written, plus the BEN note above.
+
+---
+
 ## cglabs response — Block C STOPPED at C1: the two resolutions' guarded rows differ (BEN cowpea); C2/C3 not started (2026-10-05, 0ac5c59)
 
 GO C read (Pete, 2026-10-05). C0 clean, C1 ran at both resolutions with no error, nominal side matches

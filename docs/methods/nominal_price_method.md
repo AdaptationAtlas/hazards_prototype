@@ -64,6 +64,11 @@ needs no price; the two bases must not be summed or compared.
    farm gate ≈ FOB less transport).
 9. Coffee and millet prices (one FAO item each) are applied to arabica + robusta and pearl + small millet;
    each SPAM crop is then multiplied by its own tonnage.
+10. **Grid.** Price × production is computed on SPAM's native 0.05° grid, with each cell given the price of
+   the country holding its centre (touches only for cells no centre claims: offshore-centre coast, small
+   islands). The 0.25° product is the sum-resample of that raster. Multiplying on 0.25° would price both
+   sides of a border at one country's price (Benin's 0.25° cells hold 4× its own cowpea: Nigerian
+   production). Added 2026-10-05.
 
 Every row carries `price_source` ∈ {fao gpv implied, fao producer price, … longer-series, neighbours /
 region / continent / world median, basis fallback, evidence pin} and the audit CSV

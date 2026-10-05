@@ -48,20 +48,24 @@ geoboundaries <- terra::aggregate(geoboundaries, "iso3")
 .eg <- exposure_grid(caller = "0.4.0")
 .log040(sprintf("exposure grid = %s | res %.4f | tag %s", basename(.eg$path), .eg$res_deg, .eg$tag))
 .log040("loading base raster + rasterizing admin0")
-base_rast <- .eg$rast
-# touches = TRUE (#40, 2026-10-01): a polygon that owns no cell CENTRE at 0.25 deg (the
-# Seychelles) had no zone here, so its SPAM production (sum-resampled from 0.05 deg, present
-# in the cell) got no national total and a NaN share; coastal cells whose centre is offshore
-# were likewise outside every zone and their value was redistributed inland. 0.4.4 rasterises
-# its zones with touches = TRUE already; this matches it.
-admin_rast <- terra::rasterize(geoboundaries, base_rast, field = "iso3", touches = TRUE)
+base_rast <- .eg$rast   # the OUTPUT grid
+# 2026-10-05 (cglabs Block C stop, BEN cowpea): the allocation runs on SPAM's native 0.05 deg grid at
+# BOTH resolutions, and the finished value rasters are sum-resampled to the output grid. National
+# totals, the coverage guard and the allocation are therefore identical on the two grids by
+# construction; res-25 is the mass-conserving aggregate of res-05.
+source(file.path(project_dir, "R", "vop_allocate.R"))   # by PATH: a develop fix must reach the node run
+alloc_grid <- exposure_grid(res = "0.05", caller = "0.4.0 allocation grid")$rast
+geoboundaries$zid <- seq_len(nrow(geoboundaries))
+admin_rast <- rasterize_country(geoboundaries, alloc_grid, field = "zid",
+                                labels = data.frame(ID = geoboundaries$zid, iso3 = geoboundaries$iso3))
+.log040(sprintf("allocation grid 0.05 deg (SPAM native); admin zones: centre rule, touches only as cover; %d of %d countries own cells",
+                length(unique(stats::na.omit(terra::values(admin_rast)[, 1]))), nrow(geoboundaries)))
 
 # SPAM layers are the long SPAM names ("pearl millet", "arabica coffee", ...); the mapping
 # table says which FAO item(s) each one is valued under. 2026-10-01: the layer set comes from
 # the rasters themselves, matched to the table - the old `Code_ifpri_2020` filter silently
 # dropped small millet (#38).
 spam2fao <- fread(spam2fao_url)
-source(file.path(project_dir, "R", "vop_allocate.R"))   # by PATH: a develop fix must reach the node run
 VOP_COVERAGE_MIN <- as.numeric(Sys.getenv("VOP_COVERAGE_MIN", VOP_COVERAGE_MIN_DEFAULT))   # #39 guard: SPAM national t / FAO production t
 
 spam_dir <- file.path(mapspam_pro_dir, "variable=prod_t")
@@ -75,9 +79,9 @@ spam_dat <- pblapply(seq_along(files_raw), function(i) {
   # base (method="sum", mass-conserving) BEFORE the admin zonal + proportion, or
   # zonal/`raw_dat/spam_tot` hit "[zonal] extents do not match". Mirrors 0.4.1's
   # glw resample (L144). method="sum" conserves production totals (issue #9).
-  if (!terra::compareGeom(dat, base_rast, stopOnError = FALSE)) {
+  if (!terra::compareGeom(dat, alloc_grid, stopOnError = FALSE)) {
     .src <- terra::global(dat, "sum", na.rm = TRUE)[, 1]
-    dat <- terra::resample(dat, base_rast, method = "sum")
+    dat <- terra::resample(dat, alloc_grid, method = "sum")
     .dst <- terra::global(dat, "sum", na.rm = TRUE)[, 1]
     if (any(abs(.dst / .src - 1) > 0.005, na.rm = TRUE)) {
       warning(sprintf("[0.4.0] SPAM prod mass not conserved on resample (tech %d): max dev %.3f%%",
@@ -197,7 +201,7 @@ ensure_dir(out_dir)
 save_file <- file.path(out_dir, paste0("spam_vop_intld15-2021_all_", .eg$tag, ".tif"))
 if (!file.exists(save_file) || overwrite_crop) {
   .log040(sprintf("writing %s", save_file))
-  terra::writeRaster(round(spam_vop_intd * 1000, 1), save_file, overwrite = TRUE)   # thousand I$ -> I$
+  terra::writeRaster(round(resample_sum_checked(spam_vop_intd, base_rast, "0.4.0 all") * 1000, 1), save_file, overwrite = TRUE)   # thousand I$ -> I$, on the output grid
 }
 
 # 5) Split into irrigated / rainfed by production share ----------------------
@@ -215,8 +219,8 @@ spam_vop_intd_r <- spam_vop_intd - sub_dat
 
 f_i <- file.path(out_dir, paste0("spam_vop_intld15-2021_irr_", .eg$tag, ".tif"))
 f_r <- file.path(out_dir, paste0("spam_vop_intld15-2021_rf-all_", .eg$tag, ".tif"))
-if (!file.exists(f_i) || overwrite_crop) terra::writeRaster(round(spam_vop_intd_i * 1000, 1), f_i, overwrite = TRUE)
-if (!file.exists(f_r) || overwrite_crop) terra::writeRaster(round(spam_vop_intd_r * 1000, 1), f_r, overwrite = TRUE)
+if (!file.exists(f_i) || overwrite_crop) terra::writeRaster(round(resample_sum_checked(spam_vop_intd_i, base_rast, "0.4.0 irr") * 1000, 1), f_i, overwrite = TRUE)
+if (!file.exists(f_r) || overwrite_crop) terra::writeRaster(round(resample_sum_checked(spam_vop_intd_r, base_rast, "0.4.0 rf-all") * 1000, 1), f_r, overwrite = TRUE)
 
 cat("\n===== 0.4.0_create_crop_vop_intld15.R COMPLETE at ",
     format(Sys.time(), "%Y-%m-%d %H:%M:%S %Z"), " =====\n", sep = "")
