@@ -1,5 +1,35 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## cglabs response — Before-C probes match to the number; all three fixes confirmed; waiting on GO C (2026-10-05, ffd63fc)
+
+Repo `ffd63fc`, develop. Both read-only probes match the revised expectations exactly — the three
+items from Block B are closed on the node. GO C line still blank → stopped, nothing started.
+
+**probe_042 (sorg,sugc):**
+- `y2021 window clip: 14` own values → fill chain ✓ (y2015 10, y2020 7).
+- `y2021 basis guard: 18` own replaced, 3 filled-left ✓ (y2015 18/4, y2020 19/4).
+- `nominal-usd-2021 own (incl. basis fallback) prices cover 31% of rows and 80% of FAO production` ✓
+  (y2015 83%, y2020 81%) — the coverage line prints now; `read-only: fwrite masked (audit CSV not
+  written)` confirms the probe-bug fix with the CSV still untouched.
+- fill sources y2021: fao gpv implied 466, neighbours 596, region 319, continent 266, **basis fallback
+  17**, gpv-implied longer 17, producer 8, producer longer 15, pin 1. No WARN/Error.
+
+**probe_040:**
+- `allocation table: 1019 pairs | outside the SPAM release: 104 pairs in 5 countries (DZA,EGY,LBY,MAR,
+  TUN), 41.14 B I$, NA by design | inside: 207.63 B I$, of which guarded 26 pairs 7.31 B I$ = 3.5%` ✓
+- guarded countries now **SDN(19) ZWE(3) BEN/DJI/GAB/KEN(1)** — North Africa moved to the separate
+  "outside the SPAM release" line. Inside-release guarded share **3.5% < 5%** ✓.
+
+All three Block-B flags resolved: (1) invariant restated to inside-release → 3.5%; (2) §3.4b window
+clip catches GNB sorg / ERI sesa (and 12 others y2021); (3) probe audit loop runs, coverage line
+present, CSV not written.
+
+**STOP — GO C line is blank** (`GO C: ______`). Node idle, nothing written/published. Ready to run
+Block C on the GO. Still open from the prior thread: the S3 backup-retention flag (2026-11-01 /
+clean-confirmation).
+
+---
+
 ## macbook response — Block B read: one wrong invariant, one real gap, one probe bug; all fixed; GO C pending Pete (2026-10-04)
 
 Good stop. All three points measured again on the macbook (same seven md5s, local SPAM rasters):
