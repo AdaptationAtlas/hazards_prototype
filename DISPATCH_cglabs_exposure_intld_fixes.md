@@ -1,5 +1,47 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## cglabs response — Block C STOPPED at C1: the two resolutions' guarded rows differ (BEN cowpea); C2/C3 not started (2026-10-05, 0ac5c59)
+
+GO C read (Pete, 2026-10-05). C0 clean, C1 ran at both resolutions with no error, nominal side matches
+to the number — but it hit the dispatch's explicit C1 STOP: **the res-05 and res-25 allocation CSVs
+differ in their guarded rows.** Stopped before C2, nothing else started.
+
+**C0 — park:** `parked 156 files`, `left behind: 0`. Matches Block A inventory (144 vop-dir + 6 §3
+tables + 6 sidecars).
+
+**C1 — four START/END, no Error.** 0.4.0 at both res: `allocation check: … conserved to 1e-6, …
+guarded pairs empty`, `writing … spam_vop_intld15-2021_all_<tag>.tif`. 0.4.2 at both res identical:
+`window clip` 14/10/7 (y2021/15/20), `basis guard` 18/18/19, `own … cover 80 %/83 %/81 % of FAO
+production`, no WARN. On disk: vop_intld15-2021 6 tifs, vop_nominal-usd-2021 12 tifs, fao_prices 6 tif
++ 8 csv. All of that is as expected.
+
+**THE STOP — guarded rows differ across resolutions (C1: "if the two resolutions' allocation CSVs
+differ in their guarded rows, STOP"):**
+- res-25: `guarded 26 pairs 7.31 B I$ = 3.5%`; 889 conserved / 130 guarded; `BEN(1) DJI(1) GAB(1)
+  KEN(1) SDN(19) ZWE(3)`.
+- res-05: `guarded 27 pairs 7.36 B I$ = 3.5%`; 888 conserved / 131 guarded; `BEN(2) …`.
+- Diff of the guarded sets is exactly one row: **res-05 adds `BEN cowp`**. res-25 has BEN cowp
+  coverage **0.186** (unguarded, > 0.10); res-05 has it **0.0428** (guarded, < 0.10).
+
+**Root cause is bigger than a threshold nudge: several BEN groups have grid-dependent SPAM national
+tonnage.** The guard divides SPAM national t by FAO production t; FAO is grid-independent, so coverage
+should be too. For most BEN groups it is (cass 0.989/0.989, maiz 0.980/0.988, rice 0.923/0.913). But a
+handful move a lot between res-25 and res-05: **cowp 0.186 → 0.043 (~4×), pota 17.0 → 6.9, toba 34.8 →
+13.7, pmil+smil 2.07 → 1.15, acof+rcof 9.07 → 7.80.** Only cowp sits near 0.10, so only it flips the
+guard — but the underlying SPAM national totals for Benin are not conserving across the two grids, which
+the "national-totals ⇒ grid-independent" assumption behind the invariant did not expect. Likely the
+res-25 resampling / `touches = TRUE` border handling for a small West-African country; Benin is small
+enough that a few 0.25° cells swing the national sum.
+
+**Not proceeding to C2/C3, not fixing** (AGENTS.md §41). The intld product would otherwise ship BEN
+cowpea present at res-25 and NA at res-05 — the same pair, two answers. For Pete/macbook: is this
+acceptable (BEN cowp is tiny — I can paste its I$ value) and the invariant restated to "guarded sets
+may differ only for pairs within ε of VOP_COVERAGE_MIN", or does the BEN national-tonnage
+non-conservation between grids need a look first? Node holds the C0/C1 outputs (parked set intact);
+nothing published.
+
+---
+
 ## cglabs response — Before-C probes match to the number; all three fixes confirmed; waiting on GO C (2026-10-05, ffd63fc)
 
 Repo `ffd63fc`, develop. Both read-only probes match the revised expectations exactly — the three
