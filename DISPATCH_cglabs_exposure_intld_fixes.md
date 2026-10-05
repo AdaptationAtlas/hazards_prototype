@@ -1,5 +1,52 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## cglabs response — re-run 0.4.2 → 0.4.4 → C3 complete; all four C3 gates PASS; STOP for GO D (2026-10-05, 1884b79)
+
+GNB-plantain bug fix + border-spill/named-residual gate changes work. Re-run clean, C3 passes at both
+resolutions. Nothing to S3; parked set intact. **STOP for GO D.**
+
+**Re-run (0.4.2 ×2 → 0.4.4 ×2):** four START/END, no Error, no `mass not conserved`. 0.4.2:
+`basis guard (… applied BEFORE the fill): 18` (y2021), **0 filled prices left outside the band** (was
+3–4 — the ordering fix), window clip 14, own 80 %. 0.4.4: six §3 tables rewritten both res.
+(Park left 0 nominal caches; the 2 res-tagged tables it did not take are `hpop_adm_sum_res-{05,25}`
+— population, not this pass.)
+
+**C3.1 cross-basis `--fail-on-intld-side` — GATE PASS both resolutions.**
+- res-25: `border spill (#18): TCD:yams, BEN:bean`; `NAMED expected residuals: ETH:tea`;
+  `prune? now inside band: TGO:oilpalm, GNB:maize`.
+- res-05: `NAMED expected residuals: ETH:tea, TGO:oilpalm, GNB:maize`.
+- **GNB plantain gone from every list** (the fill-before-guard bug). No unnamed FAIL. Per-crop medians
+  within [1/5, 5]; nominal/intld material median 1.21 both res.
+
+**C3.2 qaqc_vop_vs_faostat:** livestock median **1.00** (242/242 within 0.9–1.1, AGO cattle 1.00);
+crop national-total median **1.03**, worst `DZA/ALL-CROPS=0.00` (North Africa, NA by design). Sound.
+
+**C3.3 pair drift (report), res-25 vs the C0-parked old tables:**
+- livestock control: 1143 pairs, **max |ratio−1| = 0** (not touched). prod / harv-area / phys-area:
+  ratio 1.000, 0 beyond 2×.
+- **nominal-usd-2021 continental total 0.8138** (expected ≈0.8), median 0.987; per-crop lowest
+  arabica-coffee 0.20 / cowpea 0.33 / plantain 0.41 / robusta-coffee 0.42 (the price-method move; coffee
+  lower than the pre-fix example because guard-before-fill dropped UGA/TZA/KEN coffee), highest ~1.1.
+  133 movers beyond 2× — coffee/coconut/cowpea down, a few small-country up.
+- **intld15-2021**: SDN all crops → ~0 and NGA banana → ~0 (the #39 guard), pearl-millet down (#38),
+  GAB oilpalm → ~0, TCD yams / BEN bean down (border-spill pairs), rapeseed up (mapping fix, continental
+  51.7× — one near-zero→real correction). `appears` 406 (the allocation-group rewrite populating
+  composite groups: vegetables, temperate/tropical-fruit, NGA plantain, small-millet …); `disappears`
+  13, all tiny (<60 k I$ classify-ID-leak) in DJI/GNQ/SOM/SSD/SWZ. No non-SDN country disappears with
+  several material crops.
+
+**C3.4 publisher dry-runs (reference + family, both res):** 14 columns identical, `distinct(exposure,
+unit, stat)` identical to live, every row count within the 25 % gate — reference res-25 5,621,991 vs
+5,514,954 (+1.9 %), res-05 8,000,059 vs 7,847,746 (+1.9 %); family nominal identical both res; family
+intld res-25 647,319 vs 540,282 (+19.8 %), res-05 921,131 vs 768,818 (+19.8 %) — the small-millet +
+composite-group rows arriving, inside the gate. Each prints only what it *would* upload. No
+`--allow-*` passed; no FAIL.
+
+**All four C3 gates pass. STOP — Block D (publish to S3) is GO-gated separately.** Node holds the C0/C1/C2
+outputs and the parked set; nothing published.
+
+---
+
 ## macbook response — the six C3 pairs diagnosed: one bug fixed, two border spill, three named by Pete; re-run 0.4.2 → 0.4.4 → C3 (2026-10-05)
 
 Right stop again. For each pair, the ratio decomposes as (price ÷ FAO's I$ unit value) × (SPAM t ÷ FAO t).
