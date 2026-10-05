@@ -1,5 +1,59 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## cglabs response — BEN grid-dependence fixed (C1 re-run clean); C3 STOPPED at the cross-basis gate: 4 unnamed intld-side FAIL pairs each res (2026-10-05, 3592fe2)
+
+The 0.05° allocation fix works — C1 re-run is grid-identical and the BEN guarded-row split is gone.
+C2 clean. But the C3 arbiter (cross-basis `--fail-on-intld-side`) FAILs at both resolutions on pairs
+the briefing did not name, so stopped at the first gate per C3's own rule ("do not loosen the band").
+C3.2–4 not run.
+
+**C1 re-run (after parking attempt-1's 8 outputs, left 0):** four START/END, no Error, no
+`mass not conserved`. 0.4.0 both res: `allocation grid 0.05 deg (SPAM native) … 55 of 55 countries own
+cells`, `guarded 27 pairs 7.36 B I$ = 3.5%`, `allocation check: 888 conserved / 131 guarded; continental
+200.28 B I$`. **The two allocation CSVs are now identical in their guarded rows** (131 == 131, empty
+diff; BEN cowp guarded on both). 0.4.2 unchanged (window clip 14/10/7, basis guard 18/18/19, own
+80/83/81%). Grid dependence resolved.
+
+**C2 (0.4.4 both res):** two START/END, no Error, no `untagged legacy twin`. §3.1 units kept
+number/ha/t/nominal-usd-2021/intld15-2021, dropped the 2015/2020 sets, 14 columns. Six §3 tables
+rewritten (res-25 10:42, res-05 10:45).
+
+**C3.1 — cross-basis `--fail-on-intld-side`: GATE FAIL at BOTH resolutions.** `world price reference`
+present (new audit CSV). Named defects are gone (no SDN, no NGA banana, no pearl-millet in the lists;
+small-millet no longer one-sided on res-25). Per-crop medians all within [1/5, 5]. But the intld-side
+list is **not empty** — 4 material pairs each res, sound nominal side, none guarded, none in the
+briefing's named set, and none the BEN-cowpea border-spill:
+
+res-25 (BEN,ETH,GNB,TCD):
+```
+ iso3 crop      nominal     intld     ratio  spam_t  implied_usd_t ref_usd_t
+ TCD  yams     234000000   1274000  184.00   461000    508          355
+ BEN  bean     112800000   6887000   16.40   137000    826          601
+ ETH  tea       11500000 146500000    0.0785  10500   1090         2630
+ GNB  plantain   1701000  20760000    0.0819  54100     31.4        134
+```
+res-05 (ETH,GNB,TGO):
+```
+ ETH  tea       11500000 146500000    0.0785  10500   1090         2630
+ GNB  plantain   1706000  21370000    0.0798  55700     30.6        134
+ TGO  oilpalm  136500000  11720000   11.60   569000    240          158
+ GNB  maize     34680000   3407000   10.20    29800   1170          239
+```
+**ETH tea and GNB plantain fail at both resolutions** (systematic — nominal ≪ intld); **TCD yams
+(184×) and BEN bean are res-25-only**, **TGO oilpalm and GNB maize res-05-only** (grid-dependent). None
+guarded. TCD yams is the extreme: implied nominal 508 USD/t is sound, but intld is ~2.75 I$/t — either
+Chad's yam intld GPV is near-zero or its SPAM yam tonnage (461 kt) is neighbour spill (Nigeria/Cameroon
+adjacent).
+
+**STOP at C3.1 — not loosening the band, not running C3.2–4, not fixing** (AGENTS.md §41; C3's own
+"STOP and paste the table"). For Pete/macbook: these 6 distinct pairs (ETH tea, GNB plantain, GNB maize,
+TGO oilpalm, TCD yams, BEN bean) are new to the arbiter — decide whether they are (a) intld-side
+allocation gaps, (b) the composite-group understatement flagged as pre-existing, or (c) residual
+border-spill on the non-native grid, and whether any widen-or-name is wanted before I re-run C3. Node
+holds C0/C1/C2 outputs; parked set intact; nothing published.
+
+---
+
 ## macbook response — BEN stop explained and fixed: allocate on 0.05 deg at both resolutions; re-run C1 after parking attempt 1 (2026-10-05)
 
 Right stop. The res-25 run had a real grid dependence, and it would have shipped two answers for one pair.
