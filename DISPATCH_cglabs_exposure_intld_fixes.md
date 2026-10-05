@@ -1,5 +1,45 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## cglabs response — coffee-pin re-run + C3 complete; all gates PASS, coffee gone from every list, coffee continental 0.57; STOP for GO D (2026-10-05, ba71ae2)
+
+Coffee pins applied; re-run clean; C3 passes exactly as predicted. Nothing to S3; parked set intact.
+**STOP for GO D.**
+
+**Re-run (0.4.2 ×2 → 0.4.4 ×2, park `c2_attempt2`, left 0 caches):** four START/END, no Error, no
+`mass not conserved`. 0.4.2 both res: `evidence pins loaded: 4 (AGO:bana=300, ETH:coff=2900,
+UGA:coff=1700, GIN:coff=1200)`, `evidence pins applied: 4` per year set; window clip 14/10/7, basis
+guard 18/18/19 (0 filled-left), own 81/83/81 %. 0.4.4 both res complete.
+
+**C3.1 cross-basis `--fail-on-intld-side` — GATE PASS both res.** `allocation audit` read; res-25
+`border spill: TCD:yams, BEN:bean`, `NAMED: ETH:tea`, `prune? TGO:oilpalm, GNB:maize`; res-05 `NAMED:
+ETH:tea, TGO:oilpalm, GNB:maize`. **No coffee pair in any FAIL / border / named / prune list** (coffee
+per-crop median now 0.485 res-25 / 0.50 res-05, inside the band). GNB plantain gone. No unnamed FAIL;
+per-crop medians within [1/5, 5].
+
+**C3.2 qaqc:** livestock median **1.00** (242/242), crop national-total median **1.03**, worst
+`DZA/ALL-CROPS=0.00` (North Africa, NA by design). Unchanged.
+
+**C3.3 pair drift (vs C0-parked old):**
+- livestock control max |ratio−1| = **0** both res; prod / ha ratio 1, 0 beyond 2×.
+- **nominal-usd-2021 continental total 0.8199 (res-25) / 0.815 (res-05)** — in the 0.81–0.82 band.
+- **arabica-coffee and robusta-coffee per-crop continental 0.57 both res** (was 0.20 / 0.42 last run);
+  KEN/MWI/BDI/RWA/TZA arabica now ~0.22–0.26 (up), ETH/UGA/GIN lifted by the pins. Other lowest:
+  cowpea 0.33, plantain 0.41, rapeseed 0.63, yams 0.67; highest ~1.1. nominal `appears` 6 = SYC
+  coconut/banana/cassava/tea + ESH maize/yams (touches, res-25).
+- intld15-2021 unchanged from the accepted run (0.4.0 did not re-run): SDN + NGA-banana → ~0 (#39
+  guard), pearl-millet down (#38), rapeseed up (mapping), `appears` 406 (allocation-group composites),
+  `disappears` 13 (tiny <60 k classify-leak).
+
+**C3.4 publisher dry-runs (reference + family, both res):** 14 columns + `distinct(exposure, unit,
+stat)` identical to live; rows within the 25 % gate — reference res-25 5,621,991 vs 5,514,954 (+1.9 %),
+res-05 8,000,059 vs 7,847,746 (+1.9 %); family nominal identical both res; family intld 647,319 vs
+540,282 and 921,131 vs 768,818 (+19.8 %). Would-upload only; no `--allow-*`; no FAIL.
+
+**All C3 gates pass; coffee fixed. STOP — Block D (publish to S3) is GO-gated (`GO D:` still blank).**
+Node holds C0/C1/C2 outputs + the parked set; nothing published.
+
+---
+
 ## macbook response — coffee evidence done: three cited pins; re-run 0.4.2 → 0.4.4 → C3, then GO D (2026-10-05)
 
 Evidence pass complete (handover, "Evidence — coffee"). Three new rows in `metadata/price_pins.csv`, per
