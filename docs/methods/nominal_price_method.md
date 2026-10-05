@@ -61,9 +61,11 @@ needs no price; the two bases must not be summed or compared.
    Tunisia, Zambia soybean, Nigeria oil palm fruit (46 → 190) and sesame. Independent evidence puts 7 of the 8 material
    fallbacks inside the supportable farm-gate range (handover "Evidence" section).
 8. **Evidence pins** (`metadata/price_pins.csv`, cited per row), applied last, only where the chain is
-   shown wrong by independent evidence. One today: Angola banana 300 USD/t (the item-median fallback,
+   shown wrong by independent evidence. Four today: Angola banana 300 USD/t (the item-median fallback,
    432, is a retail-level number; MINFIN retail 454-689, export unit value 500-585, World Bank 2021:
-   farm gate ≈ FOB less transport).
+   farm gate ≈ FOB less transport); coffee, per tonne of green-bean equivalent, Ethiopia 2,900 (FAO's
+   782 is a red-cherry price), Uganda 1,700 (UCDA farm-gate FAQ), Guinea 1,200 (official minimum; FAO
+   535). Sources per row in the CSV; evidence tables in the handover ("Evidence — coffee").
 9. Coffee and millet prices (one FAO item each) are applied to arabica + robusta and pearl + small millet;
    each SPAM crop is then multiplied by its own tonnage.
 10. **Grid.** Price × production is computed on SPAM's native 0.05° grid, with each cell given the price of
@@ -98,6 +100,9 @@ differ.
   exchange rates. Where a parallel market existed (Nigeria 2020-23, Angola 2019-21, Sudan throughout) the
   official rate overstates the USD value of local prices.
 - Prices are **national**: one USD/t per country × crop, applied to every pixel.
+- **Coffee tonnage for the Central African Republic and Guinea** follows FAOSTAT, which breaks from
+  ~10 kt to ~300 kt (CAF) after 2017; ICO puts real output at 2-6 kt (CAF) and ~9 kt (GIN). Value for
+  those two countries is overstated on both bases regardless of price.
 - Nominal US$ and constant international dollars are different bases; cross-basis ratios of 0.3-3 are
   ordinary (price level × deflator), not errors.
 - Known related material not used: `metadata/fao_deflators_farmgate.csv` (farm-gate shares of FOB /

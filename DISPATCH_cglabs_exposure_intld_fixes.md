@@ -1,5 +1,45 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## macbook response — coffee evidence done: three cited pins; re-run 0.4.2 → 0.4.4 → C3, then GO D (2026-10-05)
+
+Evidence pass complete (handover, "Evidence — coffee"). Three new rows in `metadata/price_pins.csv`, per
+tonne of green-bean equivalent, each with sources: **ETH 2,900** (FAO's 782 is a red-cherry price),
+**UGA 1,700** (UCDA farm-gate FAQ), **GIN 1,200** (official minimum; FAO 535). CIV, CMR and TGO were
+confirmed as they are. CAF is too thin to pin.
+
+Macbook effect: coffee production-weighted price 854 → 1,688 USD/t (world implied 1,668). Coffee
+continental nominal goes from 0.20× to **0.57×** live; all-crops 0.835×. Code is unchanged: only the
+pin file changed, so only 0.4.2 and 0.4.4 need to re-run.
+
+**Re-run** (the same shape as the last one; park target `c2_attempt2`):
+```bash
+cd <hazards_prototype> && git pull --ff-only && git log -1 --oneline; STAMP=$(cat logs/intld_fixes_stamp.txt)
+Rscript -e '
+  suppressMessages(suppressWarnings(source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R")))
+  stamp <- readLines("/home/jovyan/atlas/hazards_prototype/logs/intld_fixes_stamp.txt")
+  dst <- file.path("Data", paste0("_parked_intld_fixes_", stamp), "c2_attempt2"); dir.create(dst, recursive = TRUE)
+  vd <- file.path(mapspam_pro_dir, c("variable=vop_nominal-usd-2021", "variable=vop_nominal-usd-2015", "variable=vop_nominal-usd-2020"))
+  f <- c(list.files(vd, "_adm_sum\\.parquet(\\.json)?$", full.names = TRUE),
+         list.files(exposure_dir, "^(exposure_adm_sum_spam20-20_glw420-20|vop_nominal-usd-2021_adm_sum_spam20_glw420|vop_intld15-2021_adm_sum_spam20_glw420)_res-(05|25)\\.parquet(\\.json)?$", full.names = TRUE))
+  for (x in f) { d <- file.path(dst, basename(dirname(x))); dir.create(d, showWarnings = FALSE); stopifnot(file.rename(x, file.path(d, basename(x)))) }
+  cat("parked", length(f), "files to", dst, "| left:", length(list.files(vd, "_adm_sum\\.parquet")), "caches\n")'
+nohup bash logs/c12b_$STAMP.sh > logs/c12c_$STAMP.log 2>&1 &
+```
+**Expect:**
+- `left: 0 caches`.
+- Four START/END pairs, no Error.
+- 0.4.2 logs `evidence pins loaded: 4 (AGO:bana=300, ETH:coff=2900, UGA:coff=1700, GIN:coff=1200)`
+  and `evidence pins applied: 4` per year set. Window clip, basis guard and own share as before.
+
+**Then C3 entire.**
+- C3.1, C3.2 and C3.4: the same outcomes as your last run. Coffee pairs must not appear in any
+  cross-basis list.
+- C3.3 pair drift: nominal arabica-coffee and robusta-coffee per-crop continental ratio **~0.5-0.6**
+  (was 0.20 / 0.42). ETH, UGA and GIN coffee up against your last run; all-crops ≈ 0.81-0.82.
+- Paste C3 and STOP for **GO D**.
+
+---
+
 ## macbook response — C3 accepted; GO D HELD for one coffee evidence pass (Pete, 2026-10-05)
 
 C3 accepted as reported: four gates PASS at both resolutions. Spill and named residuals behave as

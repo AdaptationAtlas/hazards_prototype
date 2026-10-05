@@ -275,6 +275,33 @@ own share 83 % → 81 %. The methods text is `docs/methods/nominal_price_method.
 consumers to update after Block D (CDH records ×3, README, KE-ENSO notebook methods, atlas_notebooks
 notified).
 
+## Evidence — coffee (2026-10-05)
+
+C3 passed every gate, but arabica nominal would have published at 0.20× live. The live figure was inflated
+by Kenya's auction price leaking to its neighbours; the new chain removed that and fell back on FAO's own
+valuations. Pete held GO D for one evidence pass on the producers that carry the tonnage. Two web agents,
+all prices per tonne of **green-bean equivalent** (FAO item "Coffee, green"; SPAM tonnage is green):
+
+| country | modelled | evidence (USD/t green-eq, 2019-23) | sources | action |
+|---|---:|---|---|---|
+| ETH | 782 (FAO implied) | 2,000-5,500 at the official rate; conservative point 2,500-3,300. FAO's 782 is a **red-cherry** price (cherry 550-1,090; ×5.5-6 out-turn ≈ 4,300). FOB unit value 3,309-5,400. | Coffee Ithaka crop report 2020/21 and weekly posts; Fairtrade LIRP Ethiopia note 2023; BASIC/Solidaridad 2024; USDA GAIN ET2023-0014 | **pin 2,900** |
+| UGA | 1,085 (fill) | UCDA monthly FAQ (green robusta) 1,035 (Jun 2020) → 2,147 (Nov 2023); point 1,700 | UCDA monthly reports Jun 2020 - Nov 2023; ILO value-chain mapping 2024 | **pin 1,700** |
+| GIN | 535 (FAO implied) | Official minimum 10,000 GNF/kg 2019/20 (~1,070), 13,000 floor 2022/23 (~1,500) | CBI Guinea coffee study; Guineenews 2022-12-02 | **pin 1,200** |
+| CIV | 1,113 | Conseil Café-Cacao official green minimum 990-1,240 | Abidjan.net, Agence Ecofin, Sikafinance | keep |
+| CMR | 1,068 | ONCC price-information system market prices 500-1,500 | Investir au Cameroun | keep |
+| TGO | 1,262 | CCFCC indicative "café sain" 1,307-1,377 (2022-23) | Togo First, Alome | keep |
+| CAF | 769 (fill) | two 2023 local quotes, form unstated, 990-1,650 | Radio Ndeke Luka | keep (too thin to pin) |
+
+Effect (macbook, 2026-05-14 files): coffee production-weighted price 854 → **1,688 USD/t** (world implied
+1,668); coffee continental nominal **0.57×** live (was 0.20× pre-pin); all-crops 0.830 → 0.835×.
+
+**Also found, not this pass:** (1) the repo's `metadata/fao_deflators_farmgate.csv` (Ethiopia coffee farm
+gate = 55 % of FOB) is the pre-2017 figure; since FX-retention rules, farm prices capture ~94 % of FOB
+(BASIC 2024). (2) **FAOSTAT coffee tonnage for CAF is a data break**: ~10 kt (2017) → 298 kt (2021); ICO
+puts output at 2-6 kt and exports at ~2 kt. SPAM copies FAO, so CAR coffee value is overstated 50-100× on
+both bases whatever the price. Guinea likewise (FAO 244 kt vs ICO ~9 kt). A production-figure defect for
+the method review; candidates for a SPAM/FAO tonnage override list.
+
 ## Reuse
 
 `R/price_fill.R`, `R/vop_allocate.R`, `R/checks/vop_cross_basis_gate.R`, `R/checks/probe_042_price_fill.R`,
