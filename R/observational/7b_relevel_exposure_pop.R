@@ -81,6 +81,18 @@ log_step(sprintf("re-levelling %s | POP_SOURCE=%s%s POP_METHOD=%s | %s", in_dir,
 tabs <- lapply(paths, function(p) as.data.table(read_parquet(p)))
 names(tabs) <- names(files)
 
+# #42: tables published before the fix carry a leaked `i.pop_source`. Strip any join artefact on
+# READ as well as refusing to write one, so that re-levelling an already-affected table repairs it
+# instead of aborting on the write-time assertion below. Nothing downstream reads an `i.` column.
+for (nm in names(tabs)) {
+  leaked <- grep("^i\\.", names(tabs[[nm]]), value = TRUE)
+  if (length(leaked)) {
+    tabs[[nm]][, (leaked) := NULL]
+    log_step(sprintf("  %-28s dropped stale join artefact: %s (#42)", files[[nm]],
+                     paste(leaked, collapse = ", ")))
+  }
+}
+
 # legacy tables (pre-#28): the existing pop columns are the raw gridded sums.
 # The section-A/B intersects never carried a per-row `pop_total` — the engine joins the
 # denominator from the totals table on adm2_pcode at write time and persists only
@@ -152,12 +164,17 @@ if (YEAR_MATCH) {
 }
 
 relevel <- function(dt, exposed = TRUE, by_year = FALSE) {
-  drop <- intersect(c("pop_scale_adm1", "pop_scale_census", "pop_growth_county", "pop_year"),
+  # pop_source is dropped here, not just in the by_year branch: both joins carry their own
+  # pop_source, so leaving the table's copy in place makes data.table retain it as `i.pop_source`
+  # (the defect in issue #42, seen on exposure_jrc_rp + exposure_totals but not on the GFM table,
+  # which was the only one dropping it). It is re-set unconditionally further down in both branches.
+  drop <- intersect(c("pop_scale_adm1", "pop_scale_census", "pop_growth_county", "pop_year",
+                      "pop_source"),
                     names(dt))
   if (length(drop)) dt[, (drop) := NULL]
   if (by_year) {
-    # one factor per county PER YEAR; pop_source varies by row (census fallback for pre-2020)
-    if ("pop_source" %in% names(dt)) dt[, pop_source := NULL]
+    # one factor per county PER YEAR; pop_source varies by row (census fallback for pre-2020).
+    # (pop_source was already dropped above, for every branch.)
     # join on a RENAMED copy: joining on `year` directly consumes the table's own year column,
     # which is a key dimension of the GFM table (adm2 x season x year) and must survive untouched.
     sy <- copy(scale_years); setnames(sy, "year", ".join_year")
@@ -209,6 +226,16 @@ if (!YEAR_MATCH && !is.null(knbs$totals) && abs(nat - sum(knbs$totals$knbs_pop))
 if (!APPLY) {
   log_step("DRY RUN — nothing written. Re-run with APPLY=1 to rewrite the tables in place.")
   quit(save = "no")
+}
+# #42: a join artefact must never reach a published table. data.table prefixes a retained
+# right-hand duplicate with "i.", which is both undeclared to schema-strict consumers and
+# genuinely ambiguous (two columns that look like the provenance field, disagreeing).
+for (nm in names(tabs)) {
+  leaked <- grep("^i\\.", names(tabs[[nm]]), value = TRUE)
+  if (length(leaked)) {
+    stop(sprintf("table %s carries join-artefact column(s): %s. Refusing to write (issue #42).",
+                 files[[nm]], paste(leaked, collapse = ", ")))
+  }
 }
 for (nm in names(tabs)) write_parquet(tabs[[nm]], file.path(in_dir, files[[nm]]))
 log_step(sprintf("WROTE -> %s (%s)", in_dir, paste(files, collapse = ", ")))
