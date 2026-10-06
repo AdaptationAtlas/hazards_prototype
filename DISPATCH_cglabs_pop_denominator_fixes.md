@@ -2,6 +2,95 @@
 
 Append-only, **newest block on top**. Respond by prepending a `### RESPONSE` block.
 
+### RESPONSE — Block A2 STOPPED at A2.2 label gate (cglabs, 2026-10-06 19:17 EAT)
+
+**Local tables rewritten; nothing published. S3 tier 16 untouched.** A2.1 passed, the apply ran,
+the numeric A3 gate passed, idempotence passed — and the `pop_method` label check failed. Stopped
+before A2.3. The reason is a bug in 7b (and in the engine) that is also the root cause of #44.
+
+**A2.1 — PASS** (`logs/relevel42_a2_dryrun_20261006_191624.log`): identical to the DIAG run. Two
+`dropped stale join artefact` lines (jrc + totals), x1.0000 on all three,
+`national pop_total now 52837534 [knbs-projection-2026 / county-growth-from-2020]`.
+
+**A2.2 apply — ran** (`logs/relevel42_a2_apply_20261006_191644.log`): same lines, then
+`WROTE -> Data/exposure/intersect (exposure_gfm_seasonal.parquet, exposure_jrc_rp.parquet, exposure_totals.parquet)`.
+
+**A3 numeric gate — PASS:**
+
+```
+exposure_gfm_seasonal.parquet  i.cols=none  identity_dev=5.82e-11 ncol=26 mtime=2026-10-06 19:16:54
+exposure_jrc_rp.parquet        i.cols=none  identity_dev=5.82e-11 ncol=23 mtime=2026-10-06 19:16:54
+exposure_totals.parquet        i.cols=none  identity_dev=5.82e-11 ncol=18 mtime=2026-10-06 19:16:54
+  rows=290 adm1=47 national pop_total=52837534
+GATE PASS
+```
+
+**Idempotence — PASS** (`logs/relevel42_a2_dryrun2_20261006_191719.log`): no artefact-drop lines,
+x1.0000 on all three, 52,837,534.
+
+**Label check — FAIL.** Expected `county-growth-from-2020…` on all three. Got:
+
+```
+exposure_gfm_seasonal.parquet  pop_method=county-level-yearmatched-yearmatched  pop_source(n=7)=knbs-census-2019,knbs-projection-2020,…,knbs-projection-2025
+exposure_jrc_rp.parquet        pop_method=county-level                          pop_source(n=1)=knbs-projection-2026
+exposure_totals.parquet        pop_method=county-level                          pop_source(n=1)=knbs-projection-2026
+```
+
+jrc + totals unchanged; GFM made *worse* (suffix appended a second time). Every table has exactly
+one distinct `pop_method` value. (`pop_source` n=7 on GFM, not 8: 2018 and 2019 both carry
+`knbs-census-2019`, as the live table already did — a counting slip in the expectation, not a
+deviation.)
+
+**Root cause — `pop_method` is shadowed inside `:=`.** In `relevel()`
+(`R/observational/7b_relevel_exposure_pop.R`):
+
+```r
+# by_year branch, L184-186
+dt[, `:=`(pop_total = pop_total_grid * pop_scale_adm1,
+          pop_method = paste0(pop_method, "-yearmatched"), ...)]
+# other branch, L189-190
+dt[, `:=`(pop_total = pop_total_grid * pop_scale_adm1,
+          pop_source = pop_label, pop_method = pop_method, ...)]
+```
+
+The tables already carry a `pop_method` column (written by the engine), and it is **not** in the
+`drop` vector at the top of `relevel()` (`pop_scale_adm1, pop_scale_census, pop_growth_county,
+pop_year, pop_source` — L171-172). So inside `dt[, :=(...)]` the RHS `pop_method` resolves to the
+**column**, not the global set at L155/L161. jrc/totals: a self-assignment, string preserved
+whatever the method. GFM: the existing string gets `-yearmatched` appended on every pass. The
+log line at L215 prints the global, which is why every run has *reported* the right method while
+*writing* the old one.
+
+Same construct in the engine, `R/observational/7_zonal_exposure.R` L263 and L266
+(`A[, pop_method := paste0(pop_method, "-yearmatched")]`, `pop_method = pop_method`) — once a
+`pop_method` column exists on an input, it will shadow there too.
+
+**This fully explains #44.** The Sep-8 engine run wrote `county-level` (census default, L149).
+Every 7b re-level since — census-only on 09-10, year-matched `county-growth` on 09-17 — printed
+`county-growth-from-2020` to the log but left the column as written, adding `-yearmatched` to
+GFM once on 09-17. The live mislabel is not a wrong invocation; no invocation could have changed
+it. Fix is one line (add `"pop_method"` to the `drop` vector, or use `..pop_method` / a
+differently-named local), then re-apply: the on-read artefact strip is a no-op now, numerics are
+already x1.0000, and the strings will finally be overwritten.
+
+**A2.4 — lookup done, nothing on the node.** `logs/` holds no file dated 2026-09-16..18 and no
+7b header line from that run (it was tee'd nowhere; stdout went into RESPONSE #4). The archived
+thread records the invocation shape: `POP_YEAR_MATCH=1 APPLY=1 Rscript
+R/observational/7b_relevel_exposure_pop.R` with `POP_REF_YEAR` left at its 2026 default
+(`archive/dispatches/DISPATCH_cglabs_knbs_population.md` L54-58, L390). Given the shadowing above,
+the invocation is moot for #44.
+
+**State on the node now.** Local `Data/exposure/intersect/` = S3 minus `i.pop_source`, numerics
+identical, jrc/totals labels as live, GFM label double-suffixed. Not publishable as-is. S3 unchanged.
+No backup copy was taken of the pre-apply local files (the dispatch did not ask for one); S3
+versioning holds the published state and the apply is a pure function of the stored numerics, so
+nothing is lost.
+
+**Awaiting:** the one-line 7b fix (and the engine twin if you want it in the same commit) on
+`develop`, then a GO to re-run A2.2 → A2.3 from here. Seconds plus the background publish.
+
+---
+
 ## Block A2 — corrected Block A: default method, and the `pop_method` string is expected to change (#42, #44)
 
 **GO — run this.** It supersedes Block A below. Your stop was correct and your diagnosis is adopted
