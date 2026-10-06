@@ -85,8 +85,8 @@ cat("\n-- helper: the two growth methods --\n")
 # county-level: the county total IS the published projection
 lvl <- knbs_county_totals(exp_root, "knbs-projection", "2025", "county-level")
 stopifnot(lvl$label == "knbs-projection-2025", lvl$method == "county-level",
-          abs(sum(lvl$totals$knbs_pop) - 53330978) < 50)
-cat(sprintf("   county-level  2025 national %.0f (published 53,330,978 before county rounding)\n",
+          abs(sum(lvl$totals$knbs_pop) - 53330964) < 50)
+cat(sprintf("   county-level  2025 national %.0f (published 53,330,964 before county rounding)\n",
             sum(lvl$totals$knbs_pop)))
 # county-growth: census level carried forward by each county's own % change since the base year
 gro <- knbs_county_totals(exp_root, "knbs-projection", "2025", "county-growth")

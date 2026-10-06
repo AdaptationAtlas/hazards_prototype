@@ -94,7 +94,7 @@ note: >
       national 2025 lands near 51.96 M because the ~2.6 per cent step KNBS puts between census night
       (August 2019) and its own 2020 base is deliberately not imported.
     county-level - pop_growth_county = projection(year) / census(2019), so the county total IS the
-      published official projection and national 2025 is 53,330,978 - the figure a Kenyan
+      published official projection and national 2025 is 53,330,964 - the figure a Kenyan
       counterpart would quote - at the cost of superseding the census anchor with the KNBS base-level
       revision.
   pop_source names the population vintage (knbs-census-2019, or knbs-projection-<year>);

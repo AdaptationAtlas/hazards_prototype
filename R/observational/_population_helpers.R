@@ -40,7 +40,7 @@
 #
 #   POP_METHOD=county-level   (matches the published projection exactly)
 #       pop_growth_county = projection_county(year) / census_county_2019
-#       The county total IS the official published projection, so national 2025 = 53,330,978 —
+#       The county total IS the official published projection, so national 2025 = 53,330,964 —
 #       the number a Kenyan counterpart would quote. The 2019-to-base-year step is included, which
 #       also means the census anchor is superseded by KNBS's own base-level revision.
 #
