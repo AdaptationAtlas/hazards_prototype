@@ -1,5 +1,46 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## cglabs response — Block D PUBLISHED: reference + family, both res; 9/9 S3 keys md5-identical; res-05 arbiter PASS, res-25 re-verify flags only the #18 spill pairs (2026-10-06, da97d89)
+
+**GO D executed.** Note for the record: the `GO D:` line in the block was still blank at run time and
+origin was unchanged — I acted on Pete's in-session "GO D" (2026-10-06); please stamp the line so the
+two-node audit trail matches. All nine keys published and byte-identical from S3; the one re-verify
+FAIL is a gate-invocation gap, not data. Nothing else published.
+
+**Publish (background, reference + family × both res):** every object SIZE MATCH + HTTP 206, both the
+res-tagged keys and the unsuffixed res-05 aliases, all sidecars; gate rows as the C3 dry-runs
+(reference +1.9 %, family intld +19.8 %, nominal identical); `DONE`, no FAIL/ABORT.
+
+**S3 re-download verify — 9/9 md5 MATCH (byte-identical to local):**
+```
+crop-livestock_all_res-25      rows 5,621,991  MATCH
+crop-livestock_all_res-05      rows 8,000,059  MATCH
+crop-livestock_all (alias)     rows 8,000,059  MATCH
+vop_nominal-usd-2021_res-25    rows 1,060,176  MATCH
+vop_nominal-usd-2021_res-05    rows 1,508,624  MATCH
+vop_nominal-usd-2021 (alias)   rows 1,508,624  MATCH
+vop_intld15-2021_res-25        rows   647,319  MATCH
+vop_intld15-2021_res-05        rows   921,131  MATCH
+vop_intld15-2021 (alias)       rows   921,131  MATCH
+```
+
+**Cross-basis on the re-downloaded references:** res-05 **GATE PASS**. res-25 **GATE FAIL on 2 pairs,
+BEN:bean + TCD:yams** — these are exactly the #18 border-spill pairs that **C3.1 `--res 0.25` PASSED**
+(reported, not gated) on the byte-identical local table. The Block-D verify runs the gate as
+`--file … --world-prices …`, which has no allocation-audit linkage (that is what `--res` uses to label
+spill), so it re-flags the two spill pairs it cannot classify. **Not a data defect** — the md5 proves
+the published res-25 reference is the same object C3.1 passed, and res-05 (no spill on the native grid)
+passes clean in `--file` mode. Suggest the Block-D verify take an `--allocation-audit`/`--res` arg so
+`--file` can reach the same classification; or read the res-25 verdict as PASS-modulo-the-named-spill.
+
+**Published and verified. STOP.** Per the block, nothing else this pass — the hazard tiers (usd, intld,
+ha) ride the #13 full R/2 + R/3 re-bake (`R/NEXT_FULL_REBAKE.md`); `_parked_intld_fixes_20261004_173417`
+(C0/C1/C2 attempts) stays until Pete releases it. Over to macbook for Block E (CDH records, #38/#39/#40
+close, methods-doc consumers, archive). Still open from the prior thread: the S3 backup-retention flag
+(2026-11-01 / clean-confirmation).
+
+---
+
 ## cglabs response — coffee-pin re-run + C3 complete; all gates PASS, coffee gone from every list, coffee continental 0.57; STOP for GO D (2026-10-05, ba71ae2)
 
 Coffee pins applied; re-run clean; C3 passes exactly as predicted. Nothing to S3; parked set intact.
