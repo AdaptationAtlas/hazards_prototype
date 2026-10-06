@@ -2,6 +2,85 @@
 
 Append-only, **newest block on top**. Respond by prepending a `### RESPONSE` block.
 
+### RESPONSE — Block A STOPPED at gate A1 (cglabs, 2026-10-06 11:57 EAT)
+
+**Nothing written, nothing published.** A0 passed; A1 failed its x1.0000 invariant; stopped there per
+the dispatch. Diagnosis below is read-only (a second dry run with the default method).
+
+**A0 — PASS.** All invariants as written:
+
+```
+exposure_gfm_seasonal.parquet  i.cols=                 mtime=2026-09-17 12:56:53
+exposure_jrc_rp.parquet        i.cols=i.pop_source     mtime=2026-09-17 12:56:53
+exposure_totals.parquet        i.cols=i.pop_source     mtime=2026-09-17 12:56:53
+rows=290 adm1=47 national pop_total=52837534 pop_total_grid=55119798
+pop_source=knbs-projection-2026 pop_method=county-level pop_year=2026
+```
+
+No other Rscript running; no `POP_*`/`APPLY` env set. `i.pop_source` holds `knbs-census-2019` on
+every row of both affected tables (the right-hand copy from the pre-fix join).
+
+**A1 — FAIL.** With the dispatch's env (`POP_METHOD=county-level`) every table moved
+(`logs/relevel42_dryrun_20261006_115637.log`):
+
+```
+re-levelling Data/exposure/intersect | POP_SOURCE=knbs-projection POP_YEAR=2026 POP_METHOD=county-level | DRY RUN
+  exposure_jrc_rp.parquet      dropped stale join artefact: i.pop_source (#42)
+  exposure_totals.parquet      dropped stale join artefact: i.pop_source (#42)
+  exposure_gfm_seasonal.parquet      2610673 ->      2675885  (x1.0250)
+  exposure_jrc_rp.parquet           5668271 ->      5816936  (x1.0262)
+  exposure_totals.parquet          52837534 ->     54226998  (x1.0263)
+  national pop_total now 54226998 [knbs-projection-2026 / county-growth-from-2020]
+DRY RUN — nothing written.
+```
+
+The two `dropped stale join artefact` lines are exactly as expected (jrc + totals, not GFM) — the #42
+fix itself behaves. The x-factors do not.
+
+**Diagnostic dry run, default method (`POP_METHOD` unset = `county-growth`), same env otherwise**
+(`logs/relevel42_dryrun_DIAG_default_method_20261006_115747.log`):
+
+```
+re-levelling Data/exposure/intersect | POP_SOURCE=knbs-projection POP_YEAR=2026 POP_METHOD=county-growth | DRY RUN
+  exposure_jrc_rp.parquet      dropped stale join artefact: i.pop_source (#42)
+  exposure_totals.parquet      dropped stale join artefact: i.pop_source (#42)
+  exposure_gfm_seasonal.parquet      2610673 ->      2610673  (x1.0000)
+  exposure_jrc_rp.parquet           5668271 ->      5668271  (x1.0000)
+  exposure_totals.parquet          52837534 ->     52837534  (x1.0000)
+  national pop_total now 52837534 [knbs-projection-2026 / county-growth-from-2020]
+DRY RUN — nothing written.
+```
+
+**What this means.** The live tier-16 tables were built with **`county-growth`**, not `county-level`.
+That matches the record: Pete picked option C **with `county-growth`** on 2026-09-17
+(`archive/dispatches/DISPATCH_cglabs_knbs_population.md` lines 40 and 347, RESPONSE #4, commit
+4cf82b4), and `county-growth` reproduces every live value to x1.0000. The live `pop_method` column
+saying `county-level` (`county-level-yearmatched` in GFM) is a **mislabel**, not the method used.
+54,226,998 is the published-KNBS-level figure for 2026; 52,837,534 is census-anchored growth.
+
+Consequences for this dispatch, for macbook to rule on — not improvised here:
+
+1. **Block A's env is wrong.** `POP_METHOD=county-level` is Block B, not the published state. The
+   value-neutral env is the default method (`POP_METHOD` unset or `county-growth`).
+2. **Block A cannot be fully value-neutral even so.** The fixed 7b rewrites `pop_method` from the
+   stored strings; under `county-growth` it writes `county-growth-from-2020` (GFM:
+   `county-growth-from-2020-yearmatched`), i.e. it would *correct* the mislabel as a side effect.
+   Numeric columns stay x1.0000. Decide whether that string change is in scope for A or wants its
+   own line in the dispatch / CDH record.
+3. **#43 may rest on the mislabel.** `HANDOVER_2026-10-06_ke-enso-exposure-denominator-answers.md`
+   §(b) treats `pop_method = county-level` on projection rows as the live choice awaiting Pete. The
+   live *numbers* are already the `county-growth` Pete chose. The 1.4 M question is still real as a
+   policy question, but the premise "published with county-level" is not.
+4. **How the mislabel got written** I did not chase. The code at 4cf82b4 (lines 141-144) should
+   have produced `county-growth-from-2020` for a `knbs-projection-2026` reference, yet the parquet
+   says `county-level`. Worth a look on macbook before the next apply.
+
+**Awaiting:** a corrected Block A (env + expectation on the `pop_method` string), or a GO to run it
+with the default method as-is. Either is a seconds-long re-run of A1→A5 from here. Tier 16 on S3
+is untouched; the KE-ENSO workaround stays in place.
+
+---
+
 ## Block B — `pop_method` re-level — **PARKED, needs Pete GO** (#43)
 
 Do **not** run this block yet. The live tables are published with `pop_method = county-level` on
