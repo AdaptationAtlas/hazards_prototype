@@ -55,30 +55,35 @@ note: >
   rf-subsistence); the whole-crop figure is tech = all. Livestock rows (cattle, sheep, goats, pigs,
   poultry, each split highland / tropical, plus total-highland and total-tropical) have no technology
   and carry number and vop only. Every row is a sum (stat = sum).
-  KNOWN DEFECT IN THE intld15-2021 ROWS FOR MILLET. FAOSTAT reports one item, Millet; the upstream
-  step that distributes its value places all of it on pearl-millet and none on small-millet, so
-  pearl-millet is inflated wherever finger millet dominates (Kenya, Ethiopia) and small-millet is
-  absent from the constant-dollar rows. The nominal-usd-2021 rows price each SPAM crop separately
-  and are not affected. Tracked as hazards_prototype issue 38.
-  KNOWN DEFECT IN THE intld15-2021 ROWS FOR SUDAN (ALL CROPS) AND NIGERIA BANANA. The constant-dollar
-  chain places the national FAOSTAT value on the MapSPAM footprint by production share; MapSPAM 2020
-  holds almost no production for Sudan (0.05 million tonnes against FAOSTAT's roughly 15) and codes
-  Nigeria's banana-family production as plantain, so the whole national value sits on a sliver of
-  cells and every unit holding one of them is grossly overstated. Sudan and Nigeria-banana
-  constant-dollar rows must not be used; the nominal-usd-2021 rows for the same pairs are sound.
-  Tracked as hazards_prototype issue 39.
-  CHANGED AGAINST THE PREVIOUS PUBLICATION (2026-09-28). The nominal-usd-2021 rows were republished
-  after a producer-price defect found on 2026-09-27: the 2026-09-25 publication had gap-filled prices
-  with means and a refreshed FAOSTAT file carried two currency artefacts (Zimbabwe wheat 2022 at about
-  230 times the world price, Rwanda oil palm fruit at about 30 times), which the fill spread to
-  Zambia, Botswana and 17 East African countries. Prices are now clipped to a band around the world
-  median before averaging and filled with medians. Against the 2025-11 publication (the last sound
-  one) continental totals are within a few per cent for almost every crop; named exceptions are
-  sugarcane (about half: Zimbabwe, Mauritania and Guinea had prices ten times world), cowpea (0.66,
-  a FAOSTAT price update) and, per country, arabica coffee in Burundi and Rwanda (about 15 times up,
-  previously priced per kilogram of cherry), sweet potato and cotton in Guinea (5 to 8 times up).
-  Rows for wheat, oil palm, plantain and cassava are back within a quarter of the 2025-11 values.
-  The intld15-2021 rows do not use producer prices and did not change.
+  CHANGED AGAINST THE PREVIOUS PUBLICATION (2026-10-06). Both value bases were republished after one
+  correction pass (hazards_prototype issues 38, 39 and 40, and a review of the nominal price method;
+  method text docs/methods/nominal_price_method.md in the repository). NOMINAL-USD-2021 ROWS: the price
+  per country and crop is now FAOSTAT's implied price (gross production value in current US dollars
+  divided by production), with the producer price as fallback, a test that rejects frozen
+  local-currency imputations, a clip to five times the world value, median fills from neighbours,
+  region and continent, a within-crop basis guard, and four cited evidence pins (Angola banana; coffee
+  in Ethiopia, Uganda and Guinea, per tonne of green bean). Own prices now cover about 80 per cent of
+  FAOSTAT production, up from about 56. Continental nominal crop value is about 0.82 times the previous
+  publication; the largest per-crop moves are cowpea (0.33), plantain (0.41) and coffee (0.57), where
+  FAO's own country valuations replace fills that had carried a few high prices across whole regions.
+  INTLD15-2021 ROWS: a FAOSTAT item shared by several MapSPAM crops is split by production share
+  (small-millet now has values and pearl-millet no longer carries all millet value); bananas and
+  plantains are pooled and split the same way; where MapSPAM holds less than 10 per cent of FAOSTAT's
+  tonnage for a country and crop, the constant-dollar value is left empty instead of being placed on a
+  sliver of cells (every crop in Sudan, plus a few small pairs elsewhere); North Africa lies outside the
+  MapSPAM release and has no constant-dollar crop rows. BOTH: values are allocated and priced on the
+  0.05 degree grid at both resolutions, so the Seychelles, empty on the 0.25 degree grid before, now
+  carry value. Livestock rows did not change.
+  INTERIM MISMATCH WITH THE HAZARD PRODUCT. africa-hazard-exposure-nexgddp as published on 2026-09-30
+  was built with the previous nominal prices. Until it is re-baked against this table (scheduled
+  immediately after this publication), an exposed share computed as hazard product divided by this
+  table is too high for crops whose price fell: cowpea about three times, plantain about 2.4 times,
+  coffee about 1.75 times, and it can exceed 100 per cent. Most crops are within a few per cent.
+  KNOWN LIMITATIONS. FAOSTAT coffee tonnage for the Central African Republic (about 300 thousand
+  tonnes) and Guinea (about 240) is far above International Coffee Organization figures (2-6 and about
+  9), and MapSPAM is calibrated to FAOSTAT, so coffee value there is overstated on both bases. Three
+  pairs remain outside the cross-basis band for documented tonnage or price reasons: Ethiopia tea,
+  Togo oil palm, Guinea-Bissau maize.
   HISTORY. Until 2026-09-25 this was the only published exposure table and its livestock
   constant-dollar rows held nominal US dollar values, so livestock reconciled to FAOSTAT at 1.198
   (hazards_prototype issue 30). Republished from the corrected chain on 2026-09-25: livestock now
@@ -103,7 +108,7 @@ citation:
   url: https://adaptationatlas.cgiar.org/
 
 created: "2026-09-26"
-updated: "2026-09-26"
+updated: "2026-10-06"
 
 spatial:
   bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present
@@ -178,9 +183,12 @@ processing:
   - id: value
     description: >
       Crop value in constant 2015 international dollars distributes FAOSTAT gross production value
-      across pixels by each crop's production share; crop nominal 2021 US dollars multiply SPAM
-      production by the FAOSTAT producer price (five-year median, filled from neighbours, region,
-      continent, then world); livestock values distribute FAOSTAT national values by GLW4 head share.
+      across pixels by the production share of the MapSPAM crops that share a FAOSTAT item, left empty
+      where MapSPAM holds under 10 per cent of FAOSTAT's tonnage; crop nominal 2021 US dollars multiply
+      SPAM production by a national price (FAOSTAT implied price, producer-price fallback, stale-price
+      test, world clip, median fills, basis guard, cited pins; docs/methods/nominal_price_method.md);
+      both computed on the 0.05 degree grid and sum-resampled; livestock values distribute FAOSTAT
+      national values by GLW4 head share.
     code:
       url: https://github.com/AdaptationAtlas/hazards_prototype
       version: R/0.4.0_create_crop_vop_intld15.R, R/0.4.1_create_livestock_vop.R, R/0.4.2_create_crop_vop_nominal_usd.R
@@ -236,9 +244,12 @@ cdh:
       - use: Summing or comparing rows across the two vop units.
         reason: intld15-2021 is constant 2015 international dollars; nominal-usd-2021 is nominal 2021 US dollars.
         use_instead: Filter on `unit` and stay on one basis.
-      - use: Pearl-millet or small-millet figures in the intld15-2021 rows.
-        reason: Upstream allocation places all FAOSTAT Millet value on pearl-millet (hazards_prototype issue 38).
-        use_instead: The nominal-usd-2021 rows for millet, or wait for the corrected republish.
+      - use: Dividing africa-hazard-exposure-nexgddp by this table before that product is re-baked (October 2026).
+        reason: The hazard product published 2026-09-30 uses the previous nominal prices; shares are inflated where prices fell (cowpea, plantain, coffee).
+        use_instead: Wait for the re-baked hazard product, or restrict to crops whose price did not move.
+      - use: Coffee value for the Central African Republic or Guinea.
+        reason: FAOSTAT and MapSPAM coffee tonnage there is far above International Coffee Organization figures.
+        use_instead: No substitute in this table; treat as an upper bound.
       - use: Reading the unsuffixed key as a distinct dataset.
         reason: It is a byte-identical alias of this table and will not be maintained separately.
         use_instead: variable=crop-livestock_all_res-05.parquet.

@@ -60,6 +60,13 @@ note: >
   plantain and cassava within a quarter; sugarcane roughly halved (artefact prices removed); arabica
   coffee in Burundi and Rwanda about fifteen times up; Seychelles coconut is absent on this grid
   (hazards_prototype issue 40). Sudan and Nigeria-banana rows are sound on this nominal basis.
+  ITS DENOMINATOR WAS REPUBLISHED ON 2026-10-06 WITH A NEW NOMINAL PRICE METHOD, AHEAD OF THIS PRODUCT.
+  crop-livestock_all_res-25 / _res-05 now price crops with FAOSTAT's implied price, a basis guard and
+  cited pins (docs/methods/nominal_price_method.md in the repository); continental nominal crop value is
+  about 0.82 times what this product was built with. Until this product is re-baked against it
+  (scheduled immediately), exposed shares computed as this product divided by the denominator are too
+  high for crops whose price fell: cowpea about three times, plantain about 2.4, coffee about 1.75, and
+  can exceed 100 per cent. Most crops are within a few per cent.
   THE DENOMINATOR EXISTS AT TWO RESOLUTIONS, EXPLICIT IN THE KEY. variable=crop-livestock_all_res-25
   is extracted on the 0.25 degree NEX-GDDP hazard grid - THE SAME GRID AS THIS PRODUCT - and is the
   one to divide by; variable=crop-livestock_all_res-05 is on the 0.05 degree Atlas exposure grid and
@@ -103,7 +110,7 @@ citation:
   url: https://adaptationatlas.cgiar.org/
 
 created: "2026-09-18"
-updated: "2026-10-01"
+updated: "2026-10-06"
 
 spatial:
   bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present
