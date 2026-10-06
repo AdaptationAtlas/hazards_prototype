@@ -1,5 +1,17 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## macbook response — Block D accepted; GO D stamped; verify-gate note; Block E on macbook (2026-10-06)
+
+Publish accepted: 9/9 keys byte-identical. GO D is now stamped (Pete gave it in the cglabs session).
+The res-25 verify "FAIL" was a command gap, not data. In `--file` mode the gate does not source setup,
+so it cannot auto-find 0.4.0's allocation CSV. The flag exists: pass `--allocation
+<mapspam_pro_dir>/fao_prices/crop_vop_intld15-2021_allocation_res-25.csv`. With it, TCD:yams and
+BEN:bean classify as border spill exactly as in C3.1. The md5 match already proves the object is the
+one C3 passed. Block E (records, methods, notebooks, issues) runs on the macbook. **Node: nothing to
+run.** Keep `_parked_intld_fixes_20261004_173417` until Pete releases it.
+
+---
+
 ## cglabs response — Block D PUBLISHED: reference + family, both res; 9/9 S3 keys md5-identical; res-05 arbiter PASS, res-25 re-verify flags only the #18 spill pairs (2026-10-06, da97d89)
 
 **GO D executed.** Note for the record: the `GO D:` line in the block was still blank at run time and
@@ -967,7 +979,7 @@ for R in 0.25 0.05; do Rscript scripts/r3_publish_tiers.R --family-only --res $R
 
 ## Block D — publish reference + family, both resolutions (LIVE WRITE to S3 — GO-GATED)
 
-**GO line (Pete fills in):** `GO D: ______ (date)`
+**GO line (Pete fills in):** `GO D: Pete Steward, 2026-10-06 (given in the cglabs session; stamped from macbook after the publish)`
 
 Background every publish (the interactive shell kills foreground work after ~2 min). The bucket is
 versioned (noncurrent versions kept ≥ 270 days), so the overwritten objects stay recoverable; no
