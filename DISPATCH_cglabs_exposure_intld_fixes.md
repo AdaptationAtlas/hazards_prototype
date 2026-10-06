@@ -1,5 +1,91 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## Block F — usd-only R/3 re-bake against the new denominator (GO F: Pete Steward, 2026-10-06) → STOP before publish
+
+**Why.** The live hazard tiers (`variable=vop_nominal-usd21`, published 2026-09-30) were built with the
+previous nominal prices. The denominator published today carries the new ones. Exposed share =
+hazard ÷ reference is now too high where prices fell: cowpea ~3×, plantain ~2.4×, coffee ~1.75×. The
+CDH records say so. Pete chose a fast usd-only re-bake (2026-10-06): rebuild the nominal-USD tiers
+for both timeframes on the new `spam_vop_nominal-usd-2021_*_res-25.tif`, gate them, publish the three
+jagermeyr tiers. intld and ha tiers are untouched and stay unpublished (#13 / rebake item 7).
+Scope by **parking**, exactly as in `DISPATCH_cglabs_r3_res25_rerun.md`: R/3 is skip-if-exists, so
+parking every usd output makes §4 rebuild only usd.
+
+### F0 — preflight (read-only, minutes)
+```bash
+cd <hazards_prototype> && git pull --ff-only && git log -1 --oneline
+pgrep -af Rscript || echo "no Rscript running"
+env | grep -E '^(FORCE_OVERWRITE|R3_|SKIP_R3|REBAKE_SCENARIO)' || echo "no R/3 env set (good)"
+Rscript R/checks/probe_r3_res25_preflight.R 2>&1 | tail -15
+Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); f <- list.files(file.path(mapspam_pro_dir, "variable=vop_nominal-usd-2021"), "_res-25\\.tif$", full.names = TRUE); print(data.frame(file = basename(f), mtime = format(file.mtime(f), "%m-%d %H:%M")))'
+```
+**Expect:** preflight passes on inputs; ignore the inert `r21_rerun.sh` match as before. The crop usd
+input resolves to `spam_vop_nominal-usd-2021_all_res-25.tif` with the **2026-10-05/06 mtime** of the
+coffee-pin run. An older mtime means the input is stale: STOP.
+
+### F1 — park every usd output, both timeframes
+```bash
+cd <hazards_prototype>; export STAMP=$(date +%Y%m%d_%H%M%S); echo $STAMP > logs/usd_rebake_stamp.txt
+Rscript -e '
+  source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R")
+  stamp <- readLines("/home/jovyan/atlas/hazards_prototype/logs/usd_rebake_stamp.txt")
+  root <- file.path("Data", paste0("_parked_usd_rebake_", stamp))
+  for (tf in timeframe_choices) {
+    src <- file.path(atlas_dirs$data_dir$hazard_risk_vop_usd, tf); if (!dir.exists(src)) next
+    dst <- file.path(root, "hazard_risk_vop_usd", tf); dir.create(dst, recursive = TRUE, showWarnings = FALSE)
+    f <- list.files(src, "\\.(tif|parquet|json|txt)$", full.names = TRUE)
+    stopifnot(all(file.rename(f, file.path(dst, basename(f)))))
+    cat(sprintf("%-10s parked %5d | left behind %d\n", tf, length(f), length(list.files(src))))
+  }'
+```
+**Expect:** `left behind 0` for both timeframes.
+
+### F2 — R/3 (background; usd §4.1 ~80-115 min per timeframe plus §4.2)
+```bash
+nohup Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); source("/home/jovyan/atlas/hazards_prototype/R/3_freq_x_exposure.R")' > logs/usd_rebake_$STAMP.log 2>&1 &
+echo $! > logs/usd_rebake_$STAMP.pid
+# T + 5 min:
+grep -E 'Using crop vop usd file|Using livestock|hazard grid res|overwrite4|R3_CROP_VOP_USD|align|WARN' logs/usd_rebake_$STAMP.log | head -20
+```
+**Expect at T+5:** the header shows `Using crop vop usd file: spam_vop_nominal-usd-2021_all_res-25.tif |
+R3_CROP_VOP_USD = 2021`, `overwrite4= FALSE`, and no `WARN exposure mass not conserved`.
+**Checkpoints:**
+```bash
+grep -E '4\.1\.1\) .*Complete|4\.2\) Extracting|FAILED|WARN|Error' logs/usd_rebake_$STAMP.log
+```
+- **This run differs from the last one:** the intld and ha §4.1 passes should finish in minutes,
+  because their outputs exist (skip-if-exists).
+- The **usd** pass must take tens of minutes per timeframe. Single digits for usd is the
+  silent-failure signature: STOP.
+- `failed_risk_x_exposure_*.txt` must not appear.
+
+### F3 — gates at exit (read-only), then STOP
+```bash
+Rscript R/checks/usd_total_vs_reference.R --res 0.25 --severity severe
+Rscript R/checks/usd_total_vs_reference.R --res 0.25 --severity moderate
+Rscript scripts/stamp_ensemble_membership.R --timeframe jagermeyr --dry-run
+TWIN=$(Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); cat(file.path(exposure_dir, "vop_nominal-usd-2021_adm_sum_spam20_glw420_res-25.parquet"))' 2>/dev/null)
+ls -la "$TWIN"
+Rscript scripts/r3_publish_tiers.R --dry-run --drift-exposure "$TWIN" \
+  --drift-allow-flips SYC:coconut,SYC:banana,SYC:cassava,SYC:tea,ESH:maize,ESH:yams 2>&1 | tee logs/usd_rebake_dryrun_$STAMP.log
+```
+**Expect:**
+- **`usd_total_vs_reference` usd side PASS** at both severities. The product equals the exposure it
+  was built from, on the same grid.
+- The stamp dry-run reports **18 members**.
+- **Publisher dry-run:** G1-G6 ok for all three tiers. G6 judges the product against the new twin
+  (`T_local / exposure_new`), so the price move does not show as drift there. Its raw live-vs-local
+  table **will** show the price move (cowpea, plantain and coffee down; ETH/UGA/GIN coffee pinned).
+  That is information, not a gate.
+- Flips: only the six allowed above (the four SYC crops and ESH maize/yams, which gain value on the
+  new exposure). **Any other flip: STOP.**
+
+Paste F0-F3 and **STOP**. The publish (stamp for real, `r3_publish_tiers.R` with the same `--drift-*`
+flags, verify by re-download plus the CR-068 probes, exactly Block D of the r3_res25 dispatch) follows
+on the macbook's GO line here: `GO F-publish: ______`.
+
+---
+
 ## macbook response — Block D accepted; GO D stamped; verify-gate note; Block E on macbook (2026-10-06)
 
 Publish accepted: 9/9 keys byte-identical. GO D is now stamped (Pete gave it in the cglabs session).
