@@ -1,5 +1,48 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## macbook response — Block F accepted; GO F-publish (Pete, 2026-10-06); KEN robusta named; publish block (2026-10-06)
+
+Excellent trace. Accepted as you read it. KEN:robusta-coffee fails because 0.4.4 and R/3 zone
+differently on 31 border and lake cells: 0.4.4 zones on admin0 directly, R/3 aggregates admin2
+upwards, and both use `touches = TRUE`. This is pre-existing #18 behaviour, made visible by a cell
+that newly carries value; it is not a product error. Pete: **GO F-publish**, with KEN:robusta-coffee
+recorded as a named border-attribution exception. The 31-cell table and the duplicate gaul0 codes
+go on #18. Changing `usd_total_vs_reference` to an admin2-aggregated basis is logged for later, not
+done now. The `$TWIN` capture is fixed below (`| tail -1`). The small-millet intld tifs in
+`hazard_risk_vop/` are noted; they are unpublished and stay with the intld tiers (#13 / rebake item 7).
+
+**Publish (background; the interactive shell kills long foreground jobs):**
+```bash
+cd <hazards_prototype> && git pull --ff-only && git log -1 --oneline; STAMP=$(cat logs/usd_rebake_stamp.txt)
+TWIN=$(Rscript -e 'suppressMessages(suppressWarnings(source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"))); cat(normalizePath(file.path(exposure_dir, "vop_nominal-usd-2021_adm_sum_spam20_glw420_res-25.parquet")), "\n")' 2>/dev/null | tail -1)
+ls -la "$TWIN" || echo "TWIN not resolved - STOP"
+cat > logs/usd_publish_$STAMP.sh <<SH
+set -e
+cd /home/jovyan/atlas/hazards_prototype
+Rscript scripts/stamp_ensemble_membership.R --timeframe jagermeyr
+Rscript scripts/r3_publish_tiers.R --drift-exposure "$TWIN" --drift-allow-flips SYC:coconut,SYC:banana,SYC:cassava,SYC:tea,ESH:maize,ESH:yams
+echo "===== DONE \$(date '+%F %T')"
+SH
+nohup bash logs/usd_publish_$STAMP.sh > logs/usd_publish_$STAMP.log 2>&1 &
+```
+**Then verify from S3 by re-download** (the snippet from Block D of `DISPATCH_cglabs_r3_res25_rerun.md`):
+- md5 local vs S3 for severe / moderate / extreme, with rows and `sum(value)` equal;
+- the sidecar present with `n_members` 18;
+- HTTP 206 with today's `Last-Modified`.
+
+Then run the CR-068 probes from `atlas_notebooks/scripts/`: `probe_no_hazard_arithmetic_quick.sh AGO`
+and `probe_cross_parquet_vop_drift.sh AGO`. Plus one consistency check that this publish exists to
+deliver: for cowpea, plantain, arabica- and robusta-coffee, cassava and coconut, the adm0 ratio
+(historic `any + none`, severe tier) ÷ the res-25 reference nominal-usd-2021 is **~1 everywhere**.
+The only exceptions allowed are the named border pairs (KEN robusta, plus TCD yams and BEN bean if
+they show). **No ratio above 1.05.** That proves the interim overstatement is gone.
+
+Paste the publish log tail, the verification, the probes and the ratio table, and **STOP**. The
+macbook then closes the thread: the CDH records drop the interim warning, the notebook text is
+updated, and the dispatch is archived.
+
+---
+
 ## cglabs response — Block F R/3 run complete (F1/F2 by the previous session); F3 STOPPED: usd gate FAIL on one pair, KEN:robusta-coffee 0.033 — one Lake Victoria border cell booked to UGA by §4.2's admin2 zoning, to KEN by 0.4.4's admin0 zoning; publisher dry-run G1–G6 PASS; NOT published (2026-10-06, c7de8fd)
 
 **State on arrival.** No Rscript running. `logs/usd_rebake_stamp.txt` = `20261006_091428`; a previous
@@ -172,7 +215,7 @@ Rscript scripts/r3_publish_tiers.R --dry-run --drift-exposure "$TWIN" \
 
 Paste F0-F3 and **STOP**. The publish (stamp for real, `r3_publish_tiers.R` with the same `--drift-*`
 flags, verify by re-download plus the CR-068 probes, exactly Block D of the r3_res25 dispatch) follows
-on the macbook's GO line here: `GO F-publish: ______`.
+on the macbook's GO line here: `GO F-publish: Pete Steward, 2026-10-06 (KEN:robusta-coffee accepted as a named border-attribution exception)`.
 
 ---
 
