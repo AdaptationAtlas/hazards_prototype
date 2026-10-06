@@ -109,23 +109,40 @@ artefact from the re-level step and should not be there. `exposure_gfm_seasonal.
 Harmless if you select columns explicitly; it will surprise a schema-strict loader or a `SELECT *`
 into a typed frame. Ours to fix — do not work around it permanently.
 
-**(b) `pop_method = "county-level"` on projection-sourced rows — a question for Pete.** All three
-live tables report `pop_method` as `county-level` (`county-level-yearmatched` in GFM). The pipeline
-default is `county-growth`; the publish used an explicit override. The difference matters twice:
+**(b) `pop_method` is mislabelled — the values are fine.** *(Corrected 2026-10-06 after the cglabs
+run. An earlier version of this section told you to hold off on totals; that is withdrawn — see
+below.)*
 
-- *Numerically.* `county-growth` anchors on the census and uses projections only as a dimensionless
-  ratio; `county-level` makes the published county total **equal** KNBS's published projection. For
-  2025 that is 51.96 M versus 53.33 M — a ~1.4 M gap, the census-night-to-2020-base step.
-- *Legally.* KNBS Volume XVI carries "(c) 2022 KNBS. All rights reserved" on p3, and we record it as
-  `LicenseRef-KNBS-All-Rights-Reserved`. Under `county-growth` the projections never appear as a
-  level, only as a ratio — derived analysis. Under `county-level` the published county totals **are**
-  the copyrighted projections. The 2019 census half is CC0-1.0 and unaffected either way.
+All three live tables report `pop_method` as `county-level` (`county-level-yearmatched` in GFM). The
+cglabs node tested this by **value** rather than by label, re-levelling under each method:
 
-**Practical instruction: do not hard-code 52,837,534 or any county total from the live table into
-notebook copy until Pete rules on this.** Drive totals off the census lookup in section 3, which is
-CC0 and stable, and off `pop_pct` for every share. If the method changes it is a seconds-long
-re-level, not a rebake, so the schema will not move — only the values and the `pop_source` /
-`pop_method` strings.
+```
+POP_METHOD=county-level   -> totals 52837534 -> 54226998  (x1.0263)
+POP_METHOD=county-growth  -> totals 52837534 -> 52837534  (x1.0000)
+```
+
+`county-growth` reproduces every live value exactly. **The published numbers were built with
+`county-growth`** — the census-anchored method, which is also the licence-safe one: KNBS projections
+enter only as a dimensionless ratio and the 2019 census (CC0-1.0) supplies the absolute level. The
+`pop_method` column is simply wrong, tracked as
+[#44](https://github.com/AdaptationAtlas/hazards_prototype/issues/44) and corrected by the same
+tier-16 republish that strips `i.pop_source`.
+
+**What this means for you:**
+
+- **There is no licence problem with the exposure tables.** Nothing published reproduces KNBS's
+  copyrighted projection levels. (That question remains open only for
+  `population_knbs_projections_*.parquet`, which you should not consume anyway — see section 3.)
+- **You can use the national and county totals.** The earlier instruction to hold off is withdrawn.
+  National `pop_total` is **52,837,534** and is not expected to move.
+- **Do not display `pop_method` until the republish lands.** It is the one field in these tables that
+  currently lies. After the republish it will read `county-growth-from-2020`
+  (`county-growth-from-2020-yearmatched` in GFM). `pop_source`, `pop_year` and every numeric column
+  are correct now and unchanged by the fix.
+- A possible future move to `county-level` (which would make county totals match KNBS's published
+  projections, 54,226,998 nationally for 2026) is parked as low-priority
+  [#43](https://github.com/AdaptationAtlas/hazards_prototype/issues/43), gated on #33. If it ever
+  happens it is a seconds-long re-level and the schema does not move.
 
 ---
 
@@ -216,7 +233,8 @@ microcensus data, so it shares lineage with the figures in dispute.
 | 2 | Relabel Table 1.1 / Section 1 as IEBC parliamentary constituencies, with footnote | notebook |
 | 3 | Consume `population_knbs_census_adm1.parquet` for the Section 1 KPI cards; do not compile your own | notebook |
 | 4 | Read `pop_source` / `pop_year` per row in the GFM table; never per file | notebook |
-| 5 | Hold off hard-coding national/county totals pending 2(b) | notebook |
+| 5 | Totals are usable (national 52,837,534); do **not** surface `pop_method` until the republish lands | notebook |
 | 6 | Drop the stray `i.pop_source` column from JRC + totals; republish tier 16 | pipeline |
-| 7 | Decide `county-growth` vs `county-level` for the published default | Pete |
+| 7 | Correct the `pop_method` mislabel in the engine + 7b, and in the CDH record (#44) | pipeline |
 | 8 | Check whether [2025] KEHC 3212 was appealed or stayed before any public copy on #32 | Pete |
+| 9 | Low-priority: whether the default ever moves to `county-level` (#43, gated on #33) | Pete |

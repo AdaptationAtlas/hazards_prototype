@@ -2,6 +2,89 @@
 
 Append-only, **newest block on top**. Respond by prepending a `### RESPONSE` block.
 
+## Block A2 — corrected Block A: default method, and the `pop_method` string is expected to change (#42, #44)
+
+**GO — run this.** It supersedes Block A below. Your stop was correct and your diagnosis is adopted
+in full: the live tables are `county-growth`, and `POP_METHOD=county-level` in Block A was my error,
+read off the mislabelled `pop_method` column instead of tested against the values. The mislabel is
+now [#44](https://github.com/AdaptationAtlas/hazards_prototype/issues/44); #43 has been corrected and
+rescoped (no live licence exposure — `county-growth` is the licence-safe method and it is what is
+published).
+
+**Two changes from Block A, and nothing else:**
+
+1. **Env: drop `POP_METHOD` entirely** (it defaults to `county-growth`). Everything else is
+   unchanged.
+2. **The `pop_method` *string* is now expected to change, and that is in scope.** The numeric
+   columns stay x1.0000; the label is corrected from the #44 mislabel to the method actually
+   applied:
+
+   | table | `pop_method` before | `pop_method` after |
+   |---|---|---|
+   | `exposure_gfm_seasonal` | `county-level-yearmatched` | `county-growth-from-2020-yearmatched` |
+   | `exposure_jrc_rp` | `county-level` | `county-growth-from-2020` |
+   | `exposure_totals` | `county-level` | `county-growth-from-2020` |
+
+   This is a provenance correction, not a method change. `pop_source`, `pop_year` and every numeric
+   column are untouched.
+
+### A2.1 — dry run
+
+```bash
+cd /home/jovyan/atlas/hazards_prototype && git pull --ff-only && git log -1 --oneline
+POP_SOURCE=knbs-projection POP_YEAR=2026 POP_YEAR_MATCH=1 POP_REF_YEAR=2026 Rscript R/observational/7b_relevel_exposure_pop.R 2>&1 | tee logs/relevel42_a2_dryrun_$(date +%Y%m%d_%H%M%S).log
+```
+
+**Expect:** identical to your DIAG run — two `dropped stale join artefact` lines (jrc + totals, not
+GFM), **x1.0000 on all three**, `national pop_total now 52837534 [knbs-projection-2026 /
+county-growth-from-2020]`. **STOP if any factor is not 1.0000.**
+
+### A2.2 — apply, then the local gates
+
+Same command with `APPLY=1`, then run **Block A's A3 gate unchanged** (`i.cols=none` and
+`identity_dev < 1e-6` on all three, `GATE PASS`), plus this label check:
+
+```bash
+Rscript -e '
+  source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R")
+  suppressPackageStartupMessages(library(arrow)); library(data.table)
+  d <- file.path(dirname(chirts_chirps_hist_dir), "exposure", "intersect")
+  for (f in c("exposure_gfm_seasonal.parquet","exposure_jrc_rp.parquet","exposure_totals.parquet")) {
+    t <- as.data.table(read_parquet(file.path(d, f)))
+    cat(sprintf("%-30s pop_method=%-40s pop_source(n=%d)=%s
+", f, t$pop_method[1],
+                uniqueN(t$pop_source), paste(sort(unique(t$pop_source)), collapse=",")))
+  }'
+```
+
+**Expect:** every `pop_method` begins `county-growth-from-2020`; **no table reports a bare
+`county-level`**. GFM still shows 8 distinct `pop_source` values (2018-19 census, 2020-25
+projection); jrc and totals show 1 (`knbs-projection-2026`).
+
+Then re-run A2.1's dry run: no artefact-drop lines, x1.0000, and the `pop_method` strings now stable.
+
+### A2.3 — publish and verify
+
+**Block A's A4 and A5 unchanged** (background the publish; verify on S3). Add to the A5 expectation:
+`pop_method` on S3 begins `county-growth-from-2020` for all three, and national `pop_total` is
+**52,837,534** — your A0 figure, unchanged.
+
+### A2.4 — one read-only lookup for #44, whenever convenient
+
+I could not pin which run wrote the live mislabel. The engine path explains the GFM table exactly
+(`7_zonal_exposure.R:149` takes `pop_method` from the `POP_SOURCE` census default and L263 never
+recomputes it under year matching), but it does not explain `pop_source=knbs-projection-2026` on jrc
+and totals, whose mtime matches your 7b re-level. The decisive evidence is on the node:
+
+```bash
+grep -rlE 'POP_(SOURCE|METHOD|YEAR_MATCH|REF_YEAR)' /home/jovyan/atlas/hazards_prototype/logs/   | xargs ls -la 2>/dev/null | grep '09-1[678]'
+```
+
+Whatever invocation ran on 2026-09-17 around 12:56 EAT, paste its header line into #44. **Not a
+gate — do not hold A2 for it.**
+
+---
+
 ### RESPONSE — Block A STOPPED at gate A1 (cglabs, 2026-10-06 11:57 EAT)
 
 **Nothing written, nothing published.** A0 passed; A1 failed its x1.0000 invariant; stopped there per
