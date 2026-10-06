@@ -133,6 +133,25 @@ consume them. So a true full rebake is:
    always was, and needs its own GO and the `s3_upload.R` route decision. Gates: `vop_align_live_gate.R`
    (reference vs FAOSTAT), `vop_cross_basis_gate.R`, then G6 against the intld twin.
 
+8. **Production-tonnes hazard tier, so money can be applied at the end (#41, Pete 2026-10-06) —
+   DECIDE before launching §4.** Today R/3 multiplies hazard frequency by *value* rasters (vop intld,
+   vop_usd), so every price decision forces a 0.4.x → R/3 rebake at both resolutions. The 2026-10
+   price pass needed four node re-runs. Prices are national, and R/3 is linear: frequency × tonnes
+   summed per unit × the national price is the same number. **Proposal for this bake:** also produce
+   the physical tiers in §4, so a later price change is a raster multiply or table join, not a rebake:
+   - **Crop production:** add a `prod_t` entry to `to_do_list`. `prod_name <- "prod_t"` is already
+     defined but never used. Input: `variable=prod_t/spam_prod_t_all.tif`. Extra cost: about one
+     more crop variable in §4.1 and §4.2.
+   - **Livestock heads:** set `do_n <- TRUE` (head_n); it is currently off.
+   - **Price rasters, built at the end and multiplied by the production tier:**
+     - Nominal: 0.4.2's `crop_price_nominal-usd-2021-t_<tag>.tif` already exists.
+     - Constant I$: the factor is national GPV ÷ national SPAM tonnes, and 0.4.0's allocation CSV
+       holds both. It is not written as a raster yet.
+   - **Caveat:** value = hazard-tonnes × price is exact per country. On the 0.25° grid, multiply on
+     0.05° before aggregating, or apply the price per admin unit. A border pixel must not take one
+     country's price for both sides (the BEN/NGA cowpea lesson, 2026-10-05).
+   - The vop tiers can keep being published for compatibility.
+
 ## Order
 0. Pre-conditions above (exposure vintage; CR-115 convention state).
 1. R/2 (`FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1`, both axes, nohup+log;
