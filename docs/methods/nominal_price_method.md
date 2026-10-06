@@ -1,9 +1,9 @@
 # Method: nominal US$ prices for crop value of production (`vop_nominal-usd-2021`)
 
 **Status:** decided 2026-10-01/02 (P. Steward), implemented in `R/0.4.2_create_crop_vop_nominal_usd.R` §3 and
-`R/price_fill.R`, first publish pending (`DISPATCH_cglabs_exposure_intld_fixes.md` Block D). This is the
+`R/price_fill.R`, first publish pending (`archive/dispatches/DISPATCH_cglabs_exposure_intld_fixes.md` Block D). This is the
 single methods text; the dataset records and the notebooks cite it (consumers listed at the end). Evidence
-behind every step: `HANDOVER_2026-10-01_exposure-intld-fixes.md` (items 3 and "Evidence"), probes
+behind every step: `archive/dispatches/HANDOVER_2026-10-01_exposure-intld-fixes.md` (items 3 and "Evidence"), probes
 `R/checks/probe_price_method_deepdive.R`, `R/checks/probe_price_stale_slc.R`, `R/checks/probe_042_price_fill.R`.
 
 ## What the product is

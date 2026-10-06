@@ -71,11 +71,13 @@ note: >
   MapSPAM release and has no constant-dollar crop rows. BOTH: values are allocated and priced on the
   0.05 degree grid at both resolutions, so the Seychelles, empty on the 0.25 degree grid before, now
   carry value. Livestock rows did not change.
-  INTERIM MISMATCH WITH THE HAZARD PRODUCT. africa-hazard-exposure-nexgddp as published on 2026-09-30
-  was built with the previous nominal prices. Until it is re-baked against this table (scheduled
-  immediately after this publication), an exposed share computed as hazard product divided by this
-  table is too high for crops whose price fell: cowpea about three times, plantain about 2.4 times,
-  coffee about 1.75 times, and it can exceed 100 per cent. Most crops are within a few per cent.
+  HAZARD PRODUCT RE-BAKED ON THE SAME PRICES (2026-10-06). africa-hazard-exposure-nexgddp was re-baked
+  against this table's nominal-usd-2021 rows and republished the same day, so hazard product divided by
+  this table is consistent again: for the crops whose price moved most, 158 of 163 country pairs sit within
+  5 per cent of one. The exceptions are border cells that this table assigns to one country at admin0 while
+  the hazard product, aggregated from second-level units, assigns them to the neighbour (31 cells
+  continent-wide, hazards_prototype issue 18): Kenya robusta coffee (one Lake Victoria cell holds most of
+  it), Sierra Leone robusta coffee and coconut.
   KNOWN LIMITATIONS. FAOSTAT coffee tonnage for the Central African Republic (about 300 thousand
   tonnes) and Guinea (about 240) is far above International Coffee Organization figures (2-6 and about
   9), and MapSPAM is calibrated to FAOSTAT, so coffee value there is overstated on both bases. Three
@@ -230,9 +232,9 @@ cdh:
       - use: Summing or comparing rows across the two vop units.
         reason: intld15-2021 is constant 2015 international dollars; nominal-usd-2021 is nominal 2021 US dollars.
         use_instead: Filter on `unit` and stay on one basis.
-      - use: Dividing africa-hazard-exposure-nexgddp by this table before that product is re-baked (October 2026).
-        reason: The hazard product published 2026-09-30 uses the previous nominal prices; shares are inflated where prices fell (cowpea, plantain, coffee).
-        use_instead: Wait for the re-baked hazard product, or restrict to crops whose price did not move.
+      - use: Exposed shares for Kenya robusta coffee or Sierra Leone robusta coffee and coconut.
+        reason: A border cell is assigned to a different country here (admin0) than in the hazard product (aggregated from second-level units); hazards_prototype issue 18.
+        use_instead: Treat those three national shares as indicative; sub-national units away from the border are unaffected.
       - use: Coffee value for the Central African Republic or Guinea.
         reason: FAOSTAT and MapSPAM coffee tonnage there is far above International Coffee Organization figures.
         use_instead: No substitute in this table; treat as an upper bound.

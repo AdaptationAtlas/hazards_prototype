@@ -124,7 +124,7 @@ if (length(.unmapped)) .log040(sprintf("WARN: SPAM layers with no FAO item in %s
 # Value_of_Production_E_All_Data.csv, which on the node was a 2025-08 copy against a 2026-05 set
 # everywhere else: the constant-I$ product would have been judged against a different release than
 # it was built from. The Africa file carries the constant-I$ element for every country 0.4.0 can
-# allocate (DISPATCH_cglabs_exposure_intld_fixes.md, cglabs Block A response 2026-10-03).
+# allocate (archive/dispatches/DISPATCH_cglabs_exposure_intld_fixes.md, cglabs Block A response 2026-10-03).
 vop_file_africa <- file.path(fao_dir, "Value_of_Production_E_Africa.csv")
 if (!file.exists(vop_file_africa)) stop("[0.4.0] missing ", vop_file_africa, " - stage the FAOSTAT QV Africa bulk file (same vintage as the Prices / Production files)")
 .log040(sprintf("FAOStat GPV source: %s (mtime %s, %.0f MB)", basename(vop_file_africa), format(file.mtime(vop_file_africa), "%Y-%m-%d %H:%M"), file.size(vop_file_africa) / 1e6))

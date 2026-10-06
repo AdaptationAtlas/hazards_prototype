@@ -29,7 +29,7 @@
 #                                A single-country region is still that country, so the
 #                                clip is the primary lever and the median the second.
 #
-# 2026-10-01 (price-method decision, HANDOVER_2026-10-01_exposure-intld-fixes.md item 3):
+# 2026-10-01 (price-method decision, archive/dispatches/HANDOVER_2026-10-01_exposure-intld-fixes.md item 3):
 #   implied_price()              FAOSTAT gross production value (current thousand US$) /
 #                                production -> USD/t. Where FAO publishes a producer price
 #                                this EQUALS it (ratio 1.000 on 973 country-item-years); its
@@ -203,7 +203,7 @@ apply_basis_guard <- function(data, value_field = "price_usd_final", prod_field 
 }
 
 
-# 2026-10-02 (evidence in HANDOVER_2026-10-01_exposure-intld-fixes.md, "Evidence" section;
+# 2026-10-02 (evidence in archive/dispatches/HANDOVER_2026-10-01_exposure-intld-fixes.md, "Evidence" section;
 # probe R/checks/probe_price_stale_slc.R). Where FAO publishes no producer price it carries a
 # frozen local-currency price forward (Sudan millet: the 2013 price, 2,742 SDG/t, in 2019, 2020
 # and 2021 while the GDP deflator went x37) and converts it at the current official exchange

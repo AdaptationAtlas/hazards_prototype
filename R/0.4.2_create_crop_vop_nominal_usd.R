@@ -151,7 +151,7 @@ prod_value_intd_world_fao <- merge(value_intd_world, data.table(Item = spam2fao_
 prod_value_intd_world_fao <- melt(prod_value_intd_world_fao[, !"Item"], id.vars = c("atlas_name"), value.name = value_name, variable.name = "year")
 
 #### 1.6.3) current US$ (the implied-price numerator, 2026-10-01) ####
-# Price method (HANDOVER_2026-10-01_exposure-intld-fixes.md item 3, Pete 2026-10-01): the own
+# Price method (archive/dispatches/HANDOVER_2026-10-01_exposure-intld-fixes.md item 3, Pete 2026-10-01): the own
 # nominal price is FAO's gross production value in CURRENT US$ divided by production. Where a
 # producer price is published the two are identical; where it is not, FAO's imputation still
 # reaches the GPV, so coverage rises from 30 % to 68 % of (country, crop) pairs. Clipped against
@@ -180,7 +180,7 @@ prod_value_cusd_world_fao <- melt(prod_value_cusd_world_fao[, !"Item"], id.vars 
 # Where FAO has no producer price it carries a frozen local-currency price forward and converts it
 # at the current official rate (Sudan millet: the 2013 price for 2019-21 while the deflator went x37).
 # R/price_fill.R::stale_local_price() rejects an implied price whose REAL local unit value fell by
-# more than half over the window. Evidence: HANDOVER_2026-10-01_exposure-intld-fixes.md, "Evidence".
+# more than half over the window. Evidence: archive/dispatches/HANDOVER_2026-10-01_exposure-intld-fixes.md, "Evidence".
 element <- "Gross Production Value (current thousand SLC)"
 value_name <- "value_slc"
 prod_value_slc_africa_fao <- prepare_fao_data(
@@ -293,7 +293,7 @@ prod_rast <- lapply(prod_rast, function(r) resample_sum_checked(r, alloc_grid, "
 
 ## 3) Infer missing prices ####
 # Nominal price per (country, crop) for each year window. Chain (Pete 2026-10-01, item 3 of
-# HANDOVER_2026-10-01_exposure-intld-fixes.md; evidence in R/checks/probe_price_method_deepdive.R):
+# archive/dispatches/HANDOVER_2026-10-01_exposure-intld-fixes.md; evidence in R/checks/probe_price_method_deepdive.R):
 #   1. own IMPLIED price  = FAO GPV current US$ / FAO production, window median, after a
 #      [1/PRICE_BAND, PRICE_BAND] clip against World GPV / World production for the same item-year
 #   2. own PRODUCER price (FAOSTAT USD/t), window median, clipped against the world producer-price

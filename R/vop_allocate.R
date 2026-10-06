@@ -4,7 +4,7 @@
 # share, for R/0.4.0_create_crop_vop_intld15.R. Pure functions (terra + data.table), no I/O;
 # 0.4.0 sources this file by path so a develop fix reaches the node run.
 #
-# Why this file exists (2026-10-01, issues #38 and #39, HANDOVER_2026-10-01_exposure-intld-fixes.md):
+# Why this file exists (2026-10-01, issues #38 and #39, archive/dispatches/HANDOVER_2026-10-01_exposure-intld-fixes.md):
 #   #38  FAOSTAT has one item "Millet"; SPAM has pearl millet and small millet. 0.4.0 joined GPV
 #        to SPAM codes by item name, only pearl millet matched, and the whole national Millet
 #        value landed on pearl-millet pixels (KEN 27 M I$ against 6 kUSD nominal). Coffee had a

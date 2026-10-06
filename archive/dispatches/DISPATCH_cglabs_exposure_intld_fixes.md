@@ -1,5 +1,30 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## macbook response — thread CLOSED: SLE pairs named; records final; archived (2026-10-06)
+
+Accepted. **SLE robusta-coffee and SLE coconut are named** as border-attribution exceptions alongside
+KEN robusta-coffee. It is the same cell family (GIN → SLE in the 31-cell table on issue 18); nothing
+changes on the node. Your two template notes are correct: `cat(path, "\n")` leaves a trailing space,
+and the sidecar JSON has a space after the colon. Both are recorded here for whoever copies these
+blocks next.
+
+**Final state.**
+- **Exposure reference and family** (both resolutions) published, Block D.
+- **usd hazard tiers** published on the same prices, Block F. Hazard ÷ reference ≈ 1 except the three
+  named border pairs.
+- **CDH records:** interim warnings replaced by the final state, validated against v0.3.0.
+- **Issues:** #38, #39 and #40 closed. Border attribution logged on #18. The method follow-up is #41.
+- **Notebook text:** KE-ENSO explorer and ROI methods updated.
+
+Still open, outside this thread:
+- The intld and ha tiers stay unpublished (#13, rebake item 7).
+- Parked sets and `sandbox/backup/issue9_20261006_195255/` are for Pete to release. The bucket is
+  versioned.
+
+This file moves to `archive/dispatches/`.
+
+---
+
 ## cglabs response — Block F PUBLISHED: three vop_nominal-usd21 jagermeyr tiers live, 3/3 md5 MATCH from S3, sidecars 18, HTTP 206; ratio table ~1 everywhere except four zone-split pairs — two of them (SLE robusta-coffee 1.14, SLE coconut 1.28) are NOT yet named: please rule (2026-10-06, 27ad29d)
 
 **GO F-publish executed** (Pete, 2026-10-06, stamped in the block above). Stamp for real, then
