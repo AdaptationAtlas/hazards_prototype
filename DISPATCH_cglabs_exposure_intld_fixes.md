@@ -1,5 +1,95 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## cglabs response — Block F R/3 run complete (F1/F2 by the previous session); F3 STOPPED: usd gate FAIL on one pair, KEN:robusta-coffee 0.033 — one Lake Victoria border cell booked to UGA by §4.2's admin2 zoning, to KEN by 0.4.4's admin0 zoning; publisher dry-run G1–G6 PASS; NOT published (2026-10-06, c7de8fd)
+
+**State on arrival.** No Rscript running. `logs/usd_rebake_stamp.txt` = `20261006_091428`; a previous
+session had already run F0–F2 under that stamp and was interrupted before F3 and the response. Did
+not relaunch. Verified the F0 conditions retroactively and F2 from its log, then ran F3.
+
+**F0 (verified).** `git pull` already up to date at c7de8fd. No R/3 env set. Preflight `0 FAIL`
+(usd annual/jagermeyr: 522 int tifs + 264 other + 9 parquets, 0 failed/skipped txt). Crop usd input
+`spam_vop_nominal-usd-2021_all_res-25.tif` mtime **10-05 20:27** (the coffee-pin run) — as expected.
+
+**F1 (verified).** `Data/_parked_usd_rebake_20261006_091428/hazard_risk_vop_usd/{annual,jagermeyr}`
+hold 804 files each; the live usd dirs hold 804 files each, all with today's mtime (full usd rebuild).
+
+**F2 (from `logs/usd_rebake_20261006_091428.log`).** Header: `Using crop vop usd file:
+spam_vop_nominal-usd-2021_all_res-25.tif | R3_CROP_VOP_USD = 2021`, `overwrite4= FALSE`, no WARN.
+No `FAILED|WARN|Error` anywhere. No `failed_risk_x_exposure_*.txt` in the live dirs. Timings:
+```
+annual    4.1.1 intld 2.6 min | usd 85.0 min | ha 0.2 min ; 4.2 usd 130.9 min ; timeframe 228.3 min
+jagermeyr 4.1.1 intld 2.9 min | usd 90.8 min | ha 0.6 min ; 4.2 usd 137.8 min ; timeframe 243.8 min
+===== 3_freq_x_exposure.R COMPLETE at 2026-10-06 17:07:31 UTC =====
+```
+Side effect to record: the intld §4.1 pass did not skip entirely — it wrote **12 new
+`small-millet_*_vop_intld15-2021.tif` per timeframe** into `hazard_risk_vop/` (the #38 crop had no
+intld outputs, so skip-if-exists built them). intld parquets untouched (mtime 09-30); ha untouched.
+Nothing from either is published.
+
+**F3.**
+- `usd_total_vs_reference --res 0.25`, severe and moderate: **usd side FAIL on exactly one pair,
+  everything else as expected** — 106 material pairs, median 0.995, range [0.03341, 1],
+  `n(none)==n(any) TRUE`, unit matched `nominal-usd-2021`, 0 invented-value pairs. The pair,
+  identical at both severities:
+```
+KEN  robusta-coffee   total 27050   ref 809800   ratio 0.03341
+```
+  (intld side FAIL as expected: the stale 09-30 intld product against a reference that now carries
+  small-millet etc. Not Block F's.)
+- Stamp dry-run: **18 members** in both roots, `VERDICT: PASS`.
+- F3.4 as written breaks on this node: `TWIN=$(Rscript -e '… cat(…)' 2>/dev/null)` also captures the
+  setup banner that now goes to stdout (`Climate data source = nexgddp`, …, `CGLabs = TRUE`), so
+  `$TWIN` was nine lines and the publisher halted with `Error: --drift-exposure file not found`. Re-ran
+  with `| tail -1` and `normalizePath()` (`logs/usd_rebake_F3b_20261006_091428.log`). The r3_res25
+  dispatch carries the same pattern; the banner is newer than it. Please patch the pattern.
+- Publisher dry-run (`logs/usd_rebake_dryrun_20261006_091428.log`): **G1–G6 ok for all three
+  tiers.** G6 PASS on T_local / exposure_new: 594 material pairs, 0 outside ±25 % (range 0.8498–1.096),
+  median 1; continental per-crop ratio range [0.9958, 1]; flips 0 beyond the allowed (+1 allowed
+  SYC:coconut); livestock [1, 1]. The raw live-vs-local shows the price move as predicted: continental
+  cowpea 0.33, robusta-coffee 0.57, coconut 0.75, cassava 0.78. Three `would upload` + sidecars,
+  `[DRY RUN - nothing written]`.
+
+**Why KEN:robusta-coffee fails — traced to one cell, all read-only.**
+1. The reference is right about its own input: the zonal sum of the robusta layer of the input raster
+   over the KEN admin0 zone is **809,827**, the reference to the dollar. The admin0 zone rasters R/3
+   and 0.4.4 use are cell-identical (0 of 576,000 cells differ).
+2. The product is missing one cell: **(33.875 °E, 0.125 °N)**, robusta **782,744 USD** — a Lake
+   Victoria cell on the KEN/UGA border, KEN polygon coverage 5.9 %, also carrying 4.0 M maize, 1.9 M
+   cassava, 1.3 M plantain. A #18-type res-25 spill cell, new since Block C (the 09-30 product is NA
+   there). 809,827 − 782,744 = 27,083 ≈ the product's 27,054.
+3. The cell *is* in the §4.1 int tif (`any` = 782,744, class dry, PTOT-L+NTxS+PTOT-G; NA in the
+   NDWS+NTx35+NDWL0 combo — the soil-water hazards are NA over the lake). It is lost in **§4.2**:
+   R/3 runs `zonal()` against **`admin2_zonal.tif`** and aggregates admin2 → admin1 → admin0
+   (`R/3_freq_x_exposure.R` ~L1409–1486), while 0.4.4 runs `zonal()` against **`admin0_zonal.tif`**
+   directly. Both rasterize with `touches = TRUE`; on border and lake cells the two polygon sets pick
+   different winners. At this cell admin0 → **KEN (137)**, admin2 → **106299, a UGA admin2**. The
+   product books the cell to UGA, the reference to KEN.
+4. Scale: **31 cells** continent-wide where the admin0 and admin2 zone rasters disagree on country,
+   carrying 68.3 M USD all-crops: GIN→SLE 25.9 M (1 cell), BDI→TZA 16.5 M (1), **KEN→UGA 12.3 M (2)**,
+   BDI→COD 9.6 M (1), SDN→SSD 1.7 M (17), ZMB→COD 0.8 M, GMB→SEN 0.6 M, KEN→SOM 0.5 M, TZA→MOZ 0.3 M,
+   MWI→MOZ 0.1 M. Only KEN robusta (0.8 M nationally) is small enough for one cell to breach
+   [0.5, 2]; the same two cells move 12.3 M of KEN maize/cassava/plantain to UGA without tripping
+   anything. A pre-existing method difference, not introduced by F; made visible by the new spill cell.
+5. Side observation: KEN appears twice at adm0 in the product (gaul0_code 137 and an all-zero 135),
+   because one admin2 polygon tagged KEN carries gaul0_code 135 (one SSD polygon too; EGY/SDN have
+   the same with 100/110/133). The admin0 table has only 137. Harmless here; worth a line in #18 or
+   the boundaries notes.
+
+**Assessment.** The product equals its input except for admin0-vs-admin2 attribution on 31 border
+cells; the price fix is in and moved what it was predicted to move; G1–G6 pass. The F3 usd gate fails
+on one pair for a reason the gate does not model (it judges an admin2-aggregated product against an
+admin0-zoned reference). The call is the macbook's: (a) accept with KEN:robusta-coffee named, as
+BEN:bean / TCD:yams were in Block D; (b) have `usd_total_vs_reference` judge against an
+admin2-aggregated reference; or (c) something else. **Nothing published. Waiting for `GO F-publish`.**
+
+Logs: `logs/usd_rebake_20261006_091428.log` (R/3), `logs/usd_rebake_F3_20261006_091428.log`
+(F3.1–F3.3 and the broken F3.4/5), `logs/usd_rebake_F3b_20261006_091428.log` (F3.4/5 redo),
+`logs/usd_rebake_dryrun_20261006_091428.log`. Parked: `Data/_parked_usd_rebake_20261006_091428/`
+(kept).
+
+---
+
+
 ## Block F — usd-only R/3 re-bake against the new denominator (GO F: Pete Steward, 2026-10-06) → STOP before publish
 
 **Why.** The live hazard tiers (`variable=vop_nominal-usd21`, published 2026-09-30) were built with the
