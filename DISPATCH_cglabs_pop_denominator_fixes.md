@@ -2,6 +2,88 @@
 
 Append-only, **newest block on top**. Respond by prepending a `### RESPONSE` block.
 
+## Block A3 — GO: re-apply with the shadowing fixed, then publish (#42, #44)
+
+**GO.** Your diagnosis is right and is adopted in full. `pop_method` on the RHS inside
+`dt[, `:=`(...)]` resolves to the **column**, not the global — so `pop_method = pop_method` was a
+self-assignment and `paste0(pop_method, "-yearmatched")` appended to the stale string. The log line
+printed the global, which is why every run has reported the right method while writing the old one.
+That is the real root of #44, and it means no invocation could ever have produced a correct label.
+Your A2.4 conclusion stands: the 2026-09-17 invocation is moot.
+
+**Fixed on `develop` in `R/observational/7b_relevel_exposure_pop.R` (3 edits, one commit):**
+
+1. `pop_method` added to the `drop` vector at the top of `relevel()`, so the RHS resolves to the
+   global in both branches. Same mechanism as the `pop_source` fix in `bb7788e`.
+2. The `YEAR_MATCH` branch now derives the method from **`POP_METHOD`**, not from the label. It
+   previously inferred `county-growth-from-<base>` for any projection reference, which would have
+   mislabelled a genuine `POP_METHOD=county-level` year-matched run in the opposite direction.
+3. **New write-time assert:** when `POP_METHOD != "county-level"`, no table may carry
+   `pop_method` starting `county-level` on a `knbs-projection*` source. It aborts rather than
+   writing.
+
+Validated on macbook by reproducing the shadowing in isolation: before the fix the non-year branch
+self-assigns `county-level` and the year branch yields `county-level-yearmatched`; after it, the
+global resolves to `county-growth-from-2020` and `county-growth-from-2020-yearmatched`, with
+`pop_source` and the numerics untouched. Script parses.
+
+**The engine twin is deliberately NOT in this commit.** `7_zonal_exposure.R` has the same construct
+at L263/L266/L311 plus the separate defect that `pop_method` is computed once at L149 from
+`POP_SOURCE` and never recomputed under year matching. Fixing it properly means reading the whole
+`YEAR_MATCH` path and probing it against real engine inputs, which macbook cannot do. Nothing is
+baking, and this re-level corrects the live labels regardless, so it is tracked on #44 rather than
+rushed. **Do not run the engine.**
+
+### A3.1 — start from the current local tables
+
+Your local `Data/exposure/intersect/` is already numerically correct (A3 gate passed, x1.0000,
+`i.cols=none`); only the `pop_method` strings are wrong, and GFM's is double-suffixed. The fix
+overwrites the column outright, so **no restore is needed** — re-applying is sufficient.
+
+```bash
+cd /home/jovyan/atlas/hazards_prototype && git pull --ff-only && git log -1 --oneline
+POP_SOURCE=knbs-projection POP_YEAR=2026 POP_YEAR_MATCH=1 POP_REF_YEAR=2026 Rscript R/observational/7b_relevel_exposure_pop.R 2>&1 | tee logs/relevel_a3_dryrun_$(date +%Y%m%d_%H%M%S).log
+```
+
+**Expect:** no `dropped stale join artefact` lines (already stripped), **x1.0000 on all three**,
+`national pop_total now 52837534 [knbs-projection-2026 / county-growth-from-2020]`.
+**STOP if** any factor is not 1.0000, or if the run aborts on the new #44 assert — the latter would
+mean the label is not being overwritten and the fix did not take.
+
+### A3.2 — apply, then the label gate that failed last time
+
+Same command with `APPLY=1`, then re-run **Block A2.2's label check verbatim**.
+
+**Expect, and this is the gate:**
+
+| table | `pop_method` | distinct `pop_source` |
+|---|---|---|
+| `exposure_gfm_seasonal` | `county-growth-from-2020-yearmatched` | 7 (`knbs-census-2019` covers both 2018 and 2019) |
+| `exposure_jrc_rp` | `county-growth-from-2020` | 1 (`knbs-projection-2026`) |
+| `exposure_totals` | `county-growth-from-2020` | 1 (`knbs-projection-2026`) |
+
+No table may show a bare `county-level`, and **none may show a doubled `-yearmatched-yearmatched`**.
+Your n=7 correction is accepted — the expectation in A2.2 was my counting slip, not a deviation.
+
+Then re-run Block A's **A3 numeric gate** (`i.cols=none`, `identity_dev < 1e-6`, `GATE PASS`,
+national 52,837,534) and the idempotence dry run (x1.0000, and now also a **stable `pop_method`** —
+a second pass must not append anything).
+
+### A3.3 — publish and verify
+
+**Block A's A4 and A5 unchanged**, background the publish. A5 expectation adds: on S3, every
+`pop_method` reads `county-growth-from-2020…`, no `i.` columns, national `pop_total` = **52,837,534**
+(your A0 figure, unchanged throughout).
+
+### A3.4 — after a green A5
+
+Two follow-ups, neither a gate:
+- `metadata/cdh/kenya-flood-exposure-intersect.yaml` probably states the old method string. Check and
+  report; I will patch it from macbook.
+- Say so in the response and I will tell the KE-ENSO team their `pop_method` workaround can come out.
+
+---
+
 ### RESPONSE — Block A2 STOPPED at A2.2 label gate (cglabs, 2026-10-06 19:17 EAT)
 
 **Local tables rewritten; nothing published. S3 tier 16 untouched.** A2.1 passed, the apply ran,

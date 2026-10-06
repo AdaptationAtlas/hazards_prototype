@@ -152,7 +152,10 @@ if (YEAR_MATCH) {
     grid_adm1, pop_year_targets(exp_root, yrs, POP_METHOD, POP_BASE_YEAR), log_step)
   ref <- pop_year_targets(exp_root, POP_REF_YEAR, POP_METHOD, POP_BASE_YEAR)
   pop_label  <- ref$pop_source[1]
+  # derive from the method actually requested, not from the label: a census reference is a level by
+  # definition, but a projection reference follows POP_METHOD (#44).
   pop_method <- if (grepl("^knbs-census", pop_label)) "county-level"
+                else if (POP_METHOD == "county-level") "county-level"
                 else sprintf("county-growth-from-%d", POP_BASE_YEAR)
   scale_dt <- pop_scale_table_years(grid_adm1, ref, log_step)[, year := NULL][]
 } else {
@@ -168,8 +171,13 @@ relevel <- function(dt, exposed = TRUE, by_year = FALSE) {
   # pop_source, so leaving the table's copy in place makes data.table retain it as `i.pop_source`
   # (the defect in issue #42, seen on exposure_jrc_rp + exposure_totals but not on the GFM table,
   # which was the only one dropping it). It is re-set unconditionally further down in both branches.
+  # pop_method joins this list for a second reason (#44): inside dt[, `:=`(...)] the RHS name
+  # pop_method resolves to the COLUMN, not the global set above, because the engine already wrote
+  # one. That made `pop_method = pop_method` a self-assignment and
+  # `paste0(pop_method, "-yearmatched")` append to the stale string on every pass -- so no re-level
+  # could ever repair the label, while the log line printed the global and looked correct.
   drop <- intersect(c("pop_scale_adm1", "pop_scale_census", "pop_growth_county", "pop_year",
-                      "pop_source"),
+                      "pop_source", "pop_method"),
                     names(dt))
   if (length(drop)) dt[, (drop) := NULL]
   if (by_year) {
@@ -226,6 +234,19 @@ if (!YEAR_MATCH && !is.null(knbs$totals) && abs(nat - sum(knbs$totals$knbs_pop))
 if (!APPLY) {
   log_step("DRY RUN — nothing written. Re-run with APPLY=1 to rewrite the tables in place.")
   quit(save = "no")
+}
+# #44: a projection-levelled table must not claim county-level unless that was asked for. The label
+# is the only field a consumer can read to find out which method produced the numbers.
+if (POP_METHOD != "county-level") {
+  for (nm in names(tabs)) {
+    bad <- tabs[[nm]][grepl("^knbs-projection", pop_source) &
+                      grepl("^county-level", pop_method), .N]
+    if (bad) {
+      stop(sprintf(paste("table %s: %d rows claim pop_method '%s' on a projection source while",
+                         "POP_METHOD=%s. Refusing to write (issue #44)."),
+                   files[[nm]], bad, tabs[[nm]]$pop_method[1], POP_METHOD))
+    }
+  }
 }
 # #42: a join artefact must never reach a published table. data.table prefixes a retained
 # right-hand duplicate with "i.", which is both undeclared to schema-strict consumers and
