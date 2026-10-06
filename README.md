@@ -50,6 +50,7 @@ The script [2_risk_x_exposure.R](https://github.com/AdaptationAtlas/hazards_prot
 The major processes in the script are:
 0. Exposure variables are downloaded, processed and extracted by admin0, admin1 and admin2 geoboundaries. Exposure data is saved to the `exposure` directory which contains raster stacks, geoparquet vector objects and tabular parquet data for specific hazards:
    - **crop_ha** = harvested area (ha/pixel)
+   > **Current method (2026-10):** the exposure chain now uses MapSPAM 2020, GLW4 2020 and FAOSTAT 2019-23, with value in constant 2015 international dollars (`R/0.4.0`) and nominal 2021 US dollars (`R/0.4.2`). The nominal price method is described in [docs/methods/nominal_price_method.md](docs/methods/nominal_price_method.md), and the published tables in `metadata/cdh/africa-exposure-combined-res25.yaml`. The list below describes the original 2023 workflow.
    - **crop_vop_usd17** = value of production in USD/pixel (to generate these data MapSPAM crop production was multiplied by 2017 [crop producer prices](https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip) obtained from FAOstat. These data are created by the [fao_producer_prices.R](https://github.com/AdaptationAtlas/hazards_prototype/blob/main/R/fao_producer_prices.R) script.
    - **crop_vop** =  MapSPAM value of crop production in 2005 international dollars/pixel
    - **hpop** = rural, urban and total human population headcount/pixel (2020)
