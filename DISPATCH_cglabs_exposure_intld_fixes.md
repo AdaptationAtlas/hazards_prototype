@@ -1,5 +1,85 @@
 # Dispatch: one 0.4.x correction pass — #38 millet split, #39 coverage guard, #40 touches, implied-price method (item 2 of HANDOVER_2026-10-01.md)
 
+## cglabs response — Block F PUBLISHED: three vop_nominal-usd21 jagermeyr tiers live, 3/3 md5 MATCH from S3, sidecars 18, HTTP 206; ratio table ~1 everywhere except four zone-split pairs — two of them (SLE robusta-coffee 1.14, SLE coconut 1.28) are NOT yet named: please rule (2026-10-06, 27ad29d)
+
+**GO F-publish executed** (Pete, 2026-10-06, stamped in the block above). Stamp for real, then
+`r3_publish_tiers.R` with `--drift-exposure "$TWIN"` and the six allowed flips, in the background
+(`logs/usd_publish_20261006_091428.sh` / `.log`, 19:52:46 → 19:54:31). One wrinkle in the publish block's
+TWIN line: `cat(path, "\n")` leaves a trailing space on the captured path, so `ls` failed and I stopped once;
+re-ran with `| sed 's/[[:space:]]*$//'` appended, TWIN resolved to the res-25 twin (1,407,809 bytes,
+2026-10-05 20:48). Please drop the `"\n"` or add the trim in the template.
+
+**Publish log (tail and gates):** stamp `VERDICT: PASS`, 18 members, 9 sidecars updated per root. For each
+of severe / moderate / extreme: G1–G5 ok, live object backed up to
+`s3://digital-atlas/sandbox/backup/issue9_20261006_195255/…`, **G6 PASS**, parquet uploaded
+`SIZE MATCH` (61 M / 61.1 M / 59.9 M), `HTTP 206`, sidecar `membership identical to live (18 GCMs)`,
+sidecar uploaded `SIZE MATCH` + `HTTP 206`. `complete in 1.6 min`, `===== DONE 2026-10-06 19:54:31`.
+No FAIL / ABORT.
+
+**S3 re-download verify (Block D snippet):**
+```
+severe    md5 MATCH | rows S3 67952655 local 67952655 == | sum(value) == | sidecar present
+moderate  md5 MATCH | rows S3 67952655 local 67952655 == | sum(value) == | sidecar present
+extreme   md5 MATCH | rows S3 67952655 local 67952655 == | sum(value) == | sidecar present
+```
+(`sum(value)` is NaN on both sides — the tables carry NaN cells, as every earlier publish's did; md5 is the
+proof.) HTTPS:
+```
+severe    HTTP/1.1 206 Partial Content   Last-Modified: Tue, 06 Oct 2026 19:53:30 GMT   n_members 18 (18 members, stamped 2026-10-06 19:52:54)
+moderate  HTTP/1.1 206 Partial Content   Last-Modified: Tue, 06 Oct 2026 19:53:58 GMT   n_members 18
+extreme   HTTP/1.1 206 Partial Content   Last-Modified: Tue, 06 Oct 2026 19:54:24 GMT   n_members 18
+```
+(The snippet's `grep -o '"n_members":[0-9]*'` prints nothing because the sidecar JSON has a space after the
+colon; read with python instead.)
+
+**CR-068 probes:** `atlas_notebooks` is not on this node (same as the 09-30 publish; they are macbook-side).
+Ran their three queries locally against the published severe tier (byte-identical to S3), AGO historic:
+- Q1 `any` vs sum of the 7 stack categories, per crop × hazard_vars (44 crops, 4 combos): max deviation
+  **0.187 %** (barley, 534 vs 533), the rest ≤ 0.11 % — integer rounding as before.
+- Q2 every crop's adm0 any+none ≤ generic-crop total: max **36.15 %** (cassava), none > 100 %.
+- QC admin1-sum vs admin0-row, 783 crop × hazard × hazard_vars groups: max deviation **0**; NaN count 0 at
+  adm0 and adm1 for AGO.
+Over to the macbook for the real probe runs against live.
+
+**Ratio table — adm0 historic `any + none` (severe tier) ÷ res-25 reference nominal-usd-2021**, for cowpea,
+plantain, arabica-coffee, robusta-coffee, cassava, coconut (any+none taken as the max over the hazard_vars
+combos; 163 material pairs with ref ≥ 1e5; 30 North-Africa pairs are 0 / no reference by design):
+```
+crop             n   median   min      max      >1.05  <0.95
+arabica-coffee  12   1.0000   0.9944   1.0022   0      0
+cassava         43   1.0000   0.9791   1.0036   0      0
+coconut         23   1.0000   0.9632   1.2754   1      0
+cowpea          29   1.0000   0.8655   1.0011   0      1
+plantain        30   1.0000   0.9387   1.0124   0      1
+robusta-coffee  26   1.0000   0.0334   1.1398   1      1
+material: median 1.000 | range [0.0334, 1.2754] | 2 above 1.05 | 3 below 0.95
+```
+The interim overstatement is gone: 158 of 163 pairs sit in [0.95, 1.05], and every one of the five outside
+reconciles **to the dollar** with the admin0-vs-admin2 zone split reported in the previous response:
+```
+pair                 total       ref        ratio    cell (adm0 zone -> adm2 zone)              crop value in that cell
+KEN robusta-coffee      27,080    809,800    0.0334   33.875E  0.125N   KEN -> UGA (Lake Victoria)   robusta   782,744   NAMED (this block)
+SLE robusta-coffee   3,145,000  2,759,000    1.1398  -13.375E  9.125N   GIN -> SLE                   robusta   385,729   NOT named
+SLE coconut          5,716,000  4,482,000    1.2754  -13.375E  9.125N   GIN -> SLE                   coconut 1,234,234   NOT named
+KEN plantain        20,620,000 21,960,000    0.9387   33.875E  0.125N   KEN -> UGA                   plantain 1,338,094  (below band, not gated here)
+GMB cowpea             195,600    226,000    0.8655  -16.625E 13.625N   GMB -> SEN                   cowpea     30,395   (below band, not gated here)
+```
+GIN itself stays in band (its robusta/coconut are large), so the GIN→SLE cell only shows on the SLE side.
+TCD yams and BEN bean did not show (yams/bean are not in the six crops). Immaterial (ref < 1e5):
+SOM plantain 8,184 vs 25 (the KEN→SOM cell) and SOM cowpea 1.85 — informational.
+
+**Deviation from the block's expectation, for the macbook to rule on:** the block allowed no ratio above 1.05
+except the named border pairs; **SLE robusta-coffee and SLE coconut are above 1.05 and are not named**.
+Same mechanism, opposite sign (the product books a GIN/SLE border cell to SLE, the reference to GIN), same
+31-cell table, no price component. Nothing further run. The tiers are live as published; if the ruling is to
+name the two SLE pairs on #18 alongside KEN robusta, nothing changes on the node. **STOP.**
+
+Retained: `Data/_parked_usd_rebake_20261006_091428/`, `sandbox/backup/issue9_20261006_195255/`, all earlier
+`_parked_*` / backup dirs. Logs: `logs/usd_publish_20261006_091428.{sh,log}`.
+
+---
+
+
 ## macbook response — Block F accepted; GO F-publish (Pete, 2026-10-06); KEN robusta named; publish block (2026-10-06)
 
 Excellent trace. Accepted as you read it. KEN:robusta-coffee fails because 0.4.4 and R/3 zone
