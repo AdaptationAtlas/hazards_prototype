@@ -2,6 +2,87 @@
 
 Append-only, **newest block on top**. Respond by prepending a `### RESPONSE` block.
 
+### RESPONSE — Block A3 COMPLETE: tier 16 republished and verified on S3 (cglabs, 2026-10-06 19:55 EAT)
+
+**Every gate PASS. Tier 16 is live with `i.pop_source` gone and `pop_method` corrected.** National
+`pop_total` 52,837,534 at A0, locally after apply, and on S3 — unchanged throughout. #42 and the
+live half of #44 are closed from this side.
+
+**A3.1 dry run — PASS** (`logs/relevel_a3_dryrun_20261006_195256.log`): no artefact-drop lines,
+x1.0000 on all three, `national pop_total now 52837534 [knbs-projection-2026 / county-growth-from-2020]`.
+The new #44 assert did not fire.
+
+**A3.2 apply — PASS** (`logs/relevel_a3_apply_20261006_195327.log`): same lines, `WROTE ->` all three.
+
+**Label gate — PASS** (the one that failed in A2):
+
+```
+exposure_gfm_seasonal.parquet  pop_method=county-growth-from-2020-yearmatched  pop_source(n=7)  i.cols=none identity_dev=5.82e-11 ncol=26
+exposure_jrc_rp.parquet        pop_method=county-growth-from-2020              pop_source(n=1)  i.cols=none identity_dev=5.82e-11 ncol=23
+exposure_totals.parquet        pop_method=county-growth-from-2020              pop_source(n=1)  i.cols=none identity_dev=5.82e-11 ncol=18
+  rows=290 adm1=47 national pop_total=52837534
+GATE PASS
+```
+
+Exactly one distinct `pop_method` per table; no bare `county-level`; no doubled suffix. GFM
+`pop_source` = 7 distinct (census-2019 for 2018+2019, projection-2020…2025); jrc + totals = 1
+(`knbs-projection-2026`). Numeric A3 gate folded into the same check: `i.cols=none`,
+`identity_dev` 5.8e-11 on all three.
+
+**Idempotence — PASS** (`logs/relevel_a3_dryrun2_20261006_195347.log`): x1.0000, 52,837,534, no
+drop lines. `relevel()` now drops `pop_method` before re-setting it, so a second pass cannot append.
+
+**A4 publish — 3/3** (`logs/publish_t16_20261006_195419.log`, pid file alongside; backgrounded):
+
+```
+[19:54:27] === FULL PUBLISH ===
+[19:54:27] overview gate: PASS — all COGs across 1 spec(s) have overviews
+[19:54:27]   spec 'exposure-intersect': 3 files, 0.6 MB total
+[19:54:27] === Uploading: exposure-intersect (tier 16) ===
+The current policy already allows public access to the specified files.
+[1] "Report saved to: Data/exposure/intersect/exposure-intersect_uploadReport.json"
+[19:54:33]   done: 3 files in 5.4s
+Total files: 3, total elapsed: 5.4s
+```
+
+No error lines. The only `warn` match is the usual `There were 25 warnings` from `0_server_setup.R`.
+
+**A5 S3 verify — PASS** (downloaded over https and re-read):
+
+```
+exposure_gfm_seasonal.parquet  ncol= 26 i.cols=none pop_method=county-growth-from-2020-yearmatched pop_source(n=7)
+exposure_jrc_rp.parquet        ncol= 23 i.cols=none pop_method=county-growth-from-2020 pop_source(n=1)
+exposure_totals.parquet        ncol= 18 i.cols=none pop_method=county-growth-from-2020 pop_source(n=1)
+  national pop_total=52837534 pop_source=knbs-projection-2026 pop_method=county-growth-from-2020 rows=290 adm1=47
+```
+
+| | A0 (live before) | local after A3.2 | S3 after A4 |
+|---|---|---|---|
+| national `pop_total` | 52,837,534 | 52,837,534 | 52,837,534 |
+| `i.` columns (jrc, totals) | `i.pop_source` | none | none |
+| `pop_method` (jrc, totals) | `county-level` | `county-growth-from-2020` | `county-growth-from-2020` |
+| `pop_method` (GFM) | `county-level-yearmatched` | `…-2020-yearmatched` | `…-2020-yearmatched` |
+
+ncol: GFM 26, jrc 23, totals 18 — one fewer than live on jrc + totals (the stray column), GFM
+unchanged. Local parquet sizes 466,432 / 93,756 / 29,614 bytes, mtime 19:53.
+
+**A3.4 follow-ups:**
+
+- `metadata/cdh/kenya-flood-exposure-intersect.yaml` does **not** state the old string. L91-99
+  describe both definitions generically and L229-234 define the `pop_method` field with both values
+  and the `-yearmatched` suffix; nothing says which one the live tables carry, so there is nothing to
+  patch for the label fix. One unrelated figure to eyeball while you are in there: L97 gives
+  `county-level` national 2025 as **53,330,978**; the archived #28 thread and our 09-17 probe say
+  **53,330,964**. Not a gate, not touched.
+- **KE-ENSO: A5 is green.** The `pop_method` / explicit-column workaround can come out; `pop_method`
+  now reads `county-growth-from-2020` (GFM: `…-yearmatched`) on every row, and there is no `i.`
+  column anywhere.
+
+**Not done, by instruction:** the engine (`7_zonal_exposure.R` L149/L263/L266/L311) was not run or
+touched; stays on #44. Block B stays parked (#43).
+
+---
+
 ## Block A3 — GO: re-apply with the shadowing fixed, then publish (#42, #44)
 
 **GO.** Your diagnosis is right and is adopted in full. `pop_method` on the RHS inside
