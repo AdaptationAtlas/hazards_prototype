@@ -24,7 +24,7 @@ rebuild; §5.2 already runs under FORCE_OVERWRITE, so usually not separately nee
 | `SKIP_R3_4_1` | unset | Skip 4.1 when the tifs are already correct. |
 
 **R/3 was fully re-run on 2026-09-30** (usd + intld + ha, both timeframes, against the res-25 exposure
-rasters and the corrected producer prices; `DISPATCH_cglabs_r3_res25_rerun.md`). The three usd tiers
+rasters and the corrected producer prices; `archive/dispatches/DISPATCH_cglabs_r3_res25_rerun.md`). The three usd tiers
 were republished the same day behind the new G6 value-drift gate (`scripts/r3_publish_tiers.R
 --drift-exposure <0.4.4 §3.2 twin> --drift-allow-flips ...`); the intld and ha products were rebuilt on
 the node but are not published. A future bake inherits: park (`mv`) R/3 outputs rather than FORCE,

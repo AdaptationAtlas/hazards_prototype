@@ -16,7 +16,7 @@
 #      rest at 8.9x.
 # The republished exposure reference and the rebuilt hazard product both inherited
 # this; the G6 value-drift gate caught it before publish (see
-# DISPATCH_cglabs_r3_res25_rerun.md, 2026-09-27).
+# archive/dispatches/DISPATCH_cglabs_r3_res25_rerun.md, 2026-09-27).
 #
 # What this does instead:
 #   clip_prices_to_world_band()  drops any own observation whose ratio to the world

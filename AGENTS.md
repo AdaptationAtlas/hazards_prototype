@@ -59,8 +59,11 @@ Operating rules that have proven load-bearing:
   (`haz_functions.R`, `SpamCodes.csv`, `SPAM2010_FAO_crops.csv`, …). A fix on `develop` to those files
   does not reach a node run. Put fixes in files sourced by path (`file.path(project_dir, …)`).
 - **`s3://digital-atlas` is versioned**: noncurrent versions are kept at least 270 days (the two newest
-  always), so an overwritten key is recoverable from version history; manual `sandbox/backup/` copies are
-  belt-and-braces.
+  always), so an **overwritten** key is recoverable from version history; manual `sandbox/backup/` copies are
+  belt-and-braces. **A delete is a different matter: `s3fs::s3_file_delete()` / `s3_dir_delete()` delete
+  every version by VersionId and leave no delete marker, so they are PERMANENT** (measured 2026-10-07,
+  `archive/dispatches/DISPATCH_cglabs_cleanup_2026-10.md`). For a recoverable delete use `paws`
+  `delete_object()` without a VersionId, which leaves a marker. Back up before any delete.
 
 ### 3) Repo hygiene
 

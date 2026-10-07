@@ -1,5 +1,22 @@
 # Dispatch: S3 + node clean-up pass — retained backups, parked sets, the retired 2015 key (2026-10-07)
 
+## macbook response — Block B accepted; permanent-delete lesson recorded; #23 closed; C stays held (2026-10-07)
+
+Accepted, and thank you: finding that the deletes were permanent is the important result of this pass.
+The dispatch's safety premise ("every S3 delete leaves a recoverable version") was **wrong for
+`s3fs`**. Overwrites stay recoverable; `s3fs` deletes do not. The lesson is now in AGENTS.md §2 and
+`server-environment-cglabs.md` §9. In practice nothing was lost: each deleted backup was a
+pre-overwrite copy of a live key whose own version history still holds that state (24 versions on the
+severe usd tier). The retired 2015 object lives on only as `sandbox/backup/retired_20261007_064952/`.
+
+Block D done on the macbook:
+- **#23 closed.**
+- **`archive/dispatches/DISPATCH_cglabs_r3_res25_rerun.md` and `archive/dispatches/DISPATCH_cglabs_family_keys.md` archived.**
+- **This file stays at root** while Block C (132.6 GB of node parked dirs) is held. Nothing for the
+  node now.
+
+---
+
 ## cglabs response — Block B DONE: six prefixes empty, 2015 key gone (404) and backed up at 2,248,114 B; BUT the deletes were PERMANENT — s3fs deletes every version by VersionId, no delete markers, nothing recoverable from history; stays intact; C untouched (2026-10-07, d466d50)
 
 **GO B executed as written** (`logs/cleanup_B_20261007_064928.{R,log}`, script copied verbatim from the
@@ -158,14 +175,15 @@ newest first; commit, push, verify it landed (`git log origin/develop..HEAD` emp
 
 **Why.** Three threads finished and left copies behind on purpose. Each is now superseded by a
 verified live product:
-- the R/3 res-25 re-bake, `archive/`-bound `DISPATCH_cglabs_r3_res25_rerun.md`;
-- the family keys, `DISPATCH_cglabs_family_keys.md`, Block C GO'd 2026-10-01 and deferred to this pass;
+- the R/3 res-25 re-bake, `archive/`-bound `archive/dispatches/DISPATCH_cglabs_r3_res25_rerun.md`;
+- the family keys, `archive/dispatches/DISPATCH_cglabs_family_keys.md`, Block C GO'd 2026-10-01 and deferred to this pass;
 - the item-2 exposure pass, `archive/dispatches/DISPATCH_cglabs_exposure_intld_fixes.md`.
 
 Pete released all of it into one pass (2026-10-01 and 2026-10-07).
 
 **Safety.** `s3://digital-atlas` is versioned: noncurrent versions are kept at least 270 days, two
-newest always. Every S3 delete here leaves a recoverable version. **Node deletes in Block C have no
+newest always. ~~Every S3 delete here leaves a recoverable version.~~ **Corrected after Block B: `s3fs`
+deletes remove every version: permanent. See AGENTS.md §2.** **Node deletes in Block C have no
 undo.** That is why C comes last and is gated separately.
 
 **Out of scope, do not touch:**
@@ -282,5 +300,5 @@ Paste it and **STOP**.
 ## Block D — macbook
 
 Close #23, which was a defect in the retired 2015 object. Record the retirement in the `R/checks`
-headers. `git mv` `DISPATCH_cglabs_r3_res25_rerun.md`, `DISPATCH_cglabs_family_keys.md` and this file
+headers. `git mv` `archive/dispatches/DISPATCH_cglabs_r3_res25_rerun.md`, `archive/dispatches/DISPATCH_cglabs_family_keys.md` and this file
 to `archive/dispatches/`, with index rows. Update the handover. Nothing for the node.

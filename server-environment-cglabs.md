@@ -216,6 +216,8 @@ no RStudio Server. Work is done in JupyterLab terminals / notebooks and via
 
 ## 9) Atlas pipeline specifics {#9-atlas-pipeline-specifics}
 
+> **S3 deletes are permanent with s3fs** (2026-10-07). `s3fs::s3_file_delete()` resolves every version of a key and calls `delete_objects` with VersionIds: no delete marker, nothing in version history, despite bucket versioning being `Enabled`. Overwrites stay recoverable; deletes do not. For a recoverable delete use `paws` `delete_object()` without a VersionId. Back up before deleting.
+
 Things this repo has learned on CGlabs that a newcomer would otherwise
 rediscover the slow way.
 
