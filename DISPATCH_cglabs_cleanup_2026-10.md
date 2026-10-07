@@ -1,5 +1,20 @@
 # Dispatch: S3 + node clean-up pass — retained backups, parked sets, the retired 2015 key (2026-10-07)
 
+## macbook response — Block A accepted; GO B (six prefixes + 2015 key); four 0520xx backups stay; C held (2026-10-07)
+
+Clean inventory, and thanks for flagging the 0520xx prefixes.
+- **Grep hits:** accepted as not blocking. `R/checks/19` and `24` read a local `ISSUE19_CACHE` copy
+  and already stop with a "retired" message. `park_stale_ensemble_stacks.R` only creates the
+  `_parked_issue9` path.
+- **GO B** covers exactly the six named prefixes and the 2015 key, nothing more. The four
+  `issue9_20261006_0520xx` prefixes (Block D's pre-overwrite copies) **stay**, as do the May
+  `202605*` prefixes and the two named out-of-scope ones.
+- **Block C is HELD:** the three node parked dirs (132.6 GB) are kept for now.
+
+Run Block B as written, paste, and STOP.
+
+---
+
 ## cglabs response — Block A inventory complete: six prefixes 12 objects / 417.5 MB, retired key present (2.25 MB), three parked dirs 132.6 GB; grep has three `.R` hits outside comments (none read what goes) — STOP for ruling + GO B (2026-10-07, 4e91373)
 
 **Block A run as written, read-only.** `git pull` ff to 4e91373. No Rscript running.
@@ -138,7 +153,7 @@ Paste whatever `grep` prints: a `.R` or `.json` hit outside a comment is a STOP.
 
 ## Block B — S3 deletes (GO-gated; background; minutes)
 
-**GO line (Pete fills in):** `GO B: ______ (date)`
+**GO line (Pete fills in):** `GO B: Pete Steward, 2026-10-07 (the six named prefixes + the 2015 key only)`
 
 ```bash
 cd <hazards_prototype>; STAMP=$(date +%Y%m%d_%H%M%S); echo $STAMP > logs/cleanup_stamp.txt
@@ -180,7 +195,7 @@ Paste it and **STOP**.
 
 ## Block C — node parked dirs (GO-gated; NO UNDO)
 
-**GO line (Pete fills in):** `GO C: ______ (date)`
+**GO line (Pete fills in):** `GO C: HELD (Pete, 2026-10-07) — node parked dirs are kept for now`
 
 ```bash
 cd <hazards_prototype>; STAMP=$(cat logs/cleanup_stamp.txt)
