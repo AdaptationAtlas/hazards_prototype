@@ -210,7 +210,12 @@ regenerated file. Also ~halved §3.4 wall-time (234→119 min — writes were th
 
 **Timings (post-fix, sequential):** baselines ~6-8 min, futures ~25 min each, total ~119 min.
 
-**⚠️ Bug C — kernel trends have NO slopes (OPEN, BLOCKS REPUBLISH).** The regenerated trends
+**Bug C — kernel trends have NO slopes (RESOLVED 2026-06-11, `e1ef433`; see the section below).**
+The account that follows is the diagnosis as written at the time; the cause was `future`'s globals
+layer, not the kernel, and the fix is worker-local loading. Re-verified in service on 2026-09-20:
+the #26 R/2.1 rebake ran this path and published four trend keys.
+
+**Original note:** The regenerated trends
 have **`value_slope` = 100% NA and `value_pval` = 100% NA** (every group). The old `trend::`
 ref had slope NA=0%, pval NA=8%. So the Rcpp-kernel path produces NA for every fit column on
 REAL data — despite passing all synthetic probes (1e-16) and the integration probe. The non-fit

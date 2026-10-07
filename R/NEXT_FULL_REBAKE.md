@@ -65,6 +65,14 @@ consume them. So a true full rebake is:
   R/2 re-derives drought hazard, else the saturation re-propagates regardless of
   anything downstream. (Apply the #19 fix in 04_indices, re-run Stage 0 for NDWS,
   confirm historic NDWS no longer ~0.95/pixel, THEN proceed to R/2.)
+- **Stage 0 decision for this bake (Pete, 2026-10-07): run the comparison harness first.**
+  Water-balance v2 (`fast_calc_waterbalance.R`, `et0_fao56.R`, the `wbkernel` Rcpp package) and the
+  #14 HSH fix (`calc_HSH.R` on `heat_index_nws` + `rhx_from_daily`, plus `calc_WBGT.R`) are **already
+  written upstream and unrun**. `compare_waterbalance_v2.sh` quantifies the value move and confirms
+  v2's new inputs exist on the node (`atlas_hazards/soils/sroot_world.tif`, `sfcWind`) without
+  writing a product. It must conclude BEFORE R/2 launches. v2 is a separate script, not a toggle:
+  switching means running it in place of the three legacy `fast_calc_NDWS/NDWL0/NDWL50` scripts.
+  See HANDOVER_2026-10-07.md §2 B6/B7.
 - **Eventual goal (Pete): merge the two repos.** Until then, the cross-repo handoff
   (indices → consumption) is the coupling to mind. The runtime GitHub-`main` source URLs were removed
   on 2026-10-01. (Merge scoping is a separate project.)
@@ -165,8 +173,12 @@ consume them. So a true full rebake is:
 2. R/3 §4.1+§4.2 (vop intld, vop_usd, ha, **prod_t and head_n** per item 8, both axes). Park, do not FORCE.
 3. R/2.2 (desert mask carries; optional compound eval).
 4. Validators (`validate_cr093_real.R` for R/2.2; spot-check poultry Extreme drop).
-5. Publish every tier through the extended `r3_publish_tiers.R`: usd, intld, ha, prod_t and head_n (items 7 and
-   8), with G6 per variable against its 0.4.4 twin and 18 members stamped. Then domain=climate, plus the masking
+5. Publish every tier through the extended `r3_publish_tiers.R`, in the no-regrets order of
+   HANDOVER_2026-10-07.md §2D (usd/jagermeyr first, then intld, ha, prod_t, head_n; then
+   `period=annual` across all five; then the model axis and `value_sd` last, after Brayden confirms
+   the read contract). Design the whole key scheme BEFORE the first new key is written — the bucket
+   is versioned but `s3fs` deletes are permanent. G6 per variable against its 0.4.4 twin, 18 members
+   stamped. Then domain=climate, plus the masking
    rationale in the `metadata/data.json` hazard_change record. CDH records follow.
 6. Close #13. Log the republish to Brayden on `data-management#2` (the A/B/C catalog
    list — append any new/changed keys per [[reference-atlas-stac-structure]]).
