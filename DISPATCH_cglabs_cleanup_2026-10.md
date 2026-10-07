@@ -1,5 +1,78 @@
 # Dispatch: S3 + node clean-up pass — retained backups, parked sets, the retired 2015 key (2026-10-07)
 
+## cglabs response — Block A inventory complete: six prefixes 12 objects / 417.5 MB, retired key present (2.25 MB), three parked dirs 132.6 GB; grep has three `.R` hits outside comments (none read what goes) — STOP for ruling + GO B (2026-10-07, 4e91373)
+
+**Block A run as written, read-only.** `git pull` ff to 4e91373. No Rscript running.
+
+**S3 backup prefixes to delete (six named):**
+```
+issue9_20260928_142229     1 objects      8.7 MB
+issue9_20260928_142507     2 objects     17.3 MB
+issue9_20260928_142537     1 objects      7.1 MB
+issue9_20260928_142557     2 objects      2.7 MB
+issue9_20260930_120740     3 objects    191.2 MB
+issue9_20261006_195255     3 objects    190.5 MB
+                          12 objects    417.5 MB total
+```
+All six > 0 objects, as expected.
+
+**All prefixes under `sandbox/backup/` (for the record; only the six go):**
+```
+20260526_121951  20260527_073937  20260529_180100  20260530_154522
+issue9_20260916_135730  issue9_20260925_041056                      (named out of scope)
+issue9_20260928_142229  issue9_20260928_142507  issue9_20260928_142537  issue9_20260928_142557   (go)
+issue9_20260930_120740  issue9_20261006_195255                                                   (go)
+issue9_20261006_052021  issue9_20261006_052040  issue9_20261006_052104  issue9_20261006_052133   (NOT in the dispatch)
+```
+Note for the record: the four `issue9_20261006_0520xx` prefixes are the Block D publish backups
+(reference + family, both resolutions, 2026-10-06 morning). The dispatch neither lists them to go nor
+names them out of scope. Not touching them; say if they belong in B.
+
+**Retired key:** `domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=vop_nominal-usd-2015.parquet`
+**exists: TRUE, size 2,248,114 bytes.**
+
+**Node parked dirs** (working_dir = `common_data/nex-gddp-cimp6_hazards`):
+```
+Data/_parked_intld_fixes_20261004_173417       332 files     0.7 GB   newest 2026-10-05
+Data/_parked_usd_rebake_20261006_091428       1608 files     4.0 GB   newest 2026-09-30
+Data/_parked_issue9                          17546 files   127.9 GB   newest 2026-09-15
+                                                           132.6 GB total
+```
+`Data/_parked_*` present: exactly those three — nothing else would remain after C.
+
+**Reference grep** (`R/ scripts/ metadata/`, `*.R *.py *.json *.yaml`, excluding `R/archive`) — hits:
+```
+R/checks/19_exposure_vs_gyga_kenya.R:279   # comment: variable=vop_nominal-usd-2015.parquet is RETIRED from S3 …
+R/checks/19_exposure_vs_gyga_kenya.R:285   f_usd15 <- file.path(cache, "vop_nominal-usd-2015.parquet")
+R/checks/19_exposure_vs_gyga_kenya.R:286   if (!file.exists(f_usd15)) stop("… retired from S3 and not cached at …")
+R/checks/24_severity_sensitivity.R:118     # comment: … retired from S3 (no producer, unmaintained vintage, #23)
+R/checks/24_severity_sensitivity.R:120     if (!file.exists(file.path(cache, "vop_nominal-usd-2015.parquet"))) stop("… retired from S3 and not in ISSUE19_CACHE …")
+R/checks/24_severity_sensitivity.R:121     den <- as.data.table(read_parquet(file.path(cache, "vop_nominal-usd-2015.parquet")))[
+R/park_stale_ensemble_stacks.R:9           # comment: parks into Data/_parked_issue9/<STAMP>/hazard_timeseries_int/<tf>/
+R/park_stale_ensemble_stacks.R:69          park <- file.path(dirname(int_root), "_parked_issue9", STAMP, "hazard_timeseries_int", tf)
+```
+No hits in `scripts/` or `metadata/`; no `.py`/`.json`/`.yaml` hits. No hit for any of the six backup
+prefixes, `_parked_intld_fixes`, or `_parked_usd_rebake`.
+
+The gate says a `.R` hit outside a comment is a STOP, so stopping here as written. Assessment of the
+five code-line hits:
+- **19 L285–286 and 24 L120–121** reference the *local* `ISSUE19_CACHE` copy of
+  `vop_nominal-usd-2015.parquet`, never the S3 key; both scripts were rewritten 2026-09-26 to treat the
+  key as already retired and to `stop()` when the cache is absent. Deleting the S3 key changes nothing
+  for them. (Block D's "record the retirement in the R/checks headers" is these two files.)
+- **park_stale L69** *builds* the `Data/_parked_issue9/<STAMP>/…` path and `dir.create()`s it when it
+  parks stale ensemble stacks; it never reads from it. Removing `Data/_parked_issue9` in C does not
+  break it; a future run would simply recreate the directory.
+Nothing live reads what goes. Your call whether that counts as "documentation and comments".
+
+**Mount:** `common_data` NFS mount: size 192 T, used 70 T, available 123 T (37 % used). C would return
+~132.6 GB.
+
+**Not started:** Block B (`GO B:` blank) and Block C (`GO C:` blank). Waiting.
+
+---
+
+
 **Status:** Block A is read-only and runnable now. **Blocks B and C delete and are GO-gated.** Do not
 start either without its GO line filled in here. Block D is macbook work.
 
