@@ -65,7 +65,20 @@ consume them. So a true full rebake is:
   R/2 re-derives drought hazard, else the saturation re-propagates regardless of
   anything downstream. (Apply the #19 fix in 04_indices, re-run Stage 0 for NDWS,
   confirm historic NDWS no longer ~0.95/pixel, THEN proceed to R/2.)
-- **Stage 0 decision for this bake (Pete, 2026-10-07): run the comparison harness first.**
+- **Stage 0 decision for this bake — SETTLED 2026-10-07: there is NO Stage-0 refresh before this
+  bake.** The harness ran (`archive/dispatches/DISPATCH_cglabs_stage0_wb_harness.md`):
+  - **water-balance v2 is OUT on inputs** — `sroot_world.tif` does not exist on the node, `sfcWind`
+    is processed for one GCM-year, and the raw netCDF is historical-only so the SSP wind must be
+    downloaded first. Tracked as **#45**, with the unequal `ssp245` `rsds` counts found alongside.
+  - **#14 HSH is OUT of the critical path, not dropped** — the fix works and moves HSH by a
+    one-signed +6-7 °C median (98 % of pixels > 1 °C), but **no tier this bake publishes contains
+    HSH**: `crop_interactions` uses `NTx35`/`NTxM`, `animal_interactions` uses `THI_max`, and both
+    the published key and the local artifact are interaction-only. HSH is solo, feeding the climate
+    domain. It runs afterwards together with the `haz_classes.csv` thresholds it invalidates
+    (`HSH_max` Moderate > 27 against new medians of 27-35 °C). Tracked on **#14**.
+
+  **So R/2 reads today's indices.** The note below is kept for when #14/#45 are picked up.
+- Original note (Pete, 2026-10-07): run the comparison harness first.
   Water-balance v2 (`fast_calc_waterbalance.R`, `et0_fao56.R`, the `wbkernel` Rcpp package) and the
   #14 HSH fix (`calc_HSH.R` on `heat_index_nws` + `rhx_from_daily`, plus `calc_WBGT.R`) are **already
   written upstream and unrun**. `compare_waterbalance_v2.sh` quantifies the value move and confirms

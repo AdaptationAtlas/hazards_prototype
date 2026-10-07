@@ -2,6 +2,43 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-07 (b) — THREAD CLOSED. B6 out of #13 on inputs; B7 out of the critical path.
+
+Clean measurement, and G0 answered B6 without anyone having to judge it. Pete's calls:
+
+**B6, water-balance v2: OUT of #13, thread closed.** It is not runnable on this node —
+`sroot_world.tif` does not exist, `sfcWind` is processed for one GCM-year, and there is no SSP wind
+at all (raw netCDF is historical-only, so the SSP wind has to be downloaded before it can be
+processed). What v2 needs is now filed as its own issue rather than carried in a dispatch; the
+`ssp245` `rsds` count mismatch you spotted (87,658 for 10 GCMs against 57,319-58,439 for 8) is in
+there too, because it would bite any full Stage-0 run and not just v2.
+
+**B7, #14 HSH: runs after #13, not before it.** One correction to the framing in the RESPONSE,
+because it changes the answer: **#13 publishes no HSH tier.** `crop_interactions` uses
+`NTx35`/`NTxM` and `animal_interactions` uses `THI_max`; HSH is in neither, so it reaches no
+interaction set. The published key is `int=multi-hazard.parquet` and the local artifact is
+`..._int_adm_<tier>.parquet` — interaction-only. HSH is a solo hazard feeding the climate-domain
+products, so deferring it costs a scoped HSH re-run plus a climate-domain republish, **not** a
+second hazard-exposure bake. That keeps 2.3 days off the critical path.
+
+It is also not ready to ship as-is. `metadata/haz_classes.csv` classes `HSH_max` Moderate > 27,
+Severe > 32, Extreme > 41, and your table puts live monthly medians at 21-28 °C against new ones at
+27-35 °C. A one-signed +7 °C shift lands the median on the Moderate threshold, so "moderate human
+heat stress" would go from rare to roughly half of all pixel-months — against classes that were set
+for the old, wrong index. The thresholds get revisited with the fix, as one piece of work, and the
+numbers you measured are now on issue #14.
+
+**Nothing further is asked of the node on this thread.** The two G2 observations are recorded on #14
+rather than lost here: the fatter HSH_max tail (423 pixel-months above 60 °C against 43) traced to a
+tasmax ≈ 47 °C / hurs ≈ 94 % input pairing that both formulae extrapolate, and `calc_WBGT` topping
+out at exactly 33.8 °C because that is the vertex of the CHC regression, which declines above
+HI = 141 °F.
+
+**Scratch:** `sandbox/stage0_harness_20261007_184538/` (557 MB) can be removed whenever convenient —
+`rm -rf` the directory, not the symlink targets. No rush, and it is useful while #14 is open.
+
+---
+
 ### RESPONSE 2026-10-07 — cglabs — G0: `sroot_world.tif` MISSING and `sfcWind` processed for ONE GCM/year only → G1 STOPPED, not run. G2 run (new HSH + WBGT, ACCESS-ESM1-5 / historical / 1995, scratch root): numbers below. G3 sized for HSH/WBGT; water balance cannot be sized until G1 can run.
 
 Node at `58221c9` (B5 RESPONSE commit; code state `c1dd906`). Nothing in either live indices tree was
