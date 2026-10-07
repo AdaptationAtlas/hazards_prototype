@@ -271,6 +271,7 @@ subdirs <- c(
   "hazard_risk_vop",
   "hazard_risk_ha",
   "hazard_risk_n",
+  "hazard_risk_prod",
   "hazard_risk_vop_reduced",
   "hazard_exposure",
   "roi",
@@ -300,6 +301,7 @@ timeframe_subdirs <- c(
   "hazard_risk_vop",
   "hazard_risk_ha",
   "hazard_risk_n",
+  "hazard_risk_prod",
   "hazard_risk_vop_reduced"
 )
 

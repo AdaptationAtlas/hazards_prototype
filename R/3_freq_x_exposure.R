@@ -413,8 +413,22 @@ crop_vop_usd15_tot <- terra::rast(crop_vop_usd_file)
 
 #### d.2.1.2) Crop Harvested Area #####
 crop_ha_file <- grep("harv-area_ha_all", files, value = TRUE)
+if (length(crop_ha_file) != 1) stop("expected exactly 1 crop harv-area_ha_all tif under mapspam_pro_dir, found ", length(crop_ha_file), ": ", paste(basename(crop_ha_file), collapse = ", "), " — a second copy (e.g. a res-tagged twin) would be stacked onto the first and abort on the grid compare")
 crop_ha_tot <- terra::rast(crop_ha_file)
 cat("0.2.1.2) Using crop harvested area file:", basename(crop_ha_file), "\n")
+
+#### d.2.1.3) Crop production (tonnes) — the physical tier (#41, item 8) #####
+# Physical exposure, so a later price decision is a raster multiply or a table join instead of a
+# 0.4.x -> R/3 re-bake at both resolutions (the 2026-10 price pass cost four node re-runs). R/3 is
+# linear and prices are national: frequency x tonnes summed per unit x the national price is the
+# same number as pricing first. SPAM prod_t is native 0.05 deg and UNTAGGED - the same shape as
+# harv-area - so .align_exposure() sum-resamples it onto the hazard grid, exactly as the ha tier.
+# This is also the raster 0.4.0 allocates value from and the one 0.4.4 §1 extracts, so the
+# published reference already carries exposure = prod_t as this tier's G6 twin.
+crop_prod_file <- grep("variable=prod_t/spam_prod_t_all\\.tif$", files, value = TRUE)
+if (length(crop_prod_file) != 1) stop("expected exactly 1 spam_prod_t_all.tif under mapspam_pro_dir/variable=prod_t/, found ", length(crop_prod_file), " — stage the SPAM production rasters (0.4.0 reads the same directory)")
+crop_prod_tot <- terra::rast(crop_prod_file)
+cat("0.2.1.3) Using crop production file:", basename(crop_prod_file), "\n")
 # crop_ha_tot_adm_sum<-arrow::read_parquet(file.path(exposure_dir,"crop_ha_adm_sum.parquet"))
 ### d.2.2) Livestock #####
 #### d.2.2.1) Livestock Numbers (GLW) ######
@@ -502,9 +516,15 @@ vop_usd_name <- "vop_nominal-usd-2021"
 do_ha <- TRUE
 round_ha <- 0
 ha_name <- "harv-area_ha"
-do_n <- FALSE
+# Physical tiers (#41, rebake item 8, decided in for #13 on 2026-10-07). Both ON: prod_t is the
+# crop physical tier, head_n the livestock one. With these published, a price revision becomes a
+# raster multiply or a table join on the aggregated product instead of a 0.4.x -> R/3 re-bake at
+# both resolutions. The vop tiers keep being produced for compatibility.
+do_n <- TRUE
 round_n <- 0
 n_name <- "head_n"
+do_prod <- TRUE
+round_prod <- 0
 prod_name <- "prod_t"
 check4.1 <- TRUE
 
@@ -1003,6 +1023,21 @@ for (tx in seq_along(timeframe_choices)) {
         crop_exposure_file = NULL,
         livestock_exposure_file = livestock_no_file,
         round_n = round_n
+      )
+    }
+
+    # Crop production tonnes. Livestock has no tonnage surface (head_n is its physical tier), so
+    # livestock_exposure_file is NULL and §4.1 returns the classified non-fatal skip for
+    # livestock x prod_t, the same way livestock x harvested area already does (#9 fix).
+    if (do_prod) {
+      haz_risk_prod_dir <- ensure_dir(atlas_dirs$data_dir$hazard_risk_prod, timeframe)
+      to_do_list$prod <- list(
+        variable = prod_name,
+        folder = haz_risk_prod_dir,
+        source_dir = haz_risk_dir,
+        crop_exposure_file = crop_prod_file,
+        livestock_exposure_file = NULL,
+        round_n = round_prod
       )
     }
 
