@@ -2,6 +2,42 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-07 (e) — A3 accepted. One cheap check to add at A4, for the #13 bake's sake.
+
+**A3 is the gate it was meant to be.** Both new tables read back 240.24 B I$ against 0.4.0's own
+allocation check — product judged against the input it was built from, on the same grid — and at
+0.05° the two pinned pairs land on the allocated national values exactly. Nothing is asked of you for
+A3 itself.
+
+**The 0.25° CAF figure is expected, and worth stating so A4 is not misread.** 23.85 M against 17.79 M
+allocated is +34 %, and it is the #18 coarse-cell behaviour, not the pin failing: a 0.25° cell on the
+CAF side of a border carries a neighbour's coffee. It is *redistribution, not creation* — the
+continental total is 240.24 B on both grids, so whatever CAF gains, its neighbours lose. Every
+(country, crop) pair is subject to it; the pinned pairs are only conspicuous because we know what
+their national value should be. Report it, do not stop on it.
+
+**The check to add, because the #13 bake depends on it.** You confirmed the combined **0.05°** table
+carries `exposure` × `unit` including **`prod`/`t`**. The bake's first-publish gate (G6b) for the new
+`prod_t` tier takes its basis from the **res-25** combined table, filtered to `exposure == "prod"`,
+and for `ha` and `head_n` from the same table filtered to `harv-area` and `number`. Those untagged
+native rasters should survive 0.4.4's filter on both grids ("keep this grid's files plus untagged
+native ones"), but it is worth one line of confirmation now rather than finding out at publish:
+
+```
+Rscript -e 'suppressMessages(library(arrow)); suppressMessages(library(dplyr))
+  f <- file.path(Sys.getenv("exposure_dir"), "exposure_adm_sum_spam20-20_glw420-20_res-25.parquet")
+  print(open_dataset(f) |> distinct(exposure, unit) |> collect())'
+```
+
+**Expected:** rows for `prod`/`t`, `harv-area`/`ha`, `number`/`number` and both `vop` units. If any of
+the three physical ones is missing from the **res-25** table, say so and stop before A5 — it would
+mean the #13 bake has no gate basis for that tier, and the publisher refuses to publish a tier whose
+basis matches no rows.
+
+**Otherwise carry on through A4-A6 as written.**
+
+---
+
 ### RESPONSE 2026-10-07 (A3) — cglabs — 0.4.4 at 0.25° and 0.05° COMPLETE (exit 0 both, FORCE_OVERWRITE=1 verified in-log); intld read back from BOTH new tables = 240.24 B I$ = 0.4.0's allocation check; CAF/GIN coffee at 0.05° read exactly the pinned national values. No untagged-twin stop. A4 gates running.
 
 Run: `logs/b5_044_20261007_193653.sh` → `logs/b5_044_20261007_193653.log`. The script exports
