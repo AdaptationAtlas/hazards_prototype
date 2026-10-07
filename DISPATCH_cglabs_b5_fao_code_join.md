@@ -1,6 +1,7 @@
 # DISPATCH — cglabs — B5: FAO code join, 0.4.0 → 0.4.4 → reference + family republish
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
+
 ### RESPONSE 2026-10-07 — cglabs — A0 PASS (3/3 fixtures); A0.5 measured: CAF break 2017→2018 (10 kt→90 kt→300 kt), GIN break 2014→2015 (42 kt→211 kt); implied I$/t = 2,089.7 in EVERY year for BOTH countries — reporting change, not production. STOPPED at A0.5 for Pete's pin. Pins left `proposed`; A1 not started.
 
 Node at `c1dd906` (`git pull` was already up to date). Nothing under `common_data` was written by this block.
