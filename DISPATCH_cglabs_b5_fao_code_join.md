@@ -1,6 +1,87 @@
 # DISPATCH — cglabs — B5: FAO code join, 0.4.0 → 0.4.4 → reference + family republish
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
+### RESPONSE 2026-10-07 — cglabs — A0 PASS (3/3 fixtures); A0.5 measured: CAF break 2017→2018 (10 kt→90 kt→300 kt), GIN break 2014→2015 (42 kt→211 kt); implied I$/t = 2,089.7 in EVERY year for BOTH countries — reporting change, not production. STOPPED at A0.5 for Pete's pin. Pins left `proposed`; A1 not started.
+
+Node at `c1dd906` (`git pull` was already up to date). Nothing under `common_data` was written by this block.
+
+**A0 — fixtures on this node: all three PASS.**
+
+```
+project_dir=$PWD Rscript R/checks/fixture_vop_allocate.R          -> ALL QUANTITY-PIN ASSERTIONS PASSED   (B5 + price-factor + pin assertions all ok)
+project_dir=$PWD Rscript R/checks/fixture_fao_code_join.R         -> ALL FAO CODE-JOIN FIXTURE ASSERTIONS PASSED
+project_dir=$PWD Rscript R/checks/fixture_crop_heat_interactions.R -> ALL CROP-HEAT INTERACTION FIXTURE ASSERTIONS PASSED
+```
+
+Notable lines: `production x factor reproduces the VoP raster cell by cell (max deviation 8.88e-16)`;
+`B5 audit: 1804 matched by code, 1754 by name, 50 recovered over 1 renamed code`. No environment difference.
+
+**A0.5 — CAF / GIN coffee (FAO item 656 "Coffee, green"), read straight off the bulk files.**
+
+Files: `Data/fao/Production_Crops_Livestock_E_Africa_NOFLAG.csv` (what 0.4.0 resolves as `prod_file`;
+the non-NOFLAG production file is not staged) and `Data/fao/Value_of_Production_E_Africa.csv`, element
+`Gross Production Value (constant 2014-2016 thousand I$)` (exact string; the dispatch's `%like% "constant 2014-2016"`
+also matches the SLC and US$ constant elements for GIN, so the table below filters on the I$ element only).
+
+| year | CAF prod (t) | CAF GPV (k I$) | CAF I$/t | GIN prod (t) | GIN GPV (k I$) | GIN I$/t |
+|---|---:|---:|---:|---:|---:|---:|
+| 2010 | 5,270 | 11,013 | 2,089.8 | 29,018 | 60,638 | 2,089.7 |
+| 2011 | 6,218 | 12,993 | 2,089.7 | 30,320 | 63,359 | 2,089.7 |
+| 2012 | 6,923 | 14,466 | 2,089.7 | 17,907 | 37,420 | 2,089.7 |
+| 2013 | 7,975 | 16,664 | 2,089.6 | 18,440 | 38,534 | 2,089.7 |
+| 2014 | 10,799 | 22,566 | 2,089.6 | 41,500 | 86,721 | 2,089.7 |
+| 2015 | 9,050 | 18,912 | 2,089.7 | **210,866** | **440,641** | 2,089.7 |
+| 2016 | 10,120 | 21,147 | 2,089.6 | 218,635 | 456,876 | 2,089.7 |
+| 2017 | 9,990 | 20,875 | 2,089.7 | 216,691 | 452,813 | 2,089.7 |
+| 2018 | **89,979** | **188,028** | 2,089.7 | 235,043 | 491,163 | 2,089.7 |
+| 2019 | 202,753 | 423,687 | 2,089.7 | 243,703 | 509,260 | 2,089.7 |
+| 2020 | 289,283 | 604,508 | 2,089.7 | 242,682 | 507,126 | 2,089.7 |
+| 2021 | 297,962 | 622,643 | 2,089.7 | 261,992 | 547,478 | 2,089.7 |
+| 2022 | 306,901 | 641,322 | 2,089.7 | 261,645 | 546,753 | 2,089.7 |
+| 2023 | 316,108 | 660,563 | 2,089.7 | 200,000 | 417,935 | 2,089.7 |
+
+- **Where the break is.** CAF: between 2017 (9,990 t) and 2018 (89,979 t), then a further step to ~200-300 kt
+  from 2019; a 30x jump over two years. GIN: between 2014 (41,500 t) and 2015 (210,866 t); a 5x jump in one year,
+  flat at 200-260 kt since.
+- **Pre-break level.** CAF 2010-2017: median 8,512 t, mean 8,293 t, range 5,270-10,799 t (ICO: 2-6 kt).
+  GIN 2010-2014: median 29,018 t, mean 27,437 t, range 17,907-41,500 t (ICO: ~9 kt). Note that even the
+  pre-break FAO series sits above the ICO figure for both countries.
+- **Implied unit value.** 2,089.7 I$/t in every year, both countries, both sides of the break, to four
+  significant figures. This is the signature named in the dispatch: FAO's constant-2014-16 I$ GPV is a
+  single international price x FAO's own production, so the GPV series is the production series scaled.
+  The tonnage jump is a reporting change, not production. (Nominal side for GIN moves normally:
+  current-US$ GPV 25.8 M -> 131.4 M over the same 2014->2015 step, i.e. it carries the same tonnage break.)
+- **What 0.4.0 uses today** (allocation CSVs of 2026-10-05, both grids): `fao_prod_t` = median(2019:2023) =
+  CAF **297,962 t**, GIN **243,703 t**; GPV = CAF **622,643 k I$**, GIN **509,260 k I$**. Unguarded
+  (coverage 0.863 / 0.866), identical at res-05 and res-25.
+
+**Two things Pete should know before setting `prod_t`:**
+
+1. **SPAM 2020 carries the same break.** The allocation table's `spam_prod_t` for `acof+rcof` is CAF
+   **257,009 t** and GIN **210,973 t** at both resolutions - SPAM is calibrated to FAOSTAT national totals,
+   so the inflated tonnage is already inside the physical rasters. The quantity pin corrects the **money**
+   (with `scale_gpv = TRUE`, GPV_after = GPV x prod_t / fao_prod_t), but the `ha` tier, the forthcoming
+   `prod_t` tier (#41) and the nominal `vop_usd` tier still carry ~257 kt / ~211 kt of coffee for these two
+   countries. That is a separate decision; this pin does not reach it.
+2. **Mechanics at plausible pin values** (for sizing, not a recommendation): CAF `prod_t = 4000` gives
+   ratio 0.0134 and GPV 622,643 -> ~8,360 k I$; GIN `prod_t = 9000` gives ratio 0.0369 and GPV 509,260 ->
+   ~18,800 k I$. Coverage becomes spam/fao = 64 and 23 - far above `VOP_COVERAGE_MIN`, so neither pair is
+   newly guarded (the #39 guard fires only on coverage *below* the floor). The pinned GPV is then spread over
+   SPAM's unchanged ~257 kt / ~211 kt, so the per-tonne intld value in those cells drops to ~33 I$/t and
+   ~89 I$/t against 2,089.7 I$/t elsewhere. If Pete wants pre-break FAO rather than ICO, the medians above
+   (8,512 t / 29,018 t) are the numbers.
+
+**STOPPED here, per the dispatch.** `metadata/fao_quantity_pins.csv` is unchanged: both rows still
+`status = proposed`, `prod_t` blank, `decided = PENDING`. A1 (0.4.0 at both resolutions) has **not** been
+started, so the pins can be applied before the first 0.4.0 pass. Pete: fill `prod_t`, flip `status` to
+`applied`, set `decided`, push; the next node session pulls, commits nothing else, and runs A1. If the
+decision is instead "run with pins proposed", say so and A1 runs as today's behaviour plus the B5 fix.
+
+Everything else in flight on the node is the Stage-0 harness thread (`DISPATCH_cglabs_stage0_wb_harness.md`),
+which writes only to `nex-gddp-cimp6_hazards/sandbox/` and does not touch 0.4.x inputs or outputs.
+
+---
+
 
 Thread opened 2026-10-07 (macbook). Decision behind it: Pete chose **"fix before #13"** on
 2026-10-07 (`HANDOVER_2026-10-07.md` §2 B5). Code landed the same day in `fd929e5` and `e5f6340`.
