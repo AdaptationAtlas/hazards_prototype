@@ -1,7 +1,8 @@
 # HANDOVER — KE-ENSO Explorer: boundaries, re-levelling and the county census table
 
 **For:** the KE-ENSO notebook session, `atlas_nb-KE-enso`.
-**From:** hazards_prototype / macbook, 2026-10-06. Producer-side answer to the Defect 6 questions.
+**From:** hazards_prototype / macbook, 2026-10-06, **updated 2026-10-07**. Producer-side answer to
+the Defect 6 questions.
 **Prior art — read this first:** `HANDOVER_2026-09-17_ke-enso-population-schema.md` already answers
 most of what you asked. Issues
 [#28](https://github.com/AdaptationAtlas/hazards_prototype/issues/28) (closed, delivered 2026-09-17),
@@ -11,12 +12,18 @@ disagreement, open), [#33](https://github.com/AdaptationAtlas/hazards_prototype/
 ## Headline
 
 Your diagnosis is right in substance, but the premise is out of date: **the re-levelling you are
-asking for shipped on 2026-09-17.** The files in `data/KE-enso-explorer/` are dated **9 September**
-and are pre-#28 — they predate the fix by eight days. Nothing needs to be run. You need to re-pull
-tier 16 from S3.
+asking for shipped on 2026-09-17.** Nothing needs to be run on your side or ours.
 
-Two defects in the live tables turned up while verifying this; both are ours, both are described
-below, and one is a question for Pete before you write any headline number into copy.
+**One action is blocking, and it has not been done.** As of 2026-10-07 the files in
+`data/KE-enso-explorer/` are still dated **9 September** — pre-#28 — and `notebook_v3.qmd` still
+`FileAttachment`s them directly. So the Explorer is serving raw WorldPop levels (~55.1 M national
+rather than 52.8 M) with none of the KNBS columns. **Defect 6 is still live in the published
+Explorer.** Everything this document describes is data you are not yet reading. Section 2 has the
+URLs and a vintage check.
+
+Two defects in the live tables turned up while we verified this. **Both were ours and both are now
+fixed, republished and verified on S3** (#42, #44) — they need nothing from you, and the earlier
+instructions to hold off on totals and to hide `pop_method` are withdrawn.
 
 ---
 
@@ -101,50 +108,83 @@ recovered exactly. The levelling works; you are reading a file written before it
   fixed at the gridded 2020 distribution because KNBS does not project below county. Between-county
   differences are real; within-county ones are not. Do not chart them.
 
-### Two live defects found while verifying — please read before you consume
+### Two defects found while verifying — both now FIXED and verified live
 
-**(a) Stray `i.pop_source` column.** `exposure_jrc_rp.parquet` and `exposure_totals.parquet` each
-carry an extra `i.pop_source` column alongside the real `pop_source`. It is a `data.table` join
-artefact from the re-level step and should not be there. `exposure_gfm_seasonal.parquet` is clean.
-Harmless if you select columns explicitly; it will surprise a schema-strict loader or a `SELECT *`
-into a typed frame. Ours to fix — do not work around it permanently.
+*(Updated 2026-10-07. Both were ours, both are closed, and neither needs anything from you. Earlier
+versions of this section told you to hold off on totals and not to display `pop_method`. **Both
+instructions are withdrawn.**)*
 
-**(b) `pop_method` is mislabelled — the values are fine.** *(Corrected 2026-10-06 after the cglabs
-run. An earlier version of this section told you to hold off on totals; that is withdrawn — see
-below.)*
+**(a) Stray `i.pop_source` column — GONE.** `exposure_jrc_rp.parquet` and `exposure_totals.parquet`
+carried a `data.table` join artefact alongside the real `pop_source`. Stripped and republished;
+[#42](https://github.com/AdaptationAtlas/hazards_prototype/issues/42) closed. No table has any `i.`
+column. You can `SELECT *` safely.
 
-All three live tables report `pop_method` as `county-level` (`county-level-yearmatched` in GFM). The
-cglabs node tested this by **value** rather than by label, re-levelling under each method:
+**(b) `pop_method` was mislabelled — CORRECTED.** The live tables used to report `county-level` while
+the numbers were built with `county-growth`. The cglabs node proved it by value rather than by
+label:
 
 ```
 POP_METHOD=county-level   -> totals 52837534 -> 54226998  (x1.0263)
 POP_METHOD=county-growth  -> totals 52837534 -> 52837534  (x1.0000)
 ```
 
-`county-growth` reproduces every live value exactly. **The published numbers were built with
-`county-growth`** — the census-anchored method, which is also the licence-safe one: KNBS projections
-enter only as a dimensionless ratio and the 2019 census (CC0-1.0) supplies the absolute level. The
-`pop_method` column is simply wrong, tracked as
-[#44](https://github.com/AdaptationAtlas/hazards_prototype/issues/44) and corrected by the same
-tier-16 republish that strips `i.pop_source`.
+`county-growth` reproduces every live value exactly — the census-anchored, licence-safe method.
+The label now says so. Root cause was a variable-shadowing bug
+([#44](https://github.com/AdaptationAtlas/hazards_prototype/issues/44)) that made the string
+un-repairable by any re-level; fixed in the re-level script and the zonal engine.
 
 **What this means for you:**
 
-- **There is no licence problem with the exposure tables.** Nothing published reproduces KNBS's
-  copyrighted projection levels. (That question remains open only for
+- **No licence problem with the exposure tables.** KNBS projections enter only as a dimensionless
+  ratio; the 2019 census (CC0-1.0) supplies the level. (That question stays open only for
   `population_knbs_projections_*.parquet`, which you should not consume anyway — see section 3.)
-- **You can use the national and county totals.** The earlier instruction to hold off is withdrawn.
-  National `pop_total` is **52,837,534** and is not expected to move.
-- **Do not display `pop_method` until the republish lands.** It is the one field in these tables that
-  currently lies. After the republish it will read `county-growth-from-2020`
-  (`county-growth-from-2020-yearmatched` in GFM). `pop_source`, `pop_year` and every numeric column
-  are correct now and unchanged by the fix.
-- A possible future move to `county-level` (which would make county totals match KNBS's published
-  projections, 54,226,998 nationally for 2026) is parked as low-priority
-  [#43](https://github.com/AdaptationAtlas/hazards_prototype/issues/43), gated on #33. If it ever
-  happens it is a seconds-long re-level and the schema does not move.
+- **Use the totals freely.** National `pop_total` is **52,837,534** and is not expected to move.
+- **`pop_method` is now safe to display.** It reads `county-growth-from-2020`
+  (`county-growth-from-2020-yearmatched` in GFM).
+- A future move to `county-level` (county totals matching KNBS's published projections, 54,226,998
+  nationally for 2026) is parked as low-priority
+  [#43](https://github.com/AdaptationAtlas/hazards_prototype/issues/43). Seconds-long re-level if it
+  ever happens; the schema does not move.
 
----
+### ⚠ THE ONE BLOCKING ACTION — you are still serving pre-#28 data
+
+Checked 2026-10-07: `data/KE-enso-explorer/exposure_*.parquet` in `atlas_nb-KE-enso` are all still
+dated **9 September 2026**, and the notebook loads them directly:
+
+```js
+exp_gfm: FileAttachment("/data/KE-enso-explorer/exposure_gfm_seasonal.parquet"),
+exp_jrc: FileAttachment("/data/KE-enso-explorer/exposure_jrc_rp.parquet"),
+exp_tot: FileAttachment("/data/KE-enso-explorer/exposure_totals.parquet"),
+```
+
+Those files **predate the KNBS re-levelling entirely**. They carry raw WorldPop levels (~55.1 M
+national, not 52.8 M) and have none of the `pop_source` / `pop_year` / `pop_method` /
+`pop_scale_census` / `*_grid` columns. **This is the original Defect 6, still live in the
+Explorer.** Everything above describes data you are not yet reading.
+
+Re-pull all three:
+
+```
+https://digital-atlas.s3.amazonaws.com/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_gfm_seasonal.parquet
+https://digital-atlas.s3.amazonaws.com/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_jrc_rp.parquet
+https://digital-atlas.s3.amazonaws.com/domain=exposure/type=intersect/region=kenya/processing=analysis-ready/exposure_totals.parquet
+```
+
+Then confirm you have the right vintage — these are the live values as of 2026-10-07:
+
+| check | expected |
+|---|---|
+| `exposure_totals` rows / counties | 290 / 47 |
+| national `sum(pop_total)` | **52,837,534** |
+| national `sum(pop_total_grid)` | 55,119,798 |
+| columns with an `i.` prefix | **none**, in all three |
+| `pop_method` (totals, jrc) | `county-growth-from-2020` |
+| `pop_method` (gfm) | `county-growth-from-2020-yearmatched` |
+| `pop_source` (totals, jrc) | `knbs-projection-2026`, `pop_year` 2026 |
+| `pop_source` (gfm) | 7 distinct: census-2019 for 2018+2019, projection-2020…2025 |
+| `ncol` (gfm / jrc / totals) | 26 / 23 / 18 |
+
+If `pop_total_grid` is missing, you still have the old file.
 
 ## 3. County census lookup — yes to the structure, no to compiling your own
 
@@ -229,12 +269,12 @@ microcensus data, so it shares lineage with the figures in dispute.
 
 | | Action | Owner |
 |---|---|---|
-| 1 | Re-pull tier 16 from S3; discard the 9 Sep copies | notebook |
+| 1 | **BLOCKING — re-pull tier 16 from S3; the 9 Sep copies are still live in the Explorer** | notebook |
 | 2 | Relabel Table 1.1 / Section 1 as IEBC parliamentary constituencies, with footnote | notebook |
 | 3 | Consume `population_knbs_census_adm1.parquet` for the Section 1 KPI cards; do not compile your own | notebook |
 | 4 | Read `pop_source` / `pop_year` per row in the GFM table; never per file | notebook |
-| 5 | Totals are usable (national 52,837,534); do **not** surface `pop_method` until the republish lands | notebook |
-| 6 | Drop the stray `i.pop_source` column from JRC + totals; republish tier 16 | pipeline |
-| 7 | Correct the `pop_method` mislabel in the engine + 7b, and in the CDH record (#44) | pipeline |
+| 5 | Totals usable (national 52,837,534); `pop_method` now safe to display | notebook |
+| 6 | ~~Drop the stray `i.pop_source` column; republish tier 16~~ **DONE 2026-10-06, verified on S3** | pipeline |
+| 7 | ~~Correct the `pop_method` mislabel in the engine + 7b~~ **DONE 2026-10-07** (CDH record needed no change) | pipeline |
 | 8 | Check whether [2025] KEHC 3212 was appealed or stayed before any public copy on #32 | Pete |
 | 9 | Low-priority: whether the default ever moves to `county-level` (#43, gated on #33) | Pete |
