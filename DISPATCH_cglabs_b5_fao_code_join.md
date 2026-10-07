@@ -2,6 +2,60 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-07 (A2) — cglabs — 0.4.0 at 0.25° COMPLETE: audit, pins, allocation and continental total IDENTICAL to 0.05° (240.24 B I$); guarded set identical on both grids (30 pairs); both factor rasters present and byte-identical. Per-crop before/after at 0.05°: single-item crops move 0.000, composites carry all of +39.96 B. A3 (0.4.4 × 2) launched.
+
+Run: `EXPOSURE_RES=0.25 FORCE_OVERWRITE=1`, 19:45:39 → 19:53:52 (8 min), `logs/b5_040_res25_20261007_193653.log`.
+
+**Grid-independence, as the dispatch requires.** Every national line is the same as at 0.05°:
+`B5 join audit … recovered 55.12 B I$ (18.1%) across 57 renamed item codes`; pins APPLIED 2/2 matched;
+`allocation table: 1210 pairs … inside 249.28 B I$, guarded 30 pairs 9.04 B I$ = 3.6%`;
+`price factor check: … 7.28e-12 (peak 4.69e+04) over 42 layers`;
+`allocation check: 1067 pairs conserved to 1e-6, 143 guarded pairs empty; continental total 240.24 B I$`.
+Read back off `spam_vop_intld15-2021_all_res-25.tif`: 240.24 B I$ (42 layers).
+
+**The guarded set is identical on the two grids** — 30 pairs, same members, including BEN cowpea
+(SPAM 5,775 t vs FAO 134,940 t on both). The dispatch's "one legitimate difference" (BEN cowpea 5.8 kt at
+0.05° vs 25.1 kt at 0.25°) no longer arises: 0.4.0 now takes the SPAM national totals on the native grid
+(script header, "identical on the two grids by …"), so the coverage guard is grid-independent. Not a
+deviation — the invariant is tighter than the dispatch assumed.
+
+**Factor rasters.** `fao_prices/crop_factor_intld15-2021-t_res-05.tif` and `…_res-25.tif` both exist
+(42 layers), and are **byte-identical (md5 `a2955948…`)**, both on the 0.05° native grid. The code comment
+says "written on THIS run's allocation grid", and that grid is the native one in both runs, so the
+`res-25` file is a duplicate by construction. Harmless for A3 — 0.4.4 §1 lists only `variable=*` paths,
+so `fao_prices/` is never extracted — but the macbook may want the comment, or the second write, revised.
+
+**Per-crop before/after, 0.05°, continental sums of the written `all` raster vs the 2026-10-05 cache
+(`sandbox/b5_old_adm_sum_20261007_193653/…_all_res-05_adm_sum.parquet`, admin0 rows), B I$:**
+
+| crop | old | new | Δ |
+|---|---:|---:|---:|
+| vegetables | 11.035 | 24.099 | **+13.063** |
+| tropical fruit | 6.584 | 13.959 | **+7.375** |
+| temperate fruit | 2.648 | 5.153 | **+2.505** |
+| other cereals | 0.523 | 2.446 | +1.923 |
+| other pulses | 0.311 | 1.791 | +1.480 |
+| other oil crops | 0.298 | 0.945 | +0.647 |
+| rest of crops | absent | 8.413 | **+8.413** |
+| other roots | absent | 5.532 | **+5.532** |
+| other fibre crops | absent | 0.078 | +0.078 |
+| robusta coffee | 2.383 | 1.330 | **−1.053** (the two pins) |
+| arabica coffee | 1.707 | 1.707 | 0.000 |
+| maize / rice / wheat / cassava / yams / sorghum / … (all 31 other crops) | — | — | **0.000 each** |
+| **total** | **200.28** | **240.24** | **+39.96** |
+
+Exactly the macbook's shape: the move is in vege, trof, temf, orts, rest (plus the smaller composites);
+no single-item group moves; the only decrease is robusta coffee, by the pinned 1.05 B. Three groups that
+matched nothing by name (rest, orts, ofib) now exist in the raster for the first time — they were not
+"zero", they were absent — which is the +14.0 B the old-vs-new per-crop sum does not show (25.94 + 14.02 =
+39.96).
+
+**A3 launched** 19:55: `logs/b5_044_20261007_193653.sh` runs 0.4.4 at 0.25° then 0.05° with
+`FORCE_OVERWRITE=1` exported and echoed into the log (`env check: FORCE_OVERWRITE=1`), log
+`logs/b5_044_20261007_193653.log`. A4 follows when both finish.
+
+---
+
 ### MACBOOK 2026-10-07 (c) — your `FORCE_OVERWRITE` call was right and my A1 was wrong. Item 1 is not material: proceed to A3.
 
 **1. The deviation — you were correct, and the dispatch was wrong.** A1 as I wrote it set
