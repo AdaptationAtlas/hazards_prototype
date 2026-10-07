@@ -21,8 +21,26 @@ suppressMessages(if(!require(pacman)){install.packages('pacman');library(pacman)
 suppressMessages(pacman::p_load(tidyverse,parallel,ecmwfr))
 options(keyring_backend = "file")
 
-# credentials — read from environment, never hardcode. Set CDS_UID + CDS_KEY in
-# your shell / ~/.Renviron. (CDS is being retired in favour of AWS Open Data.)
+# RETIRED 2026-10-07. This is the only script in either repo that wants a Copernicus CDS
+# credential, and nothing consumes what it downloads: the hazards_prototype chain EXCLUDES AgERA5
+# explicitly (`R/1_make_timeseries.R` L100 and L132, `R/2.1_create_monthly_haz_tables.R` L186), and
+# the NEX-GDDP inputs the pipeline actually uses come from a public S3 bucket with no credential at
+# all (`download_manual_nex_gddpCMIP6.R`). CDS is being retired in favour of AWS Open Data.
+#
+# So no CDS key is needed to run anything here, and the key literal that sat in this file's history
+# before `eeea77d` (2026-06-24) should simply be REVOKED in the Copernicus account rather than
+# rotated — there is nothing to rotate it for.
+#
+# Kept rather than deleted so the AgERA5 acquisition method stays on record, but it refuses to run
+# without an explicit opt-in, so nobody is prompted to create a credential this project does not use.
+if (!nzchar(Sys.getenv("ALLOW_CDS_AGERA5_DOWNLOAD"))) {
+  stop("download_AgERA5.R is RETIRED (2026-10-07): nothing in this pipeline consumes AgERA5 and no ",
+       "CDS credential is needed. The NEX-GDDP inputs come from public S3 with no key. Set ",
+       "ALLOW_CDS_AGERA5_DOWNLOAD=1 only if you deliberately want AgERA5 for work outside this chain, ",
+       "and supply CDS_UID + CDS_KEY from your own account.")
+}
+
+# credentials — read from environment, never hardcode.
 UID = Sys.getenv("CDS_UID")
 key = Sys.getenv("CDS_KEY")
 stopifnot(
