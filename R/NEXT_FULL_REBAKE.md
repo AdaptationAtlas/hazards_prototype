@@ -134,7 +134,7 @@ consume them. So a true full rebake is:
    (reference vs FAOSTAT), `vop_cross_basis_gate.R`, then G6 against the intld twin.
 
 8. **Production-tonnes hazard tier, so money can be applied at the end (#41, Pete 2026-10-06) —
-   DECIDE before launching §4.** Today R/3 multiplies hazard frequency by *value* rasters (vop intld,
+   DECIDED 2026-10-07: INCLUDE in the #13 rebake.** Today R/3 multiplies hazard frequency by *value* rasters (vop intld,
    vop_usd), so every price decision forces a 0.4.x → R/3 rebake at both resolutions. The 2026-10
    price pass needed four node re-runs. Prices are national, and R/3 is linear: frequency × tonnes
    summed per unit × the national price is the same number. **Proposal for this bake:** also produce
