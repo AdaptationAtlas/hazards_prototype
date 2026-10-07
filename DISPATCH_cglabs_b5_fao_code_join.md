@@ -2,6 +2,39 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-07 (A3) — cglabs — 0.4.4 at 0.25° and 0.05° COMPLETE (exit 0 both, FORCE_OVERWRITE=1 verified in-log); intld read back from BOTH new tables = 240.24 B I$ = 0.4.0's allocation check; CAF/GIN coffee at 0.05° read exactly the pinned national values. No untagged-twin stop. A4 gates running.
+
+Run: `logs/b5_044_20261007_193653.sh` → `logs/b5_044_20261007_193653.log`. The script exports
+`FORCE_OVERWRITE=1` and the log's first line is `env check: FORCE_OVERWRITE=1`; each 0.4.4 start line
+reads `script start (FORCE_OVERWRITE=1 -> overwrite=TRUE)`. 0.25°: 19:55:41 → 19:58:14. 0.05°:
+19:58:14 → 20:02:26. §1 kept `66 tifs -> 45 after keeping <tag> + untagged` on both grids; the
+untagged-legacy-twin check did not fire, so nothing was moved aside.
+
+**Product vs input, same grid** (the gate; admin0 rows, `tech = all`, read with `arrow`):
+
+| table (new, written today) | continental intld, B I$ | 0.4.0 allocation check | CAF robusta, M I$ | GIN robusta, M I$ |
+|---|---:|---:|---:|---:|
+| `vop_intld15-2021_adm_sum_spam20_glw420_res-05.parquet` (20:02) | **240.24** | 240.24 | **17.79** | **60.64** |
+| `vop_intld15-2021_adm_sum_spam20_glw420_res-25.parquet` (19:58) | **240.24** | 240.24 | 23.85 | 61.37 |
+
+At 0.05° the two pinned pairs read back **exactly** the national `value_alloc` (17,787 / 60,638 k I$);
+arabica is 0 in both countries, so the whole pin lands on robusta. At 0.25° CAF reads 23.85 M against
+17.79 M allocated — the coarse-cell border spill the dispatch says the cross-basis gate reports rather
+than fails (a 0.25° cell on the CAF side of a border holding a neighbour's coffee); GIN 61.37 vs 60.64,
+same mechanism, smaller. Both grids conserve the continental total.
+
+Also rewritten: `exposure_adm_sum_spam20-20_glw420-20_res-{05,25}.parquet` (8.07 M / 5.67 M rows),
+`vop_nominal-usd-2021_adm_sum_…`, `hpop_adm_sum_…`, and the per-tif `*_adm_sum.parquet` caches under
+`variable=vop_intld15-2021/` (the 2026-10-05 ones are preserved in `sandbox/b5_old_adm_sum_20261007_193653/`).
+The combined 0.05° table carries exposure × unit = harv-area/ha, phys-area/ha, **prod/t**, number,
+vop/intld15-2021, vop/nominal-usd-2021 — the `prod_t` twin the #13 bake's tier needs is present.
+
+**A4 launched** 20:02 (`logs/b5_a4_20261007_193653.sh` → `.log`): qaqc at 0.25° and 0.05°, cross-basis
+gate at 0.25° and 0.05°, probe at 0.25°, in that order; each step's output is reviewed before the next is
+trusted.
+
+---
+
 ### MACBOOK 2026-10-07 (d) — A2 accepted. Factor-raster naming was my bug; fixed. Carry on through A4-A6.
 
 **A2 is clean and nothing is asked of you for it.** Grid-independence holds on every national line,
