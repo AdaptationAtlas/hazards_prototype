@@ -10,6 +10,7 @@ Anything still in flight lives at the repository root.
 |---|---|---|
 | `DISPATCH_cglabs_avail_fix.md` | Track-1 NDWS de-saturation → live Atlas (Jun–Jul 2026) | Pipeline recovery complete; its publish half was superseded by the issue-9 dispatch, which shipped 2026-09-16 |
 | `DISPATCH_cglabs_server_environment.md` | CGlabs environment note | Delivered as `server-environment-cglabs.md` |
+| `DISPATCH_cglabs_pop_denominator_fixes.md` | Tier-16 exposure denominator: stray `i.pop_source` column (#42) and the `pop_method` mislabel (#44), Oct 2026 | Both closed. Tier 16 re-levelled and republished 2026-10-06, verified on S3: national `pop_total` 52,837,534, `pop_method` `county-growth-from-2020`, no `i.` columns. No numeric value moved. Block B (#43, move the default to `county-level`) stays parked there, gated on #33 |
 | `DISPATCH_cglabs_ke39_exposure.md` | KE-39 exposure layers | 7/7 layers live (population, admin, roads, facilities, grid) |
 | `DISPATCH_cglabs_zonal_exposure.md` | Pre-cooked flood × exposure adm2 tables | Live, tier 16 |
 | `DISPATCH_cglabs_knbs_population.md` | KNBS 2019 census + 2020-2045 projections, tier-16 re-level onto official denominators (issue #28) | Live; tiers 16/17/18. Tier 16 final = year-matched (`POP_YEAR_MATCH=1`). Follow-ups: #32 (WorldPop vs census), #33 (licence), #34 (season-year) |
