@@ -146,7 +146,20 @@ POP_GRID_SOURCE <- "worldpop-constrained-2020"   # which grid paths$pop points a
 
 knbs <- knbs_county_totals(exp_root, POP_SOURCE, POP_YEAR, POP_METHOD, POP_BASE_YEAR)
 pop_label  <- knbs$label
-pop_method <- knbs$method
+# NOT named `pop_method` (#44). These tables carry a pop_method COLUMN, and inside
+# dt[, `:=`(pop_method = pop_method)] the RHS resolves to that column, not to this value -- a
+# self-assignment that silently preserves a stale string while the log prints the right one.
+# Distinct names make the shadow impossible.
+pop_method_val <- knbs$method
+# Under year matching the A factors come from POP_METHOD via pop_year_targets(), NOT from
+# knbs_county_totals()'s POP_SOURCE branch, so the label must be derived the same way. Taking it
+# from pop_method_val stamped `county-level` on county-growth numbers whenever POP_SOURCE was left
+# at its census default -- which is how the live mislabel was first written (#44).
+pop_method_ym <- if (POP_METHOD == "county-level") {
+  "county-level"
+} else {
+  sprintf("county-growth-from-%d", POP_BASE_YEAR)
+}
 grid_adm1 <- pop_by_idx[key_dt, on = "adm2_idx"][, .(grid_pop = sum(pop_total, na.rm = TRUE)),
                                                  by = adm1_pcode]
 scale_dt <- pop_scale_table(grid_adm1, knbs$totals, pop_label, log_step)
@@ -170,11 +183,11 @@ for (c in c("roads_km_total","grid_km_total","health_n_total","schools_n_total",
 setnames(totals, "pop_total", "pop_total_grid")
 totals <- scale_dt[totals, on = "adm1_pcode"]
 totals[, `:=`(pop_total = pop_total_grid * pop_scale_adm1,
-              pop_source = pop_label, pop_method = pop_method,
+              pop_source = pop_label, pop_method = pop_method_val,
               pop_year = if (YEAR_MATCH) POP_REF_YEAR else NA_integer_,
               pop_grid_source = POP_GRID_SOURCE)]
 log_step(sprintf("  totals: pop %.0f [%s / %s] (grid %.0f), roads %.0f km, grid %.0f km, health %d, schools %d",
-                 sum(totals$pop_total), pop_label, pop_method, sum(totals$pop_total_grid),
+                 sum(totals$pop_total), pop_label, pop_method_val, sum(totals$pop_total_grid),
                  sum(totals$roads_km_total), sum(totals$grid_km_total),
                  sum(totals$health_n_total), sum(totals$schools_n_total)))
 
@@ -260,10 +273,10 @@ if (YEAR_MATCH) {
   A[, .join_year := as.integer(year)]
   A <- sy[A, on = c("adm1_pcode", ".join_year")]
   A[, pop_year := .join_year][, .join_year := NULL]
-  A[, pop_method := paste0(pop_method, "-yearmatched")]
+  A[, pop_method := paste0(pop_method_ym, "-yearmatched")]
 } else {
   A <- totals[, .(adm2_pcode, pop_scale_adm1, pop_scale_census, pop_growth_county)][A, on = "adm2_pcode"]
-  A[, `:=`(pop_source = pop_label, pop_method = pop_method, pop_year = NA_integer_)]
+  A[, `:=`(pop_source = pop_label, pop_method = pop_method_val, pop_year = NA_integer_)]
 }
 A[, `:=`(observed_pct = pmin(fifelse(area_km2 > 0, observed_km2 / area_km2, NA_real_), 1),  # clamp grid-mismatch rounding
          flooded_pct_observed = pmin(fifelse(observed_km2 > 0, flooded_km2 / observed_km2, NA_real_), 1),
@@ -309,7 +322,7 @@ setnames(B, "pop_exposed", "pop_exposed_grid")
 B[, `:=`(pop_exposed = pop_exposed_grid * pop_scale_adm1,
          pop_pct = fifelse(pop_total_grid > 0, pop_exposed_grid / pop_total_grid, NA_real_),
          pop_source = pop_label,
-         pop_method = pop_method,
+         pop_method = pop_method_val,
          pop_year = if (YEAR_MATCH) POP_REF_YEAR else NA_integer_,
          pop_grid_source = POP_GRID_SOURCE)]
 Bcols <- c("adm2_pcode","adm1_pcode","adm2_name","adm1_name","rp",
