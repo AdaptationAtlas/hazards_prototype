@@ -265,9 +265,18 @@ spam_vop_intd <- spam_vop_intd[[sort(names(spam_vop_intd))]]
 .fc_scale <- max(c(.fc_scale[is.finite(.fc_scale)], 1))
 if (.fc_dev / .fc_scale > 1e-6) stop(sprintf("[0.4.0] price factor does not reproduce the VoP raster: max abs deviation %.6g against a peak of %.6g over %d layers", .fc_dev, .fc_scale, length(.fc_layers)))
 .log040(sprintf("price factor check: production x factor reproduces VoP to %.3g (peak %.3g) over %d layers", .fc_dev, .fc_scale, length(.fc_layers)))
-.factor_file <- file.path(mapspam_pro_dir, "fao_prices", paste0("crop_factor_intld15-2021-t_", .eg$tag, ".tif"))
+# Name it for the grid it is ACTUALLY on, read off the raster, not for this run's EXPOSURE_RES.
+# `alloc_grid` is pinned to 0.05 deg (L57) whatever EXPOSURE_RES says, because pricing has to happen
+# on the fine grid - a 0.25 deg border cell belongs to one country but holds both countries'
+# production. Tagging this file with the run's EXPOSURE_RES therefore produced a `_res-25.tif` that
+# was byte-identical 0.05 deg data under a 0.25 deg name (caught on the node, 2026-10-07 A2). A
+# filename is a claim like any other: derive the tag so it cannot drift from the content.
+.fac_res <- terra::res(.factor_rast)[1]
+.fac_tag <- sprintf("res-%02d", round(.fac_res * 100))
+.factor_file <- file.path(mapspam_pro_dir, "fao_prices", paste0("crop_factor_intld15-2021-t_", .fac_tag, ".tif"))
 terra::writeRaster(.factor_rast, .factor_file, overwrite = TRUE)
-.log040(sprintf("constant-I$ price factor written: %s (%d layers, I$ per tonne)", .factor_file, terra::nlyr(.factor_rast)))
+.log040(sprintf("constant-I$ price factor written: %s (%d layers, I$ per tonne, on the %.2f deg ALLOCATION grid regardless of EXPOSURE_RES=%s - price on the fine grid, aggregate after)",
+                .factor_file, terra::nlyr(.factor_rast), .fac_res, .eg$tag))
 
 # Hard self-check: the zonal sum of what was written back equals what was allocated, per
 # (country, group); guarded pairs come back empty. A silent miss here is #38 again.

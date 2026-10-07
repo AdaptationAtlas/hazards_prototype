@@ -212,4 +212,15 @@ ok(nrow(xb[iso3 %in% c("CAF", "GIN") & crop %like% "coffee"]) == 4,
 ok(all(nzchar(xb[iso3 %in% c("CAF", "GIN"), reason])) && all(xb[iso3 %in% c("CAF", "GIN"), reason] %like% "SPAM"),
    "and each says why - a registered residual needs a reason, not just a row")
 
+## the factor raster's filename must state the grid it is ON, not the run's EXPOSURE_RES. 0.4.0's
+## allocation grid is pinned to 0.05 deg whatever EXPOSURE_RES says (pricing happens on the fine
+## grid), so tagging the file with EXPOSURE_RES produced a `_res-25.tif` holding 0.05 deg data
+## (caught on the node 2026-10-07). The tag is now derived from the raster.
+r40 <- readLines(file.path(root, "R", "0.4.0_create_crop_vop_intld15.R"))
+ok(any(grepl("\\.fac_res <- terra::res\\(\\.factor_rast\\)\\[1\\]", r40)) &&
+   any(grepl('paste0\\("crop_factor_intld15-2021-t_", \\.fac_tag', r40)),
+   "the factor raster's filename tag is derived from the raster's own resolution, not from EXPOSURE_RES")
+ok(!any(grepl('paste0\\("crop_factor_intld15-2021-t_", \\.eg\\$tag', r40)),
+   "and the EXPOSURE_RES tag is gone - a filename is a claim, and that one was false for res-25")
+
 cat("\nALL QUANTITY-PIN ASSERTIONS PASSED\n")

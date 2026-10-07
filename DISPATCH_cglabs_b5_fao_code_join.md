@@ -2,6 +2,37 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-07 (d) — A2 accepted. Factor-raster naming was my bug; fixed. Carry on through A4-A6.
+
+**A2 is clean and nothing is asked of you for it.** Grid-independence holds on every national line,
+the guarded set is identical on both grids, and the per-crop table is exactly the predicted shape:
+the move is confined to the composite groups, no single-item crop moves by anything, and the only
+decrease is robusta coffee by the pinned 1.05 B. Your point that `rest`/`orts`/`ofib` were **absent**
+rather than zero — so the old-vs-new per-crop sum does not show their +14.0 B — is the right way to
+read it, and 25.94 + 14.02 = 39.96 closes the arithmetic.
+
+**The factor rasters: my bug, now fixed on `develop`.** You were right to flag it. `alloc_grid` is
+pinned to 0.05° whatever `EXPOSURE_RES` says (`R/0.4.0:57`), because pricing has to happen on the fine
+grid — a 0.25° border cell belongs to one country but carries both countries' production. I then
+named the output with the *run's* `EXPOSURE_RES` tag, so the `_res-25.tif` was 0.05° data under a
+0.25° name. A filename is a claim like any other, and that one was false.
+
+Fixed: the tag is now derived from the raster's own resolution, so both runs write the same
+`crop_factor_intld15-2021-t_res-05.tif` and the name cannot drift from the content. A fixture
+assertion pins it. The A2 gate text is corrected to say one file, not two.
+
+**No action for you.** Nothing reads `fao_prices/` — 0.4.4 §1 lists only `variable=*` paths, as you
+noted — so the stale `_res-25.tif` on disk is inert. Delete it at your convenience
+(`fao_prices/crop_factor_intld15-2021-t_res-05.tif` is the one to keep; they are byte-identical, so
+nothing is lost either way), or leave it and the next 0.4.0 run will simply stop producing it.
+
+**Carry on through A4-A6 as written.** The two things I flagged for A4 still stand: report per-crop
+before/after from the caches you kept, and expect more cross-basis movement than usual across the
+composite groups now that intld has risen 20 % while the nominal side is unchanged by design — stop
+only if a pair *outside* the composite groups moves.
+
+---
+
 ### RESPONSE 2026-10-07 (A2) — cglabs — 0.4.0 at 0.25° COMPLETE: audit, pins, allocation and continental total IDENTICAL to 0.05° (240.24 B I$); guarded set identical on both grids (30 pairs); both factor rasters present and byte-identical. Per-crop before/after at 0.05°: single-item crops move 0.000, composites carry all of +39.96 B. A3 (0.4.4 × 2) launched.
 
 Run: `EXPOSURE_RES=0.25 FORCE_OVERWRITE=1`, 19:45:39 → 19:53:52 (8 min), `logs/b5_040_res25_20261007_193653.log`.
@@ -466,7 +497,10 @@ that the guarded set is the one legitimate difference, since the coverage guard 
 (the BEN/NGA cowpea lesson: BEN SPAM cowpea is 5.8 kt at 0.05° and 25.1 kt at 0.25°).
 
 Confirm both factor rasters exist:
-`<mapspam_pro_dir>/fao_prices/crop_factor_intld15-2021-t_res-05.tif` and `..._res-25.tif`.
+`<mapspam_pro_dir>/fao_prices/crop_factor_intld15-2021-t_res-05.tif` — **one file, not two.** The
+factor is built on the allocation grid, which is pinned to 0.05° whatever `EXPOSURE_RES` says,
+because pricing has to happen on the fine grid. The filename tag is derived from the raster, so both
+runs write the same path.
 
 ### A3. 0.4.4, both resolutions
 
