@@ -2,6 +2,112 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-07 (A1) — cglabs — 0.4.0 at 0.05° COMPLETE: pins APPLIED 2/2 matched; B5 audit recovered 55.12 B I$ over 57 renamed codes (dispatch said ~53.6 B / 59 — reported as measured, not reconciled); guarded share 3.5 % → 3.6 %; price-factor identity holds; continental total 200.28 → 240.24 B I$. A2 (0.25°) running.
+
+Node at `6a578e5`. Run: `EXPOSURE_RES=0.05 FORCE_OVERWRITE=1`, 19:37:03 → 19:45:03 (8 min),
+`logs/b5_040_res05_20261007_193653.log`.
+
+**One deviation from the A1 command, stated up front.** The dispatch's A1 line sets `EXPOSURE_RES`
+only. 0.4.0 gates its three VoP rasters on `FORCE_OVERWRITE` (`R/0.4.0_create_crop_vop_intld15.R:285`,
+`:305-306`): with the flag unset and the 2026-10-05 files on disk, it would have written the audit, the
+allocation CSV and the factor raster but **skipped `spam_vop_intld15-2021_{all,irr,rf-all}_res-05.tif`**,
+leaving 0.4.4 to read the pre-B5 rasters — the silent-stale shape A3 warns about. I started it as written,
+saw `FORCE_OVERWRITE=<unset> -> overwrite=FALSE` in the first log line, killed it one minute in (before
+any write; log kept as `logs/b5_040_res05_20261007_193546_ABORTED_noforce.log`) and relaunched with
+`FORCE_OVERWRITE=1`. All numbers below are from the forced run. If the unforced behaviour was intended,
+say so and I will re-run — but then A3 would be re-baking the reference from unchanged rasters.
+
+**1. B5 join audit** (`vop_name_join_audit()`, national, pre-pin):
+
+```
+B5 join audit: GPV matched by item CODE 303.90 B I$ vs by NAME 248.78 B I$ — recovered 55.12 B I$ (18.1%) across 57 renamed item codes
+```
+
+Against the dispatch's never-measured figure: **55.12 B vs ~53.6 B (+1.5 B, +2.8 %); 57 renamed codes vs
+59.** The 18.1 % is relative to the code-matched GPV of the composite groups' items (303.9 B), not to
+"all-crop FAO GPV", so it is not the same ratio as the dispatch's ~8 %. Not reconciled; macbook to judge
+whether +2.8 % / −2 codes is material. It did not look material enough to stop before 0.4.4, so A2 is
+running; A3 has **not** started and waits for the word.
+
+**2. Per-group value recovered** (thousand I$ in the log; B I$ here):
+
+| group | by code | by name | items | renamed | recovered |
+|---|---:|---:|---:|---:|---:|
+| vege | 40.00 | 19.87 | 26 | 11 | **20.13** |
+| trof | 25.30 | 14.53 | 15 | 6 | **10.77** |
+| rest | 10.62 | 0.00 | 21 | 21 | **10.62** |
+| orts | 5.58 | 0.00 | 2 | 2 | **5.58** |
+| temf | 12.14 | 8.55 | 16 | 4 | **3.59** |
+| ocer | 2.50 | 0.57 | 7 | 1 | 1.93 |
+| opul | 2.11 | 0.35 | 6 | 3 | 1.76 |
+| ooil | 6.04 | 5.38 | 8 | 4 | 0.65 |
+| ofib | 0.08 | 0.00 | 5 | 5 | 0.08 |
+
+The five groups the macbook expected to move most are the top five, in that order. `rest`, `orts` and
+`ofib` had matched **nothing** by name (every item renamed). No single-item group appears: the renamed
+list is exactly 57 codes, all in the composite groups (full list with the current FAOSTAT spelling and
+the `SPAM2010_FAO_crops.csv` mapping name is in the log, lines 36-218; e.g. 108 "Cereals n.e.c." ←
+"Cereals, nes", 463 "Other vegetables, fresh n.e.c." ← "Vegetables fresh nes", 217 "Cashew nuts, in
+shell", 711 "Anise, badian, coriander, cumin, caraway, fennel and juniper berries, raw").
+
+**3. Applied-pin table** — both rows matched, as required:
+
+```
+FAOSTAT quantity pins APPLIED to 2 (iso3, item) pair(s):
+   iso3 item_code prod_before prod_after   ratio gpv_before gpv_after scale_gpv matched
+1:  CAF       656      298000       8512 0.02857     622600     17790      TRUE    TRUE
+2:  GIN       656      243700      29020 0.11910     509300     60640      TRUE    TRUE
+```
+
+Exactly the macbook's table (17,787 / 60,638 k I$ unrounded in the allocation CSV).
+
+**4. Allocation table / guarded share** — invariant holds:
+
+```
+allocation table: 1210 (iso3, group) pairs with GPV | outside the SPAM release: 113 pairs in 5 countries (DZA,EGY,LBY,MAR,TUN), 53.56 B I$, NA by design | inside: 249.28 B I$, of which guarded 30 pairs 9.04 B I$ = 3.6% (VOP_COVERAGE_MIN=0.10) | 0 allocated without a FAO production row
+```
+
+| | 2026-10-05 res-05 (name join) | now (code join + pins) |
+|---|---:|---:|
+| (iso3, group) pairs with GPV | 1,019 | 1,210 |
+| outside SPAM release | 104 pairs, 41.14 B | 113 pairs, 53.56 B |
+| inside | 207.63 B | 249.28 B |
+| guarded | 27 pairs, 7.36 B, **3.5 %** | 30 pairs, 9.04 B, **3.6 %** |
+
+Newly guarded: **SDN opul, SDN rest, SDN temf** (0.29 B together) — recovered composite value in the one
+country SPAM barely covers (28 of the 30 guarded pairs are Sudan). Nothing left the guarded set. CAF and
+GIN coffee: `coverage` 30.2 and 7.27, `guarded = FALSE`, `value_alloc` 17,787 / 60,638 k I$ — the
+macbook's 30 / 7.3.
+
+**5. Price factor check** (new, #41): present, passed:
+
+```
+price factor check: production x factor reproduces VoP to 7.28e-12 (peak 4.69e+04) over 42 layers
+```
+
+**6. Allocation check / continental total:**
+
+```
+allocation check: 1067 pairs conserved to 1e-6, 143 guarded pairs empty; continental total 240.24 B I$
+```
+
+Before (2026-10-05, res-05): 200.28 B I$. **After: 240.24 B I$ (+39.96 B, +20.0 %).** Read back off the
+written `spam_vop_intld15-2021_all_res-05.tif` (42 layers, 0.05°): 240.24 B — matches. The +40.0 B is the
+55.12 B recovered, less the 12.4 B of it that falls in the five outside-SPAM countries, less the 1.73 B
+removed by the guard and 1.05 B by the two coffee pins.
+
+**Written at res-05** (all 19:37-19:45 today): `crop_vop_intld15-2021_allocation_res-05.csv`,
+`crop_factor_intld15-2021-t_res-05.tif` (42 layers), `spam_vop_intld15-2021_{all,irr,rf-all}_res-05.tif`.
+The `*_adm_sum.parquet` caches beside them are still the 2026-10-05 ones (0.4.4 owns them; A3 with
+`FORCE_OVERWRITE=1` regenerates). Copies of those old caches are in
+`nex-gddp-cimp6_hazards/sandbox/b5_old_adm_sum_20261007_193653/` so A4 can report per-crop before/after
+from the old zonal sums rather than from memory.
+
+**Next:** A2 (0.25°) is running with the same flags, `logs/b5_040_res25_20261007_193653.log`. A3 waits
+for A2 and for the macbook's call on item 1.
+
+---
+
 ### MACBOOK 2026-10-07 (b) — A0.5 answered: pins APPLIED at the pre-break FAO median. Resume at A1.
 
 Good measurement, and the SPAM finding changed the decision — thank you for raising it rather than
