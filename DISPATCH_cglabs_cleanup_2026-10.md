@@ -1,5 +1,67 @@
 # Dispatch: S3 + node clean-up pass — retained backups, parked sets, the retired 2015 key (2026-10-07)
 
+## cglabs response — Block B DONE: six prefixes empty, 2015 key gone (404) and backed up at 2,248,114 B; BUT the deletes were PERMANENT — s3fs deletes every version by VersionId, no delete markers, nothing recoverable from history; stays intact; C untouched (2026-10-07, d466d50)
+
+**GO B executed as written** (`logs/cleanup_B_20261007_064928.{R,log}`, script copied verbatim from the
+block, nohup, 06:49:28 → 06:50:01). Block C not touched: `Data/_parked_*` all three still present.
+
+**Log tail (as the block asks):**
+```
+[06:49:37] issue9_20260928_142229: deleting 1 objects      [06:49:40] left 1
+[06:49:40] issue9_20260928_142507: deleting 2 objects      [06:49:42] left 2
+[06:49:42] issue9_20260928_142537: deleting 1 objects      [06:49:44] left 1
+[06:49:44] issue9_20260928_142557: deleting 2 objects      [06:49:47] left 2
+[06:49:47] issue9_20260930_120740: deleting 3 objects      [06:49:50] left 3
+[06:49:50] issue9_20261006_195255: deleting 3 objects      [06:49:52] left 3
+[06:49:56] backup s3://digital-atlas/sandbox/backup/retired_20261007_064952/domain=exposure/…/variable=vop_nominal-usd-2015.parquet size 2248114
+[06:50:00] deleted s3://digital-atlas/domain=exposure/…/variable=vop_nominal-usd-2015.parquet | still exists? FALSE
+[06:50:01] ===== DONE
+HTTP/1.1 404 Not Found      (curl -sI on the 2015 key)
+```
+Two deviations from the block's expectations, one cosmetic, one not.
+
+**1. `left N` ≠ `left 0` — cosmetic.** Every prefix re-listed its starting count two seconds after the
+delete. A fresh R session and `paws` directly both show **0 current objects** under all six prefixes, and
+`HEAD` on the former keys is 404. The in-script re-list is s3fs 0.1.7's cached directory listing, not S3.
+The deletes happened.
+
+**2. The deletes are permanent — no version is recoverable.** The dispatch's safety premise was that the
+bucket is versioned, so every delete leaves a noncurrent version. Bucket versioning *is* `Enabled`
+(`get_bucket_versioning`). But `s3fs::s3_file_delete` on a versioned bucket resolves every version of each
+path (`file_version_info()`) and calls `delete_objects` **with VersionIds**, which is a permanent delete:
+```
+list_object_versions, after Block B:
+  issue9_20260928_142229    versions 0  delete markers 0
+  issue9_20260928_142507    versions 0  delete markers 0
+  issue9_20260928_142537    versions 0  delete markers 0
+  issue9_20260928_142557    versions 0  delete markers 0
+  issue9_20260930_120740    versions 0  delete markers 0
+  issue9_20261006_195255    versions 0  delete markers 0
+  vop_nominal-usd-2015.parquet   versions 0  delete markers 6 (all 2026-01-27/28, from an earlier retire/re-upload)
+control (same call): severe usd21 tier republished yesterday -> 24 versions, 2 latest (parquet + json); untouched backups -> 1 version each
+```
+So the 417.5 MB of backups are gone outright, and the **only copy of the 2015 object is the new backup**
+`sandbox/backup/retired_20261007_064952/…/variable=vop_nominal-usd-2015.parquet` (HTTP 200,
+Content-Length 2,248,114 = Block A's size). The outcome is exactly the scope Pete approved — nothing
+beyond the six prefixes and the one key was touched — but the "recoverable from version history" belt is
+not there. Worth recording in `server-environment-cglabs.md` §9 and AGENTS.md: **s3fs deletes are
+permanent on this bucket; `paws` `delete_object` without VersionId is the call that leaves a marker.**
+
+**Everything meant to stay is intact** (`list_objects_v2 sandbox/backup/`, 18 objects, not truncated):
+```
+20260526_121951 1 obj 71.7 MB | 20260527_073937 1 3.1 | 20260529_180100 1 58.8 | 20260530_154522 1 58.8
+issue9_20260916_135730 3 obj 173.4 MB | issue9_20260925_041056 1 6.9
+issue9_20261006_052021 1 7.1 | _052040 2 2.3 | _052104 2 17.3 | _052133 4 5.7      (the four that stay)
+retired_20261007_064952 1 obj 2.2 MB                                                 (new)
+```
+Live keys outside `sandbox/backup/`: only the 2015 key was touched.
+
+**Block C:** `GO C: HELD`. Not started. `Data/_parked_intld_fixes_20261004_173417`,
+`_parked_usd_rebake_20261006_091428`, `_parked_issue9` unchanged (132.6 GB). **STOP.**
+
+---
+
+
 ## macbook response — Block A accepted; GO B (six prefixes + 2015 key); four 0520xx backups stay; C held (2026-10-07)
 
 Clean inventory, and thanks for flagging the 0520xx prefixes.
