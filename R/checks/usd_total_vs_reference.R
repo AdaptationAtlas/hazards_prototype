@@ -24,6 +24,8 @@
 #
 # Usage (cglabs, repo root, ~1-2 min): Rscript R/checks/usd_total_vs_reference.R
 #   [--timeframe jagermeyr] [--severity severe] [--iso3 AGO,KEN,NGA] [--res 0.25|0.05]
+#   [--basis admin2|admin0]   -- which zonal basis to gate on; see BASIS below. admin2 is the
+#                                like-for-like one and the default since 2026-10-07.
 # arrow only (no duckdb: the two clash on CGlabs).
 
 t0 <- Sys.time()
@@ -41,6 +43,20 @@ ISO_ALL <- identical(tolower(ISO), "all")
 # suffixed res-05 / res-25. The hazard product is on the 0.25 deg NEX-GDDP grid, so the
 # like-for-like comparison is res-25; --res 0.05 compares against the Atlas exposure grid instead.
 RES <- opt("--res", "0.25"); RES_TAG <- sprintf("res-%02d", round(as.numeric(RES) * 100))
+# Zonal basis (2026-10-07, handover §2 A4). Until now the gate took `is.na(admin1_name)` on both
+# sides, which LOOKS like-for-like and is not: the product's adm0 row is formed from the lower
+# levels, while 0.4.4 zones admin0 directly off its own rasterisation. At 0.25 deg with
+# touches = TRUE a cell on a border can fall in one country's admin0 zone and in a neighbouring
+# country's admin2 zone (#18), so the two disagreed over 31 border cells and the gate carried a
+# residual it could not explain - a gate that fails a correct run.
+#   admin2 (default) compares the admin2 rows of BOTH tables, summed per (iso3, crop). Both were
+#     rasterised from the same Geographies onto the same base_rast, so the border assignment is
+#     identical on both sides and the residual is not there to explain away.
+#   admin0 keeps the old behaviour for comparison.
+# Either way the gate now MEASURES the gap between the two bases and prints it, instead of leaving
+# it as an unexplained ratio.
+BASIS <- opt("--basis", "admin2")
+if (!BASIS %in% c("admin0", "admin2")) stop("--basis must be admin0 or admin2, got '", BASIS, "'")
 MIN_REF <- as.numeric(Sys.getenv("GATE_MIN_REF", "1e5"))   # below this a national crop total is noise
 MAX_ABS <- as.numeric(Sys.getenv("GATE_MAX_ABS", "1e6"))   # product value allowed against a noise reference
 # Rows in the product that are not SPAM commodities and so can never have a reference row.
@@ -54,20 +70,21 @@ suppressPackageStartupMessages({ pacman::p_load(arrow, dplyr, data.table) })
 ref_dir <- if (exists("exposure_dir")) exposure_dir else atlas_dirs$data_dir$exposure
 
 iso_filter <- function(d) if (ISO_ALL) d else dplyr::filter(d, iso3 %in% ISO)
-haz_total <- function(pq) {
-  arrow::open_dataset(pq) |> iso_filter() |>
-    dplyr::filter(is.na(admin1_name), scenario == "historic", hazard %in% c("any", "none")) |>
-    dplyr::select(iso3, crop, hazard_vars, hazard, value) |> dplyr::collect() |> as.data.table()
+haz_total <- function(pq, basis = BASIS) {
+  d <- arrow::open_dataset(pq) |> iso_filter() |>
+    dplyr::filter(scenario == "historic", hazard %in% c("any", "none"))
+  d <- if (identical(basis, "admin2")) dplyr::filter(d, !is.na(admin2_name)) else dplyr::filter(d, is.na(admin1_name))
+  d |> dplyr::select(iso3, crop, hazard_vars, hazard, value) |> dplyr::collect() |> as.data.table()
 }
 # `unit_keep` is ordered PREFERRED VINTAGE FIRST. Accepting several vintages keeps
 # the gate runnable across a migration, but silently accepting one is how #30 went
 # unnoticed: the gate and the product were comparing unlike vintages and nothing
 # said so. So say which vintage was actually matched, and warn when it is not the
 # decided one (p.steward 2026-09-18: the vintage stays in the name).
-ref_total <- function(pq, unit_keep) {
-  d <- arrow::open_dataset(pq) |> iso_filter() |>
-    dplyr::filter(is.na(admin1_name), exposure == "vop") |>
-    dplyr::select(iso3, crop, unit, tech, value) |> dplyr::collect() |> as.data.table()
+ref_total <- function(pq, unit_keep, basis = BASIS) {
+  d0 <- arrow::open_dataset(pq) |> iso_filter() |> dplyr::filter(exposure == "vop")
+  d0 <- if (identical(basis, "admin2")) dplyr::filter(d0, !is.na(admin2_name)) else dplyr::filter(d0, is.na(admin1_name))
+  d <- d0 |> dplyr::select(iso3, crop, unit, tech, value) |> dplyr::collect() |> as.data.table()
   present <- d[, sort(unique(unit))]
   matched <- intersect(unit_keep, present)
   if (!length(matched)) {
@@ -88,14 +105,15 @@ overall <- TRUE
 for (spec in list(
   list(lab = "usd",   dir = atlas_dirs$data_dir$hazard_risk_vop_usd, var = "vop_nominal-usd-2021", ref = file.path(ref_dir, sprintf("vop_nominal-usd-2021_adm_sum_spam20_glw420_%s.parquet", RES_TAG)), units = c("nominal-usd-2021", "usd")),
   list(lab = "intld", dir = atlas_dirs$data_dir$hazard_risk_vop,     var = "vop_intld15-2021",     ref = file.path(ref_dir, sprintf("exposure_adm_sum_spam20-20_glw420-20_%s.parquet", RES_TAG)),    units = c("intld15-2021", "intld15", "intld15-2020")))) {
-  cat(sprintf("\n=== %s | %s | %s | %s | reference %s ===\n", spec$lab, TF, SEV, paste(ISO, collapse = ","), RES_TAG))
+  cat(sprintf("\n=== %s | %s | %s | %s | reference %s | basis %s ===\n", spec$lab, TF, SEV, paste(ISO, collapse = ","), RES_TAG, BASIS))
   pq <- file.path(spec$dir, TF, sprintf("haz-freq-exp_%s_ENSEMBLEmean_int_adm_%s.parquet", spec$var, SEV))
   if (!file.exists(pq)) { .log("%s: MISSING %s", spec$lab, pq); overall <- FALSE; next }
   if (!file.exists(spec$ref)) { .log("%s: MISSING reference %s", spec$lab, spec$ref); overall <- FALSE; next }
   .log("%s: hazard parquet %s (mtime %s) | reference %s (mtime %s)", spec$lab, basename(pq), format(file.mtime(pq), "%Y-%m-%d %H:%M"), basename(spec$ref), format(file.mtime(spec$ref), "%Y-%m-%d %H:%M"))
   h <- haz_total(pq)
-  if (!nrow(h)) { .log("%s: no historic adm0 any/none rows", spec$lab); overall <- FALSE; next }
-  # one total per (iso3, crop): any+none is identical across hazard_vars by construction -> take the first combo
+  if (!nrow(h)) { .log("%s: no historic %s any/none rows", spec$lab, BASIS); overall <- FALSE; next }
+  # one total per (iso3, crop): any+none is identical across hazard_vars by construction, so sum
+  # over the basis's units within a combo and then take the first combo.
   ht <- h[, .(total = sum(value, na.rm = TRUE), n_haz = .N), by = .(iso3, crop, hazard_vars)][, .SD[1], by = .(iso3, crop)]
   ht[, has_none := iso3 %in% h[hazard == "none", iso3] & crop %in% h[hazard == "none", crop]]
   none_by_combo <- h[, .(n_none = sum(hazard == "none"), n_any = sum(hazard == "any")), by = hazard_vars]
@@ -103,6 +121,27 @@ for (spec in list(
   r <- ref_total(spec$ref, spec$units)
   m <- merge(ht, r, by = c("iso3", "crop"), all = TRUE)
   m[, ratio := total / ref]
+
+  # Measure the two zonal bases against each other, on whichever one is not being gated. This is
+  # #18's 31 border cells as a number rather than a story, and it is the quantity that used to leak
+  # into the gated ratio. Informational: both bases are legitimate views of the same product.
+  other <- if (identical(BASIS, "admin2")) "admin0" else "admin2"
+  xb <- tryCatch({
+    h2 <- haz_total(pq, other)
+    p2 <- h2[, .(total = sum(value, na.rm = TRUE)), by = .(iso3, crop, hazard_vars)][, .SD[1], by = .(iso3, crop)]
+    r2 <- ref_total(spec$ref, spec$units, other)
+    list(prod = merge(ht[, .(iso3, crop, t_gated = total)], p2[, .(iso3, crop, t_other = total)], by = c("iso3", "crop")),
+         ref  = merge(r[, .(iso3, crop, r_gated = ref)],    r2[, .(iso3, crop, r_other = ref)],   by = c("iso3", "crop")))
+  }, error = function(e) { .log("%s: cross-basis measurement unavailable (%s)", spec$lab, conditionMessage(e)); NULL })
+  if (!is.null(xb)) {
+    xb$prod[, d := t_other / t_gated]; xb$ref[, d := r_other / r_gated]
+    .log("%s: zonal-basis check — gated on %s, compared with %s. product %s totals differ by median %.5f (max |1-d| %.4f over %d pairs); reference by median %.5f (max %.4f)",
+         spec$lab, BASIS, other, other,
+         median(xb$prod[is.finite(d), d]), max(abs(1 - xb$prod[is.finite(d), d])), nrow(xb$prod),
+         median(xb$ref[is.finite(d), d]),  max(abs(1 - xb$ref[is.finite(d), d])))
+    .wp <- xb$prod[is.finite(d)][order(-abs(1 - d))][1:min(5, .N)]
+    if (nrow(.wp)) { cat(sprintf("  worst %s-vs-%s product pairs (d = %s / %s):\n", BASIS, other, other, BASIS)); print(.wp[, .(iso3, crop, t_gated = signif(t_gated, 4), t_other = signif(t_other, 4), d = signif(d, 6))]) }
+  }
   cat(sprintf("  crops in hazard only: %s\n  crops in reference only: %s\n",
               paste(m[is.na(ref), unique(crop)], collapse = ",") , paste(m[is.na(total), unique(crop)], collapse = ",")))
   # Three populations, because one bound cannot serve all three:
