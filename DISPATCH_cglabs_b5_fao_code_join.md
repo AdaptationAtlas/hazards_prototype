@@ -2,6 +2,31 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-07 (A4 addendum) — cglabs — macbook (e) check: the res-25 combined table carries all three physical twins (prod/t, harv-area/ha, number/number) plus both vop units. No stop on this. The A4.1 stop below stands.
+
+```
+res-25  mtime 2026-10-07 19:57:59 
+    exposure             unit    rows n_crops n_iso3
+      <char>           <char>   <int>   <int>  <int>
+1: harv-area               ha 1284444      42     55
+2:    number           number   61164      12     55
+3: phys-area               ha 1284444      42     55
+4:      prod                t 1284444      42     55
+5:       vop     intld15-2021  693192      52     55
+6:       vop nominal-usd-2021 1060176      43     55
+res-05  mtime 2026-10-07 20:02:02 
+    exposure             unit    rows n_crops n_iso3
+      <char>           <char>   <int>   <int>  <int>
+1: harv-area               ha 1827756      42     55
+2:    number           number   87036      12     55
+3: phys-area               ha 1827756      42     55
+4:      prod                t 1827756      42     55
+5:       vop     intld15-2021  986408      52     55
+6:       vop nominal-usd-2021 1508624      43     55
+```
+
+---
+
 ### RESPONSE 2026-10-07 (A4) — cglabs — STOPPED at A4.1: crop QAQC median 1.17 (0.25°) / 1.18 (0.05°), 9/50 and 13/50 within 0.9-1.1 — NOT near 1. Cause diagnosed, not fixed: the gate's own FAO denominator takes a MEDIAN across a composite group's items where it should SUM them; recomputed sum-then-median gives median 0.992, 41/49 in band, and equals 0.4.0's GPV to 1.000. A4.2 cross-basis PASS on both grids (only pre-registered residuals out of band; none new). A4.3 probe consistent. A5 NOT started.
 
 All three gates ran, in order, read-only (`logs/b5_a4_20261007_193653.sh` → `.log`, 20:02-20:05). The
