@@ -275,7 +275,7 @@ Paste it and **STOP**.
 
 ## Block C — node parked dirs (GO-gated; NO UNDO)
 
-**GO line (Pete fills in):** `GO C: HELD (Pete, 2026-10-07) — node parked dirs are kept for now`
+**GO line (Pete fills in):** `GO C: Pete Steward, 2026-10-07 (the three named Data/_parked_* dirs only)`
 
 ```bash
 cd <hazards_prototype>; STAMP=$(cat logs/cleanup_stamp.txt)
