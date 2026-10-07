@@ -48,8 +48,19 @@ note: >
   7_zonal_exposure.R:138 and 7b_relevel_exposure_pop.R:64) computes
   projection_county(year) / projection_county(2020) and multiplies the CC0 census count by it, so
   no published artifact reproduces a KNBS projection. The alternative POP_METHOD=county-level
-  reproduces the official county total exactly and must NOT be used for anything published. Ratios
-  are read from the Summary Report, which carries no rights reservation, rather than from Volume XVI.
+  reproduces the official county total exactly and must NOT be used for anything published.
+  SOURCING - CORRECTED 2026-10-07. An earlier version of this note claimed the ratios are read from
+  the Summary Report rather than Volume XVI. That was WRONG: it recorded an intention from the
+  2026-09-18 decision that was never implemented. python/ingest_population_knbs_projections.py
+  downloads exactly one PDF, Volume XVI (PDF_URL, one urlretrieve_checked call), and the Summary
+  Report URL appears nowhere in python/ or R/. The published tables are their own evidence - they
+  carry 2020-2035 annually plus 2040 and 2045, while the Summary Report carries only 2020-2025,
+  2030, 2035, 2040 and 2045, so 2026-2029 and 2031-2034 can only have come from Volume XVI. The
+  ratios therefore derive from the rights-reserved document, and the ratio method alone is what
+  keeps published artifacts clear of KNBS figures. Switching the source is not a one-line change:
+  the live reference year is 2026, which the Summary Report does not contain, so it would mean
+  constraining POP_REF_YEAR to covered years - moving the national denominator from 52,837,534
+  (2026) to 51,961,873 (2025). Tracked on issue #33.
 
   LICENCE - CORRECTED 2026-09-18, READ BEFORE REUSE OR REDISTRIBUTION.
   This record previously claimed the KNBS Open License Agreement. That was WRONG. Volume XVI was
@@ -255,8 +266,10 @@ data:
     description: >
       Summary Report on Kenya's Population Projections - a five-page extract carrying county totals
       for 2020-2025, 2030, 2035, 2040 and 2045, plus labour-force and household projections. Unlike
-      Volume XVI it carries NO copyright page and no rights reservation, so it is the document the
-      Atlas reads growth ratios from.
+      Volume XVI it carries NO copyright page and no rights reservation. Listed as the candidate
+      rights-clean substitute for the growth ratios, NOT as a source the pipeline currently reads:
+      the ingest reads Volume XVI only (corrected 2026-10-07, see the note and issue #33). Adopting
+      it would cost the 2026 reference year, which it does not cover.
     locations:
       - url: https://www.knbs.or.ke/wp-content/uploads/2023/09/2019-Kenya-population-and-Housing-Census-Summary-Report-on-Kenyas-Population-Projections.pdf
         title: HTTPS
