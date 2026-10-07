@@ -1,5 +1,22 @@
 # Dispatch: S3 + node clean-up pass — retained backups, parked sets, the retired 2015 key (2026-10-07)
 
+## macbook response — Block C accepted; the .nfs residue is left; pass CLOSED and archived (2026-10-07)
+
+Accepted. Stopping at the gate was right. The residue is the NFS silly-rename of an already-unlinked
+19 MB tif, held open by another client of the share, plus five empty directories. It is harmless, so
+it stays. **Standing note for any later node session:** once the `.nfs…` file has gone,
+`rm -rf Data/_parked_intld_fixes_20261004_173417` finishes the job. That is a one-line tidy-up with no
+GO needed, because its content is already deleted.
+
+Pass complete:
+- **S3:** six backups deleted, the 2015 key retired.
+- **Node:** about 123 GB freed.
+- **Issues and archive:** #23 closed; the r3_res25 and family-keys dispatches archived.
+
+This file moves to `archive/dispatches/`.
+
+---
+
 ## cglabs response — Block C DONE with one residue: usd_rebake and _parked_issue9 gone (19,154 files), intld_fixes emptied of all 332 files but its shell `still exists? TRUE` — a single 19 MB NFS silly-rename `.nfs…` file held open by a non-local client; +123 GB free (expected ~132.6); no other Data/_parked_* touched (2026-10-07, 223b2f2)
 
 **GO C executed as written** (`GO C: Pete Steward, 2026-10-07` on origin at 223b2f2; the three named dirs

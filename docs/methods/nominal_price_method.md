@@ -1,7 +1,7 @@
 # Method: nominal US$ prices for crop value of production (`vop_nominal-usd-2021`)
 
 **Status:** decided 2026-10-01/02 (P. Steward), implemented in `R/0.4.2_create_crop_vop_nominal_usd.R` §3 and
-`R/price_fill.R`, first publish pending (`archive/dispatches/DISPATCH_cglabs_exposure_intld_fixes.md` Block D). This is the
+`R/price_fill.R`, **published 2026-10-06** (exposure reference + family; the usd hazard tiers were re-baked the same day; `archive/dispatches/DISPATCH_cglabs_exposure_intld_fixes.md` Blocks D and F). This is the
 single methods text; the dataset records and the notebooks cite it (consumers listed at the end). Evidence
 behind every step: `archive/dispatches/HANDOVER_2026-10-01_exposure-intld-fixes.md` (items 3 and "Evidence"), probes
 `R/checks/probe_price_method_deepdive.R`, `R/checks/probe_price_stale_slc.R`, `R/checks/probe_042_price_fill.R`.
@@ -109,14 +109,12 @@ differ.
   auction prices for coffee, sugarcane, cocoa, tea) is an alternative, item-specific treatment of the
   basis problem; the general guard above was preferred so that it covers every item.
 
-## Consumers to update when this method is first published (Block E of the dispatch)
+## Consumers updated at first publication (2026-10-06/07)
 
-- `metadata/cdh/africa-exposure-combined-res25.yaml`, `-res05.yaml`: the nominal-usd-2021 description,
-  "changed against the previous publication", drop the #38/#39/#40 paragraphs.
-- `metadata/cdh/africa-hazard-exposure-nexgddp.yaml`: the exposure basis paragraph (the usd tiers move
-  with the next R/3 re-bake, #13).
-- `README.md` (science pipeline, VoP section) — point here.
-- `atlas_nb-KE-enso/data/economicReturns/text/methods.en.md` ("Producer Prices" section still describes
-  the pre-2026 producer-price mean method and links `fao_producer_prices.R`) and the ROI notebook's
-  data note — ours, edit after Block D publishes; until then the live object is the old method.
-- `atlas_notebooks` (relay only): notify, do not edit.
+- **Done:** the CDH records (`africa-exposure-combined-res25` / `-res05`, `africa-hazard-exposure-nexgddp`);
+  `README.md`; the KE-ENSO explorer text and `data/economicReturns/text/methods.en.md`
+  (atlas_notebooks branch `dev/KE-enso-explorer`).
+- **Relay (not ours to edit):** atlas_notebooks was notified of the republish, with a request that its
+  drift probe read `crop-livestock_all_res-25`.
+- **Next change to this method:** update the same list, and re-bake the usd tiers in the same pass. Never
+  publish a denominator ahead of its hazard product (the 2026-10-06 lesson).

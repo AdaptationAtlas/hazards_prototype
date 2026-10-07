@@ -2,7 +2,7 @@
 
 Several fixes are deferred to bundle into the next full hazard rebake (amortise
 the ~day of warmup). This is the pickup list so nothing is silently missed.
-Run on cglabs (live Data/ + S3). Last updated **2026-09-17** (post issue-#9 publish).
+Run on cglabs (live Data/ + S3). Last updated **2026-10-07** (after the item-2 exposure pass and the usd re-bake). **Read `HANDOVER_2026-10-07.md` §2 first:** it lists what must land before this bake.
 
 ## ⚠️ CRITICAL — §3 and §5.3 are toggle-only (FORCE_OVERWRITE does NOT enable them)
 `run3` and `run5.3` are gated on explicit env toggles, NOT `FORCE_OVERWRITE`
@@ -32,6 +32,16 @@ derive G6's basis from the exposure twin the bake used, stamp ensemble membershi
 `hazard_risk` source folder before publishing, and run `R/checks/vop_cross_basis_gate.R` on the 0.4.4
 tables (nominal / intld per pair, with the world-price reference) before any exposure republish.
 
+**Update 2026-10-06/07.** The exposure was republished 2026-10-06 (`archive/dispatches/DISPATCH_cglabs_exposure_intld_fixes.md`):
+#38/#39/#40 fixed and a new nominal price method. The **usd tiers were re-baked on it and republished the same
+day** (that dispatch's Block F). The intld and ha builds on the node date from 2026-09-30, **before** those
+fixes, so they are stale and are rebuilt in this bake. Two new gate aids exist:
+- `metadata/cross_basis_expected_residuals.csv`: named, reasoned cross-basis residuals;
+- the allocation-audit CSV read by `vop_cross_basis_gate.R`, which classifies border spill.
+
+`usd_total_vs_reference.R` still judges an admin2-aggregated product against an admin0-zoned reference.
+31 border cells differ (#18); see the handover.
+
 **Gate before publishing anything:** `Rscript R/checks/usd_total_vs_reference.R` compares
 `any + none` per (country, crop) against the 0.4.4 exposure reference. It splits rows into
 material, immaterial and unmatched, because one ratio bound cannot serve all three - see the
@@ -56,8 +66,8 @@ consume them. So a true full rebake is:
   anything downstream. (Apply the #19 fix in 04_indices, re-run Stage 0 for NDWS,
   confirm historic NDWS no longer ~0.95/pixel, THEN proceed to R/2.)
 - **Eventual goal (Pete): merge the two repos.** Until then, the cross-repo handoff
-  (indices → consumption) + the 24 runtime `raw.githubusercontent.com/.../hazards_prototype`
-  source URLs are the coupling to mind. (Merge scoping is a separate project.)
+  (indices → consumption) is the coupling to mind. The runtime GitHub-`main` source URLs were removed
+  on 2026-10-01. (Merge scoping is a separate project.)
 
 ## ⛔ PRE-CONDITIONS / DEPENDENCIES (check BEFORE launching)
 - **hazards#19 NDWS saturation — ✅ RESOLVED LIVE (verified 2026-09-18).** The
@@ -65,17 +75,16 @@ consume them. So a true full rebake is:
   verified on the published parquet (historic dry-union 0.1616 vs ~1.0 saturated;
   futures rise monotonically with forcing). The FIXED indices are what a rebake
   now re-derives from — this gate is CLEARED, do NOT re-run R/2/R/3 just for
-  NDWS (see DISPATCH_cglabs_track1_ndws_resume.md: sidecar/metadata gaps only).
+  NDWS (see archive/dispatches/DISPATCH_cglabs_track1_ndws_resume.md: sidecar/metadata gaps only).
 - **CR-115 / #11 disputed-territory dedup — CONDITIONAL.** If Brayden's convention
   (`data-management#3`) is SET by rebake time: wire `haz_functions.R::aggregate_disputedRegions()`
   into the adm0 admin-extraction (R/3 + R/observational) and apply, so disputed
   claimants stop producing duplicate adm0 rows. If NOT set: the dup rows persist
   (current behaviour) — don't implement producer dedup blind (Brayden also testing
   an H3/A5 grid-index alternative). See [[project-cr115-disputed-territory-convention]].
-- **#10 Delta-Method exposure extraction (Brayden, bjyberg).** Only run for USD/INTL$
-  2015. If this rebake is meant to use **new/2021 exposure data**, that extraction
-  must run FIRST (Brayden owns) or R/3 multiplies hazard by stale exposure. Confirm
-  which exposure vintage the bake targets.
+- **#10 Delta-Method exposure extraction — DEFERRED INDEFINITELY; not a precondition.** The bake uses the
+  2021-vintage exposure republished 2026-10-06, native on the 0.25° hazard grid (0.4.0/0.4.2 outputs
+  `_res-25` on the node are exactly what was published).
 
 ## Items riding this rebake
 1. **Poultry_highland THI Extreme 79→89 (#13).** Metadata already fixed
@@ -119,19 +128,16 @@ consume them. So a true full rebake is:
    where no GCM has valid extraction for a given admin1×hazard combo). No further
    action. Full trail: `archive/dispatches/DISPATCH_cglabs_issue26_r21_rebake.md`.
 
-7. **VoP const-I$ hazard product ("Gap C", #30) — #30 CLOSED 2026-09-25; the intld hazard tiers
-   are still unpublished, now blocked on #38/#39/#40 rather than on #30.** The exposure reference
-   went live with vintage-ful units at both resolutions (2026-09-25, nominal rows corrected
-   2026-09-28; livestock reconciles 1.000), and R/3 was fully re-baked 2026-09-30, so
-   `haz-freq-exp_vop_intld15-2021_*` exists on the node for both timeframes. It must not be
-   published until the intld side's known misallocations are fixed in one 0.4.x pass — millet
-   split (#38), FAO value over a negligible SPAM footprint: Sudan, Nigeria banana (#39), Seychelles
-   NaN from `rasterize(touches = FALSE)` (#40) — with `R/checks/vop_cross_basis_gate.R
-   --fail-on-intld-side` green at both resolutions. The old `domain=hazard_exposure/.../
-   variable=vop_intld15` prefix (2025-06/07, 3,345 objects, pre-currency-fix) is still what is live
-   for constant dollars; publishing the rebuilt tiers there is the wholesale overwrite this item
-   always was, and needs its own GO and the `s3_upload.R` route decision. Gates: `vop_align_live_gate.R`
-   (reference vs FAOSTAT), `vop_cross_basis_gate.R`, then G6 against the intld twin.
+7. **VoP const-I$ hazard tiers (`vop_intld15-2021`) — UNBLOCKED; publish from this bake.** #38/#39/#40
+   were fixed and the exposure republished on 2026-10-06. The intld tiers on the node (2026-09-30) predate
+   that and are rebuilt here.
+   - **Still open, and needed before publishing: the route.** `scripts/r3_publish_tiers.R` publishes only
+     `variable=vop_nominal-usd21`. The live constant-dollar product is the legacy
+     `source=atlas_cmip6/.../vop_intld15` tree (2025-06/07, pre-currency-fix), published by
+     `R/s3_upload.R`. Extend the publisher to a sibling `variable=vop_intld15-21` key, with G6 against the
+     intld twin, and retire or redirect the legacy route. Handover §2 A2.
+   - **Gates:** `vop_cross_basis_gate.R --fail-on-intld-side` (expected residuals and border spill are
+     reported, not failed), then G6 per variable.
 
 8. **Production-tonnes hazard tier, so money can be applied at the end (#41, Pete 2026-10-06) —
    DECIDED 2026-10-07: INCLUDE in the #13 rebake.** Today R/3 multiplies hazard frequency by *value* rasters (vop intld,
@@ -156,11 +162,12 @@ consume them. So a true full rebake is:
 0. Pre-conditions above (exposure vintage; CR-115 convention state).
 1. R/2 (`FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1`, both axes, nohup+log;
    run the terra-probe first).
-2. R/3 §4.1+§4.2 (vop, vop_usd, ha, both axes).
+2. R/3 §4.1+§4.2 (vop intld, vop_usd, ha, **prod_t and head_n** per item 8, both axes). Park, do not FORCE.
 3. R/2.2 (desert mask carries; optional compound eval).
 4. Validators (`validate_cr093_real.R` for R/2.2; spot-check poultry Extreme drop).
-5. Publish (hazard_risk_vop family + domain=climate) + add masking rationale to the
-   `metadata/data.json` hazard_change record.
+5. Publish every tier through the extended `r3_publish_tiers.R`: usd, intld, ha, prod_t and head_n (items 7 and
+   8), with G6 per variable against its 0.4.4 twin and 18 members stamped. Then domain=climate, plus the masking
+   rationale in the `metadata/data.json` hazard_change record. CDH records follow.
 6. Close #13. Log the republish to Brayden on `data-management#2` (the A/B/C catalog
    list — append any new/changed keys per [[reference-atlas-stac-structure]]).
 
@@ -180,5 +187,6 @@ Baselines + interpretation in [[project-cr068-post-bake-probes]].
   true admin1 rows it matches admin0 to the dollar.
 
 Both live in `atlas_notebooks`, reported on #9, not fixed from this repo. Prefer the
-self-contained check: `any + none` from the product itself, rather than crossing to
-`crop-livestock_all.parquet`, whose vintage differs and whose intld rows are affected by #30.
+self-contained check: `any + none` from the product itself. When crossing to the exposure reference, use
+`crop-livestock_all_res-25.parquet`. The unsuffixed key is the 0.05° alias, so admin1 ratios against it
+are meaningless; #9/#12 closed on exactly that.

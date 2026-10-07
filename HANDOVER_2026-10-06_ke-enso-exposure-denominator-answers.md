@@ -3,7 +3,7 @@
 **For:** the KE-ENSO notebook session, `atlas_nb-KE-enso`.
 **From:** hazards_prototype / macbook, 2026-10-06, **updated 2026-10-07**. Producer-side answer to
 the Defect 6 questions.
-**Prior art — read this first:** `HANDOVER_2026-09-17_ke-enso-population-schema.md` already answers
+**Prior art — read this first:** `archive/dispatches/HANDOVER_2026-09-17_ke-enso-population-schema.md` already answers *(Archived 2026-10-07: its status block is superseded by the 2026-10-06 re-level; where the two differ, this file wins.)*
 most of what you asked. Issues
 [#28](https://github.com/AdaptationAtlas/hazards_prototype/issues/28) (closed, delivered 2026-09-17),
 [#32](https://github.com/AdaptationAtlas/hazards_prototype/issues/32) (county grid-vs-census

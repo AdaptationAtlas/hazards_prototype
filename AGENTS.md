@@ -12,8 +12,8 @@ Two handover shapes, distinguished by the filename:
   a notebook needs to know about. Read when that topic is yours; not an entry point.
 
 Sections 1 and 3 below apply to any agent on any machine. **Section 2 is CGlabs-specific**;
-the equivalent for the Afrilabs/PASCAL box is `server-environment.md` on branch
-`docs/server-environment`, and standing that machine up is issue #29.
+the equivalent for the Afrilabs/PASCAL box is `server-environment.md` at the repository root
+(host profile `metadata/hosts.json`, verified 2026-09-18; issue #29 closed 2026-09-23).
 
 **Root holds live work only.** Closed dispatch threads, old handovers and superseded plans are
 in `archive/dispatches/` with an index. When a thread closes, `git mv` it there, add a row to
@@ -55,9 +55,9 @@ Operating rules that have proven load-bearing:
   SIGTERM'd mid-run on 2026-09-28.
 - **`R/0.4.x` scripts need setup sourced first.** Bare `Rscript R/0.4.2_….R` dies on `exposure_grid`;
   run `Rscript -e 'source("<abs>/R/0_server_setup.R"); source("<abs>/R/0.4.2_….R")'`.
-- **Until the sourcing fix lands, several scripts load code from GitHub `main` at run time**
-  (`haz_functions.R`, `SpamCodes.csv`, `SPAM2010_FAO_crops.csv`, …). A fix on `develop` to those files
-  does not reach a node run. Put fixes in files sourced by path (`file.path(project_dir, …)`).
+- **Scripts load code and metadata from this checkout** (`file.path(project_dir, …)`), not from GitHub
+  `main` (fixed and node-verified 2026-10-01). Keep it that way: a new `raw.githubusercontent.com` source
+  URL would again make a `develop` fix invisible to node runs.
 - **`s3://digital-atlas` is versioned**: noncurrent versions are kept at least 270 days (the two newest
   always), so an **overwritten** key is recoverable from version history; manual `sandbox/backup/` copies are
   belt-and-braces. **A delete is a different matter: `s3fs::s3_file_delete()` / `s3_dir_delete()` delete

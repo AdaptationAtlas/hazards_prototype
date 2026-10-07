@@ -1,6 +1,6 @@
 # HANDOVER 2026-09-18 (2) — provenance drawer contract, #29 integration, and how to handle missing metadata
 
-Companion to `HANDOVER_2026-09-18_cdh-standard-for-ke-enso-notebook.md` (the standard itself).
+Companion to `archive/dispatches/HANDOVER_2026-09-18_cdh-standard-for-ke-enso-notebook.md` (the standard itself).
 Audiences: the KE-ENSO notebook session (§1), issue #29 (§4). Federation decision (§2c) taken by
 Pete on 2026-09-18 and already folded in.
 

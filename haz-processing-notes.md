@@ -1,5 +1,7 @@
 # 📘 Atlas Hazard Layers – Processing Update (May 2025)
 
+> **Historical (May 2025).** These products have since been published to `s3://digital-atlas` and re-baked several times; for current state see the newest `HANDOVER_<date>.md` and `R/NEXT_FULL_REBAKE.md`.
+
 *Last updated: May 2025*\
 *Project*: Africa Agriculture Adaptation Atlas (AAAA)\
 *Prepared by*: Pete Steward ([p.steward\@cgiar.org](mailto:p.steward@cgiar.org){.email})\
@@ -409,7 +411,7 @@ and aggregate scans threw `TProtocolException: Invalid data`. Root causes + fixe
     `admin0_name`. **All `*_trends*.parquet` must be regenerated to gain iso3.**
 -   **size** — the original diagnosis blamed the per-row `models` string. **This is wrong**
     (corrected 2026-06-10 via `parquet_metadata` footer reads, see
-    `ISSUE_cr119_canonical_regression.md` + the climateRationale dispatch): `models`
+    `archive/dispatches/ISSUE_cr119_canonical_regression.md` + the climateRationale dispatch): `models`
     dict-encodes to ~0 MB. The real size driver on `ensemble_season_timeseries` is the
     **CR-060 quantile columns** + the 4 unused stat columns (`max/min/max_anomaly/min_anomaly`
     ≈ 45%). The fix is **per-iso3 hive partitioning + column pruning** on that file (a §3.3
@@ -418,7 +420,7 @@ and aggregate scans threw `TProtocolException: Invalid data`. Root causes + fixe
     to FP (serves the future CR-117 consumer).
 -   **Thrift corruption** — parallel §3.3 writers collided on a shared output path.
     §3.3 reverted to sequential `lapply` (single-digit minutes anyway). See
-    `ISSUE_cr119_canonical_regression.md` for the full diagnosis + S3-versioning
+    `archive/dispatches/ISSUE_cr119_canonical_regression.md` for the full diagnosis + S3-versioning
     rollback procedure used as the acute fix.
 
 ### §3.4 trend computation — ~9 h/timeframe → minutes (speedups #1–#3)
@@ -498,7 +500,7 @@ R21_SEC3_4_SEQUENTIAL=1 FORCE_OVERWRITE=1 nohup bash scripts/r21_rerun.sh \
 
 ## 4) Next Steps
 
--   [x] **CR-119 (2026-06-12): §3.3 A republished** — pruned to notebook read-set (drop max/min/max_anomaly/min_anomaly + q5/q50/q95(_anomaly); keep mean/sd/q17/q83/n_models + anomaly twins), iso3-first sort + `verify_stats_on += iso3` guard, single-pass Rcpp quantile kernel (`R/quantile_kernel.cpp`, 23 min → 28.5 s/period). 5 canonical keys republished via `R/republish_A.R` (backups `.preFix-20260612-125412.bak`); live S3 prunable (iso3 stats non-null). See `ISSUE_cr119_canonical_regression.md`. Remaining: real-browser FP verify; Phase-2 per-iso3 hive partitioning.
+-   [x] **CR-119 (2026-06-12): §3.3 A republished** — pruned to notebook read-set (drop max/min/max_anomaly/min_anomaly + q5/q50/q95(_anomaly); keep mean/sd/q17/q83/n_models + anomaly twins), iso3-first sort + `verify_stats_on += iso3` guard, single-pass Rcpp quantile kernel (`R/quantile_kernel.cpp`, 23 min → 28.5 s/period). 5 canonical keys republished via `R/republish_A.R` (backups `.preFix-20260612-125412.bak`); live S3 prunable (iso3 stats non-null). See `archive/dispatches/ISSUE_cr119_canonical_regression.md`. Remaining: real-browser FP verify; Phase-2 per-iso3 hive partitioning.
 -   [ ] Fix the multisession §3.4 path (package-ify the Rcpp kernel) to restore parallel speed
 -   [ ] Republish the regenerated (iso3-bearing) trends canonical to S3 (B — not consumed by climateRationale notebook; for CR-117)
 -   [ ] Add S3 upload logic to Scripts 2 and 3

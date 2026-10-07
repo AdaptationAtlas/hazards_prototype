@@ -82,7 +82,7 @@ The honest weaknesses, if anyone challenges it:
   convention for *joining* production statistics to climate seasons.
 - **Does** apply to any notebook panel that puts a KNBS production year next to a season — ENSO
   composites, "good year / bad year" framing, yield-vs-rainfall charts.
-- Unrelated to the population work in `HANDOVER_2026-09-17_ke-enso-population-schema.md`, which is a
+- Unrelated to the population work in `archive/dispatches/HANDOVER_2026-09-17_ke-enso-population-schema.md`, which is a
   separate convention with its own metadata.
 
 ## If you want it firmer

@@ -245,7 +245,7 @@ fut_gcm    <- .extract_gcm(files_fut)
                .n_hist_raw, length(files_hist), length(files_fut), length(unique(hist_gcm))))
 stopifnot(length(files_hist) > 0L, length(files_fut) > 0L)
 
-# CR-093 follow-up (ISSUE_cr093_nan_zeroprecip.md, cause 1): in hyper-arid cells
+# CR-093 follow-up (archive/dispatches/ISSUE_cr093_nan_zeroprecip.md, cause 1): in hyper-arid cells
 # the historic baseline precip `past` ~ 0, so `100*(future-past)/past` -> Inf and
 # the classify(>=5 -> increase) step counts a desert as a precip INCREASE — a
 # finite-but-wrong value the `!is.finite := NA` guard does NOT catch. Fix: mask
@@ -259,19 +259,19 @@ stopifnot(length(files_hist) > 0L, length(files_fut) > 0L)
 # masking removes no decision-relevant signal). Aligns with the Copernicus C3S
 # ~0.3 mm/day (~110 mm/yr) precip mask + the UNEP hyper-arid aridity boundary.
 # Masking `past` here (not R/2's mean product) keeps the fix surgical to the
-# change product. Full rationale + sources: ISSUE_cr093_nan_zeroprecip.md.
+# change product. Full rationale + sources: archive/dispatches/ISSUE_cr093_nan_zeroprecip.md.
 .ptot_base_min <- suppressWarnings(as.numeric(Sys.getenv("PTOT_BASELINE_MIN_MM", unset = "100")))
 if (!is.na(.ptot_base_min)) {
   .log22(sprintf("SEC1: masking baseline PTOT < %.1f mm/yr before %% change (PTOT_BASELINE_MIN_MM)", .ptot_base_min))
 } else {
-  .log22("SEC1: PTOT_BASELINE_MIN_MM=NA — baseline mask DISABLED (desert false-increase NOT fixed; see ISSUE_cr093_nan_zeroprecip.md)")
+  .log22("SEC1: PTOT_BASELINE_MIN_MM=NA — baseline mask DISABLED (desert false-increase NOT fixed; see archive/dispatches/ISSUE_cr093_nan_zeroprecip.md)")
 }
 # CR-093 refinement (a) — compound classify floor, DRAFT for rebake evaluation.
 # The bare +-5% "robust change" cut still mis-fires in the 100-200 mm band (+-5%
 # of 150 mm = +-7.5 mm, inside noise). When PTOT_DELTA_MIN_MM is set, a cell is
 # classified increase/decrease only if BOTH |% change| >= 5 AND |Δmm| >= floor.
 # DEFAULT UNSET = current +-5%-only behaviour (so this is inert until cglabs sets
-# e.g. PTOT_DELTA_MIN_MM=10 at the rebake to evaluate it). See ISSUE_cr093_nan_zeroprecip.md.
+# e.g. PTOT_DELTA_MIN_MM=10 at the rebake to evaluate it). See archive/dispatches/ISSUE_cr093_nan_zeroprecip.md.
 .ptot_delta_min <- suppressWarnings(as.numeric(Sys.getenv("PTOT_DELTA_MIN_MM", unset = "")))
 if (!is.na(.ptot_delta_min)) {
   .log22(sprintf("SEC1: compound classify ON — require |%%|>=5 AND |Δ|>=%.1f mm (PTOT_DELTA_MIN_MM)", .ptot_delta_min))
@@ -371,7 +371,7 @@ change <- merge(change, base_areas[, list(gaul0_code, gaul1_code, gaul2_code, to
 change[, value := round(100 * value / total, 1)][, total := NULL]
 # CR-093: NA-clean non-finite % (NaN from 0/0 in zones with no covered base
 # cells; Inf where the upstream change raster blew up on near-zero historic
-# precip — see ISSUE_cr093_nan_zeroprecip.md, for the R/2 rebake to fix at
+# precip — see archive/dispatches/ISSUE_cr093_nan_zeroprecip.md, for the R/2 rebake to fix at
 # source). NA is a clean prunable NULL; ensemble means already use na.rm.
 change[!is.finite(value), value := NA_real_]
 
@@ -493,7 +493,7 @@ setnames(base_areas, "value", "total")
 data <- merge(data, base_areas[, list(gaul0_code, gaul1_code, gaul2_code, total)],
   by = c("gaul0_code", "gaul1_code", "gaul2_code"), all.x = TRUE)
 data[, value := round(100 * value / total, 1)][, total := NULL]
-# CR-093: NA-clean non-finite % (0/0 in zero-area zones). See ISSUE_cr093_nan_zeroprecip.md.
+# CR-093: NA-clean non-finite % (0/0 in zero-area zones). See archive/dispatches/ISSUE_cr093_nan_zeroprecip.md.
 data[!is.finite(value), value := NA_real_]
 
 # Wrangle variable name. CR-093: parse the dash-delimited risk layer name
@@ -589,7 +589,7 @@ data <- rbindlist(lapply(seq_len(nrow(choices)), FUN = function(j) {
   data <- merge(data, base_areas[, list(gaul0_code, gaul1_code, gaul2_code, total_area)],
     by = c("gaul0_code", "gaul1_code", "gaul2_code"), all.x = TRUE)
   data[, perc := round(100 * area / total_area, 1)]
-  # CR-093: NA-clean non-finite % (0/0 in zero-area zones). See ISSUE_cr093_nan_zeroprecip.md.
+  # CR-093: NA-clean non-finite % (0/0 in zero-area zones). See archive/dispatches/ISSUE_cr093_nan_zeroprecip.md.
   data[!is.finite(perc), perc := NA_real_]
 
   # Wrangle variable name. CR-093: parse the dash-delimited risk layer name
@@ -693,7 +693,7 @@ data[, value := round(value, 2)]
 
 data <- rbind(data, data2)
 # CR-093: NA-clean non-finite freq/freq_n (zonal mean over zones with no valid
-# cells -> NaN). See ISSUE_cr093_nan_zeroprecip.md.
+# cells -> NaN). See archive/dispatches/ISSUE_cr093_nan_zeroprecip.md.
 data[!is.finite(value), value := NA_real_]
 
 data[hazard == "NDWS", hazard_user := "drought"][hazard == "NDWL0", hazard_user := "wet"]

@@ -3,7 +3,7 @@
 CGIAR Climate Data Hub (CDH) **v0.3.0** metadata records for the datasets the Adaptation Atlas
 publishes, reads or cites. **27 records validate against the strict profile; 3 are drafts.**
 
-Last updated 2026-09-26.
+Last updated 2026-10-07.
 
 ```
 metadata/cdh/*.yaml         strict — pass the full profile, submittable to cdh-catalog
@@ -52,12 +52,12 @@ cross-field checks.
 | `kenya-population-worldpop` | CC-BY-4.0 | PR #40 |
 | `kenya-power-grid-kplc` | CC0-1.0 | PR #41 |
 | `kenya-roads-osm` | ODbL-1.0 | PR #42 |
-| `enso-driver-roni` | CC0-1.0 | PR #43 — first federated record |
+| `enso-driver-roni` | CC0-1.0 | PR #43 — **merged**, the first federated record |
 | `enso-driver-dmi` | CC0-1.0 | PR #44 — federated |
 | `kenya-population-knbs-census` | CC0-1.0 | PR #45 |
 | `harveststat-crop-production` | CC0-1.0 | PR #46 — federated |
 | `kenya-food-insecurity-ipc` | CC-BY-NC-SA-3.0-IGO | PR #47 — federated, **NC + share-alike** |
-| `kenya-county-gender-datasheets` | LicenseRef-KE-Gov-Statistics-Assumed-Open | PR #48 — federated |
+| `kenya-county-gender-datasheets` | LicenseRef-KE-Gov-Statistics-Assumed-Open | PR #48 — **closed**, not submitted |
 | `kenya-market-prices-fews` | LicenseRef-FEWSNET-Data-Use-Policy | PR #50 — federated |
 | `mapspam2020-adaptation-atlas-ssa` | CC-BY-4.0 | not submitted |
 | `africa-admin-boundaries-gaul2024` | CC-BY-4.0 | not submitted |
@@ -154,6 +154,6 @@ regardless, so verify the branch updated before marking a PR ready.
 
 - Should federated records be segregated — directory, keyword, or `resource_type` convention? (#43/#44)
 - Should licence **class** surface in the UI, now that NC/SA records sit beside permissive ones? (#47)
-- Will the Hub carry **assumed-open** records at all, or should they be withheld pending confirmation? (#48)
+- Will the Hub carry **assumed-open** records at all, or should they be withheld pending confirmation? (PR #48 was closed unmerged.)
 - `records/mapspam2020/mapspam2020.yaml` has `id: spam2020`, breaking `records/<id>/<id>.yaml`. Any
   id-to-path resolution misses it.
