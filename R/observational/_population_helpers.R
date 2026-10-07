@@ -68,6 +68,7 @@
 suppressPackageStartupMessages({library(data.table); library(arrow)})
 
 POP_PROJECTION_BASE_YEAR <- 2020L   # first year of the KNBS Vol XVI projection series
+POP_CENSUS_YEAR          <- 2019L   # the enumerated census: census night was August 2019
 
 #' Read an ingest output, whichever form it was written in.
 #' The python ingests write parquet, or CSV when pyarrow is missing on the host.

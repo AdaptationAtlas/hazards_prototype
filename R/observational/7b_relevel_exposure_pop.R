@@ -141,6 +141,17 @@ for (nm in names(tabs)) {
 # gridded county totals come from the per-adm2 denominators, which are static
 grid_adm1 <- unique(tabs$totals[, .(adm2_pcode, adm1_pcode, pop_total_grid)])[
   , .(grid_pop = sum(pop_total_grid, na.rm = TRUE)), by = adm1_pcode]
+# The year whose county level POP_SOURCE/POP_YEAR actually name. Defined on every path, not left
+# to lazy evaluation of the branch below, so a later reorder cannot turn it into an undefined
+# global (#44 fix A). Unused under YEAR_MATCH, where scale_dt is levelled at POP_REF_YEAR.
+pop_year_applied <- if (POP_SOURCE == "knbs-projection") {
+  as.integer(POP_YEAR)
+} else if (POP_SOURCE == "knbs-census-2019") {
+  POP_CENSUS_YEAR
+} else {
+  NA_integer_
+}
+
 if (YEAR_MATCH) {
   # Option C. A (GFM observed flood) is levelled row by row against its own year; B (JRC
   # return-period) and the totals table have no event year, so they take POP_REF_YEAR.
@@ -196,7 +207,9 @@ relevel <- function(dt, exposed = TRUE, by_year = FALSE) {
     dt <- scale_dt[dt, on = "adm1_pcode"]
     dt[, `:=`(pop_total = pop_total_grid * pop_scale_adm1,
               pop_source = pop_label, pop_method = pop_method,
-              pop_year = if (YEAR_MATCH) POP_REF_YEAR else NA_integer_,
+              # the year actually applied, not a placeholder (#44 fix A). Under YEAR_MATCH this
+              # branch is levelled at POP_REF_YEAR by scale_dt above, so the two coincide.
+              pop_year = if (YEAR_MATCH) POP_REF_YEAR else pop_year_applied,
               pop_grid_source = POP_GRID_SOURCE)]
   }
   if (exposed) {

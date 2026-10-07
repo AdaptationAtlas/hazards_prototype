@@ -144,6 +144,33 @@ YEAR_MATCH      <- Sys.getenv("POP_YEAR_MATCH") == "1"
 POP_REF_YEAR    <- as.integer(Sys.getenv("POP_REF_YEAR", as.integer(format(Sys.Date(), "%Y"))))
 POP_GRID_SOURCE <- "worldpop-constrained-2020"   # which grid paths$pop points at
 
+# The year whose county level is ACTUALLY applied to totals and B. Those two take their factors
+# from POP_SOURCE/POP_YEAR (scale_dt, below), so stamping POP_REF_YEAR on them was a mislabel
+# wherever the two disagreed -- reachable with no env set at all (#44, fix A).
+pop_year_val <- if (POP_SOURCE == "knbs-projection") {
+  as.integer(POP_YEAR)
+} else if (POP_SOURCE == "knbs-census-2019") {
+  POP_CENSUS_YEAR
+} else {
+  NA_integer_
+}
+
+# Fix C (#44): under year matching POP_SOURCE/POP_YEAR and POP_REF_YEAR are redundant knobs, and no
+# legitimate run wants totals levelled at one year and labelled another. Refuse the contradiction
+# rather than resolve it silently. Note 7b does NOT need this guard: its YEAR_MATCH branch levels
+# totals and B at POP_REF_YEAR directly, so the two cannot disagree there.
+if (YEAR_MATCH) {
+  if (POP_SOURCE == "grid") {
+    stop("POP_YEAR_MATCH=1 needs a KNBS denominator; POP_SOURCE=grid has no year to match")
+  }
+  if (!identical(pop_year_val, POP_REF_YEAR)) {
+    stop(sprintf(paste("POP_YEAR_MATCH=1 but the denominator applied to totals/JRC is %d (%s)",
+                       "while POP_REF_YEAR=%d. These must agree. Either set POP_REF_YEAR=%d, or",
+                       "set POP_SOURCE=knbs-projection POP_YEAR=%d."),
+                 pop_year_val, POP_SOURCE, POP_REF_YEAR, pop_year_val, POP_REF_YEAR))
+  }
+}
+
 knbs <- knbs_county_totals(exp_root, POP_SOURCE, POP_YEAR, POP_METHOD, POP_BASE_YEAR)
 pop_label  <- knbs$label
 # NOT named `pop_method` (#44). These tables carry a pop_method COLUMN, and inside
@@ -184,7 +211,7 @@ setnames(totals, "pop_total", "pop_total_grid")
 totals <- scale_dt[totals, on = "adm1_pcode"]
 totals[, `:=`(pop_total = pop_total_grid * pop_scale_adm1,
               pop_source = pop_label, pop_method = pop_method_val,
-              pop_year = if (YEAR_MATCH) POP_REF_YEAR else NA_integer_,
+              pop_year = pop_year_val,
               pop_grid_source = POP_GRID_SOURCE)]
 log_step(sprintf("  totals: pop %.0f [%s / %s] (grid %.0f), roads %.0f km, grid %.0f km, health %d, schools %d",
                  sum(totals$pop_total), pop_label, pop_method_val, sum(totals$pop_total_grid),
@@ -276,7 +303,7 @@ if (YEAR_MATCH) {
   A[, pop_method := paste0(pop_method_ym, "-yearmatched")]
 } else {
   A <- totals[, .(adm2_pcode, pop_scale_adm1, pop_scale_census, pop_growth_county)][A, on = "adm2_pcode"]
-  A[, `:=`(pop_source = pop_label, pop_method = pop_method_val, pop_year = NA_integer_)]
+  A[, `:=`(pop_source = pop_label, pop_method = pop_method_val, pop_year = pop_year_val)]
 }
 A[, `:=`(observed_pct = pmin(fifelse(area_km2 > 0, observed_km2 / area_km2, NA_real_), 1),  # clamp grid-mismatch rounding
          flooded_pct_observed = pmin(fifelse(observed_km2 > 0, flooded_km2 / observed_km2, NA_real_), 1),
@@ -323,7 +350,7 @@ B[, `:=`(pop_exposed = pop_exposed_grid * pop_scale_adm1,
          pop_pct = fifelse(pop_total_grid > 0, pop_exposed_grid / pop_total_grid, NA_real_),
          pop_source = pop_label,
          pop_method = pop_method_val,
-         pop_year = if (YEAR_MATCH) POP_REF_YEAR else NA_integer_,
+         pop_year = pop_year_val,
          pop_grid_source = POP_GRID_SOURCE)]
 Bcols <- c("adm2_pcode","adm1_pcode","adm2_name","adm1_name","rp",
            "flood_prone_km2","pop_exposed","pop_pct","pop_source",
