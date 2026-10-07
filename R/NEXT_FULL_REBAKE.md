@@ -166,10 +166,54 @@ consume them. So a true full rebake is:
      country's price for both sides (the BEN/NGA cowpea lesson, 2026-10-05).
    - The vop tiers can keep being published for compatibility.
 
+9. **Crop heat thresholds (#25) — DECIDED IN 2026-10-07, landed on macbook.** R/2 derives three
+   crop heat index families from ecocrop and classifies all three, but `crop_interactions` names only
+   one and only named families reach a published `_int` stack. The named one was `NTxS` =
+   ceil((Temp_Opt_Max + Temp_Abs_Max)/2), which for maize averages the optimum with the SURVIVAL
+   limit and gives 40 °C — so the crop-specific pathway reported **0.0 % heat-exposed maize value in
+   Kenya in both historic and SSP585**, and 15 of 35 crops had a crop-specific "severe" threshold
+   hotter than the generic `NTx35`. Three changes ride this bake:
+   - **(b)** the crop heat family moves `NTxS` → `NTxM` (= `Temp_Opt_Max`, maize 33 °C). No new
+     computation: the `NTxM` layers are already classified and upstream makes every integer
+     `NTx20`–`NTx50`.
+   - **(a)** a third crop interaction row, `NDWS + NTxM + NDWL0` — crop-specific heat with the
+     **water-balance** framing. Crops previously could not have one without the other, so the two
+     published crop sets were not comparable (dry 32 % → 2 %, wet 0.7 % → 29 % between them, almost
+     none of it about heat). Livestock already had both framings. **This is the one item with a real
+     cost: about +38 % on §5.3 and on R/3 §4.**
+   - **(c)** a commodity with no ecocrop match (`tomatoes`) is now reported loudly instead of
+     scrolling past in a `print()`.
+   **Consumer-visible:** the crop-specific `hazard_vars` value is RENAMED `PTOT-L+NTxM+PTOT-G`, and a
+   new set `NDWS+NTxM+NDWL0` appears. The old `PTOT-L+NTxS+PTOT-G` label is retired rather than
+   reused for a different definition. The live V1 notebook reads `NDWS+NTx35+NDWL0`, which is
+   unchanged. Pinned by `R/checks/fixture_crop_heat_interactions.R`.
+
+10. **CAF / GIN coffee tonnage — DECIDED IN 2026-10-07.** FAOSTAT coffee production for the Central
+    African Republic breaks from ~10 kt to ~300 kt after 2017 against an ICO figure of 2-6 kt; Guinea
+    has the same break. FAO's constant-I$ GPV is built from FAO's own production, so it carries into
+    the intld basis. `metadata/fao_quantity_pins.csv` + `vop_apply_quantity_pins()` apply it with the
+    same evidence discipline as `metadata/price_pins.csv`. **Both rows ship as `status = proposed`
+    with `prod_t` blank** — the tonnage is set by Pete after the node measurement in
+    `DISPATCH_cglabs_b5_fao_code_join.md` block A0.5, which must run **before** 0.4.0.
+
+11. **#24 (the product is near-insensitive to the climate signal) — NOT in this bake.** Phase 1 of
+    the sensitivity study is already done (`R/checks/24_severity_sensitivity.R`, outputs
+    2026-09-15) and is negative: at moderate / severe / extreme the Spearman of Δ exposure against
+    the GYGA yield change is −0.05 / −0.24 / −0.43, and ~0 within country. **No published severity
+    class tracks the crop model**, so the severity axis is not the answer. Item 9(a) makes this bake
+    answer the *threshold* axis for free, as a published one-variable comparison. The
+    mean-temperature pathway remains untested: `TAVG_G` is already derived per crop and wired-able
+    in one row, but its ecocrop thresholds are the same ecological envelope that broke `NTxS`
+    (maize severe = 40 °C *mean*), so it would be dead on arrival without new agronomic thresholds.
+    That is the index-method review, and adopting it later costs a bake.
+
 ## Order
 0. Pre-conditions above (exposure vintage; CR-115 convention state).
-1. R/2 (`FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1`, both axes, nohup+log;
-   run the terra-probe first).
+1. R/2 (`FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1`, both axes, nohup+log).
+   **Run `Rscript R/probe_r2_5_2_vec.R` on cglabs FIRST** (item 3): `USE_R2_5_2_VEC` defaults ON and
+   its identity probe has only ever run on macbook terra. If it fails, set `USE_R2_5_2_VEC=0`.
+   Expect §5.3 and R/3 §4 to be about 38 % larger than the last bake — item 9(a) adds a crop
+   interaction row. That is the intended cost, not a runaway.
 2. R/3 §4.1+§4.2 (vop intld, vop_usd, ha, **prod_t and head_n** per item 8, both axes). Park, do not FORCE.
 3. R/2.2 (desert mask carries; optional compound eval).
 4. Validators (`validate_cr093_real.R` for R/2.2; spot-check poultry Extreme drop).

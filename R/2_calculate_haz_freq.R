@@ -158,6 +158,7 @@ ecocrop[, Temp_Abs_Min := as.numeric(Temp_Abs_Min)][, Temp_Abs_Max := as.numeric
 
 # Using the mapspam species transpose the ecocrop data into mod, severe and extreme hazards (match the format of the haz_class data.table)
 description <- c("Moderate", "Severe", "Extreme")
+.ec_no_match <- NULL   # #25(c): SPAM commodities with no ecocrop species match; reported below
 ec_haz <- rbindlist(lapply(seq_len(nrow(ms_codes)), FUN = function(i) {
   crop <- ms_codes[i, sci_name]
   crop_common <- ms_codes[i, Fullname]
@@ -264,7 +265,11 @@ ec_haz <- rbindlist(lapply(seq_len(nrow(ms_codes)), FUN = function(i) {
 
       rbind(ptot_low, ptot_high, tavg_low, tavg_high, ntxcrop_m, ntxcrop_s, ntxcrop_e)
     } else {
-      print(paste0(i, "-", j, " | ", crop, " - ERROR NO MATCH"))
+      # #25(c): this was a print() that scrolled past inside a long loop, so a commodity with no
+      # ecocrop match silently got NO crop-specific thresholds and simply dropped out of the
+      # crop-specific interaction sets - `tomatoes` has been in that state unnoticed. Collect the
+      # misses and report them loudly after the loop instead of letting them vanish into the log.
+      .ec_no_match <<- rbind(.ec_no_match, data.table(commodity = crop_common, sci_name = crops[j]))
       NULL
     }
   }))
@@ -277,6 +282,22 @@ ec_haz <- rbindlist(lapply(seq_len(nrow(ms_codes)), FUN = function(i) {
 
   ec_haz
 }))
+
+# #25(c): a commodity with no ecocrop match carries no crop-specific heat, rainfall or mean-
+# temperature thresholds, so it quietly drops out of every crop-specific interaction set while
+# still appearing in the generic one - a coverage gap that looks like a real zero downstream.
+# Report it once, in full, rather than as a print() buried in a 35-iteration loop. Not fatal:
+# the generic sets are unaffected and a missing ecocrop row is a metadata gap, not a bad run.
+if (!is.null(.ec_no_match) && nrow(.ec_no_match)) {
+  .ec_no_match <- unique(.ec_no_match)
+  cat(sprintf("\n[2] 0.2.2.1) WARNING: %d SPAM commodity/species pair(s) have NO ecocrop match, so they get NO crop-specific thresholds and are absent from every crop-specific interaction set (#25c):\n", nrow(.ec_no_match)))
+  print(.ec_no_match, nrows = 50)
+  .ec_missing_all <- setdiff(unique(.ec_no_match$commodity), unique(ec_haz$crop))
+  if (length(.ec_missing_all)) cat(sprintf("[2] 0.2.2.1) of those, %d commodit(y/ies) have NO crop-specific thresholds AT ALL: %s\n",
+                                           length(.ec_missing_all), paste(.ec_missing_all, collapse = ", ")))
+} else {
+  cat("[2] 0.2.2.1) every SPAM commodity matched an ecocrop species\n")
+}
 
 
 #### 0.2.2.2) !!TO DO!! Generate hazard thresholds using CCW crop climate profiles ####
@@ -346,13 +367,45 @@ scenarios_x_hazards <- data.table(Scenarios, Hazard = rep(hazards, each = nrow(S
 # specific exposure (script 3).
 
 # Crop interactions (each row is a combination of heat, wet and dry variables)
+# Crop interactions (each row is a combination of heat, wet and dry variables).
+#
+# `heat_simple` is a SELECTOR, not a threshold: §0.2.2.1 derives three crop-specific heat index
+# families from ecocrop and classifies all three, and replace_exact_matches() below swaps the token
+# for the file that family resolves to for each crop x severity. So all three are computed; only the
+# families NAMED here reach a compound `_int` stack, and only `_int` stacks are published.
+#
+# Revised 2026-10-07 (#25, decided for the #13 rebake):
+#
+#  (b) the crop heat family moves NTxS -> NTxM. NTxS = ceil((Temp_Opt_Max + Temp_Abs_Max)/2), which
+#      averages the optimum with the SURVIVAL limit: maize 33 and 47 give 40 C, and nowhere in Kenya
+#      that grows maize sees 14 days above 40 C, so the crop-specific pathway reported 0.0 % heat-
+#      exposed maize value in BOTH historic and SSP585 while the generic NTx35 at least moved
+#      2.3 % -> 5.5 %. 15 of 35 crops had a crop-specific "severe" threshold HOTTER than generic.
+#      NTxM = Temp_Opt_Max directly (maize 33 C) and makes the crop-specific index more sensitive
+#      than generic for 20 of 35 crops instead of fewer. Costs nothing: the NTxM layers are already
+#      classified and upstream produces every integer NTx20-NTx50 (calc_NTx.R `thr <- 20:50`).
+#      Ecocrop is an ecological envelope, not an agronomic one - sourcing critical flowering
+#      temperatures properly is the index-method review (#14/#24), and this is the honest wiring in
+#      the meantime.
+#
+#  (a) row 3 is new: crop-specific heat with the WATER-BALANCE dry/wet framing. Until now crops had
+#      only rows 1 and 2, so asking for crop-specific heat also forced drought from soil-water
+#      stress to rainfall total - which is why those two sets are not comparable (dry 32 % -> 2 %,
+#      wet 0.7 % -> 29 %, almost none of it about heat). Livestock already had both framings with
+#      species-specific heat; crops did not. This gives crops the same matrix and makes generic vs
+#      crop-specific heat a one-variable comparison.
+#
+# The published `hazard_vars` value is built from these tokens (combo_name_simple2 below), so the
+# crop-specific set is renamed `PTOT-L+NTxM+PTOT-G` rather than silently changing meaning under the
+# old `NTxS` label. A provenance label is a claim: if the definition moves, the label moves with it.
+# The live V1 notebook reads row 1, which is unchanged.
 crop_interactions <- data.table(
-  heat_simple = c("NTx35", "NTxS"),
-  wet_simple = c("NDWL0", "PTOT_G"),
-  dry_simple = c("NDWS", "PTOT_L"),
-  heat_fixed = c(TRUE, FALSE),
-  wet_fixed = c(TRUE, FALSE),
-  dry_fixed = c(TRUE, FALSE),
+  heat_simple = c("NTx35", "NTxM", "NTxM"),
+  wet_simple = c("NDWL0", "PTOT_G", "NDWL0"),
+  dry_simple = c("NDWS", "PTOT_L", "NDWS"),
+  heat_fixed = c(TRUE, FALSE, FALSE),
+  wet_fixed = c(TRUE, FALSE, TRUE),
+  dry_fixed = c(TRUE, FALSE, TRUE),
   type = "crop"
 )
 

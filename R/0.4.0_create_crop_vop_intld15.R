@@ -192,6 +192,33 @@ fao_prod[, prod_t := apply(.SD, 1, median, na.rm = TRUE), .SDcols = paste0("Y", 
 fao_prod <- fao_prod[is.finite(prod_t) & prod_t > 0, .(iso3, item_code, prod_t)]
 .log040(sprintf("FAO production rows (iso3 x item code, window median > 0): %d over %d item codes", nrow(fao_prod), uniqueN(fao_prod$item_code)))
 
+# 3.2) FAOSTAT quantity pins (CAF / GIN coffee, 2026-10-07) -------------------
+# A FAOSTAT production series can break without a real event. Coffee for the Central African
+# Republic jumps from ~10 kt to ~300 kt after 2017 while the ICO puts real output at 2-6 kt, and
+# Guinea has the same break. FAO's constant-I$ GPV is built from FAO's own production, so the break
+# carries straight into the intld basis for those pairs - it was a documented caveat in
+# docs/methods/nominal_price_method.md rather than a correction. Same discipline as the price pins:
+# evidence and source in the CSV, nothing overridden silently, and only rows marked `applied` move a
+# number (a `proposed` row is reported and ignored, so evidence can be reviewed first).
+.qpin_file <- file.path(project_dir, "metadata", "fao_quantity_pins.csv")
+if (file.exists(.qpin_file)) {
+  .qpins <- fread(.qpin_file)
+  .qp <- vop_apply_quantity_pins(prod_value_i, fao_prod, .qpins)
+  prod_value_i <- .qp$gpv; fao_prod <- .qp$fao_prod
+  if (nrow(.qp$log)) {
+    .log040(sprintf("FAOSTAT quantity pins APPLIED to %d (iso3, item) pair(s):", nrow(.qp$log)))
+    print(.qp$log[, .(iso3, item_code, prod_before = signif(prod_before, 4), prod_after = signif(prod_after, 4),
+                      ratio = signif(ratio, 4), gpv_before = signif(gpv_before, 4), gpv_after = signif(gpv_after, 4),
+                      scale_gpv, matched)])
+    if (any(!.qp$log$matched)) stop("[0.4.0] a quantity pin matched no FAOSTAT row - check iso3 / item_code in ", basename(.qpin_file))
+  }
+  if (nrow(.qp$skipped)) {
+    .log040(sprintf("FAOSTAT quantity pins NOT applied (status != 'applied' or no value): %d row(s) — recorded, not acted on",
+                    nrow(.qp$skipped)))
+    print(.qp$skipped[, .(iso3, item_code, item_label, prod_t, status, decided)])
+  }
+} else .log040(sprintf("no quantity pins file at %s — FAOSTAT quantities used as published", .qpin_file))
+
 # 4) Distribute national GPV to SPAM production proportions ------------------
 .log040("distributing FAO GPV by SPAM production share (per allocation group)")
 spam_nat <- spam_prod_admin0_ex$all[, .(iso3, layer = as.character(Code), prod_t = prod)]

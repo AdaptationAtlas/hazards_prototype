@@ -197,6 +197,53 @@ vop_allocate_rasters <- function(spam_all, admin_rast, zones, alloc, groups, spa
   terra::rast(out)
 }
 
+# FAOSTAT quantity pins (2026-10-07). The counterpart of metadata/price_pins.csv for TONNAGE, and
+# the same discipline: a hand-set quantity carries its evidence and its source, and nothing is
+# overridden silently. Needed because a FAOSTAT production series can break without a real event -
+# coffee for the Central African Republic jumps from ~10 kt to ~300 kt after 2017 while the ICO puts
+# real output at 2-6 kt - and FAO's constant-I$ GPV is built from FAO's own production, so the break
+# carries straight into the intld basis.
+#
+# `status` gates application: only rows marked `applied` change anything. A row marked `proposed` is
+# reported and ignored, so evidence can be recorded and reviewed before it moves a published number.
+# `scale_gpv` scales that item's GPV by the same ratio as its production, which is the consistent
+# treatment when the GPV was derived from the production being corrected; set it FALSE to correct
+# only the coverage-guard denominator.
+#
+# Returns the amended tables plus a log data.table of what moved, which 0.4.0 prints. Pure.
+vop_apply_quantity_pins <- function(gpv, fao_prod, pins) {
+  pins <- data.table::as.data.table(pins)
+  req <- c("iso3", "item_code", "prod_t", "scale_gpv", "status")
+  if (!all(req %in% names(pins))) stop("vop_apply_quantity_pins: metadata/fao_quantity_pins.csv needs columns ", paste(req, collapse = ", "))
+  pins[, item_code := suppressWarnings(as.integer(item_code))]
+  pins[, prod_t := suppressWarnings(as.numeric(prod_t))]
+  applied <- pins[status == "applied" & !is.na(item_code) & is.finite(prod_t) & prod_t > 0]
+  skipped <- pins[!(status == "applied" & !is.na(item_code) & is.finite(prod_t) & prod_t > 0)]
+  log <- data.table::data.table()
+  g <- data.table::copy(data.table::as.data.table(gpv))
+  p <- if (is.null(fao_prod)) NULL else data.table::copy(data.table::as.data.table(fao_prod))
+  for (k in seq_len(nrow(applied))) {
+    r <- applied[k]
+    before_p <- if (!is.null(p)) p[iso3 == r$iso3 & item_code == r$item_code, prod_t] else numeric(0)
+    before_g <- g[iso3 == r$iso3 & item_code == r$item_code, value]
+    ratio <- if (length(before_p) == 1L && is.finite(before_p) && before_p > 0) r$prod_t / before_p else NA_real_
+    if (!is.null(p) && length(before_p) == 1L) p[iso3 == r$iso3 & item_code == r$item_code, prod_t := r$prod_t]
+    after_g <- before_g
+    if (isTRUE(as.logical(r$scale_gpv)) && is.finite(ratio) && length(before_g) == 1L) {
+      after_g <- before_g * ratio
+      g[iso3 == r$iso3 & item_code == r$item_code, value := after_g]
+    }
+    log <- rbind(log, data.table::data.table(
+      iso3 = r$iso3, item_code = r$item_code,
+      prod_before = if (length(before_p)) before_p else NA_real_, prod_after = r$prod_t, ratio = ratio,
+      gpv_before = if (length(before_g)) before_g else NA_real_,
+      gpv_after = if (length(after_g)) after_g else NA_real_,
+      scale_gpv = isTRUE(as.logical(r$scale_gpv)),
+      matched = length(before_p) == 1L || length(before_g) == 1L))
+  }
+  list(gpv = g[], fao_prod = p, log = log, skipped = skipped[])
+}
+
 # Constant-I$ price factor, one layer per SPAM layer, in I$ per tonne (#41, 2026-10-07). This is
 # the companion to 0.4.2's nominal price raster and the thing that makes the physical hazard tier
 # usable: R/3's prod_t tier carries hazard-affected TONNES, so money is applied afterwards as

@@ -45,11 +45,58 @@ git fetch && git log --oneline -1 origin/develop     # expect e5f6340 or later
 git pull
 project_dir=$PWD Rscript R/checks/fixture_vop_allocate.R
 project_dir=$PWD Rscript R/checks/fixture_fao_code_join.R
+project_dir=$PWD Rscript R/checks/fixture_crop_heat_interactions.R
 ```
 
 **Expected:** both end with `ALL ... FIXTURE ASSERTIONS PASSED`. Seconds, no data. If either fails
 here but passed on macbook, stop — that is an environment difference worth knowing before a long
 run.
+
+### A0.5. Measure CAF / GIN coffee before 0.4.0 runs — Pete sets the pin
+
+Decided 2026-10-07: the CAF/GIN coffee tonnage correction rides this run. It is currently a
+**caveat** in `docs/methods/nominal_price_method.md`, not a correction: FAOSTAT coffee production for
+the Central African Republic breaks from ~10 kt to ~300 kt after 2017 with no corresponding event,
+and the ICO puts real output at 2-6 kt (CAF) and ~9 kt (GIN). FAO's constant-I$ GPV is built from
+FAO's own production, so the break carries straight into the intld basis.
+
+`metadata/fao_quantity_pins.csv` holds both rows with **`status = proposed` and `prod_t` blank**, so
+0.4.0 will report them and change nothing. This gate produces the number Pete needs to fill in.
+
+Read it straight off the FAOSTAT bulk files — seconds, no pipeline:
+
+```
+Rscript -e 'suppressMessages(library(data.table)); source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R");
+d <- fread(file.path(fao_dir, "Production_Crops_Livestock_E_Africa.csv"), encoding = "Latin-1")
+v <- fread(file.path(fao_dir, "Value_of_Production_E_Africa.csv"), encoding = "Latin-1")
+yc <- paste0("Y", 2010:2023)
+pr <- d[`Item Code` == 656 & Element == "Production" & Unit == "t" & Area %in% c("Central African Republic","Guinea"), c("Area", yc), with = FALSE]
+gp <- v[`Item Code` == 656 & Element %like% "constant 2014-2016" & Area %in% c("Central African Republic","Guinea"), c("Area", yc), with = FALSE]
+cat("
+production (t)
+"); print(pr); cat("
+GPV (thousand I$)
+"); print(gp)'
+```
+
+> Check the production file name against what is actually staged in `fao_dir`; 0.4.0 resolves it as
+> `prod_file`. If the GPV `Element` string does not match, print `unique(v$Element)` and use the
+> constant-I$ one.
+
+**Report the full 2010-2023 series for both countries, production and GPV.** State where the break
+is, what the pre-break level was, and the implied I$/t on each side of it — an implied unit value
+that barely moves across a 30x tonnage jump is the signature of a reporting change rather than a
+real one.
+
+**Then STOP and hand the numbers to Pete.** Do not set `prod_t` or flip `status` yourself: a pinned
+quantity is a hand-set number that moves a published figure, and it needs the same evidence
+discipline as `metadata/price_pins.csv`. Once Pete sets the value and `status = applied`, commit it
+and continue to A1 — 0.4.0 prints every applied pin with before, after and ratio, and **stops** if a
+pin matches no FAOSTAT row.
+
+If Pete is not available, run A1 onward with the pins left `proposed`: the result is simply today's
+behaviour plus the B5 fix, and the pins can be applied in a later 0.4.0 pass. Say clearly in the
+RESPONSE which of the two you did.
 
 ### A1. Re-derive the gap under both join keys — the number, not the claim
 

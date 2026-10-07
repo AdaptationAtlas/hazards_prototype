@@ -149,3 +149,41 @@ fine <- rast(nrows = 10, ncols = 10, xmin = 0, xmax = 1, ymin = 0, ymax = 1, crs
 coarse <- rast(nrows = 2, ncols = 2, xmin = 0, xmax = 1, ymin = 0, ymax = 1, crs = "EPSG:4326")
 ok(abs(global(resample_sum_checked(fine, coarse), "sum", na.rm = TRUE)[1, 1] / 5050 - 1) < 0.005 && identical(resample_sum_checked(fine, fine), fine), "sum-resample conserves the total within 0.5 % (the pipeline tolerance); same grid returns the input")
 cat("\nALL VOP-ALLOCATE FIXTURE ASSERTIONS PASSED\n")
+
+## FAOSTAT quantity pins (2026-10-07): the counterpart of price_pins.csv for TONNAGE. A FAOSTAT
+## production series can break without a real event (CAF coffee ~10 kt -> ~300 kt after 2017 against
+## an ICO figure of 2-6 kt), and FAO's constant-I$ GPV is built from FAO's own production, so the
+## break carries into the intld basis. Only `applied` rows may move a number.
+gpv_q  <- data.table(iso3 = c("AAA", "BBB"), item_code = c(656L, 15L), Item = c("Coffee, green", "Wheat"), value = c(300, 80))
+prod_q <- data.table(iso3 = c("AAA", "BBB"), item_code = c(656L, 15L), prod_t = c(300, 1000))
+pins <- data.table(iso3 = "AAA", item_code = 656L, item_label = "Coffee, green", prod_t = 10,
+                   scale_gpv = TRUE, status = "applied")
+q <- vop_apply_quantity_pins(gpv_q, prod_q, pins)
+print(q$log)
+ok(q$fao_prod[iso3 == "AAA" & item_code == 656L, prod_t] == 10, "quantity pin: the FAOSTAT production is replaced by the pinned tonnage")
+ok(abs(q$gpv[iso3 == "AAA" & item_code == 656L, value] - 10) < 1e-9,
+   "and scale_gpv scales that item's GPV by the SAME ratio (300 -> 10 t is 1/30, so 300 -> 10 kI$) - FAO's GPV came from FAO's production")
+ok(q$gpv[iso3 == "BBB", value] == 80 && q$fao_prod[iso3 == "BBB", prod_t] == 1000, "an unpinned pair is untouched")
+ok(nrow(q$log) == 1 && isTRUE(q$log$matched), "the move is logged with before, after and ratio - a pin must be visible, not silent")
+
+pins2 <- copy(pins)[, scale_gpv := FALSE]
+q2 <- vop_apply_quantity_pins(gpv_q, prod_q, pins2)
+ok(q2$gpv[iso3 == "AAA" & item_code == 656L, value] == 300 && q2$fao_prod[iso3 == "AAA" & item_code == 656L, prod_t] == 10,
+   "scale_gpv = FALSE corrects only the coverage-guard denominator and leaves the GPV alone")
+
+pins3 <- copy(pins)[, status := "proposed"]
+q3 <- vop_apply_quantity_pins(gpv_q, prod_q, pins3)
+ok(nrow(q3$log) == 0 && nrow(q3$skipped) == 1 && q3$gpv[iso3 == "AAA" & item_code == 656L, value] == 300,
+   "a `proposed` pin is reported and IGNORED, so evidence can be recorded before it moves a published number")
+
+pins4 <- copy(pins)[, iso3 := "ZZZ"]
+q4 <- vop_apply_quantity_pins(gpv_q, prod_q, pins4)
+ok(nrow(q4$log) == 1 && !isTRUE(q4$log$matched), "a pin matching no FAOSTAT row is flagged unmatched (0.4.0 stops on it) rather than passing silently")
+
+## the shipped file must parse and carry the CAF/GIN rows the method doc describes
+qp <- fread(file.path(root, "metadata", "fao_quantity_pins.csv"))
+ok(all(c("iso3", "item_code", "prod_t", "scale_gpv", "status") %in% names(qp)), "metadata/fao_quantity_pins.csv has the columns vop_apply_quantity_pins() requires")
+ok(setequal(qp$iso3, c("CAF", "GIN")) && all(qp$item_code == 656), "it carries the CAF and GIN coffee rows from the nominal_price_method caveat")
+ok(all(qp$status == "proposed"), "both ship as `proposed`: the tonnage needs the node measurement before it moves a published number")
+
+cat("\nALL QUANTITY-PIN ASSERTIONS PASSED\n")
