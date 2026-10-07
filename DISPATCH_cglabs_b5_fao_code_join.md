@@ -2,6 +2,100 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-07 (A4) — cglabs — STOPPED at A4.1: crop QAQC median 1.17 (0.25°) / 1.18 (0.05°), 9/50 and 13/50 within 0.9-1.1 — NOT near 1. Cause diagnosed, not fixed: the gate's own FAO denominator takes a MEDIAN across a composite group's items where it should SUM them; recomputed sum-then-median gives median 0.992, 41/49 in band, and equals 0.4.0's GPV to 1.000. A4.2 cross-basis PASS on both grids (only pre-registered residuals out of band; none new). A4.3 probe consistent. A5 NOT started.
+
+All three gates ran, in order, read-only (`logs/b5_a4_20261007_193653.sh` → `.log`, 20:02-20:05). The
+first deviates, so per the dispatch nothing was published and nothing was changed; the other two are
+reported because they were already in the script and their output is useful.
+
+**A4.1 — `qaqc_vop_vs_faostat.R`: DEVIATES.**
+
+```
+EXPOSURE_RES=0.25: LIVESTOCK ratios: median=1.00 | within 0.9-1.1 = 242/242
+                   CROP national-total ratios: median=1.17 | within 0.9-1.1 = 9/50  | file=spam_vop_intld15-2021_all_res-25.tif
+EXPOSURE_RES=0.05: LIVESTOCK ratios: median=1.00 | within 0.9-1.1 = 242/242
+                   CROP national-total ratios: median=1.18 | within 0.9-1.1 = 13/50 | file=spam_vop_intld15-2021_all_res-05.tif
+```
+
+(The last run on the old rasters, 2026-10-05, read `median=1.03 | 28/50`.) Not the ~1.08 the dispatch
+named for "gate on the old name basis" — the script does key on `code_fao` (`qaqc_vop_vs_faostat.R:128-132`,
+`prepare_fao_data(by = "code")`), and that part reached the node run. The deviation is a different defect
+in the same gate, exposed by the fix:
+
+- **The product is right against its input.** Per country, gridded national total ÷ 0.4.0's allocated
+  `value_alloc`: median **0.996** (border cells only). The raster carries what 0.4.0 allocated.
+- **The gate's denominator is short.** Per country, qaqc `fao_vop_i` ÷ 0.4.0's GPV for the same country
+  (sum of `gpv` over the allocation CSV): median **0.80**; ZAF 0.56, ZWE 0.57, MLI 0.65, NGA 0.82. The gate's
+  reference is ~20 % below the reference the product was built from, so a correct product reads as 1.2.
+- **Why.** `fao_gpv_i()` (`qaqc_vop_vs_faostat.R:49-58`) melts the per-item FAO table to
+  (iso3, atlas_name, year) rows and then takes `median(gpv_i_k) by (iso3, atlas_name)`. For a single-item
+  group that is the intended median across the five window years. For a composite group it is a **median
+  across N items × 5 years** — one typical item's value stands in for the whole group. ZAF 2021: `temf`
+  11 items sum 2.70 B, median item 0.032 B; `trof` 12 items sum 1.54 B, median 0.058 B; `vege` 16 items sum
+  1.07 B, median 0.022 B. 0.4.0 sums the items (`vop_item_groups` + GPV by group). Before B5 the name join
+  matched only 1-5 items per composite, so the collapse cost little (1.03); with 57 renamed codes recovered
+  the composites hold 11-26 items each and the median-of-items is far below the sum.
+- **Check, off the same FAO file, same codes, same years** (`Value_of_Production_E_Africa.csv`, constant
+  2014-16 I$, codes from `SPAM2010_FAO_crops.csv`, 2019-2023): recomputing the denominator exactly as the
+  script does reproduces its `fao_vop_i` to 3 decimals for every country; recomputing as
+  **sum over items per year, then median across years** gives:
+
+| | as the script computes it | sum items, then median years |
+|---|---:|---:|
+| crop median ratio (grid ÷ FAO) | 1.178 | **0.992** |
+| within 0.9-1.1 | 13 / 49 | **41 / 49** |
+| denominator ÷ 0.4.0's GPV, median | 0.80 | **1.000** |
+
+  The 8 outside the band under the corrected denominator are all explained: DZA/EGY/LBY/MAR/TUN and SDN
+  = 0 (outside the SPAM release / 22 Sudan pairs guarded, by design); **CAF 0.657 and GIN 0.918 because the
+  gate's denominator does not apply the quantity pins** (`fao_quantity_pins.csv` is read by 0.4.0, not by
+  the QAQC; CAF denominator 1.76 B vs pinned 1.16 B); CPV/MUS/COM/SYC are in `remove_countries`/tiny.
+  A pinned basis will always read low in this gate unless the gate applies the same pins.
+
+**No change was made to `R/qaqc_vop_vs_faostat.R`.** The one-line shape of the fix is clear
+(aggregate `sum(gpv_i_k) by (iso3, atlas_name, year)` before the `median by (iso3, atlas_name)`, and apply
+`vop_apply_quantity_pins()` to the denominator as 0.4.0 does), but a gate's reference is the macbook's to
+set, and the dispatch says stop. This is the G6 lesson in the other direction: the gate judged the product
+against a reference built differently from the input.
+
+**A4.2 — `vop_cross_basis_gate.R`: GATE PASS at both resolutions.** Expected residuals file has 7 rows
+(ETH tea, TGO oilpalm, GNB maize, CAF×2, GIN×2 coffee).
+
+| | 0.25° | 0.05° |
+|---|---|---|
+| pairs both bases / material / one-sided | 1,396 / 1,039 / 411 | 1,181 / 994 / 559 |
+| material ratio nominal/intld, median [5-95 %] | 1.22 [0.418, 3.04] | 1.22 [0.398, 3.14] |
+| out-of-band, NAMED (expected) | ETH:tea 0.0785 | ETH:tea 0.0785, TGO:oilpalm 11.6, **CAF:robusta-coffee 11.1**, GNB:maize 10.2 |
+| out-of-band, no national allocation (border spill, #18; reported not gated) | TCD:yams 184, BEN:bean 16.4 | — |
+| named residuals now inside the band (script suggests prune) | TGO:oilpalm, GNB:maize, CAF:arabica, CAF:robusta, GIN:arabica, GIN:robusta | CAF:arabica, GIN:arabica, GIN:robusta |
+| **new, un-named residuals** | **none** (`ok: no material pair outside [1/10, 10] has its nominal side off`) | **none** |
+| per-crop medians | all within [1/5, 5]; worst coconut 2.60, oilpalm 2.47, arabica 0.485, cotton 0.497 | all within [1/5, 5]; worst coconut 2.61, oilpalm 2.30, cotton 0.480, robusta 0.499 |
+
+CAF robusta reads 11.1 at 0.05° (197.6 M nominal vs 17.79 M intld — the 35× by construction the macbook
+pre-registered; it lands at 11 rather than 35 because the gate's `nominal` is 0.4.2's price × SPAM tonnes
+with the GIN/CAF price treatment, not FAO's). At 0.25° the same pair sits inside the band because the
+border spill (23.85 M intld, A3) lifts the intld side. GIN robusta is inside the band on both grids (ratio
+~5): the GIN pin ratio is 8.4× and the registered price pin pulls the other way. No pair outside the
+composite groups moved out of band — the macbook's stop condition for this gate did not fire. The macbook
+may want to prune the three "now inside" rows at 0.05°, or leave them since they are out of band at 0.25°.
+
+**A4.3 — `probe_040_allocation.R` at 0.25°: consistent** with the A1/A2 runs line for line (1,210 pairs,
+inside 249.28 B, guarded 30 pairs 9.04 B = 3.6 %, guarded countries BEN(2) DJI(1) GAB(1) KEN(1) SDN(22)
+ZWE(3), NGA banana pooled pair coverage 1.02 unguarded, BEN guard share 1.4 %).
+
+**Before/after per crop** is in the A2 block above (from the kept 2026-10-05 caches): continental
+200.28 → 240.24 B I$ (+39.96, +20.0 %); vege +13.06, trof +7.38, rest +8.41 (was absent), orts +5.53
+(absent), temf +2.51, other-cereals +1.92, other-pulses +1.48, other-oil +0.65, ofib +0.08 (absent);
+robusta −1.05 (pins); 32 single-item crops unchanged to 3 decimals. Same at 0.25°.
+
+**A5 / A6: not started.** No publish, no S3 traffic, no deletes. The 0.4.0 / 0.4.4 outputs from A1-A3
+stay on disk as the candidate; the old caches stay in `sandbox/b5_old_adm_sum_20261007_193653/`.
+Waiting for the macbook's call on A4.1: (a) fix the QAQC denominator (sum-then-median + pins) and I re-run
+A4.1 and proceed to A5 if it reads near 1; or (b) accept the 1.17 as understood and GO A5 as the dispatch
+stands. Either way, say which.
+
+---
+
 ### MACBOOK 2026-10-07 (e) — A3 accepted. One cheap check to add at A4, for the #13 bake's sake.
 
 **A3 is the gate it was meant to be.** Both new tables read back 240.24 B I$ against 0.4.0's own
