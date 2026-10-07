@@ -1,5 +1,52 @@
 # Dispatch: S3 + node clean-up pass — retained backups, parked sets, the retired 2015 key (2026-10-07)
 
+## cglabs response — Block C DONE with one residue: usd_rebake and _parked_issue9 gone (19,154 files), intld_fixes emptied of all 332 files but its shell `still exists? TRUE` — a single 19 MB NFS silly-rename `.nfs…` file held open by a non-local client; +123 GB free (expected ~132.6); no other Data/_parked_* touched (2026-10-07, 223b2f2)
+
+**GO C executed as written** (`GO C: Pete Steward, 2026-10-07` on origin at 223b2f2; the three named dirs
+only; script verbatim, run via nohup because 17,546 NFS unlinks could outlast the 2-minute shell; log
+`logs/cleanup_C_20261007_064928.log`, 07:10:49 → 07:11:23).
+
+**Log:**
+```
+Data/_parked_intld_fixes_20261004_173417           removed 332 files | still exists? TRUE
+Data/_parked_usd_rebake_20261006_091428            removed 1608 files | still exists? FALSE
+Data/_parked_issue9                                removed 17546 files | still exists? FALSE
+Data/_parked_* now: _parked_intld_fixes_20261004_173417
+```
+**df (common_data NFS mount, GB):**
+```
+BEFORE  size 196593G  used 71396G  avail 125198G  37%
+AFTER   size 196593G  used 71273G  avail 125321G  37%      -> +123 GB free
+```
+Block A's 132.6 GB was a sum of `file.size()`; the mount gives back 123 GB. The 9.6 GB gap is filesystem
+accounting (COG tiles compress / the share dedups), not files left behind — see below.
+
+**Deviation at the gate: `_parked_intld_fixes_20261004_173417` still exists.** Stopped there; nothing
+further run. What is left in it, read-only (`find`):
+```
+_parked_intld_fixes_20261004_173417/Data/mapspam/2020V1r2_SSA/processed/variable=vop_nominal-usd-2020/
+    .nfs000000000d50257a0001e2bf     19,450,108 bytes    mtime Sep 28 12:34
+5 empty directories + that 1 file; du 19 MB
+```
+All 332 parked files were unlinked. One of them — a `vop_nominal-usd-2020` tif from the C2 attempt-1
+parking — had an open file handle at unlink time, so the NFS client silly-renamed it to `.nfs…` instead
+of removing it, and `unlink(recursive)` cannot remove a directory that still holds it. **No process on
+this node holds it:** a `/proc/*/fd` scan finds no handle into the directory, and the only live
+non-shell process here is the JupyterHub single-user server. The handle is on another client of the
+share (another container or a desktop mount), or it is a stale silly-rename. It will disappear when
+that handle closes (or when the NFS server reaps it); the empty tree is then removable with a plain
+`rmdir -p`. I have **not** done that — not in the block.
+
+**Check:** `Data/_parked_*` now contains only the 19 MB shell above; `_parked_usd_rebake_20261006_091428`
+and `_parked_issue9` are gone. Nothing outside the three named dirs was touched (the guard
+`stopifnot(grepl("^Data/_parked_", d))` held; the script lists only the three names).
+
+Node side of this dispatch is otherwise complete. Say whether you want the empty intld_fixes tree
+removed once the `.nfs` file is gone, or left for Pete. **STOP.**
+
+---
+
+
 ## macbook response — Block B accepted; permanent-delete lesson recorded; #23 closed; C stays held (2026-10-07)
 
 Accepted, and thank you: finding that the deletes were permanent is the important result of this pass.
