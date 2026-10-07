@@ -105,6 +105,21 @@ chk <- vop_check_totals(vop, admin, zones, alloc, groups)
 print(chk)
 ok(all(chk[iso3 != "ZZZ", ok]), "conservation: every allocated (country, group) zonal sum == allocated GPV; every guarded one is 0 / NA")
 
+## #41: the constant-I$ price factor, which is what makes R/3's physical prod_t tier usable -
+## hazard-affected TONNES x factor = value, so a price revision is a multiply and not a re-bake.
+fac <- vop_factor_rasters(admin, zones, alloc, groups, spam_prod, layers = names(spam_all))
+ok(setequal(names(fac), names(vop)), "the factor raster carries the same layer set as the VoP raster, data-independently")
+.dev <- max(vapply(names(vop), function(ly) {
+  d <- global(abs(spam_all[[ly]] * fac[[ly]] / 1000 - vop[[ly]]), "max", na.rm = TRUE)[1, 1]
+  if (is.finite(d)) d else 0 }, numeric(1)))
+ok(.dev < 1e-9, sprintf("production x factor reproduces the VoP raster cell by cell (max deviation %.3g) - the identity the physical tier depends on", .dev))
+ok(all(is.na(values(fac$wheat)[values(admin)[, 1] == 2])),
+   "a guarded pair is NA in the factor raster too, so it cannot be priced by the back door")
+# A millet 100 I$ over 40 t -> 2.5 I$/kg = 2500 I$/t, the same factor on both millet layers
+ok(abs(unique(values(fac$`pearl millet`)[values(admin)[, 1] == 1]) - 2500) < 1e-9 &&
+   abs(unique(values(fac$`small millet`)[values(admin)[, 1] == 1]) - 2500) < 1e-9,
+   "the factor is constant across a group's layers (value is allocated BY production share) and in I$ per tonne")
+
 ## #40: a polygon smaller than a cell owns no cell centre -> rasterize() without touches gives NA
 isl <- vect("POLYGON ((4.2 4.2, 4.4 4.2, 4.4 4.4, 4.2 4.4, 4.2 4.2))", crs = "EPSG:4326"); isl$iso3 <- "SYC"; isl$price <- 500
 r0 <- rasterize(isl, admin, field = "price")

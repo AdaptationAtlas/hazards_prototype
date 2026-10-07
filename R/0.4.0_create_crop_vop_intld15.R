@@ -217,6 +217,31 @@ fwrite(alloc, .alloc_csv); .log040(sprintf("allocation audit written: %s", .allo
 spam_vop_intd <- vop_allocate_rasters(spam_dat$all, admin_rast, iso3_levels, alloc, groups, spam_nat)
 spam_vop_intd <- spam_vop_intd[[sort(names(spam_vop_intd))]]
 
+# 4.1) Constant-I$ price factor raster, I$ per tonne (#41, rebake item 8) ----
+# The companion to 0.4.2's nominal price raster, and what makes R/3's prod_t tier usable: the tier
+# carries hazard-affected TONNES, so money is applied afterwards as value = prod_t x factor and a
+# price revision stops forcing a 0.4.x -> R/3 re-bake at both resolutions. Written on THIS run's
+# allocation grid; run with EXPOSURE_RES=0.05 for the grid where pricing is correct, because a
+# 0.25 deg border cell holds both countries' production but takes one country's factor.
+.factor_rast <- vop_factor_rasters(admin_rast, iso3_levels, alloc, groups, spam_nat, layers = names(spam_dat$all))
+.factor_rast <- .factor_rast[[sort(names(.factor_rast))]]
+# Self-check, on the same footing as the allocation check below: the factor is the very multiplier
+# vop_allocate_rasters() applied, so production x factor must reproduce the VoP raster cell by cell.
+# If it does not, the physical tier and the value tier would disagree once money is applied.
+.fc_layers <- intersect(names(.factor_rast), names(spam_vop_intd))
+.fc_dev <- max(vapply(.fc_layers, function(ly) {
+  d <- abs(spam_dat$all[[ly]] * .factor_rast[[ly]] / 1000 - spam_vop_intd[[ly]])
+  .m <- terra::global(d, "max", na.rm = TRUE)[1, 1]
+  if (is.finite(.m)) .m else 0
+}, numeric(1)))
+.fc_scale <- terra::global(spam_vop_intd, "max", na.rm = TRUE)[, 1]
+.fc_scale <- max(c(.fc_scale[is.finite(.fc_scale)], 1))
+if (.fc_dev / .fc_scale > 1e-6) stop(sprintf("[0.4.0] price factor does not reproduce the VoP raster: max abs deviation %.6g against a peak of %.6g over %d layers", .fc_dev, .fc_scale, length(.fc_layers)))
+.log040(sprintf("price factor check: production x factor reproduces VoP to %.3g (peak %.3g) over %d layers", .fc_dev, .fc_scale, length(.fc_layers)))
+.factor_file <- file.path(mapspam_pro_dir, "fao_prices", paste0("crop_factor_intld15-2021-t_", .eg$tag, ".tif"))
+terra::writeRaster(.factor_rast, .factor_file, overwrite = TRUE)
+.log040(sprintf("constant-I$ price factor written: %s (%d layers, I$ per tonne)", .factor_file, terra::nlyr(.factor_rast)))
+
 # Hard self-check: the zonal sum of what was written back equals what was allocated, per
 # (country, group); guarded pairs come back empty. A silent miss here is #38 again.
 .chk <- vop_check_totals(spam_vop_intd, admin_rast, iso3_levels, alloc, groups, tol = 1e-6)

@@ -197,6 +197,46 @@ vop_allocate_rasters <- function(spam_all, admin_rast, zones, alloc, groups, spa
   terra::rast(out)
 }
 
+# Constant-I$ price factor, one layer per SPAM layer, in I$ per tonne (#41, 2026-10-07). This is
+# the companion to 0.4.2's nominal price raster and the thing that makes the physical hazard tier
+# usable: R/3's prod_t tier carries hazard-affected TONNES, so money is applied afterwards as
+#   value = prod_t x factor
+# and a price revision never again forces a 0.4.x -> R/3 re-bake at both resolutions.
+#
+# The factor is allocated GPV / SPAM national tonnage per (iso3, group), which is exactly the
+# multiplier vop_allocate_rasters() applies - so prod x factor reproduces the VoP raster by
+# construction, not by coincidence, and fixture_vop_allocate.R asserts it. It is constant across a
+# group's layers because the value is distributed BY production share: the whole point of the group.
+# Guarded pairs are NA here as they are there, so a guarded pair cannot be priced by the back door.
+#
+# Units: alloc$value_alloc is thousand I$, so the factor is multiplied by 1000 to come out in I$/t,
+# matching the I$ units 0.4.0 writes its VoP raster in.
+#
+# GRID: build this on the 0.05 deg allocation grid. A 0.25 deg border cell belongs to one country
+# but holds production from both sides, so pricing there charges one country's factor to the
+# neighbour's tonnage (the BEN/NGA cowpea lesson). Multiply on 0.05 and sum-resample afterwards.
+vop_factor_rasters <- function(admin_rast, zones, alloc, groups, spam_prod, layers = NULL) {
+  zones <- data.table::as.data.table(zones)[, .(ID = as.numeric(ID), iso3)]
+  gl <- unique(groups[, .(layer, group)])
+  sp <- merge(data.table::as.data.table(spam_prod)[, .(iso3, layer, prod_t)], gl, by = "layer")[, .(spam_prod_t = sum(prod_t, na.rm = TRUE)), by = .(iso3, group)]
+  cls <- function(tab) terra::classify(admin_rast, rcl = as.matrix(tab[, .(ID, v)]), others = NA)
+  out <- list()
+  for (g in sort(unique(alloc$group))) {
+    f <- merge(alloc[group == g, .(iso3, value_alloc)], sp[group == g, .(iso3, spam_prod_t)], by = "iso3", all.x = TRUE)
+    f <- merge(f, zones, by = "iso3")
+    f[, v := data.table::fifelse(!is.na(value_alloc) & is.finite(spam_prod_t) & spam_prod_t > 0,
+                                 value_alloc * 1000 / spam_prod_t, NA_real_)]
+    r <- if (nrow(f[!is.na(v)])) cls(f[!is.na(v), .(ID, v)]) else terra::setValues(terra::rast(admin_rast), NA_real_)
+    # the layer set must not depend on the data: R/3 and 0.4.4 address layers by name
+    for (ly in gl[group == g, layer]) {
+      if (!is.null(layers) && !ly %in% layers) next
+      rl <- r; names(rl) <- ly; out[[ly]] <- rl
+    }
+  }
+  if (!length(out)) stop("vop_factor_rasters: nothing to price")
+  terra::rast(out)
+}
+
 # Zonal check of the conservation property. Returns one row per (iso3, group) in alloc with
 # the zonal sum over the group's layers, the allocated value and their ratio (NA when nothing
 # was allocated). `ok` is TRUE when |ratio - 1| <= tol for allocated pairs and the zonal sum is
