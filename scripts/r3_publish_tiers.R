@@ -13,12 +13,20 @@
 #   s3://digital-atlas/domain=exposure/type=combined/source=glw4-2020_spam2020AA/
 #     region=ssa/processing=atlas-harmonized/variable=crop-livestock_all.parquet
 #   NOTE: R/s3_upload.R publishes a DIFFERENT product (source=atlas_cmip6/vop_intld15).
+#   That legacy route is superseded by --variables vop_intld here and should be retired once the
+#   new key is live (handover 2026-10-07 §2 A2).
+#
+# TIER VARIABLES (--variables, 2026-10-07). Until then this script could publish only
+# vop_nominal-usd21; the intld, harvested-area, production-tonnes and head-count tiers were built
+# on the node with no publish route at all. See VAR_SPECS below for the key scheme, each tier's
+# local directory and each tier's G6/G6b basis. The default is still `vop_usd` alone, so every
+# existing invocation and archived dispatch line keeps meaning what it meant.
 #
 # LOCAL SOURCES (working_dir-relative after 0_server_setup.R):
-#   <hazard_risk_vop_usd>/<timeframe>/haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_<tier>.parquet
+#   <VAR_SPECS[[v]]$dir_key>/<timeframe>/haz-freq-exp_<file_var>_<model>_int_adm_<tier>.parquet
 #   <exposure_dir>/exposure_adm_sum_spam20-20_glw420-20_res-05.parquet     (--reference --res 0.05)
 #
-# GATES (per tier; any FAIL aborts that tier, nothing uploaded):
+# GATES (per tier variable x severity; any FAIL aborts that tier, nothing uploaded):
 #   G1 local file exists and is > 10 MB
 #   G2 every hazard_vars has hazard='none' rows and n(none) == n(any)   (issue #9 ask)
 #   G3 scenarios = historic + ssp126/245/370/585 (historic rows live INSIDE this file)
@@ -30,6 +38,15 @@
 #      livestock as a "must not move" control, zero flips, zero unmatched, row/scenario
 #      parity. G1-G5 never look at a value; G6 is what notices a shifted product.
 #      --allow-value-drift demotes G6 to WARN (like --allow-schema-drift for G5).
+#   G6b PRODUCT vs THE EXPOSURE IT WAS BUILT FROM (R/checks/r3_tier_drift_vs_live.R::
+#      tier_vs_exposure). G6 compares against whatever is live at the key, so a key published for
+#      the FIRST time has no G6 at all - and this bake publishes four such keys. Because
+#      freq_any + freq_none = 1 per pixel, a tier's admin0 historic any+none total per (iso3, crop)
+#      IS the exposure total it was multiplied by, so the 0.4.4 table on the same zonal grid gates
+#      it with no live object in sight. Populations split material / immaterial / unmatched, and a
+#      product pair carrying value where the exposure has no row is a FAIL. REQUIRED by default:
+#      no --drift-exposure basis for a tier aborts it. --no-exposure-gate opts out,
+#      --allow-exposure-mismatch demotes to WARN, --exposure-tol sets the bound (default 0.02).
 # Reference (--reference --res 0.05|0.25): columns + distinct(exposure/unit/stat) identical
 #   to live, rows within 25 %. Published at both resolutions 2026-09-25 (#30); the unsuffixed
 #   key is the deprecated alias of res-05.
@@ -38,9 +55,22 @@
 # upload with ACL="public-read" (download+upload, NEVER s3_file_copy - strips ACL).
 #
 # Usage:
-#   Rscript scripts/r3_publish_tiers.R --dry-run                 # gates G1-G6 + backup plan, no writes
-#   Rscript scripts/r3_publish_tiers.R                           # severe,moderate,extreme
+#   Rscript scripts/r3_publish_tiers.R --dry-run                 # gates G1-G6b + backup plan, no writes
+#   Rscript scripts/r3_publish_tiers.R                           # vop_usd, severe+moderate+extreme
 #   Rscript scripts/r3_publish_tiers.R --tiers severe            # subset
+#
+# The no-regrets publish order of handover 2026-10-07 §2D, one step per command, each independently
+# gated so a failure stops one key and not the sequence. Give every step its own --drift-exposure
+# basis: the vop tiers take the 0.4.4 §3.2 / §3.3 single-unit twin, the physical tiers the
+# multi-unit combined reference, both on the res-25 grid the bake ran on.
+#   1. --variables vop_usd   --drift-exposure vop_usd=<vop_nominal-usd-2021_adm_sum_..._res-25>
+#   2. --variables vop_intld --drift-exposure vop_intld=<vop_intld15-2021_adm_sum_..._res-25>
+#   3. --variables ha        --drift-exposure ha=<exposure_adm_sum_..._res-25>
+#   4. --variables prod_t    --drift-exposure prod_t=<exposure_adm_sum_..._res-25>
+#      --variables head_n    --drift-exposure head_n=<exposure_adm_sum_..._res-25>
+#   5. repeat 1-4 with --timeframe annual
+#   6. --model ENSEMBLE (carries value_sd) and --model <GCM>, last, after Brayden confirms the
+#      notebook read contract - this is the only step that widens it.
 #   Rscript scripts/r3_publish_tiers.R --reference               # tiers + exposure reference
 #   Rscript scripts/r3_publish_tiers.R --reference-only
 #   Rscript scripts/r3_publish_tiers.R --sidecar-only            # ship .json only, parquet untouched
@@ -50,6 +80,8 @@
 #   Rscript scripts/r3_publish_tiers.R --family-only --res 0.05 --allow-unit-vintage-change      # vop_nominal-usd-2021 + vop_intld15-2021 -> _res-05 + alias
 #   Rscript scripts/r3_publish_tiers.R --family-only --res 0.25 --allow-unit-vintage-change --allow-res-change   # -> _res-25 (first publish gates vs legacy)
 #   flags: --timeframe jagermeyr (default) | --allow-schema-drift (G5 -> warn) | --skip-gates
+#          --variables vop_usd,vop_intld,ha,prod_t,head_n | --model ENSEMBLEmean|ENSEMBLE|<GCM>
+#          --no-exposure-gate | --allow-exposure-mismatch | --exposure-tol 0.02
 #          --allow-value-drift (G6 -> warn) | --drift-tol-pair 0.25 | --drift-tol-median 0.03
 #          --drift-tol-total 0.05 | --drift-tol-small 0.5 | --drift-tol-control 0.02
 #          --drift-min-live 1e6 | --drift-small-iso3 GMB,SWZ,...   (see the check's header for why)
@@ -134,7 +166,41 @@ REF_RES_TAG <- if (nzchar(REF_RES)) sprintf("res-%02d", round(as.numeric(REF_RES
 DO_TIERS    <- !(flag("--reference-only") || flag("--family-only"))
 TF          <- opt("--timeframe", "jagermeyr")
 TIERS       <- strsplit(opt("--tiers", "severe,moderate,extreme"), ",")[[1]]
+# --model: which R/3 §4.2 aggregate to publish. The local filename carries it too, so one option
+# selects both sides. ENSEMBLEmean is what has always been published; ENSEMBLE is the merged object
+# that still has `value_sd` (handover §2D item E), and a bare GCM name publishes that member.
+MODEL       <- opt("--model", "ENSEMBLEmean")
 STAMP       <- format(Sys.time(), "%Y%m%d_%H%M%S")
+
+# ---------------------------------------------------------------- variables --
+# One row per hazard-exposure tier R/3 §4.2 produces. Until 2026-10-07 this script could publish
+# only vop_nominal-usd21; the other tiers were built on the node and had no route at all, and the
+# constant-dollar one had only the legacy `source=atlas_cmip6/vop_intld15` tree that R/s3_upload.R
+# writes (2025-06/07, pre-currency-fix). Fields:
+#   dir_key    atlas_dirs$data_dir key holding <timeframe>/ for this tier
+#   file_var   R/3's `variable`, which is also the token in the local parquet's name
+#   s3_var     the `variable=` segment of the key (see the key scheme above)
+#   twin       which 0.4.4 table is G6's basis: "family" = the single-unit twin written by §3.2/§3.3,
+#              "reference" = the multi-unit combined reference
+#   twin_expo  the `exposure` value to filter that basis on. 0.4.4 derives it as field 2 of the
+#              raster's name, so spam_prod_t_all -> "prod", spam_harv-area_ha_all -> "harv-area",
+#              livestock_number_number -> "number", and both vop rasters -> "vop" (the vop tiers are
+#              told apart by the twin FILE, which is already per-unit).
+VAR_SPECS <- list(
+  vop_usd   = list(dir_key = "hazard_risk_vop_usd", file_var = "vop_nominal-usd-2021", s3_var = "vop_nominal-usd21", twin = "family",    twin_file = "vop_nominal-usd-2021", twin_expo = "vop"),
+  vop_intld = list(dir_key = "hazard_risk_vop",     file_var = "vop_intld15-2021",     s3_var = "vop_intld15-21",    twin = "family",    twin_file = "vop_intld15-2021",     twin_expo = "vop"),
+  ha        = list(dir_key = "hazard_risk_ha",      file_var = "harv-area_ha",         s3_var = "harv-area_ha",      twin = "reference", twin_file = NA,                     twin_expo = "harv-area"),
+  prod_t    = list(dir_key = "hazard_risk_prod",    file_var = "prod_t",               s3_var = "prod_t",            twin = "reference", twin_file = NA,                     twin_expo = "prod"),
+  head_n    = list(dir_key = "hazard_risk_n",       file_var = "head_n",               s3_var = "head_n",            twin = "reference", twin_file = NA,                     twin_expo = "number")
+)
+# Default stays the single tier this script has always published, so every existing invocation and
+# every archived dispatch line keeps meaning what it meant. New tiers are named explicitly - which
+# is also what the no-regrets publish order of handover §2D asks for, one tier at a time.
+VARIABLES <- strsplit(opt("--variables", "vop_usd"), ",")[[1]]
+if (DO_TIERS) {
+  .unknown <- setdiff(VARIABLES, names(VAR_SPECS))
+  if (length(.unknown)) stop("--variables: unknown tier(s) [", paste(.unknown, collapse = ","), "]; known: ", paste(names(VAR_SPECS), collapse = ", "))
+}
 
 setup <- if (file.exists("R/0_server_setup.R")) "R/0_server_setup.R" else
   file.path(Sys.getenv("project_dir"), "R", "0_server_setup.R")
@@ -159,28 +225,70 @@ if (nzchar(DRIFT$expected)) {
   stopifnot(all(c("iso3", "crop", "ratio_expected") %in% names(DRIFT_EXPECTED)))
   .log("G6 expected input moves: %s (%d pairs, %d with ratio != 1)", DRIFT$expected, nrow(DRIFT_EXPECTED), sum(abs(DRIFT_EXPECTED$ratio_expected - 1) > 1e-9))
 } else .log("G6 expected input moves: none supplied (every pair expects 1)")
-DRIFT_EXPOSURE <- if (nzchar(DRIFT$exposure)) { if (!file.exists(DRIFT$exposure)) stop("--drift-exposure file not found: ", DRIFT$exposure); .log("G6 basis: exposure input %s (preferred; overrides --drift-expected)", DRIFT$exposure); DRIFT$exposure } else NULL
+`%||%` <- function(a, b) if (is.null(a) || (length(a) == 1 && is.na(a))) b else a
+# --drift-exposure takes either one path (when a single tier is being published) or `tier=path`
+# pairs, because each tier has its OWN 0.4.4 basis: the vop tiers use the single-unit §3.2 / §3.3
+# twins, the physical tiers the multi-unit combined reference. One path shared across tiers would
+# judge prod_t against a vop table.
+DRIFT_EXPOSURE_BY_VAR <- list()
+if (nzchar(DRIFT$exposure)) {
+  .parts <- strsplit(DRIFT$exposure, ",")[[1]]
+  if (!any(grepl("=", .parts, fixed = TRUE))) {
+    if (length(VARIABLES) != 1L) stop("--drift-exposure was given one bare path but ", length(VARIABLES),
+                                      " tiers are selected. Each tier has its own 0.4.4 basis, so name them: --drift-exposure ",
+                                      paste(sprintf("%s=<path>", VARIABLES), collapse = ","))
+    DRIFT_EXPOSURE_BY_VAR[[VARIABLES[1]]] <- DRIFT$exposure
+  } else for (.p in .parts) {
+    .kv <- strsplit(.p, "=", fixed = TRUE)[[1]]
+    if (length(.kv) != 2L) stop("--drift-exposure: expected tier=path, got '", .p, "'")
+    DRIFT_EXPOSURE_BY_VAR[[trimws(.kv[1])]] <- trimws(.kv[2])
+  }
+  for (.k in names(DRIFT_EXPOSURE_BY_VAR)) {
+    if (!file.exists(DRIFT_EXPOSURE_BY_VAR[[.k]])) stop("--drift-exposure file not found for ", .k, ": ", DRIFT_EXPOSURE_BY_VAR[[.k]])
+    .log("G6/G6b basis for %s: %s (preferred; overrides --drift-expected)", .k, DRIFT_EXPOSURE_BY_VAR[[.k]])
+  }
+}
 DRIFT_FLIPS <- if (nzchar(DRIFT$allow_flips)) strsplit(DRIFT$allow_flips, ",")[[1]] else character(0)
 if (length(DRIFT_FLIPS)) .log("G6 flips allowed by name: %s", paste(DRIFT_FLIPS, collapse = ","))
+# G6b bounds. Tighter than G6's, because this is an identity and not a drift: any + none = the
+# exposure total, exactly, up to R/3's rounding and the admin0-vs-admin2 zonal split of #18.
+G6B_TOL      <- as.numeric(opt("--exposure-tol", "0.02"))
+ALLOW_G6B    <- flag("--allow-exposure-mismatch")
+REQUIRE_G6B  <- !flag("--no-exposure-gate")
 
 BUCKET  <- "digital-atlas"
-S3_BASE <- sprintf(paste0(
-  "domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/",
-  "variable=vop_nominal-usd21/period=%s/model=ENSEMBLEmean"), TF)
+# ---------------------------------------------------------------- key scheme --
+# Settled 2026-10-07 (handover §2D) BEFORE the first new key was written, because the layout has to
+# carry every tier this bake produces and the bucket is versioned but `s3fs` deletes are permanent,
+# so a layout changed halfway leaves stale keys that are awkward to retire:
+#
+#   domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/
+#     variable=<variable>/period=<period>/model=<model>/severity=<tier>/int=multi-hazard.parquet
+#
+#   variable  vop_nominal-usd21 | vop_intld15-21 | harv-area_ha | prod_t | head_n
+#   period    jagermeyr | annual                (--timeframe; `annual` has never been published)
+#   model     ENSEMBLEmean | ENSEMBLE | <GCM>   (--model; value_sd exists only in the merged
+#                                                ENSEMBLE, so publishing that IS handover §2D item E)
+#
+# `vop_nominal-usd21` is the one irregular spelling - it has been live and read by the notebooks
+# since 2026-09, so it stays as it is rather than being regularised into a second key for the same
+# product. Every other variable is spelled exactly as R/3 names it.
+S3_KEY_BASE <- "domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure"
+s3_base_for <- function(spec, period, model) sprintf("%s/variable=%s/period=%s/model=%s", S3_KEY_BASE, spec$s3_var, period, model)
 REF_KEY_LEGACY <- paste0("domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/",
                          "processing=atlas-harmonized/variable=crop-livestock_all.parquet")   # deprecated alias of res-05
 # variable=<name>.parquet -> variable=<name>_<res-tag>.parquet (no tag: the legacy key itself)
 res_key <- function(key_legacy) if (nzchar(REF_RES_TAG)) sub("\\.parquet$", paste0("_", REF_RES_TAG, ".parquet"), key_legacy) else key_legacy
 REF_KEY <- res_key(REF_KEY_LEGACY)
-local_tier_dir <- file.path(atlas_dirs$data_dir$hazard_risk_vop_usd, TF)
 local_ref_dir  <- if (exists("exposure_dir")) exposure_dir else atlas_dirs$data_dir$exposure
 local_ref      <- file.path(local_ref_dir, sprintf("exposure_adm_sum_spam20-20_glw420-20%s.parquet", if (nzchar(REF_RES_TAG)) paste0("_", REF_RES_TAG) else ""))
 family_local   <- function(name) file.path(local_ref_dir, sprintf("%s_adm_sum_spam20_glw420_%s.parquet", name, REF_RES_TAG))   # 0.4.4 §3.2 / §3.3
 family_key_legacy <- function(name) sub("crop-livestock_all", name, REF_KEY_LEGACY, fixed = TRUE)
 
-cat(sprintf("\n=== issue #9 publish: tiers=%s | timeframe=%s | reference=%s | family=%s | %s ===\n",
-            paste(TIERS, collapse = ","), TF, DO_REF, DO_FAMILY, if (DRY_RUN) "[DRY RUN]" else "LIVE WRITE"))
-.log("local tier dir = %s", local_tier_dir)
+cat(sprintf("\n=== publish: variables=%s | tiers=%s | period=%s | model=%s | reference=%s | family=%s | %s ===\n",
+            if (DO_TIERS) paste(VARIABLES, collapse = ",") else "-",
+            paste(TIERS, collapse = ","), TF, MODEL, DO_REF, DO_FAMILY, if (DRY_RUN) "[DRY RUN]" else "LIVE WRITE"))
+if (DO_TIERS) for (.v in VARIABLES) .log("local tier dir %s = %s", .v, file.path(atlas_dirs$data_dir[[VAR_SPECS[[.v]]$dir_key]], TF))
 .log("local reference = %s", local_ref)
 if (DO_FAMILY) for (f in FAMILY) .log("local family %s = %s", f, family_local(f))
 
@@ -217,10 +325,17 @@ finish_upload <- function(local_f, s3_url) {
 schema_of <- function(f) sort(names(arrow::open_dataset(f)$schema))
 
 ## ---------------------------------------------------------------- tiers ----
-if (DO_TIERS) for (tier in TIERS) {
+if (DO_TIERS) for (vkey in VARIABLES) {
+ spec <- VAR_SPECS[[vkey]]
+ local_tier_dir <- file.path(atlas_dirs$data_dir[[spec$dir_key]], TF)
+ S3_BASE <- s3_base_for(spec, TF, MODEL)
+ cat(sprintf("\n=== TIER VARIABLE %s | local %s | key variable=%s period=%s model=%s ===\n",
+             vkey, local_tier_dir, spec$s3_var, TF, MODEL))
+ .log("G6 basis for %s: %s", vkey, if (nzchar(DRIFT_EXPOSURE_BY_VAR[[vkey]] %||% "")) DRIFT_EXPOSURE_BY_VAR[[vkey]] else "none supplied — G6 falls back to the live product, and G6b cannot run")
+ for (tier in TIERS) {
   t_tier <- Sys.time()
-  cat(sprintf("\n--- %s ---\n", toupper(tier)))
-  local_f <- file.path(local_tier_dir, sprintf("haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_%s.parquet", tier))
+  cat(sprintf("\n--- %s / %s ---\n", vkey, toupper(tier)))
+  local_f <- file.path(local_tier_dir, sprintf("haz-freq-exp_%s_%s_int_adm_%s.parquet", spec$file_var, MODEL, tier))
   s3_key  <- sprintf("%s/severity=%s/int=multi-hazard.parquet", S3_BASE, tier)
 
   if (SIDECAR_ONLY) {
@@ -233,7 +348,7 @@ if (DO_TIERS) for (tier in TIERS) {
       .log("  SIDECAR-ONLY FAIL: %d members, not 18 - refusing to publish a partial-ensemble claim (#26)", em$n_members); next
     }
     finish_upload(sc_local, sprintf("s3://%s/%s.json", BUCKET, s3_key))
-    .log("  %s sidecar done in %s", tier, .elapsed(t_tier))
+    .log("  %s / %s sidecar done in %s", vkey, tier, .elapsed(t_tier))
     next
   }
 
@@ -258,7 +373,26 @@ if (DO_TIERS) for (tier in TIERS) {
     sv <- ds |> dplyr::distinct(severity) |> dplyr::collect()
     g4 <- identical(sort(sv$severity), tier)
     .log("  G4 %s: severity column = %s", if (g4) "ok" else "FAIL", paste(sv$severity, collapse = ","))
-    if (!(g2 && g3 && g4)) { .log("  ABORT %s: gate failure, nothing uploaded", tier); next }
+    if (!(g2 && g3 && g4)) { .log("  ABORT %s/%s: gate failure, nothing uploaded", vkey, tier); next }
+
+    # G6b product vs the exposure input it was built from. Runs BEFORE the upload and without
+    # needing a live object, which is the whole point: G6 compares against whatever is at the key,
+    # so a key published for the first time - intld, ha, prod_t, head_n in this bake - gets no
+    # value gate from G6 at all. Skipping it needs --no-exposure-gate, said out loud.
+    .expo <- DRIFT_EXPOSURE_BY_VAR[[vkey]] %||% ""
+    if (nzchar(.expo)) {
+      t6b <- Sys.time()
+      g6b <- tier_vs_exposure(local_f, .expo, spec$twin_expo, tol_pair = G6B_TOL)
+      print_tier_vs_exposure(g6b, label = sprintf("%s/%s", vkey, tier), log = function(fmt, ...) .log(paste0("  ", fmt), ...))
+      .log("  G6b %s in %s", if (g6b$pass) "ok" else if (ALLOW_G6B) "WARN (allowed)" else "FAIL", .elapsed(t6b))
+      if (!g6b$pass && !ALLOW_G6B) { .log("  ABORT %s/%s: the product does not reproduce the exposure it was multiplied by (--allow-exposure-mismatch only once the cause is understood)", vkey, tier); next }
+    } else if (REQUIRE_G6B) {
+      .log("  G6b FAIL: no --drift-exposure basis for %s, so the product cannot be checked against its own input. Pass --drift-exposure %s=<0.4.4 %s table on this grid>, or --no-exposure-gate to publish without it.",
+           vkey, vkey, if (identical(spec$twin, "family")) sprintf("%s twin", spec$twin_file) else "combined reference")
+      .log("  ABORT %s/%s: no exposure basis", vkey, tier); next
+    } else {
+      .log("  G6b SKIPPED by --no-exposure-gate for %s", vkey)
+    }
   }
 
   bu <- backup_then_upload(local_f, s3_key, tier)
@@ -269,7 +403,7 @@ if (DO_TIERS) for (tier in TIERS) {
     else {
       .log("  G5 %s: local-only = [%s] live-only = [%s]", if (ALLOW_DRIFT) "WARN (allowed)" else "FAIL",
            paste(setdiff(loc_cols, live_cols), collapse = ","), paste(setdiff(live_cols, loc_cols), collapse = ","))
-      if (!ALLOW_DRIFT) { .log("  ABORT %s: schema drift (use --allow-schema-drift after checking the notebook SQL)", tier); next }
+      if (!ALLOW_DRIFT) { .log("  ABORT %s/%s: schema drift (use --allow-schema-drift after checking the notebook SQL)", vkey, tier); next }
     }
     live_n <- arrow::open_dataset(bu$live_tmp) |> dplyr::count(hazard_vars, hazard) |> dplyr::collect()
     .log("  info: live has none rows? %s | live hazard_vars = %s", "none" %in% live_n$hazard,
@@ -280,10 +414,11 @@ if (DO_TIERS) for (tier in TIERS) {
                      tol_pair = DRIFT$tol_pair, tol_median = DRIFT$tol_median, tol_total = DRIFT$tol_total,
                      tol_small = DRIFT$tol_small, tol_control = DRIFT$tol_control,
                      min_live = DRIFT$min_live, small_iso3 = DRIFT$small_iso3, expected = DRIFT_EXPECTED,
-                     exposure_new = DRIFT_EXPOSURE, flip_allow = DRIFT_FLIPS)
-    print_drift(g6, label = tier, log = function(fmt, ...) .log(paste0("  ", fmt), ...))
+                     exposure_new = if (nzchar(DRIFT_EXPOSURE_BY_VAR[[vkey]] %||% "")) DRIFT_EXPOSURE_BY_VAR[[vkey]] else NULL,
+                     flip_allow = DRIFT_FLIPS, exposure_var = spec$twin_expo)
+    print_drift(g6, label = sprintf("%s/%s", vkey, tier), log = function(fmt, ...) .log(paste0("  ", fmt), ...))
     .log("  G6 %s in %s", if (g6$pass) "ok" else if (ALLOW_VALUE_DRIFT) "WARN (allowed)" else "FAIL", .elapsed(t6))
-    if (!g6$pass && !ALLOW_VALUE_DRIFT) { .log("  ABORT %s: value drift outside the stated bounds (read the populations above; --allow-value-drift only after the cause is understood)", tier); next }
+    if (!g6$pass && !ALLOW_VALUE_DRIFT) { .log("  ABORT %s/%s: value drift outside the stated bounds (read the populations above; --allow-value-drift only after the cause is understood)", vkey, tier); next }
   }
   finish_upload(local_f, bu$s3_url)
 
@@ -319,7 +454,8 @@ if (DO_TIERS) for (tier in TIERS) {
   } else {
     .log("  sidecar MISSING (%s) - published parquet records no ensemble membership", basename(sc_local))
   }
-  .log("  %s done in %s", tier, .elapsed(t_tier))
+  .log("  %s / %s done in %s", vkey, tier, .elapsed(t_tier))
+ }
 }
 
 ## ------------------------------------------------ reference + family ----

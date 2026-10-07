@@ -143,6 +143,22 @@ if (UPLOAD_HAZ_EXPOSURE_VOP_USD) {
 }
 
 ## -- Upload haz X exposure X vop international dollar-- ##
+# RETIRED 2026-10-07 (handover §2 A2). These blocks write the LEGACY constant-dollar tree,
+#   source=atlas_cmip6/.../variable=vop_intld15/...
+# whose live objects date from 2025-06/07 and so predate the #30 currency fix, the #38 millet
+# split, the #39 coverage guard, the #40 Seychelles fix and the revised nominal price method. The
+# supported route is now:
+#   Rscript scripts/r3_publish_tiers.R --variables vop_intld --drift-exposure vop_intld=<twin>
+# which writes the sibling key `source=nex-gddp-cmip6/.../variable=vop_intld15-21/...` under the
+# same scheme as every other tier and carries G1-G6b with it. This path has none of those gates.
+# Left in place rather than deleted so the legacy keys stay documented and reproducible, but it
+# refuses to run without an explicit opt-in naming the reason.
+if (UPLOAD_HAZ_EXPOSURE_VOP_INTLD && !nzchar(Sys.getenv("ALLOW_LEGACY_INTLD_ROUTE"))) {
+  stop("R/s3_upload.R: the vop_intld15 hazard-exposure route is RETIRED (handover 2026-10-07 §2 A2). ",
+       "It writes the pre-currency-fix source=atlas_cmip6 tree with no value gates. Publish the ",
+       "constant-dollar tier with `scripts/r3_publish_tiers.R --variables vop_intld` instead. ",
+       "Set ALLOW_LEGACY_INTLD_ROUTE=1 only if a dispatch explicitly asks for the legacy key.")
+}
 if (UPLOAD_HAZ_EXPOSURE_VOP_INTLD) {
   vop_intld_var <- "vop_intld15"
   if (UPLOAD_TIF) {

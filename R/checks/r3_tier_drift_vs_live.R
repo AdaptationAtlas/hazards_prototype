@@ -85,6 +85,81 @@ DRIFT_NO_REF <- strsplit(Sys.getenv("DRIFT_NO_REF", "generic-crop"), ",")[[1]]
   )
 }
 
+# Read a 0.4.4 exposure basis as admin0 totals per (iso3, crop), for one `exposure` value.
+.drift_read_exposure <- function(f, exposure_var) {
+  stopifnot(file.exists(f))
+  .want <- exposure_var
+  ex <- arrow::open_dataset(f) |>
+    dplyr::filter(is.na(admin1_name), exposure == .want) |>
+    dplyr::select(iso3, crop, tech, value) |> dplyr::collect() |> as.data.table()
+  if (!nrow(ex)) {
+    have <- arrow::open_dataset(f) |> dplyr::distinct(exposure, unit) |> dplyr::collect() |> as.data.table()
+    stop(sprintf("exposure_var '%s' matches no rows in %s. Pairs present: %s",
+                 exposure_var, basename(f), paste(sprintf("%s/%s", have$exposure, have$unit), collapse = ", ")))
+  }
+  ex[(tech == "all" | is.na(tech)) & is.finite(value), .(E = sum(value)), by = .(iso3, crop)]
+}
+
+# G6b — the FIRST-PUBLISH gate (added 2026-10-07 with the #41 physical tiers and the intld / ha
+# routes). G6 judges a product against the live object at its key, so a key that has never been
+# published cannot be gated by it at all: `tier_drift` is simply skipped and the first version of a
+# brand-new tier would reach the Atlas ungated on value. That is precisely the publish this bake is
+# making four of.
+#
+# The invariant that does not need a live object: R/3 multiplies hazard frequency by exposure, and
+# freq_any + freq_none = 1 per pixel, so a tier's admin0 historic any+none total per (iso3, crop) IS
+# the exposure total it was built from. Judge the product against that input, on the same grid -
+# the G6 lesson of 2026-09-30, and a reference independent of the table it judges.
+#
+# Populations are split as elsewhere, because one ratio bound cannot serve all three: `material`
+# (exposure clears min_exposure; the bound applies), `immaterial` (noise-level exposure, where a
+# ratio swings wildly - reported, and only an invented value is caught), and `unmatched` (in one
+# table and not the other - always reported, and a product pair with no exposure row at all is a
+# FAIL, since there was nothing to multiply).
+tier_vs_exposure <- function(local_f, exposure_f, exposure_var,
+                             tol_pair = 0.02, min_exposure = 1e3, max_invented = 1e6,
+                             no_ref = DRIFT_NO_REF) {
+  stopifnot(file.exists(local_f))
+  b <- .drift_read(local_f)
+  e <- .drift_read_exposure(exposure_f, exposure_var)
+  j <- merge(b$T, e, by = c("iso3", "crop"), all = TRUE)
+  j[, noref := crop %in% no_ref]
+  j[, ratio := T / E]
+  unmatched_no_expo <- j[!noref & (is.na(E) | E <= 0) & !is.na(T) & T > max_invented]
+  unmatched_no_prod <- j[!noref & (is.na(T)) & !is.na(E) & E > min_exposure]
+  mat <- j[!noref & !is.na(T) & !is.na(E) & E > min_exposure]
+  imm <- j[!noref & !is.na(T) & !is.na(E) & E <= min_exposure]
+  worst <- if (nrow(mat)) mat[which.max(abs(ratio - 1))] else mat
+  gates <- data.table::data.table(
+    gate = c("material pairs within tol", "no product pair invents value without exposure",
+             "no material exposure pair missing from the product", "product has the full scenario set"),
+    value = c(if (nrow(mat)) sprintf("max |ratio-1| = %.4f over %d pairs", max(abs(mat$ratio - 1)), nrow(mat)) else "no material pairs",
+              sprintf("%d pair(s)", nrow(unmatched_no_expo)),
+              sprintf("%d pair(s)", nrow(unmatched_no_prod)),
+              paste(b$scenarios, collapse = ",")),
+    pass = c(nrow(mat) > 0 && max(abs(mat$ratio - 1)) <= tol_pair,
+             nrow(unmatched_no_expo) == 0L,
+             nrow(unmatched_no_prod) == 0L,
+             setequal(b$scenarios, c("historic", "ssp126", "ssp245", "ssp370", "ssp585"))))
+  list(pass = all(gates$pass), gates = gates, material = mat[order(-abs(ratio - 1))],
+       immaterial = imm, invented = unmatched_no_expo, missing_product = unmatched_no_prod,
+       noref = j[noref == TRUE], worst = worst,
+       basis = sprintf("%s, exposure == '%s'", basename(exposure_f), exposure_var),
+       params = list(tol_pair = tol_pair, min_exposure = min_exposure, max_invented = max_invented))
+}
+
+print_tier_vs_exposure <- function(res, label = "", n_worst = 12, log = .drift_log) {
+  log("G6b %s: product vs the exposure input it was built from — basis %s", label, res$basis)
+  cat("\n  gates:\n"); print(res$gates, nrows = 20)
+  cols <- c("iso3", "crop", "E", "T", "ratio")
+  if (nrow(res$material))        { cat("\n  material pairs, worst", n_worst, "of", nrow(res$material), "(ratio = product / exposure, expect 1):\n"); print(head(res$material[, ..cols], n_worst), nrows = n_worst) }
+  if (nrow(res$invented))        { cat("\n  PRODUCT VALUE WITH NO EXPOSURE ROW:\n"); print(res$invented[, ..cols], nrows = 50) }
+  if (nrow(res$missing_product)) { cat("\n  EXPOSURE PRESENT, NO PRODUCT ROW:\n"); print(res$missing_product[, ..cols], nrows = 50) }
+  if (nrow(res$noref))           { cat("\n  no-reference crops (reported, not gated):\n"); print(res$noref[, ..cols], nrows = 20) }
+  cat(sprintf("\n  immaterial pairs (exposure <= %s): %d, reported only\n", format(res$params$min_exposure, big.mark = ","), nrow(res$immaterial)))
+  invisible(res$pass)
+}
+
 # expected: optional data.table (iso3, crop, ratio_expected) - the ratio by which the
 # EXPOSURE input of that pair changed between what the live product was built from
 # and what the new product was built from (new / old, admin0, tech = all). R/3 is a
@@ -102,12 +177,20 @@ DRIFT_NO_REF <- strsplit(Sys.getenv("DRIFT_NO_REF", "generic-crop"), ",")[[1]]
 # price change (2026-09-30: RWA/GAB coffee "expected" 87x/8x). When exposure_new is given
 # the bounds below apply to T_local / exposure_new; the raw live-vs-local drift is still
 # printed for information.
+# exposure_var: which `exposure` rows of exposure_new are this tier's basis. The single-unit vop
+#   twins (0.4.4 §3.2 / §3.3) hold only "vop", so the default was fine while vop_nominal-usd21 was
+#   the only published tier. The physical tiers (#41, 2026-10-07) take their basis from the
+#   multi-unit reference, where they are "prod" (prod_t), "harv-area" (harv-area_ha) and "number"
+#   (head_n) - filtering those on "vop" would match no rows and G6 would quietly degrade to the
+#   live-product basis, which is the one thing a new tier does not have. Matching nothing is
+#   therefore an error here, and the error names the (exposure, unit) pairs the file does hold.
 # flip_allow: "ISO3:crop" pairs whose live -> ~0 flip is explained and accepted (reported, not FAIL).
 tier_drift <- function(local_f, live_f,
                        tol_pair = 0.25, tol_median = 0.03, tol_total = 0.05,
                        tol_small = 0.5, tol_control = 0.02,
                        min_live = 1e6, small_iso3 = DRIFT_SMALL_ISO3_DEFAULT,
-                       flip_frac = 0.01, expected = NULL, exposure_new = NULL, flip_allow = character(0)) {
+                       flip_frac = 0.01, expected = NULL, exposure_new = NULL, flip_allow = character(0),
+                       exposure_var = "vop") {
   stopifnot(file.exists(local_f), file.exists(live_f))
   a <- .drift_read(live_f); b <- .drift_read(local_f)
   j <- merge(a$T, b$T, by = c("iso3", "crop"), all = TRUE, suffixes = c("_live", "_local"))
@@ -116,15 +199,14 @@ tier_drift <- function(local_f, live_f,
   j[, livestock := grepl(DRIFT_LIVESTOCK_RE, crop)]
   basis <- "live product (every pair expects 1)"
   if (!is.null(exposure_new)) {
-    stopifnot(file.exists(exposure_new))
-    ex <- arrow::open_dataset(exposure_new) |>
-      dplyr::filter(is.na(admin1_name), exposure == "vop") |>
-      dplyr::select(iso3, crop, tech, value) |> dplyr::collect() |> as.data.table()
-    ex <- ex[(tech == "all" | is.na(tech)) & is.finite(value), .(E_new = sum(value)), by = .(iso3, crop)]
+    # A basis that matches nothing would quietly fall back to the live-product basis, so
+    # .drift_read_exposure() errors instead, naming the (exposure, unit) pairs the file does hold.
+    ex <- .drift_read_exposure(exposure_new, exposure_var)
+    data.table::setnames(ex, "E", "E_new")
     j <- merge(j, ex, by = c("iso3", "crop"), all.x = TRUE)
     # expected move = what the exposure input actually is now, relative to the live product
     j[!is.na(E_new) & T_live > 0, ratio_expected := E_new / T_live]
-    basis <- sprintf("exposure input %s (bounds on T_local / exposure_new)", basename(exposure_new))
+    basis <- sprintf("exposure input %s, exposure == '%s' (bounds on T_local / exposure_new)", basename(exposure_new), exposure_var)
   } else if (!is.null(expected)) {
     e <- as.data.table(expected)[is.finite(ratio_expected) & ratio_expected > 0, .(iso3, crop, ratio_expected)]
     j <- merge(j[, !"ratio_expected"], e, by = c("iso3", "crop"), all.x = TRUE)
@@ -226,7 +308,8 @@ if (sys.nframe() == 0L || nzchar(Sys.getenv("DRIFT_CLI"))) {
   args <- commandArgs(trailingOnly = TRUE)
   opt <- function(x, d) { i <- match(x, args); if (is.na(i) || i == length(args)) d else args[i + 1] }
   local_f <- opt("--local", ""); live_f <- opt("--live", ""); exp_f <- opt("--expected", ""); expo_f <- opt("--exposure", ""); allow_f <- opt("--allow-flips", "")
-  if (!nzchar(local_f) || !nzchar(live_f)) { cat("usage: --local <new.parquet> --live <old.parquet> [--exposure <0.4.4 twin this bake used>] [--expected <iso3,crop,ratio_expected csv>] [--allow-flips ISO3:crop,...] [--tol-pair --tol-median --tol-total --tol-small --tol-control --min-live --small-iso3]\n"); quit(status = 2) }
+  expo_var <- opt("--exposure-var", "vop")
+  if (!nzchar(local_f) || !nzchar(live_f)) { cat("usage: --local <new.parquet> --live <old.parquet> [--exposure <0.4.4 twin this bake used>] [--exposure-var vop|prod|harv-area|number] [--expected <iso3,crop,ratio_expected csv>] [--allow-flips ISO3:crop,...] [--tol-pair --tol-median --tol-total --tol-small --tol-control --min-live --small-iso3]\n"); quit(status = 2) }
   t0 <- Sys.time()
   .drift_log("local = %s", local_f); .drift_log("live  = %s", live_f)
   expected <- if (nzchar(exp_f)) { .drift_log("expected input moves from %s", exp_f); data.table::fread(exp_f) } else NULL
@@ -237,7 +320,8 @@ if (sys.nframe() == 0L || nzchar(Sys.getenv("DRIFT_CLI"))) {
                     tol_total = as.numeric(opt("--tol-total", "0.05")), tol_small = as.numeric(opt("--tol-small", "0.5")),
                     tol_control = as.numeric(opt("--tol-control", "0.02")), min_live = as.numeric(opt("--min-live", "1e6")),
                     small_iso3 = strsplit(opt("--small-iso3", paste(DRIFT_SMALL_ISO3_DEFAULT, collapse = ",")), ",")[[1]],
-                    expected = expected, exposure_new = exposure_new, flip_allow = flip_allow)
+                    expected = expected, exposure_new = exposure_new, flip_allow = flip_allow,
+                    exposure_var = expo_var)
   print_drift(res, label = basename(local_f))
   .drift_log("done in %.1f min", as.numeric(difftime(Sys.time(), t0, units = "mins")))
   quit(status = if (res$pass) 0 else 1)
