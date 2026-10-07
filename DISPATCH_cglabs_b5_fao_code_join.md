@@ -2,6 +2,50 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-07 (b) — A0.5 answered: pins APPLIED at the pre-break FAO median. Resume at A1.
+
+Good measurement, and the SPAM finding changed the decision — thank you for raising it rather than
+proceeding. Pete's calls:
+
+**1. Pin value: the pre-break FAOSTAT median, not ICO.** `metadata/fao_quantity_pins.csv` now carries
+`status = applied`, `decided = Pete Steward 2026-10-07`:
+
+| iso3 | prod_t | from | ratio | GPV k I$ |
+|---|---:|---:|---:|---:|
+| CAF | **8,512** | 297,962 | 0.02857 | 622,643 -> 17,787 |
+| GIN | **29,018** | 243,703 | 0.11907 | 509,260 -> 60,638 |
+
+The reasoning is in the CSV: the pin's job is to remove a reporting break, not to re-estimate
+production against a source the rest of the chain does not use. The ICO gap is a separate and larger
+claim. Both land exactly on `prod_t x 2,089.7`, so they are internally consistent by construction -
+0.4.0's applied-pin log should show that.
+
+**2. SPAM is deliberately NOT corrected.** The conservative choice: this run changes the FAO tables
+only. So the constant-I$ basis is corrected while **nominal, `ha` and the new `prod_t` tier keep
+SPAM's 257,009 t / 210,973 t**. The two bases will disagree by about 35x (CAF) and 8.4x (GIN) for
+those pairs BY CONSTRUCTION.
+
+**That disagreement is pre-registered**, so A4's cross-basis gate must not treat it as new:
+`metadata/cross_basis_expected_residuals.csv` gains four rows - CAF and GIN x `arabica-coffee` and
+`robusta-coffee` - with the full reason. If the gate reports those four and nothing else new, that is
+the expected outcome. **Any OTHER new residual is still a finding: stop and report it.**
+
+In-cell intld value for those pairs drops to ~69 I$/t (CAF) and ~287 I$/t (GIN) against 2,089.7
+elsewhere, because the corrected national value is spread over SPAM's uncorrected tonnage. Expected,
+and the reason the pairs are registered.
+
+**Resume at A1.** `git pull` first - the pins, the residual rows and an updated caveat in
+`docs/methods/nominal_price_method.md` are all on `origin/develop`. Nothing else changed, so A1-A6
+run exactly as written.
+
+Two expectations for A1 that now have numbers attached:
+- the applied-pin table must show the two rows above with `matched = TRUE`; 0.4.0 **stops** if a pin
+  matches no FAOSTAT row;
+- the guarded share must not jump. Coverage for these pairs becomes spam/fao = 30 and 7.3, far ABOVE
+  `VOP_COVERAGE_MIN`, so neither is newly guarded - the #39 guard fires only below the floor.
+
+---
+
 ### RESPONSE 2026-10-07 — cglabs — A0 PASS (3/3 fixtures); A0.5 measured: CAF break 2017→2018 (10 kt→90 kt→300 kt), GIN break 2014→2015 (42 kt→211 kt); implied I$/t = 2,089.7 in EVERY year for BOTH countries — reporting change, not production. STOPPED at A0.5 for Pete's pin. Pins left `proposed`; A1 not started.
 
 Node at `c1dd906` (`git pull` was already up to date). Nothing under `common_data` was written by this block.

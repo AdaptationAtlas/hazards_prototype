@@ -184,6 +184,32 @@ ok(nrow(q4$log) == 1 && !isTRUE(q4$log$matched), "a pin matching no FAOSTAT row 
 qp <- fread(file.path(root, "metadata", "fao_quantity_pins.csv"))
 ok(all(c("iso3", "item_code", "prod_t", "scale_gpv", "status") %in% names(qp)), "metadata/fao_quantity_pins.csv has the columns vop_apply_quantity_pins() requires")
 ok(setequal(qp$iso3, c("CAF", "GIN")) && all(qp$item_code == 656), "it carries the CAF and GIN coffee rows from the nominal_price_method caveat")
-ok(all(qp$status == "proposed"), "both ship as `proposed`: the tonnage needs the node measurement before it moves a published number")
+# Decided 2026-10-07 after the node measured the series: pre-break FAOSTAT median, not ICO, because a
+# pin removes a reporting break rather than re-estimating production against a source the rest of the
+# chain does not use. Assert the DURABLE invariant - an applied pin must carry a usable value and its
+# evidence - plus the two decided values, which are a published decision and must not drift silently.
+appl <- qp[status == "applied"]
+ok(nrow(appl) == 2, "both CAF and GIN coffee pins are applied")
+ok(all(is.finite(appl$prod_t) & appl$prod_t > 0), "an applied pin carries a usable tonnage")
+ok(all(nzchar(appl$reason)) && all(nzchar(appl$source)) && all(nzchar(appl$decided)) && !any(appl$decided == "PENDING"),
+   "and its evidence: every applied pin names a reason, a source and who decided it")
+ok(appl[iso3 == "CAF", prod_t] == 8512 && appl[iso3 == "GIN", prod_t] == 29018,
+   "the decided values are the pre-break FAOSTAT medians (CAF 8,512 t 2010-2017, GIN 29,018 t 2010-2014)")
+# the pin must be self-consistent with FAO's own constant-I$ unit value, which the node measured at
+# 2,089.7 I$/t in every year on both sides of both breaks - that is WHY scaling GPV by the same ratio
+# is right, and a pin that broke it would mean the premise had changed
+.chk <- vop_apply_quantity_pins(
+  data.table(iso3 = c("CAF", "GIN"), item_code = 656L, Item = "Coffee, green", value = c(622643, 509260)),
+  data.table(iso3 = c("CAF", "GIN"), item_code = 656L, prod_t = c(297962, 243703)), qp)
+ok(all(abs(.chk$log$gpv_after * 1000 / .chk$log$prod_after - 2089.7) < 1), "scaled GPV still implies 2,089.7 I$/t (GPV is thousand I$) - the pin is internally consistent with FAO own unit value")
+ok(all(.chk$log$matched), "both pins match a FAOSTAT row (0.4.0 stops otherwise)")
+
+## the cross-basis cost of correcting the FAO tables but NOT SPAM must be pre-registered, or A4's
+## cross-basis gate reads a deliberate choice as a new defect
+xb <- fread(file.path(root, "metadata", "cross_basis_expected_residuals.csv"))
+ok(nrow(xb[iso3 %in% c("CAF", "GIN") & crop %like% "coffee"]) == 4,
+   "CAF and GIN x arabica/robusta coffee are registered cross-basis residuals (SPAM keeps the inflated tonnage, so nominal does not move with intld)")
+ok(all(nzchar(xb[iso3 %in% c("CAF", "GIN"), reason])) && all(xb[iso3 %in% c("CAF", "GIN"), reason] %like% "SPAM"),
+   "and each says why - a registered residual needs a reason, not just a row")
 
 cat("\nALL QUANTITY-PIN ASSERTIONS PASSED\n")

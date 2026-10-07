@@ -100,9 +100,21 @@ differ.
   exchange rates. Where a parallel market existed (Nigeria 2020-23, Angola 2019-21, Sudan throughout) the
   official rate overstates the USD value of local prices.
 - Prices are **national**: one USD/t per country × crop, applied to every pixel.
-- **Coffee tonnage for the Central African Republic and Guinea** follows FAOSTAT, which breaks from
-  ~10 kt to ~300 kt (CAF) after 2017; ICO puts real output at 2-6 kt (CAF) and ~9 kt (GIN). Value for
-  those two countries is overstated on both bases regardless of price.
+- **Coffee tonnage for the Central African Republic and Guinea.** FAOSTAT steps from 9,990 t (2017) to
+  89,979 t (2018) and on to ~300 kt by 2023 for CAF, and from 41,500 t (2014) to 210,866 t (2015) for
+  GIN. Measured on the node 2026-10-07: the implied unit value is **2,089.7 constant-I$/t in every year
+  on both sides of both breaks**, because FAO's constant-2014-16 I$ GPV is one fixed international
+  price times FAO's own production. The jump is a reporting change, not production. ICO puts real
+  output at 2-6 kt (CAF) and ~9 kt (GIN); even pre-break FAOSTAT sits above that.
+  **Partially corrected since 2026-10-07.** `metadata/fao_quantity_pins.csv` pins both to their
+  pre-break FAOSTAT median (CAF 8,512 t, GIN 29,018 t) and scales the GPV by the same ratio, so the
+  **constant-I$ basis is corrected**. The **nominal basis is not**, and neither are the harvested-area
+  or production-tonnes tiers: SPAM 2020 is calibrated to FAOSTAT national totals and carries the same
+  inflated tonnage (257,009 t for CAF and 210,973 t for GIN, `acof+rcof`), and nominal value is an
+  implied price times SPAM tonnage, so a pin on the FAO tables does not reach it. Correcting SPAM was
+  deliberately left out of the 2026-10 run as the more conservative choice. The resulting
+  nominal-vs-intld disagreement for those pairs is pre-registered in
+  `metadata/cross_basis_expected_residuals.csv` so it is not read as a new defect.
 - Nominal US$ and constant international dollars are different bases; cross-basis ratios of 0.3-3 are
   ordinary (price level × deflator), not errors.
 - Known related material not used: `metadata/fao_deflators_farmgate.csv` (farm-gate shares of FOB /
