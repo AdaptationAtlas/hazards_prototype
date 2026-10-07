@@ -2,6 +2,56 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-07 (f) — A4.1 was a GATE defect, not a product defect. Fixed (a); re-run A4.1 then GO A5.
+
+**Right call to stop, and the diagnosis is correct.** You separated the two questions the gate
+conflates and answered both: the product reproduces its input (gridded / allocated = 0.996, and A3
+read 240.24 B back off both tables against 0.4.0's own allocation check), while the gate's reference
+sits ~20 % below the reference the product was built from. That is a gate failing a correct run — the
+failure mode AGENTS.md puts first — and finding it by measuring the denominator against 0.4.0's GPV
+rather than arguing about the ratio is exactly the right move.
+
+**Option (a). Fixed on `develop`, with one correction to the proposed shape.**
+
+Your fix was *sum items per year, then median across years*. 0.4.0 does the **reverse order**:
+`R/0.4.0:164` medians each item's year window, then `vop_allocate.R:113` sums the items into the
+group. `median(sum)` and `sum(median)` are not the same number, and a gate's reference has to be
+built the *same way* as the input it judges, so `fao_gpv_i()` now does **median across the window per
+item, then sum the items** — `collapse = "item_median_then_sum"`. In practice yours would have landed
+very close (you measured 1.000 against 0.4.0's GPV), but "very close" is how a reference drifts.
+
+The default stays `collapse = "median"`, so the 1:1 livestock path is untouched — it must stay at
+242/242.
+
+**Pins: also fixed, and there was a trap in it.** You are right that the gate must apply them. The
+first cut passed `fao_prod = NULL` to `vop_apply_quantity_pins()`, which cannot then derive
+`prod_pinned / prod_FAO`, leaves the ratio `NA`, and **silently leaves the denominator unpinned** —
+a no-op that would have looked like a fix. The gate now reads the FAO production file the same way
+0.4.0 does to get the ratio, and **stops** if a pin resolves no ratio. So CAF should move off 0.657.
+
+New fixture `R/checks/fixture_qaqc_denominator.R` pins all of it: single-item groups identical either
+way (why livestock never showed this), composite groups collapsing to one item under the old rule,
+the per-item-median-then-sum arithmetic, the pin scaling, and the silent-no-op trap.
+
+**A4.2 and A4.3: accepted, nothing asked.** The cross-basis gate passing with *no new un-named
+residual* on either grid is the result that matters — the stop condition I gave you did not fire.
+CAF robusta at 11.1 rather than 35 is explained by the nominal side being 0.4.2's price × SPAM
+tonnes, which is the half B5 deliberately did not correct. Leave the "now inside the band" rows in
+the file: they are out of band at 0.25°, and a residual that is registered and quiet is cheaper than
+one that has to be re-litigated next bake.
+
+**What to do now:**
+
+1. `git pull` (expect this commit or later), then re-run **A4.1 only**, both resolutions.
+   **Expected: crop median near 1 and most countries in band** — your corrected-denominator estimate
+   was 0.992 with 41/49, and the pins should now also lift CAF and GIN. Livestock must stay 242/242.
+2. The 8 you expect to remain outside are understood and not a stop: DZA/EGY/LBY/MAR/TUN (outside the
+   SPAM release), SDN (22 guarded pairs), CPV/MUS/COM/SYC (tiny or removed).
+3. **If it reads near 1, GO A5** and carry on to A6 as the dispatch stands. If it does not, stop again
+   and report — do not adjust the gate yourself.
+4. ~~The res-25 twin check~~ — **answered in your addendum below: all three physical twins are
+   present** (`prod`/`t`, `harv-area`/`ha`, `number`/`number`, 42 crops across 55 countries). That
+   clears the #13 bake's G6b basis for `prod_t`, `ha` and `head_n`. Nothing further needed.
 ### RESPONSE 2026-10-07 (A4 addendum) — cglabs — macbook (e) check: the res-25 combined table carries all three physical twins (prod/t, harv-area/ha, number/number) plus both vop units. No stop on this. The A4.1 stop below stands.
 
 ```

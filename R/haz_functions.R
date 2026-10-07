@@ -2211,6 +2211,11 @@ prepare_fao_data <- function(file, lps2fao, elements = NULL, units = NULL, remov
       .key <- suppressWarnings(as.integer(data[[.cc]]))
       .want <- suppressWarnings(as.integer(lps2fao))
       data <- data[.key %in% .want][, atlas_name := names(lps2fao)[match(suppressWarnings(as.integer(get(.cc))), .want)]]
+      # keep the join key, so a caller can aggregate or correct PER ITEM before collapsing to
+      # atlas_name. A composite group maps many item codes onto one atlas_name, and a consumer that
+      # cannot see the items cannot tell a group's total from one of its members (the 2026-10-07
+      # QAQC defect) or apply an item-level correction such as metadata/fao_quantity_pins.csv.
+      data[, item_code := suppressWarnings(as.integer(get(.cc)))]
     } else {
       data <- data[Item %in% lps2fao][, atlas_name := names(lps2fao)[match(Item, lps2fao)]]
     }
@@ -2228,7 +2233,7 @@ prepare_fao_data <- function(file, lps2fao, elements = NULL, units = NULL, remov
   
   # Keep only the specified years
   keep_years <- paste0("Y", keep_years)
-  keep_cols <- c("iso3", "atlas_name", keep_years)
+  keep_cols <- c("iso3", "atlas_name", if ("item_code" %in% names(data)) "item_code", keep_years)
   data <- data[, ..keep_cols]
   
   # Add missing crop-country combinations
@@ -2248,8 +2253,9 @@ prepare_fao_data <- function(file, lps2fao, elements = NULL, units = NULL, remov
     }
   }))
   
-  # Combine original and missing data
-  data <- rbind(data, missing)
+  # Combine original and missing data. fill = TRUE because the synthesised gap rows carry no
+  # item_code (they stand for an absent item, not a real one).
+  data <- rbind(data, missing, fill = TRUE)
   
   # Handle missing countries
   missing_countries <- atlas_iso3[!atlas_iso3 %in% data$iso3]
@@ -2261,7 +2267,7 @@ prepare_fao_data <- function(file, lps2fao, elements = NULL, units = NULL, remov
       data
     }))
     
-    data <- rbind(data, missing)
+    data <- rbind(data, missing, fill = TRUE)
   }
   
   return(data)

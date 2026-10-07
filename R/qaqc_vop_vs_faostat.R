@@ -32,6 +32,7 @@ suppressWarnings(suppressMessages({
 .qlog("sourcing haz_functions + 0_server_setup.R")
 source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
 source(file.path(Sys.getenv("project_dir"), "R", "0_server_setup.R"))
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "vop_allocate.R"))   # vop_apply_quantity_pins(): the gate applies the same pins 0.4.0 does
 
 YEARS <- 2019:2023   # match the vop_intld15-2021 window (year_sets$y2021)
 FAO_I_ELEMENT <- "Gross Production Value (constant 2014-2016 thousand I$)"
@@ -46,15 +47,67 @@ atlas_iso3 <- geob$iso3
 vop_file <- file.path(fao_dir, "Value_of_Production_E_Africa.csv")
 
 # --- helper: FAOStat national GPV (const I$, x1000) per iso3 x atlas_name -----
-fao_gpv_i <- function(item_map, by = "name") {
+# collapse: how several FAO items belonging to ONE atlas_name are combined.
+#   "median"             - median over every (item, year) cell. Correct only when the mapping is
+#                          1:1, which it is for livestock species. The historical behaviour.
+#   "item_median_then_sum" - median across the window PER ITEM, then SUM the items. This is exactly
+#                          what 0.4.0 does (`R/0.4.0:164` medians each item's year window,
+#                          `vop_allocate.R:113` sums items into the group), and a gate's reference
+#                          has to be built the same way as the input it judges.
+#
+# Why this argument exists (2026-10-07, found on the node at B5 A4.1). The crop map is MANY items to
+# one atlas_name: `vege` carries 26 FAO items, `rest` 21. Under "median" the denominator was the
+# median of N items x 5 years - one typical item standing in for the whole group - so ZAF `temf`
+# read 0.032 B against an 11-item sum of 2.70 B. Before the B5 code join the name join matched only
+# 1-5 items per composite, so the collapse cost ~3 % and the gate read 1.03; with 57 renamed codes
+# recovered the composites hold 11-26 items and the gate read 1.17 against a product that was right.
+# A gate that fails a correct run, from the same family as the G6 lesson.
+#
+# pins: metadata/fao_quantity_pins.csv. 0.4.0 applies these to the GPV it allocates, so the gate's
+# reference must apply them too or a pinned pair reads low by construction (CAF coffee 0.657).
+fao_gpv_i <- function(item_map, by = "name", collapse = c("median", "item_median_then_sum"), pins = NULL) {
+  collapse <- match.arg(collapse)
   d <- unique(prepare_fao_data(
     file = vop_file, item_map, elements = FAO_I_ELEMENT,
     remove_countries = remove_countries, keep_years = YEARS, atlas_iso3 = atlas_iso3, by = by
   ))
   d[, atlas_name := gsub(" (indigenous)", "", atlas_name)]
-  d <- melt(d, id.vars = c("iso3", "atlas_name"), variable.name = "year", value.name = "gpv_i_k")
-  # thousand I$ -> I$, median across the window per iso3 x atlas_name
-  d[, .(fao_vop_i = median(gpv_i_k, na.rm = TRUE) * 1000), by = .(iso3, atlas_name)]
+  ycols <- grep("^Y\\d{4}$", names(d), value = TRUE)
+  if (collapse == "median") {
+    dm <- melt(d, id.vars = intersect(c("iso3", "atlas_name", "item_code"), names(d)),
+               measure.vars = ycols, variable.name = "year", value.name = "gpv_i_k")
+    return(dm[, .(fao_vop_i = median(gpv_i_k, na.rm = TRUE) * 1000), by = .(iso3, atlas_name)])
+  }
+  # median across the window per ITEM, mirroring 0.4.0
+  if (!"item_code" %in% names(d)) stop("fao_gpv_i(collapse = 'item_median_then_sum') needs per-item rows - call with by = 'code'")
+  d[, value := apply(.SD, 1, median, na.rm = TRUE), .SDcols = ycols]
+  d <- d[is.finite(value) & value > 0, .(iso3, item_code, atlas_name, value)]
+  if (!is.null(pins) && nrow(pins)) {
+    # The pin scales GPV by prod_t_pinned / prod_t_FAO, so the FAO production table is needed to
+    # derive the ratio - passing NULL would leave the ratio NA and make the pin a silent no-op.
+    # Read it exactly as 0.4.0 does: same file, same element/unit, same window, median per item.
+    .pf <- fread(prod_file, encoding = "Latin-1")[Element == "Production" & Unit == "t"]
+    .pc <- vop_item_code_col(.pf)
+    data.table::setnames(.pf, .pc, "item_code")
+    .pf[, item_code := suppressWarnings(as.integer(item_code))]
+    .pf[, M49 := as.numeric(gsub("[']", "", `Area Code (M49)`))]
+    .pf[, iso3 := countrycode(sourcevar = M49, origin = "un", destination = "iso3c", warn = FALSE)]
+    .ycols <- paste0("Y", YEARS)
+    .pf <- .pf[!is.na(iso3) & item_code %in% unique(pins$item_code), c("iso3", "item_code", .ycols), with = FALSE]
+    .pf <- .pf[, lapply(.SD, sum, na.rm = TRUE), by = .(iso3, item_code), .SDcols = .ycols]
+    .pf[, prod_t := apply(.SD, 1, median, na.rm = TRUE), .SDcols = .ycols]
+    .pf <- .pf[is.finite(prod_t) & prod_t > 0, .(iso3, item_code, prod_t)]
+    .q <- vop_apply_quantity_pins(d, .pf, pins)
+    if (nrow(.q$log) && any(!is.finite(.q$log$ratio)))
+      stop("fao_gpv_i: a quantity pin produced no ratio - the FAO production row is missing, so the gate's denominator would silently keep the unpinned value")
+    d <- .q$gpv
+    if (nrow(.q$log)) {
+      .qlog(sprintf("crop denominator: %d FAOSTAT quantity pin(s) applied, as 0.4.0 does", nrow(.q$log)))
+      print(.q$log[, .(iso3, item_code, gpv_before = signif(gpv_before, 4), gpv_after = signif(gpv_after, 4))])
+    }
+  }
+  # then sum the items into the atlas_name, mirroring vop_allocate.R:113
+  d[, .(fao_vop_i = sum(value, na.rm = TRUE) * 1000), by = .(iso3, atlas_name)]
 }
 
 # --- helper: gridded VoP country total per layer ------------------------------
@@ -128,7 +181,9 @@ if (length(crop_vop_file)) {
   # reference has to be built the same way as the product it judges (AGENTS.md).
   spam_map <- setNames(suppressWarnings(as.integer(spam2fao$code_fao)), spam2fao$short_spam2010)
   spam_map <- spam_map[!is.na(spam_map)]
-  fao_cr <- fao_gpv_i(spam_map, by = "code")
+  .qpin_f <- file.path(Sys.getenv("project_dir", getwd()), "metadata", "fao_quantity_pins.csv")
+  .qpins <- if (file.exists(.qpin_f)) fread(.qpin_f) else NULL
+  fao_cr <- fao_gpv_i(spam_map, by = "code", collapse = "item_median_then_sum", pins = .qpins)
   fao_cr_tot <- fao_cr[, .(fao_vop_i = sum(fao_vop_i, na.rm = TRUE)), by = iso3]
 
   gc_ <- grid_adm0(terra::rast(crop_vop_file[1]))
