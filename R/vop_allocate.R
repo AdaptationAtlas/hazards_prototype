@@ -25,62 +25,95 @@
 #   +    terra::classify() leaves values that match no row of the reclass matrix UNCHANGED, so
 #        the old value raster carried the admin ID itself (in thousand I$) for every country x
 #        crop with no GPV row - a small spurious value on a one-sided pair. others = NA here.
+#   B5   The layer <-> item graph and both FAOSTAT joins keyed on the item NAME until 2026-10-07.
+#        FAOSTAT renames items between releases ("Vegetables fresh nes" -> "Other vegetables,
+#        fresh n.e.c."), and a renamed item simply stopped matching: its value was dropped in
+#        silence, with no guard to catch it, because a missing item is indistinguishable from an
+#        item the country does not grow. 59 of the 127 FAO codes in the composite groups
+#        (ocer / ofib / ooil / opul / orts / rest / temf / trof / vege) had moved, about 8 % of
+#        all-crop FAO GPV. Everything now keys on `code_fao`, the FAOSTAT item code, which is
+#        stable across renames; names are carried only as labels for logs and diagnostics.
+#        `vop_name_join_audit()` re-derives the old name join beside the code join so a run can
+#        print exactly what the change recovered.
 #
 # Conservation property (checked by vop_check_totals): for every (country, group) that is not
 # guarded, the zonal sum of the output over the group's layers equals the allocated GPV.
 
-VOP_POOLED_ITEMS <- list(banpl = c("Bananas", "Plantains and cooking bananas"))
+# FAOSTAT item CODES (not names): Bananas, Plantains and cooking bananas.
+VOP_POOLED_ITEMS <- list(banpl = c(486L, 489L))
 VOP_COVERAGE_MIN_DEFAULT <- 0.10
 
-# spam2fao: metadata/SPAM2010_FAO_crops.csv (short_spam2010, long_spam2010, name_fao_val)
+# The FAOSTAT bulk files spell the item-code column differently across releases. Returns the
+# column name present, or NULL.
+vop_item_code_col <- function(x, required = TRUE) {
+  cand <- c("Item Code", "Item Code (FAO)", "ItemCode", "item_code")
+  hit <- cand[cand %in% names(x)][1]
+  if (is.na(hit)) {
+    if (required) stop("vop_item_code_col: no FAOSTAT item-code column found (looked for ",
+                       paste(cand, collapse = " / "), "); columns present: ", paste(names(x), collapse = ", "))
+    return(NULL)
+  }
+  hit
+}
+
+# spam2fao: metadata/SPAM2010_FAO_crops.csv (short_spam2010, long_spam2010, code_fao, name_fao_val)
 # layers:   SPAM raster layer names (long_spam2010, e.g. "pearl millet", "arabica coffee")
-# pooled:   named list group -> FAO items that are one group regardless of the mapping
-# Returns data.table(layer, code, item, group): one row per (layer, item) edge. A group is a
-# connected component of the layer <-> item graph (plus the pooled edges), named after its
-# items' SPAM codes joined by "+" unless it is a pooled group, which keeps the pooled name.
+# pooled:   named list group -> FAO item CODES that are one group regardless of the mapping
+# Returns data.table(layer, code, item_code, item, group): one row per (layer, item) edge. A group
+# is a connected component of the layer <-> item-code graph (plus the pooled edges), named after
+# its items' SPAM codes joined by "+" unless it is a pooled group, which keeps the pooled name.
+# `item` is the mapping table's name for the code, kept for logging only - nothing joins on it.
 vop_item_groups <- function(spam2fao, layers, pooled = VOP_POOLED_ITEMS) {
-  m <- data.table::as.data.table(spam2fao)[, .(layer = long_spam2010, code = tolower(short_spam2010), item = name_fao_val)]
-  m <- m[!is.na(item) & nzchar(item) & layer %in% layers]
+  m <- data.table::as.data.table(spam2fao)[, .(layer = long_spam2010, code = tolower(short_spam2010),
+                                               item_code = suppressWarnings(as.integer(code_fao)),
+                                               item = name_fao_val)]
+  .nocode <- m[is.na(item_code) & layer %in% layers]
+  if (nrow(.nocode)) warning("vop_item_groups: ", nrow(.nocode), " mapping row(s) have no usable code_fao and are dropped: ",
+                             paste(unique(.nocode$layer), collapse = ", "))
+  m <- m[!is.na(item_code) & layer %in% layers]
   m <- unique(m)
   if (!nrow(m)) stop("vop_item_groups: no SPAM layer matches the mapping table")
-  # union-find over layers and items
-  nodes <- unique(c(paste0("L:", m$layer), paste0("I:", m$item)))
+  # union-find over layers and item codes
+  nodes <- unique(c(paste0("L:", m$layer), paste0("I:", m$item_code)))
   parent <- stats::setNames(nodes, nodes)
   find <- function(x) { while (parent[[x]] != x) x <- parent[[x]]; x }
   union <- function(a, b) { ra <- find(a); rb <- find(b); if (ra != rb) parent[[ra]] <<- rb }
-  for (i in seq_len(nrow(m))) union(paste0("L:", m$layer[i]), paste0("I:", m$item[i]))
+  for (i in seq_len(nrow(m))) union(paste0("L:", m$layer[i]), paste0("I:", m$item_code[i]))
   for (g in names(pooled)) {
     its <- paste0("I:", pooled[[g]]); its <- its[its %in% nodes]
     if (length(its) > 1) for (j in 2:length(its)) union(its[1], its[j])
   }
   m[, root := vapply(paste0("L:", layer), find, character(1))]
-  # name: pooled name if the component holds a pooled item, else codes joined
+  # name: pooled name if the component holds a pooled item code, else SPAM codes joined
   m[, group := {
-    pn <- names(pooled)[vapply(pooled, function(its) any(its %in% item), logical(1))]
+    pn <- names(pooled)[vapply(pooled, function(ic) any(ic %in% item_code), logical(1))]
     if (length(pn)) pn[1] else paste(sort(unique(code)), collapse = "+")
   }, by = root]
   m[, root := NULL]
-  data.table::setorder(m, group, layer, item)
+  data.table::setorder(m, group, layer, item_code)
   m[]
 }
 
-# gpv:       data.table iso3, Item, value         (national GPV per FAO item, window median)
-# fao_prod:  data.table iso3, Item, prod_t or NULL (FAO national production per item, window median)
-# spam_prod: data.table iso3, layer, prod_t        (SPAM national totals for the tech being distributed)
+# gpv:       data.table iso3, item_code, value         (national GPV per FAO item, window median)
+# fao_prod:  data.table iso3, item_code, prod_t or NULL (FAO national production per item, window median)
+# spam_prod: data.table iso3, layer, prod_t             (SPAM national totals for the tech distributed)
 # groups:    vop_item_groups()
+# gpv / fao_prod join on `item_code`, never on the item name (B5): FAOSTAT renames items between
+# releases and a name join drops the renamed ones silently.
 # Returns one row per (iso3, group) with a GPV: gpv (sum over the group's items), n_items_valued,
 # fao_prod_t (sum over items; NA if none), spam_prod_t (sum over layers; 0 if none), coverage =
 # spam / fao, guarded (TRUE -> value_alloc NA) and reason in
 #   {"ok", "no FAO production: coverage not judged", "SPAM has no production for the group",
 #    "SPAM covers < min_coverage of FAO production", "country outside the SPAM release"}.
 vop_allocation_table <- function(gpv, fao_prod, spam_prod, groups, min_coverage = VOP_COVERAGE_MIN_DEFAULT) {
-  stopifnot(all(c("iso3", "Item", "value") %in% names(gpv)), all(c("iso3", "layer", "prod_t") %in% names(spam_prod)))
-  gi <- unique(groups[, .(item, group)])
+  stopifnot(all(c("iso3", "item_code", "value") %in% names(gpv)), all(c("iso3", "layer", "prod_t") %in% names(spam_prod)))
+  gi <- unique(groups[, .(item_code, group)])
   gl <- unique(groups[, .(layer, group)])
-  g <- merge(data.table::as.data.table(gpv)[!is.na(value), .(iso3, Item, value)], gi, by.x = "Item", by.y = "item")
+  g <- merge(data.table::as.data.table(gpv)[!is.na(value), .(iso3, item_code, value)], gi, by = "item_code")
   a <- g[, .(gpv = sum(value), n_items_valued = .N), by = .(iso3, group)]
   if (!is.null(fao_prod)) {
-    fp <- merge(data.table::as.data.table(fao_prod)[!is.na(prod_t), .(iso3, Item, prod_t)], gi, by.x = "Item", by.y = "item")[, .(fao_prod_t = sum(prod_t)), by = .(iso3, group)]
+    stopifnot(all(c("iso3", "item_code", "prod_t") %in% names(fao_prod)))
+    fp <- merge(data.table::as.data.table(fao_prod)[!is.na(prod_t), .(iso3, item_code, prod_t)], gi, by = "item_code")[, .(fao_prod_t = sum(prod_t)), by = .(iso3, group)]
     a <- merge(a, fp, by = c("iso3", "group"), all.x = TRUE)
   } else a[, fao_prod_t := NA_real_]
   sp <- merge(data.table::as.data.table(spam_prod)[, .(iso3, layer, prod_t)], gl, by = "layer")[, .(spam_prod_t = sum(prod_t, na.rm = TRUE)), by = .(iso3, group)]
@@ -102,6 +135,32 @@ vop_allocation_table <- function(gpv, fao_prod, spam_prod, groups, min_coverage 
   a[, value_alloc := data.table::fifelse(guarded, NA_real_, gpv)]
   data.table::setorder(a, iso3, group)
   a[]
+}
+
+# B5 diagnostic. Re-derives the OLD name join beside the live code join on the same GPV table, so a
+# run can state what keying on `code_fao` recovered instead of asserting it. `gpv` needs iso3,
+# item_code, value and the FAOSTAT item name in `Item`; `groups` is vop_item_groups().
+# Returns list(by_group, renamed, total): per-group value under each key, the (code, FAOSTAT name,
+# mapping name) rows whose names disagree, and the headline totals. Pure, cheap, no I/O.
+vop_name_join_audit <- function(gpv, groups) {
+  stopifnot(all(c("iso3", "item_code", "value") %in% names(gpv)))
+  g <- data.table::as.data.table(gpv)[!is.na(value) & value > 0]
+  if (!"Item" %in% names(g)) stop("vop_name_join_audit: gpv needs the FAOSTAT item name in `Item` to replay the name join")
+  gi <- unique(groups[, .(item_code, group, item_mapping = item)])
+  d <- merge(g[, .(iso3, item_code, item_faostat = Item, value)], gi, by = "item_code")
+  # the old join matched only where the FAOSTAT name equalled the mapping table's name_fao_val
+  d[, by_name := item_faostat == item_mapping]
+  by_group <- d[, .(gpv_code = sum(value), gpv_name = sum(value[by_name]),
+                    n_items = data.table::uniqueN(item_code),
+                    n_items_renamed = data.table::uniqueN(item_code[!by_name])), by = group]
+  by_group[, gpv_recovered := gpv_code - gpv_name]
+  data.table::setorder(by_group, -gpv_recovered)
+  renamed <- unique(d[by_name == FALSE, .(item_code, item_faostat, item_mapping, group)])
+  data.table::setorder(renamed, group, item_code)
+  list(by_group = by_group[], renamed = renamed[],
+       total = list(gpv_code = sum(by_group$gpv_code), gpv_name = sum(by_group$gpv_name),
+                    gpv_recovered = sum(by_group$gpv_recovered),
+                    n_items_renamed = data.table::uniqueN(renamed$item_code)))
 }
 
 # spam_all:   SpatRaster, layers named as in groups$layer, already on admin_rast's grid

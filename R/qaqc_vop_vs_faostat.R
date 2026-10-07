@@ -46,10 +46,10 @@ atlas_iso3 <- geob$iso3
 vop_file <- file.path(fao_dir, "Value_of_Production_E_Africa.csv")
 
 # --- helper: FAOStat national GPV (const I$, x1000) per iso3 x atlas_name -----
-fao_gpv_i <- function(item_map) {
+fao_gpv_i <- function(item_map, by = "name") {
   d <- unique(prepare_fao_data(
     file = vop_file, item_map, elements = FAO_I_ELEMENT,
-    remove_countries = remove_countries, keep_years = YEARS, atlas_iso3 = atlas_iso3
+    remove_countries = remove_countries, keep_years = YEARS, atlas_iso3 = atlas_iso3, by = by
   ))
   d[, atlas_name := gsub(" (indigenous)", "", atlas_name)]
   d <- melt(d, id.vars = c("iso3", "atlas_name"), variable.name = "year", value.name = "gpv_i_k")
@@ -122,9 +122,13 @@ if (!length(crop_vop_file) || is.na(crop_vop_file[1])) crop_vop_file <- Sys.glob
 if (!length(crop_vop_file)) crop_vop_file <- Sys.glob(file.path(mapspam_pro_dir, "variable=vop_intld15", "*intld15_all*.tif"))
 if (length(crop_vop_file)) {
   spam2fao <- fread(file.path(Sys.getenv("project_dir", getwd()), "metadata", "SPAM2010_FAO_crops.csv"))
-  spam_map <- setNames(spam2fao$name_fao_val, spam2fao$short_spam2010)
-  spam_map <- spam_map[!is.na(spam_map) & nzchar(spam_map)]
-  fao_cr <- fao_gpv_i(spam_map)
+  # B5 (2026-10-07): key the FAO denominator on the item CODE, exactly as 0.4.0 now allocates.
+  # Keyed on the name, this denominator missed the renamed composite-group items that 0.4.0 now
+  # values, so a correct re-bake would have read as an ~8 % crop over-allocation. The gate's
+  # reference has to be built the same way as the product it judges (AGENTS.md).
+  spam_map <- setNames(suppressWarnings(as.integer(spam2fao$code_fao)), spam2fao$short_spam2010)
+  spam_map <- spam_map[!is.na(spam_map)]
+  fao_cr <- fao_gpv_i(spam_map, by = "code")
   fao_cr_tot <- fao_cr[, .(fao_vop_i = sum(fao_vop_i, na.rm = TRUE)), by = iso3]
 
   gc_ <- grid_adm0(terra::rast(crop_vop_file[1]))

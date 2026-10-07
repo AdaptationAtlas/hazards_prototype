@@ -133,33 +133,64 @@ target_year <- 2019:2023   # match livestock 0.4.1 year_set y2021 + qaqc window
 element <- "Gross Production Value (constant 2014-2016 thousand I$)"
 .log040("loading FAOStat GPV (constant I$)")
 prod_value_i <- fread(vop_file_africa, encoding = "Latin-1")
-cols <- c("Item", "Element", "Area", "Area Code (M49)", paste0("Y", target_year))
+# B5 (2026-10-07): key on the FAOSTAT item CODE, not the item name. FAOSTAT renames items between
+# releases, a renamed item stopped matching the mapping table's `name_fao_val`, and its value was
+# dropped in silence - 59 of 127 composite-group codes, about 8 % of all-crop GPV. The name is kept
+# only as a label, for logs and the vop_name_join_audit() diagnostic below. Keying on the code also
+# subsumes the old `Maize` / `Maize (corn)` fold: both spellings carry item code 56.
+.vop_code_col <- vop_item_code_col(prod_value_i)
+cols <- c(.vop_code_col, "Item", "Element", "Area", "Area Code (M49)", paste0("Y", target_year))
 prod_value_i <- prod_value_i[Element %in% element, ..cols]
+data.table::setnames(prod_value_i, .vop_code_col, "item_code")
+prod_value_i[, item_code := suppressWarnings(as.integer(item_code))]
 prod_value_i[, M49 := as.numeric(gsub("[']", "", `Area Code (M49)`))]
 prod_value_i[, iso3 := countrycode(sourcevar = M49, origin = "un", destination = "iso3c")]
 prod_value_i <- prod_value_i[!is.na(iso3) & !Area %in% c("Ethiopia PDR", "Sudan (former)")]   # pre-split entities, as 0.4.2 / qaqc
 
-prod_value_i[Item %in% c("Maize", "Maize (corn)"), Item := "Maize (corn)"]   # exact: grep("Maize") would also fold "Maize, green" (vegetables) into maize
 y_cols <- grep("^Y\\d{4}$", names(prod_value_i), value = TRUE)
-prod_value_i <- prod_value_i[, lapply(.SD, sum, na.rm = TRUE), by = .(iso3, Item), .SDcols = y_cols]
+# One row per (iso3, item code). The label kept is the mapping table's spelling when FAOSTAT still
+# uses it anywhere for this code, else FAOSTAT's own - so the audit below scores a code as "matched
+# by name" exactly when the old name filter would have matched it.
+.map_names <- unique(groups[, .(item_code, item)])
+prod_value_i <- prod_value_i[!is.na(item_code),
+  c(lapply(.SD, sum, na.rm = TRUE),
+    .(Item = { mn <- .map_names$item[match(item_code[1], .map_names$item_code)]
+               if (!is.na(mn) && mn %in% Item) mn else Item[1] })),
+  by = .(iso3, item_code), .SDcols = y_cols]
 
 # value = median across the window (thousand I$) — matches 0.4.1 vop_intd15 +
 # qaqc_vop_vs_faostat.R so the crop QAQC validates to ~1. (The 92cb0b0 original
 # used mean(2020:2022); realigned here for cross-commodity + QAQC consistency.)
 prod_value_i[, value := apply(.SD, 1, median, na.rm = TRUE), .SDcols = y_cols]
-prod_value_i <- prod_value_i[Item %in% unique(groups$item) & is.finite(value) & value > 0, .(iso3, Item, value)]
-.log040(sprintf("GPV rows (iso3 x item, window median > 0): %d over %d items", nrow(prod_value_i), uniqueN(prod_value_i$Item)))
+prod_value_i <- prod_value_i[item_code %in% unique(groups$item_code) & is.finite(value) & value > 0, .(iso3, item_code, Item, value)]
+.log040(sprintf("GPV rows (iso3 x item code, window median > 0): %d over %d item codes", nrow(prod_value_i), uniqueN(prod_value_i$item_code)))
+
+# 3.0) B5 audit: what the code join recovers over the old name join ------------------
+# Reported every run, on the live GPV table, so the 8 % claim is re-derived rather than asserted
+# (handover 2026-10-07 §2 B5). Costs a couple of table ops.
+.b5 <- vop_name_join_audit(prod_value_i, groups)
+.log040(sprintf("B5 join audit: GPV matched by item CODE %.2f B I$ vs by NAME %.2f B I$ — recovered %.2f B I$ (%.1f%%) across %d renamed item codes",
+                .b5$total$gpv_code / 1e6, .b5$total$gpv_name / 1e6, .b5$total$gpv_recovered / 1e6,
+                100 * .b5$total$gpv_recovered / .b5$total$gpv_code, .b5$total$n_items_renamed))
+if (nrow(.b5$renamed)) {
+  cat("B5: groups by value recovered (thousand I$)\n"); print(.b5$by_group[gpv_recovered > 0], nrows = 50)
+  cat("B5: item codes whose FAOSTAT name no longer matches metadata/SPAM2010_FAO_crops.csv\n"); print(.b5$renamed, nrows = 200)
+}
 
 # 3.1) FAOStat production (t), the coverage guard's denominator (#39) ---------------
 .log040("loading FAOStat production (Africa) for the coverage guard")
 fao_prod <- fread(prod_file, encoding = "Latin-1")[Element == "Production" & Unit == "t"]
+.prod_code_col <- vop_item_code_col(fao_prod)
+data.table::setnames(fao_prod, .prod_code_col, "item_code")
+fao_prod[, item_code := suppressWarnings(as.integer(item_code))]
 fao_prod[, M49 := as.numeric(gsub("[']", "", `Area Code (M49)`))]
 fao_prod[, iso3 := countrycode(sourcevar = M49, origin = "un", destination = "iso3c", warn = FALSE)]
 fao_prod <- fao_prod[!is.na(iso3) & !Area %in% c("Ethiopia PDR", "Sudan (former)")]
-fao_prod[Item %in% c("Maize", "Maize (corn)"), Item := "Maize (corn)"]
-fao_prod <- fao_prod[Item %in% unique(groups$item), c("iso3", "Item", paste0("Y", target_year)), with = FALSE]
+fao_prod <- fao_prod[item_code %in% unique(groups$item_code), c("iso3", "item_code", paste0("Y", target_year)), with = FALSE]
+fao_prod <- fao_prod[, lapply(.SD, sum, na.rm = TRUE), by = .(iso3, item_code), .SDcols = paste0("Y", target_year)]
 fao_prod[, prod_t := apply(.SD, 1, median, na.rm = TRUE), .SDcols = paste0("Y", target_year)]
-fao_prod <- fao_prod[is.finite(prod_t) & prod_t > 0, .(iso3, Item, prod_t)]
+fao_prod <- fao_prod[is.finite(prod_t) & prod_t > 0, .(iso3, item_code, prod_t)]
+.log040(sprintf("FAO production rows (iso3 x item code, window median > 0): %d over %d item codes", nrow(fao_prod), uniqueN(fao_prod$item_code)))
 
 # 4) Distribute national GPV to SPAM production proportions ------------------
 .log040("distributing FAO GPV by SPAM production share (per allocation group)")

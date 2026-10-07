@@ -2180,8 +2180,14 @@ split_livestock <- function(data, livestock_mask_high, livestock_mask_low) {
 #'                  elements = c("Production"), units = c("tonnes"),
 #'                  remove_countries = c("China"), keep_years = 1990:2020,
 #'                  atlas_iso3 = c("USA", "BRA", "ARG"))
-prepare_fao_data <- function(file, lps2fao, elements = NULL, units = NULL, remove_countries, keep_years, atlas_iso3) {
-  
+#' @param by  how `lps2fao` keys into the FAOSTAT file: "name" (values are FAO item names, the
+#'   livestock default) or "code" (values are FAO item codes). Key on "code" for crops: FAOSTAT
+#'   renames items between releases, and a name key drops a renamed item in silence (B5,
+#'   2026-10-07 — 59 of 127 composite-group codes, ~8 % of all-crop GPV). See R/vop_allocate.R.
+prepare_fao_data <- function(file, lps2fao, elements = NULL, units = NULL, remove_countries, keep_years, atlas_iso3,
+                             by = c("name", "code")) {
+  by <- match.arg(by)
+
   # Read data from the file
   data <- fread(file)
   
@@ -2197,7 +2203,17 @@ prepare_fao_data <- function(file, lps2fao, elements = NULL, units = NULL, remov
   
   # Add atlas commodity names or use item names if lps2fao is null
   if(!is.null(lps2fao)) {
-    data <- data[Item %in% lps2fao][, atlas_name := names(lps2fao)[match(Item, lps2fao)]]
+    if (by == "code") {
+      .cand <- c("Item Code", "Item Code (FAO)", "ItemCode", "item_code")
+      .cc <- .cand[.cand %in% names(data)][1]
+      if (is.na(.cc)) stop("prepare_fao_data(by = 'code'): no FAOSTAT item-code column in ", basename(file),
+                           " (looked for ", paste(.cand, collapse = " / "), ")")
+      .key <- suppressWarnings(as.integer(data[[.cc]]))
+      .want <- suppressWarnings(as.integer(lps2fao))
+      data <- data[.key %in% .want][, atlas_name := names(lps2fao)[match(suppressWarnings(as.integer(get(.cc))), .want)]]
+    } else {
+      data <- data[Item %in% lps2fao][, atlas_name := names(lps2fao)[match(Item, lps2fao)]]
+    }
   } else {
     data[, atlas_name := Item]
   }

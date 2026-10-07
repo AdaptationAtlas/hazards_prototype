@@ -43,15 +43,24 @@ ok(identical(sort(groups[group == "acof+rcof", unique(layer)]), c("arabica coffe
 ok(identical(sort(groups[group == "banpl", unique(item)]), c("Bananas", "Plantains and cooking bananas")) && identical(sort(groups[group == "banpl", unique(layer)]), c("banana", "plantain")), "musa: Bananas + Plantains pooled onto banana + plantain")
 ok(identical(sort(groups[group == "rape", unique(item)]), c("Mustard seed", "Rape or colza seed")), "rapeseed: two FAO items summed into one SPAM crop")
 ok(all(groups[group == "whea", layer] == "wheat") && nrow(groups[layer == "rest of crops"]) > 0, "single-item crops map one to one; 'rest of crops' maps to its many items")
+ok(is.integer(groups$item_code) && !any(is.na(groups$item_code)), "B5: every edge carries an integer FAO item code")
+ok(identical(sort(groups[group == "banpl", unique(item_code)]), c(486L, 489L)), "B5: the pooled group is declared by item CODE (486 Bananas, 489 Plantains), not by name")
+ok(groups[layer == "maize", unique(item_code)] == 56L, "B5: maize carries FAO code 56, whatever FAOSTAT currently calls it")
 
 ## national tables
 spam_prod <- as.data.table(zonal(spam_all, admin, fun = "sum", na.rm = TRUE)); setnames(spam_prod, names(spam_prod)[1], "ID")
 spam_prod <- melt(spam_prod, id.vars = "ID", variable.name = "layer", value.name = "prod_t"); spam_prod <- merge(spam_prod, zones, by = "ID")[, .(iso3, layer, prod_t)]
-gpv <- rbind(data.table(iso3 = "AAA", Item = c("Millet", "Coffee, green", "Bananas", "Rape or colza seed", "Mustard seed"), value = c(100, 200, 300, 10, 5)),
-             data.table(iso3 = "BBB", Item = c("Wheat", "Maize (corn)", "Sorghum"), value = c(80, 50, 60)),
-             data.table(iso3 = "ZZZ", Item = "Wheat", value = 999))   # a FAO country not on the grid: must be ignored
-fao_prod <- rbind(data.table(iso3 = "AAA", Item = c("Millet", "Coffee, green", "Bananas", "Rape or colza seed", "Mustard seed"), prod_t = c(40, 20, 1000, 30, 10)),
-                  data.table(iso3 = "BBB", Item = c("Wheat", "Maize (corn)"), prod_t = c(1000, 500)))
+# FAOSTAT item codes: Millet 79, Coffee green 656, Bananas 486, Rape or colza seed 270,
+# Mustard seed 292, Wheat 15, Maize (corn) 56, Sorghum 83. `Item` is a label only (B5) - the names
+# below are deliberately FAOSTAT's CURRENT spellings, which for several codes no longer match
+# metadata/SPAM2010_FAO_crops.csv. A code join must be indifferent to that.
+gpv <- rbind(data.table(iso3 = "AAA", item_code = c(79L, 656L, 486L, 270L, 292L),
+                        Item = c("Millet", "Coffee, green", "Bananas", "Rape or colza seed", "Mustard seed"), value = c(100, 200, 300, 10, 5)),
+             data.table(iso3 = "BBB", item_code = c(15L, 56L, 83L),
+                        Item = c("Wheat", "Maize", "Sorghum"), value = c(80, 50, 60)),   # "Maize", the OLD name for code 56
+             data.table(iso3 = "ZZZ", item_code = 15L, Item = "Wheat", value = 999))   # a FAO country not on the grid: must be ignored
+fao_prod <- rbind(data.table(iso3 = "AAA", item_code = c(79L, 656L, 486L, 270L, 292L), prod_t = c(40, 20, 1000, 30, 10)),
+                  data.table(iso3 = "BBB", item_code = c(15L, 56L), prod_t = c(1000, 500)))
 alloc <- vop_allocation_table(gpv, fao_prod, spam_prod, groups, min_coverage = 0.10)
 print(alloc)
 a <- function(i, g) alloc[iso3 == i & group == g]
@@ -64,6 +73,18 @@ ok(!a("BBB", "sorg")$guarded && a("BBB", "sorg")$value_alloc == 60 && grepl("not
 ok(nrow(alloc[iso3 == "CCC"]) == 0 && nrow(alloc[iso3 == "ZZZ"]) == 1, "C has no GPV row (nothing to allocate); the off-grid FAO country stays in the table but gets no raster")
 ok(a("ZZZ", "whea")$reason == "country outside the SPAM release" && a("ZZZ", "whea")$guarded, "a country with no SPAM production at all is labelled outside the release (North Africa), not a coverage failure")
 ok(a("BBB", "maiz")$reason == "SPAM has no production for the group", "a covered country missing one crop keeps the group-level reason")
+
+## B5: the rename regression. gpv calls code 56 "Maize"; the mapping table says "Maize (corn)".
+## The old name join dropped exactly this row. The code join must carry its 50 through.
+ok(a("BBB", "maiz")$gpv == 50 && a("BBB", "maiz")$n_items_valued == 1,
+   "B5: GPV filed under FAOSTAT's OLD name for code 56 still reaches the maize group (a name join drops it)")
+audit <- vop_name_join_audit(gpv, groups)
+ok(audit$total$gpv_code == 1804 && audit$total$gpv_name == 1754 && audit$total$gpv_recovered == 50 && audit$total$n_items_renamed == 1,
+   "B5 audit: 1804 matched by code, 1754 by name, 50 recovered over 1 renamed code — the audit re-derives the gap rather than asserting it")
+ok(identical(audit$renamed$item_code, 56L) && audit$renamed$item_faostat == "Maize" && audit$renamed$item_mapping == "Maize (corn)",
+   "B5 audit: names the one renamed code, with both spellings, so a run can be read")
+ok(audit$by_group[group == "maiz", gpv_recovered] == 50 && all(audit$by_group[group != "maiz", gpv_recovered] == 0),
+   "B5 audit: the recovered value is attributed to the group that was losing it")
 
 ## rasters
 vop <- vop_allocate_rasters(spam_all, admin, zones, alloc, groups, spam_prod)
