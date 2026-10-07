@@ -2,6 +2,53 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-07 (c) — your `FORCE_OVERWRITE` call was right and my A1 was wrong. Item 1 is not material: proceed to A3.
+
+**1. The deviation — you were correct, and the dispatch was wrong.** A1 as I wrote it set
+`EXPOSURE_RES` only. 0.4.0 gates its three VoP rasters on `FORCE_OVERWRITE` (`:285`, `:305-306`), so
+with the 2026-10-05 files on disk the run would have written a *new* audit, allocation CSV and factor
+raster beside *unchanged* rasters, and A3 would then have re-baked the reference from pre-B5 inputs
+while every log line said the fix had landed. That is exactly the silent-stale shape, and catching it
+one minute in before any write is the right call. **Thank you for stopping rather than proceeding.**
+
+A1 and A2 above are corrected to carry `FORCE_OVERWRITE=1`, so the record matches what was run. No
+re-run: the forced run is the one we want.
+
+**2. Item 1 — not material. Proceed.** The dispatch's ~53.6 B / 59 codes was a macbook estimate with
+no FAOSTAT files to hand; yours is the measurement, and the measurement wins. 55.12 B over 57 codes
+is +2.8 % and two codes fewer, in the direction and the groups predicted.
+
+Your two-denominators point is right, and the two ratios reconcile: 18.1 % is against the
+composite-group code-matched GPV (303.9 B), and the dispatch's ~8 % was against all-crop FAO GPV
+(~670 B) — 55.12 / 670 = **8.2 %**. Both correct, different bases. The per-group table is the
+confirmation that matters: the five groups predicted to move most are the top five in that order, and
+`rest` / `orts` / `ofib` matched **nothing** by name, which is the defect in its purest form.
+
+**3. Every gate I asked for holds.**
+- pins 2/2 matched, at the macbook's exact figures;
+- guarded share **3.5 % → 3.6 %** — the invariant. Three newly guarded pairs, all Sudan
+  (`SDN opul/rest/temf`, 0.29 B), which is the predicted mechanism: recovered composite value in the
+  one country SPAM barely covers. Nothing left the guarded set;
+- CAF/GIN coverage 30.2 and 7.27, unguarded, `value_alloc` as computed on the macbook;
+- price-factor identity 7.28e-12 over 42 layers;
+- your decomposition checks: 55.12 − 12.4 − 1.73 − 1.05 = **39.94**, against the 39.96 observed.
+
+**4. One number that needs saying out loud, and is not a gate.** The continental constant-I$ total
+moves **200.28 → 240.24 B I$, +20.0 %**. That is the correct consequence of the fix — value that was
+being dropped is now allocated — but it is a large, consumer-visible move in the published reference
+and every intld product built on it. It is not a reason to stop; it is a reason the CDH records and
+the note to Brayden have to state it rather than let it be discovered. Macbook will carry that.
+
+**Proceed to A3 when A2 finishes**, then A4-A6 as written. Two things to carry forward:
+- at A4, report the per-crop before/after from the `b5_old_adm_sum_20261007_193653/` caches you kept —
+  good call keeping them, that is a better basis than memory;
+- at A4's cross-basis gate, the four CAF/GIN coffee rows are pre-registered and expected. Given the
+  +20 % move on the intld side with the nominal side unchanged, **expect more cross-basis movement
+  than usual across the composite groups**. Report what you see; stop only if a pair outside the
+  composite groups moves, since those are the ones this fix should not have touched.
+
+---
+
 ### RESPONSE 2026-10-07 (A1) — cglabs — 0.4.0 at 0.05° COMPLETE: pins APPLIED 2/2 matched; B5 audit recovered 55.12 B I$ over 57 renamed codes (dispatch said ~53.6 B / 59 — reported as measured, not reconciled); guarded share 3.5 % → 3.6 %; price-factor identity holds; continental total 200.28 → 240.24 B I$. A2 (0.25°) running.
 
 Node at `6a578e5`. Run: `EXPOSURE_RES=0.05 FORCE_OVERWRITE=1`, 19:37:03 → 19:45:03 (8 min),
@@ -339,7 +386,7 @@ it becomes a measurement rather than an assertion.
 Run 0.4.0 at **`EXPOSURE_RES=0.05`** first and capture the audit block:
 
 ```
-nohup env EXPOSURE_RES=0.05 Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); source("/home/jovyan/atlas/hazards_prototype/R/0.4.0_create_crop_vop_intld15.R")' \
+nohup env EXPOSURE_RES=0.05 FORCE_OVERWRITE=1 Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); source("/home/jovyan/atlas/hazards_prototype/R/0.4.0_create_crop_vop_intld15.R")' \
   > logs/b5_040_res05_$(date +%Y%m%d_%H%M%S).log 2>&1 &
 ```
 
@@ -359,7 +406,7 @@ nohup env EXPOSURE_RES=0.05 Rscript -e 'source("/home/jovyan/atlas/hazards_proto
 
 ### A2. Both resolutions
 
-Repeat A1 at `EXPOSURE_RES=0.25`. Confirm the audit numbers are the same (the join is national and
+Repeat A1 at `EXPOSURE_RES=0.25`, **also with `FORCE_OVERWRITE=1`** — 0.4.0 gates its VoP rasters on it (`:285`, `:305-306`), so without the flag the audit and factor raster are rewritten while the rasters themselves are not, and A3 then re-bakes the reference from pre-B5 inputs. Confirm the audit numbers are the same (the join is national and
 grid-independent — if the recovered value differs between the two grids, something is wrong) and
 that the guarded set is the one legitimate difference, since the coverage guard is grid-dependent
 (the BEN/NGA cowpea lesson: BEN SPAM cowpea is 5.8 kt at 0.05° and 25.1 kt at 0.25°).
