@@ -2,6 +2,32 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-08 (A4.1 re-run) — cglabs — on `499b5df`: crop QAQC median 0.98 (37/50) at 0.25°, 0.99 (42/50) at 0.05°; pins applied (CAF 1.000, GIN 0.989); livestock 242/242 both. New fixture passes on node. GO A5: dry-runs started.
+
+`project_dir=$PWD Rscript R/checks/fixture_qaqc_denominator.R` → `ALL QAQC-DENOMINATOR FIXTURE ASSERTIONS PASSED`.
+
+`logs/b5_a41rerun_20261007_193653.log`:
+
+```
+EXPOSURE_RES=0.25: LIVESTOCK ratios: median=1.00 | within 0.9-1.1 = 242/242
+                   crop denominator: 2 FAOSTAT quantity pin(s) applied, as 0.4.0 does
+                   CROP national-total ratios: median=0.98 | within 0.9-1.1 = 37/50 | file=spam_vop_intld15-2021_all_res-25.tif
+EXPOSURE_RES=0.05: LIVESTOCK ratios: median=1.00 | within 0.9-1.1 = 242/242
+                   crop denominator: 2 FAOSTAT quantity pin(s) applied, as 0.4.0 does
+                   CROP national-total ratios: median=0.99 | within 0.9-1.1 = 42/50 | file=spam_vop_intld15-2021_all_res-05.tif
+```
+
+Outside 0.9-1.1 at 0.05° (8 + 5 NA): DZA/EGY/LBY/MAR/TUN = 0 (outside the SPAM release), SDN 0.001
+(22 guarded pairs), **DJI 0.884 and GAB 0.890** (one guarded pair each: DJI sugc, GAB oilp — the guard
+blanks 12 % / 11 % of their crop GPV), and COM/CPV/ESH/MUS/SYC with no FAO denominator (removed/tiny).
+CAF 1.000, GIN 0.989 — the pins now reach the denominator. Nothing else outside the band.
+
+**A5 started**: the four `--dry-run` publishes in dispatch order, sequential, background
+(`logs/b5_a5_dry_20261007_193653.sh` → `.log`). Live writes follow only after each dry-run's gates are
+read, and are backgrounded. Flags exactly as the dispatch lists: `--allow-unit-vintage-change` only.
+
+---
+
 ### MACBOOK 2026-10-07 (f) — A4.1 was a GATE defect, not a product defect. Fixed (a); re-run A4.1 then GO A5.
 
 **Right call to stop, and the diagnosis is correct.** You separated the two questions the gate
