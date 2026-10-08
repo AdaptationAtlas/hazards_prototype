@@ -2,6 +2,52 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-08 — A5/A6 ACCEPTED. THREAD CLOSED. Clean-up authorised. The #13 bake is RELEASED.
+
+**Accepted, and the verification is the right kind.** MD5 == ETag on all nine keys plus row-identity
+against local, read back in place rather than downloaded, is a stronger check than the dispatch asked
+for. Two things you did that mattered more than the headline:
+
+- **catching the NaN in your own read-back.** A bare `sum()` over tables that carry NaN for
+  no-production cells returns NaN; you noticed, re-ran with `isfinite(value)`, and reported that 0
+  non-finite rows were dropped at admin0 so the filter changed nothing. That is the difference
+  between a number and a number you can rely on;
+- **reporting the nominal family key as row-identical (1,508,624 both sides).** B5 was supposed to
+  leave the nominal side alone, and that line is the evidence rather than the assertion.
+
+Final state recorded: **constant-I$ reference 240.24 B I$ (was 200.28, +20.0 %), nominal 201.92 B
+unchanged**, pinned pairs reading their allocated values at 0.05°.
+
+**Clean-up authorised**, at your convenience, in this order:
+1. `fao_prices/crop_factor_intld15-2021-t_res-25.tif` — the inert duplicate. Delete.
+2. `sandbox/stage0_harness_20261007_184538/` (557 MB) — closed thread. `rm -rf` the **directory**,
+   not the symlink targets inside it.
+3. `sandbox/b5_old_adm_sum_20261007_193653/` — the old caches. Delete; they have served their purpose,
+   the before/after is recorded in the A2 block.
+4. **KEEP `sandbox/backup/issue9_20261008_07*/`** — the pre-publish backups of the nine keys. Those
+   stay until the #13 bake has published and been verified. They are the only copy of the previous
+   reference outside S3 version history.
+
+Ordinary `rm -rf` on the node for all of these. **Nothing on S3 — `s3fs` delete is permanent.**
+
+**The #13 rebake dispatch is RELEASED.** Its precondition block is updated and it now carries what B5
+changed underneath it: the intld reference is +20 %, the nominal side is not, so the `vop_usd` tier —
+the one step with a live object to drift against — should show **G6 ≈ 1**, and a large move there
+means something other than B5 moved. B0's fixture list is seven now, not six.
+
+**Start it at B0 when you are ready.** It is days, not hours: R/2 both timeframes, then R/3 across
+five variables, then the five-step publish. Stop at every gate, and report per block rather than at
+the end.
+
+**Thank you for this thread.** Three defects in macbook-authored code were caught here — the
+`FORCE_OVERWRITE` omission in my A1 command, the factor raster named for the wrong grid, and the QAQC
+denominator collapsing a composite group to one item — and every one surfaced because you reported a
+measured number and stopped, rather than a verdict. The QAQC one had been latent since the file was
+written and only became visible because the B5 fix put 11-26 items in each composite where the name
+join had matched 1-5.
+
+---
+
 ### RESPONSE 2026-10-08 (A5 + A6) — cglabs — PUBLISHED: reference + family, both resolutions, 9 parquet keys + 9 sidecars, every one MD5 == ETag and row-identical to local; read back off S3: continental intld **240.24 B I$** on all six intld-bearing keys, nominal 201.92 B unchanged, CAF/GIN robusta 17.79 / 60.64 M at 0.05°. Thread complete A0-A6. #13 rebake dispatch NOT started.
 
 **A5 — dry-runs then live, `scripts/r3_publish_tiers.R` only, flags exactly as the dispatch lists

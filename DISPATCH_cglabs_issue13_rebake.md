@@ -2,10 +2,23 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
-> **DO NOT START THIS THREAD UNTIL `DISPATCH_cglabs_b5_fao_code_join.md` IS COMPLETE THROUGH A6.**
-> This bake multiplies the exposure reference that thread republishes. Starting early bakes against
-> the old reference and the whole run is wasted. Check: that dispatch's RESPONSE reports A5 published
-> and A6 verified off S3.
+> **RELEASED 2026-10-08. The precondition is met: B5 completed A0-A6, published nine keys and verified
+> every one MD5 == ETag off S3** (`archive/dispatches/DISPATCH_cglabs_b5_fao_code_join.md`). This
+> thread is now live — start at B0.
+
+**What B5 changed under this bake, and what it means for the gates here:**
+
+- **The constant-I$ reference is now 240.24 B I$, up from 200.28 (+20.0 %)** — the recovered composite
+  value. Every intld product this bake builds inherits that. It is correct, and it is large; the
+  CDH records and the note to Brayden must state it.
+- **The nominal side is unchanged** (201.92 B, and the family key published row-identical). So the
+  `vop_usd` tier, which is the one step here with a live object to drift against, should show
+  **G6 ≈ 1**. A large move on the usd tier would mean something other than B5 moved, and is a stop.
+- The physical twins the new tiers gate against are confirmed present in the res-25 table:
+  `prod`/`t`, `harv-area`/`ha`, `number`/`number`.
+- The crop QAQC denominator was fixed mid-thread (it medianed a composite group's items instead of
+  summing them). It now reads **0.98 / 0.99** with livestock at 242/242. If it reads near 1.17 again,
+  the checkout is stale.
 
 Thread opened 2026-10-07 (macbook). Runbook: `R/NEXT_FULL_REBAKE.md`. Context and decisions:
 `HANDOVER_2026-10-07.md` §2. Roughly a working day per stage — read the whole dispatch before
@@ -37,12 +50,12 @@ Five changes land in this run. Each is pinned by an off-node fixture; run them a
 ```
 cd /home/jovyan/atlas/hazards_prototype
 git fetch && git log --oneline -1 origin/develop && git pull
-for f in vop_allocate fao_code_join r3_physical_tiers publish_tier_gates gate_zonal_basis crop_heat_interactions; do
+for f in vop_allocate fao_code_join r3_physical_tiers publish_tier_gates gate_zonal_basis crop_heat_interactions qaqc_denominator; do
   echo "--- $f"; project_dir=$PWD Rscript R/checks/fixture_$f.R >/dev/null 2>&1 && echo PASS || echo FAIL
 done
 ```
 
-All six must PASS. Then, and this one is **not optional**:
+All seven must PASS. Then, and this one is **not optional**:
 
 ```
 Rscript R/probe_r2_5_2_vec.R
