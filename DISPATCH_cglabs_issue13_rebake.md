@@ -2,6 +2,44 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-08 (B1 launch) — cglabs — R/2 running since 11:22 with `FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1`. One deviation: the dispatch's bare `Rscript R/2_calculate_haz_freq.R` dies at once (`object 'ms_codes_url' not found`) — R/2 does not source setup itself; relaunched in the AGENTS.md §2 form. Invariants 1-2 already hold: three crop rows (NTx35 / NTxM / NTxM); ecocrop "every SPAM commodity matched" (no no-match list, so no `tomatoes` either). 3-4 follow at completion.
+
+**The deviation.** First launch, exactly as B1 is written: log ends at line 2 with
+`Error: object 'ms_codes_url' not found`. `ms_codes_url` is defined in `R/0_server_setup.R:621`;
+`R/2_calculate_haz_freq.R` lists setup as a prerequisite in its header (`:37`) and never sources it
+(`:107` sources only `haz_functions.R`). The 2026-09-14 bake's log opens with the setup banner, so that
+run was launched with setup sourced. Relaunched from the repo root as
+
+```
+FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1 nohup Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); source("/home/jovyan/atlas/hazards_prototype/R/2_calculate_haz_freq.R")' > logs/r2_rebake_20261008_111955.log 2>&1 &
+```
+
+(setup's `Sys.setenv(project_dir = getwd())` at `:111` is what R/2's `Sys.getenv("project_dir")` needs,
+so the cwd at launch matters: repo root). The aborted log is kept as
+`logs/r2_rebake_20261008_111955_ABORTED_nosetup.log`. **B2's R/3 line has the same shape** — R/3 also
+reads `ms_codes_url` (`R/3:294`) — and will be launched the same way unless told otherwise.
+
+**Invariant 1 — crop_interactions: three rows, heat NTx35 / NTxM / NTxM.** Checkout is current.
+
+```
+   heat_simple wet_simple dry_simple heat_fixed wet_fixed dry_fixed   type
+1:       NTx35      NDWL0       NDWS       TRUE      TRUE      TRUE   crop
+2:        NTxM     PTOT_G     PTOT_L      FALSE     FALSE     FALSE   crop
+3:        NTxM      NDWL0       NDWS      FALSE      TRUE      TRUE   crop
+   (animal: THI_max+NDWL0+NDWS, THI_max+PTOT_G+PTOT_L — two rows, unchanged)
+```
+
+**Invariant 2 — ecocrop:** `every SPAM commodity matched an ecocrop species`. The dispatch expected
+`tomatoes` in a no-match table; there is no table. Reporting as seen, not reconciled — if `tomatoes`
+was expected to be unmatched, something matched it (the 44-crop list printed above it starts
+`arabica coffee / Coffea arabica, banana / Musa acuminata, …`).
+
+Invariants 3 (§5.3 count + wall-clock vs 268 / 249 min; expect ~+38 %) and 4 (peak RSS, from
+`logs/r13_rss_20261008_111955.log`, 60 s samples of all R processes) are reported when R/2 finishes
+— hours, both timeframes. `timeframes = annual jagermeyr` confirmed in the log.
+
+---
+
 ### RESPONSE 2026-10-08 (B0) — cglabs — on `09a396c`: 7/7 fixtures PASS; `probe_r2_5_2_vec.R` **PROBE PASS** on node terra (haz_sum and ensemble mean/stdev identical), so `USE_R2_5_2_VEC` stays ON; THI_max poultry_highland Extreme = 89 present; reference + both family twins carry the B5 mtimes at both resolutions; 123 T free of 192 T. B5 clean-up done. B1 launched 11:2x.
 
 ```
