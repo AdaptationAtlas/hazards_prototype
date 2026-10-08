@@ -11,7 +11,9 @@
     "type": "public-s3",
     "url": "s3://digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/",
     "checksum_manifest": null,
-    "license": null
+    "license": "CC-BY-4.0",
+    "license_note": "CC-BY-4.0 verified 2026-10-08 from two independent sources: the CGSpace item 5736e3ff-aadc-4999-8922-8bac50b1c916 and the Harvard Dataverse API for doi:10.7910/DVN/Z0HK7R (license href creativecommons.org/licenses/by/4.0/, v1.0, published 2026-01-07). This is the Alliance's MapSPAM2020_AdaptationAtlas_SSA, a DIFFERENT dataset from IFPRI's global SPAM2020 v2r2 that the CDH record `spam2020` describes and licenses CC-BY-SA-4.0. Plain attribution, no share-alike, so nothing propagates into the derived exposure or hazard_exposure products (#37).",
+    "license_source": "https://doi.org/10.7910/DVN/Z0HK7R"
   },
   "transfer": {
     "strategy": "pull-from-origin",
