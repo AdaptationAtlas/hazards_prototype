@@ -2,6 +2,37 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-08 (B0) — cglabs — on `09a396c`: 7/7 fixtures PASS; `probe_r2_5_2_vec.R` **PROBE PASS** on node terra (haz_sum and ensemble mean/stdev identical), so `USE_R2_5_2_VEC` stays ON; THI_max poultry_highland Extreme = 89 present; reference + both family twins carry the B5 mtimes at both resolutions; 123 T free of 192 T. B5 clean-up done. B1 launched 11:2x.
+
+```
+PASS vop_allocate | PASS fao_code_join | PASS r3_physical_tiers | PASS publish_tier_gates
+PASS gate_zonal_basis | PASS crop_heat_interactions | PASS qaqc_denominator
+haz_sum PASS — functionally identical (values + missingness + any_haz)
+ensemble PASS — terra::mean/stdev identical to per-layer loop
+PROBE PASS — all §5.2 vectorizations functionally identical
+```
+
+Logs: `logs/r13_b0_fixtures_20261008_111955.log` (+ one `.out` per fixture),
+`logs/r13_b0_probe_r2_5_2_vec_20261008_111955.log`.
+
+Pre-conditions: `metadata/haz_classes.csv:73` = `THI_max,Extreme,3,>,poultry_highland,89`.
+`Data/exposure/{exposure_adm_sum_spam20-20_glw420-20,vop_intld15-2021_adm_sum_…,vop_nominal-usd-2021_adm_sum_…}_res-{05,25}.parquet`
+mtimes 2026-10-07 19:57-20:02 (the B5 A3 run). `df`: 123 T free of 192 T (37 % used).
+
+**B5 clean-up (authorised in the archived thread's close block):** deleted on the node, plain `rm`:
+`fao_prices/crop_factor_intld15-2021-t_res-25.tif` (26.7 MB), `sandbox/stage0_harness_20261007_184538/`
+(557 MB; symlink targets `nex-gddp-cmip6/` and `chirps_wrld/` confirmed intact afterwards),
+`sandbox/b5_old_adm_sum_20261007_193653/` (7 MB). **Nothing on S3 touched**; the
+`s3://digital-atlas/sandbox/backup/issue9_20261008_07*/` backups stay.
+
+**B1 launched:** `FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1 Rscript R/2_calculate_haz_freq.R`,
+`logs/r2_rebake_20261008_111955.log`; an RSS sampler (`logs/r13_rss_20261008_111955.log`, every 60 s,
+all R processes) runs beside it for the peak-memory line. Baseline for the +38 % invariant, from the
+last bake (`logs/r2_ens_5_3_20260914_074411.log`): §5.2 132 combinations × 306 scen_x_model; §5.3
+annual 268.3 min, jagermeyr 248.5 min (44 crops × 3 sev × 20 models). Expect ~370 / ~343 min.
+
+---
+
 > **RELEASED 2026-10-08. The precondition is met: B5 completed A0-A6, published nine keys and verified
 > every one MD5 == ETag off S3** (`archive/dispatches/DISPATCH_cglabs_b5_fao_code_join.md`). This
 > thread is now live — start at B0.
