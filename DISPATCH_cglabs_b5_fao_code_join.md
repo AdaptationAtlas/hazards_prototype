@@ -2,6 +2,61 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-08 (A5 + A6) — cglabs — PUBLISHED: reference + family, both resolutions, 9 parquet keys + 9 sidecars, every one MD5 == ETag and row-identical to local; read back off S3: continental intld **240.24 B I$** on all six intld-bearing keys, nominal 201.92 B unchanged, CAF/GIN robusta 17.79 / 60.64 M at 0.05°. Thread complete A0-A6. #13 rebake dispatch NOT started.
+
+**A5 — dry-runs then live, `scripts/r3_publish_tiers.R` only, flags exactly as the dispatch lists
+(`--allow-unit-vintage-change`; no `--allow-res-change`, no `--allow-schema-drift`, no `--allow-value-drift`).**
+Code `499b5df` (dry) / `53b04cd` (live) — identical publisher. Logs: `logs/b5_a5_dry_20261007_193653.log`,
+`logs/b5_a5_live_20261007_193653.log`, driver scripts beside them. All four runs backgrounded.
+
+Dry-run gates, every key: `ok: 14 columns identical`, `distinct(exposure)` / `distinct(unit)` /
+`distinct(stat)` identical to the live object; rows local vs live: reference res-05 **8,065,336 vs
+8,000,059**, res-25 **5,667,864 vs 5,621,991**, intld family res-05 **986,408 vs 921,131** (the recovered
+composite items add rows), nominal family res-05 **1,508,624 vs 1,508,624 (identical)** — the nominal side
+is untouched by B5, as designed. Exit 0 ×4, `[DRY RUN - nothing written]`.
+
+Live, 07:35:06-07:36:53, exit 0 ×4. Every live object was backed up first (`backup written`), then
+uploaded with `SIZE MATCH`:
+`s3://digital-atlas/sandbox/backup/issue9_20261008_073506/` (reference res-05 + unsuffixed alias),
+`…_073534/` (reference res-25), `…_073555/` (family res-05: nominal + intld, each with alias),
+`…_073630/` (family res-25: nominal + intld). Keep until told they can go.
+
+**A6 — independent read-back, in place, DuckDB httpfs over the public endpoint (python-duckdb 1.5.5; no
+CLI on the node). Nothing downloaded.** `logs/b5_a6_readback_20261007_193653.log`, `…_totals_….log`.
+
+| key (`…/processing=atlas-harmonized/variable=`) | rows S3 = local | bytes S3 = local | ETag vs local MD5 | intld, B I$ (S3) | nominal, B (S3) |
+|---|---:|---:|---|---:|---:|
+| `crop-livestock_all_res-05.parquet` | 8,065,336 | 8,918,339 | **MD5 MATCH** | **240.24** | 201.92 |
+| `crop-livestock_all.parquet` (alias) | 8,065,336 | 8,918,339 | MD5 MATCH | 240.24 | 201.92 |
+| `crop-livestock_all_res-25.parquet` | 5,667,864 | 7,137,701 | MD5 MATCH | **240.24** | 201.92 |
+| `vop_intld15-2021_res-05.parquet` | 986,408 | 1,397,331 | MD5 MATCH | **240.24** | — |
+| `vop_intld15-2021.parquet` (alias) | 986,408 | 1,397,331 | MD5 MATCH | 240.24 | — |
+| `vop_intld15-2021_res-25.parquet` | 693,192 | 1,120,912 | MD5 MATCH | **240.24** | — |
+| `vop_nominal-usd-2021_res-05.parquet` | 1,508,624 | 1,734,813 | MD5 MATCH | — | 201.92 |
+| `vop_nominal-usd-2021.parquet` (alias) | 1,508,624 | 1,734,813 | MD5 MATCH | — | 201.92 |
+| `vop_nominal-usd-2021_res-25.parquet` | 1,060,176 | 1,407,809 | MD5 MATCH | — | 201.92 |
+
+Totals are admin0 rows, `tech = all`, `exposure = vop`, finite values (the tables carry NaN for
+no-production cells, so a bare `sum()` returns NaN — the first read-back pass did exactly that and was
+re-run with `isfinite(value)`; 0 non-finite rows were dropped at admin0). Nine `.parquet.json` sidecars
+uploaded alongside, `SIZE MATCH` each. `Last-Modified` 07:35:23-07:36:51 today on every key.
+
+Pinned pairs off S3: CAF robusta **17.79 M**, GIN robusta **60.64 M** at 0.05° (both aliases and the family
+key agree) — the national `value_alloc`; at 0.25° 23.85 / 61.37 M (border spill, as A3). Arabica 0 in both.
+
+**Continental constant-I$ reference, as now live: 240.24 B I$ (was 200.28; +20.0 %).** Nominal
+201.92 B, unchanged.
+
+**No stale key.** Every key the publisher writes was overwritten; the unsuffixed aliases are refreshed
+from res-05 by the script itself. Nothing was deleted; `s3fs` delete never called.
+
+**Thread state:** A0-A6 complete. Left on disk for the macbook's call: `sandbox/b5_old_adm_sum_20261007_193653/`
+(old caches, 12 files), `sandbox/stage0_harness_20261007_184538/` (closed thread), the inert
+`fao_prices/crop_factor_intld15-2021-t_res-25.tif` duplicate (macbook OK'd deletion; not done).
+`DISPATCH_cglabs_issue13_rebake.md` remains HELD and has not been opened for running.
+
+---
+
 ### RESPONSE 2026-10-08 (A4.1 re-run) — cglabs — on `499b5df`: crop QAQC median 0.98 (37/50) at 0.25°, 0.99 (42/50) at 0.05°; pins applied (CAF 1.000, GIN 0.989); livestock 242/242 both. New fixture passes on node. GO A5: dry-runs started.
 
 `project_dir=$PWD Rscript R/checks/fixture_qaqc_denominator.R` → `ALL QAQC-DENOMINATOR FIXTURE ASSERTIONS PASSED`.
