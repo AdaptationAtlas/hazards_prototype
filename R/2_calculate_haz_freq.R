@@ -467,25 +467,63 @@ replace_exact_matches <- function(strings, old_values, new_values) {
   replacement_map[strings]
 }
 
+# A `*_fixed = TRUE` slot means "this hazard does NOT vary by crop", so it must be resolved from the
+# `generic` rows; a free slot is resolved from the crop's own rows. Until 2026-10-09 the builder
+# looked every slot up in ONE crop's table, which silently dropped any row mixing the two.
+#
+# What that cost (found on the node, #13 B1): `metadata/haz_classes.csv` carries NDWS and NDWL0 only
+# under `crop = generic` - they are replicated per species for LIVESTOCK at :142, but never for
+# crops, which get the ecocrop-derived PTOT/TAVG/NTx* rows instead. So #25(a)'s new row
+# `NDWS + NTxM + NDWL0` mapped `dry` and `wet` to NA for every real crop and was dropped by the
+# `!is.na` filter below. It appeared in the printed table and in the fixture, and produced **zero**
+# stacks. Row 2 survived because PTOT_L/PTOT_G are per-crop; row 1 survived only for `generic`.
+#
+# Scope follows from the flags rather than being assumed:
+#   * a row with at least one FREE slot varies by crop, so it is emitted per crop;
+#   * an all-FIXED row is identical for every crop, so it is emitted ONCE as `generic` and applied
+#     to every commodity downstream at R/3 §4.1. Emitting it per crop would write ~34 copies of one
+#     hazard stack and cost R/3 the same multiple for no extra information.
+# That reproduces the previous behaviour exactly for rows 1 and 2 and for both animal rows, and
+# makes the mixed row resolvable.
+.resolve_slot <- function(tokens, fixed, crop_focus, severity_focus) {
+  src <- data.table::fifelse(fixed, "generic", crop_focus)
+  vapply(seq_along(tokens), function(k) {
+    r <- haz_class[crop == src[k] & description == severity_focus & index_name2 == tokens[k],
+                   gsub("_", "-", gsub(".tif", "", filename))]
+    if (length(r)) r[1] else NA_character_
+  }, character(1))
+}
 combinations_c <- unique(rbindlist(lapply(seq_along(crop_choices2), FUN = function(i) {
   crop_focus <- crop_choices2[i]
   rbindlist(lapply(seq_along(severity_classes$class), FUN = function(j) {
     severity_focus <- severity_classes$class[j]
     X <- copy(crop_interactions)
-    haz_rename <- haz_class[
-      crop == crop_focus & description == severity_focus,
-      list(old = index_name2, new = gsub("_", "-", gsub(".tif", "", filename)))
-    ]
-
-    X[, heat := replace_exact_matches(heat_simple, old_values = haz_rename$old, new_values = haz_rename$new)]
-    X[, dry := replace_exact_matches(dry_simple, old_values = haz_rename$old, new_values = haz_rename$new)]
-    X[, wet := replace_exact_matches(wet_simple, old_values = haz_rename$old, new_values = haz_rename$new)]
+    # an all-fixed row is crop-independent: emit it once, under `generic`
+    X <- X[!(heat_fixed & wet_fixed & dry_fixed) | crop_focus == "generic"]
+    if (!nrow(X)) return(NULL)
+    X[, heat := .resolve_slot(heat_simple, heat_fixed, crop_focus, severity_focus)]
+    X[, dry  := .resolve_slot(dry_simple,  dry_fixed,  crop_focus, severity_focus)]
+    X[, wet  := .resolve_slot(wet_simple,  wet_fixed,  crop_focus, severity_focus)]
     X[, severity_class := severity_focus]
     X[, crop := crop_focus]
     X
   }))
 })))
+.c_dropped <- combinations_c[is.na(heat) | is.na(dry) | is.na(wet)]
+if (nrow(.c_dropped)) {
+  cat(sprintf("\n[2] 0.2.4.2) WARNING: %d (crop x severity x interaction) combination(s) could not resolve every slot and are dropped. An interaction row that resolves for NO crop produces NO stacks and the tier simply will not exist - which is how #25(a) went unnoticed for a whole R/2 pass:\n", nrow(.c_dropped)))
+  print(unique(.c_dropped[, .(heat_simple, dry_simple, wet_simple,
+                              missing = paste(c("heat", "dry", "wet")[c(is.na(heat), is.na(dry), is.na(wet))], collapse = "+"))]), nrows = 30)
+}
 combinations_c <- combinations_c[!is.na(heat) & !is.na(dry) & !is.na(wet)]
+# Every declared crop interaction row must produce something. A row that resolves nowhere is a
+# metadata or wiring error, not an empty result.
+.c_rows <- unique(combinations_c[, .(heat_simple, dry_simple, wet_simple)])
+if (nrow(.c_rows) < nrow(crop_interactions)) {
+  stop(sprintf("0.2.4.2) %d of %d crop interaction rows resolved for no crop at all: %s. Check metadata/haz_classes.csv covers each FIXED slot under crop='generic' and each FREE slot per crop.",
+               nrow(crop_interactions) - nrow(.c_rows), nrow(crop_interactions),
+               paste(apply(data.table::fsetdiff(unique(crop_interactions[, .(heat_simple, dry_simple, wet_simple)]), .c_rows), 1, paste, collapse = "+"), collapse = ", ")))
+}
 
 # Interactions - Animals
 livestock_choices <- crop_choices[grepl("-tropical|-highland", crop_choices)]

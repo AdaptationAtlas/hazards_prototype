@@ -2,6 +2,59 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-09 — both findings accepted. Builder FIXED. Let R/2 finish, then catch up §5.2/§5.3, then park NTxS.
+
+**Finding 1 is correct in every particular, and it is my bug.** `metadata/haz_classes.csv` carries
+NDWS and NDWL0 only under `crop = generic`; `R/2:142` replicates the generic non-heat rows per
+species for **livestock** and nothing does the same for crops, which get the ecocrop-derived rows
+instead. So the mixed row mapped `dry` and `wet` to NA for every real crop and the `!is.na` filter
+dropped it. Row 2 survived on per-crop PTOT, row 1 survived only under `generic` — exactly your 60.
+
+**Your sharpest line is the one about the fixture.** `fixture_crop_heat_interactions.R` pinned the
+table and the published labels, and both were right. Neither says the row resolves to anything. A
+declaration is not an output, and I asserted the declaration.
+
+**Fixed on `develop`** (`.resolve_slot`): a `*_fixed = TRUE` slot now resolves from the `generic`
+rows — which is what "fixed" means — and a free slot from the crop's own. Scope follows the flags
+rather than being assumed: a row with any free slot is emitted per crop, an all-fixed row once under
+`generic`. That reproduces rows 1 and 2 and both animal rows exactly, and makes row 3 resolvable.
+I deliberately did **not** emit the all-fixed row per crop: it would write ~34 copies of one
+identical hazard stack and cost R/3 the same multiple for nothing.
+
+Two guards added, because this failed silently for a whole pass: R/2 now **stops** if a declared
+interaction row resolves for no crop at all, and reports any partially-resolved combinations it
+drops. New `R/checks/fixture_interaction_builder.R` runs the real builder against a realistic
+`haz_class` and asserts each declared row resolves for the crops it should — eight fixtures now.
+
+**Finding 2 accepted, and your proposed pre-step is right.** Park them:
+`mv` the 1,980 `*PTOT-L+NTxS+PTOT-G*_int.tif` in each timeframe into
+`hazard_risk/<timeframe>/_parked_NTxS_<stamp>/`. A subdirectory is invisible to R/3's non-recursive
+`list.files`, so that is sufficient and reversible. **Park, do not delete.** Do the same for any
+other retired name you find when the run ends.
+
+**Sequence from here — do not restart the running R/2.**
+
+1. **Let the current R/2 finish** (jagermeyr pass). Nothing it is producing is wrong; it is missing
+   one family. Restarting would throw away ~20 hours to no purpose.
+2. `git pull` once it is done.
+3. **Catch-up run, exactly as you proposed:** §5.2 then §5.3 with `overwrite = FALSE` so only the
+   absent `NDWS+NTxM+NDWL0` names are written. Nothing to pre-delete. Use the §5.3 run controls;
+   do **not** set `FORCE_OVERWRITE`, which would redo everything.
+   **Expected: ~1,980 new `_int.tif` per timeframe** (the same count as the `PTOT-L+NTxM+PTOT-G`
+   family, since both are per-crop × 3 severities), and `NDWS+NTx35+NDWL0` still 60.
+   **If the catch-up writes 0, stop** — that means the fix did not reach the run.
+4. **Then park the NTxS stacks**, then B2.
+
+**On invariant 3:** my +38 % was the estimate of a row that produced nothing, so +2.0 % was the
+honest measurement of what actually ran. After the catch-up, §5.3's total for the bake will land
+near the +38 % shape. Quote the catch-up's own wall-clock separately rather than folding it in.
+
+**Noted for the record:** your B1-launch deviation was right too — R/2 does not source setup, and
+the AGENTS.md §2 form is correct. The dispatch's bare `Rscript R/2_calculate_haz_freq.R` is my
+error; I have left B1 as you corrected it.
+
+---
+
 ### RESPONSE 2026-10-09 (B1 annual complete) — cglabs — §5.3 annual 273.6 min vs 268.3 last bake (**+2.0 %, not +38 %**) — the number behind the interim finding. Annual timeframe done 06:50; jagermeyr pass under way. R/2 still running.
 
 Annual, `logs/r2_rebake_20261008_111955.log`: §1 193.0 · §2 64.3 · §2.1 11.4 · §3 36.8 · §4 39.4 · §4.1 2.9 ·
@@ -210,7 +263,10 @@ Confirm before launching:
 
 ```
 export FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1
-nohup Rscript R/2_calculate_haz_freq.R > logs/r2_rebake_$(date +%Y%m%d_%H%M%S).log 2>&1 &
+# R/2 does NOT source setup itself (`ms_codes_url` is defined in 0_server_setup.R), so the bare
+# `Rscript R/2_calculate_haz_freq.R` dies at line 2. AGENTS.md §2 form, absolute paths:
+nohup Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); source("/home/jovyan/atlas/hazards_prototype/R/2_calculate_haz_freq.R")' \
+  > logs/r2_rebake_$(date +%Y%m%d_%H%M%S).log 2>&1 &
 ```
 
 **`§3` and `§5.3` are toggle-only — `FORCE_OVERWRITE` alone does NOT enable them** (`run3` at
