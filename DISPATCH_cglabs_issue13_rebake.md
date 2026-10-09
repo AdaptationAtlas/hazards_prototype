@@ -2,6 +2,63 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-09 (B1 interim — FINDING) — cglabs — the #25(a) third crop row `NDWS+NTxM+NDWL0` is in the table but PRODUCES NOTHING: §5.2 wrote 129 combinations and none pairs a crop-specific NTx threshold with NDWS/NDWL0; §5.3 is writing `PTOT-L+NTxM+PTOT-G` stacks (1,023 so far) and zero `NDWS+NTxM+NDWL0`. Cause located (haz_classes.csv has NDWS/NDWL0 only for `generic`; the combination builder ignores `*_fixed`). Invariant 3 (+38 %) will therefore NOT hold. R/2 left running — the omission does not corrupt the rest. Second item for B2: 1,980 stale `NTxS` stacks per timeframe would be ingested by R/3 §4.1 unless parked.
+
+**Where the run is** (`logs/r2_rebake_20261008_111955.log`, annual timeframe): §1 193.0 min, §2 64.3 min, §2.1 11.4 min,
+§3 36.8 min, §4 39.4 min, §4.1 2.9 min, **§5.2 514.5 min** (full recompute under FORCE; the 2026-09-14 figure of
+1.8 min was a skip-existing run, so there is no like-for-like baseline), §5.3 started 02:16 and is writing to
+`Data/hazard_risk/annual/` (~55 files/min, 15 workers). Peak RSS so far 260.8 GiB (16:20, §3, 20 workers);
+§5.2/§5.3 sit at 18-37 GiB. jagermeyr follows.
+
+**Finding 1 — the new interaction row is dropped before it reaches §5.2.**
+
+Evidence, from the files:
+- §5.2 fresh output (`hazard_timeseries_int/annual`, 43,860 files, 129 distinct combinations): the only
+  `NDWS+NTx*+NDWL0` names are the three generic severities `NDWS-G15+NTx35-G7+NDWL0-G2`,
+  `NDWS-G20+NTx35-G14+NDWL0-G5`, `NDWS-G25+NTx35-G21+NDWL0-G8` (1,020 files = 1 combo family × 3 sev × 340
+  scen-model). Crop-specific heat thresholds (`NTx20…NTx38`, 13 of them, × G7/G14/G21) appear ONLY paired with
+  `PTOT-L…+PTOT-G…`. No `NDWS-G15+NTx30-G7+NDWL0-G2`-shaped file exists.
+- §5.3 fresh output after 72 min: `PTOT-L+NTxM+PTOT-G_int.tif` 1,023; `NDWS+NTx35+NDWL0_int.tif` 60 (generic
+  crop only); `NDWS+NTxM+NDWL0_int.tif` **0**. The k-loop writes every combo of a (crop, sev, model) together,
+  so 1,023 of one and 0 of the other is structural, not ordering.
+- The log's table does carry the row (`3: NTxM NDWL0 NDWS FALSE TRUE TRUE crop`), so the checkout is current.
+
+Cause (`R/2_calculate_haz_freq.R:468-485`): `combinations_c` is built per (crop, severity) by mapping each
+row's `heat_simple / dry_simple / wet_simple` through `haz_class[crop == crop_focus & description ==
+severity_focus]` with `replace_exact_matches()`, then `combinations_c[!is.na(heat) & !is.na(dry) & !is.na(wet)]`.
+The `*_fixed` flags are never consulted there. `metadata/haz_classes.csv` carries `NDWS` and `NDWL0` **only
+under `crop = generic`** (3 rows each; 0 rows for any named crop), so for every real crop row 3 maps `dry` and
+`wet` to NA and is dropped. Row 2 survives because `PTOT_G/PTOT_L` are per-crop in the CSV and `NTxM`
+thresholds are generated per crop from ecocrop at run time (`:228-333`). Row 1 survives only for the generic
+crop, which is why `NDWS+NTx35+NDWL0` has exactly 60 stacks. The fixture `fixture_crop_heat_interactions.R`
+pins the table and the labels, not the builder, so it passed.
+
+**Not changed.** No code edited, R/2 not stopped. What a fix needs, for the macbook: the builder has to
+resolve a `*_fixed = TRUE` hazard from the `generic` rows (that is what "fixed" means), or the CSV needs
+per-crop NDWS/NDWL0 rows. Once fixed, the missing combos can be produced without a full re-run: §5.2 with
+`overwrite = FALSE` writes only the absent names (the runbook's pre-delete + overwrite=FALSE pattern, nothing
+to delete here), then §5.3 the same way — §5.3's own cost for the missing ~1,000 stacks per timeframe is
+small next to today's. That can run after this R/2 completes and before B2.
+
+**Invariant 3 consequence:** §5.3 will come in near the 2026-09-14 figure (268 / 249 min), not +38 %, because
+the third row contributes nothing. That is the deviation; it is explained.
+
+**Finding 2 — stale retired-family stacks will be read by R/3 §4.1 unless parked.** `hazard_risk/annual` and
+`hazard_risk/jagermeyr` each hold **1,980 `*_PTOT-L+NTxS+PTOT-G_int.tif`** from the last bake. FORCE never
+touches them (different name), and R/3 §4.1 takes `list.files(haz_risk_dir, ".tif$")` through
+`.rebake_scope`, which is identity by design (`R/3:565`, `.rebake_scope <- function(files) files`). So B2 as
+written would ingest the retired `NTxS` family alongside `NTxM` and the tiers would carry both labels —
+contradicting the "RETIRED, not reused" assertion the fixture makes about the published set. Proposed B2
+pre-step, for the macbook to confirm: `mv` the 1,980 `*NTxS*_int.tif` in each timeframe dir into
+`hazard_risk/<timeframe>/_parked_NTxS_<stamp>/` (a subdirectory is not listed by the non-recursive
+`list.files`), alongside the dispatch's parking of `hazard_risk_{vop,vop_usd,ha}`. Same for any other
+retired name found when the run ends (none seen so far).
+
+Also for the record: `hazard_timeseries_int/annual` holds 33,911 pre-run files beside the 43,860 fresh ones;
+§5.3 reads by exact combo name from `haz_int_file_tab`, so stale extras there are inert.
+
+---
+
 ### RESPONSE 2026-10-08 (B1 launch) — cglabs — R/2 running since 11:22 with `FORCE_OVERWRITE=1 RUN_R2_RUN3=1 RUN_R2_RUN5_3=1`. One deviation: the dispatch's bare `Rscript R/2_calculate_haz_freq.R` dies at once (`object 'ms_codes_url' not found`) — R/2 does not source setup itself; relaunched in the AGENTS.md §2 form. Invariants 1-2 already hold: three crop rows (NTx35 / NTxM / NTxM); ecocrop "every SPAM commodity matched" (no no-match list, so no `tomatoes` either). 3-4 follow at completion.
 
 **The deviation.** First launch, exactly as B1 is written: log ends at line 2 with
