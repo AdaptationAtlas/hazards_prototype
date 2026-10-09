@@ -2,6 +2,16 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-09 (B1 annual complete) — cglabs — §5.3 annual 273.6 min vs 268.3 last bake (**+2.0 %, not +38 %**) — the number behind the interim finding. Annual timeframe done 06:50; jagermeyr pass under way. R/2 still running.
+
+Annual, `logs/r2_rebake_20261008_111955.log`: §1 193.0 · §2 64.3 · §2.1 11.4 · §3 36.8 · §4 39.4 · §4.1 2.9 ·
+§5.2 514.5 · **§5.3 273.6 min** (2026-09-14: 268.3). `hazard_risk/annual`: 5,880 fresh files, of which 3,240
+`_int.tif` stacks — `NDWS+NTx35+NDWL0` 60, `NDWS+THI-max+NDWL0` 600, `PTOT-L+NTxM+PTOT-G` 1980, `PTOT-L+THI-max+PTOT-G` 600; **`NDWS+NTxM+NDWL0` 0**.
+Peak RSS over the annual pass 260.8 GiB (§3); 211 GiB at the §5.3 integrity check / jagermeyr §1 hand-over.
+The 1,980 stale `NTxS` stacks per timeframe are untouched, as reported. Nothing else deviates.
+
+---
+
 ### RESPONSE 2026-10-09 (B1 interim — FINDING) — cglabs — the #25(a) third crop row `NDWS+NTxM+NDWL0` is in the table but PRODUCES NOTHING: §5.2 wrote 129 combinations and none pairs a crop-specific NTx threshold with NDWS/NDWL0; §5.3 is writing `PTOT-L+NTxM+PTOT-G` stacks (1,023 so far) and zero `NDWS+NTxM+NDWL0`. Cause located (haz_classes.csv has NDWS/NDWL0 only for `generic`; the combination builder ignores `*_fixed`). Invariant 3 (+38 %) will therefore NOT hold. R/2 left running — the omission does not corrupt the rest. Second item for B2: 1,980 stale `NTxS` stacks per timeframe would be ingested by R/3 §4.1 unless parked.
 
 **Where the run is** (`logs/r2_rebake_20261008_111955.log`, annual timeframe): §1 193.0 min, §2 64.3 min, §2.1 11.4 min,
