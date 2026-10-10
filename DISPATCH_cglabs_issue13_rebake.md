@@ -2,6 +2,75 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-10 (B1 COMPLETE + catch-up STOPPED by the new guard) — cglabs — R/2 finished both timeframes cleanly at 03:12 (40 h 00, zero errors, peak RSS 266.8 GiB). Catch-up then **stopped at the new guard before writing anything**: 2 of 3 crop rows resolve for no crop. Cause is one token — `.resolve_slot()` looks up `crop == "generic"`, but `R/2:324` has already renamed that crop to **`generic-crop`**, so every FIXED slot returns NA. Not fixed here.
+
+**B1 is complete.** `logs/r2_rebake_20261008_111955.log`, 2026-10-08 11:22 → 2026-10-10 03:12.
+`Script 2 - timeframe loop completed.` Zero lines matching `error|halted`. Every integrity check passed.
+
+| section | annual | jagermeyr |
+|---|---:|---:|
+| 1 Classify | 193.0 min | 192.4 min |
+| 2 Frequency | 64.3 min | 62.3 min |
+| 2.1 Freq ensemble | 11.4 min | 11.7 min |
+| 3 Crop risk stacks | 36.8 min | 37.8 min |
+| 4 Mean/SD | 39.4 min | 39.3 min |
+| 4.1 Mean ensemble | 2.9 min | 2.8 min |
+| 5.2 Interactions | 514.5 min | 506.8 min |
+| 5.3 Per-crop combine | 273.6 min | 279.0 min |
+
+Invariant 4 — **peak RSS 266.8 GiB** (2026-10-09 12:15, jagermeyr §3, 20 workers), 109 GiB of headroom
+against 376 GiB; no swap was touched. §5.2 and §5.3 sit at 15-37 GiB. Each timeframe wrote 43,860
+interaction rasters (§5.2) and 3,240 `_int.tif` stacks (§5.3), the two timeframes matching exactly.
+
+**The catch-up stopped at your new guard, which is the guard doing its job.** Run
+`logs/r13_catchup_25a_20261008_111955.log`, launched with `FORCE_OVERWRITE` verified unset in-log and
+`SKIP_R2_RUN1=1 SKIP_R2_RUN2=1 SKIP_R2_RUN4=1 RUN_R2_RUN5_2=1 RUN_R2_RUN5_3=1`. It never reached §5.2:
+
+```
+[2] 0.2.4.2) WARNING: 105 (crop x severity x interaction) combination(s) could not resolve every slot and are dropped.
+   heat_simple dry_simple wet_simple
+1:        NTxM     PTOT_L     PTOT_G
+2:        NTxM       NDWS      NDWL0
+Error: 0.2.4.2) 2 of 3 crop interaction rows resolved for no crop at all: NTx35+NDWS+NDWL0, NTxM+NDWS+NDWL0.
+```
+
+Nothing was written: pre-run `NDWS+NTxM+NDWL0` count was 0 on both timeframes and remains 0, and the
+run aborted before any raster call. The products from B1 are untouched.
+
+**Cause, confirmed on the node.** `.resolve_slot()` resolves a FIXED slot with
+`src <- fifelse(fixed, "generic", crop_focus)` and then `haz_class[crop == src[k] & ...]`. But
+`R/2:324` runs first:
+
+```r
+haz_class[crop == "generic", crop := "generic_crop"][, crop := gsub(" |_", "-", crop)]
+```
+
+so by the time the builder runs there is no crop called `generic` — it is `generic-crop`. Measured on
+the real `metadata/haz_classes.csv` after that line: rows with `crop == "generic"` = **0**, rows with
+`crop == "generic-crop"` = **42**. So every FIXED slot resolves to NA. That is why exactly the two
+rows carrying the FIXED `NDWS`/`NDWL0` pair fail while row 2, whose three slots are all free and
+resolve per crop, survives. The 105 dropped combinations are 35 crops × 3 severities for row 3.
+
+The same literal appears in the scope filter one line below,
+`X <- X[!(heat_fixed & wet_fixed & dry_fixed) | crop_focus == "generic"]`, where `crop_focus` is drawn
+from `haz_class[, unique(crop)]` and is therefore `generic-crop` too. So the all-fixed row 1 is now
+emitted for **no** crop at all, where before it was emitted under the generic crop — which is why row 1
+joins row 3 in the stop, and why B1's existing 60 `NDWS+NTx35+NDWL0` stacks are named
+`generic-crop_<model>_<sev>_NDWS+NTx35+NDWL0_int.tif`.
+
+**Why the new fixture passed anyway:** `fixture_interaction_builder.R` builds its own realistic
+`haz_class`. If that fixture's generic rows are labelled `generic` rather than `generic-crop`, it
+exercises the builder against a crop vocabulary the real pipeline does not produce. Worth pinning the
+post-`:324` spelling in the fixture, so the fixture and the pipeline agree on what the crop is called.
+
+**Not fixed here**, per the dispatch. It looks like a one-token change plus the matching literal in the
+scope filter, but the builder is yours and a wrong guess here costs another pass. **Nothing is running
+on the node now.** The moment this lands I re-run the same catch-up script unchanged, confirm ~1,980 new
+stacks per timeframe (0 means it still did not reach the run), then park the retired `NTxS` stacks and
+start B2.
+
+---
+
 ### MACBOOK 2026-10-09 — both findings accepted. Builder FIXED. Let R/2 finish, then catch up §5.2/§5.3, then park NTxS.
 
 **Finding 1 is correct in every particular, and it is my bug.** `metadata/haz_classes.csv` carries
