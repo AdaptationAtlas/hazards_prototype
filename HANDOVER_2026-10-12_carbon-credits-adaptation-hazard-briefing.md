@@ -136,14 +136,20 @@ For maize this gives `NTxM` = 33 °C, `NTxS` = 40 °C, `NTxE` = 47 °C, and PTOT
 600 / 500 / 400 mm. Where one MapSPAM commodity maps to several species, the thresholds are
 averaged (`R/2_calculate_haz_freq.R:277-281`).
 
-> **A unit mismatch in the crop-specific rainfall classes.** EcoCrop records rainfall limits as
-> **annual** totals; this is stated in the CDH EcoCrop record
-> (`cdh-catalog/records/ecocrop/ecocrop.yaml`, the `note` and the `ropmn` / `ropmx` descriptions).
-> The code compares them with the **seasonal** PTOT sum over the maize window
-> (`R/2_calculate_haz_freq.R:175-198`). A season total is smaller than an annual total, so the
-> crop-specific dry class (`PTOT-L`) will fire more often than the agronomy intends, and the wet
-> class less often. This is not flagged anywhere in the repository. Treat the crop-specific
-> rainfall sets as prototype. Tracked as issue **#46**.
+> **The crop-specific rainfall classes use the wrong window.** EcoCrop's rainfall limits are
+> crop-cycle totals: FAO labels the field "annual", but the reference implementation
+> (`dismo::ecocrop`) compares them with rainfall summed over the crop's own cycle,
+> (GMIN + GMAX) / 2 days. The pipeline compares them with PTOT summed over the **rainfed-maize**
+> window for every crop (`R/2_calculate_haz_freq.R:175-198`).
+> - Measured on 1995-2015 CHIRPS, the effect is large. Severe dry fires in 90 % of seasons for
+>   cocoa and 94 % for plantain on the maize window, against 32 % and 37 % on their own cycle.
+>   The live product shows the same: cocoa 94 %, plantain 96 %.
+> - Short-cycle annuals move the other way.
+> - Wheat, barley, rice and sugarcane stay near 80-90 % on any window. That points at the
+>   thresholds and at irrigated production being included.
+>
+> Treat the crop-specific rainfall sets as prototype. Tracked as issue **#46**, with the
+> measurements.
 
 ### 1.4 Severity classes are cumulative, not bands
 
@@ -252,7 +258,7 @@ units.
 | item | status |
 |---|---|
 | `NDWS+NTx35+NDWL0` (generic thresholds) | **Most stable.** This is what the live Atlas notebook reads. Its definition does not change in the #13 rebuild. |
-| `PTOT-L+NTxS+PTOT-G` (crop-specific) | **Being retired.** `NTxS` averages the optimum with the survival limit, which gave maize a 40 °C threshold and 0 % heat exposure in Kenya (issue #25). It is replaced by `PTOT-L+NTxM+PTOT-G`, and a new `NDWS+NTxM+NDWL0` is added (`R/2_calculate_haz_freq.R:377-410`). Also subject to the EcoCrop rainfall unit issue in §1.3. Prototype. |
+| `PTOT-L+NTxS+PTOT-G` (crop-specific) | **Being retired.** `NTxS` averages the optimum with the survival limit, which gave maize a 40 °C threshold and 0 % heat exposure in Kenya (issue #25). It is replaced by `PTOT-L+NTxM+PTOT-G`, and a new `NDWS+NTxM+NDWL0` is added (`R/2_calculate_haz_freq.R:377-410`). Also subject to the rainfall-window issue in §1.3 (#46). Prototype. |
 | livestock sets | Prototype; see §4. |
 | the `annual` period, ensemble SD, per-GCM tables, and the constant-dollar, area, tonnage and head tiers | Computed or computable, **not published**. Planned in the #13 publish order (`HANDOVER_2026-10-07.md` §2D). |
 
