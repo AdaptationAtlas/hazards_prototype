@@ -507,8 +507,15 @@ combinations_c <- unique(rbindlist(lapply(seq_along(crop_choices2), FUN = functi
   rbindlist(lapply(seq_along(severity_classes$class), FUN = function(j) {
     severity_focus <- severity_classes$class[j]
     X <- copy(crop_interactions)
-    # an all-fixed row is crop-independent: emit it once, under `generic`
-    X <- X[!(heat_fixed & wet_fixed & dry_fixed) | crop_focus == GENERIC_CROP]
+    # Scope is an EITHER/OR, not a filter on one side only:
+    #   * an all-fixed row is crop-independent -> emitted ONLY under the generic crop;
+    #   * a row with any free slot varies by crop -> emitted ONLY for real crops.
+    # The first cut kept every row under `generic-crop`, including the two whose heat slot is free.
+    # Those can never resolve there: `NTxM` is the per-crop ecocrop optimum, and the generic crop -
+    # the absence of a crop - carries only `NTx35` / `NTx40`. So six combinations were dropped on
+    # every run, structurally, and the dropped-combination warning below could never be empty
+    # (found on the node 2026-10-12). A warning that always fires is a warning nobody reads.
+    X <- X[(heat_fixed & wet_fixed & dry_fixed) == (crop_focus == GENERIC_CROP)]
     if (!nrow(X)) return(NULL)
     X[, heat := .resolve_slot(heat_simple, heat_fixed, crop_focus, severity_focus)]
     X[, dry  := .resolve_slot(dry_simple,  dry_fixed,  crop_focus, severity_focus)]
@@ -520,7 +527,7 @@ combinations_c <- unique(rbindlist(lapply(seq_along(crop_choices2), FUN = functi
 })))
 .c_dropped <- combinations_c[is.na(heat) | is.na(dry) | is.na(wet)]
 if (nrow(.c_dropped)) {
-  cat(sprintf("\n[2] 0.2.4.2) WARNING: %d (crop x severity x interaction) combination(s) could not resolve every slot and are dropped. An interaction row that resolves for NO crop produces NO stacks and the tier simply will not exist - which is how #25(a) went unnoticed for a whole R/2 pass:\n", nrow(.c_dropped)))
+  cat(sprintf("\n[2] 0.2.4.2) WARNING: %d (crop x severity x interaction) combination(s) could not resolve every slot and are dropped. Scope already excludes the structural cases, so this should normally be EMPTY: a row here means a real crop is missing a threshold it needs (e.g. a commodity with no ecocrop match). An interaction row that resolves for NO crop produces NO stacks and the tier simply will not exist - which is how #25(a) went unnoticed for a whole R/2 pass:\n", nrow(.c_dropped)))
   print(unique(.c_dropped[, .(heat_simple, dry_simple, wet_simple,
                               missing = paste(c("heat", "dry", "wet")[c(is.na(heat), is.na(dry), is.na(wet))], collapse = "+"))]), nrows = 30)
 }

@@ -2,6 +2,55 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-12 (b) — you were right to stop, and the fault was my INSTRUCTION. Scope tightened. Resume.
+
+**The 6 drops are structural, exactly as you diagnosed, and my "stop if the warning appears at all"
+was an instruction that a correct run could never satisfy.** That is the failure mode AGENTS.md puts
+first — a gate stated so tightly that a good run fails it — and I wrote it into the dispatch three
+days after insisting on the opposite. Stopping on a stated expectation was the right call; the
+expectation was the thing that was wrong.
+
+**Your diagnosis is complete and I have taken it as given.** `NTxM` is the per-crop ecocrop optimum;
+`generic-crop` is the absence of a crop and carries only `NTx35`/`NTx40`; so a free heat slot can
+never resolve there. My scope filter was one-sided — it kept **every** row under `generic-crop`,
+including the two that cannot resolve there — so the warning could never be empty.
+
+**Fixed as an either/or, which is what scope actually is:**
+
+```r
+X <- X[(heat_fixed & wet_fixed & dry_fixed) == (crop_focus == GENERIC_CROP)]
+```
+
+All-fixed rows only under the generic crop; any row with a free slot only for real crops. Row 1 still
+emits its 60; rows 2 and 3 still emit per crop; the six structural combinations are now out of scope
+rather than dropped. **The warning becomes meaningful again** — it should be EMPTY, and a row in it
+now means a real crop is missing a threshold it needs, which is the case worth seeing (a commodity
+with no ecocrop match, say). I have said so in the warning text.
+
+The fixture now exercises the scope rule instead of grepping for it, including that the generic crop
+has no `NTxM` — the fact the whole thing turns on. 20 assertions.
+
+**Resume: re-run the same script unchanged**, after `git pull` (expect this commit or later).
+
+**Expected now:**
+- **no** `resolved for no crop at all` error, and **no dropped-combination warning at all**;
+- §5.2 writes the absent `NDWS-G*+NTx*-G*+NDWL0-G*` names, leaving the 43,860 existing ones alone;
+- §5.3 writes **~1,980 new `NDWS+NTxM+NDWL0_int.tif` per timeframe**, with `PTOT-L+NTxM+PTOT-G` still
+  1,980 and `NDWS+NTx35+NDWL0` still 60.
+
+**If the dropped-combination warning appears this time, stop and report it** — with scope fixed it
+should be empty, so a row in it is a real finding rather than noise. That is now a gate that can hold.
+
+**Your handling of the abort was right.** Parking the 14 touched files, including the 4,502-byte
+part-written raster, rather than deleting them, and verifying the restart sees the exact pre-run
+directory, is what made "re-run the same script unchanged" safe to say. Keep
+`_parked_aborted_catchup_20261012_060925/` until the catch-up succeeds; delete it then, or at the
+same time as the `NTxS` parking — it has no further value once the 14 names are written fresh.
+
+Then park the stale `NTxS` stacks as agreed, then B2.
+
+---
+
 ### RESPONSE 2026-10-12 (catch-up re-run — fix WORKS, but STOPPED on the dropped-combination warning as instructed) — cglabs — `c5a282f` resolves the FIXED slots: §5.2 started writing the previously-absent `NDWS-G*+NTx{20,30,33,36}-G*+NDWL0-G*` names within a minute. **But the dropped-combination warning still appears (6 combinations), and you said stop if it appears at all — so I stopped, 2 min in, before §5.3.** The 6 are **structural, not a defect**: all are `crop = generic-crop`, rows 2 and 3, × 3 severities, and **only the heat slot is NA**.
 
 **Fixture first.** `R/checks/fixture_interaction_builder.R` passes all 15 assertions on the node, including the two new ones (`GENERIC_CROP` is the post-rename spelling; nothing is addressable as `generic` after the rename).

@@ -87,8 +87,26 @@ ok(all(vapply(seq_len(nrow(animal_interactions)), function(k)
 
 ## ------------------------------------------------------------------ scope: all-fixed stays generic-only
 src <- readLines(R2)
-ok(any(grepl("crop_focus == GENERIC_CROP", src)),
-   "an ALL-fixed row is emitted once under `generic`, not once per crop - 34 copies of one hazard stack would cost R/3 the same multiple for no information")
+ok(any(grepl("\\(heat_fixed & wet_fixed & dry_fixed\\) == \\(crop_focus == GENERIC_CROP\\)", src)),
+   "scope is an EITHER/OR: all-fixed rows only under the generic crop, free-slot rows only for real crops")
+
+## The scope rule, exercised rather than grepped. A free-slot row under the generic crop can NEVER
+## resolve - NTxM is the per-crop ecocrop optimum and the generic crop carries only NTx35/NTx40 - so
+## keeping it there produced six dropped combinations on every run and a warning that could never be
+## empty (node, 2026-10-12). A warning that always fires is a warning nobody reads.
+in_scope <- function(r, crop) (r$heat_fixed & r$wet_fixed & r$dry_fixed) == (crop == GENERIC_CROP)
+ok(in_scope(r1, GENERIC_CROP) && !in_scope(r1, "maize"),
+   "the all-fixed row is in scope ONLY for the generic crop")
+ok(!in_scope(r3, GENERIC_CROP) && in_scope(r3, "maize"),
+   "the mixed #25(a) row is in scope ONLY for real crops - it cannot resolve under the generic crop")
+ok(!in_scope(r2, GENERIC_CROP) && in_scope(r2, "maize"),
+   "and so is the precipitation-framed row")
+ok(is.na(res("NTxM", FALSE, GENERIC_CROP)),
+   "...because the generic crop has no NTxM: it is the per-crop ecocrop optimum, and the generic crop is the absence of a crop")
+ok(all(vapply(list(r1, r2, r3), function(r) {
+     crop <- if (isTRUE(r$heat_fixed & r$wet_fixed & r$dry_fixed)) GENERIC_CROP else "maize"
+     row_resolves(r, crop) }, logical(1))),
+   "every declared row resolves within its own scope - so the dropped-combination warning should normally be EMPTY and means something when it is not")
 
 ## ------------------------------------------------------------------ the guard that would have caught this
 ok(any(grepl("resolved for no crop at all", src)),
