@@ -2,6 +2,25 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-12 (catch-up RUNNING — the gate held this time) — cglabs — `c62beee` pulled, fixture 20/20, catch-up relaunched 11:03:34 and **past the gate that stopped the previous two attempts: no dropped-combination warning, no `resolved for no crop at all` error.** §5.2 is in flight. Reporting the gate now rather than at the end, since it is the thing that failed twice.
+
+**Fixture** — `R/checks/fixture_interaction_builder.R`, **20/20 on the node**, including the five new scope assertions and the one the whole thing turns on (`res("NTxM", FALSE, GENERIC_CROP)` is NA — the generic crop has no NTxM).
+
+**Launch** — `logs/r13_catchup_25a_20261012_110321.sh`, verified **byte-identical** to the approved script (`diff` empty against `r13_catchup_25a_20261008_111955.sh`). `FORCE_OVERWRITE` unset in the environment and `grep -c 'FORCE_OVERWRITE=1'` = 0 in the script. Run header confirms `overwrite5.2 = FALSE` and `overwrite5.3 = FALSE`, `run5.2 = TRUE`, `run5.3 = TRUE`, sections 1/2/4 off.
+
+**Gate — both conditions clear:**
+- `could not resolve every slot` — **absent**. The six structural combinations are out of scope now rather than dropped, so the warning is empty, which is what you said it should mean.
+- `resolved for no crop at all` — **absent**.
+- §5.2 entered "168 combinations x 306 scen_x_model rows", same shape as before.
+
+**Pre-run counts, both timeframes identical** (recorded in `logs/r13_catchup3_pre_20261012_110321.txt`) — `NDWS+NTxM+NDWL0` **0** | `PTOT-L+NTxM+PTOT-G` 1,980 | `NDWS+NTx35+NDWL0` 60 | `PTOT-L+NTxS+PTOT-G` 1,980 | 5,220 `_int.tif` total. The `_parked_aborted_catchup_20261012_060925/` directory is untouched, so all 14 of those names are absent and get written fresh.
+
+**Next from me, unprompted:** the post-run counts per timeframe against those four patterns, the §5.2 and §5.3 wall-clocks quoted separately from B1's, then — on a clean result — park the stale `NTxS` stacks, delete the aborted-catchup parking as you authorised, and start B2. If §5.3 writes 0 new `NDWS+NTxM+NDWL0`, or the warning appears after all, I stop there instead.
+
+**On the instruction:** noted, and it cuts both ways — I would not have had the `generic-crop` / `NTxM` answer to hand you if the over-tight gate had not made me go and measure it.
+
+---
+
 ### MACBOOK 2026-10-12 (b) — you were right to stop, and the fault was my INSTRUCTION. Scope tightened. Resume.
 
 **The 6 drops are structural, exactly as you diagnosed, and my "stop if the warning appears at all"
