@@ -2,6 +2,45 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-12 (b) (scope fix CLEAN — §5.2 annual complete; §5.3 crashed on **my** parking directory, cleared and relaunched) — cglabs — **Your scope fix is right and the gate held all the way: zero dropped-combination warnings, zero guard errors, across 8 h 43 m.** §5.2 annual wrote the full `NTxM` family — **12,240 new rasters** — and self-checked 89,773 files with 0 failures. Then §5.3 died six seconds after starting, and the cause was **mine, not yours**: the directory I parked the aborted run's files into.
+
+**The crash:**
+
+```
+[2026-10-12 19:19:03 | +29734.3s] [2] annual | 5.2) Interactions - DONE in 29724.9s (495.41 min)
+Checked 89773 file(s); 0 failed.
+[2026-10-12 19:45:59 | +31350.5s] [2] annual | 5.3) Per-crop combine - START
+Error in rbindlist(lapply(split_elements, as.list)) :
+ Item 2 has 4 columns, inconsistent with item 1 which has 6 columns. To fill missing columns use fill=TRUE.
+```
+
+**Cause, measured.** `R/2_calculate_haz_freq.R:1769` is `list.files(haz_time_int_dir, full.names = TRUE)` with **no pattern**, so it returns directories too, and `:1771` splits each basename on `_` into exactly four columns. My `_parked_aborted_catchup_20261012_060925` splits into **six** (leading `_` yields an empty first element), and it sorts ahead of every real file, so it was item 1 and the first real file was item 2. Reproduced exactly:
+
+```
+"_parked_aborted_catchup_20261012_060925"                         -> 6
+"historic_ACCESS-CM2_1995-2014_NDWS-G20+NTx20-G14+NDWL0-G5.tif"   -> 4
+```
+
+**This is my error, and it is one I should not have made — the repo already warns about it.** `R/park_stale_ensemble_stacks.R:67` says, in terms: *park OUTSIDE `hazard_timeseries_int/<tf>`: §5.3 does `list.files(haz_time_int_dir)` with no pattern and splits basenames on `_` -> a subdir there becomes a bogus model row -> stop().* I verified my parking trick against **R/3's** call, which passes `".tif$"`, and generalised from the wrong one. The existing convention parks at `Data/_parked_*/<stamp>/hazard_timeseries_int/<tf>/`.
+
+**Cleared.** All 14 files moved to `Data/_parked_aborted_catchup/20261012_060925/hazard_timeseries_int/annual/`, following that convention — **moved, not deleted**, though they are now redundant: §5.2 rewrote all 13 names fresh, and the one the first abort truncated is now **1,014,751 bytes** against its original 4,502. Both timeframe directories now hold **0 non-`.tif` entries**. Say the word and I delete the parking.
+
+**I audited the rest rather than just fixing the one.** Live (non-archive) unpatterned `list.files` on a hazard directory:
+- `R/2:1769` `haz_time_int_dir` — the one that bit;
+- `R/2:914` and `R/2:1459` `haz_time_class_dir` — **same latent trap**, nothing parked there today.
+
+**`haz_risk_dir` is clean**: every live call patterns it (`R/3:565` `".tif$"`, `R/2:1993` `"[.]tif$"`, `R/3.1:107-108`). **So the agreed `NTxS` parking into `hazard_risk/<timeframe>/_parked_NTxS_<stamp>/` is safe** — I checked before relying on it this time rather than after.
+
+**Relaunched 19:49:44**, same script, verified byte-identical to the approved one, `FORCE_OVERWRITE` unset and absent. §5.2 annual came back **DONE in 18.4 s** — nothing left to write, which independently confirms the 8 h 43 m pass finished its work. §5.2.1's file check runs ~27 min before §5.3 starts, so §5.3 annual is in that window now, then jagermeyr §5.2 (77,520 -> expect 89,760) and §5.3. No errors, no warnings so far.
+
+**Timings, separate from B1's** — §5.2 annual **495.41 min** on a cold directory, **18.4 s** on a warm one. §5.3 has not yet produced a figure.
+
+**On #46, since you offered it to my eye — the two crop-specific sets have opposite exposure, and the briefing currently caveats them together.** From the fixed flags: row 2 `PTOT-L+NTxM+PTOT-G` is F/F/F, so **both** rainfall slots take ecocrop `ropmn`/`ropmx` on the maize window — fully exposed, and it is the **replacement** for the retired `NTxS` set, so the replacement inherits #46 in full. Row 3 `NDWS+NTxM+NDWL0` — the row #25(a) adds and this catch-up is writing — is F/T/T: its wet and dry slots are **FIXED**, taken from `generic-crop`'s water balance, not from ecocrop at all. Only its heat slot is crop-derived, and that is a temperature optimum, which #46 does not touch. **So #25(a)'s row is the one crop-specific set in this bake that #46 cannot reach.** §5's table puts it under the same rainfall-window caveat as row 2; worth splitting.
+
+**Next from me:** post-run counts for the four patterns on both timeframes, §5.3 wall-clocks, then — on a clean result — the `NTxS` parking, the parking deletes, and B2. Logs `r13_catchup3_20261012_110321` (the 8 h pass) and `r13_catchup4_20261012_194923` (live).
+
+---
+
 ### RESPONSE 2026-10-12 (catch-up RUNNING — the gate held this time) — cglabs — `c62beee` pulled, fixture 20/20, catch-up relaunched 11:03:34 and **past the gate that stopped the previous two attempts: no dropped-combination warning, no `resolved for no crop at all` error.** §5.2 is in flight. Reporting the gate now rather than at the end, since it is the thing that failed twice.
 
 **Fixture** — `R/checks/fixture_interaction_builder.R`, **20/20 on the node**, including the five new scope assertions and the one the whole thing turns on (`res("NTxM", FALSE, GENERIC_CROP)` is NA — the generic crop has no NTxM).
