@@ -143,7 +143,7 @@ averaged (`R/2_calculate_haz_freq.R:277-281`).
 > (`R/2_calculate_haz_freq.R:175-198`). A season total is smaller than an annual total, so the
 > crop-specific dry class (`PTOT-L`) will fire more often than the agronomy intends, and the wet
 > class less often. This is not flagged anywhere in the repository. Treat the crop-specific
-> rainfall sets as prototype.
+> rainfall sets as prototype. Tracked as issue **#46**.
 
 ### 1.4 Severity classes are cumulative, not bands
 
@@ -442,7 +442,7 @@ This cannot double-count. It lets a compound class carry a loss that is not the 
     price_usd_global` (L483). The gap-filled national price computed on the same line
     (`price_usd_final`) is unused. This looks like a defect and has not been raised as an issue.
   - Livestock nominal values in the published tier carry it. For livestock, prefer head counts
-    or the constant-dollar denominator.
+    or the constant-dollar denominator. Tracked as issue **#47**.
 
 ### 4.2 Are livestock rows published?
 
@@ -486,7 +486,7 @@ rows for `cattle-highland`, `cattle-tropical`, `goats-*`, `pigs-*`, `poultry-*` 
     would bias it low and understate heat exceedance.
   - This has not been checked on the files themselves. Until it is, treat the livestock heat
     classes as **prototype**. Note too that the two biases above (Tmax with mean RH up, possible
-    monthly-mean down) point in opposite directions.
+    monthly-mean down) point in opposite directions. Tracked as issue **#48**.
 
 ### 4.4 Livestock drought and wet hazards
 
@@ -583,7 +583,8 @@ drought signal, and it says little about which seasons are bad for herds.
 **One correction to your framing.** Within the Atlas these rows are not the result of a deliberate
 "crop index applied to livestock" decision. They are generic rows copied to livestock so that the
 interaction structure would be complete (`R/2_calculate_haz_freq.R:138-147`). Nobody has validated
-them for livestock. The issue tracking the gap is hazards_prototype **#31** (open): "Rangeland
+them for livestock. The issue tracking the gap is hazards_prototype **#31** (open; the measurements
+and plan below are posted there): "Rangeland
 drought: integrate NDVI and pasture biomass to represent forage-based climate impact for
 livestock". This document's recommendation is consistent with it.
 
@@ -735,7 +736,7 @@ WHERE hazard NOT IN ('any');                   -- 7 exclusive classes + none; th
 ## 8. Corrections to the records that this review found
 
 These are listed so that you are not misled by the records in the meantime. They will be fixed on
-our side.
+our side and are tracked together as issue **#49** (the days-per-month unit also on #20).
 
 - `metadata/cdh/africa-hazard-exposure-nexgddp.yaml`:
   - "no … livestock exposure tier" is wrong: livestock value rows are published (§4.2);
