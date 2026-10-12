@@ -2,6 +2,44 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-12 (catch-up re-run — fix WORKS, but STOPPED on the dropped-combination warning as instructed) — cglabs — `c5a282f` resolves the FIXED slots: §5.2 started writing the previously-absent `NDWS-G*+NTx{20,30,33,36}-G*+NDWL0-G*` names within a minute. **But the dropped-combination warning still appears (6 combinations), and you said stop if it appears at all — so I stopped, 2 min in, before §5.3.** The 6 are **structural, not a defect**: all are `crop = generic-crop`, rows 2 and 3, × 3 severities, and **only the heat slot is NA**.
+
+**Fixture first.** `R/checks/fixture_interaction_builder.R` passes all 15 assertions on the node, including the two new ones (`GENERIC_CROP` is the post-rename spelling; nothing is addressable as `generic` after the rename).
+
+**Launched** `logs/r13_catchup_25a_20261012_060925.sh`, byte-identical to the script you approved, `FORCE_OVERWRITE` verified unset in the environment and absent from the script (`grep -c 'FORCE_OVERWRITE=1'` = 0). Run header confirmed `overwrite5.2 = FALSE` and `overwrite5.3 = FALSE`.
+
+**The fix works.** No `resolved for no crop at all` error. §5.2 entered "168 combinations x 306 scen_x_model rows" and in ~1 min wrote **13 new `_int.tif`** under names that did not exist before the run — `NDWS-G15+NTx20-G7+NDWL0-G2`, `…NTx30-G21…`, `…NTx33-G14…`, `…NTx36-G7…` across ACCESS-CM2 / ACCESS-ESM1-5 / CanESM5. Those are exactly the `NTxM` names #25(a) was missing.
+
+**What I stopped on, measured rather than inferred.** I replayed R/2's head (read-only, lines 1-535, stops before §1) and printed `.c_dropped` with its `crop` column, which the warning's own print omits:
+
+```
+         crop severity_class heat_simple dry_simple wet_simple heat_na dry_na wet_na
+ generic-crop       Moderate        NTxM     PTOT_L     PTOT_G    TRUE  FALSE  FALSE
+ generic-crop       Moderate        NTxM       NDWS      NDWL0    TRUE  FALSE  FALSE
+ generic-crop         Severe        NTxM     PTOT_L     PTOT_G    TRUE  FALSE  FALSE
+ generic-crop         Severe        NTxM       NDWS      NDWL0    TRUE  FALSE  FALSE
+ generic-crop        Extreme        NTxM     PTOT_L     PTOT_G    TRUE  FALSE  FALSE
+ generic-crop        Extreme        NTxM       NDWS      NDWL0    TRUE  FALSE  FALSE
+```
+
+`haz_class[crop == "generic-crop" & index_name2 == "NTxM"]` is **empty** (0 rows). The generic crop carries `NTx35` and `NTx40` and no `NTxM` — `NTxM` is the per-crop ecocrop optimum threshold, so by construction it cannot exist for a crop that is the absence of a crop.
+
+**So the warning is reachable on every future run, not a one-off.** The scope filter at `:511` is `X <- X[!(heat_fixed & wet_fixed & dry_fixed) | crop_focus == GENERIC_CROP]` — the right-hand clause keeps **every** row for `generic-crop`, including the two whose heat slot is free and per-crop. They then necessarily fail to resolve. The all-fixed row 1 is unaffected and resolves for `generic-crop` as intended.
+
+**Nothing is lost by the drop.** Rows 2 and 3 are per-crop rows and are still emitted for all the real crops; a `generic-crop` copy of them would be meaningless, since the free slot has no generic value to take. Pre-run on-disk counts agree that this is not a regression: `NDWS+NTx35+NDWL0` = 60 per timeframe (row 1, generic-crop, 60 stacks per crop) and `PTOT-L+NTxM+PTOT-G` = 1,980 per timeframe (per-crop, 33 crops × 60), i.e. rows 2 and 3 produced nothing for `generic-crop` in the previous bake either.
+
+**Not fixed here.** The one-line shape that would silence it is to let `generic-crop` through only for all-fixed rows — but that is your call, and the guard is yours. Your expectation "no dropped-combination warning" is the thing that cannot currently hold; the product expectation can.
+
+**State of the node — clean, pre-run, nothing half-written.** The kill caught one raster mid-write (`historic_CanESM5_…NDWS-G25+NTx30-G21+NDWL0-G8.tif`, 4,502 bytes against a normal 0.86-1.07 MB, plus its `.ovr.tmp`). I **parked, did not delete**, all 14 files the aborted run touched into `hazard_timeseries_int/annual/_parked_aborted_catchup_20261012_060925/`. A non-recursive `list.files` cannot see them, so the restart sees exactly the pre-run directory: 0 non-`NTx35` `NDWS+NTx*+NDWL0` names, the 1,020 pre-existing `NTx35` ones untouched, 77,520 `.tif` in the directory. B1's products were never in scope and are untouched.
+
+**Pre-run counts, both timeframes identical** — `NDWS+NTxM+NDWL0` 0 | `PTOT-L+NTxM+PTOT-G` 1,980 | `NDWS+NTx35+NDWL0` 60 | `PTOT-L+NTxS+PTOT-G` 1,980 (the stale ones awaiting parking) | 5,220 `_int.tif` total.
+
+**Wall-clock**: catch-up ran 06:09:25 → 06:12 (stopped by me). §5.3 was never reached, so there is no §5.3 figure to quote separately yet.
+
+**Ready to go the moment you clear it.** Say the word — either "the 6 generic-crop drops are expected, resume" or send a tightened filter — and I re-run the same script unchanged, confirm ~1,980 new `NDWS+NTxM+NDWL0` per timeframe, then park the `NTxS` stacks and start B2. If you tighten the filter I will re-run the fixture first. The parked `_parked_aborted_catchup_20261012_060925/` stays until you say otherwise; on resume all 14 names are absent and will be written fresh.
+
+---
+
 ### MACBOOK 2026-10-12 — my fix had a one-token bug; the guard caught it. Fixed. Re-run the catch-up.
 
 **The guard earned its place on its first outing, against the person who wrote it.** Nothing was
