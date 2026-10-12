@@ -31,19 +31,26 @@ R2 <- file.path(root, "R", "2_calculate_haz_freq.R")
 ## Lift the interaction tables and the slot resolver out of R/2.
 for (e in parse(R2)) {
   if (is.call(e) && length(e) >= 3 && as.character(e[[1]])[1] %in% c("<-", "=") && is.name(e[[2]]) &&
-      as.character(e[[2]]) %in% c("crop_interactions", "animal_interactions", ".resolve_slot")) eval(e, envir = globalenv())
+      as.character(e[[2]]) %in% c("crop_interactions", "animal_interactions", ".resolve_slot", "GENERIC_CROP")) eval(e, envir = globalenv())
 }
 ok(exists(".resolve_slot"), "the slot resolver was lifted out of R/2 (it is the thing under test)")
+ok(exists("GENERIC_CROP") && GENERIC_CROP == "generic-crop",
+   "GENERIC_CROP is lifted from R/2 and is the POST-rename spelling")
 
 ## Build a haz_class the shape R/2 builds: generic rows for the fixed hazards, per-crop ecocrop rows
 ## for the free ones, and the livestock replication of generic non-heat rows.
 SEV <- "Severe"
 mkrow <- function(idx, crop, thr) data.table(index_name2 = idx, description = SEV, crop = crop,
                                              filename = sprintf("%s-G%s.tif", sub("_.*$", "", idx), thr))
+# NOTE the crop name. R/2:325 renames `generic` -> `generic_crop` -> `generic-crop` BEFORE the
+# builder runs, so the generic rows are addressable only by the post-rename spelling. The first
+# version of this fixture used "generic" here and therefore passed while the real run resolved every
+# FIXED slot to NA (node, 2026-10-10). A fixture that does not model the transformation under test
+# cannot see the bug in it - the same mistake as pinning the table instead of the builder.
 haz_class <<- rbindlist(list(
   # generic: the fixed water-balance pair and the generic heat index
-  mkrow("NDWS", "generic", 20), mkrow("NDWL0", "generic", 5), mkrow("NTx35", "generic", 14),
-  mkrow("PTOT_L", "generic", 400), mkrow("PTOT_G", "generic", 1600),
+  mkrow("NDWS", GENERIC_CROP, 20), mkrow("NDWL0", GENERIC_CROP, 5), mkrow("NTx35", GENERIC_CROP, 14),
+  mkrow("PTOT_L", GENERIC_CROP, 400), mkrow("PTOT_G", GENERIC_CROP, 1600),
   # a real crop: ecocrop-derived rows only - note NO NDWS / NDWL0, which is the whole defect
   mkrow("NTxM", "maize", 33), mkrow("NTxS", "maize", 40), mkrow("NTxE", "maize", 47),
   mkrow("PTOT_L", "maize", 500), mkrow("PTOT_G", "maize", 1200),
@@ -69,14 +76,18 @@ r1 <- ci[heat_simple == "NTx35"]; r2 <- ci[dry_simple == "PTOT_L"]; r3 <- ci[hea
 ok(nrow(r3) == 1, "the #25(a) mixed row is declared")
 ok(row_resolves(r3, "maize"), "#25(a) `NDWS + NTxM + NDWL0` now RESOLVES for a real crop - it produced nothing before")
 ok(row_resolves(r2, "maize"), "the precipitation-framed crop row still resolves (it always did)")
-ok(row_resolves(r1, "generic"), "the all-fixed generic row still resolves under `generic`")
+ok(row_resolves(r1, GENERIC_CROP), "the all-fixed generic row still resolves under the POST-rename crop name")
+ok(nrow(haz_class[crop == "generic"]) == 0 && nrow(haz_class[crop == GENERIC_CROP]) > 0,
+   "after the rename NOTHING is addressable as `generic` - so code using the pre-rename spelling resolves to NA, which is exactly what broke the first fix")
+ok(any(grepl("fifelse\\(fixed, GENERIC_CROP, crop_focus\\)", readLines(R2))),
+   "the resolver addresses the generic crop through the constant, not a literal")
 ok(all(vapply(seq_len(nrow(animal_interactions)), function(k)
        row_resolves(animal_interactions[k], "cattle_tropical"), logical(1))),
    "both animal rows still resolve for a species system - the livestock path must not move")
 
 ## ------------------------------------------------------------------ scope: all-fixed stays generic-only
 src <- readLines(R2)
-ok(any(grepl("X <- X\\[!\\(heat_fixed & wet_fixed & dry_fixed\\) \\| crop_focus == \"generic\"\\]", src)),
+ok(any(grepl("crop_focus == GENERIC_CROP", src)),
    "an ALL-fixed row is emitted once under `generic`, not once per crop - 34 copies of one hazard stack would cost R/3 the same multiple for no information")
 
 ## ------------------------------------------------------------------ the guard that would have caught this

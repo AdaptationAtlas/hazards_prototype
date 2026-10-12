@@ -322,7 +322,16 @@ haz_class <- rbind(haz_class[, !"direction2"], haz_class2)
 
 #### 0.2.2.4) Update fields in haz_class table ####
 
+# The generic crop is RENAMED here, so anything that needs to address it downstream must use this
+# constant and not the pre-rename spelling. `.resolve_slot()` hardcoded "generic" and every FIXED
+# interaction slot therefore resolved to NA - caught by the §0.2.4.2 guard on the node 2026-10-10,
+# before anything was written. Derived from the same expression as the rename so the two cannot drift.
+GENERIC_CROP <- gsub(" |_", "-", "generic_crop")
 haz_class[crop == "generic", crop := "generic_crop"][, crop := gsub(" |_", "-", crop)]
+if (!GENERIC_CROP %in% haz_class$crop) {
+  stop("0.2.2.4) no '", GENERIC_CROP, "' rows in haz_class after the rename. Every FIXED interaction ",
+       "slot is resolved from this crop, so the crop interactions would resolve to nothing.")
+}
 
 haz_class[, direction2 := "G"][direction == "<", direction2 := "L"][, index_name2 := index_name]
 
@@ -486,7 +495,7 @@ replace_exact_matches <- function(strings, old_values, new_values) {
 # That reproduces the previous behaviour exactly for rows 1 and 2 and for both animal rows, and
 # makes the mixed row resolvable.
 .resolve_slot <- function(tokens, fixed, crop_focus, severity_focus) {
-  src <- data.table::fifelse(fixed, "generic", crop_focus)
+  src <- data.table::fifelse(fixed, GENERIC_CROP, crop_focus)
   vapply(seq_along(tokens), function(k) {
     r <- haz_class[crop == src[k] & description == severity_focus & index_name2 == tokens[k],
                    gsub("_", "-", gsub(".tif", "", filename))]
@@ -499,7 +508,7 @@ combinations_c <- unique(rbindlist(lapply(seq_along(crop_choices2), FUN = functi
     severity_focus <- severity_classes$class[j]
     X <- copy(crop_interactions)
     # an all-fixed row is crop-independent: emit it once, under `generic`
-    X <- X[!(heat_fixed & wet_fixed & dry_fixed) | crop_focus == "generic"]
+    X <- X[!(heat_fixed & wet_fixed & dry_fixed) | crop_focus == GENERIC_CROP]
     if (!nrow(X)) return(NULL)
     X[, heat := .resolve_slot(heat_simple, heat_fixed, crop_focus, severity_focus)]
     X[, dry  := .resolve_slot(dry_simple,  dry_fixed,  crop_focus, severity_focus)]

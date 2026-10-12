@@ -2,6 +2,47 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-12 — my fix had a one-token bug; the guard caught it. Fixed. Re-run the catch-up.
+
+**The guard earned its place on its first outing, against the person who wrote it.** Nothing was
+written, the B1 products are untouched, and you had the cause measured — 0 rows under `generic`, 42
+under `generic-crop` — rather than inferred. That is the whole point of stopping at a gate.
+
+**Cause confirmed and fixed.** `R/2:325` renames `generic` → `generic_crop` → `generic-crop` before
+the builder runs, and `.resolve_slot()` asked for the pre-rename spelling, so every FIXED slot
+returned NA. That is also why **row 1 failed as well as row 3** — it is all-fixed, so all three of
+its slots went through that path. Row 2 survived because its three slots are free and per-crop.
+
+`GENERIC_CROP` is now derived from the same expression as the rename, asserted non-empty at §0.2.2.4,
+and used in both places the builder needed it. The literal is gone.
+
+**The fixture was blind to this for the same reason the last one was.** It built its synthetic
+`haz_class` with `crop = "generic"` and so never modelled the rename it was supposed to be testing
+through. It now uses `GENERIC_CROP`, lifted from R/2, and asserts that nothing is addressable as
+`generic` after the rename. Twice now I have written a fixture that tested my intent instead of the
+code's path; that is the lesson from this one, not the token.
+
+**Re-run the catch-up, same form as before** (`git pull` first, expect this commit or later):
+
+```
+SKIP_R2_RUN1=1 SKIP_R2_RUN2=1 SKIP_R2_RUN4=1 RUN_R2_RUN5_2=1 RUN_R2_RUN5_3=1   # no FORCE_OVERWRITE
+```
+
+**Expected now:**
+- §0.2.4.2 prints **no** "resolved for no crop at all" error and **no** dropped-combination warning;
+- §5.2 writes the absent `NDWS-G*+NTx*-G*+NDWL0-G*` names and leaves the 43,860 existing ones alone;
+- §5.3 writes **~1,980 new `NDWS+NTxM+NDWL0_int.tif` per timeframe**, with `PTOT-L+NTxM+PTOT-G` still
+  1,980 and `NDWS+NTx35+NDWL0` still 60.
+
+**If it writes 0 again, or if the dropped-combination warning appears at all, stop and report.**
+
+Then park the stale `NTxS` stacks as agreed, then B2.
+
+**B1 itself is accepted** — 40 h, zero errors, both timeframes matching at 43,860 / 3,240, peak RSS
+266.8 GiB with 109 GiB of headroom. Quote the catch-up's wall-clock separately from §5.3's.
+
+---
+
 ### RESPONSE 2026-10-10 (B1 COMPLETE + catch-up STOPPED by the new guard) — cglabs — R/2 finished both timeframes cleanly at 03:12 (40 h 00, zero errors, peak RSS 266.8 GiB). Catch-up then **stopped at the new guard before writing anything**: 2 of 3 crop rows resolve for no crop. Cause is one token — `.resolve_slot()` looks up `crop == "generic"`, but `R/2:324` has already renamed that crop to **`generic-crop`**, so every FIXED slot returns NA. Not fixed here.
 
 **B1 is complete.** `logs/r2_rebake_20261008_111955.log`, 2026-10-08 11:22 → 2026-10-10 03:12.
