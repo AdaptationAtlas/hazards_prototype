@@ -2,6 +2,34 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-13 (#25(a) catch-up COMPLETE — every expectation met exactly; NTxS parked; ready for B2) — cglabs — **Both timeframes, zero errors, zero dropped-combination warnings, zero guard errors.** `NDWS+NTxM+NDWL0` went **0 -> 1,980 per timeframe**, and nothing else moved. The stale `NTxS` stacks are parked and the aborted-catchup parking is deleted. Nothing is running; B2 is next.
+
+**Gate — the four patterns, both timeframes, pre vs post:**
+
+| pattern | pre | post | expected |
+|---|---|---|---|
+| `NDWS+NTxM+NDWL0` | 0 | **1,980** | ~1,980 new |
+| `PTOT-L+NTxM+PTOT-G` | 1,980 | 1,980 | unchanged |
+| `NDWS+NTx35+NDWL0` | 60 | 60 | unchanged |
+| `PTOT-L+NTxS+PTOT-G` | 1,980 | 1,980 (now parked -> 0) | unchanged, then retired |
+| total `_int.tif` | 5,220 | 7,200 | +1,980 |
+
+**annual and jagermeyr are identical on every row.** Not ~1,980 — exactly 1,980, both.
+
+**Timings, separate from B1's.** §5.2 annual 495.41 min on the cold pass, then 18.4 s on the warm re-run; §5.2 jagermeyr **493.01 min** — within 0.5 % of annual, the same agreement B1 showed. §5.3 annual **120.85 min**, jagermeyr **130.97 min**. Each section's own check passed: 89,760 files 0 failed at §5.2 on both timeframes, 9,840 files 0 failed at §5.3 on both. Catch-up wall-clock 19:49:38 -> 10:19:39, **14 h 30 m** including the warm §5.2 re-check.
+
+**`NTxS` parked, not deleted.** 1,980 `*NTxS*_int.tif` per timeframe moved to `hazard_risk/<timeframe>/_parked_NTxS_20261013_102232/`. 0 `NTxS` `.tif` left in either directory; `_int.tif` back to 5,220 per timeframe, same count as before the catch-up but now composed of `NTxM` rather than `NTxS` — which is the swap #25(a) is.
+
+**I checked the parking location before using it this time, not after.** Every live call on `haz_risk_dir` passes a pattern (`R/3:565`, `R/2:1993`, `R/3.1:107-108`), the only `recursive` mention is a `dir.create`, and `R/3.1:154,160` patterns `"parquet$"`. An `intermediate/` subdirectory **already** lives in `hazard_risk/<tf>/` alongside 240 parquet/json files, so a subdirectory there is proven tolerated rather than merely argued. Note the parking directory's own name contains `NTxS`; it is excluded from every reader by the `.tif$` patterns, but worth knowing if you grep.
+
+**Aborted-catchup parking deleted**, as you authorised — 14 files, 12 MB, under `Data/_parked_aborted_catchup/`, gone, directory removed. I re-verified first that all 13 `.tif` names exist fresh in `hazard_timeseries_int/annual/` and are over 500 KB, so nothing was discarded that had not been rewritten.
+
+**Still held, untouched:** `sandbox/backup/issue9_20261008_07*/`, until the bake publishes and verifies.
+
+**B2 next.** I will park `hazard_risk_{vop,vop_usd,ha}/<timeframe>` with `mv` rather than FORCE, launch R/3 for the five variables across both timeframes with setup sourced by absolute path (R/3 reads `ms_codes_url` too, so a bare `Rscript R/3_…` would die the way B1's launch line did), then report `failed_risk_x_exposure_*.txt`, `skipped_not_in_exposure_*.txt`, per-variable §4.1 elapsed minutes and output mtimes. **Expect §4 ~38 % larger**, since `NDWS+NTxM+NDWL0` adds 1,980 stacks per timeframe to R/3's input. I will stop and report before anything is published.
+
+---
+
 ### RESPONSE 2026-10-12 (b) (scope fix CLEAN — §5.2 annual complete; §5.3 crashed on **my** parking directory, cleared and relaunched) — cglabs — **Your scope fix is right and the gate held all the way: zero dropped-combination warnings, zero guard errors, across 8 h 43 m.** §5.2 annual wrote the full `NTxM` family — **12,240 new rasters** — and self-checked 89,773 files with 0 failures. Then §5.3 died six seconds after starting, and the cause was **mine, not yours**: the directory I parked the aborted run's files into.
 
 **The crash:**
