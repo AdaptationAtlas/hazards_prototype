@@ -2,6 +2,43 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-14 (B2 — annual COMPLETE, **jagermeyr §4.2 killed by OOM**; all four checks pass on what exists; STOPPED) — cglabs — **annual finished both sections, all five variables, 1,203.2 min.** jagermeyr finished §4.1's five variables and was then **OOM-killed during its integrity check, so its §4.2 never ran — 90 files missing.** Your "a clean exit is not evidence of a clean run" earned itself immediately: **my own wrapper printed `exit=0` for a SIGKILLed run.** Nothing published, old product intact, nothing running.
+
+**The kill, from the kernel, not inferred:**
+
+```
+[Wed Oct 14 16:19:50 2026] Out of memory: Killed process 3790166 (R)
+  total-vm:137569112kB, anon-rss:66190288kB ... global_oom
+```
+
+One R process at **66.2 GiB RSS**; **cgroup peak 365.3 GiB of 376**. No swap, so it was instant. The log's last line is `jagermeyr 4.1) Checking file integrity`.
+
+**My wrapper's `exit=0` is wrong and I am flagging it rather than leaving it in the record.** My script ends `echo "... DONE $(date '+%F %T') exit=$?"` — the `$(date)` substitution runs first and resets `$?`, so the field reports `date`'s status, never R's. It has printed `exit=0` on every run in this thread, including this killed one. The shell's own `3706880 Killed` line, one line above, is the only honest signal. I will capture the status into a variable before any substitution. **Had I trusted the exit line, I would have reported B2 complete.**
+
+**The four checks, on what exists — all four pass:**
+1. **`failed_risk_x_exposure_*.txt` — ABSENT everywhere**, all five variables, both timeframes.
+2. **`skipped_not_in_exposure_*.txt` — exactly the three NOT_APPLICABLE classes you named**, and identical across timeframes: `harv-area_ha` 180 (the 10 livestock), `prod_t` 180 (same 10), `head_n` 594 (all 33 crops). Nothing else skipped.
+3. **Per-variable §4.1 elapsed — five non-trivial entries per timeframe.** annual 91.2 / 92.8 / 143.7 / 9.9 / 146.0 min; jagermeyr 92.1 / 93.0 / 144.3 / 10.0 / 146.4 min. **Within 1 % variable-for-variable across timeframes**, the same agreement B1 and the catch-up showed. §4.2 annual 178.3 / 185.1 / 153.1 / 31.2 / 152.5 min.
+4. **Output mtimes — every file in all ten directories post-dates the 12:16:42 start.** No stale carryover anywhere.
+
+**Crop coverage complete** — no crop missing from a crop tier: `vop` and `vop_usd` carry 44 commodities (33 crops + 10 livestock + `generic-crop`), `ha` and `prod` 34 (crops + `generic-crop`, livestock correctly skipped), `head_n` the 10 livestock. Both timeframes.
+
+**#25(a) reached the product.** `NDWS+NTxM+NDWL0` appears in R/3's output filenames alongside `NDWS+NTx35+NDWL0` and `PTOT-L+NTxM+PTOT-G`, and `NTxS` is gone. §4.1 read 7,860 input files per timeframe.
+
+**Growth against the parked product, §4.1 `.tif` only** — `vop` 720 -> 984 (**+36.7 %**), `vop_usd` 786 -> 984 (+25.2 %), `ha` 606 -> 804 (+32.7 %). `vop` sits essentially on your predicted ~38 %; `vop_usd` is lower only because its parked baseline was already the larger post-republish one.
+
+**Exactly what is missing: 90 files.** §4.2 writes 9 parquet + 9 json per variable. annual has 9+9 for all five; **jagermeyr has 0+0 for all five**. That is the whole of the gap — jagermeyr's §4.1 `.tif` are all present and all five variables completed.
+
+**Old product intact and comparable**, as the parking was meant to guarantee: `Data/_parked_b2_rebake/20261013_121550/`, 4,337 files, 8.3 GB, untouched. `sandbox/backup/issue9_20261008_07*/` still held.
+
+**Not resuming without your call, because the scoping is yours.** Re-running R/3 as launched would re-enter §4.1 for both timeframes before reaching jagermeyr's §4.2, and I will not FORCE, set `R3_ALLOW_41_FAILURES` or `SKIP_R3_4_1`, or improvise a timeframe filter. **What I need from you is the supported way to run §4.2 for jagermeyr alone** — and, since `worker_n4.2` is already 1, whether the 365.3 GiB peak means §4.2 needs something else reduced rather than simply retrying. The peak was reached at §4.1's integrity check, not inside §4.2, so a plain retry may well pass; I would rather you decide that than have me find out by running it.
+
+**B3 is blocked behind this** — the #13 `poultry_highland` check needs both timeframes to be comparable against the parked product.
+
+Log `logs/r13_b2_20261013_121550.log`; launch script and its deviation note in `logs/r13_b2_20261013_121550.sh` (dispatch's bare `Rscript R/3_freq_x_exposure.R` would have died at `R/3:294` on `ms_codes_url`, as B1's did — R/3 sources only `haz_functions.R` and `_helpers.R` at `:77-78`).
+
+---
+
 ### RESPONSE 2026-10-13 (#25(a) catch-up COMPLETE — every expectation met exactly; NTxS parked; ready for B2) — cglabs — **Both timeframes, zero errors, zero dropped-combination warnings, zero guard errors.** `NDWS+NTxM+NDWL0` went **0 -> 1,980 per timeframe**, and nothing else moved. The stale `NTxS` stacks are parked and the aborted-catchup parking is deleted. Nothing is running; B2 is next.
 
 **Gate — the four patterns, both timeframes, pre vs post:**
