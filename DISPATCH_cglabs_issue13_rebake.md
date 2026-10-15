@@ -2,6 +2,77 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-15 (B2b COMPLETE — jagermeyr §4.2 clean, 90/90, annual proven untouched) — cglabs — run finished `21:20:12 UTC`, **705.3 min** (11 h 45 m), `exit=0` from the fixed `rc=$?` capture. Every check below is measured, not inferred from the clean exit.
+
+**The 90 files are exactly 90.** 9 parquet + 9 json per variable across all five, no more and no less:
+
+| variable | dir | parquet | json | mtime before run start | <1 KB |
+|---|---|---|---|---|---|
+| `vop_intld15-2021` | `hazard_risk_vop` | 9 | 9 | 0 | 0 |
+| `vop_nominal-usd-2021` | `hazard_risk_vop_usd` | 9 | 9 | 0 | 0 |
+| `harv-area_ha` | `hazard_risk_ha` | 9 | 9 | 0 | 0 |
+| `head_n` | `hazard_risk_n` | 9 | 9 | 0 | 0 |
+| `prod_t` | `hazard_risk_prod` | 9 | 9 | 0 | 0 |
+| | | **45** | **45** | **0** | **0** |
+
+The "mtime before run start" column is the one that matters: **zero** `haz-freq-exp_*` files in any jagermeyr folder predate `09:34`, so none of the 90 is a survivor from the OOM-killed run being counted twice.
+
+**The four checks, as run on annual.**
+
+1. **`failed_*.txt` — absent.** No file matching `failed_*.txt` anywhere under `Data/` newer than the run start.
+2. **`skipped_*.txt` — absent.** Same sweep, nothing. With `overwrite=FALSE` and an empty target, nothing was eligible to skip.
+3. **Per-variable §4.2 elapsed — five non-trivial times**, none degenerate:
+
+```
+variable 1/5: vop_intld15-2021     — Complete (178.1 min)
+variable 2/5: vop_nominal-usd-2021 — Complete (185.9 min)
+variable 3/5: harv-area_ha         — Complete (156.7 min)
+variable 4/5: head_n               — Complete ( 31.7 min)
+variable 5/5: prod_t               — Complete (153.0 min)
+```
+
+`head_n` at 31.7 min is the short one, and it should be: 10 livestock categories against 44 crops, and its table is 15.6 M rows against vop's 93.7 M. The ratio of elapsed to rows is in line with the other four, so the short time is the workload, not a truncated pass.
+
+4. **mtimes against run start — all five variables inside the window**, each cluster landing in its own variable's interval. No output carries a stale timestamp.
+
+**Peak RSS: 137.0 GiB**, at `15:11:26`, during variable 2 (`vop_usd`). 36% of the 376 GiB box, from 1,418 samples at 30 s. For contrast the run that died peaked at **365.3 GiB** — `R3_CHECK_WORKERS=6` plus skipping §4.1 took roughly 230 GiB off the ceiling. There was never a moment in this run where OOM was in prospect.
+
+**`dmesg` in the window — clean.** The only `Out of memory: Killed process` on this box remains `[Wed Oct 14 16:19:50 2026] ... (R) ... anon-rss:66190288kB`, which is the earlier B2 jagermeyr kill. Nothing between `09:34` and `21:23`.
+
+**annual is untouched, measured against the pre-launch snapshot:**
+
+| | before | after | files touched since 09:34 |
+|---|---|---|---|
+| `hazard_risk_vop` | 1002 / 2026-10-13 23:37:24 | 1002 / 2026-10-13 23:37:24 | 0 |
+| `hazard_risk_vop_usd` | 1002 / 2026-10-14 02:42:26 | 1002 / 2026-10-14 02:42:26 | 0 |
+| `hazard_risk_ha` | 823 / 2026-10-14 05:15:40 | 823 / 2026-10-14 05:15:40 | 0 |
+| `hazard_risk_prod` | 823 / 2026-10-14 08:19:22 | 823 / 2026-10-14 08:19:22 | 0 |
+| `hazard_risk_n` | 199 / 2026-10-14 05:47:06 | 199 / 2026-10-14 05:47:06 | 0 |
+
+Identical counts, identical newest mtimes to the nanosecond, and a direct `-newermt` sweep returns **0** files in all five. `R3_TIMEFRAMES` did what it says.
+
+**One extra check I ran unprompted, because these parquet go to publish.** Read `..._ENSEMBLE_int_adm_severe.parquet` for `vop` and `head_n` in both timeframes and compared the key dimensions:
+
+| | rows | crops | hazard classes | scenarios | iso3 |
+|---|---|---|---|---|---|
+| annual `vop` | 93,727,800 | 44 | 9 | 5 | 55 |
+| jagermeyr `vop` | 93,727,800 | 44 | 9 | 5 | 55 |
+| annual `head_n` | 15,621,300 | 10 | 9 | 5 | 55 |
+| jagermeyr `head_n` | 15,621,300 | 10 | 9 | 5 | 55 |
+
+Set differences in both directions for crops and for hazards: **empty**. The two timeframes agree on structure exactly, which is what you want before five-tier publish — jagermeyr differs from annual in the values, not in the shape. (The `hazard` column at adm level carries the combination classes — `any`/`none`/`heat`/`wet`/`dry` and the four intersections — so `NTxM` vs `NTxS` is not visible at this level; that distinction lives in the `_int.tif` stacks, where it was already verified in the catch-up.)
+
+**One loose end, minor and reported rather than resolved.** R/3 printed `There were 15 warnings (use warnings() to see them)` at exit. R defers these and prints only the count, so **the text is not recoverable from the log** and I did not re-run to chase it. Two things bound it: the setup banner's own `There were 25 warnings` appears identically in both this log and the B2 log, so that 25 is unrelated and constant; and there is **no annual baseline for the 15**, because B2 was OOM-killed before its session-end summary could print. So I cannot say whether 15 is normal for a five-variable §4.2 pass or specific to this one. Nothing in the run's measurable output is inconsistent — counts, sizes, mtimes, row counts and dimension sets are all exact — but I would rather name the gap than let the clean exit cover it. If you want them captured, `options(warn = 1)` on the next R/3 run would surface them inline at the cost of a noisier log.
+
+**Where this leaves B2:** both timeframes now complete across §4.1 and §4.2. annual 1,203.2 min, jagermeyr §4.1 from the killed run plus §4.2's 705.3 min here. The `SKIP_R3_4_1` override stays scoped to this run and does not travel to B3.
+
+**Next — B3**, as the dispatch stands: R/2.2 re-run (CR-093 desert mask carries automatically), `Rscript R/validate_cr093_real.R`, then the #13 check itself — `poultry_highland` Extreme exposure must **drop** against the parked product, since 89 °C is a higher bar than 79. I will report before/after at adm0 for a few countries. **If it rises or is unchanged I stop there**, because that is the bug this bake exists to fix.
+
+Log `logs/r13_b2b_20261015_093411.log`; RSS samples `logs/r13_b2b_rss_20261015_093411.log`.
+
+---
+
+
 ### RESPONSE 2026-10-15 (B2b LAUNCHED — jagermeyr §4.2 only, correctly scoped) — cglabs — `f434359` pulled, both new controls behave as described, and the run is **confined to jagermeyr with §4.1 off**. Reporting the launch now rather than at the end, since `SKIP_R3_4_1` was forbidden until this block and I want the override on the record before the result is.
 
 **Precondition verified before relying on it, not assumed.** `SKIP_R3_4_1=1` trusts that jagermeyr's §4.1 tifs are already correct. They are: `.tif` counts match annual **exactly** across all five variables — **984 / 984 / 804 / 804 / 180** for `vop` / `vop_usd` / `ha` / `prod` / `n` — with **0 files under 1 KB** in any of them. That is the same equality that made the 90-file gap a clean §4.2-only gap.
