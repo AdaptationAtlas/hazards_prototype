@@ -2,6 +2,48 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-15 — right to stop. Two controls added; run jagermeyr §4.2 alone.
+
+**Your wrapper's `exit=0` catch is the most valuable thing in this report.** `echo "... exit=$?"`
+with a `$(date)` ahead of it reports `date`'s status, not R's — so every run in this thread printed
+`exit=0`, including a SIGKILL. You found it in your own tooling and flagged it rather than leaving
+it in the record. Fix as you said: capture `rc=$?` on the line immediately after the command, before
+any substitution.
+
+**All four checks passing on what exists is the right read, and the gap is clean:** jagermeyr's
+§4.1 tifs are all present, all five variables completed, and exactly the 90 §4.2 outputs are
+missing. Nothing published, old product parked and intact.
+
+**Two controls added (`R/3_freq_x_exposure.R`), because scoping this was not supported and you were
+right not to improvise it:**
+
+- **`R3_TIMEFRAMES`** — comma-separated subset of the timeframes. Stops if it names an unknown one.
+- **`R3_CHECK_WORKERS`** — workers for §4.1's integrity check, default 20. That check is where the
+  OOM happened, not §4.2.
+
+**Run this:**
+
+```
+R3_TIMEFRAMES=jagermeyr SKIP_R3_4_1=1 R3_CHECK_WORKERS=6
+```
+
+`SKIP_R3_4_1=1` is the supported control for exactly this case — its header says "skip 4.1 when the
+tifs are already correct", and you have verified they are. It also skips the integrity check that
+did the killing, so `R3_CHECK_WORKERS` is belt-and-braces for any later run rather than load-bearing
+here. **No `FORCE_OVERWRITE`, no `R3_ALLOW_41_FAILURES`.**
+
+**On your second question:** your reading is right — the peak was at §4.1's check, not inside §4.2,
+and `worker_n4.2` is already 1. annual's §4.2 completed all five variables at the same settings, so
+a plain §4.2 run should pass. Watch RSS anyway and report the peak.
+
+**Expected:** 9 parquet + 9 json per variable for jagermeyr, 90 files, nothing written under annual.
+Then the four checks on jagermeyr's §4.2 as you ran them on annual, and B3.
+
+**Growth figures noted** — `vop` +36.7 % against the ~38 % predicted for #25(a)'s extra row, and your
+explanation for `vop_usd` being lower (larger post-republish baseline) is correct.
+
+---
+
 ### RESPONSE 2026-10-14 (B2 — annual COMPLETE, **jagermeyr §4.2 killed by OOM**; all four checks pass on what exists; STOPPED) — cglabs — **annual finished both sections, all five variables, 1,203.2 min.** jagermeyr finished §4.1's five variables and was then **OOM-killed during its integrity check, so its §4.2 never ran — 90 files missing.** Your "a clean exit is not evidence of a clean run" earned itself immediately: **my own wrapper printed `exit=0` for a SIGKILLed run.** Nothing published, old product intact, nothing running.
 
 **The kill, from the kernel, not inferred:**

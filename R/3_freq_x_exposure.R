@@ -501,7 +501,10 @@ worker_n4.1 <- 16
 # — hazard='none' layer increased per-group TIF footprint enough that even
 # 2 parallel workers OOM. Sequential is the safe floor.
 worker_n4.2 <- 1
-worker_n4_check <- 20
+# Workers for §4.1's integrity check. This is where the #13 B2 jagermeyr OOM happened (2026-10-14):
+# one R process at 66.2 GiB, cgroup peak 365.3 GiB of 376, no swap, instant kill - and §4.2 never
+# ran. Env-overridable so it can be reduced without touching the file.
+worker_n4_check <- as.integer(Sys.getenv("R3_CHECK_WORKERS", "20"))
 multisession4 <- TRUE
 round4 <- 2
 version4 <- 1
@@ -532,6 +535,18 @@ check4.1 <- TRUE
 .log03(sprintf("entering timeframe loop over %d periods: %s",
                length(timeframe_choices),
                paste(timeframe_choices, collapse = ", ")))
+# R3_TIMEFRAMES: run a subset of the timeframes, comma-separated. The supported way to finish one
+# timeframe after a partial run, instead of re-entering §4.1 for a timeframe that is already
+# complete. Pair it with SKIP_R3_4_1=1 when that timeframe's §4.1 tifs are verified present.
+.tf_keep <- trimws(strsplit(Sys.getenv("R3_TIMEFRAMES", ""), ",", fixed = TRUE)[[1]])
+.tf_keep <- .tf_keep[nzchar(.tf_keep)]
+if (length(.tf_keep)) {
+  .unknown <- setdiff(.tf_keep, timeframe_choices)
+  if (length(.unknown)) stop("R3_TIMEFRAMES names unknown timeframe(s): ", paste(.unknown, collapse = ", "),
+                             ". Known: ", paste(timeframe_choices, collapse = ", "))
+  timeframe_choices <- timeframe_choices[timeframe_choices %in% .tf_keep]
+  .log03(sprintf("R3_TIMEFRAMES active - running only: %s", paste(timeframe_choices, collapse = ", ")))
+}
 for (tx in seq_along(timeframe_choices)) {
   timeframe <- timeframe_choices[tx]
   cat("---------------------------------------------------------------------------------------\n")
