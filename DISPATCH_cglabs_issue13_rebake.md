@@ -2,6 +2,80 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-15 (B4 — gate 2 PASS, **gate 1 FAIL**; STOPPED before stamping and before B5) — cglabs — the failure is real, reproducible and **not caused by this bake**. I have not touched anything; everything after the FAIL is read-only measurement.
+
+## Gate 1 — `usd_total_vs_reference.R --iso3 all` — FAIL
+
+```
+usd:   FAIL (median 0.993, 17 material pairs out of band, 0 invented-value pairs, n(none)==n(any) TRUE)
+intld: FAIL (median 0.992, 16 material pairs out of band, 0 invented-value pairs, n(none)==n(any) TRUE)
+GATE FAIL in 0.4 min
+```
+
+Your stated invariant — **material ratios near 1** — holds: medians **0.993** and **0.992**, and `n(none) == n(any)` is TRUE for all five `hazard_vars`. What fails is the per-pair `[0.5, 2]` bound, on 17 pairs concentrated in COM (8 crops at ~0.21-0.25), SLE (3), SYC (2, both exactly 0), DJI and GNB.
+
+**It is not timeframe-scoped.** I re-ran with `--timeframe annual`, confirmed from the log header that it read the annual parquet (mtime `2026-10-14 00:28`, against jagermeyr's `2026-10-15 13:24`), and got **the identical verdict** — 17 and 16, same medians. So B2b did not do this.
+
+### The bake did not cause it, and the product is not short
+
+`R/checks/usd_total_vs_reference.R:117` computes the total per `hazard_vars` combination and then keeps `.SD[1]` — **whichever combination happens to sit first**:
+
+```r
+ht <- h[, .(total = sum(value, na.rm = TRUE), n_haz = .N), by = .(iso3, crop, hazard_vars)][, .SD[1], by = .(iso3, crop)]
+```
+
+I replicated the gate's own filter (`scenario == "historic"`, `hazard %in% c("any","none")`, `!is.na(admin2_name)`) and computed every combination separately, in the live product and in the parked pre-bake one. usd, annual:
+
+| iso3 | crop | `NDWS+NTx35+NDWL0` | `NDWS+NTxM+NDWL0` | `PTOT-L+NTxM+PTOT-G` | gate picked | reference |
+|---|---|---|---|---|---|---|
+| SYC | coconut | **0** | **0** | 2,421,361 | 0 | 2,421,000 |
+| SYC | banana | **0** | **0** | 470,066 | 0 | 470,100 |
+| SLE | potato | **0** | **0** | 421,187 | 0 | 421,200 |
+| GNB | robusta-coffee | 244 | 244 | 161,281 | 244 | 161,300 |
+| SLE | tobacco | 32,072 | 32,072 | 135,561 | 32,072 | 135,600 |
+| SLE | banana | 504,419 | 504,419 | 3,274,343 | 504,419 | 3,274,000 |
+| COM | maize | 986,983 | 986,983 | 4,643,726 | 986,983 | 4,644,000 |
+| COM | cassava | 2,775,487 | 2,775,487 | 12,406,550 | 2,775,487 | 12,410,000 |
+| COM | banana | 3,385,925 | 3,385,925 | 14,791,861 | 3,385,925 | 14,790,000 |
+| DJI | bean | 5,744,604 | 5,744,604 | 20,922,424 | 5,744,604 | 20,920,000 |
+
+**Under `PTOT-L+NTxM+PTOT-G` all ten match the reference to better than 0.03%.** The exposure is there. The gate picks `NDWS+NTx35+NDWL0`, which is 0 or a fraction for these cells, and compares it against a whole-crop reference.
+
+**And the parked pre-#13 product gives byte-identical picked totals** — every one of the ten, same values, same picked combination `NDWS+NTx35+NDWL0`, with `PTOT-L+NTxS+PTOT-G` (the retired set) holding the same full totals the NTxM set now holds. So this pair of behaviours predates the bake entirely. The 1,980-stack catch-up did not change which combination is picked, and did not change what it reports.
+
+### The part that is a product observation, not a gate artefact
+
+The two NDWS-family combinations agree with **each other** exactly in every row above, and both disagree with the PTOT family by a consistent factor. If each combination independently reproduced the full crop exposure (`any + none = 1` per pixel), they would all be equal. They are not, and the countries where they are not are COM, SYC, SLE, DJI, GNB — small island and coastal states. That is the shape of the `NDWS`/`NDWL0` water-balance inputs having no coverage on those cells while `PTOT` does. If that is expected, the gate needs to know which combination is authoritative per crop rather than taking the first. If it is not expected, the water-balance coverage on small islands is the finding, and it is older than #13.
+
+**I am not fixing either one.** Two readings, opposite implications, and the choice is yours.
+
+### On the "2 pairs" in the record
+
+`archive/dispatches/DISPATCH_cglabs_r3_res25_rerun.md:399` recorded 1,226 material pairs, range `[0.4442, 1.008]`, 2 out of band, intld PASS. I called this a regression when I first saw it and that was too quick: the parked-product probe shows the same pairs behaving the same way before the bake, so the difference against that record is a reference-vintage and run-configuration difference, not something that happened in the last three days. Treat the 2-pair line as not comparable rather than as a baseline this run broke.
+
+## Gate 2 — `vop_cross_basis_gate.R --res 0.25` — **GATE PASS**
+
+1,396 pairs on both bases, 1,039 material. Median `nominal/intld` **1.22**, 5-95% `[0.418, 3.04]`, livestock median 1.25. Both internal checks clean: *no material pair outside `[1/10, 10]` has its nominal side off*, and *every per-crop median within `[1/5, 5]`*.
+
+**Two out-of-band pairs that are not the pre-registered four — `TCD:yams` (ratio 184.0) and `BEN:bean` (16.4).** By your rule *any other new residual is a finding*, so I am naming them. The gate's own classification is that both have **no national constant-I$ allocation** and are border spill on this grid (#18), reported and deliberately not gated — which is why it still prints PASS. They are a finding by your rule and benign by the gate's; you own that call.
+
+`ETH:tea` is out of band at 0.0785 and is a **named** residual in `cross_basis_expected_residuals.csv` (SPAM 2020 SSA holds 10.5 kt against FAOSTAT's 75.9 kt).
+
+Worth a prune decision: the gate reports **all four CAF/GIN coffee rows are now inside the band or immaterial**, along with `TGO:oilpalm` and `GNB:maize`, and asks `(prune?)`. The pre-registration that made them expected is no longer doing work.
+
+## Gate 3 — not run
+
+I did **not** run `scripts/stamp_ensemble_membership.R`. It writes, gate 1 failed, and the dispatch says stop at a gate. The membership itself is not in doubt — the B2b log already showed **18 GCMs** by name.
+
+## State
+
+Nothing published, nothing stamped, nothing modified. B5 untouched. All parked dirs held: `_parked_b2_rebake/20261013_121550/`, `_parked_r22_pre13_20261015_213020/`, `hazard_risk/<tf>/_parked_NTxS_20261013_102232/`, and the nine S3 `issue9_20261008_07*` keys.
+
+**What I need from you:** a decision on gate 1 — whether the `.SD[1]` combination pick is the defect and the gate should select per crop, or whether the NDWS-family coverage on small island and coastal states is the defect. I will not guess between them, and I will not pass a relaxing flag. Logs `logs/r13_b4_g1_20261015_220132.log`, `logs/r13_b4_g1_annual_20261015_220132.log`, `logs/r13_b4_g2_.log`, probe `logs/r13_b4_probe.out`.
+
+---
+
+
 ### RESPONSE 2026-10-15 (B3 — **the #13 check PASSES**; R/2.2 re-run and CR-093 gate both clean) — cglabs — all three B3 steps done. The gate #13 exists to satisfy is met, and met with a control rather than on its own say-so.
 
 ## 1. The #13 check — PASS, both timeframes
