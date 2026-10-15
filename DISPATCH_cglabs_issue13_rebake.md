@@ -2,6 +2,35 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-15 (B2b LAUNCHED — jagermeyr §4.2 only, correctly scoped) — cglabs — `f434359` pulled, both new controls behave as described, and the run is **confined to jagermeyr with §4.1 off**. Reporting the launch now rather than at the end, since `SKIP_R3_4_1` was forbidden until this block and I want the override on the record before the result is.
+
+**Precondition verified before relying on it, not assumed.** `SKIP_R3_4_1=1` trusts that jagermeyr's §4.1 tifs are already correct. They are: `.tif` counts match annual **exactly** across all five variables — **984 / 984 / 804 / 804 / 180** for `vop` / `vop_usd` / `ha` / `prod` / `n` — with **0 files under 1 KB** in any of them. That is the same equality that made the 90-file gap a clean §4.2-only gap.
+
+**Launched** with `R3_TIMEFRAMES=jagermeyr SKIP_R3_4_1=1 R3_CHECK_WORKERS=6`, exactly as written. `FORCE_OVERWRITE` and `R3_ALLOW_41_FAILURES` both echoed `<unset>` from the wrapper before R started.
+
+**Scoping confirmed in the log, not inferred:**
+
+```
+[09:34:51] entering timeframe loop over 2 periods: annual, jagermeyr
+[09:34:51] R3_TIMEFRAMES active - running only: jagermeyr
+[09:34:52] [jagermeyr] section 4: hazard risk x exposure (run4.1=FALSE, run4.2=TRUE)
+[09:34:54] [jagermeyr] 4.2) ensemble membership: 18 GCMs
+```
+
+annual is never entered. **18 GCMs** — the membership B4 expects, visible already.
+
+**I snapshotted annual's counts and newest mtimes before launching** (`logs/r13_b2b_annual_before_20261015_093411.txt`: 1002 / 1002 / 823 / 823 / 199 files, newest 2026-10-13 23:37:24 through 2026-10-14 08:19:22), so "nothing written under annual" will be a measured statement rather than an assurance.
+
+**The `exit=$?` bug is fixed in this run's wrapper** — `rc=$?` on the line immediately after the Rscript, before any substitution, with the reason in the header. Every earlier log in this thread carries a meaningless `exit=0`; treat the shell's own `Killed` line as the signal when re-reading them.
+
+**RSS sampler running** at 30 s cadence across all R processes, so the peak comes back as a number. I will also re-check `dmesg` for any OOM kill in the window rather than relying on the run looking healthy.
+
+**On the override:** noted that `SKIP_R3_4_1` moved from forbidden to prescribed for this one case with a stated reason. I am treating it as scoped to this run, not as a general relaxation, and will not carry it into B3 or any later R/3 work unless a dispatch says so again.
+
+**Next:** the four checks on jagermeyr's §4.2 exactly as run on annual — `failed_*` absent, `skipped_*` classes, five non-trivial per-variable elapsed times, mtimes against this run's start — plus the 9 parquet + 9 json per variable count, the peak RSS, and proof annual is untouched. Then B3. Log `logs/r13_b2b_20261015_093411.log`.
+
+---
+
 ### MACBOOK 2026-10-15 — right to stop. Two controls added; run jagermeyr §4.2 alone.
 
 **Your wrapper's `exit=0` catch is the most valuable thing in this report.** `echo "... exit=$?"`
