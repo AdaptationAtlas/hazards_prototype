@@ -2,6 +2,100 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-15 (B3 — **the #13 check PASSES**; R/2.2 re-run and CR-093 gate both clean) — cglabs — all three B3 steps done. The gate #13 exists to satisfy is met, and met with a control rather than on its own say-so.
+
+## 1. The #13 check — PASS, both timeframes
+
+Reference is `Data/_parked_b2_rebake/20261013_121550/` — the product parked immediately before B2, so it is the matched pre-bake object rather than something older. `poultry-highland`, **Extreme**, `hazard == "heat"` with a THI `hazard_vars`, every `iso3 x scenario x timeframe` cell:
+
+| timeframe | dropped | rose | equal | of which `old = 0` |
+|---|---|---|---|---|
+| annual | **376** | **0** | 559 | 559 |
+| jagermeyr | **376** | **0** | 559 | 559 |
+
+**Nothing rose, anywhere, in either timeframe.** Every one of the 559 unchanged cells had `old = 0`, so there is no cell that could have fallen and didn't.
+
+adm0, `ssp245` / `2041-2060`, annual — before → after, intld15-2021:
+
+| iso3 | old | new | Δ |
+|---|---|---|---|
+| ZAF | 9,744,088,845 | 18,573,045 | **−99.81%** |
+| KEN | 472,228,728 | 11,574,276 | **−97.55%** |
+| ETH | 392,788,593 | 7,562,613 | **−98.07%** |
+| MAR | 338,556,822 | 60,627 | **−99.98%** |
+| UGA | 164,814,510 | 1,654,278 | **−99.00%** |
+| TZA | 126,230,844 | 475,191 | **−99.62%** |
+| NGA | 8,768,502 | 31,032 | **−99.65%** |
+| SDN | 0 | 0 | — |
+
+Continent totals fall between **−73.3%** and **−99.98%** across all 17 scenario x timeframe slices in both timeframes, the smallest drop being `ssp585 2081-2100` (the hottest slice, where real Extreme days survive a 89 bar) and the largest the historic baseline.
+
+**The magnitude is enormous, so I did not take it on trust.** The control is the three livestock whose thresholds were *not* touched:
+
+| crop | thresholds | heat&THI total, old vs new |
+|---|---|---|
+| `poultry-tropical` | 74 / 79 / 92 | **bit-identical** |
+| `cattle-highland` | unchanged | **bit-identical** |
+| `cattle-tropical` | unchanged | **bit-identical** |
+| `goats-highland` | unchanged | **bit-identical** |
+
+Only the one crop whose threshold moved, moved. That is what makes the size of the drop evidence rather than alarm: the old 79 bar was admitting essentially the entire highland-poultry VoP as Extreme, which is the defect #13 was raised for. **Extreme `poultry_highland` is now near-zero historically** — a visible product change, and one the CDH record should state rather than let be discovered.
+
+**Two notes on the dispatch's own wording.** The thresholds are **°F** in both `metadata/haz_classes.csv` and `metadata/published_thresholds.csv` — "89 °C" in the B3 text is a slip in the prose, not in the data. And the rebaked product carries **44 crops against the parked 43**: `small-millet` is new, nothing was lost.
+
+## 2. R/2.2 — complete, `exit=0`
+
+738.5 s, peak RSS **27.3 GiB**. `SEC1=SEC2=SEC3=SEC4=TRUE`, all **10 parquet rewritten**, 55 iso3 in every one.
+
+Its 18 `SEC1: WARN no future match for historic GCM` lines are **benign aliases, not losses**. Dedup leaves 36 historic entries — 18 bare GCM names plus 18 `historic_`-prefixed duplicates — and the futures are named by the bare GCM, so the prefixed half can never match. The line that settles it is `built change/diff stacks — 288 layers from 18/36 historic file(s)`, and 288 = 18 GCMs x 4 scenarios x 4 timeframes. The parked product carries the same 18 models. I would still rather these warned once with a count than 18 times by name.
+
+## 3. CR-093 validator — **GATE PASSED, 10 PASS / 0 FAIL**
+
+Every file iso3-bearing, WASM-prunable on non-null iso3 row-group stats, iso3-first sorted, both ensembles carrying the spread. 8.3 s.
+
+## 4. What changed in R/2.2's output, measured
+
+I snapshotted all 10 pre-run outputs byte-identical (10/10 md5) to `Data/_parked_r22_pre13_20261015_213020/` before launching, because R/2.2 overwrites unconditionally and has no FORCE flag.
+
+**Every `*_by_model` file shrank; no `*_ensemble` file did.** The shrink is *exactly* the duplicate count:
+
+| file | old | new | Δ | dups old | dups new |
+|---|---|---|---|---|---|
+| `ptot_change_by_model` | 2,933,568 | 2,931,264 | −2,304 | 2,304 | **0** |
+| `ptot_diff_by_model` | 1,466,784 | 1,465,632 | −1,152 | — | — |
+| `thi_perc_area_by_model` | 3,116,916 | 3,114,468 | −2,448 | 2,448 | **0** |
+| `ntx_perc_area_by_model` | 6,233,832 | 6,228,936 | −4,896 | — | — |
+| `haz_freq` | 12,467,664 | 12,457,872 | −9,792 | 9,792 | **0** |
+
+Distinct key sets are **identical on both sides** — zero keys gained, zero lost. The old files carried duplicate rows and the new ones carry none. This is de-duplication, matching the SEC1 dedup line, not data loss.
+
+**Values on shared keys** split three ways, and the split is informative:
+
+| file | differing rows | where |
+|---|---|---|
+| `ntx_perc_area_by_model` | **0 of 6,205,680** | nowhere — wholly identical |
+| `thi_perc_area_by_model` | 3,975 of 3,114,468 (0.128%) | **adm0 only** — 11.81% of adm0 rows, **0.00000% of adm1, 0.00000% of adm2** |
+| `haz_freq` | 332,220 of 12,457,872 (2.67%) | all three levels — adm0 4.67%, adm1 2.68%, adm2 2.64% |
+
+The `thi_perc` signature is the one I want your eye on. It is **exclusively adm0** — not one admin1 or admin2 row differs by any amount — and it is confined to **19 of 55 countries**, led by KEN (598 rows), ERI (584), SDN (467), EGY (459), BDI (390), with SLE and SEN also present. Median absolute difference 0.3 percentage points; 1,155 rows differ by more than 1 point, 585 by more than 10. The worst are Sudan at adm0, e.g. `GFDL-ESM4 / ssp126 / 2061-2080 / extreme` going **100.0 → 11.5**. Country-level aggregation changing while both sub-national levels stay bit-identical is the shape of a zonal-basis or border-cell change, and the country list is heavy with the coastal and border cases #18 named.
+
+**I am reporting this, not gating on it, and here is why.** The parked R/2.2 product is dated **2026-06-24**. It predates roughly four months of pipeline fixes, so an old-vs-new diff against it spans all of them and is not a statement about #13. By this project's own rule a gate's reference has to be independent of what it judges, and this one is not — which is exactly why the #13 check in section 1 runs against the 2026-10-13 parking instead. The dispatch sets no gate on R/2.2 values, and I have not invented one. If the adm0-only `thi_perc` shift is unexpected to you, it is worth a look before publish; if it is the #18 border work landing, it is already explained.
+
+`ntx_perc` being *wholly* unchanged is worth one line of its own: SEC3 reads the NTx mean rasters, not the interaction stacks, so the NTxS retirement and the NTxM catch-up correctly leave it alone.
+
+## 5. Housekeeping
+
+- The `issue9_20261008_07*` pre-publish backups are **S3 keys, not node files** — all **nine** confirmed present under `s3://digital-atlas/sandbox/backup/`. The node's local `sandbox/` is empty and always was scratch. Nothing lost; I checked rather than assumed when the empty directory turned up.
+- **`hazard_risk_n` was never parked** — B2's parking covered `vop`, `vop_usd` and `ha` only — so there is no pre-#13 `head_n` anywhere on the node or in `sandbox/backup`. Not needed for the #13 check, which runs on `vop`, but worth knowing before B5 in case a `head_n` before/after is ever wanted.
+- Held and untouched: `Data/_parked_b2_rebake/20261013_121550/`, `Data/_parked_r22_pre13_20261015_213020/`, `Data/hazard_risk/<tf>/_parked_NTxS_20261013_102232/`, and the nine S3 backup keys.
+
+**Next — B4**, as the dispatch stands: `usd_total_vs_reference.R --iso3 all` on the admin2 basis with the admin0-vs-admin2 gap reported as a number, `vop_cross_basis_gate.R --res 0.25` with the four pre-registered CAF/GIN coffee rows expected and **any other new residual treated as a finding**, then `stamp_ensemble_membership.R` — 18 members, which the B2b log already showed. I will stop and report before B5 regardless of outcome.
+
+Logs: `logs/r13_b3_r22_20261015_213020.log`, `logs/r13_b3_cr093_20261015_213020.log`.
+
+---
+
+
 ### RESPONSE 2026-10-15 (B2b COMPLETE — jagermeyr §4.2 clean, 90/90, annual proven untouched) — cglabs — run finished `21:20:12 UTC`, **705.3 min** (11 h 45 m), `exit=0` from the fixed `rc=$?` capture. Every check below is measured, not inferred from the clean exit.
 
 **The 90 files are exactly 90.** 9 parquet + 9 json per variable across all five, no more and no less:
