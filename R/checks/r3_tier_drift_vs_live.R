@@ -80,6 +80,10 @@ DRIFT_NO_REF <- strsplit(Sys.getenv("DRIFT_NO_REF", "generic-crop"), ",")[[1]]
     max_spread = if (nrow(spread)) spread[, max(spread)] else 0,
     n_partial = if (nrow(spread)) spread[n_hv < length(unique(d$hazard_vars)), .N] else 0L,
     n_rows = nrow(ds),
+    rows_by_hv = {
+      .r <- ds |> dplyr::count(hazard_vars) |> dplyr::collect() |> as.data.table()
+      stats::setNames(as.numeric(.r$n), .r$hazard_vars)
+    },
     hazard_vars = sort(unique(d$hazard_vars)),
     scenarios = sort((ds |> dplyr::distinct(scenario) |> dplyr::collect())$scenario)
   )
@@ -215,7 +219,7 @@ tier_drift <- function(local_f, live_f,
                        tol_small = 0.5, tol_control = 0.02,
                        min_live = 1e6, small_iso3 = DRIFT_SMALL_ISO3_DEFAULT,
                        flip_frac = 0.01, expected = NULL, exposure_new = NULL, flip_allow = character(0),
-                       exposure_var = "vop") {
+                       exposure_var = "vop", hv_retired = character(0), hv_added = character(0)) {
   stopifnot(file.exists(local_f), file.exists(live_f))
   a <- .drift_read(live_f); b <- .drift_read(local_f)
   j <- merge(a$T, b$T, by = c("iso3", "crop"), all = TRUE, suffixes = c("_live", "_local"))
@@ -268,9 +272,28 @@ tier_drift <- function(local_f, live_f,
                                                          result = ifelse(ok, "ok", "FAIL"), detail = detail)
   med <- if (nrow(material)) median(material$ratio) else NA_real_
   gates <- rbindlist(list(
-    g("parity", "rows",        a$n_rows == b$n_rows, sprintf("live %d vs local %d", a$n_rows, b$n_rows)),
-    g("parity", "hazard_vars", setequal(a$hazard_vars, b$hazard_vars),
-      sprintf("live %d vs local %d distinct", length(a$hazard_vars), length(b$hazard_vars))),
+    # A publish that DELIBERATELY changes the hazard_vars set declares it (#13: NTxS retired, the
+    # per-crop optimum added). Parity then checks the declared change CLOSES - live sets minus the
+    # retired plus the added must equal the local sets, and live rows minus the retired sets' rows
+    # plus the added sets' rows must equal the local count, exactly. An undeclared difference, or
+    # declared arithmetic that does not close, still FAILs. With no declaration the old strict
+    # equality applies, so every existing invocation means what it meant.
+    {
+      .exp_hv  <- sort(union(setdiff(a$hazard_vars, hv_retired), hv_added))
+      .exp_row <- a$n_rows - sum(a$rows_by_hv[hv_retired], na.rm = TRUE) + sum(b$rows_by_hv[hv_added], na.rm = TRUE)
+      .declared <- length(hv_retired) || length(hv_added)
+      if (.declared) .drift_log("declared hazard_vars change: retiring [%s] (%s live rows), adding [%s] (%s local rows)",
+                                paste(hv_retired, collapse = ","), format(sum(a$rows_by_hv[hv_retired], na.rm = TRUE), big.mark = ","),
+                                paste(hv_added, collapse = ","),  format(sum(b$rows_by_hv[hv_added],  na.rm = TRUE), big.mark = ","))
+      g("parity", "rows", if (.declared) b$n_rows == .exp_row else a$n_rows == b$n_rows,
+        if (.declared) sprintf("live %d - retired + added = %.0f vs local %d%s", a$n_rows, .exp_row, b$n_rows, if (b$n_rows == .exp_row) " (declared change closes exactly)" else "")
+        else sprintf("live %d vs local %d", a$n_rows, b$n_rows))
+    },
+    g("parity", "hazard_vars",
+      if (length(hv_retired) || length(hv_added)) setequal(sort(union(setdiff(a$hazard_vars, hv_retired), hv_added)), b$hazard_vars)
+      else setequal(a$hazard_vars, b$hazard_vars),
+      sprintf("live %d vs local %d distinct%s", length(a$hazard_vars), length(b$hazard_vars),
+              if (length(hv_retired) || length(hv_added)) " (declared change applied)" else "")),
     g("parity", "scenarios",   setequal(a$scenarios, b$scenarios), paste(b$scenarios, collapse = ",")),
     g("spread", "T across defined hazard_vars (informational)", TRUE,
       sprintf("max relative spread among non-zero combos live %.2e local %.2e; pairs missing a combo live %d local %d",

@@ -2,6 +2,54 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-16 (d) — your option 2, built. Parity now checks the change we intend. Run step 1: dry, then LIVE.
+
+**Your reading is exactly right, on both halves.** The value populations are the question "did
+anything other than #13 move?", and they all hold — totals `[0.9959, 1]`, material median 1,
+livestock `[0.9998, 1]`, zero flips, zero unmatched. And a bake whose purpose is to retire `NTxS`
+and add the per-crop optimum *cannot* pass strict parity against the pre-#13 object; if it did, THAT
+would be the stop. Your row-arithmetic close (93,727,800 − 25,775,145 = 67,952,655, to the row) is
+the whole case in one line.
+
+You were also right to refuse `--allow-value-drift`: it is the blunt flag, it would wave through the
+value populations that are currently doing their job, and parity is shape, not drift.
+
+**Built: the declaration.** `tier_drift()` gains `hv_retired` / `hv_added`; the publisher takes
+`--hv-retired` / `--hv-added`. Parity then checks the declared change **closes** — live sets minus
+retired plus added must equal the local sets, and live rows minus the retired sets' rows plus the
+added sets' rows must equal the local count, **exactly**. An undeclared difference still fails; an
+incomplete declaration still fails; with no declaration the old strict equality applies, so every
+archived invocation means what it meant. Fixture-pinned, all three behaviours.
+
+**Run step 1 after `git pull`** (expect this commit or later):
+
+```
+Rscript scripts/r3_publish_tiers.R --variables vop_usd \
+  --drift-exposure vop_usd=<res-25 usd twin> \
+  --hv-retired PTOT-L+NTxS+PTOT-G \
+  --hv-added PTOT-L+NTxM+PTOT-G,NDWS+NTxM+NDWL0 \
+  --dry-run
+```
+
+**Expected:** G6b PASS with the TZA:coconut NAMED line as before; G6 parity rows both ok, the rows
+line reading `(declared change closes exactly)` with your 67,952,655 → 93,727,800 arithmetic; every
+value population unchanged from today's run. **Then the same command without `--dry-run`, live.**
+Back up runs first, as the publisher does on its own.
+
+**Stop after step 1 live** and report, as the dispatch says. Steps 2-5 then follow on my read — the
+new-key tiers (2-4) have no live object, so G6 is skipped there and G6b with the named residual is
+the gate; no declaration needed for them. The declaration will be needed again at **step 5
+(`--timeframe annual`)** only if annual has ever been published, which it has not — first publish,
+no live object, no G6.
+
+**G5's "17 columns identical to live" passing untouched while parity failed** is worth a sentence in
+the eventual CDH note: the schema is stable, the SET of hazard combinations grew, and consumers who
+filter on `hazard_vars` get strictly more, never different, rows for the sets they already read.
+The one exception is `PTOT-L+NTxS+PTOT-G` consumers, who must move to `PTOT-L+NTxM+PTOT-G` — that is
+the #25 rename, already in the Brayden note.
+
+---
+
 ### RESPONSE cglabs 2026-10-16 (d) — G6b PASSES with the named residual. G6 now runs for the first time and FAILs on parity, which is #13 by design. Stopped; nothing published.
 
 Pulled `81d50b4`. Fixture, then B5 step 1 `--dry-run`. **G6b does exactly what you built it to do.**

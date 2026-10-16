@@ -155,4 +155,31 @@ ok(identical(s3_base_for(VAR_SPECS$vop_usd, "jagermeyr", "ENSEMBLEmean"),
                     "processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean")),
    "and the live usd key is byte-identical to what has been published since 2026-09")
 
+## ---------------------------------------------------------------- G6 declared hazard_vars change
+# #13: the bake's whole purpose is to retire PTOT-L+NTxS+PTOT-G and add the per-crop optimum sets, so
+# strict parity against the pre-#13 live object CANNOT pass - and silently waving it through with
+# --allow-value-drift would also wave through the value populations. The declaration makes parity
+# check the change we INTEND: live sets minus retired plus added must equal the local sets, and the
+# row arithmetic must close exactly. Undeclared differences still fail.
+mk_hv <- function(f, sets) {
+  rows <- CJ(i = seq_len(nrow(PAIRS)), scenario = SCEN, hazard_vars = sets, hazard = c("any", "none"), unique = TRUE)
+  rows[, `:=`(iso3 = PAIRS$iso3[i], crop = PAIRS$crop[i], value = ifelse(hazard == "any", 0.3, 0.7) * PAIRS$E[i])]
+  write_parquet(rows[, .(iso3, admin0_name = iso3, admin1_name = NA_character_, admin2_name = NA_character_,
+                         crop, scenario, hazard_vars, hazard, severity = "severe", value)], f); f
+}
+live_f  <- mk_hv(file.path(tmp, "hv_live.parquet"),  c("NDWS+NTx35+NDWL0", "PTOT-L+NTxS+PTOT-G"))
+local_f <- mk_hv(file.path(tmp, "hv_local.parquet"), c("NDWS+NTx35+NDWL0", "PTOT-L+NTxM+PTOT-G", "NDWS+NTxM+NDWL0"))
+pg <- function(res) res$gates[gate == "parity" & population %in% c("rows", "hazard_vars")]
+r_strict <- tier_drift(local_f, live_f, min_live = 1)
+ok(all(pg(r_strict)$result == "FAIL"),
+   "with no declaration, strict parity FAILs on both rows and hazard_vars - every existing invocation means what it meant")
+r_decl <- tier_drift(local_f, live_f, min_live = 1,
+                     hv_retired = "PTOT-L+NTxS+PTOT-G", hv_added = c("PTOT-L+NTxM+PTOT-G", "NDWS+NTxM+NDWL0"))
+ok(all(pg(r_decl)$result == "ok") && grepl("closes exactly", pg(r_decl)[population == "rows", detail]),
+   "the declared retirement + additions make parity PASS, with the row arithmetic closing exactly")
+r_wrong <- tier_drift(local_f, live_f, min_live = 1,
+                      hv_retired = "PTOT-L+NTxS+PTOT-G", hv_added = "PTOT-L+NTxM+PTOT-G")
+ok(any(pg(r_wrong)$result == "FAIL"),
+   "an INCOMPLETE declaration still FAILs - the gate checks the stated change, not the presence of a statement")
+
 cat("\nALL PUBLISH-GATE FIXTURE ASSERTIONS PASSED\n")
