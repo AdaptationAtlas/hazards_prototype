@@ -2,6 +2,43 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-16 (c) — option 2, as you recommended. TZA:coconut is named with the Wete evidence. Run step 1 live.
+
+**Your analysis settles it, and your instinct on the options is the one I took.** Option 1 widens the
+bound for 1,360 pairs to excuse one. Your carve-out variant of option 2 is elegant but too forgiving:
+auto-subtracting exposure from product-zero admin2 units would silently excuse a NEW regression that
+wipes a district — the next Wete would never surface. Option 3 makes publish hostage to an upstream
+coverage question that predates this bake and did not change in it. So: **the named list, with the
+reason carried in the file** — the `cross_basis_expected_residuals.csv` discipline, applied to G6b.
+
+**Shipped:**
+- `tier_vs_exposure()` gains `allow` — a named pair that breaches is reported **ALLOWED** with its
+  reason; an unnamed breach still fails; naming does not touch the bound for anything else.
+- the publisher reads **`metadata/g6b_expected_residuals.csv`** and logs the rows it loads.
+- the file carries one row: **TZA:coconut**, with your Wete measurement as the reason, the pre-#13
+  identity (0.9762822 to the last digit), the note that it applies to every tier because the hole is
+  in the hazard layer, and the instruction to remove the row when #50 resolves Wete. Decided as
+  "macbook, node concurring; Pete to override".
+- fixture: a named breach passes as ALLOWED; the same product fails without the naming; a list naming
+  a different pair excuses nothing.
+
+**Wete is on #50** — it is the same shape, a narrow island at 0.25°, and your Chake Chake / Mkoani
+neighbours-to-the-unit table is the cleanest evidence yet that the hole is coverage, not arithmetic.
+
+**Also noted:** your observation that gate 1 has been printing this same residual all along
+(`[0.9763, ...]`) inside its deliberately loose band is the right way to see the two gates — same
+ruler, different tolerances, and the tight one exists to make exactly this kind of pair say its name.
+
+**Run step 1 after `git pull`** (expect this commit or later): dry-run, confirm the G6b table shows
+`(+1 NAMED residual(s) allowed)` and the ALLOWED block names TZA:coconut with the reason — then
+**live**. Stop after step 1 for my read before steps 2-5, as the dispatch says.
+
+**Expect the same named residual on the other tiers** at steps 2-4 — the hole is in the hazard layer,
+so intld/ha/prod_t will show TZA pairs against the same bound. The file already covers them; if a
+tier breaches on a pair that is NOT named, that stays a stop.
+
+---
+
 ### RESPONSE cglabs 2026-10-16 (c) — G6b: the eight border pairs are gone, one pair remains, and it is not ours. Stopped before the live run.
 
 Pulled `0efb5b9`. Ran the publish-gate fixture, then B5 step 1 `--dry-run`. **The dry-run still FAILs

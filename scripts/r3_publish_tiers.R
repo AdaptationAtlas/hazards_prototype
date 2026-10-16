@@ -382,7 +382,12 @@ if (DO_TIERS) for (vkey in VARIABLES) {
     .expo <- DRIFT_EXPOSURE_BY_VAR[[vkey]] %||% ""
     if (nzchar(.expo)) {
       t6b <- Sys.time()
-      g6b <- tier_vs_exposure(local_f, .expo, spec$twin_expo, tol_pair = G6B_TOL)
+      # Named, reasoned residuals (the cross_basis_expected_residuals.csv discipline): a listed pair
+      # that breaches is reported as ALLOWED with its reason; an unlisted breach still fails.
+      .g6b_allow_f <- file.path(if (exists("project_dir")) project_dir else ".", "metadata", "g6b_expected_residuals.csv")
+      .g6b_allow <- if (file.exists(.g6b_allow_f)) data.table::fread(.g6b_allow_f) else NULL
+      if (!is.null(.g6b_allow) && nrow(.g6b_allow)) .log("  G6b named residuals loaded: %s", paste(.g6b_allow[, paste0(iso3, ":", crop)], collapse = ", "))
+      g6b <- tier_vs_exposure(local_f, .expo, spec$twin_expo, tol_pair = G6B_TOL, allow = .g6b_allow)
       print_tier_vs_exposure(g6b, label = sprintf("%s/%s", vkey, tier), log = function(fmt, ...) .log(paste0("  ", fmt), ...))
       .log("  G6b %s in %s", if (g6b$pass) "ok" else if (ALLOW_G6B) "WARN (allowed)" else "FAIL", .elapsed(t6b))
       if (!g6b$pass && !ALLOW_G6B) { .log("  ABORT %s/%s: the product does not reproduce the exposure it was multiplied by (--allow-exposure-mismatch only once the cause is understood)", vkey, tier); next }

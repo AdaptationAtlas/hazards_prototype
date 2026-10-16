@@ -123,9 +123,18 @@ DRIFT_NO_REF <- strsplit(Sys.getenv("DRIFT_NO_REF", "generic-crop"), ",")[[1]]
 # ratio swings wildly - reported, and only an invented value is caught), and `unmatched` (in one
 # table and not the other - always reported, and a product pair with no exposure row at all is a
 # FAIL, since there was nothing to multiply).
+# allow: optional data.table (iso3, crop, reason) of NAMED, REASONED residuals - the G6b analogue of
+# metadata/cross_basis_expected_residuals.csv, read by the publisher from
+# metadata/g6b_expected_residuals.csv. A named pair that breaches tol_pair is reported as ALLOWED
+# with its reason instead of failing the gate; an UNNAMED breach still fails. Chosen over widening
+# tol_pair (which blunts the bound for every pair to excuse one) and over auto-subtracting exposure
+# from product-zero admin2 units (which would silently excuse a NEW regression that wipes a
+# district). First entry: TZA coconut, where Wete district on Pemba Island carries exposure and gets
+# zero product for all 44 crops - a hazard-coverage hole at 0.25 deg (#50 shape), identical to the
+# dollar in the pre-#13 product.
 tier_vs_exposure <- function(local_f, exposure_f, exposure_var,
                              tol_pair = 0.02, min_exposure = 1e3, max_invented = 1e6,
-                             no_ref = DRIFT_NO_REF) {
+                             no_ref = DRIFT_NO_REF, allow = NULL) {
   stopifnot(file.exists(local_f))
   b <- .drift_read(local_f)
   e <- .drift_read_exposure(exposure_f, exposure_var)
@@ -136,11 +145,19 @@ tier_vs_exposure <- function(local_f, exposure_f, exposure_var,
   unmatched_no_prod <- j[!noref & (is.na(T)) & !is.na(E) & E > min_exposure]
   mat <- j[!noref & !is.na(T) & !is.na(E) & E > min_exposure]
   imm <- j[!noref & !is.na(T) & !is.na(E) & E <= min_exposure]
+  allowed <- mat[0]
+  if (!is.null(allow) && nrow(allow)) {
+    stopifnot(all(c("iso3", "crop", "reason") %in% names(allow)))
+    .brk <- mat[abs(ratio - 1) > tol_pair]
+    allowed <- merge(.brk, allow[, .(iso3, crop, reason)], by = c("iso3", "crop"))
+    if (nrow(allowed)) mat <- mat[!allowed, on = c("iso3", "crop")]
+  }
   worst <- if (nrow(mat)) mat[which.max(abs(ratio - 1))] else mat
   gates <- data.table::data.table(
     gate = c("material pairs within tol", "no product pair invents value without exposure",
              "no material exposure pair missing from the product", "product has the full scenario set"),
-    value = c(if (nrow(mat)) sprintf("max |ratio-1| = %.4f over %d pairs", max(abs(mat$ratio - 1)), nrow(mat)) else "no material pairs",
+    value = c(paste0(if (nrow(mat)) sprintf("max |ratio-1| = %.4f over %d pairs", max(abs(mat$ratio - 1)), nrow(mat)) else "no material pairs",
+                     if (nrow(allowed)) sprintf(" (+%d NAMED residual(s) allowed)", nrow(allowed)) else ""),
               sprintf("%d pair(s)", nrow(unmatched_no_expo)),
               sprintf("%d pair(s)", nrow(unmatched_no_prod)),
               paste(b$scenarios, collapse = ",")),
@@ -150,7 +167,7 @@ tier_vs_exposure <- function(local_f, exposure_f, exposure_var,
              setequal(b$scenarios, c("historic", "ssp126", "ssp245", "ssp370", "ssp585"))))
   list(pass = all(gates$pass), gates = gates, material = mat[order(-abs(ratio - 1))],
        immaterial = imm, invented = unmatched_no_expo, missing_product = unmatched_no_prod,
-       noref = j[noref == TRUE], worst = worst,
+       noref = j[noref == TRUE], worst = worst, allowed = allowed,
        basis = sprintf("%s, exposure == '%s'", basename(exposure_f), exposure_var),
        params = list(tol_pair = tol_pair, min_exposure = min_exposure, max_invented = max_invented))
 }
@@ -162,6 +179,7 @@ print_tier_vs_exposure <- function(res, label = "", n_worst = 12, log = .drift_l
   if (nrow(res$material))        { cat("\n  material pairs, worst", n_worst, "of", nrow(res$material), "(ratio = product / exposure, expect 1):\n"); print(head(res$material[, ..cols], n_worst), nrows = n_worst) }
   if (nrow(res$invented))        { cat("\n  PRODUCT VALUE WITH NO EXPOSURE ROW:\n"); print(res$invented[, ..cols], nrows = 50) }
   if (nrow(res$missing_product)) { cat("\n  EXPOSURE PRESENT, NO PRODUCT ROW:\n"); print(res$missing_product[, ..cols], nrows = 50) }
+  if (!is.null(res$allowed) && nrow(res$allowed)) { cat("\n  NAMED residuals, breaching but allowed with a reason (metadata/g6b_expected_residuals.csv):\n"); print(res$allowed[, .(iso3, crop, E, T, ratio, reason = substr(reason, 1, 90))], nrows = 20) }
   if (nrow(res$noref))           { cat("\n  no-reference crops (reported, not gated):\n"); print(res$noref[, ..cols], nrows = 20) }
   cat(sprintf("\n  immaterial pairs (exposure <= %s): %d, reported only\n", format(res$params$min_exposure, big.mark = ","), nrow(res$immaterial)))
   invisible(res$pass)

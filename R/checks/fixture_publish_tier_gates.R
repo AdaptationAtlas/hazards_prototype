@@ -95,6 +95,26 @@ gi <- tier_vs_exposure(inv, expo_f, "prod")
 ok(!gi$pass && nrow(gi$invented) == 1 && gi$invented$crop == "coffee",
    "G6b fails a product that carries value for a pair the exposure has no row for (there was nothing to multiply)")
 
+## ---------------------------------------------------------------- named residuals: allowed WITH a reason, and only those
+# The Wete/Pemba case (#13 B5): one district with a hazard-coverage hole breaches one pair's bound
+# while the product is right everywhere the hazard layer has a pixel. A named, reasoned pair passes
+# as ALLOWED; an unnamed breach still fails; naming must not blunt the bound for anything else.
+shift2 <- mk_product(file.path(tmp, "named.parquet"), scale = list(iso3 = "NGA", crop = "maize", by = 0.97))
+allow_tab <- data.table(iso3 = "NGA", crop = "maize", reason = "synthetic Wete: one admin2 unit uncovered by the hazard layer")
+ga <- tier_vs_exposure(shift2, expo_f, "prod", tol_pair = 0.02, allow = allow_tab)
+ok(isTRUE(ga$pass) && nrow(ga$allowed) == 1 && ga$allowed$reason != "",
+   "a NAMED pair breaching the bound passes as ALLOWED, carrying its reason into the report")
+ok(!tier_vs_exposure(shift2, expo_f, "prod", tol_pair = 0.02)$pass,
+   "the same product FAILS without the naming - the exemption is the list, not a loosened bound")
+ga2 <- tier_vs_exposure(bad1, expo_f, "prod", tol_pair = 0.02,
+                        allow = data.table(iso3 = "KEN", crop = "wheat", reason = "names a DIFFERENT pair"))
+ok(!ga2$pass && ga2$worst$iso3 == "NGA",
+   "an UNNAMED breach still fails even with a list present - the list excuses only the pairs it names")
+qres <- fread(file.path(root, "metadata", "g6b_expected_residuals.csv"))
+ok(all(c("iso3", "crop", "reason", "decided") %in% names(qres)) && nrow(qres[iso3 == "TZA" & crop == "coconut"]) == 1 &&
+   qres[iso3 == "TZA", grepl("Wete", reason) && grepl("#50", reason)],
+   "the shipped file carries TZA:coconut with the Wete evidence and the #50 pointer - a residual needs a reason, not just a row")
+
 ## ---------------------------------------------------------------- a dropped pair fails
 drop <- mk_product(file.path(tmp, "dropped.parquet"), pairs = PAIRS[!(iso3 == "KEN" & crop == "maize")])
 gd <- tier_vs_exposure(drop, expo_f, "prod")
