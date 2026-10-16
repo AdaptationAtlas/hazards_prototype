@@ -2,6 +2,40 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-16 (b) — G6b's exposure reader moved to admin2. Third copy of the same defect, all mine. Re-run step 1, then live.
+
+**B4 accepted in full.** The medians landing on 1.000 rather than my predicted 0.99 — because the
+0.993 was itself an artefact of the first-combination pick — is the cleanest possible confirmation
+that the pick, not the product, was what the old number measured. And the spread-table deviation is
+noted the right way: SYC and DJI did not go away, SOM and MUS are newly visible, and I have added
+both to #50. The old gate could never have shown us Somalia and Mauritius; the spread line exists for
+exactly that.
+
+**G6b: your diagnosis is taken as given, and it is the same defect for the third time.**
+`.drift_read_exposure` read the independently-zoned admin0 rows while the product's totals are formed
+from the lower levels; they disagree at borders (#18). I fixed that basis in gate 1 on 2026-10-07,
+fixed the aggregation pick in gate 1 again on 2026-10-16, and never carried either into the sibling
+reader that G6 and G6b both use. Your twelve-row table — every worst pair exactly 1.0000 on admin2 —
+is the proof, and gate 1's own output had already printed the KEN pair at 28.9 from the other
+direction.
+
+**Fixed:** `.drift_read_exposure` now sums the ADMIN2 rows per (iso3, crop). Both sides of G6 and
+G6b are now on the basis the product is built from. The fixture replays your case: the synthetic
+exposure table carries an admin0 row deliberately inflated 30x (the KEN robusta-coffee shape), and
+the gate must land every pair on ratio 1 exactly despite it.
+
+**Re-run step 1 after `git pull`** (expect this commit or later): dry-run first, then live.
+
+**Expected:** G6b PASS with max |ratio-1| within the 0.02 bound — your admin2 column says the true
+ratios are 1.0000 with one pair at 1.0006, so the 2 % bound has room. G6 (vs the live object) then
+runs on the same basis; its ratios are drift against the 2026-10-06 publish and bounded separately.
+**Stop after step 1 as the dispatch says** and report both gates' populations before steps 2-5.
+
+If G6b still fails on any pair after the basis change, stop — that pair would be a genuine
+product-vs-input disagreement, which is exactly what the gate is for.
+
+---
+
 ### RESPONSE 2026-10-16 (B4 re-run **all PASS**, stamp PASS, **B5 step 1 ABORTS at G6b** — same defect class, other side) — cglabs — on `cf2ba04`. Gate 1 is fixed and I can see the fix working. B5 step 1 then aborted on its own exposure gate, in dry-run, with nothing written. The cause is measured below and it is **not the product**.
 
 ## B4 re-run — gate 1 PASS, gate 2 PASS, fixture PASS

@@ -86,11 +86,18 @@ DRIFT_NO_REF <- strsplit(Sys.getenv("DRIFT_NO_REF", "generic-crop"), ",")[[1]]
 }
 
 # Read a 0.4.4 exposure basis as admin0 totals per (iso3, crop), for one `exposure` value.
+# Read on the ADMIN2 basis, summed per (iso3, crop) — not the table's own admin0 rows. The product's
+# admin0 totals are formed from the lower levels, while 0.4.4 zones admin0 independently; at 0.25 deg
+# with touches = TRUE the two disagree at borders (#18). Gate 1 (usd_total_vs_reference) moved to the
+# admin2 basis for this on 2026-10-07; this reader did not, and G6b aborted the #13 B5 dry-run on 8
+# border pairs (KEN robusta-coffee reads 29.9x larger at admin0) where the product reproduces its
+# exposure EXACTLY on admin2 — measured on the node, 2026-10-16, twelve worst pairs all 1.0000. Same
+# defect class, third copy. Both sides of G6/G6b are now on the basis the product is built from.
 .drift_read_exposure <- function(f, exposure_var) {
   stopifnot(file.exists(f))
   .want <- exposure_var
   ex <- arrow::open_dataset(f) |>
-    dplyr::filter(is.na(admin1_name), exposure == .want) |>
+    dplyr::filter(!is.na(admin2_name), exposure == .want) |>
     dplyr::select(iso3, crop, tech, value) |> dplyr::collect() |> as.data.table()
   if (!nrow(ex)) {
     have <- arrow::open_dataset(f) |> dplyr::distinct(exposure, unit) |> dplyr::collect() |> as.data.table()

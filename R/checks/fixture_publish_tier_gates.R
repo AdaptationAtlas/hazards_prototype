@@ -55,9 +55,13 @@ mk_exposure <- function(f, pairs = PAIRS) {
     cbind(base, exposure = "prod",      unit = "t",                value = pairs$E),
     cbind(base, exposure = "vop",       unit = "nominal-usd-2021", value = pairs$E * 311),
     cbind(base, exposure = "harv-area", unit = "ha",               value = pairs$E / 3))
-  # admin1 rows must be ignored by the basis read as well
-  d1 <- copy(d)[, `:=`(admin1_name = "a-province", value = value / 2)]
-  write_parquet(rbind(d, d1), f); f
+  # The basis read sums the ADMIN2 rows (#18: the independently-zoned admin0 rows disagree with the
+  # product's derived totals at borders). Two districts summing to each pair's E, and an admin0 row
+  # DELIBERATELY inflated for one pair - the gate must judge on admin2 and ignore it.
+  d2a <- copy(d)[, `:=`(admin1_name = "a-province", admin2_name = "dist-1", value = value * 0.6)]
+  d2b <- copy(d)[, `:=`(admin1_name = "a-province", admin2_name = "dist-2", value = value * 0.4)]
+  d[iso3 == "KEN" & crop == "maize", value := value * 30]   # the KEN:robusta-coffee shape, 29.9x
+  write_parquet(rbind(d, d2a, d2b), f); f
 }
 
 prod_f <- mk_product(file.path(tmp, "good_prod_t.parquet"))
@@ -68,7 +72,7 @@ g <- tier_vs_exposure(prod_f, expo_f, "prod")
 print(g$gates)
 ok(isTRUE(g$pass), "G6b passes a product whose any+none reproduces its exposure input")
 ok(nrow(g$material) == nrow(PAIRS) && max(abs(g$material$ratio - 1)) < 1e-9,
-   "every pair is material and lands on ratio 1 exactly (admin1 rows excluded from BOTH sides)")
+   "every pair is material and lands on ratio 1 exactly - INCLUDING the pair whose independently-zoned admin0 row is inflated 30x, because the basis is the admin2 rows the product was built from (#18; the KEN robusta-coffee case)")
 
 ## ---------------------------------------------------------------- a shifted pair fails
 bad1 <- mk_product(file.path(tmp, "shifted.parquet"), scale = list(iso3 = "NGA", crop = "maize", by = 1.5))
