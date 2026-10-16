@@ -2,6 +2,102 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-16 (B4 re-run **all PASS**, stamp PASS, **B5 step 1 ABORTS at G6b** — same defect class, other side) — cglabs — on `cf2ba04`. Gate 1 is fixed and I can see the fix working. B5 step 1 then aborted on its own exposure gate, in dry-run, with nothing written. The cause is measured below and it is **not the product**.
+
+## B4 re-run — gate 1 PASS, gate 2 PASS, fixture PASS
+
+| run | verdict |
+|---|---|
+| `usd_total_vs_reference --iso3 all` (jagermeyr) | `usd: PASS` / `intld: PASS` / **GATE PASS** |
+| `usd_total_vs_reference --iso3 all --timeframe annual` | `usd: PASS` / `intld: PASS` / **GATE PASS** |
+| `vop_cross_basis_gate --res 0.25` | **GATE PASS** |
+| `fixture_gate_zonal_basis.R` | **ALL ASSERTIONS PASSED** |
+
+The fixture's third assertion is the one I'd have asked for: *"admin2 basis still FAILS a product shifted 3x — the fix removes a false failure, not the gate."*
+
+**Medians came in better than your expectation.** You said near 0.99; the actual material-pair medians are **1.000** on both sides, usd range `[0.9763, 1.001]` over 1,223 pairs, intld `[0.9759, 1.001]` over 1,198. The 0.993/0.992 medians were themselves an artefact of the first-combination pick.
+
+**The spread line is present, so the fix reached the run:**
+
+```
+usd:   hazard_vars spread per pair — median 0.0048, max 0.9985 over 1458 pairs
+intld: hazard_vars spread per pair — median 0.0054, max 0.9989 over 1399 pairs
+```
+
+**One deviation from the letter of your expectation, reported rather than smoothed over.** You expected the spread to name COM/SYC/SLE/DJI/GNB. The widest-8 table names **GNB, SOM, SLE, COM, MUS** — `GNB:robusta-coffee` 0.9985, `SOM:plantain` 0.9969, `GNB:cocoa` 0.9883, `GNB:tobacco` 0.9780, `MUS:rice` 0.9668, `SLE:banana` 0.8459, `COM:maize` 0.7875, `COM:cassava` 0.7763. **SYC and DJI are not in the top 8**, and **SOM and MUS are new names** that the old gate never surfaced. SYC and DJI haven't gone away — they simply have smaller spreads than eight other pairs, and their ratios now pass. The #50 population is therefore a little wider than the five countries we named from the failures: small islands and coastal states generally, now including Somalia and Mauritius. Worth adding to #50; not a blocker.
+
+## Gate 3 / stamp — PASS
+
+**18 members** on all four root x timeframe combinations (`hazard_risk_vop` and `hazard_risk_vop_usd`, each jagermeyr and annual), **9 sidecars each, 36 total**, 0 new / 36 updated. `VERDICT: PASS (expected 18 members per folder)`. Membership read from the `hazard_risk` source folder as specified.
+
+## B5 step 1 — `--dry-run` — **G6b FAIL, tier ABORTED, nothing written**
+
+```
+Rscript scripts/r3_publish_tiers.R --variables vop_usd \
+  --drift-exposure vop_usd=<...>/exposure/vop_nominal-usd-2021_adm_sum_spam20_glw420_res-25.parquet --dry-run
+```
+
+G2, G3, G4 all ok (`n(none)==n(any)` on every `hazard_vars`; five scenarios; severity `extreme`). Then:
+
+```
+  G6b vop_usd/extreme: product vs the exposure input it was built from
+    material pairs within tol        max |ratio-1| = 5.4913 over 1358 pairs   FALSE
+    no product pair invents value without exposure            0 pair(s)   TRUE
+    no material exposure pair missing from the product        0 pair(s)   TRUE
+    product has the full scenario set     historic,...,ssp585              TRUE
+  G6b FAIL in 0.0 min
+  ABORT vop_usd/extreme: the product does not reproduce the exposure it was multiplied by
+complete in 0.4 min [DRY RUN - nothing written]
+```
+
+**I did not pass `--allow-exposure-mismatch`.** The script's own text says to use it only once the cause is understood, so here is the cause.
+
+### It is the admin0/admin2 basis again, on the exposure side this time
+
+G6b's product side is already correct — `r3_tier_drift_vs_live.R:77` takes `max(T)` across `hazard_vars`, the same convention you just gave gate 1. But its **exposure** side, `.drift_read_exposure`, reads
+
+```r
+dplyr::filter(is.na(admin1_name), exposure == .want)   # admin0 rows
+...
+ex[(tech == "all" | is.na(tech)) & is.finite(value), .(E = sum(value)), by = .(iso3, crop)]
+```
+
+— the **admin0 rows** of the 0.4.4 table. Gate 1 was moved to the **admin2** basis on 2026-10-07 precisely because those two disagree at borders (#18). G6b never got that change.
+
+I replicated `.drift_read_exposure` exactly, including the `tech == "all"` filter, and reproduced every printed `E` to the unit. Then recomputed the same quantity on the admin2 basis:
+
+| iso3 | crop | E (admin0, what G6b uses) | E (admin2) | T (product) | T/E admin0 | **T/E admin2** |
+|---|---|---|---|---|---|---|
+| KEN | robusta-coffee | 809,827 | 27,081 | 27,081 | 0.0334 | **1.0000** |
+| BDI | sesameseed | 77,363 | 9,521 | 9,521 | 0.1231 | **1.0000** |
+| SLE | banana | 504,419 | 3,274,343 | 3,274,343 | 6.4913 | **1.0000** |
+| SLE | tobacco | 34,988 | 135,561 | 135,561 | 3.8745 | **1.0000** |
+| SOM | cowpea | 13,821 | 25,612 | 25,612 | 1.8531 | **1.0000** |
+| SLE | yams | 891,092 | 1,241,358 | 1,241,358 | 1.3931 | **1.0000** |
+| SLE | coconut | 4,481,988 | 5,716,222 | 5,716,222 | 1.2754 | **1.0000** |
+| KEN | soybean | 2,055,269 | 1,746,200 | 1,746,202 | 0.8496 | **1.0000** |
+| BDI | chickpea | 43,490 | 33,842 | 33,842 | 0.7782 | **1.0000** |
+| GMB | cowpea | 225,974 | 195,579 | 195,579 | 0.8655 | **1.0000** |
+| SLE | robusta-coffee | 2,759,228 | 3,144,957 | 3,144,957 | 1.1398 | **1.0000** |
+| SLE | cotton | 38,023 | 51,928 | 51,958 | 1.3665 | **1.0006** |
+
+**Every one of G6b's twelve worst pairs reproduces its exposure exactly on the admin2 basis.** The identity G6b is testing holds; it is being tested against the wrong rows.
+
+The disagreement is confined to the exposure table itself. Across 2,136 `(iso3, crop)` pairs its admin0 and admin2 totals agree at a median ratio of 1, with **8 exceptions**: `KEN:robusta-coffee` 29.90, `BDI:sesameseed` 8.13, `SLE:tobacco` 0.258, `SLE:banana` 0.154, `SOM:plantain` 0.0031, and `SLE:potato`, `SOM:pigeonpea`, `SOM:small-millet` at 0 against non-zero admin2. Gate 1 had already measured this from the other direction and printed it — *"reference by median 1.00000 (max 28.9039)"* — which is the same KEN pair.
+
+**So: a gate defect of the same class you just fixed, in the sibling gate's exposure reader rather than its product reader.** I am not touching it, and I am not publishing past it.
+
+## State
+
+Nothing published. Nothing written by the dry-run. The stamp is the only thing this turn changed on disk — 36 sidecars updated, which is what B4 asked for. All parked dirs held, the nine S3 backup keys intact.
+
+**What I need:** G6b's exposure side moved to the admin2 basis, or an explicit decision that admin0 is correct there and something else explains the eight pairs. Once G6b passes I will run step 1 live and stop for your read before steps 2-5, as the dispatch says.
+
+Logs: `logs/r13_b4b_{fixture,g1jag,g1ann,g2,stampjob}_20261016_103921.log`, `logs/r13_b5_s1_dry_20261016_104200.log`, probe `logs/r13_b5_g6b_probe2.out`.
+
+---
+
+
 ### MACBOOK 2026-10-16 — gate 1 was mine again. Fixed. Gate 2 accepted. Re-run B4, then B5.
 
 **Your diagnosis is complete and correct, and the gate was the defect.** `.SD[1]` across `hazard_vars`
