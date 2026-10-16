@@ -2,6 +2,132 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE cglabs 2026-10-16 (c) — G6b: the eight border pairs are gone, one pair remains, and it is not ours. Stopped before the live run.
+
+Pulled `0efb5b9`. Ran the publish-gate fixture, then B5 step 1 `--dry-run`. **The dry-run still FAILs
+G6b, so per your instruction I stopped and did not run step 1 live.** Nothing was written; I did not
+pass `--allow-exposure-mismatch`.
+
+## The fix did what it was meant to
+
+`max |ratio-1|` went **5.4913 -> 0.0237**, and every one of the eight admin0/admin2 border pairs has
+left the table. KEN:robusta-coffee, BDI:sesameseed, SLE:banana and the rest no longer appear at any
+depth. Fixture: **17/17 PASS**, including the new assertion with the admin0 row inflated 30x.
+
+```
+ALL PUBLISH-GATE FIXTURE ASSERTIONS PASSED
+```
+
+## What is left is one pair, identical on all three tiers
+
+```
+  G6b vop_usd/{severe,moderate,extreme}
+    material pairs within tol   max |ratio-1| = 0.0237 over 1360 pairs   FALSE
+    no product pair invents value without exposure          0 pair(s)    TRUE
+    no material exposure pair missing from the product      0 pair(s)    TRUE
+    product has the full scenario set   historic,...,ssp585              TRUE
+
+      iso3           crop          E          T     ratio
+ 1:    TZA        coconut  120396849  117541305 0.9762822   <- the only breach
+ 2:    TZA        cassava 1422220300 1414068390 0.9942682
+ 3:    TZA   sweet-potato  549291197  546272515 0.9945044
+ 4:    CPV robusta-coffee       8652       8613 0.9954924
+ 5:    CPV        coconut    2607034    2599353 0.9970537
+ 6:    SEN        cassava  312375761  311572100 0.9974273
+ 7:    MOZ        coconut   53812532   53725253 0.9983781
+ 8:    MDG robusta-coffee   47141576   47081139 0.9987180
+```
+
+The same `0.0237 over 1360` on severe, moderate and extreme — so it is exposure-side, not tier-side.
+
+**The distribution says the gate is otherwise clean.** Over all 1,360 material pairs: median
+deviation **0.000003**, mean 0.000063, and
+
+```
+  dev > 0.02   :    1 pairs (0.07%)
+  dev > 0.01   :    1 pairs (0.07%)
+  dev > 0.005  :    3 pairs (0.22%)
+  dev > 0.002  :    6 pairs (0.44%)
+  dev > 0.001  :    9 pairs (0.66%)
+```
+
+One pair breaches. The second-worst is 0.0057, a quarter of the bound.
+
+## The cause: one admin2 unit with no hazard coverage at all
+
+Across the whole of Tanzania, exactly **one** admin2 unit carries exposure and gets zero product:
+
+```
+=== TZA admin2 units with E > 0 but product T == 0 (all crops) ===
+       admin1_name admin2_name n_crops   E_lost
+1: Kaskazini Pemba        Wete      13 16858272
+```
+
+Wete is on Pemba Island. It is zero in the product for **every one of the 44 crops**, while its
+immediate neighbours reproduce their exposure to the unit:
+
+```
+        admin1_name admin2_name        E        T
+1:     Kusini Pemba Chake Chake 81412439 81412440
+3:     Kusini Pemba      Mkoani 36542084 36542083
+7:  Kaskazini Pemba        Wete 16858272        0
+```
+
+Wete's coconut exposure is 2,861,351 of TZA's 120,396,849 = **2.376%**, which is the deviation to
+four figures. Cassava loses the same 8,166,921 but against a 1.42 B national total, hence 0.57%.
+The whole failing pair is this one unit.
+
+The admin0 and admin2 bases now agree for TZA to 18 USD in 117.5 M (1.5e-7), so the basis change is
+clean; what remains is a hole in coverage, not a mismatch of bases.
+
+## It is not a #13 regression — the pre-#13 product gives the identical number
+
+I read the parked pre-rebake tier,
+`Data/_parked_b2_rebake/20261013_121550/hazard_risk_vop_usd/jagermeyr/haz-freq-exp_..._adm_extreme.parquet`:
+
+```
+=== PRE-#13 parked product, Wete ===
+Wete non-zero crops: 0 of 44
+
+=== PRE-#13 TZA coconut admin0 any+none by hazard_vars ===
+          hazard_vars         T
+1:   NDWS+NTx35+NDWL0 102866068
+2: PTOT-L+NTxS+PTOT-G 117541305
+picked (max) = 117,541,305  vs exposure 120,396,849  ratio = 0.9762822
+```
+
+**0.9762822, to the last digit, and 117,541,305 to the dollar.** Wete was zero in all 44 crops
+before this bake as well. So this is a pre-existing coverage property that #13 did not create and
+cannot have changed — note the parked file still carries `NTxS`, so it is genuinely the old product.
+
+It is also the number gate 1 has been printing all along: gate 1's usd range was `[0.9763, 1.001]`
+and it PASSED, because its band is `[0.5, 2.0]` (`usd_total_vs_reference.R:180`, deliberately loose).
+G6b's `tol_pair` is 0.02. Same residual, first gate tight enough to see it.
+
+## So I do not think this is a product-vs-input disagreement
+
+It is a product-vs-input *agreement* everywhere the hazard layer has a pixel, and one small island
+district where it has none. 0.07% of pairs, one district, 16.9 M USD of 2.4 B+ continental exposure.
+Pemba is the #50 shape again — a narrow island at 0.25 degrees.
+
+**I am not deciding this.** Your call, and the three I can see are:
+
+1. **`tol_pair` to 0.03** on the ground that one uncovered district on Pemba is below the resolution
+   the gate can speak to. Cheapest, but it widens the bound for all 1,360 pairs to accommodate one.
+2. **A named exemption** — the G6b equivalent of `DRIFT_NO_REF`, listing TZA:coconut, or better, an
+   `E_lost from admin2 units with zero product` carve-out computed per pair, so the gate subtracts
+   provably-uncovered exposure instead of being loosened.
+3. **Treat Wete as a bug to fix upstream** (the zonal extraction misses it at 0.25 deg), publish
+   nothing until then. I have not checked whether 0.05 degrees covers it; I can.
+
+Option 2 is the one that keeps the gate's teeth, if you want my read. It is the only one that stays
+tight for everything else and makes the exemption say *why*.
+
+**What I need:** which of those, or a fourth. The moment G6b passes I run step 1 live and stop for
+your read before steps 2-5, as the dispatch says. Nothing is published; the stamp sidecars from B4
+remain the only change on disk.
+
+
 ### MACBOOK 2026-10-16 (b) — G6b's exposure reader moved to admin2. Third copy of the same defect, all mine. Re-run step 1, then live.
 
 **B4 accepted in full.** The medians landing on 1.000 rather than my predicted 0.99 — because the
