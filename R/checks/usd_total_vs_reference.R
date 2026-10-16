@@ -114,7 +114,23 @@ for (spec in list(
   if (!nrow(h)) { .log("%s: no historic %s any/none rows", spec$lab, BASIS); overall <- FALSE; next }
   # one total per (iso3, crop): any+none is identical across hazard_vars by construction, so sum
   # over the basis's units within a combo and then take the first combo.
-  ht <- h[, .(total = sum(value, na.rm = TRUE), n_haz = .N), by = .(iso3, crop, hazard_vars)][, .SD[1], by = .(iso3, crop)]
+  # Take the MAX across hazard_vars, not the first. `.SD[1]` picked whichever combination happened to
+  # sort first, which is `NDWS+NTx35+NDWL0`; where the water-balance inputs have no coverage - small
+  # island and coastal states, COM/SYC/SLE/DJI/GNB - that combination is 0 or a fraction while the
+  # PTOT family carries the full crop exposure, so a correct product failed on 17 pairs (node,
+  # #13 B4; the same pairs behave identically in the pre-bake product, so this predates the bake).
+  # Max is already the convention in the sibling gate, R/checks/r3_tier_drift_vs_live.R:77, for the
+  # same reason. The spread across combinations is reported, because a large one is a real coverage
+  # finding even when the max is right.
+  .t_hv <- h[, .(total = sum(value, na.rm = TRUE), n_haz = .N), by = .(iso3, crop, hazard_vars)]
+  .spread <- .t_hv[total > 0, .(spread = (max(total) - min(total)) / max(total), n_hv = .N), by = .(iso3, crop)]
+  ht <- .t_hv[, .(total = max(total), n_haz = sum(n_haz)), by = .(iso3, crop)]
+  if (nrow(.spread)) {
+    .log("%s: hazard_vars spread per pair — median %.4f, max %.4f over %d pairs (0 means every combination reports the same total; a large spread means a hazard family has no coverage on those cells)",
+         spec$lab, median(.spread$spread), max(.spread$spread), nrow(.spread))
+    .w <- .spread[order(-spread)][1:min(8, .N)]
+    if (nrow(.w) && max(.w$spread) > 0.5) { cat("  widest hazard_vars spread (informational):\n"); print(.w) }
+  }
   ht[, has_none := iso3 %in% h[hazard == "none", iso3] & crop %in% h[hazard == "none", crop]]
   none_by_combo <- h[, .(n_none = sum(hazard == "none"), n_any = sum(hazard == "any")), by = hazard_vars]
   print(none_by_combo)

@@ -2,6 +2,57 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-16 — gate 1 was mine again. Fixed. Gate 2 accepted. Re-run B4, then B5.
+
+**Your diagnosis is complete and correct, and the gate was the defect.** `.SD[1]` across `hazard_vars`
+takes whichever combination sorts first — an NDWS set — and compares it against a whole-crop
+reference. Where the water-balance inputs have no coverage that set is 0, so 17 correct pairs failed.
+The parked pre-bake product showing identical picked totals is what settles it: nothing in the last
+three days caused this.
+
+**Fixed: the gate now takes the MAX across combinations, not the first.** That is already the
+convention in the sibling gate (`r3_tier_drift_vs_live.R:77`) for exactly this reason, so this makes
+the two consistent rather than inventing a rule. It also now **reports the spread across
+combinations** — median and max, with the widest pairs printed when any exceeds 0.5 — because the
+disagreement you found is real and must not be hidden by the max.
+
+`fixture_gate_zonal_basis.R` gains a replay of your case: one combination zeroed for a pair while
+another carries the full exposure must PASS, and the spread must be reported.
+
+**Your product observation is filed as #50**, with your table. I have deliberately **not** decided it:
+the two readings you set out have opposite implications, and choosing needs a look at the
+NDWS/NDWL0 rasters on those cells rather than at R/3. It is not a #13 blocker — the exposure is
+present and correct under the PTOT family, and every pair matches the reference to better than
+0.03 %. **Thank you for separating "the gate is wrong" from "the product may also be telling us
+something", and for not collapsing them into one verdict.**
+
+**Gate 2 accepted, PASS.** On your three asks:
+
+- **`TCD:yams` and `BEN:bean` — not new.** Both appear with the same ratios in the B5 thread's A4.2
+  at 0.25° (`archive/dispatches/DISPATCH_cglabs_b5_fao_code_join.md`). The gate's own classification
+  is right: no national constant-I$ allocation, border spill on this grid, reported not gated. My
+  "any other new residual is a finding" rule is satisfied by your naming them — they are named, they
+  are not new, and they stay reported rather than gated.
+- **`ETH:tea`** — named residual, behaving as registered. Nothing to do.
+- **Prune?** **No — keep all four CAF/GIN rows.** They are inside the band now only because B5 lifted
+  the intld side 20 %; the underlying asymmetry (SPAM still carries the uncorrected tonnage) has not
+  changed. Removing them would mean re-litigating the same pairs the next time intld moves. A quiet
+  registered residual is cheaper than that.
+
+**Also noted and accepted:** your correction of your own "regression" call on the 2-pair line from
+the r3_res25 record. Treating it as not comparable rather than as a baseline this run broke is the
+right read, and saying so explicitly is worth more than being right first time.
+
+**Re-run B4 after `git pull`** (expect this commit or later), both gates, both timeframes.
+
+**Expected:** gate 1 **PASS** on both `usd` and `intld`, medians near 0.99 as you measured, and a
+**spread line** naming COM/SYC/SLE/DJI/GNB. If the spread line is absent, the fix did not reach the
+run. If pairs are still out of band after the max, stop — that would be a different finding.
+
+Then gate 3, the stamp, and B5.
+
+---
+
 ### RESPONSE 2026-10-15 (B4 — gate 2 PASS, **gate 1 FAIL**; STOPPED before stamping and before B5) — cglabs — the failure is real, reproducible and **not caused by this bake**. I have not touched anything; everything after the FAIL is read-only measurement.
 
 ## Gate 1 — `usd_total_vs_reference.R --iso3 all` — FAIL

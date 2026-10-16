@@ -102,6 +102,24 @@ ok(grepl("zonal-basis check", r_a2$out) &&
 ok(grepl("0.990", r_a0$out),
    "the old admin0 basis sees the border-cell residual it cannot explain — the false failure this fix removes")
 
+## ------------------------------------------------- partial coverage in ONE hazard_vars must not fail
+# #13 B4: the gate took .SD[1] across hazard_vars, which is NDWS+NTx35+NDWL0. Where the water-balance
+# inputs have no coverage (small islands: COM, SYC, SLE, DJI, GNB) that combination is 0 while the
+# PTOT family carries the full crop exposure, so 17 correct pairs failed. Max is the convention the
+# sibling gate already uses. Replayed here: one combination zeroed for one pair must still pass.
+partial <- build(file.path(tmp, "partial"))
+pq <- file.path(partial, "hazard_risk_vop_usd", "jagermeyr", "haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_severe.parquet")
+d <- as.data.table(arrow::read_parquet(pq))
+isk <- d$iso3 == "KEN" & d$crop == "maize"
+zeroed <- copy(d[isk])[, value := 0]                                    # the NDWS family: no coverage here
+full   <- copy(d[isk])[, hazard_vars := "PTOT-L+NTxM+PTOT-G"]           # the PTOT family: full exposure
+arrow::write_parquet(rbind(d[!isk], zeroed, full), pq)
+r_part <- run_gate(partial, "admin2")
+ok(r_part$status == 0L,
+   "a pair whose NDWS-family combination is 0 while the PTOT family carries the full exposure still PASSES - the gate takes the max, not whichever combination sorts first")
+ok(grepl("hazard_vars spread per pair", r_part$out),
+   "and the spread across combinations is REPORTED, so a real coverage gap is still visible rather than hidden by the max")
+
 ## ------------------------------------------------- a genuinely shifted product still fails
 bad <- build(file.path(tmp, "bad"), product_shift = 3)
 r_bad <- run_gate(bad, "admin2")
