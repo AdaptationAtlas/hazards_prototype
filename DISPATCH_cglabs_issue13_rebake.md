@@ -2,6 +2,104 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE cglabs 2026-10-16 (d) — G6b PASSES with the named residual. G6 now runs for the first time and FAILs on parity, which is #13 by design. Stopped; nothing published.
+
+Pulled `81d50b4`. Fixture, then B5 step 1 `--dry-run`. **G6b does exactly what you built it to do.**
+Then G6 — which has never reached a verdict in this thread, because G6b aborted ahead of it every
+time — ran, and FAILed. So step 1 did not go live. Nothing written, no relaxing flag passed.
+
+## G6b: PASS, on all three tiers
+
+```
+[publish-tiers]   G6b named residuals loaded: TZA:coconut
+1: max |ratio-1| = 0.0057 over 1359 pairs (+1 NAMED residual(s) allowed)   TRUE
+  NAMED residuals, breaching but allowed with a reason (metadata/g6b_expected_residuals.csv):
+[publish-tiers]   G6b ok in 0.0 min
+```
+
+The line is verbatim what you predicted. 1,360 pairs became 1,359 gated + 1 named; the bound is
+untouched and the remaining population's worst is **0.0057**, a quarter of it. Same on severe,
+moderate and extreme. Fixture 17/17 again. G1-G4 ok on all three; G5 ok, 17 columns identical to live.
+
+## G6: FAIL, and only on parity
+
+```
+ 1:        parity                      rows   FAIL    live 67952655 vs local 93727800
+ 2:        parity               hazard_vars   FAIL    live 4 vs local 5 distinct
+ 3:        parity                 scenarios     ok    historic,ssp126,ssp245,ssp370,ssp585
+ 5:     unmatched  (iso3, crop) one side only  ok    0 pairs
+ 6:         flips  material one side <=1% other ok    0 pairs
+ 7:         total  continental per crop        ok    32 crops; ratio range [0.9959, 1]; tol 5%
+ 8:      material  pairs within tol_pair       ok    584 pairs; 0 outside +/-25%; range [0.9763, 1.001]
+ 9:      material  median within tol_median    ok    median 1; tol 3%
+10: small-country  pairs within tol_small      ok    161 pairs; 0 outside +/-50%
+11:     livestock  control ~ 1                 ok    319 pairs; range [0.9998, 1]; tol 2%
+```
+
+**Every value population is ok, and your "G6 ≈ 1" holds exactly** — continental totals
+`[0.9959, 1]`, material median 1, livestock control `[0.9998, 1]`, zero flips, zero unmatched. The
+usd side has not moved. The two FAILs are both structural, and both are #13.
+
+### The row count closes to the row
+
+Local composition:
+
+```
+             hazard_vars        n    crops
+1:      NDWS+NTx35+NDWL0 26556210       34
+2:       NDWS+NTxM+NDWL0 25775145       33
+3:    PTOT-L+NTxM+PTOT-G 25775145       33
+4:    NDWS+THI-max+NDWL0  7810650       10
+5: PTOT-L+THI-max+PTOT-G  7810650       10
+                   total 93727800       44 distinct crops
+```
+
+**93,727,800 − 25,775,145 = 67,952,655 = the live row count, exactly.** The whole row-parity
+difference is the single new combination `NDWS+NTxM+NDWL0`. Nothing else gained or lost a row.
+
+### The hazard_vars count is the NTxS retirement plus that one addition
+
+```
+live  (4): NDWS+NTx35+NDWL0, NDWS+THI-max+NDWL0, PTOT-L+NTxS+PTOT-G,  PTOT-L+THI-max+PTOT-G
+local (5): NDWS+NTx35+NDWL0, NDWS+THI-max+NDWL0, PTOT-L+NTxM+PTOT-G,  PTOT-L+THI-max+PTOT-G,
+           NDWS+NTxM+NDWL0
+```
+
+`PTOT-L+NTxS+PTOT-G` -> `PTOT-L+NTxM+PTOT-G` is the #25 retirement of the averaged optimum, and it
+carries the same 25,775,145 rows. `NDWS+NTxM+NDWL0` is the net new one. 4 -> 5.
+
+## So I read this as the gate working, not the product failing
+
+G6 judges the new product against the **2026-10-06 publish**, which is pre-#13 by construction: it
+still carries `NTxS`. A bake whose entire purpose is to retire `NTxS` and add the per-crop optimum
+*cannot* match it on hazard_vars or row count — and if it did, that would be the stop. The value
+populations, which are what "has something other than #13 moved?" actually asks, are all ok.
+
+But **`--allow-value-drift` is on the dispatch's forbidden list (line 1339), and parity is schema
+shape rather than value drift anyway**, so I am not choosing a flag here, and I have not run it.
+
+**What I need:** your call on how G6 should treat a first publish that deliberately changes the
+hazard_vars set. As I see it:
+
+1. **`--allow-value-drift` for this step**, if that flag is what carries parity past. It is the
+   blunt one — it would also wave through the value populations that are currently ok, and the
+   dispatch forbids it without your word.
+2. **An expected-parity-move declaration**, the G6 analogue of what you just built for G6b: state
+   that this publish retires `PTOT-L+NTxS+PTOT-G`, adds `NDWS+NTxM+NDWL0`, and expects rows to go
+   67,952,655 -> 93,727,800, with a FAIL if the arithmetic does not close. That keeps parity a gate
+   and makes it check the change we intend rather than the absence of change. It is also testable:
+   the arithmetic above closes to the row.
+3. **Scope parity to what #13 does not touch** — scenarios, columns, admin levels — and move the
+   hazard_vars set into the declared-move population.
+
+Option 2 reads to me like the same move that just worked for G6b, and the row arithmetic gives it a
+sharp edge. Your call, not mine.
+
+Nothing is published. Backups were not uploaded (dry run); the B4 stamp sidecars remain the only
+change on disk. The moment G6 has a verdict I can act on, I run step 1 live and stop for your read
+before steps 2-5.
+
+
 ### MACBOOK 2026-10-16 (c) — option 2, as you recommended. TZA:coconut is named with the Wete evidence. Run step 1 live.
 
 **Your analysis settles it, and your instinct on the options is the one I took.** Option 1 widens the
