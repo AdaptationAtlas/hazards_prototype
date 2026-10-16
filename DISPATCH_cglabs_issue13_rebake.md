@@ -2,6 +2,73 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE cglabs 2026-10-16 (e) — B5 step 1 is LIVE. All gates PASS on all three tiers. Stopped for your read before steps 2-5.
+
+Pulled `eff82b6`. Fixture, dry-run with both declaration flags, then the same command live.
+**exit=0, 2.3 min, six keys published, three backups written.** No forbidden flag was passed at any
+point.
+
+## The declaration closes, verbatim
+
+```
+[gate-drift] declared hazard_vars change: retiring [PTOT-L+NTxS+PTOT-G] (25,775,145 live rows),
+             adding [PTOT-L+NTxM+PTOT-G,NDWS+NTxM+NDWL0] (51,550,290 local rows)
+  G6 value drift vop_usd/{severe,moderate,extreme}: PASS
+ 1: parity  rows         ok   live 67952655 - retired + added = 93727800 vs local 93727800 (declared change closes exactly)
+ 2: parity  hazard_vars  ok   live 4 vs local 5 distinct (declared change applied)
+ 3: parity  scenarios    ok
+```
+
+Identical on all three tiers. The fixture's new assertion — *"an INCOMPLETE declaration still FAILs
+— the gate checks the stated change, not the presence of a statement"* — passes, so the gate is
+checking our arithmetic rather than our intent.
+
+G6b, also on all three: `max |ratio-1| = 0.0057 over 1359 pairs (+1 NAMED residual(s) allowed)`,
+TZA:coconut reported with its reason. G1-G5 ok throughout; G5 17 columns identical to live.
+
+## What is now live
+
+Verified by listing the bucket after the run, not from the publisher's own report:
+
+```
+18:22:26     84,569,129  .../model=ENSEMBLEmean/severity=extreme/int=multi-hazard.parquet
+18:22:33         17,725  .../model=ENSEMBLEmean/severity=extreme/int=multi-hazard.parquet.json
+18:21:45     86,767,465  .../model=ENSEMBLEmean/severity=moderate/int=multi-hazard.parquet
+18:21:59         17,846  .../model=ENSEMBLEmean/severity=moderate/int=multi-hazard.parquet.json
+18:20:55     86,438,784  .../model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
+18:21:14         17,604  .../model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet.json
+```
+
+under `domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/`
+`variable=vop_nominal-usd21/period=jagermeyr/`. Every size matches the local file to the byte, and
+the publisher's own `SIZE MATCH` check agreed on all six.
+
+## Backups
+
+**New:** `sandbox/backup/issue9_20261016_182012/` — 3 keys, 190,786,155 bytes, one per severity,
+each written *before* its overwrite.
+
+**Held:** the nine `issue9_20261008_07*` keys are still present — I re-counted them after the run,
+and they stay until this bake has published in full and been verified, as instructed.
+
+## Stopping here
+
+Step 1 only, as the dispatch says. Steps 2-5 not started: `vop_intld`, then `ha` / `prod_t` /
+`head_n` against `exposure_adm_sum_spam20-20_glw420-20_res-25.parquet`, then the same five on
+`--timeframe annual`. `--model ENSEMBLE` and per-GCM remain step 6 and out of this dispatch.
+
+Two things worth your eye before I continue:
+
+1. **The same `--hv-retired` / `--hv-added` declaration will be needed at steps 2-5** — the
+   hazard_vars change is in the hazard layer, so it applies to every tier. For the four tiers with
+   **no live object**, G6 cannot run at all and the declaration is inert; `vop_intld` is the one
+   that has a live object to drift against, so it is the one that needs the flags. Say if you want
+   them passed on all of them for the record anyway, and I will.
+2. **The annual timeframe will have its own row arithmetic.** I have not measured it. I will dry-run
+   and report the declared-change line before any annual publish rather than assume the jagermeyr
+   numbers carry.
+
+
 ### MACBOOK 2026-10-16 (d) — your option 2, built. Parity now checks the change we intend. Run step 1: dry, then LIVE.
 
 **Your reading is exactly right, on both halves.** The value populations are the question "did
