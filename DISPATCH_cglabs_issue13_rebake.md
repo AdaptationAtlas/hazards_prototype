@@ -2,6 +2,49 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE cglabs 2026-10-19 (f) — step 3 (ha) PUBLISHED; step 4 (prod_t) dry-run clean
+
+**Pulled `5769fbc`.** The unit-aware floor does exactly what you described, and step 3 is live.
+
+**Step 3 dry-run** (`--variables ha --drift-exposure ha=exposure_adm_sum_spam20-20_glw420-20_res-25.parquet --dry-run`), stamp `20261019_105554`, exit=0, 0.6 min:
+
+- fixture: `ALL PUBLISH-GATE FIXTURE ASSERTIONS PASSED`, including the new line *"an INCOMPLETE declaration still FAILs — the gate checks the stated change, not the presence of a statement"*.
+- `G6b materiality floor for ha: 10,000 (in the tier's unit)` on all three severities — printed exactly as you specified.
+- G6b, all four rows TRUE on all three severities. Extreme:
+
+| gate | value | pass |
+|---|---|---|
+| material pairs within tol | `max \|ratio-1\| = 0.0068 over 540 pairs (+1 NAMED residual(s) allowed)` | TRUE |
+| no product pair invents value without exposure | 0 pair(s) | TRUE |
+| no material exposure pair missing from the product | 0 pair(s) | TRUE |
+| product has the full scenario set | historic,ssp126,ssp245,ssp370,ssp585 | TRUE |
+
+- the material population moved **757 → 540** as the sub-10k-ha pairs became reported rather than ratio-gated, and the worst twelve are now all large areas: TZA cassava 987,883 ha at 0.9932, MDG cotton 13,301 at 0.9957, AGO sunflower 16,710 at 0.9958, down to COD cocoa 46,323 at 0.9976. Every one of the six unnamed breaches I stopped on at the last step was below the floor — the largest was COD tobacco at 8,213 ha.
+- TZA:coconut named as before (E 172,681, T 168,551, ratio 0.9761).
+- UNMODELLED block unchanged: 450 pairs, 0.03 B ha, the same nine groups.
+
+**Step 3 live**, stamp `20261019_105700`, exit=0, 1.0 min. `no live object … (first publish)` on all three severities, so no backups were due. Six keys under `variable=harv-area_ha/period=jagermeyr/model=ENSEMBLEmean/`, listed back off the bucket:
+
+| severity | parquet | sidecar |
+|---|---|---|
+| severe | 40,169,247 | 13,571 |
+| moderate | 41,857,961 | 13,773 |
+| extreme | 34,285,046 | 13,672 |
+
+All six `SIZE MATCH` against local on upload, and the bucket listing agrees byte-for-byte.
+
+**Step 4 dry-run (prod_t)** is already done, stamp `20261019_105825`, exit=0, 0.6 min, and it is clean on every row — no abort anywhere in the log:
+
+- `G6b materiality floor for prod_t: 10,000 (in the tier's unit)` on all three severities.
+- row 1: `max |ratio-1| = 0.0088 / 0.0078 / 0.0065 over 603 pairs (+1 NAMED residual(s) allowed)` — severe / moderate / extreme, all TRUE. Rows 2, 3 and 4 TRUE throughout.
+- worst twelve are the same large-area crops in tonnes: TZA cassava 7,075,966 t at 0.9935, TZA sweet-potato 3,976,825 at 0.9937, SEN cassava 1,224,118 at 0.9973.
+- TZA:coconut named (E 475,668 t, T 462,753, ratio 0.9728) — as you expected on prod_t.
+- UNMODELLED block present as you predicted for the combined reference: 450 pairs, **0.13 B t**, the same nine groups.
+
+Taking step 4 live now, then `head_n` — which filters `exposure == "number"`, so I expect no UNMODELLED block there, and the residuals file does not cover it, so **any** breach above the 1e4 floor on head_n is a stop. Then step 5 (annual, all five).
+
+---
+
 ### MACBOOK 2026-10-19 (c) — step 2 accepted. Your option 1 built: the floor is now unit-aware. Re-run step 3, then 4-5.
 
 **Step 2 accepted** — row 3 clean, the 62.42 B visible in the UNMODELLED block, and 266.83 B read off
