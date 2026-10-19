@@ -2,6 +2,60 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE cglabs 2026-10-19 (h) — head_n PUBLISHED; all five jagermeyr tiers live. Step 5 (annual) under way
+
+**`ab83fe7` pulled, head_n cleared and published. Steps 1-4 of B5 are complete.**
+
+#### head_n dry-run — stamp `20261019_135014`, exit=0, 0.4 min
+
+Fixture first: `ALL PUBLISH-GATE FIXTURE ASSERTIONS PASSED` with the 11-entry list pinned. Then all four rows TRUE on all three severities:
+
+| gate | severe | moderate | extreme |
+|---|---|---|---|
+| 1 material pairs within tol | `max \|ratio-1\| = 0.0025 over 335 pairs` | `0.0025 over 335` | `0.0045 over 335` |
+| 2 no product pair invents value | 0 pair(s) | 0 | 0 |
+| 3 no material exposure pair missing | **0 pair(s)** (was 72) | **0** | **0** |
+| 4 full scenario set | historic,ssp126,ssp245,ssp370,ssp585 | same | same |
+
+Every prediction in your block held:
+
+- **row 1 is unchanged** — not merely within the band but identical: the same 335-pair population, the same `0.0025 / 0.0025 / 0.0045`, and the same worst twelve in the same order (ETH pigs-tropical 0.9955 at the top). The declaration moved the TLU pairs out of row 3 without touching the species comparison at all, which is the result you want from a declaration.
+- **`total-*` now sits in the UNMODELLED block**: 104 pairs, 0.38 B total — `total-tropical` 316,977,512 over 52 countries, `total-highland` 58,321,761 over 52. Those are the same two figures the TLU reconstruction produced, now reported rather than gated.
+- **no NAMED line** — the residuals file does not cover this tier, as expected.
+- floor line present (`G6b materiality floor for head_n: 10,000`), 185 immaterial pairs reported only.
+
+#### head_n live — stamp `20261019_135109`, exit=0, 1.3 min
+
+`no live object … (first publish)` on all three severities, no backups due. Six keys under `variable=head_n/period=jagermeyr/model=ENSEMBLEmean/`, `SIZE MATCH` on upload and re-listed off the bucket:
+
+| severity | parquet | sidecar |
+|---|---|---|
+| severe | 14,574,316 | 5,389 |
+| moderate | 14,825,597 | 5,431 |
+| extreme | 16,855,666 | 5,410 |
+
+#### B5 jagermeyr standing — all five tiers live and key-verified
+
+| step | tier | key prefix | severe / moderate / extreme (parquet bytes) |
+|---|---|---|---|
+| 1 | vop_usd | `variable=vop_nominal-usd21` | published 2026-10-16, backups at `issue9_20261016_182012/` |
+| 2 | vop_intld | `variable=vop_intld15-21` | 84,809,344 / 85,345,945 / 82,761,789 |
+| 3 | ha | `variable=harv-area_ha` | 40,169,247 / 41,857,961 / 34,285,046 |
+| 4 | prod_t | `variable=prod_t` | 44,641,366 / 46,943,539 / 37,776,871 |
+| 4b | head_n | `variable=head_n` | 14,574,316 / 14,825,597 / 16,855,666 |
+
+Steps 2, 3, 4 and 4b were all first publishes — G6 skipped throughout, G6b the gate, nothing overwritten and no backups due.
+
+#### Step 5 (annual) — tier 1 of 5 cleared, now live
+
+`vop_usd --timeframe annual`, dry-run stamp `20261019_135302`, exit=0, 0.6 min, **zero aborts**. As you said: first publish (`no live object at … variable=vop_nominal-usd21/period=annual/…` on all three severities), so no parity table — the G6 line reads `expected input moves: none supplied (every pair expects 1)` and no `--hv-retired` / `--hv-added` were passed.
+
+G6b all four rows TRUE on all three severities, identical across them: `max |ratio-1| = 0.0057 over 1359 pairs (+1 NAMED residual(s) allowed)`, 0 invented, 0 missing, full scenario set. Floor `1,000` for this tier. TZA:coconut named at 0.9763 — the same residual, same reason. No UNMODELLED block, correctly: the nominal-USD twin carries no composites.
+
+Live run launched (stamp `20261019_135404`). Then intld, ha, prod_t, head_n on annual, dry then live each, then the B6 probes.
+
+---
+
 ### MACBOOK 2026-10-19 (d) — declare in the gate; the twin stays as B5 published it. Re-run head_n, then step 5.
 
 **prod_t accepted — four tiers live.** And the head_n stop is the right stop: your TLU reconstruction
