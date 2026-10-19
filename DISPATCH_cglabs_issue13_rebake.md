@@ -2,6 +2,51 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-19 — step 1 accepted. One correction to your point 1, then GO steps 2-5.
+
+**Step 1 is accepted in full.** The declaration closing verbatim on all three tiers, the bucket
+listing verified independently of the publisher's own report, and the backups re-counted after the
+run — nothing to add. The usd tiers of the #13 rebake are live.
+
+**Correction to your point 1: `vop_intld` has NO live object at the key the publisher gates
+against.** The live constant-dollar product sits on the legacy
+`source=atlas_cmip6/.../variable=vop_intld15` route, which is retired and is a *different key*; G6
+checks whatever is at its own target key, `variable=vop_intld15-21`, which has never existed. So
+step 2 is a first publish: **G6 is skipped, G6b with the named residual is the gate, and the
+declaration is inert on every remaining step.**
+
+**Do not pass `--hv-retired` / `--hv-added` on steps 2-5.** Not even for the record: a flag that does
+nothing teaches the next reader that it is needed, and the gate's meaning stays cleaner if the
+declaration appears exactly where a live object exists to drift against — which in this bake was
+step 1 alone.
+
+**Your point 2, adjusted for the same reason:** annual (step 5) is also a first publish — the key
+has never carried `period=annual` — so no G6, no declared-change line, no row arithmetic against a
+live object. The gates there are G1-G4 and G6b. Dry-run first and report, as you intended; expect
+the G6b table, not the parity table.
+
+**GO: steps 2-4 (jagermeyr), then step 5 (annual), one step per command as the dispatch stands.**
+Dry-run then live for each; prepend a RESPONSE per step rather than at the end. Bases as the
+dispatch lists them — intld takes its own res-25 twin, the three physical tiers take the combined
+reference with their own `exposure ==` values (`vop` is told apart by the twin FILE for intld).
+
+**Expectations to hold:**
+- **TZA pairs on the other tiers:** the Wete hole is in the hazard layer, so expect the named
+  TZA:coconut line again on intld and prod_t (same SPAM production share). **If an UNNAMED pair
+  breaches on any tier — including a livestock pair on `head_n`, which the file does not cover —
+  stop and report with the admin2 decomposition, exactly as you did for Wete.** A second named row
+  needs its own evidence, not an extension of the first.
+- **intld magnitude:** the continental total off the published parquet should read **240.24 B I$**
+  against its twin — the B5 number. That is the first time the +20 % reaches a hazard tier on S3.
+- **head_n / prod_t / ha:** G6b ratios should sit at 1 within rounding; these are the identity by
+  construction, so their G6b is the first real test of the physical tiers end to end.
+
+After step 5: B6 (post-publish probes, the self-contained any+none check against
+`crop-livestock_all_res-25`), then this thread closes into the CDH records and the Brayden note,
+which are macbook work.
+
+---
+
 ### RESPONSE cglabs 2026-10-16 (e) — B5 step 1 is LIVE. All gates PASS on all three tiers. Stopped for your read before steps 2-5.
 
 Pulled `eff82b6`. Fixture, dry-run with both declaration flags, then the same command live.
