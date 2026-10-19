@@ -2,6 +2,104 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE cglabs 2026-10-19 (c) — Step 3 (`ha`) STOPS at G6b row 1: six UNNAMED pairs, all tiny areas. The gate's materiality floor is unit-blind. Nothing written.
+
+Step 2's RESPONSE is in the block below. Step 3 dry-run only; **`ha` FAILs row 1 on all three
+tiers, nothing published, steps 4-5 not started, no `--allow-exposure-mismatch`.**
+
+Your two `ha` expectations held: the **declared UNMODELLED block appears** (450 pairs, 0.03 B ha —
+the combined reference does carry the composites), and **TZA:coconut is named** at 0.9761.
+
+## The breach
+
+```
+1: material pairs within tol   max |ratio-1| = 0.0733 over 757 pairs (+1 NAMED residual(s) allowed)   FALSE
+2: no product pair invents value without exposure                                      0 pair(s)      TRUE
+3: no material exposure pair missing from the product                                  0 pair(s)      TRUE
+4: product has the full scenario set                             historic,...,ssp585                  TRUE
+```
+
+**Six unnamed pairs breach 0.02, and every one of them is a tiny area:**
+
+```
+     iso3    crop        E      T     ratio
+1:    COD  barley   1395.3   1293 0.9267
+2:    MDG     tea   1018.5    955 0.9377
+3:    MDG  lentil   1232.5   1199 0.9728
+4:    MDG sorghum   2373.7   2314 0.9748
+5:    TZA    yams   1476.3   1441 0.9761
+6:    COD tobacco   8213.1   8025 0.9771
+```
+
+(a seventh row, TZA:coconut at 172,681 ha, is the named Wete residual — the gate excluded it; my
+probe did not, which is why it shows up in my own table.)
+
+## The deviation is a function of area, and the whole population says so
+
+758 material pairs, **median deviation 0.000126**:
+
+```
+        bin pairs     max_dev   median_dev n_over_002
+1:    1k-2k    57 0.073324208 1.809627e-03          4
+2:    2k-5k    92 0.025150609 5.850998e-04          1
+3:   5k-10k    68 0.022904816 2.813733e-04          1
+4: 10k-100k   295 0.004343358 1.477167e-04          0
+5:  100k-1M   192 0.023916820 3.000821e-05          1   <- TZA:coconut, the named one
+6:      >1M    54 0.001916485 1.749680e-05          0
+```
+
+**Set the named pair aside and every pair above 10,000 ha is within 0.44 %.** All six breaches sit
+below 8,213 ha, four of them below 2,400 ha.
+
+## Admin2 decomposition, as you asked — and it is NOT the Wete mechanism
+
+```
+COD:barley    units with exposure and ZERO product: 33, E_lost 25.2 (1.81% of national)
+MDG:tea        0 units,  0.00%      MDG:lentil   0 units, 0.00%
+MDG:sorghum    0 units,  0.00%      TZA:yams    25 units, 0.42%
+COD:tobacco    4 units,  0.03%
+```
+
+Only COD:barley has a meaningful coverage hole, and at 1.81 % it does not account for its 7.33 %.
+Three of the six have **no zero-product unit at all**. The shortfall is instead spread thinly across
+units that *are* present:
+
+```
+MDG:tea      Analanjirofo 107.7 -> 103   Anosy 29.5 -> 25   Melaky 15.4 -> 11
+MDG:sorghum  Menabe        93.5 ->  81   Atsimo Andrefana 164.8 -> 154
+```
+
+**Measured fact: every product value is an integer** — `T all integers: TRUE`, no fractional value
+in 169,316 sampled rows — while the exposure side is fractional. The same is true of the `vop_usd`
+tier, so the storage is general, not an `ha` defect. **And it is two-sided: 240 pairs sit above 1
+and 518 below, so this is rounding, not truncation.**
+
+**My inference, flagged as inference:** a zone's value is accumulated from pixels that are each
+integral, so the absolute error grows with the pixel count while the relative error falls with
+area. That is exactly the shape of the table above. I have not opened R/3's write path to confirm
+where the integerisation happens, and I would rather you point me at it than guess further.
+
+What this means for the gate: **`min_exposure = 1e3` is unit-blind.** 1,000 USD is genuine noise;
+1,000 *hectares* is a real area, so the physical tiers admit a population that currency tiers never
+had — 57 pairs between 1k and 2k ha, where one hectare of rounding is 0.1 %.
+
+## Not deciding it
+
+1. **A unit-aware materiality floor** — `min_exposure` per tier, e.g. 1e4 ha for the physical ones.
+   Principled: materiality has to scale with the unit, and at 1e4 ha the existing 2 % bound passes
+   with 0.44 % to spare. It also leaves the bound itself untouched.
+2. **Name the six.** I would avoid it: they are not one mechanism with one reason, and the next
+   tiny pair would need naming too. The named-residual file works because Wete is a *fact*.
+3. **Loosen `tol_pair` for `ha`.** Blunts the bound for all 757 pairs to admit six.
+
+Option 1 is the one I would build, and it is testable: state the floor, and the claim "every pair
+above it is within 2 %" is checkable in one run.
+
+**What I need:** the floor, or another route. `prod_t` and `head_n` are untouched — `prod_t` is in
+tonnes and will have the same unit-blindness, `head_n` in animal numbers likely more so. I have not
+run them, since the dispatch is one step per command and this step has not passed.
+
+
 ### RESPONSE cglabs 2026-10-19 (b) — Step 2 is LIVE. Row 3 clean, the 62.42 B reported not gated, and the published parquet reads 266.83 B I$.
 
 Pulled `93965df`. Fixture, dry-run, then live. **exit=0, 1.0 min, six keys, no backups — first
