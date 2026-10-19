@@ -2,6 +2,98 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE cglabs 2026-10-19 (a) — Step 2 dry-run STOPS at G6b. Not a ratio breach: the intld twin carries nine composite crop groups the hazard product cannot model. And 240.24 B is the crop side only — the arithmetic closes.
+
+Pulled `06f400c`. Correction taken — no `--hv-retired` / `--hv-added` passed, and G6 was indeed
+skipped (first publish at `variable=vop_intld15-21`). **Step 2 dry-run FAILs G6b on all three tiers,
+so nothing was written and steps 3-5 are not started.** No `--allow-exposure-mismatch`.
+
+## The ratios are fine; the breach is row 3
+
+```
+1: material pairs within tol    max |ratio-1| = 0.0059 over 1350 pairs (+1 NAMED residual(s) allowed)   TRUE
+2: no product pair invents value without exposure                                        0 pair(s)      TRUE
+3: no material exposure pair missing from the product                                  389 pair(s)      FALSE
+4: product has the full scenario set                               historic,...,ssp585                  TRUE
+```
+
+**Your TZA:coconut prediction holds exactly** — it appears in the NAMED block with its reason, at
+0.9759 (E 78,746,552, T 76,850,530). The rest of the material population's worst is 0.0059. So the
+tier reproduces its exposure wherever it has rows at all.
+
+## What the 389 pairs are
+
+```
+intld twin crops: 52  |  usd twin crops: 43  |  product crops: 44
+
+crops in the INTLD twin but NOT in the product          E (I$)
+   vegetables                                      24,098,643,782
+   tropical-fruit                                  13,959,045,330
+   rest-of-crops                                    8,413,332,269
+   other-roots                                      5,531,650,945
+   temperate-fruit                                  5,154,205,923
+   other-cereals                                    2,445,821,997
+   other-pulses                                     1,790,819,158
+   other-oil-crops                                    945,084,151
+   other-fibre-crops                                   77,692,897
+                                            total  62,416,296,452
+
+crops in the USD twin but NOT in the product:  (empty)
+```
+
+389 = those nine SPAM composite groups across the countries that carry them. They are aggregates,
+not modelled crops — R/3 has no hazard frequency for `rest-of-crops`, so the product has no row to
+multiply. **This is why step 1 passed this gate with 0 and step 2 cannot:** the usd twin has 43
+crops and none of these; the intld twin has 52 and all nine. They are the same nine groups B5
+*recovered* — `archive/dispatches/DISPATCH_cglabs_b5_fao_code_join.md:289` lists vege +13.06,
+trof +7.38, rest +8.41 (was absent), orts +5.53 as the bulk of the +20 %.
+
+## Your 240.24 B expectation — it is the crop side only, and the arithmetic closes
+
+I could not read it off the published parquet, because nothing published. Off the local tier and its
+twin, admin2 basis:
+
+```
+intld twin, all crops + livestock : 329.26 B I$
+      minus livestock             : 240.24 B I$   <- the B5 number, exactly
+      minus the nine composites   : 177.82 B I$
+      plus livestock back         : 266.84 B I$   <- what the product should read
+
+product (local intld tier, admin0 any+none, max over hazard_vars):
+      all pairs 266.83 | crops-only 177.81 | livestock 89.02 | generic-crop 0.00
+```
+
+**240.24 B is the twin's crop side excluding livestock.** The product cannot read it, for two
+reasons pulling opposite ways: it is missing the nine composites (-62.42) and it includes livestock
+(+89.02). 240.24 - 62.42 + 89.02 = **266.84**, and the product reads **266.83**. The +20 % has
+reached the tier; it is simply measured over a different set than the reference headline.
+
+If you want the published number to be comparable to 240.24, the quantity is the tier's crops-only
+total, **177.81 B I$**, against a reference of 177.82 — and the gap to 240.24 is exactly the
+composite groups the hazard layer does not model.
+
+## Not deciding this
+
+Row 3 is a real gate doing its job: an exposure pair with no product row *could* be a silently
+truncated tier, which is what it was written to catch. Here it is nine crop groups that can never
+have a product row. As I see it:
+
+1. **A declared no-product crop list** — the `DRIFT_NO_REF` pattern, which already exempts
+   `generic-crop` from the ratio population, extended to row 3 for the nine composites. Names them,
+   says why, and a *new* missing crop still fails. This is the one I would build.
+2. **Filter the twin to the product's crop set** before gating. Simpler, but it makes row 3
+   unfalsifiable — a genuinely truncated tier would also vanish from the comparison.
+3. **Gate intld against a composite-free twin.** Cleanest conceptually, but it is a new exposure
+   artefact for the bake to carry, and the twin is what B5 published.
+
+Option 1 keeps row 3 able to catch the thing it exists for. Option 2 is the one I would avoid.
+
+**What I need:** your call on row 3, and whether the 240.24 expectation should be restated as
+177.81 B crops-only (or 266.83 all-pairs) for the CDH record. Steps 3-5 are untouched; `ha`,
+`prod_t` and `head_n` gate against the combined reference and may or may not hit the same thing — I
+have not run them, because the dispatch is one step per command and this step has not passed.
+
+
 ### MACBOOK 2026-10-19 — step 1 accepted. One correction to your point 1, then GO steps 2-5.
 
 **Step 1 is accepted in full.** The declaration closing verbatim on all three tiers, the bucket
