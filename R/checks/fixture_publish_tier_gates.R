@@ -121,6 +121,24 @@ gd <- tier_vs_exposure(drop, expo_f, "prod")
 ok(!gd$pass && nrow(gd$missing_product) == 1 && gd$missing_product$iso3 == "KEN",
    "G6b fails when a material exposure pair is missing from the product (a silently truncated tier)")
 
+## ---------------------------------------------------------------- declared unmodelled crops (#13 step 2)
+# The intld twin carries nine SPAM composite groups (B5 recovered their 62.42 B I$) that R/3 cannot
+# model - no ecocrop entry, no crop stack, nothing to multiply - so row 3 read them as 389 missing
+# pairs on a tier whose ratios were clean at 0.0059. Declared crops are reported, not gated; an
+# UNDECLARED missing crop still fails, which is the truncation row 3 exists to catch.
+expo_comp <- mk_exposure(file.path(tmp, "exposure_comp.parquet"),
+                         rbind(PAIRS, data.table(iso3 = "KEN", crop = "rest-of-crops", E = 9e6)))
+gu <- tier_vs_exposure(prod_f, expo_comp, "prod")
+ok(isTRUE(gu$pass) && nrow(gu$unmodelled) == 1 && gu$unmodelled$crop == "rest-of-crops",
+   "a declared composite group with exposure and no product row is REPORTED as unmodelled, not failed")
+gu2 <- tier_vs_exposure(prod_f, expo_comp, "prod", no_product_crops = character(0))
+ok(!gu2$pass && nrow(gu2$missing_product) == 1,
+   "...and without the declaration the same pair FAILS row 3 - the list is falsifiable, not a blanket")
+expo_tr <- mk_exposure(file.path(tmp, "exposure_tr.parquet"),
+                       rbind(PAIRS, data.table(iso3 = "KEN", crop = "sorghum", E = 9e6)))
+ok(!tier_vs_exposure(prod_f, expo_tr, "prod")$pass,
+   "a REAL crop with exposure and no product row still fails - a truncated tier cannot hide behind the composites")
+
 ## ---------------------------------------------------------------- the wrong basis cannot pass quietly
 e <- tryCatch({ tier_vs_exposure(prod_f, expo_f, "vop-nonsense"); NULL }, error = function(e) conditionMessage(e))
 ok(!is.null(e) && grepl("matches no rows", e) && grepl("prod/t", e),

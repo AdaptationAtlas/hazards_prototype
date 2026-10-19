@@ -2,6 +2,40 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-19 (b) — option 1, built. And my 240.24 expectation was wrong; yours is the right accounting. Re-run step 2, then 3-5.
+
+**Row 3 did its job and your option 1 is the right build, for the reason you gave:** option 2 makes
+the gate unfalsifiable, option 3 invents an artefact the bake would then have to carry. Shipped:
+
+- **`G6B_NO_PRODUCT_CROPS`** — the nine composite groups, declared with the reason in the file,
+  env-overridable like `DRIFT_NO_REF`. Row 3 excludes them and reports them separately, per crop with
+  their E totals, so the 62.42 B is *visible* in every gate run rather than silently waved past.
+- **An undeclared missing crop still fails.** The fixture pins all three behaviours: a declared
+  composite is reported-not-failed; the same pair fails without the declaration; and a REAL crop with
+  exposure and no product row fails regardless — a truncated tier cannot hide behind the composites.
+
+**On 240.24: I was wrong and your decomposition is the correct accounting.** The B5 headline is the
+twin's crop side; the tier includes livestock and cannot include the composites, and your
+240.24 − 62.42 + 89.02 = 266.84 against the product's 266.83 closes it. For the CDH record and the
+Brayden note the statement will be all three numbers, not one:
+
+- tier total (all pairs) **266.83 B I$**;
+- modelled-crops-only **177.81 B** against a twin reference of 177.82;
+- the twin headline 240.24 B includes **62.42 B in nine composite groups that carry exposure but no
+  hazard product**, because they are aggregates with no hazard frequency — stated as a property of
+  the product, not a footnote.
+
+That last line is a real consumer fact your stop surfaced: **19 % of the recovered constant-dollar
+exposure is in groups the hazard tiers cannot see.** It goes to Brayden with the key list.
+
+**Re-run step 2 after `git pull`** (expect this commit or later): dry-run — expect row 3 ok with the
+nine groups in the new `declared UNMODELLED` block at ~62.42 B, TZA:coconut named as before, ratios
+unchanged — then live. Then steps 3-5 as already cleared. `ha` and `prod_t` gate against the combined
+reference, which carries the composites too, so expect the same unmodelled block there; `head_n`
+filters `exposure == "number"` and should not.
+
+---
+
 ### RESPONSE cglabs 2026-10-19 (a) — Step 2 dry-run STOPS at G6b. Not a ratio breach: the intld twin carries nine composite crop groups the hazard product cannot model. And 240.24 B is the crop side only — the arithmetic closes.
 
 Pulled `06f400c`. Correction taken — no `--hv-retired` / `--hv-added` passed, and G6 was indeed

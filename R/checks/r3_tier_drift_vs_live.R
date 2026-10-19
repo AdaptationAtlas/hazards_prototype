@@ -56,6 +56,19 @@ DRIFT_LIVESTOCK_RE <- "cattle|sheep|goats|pigs|poultry"
 # summed price corrections. Report it, never gate it. Env-overridable, mirrors GATE_NO_REF.
 DRIFT_NO_REF <- strsplit(Sys.getenv("DRIFT_NO_REF", "generic-crop"), ",")[[1]]
 
+# Crops that exist in an exposure table but CANNOT have a product row, because R/3 has no hazard
+# frequency for them: the nine SPAM composite groups. They are aggregates, not modelled crops - no
+# ecocrop entry, no crop stack, nothing to multiply - and they appear only in the intld twin (B5
+# recovered their value, 62.42 B I$; the nominal side never prices composites). G6b row 3 ("no
+# material exposure pair missing from the product") would otherwise read them as a truncated tier:
+# 389 pairs at #13 step 2, ratios elsewhere clean at 0.0059. Declared here so row 3 stays falsifiable
+# - a crop NOT on this list with exposure and no product row still FAILS, which is the truncation
+# row 3 exists to catch. Env-overridable like DRIFT_NO_REF.
+G6B_NO_PRODUCT_CROPS <- strsplit(Sys.getenv(
+  "G6B_NO_PRODUCT_CROPS",
+  paste("vegetables", "tropical-fruit", "rest-of-crops", "other-roots", "temperate-fruit",
+        "other-cereals", "other-pulses", "other-oil-crops", "other-fibre-crops", sep = ",")), ",")[[1]]
+
 .drift_ts  <- function() format(Sys.time(), "%Y-%m-%d %H:%M:%S")
 .drift_log <- function(fmt, ...) cat(sprintf("[%s] [gate-drift] %s\n", .drift_ts(), sprintf(fmt, ...)))
 
@@ -138,7 +151,8 @@ DRIFT_NO_REF <- strsplit(Sys.getenv("DRIFT_NO_REF", "generic-crop"), ",")[[1]]
 # dollar in the pre-#13 product.
 tier_vs_exposure <- function(local_f, exposure_f, exposure_var,
                              tol_pair = 0.02, min_exposure = 1e3, max_invented = 1e6,
-                             no_ref = DRIFT_NO_REF, allow = NULL) {
+                             no_ref = DRIFT_NO_REF, allow = NULL,
+                             no_product_crops = G6B_NO_PRODUCT_CROPS) {
   stopifnot(file.exists(local_f))
   b <- .drift_read(local_f)
   e <- .drift_read_exposure(exposure_f, exposure_var)
@@ -146,7 +160,9 @@ tier_vs_exposure <- function(local_f, exposure_f, exposure_var,
   j[, noref := crop %in% no_ref]
   j[, ratio := T / E]
   unmatched_no_expo <- j[!noref & (is.na(E) | E <= 0) & !is.na(T) & T > max_invented]
-  unmatched_no_prod <- j[!noref & (is.na(T)) & !is.na(E) & E > min_exposure]
+  # exposure-only crops the product can never carry (see G6B_NO_PRODUCT_CROPS): reported, not gated
+  unmodelled <- j[crop %in% no_product_crops & is.na(T) & !is.na(E)]
+  unmatched_no_prod <- j[!noref & !(crop %in% no_product_crops) & (is.na(T)) & !is.na(E) & E > min_exposure]
   mat <- j[!noref & !is.na(T) & !is.na(E) & E > min_exposure]
   imm <- j[!noref & !is.na(T) & !is.na(E) & E <= min_exposure]
   allowed <- mat[0]
@@ -171,7 +187,7 @@ tier_vs_exposure <- function(local_f, exposure_f, exposure_var,
              setequal(b$scenarios, c("historic", "ssp126", "ssp245", "ssp370", "ssp585"))))
   list(pass = all(gates$pass), gates = gates, material = mat[order(-abs(ratio - 1))],
        immaterial = imm, invented = unmatched_no_expo, missing_product = unmatched_no_prod,
-       noref = j[noref == TRUE], worst = worst, allowed = allowed,
+       noref = j[noref == TRUE], worst = worst, allowed = allowed, unmodelled = unmodelled,
        basis = sprintf("%s, exposure == '%s'", basename(exposure_f), exposure_var),
        params = list(tol_pair = tol_pair, min_exposure = min_exposure, max_invented = max_invented))
 }
@@ -183,6 +199,12 @@ print_tier_vs_exposure <- function(res, label = "", n_worst = 12, log = .drift_l
   if (nrow(res$material))        { cat("\n  material pairs, worst", n_worst, "of", nrow(res$material), "(ratio = product / exposure, expect 1):\n"); print(head(res$material[, ..cols], n_worst), nrows = n_worst) }
   if (nrow(res$invented))        { cat("\n  PRODUCT VALUE WITH NO EXPOSURE ROW:\n"); print(res$invented[, ..cols], nrows = 50) }
   if (nrow(res$missing_product)) { cat("\n  EXPOSURE PRESENT, NO PRODUCT ROW:\n"); print(res$missing_product[, ..cols], nrows = 50) }
+  if (!is.null(res$unmodelled) && nrow(res$unmodelled)) {
+    .um <- res$unmodelled[, .(pairs = .N, E = sum(E, na.rm = TRUE)), by = crop][order(-E)]
+    cat(sprintf("\n  declared UNMODELLED crops in the exposure (no hazard frequency exists; reported, not gated): %d pairs, %.2f B total\n",
+                nrow(res$unmodelled), sum(.um$E) / 1e9))
+    print(.um, nrows = 15)
+  }
   if (!is.null(res$allowed) && nrow(res$allowed)) { cat("\n  NAMED residuals, breaching but allowed with a reason (metadata/g6b_expected_residuals.csv):\n"); print(res$allowed[, .(iso3, crop, E, T, ratio, reason = substr(reason, 1, 90))], nrows = 20) }
   if (nrow(res$noref))           { cat("\n  no-reference crops (reported, not gated):\n"); print(res$noref[, ..cols], nrows = 20) }
   cat(sprintf("\n  immaterial pairs (exposure <= %s): %d, reported only\n", format(res$params$min_exposure, big.mark = ","), nrow(res$immaterial)))
