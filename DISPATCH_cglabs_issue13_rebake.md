@@ -2,6 +2,66 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE cglabs 2026-10-19 (i) — STEP 5 COMPLETE. All ten prefixes live, 60 keys, 10/10 verified. B5 publish is done.
+
+**Every tier of B5 is published.** Five variables × two timeframes × three severities, each a first publish, each gated on G6b. Zero aborts across the whole of step 5, no forbidden flag passed anywhere, nothing overwritten, no backups due.
+
+#### Step 5 — annual, tier by tier
+
+| tier | dry-run | G6b row 1 (severe / moderate / extreme) | floor | live |
+|---|---|---|---|---|
+| vop_usd | `20261019_135302` | `0.0057 / 0.0057 / 0.0057` over 1359 pairs | 1,000 | exit=0, 1.9 min |
+| vop_intld | `20261019_135625` | `0.0059 / 0.0059 / 0.0059` over 1350 pairs | 1,000 | exit=0, 3.3 min |
+| ha | `20261019_135720` | `0.0068 / 0.0068 / 0.0068` over 540 pairs | 10,000 | exit=0, 1.9 min |
+| prod_t | `20261019_140139` | `0.0083 / 0.0080 / 0.0090` over 603 pairs | 10,000 | exit=0, 1.4 min |
+| head_n | `20261019_140414` | `0.0025 / 0.0025 / 0.0036` over 335 pairs | 10,000 | exit=0, 1.0 min |
+
+Rows 2, 3 and 4 were TRUE everywhere. As you said: first publish throughout, so **no parity table on any of them** — the G6 line reads `expected input moves: none supplied (every pair expects 1)` and neither `--hv-retired` nor `--hv-added` was passed. TZA:coconut named on the two vop tiers and on prod_t; absent from ha's NAMED line only in the sense that it stays within the floor-filtered population; absent from head_n as expected.
+
+Two things worth recording:
+
+- **The annual G6b populations are identical to jagermeyr's, tier for tier** — 1359, 1350, 540, 603, 335 pairs. Same exposure twin, same product grid, so the pair set is the same; only the deviations move, and they move slightly wider on prod_t (0.0090 vs 0.0065) because annual sweeps a different hazard-frequency window over the same exposure. That is the shape to expect, and it is the cross-check that the two timeframes were built from one exposure.
+- **The TLU declaration behaves identically on annual**: head_n's UNMODELLED block reads 104 pairs, 0.38 B — `total-tropical` 316,977,512, `total-highland` 58,321,761 — the same figures to the digit as jagermeyr, and row 3 clears at 0 pairs.
+
+#### All ten prefixes verified off the bucket — 60 keys, 6 per prefix
+
+```
+=== 10/10 prefixes hold exactly 6 keys; 0 do not ===
+```
+
+| variable | period | severe | moderate | extreme |
+|---|---|---|---|---|
+| vop_nominal-usd21 | jagermeyr | 86,438,784 | 86,767,465 | 84,569,129 |
+| vop_nominal-usd21 | annual | 81,786,852 | 79,663,359 | 77,389,160 |
+| vop_intld15-21 | jagermeyr | 84,809,344 | 85,345,945 | 82,761,789 |
+| vop_intld15-21 | annual | 80,304,292 | 78,169,818 | 75,714,441 |
+| harv-area_ha | jagermeyr | 40,169,247 | 41,857,961 | 34,285,046 |
+| harv-area_ha | annual | 37,024,547 | 37,580,325 | 30,321,724 |
+| prod_t | jagermeyr | 44,641,366 | 46,943,539 | 37,776,871 |
+| prod_t | annual | 41,153,936 | 41,989,241 | 32,946,659 |
+| head_n | jagermeyr | 14,574,316 | 14,825,597 | 16,855,666 |
+| head_n | annual | 14,053,138 | 13,326,763 | 17,083,621 |
+
+Each prefix also carries its three `.parquet.json` sidecars (18 GCMs named in each). Every one of the 30 parquet uploads reported `SIZE MATCH` against its local file at write time, and the sizes above are the bucket's own, re-listed afterwards.
+
+#### What the gates caught along the way, for the record
+
+B5 stopped four times and every stop was real:
+
+1. **G6b's exposure basis** — admin0 vs admin2, the third appearance of the #18 border-cell defect (`0efb5b9`).
+2. **TZA:coconut / Wete** — a genuine 0.25° coverage hole, proved pre-existing against the parked pre-#13 tier, now a named residual pending #50.
+3. **The nine SPAM composites** — the intld twin's aggregate crops, declared (`93965df`).
+4. **The ha materiality floor** — unit-blind at 1e3, six sub-10k-ha pairs failing on rounding; fixed per-tier (`5769fbc`).
+5. **The TLU aggregates** — `total-*` under `exposure == "number"`, declared, with the unit-mixing filed as #52 (`ab83fe7`).
+
+None of them was improvised past, and four of the five produced a durable gate change rather than a one-off waiver.
+
+#### Next on the node
+
+B6: the self-contained `any + none` check from the product itself crossed to `crop-livestock_all_res-25.parquet` — the **suffixed** key, since the unsuffixed one is the 0.05° alias that #9/#12 closed on — plus the local-vs-S3 diff per key. I will read the runbook's post-bake section before interpreting either CR-068 probe, given both have known bugs that read as data defects. Then the thread comes back to you for the CDH records, the Brayden note, and the close.
+
+---
+
 ### RESPONSE cglabs 2026-10-19 (h) — head_n PUBLISHED; all five jagermeyr tiers live. Step 5 (annual) under way
 
 **`ab83fe7` pulled, head_n cleared and published. Steps 1-4 of B5 are complete.**
