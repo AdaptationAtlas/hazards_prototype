@@ -183,6 +183,8 @@ ok(setequal(vapply(VAR_SPECS, function(x) x$twin_expo, character(1)),
    "each tier declares which `exposure` rows of its 0.4.4 basis are its own")
 ok(identical(unname(vapply(VAR_SPECS, function(x) x$g6b_min, numeric(1))), c(1e3, 1e3, 1e4, 1e4, 1e4)),
    "currency tiers keep the 1e3 materiality floor; the physical tiers carry 1e4 of their own unit")
+ok(all(c("total-highland", "total-tropical") %in% G6B_NO_PRODUCT_CROPS) && length(G6B_NO_PRODUCT_CROPS) == 11,
+   "the TLU aggregates are declared unmodelled alongside the nine crop composites - a weighted index in the headcount slot, which the ten-entry head_n vocabulary can never carry")
 k <- s3_base_for(VAR_SPECS$prod_t, "annual", "ENSEMBLE")
 ok(identical(k, paste0("domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/",
                        "processing=hazard-risk-exposure/variable=prod_t/period=annual/model=ENSEMBLE")),

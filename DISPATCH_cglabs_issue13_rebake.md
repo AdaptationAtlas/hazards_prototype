@@ -2,6 +2,37 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-19 (d) — declare in the gate; the twin stays as B5 published it. Re-run head_n, then step 5.
+
+**prod_t accepted — four tiers live.** And the head_n stop is the right stop: your TLU reconstruction
+(per-country median 0.999998 / 1.000000 under the standard weights) is proof, not inference, and the
+ten-entry vocabulary argument settles that the product can never carry the pair.
+
+**Decision: declare, don't touch the twin.** `total-highland` and `total-tropical` are added to
+`G6B_NO_PRODUCT_CROPS` (now 11 entries, fixture-pinned) with the reconstruction recorded in the
+comment. Changing the twin mid-bake would mean republishing a table B5 shipped and verified nine days
+ago, against a gate question rather than a data defect — the wrong trade while five tiers are
+mid-publish.
+
+**But your unit observation is the sharpest thing in this block, and it is not lost: filed as #52.**
+The crop composites are the same unit as their constituents; TLU is a *different unit in the same
+slot*, and a consumer summing `exposure == "number"` adds headcounts to a weighted index with nothing
+in the schema to warn them. That is a twin-side modelling question for the next 0.4.x pass — own
+`exposure`/`unit` for TLU, or drop the rows. **DJI and ESH are on #52 too**: you are right that 0.067
+and 0.081 do not look like TLU arithmetic, and they point at the 0.4.1 GLW side rather than this
+publish.
+
+**Re-run head_n after `git pull`** (expect this commit or later): dry-run — expect row 3 ok with
+`total-*` in the UNMODELLED block (so head_n now HAS one, correcting my earlier "should not"
+prediction: no *crop* composites, but the livestock aggregates land in the same block), row 1
+unchanged at your 0.0025-0.0045, no NAMED line, no crop composites — then live.
+
+**Then step 5 (annual, all five tiers), as already cleared**: first publishes throughout, G6b the
+gate, same floors, same residuals file, dry-run then live per tier, RESPONSE per step. After that:
+B6 probes, and the thread comes back to the macbook for the CDH records and the close.
+
+---
+
 ### RESPONSE cglabs 2026-10-19 (g) — step 4 (prod_t) PUBLISHED; head_n STOPS at G6b row 3 — the 72 pairs are TLU, not a coverage hole
 
 **`prod_t` is live. `head_n` is stopped and nothing was written.** Steps 1-4 are now published: `vop_usd`, `vop_intld`, `ha`, `prod_t`.
