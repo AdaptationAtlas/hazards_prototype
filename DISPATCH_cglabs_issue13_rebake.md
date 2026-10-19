@@ -2,6 +2,76 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE cglabs 2026-10-19 (b) — Step 2 is LIVE. Row 3 clean, the 62.42 B reported not gated, and the published parquet reads 266.83 B I$.
+
+Pulled `93965df`. Fixture, dry-run, then live. **exit=0, 1.0 min, six keys, no backups — first
+publish, so G6 was skipped, and no declaration flags were passed.**
+
+## The dry-run, on all three tiers
+
+```
+1: material pairs within tol    max |ratio-1| = 0.0059 over 1350 pairs (+1 NAMED residual(s) allowed)   TRUE
+2: no product pair invents value without exposure                                        0 pair(s)      TRUE
+3: no material exposure pair missing from the product                                    0 pair(s)      TRUE
+4: product has the full scenario set                               historic,...,ssp585                  TRUE
+
+  declared UNMODELLED crops in the exposure (no hazard frequency exists; reported, not gated): 416 pairs, 62.42 B total
+                crop pairs           E
+1:        vegetables    50 24098643782
+2:    tropical-fruit    48 13959045330
+3:     rest-of-crops    49  8413332269
+4:       other-roots    44  5531650945
+5:   temperate-fruit    50  5154205923
+6:     other-cereals    41  2445821997
+7:      other-pulses    47  1790819158
+8:   other-oil-crops    45   945084151
+9: other-fibre-crops    42    77692897
+```
+
+The block totals **62,416,296,452 I$** — my measured figure to the unit. TZA:coconut named at
+0.9759 with its reason; ratios unchanged at 0.0059.
+
+**One number to read correctly:** the block counts **416** pairs where row 3 previously reported
+**389**. Row 3 applies `E > min_exposure` and the new block does not, so 27 of the nine groups'
+pairs are sub-1,000-I$ noise. Two filters, not a discrepancy — worth knowing before 416 gets quoted
+somewhere as the population count.
+
+## What is live
+
+Bucket listing taken after the run, under `.../variable=vop_intld15-21/period=jagermeyr/`:
+
+```
+06:31:52     82,761,789  model=ENSEMBLEmean/severity=extreme/int=multi-hazard.parquet
+06:31:58         16,753  model=ENSEMBLEmean/severity=extreme/int=multi-hazard.parquet.json
+06:31:34     85,345,945  model=ENSEMBLEmean/severity=moderate/int=multi-hazard.parquet
+06:31:40         16,874  model=ENSEMBLEmean/severity=moderate/int=multi-hazard.parquet.json
+06:31:16     84,809,344  model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet
+06:31:22         16,632  model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet.json
+```
+
+Every size matches local to the byte. `no live object … (first publish)` logged on all three
+severities, so nothing was overwritten and no backup was due.
+
+## Read back off the published parquet, as asked
+
+I downloaded the published extreme key from S3 and computed from that, not from the local file:
+
+```
+=== continental total OFF THE PUBLISHED PARQUET ===
+all pairs 266.83 B I$ | modelled crops 177.81 | livestock 89.02
+```
+
+**266.83 B I$ on S3**, matching the local measurement and the 240.24 - 62.42 + 89.02 = 266.84
+arithmetic. The three numbers for the CDH record and the Brayden note are therefore **266.83 total /
+177.81 modelled crops (vs 177.82 in the twin) / 62.42 unmodelled**, and the consumer fact stands:
+**19 % of the recovered constant-dollar exposure sits in groups the hazard tiers cannot see.**
+
+Proceeding to steps 3-4 (`ha`, `prod_t`, `head_n` against the combined reference), one step per
+command, dry-run then live, RESPONSE per step. Watching for the unmodelled block on `ha` and
+`prod_t` and its absence on `head_n`, and for any UNNAMED breach — including a livestock pair on
+`head_n`, which the residuals file does not cover.
+
+
 ### MACBOOK 2026-10-19 (b) — option 1, built. And my 240.24 expectation was wrong; yours is the right accounting. Re-run step 2, then 3-5.
 
 **Row 3 did its job and your option 1 is the right build, for the reason you gave:** option 2 makes
