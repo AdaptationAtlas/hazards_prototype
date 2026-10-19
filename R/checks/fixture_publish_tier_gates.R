@@ -139,6 +139,23 @@ expo_tr <- mk_exposure(file.path(tmp, "exposure_tr.parquet"),
 ok(!tier_vs_exposure(prod_f, expo_tr, "prod")$pass,
    "a REAL crop with exposure and no product row still fails - a truncated tier cannot hide behind the composites")
 
+## ---------------------------------------------------------------- the materiality floor is unit-aware (#13 step 3)
+# R/3 rounds every tier to integers per pixel, so zonal relative error falls with size: measured on
+# ha, every pair above 1e4 was within 0.44 % while six pairs under 8,213 ha breached 2 % on rounding
+# alone. A floor of 1e3 is noise in USD and a real area in hectares, so the floor lives in VAR_SPECS
+# per tier. Below it, a breaching pair is reported immaterial, not failed; a real breach above it
+# still fails.
+tiny <- mk_product(file.path(tmp, "tiny.parquet"),
+                   pairs = rbind(PAIRS, data.table(iso3 = "MDG", crop = "tea", E = 1018)),
+                   scale = list(iso3 = "MDG", crop = "tea", by = 0.93))
+expo_tiny <- mk_exposure(file.path(tmp, "expo_tiny.parquet"), rbind(PAIRS, data.table(iso3 = "MDG", crop = "tea", E = 1018)))
+ok(isTRUE(tier_vs_exposure(tiny, expo_tiny, "prod", min_exposure = 1e4)$pass),
+   "a 7 % breach on a 1,018-unit pair passes under the physical tiers' 1e4 floor - integer rounding, not a defect")
+ok(!tier_vs_exposure(tiny, expo_tiny, "prod", min_exposure = 1e3)$pass,
+   "...and fails under the old unit-blind 1e3 floor, which is the #13 step-3 stop replayed")
+ok(!tier_vs_exposure(mk_product(file.path(tmp, "big_breach.parquet"), scale = list(iso3 = "NGA", crop = "maize", by = 0.93)),
+                     expo_f, "prod", min_exposure = 1e4)$pass,
+   "a 7 % breach on a 9-million-unit pair still fails above the floor - the floor scopes materiality, not the bound")
 ## ---------------------------------------------------------------- the wrong basis cannot pass quietly
 e <- tryCatch({ tier_vs_exposure(prod_f, expo_f, "vop-nonsense"); NULL }, error = function(e) conditionMessage(e))
 ok(!is.null(e) && grepl("matches no rows", e) && grepl("prod/t", e),
@@ -164,6 +181,8 @@ ok(!anyDuplicated(.dirs), "no two tiers read the same local directory")
 ok(setequal(vapply(VAR_SPECS, function(x) x$twin_expo, character(1)),
             c("vop", "vop", "harv-area", "prod", "number")),
    "each tier declares which `exposure` rows of its 0.4.4 basis are its own")
+ok(identical(unname(vapply(VAR_SPECS, function(x) x$g6b_min, numeric(1))), c(1e3, 1e3, 1e4, 1e4, 1e4)),
+   "currency tiers keep the 1e3 materiality floor; the physical tiers carry 1e4 of their own unit")
 k <- s3_base_for(VAR_SPECS$prod_t, "annual", "ENSEMBLE")
 ok(identical(k, paste0("domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/",
                        "processing=hazard-risk-exposure/variable=prod_t/period=annual/model=ENSEMBLE")),

@@ -186,12 +186,19 @@ STAMP       <- format(Sys.time(), "%Y%m%d_%H%M%S")
 #              raster's name, so spam_prod_t_all -> "prod", spam_harv-area_ha_all -> "harv-area",
 #              livestock_number_number -> "number", and both vop rasters -> "vop" (the vop tiers are
 #              told apart by the twin FILE, which is already per-unit).
+#   g6b_min    G6b's materiality floor, IN THE TIER'S OWN UNIT (#13 step 3). The old global 1e3 was
+#              unit-blind: 1,000 USD is noise, 1,000 HECTARES is a real area. R/3 §4.1 rounds every
+#              tier to integers per pixel (round_* <- 0), so zonal absolute error grows with pixel
+#              count while relative error falls with size - measured on ha: every pair above 1e4 ha
+#              within 0.44 %, six tiny pairs (<= 8,213 ha) breaching 2 % on rounding alone, two-sided.
+#              Currency tiers keep 1e3; the physical tiers take 1e4 of their unit. Below the floor a
+#              pair is reported, not ratio-gated, and the invented-value check still applies.
 VAR_SPECS <- list(
-  vop_usd   = list(dir_key = "hazard_risk_vop_usd", file_var = "vop_nominal-usd-2021", s3_var = "vop_nominal-usd21", twin = "family",    twin_file = "vop_nominal-usd-2021", twin_expo = "vop"),
-  vop_intld = list(dir_key = "hazard_risk_vop",     file_var = "vop_intld15-2021",     s3_var = "vop_intld15-21",    twin = "family",    twin_file = "vop_intld15-2021",     twin_expo = "vop"),
-  ha        = list(dir_key = "hazard_risk_ha",      file_var = "harv-area_ha",         s3_var = "harv-area_ha",      twin = "reference", twin_file = NA,                     twin_expo = "harv-area"),
-  prod_t    = list(dir_key = "hazard_risk_prod",    file_var = "prod_t",               s3_var = "prod_t",            twin = "reference", twin_file = NA,                     twin_expo = "prod"),
-  head_n    = list(dir_key = "hazard_risk_n",       file_var = "head_n",               s3_var = "head_n",            twin = "reference", twin_file = NA,                     twin_expo = "number")
+  vop_usd   = list(dir_key = "hazard_risk_vop_usd", file_var = "vop_nominal-usd-2021", s3_var = "vop_nominal-usd21", twin = "family",    twin_file = "vop_nominal-usd-2021", twin_expo = "vop",       g6b_min = 1e3),
+  vop_intld = list(dir_key = "hazard_risk_vop",     file_var = "vop_intld15-2021",     s3_var = "vop_intld15-21",    twin = "family",    twin_file = "vop_intld15-2021",     twin_expo = "vop",       g6b_min = 1e3),
+  ha        = list(dir_key = "hazard_risk_ha",      file_var = "harv-area_ha",         s3_var = "harv-area_ha",      twin = "reference", twin_file = NA,                     twin_expo = "harv-area", g6b_min = 1e4),
+  prod_t    = list(dir_key = "hazard_risk_prod",    file_var = "prod_t",               s3_var = "prod_t",            twin = "reference", twin_file = NA,                     twin_expo = "prod",      g6b_min = 1e4),
+  head_n    = list(dir_key = "hazard_risk_n",       file_var = "head_n",               s3_var = "head_n",            twin = "reference", twin_file = NA,                     twin_expo = "number",    g6b_min = 1e4)
 )
 # Default stays the single tier this script has always published, so every existing invocation and
 # every archived dispatch line keeps meaning what it meant. New tiers are named explicitly - which
@@ -393,7 +400,10 @@ if (DO_TIERS) for (vkey in VARIABLES) {
       .g6b_allow_f <- file.path(if (exists("project_dir")) project_dir else ".", "metadata", "g6b_expected_residuals.csv")
       .g6b_allow <- if (file.exists(.g6b_allow_f)) data.table::fread(.g6b_allow_f) else NULL
       if (!is.null(.g6b_allow) && nrow(.g6b_allow)) .log("  G6b named residuals loaded: %s", paste(.g6b_allow[, paste0(iso3, ":", crop)], collapse = ", "))
-      g6b <- tier_vs_exposure(local_f, .expo, spec$twin_expo, tol_pair = G6B_TOL, allow = .g6b_allow)
+      .g6b_min <- as.numeric(opt("--exposure-min", spec$g6b_min))   # unit-aware floor; CLI overrides the spec
+      .log("  G6b materiality floor for %s: %s (in the tier's unit)", vkey, format(.g6b_min, big.mark = ","))
+      g6b <- tier_vs_exposure(local_f, .expo, spec$twin_expo, tol_pair = G6B_TOL, allow = .g6b_allow,
+                              min_exposure = .g6b_min)
       print_tier_vs_exposure(g6b, label = sprintf("%s/%s", vkey, tier), log = function(fmt, ...) .log(paste0("  ", fmt), ...))
       .log("  G6b %s in %s", if (g6b$pass) "ok" else if (ALLOW_G6B) "WARN (allowed)" else "FAIL", .elapsed(t6b))
       if (!g6b$pass && !ALLOW_G6B) { .log("  ABORT %s/%s: the product does not reproduce the exposure it was multiplied by (--allow-exposure-mismatch only once the cause is understood)", vkey, tier); next }

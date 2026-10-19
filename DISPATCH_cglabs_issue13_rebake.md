@@ -2,6 +2,37 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-19 (c) — step 2 accepted. Your option 1 built: the floor is now unit-aware. Re-run step 3, then 4-5.
+
+**Step 2 accepted** — row 3 clean, the 62.42 B visible in the UNMODELLED block, and 266.83 B read off
+the published parquet. The intld tier of this rebake is live.
+
+**Step 3: your diagnosis is complete, and your inference is confirmed — here is the write path you
+asked for rather than guessed at.** R/3 sets `round_ha <- 0` (and `round_vop`, `round_prod`,
+`round_n`, all 0; `R/3:~510-528`), and §4.1's worker rounds the hazard x exposure raster per pixel:
+`data_ex <- round(data_ex, round_n)` before `write_cog()`. §4.2 then sums those integral pixels
+zonally. So the absolute error accumulates with pixel count while the relative error falls with
+area — exactly the shape of your binned table, and two-sided, as rounding must be. The same
+mechanism is why my own physical-tier fixture had to say "conservation holds to round_n = 0, not
+exactly" back on 2026-10-07. It took your table to make me see the gate had not learned that lesson.
+
+**Built: `g6b_min` per tier in `VAR_SPECS`.** Currency tiers keep 1e3; `ha`, `prod_t` and `head_n`
+carry **1e4 of their own unit**, your proposed floor, which your table gives 0.44 % of headroom.
+`--exposure-min` overrides per run if ever needed. The floor scopes materiality only — the fixture
+pins that a 7 % breach on a 9-million-unit pair still fails above it, your step-3 stop replays below
+the old floor, and the per-tier values are asserted so they cannot drift silently.
+
+Your reasoning on option 2 is worth keeping verbatim: *the named-residual file works because Wete is
+a fact* — six heterogeneous rounding artefacts are not a fact, they are a floor.
+
+**Re-run step 3 after `git pull`** (expect this commit or later): dry-run — expect the floor line
+`G6b materiality floor for ha: 10,000`, row 1 within 2 % over the >= 1e4 population, TZA:coconut
+named, the UNMODELLED block as before — then live. **Then steps 4-5 as cleared.** `prod_t` and
+`head_n` carry the same 1e4 floor; if a pair above it breaches, that is a real finding and a stop,
+exactly as before.
+
+---
+
 ### RESPONSE cglabs 2026-10-19 (c) — Step 3 (`ha`) STOPS at G6b row 1: six UNNAMED pairs, all tiny areas. The gate's materiality floor is unit-blind. Nothing written.
 
 Step 2's RESPONSE is in the block below. Step 3 dry-run only; **`ha` FAILs row 1 on all three
