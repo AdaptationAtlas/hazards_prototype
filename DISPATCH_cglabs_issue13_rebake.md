@@ -2,6 +2,65 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE cglabs 2026-10-19 (g) — step 4 (prod_t) PUBLISHED; head_n STOPS at G6b row 3 — the 72 pairs are TLU, not a coverage hole
+
+**`prod_t` is live. `head_n` is stopped and nothing was written.** Steps 1-4 are now published: `vop_usd`, `vop_intld`, `ha`, `prod_t`.
+
+---
+
+#### Step 4a — prod_t PUBLISHED
+
+Live run, stamp `20261019_120021`, exit=0, 2.4 min. `no live object … (first publish)` on all three severities, so no backups were due. Six keys under `variable=prod_t/period=jagermeyr/model=ENSEMBLEmean/`, all `SIZE MATCH` on upload and re-listed off the bucket:
+
+| severity | parquet | sidecar |
+|---|---|---|
+| severe | 44,641,366 | 13,158 |
+| moderate | 46,943,539 | 13,360 |
+| extreme | 37,776,871 | 13,259 |
+
+The dry-run that cleared it is in block (f): all four rows TRUE on all three severities, `max |ratio-1| = 0.0088 / 0.0078 / 0.0065 over 603 pairs`, TZA:coconut named, UNMODELLED block at 0.13 B t.
+
+---
+
+#### Step 4b — head_n STOPS at G6b row 3
+
+Dry-run, stamp `20261019_120314`, exit=0, 0.3 min. `ABORT head_n/{severe,moderate,extreme}`, nothing written, no flags passed.
+
+| gate | severe | moderate | extreme |
+|---|---|---|---|
+| 1 material pairs within tol | `max \|ratio-1\| = 0.0025 over 335 pairs` TRUE | `0.0025 over 335` TRUE | `0.0045 over 335` TRUE |
+| 2 no product pair invents value | TRUE | TRUE | TRUE |
+| 3 no material exposure pair missing | **72 pair(s) FALSE** | **72 FALSE** | **72 FALSE** |
+| 4 full scenario set | TRUE | TRUE | TRUE |
+
+Confirming your two predictions: the 1e4 floor is applied (`G6b materiality floor for head_n: 10,000`, 185 immaterial pairs reported only), and there is **no UNMODELLED block** — the tier filters `exposure == "number"`, so the nine crop composites never reach it. TZA:coconut does not appear either, as expected. Row 1 is the tightest of any tier so far; the worst pair is ETH pigs-tropical at 0.9955.
+
+**All 72 breaching pairs are `total-tropical` or `total-highland`.** No species pair breaches. These are **Tropical Livestock Units — a weighted aggregate, not a headcount** — sitting in the same `exposure == "number"` slot as the species counts. Weighting cattle 0.7, sheep 0.1, goats 0.1, pigs 0.2, poultry 0.01:
+
+| | `total-*` in the twin | TLU of the five species | ratio | countries | per-country median |
+|---|---|---|---|---|---|
+| tropical | 316,977,512 | 317,352,768 | 0.998818 | 51 | **0.999998** |
+| highland | 58,321,761 | 58,322,349 | 0.999990 | 23 | **1.000000** |
+
+A plain headcount sum reads 3,067,711,899 and 359,957,992 — ten times larger, which is what makes the pair look like a hole rather than an aggregate.
+
+The product side cannot ever carry these. The head_n tier's crop vocabulary is exactly ten entries, the five species × two systems:
+
+```
+cattle-highland  cattle-tropical  goats-highland  goats-tropical  pigs-highland
+pigs-tropical    poultry-highland poultry-tropical sheep-highland sheep-tropical
+```
+
+So this is structural, not a bake defect — the same class as the nine SPAM composites at step 2, with one difference worth your attention: the crop composites are the **same unit** as their constituents (a double-count risk), whereas `total-*` is a **different unit** in the same `exposure` slot. A consumer summing `exposure == "number"` over crops today gets headcounts and TLU added together. That is a twin-side observation for the CDH record, not something this publish touches.
+
+**Not improvising a fix.** The obvious shape is the mechanism you already built — declare `total-highland` and `total-tropical` the way `G6B_NO_PRODUCT_CROPS` declares the nine composites — but whether the right answer is to declare them here or to stop the twin from filing TLU under `exposure == "number"` is your call, and the second one would change the twin rather than the gate. Say which and I will re-run.
+
+**Two secondary outliers, reported not blocking:** DJI (ratio 0.0670) and ESH (0.0808) are the only two countries where `total-tropical` does not reconstruct from the species. Both are tiny and both would be excluded by any declaration, but they do not look like TLU arithmetic, so they may be a separate twin-side gap worth a look.
+
+**Standing:** steps 1-4 published and key-verified. `head_n` and step 5 (annual, all five) hold for your read.
+
+---
+
 ### RESPONSE cglabs 2026-10-19 (f) — step 3 (ha) PUBLISHED; step 4 (prod_t) dry-run clean
 
 **Pulled `5769fbc`.** The unit-aware floor does exactly what you described, and step 3 is live.
