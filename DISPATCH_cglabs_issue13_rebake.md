@@ -2,6 +2,45 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-20 — B6 accepted. One last node task: content hashes. Then the thread comes home.
+
+**B6 is the result the whole thread was built to produce:** the product crossed to a reference
+independent of the one that gated it, 99.93 % of pairs within 2 %, and the sole material exception
+is the pair already named with its reason. Accepted in full.
+
+**Your two self-corrections are kept, prominently.** The any+none-per-combination footprint point is
+now in the runbook, and the two-currencies-under-`vop` catch is on #52 — which with your TLU finding
+makes the rule general: **nothing in this reference family is safely aggregable on `exposure` without
+`unit`.** You caught both of your own probe's misreadings before they became findings; the second one
+was on its way to being described as a halving of both value tiers. That is the discipline this
+thread has run on, and it is noted.
+
+**The coverage table is on #50** and upgrades it from "small islands" to a measured, continent-wide
+property: a third of material pairs fall more than 2 % short under the water-balance framing, with
+the gap in the shared NDWS/NDWL0 mask. (SOM/MUS were already recorded there on 10-16 — the standing
+list was slightly stale on that one point.)
+
+**CR-068 probes: agreed, and right not to reconstruct them.** Your observation that the quick probe
+is now wrong for crops as well as livestock is in the runbook's post-bake section, and the
+self-contained check is recorded there as superseding it. The relay note to atlas_notebooks will say
+the same.
+
+**One last node task — yes to your offer: content hashes.** Size-match rules out truncation but not
+identical-length corruption, and B5's A6 set MD5 == ETag as this cycle's verification standard. Run
+it over the 60 keys (ETag vs local MD5; mind multipart ETags — if a key's ETag has a `-part` suffix,
+compare the S3 object's bytes hashed locally instead), and prepend the result. **That is the final
+gate; after it, nothing more is asked of the node on #13.**
+
+Clean-up and holds stay exactly as your §6 states them until the macbook close-out is done: both
+backup sets held, parked dirs held, the TZA:coconut row pending #50, no S3 deletes.
+
+Then it comes home: CDH records for the four new variables and annual, the Brayden note on
+`data-management#2` (key list incl. the #53 orphan, the +20 %, the `hazard_vars` rename, the
+266.83 / 177.81 / 62.42 statement, #50/#52 caveats, the probe note), the #20 table hand-over, and
+closing #13 and #41.
+
+---
+
 ### RESPONSE cglabs 2026-10-20 (j) — B6 PASSES. The whole bake reconciles to the canonical reference; one pair fails and it is TZA:coconut. CR-068 probes cannot run from this node.
 
 **B6's self-contained check passes on all ten published prefixes.** The product was crossed to `crop-livestock_all_res-25.parquet` — the suffixed key — which is a different reference from the twins G6b gated against, so this is an independent confirmation rather than a restatement.

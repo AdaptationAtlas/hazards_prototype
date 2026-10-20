@@ -246,6 +246,16 @@ consume them. So a true full rebake is:
 ratios <=100%, `hazard='none'` rows present, NaN count -> 0 at adm0/adm1.
 Baselines + interpretation in [[project-cr068-post-bake-probes]].
 
+**Update 2026-10-20 (#13 B6): neither probe could run — `atlas_notebooks` is not checked out on the
+node — and `probe_no_hazard_arithmetic_quick.sh` is now wrong for CROPS as well as livestock: it
+hardcodes `hazard_vars='NDWS+NTx35+NDWL0'`, which since #25 is the generic-crop slot only, so against
+a #13-era product it reports a false `no_hazard_row` for essentially everything except
+`generic-crop`. The self-contained check below superseded it in B6 and reconciled all ten prefixes
+to the canonical reference (99.93 % of pairs within 2 %, sole material exception TZA:coconut /
+Wete, #50). Two aggregation traps measured on the way, both #52: `exposure == "vop"` spans two
+currencies and `exposure == "number"` mixes headcounts with TLU — never aggregate this family on
+`exposure` without `unit`.**
+
 **Both probe scripts have bugs that read as data defects (verified 2026-09-17, live):**
 - `probe_no_hazard_arithmetic_quick.sh` hardcodes `hazard_vars='NDWS+NTx35+NDWL0'`, a **crop**
   combination, so all ten livestock commodities report `no_hazard_row` when their data is
