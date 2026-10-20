@@ -2,6 +2,76 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE cglabs 2026-10-20 (j) — B6 PASSES. The whole bake reconciles to the canonical reference; one pair fails and it is TZA:coconut. CR-068 probes cannot run from this node.
+
+**B6's self-contained check passes on all ten published prefixes.** The product was crossed to `crop-livestock_all_res-25.parquet` — the suffixed key — which is a different reference from the twins G6b gated against, so this is an independent confirmation rather than a restatement.
+
+#### 1. `any + none` crossed to the canonical reference — all ten prefixes
+
+| tier | material pairs | median ratio (jagermeyr / annual) | max abs deviation | product pair with no reference row | reference pair with no product |
+|---|---|---|---|---|---|
+| vop_usd | 1361 | 1.000001 / 1.000000 | 0.0237 | 0 | 0 |
+| vop_intld | 1351 | 1.000004 / 1.000005 | 0.0241 | 0 | 0 |
+| ha | 541 | 0.999976 / 0.999982 | 0.0239 | 0 | 0 |
+| prod_t | 604 | 1.000000 / 0.999996 | 0.0272 | 0 | 0 |
+| head_n | 335 | 1.000005 / 1.000010 | 0.0045 | 0 | 0 |
+
+Floors as G6b uses them (1e3 value, 1e4 physical); the nine composites and the two TLU aggregates excluded as declared. **Every one of those maxima is TZA:coconut** — the same named Wete residual, at the same magnitude, on every tier. Nothing else deviates, and the correspondence is exact in both directions: no product pair lacks a reference row and no material reference pair lacks a product.
+
+#### 2. A correction to how I first read `any + none`
+
+My first pass asserted that `any + none` is invariant across `hazard_vars` combinations and reported a spread near 0.998, which would have looked alarming. **That assertion was wrong and the spread is not a defect.** Where a hazard layer is NA in a cell, that cell leaves *both* `any` and `none`, so the sum measures exposure over the cells with complete hazard data **for that combination** — a different footprint per combination, by construction. TZA cassava, admin0, historic:
+
+| hazard_vars | any + none |
+|---|---|
+| `NDWS+NTx35+NDWL0` | 1,271,770,556 |
+| `NDWS+NTxM+NDWL0` | 1,271,780,483 |
+| `PTOT-L+NTxM+PTOT-G` | 1,414,068,390 |
+| reference | 1,422,220,300 |
+
+The same first pass also reported medians of 0.5549 (vop_usd) and 0.4451 (vop_intld) against the reference. Those two sum to 1.000010, which gives the cause away: **`crop-livestock_all_res-25` carries two currencies under the single `exposure == "vop"` value**, separated only by `unit` (`nominal-usd-2021` / `intld15-2021`), so an aggregation grouping on `exposure` alone doubles the denominator. Filtering on `unit` fixes it. That is the same shape as #52 — one `exposure` value spanning two incompatible units — and it is the second instance in this reference family, so it may be worth folding into that issue: anything that groups by `exposure` without `unit` silently double-counts the value tiers.
+
+Neither figure is a data finding. Both were my probe, and I am reporting them because the first one was on its way to being described as a halving of both value tiers.
+
+#### 3. Per-combination coverage — the useful by-product
+
+Coverage of the reference by each combination, material pairs, vop_usd/jagermeyr:
+
+| hazard_vars | pairs | median coverage | p05 | min | within 2 % |
+|---|---|---|---|---|---|
+| `PTOT-L+THI-max+PTOT-G` | 348 | 1.000004 | 1.0000 | 0.9999 | 100.00 % |
+| `PTOT-L+NTxM+PTOT-G` | 1013 | 1.000000 | 1.0000 | 0.9763 | 99.90 % |
+| `NDWS+THI-max+NDWL0` | 348 | 0.997271 | 0.9428 | 0.6980 | 83.62 % |
+| `NDWS+NTx35+NDWL0` | 1007 | 0.991627 | 0.7906 | 0.0015 | 67.43 % |
+| `NDWS+NTxM+NDWL0` | 1007 | 0.991601 | 0.7906 | 0.0015 | 67.43 % |
+
+The two PTOT combinations are complete. The NDWS ones are not — a p05 of 0.79 and a minimum of 0.0015 means a tail of pairs where the drought layers cover almost none of the crop's exposure. The two NDWS crop rows are near-identical (0.991627 vs 0.991601, same p05, same min), which places the gap in the shared `NDWS`/`NDWL0` mask rather than in the `NTx35` → `NTxM` switch. Not a #13 regression — it is a property of the drought inputs — but it is the number to quote if anyone asks why a drought-combination total undershoots the exposure.
+
+Taking the best-covering combination per pair, which is what the check above uses:
+
+- median 1.000001, **99.93 % of pairs within 2 % of the reference**
+- **exactly 1 pair of 1361 where no combination reaches 98 %: TZA:coconut at 0.9763**
+
+So after the whole rebake, across five variables and two timeframes, the only pair the canonical reference and the product disagree on materially is the one already named in `metadata/g6b_expected_residuals.csv`, still pending #50.
+
+#### 4. Local vs S3 per key
+
+All 30 parquets and 30 sidecars reported `SIZE MATCH` at upload, and the ten-prefix re-listing returned the same sizes from the bucket afterwards — 10/10 prefixes holding exactly 6 keys. To be precise about what that does and does not establish: it is a size comparison on both sides, not a checksum, so it rules out truncated or partial writes but not identical-length corruption. Say the word if you want content hashes and I will run them.
+
+#### 5. CR-068 probes — cannot run from this node
+
+`atlas_notebooks` is **not checked out on this machine** (`/home/jovyan/atlas/` holds `adaptive_capacity`, `exposure`, `hazards`, `hazards_old`, `hazards_prototype`, `jagermeyer`, `metadata`, `solutions`), and neither `probe_no_hazard_arithmetic_quick.sh` nor `probe_cross_parquet_vop_drift.sh` exists anywhere under `/home/jovyan`. I did not reconstruct them — a reimplementation would not be the probe you asked to run, and both are known-buggy anyway.
+
+One thing worth recording before anyone runs them against this bake: `probe_no_hazard_arithmetic_quick.sh` hardcodes `hazard_vars='NDWS+NTx35+NDWL0'`. The runbook notes this makes it report `no_hazard_row` for all ten livestock commodities. **After #13 it is also wrong for the crops** — the crop-specific combination is now `PTOT-L+NTxM+PTOT-G`, and `NDWS+NTx35+NDWL0` is the generic-crop slot. Against this bake that probe will report a false `no_hazard_row` for essentially everything except `generic-crop`. The coverage table above is the better answer to the same question and is already in hand.
+
+#### 6. #53 and standing items
+
+#53 acknowledged — the malformed `processing=atlas-harmonizedvariable=...` key is macbook-side, no node action taken, **no S3 deletes of any kind** performed in B6 or anywhere in B5. Still held: `sandbox/backup/issue9_20261008_07*` (nine keys) and `issue9_20261016_182012/` (three keys), plus the parked `_parked_b2_rebake/` dirs. The `g6b_expected_residuals.csv` TZA:coconut row comes out when #50 resolves Wete, and SOM/MUS still need adding to #50.
+
+**B5 and B6 are complete on the node.** Ten prefixes live, 60 keys verified, every gate passed or explained, nothing improvised past. Over to you for the CDH records, the Brayden note on `data-management#2`, and the close of #13.
+
+---
+
 ### RESPONSE cglabs 2026-10-19 (i) — STEP 5 COMPLETE. All ten prefixes live, 60 keys, 10/10 verified. B5 publish is done.
 
 **Every tier of B5 is published.** Five variables × two timeframes × three severities, each a first publish, each gated on G6b. Zero aborts across the whole of step 5, no forbidden flag passed anywhere, nothing overwritten, no backups due.
