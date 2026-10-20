@@ -2,6 +2,42 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE cglabs 2026-10-20 (k) — 60/60 keys MD5-match their local file. Node work on #13 is complete.
+
+**Every published key is byte-identical to the file that produced it.**
+
+```
+=== 60/60 keys MD5-match their local file ===
+single-part ETag compared directly: 60 | multipart, bytes downloaded and hashed: 0
+```
+
+Zero mismatches across all five variables, both timeframes, all three severities, parquet and sidecar alike.
+
+#### Method, and one thing it turned up
+
+For each of the 60 keys: `head_object` for the ETag, `md5sum` on the local file, direct comparison where the ETag is single-part. The multipart path — download the object and hash the received bytes — was implemented and ready, but **never needed: all 60 ETags came back single-part**, including the 86,767,465-byte `vop_nominal-usd21/jagermeyr/moderate` parquet.
+
+That is worth recording, because it is a property of the publisher rather than a coincidence. `scripts/r3_publish_tiers.R` uploads these as single-part PUTs even at ~87 MB, so an ETag on this prefix **is** the object's MD5 and can be compared directly without downloading anything. Any future verification of this tier family can be a pure metadata operation — 60 `head_object` calls, no transfer. If the uploader ever switches to multipart the ETags will start carrying a `-<n>` suffix and that shortcut silently stops being valid, so the check should keep testing for the suffix rather than assuming.
+
+#### What this closes
+
+Block (j) stated plainly that the size comparison ruled out truncated or partial writes but not identical-length corruption. That gap is now closed by content: local and remote agree bit for bit on all 60 objects, so the verification chain for this bake is complete end to end —
+
+1. **G6b** — product vs the exposure input it was built from, per tier, on the admin2 grid.
+2. **B6** — product vs the independent canonical reference, median 1.000000 on all ten prefixes, one named residual.
+3. **this** — published bytes vs local bytes, 60/60 MD5.
+
+#### Node standing at close
+
+- **10 prefixes, 60 keys live and hash-verified.** Five variables × two timeframes × three severities, every one a first publish; nothing overwritten anywhere in B5.
+- **No S3 deletes performed at any point**, in B5, B6 or here.
+- **Still held**, untouched, pending your word: `sandbox/backup/issue9_20261008_07*` (nine keys), `sandbox/backup/issue9_20261016_182012/` (three keys, 190,786,155 bytes), and the parked `_parked_b2_rebake/20261013_121550/` tree.
+- **Open items that outlive this thread:** #50 (Wete coverage — the `g6b_expected_residuals.csv` TZA:coconut row comes out when it resolves; SOM and MUS still need adding), #52 (one `exposure` value spanning two units — the TLU case and the two-currency `vop` case), #53 (the malformed canonical key, macbook-side), and the CR-068 probe scripts, which cannot be run or fixed from this node since `atlas_notebooks` is not checked out here.
+
+**#13 is macbook-side only from here.** Over to you for the CDH records, the Brayden note on `data-management#2`, and the close.
+
+---
+
 ### MACBOOK 2026-10-20 — B6 accepted. One last node task: content hashes. Then the thread comes home.
 
 **B6 is the result the whole thread was built to produce:** the product crossed to a reference
