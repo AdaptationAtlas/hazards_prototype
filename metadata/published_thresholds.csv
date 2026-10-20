@@ -2,12 +2,12 @@ hazard_type,index,applies_to,severity,direction,threshold,unit
 cold,TAVG,generic,Moderate,<,18,°C
 cold,TAVG,generic,Severe,<,10,°C
 cold,TAVG,generic,Extreme,<,6,°C
-dry,NDD,generic,Moderate,>,15,day
-dry,NDD,generic,Severe,>,20,day
-dry,NDD,generic,Extreme,>,25,day
-dry,NDWS,generic,Moderate,>,15,day
-dry,NDWS,generic,Severe,>,20,day
-dry,NDWS,generic,Extreme,>,25,day
+dry,NDD,generic,Moderate,>,15,days/month (seasonal mean)
+dry,NDD,generic,Severe,>,20,days/month (seasonal mean)
+dry,NDD,generic,Extreme,>,25,days/month (seasonal mean)
+dry,NDWS,generic,Moderate,>,15,days/month (seasonal mean)
+dry,NDWS,generic,Severe,>,20,days/month (seasonal mean)
+dry,NDWS,generic,Extreme,>,25,days/month (seasonal mean)
 dry,PTOT,generic,Moderate,<,500,mm
 dry,PTOT,generic,Severe,<,400,mm
 dry,PTOT,generic,Extreme,<,300,mm
@@ -20,12 +20,12 @@ heat,HSH_max,generic,Extreme,>,41,°C
 heat,HSH_mean,generic,Moderate,>,27,°C
 heat,HSH_mean,generic,Severe,>,32,°C
 heat,HSH_mean,generic,Extreme,>,41,°C
-heat,NTx35,generic,Moderate,>,7,day
-heat,NTx35,generic,Severe,>,14,day
-heat,NTx35,generic,Extreme,>,21,day
-heat,NTx40,generic,Moderate,>,1,day
-heat,NTx40,generic,Severe,>,5,day
-heat,NTx40,generic,Extreme,>,10,day
+heat,NTx35,generic,Moderate,>,7,days/month (seasonal mean)
+heat,NTx35,generic,Severe,>,14,days/month (seasonal mean)
+heat,NTx35,generic,Extreme,>,21,days/month (seasonal mean)
+heat,NTx40,generic,Moderate,>,1,days/month (seasonal mean)
+heat,NTx40,generic,Severe,>,5,days/month (seasonal mean)
+heat,NTx40,generic,Extreme,>,10,days/month (seasonal mean)
 heat,TAVG,generic,Moderate,>,33,°C
 heat,TAVG,generic,Severe,>,36,°C
 heat,TAVG,generic,Extreme,>,47,°C
@@ -95,9 +95,9 @@ heat,THI_mean,sheep_highland,Extreme,>,86,°F
 heat,THI_mean,sheep_tropical,Moderate,>,74,°F
 heat,THI_mean,sheep_tropical,Severe,>,81,°F
 heat,THI_mean,sheep_tropical,Extreme,>,93,°F
-wet,NDWL0,generic,Moderate,>,2,day
-wet,NDWL0,generic,Severe,>,5,day
-wet,NDWL0,generic,Extreme,>,8,day
+wet,NDWL0,generic,Moderate,>,2,days/month (seasonal mean)
+wet,NDWL0,generic,Severe,>,5,days/month (seasonal mean)
+wet,NDWL0,generic,Extreme,>,8,days/month (seasonal mean)
 wet,PTOT,generic,Moderate,>,1200,mm
 wet,PTOT,generic,Severe,>,1600,mm
 wet,PTOT,generic,Extreme,>,1800,mm

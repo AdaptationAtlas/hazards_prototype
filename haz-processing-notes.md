@@ -1,6 +1,6 @@
 # 📘 Atlas Hazard Layers – Processing Update (May 2025)
 
-> **Historical (May 2025).** These products have since been published to `s3://digital-atlas` and re-baked several times; for current state see the newest `HANDOVER_<date>.md` and `R/NEXT_FULL_REBAKE.md`.
+> **Historical (May 2025).** These products have since been published to `s3://digital-atlas` and re-baked several times; for current state see the newest `HANDOVER_<date>.md` and `archive/dispatches/NEXT_FULL_REBAKE.md` (the last full-rebake runbook).
 
 *Last updated: May 2025*\
 *Project*: Africa Agriculture Adaptation Atlas (AAAA)\

@@ -1,5 +1,15 @@
 # Atlas hazard data for avoided-loss estimation — a briefing
 
+> **Status update 2026-10-20 (macbook, #13 close-out) — read before relying on §-tables below.** The #13
+> rebake has **published**: the `annual` period and the constant-dollar (`vop_intld15-21`), harvested-area
+> (`harv-area_ha`), production (`prod_t`) and head-count (`head_n`) tiers are now LIVE alongside
+> `vop_nominal-usd21`, 60 keys, all MD5-verified. `PTOT-L+NTxS+PTOT-G` is retired (now
+> `PTOT-L+NTxM+PTOT-G`) and `NDWS+NTxM+NDWL0` is new. Ensemble SD and per-GCM tables remain
+> unpublished. The `generic-crop` guard stop mentioned below was fixed and the bake completed. CDH
+> records: `metadata/cdh/africa-hazard-exposure-*.yaml`. Rows below describing these as "not published"
+> are superseded; the rest of this briefing is unchanged.
+
+
 **For:** Jemal S. Ahmed, Activity 2, Gates Carbon Credits for Adaptation (INV-089367)
 **From:** Africa Agriculture Adaptation Atlas hazards pipeline, `AdaptationAtlas/hazards_prototype`
 **State described:** branch `develop` as of 2026-10-12 (HEAD `6b6fc5b`). Nothing described here is on `main`.
@@ -260,11 +270,11 @@ units.
 | `NDWS+NTx35+NDWL0` (generic thresholds) | **Most stable.** This is what the live Atlas notebook reads. Its definition does not change in the #13 rebuild. |
 | `PTOT-L+NTxS+PTOT-G` (crop-specific) | **Being retired.** `NTxS` averages the optimum with the survival limit, which gave maize a 40 °C threshold and 0 % heat exposure in Kenya (issue #25). It is replaced by `PTOT-L+NTxM+PTOT-G`, and a new `NDWS+NTxM+NDWL0` is added (`R/2_calculate_haz_freq.R:377-410`). Also subject to the rainfall-window issue in §1.3 (#46). Prototype. |
 | livestock sets | Prototype; see §4. |
-| the `annual` period, ensemble SD, per-GCM tables, and the constant-dollar, area, tonnage and head tiers | Computed or computable, **not published**. Planned in the #13 publish order (`HANDOVER_2026-10-07.md` §2D). |
+| the `annual` period, ensemble SD, per-GCM tables, and the constant-dollar, area, tonnage and head tiers | Computed or computable, **not published**. Planned in the #13 publish order (`archive/dispatches/HANDOVER_2026-10-07.md` §2D). |
 
 The rebuild's frequency stage finished on the server on 2026-10-10. A follow-up run for the new
 crop set stopped at a guard: a crop-name mismatch, `generic` against `generic-crop`
-(`R/2_calculate_haz_freq.R:325` against `:489`), reported in `DISPATCH_cglabs_issue13_rebake.md`.
+(`R/2_calculate_haz_freq.R:325` against `:489`), reported in `archive/dispatches/DISPATCH_cglabs_issue13_rebake.md`.
 The exposure stage and the publish follow. No date is committed.
 
 ---
@@ -287,7 +297,7 @@ There is one interaction structure: a **three-way dry × heat × wet** classific
 
 Dry × heat, dry × wet, heat × wet and the triple are all classes within this one structure. No
 other interaction is computed: HSH, TAVG, NTx40, TAI and cold are not in any set (HSH: see
-`HANDOVER_2026-10-07.md`, "B7").
+`archive/dispatches/HANDOVER_2026-10-07.md`, "B7").
 
 ### 2.2 How the classes are built
 

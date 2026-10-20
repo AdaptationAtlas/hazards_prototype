@@ -3,8 +3,9 @@
 R project for a climate-hazards processing pipeline (Africa Agriculture Adaptation Atlas).
 
 **Start here:** the newest **session** handover at the repository root, `HANDOVER_<date>.md` —
-current state, what is in flight, and what to pick up next. Then `R/NEXT_FULL_REBAKE.md` if you
-are touching R/2 or R/3, and `README.md` for the science pipeline.
+current state, what is in flight, and what to pick up next. Before touching R/2 or R/3, read the
+**gate conventions** in `archive/dispatches/NEXT_FULL_REBAKE.md` (the runbook the #13 rebake consumed;
+archived 2026-10-20) and the closing blocks of `archive/dispatches/DISPATCH_cglabs_issue13_rebake.md`, and `README.md` for the science pipeline.
 
 Two handover shapes, distinguished by the filename:
 - `HANDOVER_<date>.md` — **session** handover. The entry point. One current at a time.

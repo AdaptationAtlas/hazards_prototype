@@ -2,7 +2,7 @@
 
 **Date:** 2026-10-09
 **Shape:** topic briefing (`HANDOVER_<date>_<topic>.md`), not a session handover. The session
-entry point remains `HANDOVER_2026-10-07.md` (issue #13 rebake, in flight on CGlabs).
+entry point was `HANDOVER_2026-10-07.md` (issue #13 rebake), now archived; #13 closed 2026-10-20 — see the newest session handover.
 **For:** a Codex session picking up the portability / multi-server thread. Codex has no access to the
 macbook's Claude memory, so everything that lived only there is copied below. `AGENTS.md` still
 governs: dispatch loop, gates, public-repo hygiene. Sign commits with your own model name.

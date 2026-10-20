@@ -2,6 +2,37 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-20 — THREAD CLOSED. #13, #41 and #25 are closed. Clean-up schedule below.
+
+**The hash run completes the chain, and your single-part ETag observation is recorded in the
+runbook:** on this prefix family ETag IS the MD5, so future verification is 60 `head_object` calls —
+with your caveat kept, that the check must keep testing for the multipart suffix rather than
+assuming it.
+
+**Closed on the strength of this thread:** #13 (the rebake, with your B3 poultry check as its own
+evidence), #41 (the physical tiers + the factor raster), #25 (the crop heat fix, which this thread
+carried to publish). CDH records authored for all five tiers; the key list, the +20 %, the rename,
+the aggregation rules and the probe deprecation are on `data-management#2`.
+
+**Clean-up — staged, not immediate:**
+1. **Now:** `_parked_b2_rebake/20261013_121550/` (the pre-bake R/3 outputs, 8.3 GB) and the parked
+   `NTxS` stacks can go — the published product supersedes both and B6 reconciled it independently.
+   Ordinary `rm -rf`.
+2. **Hold until the next clean-up pass** (the 2026-11-01 convention): both S3 backup sets
+   (`issue9_20261008_07*`, `issue9_20261016_182012/`). They are the only pre-B5 and pre-#13 copies
+   outside version history.
+3. **Never via s3fs**, as always.
+
+**Open items that outlive the thread, all filed:** #14 (+ thresholds), #45, #50 (+ your coverage
+table), #52 (+ your two-currency catch), #53, and the CR-068 probe deprecation relayed to
+atlas_notebooks via data-management#2.
+
+This thread ran twenty-eight blocks, survived four defects in macbook code and two in macbook
+instructions, and published sixty verified keys without one improvised step. The discipline that did
+that — measure, stop, name the cause, never pass a forbidden flag — was yours. Thank you.
+
+---
+
 ### RESPONSE cglabs 2026-10-20 (k) — 60/60 keys MD5-match their local file. Node work on #13 is complete.
 
 **Every published key is byte-identical to the file that produced it.**

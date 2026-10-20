@@ -96,6 +96,22 @@ note: >
   BASELINE. The historic window is 1995-2014, which is the end of the CMIP6 historical run, not a
   WMO 1991-2020 normal. Comparisons against a 1991-2020 baseline are not possible from this source.
 
+  REPUBLISHED 2026-10-16 FROM THE ISSUE-13 FULL REBAKE, AND THE HAZARD SET CHANGED. The crop-specific
+  interaction set PTOT-L+NTxS+PTOT-G is RETIRED and replaced by PTOT-L+NTxM+PTOT-G (the per-crop
+  ecocrop-optimum heat threshold; the old NTxS averaged the optimum with the survival limit and
+  reported zero heat-exposed maize value), and a NEW set NDWS+NTxM+NDWL0 gives crop-specific heat
+  with the water-balance framing. Consumers filtering hazard_vars get strictly more rows for the
+  sets they already read; PTOT-L+NTxS+PTOT-G readers must move to the NTxM name. Row count moved
+  67,952,655 to 93,727,800, entirely the new set. The poultry_highland THI extreme threshold is now
+  89 (was 79; the defect issue 13 existed to fix). VALUES DID NOT MATERIALLY MOVE: against the
+  2026-09-30 publication the value populations held (continental totals within 0.5 per cent,
+  material median 1.000, livestock control within 0.02 per cent) because the nominal exposure basis
+  was unchanged by the 2026-10 reference republish. PERIOD=ANNUAL IS NOW ALSO PUBLISHED (first
+  time), and four sibling tiers exist: constant international dollars
+  (africa-hazard-exposure-intld), harvested area (-harvested-area), production tonnes (-production)
+  and livestock numbers (-livestock-numbers). One named residual: Tanzania coconut undershoots its
+  exposure by 2.4 per cent from a hazard-coverage hole on Pemba Island (issue 50).
+
 contact:
   - organization: Alliance of Bioversity International and CIAT
     url: https://alliancebioversityciat.org/
@@ -114,7 +130,7 @@ citation:
   url: https://adaptationatlas.cgiar.org/
 
 created: "2026-09-18"
-updated: "2026-10-06"
+updated: "2026-10-20"
 
 spatial:
   bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present
@@ -140,7 +156,11 @@ dimensions:
     values: [1995-2014, 2021-2040, 2041-2060, 2061-2080, 2081-2100]
   - name: crop
     type: commodity
-    description: Crop, 44 present, from the MapSPAM Adaptation Atlas SSA crop list.
+    description: >
+      Commodity, 44 present: 33 MapSPAM crops, 10 livestock species-systems (cattle, goats, pigs,
+      poultry, sheep x tropical/highland) and `generic-crop`. `generic-crop` is all crops' value under
+      the generic-threshold set; never add it to the individual crops. Livestock VALUE rows are
+      published here under the two THI sets; livestock head counts are a separate tier.
   - name: hazard
     type: hazard
     description: Agro-climatic hazard, 9 present, plus multi-hazard interactions.
@@ -149,7 +169,9 @@ dimensions:
     description: >
       Second-level administrative unit, as the GAUL 2024 code and the join key to the boundaries
       (record africa-admin-boundaries-gaul2024). Rows also carry iso3, admin0_name, admin1_name,
-      admin2_name and the adm0 and adm1 GAUL codes. 55 countries present.
+      admin2_name and the adm0 and adm1 GAUL codes. 55 countries present. Each file holds admin0,
+      admin1 and admin2 rows; the higher levels are sums of admin2. Interaction classes are mutually
+      exclusive, so hazard='any' + hazard='none' equals the exposure total of that unit and crop.
 
 variables:
   - name: value
@@ -202,11 +224,11 @@ data:
       One parquet per severity tier, roughly 68 million rows and 62 MB each. Published by
       scripts/r3_publish_tiers.R.
     locations:
-      - url: https://digital-atlas.s3.amazonaws.com/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/
+      - url: https://digital-atlas.s3.amazonaws.com/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/
         title: HTTPS
-      - url: s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=jagermeyr/model=ENSEMBLEmean/
+      - url: s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/
         title: S3
-    href_template: "severity={severity}/int=multi-hazard.parquet" # e.g. severity=severe/int=multi-hazard.parquet
+    href_template: "period={period}/model=ENSEMBLEmean/severity={severity}/int=multi-hazard.parquet" # period jagermeyr | annual (annual first published 2026-10-19)
     media_type: application/vnd.apache.parquet
     file_size: 62 MB
     processing_steps: [source, frequency, exposure]
@@ -222,16 +244,25 @@ cdh:
         reason: >
           Values are NOMINAL 2021 US dollars and are not deflated, so a difference between timeframes
           mixes price change with production and hazard change.
-        use_instead: Compare hazard frequency directly; a constant international dollar tier of this product is not yet published.
+        use_instead: Use the constant-dollar sibling tier (record africa-hazard-exposure-intld, variable=vop_intld15-21), published 2026-10-19.
       - use: Combining these figures with any Atlas product quoted in constant international dollars.
         reason: >
           Different currency basis. A previous crop-versus-livestock mismatch of exactly this kind,
           in the upstream livestock chain, produced roughly a sevenfold error in cattle exposure
           (corrected upstream 2026-09-25).
         use_instead: Check exposure_unit on both sides and convert, or use products on one basis throughout.
-      - use: Reading this as covering population or livestock exposure.
-        reason: Only exposure_var = vop is published under this source; no population or livestock tier exists.
-        use_instead: The observational exposure products for population, or wait for those tiers to be published.
+      - use: Treating livestock values in this tier as country-priced.
+        reason: >
+          The livestock nominal-USD value is believed to be priced at the global median for every
+          country (hazards_prototype issue 47, from a code reading, not yet measured), so livestock
+          values here reflect head counts times one price, not national prices.
+        use_instead: Use the livestock head-count tier, or the constant-dollar tier, until issue 47 resolves.
+      - use: Reading this as covering population exposure.
+        reason: >
+          This tier is crop value of production. Livestock exposure is published as head counts
+          (record africa-hazard-exposure-livestock-numbers) and inside the constant-dollar tier;
+          no population tier exists under this source.
+        use_instead: The observational exposure products for population.
       - use: Benchmarking against a WMO 1991-2020 normal.
         reason: The historical window is 1995-2014, the end of the CMIP6 historical run.
         use_instead: Use 1995-2014 as the stated baseline and say so.
