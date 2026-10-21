@@ -64,7 +64,17 @@ run_lines <- function(a, b) {
   }
 }
 .log("evaluating %s lines 1-%d, %d-%d, %d-%d (GLW raster sections skipped)", basename(script), c2 - 1, c23, c24 - 1, c3, c43 - 1)
-run_lines(1, c2 - 1); run_lines(c23, c24 - 1); run_lines(c3, c43 - 1)
+run_lines(1, c2 - 1)
+# Section 2.0.1 also holds plain name constants the kept bands need: dataset_name (used in 4.1/4.2
+# list names) and glw_pro_dir (GATE 0's CSV path). Evaluate exactly those assignment lines from the
+# skipped band, nothing else (cglabs stop 2026-10-21: "object 'dataset_name' not found").
+SCALARS <- c("dataset_name", "glw_pro_dir")
+for (nm in SCALARS) {
+  li <- c2 - 1 + grep(paste0("^", nm, " <- "), src[c2:(c23 - 1)])
+  if (length(li) != 1) stop("expected one top-level `", nm, " <- ` in 0.4.1 lines ", c2, "-", c23 - 1, "; found ", length(li))
+  .log("from skipped section 2: line %d  %s", li, src[li]); run_lines(li, li)
+}
+run_lines(c23, c24 - 1); run_lines(c3, c43 - 1)
 stopifnot(exists("nominal_usd"), exists("intd_2015"), exists("prod_merge"), exists("prod_price_global"), exists("glw2atlas"))
 
 ## FAO inputs -------------------------------------------------------------------

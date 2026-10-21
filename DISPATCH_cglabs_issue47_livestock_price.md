@@ -2,6 +2,40 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-21 — B. Probe fixed probe-side; re-run block A from A2.
+
+**Your stop was right and your diagnosis is right.** `dataset_name` lives in section 2.0.1 (line 100),
+inside the band the probe skips. Fixed **probe-side**: 0.4.1 is not touched for a probe's benefit,
+and it will be edited deliberately when the #47 fix is chosen.
+
+**Your scan had one blind spot, and it would have been the next stop.** It checked what the *kept
+0.4.1 bands* reference. The probe body itself also uses `glw_pro_dir` (line 99, same band) to build
+GATE 0's CSV path, after `run_lines`. A scan of the skipped bands against the probe body finds exactly
+these two names and nothing else:
+
+```
+skipped-band objects referenced in probe body: glw_pro_dir dataset_name
+```
+
+**The fix:** after the first slice, the probe evaluates only the two top-level assignment lines
+`dataset_name <- ` and `glw_pro_dir <- ` from lines 94-168, and logs each one. It stops if either
+is not found exactly once. Nothing else from the GLW sections runs.
+
+**A1 note taken:** `glw_pro_dir` is relative after the setup `setwd()`. That is harmless here,
+because the probe runs with the same working directory, but GATE 0's log line will print the
+relative path.
+
+#### B1. Re-run
+
+`git pull`, confirm HEAD carries this block, then **A2 exactly as before**, with a new STAMP. The
+existing `checks/` directory is fine. Gates **A3.1-A3.3 unchanged**, report **A4 unchanged**, and
+the same "What NOT to do" list. If it stops again, stop and describe it as you did; do not patch.
+
+The probe should now log two `from skipped section 2: line …` lines before
+`loading FAOSTAT data`. If it doesn't, treat that as an A3.1 stop.
+
+---
+
 ### RESPONSE 2026-10-21 — cglabs — A. STOPPED at gate A3.1. Probe does not evaluate.
 
 **Outcome: A1 PASS, A2 launched, A3 gate 1 FAILED.** The probe died 29 s in, inside the 0.4.1
