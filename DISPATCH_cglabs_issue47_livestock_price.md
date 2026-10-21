@@ -2,6 +2,151 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-21 — cglabs — D. Reference + family republished. Every gate PASS. STOPPING before E.
+
+**All four dry-runs clean, all four live runs exit 0, 18/18 keys MD5 == ETag, S3 read-back hits every
+expected figure.** No gate asked for an allow-flag and none was passed. No delete of any kind. E is
+**not** started and will not be until a "GO E" block lands.
+
+HEAD `bc06ff8` (`Pete Steward`, `docs(#47): block D+E — reference republish, stop, then R/3 usd tier + publish`).
+
+#### D1a. Dry-runs — four for four, exit 0
+
+Every one reported the same shape, and **none requested `--allow-unit-vintage-change`,
+`--allow-res-change`, `--allow-schema-drift` or `--allow-value-drift`**:
+
+| run | columns | distinct(exposure) | distinct(unit) | distinct(stat) | rows local vs live | exit |
+|---|---|---|---|---|---|---|
+| `--reference-only --res 0.05` | 14 identical | identical (5) | identical (5) | identical | 8,065,336 = 8,065,336 | 0 |
+| `--reference-only --res 0.25` | 14 identical | identical (5) | identical (5) | identical | 5,667,864 = 5,667,864 | 0 |
+| `--family-only --res 0.05` | 14 identical | `vop` | `nominal-usd-2021` / `intld15-2021` | identical | 1,508,624 and 986,408, both equal | 0 |
+| `--family-only --res 0.25` | 14 identical | `vop` | `nominal-usd-2021` / `intld15-2021` | identical | 1,060,176 and 693,192, both equal | 0 |
+
+Rows are not merely within 25 % — they are exactly equal on every table, which is what #47 should do:
+values move, shape does not. The reference's distinct sets read
+`harv-area,number,phys-area,prod,vop` and `ha,intld15-2021,nominal-usd-2021,number,t` before and after.
+
+Each dry-run also named the res-05 alias refresh it would do (`crop-livestock_all.parquet`,
+`vop_nominal-usd-2021.parquet`, `vop_intld15-2021.parquet`), and res-25 correctly named none.
+
+#### D1b. Live — four for four, exit 0
+
+```
+== --reference-only --res 0.05 exit 0      (1.2 min)
+== --reference-only --res 0.25 exit 0      (0.7 min)
+== --family-only --res 0.05 exit 0         (0.8 min)
+== --family-only --res 0.25 exit 0         (0.5 min)
+```
+
+The same gate lines reappeared live before each upload — 14 columns identical, distinct
+exposure/unit/stat identical, rows identical — so the gates were judged against the live objects at
+write time, not only in the dry pass.
+
+**Backup paths.** The publisher wrote one prefix per invocation, four in all:
+
+```
+s3://digital-atlas/sandbox/backup/issue9_20261021_174022/   (reference res-05 + alias)
+s3://digital-atlas/sandbox/backup/issue9_20261021_174135/   (reference res-25)
+s3://digital-atlas/sandbox/backup/issue9_20261021_174216/   (family res-05, both units + aliases)
+s3://digital-atlas/sandbox/backup/issue9_20261021_174307/   (family res-25, both units)
+```
+
+Each holds the pre-#47 live object under its full `domain=exposure/…/variable=…` path. The `issue9_`
+stem is the publisher's fixed backup prefix, not a mis-stamp — worth knowing when these are read back.
+
+**18 keys written**: 9 parquets and their 9 `.json` sidecars.
+
+#### D2.2 MD5 == ETag — 18/18
+
+`s3fs::s3_file_info()` ETag against local `md5sum`. No ETag carried a multipart `-n` suffix, so no
+object needed downloading and re-hashing.
+
+```
+crop-livestock_all_res-05.parquet                cd8f7e6d1779fbd2a1dc084de4954ed9  MATCH
+crop-livestock_all_res-05.parquet.json           161f77d85e0675df7bc2c7e37eadf5f5  MATCH
+crop-livestock_all.parquet                       cd8f7e6d1779fbd2a1dc084de4954ed9  MATCH
+crop-livestock_all.parquet.json                  161f77d85e0675df7bc2c7e37eadf5f5  MATCH
+crop-livestock_all_res-25.parquet                9f948e795136428763e9eb5281b1e1f1  MATCH
+crop-livestock_all_res-25.parquet.json           82ea35fc9a9d56b995b4df329d184dc3  MATCH
+vop_nominal-usd-2021_res-05.parquet              d6f14d3ef7da421c767b193a9eb4d302  MATCH
+vop_nominal-usd-2021_res-05.parquet.json         89eefd0f8b55dcb99878ddc0886b3b89  MATCH
+vop_nominal-usd-2021.parquet                     d6f14d3ef7da421c767b193a9eb4d302  MATCH
+vop_nominal-usd-2021.parquet.json                89eefd0f8b55dcb99878ddc0886b3b89  MATCH
+vop_nominal-usd-2021_res-25.parquet              502ef758713afe7717dd0ae081c68111  MATCH
+vop_nominal-usd-2021_res-25.parquet.json         086ac6e37f1f0469e4a224d146c0d03c  MATCH
+vop_intld15-2021_res-05.parquet                  c8971a31e4b1d16feb3f7327536cce9b  MATCH
+vop_intld15-2021_res-05.parquet.json             e6c245a886f426a16f1533fb7d559e8f  MATCH
+vop_intld15-2021.parquet                         c8971a31e4b1d16feb3f7327536cce9b  MATCH
+vop_intld15-2021.parquet.json                    e6c245a886f426a16f1533fb7d559e8f  MATCH
+vop_intld15-2021_res-25.parquet                  26fe67d4840ebd69747942a2754b0b38  MATCH
+vop_intld15-2021_res-25.parquet.json             c34ca4597946adb22c7d98df8945b6ed  MATCH
+
+MD5 == ETag: 18 / 18 keys
+```
+
+#### D2.4 Alias — confirmed by the same table
+
+`crop-livestock_all.parquet` carries `cd8f7e6d1779fbd2a1dc084de4954ed9`, identical to
+`crop-livestock_all_res-05.parquet`. The two family aliases likewise carry their res-05 hashes
+(`d6f14d3e…`, `c8971a31…`). No alias picked up a res-25 hash.
+
+#### D2.3 Read-back from S3 — every expected figure hit
+
+Downloaded `crop-livestock_all_res-25.parquet` and `_res-05` **from S3**, not from disk, and
+aggregated admin2 `vop` rows with `tech` = all or NA and finite values, split by unit and by
+livestock membership:
+
+```
+== res-25 : read back from S3, 5667864 rows
+               unit   lvst total_bn      n
+1:     intld15-2021  FALSE  240.243  96798
+2:     intld15-2021   TRUE   89.016  41108
+3: nominal-usd-2021  FALSE  201.921 105633
+4: nominal-usd-2021   TRUE  109.063  41108
+
+== res-05 : read back from S3, 8065336 rows
+               unit   lvst total_bn      n
+1:     intld15-2021  FALSE  240.240 114828
+2:     intld15-2021   TRUE   89.019  62868
+3: nominal-usd-2021  FALSE  201.920 132231
+4: nominal-usd-2021   TRUE  109.069  62868
+```
+
+Against the block's expectations: **nominal-usd-2021 livestock 109.063 B (res-25) and 109.069 B
+(res-05)** — the C4 local figures exactly; **nominal-usd-2021 crops 201.921 B** at res-25, unchanged;
+**intld15-2021 240.243 B crops + 89.016 B livestock** at res-25, unchanged.
+
+**On "any other movement is a stop" — there is none, and I checked it rather than inferred it.**
+The res-05 column reads 201.920 / 240.240 / 89.019 where the block quotes the res-25 figures
+201.921 / 240.243 / 89.016. That is the res-05 twin, not movement. To prove it I ran the identical
+aggregation over the **parked pre-publish** tables:
+
+```
+== PARKED (pre-publish) res-25            == PARKED (pre-publish) res-05
+   intld15-2021     FALSE  240.243           intld15-2021     FALSE  240.240
+   intld15-2021      TRUE   89.016           intld15-2021      TRUE   89.019
+   nominal-usd-2021 FALSE  201.921           nominal-usd-2021 FALSE  201.920
+   nominal-usd-2021  TRUE  104.229           nominal-usd-2021  TRUE  104.234
+```
+
+Every line matches the published table except nominal livestock, which moves 104.229 → 109.063 at
+res-25 and 104.234 → 109.069 at res-05. Row counts are identical throughout (96,798 / 41,108 /
+105,633 at res-25; 114,828 / 62,868 / 132,231 at res-05). One quantity moved; nothing else did.
+
+#### State and stop
+
+S3 now carries the #47 livestock pricing on the reference and both family twins, at both
+resolutions, with the aliases refreshed. The R/3 tiers on S3 are still the pre-#47 ones — that is
+expected and is what block E is for.
+
+Parked copies at `Data/_parked_issue47_20261021_164945` are untouched and remain the rollback,
+alongside the four S3 backup prefixes. The block-B probe CSV is untouched. Logs:
+`logs/issue47_D_*_20261021_164945.log`.
+
+**Stopping here. E is not started.** Waiting for a "GO E" block.
+
+---
+
 ### MACBOOK 2026-10-21 — D + E. Publish the reference (D), STOP, then R/3 usd tier + publish (E) on GO.
 
 **Block C accepted.** Every gate passed and the numbers reconcile three ways: the probe's C, the
