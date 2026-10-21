@@ -2,6 +2,254 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-21 — cglabs — C. Rebuild complete. Every gate PASS. Tables are local, ahead of S3.
+
+**C0 PASS, C1 parked, C2 PASS, GATE 047 PASS 6/6, GATE 047-REF PASS 3/3 at both resolutions,
+qaqc livestock 242/242 unmoved, cross-basis PASS at both resolutions with no new findings.**
+No stop. No code, gate, fixture or tolerance touched. No S3 call of any kind, no R/3, parked
+copies intact, `metadata/haz_metadata.csv` untouched.
+
+#### C0. Pre-flight — PASS
+
+HEAD `095d9c0` (`Pete Steward`, `fix(#47): price livestock nominal USD at national prices, not the
+world median`). No R job was running at start.
+
+```
+fixture_crop_heat_interactions.R: ALL CROP-HEAT INTERACTION FIXTURE ASSERTIONS PASSED
+fixture_fao_code_join.R: ALL FAO CODE-JOIN FIXTURE ASSERTIONS PASSED
+fixture_gate_zonal_basis.R: ALL ZONAL-BASIS FIXTURE ASSERTIONS PASSED
+fixture_interaction_builder.R: ALL INTERACTION-BUILDER FIXTURE ASSERTIONS PASSED
+fixture_livestock_price.R: ALL LIVESTOCK-PRICE FIXTURE ASSERTIONS PASSED
+fixture_price_fill.R: ALL PRICE-FILL FIXTURE ASSERTIONS PASSED
+fixture_publish_tier_gates.R: ALL PUBLISH-GATE FIXTURE ASSERTIONS PASSED
+fixture_qaqc_denominator.R: ALL QAQC-DENOMINATOR FIXTURE ASSERTIONS PASSED
+fixture_r3_physical_tiers.R: ALL R/3 PHYSICAL-TIER FIXTURE ASSERTIONS PASSED
+fixture_vop_allocate.R: ALL QUANTITY-PIN ASSERTIONS PASSED
+```
+
+Ten for ten, matching the macbook.
+
+#### C1. Park — done, copies not moves
+
+```
+PARK = /home/jovyan/common_data/nex-gddp-cimp6_hazards/Data/_parked_issue47_20261021_164945
+```
+
+68 MB. All six parquets were present before the copy and are in `$PARK/exposure` with their original
+10-07 mtimes preserved by `cp -a`:
+
+```
+8918339  exposure_adm_sum_spam20-20_glw420-20_res-05.parquet   Oct  7 20:02
+7137701  exposure_adm_sum_spam20-20_glw420-20_res-25.parquet   Oct  7 19:57
+1397331  vop_intld15-2021_adm_sum_spam20_glw420_res-05.parquet Oct  7 20:02
+1120912  vop_intld15-2021_adm_sum_spam20_glw420_res-25.parquet Oct  7 19:58
+1734813  vop_nominal-usd-2021_adm_sum_spam20_glw420_res-05.parquet Oct  7 20:02
+1407809  vop_nominal-usd-2021_adm_sum_spam20_glw420_res-25.parquet Oct  7 19:58
+```
+
+`$PARK/glw_processed` holds `fao_vop` plus `variable=vop_nominal-usd-{2015,2020,2021}`. Note the
+glob caught all three year variants, not only 2021 — that is more than the block needed but it is
+the safer side of the rollback.
+
+#### C2. 0.4.1 — both runs exit 0
+
+| res | start | end | runtime | exit | grid line |
+|---|---|---|---|---|---|
+| 0.25 | 16:50:35 | 16:52:12 | 1.6 min | 0 | `base_rast_nexgddp.tif \| res 0.2500 \| tag res-25` |
+| 0.05 | 16:52:24 | 16:55:28 | 3.1 min | 0 | `base_raster.tif \| res 0.0500 \| tag res-05` |
+
+Both tags correct. Per-year-set lines, identical across the two resolutions:
+
+```
+[16:51:30] [0.4.1]   y2021: 495 (iso3, product) rows; 3 producer prices clipped vs world; singleton regions: none
+[16:51:32] [0.4.1]   y2015: 495 (iso3, product) rows; 3 producer prices clipped vs world; singleton regions: none
+[16:51:34] [0.4.1]   y2020: 495 (iso3, product) rows; 3 producer prices clipped vs world; singleton regions: none
+```
+
+The y2021 clip list and `price_source` table from the **res-25** log, verbatim:
+
+```
+[16:51:30] [0.4.1]   y2021: 495 (iso3, product) rows; 3 producer prices clipped vs world; singleton regions: none
+     iso3 atlas_name  year price_usd price_world ratio_world
+   <char>     <char> <int>     <num>       <num>       <num>
+1:    NER sheep_milk  2022     183.6       962.2      0.1910
+2:    BWA  goat_milk  2020      30.8       754.9      0.0408
+3:    BWA  goat_milk  2021      31.8       813.2      0.0391
+                       price_source     n vop_usd_bn
+                             <char> <int>      <num>
+1:                neighbours median   163     38.875
+2:               fao producer price    57     41.322
+3:     world median (item override)    50      5.929
+4:                    region median    42      7.188
+5:                 continent median    41      5.089
+6: fao producer price longer-series    37     10.667
+```
+
+Every source is in the allowed list; no `none`, and the only `world median` is the item override.
+Sums to 109.070 B. The res-05 table is byte-identical — pricing is national and grid-independent,
+which is what you would want to see.
+
+It also reconciles row for row with the probe's C: own 57 + 37 = 94, neighbours 163, region 42,
+continent 41, override 50. The three clipped prices are the same three.
+
+#### C3. GATE 047 — PASS 6/6
+
+Full output (setup banner trimmed):
+
+```
+[2026-10-21 16:56:55] [gate-047] reference: issue47_livestock_price_20261021_125145.csv (1485 rows, year sets y2015,y2020,y2021)
+[2026-10-21 16:56:55] [gate-047] ok   nominal-usd 2021: 495 rows, total new 109.070 B vs reference 109.070 B, 0 differ; mtime 2026-10-21 16:53 (after --since)
+                       price_source     n value_bn
+                             <char> <int>    <num>
+1:                neighbours median   163   38.875
+2:               fao producer price    57   41.322
+3:     world median (item override)    50    5.929
+4:                    region median    42    7.188
+5:                 continent median    41    5.089
+6: fao producer price longer-series    37   10.667
+[2026-10-21 16:56:55] [gate-047] ok   nominal-usd 2015: 495 rows, total new 95.475 B vs reference 95.475 B, 0 differ; mtime 2026-10-21 16:53 (after --since)
+                   price_source     n value_bn
+                         <char> <int>    <num>
+1:            neighbours median   150   38.163
+2:                region median    66   10.867
+3:           fao producer price    64   35.610
+4:             continent median    60    5.646
+5: world median (item override)    50    5.189
+[2026-10-21 16:56:55] [gate-047] ok   nominal-usd 2020: 495 rows, total new 101.538 B vs reference 101.538 B, 0 differ; mtime 2026-10-21 16:54 (after --since)
+                       price_source     n value_bn
+                             <char> <int>    <num>
+1:                neighbours median   170   44.016
+2:     world median (item override)    50    5.214
+3: fao producer price longer-series    45   17.720
+4:                 continent median    45    4.413
+5:               fao producer price    41   23.320
+6:                    region median    39    6.855
+[2026-10-21 16:56:55] [gate-047] ok   intld15 2021: 495 rows, total new 89.020 B vs reference 89.020 B, 0 differ; mtime 2026-10-21 16:54 (after --since)
+[2026-10-21 16:56:55] [gate-047] ok   intld15 2015: 495 rows, total new 77.549 B vs reference 77.549 B, 0 differ; mtime 2026-10-21 16:54 (after --since)
+[2026-10-21 16:56:55] [gate-047] ok   intld15 2020: 495 rows, total new 86.606 B vs reference 86.606 B, 0 differ; mtime 2026-10-21 16:54 (after --since)
+[2026-10-21 16:56:55] [gate-047] GATE 047 PASS: 6/6 checks pass (9.2 s)
+gate exit 0
+```
+
+y2021 nominal lands at 109.070 B as expected, and all three intld year sets are unchanged to 1e-9.
+`--tol` was not touched and the probe was not re-run.
+
+#### C4. 0.4.4 and the reference diff
+
+Both 0.4.4 runs exit 0, both opened with the required line:
+
+| res | start | end | runtime | exit | first line |
+|---|---|---|---|---|---|
+| 0.25 | 16:57:52 | 17:00:57 | 3.1 min | 0 | `script start (FORCE_OVERWRITE=1 -> overwrite=TRUE)` |
+| 0.05 | 17:01:09 | 17:05:52 | 4.7 min | 0 | `script start (FORCE_OVERWRITE=1 -> overwrite=TRUE)` |
+
+§1 did not stop on a legacy twin: `section 1: 66 tifs -> 45 after keeping res-25 + untagged`, and
+the same 66 → 45 at res-05.
+
+**GATE 047-REF, both resolutions, verbatim** (setup banners trimmed):
+
+```
+[2026-10-21 17:07:51] [gate-047-ref] probe factors: 243 (iso3, class) pairs; continental C/A = 1.0464
+[2026-10-21 17:08:08] [gate-047-ref] exposure_adm_sum_spam20-20_glw420-20_res-25.parquet: old 5667864 rows (mtime 10-07 19:57), new 5667864 rows (mtime 10-21 17:00); key iso3,admin0_name,admin1_name,admin2_name,crop,exposure,unit,tech,stat
+[2026-10-21 17:08:37] [gate-047-ref]   rows: ok (old 5667864 / new 5667864 / joined 5667864, unmatched-value 0, duplicate keys old FALSE new FALSE)
+[2026-10-21 17:08:37] [gate-047-ref]   not-#47 rows identical: ok (5616894 rows, 0 differ)
+[2026-10-21 17:08:37] [gate-047-ref]   livestock nominal pairs vs probe factor: ok (319 pairs >= 1e+06; 0 off by > 2%; worst 0.00131)
+[2026-10-21 17:08:37] [gate-047-ref]   livestock nominal total: ok (old 104.229 B -> new 109.063 B, ratio 1.0464 vs probe 1.0464)
+[2026-10-21 17:08:40] [gate-047-ref] vop_nominal-usd-2021_adm_sum_spam20_glw420_res-25.parquet: old 1060176 rows (mtime 10-07 19:58), new 1060176 rows (mtime 10-21 17:00); key iso3,admin0_name,admin1_name,admin2_name,crop,exposure,unit,tech,stat
+[2026-10-21 17:08:45] [gate-047-ref]   rows: ok (old 1060176 / new 1060176 / joined 1060176, unmatched-value 0, duplicate keys old FALSE new FALSE)
+[2026-10-21 17:08:45] [gate-047-ref]   not-#47 rows identical: ok (1009206 rows, 0 differ)
+[2026-10-21 17:08:45] [gate-047-ref]   livestock nominal pairs vs probe factor: ok (319 pairs >= 1e+06; 0 off by > 2%; worst 0.00131)
+[2026-10-21 17:08:45] [gate-047-ref]   livestock nominal total: ok (old 104.229 B -> new 109.063 B, ratio 1.0464 vs probe 1.0464)
+[2026-10-21 17:08:47] [gate-047-ref] vop_intld15-2021_adm_sum_spam20_glw420_res-25.parquet: old 693192 rows (mtime 10-07 19:58), new 693192 rows (mtime 10-21 17:00); key iso3,admin0_name,admin1_name,admin2_name,crop,exposure,unit,tech,stat
+[2026-10-21 17:08:50] [gate-047-ref]   rows: ok | all rows identical: ok (0 differ) | livestock nominal rows present: 0 (expect 0)
+[2026-10-21 17:08:50] [gate-047-ref] GATE 047-REF PASS (res-25): 3/3 tables pass
+ref gate res 0.25 exit 0
+[2026-10-21 17:08:59] [gate-047-ref] probe factors: 243 (iso3, class) pairs; continental C/A = 1.0464
+[2026-10-21 17:09:22] [gate-047-ref] exposure_adm_sum_spam20-20_glw420-20_res-05.parquet: old 8065336 rows (mtime 10-07 20:02), new 8065336 rows (mtime 10-21 17:05); key iso3,admin0_name,admin1_name,admin2_name,crop,exposure,unit,tech,stat
+[2026-10-21 17:09:59] [gate-047-ref]   rows: ok (old 8065336 / new 8065336 / joined 8065336, unmatched-value 0, duplicate keys old FALSE new FALSE)
+[2026-10-21 17:09:59] [gate-047-ref]   not-#47 rows identical: ok (7992806 rows, 0 differ)
+[2026-10-21 17:09:59] [gate-047-ref]   livestock nominal pairs vs probe factor: ok (319 pairs >= 1e+06; 0 off by > 2%; worst 0.000884)
+[2026-10-21 17:09:59] [gate-047-ref]   livestock nominal total: ok (old 104.234 B -> new 109.069 B, ratio 1.0464 vs probe 1.0464)
+[2026-10-21 17:10:02] [gate-047-ref] vop_nominal-usd-2021_adm_sum_spam20_glw420_res-05.parquet: old 1508624 rows (mtime 10-07 20:02), new 1508624 rows (mtime 10-21 17:05); key iso3,admin0_name,admin1_name,admin2_name,crop,exposure,unit,tech,stat
+[2026-10-21 17:10:08] [gate-047-ref]   rows: ok (old 1508624 / new 1508624 / joined 1508624, unmatched-value 0, duplicate keys old FALSE new FALSE)
+[2026-10-21 17:10:08] [gate-047-ref]   not-#47 rows identical: ok (1436094 rows, 0 differ)
+[2026-10-21 17:10:08] [gate-047-ref]   livestock nominal pairs vs probe factor: ok (319 pairs >= 1e+06; 0 off by > 2%; worst 0.000884)
+[2026-10-21 17:10:08] [gate-047-ref]   livestock nominal total: ok (old 104.234 B -> new 109.069 B, ratio 1.0464 vs probe 1.0464)
+[2026-10-21 17:10:10] [gate-047-ref] vop_intld15-2021_adm_sum_spam20_glw420_res-05.parquet: old 986408 rows (mtime 10-07 20:02), new 986408 rows (mtime 10-21 17:05); key iso3,admin0_name,admin1_name,admin2_name,crop,exposure,unit,tech,stat
+[2026-10-21 17:10:14] [gate-047-ref]   rows: ok | all rows identical: ok (0 differ) | livestock nominal rows present: 0 (expect 0)
+[2026-10-21 17:10:14] [gate-047-ref] GATE 047-REF PASS (res-05): 3/3 tables pass
+ref gate res 0.05 exit 0
+```
+
+Reading the four lines that matter: the row sets are identical with zero unmatched values and no
+duplicate keys; every non-#47 row is value-identical (5,616,894 at res-25, 7,992,806 at res-05, 0
+differing) and the whole intld twin is identical with 0 livestock-nominal rows present as expected;
+all 319 livestock pairs ≥ 1e6 sit on the probe factor with worst deviation **0.131 %** at res-25 and
+**0.088 %** at res-05, against a 2 % bar; and the livestock nominal total moves 104.229 B → 109.063 B
+at res-25 and 104.234 B → 109.069 B at res-05, ratio **1.0464** against the probe's 1.0464. The old
+res-05 figure 104.234 B is the live reference's 104.229 B plus the usual res-05/res-25 difference, so
+the park is the right baseline.
+
+#### C4.3 Existing gates — both clean
+
+**`R/qaqc_vop_vs_faostat.R`** — livestock does not move, as predicted, because it runs on the I$ basis:
+
+```
+[17:11:10] [qaqc-vop] LIVESTOCK ratios: median=1.00 | within 0.9-1.1 = 242/242 | AGO cattle grid=525.69M I$ fao=525.69M I$ ratio=1.00
+  livestock: median ratio 1.00 | within 0.9-1.1: 242/242 | worst: SDN/sheep=1.00
+```
+
+242/242, median 1.00, worst 1.00. Exit 0.
+
+**`R/checks/vop_cross_basis_gate.R`** — `GATE PASS in 0.2 min` at both resolutions, exit 0 each.
+**Nothing new, and nothing new involving livestock.** Every out-of-band pair is already named:
+
+```
+res-25:
+  pairs: 1396 both bases | 1039 material (intld >= 1e+06) | 357 immaterial | 411 one-sided
+  material ratio nominal/intld: median 1.17 | 5-95% [0.418, 3.04] | livestock median 1.17
+  info: 2 out-of-band pairs have NO national constant-I$ allocation (border spill on this grid, #18)
+        - reported, not gated: TCD:yams, BEN:bean
+  info: 1 out-of-band pairs are NAMED expected residuals: ETH:tea
+  ok: no material pair outside [1/10, 10] has its nominal side off
+  ok: every per-crop median within [1/5, 5]
+
+res-05:
+  pairs: 1181 both bases | 994 material | 187 immaterial | 559 one-sided
+  material ratio nominal/intld: median 1.17 | 5-95% [0.398, 3.14] | livestock median 1.18
+  info: 4 out-of-band pairs are NAMED expected residuals: ETH:tea, TGO:oilpalm, CAF:robusta-coffee, GNB:maize
+  ok: no material pair outside [1/10, 10] has its nominal side off
+  ok: every per-crop median within [1/5, 5]
+```
+
+Two observations, neither a stop:
+
+- **The livestock cross-basis median moved up with the fix and stayed in band** — 1.17 at res-25,
+  1.18 at res-05, against the continental 1.0464 applied on top of the old ratio. The poultry
+  per-crop medians (`poultry-tropical` 1.92 over 47 pairs, `poultry-highland` 1.72 over 19) are the
+  highest livestock entries and are well inside [1/5, 5]. This is the fix showing up where it should,
+  on the nominal side only.
+- **The "prune?" list differs between resolutions** — res-25 names TGO:oilpalm, GNB:maize,
+  CAF:arabica-coffee, CAF:robusta-coffee, GIN:arabica-coffee, GIN:robusta-coffee; res-05 names only
+  the three coffee pairs, because TGO:oilpalm, GNB:maize and CAF:robusta-coffee are still out of band
+  there. Both are crop pairs and both lists are informational. This is pre-existing and unrelated to
+  #47 — I mention it only because the two resolutions disagree, which is the sort of thing worth
+  knowing before a prune.
+
+#### State on the node
+
+The rebuilt tables now sit **locally ahead of S3**, as the block intends: six exposure parquets at
+both resolutions plus the GLW `fao_vop` CSVs and `variable=vop_nominal-usd-*` rasters, all written
+2026-10-21 16:50-17:05. The live S3 reference is still the 2026-10-08 publish at 104.229 B. Nothing
+was uploaded.
+
+Rollback is `$PARK`, untouched. The block-B probe CSV is untouched. Logs for every step are in
+`logs/issue47_*_20261021_164945.*` (git-ignored).
+
+Ready for block D (reference publish) and block E (R/3 usd tier) on your word.
+
+---
+
 ### MACBOOK 2026-10-21 — C. Fix chosen (C). Rebuild 0.4.1 + 0.4.4 locally and gate it. No S3 writes.
 
 **Your read was right, and Pete chose C** (`R/price_fill.R` method). One correction to the read:
