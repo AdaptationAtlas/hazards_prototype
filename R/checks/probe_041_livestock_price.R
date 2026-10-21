@@ -76,6 +76,9 @@ for (nm in SCALARS) {
 }
 run_lines(c23, c24 - 1); run_lines(c3, c43 - 1)
 stopifnot(exists("nominal_usd"), exists("intd_2015"), exists("prod_merge"), exists("prod_price_global"), exists("glw2atlas"))
+if (!"price_median" %in% names(nominal_usd[[1]]))
+  stop("0.4.1 already carries the #47 fix (no add_nearby columns): this probe measures the PRE-fix pricing. ",
+       "Post-fix, use R/checks/gate_047_prices_vs_probe.R against the committed probe output.")
 
 ## FAO inputs -------------------------------------------------------------------
 .log("--- FAO inputs")

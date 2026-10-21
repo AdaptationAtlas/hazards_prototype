@@ -441,48 +441,28 @@ prod_merge[, year := as.integer(gsub("Y", "", year))]
 # We will use production amount and price to get this as conversion of iusd15 to nominal usd seems to give unrealistically low values
 year_sets <- list(y2021 = 2019:2023, y2015 = 2014:2016, y2020 = 2019:2020)
 
+# 2026-10-21 (#47): price each (country, product) with its own gap-filled price. Until now this
+# section built price_usd_final and then priced EVERY country at the world median
+# (vop_usd_nominal := production_t * price_usd_global); measured on the node 2026-10-21
+# (R/checks/probe_041_livestock_price.R, output in R/checks/041_outputs/): Africa y2021 104.23 B
+# at the world median vs 109.07 B with this method, rows moving 0.43-2.2x. The method is the
+# crop side's (R/price_fill.R): clip vs world per item-year, own window / longer-series median,
+# MEDIAN neighbour / region / continent / world fills; goat and sheep milk keep the world median.
+source(file.path(project_dir, "R", "price_fill.R"))   # by PATH: a develop fix must reach the node run
+
 nominal_usd <- lapply(seq_along(year_sets), function(i) {
   ymin <- min(year_sets[[i]])
   ymax <- max(year_sets[[i]])
-
-  prod_merge_recent <- prod_merge[
-    year %in% year_sets[[i]], .(
-      price_usd = median(price_usd, na.rm = TRUE),
-      production_t = median(production_t, na.rm = TRUE)
-    ),
-    .(atlas_name, iso3)
-  ]
-
-  prod_merge_recent <- add_nearby(data = prod_merge_recent, group_field = "atlas_name", value_field = "price_usd", neighbors = african_neighbors, regions = regions)
-
-  # Values are often missing, is there a value from a longer time series?
-  price_any <- prod_merge[
-    year %in% (ymin - 5):ymax, .(
-      price_median = median(price_usd, na.rm = TRUE),
-      price_min = min(price_usd, na.rm = TRUE),
-      price_max = max(price_usd, na.rm = TRUE),
-      price_tail = tail(price_usd[!is.na(price_usd)], 1),
-      price_n = sum(!is.na(price_usd))
-    ),
-    .(atlas_name, iso3)
-  ]
-
-  # Merge median price from longer time-series
-  prod_merge_recent <- merge(prod_merge_recent, price_any[, .(price_median, iso3, atlas_name)], all.x = TRUE)
-
-  prod_price_global_recent <- prod_price_global[year %in% year_sets[[i]], .(price_usd_global = median(price_usd, na.rm = TRUE)), .(atlas_name)]
-
-  prod_merge_recent <- merge(prod_merge_recent, prod_price_global_recent, by = "atlas_name", all.x = TRUE)
-
-
-  unique(prod_merge_recent[, .(atlas_name, price_usd_continent, price_usd_global)])
-
-  prod_merge_recent[, price_usd_final := price_usd][is.na(price_usd_final), price_usd_final := price_median][is.na(price_usd_final), price_usd_final := price_usd_neighbors][
-    is.na(price_usd_final), price_usd_final := price_usd_region
-    # Goat and sheep milk are very low value in FAOstat for Africa, we will use the global median for these instead
-  ][atlas_name %in% c("goat_milk", "sheep_milk"), price_usd_final := price_usd_global][is.na(price_usd_final), price_usd_final := price_usd_continent][is.na(price_usd_final), price_usd_final := price_usd_global][, vop_usd_nominal := production_t * price_usd_global][, year := names(year_sets)[i]]
-
-  prod_merge_recent
+  lp <- livestock_nominal_price(prod_merge[, .(iso3, atlas_name, year, price_usd, production_t)],
+                                prod_price_global[, .(atlas_name, year, price_usd)],
+                                years = year_sets[[i]], long_years = (ymin - 5):ymax,
+                                neighbors = african_neighbors, regions = regions)
+  .log041(sprintf("  %s: %d (iso3, product) rows; %d producer prices clipped vs world; singleton regions: %s",
+                  names(year_sets)[i], nrow(lp$data), nrow(lp$dropped),
+                  if (length(lp$singletons)) paste(lp$singletons, collapse = ",") else "none"))
+  if (nrow(lp$dropped)) print(lp$dropped)
+  print(lp$data[!is.na(production_t), .(n = .N, vop_usd_bn = round(sum(vop_usd_nominal, na.rm = TRUE) / 1e9, 3)), by = price_source][order(-n)])
+  lp$data[, year := names(year_sets)[i]]
 })
 
 names(nominal_usd) <- paste0(dataset_name, "_vop_nominal-usd-", gsub("y", "", names(year_sets)))
@@ -550,7 +530,10 @@ for (i in seq_along(vop_list)) {
   .val_col <- if (grepl("intld15", names(vop_list)[i])) "vop_intd15" else "vop_usd_nominal"
   setnames(final_vop, .val_col, "value")
 
-  final_vop <- final_vop[, list(iso3, atlas_name, value)]
+  # #47: the nominal tables also carry the price used and where it came from, so the
+  # -prices-used.csv audit file names them (the glw-class sum below keeps only `value`).
+  final_vop <- final_vop[, intersect(c("iso3", "atlas_name", "value", "production_t", "price_usd_global",
+                                       "price_usd_final", "price_source"), names(final_vop)), with = FALSE]
   final_vop <- merge(final_vop, glw2atlas, all.x = TRUE, by = "atlas_name")
 
   # Where there is missing data explore how many animals are in these areas

@@ -261,6 +261,11 @@ DRIFT_FLIPS <- if (nzchar(DRIFT$allow_flips)) strsplit(DRIFT$allow_flips, ",")[[
 # absence of change. #13: --hv-retired PTOT-L+NTxS+PTOT-G --hv-added PTOT-L+NTxM+PTOT-G,NDWS+NTxM+NDWL0
 HV_RETIRED <- { .x <- opt("--hv-retired", ""); if (nzchar(.x)) strsplit(.x, ",")[[1]] else character(0) }
 HV_ADDED   <- { .x <- opt("--hv-added", "");   if (nzchar(.x)) strsplit(.x, ",")[[1]] else character(0) }
+# A publish that DELIBERATELY moves the livestock exposure declares it (#47: livestock nominal USD
+# repriced at national prices). G6's livestock control is then judged net of --drift-exposure, like the
+# crops, instead of raw against live; without --drift-exposure for the tier G6 stops.
+LIVESTOCK_MOVED <- flag("--livestock-moved")
+if (LIVESTOCK_MOVED) .log("G6 declared livestock exposure move: livestock control judged net of --drift-exposure")
 if (length(HV_RETIRED) || length(HV_ADDED)) .log("G6 declared hazard_vars change: retiring [%s], adding [%s]", paste(HV_RETIRED, collapse = ","), paste(HV_ADDED, collapse = ","))
 if (length(DRIFT_FLIPS)) .log("G6 flips allowed by name: %s", paste(DRIFT_FLIPS, collapse = ","))
 # G6b bounds. Tighter than G6's, because this is an identity and not a drift: any + none = the
@@ -437,7 +442,7 @@ if (DO_TIERS) for (vkey in VARIABLES) {
                      min_live = DRIFT$min_live, small_iso3 = DRIFT$small_iso3, expected = DRIFT_EXPECTED,
                      exposure_new = if (nzchar(DRIFT_EXPOSURE_BY_VAR[[vkey]] %||% "")) DRIFT_EXPOSURE_BY_VAR[[vkey]] else NULL,
                      flip_allow = DRIFT_FLIPS, exposure_var = spec$twin_expo,
-                     hv_retired = HV_RETIRED, hv_added = HV_ADDED)
+                     hv_retired = HV_RETIRED, hv_added = HV_ADDED, livestock_moved = LIVESTOCK_MOVED)
     print_drift(g6, label = sprintf("%s/%s", vkey, tier), log = function(fmt, ...) .log(paste0("  ", fmt), ...))
     .log("  G6 %s in %s", if (g6$pass) "ok" else if (ALLOW_VALUE_DRIFT) "WARN (allowed)" else "FAIL", .elapsed(t6))
     if (!g6$pass && !ALLOW_VALUE_DRIFT) { .log("  ABORT %s/%s: value drift outside the stated bounds (read the populations above; --allow-value-drift only after the cause is understood)", vkey, tier); next }

@@ -221,4 +221,27 @@ r_wrong <- tier_drift(local_f, live_f, min_live = 1,
 ok(any(pg(r_wrong)$result == "FAIL"),
    "an INCOMPLETE declaration still FAILs - the gate checks the stated change, not the presence of a statement")
 
+## ---------------------------------------------------------------- #47: a DECLARED livestock move
+# A publish that reprices livestock (#47: world median -> national prices) moves the livestock
+# control against live by design. Undeclared, G6 must still FAIL it (the control's whole point).
+# Declared with livestock_moved, the control is judged net of the exposure input this bake used, so
+# a product that reproduces its new input passes and one that does NOT still fails. The declaration
+# without an input basis is refused.
+LP <- rbind(PAIRS, data.table(iso3 = c("KEN", "NGA"), crop = c("cattle-tropical", "poultry-tropical"), E = c(5e6, 3e6)))
+LP_new <- copy(LP)[crop == "cattle-tropical", E := E * 1.39][crop == "poultry-tropical", E := E * 0.68]
+lv_live  <- mk_product(file.path(tmp, "lv_live.parquet"), pairs = LP)
+lv_local <- mk_product(file.path(tmp, "lv_local.parquet"), pairs = LP_new)
+lv_expo  <- mk_exposure(file.path(tmp, "lv_expo.parquet"), pairs = LP_new)
+lv_bad   <- mk_product(file.path(tmp, "lv_bad.parquet"), pairs = copy(LP_new)[crop == "cattle-tropical", E := E * 1.2])
+lc <- function(res) res$gates[gate == "livestock"]
+r_undecl <- tier_drift(lv_local, lv_live, min_live = 1, exposure_new = lv_expo, exposure_var = "prod")
+ok(lc(r_undecl)$result == "FAIL", "#47: an undeclared livestock move FAILs the control, even with an exposure basis")
+r_lv <- tier_drift(lv_local, lv_live, min_live = 1, exposure_new = lv_expo, exposure_var = "prod", livestock_moved = TRUE)
+ok(lc(r_lv)$result == "ok" && grepl("declared", lc(r_lv)$population), "declared: a product that reproduces its new livestock input passes the control")
+ok(isTRUE(r_lv$pass), "and the crop pairs, unchanged, still pass - the declaration touches the livestock control only")
+r_lvbad <- tier_drift(lv_bad, lv_live, min_live = 1, exposure_new = lv_expo, exposure_var = "prod", livestock_moved = TRUE)
+ok(lc(r_lvbad)$result == "FAIL", "declared: a livestock pair 20 % off its NEW input still FAILs - the declaration is not a waiver")
+ok(inherits(try(tier_drift(lv_local, lv_live, min_live = 1, livestock_moved = TRUE), silent = TRUE), "try-error"),
+   "the declaration without an exposure basis is refused")
+
 cat("\nALL PUBLISH-GATE FIXTURE ASSERTIONS PASSED\n")

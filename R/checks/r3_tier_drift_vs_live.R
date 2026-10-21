@@ -245,13 +245,20 @@ print_tier_vs_exposure <- function(res, label = "", n_worst = 12, log = .drift_l
 #   live-product basis, which is the one thing a new tier does not have. Matching nothing is
 #   therefore an error here, and the error names the (exposure, unit) pairs the file does hold.
 # flip_allow: "ISO3:crop" pairs whose live -> ~0 flip is explained and accepted (reported, not FAIL).
+# livestock_moved: a publish that DELIBERATELY changes the livestock exposure (#47, 2026-10-21: livestock
+#   nominal USD repriced from the world median to national prices) declares it. The livestock control is
+#   then judged net of exposure_new (T_local / E_new ~ 1, tol_control), exactly like the crops, instead of
+#   raw against live. Requires exposure_new: without an input basis the declaration would excuse anything.
 tier_drift <- function(local_f, live_f,
                        tol_pair = 0.25, tol_median = 0.03, tol_total = 0.05,
                        tol_small = 0.5, tol_control = 0.02,
                        min_live = 1e6, small_iso3 = DRIFT_SMALL_ISO3_DEFAULT,
                        flip_frac = 0.01, expected = NULL, exposure_new = NULL, flip_allow = character(0),
-                       exposure_var = "vop", hv_retired = character(0), hv_added = character(0)) {
+                       exposure_var = "vop", hv_retired = character(0), hv_added = character(0),
+                       livestock_moved = FALSE) {
   stopifnot(file.exists(local_f), file.exists(live_f))
+  if (livestock_moved && is.null(exposure_new))
+    stop("livestock_moved = TRUE needs exposure_new: the moved livestock control is judged against the exposure input this bake used")
   a <- .drift_read(live_f); b <- .drift_read(local_f)
   j <- merge(a$T, b$T, by = c("iso3", "crop"), all = TRUE, suffixes = c("_live", "_local"))
   j[, ratio_raw := T_local / T_live]
@@ -274,8 +281,9 @@ tier_drift <- function(local_f, live_f,
     basis <- "expected-move csv (bounds on ratio_raw / ratio_expected)"
   }
   # Livestock rasters never change in a crop-price fix and are not in 0.4.2; the control is
-  # always judged raw (live == local), never net of any expected move.
-  j[livestock == TRUE, ratio_expected := 1]
+  # judged raw (live == local), never net of any expected move - unless the publish declares
+  # that it moved the livestock input (livestock_moved), when it is judged net of exposure_new.
+  if (!livestock_moved) j[livestock == TRUE, ratio_expected := 1]
   j[, ratio := ratio_raw / ratio_expected]
   j[, small := iso3 %in% small_iso3]
   j[, noref := crop %in% DRIFT_NO_REF]
@@ -343,7 +351,7 @@ tier_drift <- function(local_f, live_f,
     g("small-country", "pairs within tol_small", nrow(smallpop) == 0 || all(abs(smallpop$ratio - 1) <= tol_small),
       sprintf("%d pairs (%s); %d outside +/-%.0f%%", nrow(smallpop), paste(sort(unique(smallpop$iso3)), collapse = ","),
               if (nrow(smallpop)) sum(abs(smallpop$ratio - 1) > tol_small) else 0L, 100 * tol_small)),
-    g("livestock", "control ~ 1 (inputs are renames)", nrow(control) == 0 || all(abs(control$ratio - 1) <= tol_control),
+    g("livestock", if (livestock_moved) "control ~ 1 net of the exposure input (livestock move declared)" else "control ~ 1 (inputs are renames)", nrow(control) == 0 || all(abs(control$ratio - 1) <= tol_control),
       sprintf("%d pairs; range [%s, %s]; tol %.0f%%", nrow(control),
               if (nrow(control)) signif(min(control$ratio), 4) else NA, if (nrow(control)) signif(max(control$ratio), 4) else NA, 100 * tol_control)),
     g("no-reference", sprintf("%s: reported, not gated", paste(DRIFT_NO_REF, collapse = ",")), TRUE,
@@ -388,7 +396,7 @@ if (sys.nframe() == 0L || nzchar(Sys.getenv("DRIFT_CLI"))) {
   opt <- function(x, d) { i <- match(x, args); if (is.na(i) || i == length(args)) d else args[i + 1] }
   local_f <- opt("--local", ""); live_f <- opt("--live", ""); exp_f <- opt("--expected", ""); expo_f <- opt("--exposure", ""); allow_f <- opt("--allow-flips", "")
   expo_var <- opt("--exposure-var", "vop")
-  if (!nzchar(local_f) || !nzchar(live_f)) { cat("usage: --local <new.parquet> --live <old.parquet> [--exposure <0.4.4 twin this bake used>] [--exposure-var vop|prod|harv-area|number] [--expected <iso3,crop,ratio_expected csv>] [--allow-flips ISO3:crop,...] [--tol-pair --tol-median --tol-total --tol-small --tol-control --min-live --small-iso3]\n"); quit(status = 2) }
+  if (!nzchar(local_f) || !nzchar(live_f)) { cat("usage: --local <new.parquet> --live <old.parquet> [--exposure <0.4.4 twin this bake used>] [--exposure-var vop|prod|harv-area|number] [--expected <iso3,crop,ratio_expected csv>] [--allow-flips ISO3:crop,...] [--livestock-moved] [--tol-pair --tol-median --tol-total --tol-small --tol-control --min-live --small-iso3]\n"); quit(status = 2) }
   t0 <- Sys.time()
   .drift_log("local = %s", local_f); .drift_log("live  = %s", live_f)
   expected <- if (nzchar(exp_f)) { .drift_log("expected input moves from %s", exp_f); data.table::fread(exp_f) } else NULL
@@ -400,7 +408,7 @@ if (sys.nframe() == 0L || nzchar(Sys.getenv("DRIFT_CLI"))) {
                     tol_control = as.numeric(opt("--tol-control", "0.02")), min_live = as.numeric(opt("--min-live", "1e6")),
                     small_iso3 = strsplit(opt("--small-iso3", paste(DRIFT_SMALL_ISO3_DEFAULT, collapse = ",")), ",")[[1]],
                     expected = expected, exposure_new = exposure_new, flip_allow = flip_allow,
-                    exposure_var = expo_var)
+                    exposure_var = expo_var, livestock_moved = "--livestock-moved" %in% args)
   print_drift(res, label = basename(local_f))
   .drift_log("done in %.1f min", as.numeric(difftime(Sys.time(), t0, units = "mins")))
   quit(status = if (res$pass) 0 else 1)

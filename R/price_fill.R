@@ -247,3 +247,46 @@ apply_price_pins <- function(data, pins, value_field = "price_usd_final") {
   d[, price_pin := NULL]
   list(data = d[], applied = applied)
 }
+
+# 2026-10-21 (#47; decision Pete 2026-10-21, option C of R/checks/probe_041_livestock_price.R).
+# Livestock nominal-USD price for R/0.4.1 section 4.1. 0.4.1 used to build a gap-filled national
+# price and then multiply production by the WORLD median producer price for every country
+# (vop_usd_nominal := production_t * price_usd_global), so the national price was never used.
+# This prices each (iso3, livestock product) the crop way instead:
+#   producer prices clipped to [1/band, band] x the world median per item-year (before any
+#   averaging) -> own window median -> own longer-series median -> MEDIAN neighbours / region /
+#   continent / world fills (fill_price_robust) -> world median for `world_items` (goat and
+#   sheep milk: FAOSTAT's African prices for these are implausibly low, a pre-existing decision).
+# Producer prices only: FAOSTAT's current-US$ livestock GPV is sparse (0.4.1 3.1.1 note), so the
+# implied-price route of 0.4.2 is not used here. No basis guard: measured 2026-10-21, it would act
+# on 3 rows whose oddity is in the constant-I$ series, not the price (LBY, SLE cattle meat).
+# On the 2026-05-15 FAO files this reproduces the probe's C column (y2021 Africa 109.07 B USD vs
+# 104.23 B at the world median), committed at R/checks/041_outputs/.
+# prod_merge:   data.table iso3, atlas_name, year, price_usd (USD/t, NA allowed), production_t
+# world_prices: data.table atlas_name, year, price_usd (per-country rows of the world price file)
+# Returns list(data = one row per (iso3, atlas_name) seen in the window, with production_t,
+#              price_usd (own), price_usd_global, the fill columns, price_usd_final, price_source,
+#              vop_usd_nominal; dropped = clipped observations; singletons = iso3 given their own region).
+livestock_nominal_price <- function(prod_merge, world_prices, years, long_years = years, neighbors, regions,
+                                    world_items = c("goat_milk", "sheep_milk"), band = PRICE_BAND_DEFAULT) {
+  stopifnot(all(c("iso3", "atlas_name", "year", "price_usd", "production_t") %in% names(prod_merge)),
+            all(c("atlas_name", "year", "price_usd") %in% names(world_prices)), all(years %in% long_years))
+  pm <- data.table::as.data.table(prod_merge)[, year := as.integer(year)]
+  wp <- data.table::as.data.table(world_prices)[, .(atlas_name, year = as.integer(year), price_usd)]
+  rows <- pm[year %in% years, .(production_t = stats::median(production_t, na.rm = TRUE)), by = .(atlas_name, iso3)]
+  world <- wp[year %in% years, .(price_world = stats::median(price_usd, na.rm = TRUE)), by = atlas_name]
+  clip <- clip_prices_to_world_band(pm[, .(iso3, atlas_name, year, price_usd)], wp, band = band)
+  no_implied <- clip$kept[0]
+  own <- own_price_window(no_implied, clip$kept, years = years, long_years = long_years)
+  d <- merge(rows, own[, .(iso3, atlas_name, price_usd, own_source = price_source)], by = c("iso3", "atlas_name"), all.x = TRUE)
+  # fill_price_robust() stops on an iso3 absent from `regions`: such a country gets a singleton
+  # region, whose median excludes itself, so it falls through to the continent median.
+  singletons <- setdiff(d$iso3, unlist(regions))
+  for (m in singletons) regions[[paste0("_", m)]] <- m
+  d <- fill_price_robust(d, value_field = "price_usd", group_field = "atlas_name",
+                         neighbors = neighbors, regions = regions, world = world, stat = "median")
+  d[price_source == "own", price_source := own_source][, own_source := NULL]
+  d[atlas_name %in% world_items, `:=`(price_usd_final = price_usd_global, price_source = "world median (item override)")]
+  d[, vop_usd_nominal := production_t * price_usd_final]
+  list(data = d[], dropped = clip$dropped, singletons = singletons)
+}

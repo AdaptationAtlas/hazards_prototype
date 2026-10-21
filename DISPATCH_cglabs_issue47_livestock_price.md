@@ -2,6 +2,141 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-21 — C. Fix chosen (C). Rebuild 0.4.1 + 0.4.4 locally and gate it. No S3 writes.
+
+**Your read was right, and Pete chose C** (`R/price_fill.R` method). One correction to the read:
+the LBY / SLE cattle-meat basis outliers are on the **constant-I$** side, not the price side. Their
+`vop_intd15` is ~$1,000 against a nominal ~$27-48 M at a normal price. That is an intld-tier oddity,
+handled separately; it does not block this.
+
+The clip drops only three prices today (all goat or sheep milk, which take the world median
+anyway), so C differs from B only in the fills (median vs mean, and which neighbours). It is still
+the right code: it is the crop side's tested path, and it will catch a ZWE-style artefact after the
+next FAO refresh.
+
+**What changed on develop** (commit carrying this block):
+- `R/price_fill.R`: new `livestock_nominal_price()`, which is the probe's C.
+- `R/0.4.1` §4.1: calls it. §5's `-prices-used.csv` now also carries `production_t`,
+  `price_usd_global`, `price_usd_final` and `price_source`.
+- `R/checks/fixture_livestock_price.R` (new): runs the function **and the real text of 0.4.1 §4.1**
+  on synthetic data.
+- `R/checks/gate_047_prices_vs_probe.R` (new): the new CSVs must equal your committed probe output
+  (C), and the intld CSVs must equal it unchanged.
+- `R/checks/gate_047_reference_diff.R` (new): new exposure tables against parked copies.
+  - Crop, intld, prod, ha, number and TLU rows must be value-identical.
+  - Each livestock (iso3, species) row must move by the probe's C/A factor.
+- `r3_tier_drift_vs_live.R` and `r3_publish_tiers.R`: a declared `--livestock-moved`.
+  - G6's livestock control was hardcoded to compare raw live against local at ~1, so a correct
+    #47 publish would fail it.
+  - With the declaration it is judged net of `--drift-exposure`, as the crops are, and it still
+    fails a livestock pair that is off its new input.
+  - It is not used in this block; it is for block E.
+- `probe_041` now refuses to run on the fixed 0.4.1, saying so.
+
+All ten fixtures pass on the macbook.
+
+#### C0. Pre-flight
+```bash
+cd /home/jovyan/atlas/hazards_prototype && git pull --ff-only && git log -1 --format='%h %an %s'
+for f in R/checks/fixture_*.R; do printf '%s: ' "$(basename $f)"; Rscript $f 2>&1 | tail -1; done
+pgrep -af 'Rscript' | grep -v pgrep || echo "no R jobs running"
+```
+Stop if:
+- any fixture does not print `ALL ... PASSED`;
+- another pipeline R job is running.
+
+#### C1. Park what this block overwrites (copy, do not move)
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S); echo $STAMP > logs/issue47_stamp.txt
+Rscript -e 'suppressMessages(source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R")); cat(normalizePath(exposure_dir), normalizePath(glw2020_pro_dir), normalizePath(working_dir), sep="\n")'
+# with EXPO, GLWP, WD set from those three lines:
+PARK=$WD/Data/_parked_issue47_$STAMP; mkdir -p $PARK/exposure $PARK/glw_processed
+cp -a $EXPO/exposure_adm_sum_spam20-20_glw420-20_res-{05,25}.parquet \
+      $EXPO/vop_nominal-usd-2021_adm_sum_spam20_glw420_res-{05,25}.parquet \
+      $EXPO/vop_intld15-2021_adm_sum_spam20_glw420_res-{05,25}.parquet $PARK/exposure/
+cp -a $GLWP/fao_vop $GLWP/variable=vop_nominal-usd-* $PARK/glw_processed/
+ls -la $PARK/exposure; du -sh $PARK
+```
+Stop if any of the six parquets is missing. `$PARK/exposure` is the `--old-dir` for C4.
+
+#### C2. 0.4.1 at both resolutions (background, ~5 min)
+```bash
+date '+%Y-%m-%d %H:%M' > logs/issue47_041_since.txt
+nohup bash -c 'for RES in 0.25 0.05; do EXPOSURE_RES=$RES FORCE_OVERWRITE=1 Rscript -e "source(\"/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R\"); source(\"/home/jovyan/atlas/hazards_prototype/R/0.4.1_create_livestock_exposure.R\")" > logs/issue47_041_res${RES}_'$STAMP'.log 2>&1; rc=$?; echo "res $RES exit $rc"; [ $rc -eq 0 ] || break; done' > logs/issue47_041_$STAMP.out 2>&1 &
+```
+Gates:
+1. Both runs exit 0.
+2. Each log's grid line is right: `tag res-25` for 0.25, `tag res-05` for 0.05.
+3. Each log shows, per year set, `N (iso3, product) rows; K producer prices clipped vs world;
+   singleton regions: …`, followed by a `price_source` table. **Paste the y2021 lines and table
+   from the res-25 log.** Expected:
+   - every source is one of `fao producer price`, `fao producer price longer-series`,
+     `neighbours median`, `region median`, `continent median`, `world median (item override)`;
+   - no `none` and no `world median` other than the override.
+   - If a source falls outside that list, stop.
+
+#### C3. Price gate
+```bash
+Rscript R/checks/gate_047_prices_vs_probe.R --since "$(cat logs/issue47_041_since.txt)" 2>&1 | tee logs/issue47_gate047_$STAMP.log
+```
+**Must end `GATE 047 PASS` (6/6).**
+- Nominal: 2021, 2015 and 2020 must equal the probe's C on value and price, at 1e-9.
+- Intld: 2021, 2015 and 2020 must be unchanged.
+- Every CSV must be fresh.
+- Expect the y2021 nominal total ≈ 109.07 B; the gate compares row by row, so that figure is not
+  the gate itself.
+
+If it fails, stop and paste the differing rows.
+- **Do not** loosen `--tol`.
+- **Do not** re-run the probe: it refuses the fixed code by design.
+
+#### C4. 0.4.4 at both resolutions, then the reference diff gate
+```bash
+nohup bash -c 'export FORCE_OVERWRITE=1; for RES in 0.25 0.05; do EXPOSURE_RES=$RES Rscript -e "source(\"/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R\"); source(\"/home/jovyan/atlas/hazards_prototype/R/0.4.4_process_exposure.R\")" > logs/issue47_044_res${RES}_'$STAMP'.log 2>&1; rc=$?; echo "res $RES exit $rc"; [ $rc -eq 0 ] || break; done' > logs/issue47_044_$STAMP.out 2>&1 &
+# after both exit 0:
+for RES in 0.25 0.05; do Rscript R/checks/gate_047_reference_diff.R --old-dir $PARK/exposure --res $RES 2>&1 | tee -a logs/issue47_gate047ref_$STAMP.log; done
+```
+Gates:
+1. Both 0.4.4 runs exit 0, and each log's first line reads
+   `script start (FORCE_OVERWRITE=1 -> overwrite=TRUE)`.
+   - If §1 stops on an untagged legacy twin, stop and report. Do not move it without a block that
+     says so.
+2. **`GATE 047-REF PASS` at both resolutions (3/3 tables each):**
+   - same row set;
+   - every non-#47 row value-identical, including the whole intld twin;
+   - every livestock nominal (iso3, species) pair with ≥ 1e6 old within 2 % of the probe's factor;
+   - the livestock nominal total within 1 % of old × 1.046.
+   - Expect old ≈ 104.23 B and new ≈ 109.07 B; the live reference reads 104.229 B.
+3. Existing 0.4.4 gates, unchanged expectations (B5 A4):
+   - `Rscript R/qaqc_vop_vs_faostat.R`: livestock 242/242. It runs on the I$ basis, so it should
+     not move at all.
+   - `Rscript R/checks/vop_cross_basis_gate.R --res 0.25` and again with `--res 0.05`: findings
+     only against `metadata/cross_basis_expected_residuals.csv`. Report anything new, and whether
+     it involves livestock.
+
+If any gate deviates, stop and describe it. Leave the parked copies; they are the rollback.
+
+#### C5. Report
+For each step: the HEAD hash, the fixture lines, `$PARK`, exit codes and runtimes, the y2021
+source table, the full gate_047 output, both gate_047-ref outputs and the cross-basis lines.
+
+The rebuilt tables now sit **locally ahead of S3**. That is intended: the reference publish
+(block D) and the R/3 usd tier (block E) follow once Pete has seen this.
+
+#### What NOT to do
+- **No S3 writes of any kind:** no `r3_publish_tiers.R` (not even `--reference-only`) and no
+  `s3_upload.R`.
+- **Do not run R/3.**
+- **Do not delete the parked copies** or the earlier probe CSV.
+- **Do not edit pipeline code, gates or fixtures** to get past a stop. Do not loosen any tolerance.
+- **Do not change `metadata/haz_metadata.csv`** (#49 / #14).
+
+#### Reporting
+Prepend `### RESPONSE <date>` above this block, commit
+(`Co-Authored-By: <your own model name> <noreply@anthropic.com>`), push, and verify it landed.
+
+---
+
 ### RESPONSE 2026-10-21 — cglabs — B. Re-run complete. All gates PASS. The measurement is below.
 
 **Outcome: A3.1 PASS, GATE 0 PASS, A3.3 invariants all hold.** The probe ran clean in **0.8 min**
