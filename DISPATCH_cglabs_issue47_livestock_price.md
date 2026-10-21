@@ -2,6 +2,150 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-21 — D + E. Publish the reference (D), STOP, then R/3 usd tier + publish (E) on GO.
+
+**Block C accepted.** Every gate passed and the numbers reconcile three ways: the probe's C, the
+rebuilt CSVs, and the rebuilt tables, all at ×1.0464. Pete GO'd the publish on 2026-10-21.
+This block runs in **two parts with a hard stop between them**:
+- run D, report D, then wait;
+- start E only after a macbook block titled "GO E" lands above this one.
+
+Noted from C and not acted on: the cross-basis "prune?" lists differ between res-25 and res-05
+(crop pairs, pre-existing, unrelated to #47).
+
+---
+
+#### D. Reference + family republish (~5 min; S3 writes)
+
+D1 runs dry-runs first. Run each command with `--dry-run`, then report its gate lines. **Then run
+them live**, in the background with nohup and a log, in this order:
+```bash
+cd /home/jovyan/atlas/hazards_prototype && git pull --ff-only && git log -1 --format='%h %an %s'
+STAMP=$(cat logs/issue47_stamp.txt)
+for A in "--reference-only --res 0.05" "--reference-only --res 0.25" "--family-only --res 0.05" "--family-only --res 0.25"; do
+  Rscript scripts/r3_publish_tiers.R $A --dry-run 2>&1 | tail -40
+done
+nohup bash -c 'for A in "--reference-only --res 0.05" "--reference-only --res 0.25" "--family-only --res 0.05" "--family-only --res 0.25"; do Rscript scripts/r3_publish_tiers.R $A; rc=$?; echo "== $A exit $rc"; [ $rc -eq 0 ] || break; done' > logs/issue47_D_publish_$STAMP.log 2>&1 &
+```
+**Do not pass** any of these. #47 changes values only; units, columns and resolution are unchanged:
+- `--allow-unit-vintage-change`;
+- `--allow-res-change`;
+- `--allow-schema-drift`;
+- `--allow-value-drift`.
+
+If a gate asks for one, stop and paste it.
+
+The publisher backs up the live keys to `sandbox/backup/` before writing. Report the backup path.
+
+**D2. Gates and verification.**
+
+Invariants:
+1. All four live runs exit 0, and the gate lines show columns identical, `distinct(exposure/unit/stat)`
+   identical and rows within 25 %.
+2. **MD5 == ETag** for every key written (both suffixed references, the unsuffixed alias, and the
+   family twins plus their aliases), with the method from #13 RESPONSE (k): `head_object` ETag
+   against local `md5sum`.
+   - If an ETag carries a multipart `-n` suffix, download the object and hash it instead.
+3. **Read back from S3**, not from disk: the admin2 `vop` totals by (unit, livestock yes/no),
+   with `tech` = all or NA and finite values only, for
+   `crop-livestock_all_res-25.parquet` and `_res-05`. Expected:
+   - **nominal-usd-2021 livestock** = the C4 local figure, 109.063 B (res-25) and 109.069 B (res-05);
+   - **nominal-usd-2021 crops** = 201.921 B, unchanged;
+   - **intld15-2021** = 240.243 B crops + 89.016 B livestock (res-25), unchanged.
+
+   Any other movement is a stop.
+4. The unsuffixed alias `crop-livestock_all.parquet` has the res-05 MD5.
+
+**D3. Report, then STOP.** Prepend a RESPONSE with the dry-run gate lines, live exit codes, backup
+path, the MD5 table and the read-back totals. Do not start E.
+
+---
+
+#### E. R/3 nominal-USD tier, then publish (starts only on "GO E")
+
+**E1. Park the usd R/3 outputs only.** They must be moved, not copied: R/3 skips any output that
+exists, and that skip is how this run is limited to usd.
+```bash
+Rscript -e 'suppressMessages(source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"))
+  src <- atlas_dirs$data_dir$hazard_risk_vop_usd; stamp <- readLines("/home/jovyan/atlas/hazards_prototype/logs/issue47_stamp.txt")
+  dst <- file.path(working_dir, "Data", paste0("_parked_issue47_", stamp), "r3_vop_usd"); dir.create(dst, recursive = TRUE)
+  for (tf in c("annual", "jagermeyr")) { f <- list.files(file.path(src, tf), full.names = TRUE, recursive = TRUE)
+    d <- file.path(dst, tf, sub(paste0("^", file.path(src, tf), "/"), "", f)); for (x in unique(dirname(d))) dir.create(x, recursive = TRUE, showWarnings = FALSE)
+    ok <- file.rename(f, d); cat(tf, ": moved", sum(ok), "of", length(f), "| left behind", length(list.files(file.path(src, tf), recursive = TRUE)), "\n") }'
+```
+Expect `left behind 0` for both timeframes. The other four variables' R/3 outputs stay where they
+are, untouched.
+
+**E2. Run R/3 (background, ~8-9 h for both timeframes).**
+```bash
+date '+%Y-%m-%d %H:%M' > logs/issue47_r3_since.txt
+nohup Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); source("/home/jovyan/atlas/hazards_prototype/R/3_freq_x_exposure.R")' > logs/issue47_r3_$STAMP.log 2>&1 &
+echo $! > logs/issue47_r3_$STAMP.pid
+```
+Environment:
+- Leave `FORCE_OVERWRITE` **unset**; setting it would rebuild all five variables.
+- Leave `R3_CROP_VOP_USD` at its default.
+- **Do not set** `R3_ALLOW_41_FAILURES` or `SKIP_R3_4_1`.
+
+Header check, early in the log:
+- `Using crop vop usd file: spam_vop_nominal-usd-2021_all_res-25.tif | R3_CROP_VOP_USD = 2021`;
+- `overwrite4= FALSE`.
+
+If either is wrong, stop the run and report.
+
+Silent-failure signature from memory: usd §4.1 finishing in single-digit minutes means it skipped.
+
+**E3. Post-run gates.** Stop on any deviation.
+1. Exit 0. No `failed_risk_x_exposure_*.txt`. `skipped_not_in_exposure_*.txt` holds only the
+   already-classified skips.
+2. Every usd output has an mtime after `issue47_r3_since.txt`. The other variables' outputs keep
+   their pre-run mtimes; report the newest mtime per variable.
+3. `Rscript R/checks/usd_total_vs_reference.R --iso3 all`, then the same with `--timeframe annual`.
+   Material pairs must sit in [0.5, 2] with the median in [0.9, 1.1], against the **republished**
+   reference.
+4. `Rscript scripts/stamp_ensemble_membership.R` for both timeframes. It must report **18 members**.
+
+**E4. Publish the usd tier**, dry-run then live, background, jagermeyr then annual:
+```bash
+TWIN=$(Rscript -e 'suppressMessages(source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R")); cat(normalizePath(file.path(exposure_dir, "vop_nominal-usd-2021_adm_sum_spam20_glw420_res-25.parquet")))' | tail -1)
+Rscript scripts/r3_publish_tiers.R --variables vop_usd --drift-exposure vop_usd=$TWIN --livestock-moved --dry-run
+Rscript scripts/r3_publish_tiers.R --variables vop_usd --drift-exposure vop_usd=$TWIN --livestock-moved --timeframe annual --dry-run
+```
+Expected in each dry-run:
+- G1-G5 ok;
+- the log line `G6 declared livestock exposure move`;
+- the G6 livestock control reads `control ~ 1 net of the exposure input (livestock move declared)`
+  and is ok;
+- the crop material pairs are ok against the unchanged crop exposure;
+- **G6b ok** (product against its own twin, admin2 basis, the TZA coconut named residual only).
+
+If G6 or G6b fails, stop and paste the populations. **Do not** pass:
+- `--allow-value-drift`, `--allow-schema-drift`;
+- `--hv-retired` / `--hv-added` (the set is unchanged);
+- `--no-exposure-gate`, `--skip-gates`;
+- any `--drift-tol-*`.
+
+If both dry-runs are clean, run both live, in the background with a log.
+
+**E5. Verify.** MD5 == ETag for every key written, as in D2, and report the sidecars' `n_members` (18).
+
+**E6. Report.** Prepend a RESPONSE with E1-E5. The parked copies stay until the macbook says
+otherwise.
+
+#### What NOT to do (D and E)
+- **Never** use `s3fs::s3_file_delete` / `s3_dir_delete`: they delete permanently. No deletes of
+  any kind.
+- Never use `R/s3_upload.R` or the derive script.
+- **Do not start E without "GO E".**
+- Do not edit code, gates, fixtures or tolerances to pass a stop. Do not change
+  `metadata/haz_metadata.csv`.
+
+#### Reporting
+Prepend `### RESPONSE <date>` per part (D, then E), commit
+(`Co-Authored-By: <your own model name> <noreply@anthropic.com>`), push, and verify it landed.
+
+---
+
 ### RESPONSE 2026-10-21 — cglabs — C. Rebuild complete. Every gate PASS. Tables are local, ahead of S3.
 
 **C0 PASS, C1 parked, C2 PASS, GATE 047 PASS 6/6, GATE 047-REF PASS 3/3 at both resolutions,
