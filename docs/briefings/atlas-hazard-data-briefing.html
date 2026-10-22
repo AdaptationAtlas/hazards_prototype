@@ -1,0 +1,1470 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Atlas Hazards for Avoided Loss</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Condensed:wght@500;600&family=IBM+Plex+Sans:ital,wght@0,400;0,500;0,600;1,400&display=swap">
+<style>
+:root{--bg:#f6f8f6;--surface:#fff;--ink:#1b2422;--muted:#56645f;--rule:#d6ddd9;--accent:#1d5c55;--accent-soft:#e3efec;--note:#8a5a10;--note-soft:#f8efdf;--code-bg:#eef2f0;
+--sans:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;--cond:"IBM Plex Sans Condensed","Arial Narrow",system-ui,sans-serif;--mono:"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#111614;--surface:#18201d;--ink:#e2eae6;--muted:#9aa8a3;--rule:#2c3733;--accent:#77bdb2;--accent-soft:#1d2f2b;--note:#e0b066;--note-soft:#2a2216;--code-bg:#1f2825}}
+*{box-sizing:border-box} html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--bg);color:var(--ink);font:15.5px/1.62 var(--sans);padding-inline:16px;padding-block:0 64px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;grid-template-columns:minmax(0,1fr);gap:40px}
+@media (min-width:1000px){.wrap{grid-template-columns:240px minmax(0,1fr)}}
+header.top{max-width:1180px;margin:0 auto 32px;padding-block:40px 28px;border-bottom:1px solid var(--rule)}
+.eyebrow{font:600 12px/1.2 var(--cond);letter-spacing:.09em;text-transform:uppercase;color:var(--accent)}
+h1{font:600 clamp(28px,4.2vw,40px)/1.12 var(--cond);margin:10px 0 18px;text-wrap:balance}
+dl.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 28px;margin:0}
+.m dt{font:600 11.5px/1.3 var(--cond);letter-spacing:.07em;text-transform:uppercase;color:var(--muted)} .m dd{margin:3px 0 0;font-size:14px}
+nav.toc{font-size:13.5px}
+@media (min-width:1000px){nav.toc{position:sticky;top:20px;align-self:start;max-height:calc(100vh - 40px);overflow:auto}}
+nav.toc h2{font:600 11.5px/1.3 var(--cond);letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 10px;border:0;padding:0}
+nav.toc ol{list-style:none;margin:0;padding:0;display:grid;gap:2px}
+nav.toc a{display:block;padding:5px 10px;border-left:2px solid var(--rule);color:var(--ink);text-decoration:none}
+nav.toc a:hover,nav.toc a:focus-visible{border-left-color:var(--accent);color:var(--accent);background:var(--accent-soft)}
+main{min-width:0;max-width:80ch}
+main h2{font:600 25px/1.2 var(--cond);margin:52px 0 14px;padding-top:14px;border-top:2px solid var(--ink);text-wrap:balance;scroll-margin-top:20px}
+main h2:first-child{margin-top:0}
+main h3{font:600 18px/1.3 var(--cond);margin:32px 0 10px;color:var(--accent);scroll-margin-top:20px}
+p,ul,ol{margin:0 0 14px} ul,ol{padding-left:1.3em} li{margin:4px 0}
+a{color:var(--accent);text-underline-offset:2px} strong{font-weight:600}
+code{font:400 .86em/1.4 var(--mono);background:var(--code-bg);padding:.08em .35em;border-radius:3px;overflow-wrap:anywhere}
+.cw{overflow-x:auto;margin:0 0 16px;background:var(--code-bg);border:1px solid var(--rule);border-radius:4px}
+pre{margin:0;padding:14px 16px;font:13px/1.55 var(--mono)} pre code{background:none;padding:0;overflow-wrap:normal;white-space:pre}
+.tw{overflow-x:auto;margin:6px 0 20px;border:1px solid var(--rule);border-radius:4px;background:var(--surface)}
+table{border-collapse:collapse;width:100%;font-size:13.5px;font-variant-numeric:tabular-nums}
+th{font:600 12px/1.3 var(--cond);letter-spacing:.05em;text-transform:uppercase;color:var(--muted);text-align:left;background:var(--accent-soft);padding:9px 12px;border-bottom:1px solid var(--rule);white-space:nowrap}
+td{padding:8px 12px;border-bottom:1px solid var(--rule);vertical-align:top} tr:last-child td{border-bottom:0}
+blockquote{margin:16px 0 20px;padding:12px 16px;background:var(--note-soft);border-left:3px solid var(--note);border-radius:0 4px 4px 0}
+blockquote p:last-child{margin-bottom:0}
+hr{border:0;border-top:1px solid var(--rule);margin:36px 0}
+</style></head>
+<body>
+<header class="top"><div class="eyebrow">Africa Agriculture Adaptation Atlas · hazards pipeline briefing · generated from HANDOVER_2026-10-12_carbon-credits-adaptation-hazard-briefing.md</div>
+<h1>Atlas hazard data for avoided-loss estimation — a briefing</h1><dl class="meta"><div class="m"><dt>For</dt><dd>Jemal S. Ahmed, Activity 2, Gates Carbon Credits for Adaptation (INV-089367)</dd></div><div class="m"><dt>From</dt><dd>Africa Agriculture Adaptation Atlas hazards pipeline, <code>AdaptationAtlas/hazards_prototype</code></dd></div><div class="m"><dt>State described</dt><dd>branch <code>develop</code>, first written 2026-10-12 and <strong>updated 2026-10-22</strong>. Nothing described here is on <code>main</code>.</dd></div><div class="m"><dt>Live objects described</dt><dd>the hazard-exposure tiers published 2026-10-16/19 (issue #13: 5 exposure variables × 2 periods × 3 severities) and the exposure denominator republished 2026-10-21, read directly off S3 on 2026-10-22. All pins are in §7.</dd></div></dl></header>
+<div class="wrap"><nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#update-2026-10-22-what-we-have-and-what-we-don-3">Update 2026-10-22 — what we have, and what we don&#x27;t</a></li><li><a href="#0-what-you-need-to-know-first">0. What you need to know first</a></li><li><a href="#1-hazard-frequency">1. Hazard frequency</a></li><li><a href="#2-interactions-co-occurring-hazards">2. Interactions (co-occurring hazards)</a></li><li><a href="#3-crop-bundles">3. Crop bundles</a></li><li><a href="#4-livestock-bundles">4. Livestock bundles</a></li><li><a href="#5-not-covered-or-not-done-here">5. Not covered, or not done here</a></li><li><a href="#6-the-livestock-drought-problem">6. The livestock drought problem</a></li><li><a href="#7-products-to-use">7. Products to use</a></li><li><a href="#8-corrections-to-the-records-that-this-review-fo">8. Corrections to the records that this review found</a></li></ol></nav>
+<main>
+<p>Every claim cites a file as <code>path:line</code> relative to the repository root on <code>develop</code>. Where the
+code and a metadata record disagree, this document follows the code and says so.</p>
+<hr>
+<h2 id="update-2026-10-22-what-we-have-and-what-we-don-3">Update 2026-10-22 — what we have, and what we don&#39;t</h2>
+<p><strong>Have (public, CC-BY-4.0, pinned in §7):</strong></p>
+<ul>
+<li><strong>Hazard frequency × exposure tables</strong> at GAUL 2024 admin 0/1/2, for 33 crops and 5 livestock
+species × highland/tropical. They cover:<ul>
+<li>5 scenarios (historic 1995-2014; SSP1-2.6, 2-4.5, 3-7.0, 5-8.5 × four 20-year windows);</li>
+<li>the 18-GCM NEX-GDDP-CMIP6 ensemble mean;</li>
+<li>3 severity tiers.</li>
+</ul>
+</li>
+<li><strong>Five exposure variables:</strong> production <code>prod_t</code> (t), harvested area <code>harv-area_ha</code> (ha), livestock
+<code>head_n</code> (head), and value in constant 2014-16 I$ (<code>vop_intld15-21</code>) and nominal 2021 USD
+(<code>vop_nominal-usd21</code>).</li>
+<li><strong>Two season windows:</strong> <code>jagermeyr</code> (the GGCMI rainfed-maize season) and <code>annual</code> (12 months from
+the maize planting month).</li>
+<li><strong>The tonnes tier (<code>prod_t</code>) is the natural input for your formula.</strong>
+value(class) / (value(any) + value(none)) is a production-weighted P per crop and admin unit
+(§1.7), and any + none is the unit&#39;s baseline production in the same table.</li>
+</ul>
+<p><strong>Which rows to use:</strong></p>
+<ul>
+<li><strong>Perennials</strong> (coffee, cocoa, tea, banana, plantain, oil palm, coconut, cassava, sugarcane): use
+<code>period=annual</code>. The maize window badly distorts them; for example, cocoa&#39;s crop-specific dry is
+94 % on <code>jagermeyr</code> against 7.5 % on <code>annual</code>.</li>
+<li><strong>Annual crops:</strong> use <code>jagermeyr</code>. On <code>annual</code>, a 12-month mean of water-stress days takes in the
+dry season (maize severe dry 0.59 vs 0.26).</li>
+<li><strong>Hazard set:</strong> <code>NDWS+NTx35+NDWL0</code> (generic thresholds) is the most stable. Treat
+<code>PTOT-L+NTxM+PTOT-G</code> as prototype: its rainfall thresholds are crop-cycle totals compared with a
+maize-window sum (#46).</li>
+</ul>
+<p><strong>Have, but outside the hazard tables (observed, display only):</strong></p>
+<ul>
+<li>CHIRPS v3 / CHIRTS-ERA5 monthly rainfall and temperature (Africa, 0.05°, 1981-2026);</li>
+<li>SPEI-3 and SPEI-12;</li>
+<li>MODIS NDVI seasonal means (East Africa);</li>
+<li>FEWS rangeland WRSI (Kenya).</li>
+</ul>
+<p><strong>Don&#39;t have:</strong></p>
+<ul>
+<li><strong>Published per-pixel frequency rasters</strong>, or <strong>year-by-year hazard series</strong>. Both are server
+intermediates only, and the year-by-year <em>combination</em> classes are not kept at all.</li>
+<li><strong>Percentile-based severity.</strong> All thresholds are fixed absolute values.</li>
+<li><strong>Uncertainty in the public tables.</strong> They are ensemble mean only; the SD and per-GCM values are
+unpublished.</li>
+<li><strong>A credible livestock drought layer.</strong> It is the crop water-stress index, which saturates in
+drylands (§6). There is also no forage or biomass anomaly, no water-point access and no grazing
+mask.</li>
+<li><strong>Perennial-specific hazards:</strong> dry-season length, multi-year deficits, heat at flowering, frost.
+Perennial <em>heat</em> is decided by the threshold family: generic 35 °C gives coffee, cocoa and tea
+~0 %, while EcoCrop&#39;s optimum maximum gives robusta 63 %.</li>
+<li><strong>Hazard rows for the MapSPAM composite groups</strong> (fruit, vegetables, other cereals and so on):
+about 19 % of constant-dollar crop value.</li>
+<li><strong>Hazards computed on observed CHIRPS / CHIRTS.</strong> A streamlined observed-baseline pipeline is being
+scoped (<code>PLAN_obs_hazard_pipeline.md</code>), about 4 weeks to a first crops version.</li>
+<li><strong>Livestock nominal-USD values</strong> in the live tiers are priced at the world median. The fix (#47) is
+being republished, so use <code>head_n</code> or the constant-dollar tier for livestock in the meantime.</li>
+</ul>
+<hr>
+<h2 id="0-what-you-need-to-know-first">0. What you need to know first</h2>
+<ol>
+<li><strong>The Atlas does not publish a per-pixel frequency surface.</strong> What is public is a table of
+<em>hazard frequency × exposure</em>, summed to GAUL 2024 admin units (§1.6). A usable
+P(hazard, severity) per commodity per admin unit can be recovered exactly from it as a ratio
+(§1.7). The per-pixel frequency rasters exist only on the processing server.</li>
+<li><strong>Severity classes are fixed absolute thresholds, not percentiles</strong> (§1.2). Nothing moves with
+the reference period, so a change in P between periods is a real change in exceedance, not an
+artefact of the class definition.</li>
+<li><strong>Severity classes are cumulative, not bands.</strong> &quot;Moderate&quot; means <em>at least</em> moderate, so it
+contains every severe and extreme season. Summing across severities double-counts (§1.4).</li>
+<li><strong>Interaction classes are mutually exclusive and exhaustive.</strong> Each season falls into exactly
+one of: none, dry, heat, wet, dry+heat, dry+wet, heat+wet, dry+heat+wet (§2). This is the
+Atlas&#39;s whole treatment of co-occurrence, and it is the piece most worth inheriting.</li>
+<li><strong>One crop calendar is used for everything.</strong> The season window is the GGCMI rainfed-<em>maize</em>
+window (<code>jagermeyr</code>), or 12 months from the maize planting month (<code>annual</code>). Both are applied to
+every crop and livestock species, and nothing chooses between them per crop. Use the rule in the
+update section above (§3.2).</li>
+<li><strong>The livestock drought layer is the generic crop soil-water-stress index</strong>, with the crop
+thresholds and the maize season window (§4.4). Your concern about it is correct, and in two
+respects the situation is worse than you describe (§6.1).</li>
+<li><strong>Pin what you use.</strong> The full rebuild (issue #13) published on 2026-10-16/19. It renamed one
+hazard set and added one (§1.8). Keys are overwritten in place on republication, so pin the S3
+versions in §7 for anything you report.</li>
+</ol>
+<hr>
+<h2 id="1-hazard-frequency">1. Hazard frequency</h2>
+<h3 id="1-1-climate-inputs">1.1 Climate inputs</h3>
+<ul>
+<li><strong>Source:</strong> NEX-GDDP-CMIP6 daily data. The indices are computed by the upstream half of the
+pipeline (<code>hazards_upstream/R/04_indices/</code>) from daily <code>pr</code>, <code>tasmax</code>, <code>tasmin</code>, <code>rsds</code> and
+<code>hurs</code> (for example <code>hazards_upstream/R/04_indices/fast_calc_NDWS.R:207-211</code>;
+<code>calc_THI.R:47-50</code>). They are written as monthly rasters: 240 files per hazard per 20-year
+window (<code>R/1_make_timeseries.R:384-396</code>).</li>
+<li><strong>Grid:</strong> 0.25° (<code>metadata/base_rast_nexgddp.tif</code>: 1440 × 400 cells at 0.25°).</li>
+<li><strong>Scenarios:</strong> <code>historic</code> and <code>ssp126</code>, <code>ssp245</code>, <code>ssp370</code>, <code>ssp585</code>.</li>
+<li><strong>Periods:</strong> <code>historic</code> = 1995-2014, plus 2021-2040, 2041-2060, 2061-2080 and 2081-2100
+(<code>R/2_calculate_haz_freq.R:111-116</code>).</li>
+<li><strong>The baseline is 1995-2014</strong>, the end of the CMIP6 historical run. It is not a WMO 1991-2020
+normal (<code>metadata/cdh/africa-hazard-exposure-nexgddp.yaml</code>, <code>note</code>, &quot;BASELINE&quot;).</li>
+<li><strong>Ensemble:</strong> 18 GCMs. The membership is stamped into each published tier&#39;s JSON sidecar
+(<code>&lt;parquet key&gt;.json</code>, block <code>ensemble</code>). As read on 2026-10-12 it is:
+ACCESS-CM2, ACCESS-ESM1-5, CanESM5, CMCC-ESM2, EC-Earth3, EC-Earth3-Veg-LR, GFDL-ESM4,
+INM-CM4-8, INM-CM5-0, IPSL-CM6A-LR, KACE-1-0-G, MIROC6, MPI-ESM1-2-HR, MPI-ESM1-2-LR,
+MRI-ESM2-0, NorESM2-LM, NorESM2-MM, TaiESM1.
+The publisher refuses to ship any membership other than 18 (<code>scripts/r3_publish_tiers.R:347-348</code>).
+Membership has varied between products in the past (issue #26), so read the sidecar rather than
+assuming it.</li>
+</ul>
+<blockquote>
+<p><code>metadata/haz_metadata.csv</code> still describes the indices as computed from CHIRPS, CHIRTS and
+AgERA5. Those descriptions belong to the observational pipeline. The NEX-GDDP product uses the
+NEX-GDDP inputs listed above.</p>
+</blockquote>
+<h3 id="1-2-how-a-hazard-season-is-defined">1.2 How a hazard season is defined</h3>
+<p>The chain has three steps.</p>
+<ol>
+<li><strong>Seasonal aggregation</strong> (<code>R/haz_functions.R:1296-1460</code>, function <code>hazard_stacker</code>, called from
+<code>R/1_make_timeseries.R:561</code>).<ul>
+<li>Each monthly index is reduced over the season window (§3.2) with the summary function listed
+in the <code>function</code> column of <code>metadata/haz_metadata.csv</code> (<code>R/haz_functions.R:1360, 1420-1434</code>).</li>
+<li>This gives one value per pixel per season. A 20-year window yields <strong>19 seasons</strong>, because the
+last season would run past the end of the data (<code>R/haz_functions.R:1249-1252, 1411</code>).</li>
+</ul>
+</li>
+<li><strong>Classification</strong> against a threshold. Each season becomes a 0/1 value
+(<code>R/haz_functions.R:1207-1219</code>; called at <code>R/2_calculate_haz_freq.R:862-868</code>).<ul>
+<li>The comparison is strict: <code>&gt;</code> for &quot;greater&quot; hazards and <code>&lt;</code> for &quot;less&quot; hazards.</li>
+</ul>
+</li>
+<li><strong>Frequency.</strong> The mean of the 0/1 values over the 19 seasons, per GCM
+(<code>R/2_calculate_haz_freq.R:923</code>), then the mean across the 18 GCMs
+(<code>R/2_calculate_haz_freq.R:997</code>).</li>
+</ol>
+<p><strong>What the summary function does to the units matters.</strong> The seasonal value of a day-count index
+is the <em>mean of its monthly counts</em> over the season months, not a season total:</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>index</th>
+<th>seasonal function</th>
+<th>unit after aggregation</th>
+<th>meaning of the seasonal value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>NDWS</code> (water-stress days)</td>
+<td>mean</td>
+<td>days per month</td>
+<td>mean monthly number of days with AET/PET &lt; 0.5 in the season months</td>
+</tr>
+<tr>
+<td><code>NDWL0</code> (waterlogging days)</td>
+<td>mean</td>
+<td>days per month</td>
+<td>mean monthly number of waterlogging days</td>
+</tr>
+<tr>
+<td><code>NTx35</code>, <code>NTx40</code>, crop <code>NTx*</code></td>
+<td>mean</td>
+<td>days per month</td>
+<td>mean monthly number of days with Tmax above the threshold</td>
+</tr>
+<tr>
+<td><code>PTOT</code></td>
+<td>sum</td>
+<td>mm per season</td>
+<td>seasonal precipitation total</td>
+</tr>
+<tr>
+<td><code>THI_max</code></td>
+<td>max</td>
+<td>°F-scale THI</td>
+<td>hottest day&#39;s THI in the season (see §4.3 caveat)</td>
+</tr>
+<tr>
+<td><code>TAI</code></td>
+<td>mean, annual only</td>
+<td>unitless</td>
+<td>Thornthwaite aridity index (not windowed, <code>R/haz_functions.R:1374-1384</code>)</td>
+</tr>
+</tbody></table></div>
+<p>Sources: <code>metadata/haz_metadata.csv</code> (<code>function</code> and <code>base_unit</code> columns), <code>R/haz_functions.R:1360</code>.</p>
+<p>So the generic severe heat threshold &quot;NTx35 &gt; 14 days&quot; means <strong>more than 14 days above 35 °C per
+month, averaged over the season months</strong>. It does not mean more than 14 such days in the season.
+The generated threshold table (<code>metadata/published_thresholds.md</code>) prints only &quot;day&quot;, and the
+Atlas front-end has quoted a different number for the same threshold (issue #20). Read the unit
+as &quot;days per month&quot;.</p>
+<h3 id="1-3-severity-thresholds">1.3 Severity thresholds</h3>
+<p><strong>All thresholds are fixed absolute values.</strong> No percentile, anomaly or reference-period
+quantity enters the classification anywhere (<code>R/haz_functions.R:1207-1219</code> compares the seasonal
+value to a constant). There are two sources of thresholds.</p>
+<p><strong>(a) Generic thresholds</strong>, from <code>metadata/haz_classes.csv</code>, also rendered in
+<code>metadata/published_thresholds.md</code>:</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>hazard</th>
+<th>index</th>
+<th>moderate</th>
+<th>severe</th>
+<th>extreme</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>dry</td>
+<td><code>NDWS</code></td>
+<td>&gt; 15</td>
+<td>&gt; 20</td>
+<td>&gt; 25 (days per month)</td>
+</tr>
+<tr>
+<td>dry</td>
+<td><code>PTOT</code> (low)</td>
+<td>&lt; 500</td>
+<td>&lt; 400</td>
+<td>&lt; 300 (mm per season)</td>
+</tr>
+<tr>
+<td>wet</td>
+<td><code>NDWL0</code></td>
+<td>&gt; 2</td>
+<td>&gt; 5</td>
+<td>&gt; 8 (days per month)</td>
+</tr>
+<tr>
+<td>wet</td>
+<td><code>PTOT</code> (high)</td>
+<td>&gt; 1200</td>
+<td>&gt; 1600</td>
+<td>&gt; 1800 (mm per season)</td>
+</tr>
+<tr>
+<td>heat</td>
+<td><code>NTx35</code></td>
+<td>&gt; 7</td>
+<td>&gt; 14</td>
+<td>&gt; 21 (days per month)</td>
+</tr>
+<tr>
+<td>heat</td>
+<td><code>NTx40</code></td>
+<td>&gt; 1</td>
+<td>&gt; 5</td>
+<td>&gt; 10 (days per month)</td>
+</tr>
+</tbody></table></div>
+<p>Livestock heat thresholds are species- and zone-specific THI values (§4.3).</p>
+<p><strong>(b) Crop-specific thresholds</strong>, derived at run time from FAO EcoCrop (<code>metadata/ecocrop.csv</code>)
+for each MapSPAM commodity (<code>R/2_calculate_haz_freq.R:153-284</code>):</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>index</th>
+<th>moderate</th>
+<th>severe</th>
+<th>extreme</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>PTOT</code> low</td>
+<td>&lt; <code>Rain_Opt_Min</code></td>
+<td>&lt; mean(<code>Rain_Abs_Min</code>, <code>Rain_Opt_Min</code>)</td>
+<td>&lt; <code>Rain_Abs_Min</code></td>
+</tr>
+<tr>
+<td><code>PTOT</code> high</td>
+<td>&gt; <code>Rain_Opt_Max</code></td>
+<td>&gt; ceil(mean(<code>Rain_Opt_Max</code>, <code>Rain_Abs_Max</code>))</td>
+<td>&gt; <code>Rain_Abs_Max</code></td>
+</tr>
+<tr>
+<td><code>NTxM</code> (days above <code>Temp_Opt_Max</code>)</td>
+<td>&gt; 7</td>
+<td>&gt; 14</td>
+<td>&gt; 21</td>
+</tr>
+<tr>
+<td><code>NTxS</code> (days above ceil(mean(<code>Temp_Opt_Max</code>, <code>Temp_Abs_Max</code>)))</td>
+<td>&gt; 7</td>
+<td>&gt; 14</td>
+<td>&gt; 21</td>
+</tr>
+<tr>
+<td><code>NTxE</code> (days above <code>Temp_Abs_Max</code>)</td>
+<td>&gt; 1</td>
+<td>&gt; 5</td>
+<td>&gt; 10</td>
+</tr>
+</tbody></table></div>
+<p>For maize this gives <code>NTxM</code> = 33 °C, <code>NTxS</code> = 40 °C, <code>NTxE</code> = 47 °C, and PTOT low thresholds of
+600 / 500 / 400 mm. Where one MapSPAM commodity maps to several species, the thresholds are
+averaged (<code>R/2_calculate_haz_freq.R:277-281</code>).</p>
+<blockquote>
+<p><strong>The crop-specific rainfall classes use the wrong window.</strong> EcoCrop&#39;s rainfall limits are
+crop-cycle totals: FAO labels the field &quot;annual&quot;, but the reference implementation
+(<code>dismo::ecocrop</code>) compares them with rainfall summed over the crop&#39;s own cycle,
+(GMIN + GMAX) / 2 days. The pipeline compares them with PTOT summed over the <strong>rainfed-maize</strong>
+window for every crop (<code>R/2_calculate_haz_freq.R:175-198</code>).</p>
+<ul>
+<li>Measured on 1995-2015 CHIRPS, the effect is large. Severe dry fires in 90 % of seasons for
+cocoa and 94 % for plantain on the maize window, against 32 % and 37 % on their own cycle.
+The live product shows the same: cocoa 94 %, plantain 96 %.</li>
+<li>Short-cycle annuals move the other way.</li>
+<li>Wheat, barley, rice and sugarcane stay near 80-90 % on any window. That points at the
+thresholds and at irrigated production being included.</li>
+</ul>
+<p>Treat the crop-specific rainfall sets as prototype. Tracked as issue <strong>#46</strong>, with the
+measurements.</p>
+</blockquote>
+<h3 id="1-4-severity-classes-are-cumulative-not-bands">1.4 Severity classes are cumulative, not bands</h3>
+<p>Each tier is classified independently against its own threshold. Because the thresholds are
+monotone (moderate &lt; severe &lt; extreme for <code>&gt;</code> hazards, and the reverse for <code>&lt;</code>), a season that
+exceeds &quot;extreme&quot; also exceeds &quot;severe&quot; and &quot;moderate&quot;. For one hazard:</p>
+<div class="cw"><pre><code>P(≥ moderate) ≥ P(≥ severe) ≥ P(≥ extreme)
+</code></pre></div>
+<p><strong>Band probabilities follow by differencing</strong>, for single-hazard marginals only:</p>
+<div class="cw"><pre><code>P(moderate band) = P(≥ moderate) − P(≥ severe)
+</code></pre></div>
+<p>For an avoided-loss sum, an equivalent formulation needs no differencing:</p>
+<div class="cw"><pre><code>Σ_s P(≥ s) · [L(s) − L(s−1)],   where L(s) is the loss fraction at severity s and L(0) = 0
+</code></pre></div>
+<p>Over a single hazard this is exactly Σ over bands of P(band) · L(band). It does <strong>not</strong> carry
+over cleanly to the interaction classes; see §2.3.</p>
+<h3 id="1-5-what-exists-behind-the-20-year-frequency">1.5 What exists behind the 20-year frequency</h3>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>level</th>
+<th>exists?</th>
+<th>where</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>per-season 0/1 classification, single hazard, per GCM</td>
+<td><strong>yes, on the processing server only</strong></td>
+<td><code>Data/hazard_timeseries_class/&lt;period&gt;/</code>, one layer per season, written at <code>R/2_calculate_haz_freq.R:846-869</code> and retained</td>
+</tr>
+<tr>
+<td>per-season interaction class, per GCM</td>
+<td><strong>no</strong></td>
+<td>collapsed to a 20-year mean inside the computation (<code>R/haz_functions.R:1239</code>; <code>R/2_calculate_haz_freq.R:1601</code>) and never saved</td>
+</tr>
+<tr>
+<td>per-pixel 20-year frequency, per hazard and threshold, per GCM and ensemble mean/SD</td>
+<td>yes, server only</td>
+<td><code>Data/hazard_timeseries_risk/&lt;period&gt;/</code> (<code>R/2_calculate_haz_freq.R:919-1013</code>)</td>
+</tr>
+<tr>
+<td>per-pixel interaction-class frequency stacks per crop, per GCM and ensemble mean/SD</td>
+<td>yes, server only</td>
+<td><code>Data/hazard_risk/&lt;period&gt;/&lt;crop&gt;_&lt;model&gt;_&lt;sev&gt;_&lt;set&gt;_int.tif</code> (<code>R/2_calculate_haz_freq.R:1811</code>)</td>
+</tr>
+<tr>
+<td>admin-unit frequency × exposure tables</td>
+<td><strong>yes, public</strong></td>
+<td>§1.6</td>
+</tr>
+</tbody></table></div>
+<p>There is an old public copy of per-pixel frequency rasters under
+<code>s3://digital-atlas/risk_prototype/data/hazard_risk/</code>, <code>…/hazard_timeseries_risk/</code> and
+<code>…/hazard_timeseries_class/</code>, last written in 2024 by the manual script <code>R/push_to_s3.R:292-416</code>.
+<strong>Do not use it.</strong> It predates every fix in the issue log (ensemble membership #26, NDWS
+saturation, the THI threshold corrections) and nothing maintains it.</p>
+<h3 id="1-6-what-is-published">1.6 What is published</h3>
+<p><strong>Product:</strong> <code>africa-hazard-exposure-nexgddp</code>, documented in
+<code>metadata/cdh/africa-hazard-exposure-nexgddp.yaml</code>.</p>
+<ul>
+<li>Built by <code>R/3_freq_x_exposure.R</code> §4, published by <code>scripts/r3_publish_tiers.R</code>.</li>
+<li>Licence CC-BY-4.0.</li>
+<li>Key: <code>s3://digital-atlas/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable={prod_t|harv-area_ha|head_n|vop_intld15-21|vop_nominal-usd21}/period={jagermeyr|annual}/model=ENSEMBLEmean/severity={moderate|severe|extreme}/int=multi-hazard.parquet</code>
+(public HTTPS on <code>digital-atlas.s3.amazonaws.com</code>). There are 30 keys, each with a <code>.json</code> sidecar.
+The CDH records are <code>metadata/cdh/africa-hazard-exposure-*.yaml</code>.</li>
+</ul>
+<p><strong>How a row is made</strong> (<code>R/3_freq_x_exposure.R</code>):</p>
+<ol>
+<li>Per pixel: <code>value = frequency × exposure</code> (L212, L215, L241). The 0.05° exposure is first
+mass-conservingly summed onto the 0.25° hazard grid (L133-152).</li>
+<li>The products are summed over GAUL 2024 admin-2 zones, rasterised on the 0.25° grid with
+<code>touches = TRUE</code> (L328-334, L1444, L1466-1472).</li>
+<li>Admin-1 and admin-0 rows are sums of the admin-2 rows (L1484-1500).</li>
+</ol>
+<p><strong>Schema</strong>, read from the live object:</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>column</th>
+<th>content</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>iso3</code>, <code>admin0_name</code>, <code>admin1_name</code>, <code>admin2_name</code>, <code>gaul0_code</code>, <code>gaul1_code</code>, <code>gaul2_code</code></td>
+<td>location. <strong>The same file holds admin-0, admin-1 and admin-2 rows.</strong> A higher-level row has the lower-level names NULL. Filter to one level before summing.</td>
+</tr>
+<tr>
+<td><code>scenario</code>, <code>timeframe</code></td>
+<td><code>historic</code>/<code>1995-2014</code>, or <code>ssp126…ssp585</code> × the four future windows</td>
+</tr>
+<tr>
+<td><code>model</code></td>
+<td><code>ENSEMBLEmean</code> only</td>
+</tr>
+<tr>
+<td><code>severity</code></td>
+<td><code>moderate</code>, <code>severe</code>, <code>extreme</code> (one file each)</td>
+</tr>
+<tr>
+<td><code>hazard_vars</code></td>
+<td>which three indices define dry, heat and wet (§2.1)</td>
+</tr>
+<tr>
+<td><code>hazard</code></td>
+<td><code>any</code>, <code>none</code>, <code>dry</code>, <code>heat</code>, <code>wet</code>, <code>dry+heat</code>, <code>dry+wet</code>, <code>heat+wet</code>, <code>dry+heat+wet</code></td>
+</tr>
+<tr>
+<td><code>crop</code></td>
+<td>33 crops, <code>generic-crop</code>, and 10 livestock species-zones (§3.1, §4.1)</td>
+</tr>
+<tr>
+<td><code>value</code></td>
+<td>Σ over pixels of frequency × value of production, nominal 2021 USD</td>
+</tr>
+<tr>
+<td><code>exposure_var</code>, <code>exposure_unit</code></td>
+<td><code>vop</code>, <code>nominal-usd-2021</code></td>
+</tr>
+</tbody></table></div>
+<p>Each file is about 62 MB and 66-68 million rows. Query it with predicate pushdown (DuckDB
+<code>read_parquet</code> over HTTPS works) rather than loading it whole.</p>
+<h3 id="1-7-recovering-p-hazard-severity-per-commodity-t">1.7 Recovering P(hazard, severity) per commodity — the route that works today</h3>
+<p>Because <code>value</code> is Σ_p f_p·V_p over the pixels p of a unit, and <code>any</code> + <code>none</code> = Σ_p V_p, the
+ratio below is the <strong>value-of-production-weighted mean frequency</strong> of the class within the unit:</p>
+<div class="cw"><pre><code>P_u(class, sev) = value(class) / [ value(any) + value(none) ]
+</code></pre></div>
+<p>taken for one <code>crop</code>, <code>hazard_vars</code>, <code>scenario</code>, <code>timeframe</code>, <code>severity</code> and admin unit.</p>
+<p>I verified the identities on the live severe tier for Kenya (admin-0, historic and SSP5-8.5
+2041-2060):</p>
+<ul>
+<li>the seven exclusive classes sum to <code>any</code> to within the 3-decimal rounding of the frequencies
+(for example maize, <code>NDWS+NTx35+NDWL0</code>, historic: 466.60 M against 466.38 M);</li>
+<li><code>any</code> + <code>none</code> is constant across scenarios for a given crop and set (1,117.78 M against
+1,117.82 M).</li>
+</ul>
+<p>Three consequences:</p>
+<ul>
+<li><strong>Weighting by value is the right weighting for your formula.</strong> Σ_u P_u × production_u reproduces
+the pixel-level Σ f_p × production_p, provided production is distributed within the unit like
+value (it is, at fixed prices). For a different weighting (area, or another production map)
+you need the rasters.</li>
+<li><strong>NaN rows: about 28 % of admin-2 units are NaN in every class.</strong> These are most likely the units the 0.25° grid
+cannot resolve: when zones are rasterised, each cell takes a single zone, and these units end up with
+none. Measured on the <code>prod_t</code> severe <code>jagermeyr</code> tier
+for maize, 1,232 of 4,342 units. Drop them (<code>NOT isnan(value)</code>) and use the admin-1 row for those
+areas. Units with zero production give 0 / 0, so guard the division.</li>
+<li><strong>Integer rounding.</strong> R/3 rounds each pixel&#39;s product to a whole unit before summing. On the
+<code>prod_t</code> tier, after dropping NaN rows, the seven classes match <code>any</code> within 1 % in all but 67 of
+2,894 maize units (11 beyond 5 %, all small producers). The continental error is 0.02 %.</li>
+<li><strong>Divide within the same <code>hazard_vars</code> set.</strong> Total value differs slightly between sets
+(maize, Kenya: 1,117.8 M for <code>NDWS+NTx35+NDWL0</code> against 1,145.5 M for <code>PTOT-L+NTxS+PTOT-G</code>),
+because the indices have different no-data masks.</li>
+<li><strong>Units with tiny exposure give unstable ratios.</strong> The 0.25° grid cannot resolve about 2,100
+small admin-2 units that the 0.05° exposure grid can (CDH record note). Use admin-1 or admin-0
+where admin-2 exposure is small.</li>
+</ul>
+<p>Baseline production for the same units, on the same grid, is in the exposure denominator
+<code>crop-livestock_all_res-25.parquet</code> (§7). Its rows with <code>unit = t</code> are MapSPAM 2020 production in
+tonnes, and its rows with <code>unit = ha</code> are harvested area. Select on <code>unit</code>: the table holds five
+units.</p>
+<h3 id="1-8-stability-and-what-is-about-to-change">1.8 Stability and what is about to change</h3>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>item</th>
+<th>status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>NDWS+NTx35+NDWL0</code> (generic thresholds)</td>
+<td><strong>Most stable.</strong> This is what the live Atlas notebook reads. Its definition does not change in the #13 rebuild.</td>
+</tr>
+<tr>
+<td><code>PTOT-L+NTxM+PTOT-G</code> (crop-specific; was <code>…NTxS…</code>)</td>
+<td><strong>Renamed in #13.</strong> <code>NTxS</code> averages the optimum with the survival limit, which gave maize a 40 °C threshold and 0 % heat exposure in Kenya (issue #25). It is replaced by <code>PTOT-L+NTxM+PTOT-G</code>, and a new <code>NDWS+NTxM+NDWL0</code> is added (<code>R/2_calculate_haz_freq.R:377-410</code>). Also subject to the rainfall-window issue in §1.3 (#46). Prototype.</td>
+</tr>
+<tr>
+<td>livestock sets</td>
+<td>Prototype; see §4.</td>
+</tr>
+<tr>
+<td><code>NDWS+NTxM+NDWL0</code></td>
+<td>New in #13. Its heat threshold is EcoCrop-derived (see the perennial heat note in the update section). Prototype.</td>
+</tr>
+<tr>
+<td>the <code>annual</code> period, and the constant-dollar, area, tonnage and head tiers</td>
+<td><strong>Published 2026-10-16/19</strong> (#13).</td>
+</tr>
+<tr>
+<td>ensemble SD, per-GCM tables</td>
+<td>Computed, <strong>not published</strong>.</td>
+</tr>
+</tbody></table></div>
+<p>The #13 rebuild completed and published on 2026-10-16/19; every key was MD5-verified.</p>
+<hr>
+<h2 id="2-interactions-co-occurring-hazards">2. Interactions (co-occurring hazards)</h2>
+<h3 id="2-1-which-interactions-exist">2.1 Which interactions exist</h3>
+<p>There is one interaction structure: a <strong>three-way dry × heat × wet</strong> classification. Each published
+<code>hazard_vars</code> value names the three indices, in the order dry + heat + wet
+(<code>R/2_calculate_haz_freq.R:402-421, 573-577</code>):</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th><code>hazard_vars</code></th>
+<th>dry</th>
+<th>heat</th>
+<th>wet</th>
+<th>applies to</th>
+<th>slots fixed or crop-specific</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>NDWS+NTx35+NDWL0</code></td>
+<td>NDWS</td>
+<td>NTx35</td>
+<td>NDWL0</td>
+<td>all crops</td>
+<td>all generic; computed once and applied to every crop</td>
+</tr>
+<tr>
+<td><code>PTOT-L+NTxS+PTOT-G</code> <em>(live; being renamed <code>…NTxM…</code>)</em></td>
+<td>PTOT low</td>
+<td>crop NTx</td>
+<td>PTOT high</td>
+<td>each crop</td>
+<td>all crop-specific</td>
+</tr>
+<tr>
+<td><code>NDWS+NTxM+NDWL0</code> <em>(after #13)</em></td>
+<td>NDWS</td>
+<td>crop NTx</td>
+<td>NDWL0</td>
+<td>each crop</td>
+<td>heat crop-specific, dry and wet generic</td>
+</tr>
+<tr>
+<td><code>NDWS+THI-max+NDWL0</code></td>
+<td>NDWS</td>
+<td>THI_max</td>
+<td>NDWL0</td>
+<td>livestock</td>
+<td>heat species-specific, dry and wet generic</td>
+</tr>
+<tr>
+<td><code>PTOT-L+THI-max+PTOT-G</code></td>
+<td>PTOT low</td>
+<td>THI_max</td>
+<td>PTOT high</td>
+<td>livestock</td>
+<td>heat species-specific, PTOT generic</td>
+</tr>
+</tbody></table></div>
+<p>Dry × heat, dry × wet, heat × wet and the triple are all classes within this one structure. No
+other interaction is computed: HSH, TAVG, NTx40, TAI and cold are not in any set (HSH: see
+<code>archive/dispatches/HANDOVER_2026-10-07.md</code>, &quot;B7&quot;).</p>
+<h3 id="2-2-how-the-classes-are-built">2.2 How the classes are built</h3>
+<p>For each GCM and each season (<code>R/2_calculate_haz_freq.R:1574-1615</code>):</p>
+<ol>
+<li>The three 0/1 seasonal classifications at <strong>one</strong> severity are encoded as
+<code>dry × 1 + heat × 10 + wet × 100</code>. Each season therefore gets a code in
+{0, 1, 10, 100, 11, 101, 110, 111}.</li>
+<li>For each code, a layer is 1 where the season has exactly that code and 0 otherwise
+(<code>int_risk</code>, <code>R/haz_functions.R:1236-1242</code>, which masks every other code to 0). That layer is
+averaged over the 19 seasons.</li>
+<li><code>any</code> = the mean of (code ≥ 1), and <code>none</code> = 1 − <code>any</code> (<code>R/2_calculate_haz_freq.R:1600-1610</code>).</li>
+<li>Class frequencies are then averaged across the 18 GCMs (<code>R/2_calculate_haz_freq.R:1679</code>).
+A mean of partitions is still a partition, so the ensemble classes still sum to 1.</li>
+</ol>
+<p>So:</p>
+<ul>
+<li><strong>The classes are mutually exclusive and exhaustive.</strong> <code>dry</code> means <em>dry only</em>: dry
+≥ threshold and heat and wet both below theirs. The seven non-empty classes sum to <code>any</code>.</li>
+<li><strong>Joint probabilities are empirical</strong>, counted season by season within each GCM. Any dependence
+between the hazards that the GCM produces (dry seasons being hot, for example) is carried
+through. No correlation, copula or independence assumption is made or published.</li>
+<li><strong>All three hazards are classified at the same severity.</strong> There is no &quot;severe dry with
+moderate heat&quot; class. A season that is severe-dry and only moderately hot falls in <code>dry</code> in the
+severe file and in <code>dry+heat</code> in the moderate file.</li>
+<li><strong><code>dry+wet</code> is a real, non-empty class.</strong> Dryness and wetness are separate indices summarised
+over the same window, so one season can have high mean stress days and high mean waterlogging
+days (an early dry spell and a late flood, for instance).</li>
+</ul>
+<h3 id="2-3-how-interaction-layers-relate-to-single-haza">2.3 How interaction layers relate to single-hazard layers, and what double-counts</h3>
+<p><strong>Single-hazard marginals are sums of classes.</strong> At one severity:</p>
+<div class="cw"><pre><code>P(dry) = P(dry) + P(dry+heat) + P(dry+wet) + P(dry+heat+wet)        [right-hand side: exclusive classes]
+P(dry ∩ heat) = P(dry+heat) + P(dry+heat+wet)
+</code></pre></div>
+<p>Single-hazard exposure is not published separately (<code>R/3_freq_x_exposure.R:1356-1370</code>, &quot;solo
+hazards … can be constructed from the interactions&quot;).</p>
+<p><strong>These sums double-count:</strong></p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>summing over</th>
+<th>why it double-counts</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>hazards&#39; marginals: P(dry) + P(heat) + P(wet)</td>
+<td>co-occurring seasons are counted two or three times. The exclusive classes are the correct thing to sum.</td>
+</tr>
+<tr>
+<td>severity tiers</td>
+<td>tiers are cumulative (§1.4)</td>
+</tr>
+<tr>
+<td><code>hazard_vars</code> sets</td>
+<td>they are alternative definitions of the same three hazards, not additional hazards</td>
+</tr>
+<tr>
+<td><code>any</code> with any class</td>
+<td><code>any</code> is the sum of the seven classes</td>
+</tr>
+<tr>
+<td>admin levels within one file</td>
+<td>admin-0 and admin-1 rows are sums of the admin-2 rows</td>
+</tr>
+<tr>
+<td><code>generic-crop</code> with the individual crops</td>
+<td><code>generic-crop</code> is all crops&#39; value combined, under the generic set</td>
+</tr>
+</tbody></table></div>
+<p><strong>What we suggest you inherit.</strong> Assign a loss fraction and a practice effectiveness to each
+<em>exclusive class</em> at a chosen severity, and sum over the seven classes:</p>
+<div class="cw"><pre><code>avoided loss_u = production_u × Σ_{c ∈ 7 classes} P_u(c, s) × L(c, s) × E(practice, c, s)
+</code></pre></div>
+<p>This cannot double-count. It lets a compound class carry a loss that is not the sum of its parts
+(L(dry+heat) need not equal L(dry) + L(heat)), which is the point of having the classes. Its limits:</p>
+<ul>
+<li><strong>Severity must be handled one tier at a time.</strong> The incremental formulation in §1.4 is exact
+only for single-hazard marginals. Interaction classes are not nested across tiers: a season in
+<code>dry+heat</code> at severe can be <code>dry+heat+wet</code> at moderate. So across tiers you can either<ul>
+<li>run the calculation once per tier and report it as a sensitivity, or</li>
+<li>use the marginal-increment form for each hazard and accept that the compound effect is then
+additive.
+There is no exact class-by-band decomposition without the per-season data, which is not saved
+(§1.5).</li>
+</ul>
+</li>
+<li><strong>No uncertainty is published.</strong> Each GCM&#39;s frequency is a count over 19 seasons, so it moves in
+steps of about 0.053. The across-GCM SD exists on the server (<code>ENSEMBLEsd</code>). The planned public
+<code>value_sd</code> is a sum of per-pixel SDs, not the SD of the aggregate (<code>R/3_freq_x_exposure.R:1613</code>),
+so it should not be read as an admin-level uncertainty.</li>
+</ul>
+<hr>
+<h2 id="3-crop-bundles">3. Crop bundles</h2>
+<h3 id="3-1-commodities-and-coding">3.1 Commodities and coding</h3>
+<ul>
+<li><strong>Coding:</strong> MapSPAM. The commodity list is <code>metadata/SpamCodes.csv</code>: 55 rows, 36 of them single
+commodities (<code>compound = no</code>). The <code>Code</code> column holds the four-letter SPAM code (for example
+<code>acof</code>) and <code>Code_ifpri_2020</code> holds the IFPRI 2020 code.</li>
+<li><strong>Commodities that get hazard classes:</strong> those with <code>compound = no</code> and a <code>Code</code>
+(<code>R/2_calculate_haz_freq.R:121-122</code>). That is <strong>33 crops</strong> in the live product: arabica-coffee,
+banana, barley, bean, cassava, chickpea, cocoa, coconut, cotton, cowpea, groundnut, lentil, maize,
+oilpalm, pearl-millet, pigeonpea, plantain, potato, rapeseed, rice, robusta-coffee, sesameseed,
+small-millet, sorghum, soybean, sugarbeet, sugarcane, sunflower, sweet-potato, tea, tobacco,
+wheat, yams.</li>
+<li><strong>Not in the hazard product:</strong> MapSPAM&#39;s composite groups (other cereals, vegetables, fruits,
+&quot;rest&quot; and so on), and onion, rubber and tomatoes, which carry no <code>Code</code>.</li>
+<li><strong>Correction to the record.</strong> <code>metadata/cdh/africa-hazard-exposure-nexgddp.yaml</code> says &quot;Crop, 44
+present&quot;. The 44 is 33 crops + <code>generic-crop</code> + 10 livestock species-zones.</li>
+</ul>
+<h3 id="3-2-season-windows-one-calendar-for-everything">3.2 Season windows: one calendar for everything</h3>
+<ul>
+<li><strong>The window comes from GGCMI Phase 3 crop calendar v1.01, rainfed maize</strong>
+(<code>mai_rf_ggcmi_crop_calendar_phase3_v1.01.nc4</code>, <code>R/1_make_timeseries.R:274-286</code>). The planting
+and maturity day-of-year values are converted to months.</li>
+<li><strong>The published <code>period=jagermeyr</code></strong> is the window from the maize planting month to the maize
+maturity month, inclusive, wrapping across the year boundary (<code>R/haz_functions.R:1397-1402, 1417-1434</code>). The name refers to Jägermeyr et al., the authors of the GGCMI calendar.</li>
+<li><strong>The same window is used for every crop and every livestock species.</strong> There is no
+crop-specific calendar. Coffee, cassava, sugarcane, banana and cattle are all assessed over the
+rainfed-maize season.</li>
+<li><strong>One season per year.</strong> The second rainy season in bimodal regions (East Africa&#39;s short rains,
+for example) is not represented. A start-of-season route with two seasons exists in code but is
+disabled for lack of a usable dataset (<code>R/1_make_timeseries.R:245-270, 353-355</code>).</li>
+<li><strong><code>period=annual</code>, published since 2026-10-19,</strong> is a 12-month window starting at the maize
+planting month (<code>R/haz_functions.R:1403-1405</code>). It is not a calendar year. Nothing routes
+perennials to it automatically, so choose it yourself for perennials (#46).</li>
+<li>So the <strong>indices are computed within a growing season, but it is maize&#39;s season</strong>, not the
+commodity&#39;s.</li>
+</ul>
+<h3 id="3-3-exposure">3.3 Exposure</h3>
+<ul>
+<li><strong>Production data:</strong> MapSPAM2020_AdaptationAtlas_SSA (DOI 10.7910/DVN/Z0HK7R, CC-BY-4.0,
+<code>metadata/cdh/mapspam2020-adaptation-atlas-ssa.yaml</code>). This is the Alliance&#39;s SSA release, not
+IFPRI&#39;s global SPAM 2020 v2r2. Technology <code>all</code> (rainfed and irrigated combined) throughout
+<code>R/3_freq_x_exposure.R</code> (L380, L400, L415, L428).</li>
+<li><strong>What is multiplied against frequency</strong> in the published tier: crop <strong>value of production in
+nominal 2021 USD</strong>.<ul>
+<li>The value is MapSPAM production × a FAOSTAT implied farm-gate price, using the median of
+2019-2023, allocated and priced on the native 0.05° grid
+(<code>R/0.4.2_create_crop_vop_nominal_usd.R</code>; method in <code>docs/methods/nominal_price_method.md</code>).</li>
+<li>It is summed onto the 0.25° hazard grid before the multiplication (<code>R/3_freq_x_exposure.R:133-152</code>).</li>
+</ul>
+</li>
+<li><strong>Nominal, not deflated.</strong> Do not compare values across periods as real terms. The constant
+2014-16 international-dollar tier (<code>vop_intld15-21</code>) is now published (§7).</li>
+<li><strong>Physical tiers, published.</strong> Harvested area (<code>harv-area_ha</code>), production (<code>prod_t</code>) and
+livestock head (<code>head_n</code>) are crossed with hazard (<code>R/3_freq_x_exposure.R:980-1042</code>). For your
+formula, use <code>prod_t</code> (§1.7, §7).</li>
+</ul>
+<hr>
+<h2 id="4-livestock-bundles">4. Livestock bundles</h2>
+<h3 id="4-1-species-dataset-masks">4.1 Species, dataset, masks</h3>
+<ul>
+<li><strong>Species:</strong> cattle, goats, sheep, pigs, poultry (<code>R/0.4.1_create_livestock_exposure.R:117</code>). No
+camels, buffalo or horses.</li>
+<li><strong>Dataset:</strong> GLW 4 (Gridded Livestock of the World), 2020 reference year, about 10 km, CC-BY-4.0
+(<code>R/0.4.1_create_livestock_exposure.R:97-100</code>; CDH catalog record <code>glw4-2020</code>).<ul>
+<li>Densities are converted to head per pixel, then mass-conservingly summed onto the 0.05° or
+0.25° grid (L110, L118, L140).</li>
+<li>The GLW4-2015 path is disabled; GLW3 is not used.</li>
+</ul>
+</li>
+<li><strong>Production-system mask: none.</strong> The Global Livestock Production Systems directory is declared
+(<code>R/0_server_setup.R:353-355</code>), but no live script reads it, and <code>metadata/LPS_legend_RGB.csv</code>
+is unused. The livestock mask is &quot;species present&quot; (L198, L210).<ul>
+<li>(<code>metadata/catalogue/glps.json</code> claims that 0.4.1 consumes GLPS. It does not.)</li>
+</ul>
+</li>
+<li><strong>Highland/tropical split.</strong> A binary highlands raster (<code>afr-highlands</code>, <code>R/0_server_setup.R:579</code>)
+splits each species into <code>-highland</code> and <code>-tropical</code> exposure (L212-225; <code>R/haz_functions.R:2128-2155</code>).<ul>
+<li>&quot;Tropical&quot; means &quot;not highland&quot;. It is not a production system.</li>
+<li>The split masks <strong>exposure</strong> only. The hazard layers for <code>cattle-highland</code> cover every pixel,
+and zoning takes effect only when frequency is multiplied by the zoned exposure.</li>
+</ul>
+</li>
+<li><strong>Units.</strong> Head per pixel per species. The <code>total</code> layer is in TLU (cattle 0.7, goats 0.1, sheep
+0.1, pigs 0.2, poultry 0.01; L610-612).</li>
+<li><strong>Value.</strong> FAOSTAT national gross production value of meat, milk and eggs per species, spread by
+each pixel&#39;s share of national head (L262, L582).<ul>
+<li><strong>A pricing caveat in the nominal tier.</strong> The nominal-USD livestock value multiplies production
+by the <strong>global</strong> median price for every country: <code>vop_usd_nominal := production_t * price_usd_global</code> (L483). The gap-filled national price computed on the same line
+(<code>price_usd_final</code>) is unused. This looks like a defect and has not been raised as an issue.</li>
+<li>Livestock nominal values in the published tier carry it. For livestock, prefer head counts
+or the constant-dollar denominator. Tracked as issue <strong>#47</strong>.</li>
+</ul>
+</li>
+</ul>
+<h3 id="4-2-are-livestock-rows-published">4.2 Are livestock rows published?</h3>
+<p><strong>Yes</strong>, although the CDH record says otherwise. The live <code>vop_nominal-usd21</code> parquets contain
+rows for <code>cattle-highland</code>, <code>cattle-tropical</code>, <code>goats-*</code>, <code>pigs-*</code>, <code>poultry-*</code> and <code>sheep-*</code>, with
+<code>exposure_var = vop</code>, under the two livestock <code>hazard_vars</code> sets.</p>
+<ul>
+<li>The record&#39;s statement &quot;no published … livestock exposure tier&quot; is wrong in substance. What is
+true is that there is no separate livestock <em>variable</em> (head counts crossed with hazard are not
+yet published).</li>
+<li>The CDH record will be corrected.</li>
+</ul>
+<h3 id="4-3-livestock-heat-it-is-a-thi">4.3 Livestock heat: it is a THI</h3>
+<ul>
+<li><strong>Formula:</strong> <code>THI = (1.8·T + 32) − (0.55 − 0.0055·RH)·(1.8·T − 26.8)</code>, from Rahimi et al. 2020
+(<code>hazards_upstream/R/04_indices/calc_THI.R:59</code>).<ul>
+<li>T is <strong>daily Tmax</strong> (<code>tasmax</code>). RH is <strong>daily mean</strong> relative humidity (<code>hurs</code>) (L47-50).</li>
+<li>Daily-mean RH paired with Tmax overstates THI on the hottest hour. The Atlas&#39;s human heat index
+corrects RH to its value at Tmax; THI does not.</li>
+<li><code>THI_mean</code> is also computed from Tmax (L65), not from mean temperature.
+<code>metadata/THI_thresholds_provenance.md:15-17</code> says otherwise and is wrong on this point.</li>
+</ul>
+</li>
+<li><strong>Monthly products:</strong> the monthly maximum and the monthly mean of daily THI (L65-66).</li>
+<li><strong>Seasonal value:</strong> <code>THI_max</code> uses <code>max</code>, so it is the season&#39;s highest daily THI.</li>
+<li><strong>Thresholds:</strong> species × zone, in °F-scale THI (<code>metadata/haz_classes.csv:44-103</code>).
+Extreme values are from Thornton et al. 2021, <em>Global Change Biology</em> 27:5762 (Table 2).
+Moderate and severe are a curated mix, documented in <code>metadata/THI_thresholds_provenance.md</code>.</li>
+</ul>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>species</th>
+<th>tropical M / S / E</th>
+<th>highland M / S / E</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>cattle</td>
+<td>74 / 82 / 94</td>
+<td>72 / 79 / 89</td>
+</tr>
+<tr>
+<td>goats</td>
+<td>74 / 82 / 94</td>
+<td>72 / 79 / 89</td>
+</tr>
+<tr>
+<td>sheep</td>
+<td>74 / 81 / 93</td>
+<td>72 / 78 / 86</td>
+</tr>
+<tr>
+<td>pigs</td>
+<td>75 / 79 / 92</td>
+<td>75 / 79 / 89</td>
+</tr>
+<tr>
+<td>poultry</td>
+<td>74 / 79 / 92</td>
+<td>71 / 76 / 89</td>
+</tr>
+</tbody></table></div>
+<ul>
+<li><strong>An unresolved provenance gap.</strong> The current code does not produce the seasonal NEX-GDDP THI
+series that the frequency stage reads.<ul>
+<li><code>R/1_make_timeseries.R:297-298</code> drops THI and HSH whenever the input path is the NEX-GDDP tree.</li>
+<li>The THI files on the server come from an earlier run.</li>
+<li>If that run used <code>hazard_stacker</code>, a long-standing slip at <code>R/haz_functions.R:1344</code>
+(<code>max = haz_files_mean</code>) means &quot;THI_max&quot; would be the seasonal max of <em>monthly-mean</em> THI. That
+would bias it low and understate heat exceedance.</li>
+<li>This has not been checked on the files themselves. Until it is, treat the livestock heat
+classes as <strong>prototype</strong>. Note too that the two biases above (Tmax with mean RH up, possible
+monthly-mean down) point in opposite directions. Tracked as issue <strong>#48</strong>.</li>
+</ul>
+</li>
+</ul>
+<h3 id="4-4-livestock-drought-and-wet-hazards">4.4 Livestock drought and wet hazards</h3>
+<p>The generic non-heat hazard rows are copied to every species-zone unchanged
+(<code>R/2_calculate_haz_freq.R:138-147</code>). The livestock dry axis is therefore:</p>
+<ul>
+<li><code>NDWS</code> &gt; 15 / 20 / 25 mean water-stress days per month in the maize season (set
+<code>NDWS+THI-max+NDWL0</code>), <strong>or</strong></li>
+<li><code>PTOT</code> &lt; 500 / 400 / 300 mm over the maize season (set <code>PTOT-L+THI-max+PTOT-G</code>).</li>
+</ul>
+<p>These are the generic crop thresholds, over the crop window, with nothing specific to rangeland
+(<code>metadata/haz_classes.csv:17-19, 23-25</code>). §6 takes this up.</p>
+<h3 id="4-5-forage-and-rangeland-condition">4.5 Forage and rangeland condition</h3>
+<p><strong>Nothing about forage or rangeland condition enters the hazard chain.</strong> Three related layers are
+published, all observational, none projected, and all used only as display layers in a Kenya
+notebook:</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>layer</th>
+<th>coverage</th>
+<th>what it is</th>
+<th>record</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>FEWS NET <strong>rangeland</strong> WRSI, end of season</td>
+<td>Kenya, 0.1°, 2003-</td>
+<td>the closest existing thing to a rangeland drought index</td>
+<td><code>metadata/cdh/eastafrica-wrsi-fews.yaml</code></td>
+</tr>
+<tr>
+<td>MODIS MOD13Q1 NDVI, seasonal means (MAM, OND)</td>
+<td>East Africa window, 250 m, 2000-2025</td>
+<td>greenness; <strong>no anomaly, no VCI</strong></td>
+<td><code>metadata/cdh/eastafrica-ndvi-modis.yaml</code></td>
+</tr>
+<tr>
+<td>SPEI-3 and SPEI-12</td>
+<td>Africa, 0.05°, 1981-, 1991-2020 base, Hargreaves PET</td>
+<td>observational climatic water balance</td>
+<td><code>metadata/cdh/africa-spei-drought.yaml</code></td>
+</tr>
+</tbody></table></div>
+<hr>
+<h2 id="5-not-covered-or-not-done-here">5. Not covered, or not done here</h2>
+<p><strong>Of the four topics you asked about, these do not exist</strong> (publicly, or at all where stated):</p>
+<ol>
+<li><strong>Published per-pixel frequency surfaces</strong>, per hazard × severity × commodity. They exist only on
+the processing server. The public 2024 copies are stale (§1.5).</li>
+<li><strong>A published per-season time series.</strong> Per-season single-hazard 0/1 rasters exist on the server
+only. Per-season <em>interaction</em> classes are not saved anywhere.</li>
+<li><strong>Percentile-based or reference-period-relative severity classes.</strong> All thresholds are fixed.</li>
+<li><strong>A joint-probability or correlation model.</strong> Only empirical co-occurrence classes exist.
+<strong>Mixed-severity combinations</strong> do not exist.</li>
+<li><strong>Crop-specific growing seasons, or a second season.</strong> One rainfed-maize window is used for all.</li>
+<li><strong>Published uncertainty</strong>: the ensemble SD, per-GCM values and per-year values.</li>
+<li><em>(Resolved 2026-10-19: the tonnes, hectares, head and constant-dollar tiers are now published.)</em></li>
+<li><strong>A livestock production-system mask.</strong> Only highland/tropical exists.</li>
+<li><strong>Camels.</strong></li>
+<li><strong>A livestock-specific drought index, or livestock-specific drought thresholds.</strong></li>
+<li><strong>A forage or biomass anomaly layer</strong> of any kind, observed or projected.</li>
+<li><strong>Water-point or surface-water access.</strong> The only water layer is a static lakes-and-wetlands mask
+used to <em>exclude</em> water cells (<code>hazards_upstream/R/02_preprocess_data/createAfricaWaterBodiesMask.R</code>).</li>
+<li><strong>Population exposure</strong> under this product.</li>
+</ol>
+<hr>
+<h2 id="6-the-livestock-drought-problem">6. The livestock drought problem</h2>
+<h3 id="6-1-do-we-agree-yes-and-it-is-worse-than-your-de">6.1 Do we agree? Yes, and it is worse than your description in two respects</h3>
+<p>You describe &quot;drought indices built on crop water stress within a growing season&quot;. Mechanically,
+the livestock drought layer is the following:</p>
+<ul>
+<li><strong>A generic crop index reused, not even a crop-specific one.</strong><ul>
+<li><code>NDWS</code> is a single-layer bucket water balance with a Priestley-Taylor-type potential ET, run on
+NEX-GDDP daily inputs.</li>
+<li>A day counts as stressed when the bucket&#39;s AET/PET ratio is below 0.5
+(<code>hazards_upstream/R/04_indices/fast_calc_NDWS.R:22-75, 165-174</code>; kernel <code>wbkernel/src/wb_kernel.cpp:99-147</code>).</li>
+<li>It has no crop coefficient. Its soil capacity is built to a <strong>maize rooting depth</strong>, clamped to
+45-100 cm (<code>hazards_upstream/R/02_preprocess_data/createAfricaSoils.R:29, 105-122</code>). The link
+from that script to the exact file NDWS reads is not confirmed in the repository.</li>
+</ul>
+</li>
+<li><strong>Integrated over the maize season, at rangeland pixels too.</strong><ul>
+<li>Where there is little or no maize, the GGCMI calendar&#39;s maize window still defines the season.</li>
+<li>The rangeland rainy season, the dry season in which forage runs out, and the year-to-year
+carry-over are not represented.</li>
+</ul>
+</li>
+<li><strong>Classified on crop benchmarks:</strong> more than 15, 20 or 25 stress days per month on average.</li>
+<li><strong>Each season is an independent draw.</strong> The bucket carries soil water from month to month
+(the AVAIL fix, <code>fast_calc_NDWS.R:140-150</code>). However, frequency is the mean of independent
+per-season 0/1 classes. There is no persistence term, no consecutive-failure class and no
+multi-season accumulation. The well-documented two-failed-seasons pathway to mortality and
+distress sales cannot appear.</li>
+</ul>
+<p>The <strong>alternative set</strong> (<code>PTOT-L</code>) is no better. Fixed crop benchmarks saturate in drylands.
+Measured on the live <strong>extreme</strong> tier for <code>cattle-tropical</code>, historic period, the marginal
+probability of the dry class in Kenya&#39;s arid counties (the four dry-containing classes ÷ total) is:</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>county</th>
+<th><code>NDWS+THI-max+NDWL0</code></th>
+<th><code>PTOT-L+THI-max+PTOT-G</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Garissa</td>
+<td>0.47</td>
+<td>0.40</td>
+</tr>
+<tr>
+<td>Mandera</td>
+<td>0.60</td>
+<td>0.75</td>
+</tr>
+<tr>
+<td>Marsabit</td>
+<td>0.75</td>
+<td>0.58</td>
+</tr>
+<tr>
+<td>Turkana</td>
+<td>0.72</td>
+<td>0.43</td>
+</tr>
+<tr>
+<td>Wajir</td>
+<td>0.83</td>
+<td>0.86</td>
+</tr>
+</tbody></table></div>
+<p>So &quot;extreme&quot; drought occurs in 40-86 % of seasons. That is the climatology of a dryland, not a
+drought signal, and it says little about which seasons are bad for herds.</p>
+<p><strong>One correction to your framing.</strong> Within the Atlas these rows are not the result of a deliberate
+&quot;crop index applied to livestock&quot; decision. They are generic rows copied to livestock so that the
+interaction structure would be complete (<code>R/2_calculate_haz_freq.R:138-147</code>). Nobody has validated
+them for livestock. The issue tracking the gap is hazards_prototype <strong>#31</strong> (open; the measurements
+and plan below are posted there): &quot;Rangeland
+drought: integrate NDVI and pasture biomass to represent forage-based climate impact for
+livestock&quot;. This document&#39;s recommendation is consistent with it.</p>
+<p>Your point that <strong>the error is invisible downstream</strong> stands: the layer produces a well-formed
+probability everywhere.</p>
+<h3 id="6-2-answers-to-the-specific-questions">6.2 Answers to the specific questions</h3>
+<ul>
+<li><strong>What the layer is mechanically:</strong> a generic soil-water bucket index (or a seasonal rainfall
+total), over the rainfed-maize window, on crop thresholds. See §4.4 and §6.1.</li>
+<li><strong>Does a forage or biomass anomaly layer exist?</strong> No. MODIS NDVI seasonal means exist for East
+Africa only, with no anomaly, and FEWS rangeland WRSI exists for Kenya only (§4.5).<ul>
+<li><strong>Could one be built?</strong> Yes, as an <em>observed</em> layer. <strong>It cannot be projected.</strong> NDVI and biomass
+have no counterpart in NEX-GDDP, for the same reason the pipeline already excludes the dry-days
+index NDD from projections (<code>R/2_calculate_haz_freq.R:126</code>).</li>
+<li>So under future scenarios a forage anomaly can only serve as a <strong>calibration and validation
+target</strong> for a meteorological index that <em>is</em> projectable. It cannot be the hazard itself.</li>
+</ul>
+</li>
+<li><strong>Should livestock severity use different benchmarks?</strong> Yes.<ul>
+<li>A rangeland drought class should be defined on the distribution of the index at each pixel,
+for example the 1-in-5, 1-in-10 and 1-in-20 dry season or 12-month period of the 1995-2014
+baseline, per GCM. That is an anchored percentile, <strong>not</strong> a rolling one.</li>
+<li>Baseline P is then fixed by construction (0.2, 0.1, 0.05), and the future periods carry the
+signal. This changes your method in the way you anticipated: the baseline term becomes a
+design constant rather than an estimate.</li>
+<li>Fixed absolute benchmarks transferred from crops have no physiological basis for grazing
+animals, and saturate in drylands.</li>
+<li>A <strong>consecutive-failure</strong> class (two or more failed seasons in a row) belongs alongside them.</li>
+</ul>
+</li>
+<li><strong>Is water-point or surface-water access represented?</strong> No (§5, item 12). Observed surface-water
+history exists externally, for example JRC Global Surface Water, but it is not ingested. It is
+not projectable either, and access depends on infrastructure that no climate layer describes.</li>
+</ul>
+<h3 id="6-3-options">6.3 Options</h3>
+<p>Effort is in working weeks of one analyst, with node time noted separately. These are estimates,
+not commitments.</p>
+<p><strong>Option A — Reframe the existing projectable indices for rangeland.</strong> About 4-6 weeks, plus about
+2 days of node time.</p>
+<ul>
+<li>Restrict livestock drought to grazing systems using a production-system mask. The GLPS
+directory exists but must first be checked for contents.</li>
+<li>Compute the index over the 12-month window rather than the maize window. The <code>annual</code> period
+already does this from the maize planting month; a rangeland-specific window would be better.</li>
+<li>Use a multi-month water-balance or SPEI-type index from NEX-GDDP. <code>calc_PET.R</code> exists upstream.</li>
+<li>Define severity by baseline-anchored percentiles, and add a consecutive-failure class. The
+per-season 0/1 series this needs already exists on the server for single hazards; new code is
+needed for the run-length class.</li>
+<li><strong>Gives:</strong> a coherent, projectable, rangeland-framed meteorological drought index.</li>
+<li><strong>Does not give:</strong> any evidence that it tracks forage.</li>
+</ul>
+<p><strong>Option B — Observed forage anomaly, historical only.</strong> About 3-4 weeks.</p>
+<ul>
+<li>Extend the NDVI ingest from Kenya and East Africa to sub-Saharan Africa. The ingest is
+<code>python/ingest_ndvi_modis.py</code>; it needs NASA Earthdata credentials, and the current default
+bounding box is Kenya.</li>
+<li>Compute per-pixel seasonal anomalies and a VCI against a fixed baseline, masked to grazing
+systems.</li>
+<li>Candidate biomass products, not yet verified for coverage, latency or licence: Copernicus DMP,
+FEWS NET rangeland products, and WaPOR, which was considered and deferred in
+<code>archive/dispatches/NDVI_ingest_plan.md</code>.</li>
+<li><strong>Gives:</strong> a defensible description of <em>past</em> rangeland drought.</li>
+<li><strong>Gives nothing for future scenarios.</strong></li>
+</ul>
+<p><strong>Option C — B as the target for A: a validated projectable proxy.</strong> About 3-4 months.</p>
+<ul>
+<li>Over rangeland pixels for 2000-2024, test which observed meteorological index (SPEI at 3, 6 or 12
+months, the 12-month water balance, rainfall percentile, consecutive-failure counts) best predicts
+the observed forage anomaly classes. Choose the index and thresholds on that evidence, then compute
+the same index from NEX-GDDP for the projections.</li>
+<li><strong>Do the validation with observed climate, not NEX-GDDP.</strong> A GCM&#39;s historical run is not
+year-synchronous with observed weather, so its 1995-2014 seasons cannot be matched to NDVI
+seasons. The observational SPEI (CHIRPS v3 + CHIRTS-ERA5, <code>R/observational/2_calculate_obs_spei.R</code>)
+already exists Africa-wide, so most of the climate side of the validation is built.</li>
+<li><strong>Gives:</strong> a projected livestock drought P, with a stated skill against observed forage, on
+benchmarks chosen for livestock. <strong>This is the defensible product.</strong></li>
+</ul>
+<p><strong>Option D — A forage process model driven by GCMs.</strong> For example, a rangeland biomass model with
+grazing pressure.</p>
+<ul>
+<li>More than six months, plus parameterisation data we do not hold.</li>
+<li><strong>Not achievable by March 2027.</strong></li>
+</ul>
+<p><strong>Not addressable by any of these within the timeframe:</strong> water-point access; the impact chain from
+forage deficit to body condition, milk, conception, mortality and offtake (the loss fraction side,
+which is yours); and carry-over beyond the persistence a consecutive-failure class captures.</p>
+<h3 id="6-4-recommendation">6.4 Recommendation</h3>
+<p><strong>Do Option C, with Option A as its projectable half, and set a decision gate in mid-January 2027.</strong></p>
+<ul>
+<li><strong>November to mid-January:</strong> the grazing mask, the SSA NDVI anomaly (B), and the validation
+analysis against observed SPEI and water-balance indices.</li>
+<li><strong>At the gate:</strong><ul>
+<li>If one index reaches useful skill against forage anomaly classes in rangeland pixels, compute it
+from NEX-GDDP with baseline-anchored percentile classes plus a consecutive-failure class (A).
+Run it through the frequency stage, and publish it as a separate livestock drought set by March.
+This is realistic if the work starts in November and the node is free (a frequency stage takes
+about a day and a half per period).</li>
+<li>If no index has skill, <strong>report the gap.</strong> Publish the observed forage anomaly as a historical
+layer, and state that no projected livestock drought probability is defensible. We agree with
+you that this is better than a confident wrong number.</li>
+</ul>
+</li>
+<li><strong>Until then, do not use either livestock dry axis in an external deliverable.</strong> If a livestock
+heat-only figure is needed, the livestock <code>heat</code> class is computable, but read §4.3 first.</li>
+</ul>
+<hr>
+<h2 id="7-products-to-use">7. Products to use</h2>
+<p><strong>Hazard-exposure tiers.</strong> Key pattern (HTTPS base <code>https://digital-atlas.s3.amazonaws.com/</code>):
+<code>domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=&lt;variable&gt;/period=&lt;period&gt;/model=ENSEMBLEmean/severity=&lt;severity&gt;/int=multi-hazard.parquet</code>.
+All are on the 0.25° hazard grid aggregated to GAUL 2024 adm0/1/2, and licensed CC-BY-4.0. Each
+key has a <code>.json</code> sidecar with the 18-GCM membership and field descriptions.</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>variable</th>
+<th>unit</th>
+<th>period</th>
+<th>severity</th>
+<th>published (UTC)</th>
+<th><code>versionId</code></th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>prod_t</code></td>
+<td>t (MapSPAM 2020 production)</td>
+<td><code>jagermeyr</code></td>
+<td>moderate</td>
+<td>2026-10-19 12:01:39</td>
+<td><code>kPR4BCorjzg86rnT2hPGA2M9j0JHY57s</code></td>
+</tr>
+<tr>
+<td><code>prod_t</code></td>
+<td>t (MapSPAM 2020 production)</td>
+<td><code>jagermeyr</code></td>
+<td>severe</td>
+<td>2026-10-19 12:00:52</td>
+<td><code>ckaDGRQzyM3gbvrk91_.fDu4a72K2rxi</code></td>
+</tr>
+<tr>
+<td><code>prod_t</code></td>
+<td>t (MapSPAM 2020 production)</td>
+<td><code>jagermeyr</code></td>
+<td>extreme</td>
+<td>2026-10-19 12:02:19</td>
+<td><code>oJRJxUNbBU37rRPBCPU8qpwUC0K28qqk</code></td>
+</tr>
+<tr>
+<td><code>prod_t</code></td>
+<td>t (MapSPAM 2020 production)</td>
+<td><code>annual</code></td>
+<td>moderate</td>
+<td>2026-10-19 14:05:08</td>
+<td><code>cBB9fjrWWup559teIQ6d1iFTFvxuDvin</code></td>
+</tr>
+<tr>
+<td><code>prod_t</code></td>
+<td>t (MapSPAM 2020 production)</td>
+<td><code>annual</code></td>
+<td>severe</td>
+<td>2026-10-19 14:04:49</td>
+<td><code>WIJazJpXVKLOwOuDFLOmMzrYluLhcq_V</code></td>
+</tr>
+<tr>
+<td><code>prod_t</code></td>
+<td>t (MapSPAM 2020 production)</td>
+<td><code>annual</code></td>
+<td>extreme</td>
+<td>2026-10-19 14:05:34</td>
+<td><code>N6Fg1WJL93Lcqhm2pDhe_D2aVbt9WfKy</code></td>
+</tr>
+<tr>
+<td><code>harv-area_ha</code></td>
+<td>ha</td>
+<td><code>jagermeyr</code></td>
+<td>moderate</td>
+<td>2026-10-19 10:57:41</td>
+<td><code>98Ki88Mxol_M0yz5Zi8MW8Vrx0a7ecoc</code></td>
+</tr>
+<tr>
+<td><code>harv-area_ha</code></td>
+<td>ha</td>
+<td><code>jagermeyr</code></td>
+<td>severe</td>
+<td>2026-10-19 10:57:25</td>
+<td><code>5fNoH8f732ZgSPOj8N0LybaadmXWE4FG</code></td>
+</tr>
+<tr>
+<td><code>harv-area_ha</code></td>
+<td>ha</td>
+<td><code>jagermeyr</code></td>
+<td>extreme</td>
+<td>2026-10-19 10:57:56</td>
+<td><code>_4uhbwE1fjSI_VpDz2tDe_QkEfpeoMmq</code></td>
+</tr>
+<tr>
+<td><code>harv-area_ha</code></td>
+<td>ha</td>
+<td><code>annual</code></td>
+<td>moderate</td>
+<td>2026-10-19 14:02:49</td>
+<td><code>zKQFKNbb2B0WBWZvn6wtsaoHv1zjaD5F</code></td>
+</tr>
+<tr>
+<td><code>harv-area_ha</code></td>
+<td>ha</td>
+<td><code>annual</code></td>
+<td>severe</td>
+<td>2026-10-19 14:02:09</td>
+<td><code>5_JGu3OBs.0zpf.tQIo43VYmCTMiGhrv</code></td>
+</tr>
+<tr>
+<td><code>harv-area_ha</code></td>
+<td>ha</td>
+<td><code>annual</code></td>
+<td>extreme</td>
+<td>2026-10-19 14:03:23</td>
+<td><code>FzG2koPl99V1Q.brC8XNOMB11XigYShf</code></td>
+</tr>
+<tr>
+<td><code>head_n</code></td>
+<td>head (livestock only)</td>
+<td><code>jagermeyr</code></td>
+<td>moderate</td>
+<td>2026-10-19 13:52:04</td>
+<td><code>UAZN4BC3zKy1MablH48NcDz1_w3n.4V5</code></td>
+</tr>
+<tr>
+<td><code>head_n</code></td>
+<td>head (livestock only)</td>
+<td><code>jagermeyr</code></td>
+<td>severe</td>
+<td>2026-10-19 13:51:38</td>
+<td><code>J43X9RRwIipvDpot7wvRPR2bB9LXNdUk</code></td>
+</tr>
+<tr>
+<td><code>head_n</code></td>
+<td>head (livestock only)</td>
+<td><code>jagermeyr</code></td>
+<td>extreme</td>
+<td>2026-10-19 13:52:20</td>
+<td><code>KoIWstORGDvgRK5RLQ0FHRLjCbMIv5nF</code></td>
+</tr>
+<tr>
+<td><code>head_n</code></td>
+<td>head (livestock only)</td>
+<td><code>annual</code></td>
+<td>moderate</td>
+<td>2026-10-19 14:07:21</td>
+<td><code>yD7xnbXqLSg04VXrOyMfMjlWIseCqbP7</code></td>
+</tr>
+<tr>
+<td><code>head_n</code></td>
+<td>head (livestock only)</td>
+<td><code>annual</code></td>
+<td>severe</td>
+<td>2026-10-19 14:07:04</td>
+<td><code>yDZB53sMf1ifnJCSSc46AgG2qgANLE5z</code></td>
+</tr>
+<tr>
+<td><code>head_n</code></td>
+<td>head (livestock only)</td>
+<td><code>annual</code></td>
+<td>extreme</td>
+<td>2026-10-19 14:07:37</td>
+<td><code>pJPVxYGJcsvPVSRfST_bDJDZDLlkkjXE</code></td>
+</tr>
+<tr>
+<td><code>vop_intld15-21</code></td>
+<td>constant 2014-16 I$</td>
+<td><code>jagermeyr</code></td>
+<td>moderate</td>
+<td>2026-10-19 06:31:34</td>
+<td><code>vvMYzlBRv6aTD7HBE1PRgjS0LHFRYH7h</code></td>
+</tr>
+<tr>
+<td><code>vop_intld15-21</code></td>
+<td>constant 2014-16 I$</td>
+<td><code>jagermeyr</code></td>
+<td>severe</td>
+<td>2026-10-19 06:31:16</td>
+<td><code>wHmWEt7tCWQMGLbjEOpqGxW9O1Y52WiA</code></td>
+</tr>
+<tr>
+<td><code>vop_intld15-21</code></td>
+<td>constant 2014-16 I$</td>
+<td><code>jagermeyr</code></td>
+<td>extreme</td>
+<td>2026-10-19 06:31:52</td>
+<td><code>pddbiue12vK1gMxRYGgUOiLdqvcYXYkV</code></td>
+</tr>
+<tr>
+<td><code>vop_intld15-21</code></td>
+<td>constant 2014-16 I$</td>
+<td><code>annual</code></td>
+<td>moderate</td>
+<td>2026-10-19 13:58:50</td>
+<td><code>k5JZLHz3XJ4YyTYv8M3K7eKh3ahgxsj0</code></td>
+</tr>
+<tr>
+<td><code>vop_intld15-21</code></td>
+<td>constant 2014-16 I$</td>
+<td><code>annual</code></td>
+<td>severe</td>
+<td>2026-10-19 13:57:49</td>
+<td><code>hYcuyAiVdKi1qqCAANps_O5YrdasZF1O</code></td>
+</tr>
+<tr>
+<td><code>vop_intld15-21</code></td>
+<td>constant 2014-16 I$</td>
+<td><code>annual</code></td>
+<td>extreme</td>
+<td>2026-10-19 13:59:56</td>
+<td><code>qoMFWGiDXeRH.kGFgCdzSdP7yHClXwQh</code></td>
+</tr>
+<tr>
+<td><code>vop_nominal-usd21</code></td>
+<td>nominal 2021 USD (livestock values: see #47)</td>
+<td><code>jagermeyr</code></td>
+<td>moderate</td>
+<td>2026-10-16 18:21:45</td>
+<td><code>ld1GG43E1wKq0FHfqZs4ktLmI0MLbFpk</code></td>
+</tr>
+<tr>
+<td><code>vop_nominal-usd21</code></td>
+<td>nominal 2021 USD (livestock values: see #47)</td>
+<td><code>jagermeyr</code></td>
+<td>severe</td>
+<td>2026-10-16 18:20:55</td>
+<td><code>8_meOziwKqxyFAXDPJKfPt2aHdfXxlqu</code></td>
+</tr>
+<tr>
+<td><code>vop_nominal-usd21</code></td>
+<td>nominal 2021 USD (livestock values: see #47)</td>
+<td><code>jagermeyr</code></td>
+<td>extreme</td>
+<td>2026-10-16 18:22:26</td>
+<td><code>xZoS0ikV7lWUVcoZsKzoBj.MST96jBtD</code></td>
+</tr>
+<tr>
+<td><code>vop_nominal-usd21</code></td>
+<td>nominal 2021 USD (livestock values: see #47)</td>
+<td><code>annual</code></td>
+<td>moderate</td>
+<td>2026-10-19 13:55:04</td>
+<td><code>pUIFuxCO0fQK7lAz3J1PiDjtG9JHFOpy</code></td>
+</tr>
+<tr>
+<td><code>vop_nominal-usd21</code></td>
+<td>nominal 2021 USD (livestock values: see #47)</td>
+<td><code>annual</code></td>
+<td>severe</td>
+<td>2026-10-19 13:54:30</td>
+<td><code>wd1TtQcrxXphnkR6UXyGaLeJYoI5klzG</code></td>
+</tr>
+<tr>
+<td><code>vop_nominal-usd21</code></td>
+<td>nominal 2021 USD (livestock values: see #47)</td>
+<td><code>annual</code></td>
+<td>extreme</td>
+<td>2026-10-19 13:55:52</td>
+<td><code>Gv82H4Cu2hHZbZ5zGTeF2n7M9tLXdlEt</code></td>
+</tr>
+</tbody></table></div>
+<p><strong>Supporting data.</strong></p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>product</th>
+<th>path</th>
+<th>grid</th>
+<th>units</th>
+<th>licence</th>
+<th>pin</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Exposure denominator: production (t), area (ha), value, head</td>
+<td><code>domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=crop-livestock_all_res-25.parquet</code></td>
+<td>0.25° (the hazard grid), GAUL 2024 adm0/1/2</td>
+<td>select on <code>unit</code>: <code>t</code>, <code>ha</code>, <code>nominal-usd-2021</code>, <code>intld15-2021</code>, <code>number</code></td>
+<td>CC-BY-4.0</td>
+<td>2026-10-21 17:42:12; <code>versionId=IolrzLCVLfGzd5Ryw1eACOeVp8Sy179Q</code></td>
+</tr>
+<tr>
+<td>Admin boundaries (join on <code>gaul2_code</code>)</td>
+<td><code>domain=boundaries/type=admin/source=gaul2024/region=africa/processing=analysis-ready/level=adm2/atlas_gaul24_a2_africa.parquet</code></td>
+<td>vector</td>
+<td>—</td>
+<td>CC-BY-4.0 (record <code>africa-admin-boundaries-gaul2024</code>)</td>
+<td>2025-08-19; <code>versionId=66c7MiKvkW8w_4q6wfQXly0wy7FRKEIa</code></td>
+</tr>
+</tbody></table></div>
+<p><strong>Pin by <code>versionId</code>.</strong></p>
+<ul>
+<li>The bucket is versioned, and a public read with <code>?versionId=&lt;id&gt;</code> works (checked 2026-10-12 and
+2026-10-22).</li>
+<li>Republication overwrites a key in place. A pinned version remains readable for at least 270 days.</li>
+<li><strong>Expected next republication:</strong> the <code>vop_nominal-usd21</code> tiers. #47 corrects livestock nominal
+prices from the world median to national prices. The denominator&#39;s livestock <code>nominal-usd-2021</code>
+rows were already republished on 2026-10-21 (pin above). Crop rows and every other tier are
+unaffected.</li>
+<li>History: the denominator&#39;s 2026-10-08 republication moved constant-dollar crop rows +20 % (FAOSTAT
+joins on item code).</li>
+</ul>
+<p><strong>Which rows to use, by stability:</strong></p>
+<ul>
+<li><strong>External deliverable, with the caveats stated:</strong><ul>
+<li><code>hazard_vars = NDWS+NTx35+NDWL0</code> for crops, from the <code>prod_t</code> tier, with the <code>none</code> / <code>any</code>
+ratio from §1.7;</li>
+<li><code>period=annual</code> for perennials and <code>period=jagermeyr</code> for annual crops;</li>
+<li>the tier&#39;s own any + none (or the denominator&#39;s <code>t</code> rows) for baseline production.</li>
+</ul>
+</li>
+<li><strong>Prototype; internal use only:</strong><ul>
+<li>the crop-specific sets (<code>PTOT-L+NTx*+PTOT-G</code>, <code>NDWS+NTxM+NDWL0</code>);</li>
+<li>both livestock sets;</li>
+<li>livestock nominal-USD values (until #47 republishes).</li>
+</ul>
+</li>
+</ul>
+<p><strong>Example: P per class for one crop and unit</strong> (DuckDB, <code>httpfs</code> loaded):</p>
+<div class="cw"><pre><code class="language-sql">WITH t AS (
+  SELECT * FROM read_parquet(
+    &#39;https://digital-atlas.s3.amazonaws.com/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=prod_t/period=jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet?versionId=ckaDGRQzyM3gbvrk91_.fDu4a72K2rxi&#39;,
+    hive_partitioning = false)
+  WHERE crop = &#39;maize&#39; AND hazard_vars = &#39;NDWS+NTx35+NDWL0&#39;
+    AND admin2_name IS NOT NULL                -- admin-2 rows only
+    AND NOT isnan(value)                       -- units the 0.25 deg grid cannot resolve are NaN
+)
+SELECT gaul2_code, scenario, timeframe, hazard,
+       value / NULLIF(SUM(value) FILTER (WHERE hazard IN (&#39;any&#39;,&#39;none&#39;))
+                 OVER (PARTITION BY gaul2_code, scenario, timeframe), 0) AS p
+FROM t
+WHERE hazard NOT IN (&#39;any&#39;);                   -- 7 exclusive classes + none; they sum to ~1
+</code></pre></div>
+<hr>
+<h2 id="8-corrections-to-the-records-that-this-review-fo">8. Corrections to the records that this review found</h2>
+<p>These are listed so that you are not misled by the records in the meantime. They will be fixed on
+our side and are tracked together as issue <strong>#49</strong> (the days-per-month unit also on #20).</p>
+<ul>
+<li><code>metadata/cdh/africa-hazard-exposure-nexgddp.yaml</code>:<ul>
+<li>&quot;no … livestock exposure tier&quot; is wrong: livestock value rows are published (§4.2), and since
+2026-10-19 so is the <code>head_n</code> tier. <strong>Still open.</strong></li>
+<li>&quot;44 crops&quot; is 33 crops + generic + 10 livestock (§3.1). <em>Fixed in the record.</em></li>
+</ul>
+</li>
+<li><code>metadata/haz_metadata.csv</code>:<ul>
+<li>it describes CHIRPS/CHIRTS/AgERA5 inputs that the NEX-GDDP chain does not use (§1.1). <em>Its
+Steadman description of HSH is correct for the published data</em>: the NWS heat-index fix is coded
+but not yet run (#14);</li>
+<li>it labels THI &quot;cattle&quot; although it is applied to all five species.</li>
+</ul>
+</li>
+<li><code>metadata/THI_thresholds_provenance.md</code>: it says THI_mean uses mean temperature; it uses Tmax
+(§4.3).</li>
+<li><code>metadata/catalogue/glps.json</code> and <code>metadata/catalogue/nexgddp-indices-seasonal.json</code>: they claim
+consumers and producers that the code does not have (§4.1, §4.3).</li>
+<li><code>metadata/published_thresholds.md</code>:<ul>
+<li>&quot;day&quot; means days per month, averaged over the season (§1.2). <em>Fixed in the table.</em></li>
+<li><em>(Resolved: the post-#13 hazard sets it lists went live on 2026-10-16/19.)</em></li>
+</ul>
+</li>
+</ul>
+</main></div>
+</body></html>
