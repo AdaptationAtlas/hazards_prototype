@@ -224,8 +224,13 @@ example file. mtimes are file mtimes. Where two figures are given, they are `jag
 3. **3c `_int` bundles carry only the #13 sets.** The sets are `NDWS+NTx35+NDWL0` (60 per period, `generic-crop`
    only), `NDWS+NTxM+NDWL0` (1,980), `PTOT-L+NTxM+PTOT-G` (1,980), `NDWS+THI-max+NDWL0` (600) and
    `PTOT-L+THI-max+PTOT-G` (600). There is no `NTxS` set.
-   - Step 4 carries `NDWS+NTx35+NDWL0` for 34 crops even though 3c has it only for `generic-crop`. The
-     mechanism, presumably crops mapped to the generic bundle, is **unverified**.
+   - Step 4 carries `NDWS+NTx35+NDWL0` for 34 crops even though 3c has it only for `generic-crop`.
+     **Mechanism, verified in code (macbook, 2026-10-22):** R/3 §4.1 expands the single `generic-crop`
+     bundle across every crop. For `generic-crop` itself it multiplies by the sum of all crop
+     exposure layers. For each other crop it multiplies by that crop's layer and renames
+     `generic-crop` to the crop in the file and layer names (`R/3_freq_x_exposure.R:234-247`). The
+     all-fixed row is crop-independent by construction (`R/2_calculate_haz_freq.R` §0.2.4.2), so one
+     bundle suffices.
 
 **Directories under `DATA/` or `SEASONAL/` not in the table:**
 - `chirts_chirps_hist/` — the observed CHIRPS v3 / CHIRTS-ERA5 monthly tree (§2).
