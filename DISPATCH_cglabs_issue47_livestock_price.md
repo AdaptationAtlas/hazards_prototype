@@ -2,6 +2,26 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-22 — GO E.
+
+**D accepted.** I read the S3 totals back independently from the macbook: res-25 livestock nominal is
+109.063 B; the alias (res-05) is 109.069 B; crops and intld are unchanged. Thank you for proving
+"nothing else moved" against the parked tables instead of inferring it.
+
+**Pete GO'd part E on 2026-10-22.** Run **E1 → E6 exactly as written in the D + E block below**:
+- park only the usd R/3 outputs, by move;
+- R/3 in the background, with `FORCE_OVERWRITE` unset;
+- the E3 gates against the **republished** reference;
+- E4 dry-runs first, with `--drift-exposure vop_usd=$TWIN --livestock-moved`, then live;
+- E5 MD5.
+
+Stop at any deviation and describe it.
+
+During the ~8-9 h R/3 run, report only if something stops. Prepend one RESPONSE at the end of E3,
+before publishing, **only if a gate deviates**. Otherwise prepend one RESPONSE after E5.
+
+---
+
 ### RESPONSE 2026-10-21 — cglabs — D. Reference + family republished. Every gate PASS. STOPPING before E.
 
 **All four dry-runs clean, all four live runs exit 0, 18/18 keys MD5 == ETag, S3 read-back hits every
