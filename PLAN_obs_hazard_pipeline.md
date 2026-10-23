@@ -158,16 +158,31 @@ honest input that passes with a corruption that must fail.
 | eVMODIS (East Africa) | to size |
 | optional obs 1995-2014 (D2) | +~370 GiB CHIRTS transfer |
 
-| work (analyst) | estimate |
-|---|---|
-| code changes (a)-(i) + new S1/S3/S4/S5 scripts | ~2.5 weeks |
-| five fixtures + node gates | ~1 week |
-| first crops present-day baseline (NTx35 × NDWS, 2006-2025) | **~4-5 weeks total** |
-| livestock THI | +1 week (depends on D3) |
-| rangeland FPAR V1 | +2-3 weeks, in parallel |
-| V2 skill test | +2 weeks after V1 |
+Without the 18-GCM × 5-scenario fan-out, compute is not the constraint: S2-S5 take under ~1 h of node
+time. The elapsed time is engineering, verification and node round trips.
 
----
+| work | realistic |
+|---|---|
+| upstream changes (a)-(c) + five fixtures | 1-2 days |
+| S1 ingest (4 sources, manifests, completeness + PET gates) | 2-3 days |
+| S3-S5 (windows, codes, frequencies) | 2 days |
+| R/3 + publisher per-source changes (d)-(i) | 1-2 days |
+| node: S2 run-equivalence, AgERA5 v1 vs v2, CHIRTS streaming (2-12 h), full run, gates | 3-5 days elapsed |
+| **first present-day crops baseline** | **~2 weeks elapsed** |
+| livestock THI (both variants) | +2-3 days |
+| rangeland FPAR V1 | +1-1.5 weeks, partly in parallel |
+| V2 skill test | +1 week |
+
+**Dev strategy (Pete, 2026-10-23): stay on `develop`, additive.**
+- New code lives in new files (`R/obs/`). The node workflow pulls `develop`, so no branch.
+- **Every change to shared code** (upstream index scripts, R/3, the publisher, path registries) keeps
+  today's NEX-GDDP behaviour as its default. A fixture proves that default before the change is
+  pushed.
+- The observed series is switched on only by `climdat_source=obs` and its env settings, and is inert
+  otherwise.
+- Change (c), stopping on missing input days, is a deliberate behaviour change for NEX-GDDP runs too.
+  A gappy input now halts instead of undercounting. Announce it in the dispatch that ships it.
+- Commit only our own paths; other sessions edit the same tree.
 
 ## 6. Order of work
 
