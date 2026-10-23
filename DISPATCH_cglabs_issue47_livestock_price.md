@@ -2,6 +2,152 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-23 — cglabs — E. STOPPED at E3.1. The R/3 run died mid-jagermeyr. Nothing published.
+
+**E1 and E2 were clean. E2's run did not finish.** It was killed at **2026-10-22 11:59:00**, after
+jagermeyr §4.1 completed and as §4.1's file-integrity check began, with no error, no R traceback and
+no `Execution halted`. **annual is complete and correct; jagermeyr is missing its entire §4.2 output
+— the 18 files E4 would publish.** I have published nothing and re-run nothing.
+
+**First, a correction to my own updates.** I reported "still running" at 14:34 on 10-22 and again at
+05:32 today. Both were wrong: the run had already been dead for 2.5 h and 17.5 h respectively. My
+watch was `pgrep -f "3_freq_x_exposure"`, and the watcher's own command line contains that string, so
+it matched itself and reported the job alive forever. The same flaw silenced the background waiter
+that was supposed to notify me on exit. The process table is the ground truth and it now shows no R
+process at all. Nothing was lost by the delay — no gate ran and nothing was written — but the run
+sat dead for seventeen hours when it should have been caught within minutes.
+
+#### E1. Park — clean
+
+```
+annual    : moved 1002 of 1002 | left behind 0
+jagermeyr : moved 1002 of 1002 | left behind 0
+```
+
+2004 files moved (not copied) to `Data/_parked_issue47_20261021_164945/r3_vop_usd/`. Pre-run baseline
+of the other four variables, recorded before launch:
+
+```
+hazard_risk_vop_usd        0 files
+hazard_risk_vop         2004 files  newest 2026-10-16 10:41:27
+hazard_risk_ha          1646 files  newest 2026-10-15 18:15:01
+hazard_risk_n            398 files  newest 2026-10-15 18:47:00
+hazard_risk_prod        1646 files  newest 2026-10-15 21:19:42
+```
+
+#### E2. Launch — both header gates correct
+
+`FORCE_OVERWRITE`, `R3_CROP_VOP_USD`, `R3_ALLOW_41_FAILURES` and `SKIP_R3_4_1` were all confirmed
+unset in the environment before launch. The log opened with exactly the two required lines:
+
+```
+[05:20:13] [3_freq_x_exp] script start (FORCE_OVERWRITE=<unset> -> overwrite=FALSE)
+0.2.1.1) Using crop vop usd file: spam_vop_nominal-usd-2021_all_res-25.tif | R3_CROP_VOP_USD = 2021
+overwrite4= FALSE
+```
+
+`worker_n4.1= 16`, `worker_n4.2= 1`, as expected on this node.
+
+**No silent skip.** usd §4.1 took **94.3 min** for annual and **98.0 min** for jagermeyr, against 0.2
+and 0.7-0.9 min for the four variables whose outputs still exist. That is the signature of real work,
+and it is the opposite of the single-digit-minute skip you warned about.
+
+#### What ran before it died
+
+```
+[05:20:43] [timeframe 1/2] annual — start
+[06:55:13] [annual] 4.1.1) variable 2/5: vop_nominal-usd-2021 — Complete (94.3 min)
+           annual 4.1) All file integrity checks - Complete
+[10:17:53] [timeframe 1/2] annual — Complete (297.2 min total)
+[10:17:53] [timeframe 2/2] jagermeyr — start
+[11:56:31] [jagermeyr] 4.1.1) variable 2/5: vop_nominal-usd-2021 — Complete (98.0 min)
+[11:58:59] [jagermeyr] 4.1.1) variable 5/5: prod_t — Complete (0.9 min)
+           jagermeyr 4.1) Checking file integrity of jagermeyr
+<nothing further; log last written 2026-10-22 11:59:00.650>
+```
+
+The log ends mid-section at 17,607 bytes. There is no error line and no partial write.
+
+#### E3.1 — FAIL. The run did not exit 0, and jagermeyr is short 18 files
+
+```
+annual    : new 1002  parked 1002   <- complete
+jagermeyr : new  984  parked 1002   <- 18 missing
+```
+
+The 18 are exactly the §4.2 ENSEMBLE admin tables, i.e. the publish inputs:
+
+```
+haz-freq-exp_vop_nominal-usd-2021_ENSEMBLE_int_adm_{severe,moderate,extreme}.parquet (+ .json)
+haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEmean_int_adm_{severe,moderate,extreme}.parquet (+ .json)
+haz-freq-exp_vop_nominal-usd-2021_ENSEMBLEsd_int_adm_{severe,moderate,extreme}.parquet (+ .json)
+```
+
+Nothing else is missing and nothing unexpected is present (`comm` on the two file lists returns 18
+missing, 0 extra). So jagermeyr has its §4.1 per-GCM intersections but never reached the merge.
+
+The rest of E3.1 is otherwise clean: **no `failed_risk_x_exposure_*` file exists anywhere**, and the
+only `skipped_not_in_exposure_*` files are the four already-classified ones (`harv-area_ha` and
+`prod_t`, 180 livestock-split commodities each; `head_n`, 594 crop commodities).
+
+E3.2's side-check passes: the other four variables kept their file counts exactly (2004 / 1646 / 398
+/ 1646). Three of them show a 2026-10-22 mtime, but that is only their `skipped_not_in_exposure_*.txt`
+manifest being rewritten in place — no data output was touched, and `hazard_risk_vop` (the intld twin)
+is untouched at 2026-10-16 10:41:27.
+
+**E3.3, E3.4, E4 and E5 were not run.** Publishing a tier whose jagermeyr half does not exist is not
+something to attempt, and the dispatch's stop rule applies before them.
+
+#### Why it died — what the node can and cannot show
+
+The kernel log records **only two OOM kills in its whole history**, and one of them is six minutes
+before my log stops:
+
+```
+[Thu Oct 22 11:53:21 2026] oom-kill: ... global_oom, task=R, pid=177967, uid=1000
+[Thu Oct 22 11:53:21 2026] Out of memory: Killed process 177967 (R)
+                           total-vm:110111420kB, anon-rss:62556740kB
+```
+
+I can neither confirm nor rule out that this was my run, and I would rather say so than guess:
+
+- **Against** it being mine — my log kept writing for six minutes after 11:53:21, through
+  `harv-area_ha` (11:57:18), `head_n` (11:58:08) and `prod_t` (11:58:59). A SIGKILL on the main R
+  process would have stopped the log at 11:53.
+- **For** it being related — §4.1 runs 16 `future` workers. A killed worker would explain the main
+  process surviving the OOM, finishing the three cheap variables from cached results, then dying when
+  the integrity check tried to collect from a session that no longer existed. The timing fits.
+- There is **no second OOM record** at 11:59, so if the main process was killed then, it was not by
+  the kernel OOM killer.
+
+What is not in doubt is that the box was under severe memory pressure at the time: the container's
+cgroup records `memory.peak` of **365 GiB** against the node's 376 GiB and no swap. Load average is
+51 on 40 logical cores right now, so this box is busy with work that is not mine.
+
+#### What I have not done
+
+Not published. Not re-run R/3. Not set `FORCE_OVERWRITE`, `R3_ALLOW_41_FAILURES` or `SKIP_R3_4_1`.
+Not touched code, gates, fixtures, tolerances or `metadata/haz_metadata.csv`. No delete of any kind.
+The park at `Data/_parked_issue47_20261021_164945` still holds the complete pre-#47 usd tier, both
+timeframes, 1002 + 1002 — so the rollback is intact and S3's usd tier is still the pre-#47 one.
+
+#### What I would suggest, for your call not mine
+
+A plain re-run of E2 should finish the job rather than redo it: `FORCE_OVERWRITE` stays unset, so
+R/3 skips every output that exists — all 1002 annual files and jagermeyr's 984 — and does only
+jagermeyr's integrity check and §4.2. That is the cheap end of the range, not another nine hours,
+and §4.2 is the `worker_n4.2 <- 1` section, so it is the memory-light half.
+
+The judgement call I am not making is whether to re-run into a box that is currently carrying a load
+of 51 and peaked at 365 GiB of 376 GiB yesterday. If the OOM did take one of my §4.1 workers, a
+re-run that only has to do §4.2 is at much lower risk than the run that just died. Say the word and I
+will run it, with a watch that checks the process table rather than a `pgrep` pattern that can match
+itself.
+
+Log: `logs/issue47_r3_20261021_164945.log` (git-ignored).
+
+---
+
 ### MACBOOK 2026-10-22 — GO E.
 
 **D accepted.** I read the S3 totals back independently from the macbook: res-25 livestock nominal is
