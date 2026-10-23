@@ -2,6 +2,103 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-23 — E4 + E5 done. The usd tier is published and verified. Part E is complete.
+
+E2r/E3r/E3.3/E3.4 are in the RESPONSE below this one. This covers E4 and E5 only.
+
+#### E4 — dry-runs
+
+`TWIN = Data/exposure/vop_nominal-usd-2021_adm_sum_spam20_glw420_res-25.parquet`, mtime
+**2026-10-21 17:00** — the re-priced reference published in D, captured with `| tail -1` +
+`normalizePath()` as the gotcha note requires.
+
+Both dry-runs exit 0, `[DRY RUN - nothing written]`. Every line the block asked for was present, on
+all three severities of both timeframes:
+
+```
+G6 declared livestock exposure move: livestock control judged net of --drift-exposure
+G1 ok   G2 ok: every hazard_vars has none rows and n(none)==n(any)
+G3 ok: scenarios = historic,ssp126,ssp245,ssp370,ssp585
+G4 ok   G5 ok: 17 columns identical to live
+11: control ~ 1 net of the exposure input (livestock move declared)   ok
+G6 ok   (13 of 13 populations ok)
+G6b ok  max |ratio-1| = 0.0057 over 1359 pairs (+1 NAMED residual allowed)
+```
+
+G6b's named residual is **TZA coconut only** — `E 120,396,849 / T 117,542,446 = 0.9763`, the Wete
+(Kaskazini Pemba) row from #50. Nothing else breached: the worst non-named pair is TZA cassava at
+0.9943, and the next eleven are all within 0.6 %. Crop material pairs are ok against the unchanged
+crop exposure, 0 pairs one-side-only, 0 missing, full scenario set.
+
+No flag from the forbidden list was passed. The command was exactly
+`--variables vop_usd --drift-exposure vop_usd=$TWIN --livestock-moved [--timeframe annual] [--dry-run]`.
+
+#### E4 — live
+
+Both live runs exit 0: jagermeyr in 3.0 min, annual in 5.1 min. The publisher took its own backup
+first, as it always does:
+
+- `sandbox/backup/issue9_20261023_122959/` (jagermeyr)
+- `sandbox/backup/issue9_20261023_123302/` (annual)
+
+**12 keys written** — 3 severities x 2 timeframes x (parquet + `.json` sidecar), under
+`variable=vop_nominal-usd21/period={jagermeyr,annual}/model=ENSEMBLEmean/severity={severe,moderate,extreme}/int=multi-hazard.parquet`.
+Every upload reported `SIZE MATCH` and every HTTPS range probe returned `HTTP 206`.
+
+#### E5 — verification
+
+**12 of 12 MD5 == ETag.** No key carries a multipart `-n` suffix, so the ETag is the MD5 and the
+comparison is meaningful — checked rather than assumed:
+
+| timeframe | severity | parquet | json |
+|---|---|---|---|
+| jagermeyr | severe / moderate / extreme | 82.40M / 82.77M / 80.63M — match | 17.19K / 17.43K / 17.31K — match |
+| annual | severe / moderate / extreme | 78.02M / 75.96M / 73.78M — match | 16.83K / 17.07K / 16.95K — match |
+
+**Sidecars: `ensemble.n_members = 18` in all six**, `len(members) = 18`, stamped 12:21:48 (jagermeyr)
+and 12:21:50 (annual) by E3.4. The publisher independently logged
+`sidecar ok: membership identical to live (18 GCMs)` on each write.
+
+One correction worth recording so nobody repeats it: my first verification script read
+`$ensemble_members` and reported `n_members = 0` for all six. The field is `ensemble$n_members`;
+the zeros were my JSON path, not the data.
+
+#### What actually changed in the published tier
+
+MD5 equality proves remote == local, so a read-back cannot add to the integrity claim. I ran one
+anyway for the question that matters — whether anything but livestock moved. Downloading the **new**
+key and its **pre-publish backup** and summing `hazard == "any"` over all hazard_vars, scenarios and
+admin levels (a relative figure, not a national total):
+
+| side | pre-publish | published today | ratio |
+|---|---|---|---|
+| crops | 27,241.52 | 27,241.52 | **1.0000** |
+| livestock | 10,159.14 | 10,674.92 | **1.0508** |
+
+The crop side is bit-identical, which is the claim worth having: the re-pricing touched livestock and
+nothing else, measured on the two objects rather than inferred from the fact that only livestock was
+re-run.
+
+The livestock ratio is 1.0508 here against 1.0464 on the exposure side (104.229 -> 109.063 B in C).
+These are not the same quantity and should not be expected to match exactly — the tier weights each
+country-crop by hazard frequency and admin2 coverage, so re-pricing that moves countries in both
+directions (ZAF poultry -32 %, MOZ poultry +92 %) reweights differently in the product than in the
+flat exposure sum. G6b is the gate that tests the arithmetic, and it passed at 0.0057.
+
+#### State
+
+- **#47 is closed on the data side.** 0.4.1 -> 0.4.4 -> reference (D) -> usd tier (E), all gated,
+  all published, all hash-verified. The usd CDH record's warning about world-median livestock pricing
+  can come down whenever the macbook wants to edit it.
+- Nothing was deleted. No allow-flag, no tolerance change, no `--reference`, no
+  `--allow-schema-drift` at any point in D or E.
+- **Parked copies kept**, per the block: `Data/_parked_issue47_20261021_164945/` (exposure parquets,
+  GLW `fao_vop` + `vop_nominal-usd-*`, and `r3_vop_usd/{annual,jagermeyr}` at 1002 files each).
+- **S3 backups kept**: `sandbox/backup/issue9_{20261021_...,20261023_122959,20261023_123302}/`.
+- Open from this thread: #50 (TZA coconut / Wete) is still the one named residual, unchanged.
+
+---
+
 ### RESPONSE 2026-10-23 — E-resume: E2r + E3r + E3.3 + E3.4 all clear. Interim; E4/E5 still to run.
 
 Posting this before E4 because the macbook should not be waiting on a publish to learn that the
