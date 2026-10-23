@@ -48,6 +48,7 @@ calc_pet <- function(yr, mn){
     keep <- ex(tx_pth,'tasmax') & ex(tn_pth,'tasmin') & ex(rs_pth,'rsds') &
             ex(rh_pth,'hurs')   & ex(ws_pth,'sfcWind')
     stopifnot(any(keep))
+    require_all_days(keep, dts, 'tasmax/tasmin/rsds/hurs/sfcWind', tx_pth)
     dts <- dts[keep]
     Js  <- lubridate::yday(dts)
 

@@ -44,10 +44,10 @@ calc_tav <- function(yr, mn){
     
     # Files
     txfls <- paste0(tx_pth,'/tasmax_',dts,'.tif')
-    txfls <- txfls[file.exists(txfls)]
+    txfls <- require_days(txfls, 'tasmax')
     stopifnot(length(txfls) > 0)
     tnfls <- paste0(tn_pth,'/tasmin_',dts,'.tif')
-    tnfls <- tnfls[file.exists(tnfls)]
+    tnfls <- require_days(tnfls, 'tasmin')
     stopifnot(length(tnfls) > 0)
 
     # Read daily minimum and maximum temperatures data

@@ -40,7 +40,7 @@ calc_ndd <- function(yr, mn){
     
     # Files
     fls <- paste0(pr_pth,'/','pr_',dts,'.tif')
-    fls <- fls[file.exists(fls)]
+    fls <- require_days(fls, 'pr')
     stopifnot(length(fls) > 0)
 
     # Read daily precipitation data

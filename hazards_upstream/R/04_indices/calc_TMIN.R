@@ -44,7 +44,7 @@ calc_tmin <- function(yr, mn){
     
     # Files
     tnfls <- paste0(tn_pth,'/tasmin_',dts,'.tif')
-    tnfls <- tnfls[file.exists(tnfls)]
+    tnfls <- require_days(tnfls, 'tasmin')
     stopifnot(length(tnfls) > 0)
 
     # Read daily minimum temperature data

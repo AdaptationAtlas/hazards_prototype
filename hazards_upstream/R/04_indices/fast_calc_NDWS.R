@@ -101,13 +101,13 @@ calc_ndws <- function(yr, mn){
     
     # Files
     pr_fls <- paste0(pr_pth,'/pr_', dts,'.tif')
-    pr_fls <- pr_fls[file.exists(pr_fls)]
+    pr_fls <- require_days(pr_fls, 'pr')
     tx_fls <- paste0(tx_pth, '/tasmax_', dts, '.tif')
-    tx_fls <- tx_fls[file.exists(tx_fls)]
+    tx_fls <- require_days(tx_fls, 'tasmax')
     tm_fls <- paste0(tm_pth, '/tasmin_', dts, '.tif')
-    tm_fls <- tm_fls[file.exists(tm_fls)]
+    tm_fls <- require_days(tm_fls, 'tasmin')
     sr_fls <- paste0(sr_pth, '/rsds_', dts, '.tif')
-    sr_fls <- sr_fls[file.exists(sr_fls)]
+    sr_fls <- require_days(sr_fls, 'rsds')
     # Fail loud if any input variable has zero available days (roadmap rank 5)
     stopifnot(length(pr_fls) > 0, length(tx_fls) > 0,
               length(tm_fls) > 0, length(sr_fls) > 0)
@@ -134,7 +134,7 @@ calc_ndws <- function(yr, mn){
     
     # Compute water balance model
     date <- paste0(yr,'-',mn)
-    if(date %in% c('1995-01','2021-01')){
+    if(date %in% cfg_avail_seed_months()){   # AVAIL_SEED_MONTHS env; default 1995-01,2021-01
       AVAIL <<- ETMAX[[1]] * 0
       AVAIL[!is.na(AVAIL)] <- 0
     } else if (env_flag("NDWS_AVAIL_FIX", TRUE)) {

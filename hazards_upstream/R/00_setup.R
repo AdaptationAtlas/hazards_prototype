@@ -173,5 +173,93 @@ should_skip <- function(outfile, force = env_flag("FORCE_OVERWRITE", FALSE)) {
   all(file.exists(outfile)) && !force
 }
 
+# ---- input completeness gate --------------------------------------------------
+# The daily readers used to drop missing input files silently (`fls[file.exists(fls)]`), so a month
+# with gaps under-counted day-count indices (NTx, NDWS, ...) and biased means. DAYS_CHECK sets what a
+# gap does:
+#   warn     (default) legacy behaviour - continue on the days present - plus a WARN line per month
+#            that names the gap. NEX-GDDP runs are unchanged by default: the on-disk calendar layout
+#            of the 360-day / no-leap GCMs has not been censused yet (DISPATCH_obs_s0_probe.md).
+#   calendar stop on any gap the series' own calendar does not explain. The calendar is inferred
+#            from the files in that directory: a missing 31st is a calendar gap only if the
+#            directory holds no 31st-of-month file at all (360-day GCM); a missing 29-Feb only if
+#            it holds no 29-Feb at all (no-leap GCM). For NEX-GDDP once the gap census is clean.
+#   strict   stop on any missing day. For Gregorian observed inputs (CHIRPS v3 / CHIRTS-ERA5 / AgERA5).
+# Under calendar/strict a stop aborts the whole script (drivers have no tryCatch): run one GCM per
+# process.
+cfg_days_check <- function() {
+  m <- tolower(env_or("DAYS_CHECK", "warn"))
+  stopifnot("DAYS_CHECK must be warn, calendar or strict" = m %in% c("warn", "calendar", "strict"))
+  m
+}
+.dir_cal_cache <- new.env(parent = emptyenv())
+.dir_calendar <- function(dir) {
+  if (!is.null(.dir_cal_cache[[dir]])) return(.dir_cal_cache[[dir]])
+  f <- list.files(dir, pattern = "\\.tif$")
+  r <- c(has31 = any(grepl("-[0-9]{2}-31\\.tif$", f)), has0229 = any(grepl("-02-29\\.tif$", f)))
+  assign(dir, r, envir = .dir_cal_cache)
+  r
+}
+# TRUE where a missing file is explained by its directory's calendar. Dates are read from the
+# FILE NAME only, so a date-like token elsewhere in the path cannot confuse it.
+.calendar_gap <- function(ids) {
+  b <- basename(ids)
+  m <- regexpr("[0-9]{4}-[0-9]{2}-[0-9]{2}", b)
+  out <- rep(FALSE, length(ids))
+  hit <- m > 0
+  if (!any(hit)) return(out)
+  d <- regmatches(b, m)
+  md <- substr(d, 6, 10)
+  for (k in which(hit)) {
+    cal <- .dir_calendar(dirname(ids[k]))
+    j <- which(which(hit) == k)
+    out[k] <- (md[j] == "02-29" && !cal[["has0229"]]) || (substr(md[j], 4, 5) == "31" && !cal[["has31"]])
+  }
+  out
+}
+.missing_days_gate <- function(ok, ids, label) {
+  if (all(ok)) return(invisible(TRUE))
+  mode <- cfg_days_check()
+  miss <- ids[!ok]
+  if (mode != "strict" && all(.calendar_gap(miss))) {
+    .log(sprintf("%s: %d calendar-gap day(s) absent (no 29-Feb / no 31st in this series) - expected",
+                 label, length(miss)), level = "INFO")
+    return(invisible(TRUE))
+  }
+  msg <- sprintf("%s: %d of %d daily inputs missing (first missing: %s)",
+                 label, sum(!ok), length(ok), basename(miss[1]))
+  if (mode == "warn") {
+    .log(msg, " - DAYS_CHECK=warn (default): continuing on the days present", level = "WARN")
+    return(invisible(FALSE))
+  }
+  stop(msg, " [DAYS_CHECK=", mode, "]. DAYS_CHECK=warn continues on the days present.", call. = FALSE)
+}
+# Expected daily files -> the files to read (all of them, or under warn the ones present).
+require_days <- function(fls, label = "input") {
+  ok <- file.exists(fls)
+  .missing_days_gate(ok, fls, label)
+  fls[ok]
+}
+# Same gate for the aligned-stack pattern (`keep` = days present for every variable). `ref_dir` is
+# one input directory, used to read the series calendar.
+require_all_days <- function(keep, dts, label = "input", ref_dir = ".") {
+  .missing_days_gate(keep, file.path(ref_dir, paste0("x_", as.character(dts), ".tif")), label)
+  invisible(keep)
+}
+
+# ---- water-balance seed months ----------------------------------------------
+# Months at which the soil-water store (AVAIL / SWB) is reset to its initial state instead of
+# being carried from the prior month. Default = the two NEX-GDDP run starts (historical 1995-01,
+# future 2021-01). A run starting elsewhere (e.g. an observed 2005-2025 series) must set
+# AVAIL_SEED_MONTHS="2005-01" - otherwise it stops at the first month (prior AVAIL missing) and,
+# worse, would silently reset the store at 2021-01 mid-series.
+cfg_avail_seed_months <- function(default = c("1995-01", "2021-01")) {
+  v <- Sys.getenv("AVAIL_SEED_MONTHS", unset = NA_character_)
+  if (is.na(v) || v == "") return(default)
+  s <- trimws(strsplit(v, ",", fixed = TRUE)[[1]])
+  stopifnot("AVAIL_SEED_MONTHS must be YYYY-MM[,YYYY-MM...]" = all(grepl("^[0-9]{4}-[0-9]{2}$", s)))
+  s
+}
+
 # scipen only; do NOT silence warnings (legacy scripts set warn=-1 - dropped on migration).
 options(scipen = 999)

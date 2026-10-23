@@ -47,13 +47,13 @@ calc_tai <- function(yr){
     
     # Files
     pr_fls <- paste0(pr_pth,'/pr_', dts,'.tif')
-    pr_fls <- pr_fls[file.exists(pr_fls)]
+    pr_fls <- require_days(pr_fls, 'pr')
     stopifnot(length(pr_fls) > 0)
     tx_fls <- paste0(tx_pth, '/tasmax_', dts, '.tif')
-    tx_fls <- tx_fls[file.exists(tx_fls)]
+    tx_fls <- require_days(tx_fls, 'tasmax')
     stopifnot(length(tx_fls) > 0)
     tm_fls <- paste0(tm_pth, '/tasmin_', dts, '.tif')
-    tm_fls <- tm_fls[file.exists(tm_fls)]
+    tm_fls <- require_days(tm_fls, 'tasmin')
     stopifnot(length(tm_fls) > 0)
 
     # Read variables, and calculate monthly summaries, do by month to reduce memory consumption

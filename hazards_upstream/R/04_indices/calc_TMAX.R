@@ -44,7 +44,7 @@ calc_tmax <- function(yr, mn){
     
     # Files
     txfls <- paste0(tx_pth,'/tasmax_',dts,'.tif')
-    txfls <- txfls[file.exists(txfls)]
+    txfls <- require_days(txfls, 'tasmax')
     stopifnot(length(txfls) > 0)
 
     ## Read daily maximum temperature data

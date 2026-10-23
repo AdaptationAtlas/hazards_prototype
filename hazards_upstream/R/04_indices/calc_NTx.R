@@ -28,8 +28,9 @@ xtd <- terra::ext(msk); rm(msk)
 calc_ntx <- function(yr, mn, thr = 40) {
   
   outfile <- paste0(out_dir,'/NTx',thr,'/NTx',thr,'-',yr,'-',mn,'.tif') 
-  thr <- thr[!file.exists(outfile)]
-  outfile <- outfile[!file.exists(outfile)]
+  todo <- !vapply(outfile, should_skip, logical(1))   # honours FORCE_OVERWRITE=1 (was bare file.exists)
+  thr <- thr[todo]
+  outfile <- outfile[todo]
   
   if (length(outfile) > 0) {
     
@@ -44,7 +45,7 @@ calc_ntx <- function(yr, mn, thr = 40) {
     
     # Files
     fls <- paste0(tx_pth,'/tasmax','_',dts,'.tif')
-    fls <- fls[file.exists(fls)]
+    fls <- require_days(fls, 'tasmax')
     stopifnot(length(fls) > 0)
 
     # Read daily maximum temperature data

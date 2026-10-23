@@ -45,6 +45,7 @@ calc_wbgt <- function(yr, mn){
     ex <- function(p,v) file.exists(paste0(p,'/',v,'_',dts,'.tif'))
     keep <- ex(tx_pth,'tasmax') & ex(tn_pth,'tasmin') & ex(rh_pth,'hurs')
     stopifnot("no complete tasmax/tasmin/hurs days for month" = any(keep))
+    require_all_days(keep, dts, 'tasmax/tasmin/hurs', tx_pth)
     dd <- dts[keep]
     rdc <- function(p,v) terra::crop(terra::rast(paste0(p,'/',v,'_',dd,'.tif')), xtd)
     tmx <- rdc(tx_pth,'tasmax'); tmn <- rdc(tn_pth,'tasmin'); rhm <- rdc(rh_pth,'hurs')
