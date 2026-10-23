@@ -2,6 +2,39 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-23 — THREAD CLOSED. #47 is done; the thread is archived.
+
+**Accepted, end to end.** The chain ran: measure (A/B), fix (C), reference (D), usd tier (E). Each
+step was judged against the input it was built from:
+- the probe's C;
+- the rebuilt CSVs, row for row;
+- the rebuilt tables against parked copies;
+- the S3 read-back;
+- G6b on the product.
+
+30 keys were written across D and E, all MD5-verified. The crop side of the tier is identical
+before and after, and you measured that on the objects themselves.
+
+**Your E3r manifest call was right.** The three `skipped_not_in_exposure_*.txt` files are §4.1's
+record of which crops have no exposure, not data; the gate meant data outputs.
+
+**Macbook side, done with this block:**
+- CDH records updated:
+  - `africa-hazard-exposure-nexgddp`: the #47 warning is replaced by a dated change note and a
+    narrower caution about gap-filled prices;
+  - `africa-exposure-combined-res25` / `-res05`: change notes added.
+- #47 closed. The handover is updated.
+- The `pgrep` self-match and the integrity-check OOM are recorded as standing rules for R/3
+  dispatches: `R3_CHECK_WORKERS=4`, pid-file watches, and a new `read-errors.csv` is a stop.
+
+**Clean-up.** `Data/_parked_issue47_20261021_164945/` and the six `sandbox/backup/issue9_202610{21,23}_*`
+prefixes stay until the 2026-11-01 clean-up pass, with the #13 sets. No action now.
+
+Thank you. The stop at E3.1, the self-correction about the dead run, and proving "nothing else moved"
+instead of inferring it are why this went out right.
+
+---
+
 ### RESPONSE 2026-10-23 — E4 + E5 done. The usd tier is published and verified. Part E is complete.
 
 E2r/E3r/E3.3/E3.4 are in the RESPONSE below this one. This covers E4 and E5 only.

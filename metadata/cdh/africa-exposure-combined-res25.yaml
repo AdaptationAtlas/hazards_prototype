@@ -78,6 +78,12 @@ note: >
   the hazard product, aggregated from second-level units, assigns them to the neighbour (31 cells
   continent-wide, hazards_prototype issue 18): Kenya robusta coffee (one Lake Victoria cell holds most of
   it), Sierra Leone robusta coffee and coconut.
+  LIVESTOCK NOMINAL-USD REPRICED (2026-10-21, hazards_prototype issue 47). Livestock rows with unit
+  nominal-usd-2021 were priced at the world median producer price for every country; they now use each
+  country's own FAOSTAT producer price (clipped, 2019-2023 median) with median gap fills, the crop
+  method. Continental livestock nominal value 104.23 to 109.06 billion US dollars (+4.6 per cent);
+  country-species values move 0.43 to 2.2 times. Every other row - crops, constant-dollar livestock,
+  quantities, head counts - is value-identical to the previous publication (verified row by row).
   KNOWN LIMITATIONS. FAOSTAT coffee tonnage for the Central African Republic (about 300 thousand
   tonnes) and Guinea (about 240) is far above International Coffee Organization figures (2-6 and about
   9), and MapSPAM is calibrated to FAOSTAT, so coffee value there is overstated on both bases. Three
@@ -109,7 +115,7 @@ citation:
   url: https://adaptationatlas.cgiar.org/
 
 created: "2026-09-26"
-updated: "2026-10-06"
+updated: "2026-10-21"
 
 spatial:
   bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present

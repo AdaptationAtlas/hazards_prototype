@@ -111,6 +111,17 @@ note: >
   (africa-hazard-exposure-intld), harvested area (-harvested-area), production tonnes (-production)
   and livestock numbers (-livestock-numbers). One named residual: Tanzania coconut undershoots its
   exposure by 2.4 per cent from a hazard-coverage hole on Pemba Island (issue 50).
+  LIVESTOCK REPRICED AT NATIONAL PRICES, REPUBLISHED 2026-10-23 (hazards_prototype issue 47). Until
+  then, livestock nominal-USD value was priced at the world median producer price for every country:
+  the national price was computed and never used. It is now each country's own FAOSTAT producer price
+  (clipped to a band around the world median, 2019-2023 median, longer series as fallback), gap-filled
+  with medians of neighbouring, regional and continental own prices, as crops are. Goat and sheep milk
+  keep the world median by decision. Measured before the fix: continental livestock nominal value
+  104.2 to 109.1 billion US dollars (+4.6 per cent), but country-species values move 0.43 to 2.2
+  times and rows holding 69 per cent of the value move more than 10 per cent, in both directions
+  (South Africa poultry -32 per cent, Egypt cattle +39, Mozambique poultry +92). Own producer prices
+  exist for only about a quarter of country-product rows; the rest are fills, some of them a single
+  neighbour's price. Crop values in this tier did not change (crop aggregate identical before and after).
 
 contact:
   - organization: Alliance of Bioversity International and CIAT
@@ -130,7 +141,7 @@ citation:
   url: https://adaptationatlas.cgiar.org/
 
 created: "2026-09-18"
-updated: "2026-10-20"
+updated: "2026-10-23"
 
 spatial:
   bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present
@@ -251,12 +262,12 @@ cdh:
           in the upstream livestock chain, produced roughly a sevenfold error in cattle exposure
           (corrected upstream 2026-09-25).
         use_instead: Check exposure_unit on both sides and convert, or use products on one basis throughout.
-      - use: Treating livestock values in this tier as country-priced.
+      - use: Treating a livestock value in a country without its own FAOSTAT producer price as that country's price.
         reason: >
-          The livestock nominal-USD value is believed to be priced at the global median for every
-          country (hazards_prototype issue 47, from a code reading, not yet measured), so livestock
-          values here reflect head counts times one price, not national prices.
-        use_instead: Use the livestock head-count tier, or the constant-dollar tier, until issue 47 resolves.
+          About three quarters of country-livestock-product rows carry a gap-filled price (median of
+          neighbouring, regional or continental own prices; world median for goat and sheep milk).
+          The price used and its source per row are in the processing audit, not in this table.
+        use_instead: For a country-level livestock comparison, use the head-count tier or the constant-dollar tier alongside this one.
       - use: Reading this as covering population exposure.
         reason: >
           This tier is crop value of production. Livestock exposure is published as head counts
