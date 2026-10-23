@@ -60,7 +60,7 @@ citation:
   url: https://adaptationatlas.cgiar.org/
 
 created: "2026-10-19"
-updated: "2026-10-20"
+updated: "2026-10-23"
 
 spatial:
   bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present
@@ -182,3 +182,9 @@ cdh:
           Different currency basis; the two sit under one exposure value in the reference, separated only by
           unit.
         use_instead: Filter unit explicitly on both sides (hazards_prototype issue 52).
+      - use: Reading Libya or Sierra Leone cattle value from this tier.
+        reason: >
+          FAOSTAT's constant-dollar gross production value for indigenous cattle meat is about 1,000
+          international dollars for both countries (expected tens of millions), so cattle meat is effectively
+          absent and their cattle rows carry milk only (hazards_prototype issue 54, open).
+        use_instead: Use the head-count tier or the nominal-USD tier for cattle in these two countries until issue 54 resolves.

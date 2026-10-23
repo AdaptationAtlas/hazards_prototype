@@ -35,7 +35,7 @@
     "complete": false,
     "note": "Published per severity tier by scripts/r3_publish_tiers.R."
   },
-  "cdh_record": null,
+  "cdh_record": "africa-hazard-exposure-nexgddp",
   "completeness": {
     "min_files": 1
   },
@@ -52,6 +52,26 @@
       "date": "2026-09-18",
       "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-09-30",
+      "change": "vop_nominal-usd21 republished from a full re-bake on native 0.25 deg exposure and clipped/median-filled crop prices.",
+      "ref": "#9"
+    },
+    {
+      "date": "2026-10-06",
+      "change": "vop_nominal-usd21 re-baked on the revised nominal crop price method (docs/methods/nominal_price_method.md).",
+      "ref": "#38"
+    },
+    {
+      "date": "2026-10-19",
+      "change": "Full rebake published: five variables (vop_nominal-usd21, vop_intld15-21, harv-area_ha, prod_t, head_n) x period jagermeyr + annual x 3 severities = 60 keys, 18-GCM sidecars. hazard_vars PTOT-L+NTxS+PTOT-G retired for PTOT-L+NTxM+PTOT-G; NDWS+NTxM+NDWL0 added. One CDH record per variable (africa-hazard-exposure-*).",
+      "ref": "#13"
+    },
+    {
+      "date": "2026-10-23",
+      "change": "vop_nominal-usd21 (both periods) republished: livestock nominal USD priced at national producer prices instead of the world median (+4.6 % continental, 0.43-2.2x per country-species); crop values identical. Linked cdh_record.",
+      "ref": "#47"
     }
   ],
   "schema_version": "1.0.0",

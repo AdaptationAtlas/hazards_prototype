@@ -62,9 +62,13 @@ cross-field checks.
 | `mapspam2020-adaptation-atlas-ssa` | CC-BY-4.0 | not submitted |
 | `africa-admin-boundaries-gaul2024` | CC-BY-4.0 | not submitted |
 | `africa-population-worldpop-aggregated` | CC-BY-4.0 | not submitted |
-| `africa-hazard-exposure-nexgddp` | CC-BY-4.0 | not submitted — usd tiers republished 2026-10-06 on the revised prices, consistent with the denominator |
-| `africa-exposure-combined-res25` | CC-BY-4.0 | not submitted — the denominator for the hazard product (0.25° grid); republished 2026-10-06 (#38/#39/#40 fixed, new nominal price method) |
-| `africa-exposure-combined-res05` | CC-BY-4.0 | not submitted — 0.05° Atlas grid, aliases the unsuffixed `crop-livestock_all` key; same caveats |
+| `africa-hazard-exposure-nexgddp` | CC-BY-4.0 | not submitted — `vop_nominal-usd21`, both periods; last republished 2026-10-23 (#47: livestock at national prices), consistent with the denominator |
+| `africa-hazard-exposure-intld` | CC-BY-4.0 | not submitted — `vop_intld15-21`, both periods; first published 2026-10-16/19 (#13). LBY/SLE cattle meat missing on this basis (#54) |
+| `africa-hazard-exposure-harvested-area` | CC-BY-4.0 | not submitted — `harv-area_ha`, both periods; first published 2026-10-16/19 (#13, #41) |
+| `africa-hazard-exposure-production` | CC-BY-4.0 | not submitted — `prod_t`, both periods; first published 2026-10-16/19 (#13, #41) |
+| `africa-hazard-exposure-livestock-numbers` | CC-BY-4.0 | not submitted — `head_n`, both periods; first published 2026-10-16/19 (#13, #41) |
+| `africa-exposure-combined-res25` | CC-BY-4.0 | not submitted — the denominator for the hazard product (0.25° grid); republished 2026-10-06 (#38/#39/#40), 2026-10-08 (B5, FAOSTAT item-code joins) and 2026-10-21 (#47, livestock nominal at national prices) |
+| `africa-exposure-combined-res05` | CC-BY-4.0 | not submitted — 0.05° Atlas grid, aliases the unsuffixed `crop-livestock_all` key; same republish dates and caveats |
 | `kenya-population-knbs-projections` | LicenseRef-KNBS-All-Rights-Reserved | **must not be submitted** — see below |
 | `kenya-population-grid3` | CC-BY-4.0 | **retired** — PR #39 closed, kept local |
 

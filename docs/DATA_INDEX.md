@@ -13,8 +13,8 @@ The **here** column reflects one host only — whichever machine rendered this. 
 | dataset | class | version | status | here | Atlas S3 | CDH | transfer |
 |---|---|---|---|---|---|---|---|
 | [`crop-vop-intld15`](../metadata/catalogue/crop-vop-intld15.json) | derived | 0.4.0 | current | present (6) | - | none | regenerate |
-| [`exposure-admin-tables`](../metadata/catalogue/exposure-admin-tables.json) | derived | spam20-20_glw420-20 | current | empty (0) | - | none | regenerate |
-| [`livestock-vop`](../metadata/catalogue/livestock-vop.json) | derived | 0.4.1 | current | empty (0) | - | none | regenerate |
+| [`exposure-admin-tables`](../metadata/catalogue/exposure-admin-tables.json) | derived | spam20-20_glw420-20 | current | empty (0) | - | authored-valid | regenerate |
+| [`livestock-vop`](../metadata/catalogue/livestock-vop.json) | derived | 0.4.1 | current | empty (0) | - | authored-valid | regenerate |
 | [`nexgddp-indices-monthly`](../metadata/catalogue/nexgddp-indices-monthly.json) | derived | nexgddp | current | absent | partial | none | must-transfer |
 | [`nexgddp-indices-seasonal`](../metadata/catalogue/nexgddp-indices-seasonal.json) | derived | nexgddp | current | absent | - | none | regenerate |
 | [`afr-highlands`](../metadata/catalogue/afr-highlands.json) | external-raw | 1 | current | present (1) | yes | none | pull-from-origin |
@@ -35,7 +35,7 @@ The **here** column reflects one host only — whichever machine rendered this. 
 | [`eastafrica-flood-jrc`](../metadata/catalogue/eastafrica-flood-jrc.json) | published | 1 | current | absent | yes | authored-valid | regenerate |
 | [`eastafrica-ndvi-modis`](../metadata/catalogue/eastafrica-ndvi-modis.json) | published | 1 | current | absent | yes | authored-valid | regenerate |
 | [`eastafrica-wrsi-fews`](../metadata/catalogue/eastafrica-wrsi-fews.json) | published | 1 | current | absent | yes | authored-valid | regenerate |
-| [`hazard-exposure`](../metadata/catalogue/hazard-exposure.json) | published | nex-gddp-cmip6 | current | absent | partial | none | regenerate |
+| [`hazard-exposure`](../metadata/catalogue/hazard-exposure.json) | published | nex-gddp-cmip6 | current | absent | partial | authored-valid | regenerate |
 | [`kenya-admin-codab`](../metadata/catalogue/kenya-admin-codab.json) | published | 1 | current | absent | yes | authored-valid | regenerate |
 | [`kenya-facilities-hotosm`](../metadata/catalogue/kenya-facilities-hotosm.json) | published | 1 | current | absent | yes | authored-valid | regenerate |
 | [`kenya-flood-exposure-intersect`](../metadata/catalogue/kenya-flood-exposure-intersect.json) | published | 1 | current | absent | yes | authored-valid | regenerate |
@@ -228,4 +228,4 @@ Recorded in the catalogue, surfaced here so they are not invisible.
 
 ---
 
-Rendered 2026-09-23 on host `mac-pstewarda`.
+Rendered 2026-10-23 on host `mac-pstewarda`.

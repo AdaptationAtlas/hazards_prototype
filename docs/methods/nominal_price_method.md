@@ -1,4 +1,4 @@
-# Method: nominal US$ prices for crop value of production (`vop_nominal-usd-2021`)
+# Method: nominal US$ prices for value of production — crops (`R/0.4.2`) and livestock (`R/0.4.1`, since 2026-10-21)
 
 **Status:** decided 2026-10-01/02 (P. Steward), implemented in `R/0.4.2_create_crop_vop_nominal_usd.R` §3 and
 `R/price_fill.R`, **published 2026-10-06** (exposure reference + family; the usd hazard tiers were re-baked the same day; `archive/dispatches/DISPATCH_cglabs_exposure_intld_fixes.md` Blocks D and F). This is the
@@ -121,6 +121,43 @@ differ.
   auction prices for coffee, sugarcane, cocoa, tea) is an alternative, item-specific treatment of the
   basis problem; the general guard above was preferred so that it covers every item.
 
+## Livestock (`R/0.4.1` §4.1) — same chain, reduced; since 2026-10-21 (#47)
+
+Until 2026-10-21, livestock nominal US$ value was **production × the world median producer price for
+every country**. 0.4.1 built a gap-filled national price (`price_usd_final`) and never used it. Since then
+it is priced per (country, livestock product) by `R/price_fill.R::livestock_nominal_price()`, using the
+same building blocks as crops, applied in this order:
+
+1. **Producer prices only.** FAOSTAT *Producer Price (USD/tonne)*. The implied-price route of step 1
+   above is not used: FAOSTAT current-US$ livestock GPV is sparse.
+2. **Clip** each observation to [1/5, 5] × the world median for that item and year, before any
+   averaging (`clip_prices_to_world_band`).
+3. **Own price:** the 2019-2023 window median, falling back to the median over 2014-2023
+   (`own_price_window`, producer half only).
+4. **Fill** from the **medians** of neighbours, then region (excluding the country itself), then
+   continent, then world (`fill_price_robust`). A country outside the region table gets a singleton
+   region and falls through to the continent median.
+5. **Item override:** goat and sheep milk use the world median for every country. FAOSTAT's African
+   prices for both are implausibly low, a decision that predates #47.
+6. **No basis guard and no stale-price test.** Measured: the basis outliers are on the constant-I$ side
+   (LBY and SLE cattle meat, #54), not on the price side.
+
+Value = window-median FAOSTAT production (t) × price. It is then distributed over GLW4-2020 head per
+pixel and split highland/tropical, as before. The audit file
+`<glw_pro_dir>/fao_vop/glw4-2020_vop_nominal-usd-<yr>-prices-used.csv` now carries `price_usd_global`,
+`price_usd_final` and `price_source` per row.
+
+**Measured effect** (node, 2026-10-21; `R/checks/041_outputs/issue47_livestock_price_20261021_125145.csv`):
+- **Continent:** Africa y2021 livestock nominal 104.23 → 109.07 B (+4.6 %).
+- **Per country-species row:** factors range from 0.43 to 2.2. Rows moving more than 10 % hold 69 % of
+  the value.
+- **Examples:** ZAF poultry −32 %, EGY cattle +39 %, NGA poultry +74 %, MOZ poultry +92 %.
+- **Clip:** it dropped 3 observations, all goat or sheep milk, which the override already replaces.
+
+**Coverage caveat (state it wherever livestock nominal value is described).** Only about a quarter of
+country-product rows have their own producer price. The rest are fills, and some neighbour fills are one
+country's price (for example, NER prices cattle milk and eggs for NGA, BEN and TCD).
+
 ## Consumers updated at first publication (2026-10-06/07)
 
 - **Done:** the CDH records (`africa-exposure-combined-res25` / `-res05`, `africa-hazard-exposure-nexgddp`);
@@ -130,3 +167,13 @@ differ.
   drift probe read `crop-livestock_all_res-25`.
 - **Next change to this method:** update the same list, and re-bake the usd tiers in the same pass. Never
   publish a denominator ahead of its hazard product (the 2026-10-06 lesson).
+
+## Consumers updated for the livestock change (2026-10-21/23, #47)
+
+- **Done:**
+  - the CDH records (`africa-hazard-exposure-nexgddp`, `africa-exposure-combined-res25` / `-res05`,
+    `livestock-vop`);
+  - the catalogue changelogs;
+  - the reference and the `vop_nominal-usd21` tier, re-baked in the same pass (reference 2026-10-21,
+    tier 2026-10-23), so the denominator and the product agree.
+- **Relay (not ours to edit):** notice to consumers on `data-management#2` — drafted 2026-10-23, pending Pete's approval.

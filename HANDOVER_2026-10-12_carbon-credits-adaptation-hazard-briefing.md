@@ -63,8 +63,9 @@ code and a metadata record disagree, this document follows the code and says so.
   about 19 % of constant-dollar crop value.
 - **Hazards computed on observed CHIRPS / CHIRTS.** A streamlined observed-baseline pipeline is being
   scoped (`PLAN_obs_hazard_pipeline.md`), about 4 weeks to a first crops version.
-- **Livestock nominal-USD values** in the live tiers are priced at the world median. The fix (#47) is
-  being republished, so use `head_n` or the constant-dollar tier for livestock in the meantime.
+- **Livestock nominal-USD values: fixed 2026-10-23 (#47).** The `vop_nominal-usd21` tiers were priced at
+  the world median and are now republished at national producer prices: +4.6 % continental, 0.43-2.2x per
+  country-species. No workaround is needed. Method: `docs/methods/nominal_price_method.md`, livestock section.
 
 ---
 
@@ -516,6 +517,9 @@ This cannot double-count. It lets a compound class carry a loss that is not the 
     (`price_usd_final`) is unused. This looks like a defect and has not been raised as an issue.
   - Livestock nominal values in the published tier carry it. For livestock, prefer head counts
     or the constant-dollar denominator. Tracked as issue **#47**.
+  - **Update 2026-10-23:** #47 is fixed and republished. 0.4.1 now prices each country at its own
+    clipped producer price, with median gap fills (`R/price_fill.R::livestock_nominal_price`). The
+    reference was republished 2026-10-21 and `vop_nominal-usd21` (both periods) 2026-10-23.
 
 ### 4.2 Are livestock rows published?
 
@@ -810,10 +814,10 @@ key has a `.json` sidecar with the 18-GCM membership and field descriptions.
 - The bucket is versioned, and a public read with `?versionId=<id>` works (checked 2026-10-12 and
   2026-10-22).
 - Republication overwrites a key in place. A pinned version remains readable for at least 270 days.
-- **Expected next republication:** the `vop_nominal-usd21` tiers. #47 corrects livestock nominal
-  prices from the world median to national prices. The denominator's livestock `nominal-usd-2021`
-  rows were already republished on 2026-10-21 (pin above). Crop rows and every other tier are
-  unaffected.
+- **Republished 2026-10-23:** the `vop_nominal-usd21` tiers, both periods (#47: livestock nominal
+  prices moved from the world median to national prices). The denominator's livestock
+  `nominal-usd-2021` rows were republished on 2026-10-21 (pin above). Crop rows and every other tier
+  are unaffected. Pins taken before 2026-10-23 on `vop_nominal-usd21` refer to the previous version.
 - History: the denominator's 2026-10-08 republication moved constant-dollar crop rows +20 % (FAOSTAT
   joins on item code).
 

@@ -34,7 +34,7 @@
     "3"
   ],
   "atlas_s3": null,
-  "cdh_record": null,
+  "cdh_record": "livestock-vop",
   "completeness": {
     "min_files": 1
   },
@@ -51,6 +51,16 @@
       "date": "2026-09-18",
       "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-10-21",
+      "change": "0.4.1 section 4.1: nominal USD now priced per country by R/price_fill.R::livestock_nominal_price (clipped own producer price, median fills, goat/sheep milk at the world median) instead of the world median for every country; fao_vop/*-prices-used.csv now carries price_usd_final and price_source. Constant-I$ unchanged.",
+      "ref": "#47"
+    },
+    {
+      "date": "2026-10-23",
+      "change": "Description corrected: five species (no camels), GLW4 2020 ~10 km converted to head per pixel, summed onto 0.05/0.25 deg. Linked cdh_record.",
+      "ref": "#49"
     }
   ],
   "schema_version": "1.0.0",

@@ -34,7 +34,7 @@
     "4.1"
   ],
   "atlas_s3": null,
-  "cdh_record": null,
+  "cdh_record": "africa-exposure-combined-res25",
   "completeness": {
     "min_files": 1
   },
@@ -51,6 +51,26 @@
       "date": "2026-09-18",
       "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-09-25",
+      "change": "Reference republished at res-05 and res-25 (+ unsuffixed alias = res-05); livestock constant-I$ rows had held nominal values (1.198 -> 1.000 vs FAOSTAT); unit column carries the vintage.",
+      "ref": "#30"
+    },
+    {
+      "date": "2026-10-06",
+      "change": "Republished on the revised nominal crop price method; constant-I$ unchanged.",
+      "ref": "#38"
+    },
+    {
+      "date": "2026-10-08",
+      "change": "Republished: FAOSTAT joins keyed on item code; constant-I$ crop side 200.28 -> 240.24 B (+20 %).",
+      "ref": "B5"
+    },
+    {
+      "date": "2026-10-21",
+      "change": "Republished: livestock nominal-usd-2021 rows priced at national producer prices (104.23 -> 109.06 B at res-25); every other row value-identical. Linked cdh_record (res-05 sibling: africa-exposure-combined-res05).",
+      "ref": "#47"
     }
   ],
   "schema_version": "1.0.0",
