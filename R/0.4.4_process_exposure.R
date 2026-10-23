@@ -392,7 +392,24 @@ glw_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
 
   }, .options = furrr::furrr_options(seed = TRUE, stdout = FALSE)))
 future::plan(future::sequential)
-  
+
+# 2.9) TLU slot (#52) ####
+# 2026-10-23 (#52): 0.4.1 writes Tropical Livestock Units (cattle 0.7 + sheep 0.1 + goats 0.1 +
+# pigs 0.2 + poultry 0.01, split highland / tropical) as the `total` layers of
+# livestock_number_number_<tag>.tif, so the extraction above files them as crop = total-* under
+# exposure = "number", unit = "number", beside the ten species head counts. A weighted index in the
+# head-count slot: a consumer summing exposure == "number" adds head counts to TLU (the node measured
+# the TLU rows at a tenth of the plain head sum, #13 step 4b). They now carry their own exposure and
+# unit. Values are untouched. Zero relabelled rows is a stop: the TLU layers always exist, so none
+# found means the raster or its layer names changed and the combined table would silently carry
+# TLU as head counts again.
+.tlu_sel <- glw_extracted[, exposure == "number" & grepl("^total[-_ ](highland|tropical)$", crop)]
+.log044(sprintf("section 2.9 (#52): %d TLU rows (crop %s) relabelled exposure=number/unit=number -> exposure=tlu/unit=tlu",
+                sum(.tlu_sel), paste(sort(unique(glw_extracted[.tlu_sel, crop])), collapse = ", ")))
+if (sum(.tlu_sel) == 0) stop("section 2.9 (#52): no total-highland / total-tropical rows under exposure == 'number' - the TLU layers of livestock_number_number_<tag>.tif were not extracted, or their names changed")
+glw_extracted[.tlu_sel, `:=`(exposure = "tlu", unit = "tlu")]
+rm(.tlu_sel)
+
 # 3) Combine exposure totals by admin areas ####
 .log044("section 3: merging MapSPAM + GLW exposure tables by admin areas")
   # 3.1) Original recipe ####
@@ -430,7 +447,7 @@ if(!file.exists(file)|overwrite_glw|overwrite_spam){
   # here; an abort costs one log line. EXPOSURE_UNITS_LENIENT=1 downgrades the
   # stop to a warning for a deliberate partial run.
   units <- strsplit(Sys.getenv("EXPOSURE_UNITS",
-                               "number,ha,t,nominal-usd-2021,intld15-2021"), ",")[[1]]
+                               "number,ha,t,nominal-usd-2021,intld15-2021,tlu"), ",")[[1]]   # tlu: #52, section 2.9
   present_units <- exposure_adm_sum_tab[, sort(unique(unit))]
   missing_units <- setdiff(units, present_units)
   dropped_units <- setdiff(present_units, units)

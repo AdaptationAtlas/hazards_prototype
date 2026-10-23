@@ -64,19 +64,17 @@ DRIFT_NO_REF <- strsplit(Sys.getenv("DRIFT_NO_REF", "generic-crop"), ",")[[1]]
 # 389 pairs at #13 step 2, ratios elsewhere clean at 0.0059. Declared here so row 3 stays falsifiable
 # - a crop NOT on this list with exposure and no product row still FAILS, which is the truncation
 # row 3 exists to catch. Env-overridable like DRIFT_NO_REF.
-# `total-highland` / `total-tropical` are the livestock analogue (#13 step 4b): Tropical Livestock
+# `total-highland` / `total-tropical` WERE the livestock analogue (#13 step 4b): Tropical Livestock
 # Units - a WEIGHTED aggregate (cattle 0.7, sheep 0.1, goats 0.1, pigs 0.2, poultry 0.01), filed in
-# the twin under the same `exposure == "number"` slot as the species headcounts. The node proved it
-# by reconstruction: per-country median 0.999998 (tropical) / 1.000000 (highland) against the
-# weighted sum of the five species. The head_n tier's vocabulary is exactly the ten species x system
-# entries, so these can never have a product row. Note the difference from the crop composites: those
-# are the SAME unit as their constituents; TLU is a DIFFERENT unit in the same slot, which is a
-# twin-side observation recorded on its own issue, not something this gate can fix.
+# the twin under the same `exposure == "number"` slot as the species headcounts (node reconstruction:
+# per-country median 0.999998 tropical / 1.000000 highland against the weighted species sum). Since
+# #52 (0.4.4 section 2.9, 2026-10-23) they carry exposure = "tlu", unit = "tlu", so the head_n
+# basis (exposure == "number") no longer contains them and they need no declaration here. Against a
+# 0.4.4 basis written BEFORE #52, add them back through the env var.
 G6B_NO_PRODUCT_CROPS <- strsplit(Sys.getenv(
   "G6B_NO_PRODUCT_CROPS",
   paste("vegetables", "tropical-fruit", "rest-of-crops", "other-roots", "temperate-fruit",
-        "other-cereals", "other-pulses", "other-oil-crops", "other-fibre-crops",
-        "total-highland", "total-tropical", sep = ",")), ",")[[1]]
+        "other-cereals", "other-pulses", "other-oil-crops", "other-fibre-crops", sep = ",")), ",")[[1]]
 
 .drift_ts  <- function() format(Sys.time(), "%Y-%m-%d %H:%M:%S")
 .drift_log <- function(fmt, ...) cat(sprintf("[%s] [gate-drift] %s\n", .drift_ts(), sprintf(fmt, ...)))
