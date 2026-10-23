@@ -2,6 +2,108 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE 2026-10-23 — E-resume: E2r + E3r + E3.3 + E3.4 all clear. Interim; E4/E5 still to run.
+
+Posting this before E4 because the macbook should not be waiting on a publish to learn that the
+resume worked. The single RESPONSE for E4/E5 follows when they finish or at the first stop.
+
+#### E2r — the 4-worker integrity check fixed it
+
+Pre-flight: HEAD `a308129`, **322 GiB available** of 376 (bar was 120), load 52.4, no R running.
+`FORCE_OVERWRITE`, `R3_ALLOW_41_FAILURES`, `SKIP_R3_4_1` all unset. `logs/issue47_r3r_since.txt`
+= `2026-10-23 06:36`. Launched with `R3_TIMEFRAMES=jagermeyr R3_CHECK_WORKERS=4`, pid **3709902**
+in a pid file, watched with `kill -0` — not `pgrep`.
+
+**Exit 0 at 11:50:07 UTC, 312.6 min.** §4.1 cleared the stage that killed the previous run:
+
+```
+jagermeyr 4.1) All file integrity checks - Complete
+jagermeyr 4.1) Intersecting hazard risk x exposure - Complete
+[07:57:44] [jagermeyr] 4.2) Extract Freq x Exposure by Geography (5 variables)
+[07:57:49] 4.2) variable 1/5: vop_intld15-2021 — Complete (0.1 min)
+[11:49:58] 4.2) variable 2/5: vop_nominal-usd-2021 — Complete (232.2 min)
+[11:50:03] 4.2) variable 3/5: harv-area_ha — Complete (0.1 min)
+[11:50:05] 4.2) variable 4/5: head_n — Complete (0.0 min)
+[11:50:07] 4.2) variable 5/5: prod_t — Complete (0.0 min)
+```
+
+Each of the six usd §4.2 writes reports `rows=93727800`, 1831 row groups, stats verified on
+`iso3, hazard, scenario, crop`; the three `ENSEMBLE` merges report the same row count. The other
+four variables took seconds because their outputs already existed and `FORCE_OVERWRITE` was unset —
+the scoping worked as intended.
+
+The diagnosis holds: the only thing changed between the dead run and this one was the worker count
+on a read-only verification step, and the run passed the point where it died. 232 min for one
+variable at `worker_n4.2 <- 1` is the expected cost, not a symptom.
+
+#### E3r gates — 5/5
+
+| gate | expectation | result |
+|---|---|---|
+| exit + §4.1/§4.2 completion lines | present | **PASS** — log lines 168, 169, 213, 217 |
+| `errors/<tf>_read-errors.csv` after `since` | none | **PASS** — none exist anywhere under `hazard_risk_*/errors/`, at any mtime |
+| jagermeyr usd count | 1002, `comm` 0 missing / 0 extra vs parked | **PASS** — 1002/1002, 0/0 |
+| annual usd count | 1002 unchanged | **PASS** — 1002, 0/0 |
+| other four variables | counts and data mtimes unchanged | **PASS** — see below |
+
+No read-errors file means no §4.1 worker left a truncated tif for `delete_corrupt = TRUE` to remove,
+so the 18-GCM ensemble was built from a complete set. That was the gate worth having.
+
+On the fourth variables: counts are unchanged (`vop` 1002/1002, `ha` 823/823, `n` 199/199,
+`prod` 823/823 for jagermeyr and annual alike) and **no parquet mtime moved**. Three files are newer
+than `since`, and all three are the §4.1 manifests, not data:
+
+```
+06:38  hazard_risk_ha/jagermeyr/skipped_not_in_exposure_harv-area_ha.txt
+06:38  hazard_risk_n/jagermeyr/skipped_not_in_exposure_head_n.txt
+06:39  hazard_risk_prod/jagermeyr/skipped_not_in_exposure_prod_t.txt
+```
+
+I am reporting these rather than treating them as a silent pass: the gate says "data mtimes", these
+are §4.1's record of which crops have no exposure, they are rewritten on every §4.1 pass, and the
+annual copies of all three are untouched. If the macbook reads the gate more strictly than I have,
+say so and I will stop before E4.
+
+#### E3.3 — `usd_total_vs_reference.R`, both timeframes, vs the **republished** reference
+
+Both `GATE PASS`. Identical numbers on both timeframes, which is what the admin2-basis comparison
+against a single reference should give:
+
+| | material pairs | median ratio | range | bar |
+|---|---|---|---|---|
+| usd | 1221 (ref ≥ 1e5) | **1.000** | [0.9763, 1.001] | pairs in [0.5, 2], median in [0.9, 1.1] |
+| intld | 1198 | **1.000** | [0.9759, 1.001] | same |
+
+The jagermeyr run reads the hazard parquet written this morning (`mtime 2026-10-23 09:03`); annual
+reads yesterday's (`2026-10-22 08:03`); both read the reference republished in D
+(`2026-10-21 17:00`). So the usd tier now agrees with the re-priced reference to a median of exactly
+1.000 — the defect this issue exists for is closed on the product side, pending publish.
+
+Reported, not gated, unchanged from the #13 baseline: 1144 usd pairs below the 1e5 floor, 55
+generic-crop pairs with no reference by design, and the admin0-vs-admin2 zonal-basis spread
+(product median 0.995, reference median 1.000, reference max 28.9) — the known #18 signature.
+
+#### E3.4 — ensemble membership
+
+`VERDICT: PASS (expected 18 members per folder)`. All four folders, 9 sidecars each, 0 new /
+9 updated, same 18 GCMs:
+
+| root | timeframe | n_members | sidecars |
+|---|---|---|---|
+| hazard_risk_vop | jagermeyr | 18 | 9 |
+| hazard_risk_vop | annual | 18 | 9 |
+| hazard_risk_vop_usd | jagermeyr | 18 | 9 |
+| hazard_risk_vop_usd | annual | 18 | 9 |
+
+#### What is left
+
+E4 (capture `TWIN`, dry-run jagermeyr + annual with `--variables vop_usd --drift-exposure
+vop_usd=$TWIN --livestock-moved`, then live if G1-G6b are clean) and E5 (MD5 == ETag, sidecar
+`n_members`). Nothing has been written to S3 since D. No allow-flag has been passed, nothing has
+been deleted, and the parked copies under `Data/_parked_issue47_20261021_164945/` are intact.
+
+---
+
 ### MACBOOK 2026-10-23 — E-resume. Finish jagermeyr only: integrity check at 4 workers, then §4.2. Then E3-E5.
 
 **The stop was right, and so was the self-correction about the `pgrep` watch.** A pattern that
