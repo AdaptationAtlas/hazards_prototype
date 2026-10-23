@@ -74,7 +74,7 @@ md("> to that class; the moderate and extreme columns below are published but no
 
 md("## Generic crop hazards\n\n")
 md("These are the thresholds behind the published `NDWS+NTx35+NDWL0` set, which is what the live V1\n")
-md("notebook reads.\n\n")
+md("notebook reads. HSH provenance: `metadata/HSH_thresholds_provenance.md`.\n\n")
 g <- wide[crop == "generic" & !index_name %like% "THI"]
 md("| hazard | index | moderate | severe | extreme |\n|---|---|---|---|---|\n")
 for (i in seq_len(nrow(g))) md("| %s | `%s` | %s | %s | %s |\n", g$type[i], g$index_name[i],
@@ -122,7 +122,7 @@ md("| `NDWS+NTxM+NDWL0` | crop-specific | water balance | crops (first published
 md("| `PTOT-L+NTxM+PTOT-G` | crop-specific | precipitation total | crops (replaced `PTOT-L+NTxS+PTOT-G` on 2026-10-16) |\n")
 md("| `NDWS+THI-max+NDWL0` | species-specific | water balance | livestock |\n")
 md("| `PTOT-L+THI-max+PTOT-G` | species-specific | precipitation total | livestock |\n\n")
-md("Definitions of each index: the hazards wiki. THI provenance: `metadata/THI_thresholds_provenance.md`.\n")
+md("Definitions of each index: the hazards wiki. THI provenance: `metadata/THI_thresholds_provenance.md`; HSH provenance: `metadata/HSH_thresholds_provenance.md`.\n")
 
 cat(sprintf("wrote %s\n", OUT_MD))
 
