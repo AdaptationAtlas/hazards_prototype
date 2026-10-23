@@ -176,4 +176,4 @@ country's price (for example, NER prices cattle milk and eggs for NGA, BEN and T
   - the catalogue changelogs;
   - the reference and the `vop_nominal-usd21` tier, re-baked in the same pass (reference 2026-10-21,
     tier 2026-10-23), so the denominator and the product agree.
-- **Relay (not ours to edit):** notice to consumers on `data-management#2` — drafted 2026-10-23, pending Pete's approval.
+- **Relay (not ours to edit):** consumers notified on `data-management#2`, 2026-10-23 (issuecomment-6374385722).
