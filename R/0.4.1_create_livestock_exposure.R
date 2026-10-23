@@ -470,6 +470,12 @@ nominal_usd <- lapply(seq_along(year_sets), function(i) {
 names(nominal_usd) <- paste0(dataset_name, "_vop_nominal-usd-", gsub("y", "", names(year_sets)))
 
 ## 4.2) iusd2015 ####
+# 2026-10-23 (#54): FAOSTAT's constant-I$ GPV holds a placeholder (1, 2 or 0 thousand I$, flag E,
+# every year) for LBY and SLE cattle meat, LSO chicken meat and SWZ sheep meat, against thousands
+# of tonnes of production; the intld reference and tier carried those countries' cattle at ~$1,000.
+# livestock_intld_guard() (R/price_fill.R) replaces a row whose nominal / constant-I$ ratio is
+# beyond BASIS_BAND_DEFAULT x the item's cross-country median, or whose constant-I$ is <= 0 while
+# nominal > 0, with nominal / item-median ratio, and names it in intld_source (basis fallback).
 intd_2015 <- lapply(seq_along(year_sets), function(i) {
   prod_merge_recent <- prod_merge[
     year %in% year_sets[[i]], .(vop_intd15 = median(value_intd15, na.rm = TRUE) * 1000),
@@ -477,6 +483,11 @@ intd_2015 <- lapply(seq_along(year_sets), function(i) {
   ]
 
   prod_merge_recent <- merge(prod_merge_recent, nominal_usd[[i]][, .(atlas_name, iso3, vop_usd_nominal)], all.x = TRUE)
+  ig <- livestock_intld_guard(prod_merge_recent)
+  .log041(sprintf("  %s (#54 intld guard): %d row(s) beyond %gx the item median ratio or with constant-I$ <= 0 -> nominal / item-median ratio",
+                  names(year_sets)[i], nrow(ig$flagged), BASIS_BAND_DEFAULT))
+  if (nrow(ig$flagged)) print(ig$flagged)
+  prod_merge_recent <- ig$data
   prod_merge_recent[, year := names(year_sets)[i]]
 
   prod_merge_recent
@@ -535,7 +546,7 @@ for (i in seq_along(vop_list)) {
   # #47: the nominal tables also carry the price used and where it came from, so the
   # -prices-used.csv audit file names them (the glw-class sum below keeps only `value`).
   final_vop <- final_vop[, intersect(c("iso3", "atlas_name", "value", "production_t", "price_usd_global",
-                                       "price_usd_final", "price_source"), names(final_vop)), with = FALSE]
+                                       "price_usd_final", "price_source", "intld_source", "basis_ratio", "basis_median"), names(final_vop)), with = FALSE]
   final_vop <- merge(final_vop, glw2atlas, all.x = TRUE, by = "atlas_name")
 
   # Where there is missing data explore how many animals are in these areas

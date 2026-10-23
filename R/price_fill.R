@@ -290,3 +290,42 @@ livestock_nominal_price <- function(prod_merge, world_prices, years, long_years 
   d[, vop_usd_nominal := production_t * price_usd_final]
   list(data = d[], dropped = clip$dropped, singletons = singletons)
 }
+
+# 2026-10-23 (#54): constant-I$ placeholders in FAOSTAT's livestock GPV.
+#   livestock_intld_guard()      FAOSTAT "Gross Production Value (constant 2014-2016 thousand I$)"
+#                                holds a placeholder for a few (country, product) rows: LBY and SLE
+#                                cattle meat = 1 thousand I$ in every year since 2014, LSO chicken
+#                                meat = 2, SWZ sheep meat = 0; all flag E, with thousands of tonnes
+#                                of production and a nominal VoP in the tens of millions. The crop
+#                                guard (apply_basis_guard) trusts constant-I$ and corrects the price;
+#                                livestock nominal is the country's own price chain since #47, so
+#                                this is its mirror. A row whose nominal / constant-I$ ratio lies
+#                                beyond [1/band, band] x the item's cross-country median of that
+#                                ratio, or whose constant-I$ is <= 0 while nominal > 0, takes
+#                                nominal / item-median ratio as its constant-I$ value and carries
+#                                intld_source = "basis fallback"; every other priced row carries
+#                                "fao gpv constant-I$". An item with fewer than min_n usable rows
+#                                has no reference and is left alone. Rows with NA on either side
+#                                are left alone (NA source). Pure; returns the flagged rows so the
+#                                run log and the audit CSV name them.
+livestock_intld_guard <- function(data, nominal_field = "vop_usd_nominal", intld_field = "vop_intd15",
+                                  band = BASIS_BAND_DEFAULT, min_n = BASIS_MIN_N_DEFAULT) {
+  stopifnot(band > 1, min_n >= 1, all(c("iso3", "atlas_name", nominal_field, intld_field) %in% names(data)))
+  d <- data.table::copy(data.table::as.data.table(data))
+  d[, intld_source := data.table::fifelse(is.finite(get(intld_field)) & get(intld_field) > 0, "fao gpv constant-I$", NA_character_)]
+  d[, basis_ratio := get(nominal_field) / get(intld_field)]
+  d[!is.finite(basis_ratio) | basis_ratio <= 0, basis_ratio := NA_real_]
+  med <- d[!is.na(basis_ratio), .(basis_median = stats::median(basis_ratio), basis_n = .N), by = atlas_name]
+  d <- merge(d, med, by = "atlas_name", all.x = TRUE)
+  d[, placeholder__ := is.finite(get(nominal_field)) & get(nominal_field) > 0 & !is.na(get(intld_field)) & get(intld_field) <= 0]
+  d[, basis_out__ := !is.na(basis_median) & basis_n >= min_n &
+        ((!is.na(basis_ratio) & (basis_ratio > band * basis_median | basis_ratio < basis_median / band)) | placeholder__)]
+  flagged <- d[basis_out__ == TRUE,
+               .(iso3, atlas_name, nominal = get(nominal_field), intld_was = get(intld_field),
+                 basis_ratio = signif(basis_ratio, 3), basis_median = signif(basis_median, 3), basis_n,
+                 intld_now = get(nominal_field) / basis_median)][order(atlas_name, iso3)]
+  d[basis_out__ == TRUE, `:=`(intld_tmp__ = get(nominal_field) / basis_median, intld_source = "basis fallback")]
+  d[intld_source == "basis fallback", (intld_field) := intld_tmp__]
+  d[, c("intld_tmp__", "placeholder__", "basis_out__", "basis_n") := NULL]
+  list(data = d[], flagged = flagged, medians = med[order(atlas_name)])
+}
