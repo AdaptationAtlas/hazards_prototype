@@ -2,6 +2,68 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-23 — E-resume. Finish jagermeyr only: integrity check at 4 workers, then §4.2. Then E3-E5.
+
+**The stop was right, and so was the self-correction about the `pgrep` watch.** A pattern that
+matches its own watcher is a gate that cannot fail; it is recorded on the macbook side. From now on,
+use a pid-file watch: `kill -0 $(cat <pidfile>)`.
+
+**Cause, as far as it needs to be known.** The run died **in §4.1's file-integrity check**, which
+`check_tif_integrity()` runs with `R3_CHECK_WORKERS` workers (default 20). That is exactly where the
+#13 B2 jagermeyr OOM happened on 2026-10-14 (`R/3:504-506`), with the same signature: one R at
+~62-66 GiB and a cgroup peak of 365 of 376 GiB. Whether the 11:53 OOM record is this run's worker or
+the other tenant's job does not change the remedy: the check needs less memory.
+`R3_CHECK_WORKERS` controls only how many workers *read* files to verify them, so lowering it
+changes no output.
+
+**One consequence to gate.** The check runs with `delete_corrupt = TRUE`. If a killed §4.1 worker
+left a truncated tif, a re-run's check deletes it and writes `<variable folder>/../errors/<timeframe>_read-errors.csv`.
+§4.2 would then build the ensemble without that GCM file. The gate below makes that a stop rather
+than a silent short ensemble.
+
+#### E2r. Resume (background)
+```bash
+cd /home/jovyan/atlas/hazards_prototype && git pull --ff-only && git log -1 --format='%h %an %s'
+STAMP=$(cat logs/issue47_stamp.txt)
+free -g | head -2; uptime        # report; if available memory < 120 GiB, wait and report rather than launch
+date '+%Y-%m-%d %H:%M' > logs/issue47_r3r_since.txt
+R3_TIMEFRAMES=jagermeyr R3_CHECK_WORKERS=4 nohup Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); source("/home/jovyan/atlas/hazards_prototype/R/3_freq_x_exposure.R")' > logs/issue47_r3r_$STAMP.log 2>&1 &
+echo $! > logs/issue47_r3r_$STAMP.pid
+# watch: while kill -0 $(cat logs/issue47_r3r_$STAMP.pid) 2>/dev/null; do sleep 60; done; echo "exited"
+```
+Environment: `FORCE_OVERWRITE`, `R3_ALLOW_41_FAILURES` and `SKIP_R3_4_1` stay **unset**.
+
+Expected:
+- The header shows the same two lines as E2, plus `R3_TIMEFRAMES active - running only: jagermeyr`.
+- Every §4.1 variable skips, taking minutes, because all of jagermeyr's §4.1 outputs exist.
+- The integrity check runs across the five variable folders.
+- §4.2 then builds the 18 missing files.
+
+The cost is roughly the integrity check plus usd §4.2, about 2.5 h on block F's timings. Capture the
+exit code from the pid/wait, not from a later `$(date)`.
+
+#### E3r. Gates. Stop on any deviation, then continue to E3.3 onward as written
+1. **Exit 0.** The log reaches `jagermeyr 4.1) All file integrity checks - Complete` and the §4.2
+   completion lines.
+2. **No integrity deletions:** no `errors/jagermeyr_read-errors.csv` (in any `hazard_risk_*`
+   folder's `errors/`) with an mtime after `issue47_r3r_since.txt`. If one exists, stop and paste
+   it. Do not re-run to regenerate.
+3. **Counts:**
+   - jagermeyr usd = **1002**, and `comm` against the parked list shows 0 missing and 0 extra;
+   - annual usd = 1002, unchanged;
+   - the other four variables keep their counts and data mtimes.
+4. Then **E3.3** (`usd_total_vs_reference.R`, both timeframes) and **E3.4** (ensemble stamp,
+   **18 members**), followed by **E4** (dry-runs, then live, with `--livestock-moved`) and
+   **E5** (MD5), all exactly as in the D + E block.
+
+If memory is short at launch, or the run dies again, stop and report: the free/uptime lines, the
+last 30 log lines and the kernel OOM lines with times. **Do not** drop `R3_CHECK_WORKERS` below 4,
+skip the check, or set `SKIP_R3_4_1` without a block that says so.
+
+One RESPONSE at the end (after E5), or at the first stop.
+
+---
+
 ### RESPONSE 2026-10-23 — cglabs — E. STOPPED at E3.1. The R/3 run died mid-jagermeyr. Nothing published.
 
 **E1 and E2 were clean. E2's run did not finish.** It was killed at **2026-10-22 11:59:00**, after
