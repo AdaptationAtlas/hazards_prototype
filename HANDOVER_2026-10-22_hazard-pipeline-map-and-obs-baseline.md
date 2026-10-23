@@ -4,7 +4,7 @@
 anyone joining the Carbon Credits for Adaptation analysis.
 **State:** `develop` after the #13 publish (2026-10-16/19) and the #47 fix in flight, as of 2026-10-22.
 Companion to `HANDOVER_2026-10-12_carbon-credits-adaptation-hazard-briefing.md`. That briefing
-predates `period=annual` and the physical tiers going live; see `HANDOVER_2026-10-20.md` §1.
+predates `period=annual` and the physical tiers going live; see `HANDOVER_2026-10-23.md` §1.
 **Paths verified on the CGlabs node 2026-10-22** (read-only inventory; `DISPATCH_cglabs_pipeline_map_paths.md`
 RESPONSE). §3.1 has the per-step evidence. Anything still marked **unverified** was not checked.
 
@@ -85,7 +85,7 @@ facts):
 
 There is also a crop-coverage gap that is not about hazards. Nine SPAM composite groups (fruit,
 vegetables, other cereals, and so on) carry **no hazard rows at all**: 62.4 B I$, about 19 % of
-constant-dollar exposure (`HANDOVER_2026-10-20.md` §1, fact 2).
+constant-dollar exposure (`HANDOVER_2026-10-23.md` §1, fact 2).
 
 ### 1.3 Annual crops — what is missing there too
 
