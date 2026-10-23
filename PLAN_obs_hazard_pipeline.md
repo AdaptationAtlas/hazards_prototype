@@ -2,7 +2,7 @@
 
 **Status:** v2, 2026-10-23. Revised after a five-way design review (efficiency, science, integration,
 gates, provenance), using the reviewer definitions in `.claude/agents/`. §7 lists the findings and how
-each is resolved. **Nothing is built yet.** Five decisions are open (§8).
+each is resolved. **Nothing is built yet.** Decisions D1-D5 recorded 2026-10-23 (§8).
 
 **Goal:** a **present-day** observed baseline of hazard frequency × exposure for a small set of heat
 and drought hazards, for crops and livestock. It keeps the per-season series that the current chain
@@ -207,16 +207,12 @@ honest input that passes with a corruption that must fail.
 | 18 | silently rewritten archives (FAO, CHIRPS p25, FPAR) (provenance) | per-source manifests; drift gates |
 | 19 | CHIRTS volume overstated, FPAR understated (efficiency) | §5 corrected |
 
-## 8. Decisions needed
+## 8. Decisions (Pete, 2026-10-23)
 
-- **D1 — radiation licence route.**
-  - (a) Accept CC-BY-SA-4.0 for the NDWS/NDWL0 layers, recording FAO's and CDS's terms.
-  - (b) Use CDS AgERA5 (CC-BY), which needs a credential, contrary to the CDS-key revocation.
-  - (c) Use raw ERA5 `ssrd` from ARCO for the whole series (Copernicus licence, not bias-corrected).
-- **D2 — run 1995-2014 through the observed code** for the obs-vs-NEX diagnostic (+~370 GiB CHIRTS)?
-  The science review recommends it.
-- **D3 — THI humidity.** Change both sides to RH at Tmax (observed from RH15; NEX via vapour pressure),
-  or carry both variants.
-- **D4 — FPAR scale.** Percentiles at 500 m then aggregate, or aggregate seasonal sums to 0.25° first.
-- **D5 — source token:** reuse `chirps-chirts-era5` (the existing observed products) or a new
-  `chirps-chirts-agera5`.
+| # | decision |
+|---|---|
+| D1 | **Accept CC-BY-SA-4.0 for the NDWS/NDWL0 layers.** Radiation comes from the FAO AgERA5 mirror, credential-free. Record both FAO (CC-BY-SA-4.0) and CDS (CC-BY) terms. Layers that do not use AgERA5 (NTx35 from CHIRTS-ERA5 alone, for example) carry their own licence, still to be established for CHIRTS-ERA5. The product licence is declared **per layer**, never as one CC-BY-4.0 claim. |
+| D2 | **Yes: run 1995-2014 through the observed code after the present-day run.** Reported diagnostic: observed vs NEX-GDDP historic, plus the radiation climatology comparison. About +370 GiB of CHIRTS streaming. |
+| D3 | **Carry both THI variants**, labelled in the provenance: (i) NEX-like, Tmax with the AgERA5 daily-mean RH, *approximated as the mean of RH06/09/12/15/18*; (ii) Tmax with RH15 (≈ RH at Tmax). The NEX side is unchanged until #48. |
+| D4 | **Aggregate seasonal FPAR sums to 0.25° first**, then take percentiles. |
+| D5 | Source token defaults to `chirps-chirts-agera5` (radiation and RH are AgERA5), as distinct from the existing monthly products' `chirps-chirts-era5`. Change only before the first publish. |
