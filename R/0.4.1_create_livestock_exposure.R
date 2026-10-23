@@ -1,9 +1,9 @@
 1 # ==============================================================================
-# Script Title: Estimate and Allocate Livestock VoP Across Sub-Saharan Africa
+# Script Title: Livestock Exposure (VoP, Numbers, TLU) Across Sub-Saharan Africa
 # Author(s): Peter Steward, African Agricultural Adaptation Atlas
 # Affiliation: Alliance of Bioversity International and CIAT
 # Date Created: 2023-09-11
-# Last Updated: 2025-07-08
+# Last Updated: 2026-10-23 (header corrected, issue 49; pricing fixed, issue 47)
 # ==============================================================================
 
 # Description:
@@ -15,14 +15,15 @@
 # disaggregation and then splits values between highland and tropical zones.
 
 # Key Steps:
-# 1. Load base raster, national boundaries, and GLW4 livestock population data (2015).
+# 1. Load the exposure grid (exposure_grid(): EXPOSURE_RES 0.05 | 0.25), national boundaries,
+#    and GLW4 2020 livestock density (~10 km), converted to per-pixel counts at native resolution.
 # 2. Resample and mask GLW layers to a standard resolution and target geography.
 # 3. Aggregate livestock counts by country and map to ERA-Atlas naming conventions.
 # 4. Load and clean FAOSTAT data on production, prices, and gross production value
 #    in both constant USD and international dollars (I$), filling gaps via:
-#       - Neighboring country substitution
-#       - Regional and global averages
-#       - Hybrid VoP estimation strategies
+#       - nominal USD: own producer price -> median of neighbours / region / continent /
+#         world (R/price_fill.R::livestock_nominal_price, issue 47)
+#       - constant I$: FAOSTAT gross production value (constant 2014-16 I$)
 # 5. Merge with PPP/XRAT data to enable unit conversion between currencies.
 # 6. Allocate VoP (in USD and I$) to raster surfaces based on proportional livestock
 #    density per pixel.
@@ -31,7 +32,7 @@
 # 9. QA/QC: Compare gridded results to national FAOSTAT values.
 
 # Input Datasets:
-# - GLW4 livestock distribution (5 species, 2015 or 2020; FAO)
+# - GLW4 2020 livestock distribution (5 species, per-km2 density; FAO). The 2015 block is not run.
 # - FAOSTAT Production, Prices, Value of Production CSVs (various)
 # - World Bank PPP & XRAT indicators (wbstats)
 # - Atlas standard raster template
@@ -39,16 +40,17 @@
 # - Optional: highland mask raster (binary)
 
 # Output Files:
-# - `livestock_vop_usd2015.tif` — VoP per pixel in constant USD 2014–16, split by zone
-# - `livestock_vop_intld2015.tif` — VoP per pixel in constant I$ 2014–16, split by zone
-# - `livestock_number_number.tif` — Livestock counts per pixel (5 classes + TLU)
+# - `variable=<unit>/glw4-2020_vop_<unit>_<tag>.tif` — VoP per pixel, split by zone, for
+#   unit in nominal-usd-{2021,2015,2020} and intld15-{2021,2015,2020}; <tag> = res-05 | res-25
+# - `fao_vop/glw4-2020_vop_<unit>-prices-used.csv` — national values (and, nominal, the price used)
+# - `livestock_number_number_<tag>.tif` — Livestock counts per pixel (5 classes + TLU)
 # - `shoat_prop.tif` — Proportion of sheep vs goats per pixel
 # - Multiple intermediate and QA raster products for comparison to FAO totals
 
 # Notes:
 # - FAOSTAT data must be pre-downloaded in CSV format and saved in the `fao_dir`.
 # - Only countries with available GLW4 and Atlas-compatible boundaries are processed.
-# - Output rasters are aligned to the `base_raster` for interoperability with other Atlas data.
+# - Output rasters are on exposure_grid() (0.05 or 0.25 deg), the grid R/3 and 0.4.4 use.
 
 # ==============================================================================
 

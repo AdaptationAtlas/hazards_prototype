@@ -1,7 +1,7 @@
 {
   "id": "glps",
   "title": "Global Livestock Production Systems (GLPS)",
-  "description": "Livestock production system classification used to split livestock exposure by system.",
+  "description": "Livestock production system classification. Not read by the live pipeline (checked 2026-10-23, issue 49): 0.4.1 splits livestock by highland/tropical masks, not by GLPS. Only R/misc/livestock_heat_impacts.R reads it; R/0_server_setup.R declares the directory and R/push_to_s3.R can upload it.",
   "class": "external-raw",
   "version": "1",
   "status": "current",
@@ -27,9 +27,7 @@
     "recursive": false
   },
   "produced_by": [],
-  "consumed_by": [
-    "0.4.1"
-  ],
+  "consumed_by": [],
   "atlas_s3": {
     "prefix": "s3://digital-atlas/GLPS",
     "complete": true,

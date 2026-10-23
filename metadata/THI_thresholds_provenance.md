@@ -13,8 +13,12 @@ from another:
 1. **THI formula** — Rahimi, J. et al. (2020). Cited in
    [`haz_metadata.csv`](haz_metadata.csv) (THI_max / THI_mean `method.description`):
    `THI = (1.8·Tdb + 32) − [(0.55 − 0.0055·RH) × (1.8·Tdb − 26.8)]`, with
-   `Tdb` = dry-bulb temperature (max for `THI_max`, mean for `THI_mean`, °C) and
-   `RH` = relative humidity (%). Output in °F.
+   `Tdb` = dry-bulb temperature, **daily maximum temperature (`tasmax`) for both
+   `THI_max` and `THI_mean`** (°C), and `RH` = daily-mean relative humidity (`hurs`, %).
+   Daily THI is computed once from Tmax; `THI_max` is its monthly maximum and `THI_mean` its
+   monthly mean (`hazards_upstream/R/04_indices/calc_THI.R:59-66`). Output in °F.
+   (Corrected 2026-10-23, issue 49: an earlier version of this note said `THI_mean` used mean
+   temperature. It does not.)
 
 2. **Severity thresholds** — **Thornton, P., Nelson, G., Mayberry, D. & Herrero, M.
    (2021). "Increases in extreme heat stress in domesticated livestock species
@@ -86,8 +90,9 @@ selected highland massifs, exact derivation not documented in-repo.)
   value is a curated mix and is not individually reconstructed here — if definitive
   per-value provenance is needed, reconcile against the full Table 1 + whoever set the
   Atlas thresholds.
-- `haz_metadata.csv` THI_mean `method.description` still says Tdb is "the maximum
-  temperature" (copied from THI_max) — cosmetic, but should read "mean temperature".
+- ~~`haz_metadata.csv` THI_mean says Tdb is "the maximum temperature" and should read "mean
+  temperature"~~ — withdrawn 2026-10-23 (issue 49): the CSV is right. `calc_THI.R` computes daily
+  THI from Tmax and takes the monthly mean of that for `THI_mean`.
 
 ## Consumption note
 

@@ -198,7 +198,7 @@ processing:
       national values by GLW4 head share.
     code:
       url: https://github.com/AdaptationAtlas/hazards_prototype
-      version: R/0.4.0_create_crop_vop_intld15.R, R/0.4.1_create_livestock_vop.R, R/0.4.2_create_crop_vop_nominal_usd.R
+      version: R/0.4.0_create_crop_vop_intld15.R, R/0.4.1_create_livestock_exposure.R, R/0.4.2_create_crop_vop_nominal_usd.R
   - id: zonal
     description: >
       Rasterise GAUL 2024 units onto the 0.25 degree NEX-GDDP grid (EXPOSURE_RES=0.25), sum every

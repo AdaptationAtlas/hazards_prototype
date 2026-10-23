@@ -8,11 +8,14 @@ extensions:
 id: livestock-vop
 title: Gridded Livestock of the World (GLW4) Value of Production (Adaptation Atlas SSA)
 description: >
-  Spatial density distribution and economic value of production for major livestock species
-  (cattle, sheep, goats, camels, pigs, chickens) across Sub-Saharan Africa. Based on FAO Gridded
-  Livestock of the World v4 (GLW4 2020) downscaled to 1 km / 5-minute resolution, harmonised to
-  FAOSTAT country production values and national livestock populations, expressed in constant 2015
-  international dollars (vop_intld15).
+  Livestock numbers and economic value of production for five livestock species (cattle, sheep,
+  goats, pigs, poultry; plus tropical livestock units) across Sub-Saharan Africa. Based on FAO
+  Gridded Livestock of the World v4 (GLW4 2020, about 10 km / 0.0833 degree), converted from
+  per-square-kilometre density to head per pixel at native resolution and summed onto the Atlas
+  exposure grids (0.05 and 0.25 degree). National FAOSTAT value of production is distributed by
+  each pixel's share of the national herd and split into highland and tropical zones. Values are
+  published in constant 2015 international dollars (vop_intld15) and, separately, nominal 2021 US
+  dollars (national producer prices since 2026-10-21, hazards_prototype issue 47).
 resource_type: dataset
 license: CC-BY-4.0 # FAO open data licensing
 keywords:
@@ -25,7 +28,6 @@ keywords:
     rangeland,
     cattle,
     shoats,
-    camels,
     sub-saharan africa,
     exposure,
   ]
@@ -36,9 +38,12 @@ note: >
   metrics coexist (nominal USD, constant 2015 international dollars). To avoid severe distortions
   when pairing livestock with MapSPAM crop VoP, both portfolios must be evaluated on the identical
   constant 2015 international dollar basis. Past unit mismatches produced ~7x errors in cattle exposure.
-  DENSITY VS PIXEL COUNTS. GLW4-2020 layers represent per-km2 animal density (D-DA), not raw counts
-  per grid cell. Spatial aggregation across county administrative polygons must weight by grid-cell
-  land area (excluding open waterbodies).
+  DENSITY VS PIXEL COUNTS. The GLW4-2020 source layers are per-km2 animal density (D-DA). The
+  Atlas pipeline (R/0.4.1_create_livestock_exposure.R) multiplies them by cell area at native
+  resolution to get head per pixel BEFORE any resampling, then resamples by sum, so the derived
+  rasters hold counts and administrative totals are plain sums - no area weighting is needed or
+  applied. Anyone working from the raw GLW4 density layers instead must weight by cell area.
+  (Corrected 2026-10-23, issue 49: an earlier version listed camels, 1 km resolution and density units.)
   LIVESTOCK VULNERABILITY LAGS. Unlike annual field crops which fail within a single dry dekad,
   pastoral herds exhibit biological inertia: mortality, distress sales, and conception deficits lag
   rainfall anomalies by 6 to 12 months.
@@ -73,15 +78,18 @@ related_publications:
   - doi: 10.1038/sdata.2018.227
 
 created: "2026-09-25"
-updated: "2026-09-25"
+updated: "2026-10-23"
 
 spatial:
   bbox: [-26.0, -35.0, 58.0, 28.0]
   crs: EPSG:4326
   geography: [sub-saharan-africa, kenya]
   resolution:
-    - label: 1 km (0.008333 deg)
-      value: 0.008333
+    - label: 0.05 deg (exposure grid; source GLW4 2020 about 0.0833 deg)
+      value: 0.05
+      unit: deg
+    - label: 0.25 deg (hazard-product grid)
+      value: 0.25
       unit: deg
 
 temporal:
@@ -91,15 +99,12 @@ variables:
   - name: vop_intld15
     description: Gross value of livestock production in constant 2015 international dollars.
     unit: Intl$
-  - name: cattle_density
-    description: Cattle animal density per square kilometre.
-    unit: head/km2
-  - name: shoats_density
-    description: Sheep and goat animal density per square kilometre.
-    unit: head/km2
-  - name: camel_density
-    description: Camel animal density per square kilometre.
-    unit: head/km2
+  - name: vop_nominal-usd-2021
+    description: Gross value of livestock production in nominal 2021 US dollars (national producer prices).
+    unit: USD
+  - name: livestock_number
+    description: Animal count per pixel for cattle, sheep, goats, pigs and poultry, plus tropical livestock units (total).
+    unit: head (TLU for total)
 
 data:
   - name: exposure_vop_parquet

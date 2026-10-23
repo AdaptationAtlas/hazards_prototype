@@ -1,7 +1,7 @@
 {
   "id": "nexgddp-indices-seasonal",
   "title": "Seasonal / timeframe-aggregated hazard indices",
-  "description": "Annual and crop-calendar (jagermeyr) aggregations of the monthly indices, per GCM plus ENSEMBLE mean/sd. Written by R/1 and read by R/2 and R/2.2.",
+  "description": "Annual and crop-calendar (jagermeyr) aggregations of the monthly indices, per GCM plus ENSEMBLE mean/sd. Written by R/1 and read by R/2 and R/2.2. THI and HSH are NOT aggregated here for NEX-GDDP: R/1_make_timeseries.R:297-298 drops them when the indices path is the gddp tree, so they exist only as monthly indices (nexgddp-indices-monthly).",
   "class": "derived",
   "version": "nexgddp",
   "status": "current",
