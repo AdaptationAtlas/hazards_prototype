@@ -6,6 +6,146 @@ Kept as its own file so the two macbook sessions do not edit one file's top at t
 
 ---
 
+### RESPONSE — pascal 2026-10-24
+
+**Session.** JupyterHub, **Large profile**: `cpu.max` = `2000000 100000` → **20 usable CPUs**,
+cgroup `memory.max` 96 GiB. (`nproc` still reports 80 and is still wrong.) No SSH or RStudio route
+from this session. Load average 1.15 / 1.03 / 1.01 at start — the box was quiet.
+`OBS_TMP_ROOT` was a directory under the bulk data root; both runs removed `obs_hf_probe.*` on exit,
+confirmed empty afterwards. Read-only; no pipeline run, no S3 write.
+
+**Stopping at gate 3, and the reason is not the CDN.** H2-H5 are invalid on this node: they measured
+a local write failure, not Hugging Face. The slab numbers below are an artefact and should not be
+compared with CGlabs' or the macbook's. H1 and H6 are sound, and they say the HF route is healthy
+here: **~2 MB/s single stream, sustained, no throttle.**
+
+#### Versions
+
+```
+zarr/xarray : ModuleNotFoundError: No module named 'zarr'
+terra 1.8.93  gdal 3.4.3
+gdal-config --version : 3.4.3
+```
+
+#### Run 1 — `OBS_HF_PAR=8` (default)
+
+```
+[obs-hf] curl 7.81.0  PAR=8
+test,label,files,bytes,seconds,MB_per_s,note
+H1,single_chunk_run1,1,5322839,2.849891,1.87,http=200
+H1,single_chunk_run2,1,5322839,11.704191,0.45,http=200
+H2,Tmax slab 98 lat 2-7 x8,36,388835,5.67,0.07,absent_ocean_404=11 errors=0 per_stream_min_max=0.01/0.05 MB/s
+H3,Tmax slab 98 lat 2-7 x1,36,372461,32.72,0.01,absent_ocean_404=11 errors=0 per_stream_min_max=0.00/0.05 MB/s
+H4,Tmax slab 126 lat 2-7 x8,36,387151,4.46,0.09,absent_ocean_404=11 errors=0 per_stream_min_max=0.00/0.03 MB/s
+H5,precip slab 98 lat 1-6 x8,36,442335,4.99,0.09,absent_ocean_404=4 errors=0 per_stream_min_max=0.00/0.04 MB/s
+H6,range_request_1KiB,1,1024,,,http=206 (expect 206)
+H7,python_zarr_xarray,,,,,skipped: python3 with zarr>=3 and xarray not importable
+H8,r_terra_gdal_zarr,,,,,gdal=3.4.3 open FAILED: [rast] file does not exist: ZARR:"/vsicurl/<CHIRTS store>":/Tmax
+```
+
+#### Run 2 — `OBS_HF_PAR=16`
+
+```
+[obs-hf] curl 7.81.0  PAR=16
+test,label,files,bytes,seconds,MB_per_s,note
+H1,single_chunk_run1,1,5322839,2.680739,1.99,http=200
+H1,single_chunk_run2,1,5322839,2.559569,2.08,http=200
+H2,Tmax slab 98 lat 2-7 x16,36,387983,2.48,0.16,absent_ocean_404=11 errors=0 per_stream_min_max=0.00/0.05 MB/s
+H3,Tmax slab 98 lat 2-7 x1,36,400911,33.24,0.01,absent_ocean_404=11 errors=0 per_stream_min_max=0.01/0.05 MB/s
+H4,Tmax slab 126 lat 2-7 x16,36,348363,3.71,0.09,absent_ocean_404=11 errors=0 per_stream_min_max=0.00/0.03 MB/s
+H5,precip slab 98 lat 1-6 x16,36,470490,2.76,0.17,absent_ocean_404=4 errors=0 per_stream_min_max=0.00/0.05 MB/s
+H6,range_request_1KiB,1,1024,,,http=206 (expect 206)
+H7,python_zarr_xarray,,,,,skipped: python3 with zarr>=3 and xarray not importable
+H8,r_terra_gdal_zarr,,,,,gdal=3.4.3 open FAILED: [rast] file does not exist: ZARR:"/vsicurl/<CHIRTS store>":/Tmax
+```
+
+#### Why H2-H5 are invalid here
+
+The slab lines are internally impossible: one chunk in H1 is **5,322,839 B**, yet all 36 chunks of
+the same slab — 25 of which are present, 11 are ocean 404s — total **388,835 B**. The two runs even
+disagree on the byte count for the identical slab (388,835 vs 387,983 vs 400,911), which a cache
+cannot explain.
+
+`slab()` names each output file `$(echo "$url" | tr / _)`, which turns
+`https://huggingface.co/...` into `https:__huggingface.co_...` — **the colon survives**. The bulk
+filesystem on this node rejects a filename containing `:` with `Input/output error`. Isolated by
+hand, all read-only:
+
+| test | result |
+|---|---|
+| `curl -o burst/simple.bin <chunk>` | `size=5322839 http=200`, exit 0, file 5,322,839 B |
+| `curl -o "burst/https:__…_c_98_5_13" <same chunk>` | `size=16375 http=200`, **exit 23**, file absent |
+| `echo hi > "burst/a:b.txt"` | `Input/output error` |
+| `echo hi > "burst/<111 chars, no colon>"` | fine — so it is the colon, not the length |
+
+curl exit 23 is "failed writing body": it aborts after the first buffer, so `size_download` is a
+partial ~16 KB and **`http_code` is still 200**. `slab()` discards curl's exit status and classifies
+on HTTP code alone, so every one of these failures was counted as a success. That is why gate 1 reads
+`errors=0` on lines that downloaded almost nothing, and why the per-stream figures are 0.00-0.05 MB/s.
+
+H1 is unaffected — it writes `$TMP/h1_$i`, no colon — and H6 writes to `/dev/null`.
+
+Per the dispatch's "stop and report rather than work around", **the script was not modified and no
+patched re-run was attempted.** A fix is macbook's to make; the smallest one is to sanitise the whole
+name rather than only the slashes, e.g. `tr -c 'A-Za-z0-9._-' '_'`, and to fail the line on a
+non-zero curl exit rather than on HTTP code alone.
+
+**This made the two nodes incomparable, and the cglabs block below confirms it.** CGlabs' H2 reports
+**89,983,832 B** for the identical slab where this node reports 388,835 B — so its filesystem accepts
+the colon, its slab lines are real, and PASCAL's are not. The same script measured two different
+things on the two nodes, and said `errors=0` both times.
+
+#### Gates
+
+| gate | verdict |
+|---|---|
+| 1. `errors=0` on H1-H5; `absent_ocean_404` 11/11/11/4 | **Counts exactly as predicted** — 11, 11, 11 for CHIRTS and 4 for CHIRPS, both runs. But `errors=0` is unreliable here for the reason above: truncated transfers return HTTP 200 and are counted clean. |
+| 2. H6 `http=206` | **Pass**, both runs. Range reads are honoured for this client. |
+| 3. Invariants | H2 ≥ H3 holds (0.07 vs 0.01; 0.16 vs 0.01). H4 within 2× of H2 (0.09 vs 0.07; 0.09 vs 0.16). H5 not slower than H2 (0.09 vs 0.07; 0.17 vs 0.16). **But every slab is far below this node's S0 CHC single-stream rate of 3.86 MB/s, so the gate trips — and the cause is the local write failure, not the CDN.** |
+| 4. H7/H8 | H7 `skipped`: no `zarr` module in this `python3`. H8 `FAILED` on `gdal=3.4.3`, exactly as the dispatch predicted for GDAL < 3.11 — `[rast] file does not exist: ZARR:"/vsicurl/…":/Tmax`. No `mean_scaled` to check. |
+
+#### Both routes side by side, PASCAL only
+
+| | CHC (S0, this node) | Hugging Face (this probe) |
+|---|---|---|
+| single stream, first pull | 3.86 MB/s (A1 run 1) | **1.87, 1.99, 2.08 MB/s** (H1) |
+| single stream, sustained | **collapses to 8-10 kB/s after ~100 MB; no recovery in 15 min** | **no throttle seen** — 6 single-chunk pulls across two runs, ~30 MB total, all 1.87-2.08 MB/s except one 0.45 MB/s outlier |
+| 8 streams | 0.066 MB/s aggregate (A4) — worse than one | **not measured** (write failure) |
+| range requests | n/a | **206** |
+
+The one number that matters: CHC's *sustained* rate on this node is 8-10 kB/s, and HF's is about
+**2 MB/s on a single stream with no sign of a limit** — roughly 200× better, before any parallelism.
+
+#### The read
+
+Using the H1 single-stream rate only, since no valid aggregate exists on this node:
+
+| window | size (dispatch estimate) | at ~2 MB/s, 1 stream |
+|---|---|---|
+| CHIRTS Tmax + Tmin, 1981-2026 Africa | ~24 GB (2 × 131 slabs × ~90 MB) | **~3.3 hours** |
+| CHIRPS v3 precip, 1981-2026 Africa | ~7 GB (131 slabs × ~55 MB) | **~1 hour** |
+
+Both are a single working session, not the days the CHC route implied — and that is the floor, since
+parallelism is untested here and the S0 probe showed this node aggregating 17.7 MB/s over 8 streams
+to another CDN. The slab size in that table is sound: cglabs measured the same slab at 89,983,832 B,
+within a few percent of the dispatch's ~90 MB, so the ~24 GB and ~7 GB window sizes stand.
+
+**So items 1 and 2 of my S0 block do dissolve, if the cubes are a faithful redistribution.** One
+vintage (2026-10-08) covers 1981-2026 for both products, nothing comes from CHC, and the 2023-mirror
+seam at 2020/2021 disappears. Two things to settle before that is relied on: the cubes are int16 ×
+0.1 scaling where the CHC tifs are Float32, which is a precision change S1 should state rather than
+inherit silently; and nothing here has validated cube values against the CHC tifs — H7 and H8 both
+failed to open the store on this node, so not one cell was actually read and checked. A value check
+on an overlapping day is the obvious next probe, and it needs a node with GDAL ≥ 3.11 or a `zarr`
+install, which this one has neither of.
+
+#### Then
+
+Both `OBS_TMP_ROOT/obs_hf_probe.*` directories are gone (script `trap`), verified. Logs kept at
+`logs/obs_hf_probe_20261024_083527.log` and `logs/obs_hf_probe_20261024_083918.log` (gitignored).
+
+---
+
 ### RESPONSE — cglabs 2026-10-24 — HF cubes 18-27 MB/s aggregate (CHC ~1 MB/s per stream); gates 1-2 pass; gate 3 has one soft miss (H5 per byte); gate 4: H8 opens but GDAL sees no georeferencing
 
 CGlabs JupyterHub container, develop at `afa022b`. Script run unmodified, twice, back to back (not
