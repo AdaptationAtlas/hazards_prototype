@@ -15,6 +15,9 @@
 #   2015-06-15 -> 12583 -> slab 98;  2025-06-15 -> 16237 -> slab 126.
 # `resolve/main/` answers 302 to a CDN host; curl needs -L. Range requests are honoured (206).
 #
+# 2026-10-24 fixes after the node runs: output names sanitised to [A-Za-z0-9._-] (PASCAL's filesystem refused ':'), a slab
+# line counts a non-zero curl exit as an error and sums bytes over complete files only, and H8 sets the georeferencing by hand
+# (GDAL's ZARR driver drops lat/lon) and no longer rescales (terra applies scoff).
 # Chunks that are all fill value (ocean) are not written, so they answer 404; inside the Africa window
 # that is 11 of 36 CHIRTS chunks and 4 of 36 CHIRPS chunks. The slab lines count them as absent_ocean_404,
 # separately from errors. Measured from the macbook 2026-10-24: single stream 1.4-1.9 MB/s, 8 streams
@@ -62,15 +65,22 @@ slab() {
   for la in $(seq $la0 $la1); do for lo in $(seq 10 15); do echo "$store/$var/c/$t/$la/$lo" >> "$list"; done; done
   local n; n=$(wc -l < "$list" | tr -d ' ')
   local t0 t1; t0=$(date +%s.%N)
-  # per-file lines: bytes seconds http  (a helper script, not xargs -I: BSD xargs caps -I replacement at 255 bytes)
-  printf '%s\n' '#!/usr/bin/env bash' 'out="$1"; url="$2"; curl -sL --max-time 600 -o "$out/$(echo "$url" | tr / _)" -w "%{size_download} %{time_total} %{http_code}\n" "$url"' > "$TMP/get.sh"
+  # per-file lines: bytes seconds http curl_rc  (a helper script, not xargs -I: BSD xargs caps -I replacement at 255 bytes)
+  # PASCAL 2026-10-24: the output name must carry no ':' (its bulk filesystem refuses the colon with EIO, curl then exits 23
+  # "failed writing body" after one buffer while http_code still reads 200), and the line must fail on curl's exit status,
+  # not on the HTTP code alone. Name = URL with every char outside [A-Za-z0-9._-] replaced; rc appended as a 4th field.
+  # The result line is written with ONE printf (under PIPE_BUF) so parallel workers cannot interleave their fields:
+  # a two-write version merged lines under -P 8 on the macbook and showed up as phantom errors.
+  printf '%s\n' '#!/usr/bin/env bash' 'out="$1"; url="$2"; f="$out/$(printf "%s" "$url" | tr -c "A-Za-z0-9._-" "_")"; r=$(curl -sL --max-time 600 -o "$f" -w "%{size_download} %{time_total} %{http_code}" "$url"); rc=$?; printf "%s %s\n" "$r" "$rc"' > "$TMP/get.sh"
   xargs -P "$par" -n 1 bash "$TMP/get.sh" "$out" < "$list" > "$TMP/res_$label"
   t1=$(date +%s.%N)
   local bytes wall absent errors
   bytes=$(awk '{s+=$1} END{print s+0}' "$TMP/res_$label"); wall=$(awk -v a=$t0 -v b=$t1 'BEGIN{printf "%.2f", b-a}')
-  # 404 = chunk not written = every cell is the fill value (ocean); expected inside the Africa window. Anything else is an error.
-  absent=$(awk '$3==404{c++} END{print c+0}' "$TMP/res_$label"); errors=$(awk '$3!=200 && $3!=404{c++} END{print c+0}' "$TMP/res_$label")
-  echo "$label,$var slab $t lat $la0-$la1 x$par,$n,$bytes,$wall,$(awk -v b=$bytes -v t=$wall 'BEGIN{printf "%.2f", b/t/1e6}'),absent_ocean_404=$absent errors=$errors per_stream_min_max=$(awk '$3==200{r=$1/$2; if(mn==""||r<mn)mn=r; if(r>mx)mx=r} END{printf "%.2f/%.2f MB/s", mn/1e6, mx/1e6}' "$TMP/res_$label")"
+  # 404 = chunk not written = every cell is the fill value (ocean); expected inside the Africa window. Any other HTTP code,
+  # or a non-zero curl exit (truncated write, timeout, TLS), is an error. Bytes are summed over complete files only.
+  absent=$(awk '$3==404 && $4==0{c++} END{print c+0}' "$TMP/res_$label"); errors=$(awk '!($3==200 && $4==0) && !($3==404 && $4==0){c++} END{print c+0}' "$TMP/res_$label")
+  bytes=$(awk '$3==200 && $4==0{s+=$1} END{print s+0}' "$TMP/res_$label")
+  echo "$label,$var slab $t lat $la0-$la1 x$par,$n,$bytes,$wall,$(awk -v b=$bytes -v t=$wall 'BEGIN{printf "%.2f", b/t/1e6}'),absent_ocean_404=$absent errors=$errors complete=$(awk '$3==200 && $4==0{c++} END{print c+0}' "$TMP/res_$label") per_stream_min_max=$(awk '$3==200 && $4==0{r=$1/$2; if(mn==""||r<mn)mn=r; if(r>mx)mx=r} END{printf "%.2f/%.2f MB/s", mn/1e6, mx/1e6}' "$TMP/res_$label")"
   rm -rf "$out"
 }
 slab "$CHIRTS" Tmax 98  2 7 "$PAR" H2
@@ -98,18 +108,28 @@ v = sub.values; nbytes = v.nbytes
 print(f"H7,python_xarray_africa_2015-06,1,{nbytes},{t2-t0:.2f},{nbytes/(t2-t0)/1e6:.2f},open={t1-t0:.2f}s load={t2-t1:.2f}s shape={tuple(sub.shape)} dtype={v.dtype} mean_scaled={float(sub.mean())*0.1 if v.dtype.kind=='i' else float(sub.mean()):.2f} zarr={__import__('zarr').__version__} xarray={xr.__version__}")
 PY
   fi
-  # H8: R terra via GDAL ZARR driver over /vsicurl
+  # H8: R terra via GDAL ZARR driver over /vsicurl. cglabs 2026-10-24: GDAL 3.11.3 opens the store but drops the
+  # lat/lon coordinate arrays (extent 0..7200 x 0..2600, no CRS), so the extent and CRS are set here by hand from
+  # the store's grid (0.05 deg, lon -180..180, lat 70N..60S, row 0 = north). terra applies the stored scale
+  # (scoff 0.1) on read, so values are already degC: no extra x0.1 (the first version applied it twice).
   if command -v Rscript >/dev/null 2>&1; then
     Rscript -e '
 suppressMessages(library(terra)); g <- as.character(terra::gdal())
 u <- commandArgs(TRUE)[1]; t0 <- Sys.time()
-r <- tryCatch(terra::rast(sprintf("ZARR:\"/vsicurl/%s\":/Tmax", u)), error = function(e) e)
+r <- tryCatch(suppressWarnings(terra::rast(sprintf("ZARR:\"/vsicurl/%s\":/Tmax", u))), error = function(e) e)
 if (inherits(r, "error")) { cat(sprintf("H8,r_terra_gdal_zarr,,,,,gdal=%s open FAILED: %s\n", g, gsub(",", ";", conditionMessage(r)))) } else {
+  georef_missing <- isTRUE(all.equal(as.vector(terra::ext(r)), c(0, 7200, 0, 2600))) || !nzchar(terra::crs(r))
+  if (georef_missing) { terra::ext(r) <- terra::ext(-180, 180, -60, 70); terra::crs(r) <- "EPSG:4326" }
+  so <- terra::scoff(r); so_txt <- if (is.null(so)) "none" else sprintf("scale=%g offset=%g", so[1, 1], so[1, 2])
   e <- terra::ext(-18, 52, -35, 38); t1 <- Sys.time()
   x <- tryCatch({ s <- r[[12583 + 1]]; terra::crop(s, e) }, error = function(e) e)   # 2015-06-15 = index 12583 (0-based)
   t2 <- Sys.time()
-  if (inherits(x, "error")) cat(sprintf("H8,r_terra_gdal_zarr,,,,,gdal=%s open ok (%d layers) but crop FAILED: %s\n", g, terra::nlyr(r), gsub(",", ";", conditionMessage(x)))) else
-  cat(sprintf("H8,r_terra_gdal_zarr_africa_1day,1,%d,%.2f,,gdal=%s layers=%d mean_scaled=%.2f open=%.2fs crop=%.2fs\n", terra::ncell(x) * 2L, as.numeric(difftime(t2, t0, units = "secs")), g, terra::nlyr(r), terra::global(x, "mean", na.rm = TRUE)[1, 1] * 0.1, as.numeric(difftime(t1, t0, units = "secs")), as.numeric(difftime(t2, t1, units = "secs"))))
+  if (inherits(x, "error")) cat(sprintf("H8,r_terra_gdal_zarr,,,,,gdal=%s open ok (%d layers) but crop FAILED: %s\n", g, terra::nlyr(r), gsub(",", ";", conditionMessage(x)))) else {
+    NAflag(x) <- -32768
+    cat(sprintf("H8,r_terra_gdal_zarr_africa_1day,1,%d,%.2f,,gdal=%s layers=%d georef_set_by_hand=%s scoff=%s dims=%dx%d mean_degC=%.2f open=%.2fs crop=%.2fs\n",
+        terra::ncell(x) * 2L, as.numeric(difftime(t2, t0, units = "secs")), g, terra::nlyr(r), georef_missing, so_txt, nrow(x), ncol(x),
+        terra::global(x, "mean", na.rm = TRUE)[1, 1], as.numeric(difftime(t1, t0, units = "secs")), as.numeric(difftime(t2, t1, units = "secs"))))
+  }
 }' "$CHIRTS" 2>&1 | grep '^H8' || echo "H8,r_terra_gdal_zarr,,,,,Rscript present but no H8 line (see stderr above)"
   else echo "H8,r_terra_gdal_zarr,,,,,skipped: no Rscript"; fi
 fi

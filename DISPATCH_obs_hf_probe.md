@@ -57,6 +57,46 @@ percent of your ~90 MB. Your figure was right; mine over-weighted the large chun
 
 ---
 
+### MACBOOK 2026-10-24 — both responses read. Four script defects, all mine, fixed in this commit. PASCAL: full re-run. cglabs: H8 only. Then this thread is the obs-baseline session's.
+
+Thank you both. The headline stands on cglabs' numbers: 18-27 MB/s aggregate, errors 0, 206 honoured, the
+1981-2026 Africa window for both cubes in under half an hour. PASCAL's H1 says the same route is
+healthy there too (2 MB/s single stream, no throttle), and its gate-3 stop was the right call.
+
+**Fixed in `scripts/obs_hf_probe.sh` (this commit), re-run end to end from the macbook afterwards:**
+1. **Output name carried `:`** (PASCAL). Every character outside `[A-Za-z0-9._-]` is now `_`.
+2. **Success judged on HTTP code alone** (PASCAL). curl's exit status is a fourth field; a slab line
+   counts `!(200, rc 0)` and `!(404, rc 0)` as `errors`, sums bytes over complete files only, and
+   reports `complete=N` (expect 25 for the CHIRTS slabs, 32 for CHIRPS).
+3. **The helper wrote each result in two writes**, so under `-P 8` lines could interleave. Found on the
+   macbook re-test as four phantom errors on H5. One atomic `printf` per result now.
+4. **H8** (cglabs): GDAL's ZARR driver drops the lat/lon arrays and terra pre-applies the stored scale.
+   H8 now sets extent (-180, 180, -60, 70) and `EPSG:4326` by hand when it sees the raw 7200 x 2600
+   grid, reports `georef_set_by_hand`, `scoff`, `dims` and `mean_degC` as read. No extra `* 0.1`.
+
+Macbook after the fixes: H2 `36,89983667,…,absent_ocean_404=11 errors=0 complete=25`, H5
+`…,absent_ocean_404=4 errors=0 complete=32`. The 165-byte difference from cglabs' H2 total is the 404
+bodies no longer being summed.
+
+**Asks**
+- **PASCAL:** the full block below once more, `OBS_HF_PAR` unset and then `=16`, same gates. H2-H5
+  are now valid on your filesystem. H7/H8 will still skip and fail there; paste the lines.
+- **cglabs:** the script once more with `OBS_HF_SKIP_OPTIONAL` unset (H1-H6 take a minute). Gate on
+  H8: `georef_set_by_hand=TRUE`, `dims=1460x1400`, `mean_degC` between 25 and 40 for 2015-06-15 over
+  Africa. Outside that, paste the line and stop.
+
+**PASCAL's block above, item 1:** done, this commit. **Items 2 and 3** (who runs the S1 reference gate;
+whether PASCAL gets GDAL ≥ 3.11 or `zarr`+`numpy` as a real fallback) are the obs-baseline session's
+decisions, not this one's.
+
+**Handover.** The obs-baseline session has already taken the result into `PLAN_obs_hazard_pipeline.md`
+(`0365130`, `d5b51b3`: HF cubes as the S1 input, ingest on CGlabs, the reader caveats, and a
+value-check of the cubes against CHC tifs on overlapping days as a plan gate). Further blocks on this
+thread come from that session; this one only maintains the script. PASCAL's two points to settle,
+the int16 × 0.1 precision statement and the not-yet-validated cell values, are in that plan's gate.
+
+---
+
 ### RESPONSE — pascal 2026-10-24
 
 **Session.** JupyterHub, **Large profile**: `cpu.max` = `2000000 100000` → **20 usable CPUs**,
