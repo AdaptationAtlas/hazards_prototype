@@ -6,6 +6,98 @@ Kept as its own file so the two macbook sessions do not edit one file's top at t
 
 ---
 
+### RESPONSE — cglabs 2026-10-24 — HF cubes 18-27 MB/s aggregate (CHC ~1 MB/s per stream); gates 1-2 pass; gate 3 has one soft miss (H5 per byte); gate 4: H8 opens but GDAL sees no georeferencing
+
+CGlabs JupyterHub container, develop at `afa022b`. Script run unmodified, twice, back to back (not
+concurrently): `OBS_HF_PAR` unset (8) and then `=16`. `OBS_TMP_ROOT` was a fresh dir under the bulk data
+root. After the runs `obs_hf_probe.*` was gone, and I removed the empty parent too. Logs:
+`logs/obs_hf_probe_20261024_053509.log` (x8) and `logs/obs_hf_probe_20261024_053617.log` (x16). The
+host load average was about 50 on 40 cores throughout (shared host), as in S0.
+
+**Versions**
+```
+ModuleNotFoundError: No module named 'zarr'
+terra 1.8.70 gdal 3.11.3
+3.10.3            # gdal-config (conda CLI); terra links 3.11.3
+```
+
+**Run 1 — PAR=8**
+```
+test,label,files,bytes,seconds,MB_per_s,note
+H1,single_chunk_run1,1,5322839,1.312102,4.06,http=200
+H1,single_chunk_run2,1,5322839,1.211049,4.40,http=200
+H2,Tmax slab 98 lat 2-7 x8,36,89983832,5.04,17.85,absent_ocean_404=11 errors=0 per_stream_min_max=0.22/6.36 MB/s
+H3,Tmax slab 98 lat 2-7 x1,36,89983832,31.01,2.90,absent_ocean_404=11 errors=0 per_stream_min_max=0.33/6.95 MB/s
+H4,Tmax slab 126 lat 2-7 x8,36,91723845,4.69,19.56,absent_ocean_404=11 errors=0 per_stream_min_max=0.20/5.57 MB/s
+H5,precip slab 98 lat 1-6 x8,36,54951881,4.65,11.82,absent_ocean_404=4 errors=0 per_stream_min_max=0.02/5.86 MB/s
+H6,range_request_1KiB,1,1024,,,http=206 (expect 206)
+H7,python_zarr_xarray,,,,,skipped: python3 with zarr>=3 and xarray not importable
+H8,r_terra_gdal_zarr_africa_1day,1,3952,10.37,,gdal=3.11.3 layers=16712 mean_scaled=1.24 open=7.44s crop=2.92s
+```
+
+**Run 2 — PAR=16**
+```
+test,label,files,bytes,seconds,MB_per_s,note
+H1,single_chunk_run1,1,5322839,1.140704,4.67,http=200
+H1,single_chunk_run2,1,5322839,1.031396,5.16,http=200
+H2,Tmax slab 98 lat 2-7 x16,36,89983832,3.29,27.35,absent_ocean_404=11 errors=0 per_stream_min_max=0.33/4.45 MB/s
+H3,Tmax slab 98 lat 2-7 x1,36,89983832,31.02,2.90,absent_ocean_404=11 errors=0 per_stream_min_max=0.30/6.73 MB/s
+H4,Tmax slab 126 lat 2-7 x16,36,91723845,3.83,23.95,absent_ocean_404=11 errors=0 per_stream_min_max=0.14/4.93 MB/s
+H5,precip slab 98 lat 1-6 x16,36,54951881,3.95,13.91,absent_ocean_404=4 errors=0 per_stream_min_max=0.02/5.40 MB/s
+H6,range_request_1KiB,1,1024,,,http=206 (expect 206)
+H7,python_zarr_xarray,,,,,skipped: python3 with zarr>=3 and xarray not importable
+H8,r_terra_gdal_zarr_africa_1day,1,3952,8.10,,gdal=3.11.3 layers=16712 mean_scaled=1.24 open=5.54s crop=2.56s
+```
+
+**HF vs CHC on this node (MB/s)**
+
+| route | single stream | 8 streams, aggregate | 16 streams, aggregate |
+|---|---|---|---|
+| CHC tifs (S0 A1 / A4) | 0.81, 1.20 | 5.3, 20.9 (erratic; a first pass ~7) | — |
+| HF Zarr, one 5.3 MB chunk (H1) | 4.06-5.16 | — | — |
+| HF Zarr, Africa slab sequential (H3) | 2.90, 2.90 | — | — |
+| HF Zarr, CHIRTS slab 98 (H2) | — | 17.85 | 27.35 |
+| HF Zarr, CHIRTS slab 126 (H4) | — | 19.56 | 23.95 |
+| HF Zarr, CHIRPS slab 98 (H5) | — | 11.82 | 13.91 |
+
+**Gates**
+1. **Pass.** `errors=0` on every H2-H5 line in both runs. `absent_ocean_404` = 11 for every CHIRTS slab
+   and 4 for CHIRPS, exactly as expected. (H1 has no errors field: both runs `http=200`.)
+2. **Pass.** H6 `http=206` in both runs.
+3. Invariants:
+   - H2 ≥ H3: **holds**, 17.85 / 27.35 vs 2.90. Parallelism helps here, unlike on CHC.
+   - H4 within 2x of H2: **holds**, 19.56 vs 17.85 and 23.95 vs 27.35.
+   - H5 not slower per byte than H2: **does not hold.** 11.82 vs 17.85 (x8) and 13.91 vs 27.35 (x16).
+     This is not a named stop condition. My read is that it is request latency, not throttling: the
+     CHIRPS chunks are smaller (32 non-empty files, mean 1.7 MB, against 25 files at 3.6 MB for CHIRTS),
+     and the coastal partial chunks are tiny (per-stream minimum 0.02 MB/s), so fixed per-request
+     overhead weighs more. It would be worth confirming with a larger CHIRPS window before relying on 14 MB/s.
+   - No slab is below the S0 CHC single-stream rate. The slowest, H3 sequential at 2.9 MB/s, is 2.4-3.6x above CHC A1.
+4. H7 `skipped`: python3 here has no `zarr` (the line is pasted above).
+   **H8 opens, but the result is not Africa.** I followed up with a read-only look at the opened raster: GDAL 3.11.3 reads
+   the store with **no georeferencing** (extent `0, 7200, 0, 2600`, resolution 1, CRS empty;
+   warnings `[rast] unknown extent` and `missing [ (GDAL error 1)`). So `crop(ext(-18, 52, -35, 38))`
+   is applied in pixel space and returns a 52 x 38 corner block (1976 cells = the 3952 bytes),
+   not the Africa window. terra also reports `scoff` = `scale 0.1, offset 0`, so the values come back
+   already scaled; the script's extra `* 0.1` applies the factor twice. The as-read mean is **12.36**, and the
+   pasted `mean_scaled=1.24` is that times 0.1. Neither number says anything about Africa's Tmax. In
+   short, GDAL's ZARR driver opens the cube and reads the scale factor, but does not pick up the lat/lon
+   coordinate arrays, so an R/terra reader would need to set the extent and CRS itself (or a reader
+   other than GDAL is needed). The double-scale is a script issue, and I have not changed the script.
+
+**Ingest time for the 1981-2026 Africa window, at the measured aggregates**
+
+| cube | size | x8 | x16 | single stream (H3) |
+|---|---|---|---|---|
+| CHIRTS Tmax + Tmin, 2 x 131 slabs, ~24 GB | 24 GB | ~22 min (17.85 MB/s) | ~15 min (27.35) | ~2.3 h (2.9) |
+| CHIRPS `rnl`, 131 slabs, ~7 GB | 7 GB | ~10 min (11.82) | ~8.5 min (13.91) | ~40 min |
+
+Compare CHC tifs at the S0 rates: the ~390 GiB global CHIRTS-ERA5 would take 6-22 h even in parallel.
+From this node the cubes make the download a matter of under half an hour. Going from 8 to 16 streams
+still scaled for CHIRTS (+50% on slab 98), so the CDN cap is above 27 MB/s for this client, or at least
+was not reached here.
+
+
 ### MACBOOK 2026-10-24 — READ-ONLY probe on BOTH nodes: re-measure bandwidth against the CDH Zarr cubes on Hugging Face
 
 **Why.** The S0 probe found `data.chc.ucsb.edu` throttles bulk clients to 8-10 kB/s after about
