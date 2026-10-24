@@ -2,6 +2,87 @@
 
 **Append-only; newest block on top. Each node prepends its own `### RESPONSE — <node>` block.**
 
+### PASCAL → MACBOOK 2026-10-24 — five decisions the probe forces, before S1 is written
+
+The probe block below answers A/B/C. This block is the part that needs a macbook decision: each item
+changes what S1 ingests, or where it runs, and none of them can be settled on the node.
+
+**1. CHIRTS vintage — the one that blocks S1's design.**
+The node's 2005-2020 CHIRTS-ERA5 is a mirror of the CHC experimental tree taken October 2023
+(`TIFFTAG_DATETIME=2023:10:02`; the 2015-06-15 file is byte-identical to the copy downloaded today, so
+that part of the tree has not been regenerated since). 2021-2025 would be fetched now, from a product
+CHC labels "experimental" and does not version. A 19-season series built from a 2023 snapshot for
+2005-2020 and a 2026 pull for 2021-2025 is two vintages in one series, with no version string that
+would ever reveal it.
+
+Three ways out, in increasing cost:
+- accept the mix, and record the split in the manifest (snapshot date per file, as `PLAN` §1 already
+  plans for CHIRPS) — cheapest, but the series carries a seam at 2020/2021;
+- re-pull 2005-2025 entirely, so one vintage covers the series — ~384 GiB, of which 292 GiB is
+  re-downloading what is already on disk, from a host that currently serves this client at
+  8-10 kB/s (item 2);
+- ask CHC whether the 2005-2020 tifs have changed since October 2023, and re-pull only if they have.
+  A HEAD request per file would answer it for 11k files cheaply, if the throttle allows HEADs.
+
+Recommend the third, falling back to the first. **Macbook's call.**
+
+**2. The CHC route, before any ingest is scheduled.**
+`data.chc.ucsb.edu` throttled this client to 8-10 kB/s after roughly 100 MB and had not recovered
+after 15 minutes idle. Eight concurrent streams aggregated 0.066 MB/s — worse than one. The node is
+not the constraint: eight parallel streams to the FAO/GCS mirror aggregate 17.7 MB/s on the same
+session. At the throttled rate, 92 GiB (2021-2025 Tmax+Tmin) is about 120 days; unthrottled at the
+first-pull rate of 3.9 MB/s it is about 7 hours.
+
+So the question is not "which node has the bandwidth" — it is "how do we get CHIRTS out of CHC at
+all". Options to choose between: a politeness-budgeted crawl (1-2 streams, exponential backoff,
+resumable, run over days); the **yearly netCDFs** CHC also publishes, which may be served from a
+different path or rate class and would be 5 files rather than ~3,650; or writing to CHC for bulk
+access or a DOI, which `PLAN` §1 already flags as needed for the licence anyway. Worth testing the
+netCDF route before committing — one file would settle it.
+
+**3. Where ingest runs — the probe's own question.**
+On the evidence, the two nodes are not meaningfully different for this work, because the bottleneck
+is the remote host, not local egress. What does differ: PASCAL holds 292 GiB of the CHIRTS series
+already, and CGlabs would have to download all of it. If the 2023 vintage is accepted (item 1), that
+makes PASCAL the cheaper node by ~290 GiB of transfer. If a full re-pull is chosen, the two nodes are
+equivalent and the choice should fall out of CPU and free space instead.
+
+Note the caveat on PASCAL's figures: this session ran inside a JupyterHub container capped at 8 CPUs
+and 32 GiB (`cpu.max` = `800000 100000`). RStudio Server and plain SSH are not capped and reach the
+full 80 cores / 397 GiB, per `server-environment.md` §3 — but the agent session had no route to
+either, so the compute numbers in the RESPONSE block are a floor, not the machine's capability.
+
+**4. CHIRPS v3 is not on the node, and v2.0 is not a substitute.**
+The tree is CHIRPS **v2.0** daily `p05` — global, 1981-01-01 to 2026-01-31, no missing days, 928 GiB.
+There is no v3 and no `p25`. `PLAN`'s grid decision rests on v3 `p25` aligning with the NEX-GDDP
+0.25° grid, so v2.0 `p05` is a different product on a different grid: usable as a cross-check,
+not as the input. The v3 `p25` download stands in full, from the same CHC host as item 2 — which
+means item 2's answer governs CHIRPS as well as CHIRTS. Worth measuring the `products/CHIRPS/v3.0/`
+path separately: it may not sit in the same rate class as `experimental/`.
+
+**5. Two corrections to `PLAN_obs_hazard_pipeline.md` §1.**
+- AgERA5 SRF measured **10.4 MB/day** (10,443,448 B for 2015-06-15), not the 12.8 MB in the table.
+  Over the ~7,670 days of 2005-2025 that is ~75 GiB for SRF alone, against ~92 GiB at the table's
+  figure. Neither matches the "25-30 GB of AgERA5" in this dispatch's preamble, and RH15 would
+  roughly double whichever is right — so it would help to know which basis the 25-30 GB uses
+  (post-crop? SRF only? fewer years?), since the other two preamble figures read as raw download
+  sizes.
+- CHIRTS-ERA5 daily files are striped, not tiled (`Block=7200x1`, LZW). A `/vsicurl` windowed read
+  therefore pulls whole 7200-pixel strips, so the "stream and crop" design in S1 saves far less on
+  CHIRTS than it does on AgERA5, which is a genuine 256-tiled COG. Cropping to Africa still saves
+  disk; it does not save much transfer.
+
+**One more thing worth knowing:** `CHIRTS-ERA5.daily_Tmax.2008.11.24.tif` is missing from the node's
+tree (Tmin is complete, 10,958 files; Tmax has 10,957). One day, inside the baseline window. And
+`chirts_era5/tavg/` is **not** a global CHIRTS variable — it is a 109 × 115 East-African crop whose
+band `Description` reads `CHIRTS-ERA5.daily_Tmax.<date>`, i.e. a derived product, mislabelled, by an
+unknown author. Nothing should read it as Tavg until that is traced.
+
+**Not blocking, but unanswered:** there is still no cglabs RESPONSE block on this dispatch, so the
+two-node comparison the probe was written to settle is half-complete.
+
+---
+
 ### RESPONSE — pascal 2026-10-24
 
 **Session.** JupyterHub, **Small profile**: `cpu.max` = `800000 100000` → **8 usable CPUs**;
