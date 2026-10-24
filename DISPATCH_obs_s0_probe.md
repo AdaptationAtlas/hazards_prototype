@@ -2,6 +2,47 @@
 
 **Append-only; newest block on top. Each node prepends its own `### RESPONSE — <node>` block.**
 
+### RESPONSE — cglabs 2026-10-24 (S0 probe, sections A + B; C is PASCAL-only)
+
+Node: CGlabs JupyterHub container. Read-only; test downloads went to a temp dir under the bulk data
+root and were deleted (verified). Logs: `logs/obs_s0_probe_20261023_204203.log`,
+`logs/obs_s0_probe_rerunA4A5_20261023_204203.log` (A4/A5 rerun because `bc` is absent on the node and
+the first pass lost the aggregate/wall figures; per-file curl lines from the first pass are kept).
+All URLs returned HTTP 200; `/vsicurl` worked.
+
+**Caveat on every figure:** host load average was 50-75 on 40 cores during the probe (shared host;
+our own jobs were ~13 R processes at the time). CHC throughput in particular swung 4x between runs.
+
+#### A — bandwidth
+
+| test | file | bytes | run 1 | run 2 |
+|---|---|---|---|---|
+| A1 CHIRTS-ERA5 daily Tmax | `CHIRTS-ERA5.daily_Tmax.2015.06.15.tif` | 26.3 MB | 32.3 s, **0.81 MB/s** | 21.9 s, **1.20 MB/s** |
+| A2 AgERA5 v2.0 SRF | `C3S.AGERA5-SRF.2015-06-15.tif` | 10.4 MB (not 12.8) | 0.94 s, **11.1 MB/s** | 0.88 s, **11.9 MB/s** |
+| A3 ASAP FPAR dekad | `fpar_20150701.tif` (nearest mid-2015) | 315.7 MB | 45.8 s, **6.89 MB/s** | 45.2 s, **6.99 MB/s** |
+| A4 8x CHIRTS daily in parallel (2015-06-01..08) | 8 files | 210.9 MB | 39.6 s, **5.3 MB/s** aggregate | 10.1 s, **20.9 MB/s** aggregate |
+| A5 `gdal_translate -projwin -18 38 52 -35 /vsicurl/<A2>` | Africa window, 2.0 MB out | — | **3.90 s** | **3.82 s** |
+
+- A4 first pass (lost wall time) ~30 s → ~7 MB/s aggregate; individual streams 0.9-4.7 MB/s.
+  CHC caps per-stream at about 1 MB/s; parallelism helps but is erratic.
+- A2 source is a 3600x1800 0.1° Float32 COG (LZW, 256x256 blocks), so windowed reads work.
+- `gdal-config --version` = **3.10.3** (conda CLI); terra links **GDAL 3.11.3** (see B).
+
+Rough ingest time at these rates: CHIRTS-ERA5 ~390 GiB ≈ 4.8 d single-stream at 1 MB/s,
+≈ 22 h at 5.3 MB/s, ≈ 6 h at 21 MB/s (8 streams). AgERA5 25-30 GB ≈ 40 min. ASAP FPAR ~50 GB ≈ 2 h.
+
+#### B — resources
+
+| item | value |
+|---|---|
+| `nproc` | 40 |
+| usable CPUs | 40: cgroup v1, `cpu.cfs_quota_us = -1` (no CPU limit; no `cpu.max` file) |
+| `free -g` | total 376, used 51, free 151, buff/cache 175, available 325; swap 0 |
+| `uptime` load | 58.1 / 50.5 / 49.1 at start; 74.7 / 57.8 / 51.9 at end |
+| bulk data root | 192T size, 82T used, 111T available (43%) |
+| R terra | 1.8.70, `terra::gdal()` = 3.11.3 |
+
+
 ### PASCAL → MACBOOK 2026-10-24 — five decisions the probe forces, before S1 is written
 
 The probe block below answers A/B/C. This block is the part that needs a macbook decision: each item
