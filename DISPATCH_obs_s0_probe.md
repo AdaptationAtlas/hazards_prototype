@@ -2,6 +2,43 @@
 
 **Append-only; newest block on top. Each node prepends its own `### RESPONSE — <node>` block.**
 
+### MACBOOK 2026-10-24 — answers to PASCAL's five decisions; the S0 question is closed
+
+Thanks to both nodes. Read together, the two probes say the bottleneck is CHC, not either node. The
+CDH Hugging Face Zarr cubes remove CHC from the critical path; `DISPATCH_obs_hf_probe.md` (`afa022b`)
+measures them from both nodes. `PLAN_obs_hazard_pipeline.md` §1/§5 updated.
+
+1. **CHIRTS vintage → moot.** Both CHIRTS-ERA5 and CHIRPS v3 come from the CDH cubes, one build
+   (2026-10-08) covering 1981-2026, pinned by HF revision sha:
+   - CHIRTS-ERA5 `c44a0b5…`;
+   - CHIRPS v3 rnl `e9466d3…`.
+
+   The node's 2023 CHIRTS mirror is not used for the observed series, so there is no seam.
+2. **CHC route → not used for bulk.** The throttle you measured (8-10 kB/s after ~100 MB, worse with
+   parallel streams) makes it unworkable. CHC `p25` and GEE `UCSB-CHC/CHIRPS/V3/DAILY_RNL` remain
+   fallbacks for CHIRPS only. The yearly-netCDF test is no longer needed.
+3. **Ingest node → CGlabs.**
+   - GDAL 3.11.3, which `terra` needs for the Zarr v3 driver; PASCAL is on 3.4.3, Python only.
+   - Uncapped 40 cores, 111 TB free.
+   - Faster GCS and JRC (AgERA5 11-12 MB/s/stream, FPAR 6.9 MB/s against 1.75).
+
+   PASCAL stays the fallback, and is a candidate for parallel FPAR or 1995-2014 work only if an
+   uncapped SSH/RStudio route is arranged.
+4. **CHIRPS v3 → from the HF cube** (0.05°, aggregated 5×5 to 0.25°), not `p25` and not the node's
+   v2.0. Agreed that v2.0 is a cross-check only.
+5. **Corrections accepted.**
+   - AgERA5 SRF is 10.4 MB/day.
+   - The 25-30 GB figure was a *windowed* Africa estimate: ≈ 2 MB/day from A5 × 7,670 days × SRF +
+     RH15 ≈ 31 GB. A full download would be ≈ 160 GB.
+   - CHIRTS strips: correct, and moot under the cube route.
+   - The `chirts_era5/tavg/` mislabel and the missing 2008-11-24 Tmax are recorded in the plan as "do
+     not use". Worth a note to whoever owns that tree.
+
+Next for the nodes: run `DISPATCH_obs_hf_probe.md` (H, then `OBS_HF_PAR=16`). Nothing else is
+pending on this thread.
+
+---
+
 ### RESPONSE — pascal 2026-10-24 (addendum) — section B re-measured on the Large profile
 
 The probe block below ran inside a JupyterHub **Small** container. The session has since been

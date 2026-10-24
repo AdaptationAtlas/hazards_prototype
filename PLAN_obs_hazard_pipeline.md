@@ -2,7 +2,7 @@
 
 **Status:** v2, 2026-10-23. Revised after a five-way design review (efficiency, science, integration,
 gates, provenance), using the reviewer definitions in `.claude/agents/`. §7 lists the findings and how
-each is resolved. **Nothing is built yet.** Decisions D1-D5 recorded 2026-10-23 (§8).
+each is resolved. **Built so far:** upstream changes (a)-(c) (`5f60694`). They were node-verified on 2026-10-24: 744 outputs old == new with max |diff|  0, the gap census is clean, and `DAYS_CHECK=calendar` runs on all three NEX calendars (`DISPATCH_cglabs_obs_s2_equivalence.md`). Decisions D1-D5 recorded 2026-10-23 (§8). S0 probes answered 2026-10-24: CHIRTS and CHIRPS now come from the CDH Hugging Face Zarr cubes, and ingest runs on CGlabs (§5).
 
 **Goal:** a **present-day** observed baseline of hazard frequency × exposure for a small set of heat
 and drought hazards, for crops and livestock. It keeps the per-season series that the current chain
@@ -26,9 +26,9 @@ All remote sources were checked anonymously on 2026-10-22/23. **Licences are a b
 
 | need | source and path | units → required units | licence (as found) | provenance handling |
 |---|---|---|---|---|
-| daily P | CHIRPS v3 daily `rnl`, 0.25° `p25`: `data.chc.ucsb.edu/products/CHIRPS/v3.0/daily/final/rnl/p25/` | mm/day | the CHC page says **both** "public domain" and CC-BY 4.0; record both | regenerated in place 2026-04-02 → snapshot date + checksum manifest |
-| daily Tmax, Tmin | CHIRTS-ERA5 daily: `data.chc.ucsb.edu/experimental/CHIRTS-ERA5/{tmax,tmin}/tifs/daily/` (25.9 MiB/day, full-width strips; yearly netCDF also exists) | °C | **none stated, "experimental"**; ERA5-derived → ask CHC for terms and a DOI | per-file Last-Modified/size/md5 manifest; no version in the names |
-| daily radiation | AgERA5 v2.0 SRF, FAO mirror: `storage.googleapis.com/fao-gismgr-c3s-data/DATA/C3S/MAPSET/AGERA5-SRF/` (12.8 MB/day, 256-tiled COG) | **J m⁻² d⁻¹ → ÷1e6 → MJ m⁻² d⁻¹**. `peest2` expects MJ: NEX `rsds` is converted in preprocessing (`hazards_upstream/R/02_preprocess_data/preprocess_nex-gddp-cmip6_daily_data.R:83`). | **CC-BY-SA-4.0** on the FAO catalogue (CDS: CC-BY) → share-alike propagates to NDWS/NDWL0 | archive rewritten Sep 2025; "v2.0" is inferred, not stamped in the files → manifest of GCS generation + md5Hash; gate on generation drift |
+| daily P | **CHIRPS v3 daily `rnl`, CDH Zarr v3 cube on Hugging Face**: `huggingface.co/datasets/aaguilar90/chirps-v3-daily-rnl/resolve/<rev>/chirps-v3-daily-rnl.zarr`. 0.05°, 60°N-60°S, 1981-01-01 → 2026-08-31, `int16 × 0.1` mm, Zstd, chunks 128 d × 300 × 300, lat north→south, ocean chunks absent (404). **Pin `rev` = `e9466d3109c6d087c6cf60c19ca6ae20873d358a`.** Fallbacks: CHC `products/CHIRPS/v3.0/daily/final/rnl/p25/` (throttled, see §5), or GEE `UCSB-CHC/CHIRPS/V3/DAILY_RNL`. | mm/day; aggregate 0.05 → 0.25° as an exact 5×5 mean | HF card: CC-BY-4.0 (the redistributor's statement); the CHC page says **both** "public domain" and CC-BY 4.0. Record all three. | one vintage (cube built 2026-10-08); pin the HF revision sha; manifest of revision + chunk list |
+| daily Tmax, Tmin | **CHIRTS-ERA5 daily, CDH Zarr v3 cube on Hugging Face**: `huggingface.co/datasets/aaguilar90/chirts-era5-daily/resolve/<rev>/chirts-era5-daily.zarr`. 0.05°, 70°N-60°S, 1981-01-01 → 2026-10-03, `int16 × 0.1` °C, same chunking. **Pin `rev` = `c44a0b58772e32f7cbb2b5a740d5e6586ceeb054`.** Not on GEE (GEE has CHIRTS v1 1983-2016 only). | °C; 5×5 mean to 0.25° | HF card: CC-BY-4.0 (the redistributor's statement). Upstream CHC: **none stated, "experimental"**. Record both; ask CHC for terms and a DOI. | **one vintage for the whole series.** This avoids the CHC throttle (8-10 kB/s after ~100 MB, PASCAL S0 probe) and the 2023-snapshot/2026-pull seam the node mirror would have caused. Pin the revision sha. |
+| daily radiation | AgERA5 v2.0 SRF, FAO mirror: `storage.googleapis.com/fao-gismgr-c3s-data/DATA/C3S/MAPSET/AGERA5-SRF/` (**10.4 MB/day** measured, 256-tiled COG; an Africa `-projwin` read is ~2 MB/day) | **J m⁻² d⁻¹ → ÷1e6 → MJ m⁻² d⁻¹**. `peest2` expects MJ: NEX `rsds` is converted in preprocessing (`hazards_upstream/R/02_preprocess_data/preprocess_nex-gddp-cmip6_daily_data.R:83`). | **CC-BY-SA-4.0** on the FAO catalogue (CDS: CC-BY) → share-alike propagates to NDWS/NDWL0 | archive rewritten Sep 2025; "v2.0" is inferred, not stamped in the files → manifest of GCS generation + md5Hash; gate on generation drift |
 | RH for THI | AgERA5 **RH15** (RH at 15:00 local; the closest stand-in for RH at Tmax). Only RH06/09/12/15/18 exist. | % | per layer, FAO catalogue: RH06/09 CC-BY-SA, RH15 "other-open", RH18 CC-BY → treat as SA until clarified | as SRF |
 | soils | `sscp_world.tif`, `ssat_world.tif` on the node | — | **unrecorded** → trace the source | |
 | crop calendars | GGCMI Phase 3 v1.01, on the node | months | **null** in `metadata/catalogue/ggcmi-crop-calendars.json` → trace | |
@@ -54,7 +54,7 @@ source and working tree**:
 
 | stage | does | output | changes to existing code |
 |---|---|---|---|
-| **S1 ingest** | stream, crop to Africa, aggregate to 0.25°, **discard the raw data**: CHIRPS `p25` native; CHIRTS-ERA5 5×5 mean; AgERA5 SRF ÷1e6 and RH15, area-weighted 0.1 → 0.25 | **daily tifs in the layout the upstream scripts read**: `<OBS_ROOT>/nex-gddp-cmip6/{pr,tasmax,tasmin,rsds,hurs}/historical/<obs-token>/<var>_YYYY-MM-DD.tif`, about 38k files, ~18 GB. Plus a manifest per source. | new script; symlink `chirps_wrld/` and `atlas_hazards/soils/` into `OBS_ROOT` |
+| **S1 ingest** | **read the HF Zarr cubes in place** (terra `ZARR:` driver, which needs GDAL ≥ 3.11 - CGlabs has 3.11.3, PASCAL 3.4.3 - or Python xarray). Only the Africa chunks are fetched. Apply ×0.1, flip lat north→south, absent chunks → NA. CHIRPS and CHIRTS-ERA5 each take an exact 5×5 mean to 0.25°. AgERA5 SRF ÷1e6 and RH15, area-weighted 0.1 → 0.25. | **daily tifs in the layout the upstream scripts read**: `<OBS_ROOT>/nex-gddp-cmip6/{pr,tasmax,tasmin,rsds,hurs}/historical/<obs-token>/<var>_YYYY-MM-DD.tif`, about 38k files, ~18 GB. Plus a manifest per source. | new script; symlink `chirps_wrld/` and `atlas_hazards/soils/` into `OBS_ROOT` |
 | **S2 daily → monthly index** | upstream `fast_calc_NDWS.R`/`NDWL0.R`, `calc_NTx.R`, `calc_THI.R`, `calc_PTOT.R`, with `COMMON_DATA=<OBS_ROOT> GCMS=<obs-token> YRS=2005:2025` | `<IDX>-YYYY-MM.tif` | **(a)** water-balance seed months become a parameter (`AVAIL_SEED_MONTHS`). They are hard-coded `'1995-01','2021-01'` at `fast_calc_NDWS.R:137` / `NDWL0.R:137` / `fast_calc_waterbalance.R:80`, so a 2005 start fails and 2021-01 would silently reset the store mid-series. **(b)** `calc_NTx.R:31-32` (and THI/PTOT) skip on bare `file.exists`; switch them to `should_skip()` so `FORCE_OVERWRITE` works. **(c)** missing days are dropped silently (`fls[file.exists(fls)]`); add `stopifnot(length == days_in_month)`. |
 | **S3 per-season value, per crop window** | per crop, its GGCMI rainfed calendar (SPAM ↔ GGCMI name map declared; crops without one fall back to maize, flagged). Perennials and livestock: 12 months. Same stats as now. | one stack per index × window, **19 layers**; an incomplete season is NA, never partial | new script |
 | **S4 classify + encode** | fixed thresholds (`haz_classes.csv`), then per season **`code = dry·1 + heat·10 + wet·100`**, the R/2 encoding, so `int_risk()` is reusable. NA input → NA code, never 0. | code stack per crop-window × severity, saved | new script |
@@ -149,8 +149,9 @@ honest input that passes with a corruption that must fail.
 
 | item | volume / node time |
 |---|---|
-| CHIRTS-ERA5 2005-2025, Tmax + Tmin | **388 GiB read in full** (~260 GiB windowed, since full-width strips limit the saving). Streamed and discarded; ~2-12 h at 10-50 MB/s. |
-| AgERA5 SRF + RH15 | ~25-30 GB windowed (197 GB full); ~2 h at 16 workers |
+| CHIRTS-ERA5 2005-2025, Tmax + Tmin, **from the HF cube** | Africa window ≈ 90 MB per 128-day slab per variable → ~60 slabs × 2 ≈ **11 GB**. A laptop measured 4-5.4 MB/s on 8 streams (≈ 35-45 min); node rate pending `DISPATCH_obs_hf_probe.md`. The CHC route was ~388 GiB, throttled to 8-10 kB/s on PASCAL and about 1 MB/s per stream on CGlabs, so it is not workable. |
+| CHIRPS v3 2005-2025, from the HF cube | ≈ 55 MB per slab → **~3.3 GB** |
+| AgERA5 SRF + RH15 | **~31 GB windowed** (≈ 2 MB/day Africa `-projwin` × 7,670 days × 2 variables; A5 measured on both nodes). That is the basis of the earlier 25-30 GB; a full download would be 10.4 MB/day ≈ 160 GB. CGlabs 8 streams ≈ 18-21 MB/s → about 30 min. |
 | CHIRPS `p25` | small |
 | S1 retained output | ~18 GB daily 0.25° tifs |
 | S2-S5 compute | under ~1 h of node time; the stages are cheap at 116k cells |
@@ -183,6 +184,14 @@ time. The elapsed time is engineering, verification and node round trips.
 - Change (c), stopping on missing input days, is a deliberate behaviour change for NEX-GDDP runs too.
   A gappy input now halts instead of undercounting. Announce it in the dispatch that ships it.
 - Commit only our own paths; other sessions edit the same tree.
+
+**Where ingest runs (S0 probes, 2026-10-24): CGlabs.**
+- It has GDAL 3.11.3, which `terra` needs to read Zarr v3. PASCAL has 3.4.3.
+- 40 uncapped cores and 111 TB free.
+- Faster GCS and JRC links: AgERA5 at 11-12 MB/s per stream; FPAR at 6.9 MB/s against PASCAL's 1.75.
+- PASCAL's head start (its CHIRTS-ERA5 1991-2020 mirror, 2023 snapshot) no longer matters now that
+  the HF cube supplies one vintage.
+- Do not read PASCAL's `chirts_era5/tavg/`: it is a mislabelled East-Africa Tmax crop.
 
 ## 6. Order of work
 
