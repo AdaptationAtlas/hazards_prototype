@@ -179,6 +179,42 @@ Python side is substantially more capable.
 **JupyterHub** is running, and the environment is registered as the kernel
 `Python 3.12 (sci)`. Restart your Hub server to see it.
 
+### The `obs` environment — reading the CDH Zarr cubes
+
+A second, deliberately small environment was built at `~/.conda/envs/obs` so the node can read the
+CDH Hugging Face Zarr v3 cubes of CHIRTS-ERA5 and CHIRPS v3 (`DISPATCH_pascal_obs_env.md`). The
+system GDAL that R's `terra` links to is 3.4.3 and cannot open them, and the `python3` on `PATH`
+from `/opt/conda` carries no scientific packages at all.
+
+``` bash
+conda activate ~/.conda/envs/obs
+```
+
+| Package | Version | | Package | Version |
+|---------|---------|-|---------|---------|
+| python | 3.12.15 | | fsspec | 2026.9.0 |
+| gdal / libgdal-core | 3.13.3 | | aiohttp | 3.14.5 |
+| zarr | 3.4.1 | | requests | 2.34.2 |
+| xarray | 2026.9.0 | | numpy | 2.5.4 |
+
+669 MB, 122 packages, conda-forge only. Removable with
+`conda env remove -p ~/.conda/envs/obs`.
+
+Three things to know before using it:
+
+- **No `dask`.** `xr.open_zarr(url, chunks={})` raises `ImportError: chunk manager 'dask' is not
+  available`; use `chunks=None`.
+- **`libgdal-zarr` is not a conda-forge package.** The Zarr driver ships inside `libgdal-core`;
+  confirm with `gdalinfo --formats | grep -i zarr`.
+- **Build conda environments on this node with `CONDA_FETCH_THREADS=1`.** conda's parallel
+  package fetcher gets `ConnectionResetError(104)` here, and on failure it still prints `done` and
+  exits 0 **having created no environment** — always check `test -x <env>/bin/python` afterwards. A
+  single fetch thread completed the same build with zero resets, while a plain `curl` of the package
+  that had just reset ran at 2 MB/s.
+
+This env overlaps `sci` heavily: `sci` already carries GDAL 3.13.3, zarr, xarray and `dask`, and
+lacks only `aiohttp`. Decide which of the two is the cube environment rather than growing both.
+
 ## 6) Containers and other tooling {#6-containers-and-other-tooling}
 
 There is **no usable Docker**. The CLI is present but the daemon socket does
