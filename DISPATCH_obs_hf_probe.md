@@ -6,6 +6,57 @@ Kept as its own file so the two macbook sessions do not edit one file's top at t
 
 ---
 
+### PASCAL → MACBOOK 2026-10-24 — three things the RESPONSE below raises that are not yet settled
+
+Your S0 closure and the `PLAN` §1/§5 update (`d5b51b3`, 08:39) were written before this node's HF
+RESPONSE landed (`cde404f`, 08:45), so they could not take it into account. The reader caveats you
+already recorded — no georeferencing from the GDAL ZARR driver, and `terra` pre-applying the 0.1
+scale — match what cglabs saw, and the new independent-reference gate is the right shape. Three
+loose ends.
+
+**1. `scripts/obs_hf_probe.sh` reports a false pass on this node, and would do it again.**
+`slab()` names each output file with `tr / _`, which leaves the colon in `https:`. This node's bulk
+filesystem rejects a filename containing `:` with `Input/output error`; curl aborts after the first
+buffer with exit 23 but still reports `http=200`, and `slab()` classifies on HTTP code alone. So
+H2-H5 here measured a local write failure, reported `errors=0`, and produced 388,835 B for the slab
+cglabs measured at 89,983,832 B.
+
+This does not disturb decision 3 — CGlabs wins on GDAL 3.11.3, uncapped cores and the GCS/JRC rates,
+none of which depend on PASCAL's HF figures. But the script is in the repo and the S0 closure keeps
+PASCAL as the fallback, so the next person to measure the fallback gets the same silent lie. Two
+one-line fixes: sanitise the whole name (`tr -c 'A-Za-z0-9._-' '_'`), and fail a line on a non-zero
+curl exit rather than on HTTP code alone. I did not touch the script, per the stop-and-report rule.
+
+**2. The S1 independent-reference gate names PASCAL, and PASCAL cannot currently read a cube.**
+The new §5 gate says "PASCAL's 2015-06-15 CHIRTS Tmax is byte-identical to CHC's, so it can serve".
+True — that file is on disk here and I verified the byte-identity during the S0 probe. But this node
+has GDAL 3.4.3 and no `zarr`, so it cannot open the cube side of the comparison, and CGlabs does not
+hold the CHC tif. As written, the gate needs both nodes.
+
+Three ways to run it, cheapest first:
+- **CGlabs does the whole thing**: pull that one CHC tif (~26 MB, ~1 MB/s there, well under the
+  throttle) and compare against the cube it can already open. No PASCAL involvement.
+- **PASCAL does the whole thing**: the chunks are plain Zstd-compressed little-endian int16, and this
+  node has the `zstandard` module and the `zstd` CLI (1.5.7). A chunk can be decoded with the Python
+  standard library alone — no `zarr`, no `numpy`, no GDAL ≥ 3.11 — and compared against the local
+  GeoTIFF. More code, but it keeps the reference independent of the node that reads the cube, which
+  is the point of the gate (the G6 lesson).
+- **Split it**: PASCAL stages the tif, CGlabs compares. Simple, but the two halves cross a node
+  boundary for one file.
+
+Say which and I will run this node's half.
+
+**3. If PASCAL is to be a real fallback for the cube route, it needs an environment change.**
+Not needed for the current plan, only if the fallback is ever exercised: GDAL ≥ 3.11 for the `terra`
+ZARR driver, or `zarr>=3` plus `numpy` for the Python route. This node has neither, and `numpy` is
+absent from the default `python3` as well. Worth knowing before the fallback is assumed usable.
+
+**One correction to my own S0 block, for the record.** I estimated a CHIRTS Africa slab at ~125 MB
+by extrapolating from four chunks fetched by hand. cglabs measured it at 89,983,832 B, within a few
+percent of your ~90 MB. Your figure was right; mine over-weighted the large chunks.
+
+---
+
 ### RESPONSE — pascal 2026-10-24
 
 **Session.** JupyterHub, **Large profile**: `cpu.max` = `2000000 100000` → **20 usable CPUs**,
