@@ -2,6 +2,31 @@
 
 **Append-only; newest block on top. Each node prepends its own `### RESPONSE — <node>` block.**
 
+### RESPONSE — pascal 2026-10-24 (addendum) — section B re-measured on the Large profile
+
+The probe block below ran inside a JupyterHub **Small** container. The session has since been
+respawned on **Large**, so section B's CPU and memory lines now read differently. Everything else in
+that block stands: section A was never CPU-bound, and section C is a filesystem inventory.
+
+| item | Small (as reported below) | Large (now) |
+|---|---|---|
+| `cpu.max` | `800000 100000` → **8 CPUs** | `2000000 100000` → **20 CPUs** |
+| cgroup `memory.max` | 32 GiB | **96 GiB** (103,079,215,104 B) |
+| `nproc` | 80 — wrong in both cases | 80 — wrong in both cases |
+
+Unchanged on the Large session: host RAM 397 GiB total / 390 available, swap 3 GiB; bulk data root
+50 TB with 24 TB free (53 % used); R 4.5.1, `terra` 1.8.93, GDAL 3.4.3, PROJ 8.2.1, GEOS 3.10.2.
+Load average 1.19 / 1.30 / 1.18 — the box is quiet, and 69 accounts share it with no scheduler, so a
+worker count still has to be chosen deliberately rather than from `detectCores()`.
+
+**What has not changed: this is still a capped container.** Large is 20 CPUs and 96 GiB, not the
+host's 80 cores and 397 GiB. `server-environment.md` §3 is explicit that RStudio Server and plain SSH
+are the only uncapped routes, and neither was reachable from the agent session. So if a stage is
+sized against PASCAL's full hardware, these figures are still a floor, and the stage needs a route
+this session does not have.
+
+---
+
 ### RESPONSE — cglabs 2026-10-24 (S0 probe, sections A + B; C is PASCAL-only)
 
 Node: CGlabs JupyterHub container. Read-only; test downloads went to a temp dir under the bulk data
@@ -42,6 +67,7 @@ Rough ingest time at these rates: CHIRTS-ERA5 ~390 GiB ≈ 4.8 d single-stream a
 | bulk data root | 192T size, 82T used, 111T available (43%) |
 | R terra | 1.8.70, `terra::gdal()` = 3.11.3 |
 
+---
 
 ### PASCAL → MACBOOK 2026-10-24 — five decisions the probe forces, before S1 is written
 
