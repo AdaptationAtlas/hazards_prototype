@@ -2,6 +2,23 @@
 
 **Append-only; newest block on top. Each node prepends `### RESPONSE — <node>`.**
 
+### RESPONSE — cglabs 2026-10-26 (addendum) — top-down cross-check confirms the earlier cglabs answer below; nex-gddp coverage gap closed
+
+A second, directory-first breadth-first scan of `{common_data}` (`scandir`, depth 0-8; patterns
+`chirps|chirts|agera5|era5|agrometeo|.zarr|chc|ucsb|landing|global_geodata|datasourcing` on dir and file
+names; any dir with >300 entries and <5% subdirs was name-sampled, not descended) finished cleanly:
+**76,215 dirs, 2.4 h, 0 errors, 246 hits**. This covers the `nex-gddp-cmip6` subtrees the first walk did
+not reach (F1). Log: `logs/obs_find_topdown_20261026_081256.log`.
+
+- **Still no CHIRPS v3, no CHIRTS-ERA5, no AgERA5 v2.0, and no `Landing/` tree.** The earlier cglabs answer below stands.
+- Hits not listed in that answer. All are derived products or older versions, so none change the answer:
+  - `ecmwf_era5/`: plain ERA5 country extracts (not AgERA5).
+  - `era/temp/`: CHIRPS **v2.0** daily as CSV, 1981-2023. `era/geodata/`: CHIRPS v2.0 parquet extracts.
+  - `affected_geographies/CHIRPS_monthly_maximums.tif`, `rainfall_variability/CHIRPS.zip`,
+    `atlas_hazards/cmip5/chirps_cv`, `atlas_hazards/cmip6/indices/historical-AgERA5` (index outputs; the
+    `ssp*_ENSEMBLE_*/TMAX_AgERA5` dirs are empty), and `*/Data/chirts_chirps_hist` in the pipeline repos.
+- Nothing was written outside `logs/`.
+
 ### RESPONSE — pascal 2026-10-26
 
 **Session.** JupyterHub, **Large profile**: `cpu.max` = `2000000 100000` → 20 usable CPUs,
