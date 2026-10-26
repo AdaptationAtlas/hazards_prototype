@@ -186,6 +186,13 @@ time. The elapsed time is engineering, verification and node round trips.
   A gappy input now halts instead of undercounting. Announce it in the dispatch that ships it.
 - Commit only our own paths; other sessions edit the same tree.
 
+**No usable local copies (both nodes searched, 2026-10-26; `DISPATCH_obs_find_local_copies.md`).**
+- No CHIRPS v3 and no CHIRTS-ERA5 for 2005-2025 on either node.
+- No AgERA5 v2.0. CGlabs' local AgERA5 runs to 2025, but it is a v1.0 (to 2022) + v1.1.1 (2023+)
+  stitch, and RH appears to change from 12 LT to 18 LT at 2023-01-01. Do **not** use it for the
+  series. Keep FAO AgERA5 v2.0 for the whole span.
+- Residual: on PASCAL three project roots were unreadable and two large trees hit the search cap.
+
 **Where ingest runs (S0 probes, 2026-10-24): CGlabs.**
 - It has GDAL 3.11.3, which `terra` needs to read Zarr v3. PASCAL has 3.4.3.
 - 40 uncapped cores and 111 TB free.
