@@ -45,7 +45,7 @@ GCMS=chirps-chirts-agera5-rh15 nohup Rscript calc_THI.R        > $REPO/logs/obs_
 unset COMMON_DATA SCENARIO YRS DAYS_CHECK AVAIL_SEED_MONTHS
 ```
 **Invariants:** every script rc 0; 48 monthly files per index (NTx: 31 dirs × 48; THI: 48 `THI_max-` + 48 `THI_mean-`);
-no `WARN` / `daily inputs missing`; Kenya-box NDWS monthly means in 2-28 and seasonal; the two THI tokens differ
+no `WARN` / `daily inputs missing`; Kenya-box NDWS monthly means vary seasonally with PTOT (April and November dips) and no month is 0 or 31 in every land cell (the 2-28 band in the S1 dispatch was too tight for an arid box; an un-converted radiation unit would make every day a stress day); the two THI tokens differ
 (RH15 < daily-mean RH, so THI(ii) < THI(i) on average: report the box-mean difference).
 
 #### J3 — smoke S3-S5
