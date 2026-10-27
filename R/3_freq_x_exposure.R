@@ -494,6 +494,11 @@ do_ensemble_sd4.1 <- TRUE
 do_ensemble_sd4.2 <- TRUE
 ensemble_only4.1 <- TRUE
 ensemble_only4.2 <- TRUE
+# Which model tokens §4.1/§4.2 keep when ensemble_only is on. Default = the NEX-GDDP aggregates, as
+# always. The observed series has no ensemble: its files carry the source token, so a run on that tree
+# sets R3_MODEL_ALLOW to it (e.g. "chirps-chirts-agera5") - otherwise every file is dropped silently and
+# the run exits 0 with nothing written (integration review, 2026-10-27).
+model_allow <- Sys.getenv("R3_MODEL_ALLOW", "ENSEMBLE|historic")
 worker_n4.1 <- 16
 # 4.2 zonal-against-admin2 is much heavier per task than 4.1 intersection.
 # 16 workers OOM-killed a worker mid-extract 2026-05-25 (log 180833). Lowered
@@ -1075,7 +1080,7 @@ for (tx in seq_along(timeframe_choices)) {
       }
 
       if (ensemble_only4.1) {
-        files <- grep("ENSEMBLE|historic", files, value = TRUE)
+        files <- grep(model_allow, files, value = TRUE)
       }
       crop_choices <- unique(unlist(tstrsplit(basename(files), "_", keep = 1)))
       # Exclude crops, the vector will serve to identify if we should be using crop or livestock exposure for the hazard data supplied
@@ -1359,13 +1364,33 @@ for (tx in seq_along(timeframe_choices)) {
         .log03(sprintf("[%s] 4.2) ensemble membership: %d GCMs (%s)", timeframe,
                        length(.ens_members),
                        if (length(.ens_members)) paste(.ens_members, collapse = ",") else "NONE FOUND"))
+        if (climdat_source == "obs") {
+          # Not an ensemble. The model token is the observed source; say so in the sidecar instead of
+          # claiming a 1-member ensemble, and carry the provenance the CDH record needs.
+          .obs_tokens <- sort(unique(unlist(data.table::tstrsplit(basename(list.files(to_do_list[[v]]$source_dir, "_int\\.tif$")), "_", keep = 2, fixed = TRUE))))
+          ensemble_info <- list(
+            n_members = 0L, members = character(0),
+            derived_from = "observed series: not an ensemble (see provenance)", folder = basename(folder),
+            provenance = list(
+              source_tokens = .obs_tokens,
+              inputs = "CHIRPS v3 daily rnl + CHIRTS-ERA5 daily (CDH Hugging Face Zarr cubes, pinned revisions) + AgERA5 v2.0 SRF/RH (FAO GCS mirror); versions and checksums per file in the S1 manifests under <OBS_ROOT>/manifests/",
+              period = "ggcmi-crop: each crop over its own GGCMI Phase 3 rainfed calendar; perennials and livestock over 12 months from the maize planting month (metadata/obs_crop_windows.csv, proxies flagged there)",
+              seasons = "one value per season; seasons labelled by START year; the timeframe label is the data window (its last year is the end of the last season)",
+              severity = "fixed absolute thresholds from metadata/haz_classes.csv; tiers are cumulative; interaction classes are exclusive per season",
+              caveats = c("12-month windows: a mean of monthly stress days measures dry-season length, not drought (PLAN §3b)",
+                          "livestock dry axis is the generic crop water-balance index, not forage (#31)",
+                          "rice: the NDWL0 wet class is the production condition, not a hazard (#25)")
+            )
+          )
+          .log03(sprintf("[%s] 4.2) observed series: provenance block written for token(s) %s", timeframe, paste(.obs_tokens, collapse = ",")))
+        }
 
         if (!do_ensemble_sd4.2) {
           files <- files[!grepl("ENSEMBLEsd", files)]
         }
 
         if (ensemble_only4.2) {
-          files <- grep("ENSEMBLE|historic", files, value = TRUE)
+          files <- grep(model_allow, files, value = TRUE)
         }
 
         # files_solo<-data.table(file=files[!grepl("_int_",files)])

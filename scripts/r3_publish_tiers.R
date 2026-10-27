@@ -171,6 +171,19 @@ TIERS       <- strsplit(opt("--tiers", "severe,moderate,extreme"), ",")[[1]]
 # that still has `value_sd` (handover §2D item E), and a bare GCM name publishes that member.
 MODEL       <- opt("--model", "ENSEMBLEmean")
 STAMP       <- format(Sys.time(), "%Y%m%d_%H%M%S")
+# --source: the `source=` key segment AND the per-source expectations the gates hold (scenario set,
+# the baseline scenario G6/G6b read, ensemble membership). Until 2026-10-27 all three were literals
+# for NEX-GDDP; the observed series (PLAN_obs_hazard_pipeline.md) has one scenario, no ensemble and
+# its own source token, and must never publish under the NEX key.
+SOURCE_SPECS <- list(
+  "nex-gddp-cmip6"       = list(scenarios = c("historic", "ssp126", "ssp245", "ssp370", "ssp585"), baseline = "historic", members = 18L),
+  "chirps-chirts-agera5" = list(scenarios = "observed", baseline = "observed", members = NA_integer_)
+)
+SOURCE      <- opt("--source", "nex-gddp-cmip6")
+if (!SOURCE %in% names(SOURCE_SPECS)) stop("--source must be one of: ", paste(names(SOURCE_SPECS), collapse = ", "), " (got ", SOURCE, ")")
+SRC         <- SOURCE_SPECS[[SOURCE]]
+if (!is.na(SRC$members) && !identical(Sys.getenv("ATLAS_CLIMDAT_SOURCE", "nexgddp"), "nexgddp")) stop("--source ", SOURCE, " but ATLAS_CLIMDAT_SOURCE is not nexgddp: the local tier dirs would come from another tree")
+if (is.na(SRC$members) && !identical(Sys.getenv("ATLAS_CLIMDAT_SOURCE", ""), "obs")) stop("--source ", SOURCE, " needs ATLAS_CLIMDAT_SOURCE=obs so the local tier dirs resolve to the observed tree")
 
 # ---------------------------------------------------------------- variables --
 # One row per hazard-exposure tier R/3 §4.2 produces. Until 2026-10-07 this script could publish
@@ -291,7 +304,8 @@ BUCKET  <- "digital-atlas"
 # `vop_nominal-usd21` is the one irregular spelling - it has been live and read by the notebooks
 # since 2026-09, so it stays as it is rather than being regularised into a second key for the same
 # product. Every other variable is spelled exactly as R/3 names it.
-S3_KEY_BASE <- "domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure"
+S3_KEY_BASE_FOR <- function(source) sprintf("domain=hazard_exposure/source=%s/region=ssa/processing=hazard-risk-exposure", source)
+S3_KEY_BASE <- S3_KEY_BASE_FOR(SOURCE)
 s3_base_for <- function(spec, period, model) sprintf("%s/variable=%s/period=%s/model=%s", S3_KEY_BASE, spec$s3_var, period, model)
 REF_KEY_LEGACY <- paste0("domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/",
                          "processing=atlas-harmonized/variable=crop-livestock_all.parquet")   # deprecated alias of res-05
@@ -362,9 +376,10 @@ if (DO_TIERS) for (vkey in VARIABLES) {
     em <- tryCatch(jsonlite::read_json(sc_local, simplifyVector = TRUE)$ensemble, error = function(e) NULL)
     if (is.null(em)) { .log("  SIDECAR-ONLY FAIL: %s has no `ensemble` block - nothing worth publishing", basename(sc_local)); next }
     .log("  sidecar: ensemble = %d GCMs [%s]", em$n_members, paste(em$members, collapse = ","))
-    if (!identical(as.integer(em$n_members), 18L)) {
-      .log("  SIDECAR-ONLY FAIL: %d members, not 18 - refusing to publish a partial-ensemble claim (#26)", em$n_members); next
+    if (!is.na(SRC$members) && !identical(as.integer(em$n_members), SRC$members)) {
+      .log("  SIDECAR-ONLY FAIL: %d members, not %d - refusing to publish a partial-ensemble claim (#26)", em$n_members, SRC$members); next
     }
+    if (is.na(SRC$members) && is.null(em$provenance)) { .log("  SIDECAR-ONLY FAIL: observed source but the sidecar has no `ensemble$provenance` block"); next }
     finish_upload(sc_local, sprintf("s3://%s/%s.json", BUCKET, s3_key))
     .log("  %s / %s sidecar done in %s", vkey, tier, .elapsed(t_tier))
     next
@@ -385,7 +400,7 @@ if (DO_TIERS) for (vkey in VARIABLES) {
     .log("  G2 %s: every hazard_vars has none rows and n(none)==n(any)", if (g2) "ok" else "FAIL")
     # G3 scenarios
     sc <- ds |> dplyr::count(scenario) |> dplyr::collect() |> as.data.table()
-    g3 <- setequal(sc$scenario, c("historic", "ssp126", "ssp245", "ssp370", "ssp585"))
+    g3 <- setequal(sc$scenario, SRC$scenarios)
     .log("  G3 %s: scenarios = %s", if (g3) "ok" else "FAIL", paste(sort(sc$scenario), collapse = ","))
     # G4 severity
     sv <- ds |> dplyr::distinct(severity) |> dplyr::collect()
@@ -408,7 +423,7 @@ if (DO_TIERS) for (vkey in VARIABLES) {
       .g6b_min <- as.numeric(opt("--exposure-min", spec$g6b_min))   # unit-aware floor; CLI overrides the spec
       .log("  G6b materiality floor for %s: %s (in the tier's unit)", vkey, format(.g6b_min, big.mark = ","))
       g6b <- tier_vs_exposure(local_f, .expo, spec$twin_expo, tol_pair = G6B_TOL, allow = .g6b_allow,
-                              min_exposure = .g6b_min)
+                              min_exposure = .g6b_min, baseline = SRC$baseline, scenarios = SRC$scenarios)
       print_tier_vs_exposure(g6b, label = sprintf("%s/%s", vkey, tier), log = function(fmt, ...) .log(paste0("  ", fmt), ...))
       .log("  G6b %s in %s", if (g6b$pass) "ok" else if (ALLOW_G6B) "WARN (allowed)" else "FAIL", .elapsed(t6b))
       if (!g6b$pass && !ALLOW_G6B) { .log("  ABORT %s/%s: the product does not reproduce the exposure it was multiplied by (--allow-exposure-mismatch only once the cause is understood)", vkey, tier); next }
@@ -442,7 +457,8 @@ if (DO_TIERS) for (vkey in VARIABLES) {
                      min_live = DRIFT$min_live, small_iso3 = DRIFT$small_iso3, expected = DRIFT_EXPECTED,
                      exposure_new = if (nzchar(DRIFT_EXPOSURE_BY_VAR[[vkey]] %||% "")) DRIFT_EXPOSURE_BY_VAR[[vkey]] else NULL,
                      flip_allow = DRIFT_FLIPS, exposure_var = spec$twin_expo,
-                     hv_retired = HV_RETIRED, hv_added = HV_ADDED, livestock_moved = LIVESTOCK_MOVED)
+                     hv_retired = HV_RETIRED, hv_added = HV_ADDED, livestock_moved = LIVESTOCK_MOVED,
+                     scenarios = SRC$scenarios, baseline = SRC$baseline)
     print_drift(g6, label = sprintf("%s/%s", vkey, tier), log = function(fmt, ...) .log(paste0("  ", fmt), ...))
     .log("  G6 %s in %s", if (g6$pass) "ok" else if (ALLOW_VALUE_DRIFT) "WARN (allowed)" else "FAIL", .elapsed(t6))
     if (!g6$pass && !ALLOW_VALUE_DRIFT) { .log("  ABORT %s/%s: value drift outside the stated bounds (read the populations above; --allow-value-drift only after the cause is understood)", vkey, tier); next }
@@ -462,9 +478,14 @@ if (DO_TIERS) for (vkey in VARIABLES) {
       .log("  sidecar WARN: %s has no `ensemble` block - R/3 predates the #26 stamp, membership unrecorded",
            basename(sc_local))
     } else {
-      .log("  sidecar: ensemble = %d GCMs [%s]", em$n_members, paste(em$members, collapse = ","))
-      if (!identical(as.integer(em$n_members), 18L)) {
-        .log("  sidecar WARN: %d members, not 18 - published product is a partial ensemble (#26)", em$n_members)
+      if (is.na(SRC$members)) {
+        if (is.null(em$provenance)) .log("  sidecar WARN: observed source but no `ensemble$provenance` block (R/3 §4.2 writes it when ATLAS_CLIMDAT_SOURCE=obs)")
+        else .log("  sidecar: observed series, tokens [%s]; provenance block present", paste(em$provenance$source_tokens, collapse = ","))
+      } else {
+        .log("  sidecar: ensemble = %d GCMs [%s]", em$n_members, paste(em$members, collapse = ","))
+        if (!identical(as.integer(em$n_members), SRC$members)) {
+          .log("  sidecar WARN: %d members, not %d - published product is a partial ensemble (#26)", em$n_members, SRC$members)
+        }
       }
       # Membership must not change silently between publishes either.
       live_sc <- paste0(bu$s3_url, ".json")

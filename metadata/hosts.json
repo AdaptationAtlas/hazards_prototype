@@ -29,6 +29,11 @@
         "working_dir": "{common_data}/hazards_prototype",
         "indices": "{common_data}/atlas_hazards/cmip6/indices",
         "indices_seasonal": "{common_data}/atlas_hazards/cmip6/indices_seasonal"
+      },
+      "obs": {
+        "working_dir": "{common_data}/atlas_obs_hazards",
+        "indices": "{common_data}/atlas_obs_hazards/nex-gddp-cmip6_indices",
+        "indices_seasonal": "{common_data}/atlas_obs_hazards/Data/obs_seasonal"
       }
     },
     "raw": {

@@ -126,6 +126,9 @@ if (!nzchar(Sys.getenv("project_dir"))) {
 source(file.path(project_dir, "R", "00_paths.R"))
 
 climdat_source <- atlas_climdat_source()
+# The observed series (PLAN_obs_hazard_pipeline.md) has one period: per-crop GGCMI windows. R/3 loops
+# timeframe_choices and R3_TIMEFRAMES validates against it, so this is the only place it needs declaring.
+if (climdat_source == "obs") timeframe_choices <- "ggcmi-crop"
 
 # 0.4) Resolve this host and set the working directory #####
 # Was a chain of five string equalities on project_dir with no else branch, so
@@ -179,6 +182,11 @@ if (climdat_source == "atlas_delta") {
   base_rast_url <- file.path(project_dir, "metadata", "base_raster.tif")
   base_rast <- terra::rast(base_rast_url)
   base_rast_path <- file.path(project_dir, "metadata", "base_raster.tif")
+} else if (climdat_source == "obs") {
+  # S1 writes every observed daily tif on exactly this lattice (python/obs/s1_ingest.py), so the
+  # committed template is the base raster; nothing is derived from a NEX-GDDP file.
+  base_rast_path <- file.path(project_dir, "metadata", "base_rast_nexgddp.tif")
+  base_rast <- terra::rast(base_rast_path)
 } else {
   base_rast_path <- "Data/base_rast.tif"
 

@@ -168,10 +168,26 @@ ok(!tier_vs_exposure(prod_f, expo_f, "vop")$pass,
 pub <- file.path(root, "scripts", "r3_publish_tiers.R")
 for (ex in parse(pub)) {
   if (is.call(ex) && length(ex) >= 3 && as.character(ex[[1]])[1] %in% c("<-", "=") &&
-      is.name(ex[[2]]) && as.character(ex[[2]]) %in% c("VAR_SPECS", "S3_KEY_BASE", "s3_base_for")) eval(ex, envir = globalenv())
+      is.name(ex[[2]]) && as.character(ex[[2]]) %in% c("VAR_SPECS", "S3_KEY_BASE_FOR", "s3_base_for", "SOURCE_SPECS")) eval(ex, envir = globalenv())
 }
+S3_KEY_BASE <- S3_KEY_BASE_FOR("nex-gddp-cmip6")   # the default --source; the obs source is checked below
 ok(setequal(names(VAR_SPECS), c("vop_usd", "vop_intld", "ha", "prod_t", "head_n")),
    "all five tiers R/3 produces have a publish spec")
+## per-source expectations (--source, 2026-10-27): the NEX key and gates are unchanged; the observed series
+## has its own source segment, one scenario that is also the G6/G6b baseline, and no ensemble claim
+ok(identical(S3_KEY_BASE_FOR("nex-gddp-cmip6"), "domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure"),
+   "NEX key base is byte-identical to the one the notebooks read")
+ok(identical(S3_KEY_BASE_FOR("chirps-chirts-agera5"), "domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure"),
+   "the observed series publishes under its own source=, never under the NEX key")
+ok(setequal(names(SOURCE_SPECS), c("nex-gddp-cmip6", "chirps-chirts-agera5")), "both sources have a spec")
+ok(identical(SOURCE_SPECS[["nex-gddp-cmip6"]]$scenarios, c("historic", "ssp126", "ssp245", "ssp370", "ssp585")) &&
+   identical(SOURCE_SPECS[["nex-gddp-cmip6"]]$baseline, "historic") && identical(SOURCE_SPECS[["nex-gddp-cmip6"]]$members, 18L),
+   "NEX spec = the five scenarios, baseline historic, 18 members (G3/G6b/sidecar unchanged)")
+ok(identical(SOURCE_SPECS[["chirps-chirts-agera5"]]$scenarios, "observed") && identical(SOURCE_SPECS[["chirps-chirts-agera5"]]$baseline, "observed") &&
+   is.na(SOURCE_SPECS[["chirps-chirts-agera5"]]$members), "observed spec = one scenario, baseline observed, no member count")
+.g_def <- tier_vs_exposure(prod_f, expo_f, "prod"); .g_obs <- tier_vs_exposure(prod_f, expo_f, "prod", scenarios = "observed")
+ok(identical(.g_def$pass, tier_vs_exposure(prod_f, expo_f, "prod", scenarios = DRIFT_NEX_SCENARIOS)$pass) && !.g_obs$pass,
+   "scenario set is a real gate: the default equals the explicit NEX set, and the observed set fails on a NEX-shaped product")
 .s3 <- vapply(VAR_SPECS, function(x) x$s3_var, character(1))
 ok(!anyDuplicated(.s3), "every tier gets its own variable= segment, so no two tiers can overwrite each other's key")
 ok(identical(VAR_SPECS$vop_usd$s3_var, "vop_nominal-usd21"),

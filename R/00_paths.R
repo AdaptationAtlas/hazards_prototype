@@ -265,8 +265,8 @@ if (!isTRUE(getOption("atlas.paths_loaded"))) {
   atlas_climdat_source <- function() {
     d <- .atlas_hosts()$defaults$climdat_source %||% "nexgddp"
     s <- tolower(trimws(atlas_env_or("ATLAS_CLIMDAT_SOURCE", d)))
-    if (!s %in% c("nexgddp", "atlas_delta")) {
-      stop("ATLAS_CLIMDAT_SOURCE must be 'nexgddp' or 'atlas_delta', got: ", s)
+    if (!s %in% c("nexgddp", "atlas_delta", "obs")) {
+      stop("ATLAS_CLIMDAT_SOURCE must be 'nexgddp', 'atlas_delta' or 'obs', got: ", s)
     }
     s
   }

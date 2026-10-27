@@ -10,7 +10,8 @@
 # tier currently live and says, in populations, how much moved and where.
 #
 # What is compared (both files, identical filter):
-#   scenario == "historic", admin0 rows (admin1_name NA), hazard in {any, none}.
+#   scenario == <baseline> ("historic" for NEX-GDDP; "observed" for the observed series), admin0 rows
+#   (admin1_name NA), hazard in {any, none}.
 #   T(iso3, crop, hazard_vars) = sum(any + none) = total exposed value of that
 #   crop in that country, because freq_any + freq_none = 1 per pixel. T must be
 #   the same for every hazard_vars of a (iso3, crop); the spread is reported.
@@ -80,13 +81,14 @@ G6B_NO_PRODUCT_CROPS <- strsplit(Sys.getenv(
 .drift_log <- function(fmt, ...) cat(sprintf("[%s] [gate-drift] %s\n", .drift_ts(), sprintf(fmt, ...)))
 
 # admin0 historic any+none totals per (iso3, crop, hazard_vars), plus parity facts.
-.drift_read <- function(f) {
+DRIFT_NEX_SCENARIOS <- c("historic", "ssp126", "ssp245", "ssp370", "ssp585")
+.drift_read <- function(f, baseline = "historic") {
   ds <- arrow::open_dataset(f)
   d <- ds |>
-    dplyr::filter(scenario == "historic", is.na(admin1_name), hazard %in% c("any", "none")) |>
+    dplyr::filter(scenario == baseline, is.na(admin1_name), hazard %in% c("any", "none")) |>
     dplyr::select(iso3, crop, hazard_vars, hazard, value) |>
     dplyr::collect() |> as.data.table()
-  if (!nrow(d)) stop("no admin0 historic any/none rows in ", f)
+  if (!nrow(d)) stop("no admin0 ", baseline, " any/none rows in ", f)
   t_hv <- d[, .(T = sum(value, na.rm = TRUE)), by = .(iso3, crop, hazard_vars)]
   # T is the same for every hazard_vars WHERE THE COMBINATION IS DEFINED for that
   # crop; some combinations carry no rows or NaN for some crops (the live product
@@ -159,9 +161,10 @@ G6B_NO_PRODUCT_CROPS <- strsplit(Sys.getenv(
 tier_vs_exposure <- function(local_f, exposure_f, exposure_var,
                              tol_pair = 0.02, min_exposure = 1e3, max_invented = 1e6,
                              no_ref = DRIFT_NO_REF, allow = NULL,
-                             no_product_crops = G6B_NO_PRODUCT_CROPS) {
+                             no_product_crops = G6B_NO_PRODUCT_CROPS, baseline = "historic",
+                             scenarios = DRIFT_NEX_SCENARIOS) {
   stopifnot(file.exists(local_f))
-  b <- .drift_read(local_f)
+  b <- .drift_read(local_f, baseline)
   e <- .drift_read_exposure(exposure_f, exposure_var)
   j <- merge(b$T, e, by = c("iso3", "crop"), all = TRUE)
   j[, noref := crop %in% no_ref]
@@ -191,7 +194,7 @@ tier_vs_exposure <- function(local_f, exposure_f, exposure_var,
     pass = c(nrow(mat) > 0 && max(abs(mat$ratio - 1)) <= tol_pair,
              nrow(unmatched_no_expo) == 0L,
              nrow(unmatched_no_prod) == 0L,
-             setequal(b$scenarios, c("historic", "ssp126", "ssp245", "ssp370", "ssp585"))))
+             setequal(b$scenarios, scenarios)))
   list(pass = all(gates$pass), gates = gates, material = mat[order(-abs(ratio - 1))],
        immaterial = imm, invented = unmatched_no_expo, missing_product = unmatched_no_prod,
        noref = j[noref == TRUE], worst = worst, allowed = allowed, unmodelled = unmodelled,
@@ -253,11 +256,11 @@ tier_drift <- function(local_f, live_f,
                        min_live = 1e6, small_iso3 = DRIFT_SMALL_ISO3_DEFAULT,
                        flip_frac = 0.01, expected = NULL, exposure_new = NULL, flip_allow = character(0),
                        exposure_var = "vop", hv_retired = character(0), hv_added = character(0),
-                       livestock_moved = FALSE) {
+                       livestock_moved = FALSE, scenarios = DRIFT_NEX_SCENARIOS, baseline = "historic") {
   stopifnot(file.exists(local_f), file.exists(live_f))
   if (livestock_moved && is.null(exposure_new))
     stop("livestock_moved = TRUE needs exposure_new: the moved livestock control is judged against the exposure input this bake used")
-  a <- .drift_read(live_f); b <- .drift_read(local_f)
+  a <- .drift_read(live_f, baseline); b <- .drift_read(local_f, baseline)
   j <- merge(a$T, b$T, by = c("iso3", "crop"), all = TRUE, suffixes = c("_live", "_local"))
   j[, ratio_raw := T_local / T_live]
   j[, ratio_expected := 1]
