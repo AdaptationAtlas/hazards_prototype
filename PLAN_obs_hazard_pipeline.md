@@ -107,6 +107,36 @@ State the stationarity assumption, given CO₂ greening.
 
 ---
 
+### 3b. Caveats from the S3-S5 science review (2026-10-27) — carried into the product text
+
+- **A 12-month "mean of monthly stress days" measures dry-season length, not drought.** In a unimodal
+  climate with 7-8 dry months the annual mean exceeds 15/20 every year, so the dry class fires with
+  P = 1 and zero interannual variance; conversely NDWL0 is diluted. This is the mechanism behind the
+  maize 0.59-vs-0.26 and cocoa 94 %-vs-7.5 % findings, and the NEX `annual` product shares it (#24).
+  **Falsifiable check on the first run:** the share of `annual12` land cells with dry P ∈ {0, 1}
+  across the 19 seasons; if most semi-arid cells sit at 1, the layer carries aridity. **v1 ships it as
+  is, labelled;** the fix (percentile classes of the 12-month products against their own record, or a
+  wet-season-only dry axis) is the §3.4 rule and belongs with #24/#25.
+- **Livestock dry axis (must reach the sidecar and the user):** NDWS is the Jones & Thornton (2009)
+  crop bucket (Ea/Ep < 0.5, generic rooting depth) over a 12-month window; its frequency is a
+  climatological aridity map, not forage shortfall; 15/20/25 days per month were never calibrated for
+  grazing; forage (FPAR, §3) is the real constraint. `THI_max` is the max over 365 days, so moderate
+  and severe can fire on a single day per year.
+- **Rice:** the NDWL0 wet class is the production condition for lowland/irrigated rice (> 60 % of SSA
+  rice area) and is not interpretable as a hazard (#25).
+- **Seasons:** labelled by start year; `timeframe` 2006-2025 means seasons starting 2006-2024. The
+  KNBS/SPAM harvest-year convention differs; state it in the sidecar.
+- **Statistics:** one realisation × 19 seasons: SE of P at 0.1 is ~0.07; the extreme tier is 0-1
+  seasons. 2006-2025 is non-stationary for heat: report continental NTx35 `any` for 2006-2015 vs
+  2016-2024 and state any difference above sampling error.
+- **Proxies** are flagged in `metadata/obs_crop_windows.csv` and must reach the sidecar. Chickpea and
+  pigeonpea got their own `custom` windows (residual-moisture sowing; 8-month cycle). Still debatable:
+  cowpea→bean, lentil→pea, sesame/tobacco/sweet potato→maize, yams→cassava (~8 months), wheat→spring
+  wheat (misplaces South African winter wheat).
+- **GGCMI artefacts:** barley carries 2-month and 12-month cells; the maize calendar is NA on ~1.7 %
+  of land (Sahara margins, pastoral). S3 reports window-length counts and anchors the 12-month window
+  at January where maize is NA.
+
 ## 4. Gates and fixtures
 
 **Before any node run, five macbook fixtures** in the `R/checks/fixture_*.R` pattern. Each pairs an

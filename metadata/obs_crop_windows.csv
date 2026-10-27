@@ -1,25 +1,26 @@
 crop,window,ggcmi_code,proxy,note
+# window: ggcmi (code = GGCMI rainfed calendar) | annual12 (12 months from the maize planting month) | custom (code = <mai_plant|mai_maturity>:<months>)
 arabica-coffee,annual12,,FALSE,perennial: 12 months from the maize planting month (NEX `annual` convention)
 banana,annual12,,FALSE,perennial
 barley,ggcmi,bar,FALSE,
 bean,ggcmi,bea,FALSE,GGCMI dry bean
-cassava,annual12,,FALSE,long_season in SpamCodes.csv; 12-month window (GGCMI cas exists; switch if preferred)
-chickpea,ggcmi,pea,TRUE,no GGCMI chickpea; field-pea calendar as proxy
+cassava,annual12,,FALSE,long_season in SpamCodes.csv; harvested 9-24 months after planting so a 12-month window (GGCMI cas is ~8 months and is used only as the yams proxy)
+chickpea,custom,mai_maturity:4,TRUE,no GGCMI chickpea; sown at the end of the rains on residual moisture (Kassie et al. 2009): 4 months from the maize maturity month
 coconut,annual12,,FALSE,perennial
 cocoa,annual12,,FALSE,perennial
 cotton,ggcmi,cot,FALSE,
 cowpea,ggcmi,bea,TRUE,no GGCMI cowpea; dry-bean calendar as proxy
-groundnut,ggcmi,gro,FALSE,
+groundnut,ggcmi,nut,FALSE,
 lentil,ggcmi,pea,TRUE,no GGCMI lentil; field-pea calendar as proxy
 maize,ggcmi,mai,FALSE,the NEX `jagermeyr` window
 oilpalm,annual12,,FALSE,perennial
-pigeonpea,ggcmi,pea,TRUE,no GGCMI pigeonpea; field-pea calendar as proxy (pigeonpea cycles are longer: review)
+pigeonpea,custom,mai_plant:8,TRUE,no GGCMI pigeonpea; medium/long-duration types 150-270 d (Saxena 2008): 8 months from the maize planting month
 plantain,annual12,,FALSE,perennial
 pearl-millet,ggcmi,mil,FALSE,
 potato,ggcmi,pot,FALSE,
 rapeseed,ggcmi,rap,FALSE,
 robusta-coffee,annual12,,FALSE,perennial
-rice,ggcmi,ri1,FALSE,first rice season only (ri2 ignored in v1)
+rice,ggcmi,ri1,FALSE,first rice season only (ri2 ignored in v1); the NDWL0 wet class is the production condition for lowland/irrigated rice and is not interpretable as a hazard (#25)
 sesameseed,ggcmi,mai,TRUE,no GGCMI sesame; maize calendar as proxy
 small-millet,ggcmi,mil,FALSE,
 sorghum,ggcmi,sor,FALSE,
@@ -30,7 +31,7 @@ sunflower,ggcmi,sun,FALSE,
 sweet-potato,ggcmi,mai,TRUE,no GGCMI sweet potato; maize calendar as proxy
 tea,annual12,,FALSE,perennial
 tobacco,ggcmi,mai,TRUE,no GGCMI tobacco; maize calendar as proxy
-wheat,ggcmi,swh,TRUE,spring-wheat calendar; SSA wheat is mostly rainfed highland (wwh where GGCMI's winter-wheat mask applies: review)
+wheat,ggcmi,swh,TRUE,spring-wheat calendar; misplaces South African winter wheat (wwh) - review
 yams,ggcmi,cas,TRUE,no GGCMI yams; cassava calendar as proxy
 cattle-highland,annual12,,FALSE,livestock: 12-month window
 cattle-tropical,annual12,,FALSE,livestock

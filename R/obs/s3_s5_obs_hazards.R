@@ -10,9 +10,13 @@
 #
 # Inputs  <OBS_ROOT>/nex-gddp-cmip6_indices/historical_<token>/<IDX>/<IDX>-YYYY-MM.tif   (S2, upstream scripts)
 #         metadata/obs_crop_windows.csv, metadata/haz_classes.csv, metadata/haz_metadata.csv, GGCMI calendars
-# Outputs <OBS_ROOT>/obs_seasonal/<window>/<IDX>_<stat>.tif                 (S3; layer per season, named by start year)
-#         <OBS_ROOT>/obs_codes/<crop>_<set>_<sev>_codes.tif                  (S4; INT1U, 255 = NA)
-#         <OBS_ROOT>/hazard_risk/<period>/<crop>_<token>_<sev>_<set>_int.tif (S5; R/3 naming and layer order)
+# Outputs (all under <OBS_ROOT>/Data/, which is where R/3 reads when OBS_ROOT is the working_dir of climdat_source=obs;
+#          S2 stays at <OBS_ROOT>/nex-gddp-cmip6_indices, the upstream COMMON_DATA layout)
+#         Data/obs_seasonal/<token>_<timeframe>/<window>/<IDX>_<stat>.tif        (S3; layer per season, named by start year)
+#         Data/obs_codes/<token>_<timeframe>/<crop>_<set>_<sev>_codes.tif         (S4; INT1U, 255 = NA)
+#         Data/hazard_risk/<period>/<crop>_<token>_<sev>_<set>_int.tif           (S5; R/3 naming and layer order)
+# Resumable: an existing output is reused only if its token and timeframe match this run's (asserted from the
+# layer names), else the run stops; --overwrite or FORCE_OVERWRITE=1 rewrites.
 #
 # Layer name contract (R/3 §4.2 splits on "_" into 9 fields after appending "_<exposure_var>_<exposure_unit>"):
 #   <scenario>_<token>_<timeframe>_<class>_<set>_<crop>_<sev>   e.g. observed_chirps-chirts-agera5_2006-2025_dry+heat_NDWS+NTx35+NDWL0_maize_severe
@@ -25,6 +29,7 @@
 # Usage:
 #   Rscript R/obs/s3_s5_obs_hazards.R --obs-root <abs> --token chirps-chirts-agera5 --years 2005:2025 \
 #           [--spinup 1] [--period ggcmi-crop] [--ggcmi-dir <dir>] [--crops maize,cassava] [--sets crop,livestock] [--overwrite]
+#           [--thi-token chirps-chirts-agera5-rh15]   # THI variant (ii): THI from that S2 token; livestock bundles carry it
 #   Rscript R/obs/s3_s5_obs_hazards.R --selftest        # synthetic end-to-end, ~20 s, no data needed
 suppressPackageStartupMessages({ library(terra); library(data.table) })
 .t0 <- Sys.time()
@@ -82,14 +87,21 @@ season_stack <- function(files_tab, plant, harvest, stat, years) {
   fun <- switch(stat, mean = mean, sum = sum, max = max, min = min, stopf("unknown stat %s", stat))
   out <- lapply(seq_len(length(years) - 1), function(m) {
     x <- r[[(1 + 12 * (m - 1)):(24 + 12 * (m - 1))]]   # month 1 of year m .. month 12 of year m+1
-    s <- rapp(x, first = plant, last = harvest, fun = fun, na.rm = TRUE)
+    s <- rapp(x, first = plant, last = harvest, fun = fun, na.rm = FALSE)   # an incomplete season is NA, never a partial mean
     names(s) <- years[m]; s
   })
   rast(out)
 }
-make_calendar <- function(window, ggcmi_code, ggcmi_dir, base, maize_plant) {
+wrap12 <- function(m) ((m - 1) %% 12) + 1
+make_calendar <- function(window, ggcmi_code, ggcmi_dir, base, maize_cal = NULL) {
   # returns list(plant, harvest) month rasters on `base`; harvest already wrapped (+12 when < plant)
-  if (window == "ggcmi") {
+  if (window == "annual12") { window <- "custom"; ggcmi_code <- "mai_plant:12" }
+  if (window == "custom") {
+    sp <- strsplit(ggcmi_code, ":")[[1]]; if (length(sp) != 2) stopf("custom window spec must be <anchor>:<months>, got %s", ggcmi_code)
+    nmo <- as.integer(sp[2]); if (is.na(nmo) || nmo < 1 || nmo > 12) stopf("custom window months must be 1-12, got %s", sp[2])
+    anchor <- switch(sp[1], mai_plant = maize_cal$plant, mai_maturity = wrap12(maize_cal$harvest), stopf("unknown anchor %s", sp[1]))
+    p <- anchor; h <- wrap12(p + nmo - 1)
+  } else if (window == "ggcmi") {
     f <- file.path(ggcmi_dir, sprintf("%s_rf_ggcmi_crop_calendar_phase3_v1.01.nc4", ggcmi_code))
     if (!file.exists(f)) stopf("GGCMI calendar missing: %s", f)
     cc <- rast(f)
@@ -100,11 +112,24 @@ make_calendar <- function(window, ggcmi_code, ggcmi_dir, base, maize_plant) {
     plant <- as.integer(format(as.Date(values(cc$planting_day)[, 1], origin = "2024-01-01"), "%m"))
     matur <- as.integer(format(as.Date(values(cc$maturity_day)[, 1], origin = "2024-01-01"), "%m"))
     p <- setValues(base, plant); h <- setValues(base, matur)
-  } else if (window == "annual12") {
-    p <- maize_plant; h <- ((p + 10) %% 12) + 1          # 12 months inclusive from the planting month
   } else stopf("unknown window %s", window)
   h <- ifel(h < p, h + 12, h)
   list(plant = p, harvest = h)
+}
+# window-length report + NA-anchor fallback (GGCMI maize is NA on Sahara-margin cells, which are pastoral)
+report_calendar <- function(cal, wk, base_land) {
+  len <- values(cal$harvest - cal$plant + 1)[, 1]; land <- values(base_land)[, 1]
+  lg(sprintf("window %s: months %s..%s; cells <3 months: %d; =12: %d; NA on land: %d", wk,
+             min(len, na.rm = TRUE), max(len, na.rm = TRUE), sum(len < 3, na.rm = TRUE), sum(len == 12, na.rm = TRUE), sum(is.na(len) & land, na.rm = TRUE)))
+  invisible(len)
+}
+fallback_anchor <- function(cal, base_land) {
+  # land cells with no maize calendar: anchor the 12-month window at January (for mean/max over 12 months the
+  # anchor only changes year attribution; it keeps pastoral cells from going NA)
+  miss <- is.na(cal$plant) & base_land
+  n <- sum(values(miss)[, 1], na.rm = TRUE)
+  if (n > 0) { cal$plant <- ifel(miss, 1L, cal$plant); cal$harvest <- ifel(miss, 12L, cal$harvest); lg(sprintf("maize calendar NA on %d land cells: 12-month window anchored at January there", n)) }
+  cal
 }
 
 # ---- S4/S5 -----------------------------------------------------------------------------------------------
@@ -115,6 +140,9 @@ code_stack <- function(dry01, heat01, wet01) dry01 + 10 * heat01 + 100 * wet01  
 freq_from_codes <- function(codes, lyr_prefix) {
   valid <- !is.na(codes)
   nval <- sum(valid)                                        # seasons with data, per cell
+  nv <- values(nval)[, 1]; n <- nlyr(codes)
+  bad <- sum(nv > 0 & nv < n, na.rm = TRUE)
+  if (bad > 0) stopf("%s: %d cell(s) have a partial season count (0 < n < %d): a source gap, not a static mask", lyr_prefix, bad, n)
   any_f  <- sum(ifel(valid, codes > 0, 0)) / nval           # independent of none
   none_f <- sum(ifel(valid, codes == 0, 0)) / nval
   cls <- lapply(names(CLASS_CODES), function(k) sum(ifel(valid, codes == CLASS_CODES[[k]], 0)) / nval)
@@ -133,14 +161,18 @@ gate_bundle <- function(b, what) {
 }
 
 # ---- driver -------------------------------------------------------------------------------------------------
-run <- function(obs_root, token, years, spinup, period, ggcmi_dir, crops_sel, sets_sel, overwrite,
+run <- function(obs_root, token, years, spinup, period, ggcmi_dir, crops_sel, sets_sel, overwrite, thi_token = token,
                 base = NULL, windows_csv = file.path(repo, "metadata", "obs_crop_windows.csv"),
                 hc_csv = file.path(repo, "metadata", "haz_classes.csv"), hm_csv = file.path(repo, "metadata", "haz_metadata.csv"),
                 scenario = "observed") {
   if (grepl("_", token)) stopf("token must not contain '_': %s", token)
+  overwrite <- overwrite || tolower(Sys.getenv("FORCE_OVERWRITE", "")) %in% c("1", "true", "t", "yes", "y", "on")
   if (is.null(base)) base <- rast(file.path(repo, "metadata", "base_rast_nexgddp.tif"))
+  if (grepl("_", thi_token)) stopf("thi_token must not contain '_': %s", thi_token)
   idx_root <- file.path(obs_root, "nex-gddp-cmip6_indices", paste0("historical_", token))
+  thi_root <- file.path(obs_root, "nex-gddp-cmip6_indices", paste0("historical_", thi_token))
   if (!dir.exists(idx_root)) stopf("S2 output dir missing: %s", idx_root)
+  idx_dir_of <- function(idx) file.path(if (idx == "THI_max") thi_root else idx_root, IDX_DIR[[idx]])
   hc <- load_thresholds(hc_csv)
   hm <- unique(fread(hm_csv)[, .(variable.code, stat = `function`)])
   win <- fread(windows_csv)
@@ -151,28 +183,35 @@ run <- function(obs_root, token, years, spinup, period, ggcmi_dir, crops_sel, se
   keep <- seq_len(length(season_years))[-seq_len(spinup)]
   if (!length(keep)) stopf("spinup=%d leaves no seasons", spinup)
   timeframe <- sprintf("%d-%d", min(years) + spinup, max(years))
-  lg(sprintf("obs_root=%s token=%s years=%d-%d seasons kept=%d (%s..%s) timeframe=%s period=%s crops=%d sets=%s",
-             obs_root, token, min(years), max(years), length(keep), season_years[keep[1]], season_years[tail(keep, 1)],
+  lg(sprintf("obs_root=%s token=%s thi_token=%s years=%d-%d seasons kept=%d (%s..%s) timeframe=%s period=%s crops=%d sets=%s",
+             obs_root, token, thi_token, min(years), max(years), length(keep), season_years[keep[1]], season_years[tail(keep, 1)],
              timeframe, period, nrow(win), paste(names(sets), collapse = ",")))
   # grid gate: every S2 file must sit on the base lattice
   probe <- rast(month_files(file.path(idx_root, "NDWS"), "NDWS", years)$file[1])
   if (!compareGeom(probe, base, stopOnError = FALSE)) stopf("S2 output is not on the base lattice (%s)", basename(sources(probe)))
 
-  # maize planting month (needed for every annual12 window)
-  mz <- make_calendar("ggcmi", "mai", ggcmi_dir, base, NULL)
+  # maize calendar anchors every annual12/custom window; land = cells with an NDWS value in the first month
+  base_land <- !is.na(probe)
+  mz <- fallback_anchor(make_calendar("ggcmi", "mai", ggcmi_dir, base), base_land)
   # --- S3: one seasonal stack per (window, index)
-  win[, wkey := ifelse(window == "ggcmi", paste0("ggcmi-", ggcmi_code), "annual12")]
+  win[, wkey := fifelse(window == "ggcmi", paste0("ggcmi-", ggcmi_code), fifelse(window == "annual12", "annual12", paste0("custom-", gsub(":", "-", ggcmi_code))))]
   idx_needed <- unique(unlist(lapply(sets, function(s) c(s$dry, s$heat, s$wet))))
   s3 <- list()
   for (wk in unique(win$wkey)) {
     w0 <- win[wkey == wk][1]
-    cal <- if (wk == "annual12") make_calendar("annual12", NA, ggcmi_dir, base, mz$plant) else make_calendar("ggcmi", w0$ggcmi_code, ggcmi_dir, base, NULL)
+    cal <- make_calendar(w0$window, w0$ggcmi_code, ggcmi_dir, base, mz)
+    report_calendar(cal, wk, base_land)
     for (idx in idx_needed) {
       stat <- hm[variable.code == idx, stat]; if (length(stat) != 1) stopf("stat for %s not unique in haz_metadata.csv", idx)
-      f <- file.path(obs_root, "obs_seasonal", wk, sprintf("%s_%s.tif", idx, stat)); dir.create(dirname(f), FALSE, TRUE)
+      f <- file.path(obs_root, "Data", "obs_seasonal", paste0(if (idx == "THI_max") thi_token else token, "_", timeframe), wk, sprintf("%s_%s.tif", idx, stat)); dir.create(dirname(f), FALSE, TRUE)
+      if (file.exists(f) && !overwrite) {
+        nm <- names(rast(f))
+        if (!identical(nm, as.character(season_years))) stopf("stale seasonal stack %s: layers %s..%s do not match this run's seasons %s..%s (use --overwrite)",
+                                                             f, nm[1], tail(nm, 1), season_years[1], tail(season_years, 1))
+      }
       if (!file.exists(f) || overwrite) {
         t1 <- Sys.time()
-        s <- season_stack(month_files(file.path(idx_root, IDX_DIR[[idx]]), idx, years), cal$plant, cal$harvest, stat, years)
+        s <- season_stack(month_files(idx_dir_of(idx), idx, years), cal$plant, cal$harvest, stat, years)
         writeRaster(s, f, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS=NONE", "COMPRESS=ZSTD"))
         lg(sprintf("S3 %s/%s: %d seasons in %.1fs", wk, idx, nlyr(s), as.numeric(difftime(Sys.time(), t1, units = "secs"))))
       }
@@ -180,8 +219,8 @@ run <- function(obs_root, token, years, spinup, period, ggcmi_dir, crops_sel, se
     }
   }
   # --- S4 + S5 per crop, set, severity
-  dir.create(file.path(obs_root, "obs_codes"), FALSE, TRUE)
-  out_dir <- file.path(obs_root, "hazard_risk", period); dir.create(out_dir, FALSE, TRUE)
+  codes_dir <- file.path(obs_root, "Data", "obs_codes", paste0(token, "_", timeframe)); dir.create(codes_dir, FALSE, TRUE)
+  out_dir <- file.path(obs_root, "Data", "hazard_risk", period); dir.create(out_dir, FALSE, TRUE)
   n_out <- 0
   for (i in seq_len(nrow(win))) {
     cr <- win$crop[i]; wk <- win$wkey[i]
@@ -189,16 +228,23 @@ run <- function(obs_root, token, years, spinup, period, ggcmi_dir, crops_sel, se
     for (sn in names(sets)) {
       st <- sets[[sn]]
       if ((st$who == "livestock") != is_lv) next
+      tok_out <- if (st$who == "livestock") thi_token else token      # variant (ii) THI bundles carry the -rh15 token
+      prefix <- paste(scenario, tok_out, timeframe, sep = "_")
       for (sev in SEVS) {
-        bundle_f <- file.path(out_dir, sprintf("%s_%s_%s_%s_int.tif", cr, token, sev, st$name))
-        codes_f <- file.path(obs_root, "obs_codes", sprintf("%s_%s_%s_codes.tif", cr, st$name, sev))
-        if (file.exists(bundle_f) && file.exists(codes_f) && !overwrite) next
+        bundle_f <- file.path(out_dir, sprintf("%s_%s_%s_%s_int.tif", cr, tok_out, sev, st$name))
+        codes_f <- file.path(codes_dir, sprintf("%s_%s_%s_%s_codes.tif", cr, tok_out, st$name, sev))
+        if (file.exists(bundle_f) && !overwrite) {
+          # freshness: an existing bundle must carry THIS run's scenario/token/timeframe in its layer names
+          ex <- names(rast(bundle_f))[1]
+          if (!startsWith(ex, paste0(prefix, "_"))) stopf("stale bundle %s: layer '%s' does not start with '%s_' (use --overwrite)", basename(bundle_f), ex, prefix)
+          if (file.exists(codes_f)) next
+        }
         cl <- lapply(c(dry = st$dry, heat = st$heat, wet = st$wet), function(idx) {
           th <- threshold_for(hc, idx, sev, st$who, cr); classify(s3[[paste(wk, idx)]], th$direction, th$threshold)
         })
         codes <- code_stack(cl$dry, cl$heat, cl$wet); names(codes) <- names(s3[[paste(wk, st$dry)]])
         writeRaster(codes, codes_f, overwrite = TRUE, datatype = "INT1U", NAflag = 255, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
-        b <- freq_from_codes(codes, paste(scenario, token, timeframe, sep = "_"))
+        b <- freq_from_codes(codes, prefix)
         names(b) <- paste0(names(b), "_", st$name, "_", cr, "_", sev)
         gate_bundle(b, basename(bundle_f))
         writeRaster(b, bundle_f, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS=NONE", "COMPRESS=ZSTD"))
@@ -246,19 +292,19 @@ selftest <- function() {
   out <- run(td, token, years, spinup = 1, period = "ggcmi-crop", ggcmi_dir = gg, crops_sel = NULL,
              sets_sel = c("crop", "livestock"), overwrite = TRUE, base = base, windows_csv = wcsv)
   # --- assertions
-  s3 <- rast(file.path(td, "obs_seasonal", "ggcmi-mai", "NDWS_mean.tif"))
+  s3 <- rast(file.path(td, "Data", "obs_seasonal", "obstest_2006-2008", "ggcmi-mai", "NDWS_mean.tif"))
   ok(nlyr(s3) == 3 && identical(names(s3), c("2005", "2006", "2007")), "S3: 3 seasons from 4 years, labelled by start year")
   ok(abs(values(s3[[2]])[2, 1] - 22) < 1e-6, "S3: window Mar-Jul mean = 22 (the 99 in Aug is outside the window and ignored)")
   ok(is.na(values(s3[[2]])[1, 1]), "S3: NA input cell stays NA")
-  a12 <- rast(file.path(td, "obs_seasonal", "annual12", "NDWS_mean.tif"))
+  a12 <- rast(file.path(td, "Data", "obs_seasonal", "obstest_2006-2008", "annual12", "NDWS_mean.tif"))
   ok(abs(values(a12[[2]])[2, 1] - (5 * 22 + 99) / 12) < 1e-6, "S3: annual12 window = 12 months from the planting month (Mar-Feb) includes Aug")
-  thi <- rast(file.path(td, "obs_seasonal", "annual12", "THI_max_max.tif"))
+  thi <- rast(file.path(td, "Data", "obs_seasonal", "obstest_2006-2008", "annual12", "THI_max_max.tif"))
   ok(abs(values(thi[[2]])[2, 1] - 85) < 1e-6, "S3: THI_max uses max and ignores the THI_mean decoy (999)")
-  codes <- rast(file.path(td, "obs_codes", "maize_NDWS+NTx35+NDWL0_severe_codes.tif"))
+  codes <- rast(file.path(td, "Data", "obs_codes", "obstest_2006-2008", "maize_obstest_NDWS+NTx35+NDWL0_severe_codes.tif"))
   ok(nlyr(codes) == 2 && identical(names(codes), c("2006", "2007")), "S4: spin-up season dropped; 2 code layers named by year")
   ok(values(codes)[2, 1] == 11 && values(codes)[2, 2] == 0, "S4: severe codes = 11 (dry+heat) in 2006, 0 in 2007")
   ok(is.na(values(codes)[1, 1]), "S4: NA cell -> NA code (never 0 = none)")
-  ext <- rast(file.path(td, "obs_codes", "maize_NDWS+NTx35+NDWL0_extreme_codes.tif"))
+  ext <- rast(file.path(td, "Data", "obs_codes", "obstest_2006-2008", "maize_obstest_NDWS+NTx35+NDWL0_extreme_codes.tif"))
   ok(values(ext)[2, 1] == 0, "S4: extreme (NDWS>25, NTx35>21) does not fire on 22/15")
   b <- rast(file.path(out, "maize_obstest_severe_NDWS+NTx35+NDWL0_int.tif"))
   ok(nlyr(b) == 9 && names(b)[1] == "observed_obstest_2006-2008_any_NDWS+NTx35+NDWL0_maize_severe", "S5: 9 layers, R/3 layer-name contract (7 fields)")
@@ -277,6 +323,27 @@ selftest <- function() {
   ok(file.exists(file.path(out, "bean_obstest_moderate_NDWS+NTx35+NDWL0_int.tif")) && file.exists(file.path(out, "arabica-coffee_obstest_extreme_NDWS+NTx35+NDWL0_int.tif")),
      "S5: per-crop bundles exist for every crop x severity (no generic-crop)")
   ok(length(list.files(out, "_int\\.tif$")) == 5 * 3, "S5: 5 commodities x 3 severities = 15 bundles")
+  ok(startsWith(out, file.path(td, "Data", "hazard_risk")), "S5: bundles live under <OBS_ROOT>/Data/hazard_risk/<period> (where R/3 reads)")
+  # resume: same run again writes nothing new and does not fail; a run with another timeframe STOPS on the stale bundle
+  t_b <- file.mtime(file.path(out, "maize_obstest_severe_NDWS+NTx35+NDWL0_int.tif"))
+  run(td, token, years, spinup = 1, period = "ggcmi-crop", ggcmi_dir = gg, crops_sel = NULL, sets_sel = "crop", overwrite = FALSE, base = base, windows_csv = wcsv)
+  ok(file.mtime(file.path(out, "maize_obstest_severe_NDWS+NTx35+NDWL0_int.tif")) == t_b, "resume: an up-to-date bundle is kept, not rewritten")
+  r <- try(run(td, token, years, spinup = 2, period = "ggcmi-crop", ggcmi_dir = gg, crops_sel = "maize", sets_sel = "crop", overwrite = FALSE, base = base, windows_csv = wcsv), silent = TRUE)
+  ok(inherits(r, "try-error") && grepl("stale bundle", r), "freshness: a different timeframe against an existing bundle STOPS (no silent mixing)")
+  Sys.setenv(FORCE_OVERWRITE = "1"); on.exit(Sys.unsetenv("FORCE_OVERWRITE"), add = TRUE)
+  run(td, token, years, spinup = 2, period = "ggcmi-crop", ggcmi_dir = gg, crops_sel = "maize", sets_sel = "crop", overwrite = FALSE, base = base, windows_csv = wcsv)
+  ok(nlyr(rast(file.path(td, "Data", "obs_codes", "obstest_2007-2008", "maize_obstest_NDWS+NTx35+NDWL0_severe_codes.tif"))) == 1, "FORCE_OVERWRITE=1 rewrites; new timeframe dir and 1 season after spinup=2")
+  # partial season -> NA, never a partial mean (unit-level: one NA month inside the window)
+  xx <- rast(lapply(1:24, function(i) setValues(base, 10))); xx[[4]][2, 2] <- NA
+  pp <- setValues(base, 3L); hh <- setValues(base, 7L)
+  sv <- rapp(xx, first = pp, last = hh, fun = mean, na.rm = FALSE)
+  ok(is.na(values(sv)[7, 1]) && values(sv)[8, 1] == 10, "S3: a season with one NA month is NA (na.rm = FALSE), not a partial mean")
+  # custom window chickpea = maize maturity (Jul) + 4 months -> Jul..Oct: NDWS 2006 = (22 + 99 + 0 + 0)/4
+  fwrite(data.table(crop = "chickpea", window = "custom", ggcmi_code = "mai_maturity:4", proxy = TRUE, note = ""), wcsv)
+  run(td, token, years, spinup = 1, period = "ggcmi-crop", ggcmi_dir = gg, crops_sel = NULL, sets_sel = "crop", overwrite = TRUE, base = base, windows_csv = wcsv)
+  cw <- rast(file.path(td, "Data", "obs_seasonal", "obstest_2006-2008", "custom-mai_maturity-4", "NDWS_mean.tif"))
+  ok(abs(values(cw[[2]])[2, 1] - (22 + 99) / 4) < 1e-6, "S3: custom window mai_maturity:4 = Jul..Oct (includes the Aug 99)")
+  Sys.unsetenv("FORCE_OVERWRITE")
   unlink(td, recursive = TRUE)
   cat("\nALL S3-S5 SELFTEST ASSERTIONS PASSED\n")
 }
@@ -290,6 +357,7 @@ if (sys.nframe() == 0) {
   obs_root <- getopt("--obs-root"); if (is.null(obs_root) || !startsWith(obs_root, "/")) stopf("--obs-root must be absolute")
   ggcmi_dir <- getopt("--ggcmi-dir", Sys.getenv("GGCMI_DIR", NA)); if (is.na(ggcmi_dir)) stopf("--ggcmi-dir or GGCMI_DIR required")
   crops_sel <- getopt("--crops"); if (!is.null(crops_sel)) crops_sel <- strsplit(crops_sel, ",")[[1]]
-  run(obs_root, getopt("--token", "chirps-chirts-agera5"), yrs, as.integer(getopt("--spinup", "1")), getopt("--period", "ggcmi-crop"),
-      ggcmi_dir, crops_sel, strsplit(getopt("--sets", "crop,livestock"), ",")[[1]], "--overwrite" %in% a)
+  tok <- getopt("--token", "chirps-chirts-agera5")
+  run(obs_root, tok, yrs, as.integer(getopt("--spinup", "1")), getopt("--period", "ggcmi-crop"),
+      ggcmi_dir, crops_sel, strsplit(getopt("--sets", "crop,livestock"), ",")[[1]], "--overwrite" %in% a, thi_token = getopt("--thi-token", tok))
 }
