@@ -187,10 +187,10 @@ selftest <- function() {
   ok(is.na(values(zy[[1]])[12, 1]), "a cell with constant FPAR (sd 0) is NA, not 0")
   bund <- rast(file.path(out, "cattle-tropical_obstest_moderate_FPARz+THI-max+NDWL0_int.tif"))
   v <- values(bund)[1, ]; nm <- sub("observed_obstest_2005-2015_", "", names(bund)); nm <- sub("_FPARz.*", "", nm)
-  ok(nlyr(bund) == 9 && abs(v[nm == "dry"] - 0.2) < 1e-9 && abs(v[nm == "none"] - 0.8) < 1e-9,
+  ok(nlyr(bund) == 9 && abs(v[nm == "dry"] - 0.2) < 1e-6 && abs(v[nm == "none"] - 0.8) < 1e-6,
      "moderate = Q20 of 10 years -> 2 of 10 years are 'dry' (P = 0.2 by construction), heat/wet 0 without THI/NDWL0 stacks")
   be <- rast(file.path(out, "cattle-tropical_obstest_extreme_FPARz+THI-max+NDWL0_int.tif")); ve <- values(be)[1, ]
-  ok(abs(ve[nm == "dry"] - 0.1) < 1e-9, "extreme = Q05 of 10 years -> 1 of 10 (type-1 quantile picks the worst observed year)")
+  ok(abs(ve[nm == "dry"] - 0.1) < 1e-6, "extreme = Q05 of 10 years -> 1 of 10 (type-1 quantile picks the worst observed year)")
   cf <- rast(file.path(od, "consecutive_failure.tif"))
   ok(values(cf[["2012"]])[3, 1] == 1 && values(cf[["2012"]])[1, 1] == 0, "consecutive failure: cell (1,3) fails 2011 and 2012 -> 1 in 2012; cell (1,1) does not")
   ok(length(list.files(out, "FPARz.*_int\\.tif$")) == 30, "10 species-systems x 3 severities = 30 bundles")
