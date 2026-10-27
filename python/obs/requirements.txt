@@ -1,0 +1,10 @@
+# Observed hazard pipeline, stage S1 (python/obs/s1_ingest.py). Python 3.12.
+# Install into an isolated env, e.g.:  uv venv -p 3.12 obsenv && VIRTUAL_ENV=obsenv uv pip install -r python/obs/requirements.txt
+# or the PASCAL per-user conda env `obs` (server-environment.md §5).
+numpy>=2.0
+xarray>=2025.1
+zarr>=3.1
+fsspec>=2024.1
+aiohttp>=3.9
+requests>=2.31
+rasterio>=1.4

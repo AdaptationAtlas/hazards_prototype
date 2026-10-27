@@ -2,7 +2,7 @@
 
 **Status:** v2, 2026-10-23. Revised after a five-way design review (efficiency, science, integration,
 gates, provenance), using the reviewer definitions in `.claude/agents/`. §7 lists the findings and how
-each is resolved. **Built so far:** upstream changes (a)-(c) (`5f60694`). They were node-verified on 2026-10-24: 744 outputs old == new with max |diff|  0, the gap census is clean, and `DAYS_CHECK=calendar` runs on all three NEX calendars (`DISPATCH_cglabs_obs_s2_equivalence.md`). Decisions D1-D5 recorded 2026-10-23 (§8). S0 probes answered 2026-10-24: CHIRTS and CHIRPS now come from the CDH Hugging Face Zarr cubes, and ingest runs on CGlabs (§5).
+each is resolved. **Built so far:** upstream changes (a)-(c) (`5f60694`). **S1 ingest** (`python/obs/s1_ingest.py`, 2026-10-27): built, reviewed (integration + efficiency), macbook Kenya smoke PASS; node smoke/full run dispatched (`DISPATCH_cglabs_obs_s1_ingest.md`). **Design change from the S1 review:** S1 writes on the **full 1440×400 NEX-GDDP lattice** (NaN outside Africa) so R/1-R/3 and `base_rast` work unchanged, and enforces a per-variable NaN-mask invariant across days. Changes (a)-(c) were node-verified on 2026-10-24: 744 outputs old == new with max |diff|  0, the gap census is clean, and `DAYS_CHECK=calendar` runs on all three NEX calendars (`DISPATCH_cglabs_obs_s2_equivalence.md`). Decisions D1-D5 recorded 2026-10-23 (§8). S0 probes answered 2026-10-24: CHIRTS and CHIRPS now come from the CDH Hugging Face Zarr cubes, and ingest runs on CGlabs (§5).
 
 **Goal:** a **present-day** observed baseline of hazard frequency × exposure for a small set of heat
 and drought hazards, for crops and livestock. It keeps the per-season series that the current chain
