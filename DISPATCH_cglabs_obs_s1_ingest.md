@@ -2,6 +2,15 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-27 (addendum) — also report the per-variable md5 digest of the Kenya smoke (I1)
+
+PASCAL is reproducing the same smoke (`DISPATCH_pascal_obs_s1_repro.md`). To compare the two nodes, after I1
+run the P3 digest from that dispatch on your smoke manifest(s): for each `var`+`token`, rows sorted by date,
+the `md5` column concatenated and hashed. Report the lines (`var token n digest`) in your RESPONSE with the
+manifest JSON `libs` block. Keep the smoke files.
+
+---
+
 ### MACBOOK 2026-10-27 — build the `obs` env, smoke S1 on the Kenya box, then run the full Africa ingest + gates
 
 **What S1 is.** `python/obs/s1_ingest.py` (docstring explains every subcommand). It reads the CDH Hugging
