@@ -5,15 +5,18 @@
 # python/obs/fpar_ingest.py to 0.25 deg rangeland-weighted dekadal means, turned into a per-season forage-deficit
 # class and an R/3 livestock bundle.
 #
-#   1. seasons from the ASAP phenology modes (static/pheno_s{1,2}, pheno_e{1,2}, pheno_n): dekad indices 1..72, where
-#      a value above 36 means the following year. A season starting in year y covers dekads [s .. s+L-1] counted from
-#      dekad 1 of y, L = E - S + 1 (NA if E < S or L > 36). Cells with pheno_n == 1 have one season.
+#   1. seasons from the ASAP phenology modes (static/pheno_s{1,2}, pheno_e{1,2}, pheno_n): dekad indices in the v05
+#      1..108 three-year frame (37-72 = year 2, 73-108 = year 3). A season starting in year y covers dekads
+#      [((S-1) %% 36)+1 .. +L-1] counted from dekad 1 of y, L = E - S + 1 (NA if E < S or L > 36), so a season that
+#      ends in the following calendar year is summed across the year boundary. Cells with pheno_n == 1 have one season.
 #   2. cumulative FPAR over each season, per start year (na.rm = FALSE: an incomplete season is NA)
 #   3. per season k, the standardised anomaly z_k(y) against the mean/sd of ALL start years; the yearly score
 #      z(y) = min over seasons (the worse season of a bimodal year)
 #   4. severity by EMPIRICAL PERCENTILES of z over the start years, per cell:
 #        moderate  z <= Q(0.20)      severe  z <= Q(0.10)      extreme  z <= Q(0.05)     (quantile type 1: no interpolation)
-#      so baseline P is 0.20 / 0.10 / 0.05 BY CONSTRUCTION (PLAN §3b: a design constant, not a measurement; frozen
+#      so baseline P is ceiling(n p)/n = 4/19, 2/19, 1/19 for 19 start years BY CONSTRUCTION (PLAN §3b: a design
+#      constant, not a measurement - the information is in WHICH years and in the magnitude layers rel_deficit_year /
+#      worst_year_deficit / deficit_q20, written alongside; frozen
 #      thresholds are written out so other periods can be classified against them)
 #   5. consecutive failure: moderate in y and y-1 (a separate layer, not an R/3 class)
 #   6. an R/3 bundle per livestock species-system: dry = FPAR deficit class, heat = THI_max (from the S3 annual12
@@ -30,7 +33,8 @@
 # Usage: Rscript R/obs/s6_rangeland_fpar.R --obs-root <abs> --years 2005:2025 [--token chirps-chirts-agera5]
 #          [--thi-token ...] [--period ggcmi-crop] [--rl-min 0.1] [--spinup 1] [--no-thi] [--overwrite]   |   --selftest
 #   --spinup: drop the first N start years so the seasons and the timeframe label match S3-S5 (default 1).
-#   --no-thi: allow a DIAGNOSTIC run without the S3 THI/NDWL0 stacks (heat/wet slots 0); never feed those bundles to R/3.
+#   --no-thi: allow a DIAGNOSTIC run without the S3 THI/NDWL0 stacks (heat/wet slots 0); the bundles then go under
+#            Data/hazard_risk_DIAGNOSTIC/<period>/, which R/3 never reads.
 suppressPackageStartupMessages({ library(terra); library(data.table) })
 .t0 <- Sys.time()
 lg <- function(...) cat(sprintf("[%s | +%7.1fs] [S6] %s\n", format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
@@ -113,24 +117,53 @@ run <- function(obs_root, years, token, thi_token = token, period = "ggcmi-crop"
   len1 <- values(w1$last - w1$first + 1)[, 1]; len2 <- values(w2$last - w2$first + 1)[, 1]
   lg(sprintf("season 1: length dekads %s..%s on %d cells; season 2 on %d cells (%s..%s)", min(len1, na.rm = TRUE), max(len1, na.rm = TRUE), sum(!is.na(len1)),
              sum(!is.na(len2)), if (any(!is.na(len2))) min(len2, na.rm = TRUE) else "-", if (any(!is.na(len2))) max(len2, na.rm = TRUE) else "-"))
+  n_rl <- sum(values(keep)[, 1], na.rm = TRUE); n_nosea <- sum(values(keep & is.na(w1$first))[, 1], na.rm = TRUE)
+  lg(sprintf("rangeland cells (rl >= %s): %d; without a valid season-1 window (dropped silently from every layer): %d", rl_min, n_rl, n_nosea))
+  if (n_nosea > 0.01 * n_rl) lg("WARN: more than 1 % of rangeland cells have no valid season window - inspect the phenology modes")
+  # "OND-first" cells encode s1 in frame-year 1 and s2 in frame-year 2 (season 2 is the NEXT calendar year's MAM):
+  # the modulo window sums each season in its own calendar year, so for those cells the pastoral year y pairs
+  # season 1 of y with season 2 of y + 1 (the KNBS OND(Y-1)+MAM(Y) convention) - a one-layer shift of the season-2 series
+  nxt <- !is.na(ph$s2) & (floor((ph$s2 - 1) / 36) > floor((ph$s1 - 1) / 36))
+  n_nxt <- sum(values(nxt)[, 1], na.rm = TRUE)
+  lg(sprintf("two-season cells whose season 2 falls in the following calendar year (season-2 series shifted by one start year there): %d", n_nxt))
+  shift_next <- function(x) { y <- c(x[[-1]], setValues(x[[1]], NA)); names(y) <- names(x); ifel(nxt, y, x) }
   # 3. z per season, yearly score = worse season
-  z1 <- zscore(cum1); z2 <- zscore(cum2)
+  z1 <- zscore(cum1); z2 <- shift_next(zscore(cum2))
   zy <- ifel(is.na(z2), z1, min(z1, z2)); names(zy) <- start_years
   writeRaster(zy, file.path(odir, "z_year.tif"), overwrite = TRUE)
+  # baseline moments: what a later period needs to be classified against these frozen thresholds (mean/sd per season)
+  mom <- c(mean(cum1, na.rm = TRUE), stdev(cum1, na.rm = TRUE, pop = FALSE), mean(cum2, na.rm = TRUE), stdev(cum2, na.rm = TRUE, pop = FALSE),
+           sum(!is.na(cum1)))
+  names(mom) <- c("mean_s1", "sd_s1", "mean_s2", "sd_s2", "n_years"); writeRaster(mom, file.path(odir, "baseline_moments.tif"), overwrite = TRUE)
+  # magnitude layers (the frequencies below are design constants; these carry the size of the deficit):
+  #   rel_deficit_year = min over seasons of (cum - mean) / mean per start year; worst_year_deficit = its minimum over years;
+  #   deficit_q20 = its 20th percentile (type 1) = the relative deficit of a 1-in-5 year
+  rd1 <- (cum1 - mom[["mean_s1"]]) / mom[["mean_s1"]]; rd2 <- shift_next((cum2 - mom[["mean_s2"]]) / mom[["mean_s2"]])
+  rdy <- ifel(is.na(rd2), rd1, min(rd1, rd2)); names(rdy) <- start_years
+  writeRaster(rdy, file.path(odir, "rel_deficit_year.tif"), overwrite = TRUE)
+  mag <- c(min(rdy, na.rm = TRUE), app(rdy, function(v) if (anyNA(v)) NA_real_ else as.numeric(quantile(v, 0.2, type = 1, names = FALSE))))
+  names(mag) <- c("worst_year_deficit", "deficit_q20"); writeRaster(mag, file.path(odir, "deficit_magnitude.tif"), overwrite = TRUE)
+  lg(sprintf("relative deficit of a 1-in-5 year (deficit_q20): median %.3f over rangeland cells; worst year: median %.3f",
+             median(values(mag[["deficit_q20"]])[, 1], na.rm = TRUE), median(values(mag[["worst_year_deficit"]])[, 1], na.rm = TRUE)))
   # 4. percentile thresholds (frozen) and classes
   thr <- qthresholds(zy); names(thr) <- paste0("q", sprintf("%02d", round(100 * SEVS)))
   writeRaster(thr, file.path(odir, "thresholds_z.tif"), overwrite = TRUE)
   fail <- lapply(names(SEVS), function(sv) { f <- ifel(zy <= thr[[paste0("q", sprintf("%02d", round(100 * SEVS[[sv]])))]], 1, 0); names(f) <- start_years; f })
   names(fail) <- names(SEVS)
-  pf <- values(mean(fail$moderate))[, 1]; n_y <- length(start_years)
-  tied <- sum(pf > SEVS[["moderate"]] + 1 / n_y + 1e-9, na.rm = TRUE)   # ties at the quantile inflate P beyond p + 1/n
-  lg(sprintf("baseline P(moderate) per cell: min %.3f median %.3f max %.3f over %d rangeland cells (by construction about %.2f); cells with tied quantiles (P > p + 1/n): %d",
-             min(pf, na.rm = TRUE), median(pf, na.rm = TRUE), max(pf, na.rm = TRUE), sum(!is.na(pf)), SEVS[["moderate"]], tied))
-  if (tied > 0.01 * sum(!is.na(pf))) lg("WARN: more than 1 % of rangeland cells have tied z at the 20th percentile (constant or zero FPAR?) - inspect before use")
+  n_y <- length(start_years); pf <- values(mean(fail$moderate))[, 1]
+  # without ties P = ceiling(n p)/n exactly; one tie at the quantile makes it (k+1)/n, so test against that (all three tiers)
+  tied <- vapply(names(SEVS), function(sv) { k <- ceiling(n_y * SEVS[[sv]]); sum(values(mean(fail[[sv]]))[, 1] >= (k + 1) / n_y - 1e-9, na.rm = TRUE) }, numeric(1))
+  n_dist <- app(zy, function(v) if (anyNA(v)) NA_real_ else length(unique(v))); few <- sum(values(n_dist)[, 1] < n_y, na.rm = TRUE)
+  lg(sprintf("baseline P(moderate) per cell: min %.3f median %.3f max %.3f over %d rangeland cells (by construction %d/%d = %.3f); cells with a tie at the quantile: moderate %d severe %d extreme %d; cells with fewer than %d distinct z: %d",
+             min(pf, na.rm = TRUE), median(pf, na.rm = TRUE), max(pf, na.rm = TRUE), sum(!is.na(pf)), ceiling(n_y * SEVS[["moderate"]]), n_y, ceiling(n_y * SEVS[["moderate"]]) / n_y,
+             tied[["moderate"]], tied[["severe"]], tied[["extreme"]], n_y, few))
+  if (max(tied) > 0.01 * sum(!is.na(pf))) lg("WARN: more than 1 % of rangeland cells have tied z at a class quantile (constant or zero FPAR; the extreme tier doubles on a tie at the minimum) - inspect before use")
   # 5. consecutive failure (moderate in y and y-1)
   cf <- fail$moderate[[-1]] * fail$moderate[[-nlyr(fail$moderate)]]; names(cf) <- start_years[-1]
   writeRaster(cf, file.path(odir, "consecutive_failure.tif"), overwrite = TRUE)
-  lg(sprintf("consecutive-failure frequency: domain mean %.3f (independence expectation %.3f)", mean(values(mean(cf))[, 1], na.rm = TRUE), SEVS[["moderate"]]^2))
+  k_m <- ceiling(n_y * SEVS[["moderate"]])
+  lg(sprintf("consecutive-failure frequency: domain mean %.3f (no-persistence expectation with exactly %d of %d flagged: k(k-1)/(n(n-1)) = %.3f)",
+             mean(values(mean(cf))[, 1], na.rm = TRUE), k_m, n_y, k_m * (k_m - 1) / (n_y * (n_y - 1))))
   # 6. R/3 bundles per livestock species-system
   sea <- file.path(obs_root, "Data", "obs_seasonal", paste0(thi_token, "_", timeframe), "annual12")
   hc <- s35$load_thresholds(file.path(repo, "metadata", "haz_classes.csv"))
@@ -144,7 +177,8 @@ run <- function(obs_root, years, token, thi_token = token, period = "ggcmi-crop"
     thi <- thi[[as.character(start_years)]]; ndwl <- ndwl[[as.character(start_years)]]
   }
   codes_dir <- file.path(obs_root, "Data", "obs_codes", paste0(token, "_", timeframe)); dir.create(codes_dir, FALSE, TRUE)
-  out_dir <- file.path(obs_root, "Data", "hazard_risk", period); dir.create(out_dir, FALSE, TRUE)
+  # --no-thi bundles never share the R/3 input directory with real ones (R/3 cannot tell them apart by name)
+  out_dir <- file.path(obs_root, "Data", if (is.null(thi)) "hazard_risk_DIAGNOSTIC" else "hazard_risk", period); dir.create(out_dir, FALSE, TRUE)
   prefix <- paste(scenario, token, timeframe, sep = "_"); n_out <- 0
   for (sp in LIVESTOCK) for (sv in names(SEVS)) {
     bundle_f <- file.path(out_dir, sprintf("%s_%s_%s_%s_int.tif", sp, token, sv, SET_NAME))
@@ -177,14 +211,17 @@ selftest <- function() {
     if (y == 2008 && dk %in% 10:15) r[1, 1] <- 10            # 6 dekads x (50 -> 10)
     if (y == 2011 && dk %in% 10:15) r[1, 3] <- 20            # a milder bad year in cell (1,3)
     if (y == 2012 && dk %in% 10:15) r[1, 3] <- 20            # ... two in a row -> consecutive failure
+    if (y == 2010 && dk %in% 8:11) r[3, 1] <- 10             # OND-first cell (3,1): its season 2 (MAM 2010) fails -> pastoral year 2009
     writeRaster(r, file.path(dd, sprintf("fpar_rl_%s.tif", format(dates[i], "%Y%m%d"))), overwrite = TRUE)
   }
   writeRaster(setValues(base, 1), file.path(sd, "rl_frac.tif"), overwrite = TRUE)
   s1 <- setValues(base, 10L); e1 <- setValues(base, 15L); n <- setValues(base, 1L)    # season 1 = dekads 10..15
   s1[1, 2] <- NA; e1[1, 2] <- NA; n[1, 2] <- NA                                      # no phenology
   s1[2, 1] <- 70L; e1[2, 1] <- 75L                                                   # start > 36: dekad 34, crossing into the next year
+  s2 <- setValues(base, NA); e2 <- setValues(base, NA)
+  s1[3, 1] <- 30L; e1[3, 1] <- 33L; s2[3, 1] <- 44L; e2[3, 1] <- 47L; n[3, 1] <- 2L   # OND-first: s1 frame-year 1, s2 frame-year 2 (= MAM of y+1)
   writeRaster(s1, file.path(sd, "pheno_s1.tif"), overwrite = TRUE); writeRaster(e1, file.path(sd, "pheno_e1.tif"), overwrite = TRUE)
-  writeRaster(setValues(base, NA), file.path(sd, "pheno_s2.tif"), overwrite = TRUE); writeRaster(setValues(base, NA), file.path(sd, "pheno_e2.tif"), overwrite = TRUE)
+  writeRaster(s2, file.path(sd, "pheno_s2.tif"), overwrite = TRUE); writeRaster(e2, file.path(sd, "pheno_e2.tif"), overwrite = TRUE)
   writeRaster(n, file.path(sd, "pheno_n.tif"), overwrite = TRUE)
   # no S3 stacks here: must STOP without --no-thi, run with it (spinup = 0 so all 10 start years are kept, as the assertions expect)
   r <- try(run(td, years, "obstest", rl_min = 0.5, overwrite = TRUE, spinup = 0L), silent = TRUE)
@@ -195,6 +232,9 @@ selftest <- function() {
   ok(nlyr(cum) == 10 && identical(names(cum), as.character(2005:2014)), "10 start years, labelled")
   ok(abs(values(cum[[1]])[1, 1] - 300) < 1e-6 && abs(values(cum[["2008"]])[1, 1] - 60) < 1e-6, "cumulative FPAR over dekads 10-15: 300 normally, 60 in the bad year")
   ok(is.na(values(cum[[1]])[2, 1]), "no-phenology cell is NA")
+  zy9 <- values(rast(file.path(od, "z_year.tif")))[9, ]
+  ok(names(zy9)[which.min(zy9)] == "2009" && is.na(zy9[["2014"]]) == FALSE,
+     "OND-first cell: a failed MAM 2010 (season 2, frame-year 2) scores pastoral year 2009 = OND 2009 + MAM 2010; the last year keeps season 1 only")
   ok(abs(values(cum[[1]])[5, 1] - (300 + 0.01 * 3)) < 1e-3, "start dekad 70 (= 34) crossing into the next year sums 3 dekads of y and 3 of y+1 (float32 tolerance)")
   zy <- rast(file.path(od, "z_year.tif")); thr <- rast(file.path(od, "thresholds_z.tif"))
   ok(values(zy[["2008"]])[1, 1] < -2 && all(values(zy)[1, -4] > 0), "z: the bad year is far below, the others slightly above the mean")
@@ -212,6 +252,11 @@ selftest <- function() {
   run(td, years, "obstest", rl_min = 0.5, overwrite = TRUE, spinup = 1L, no_thi = TRUE)
   zs <- rast(file.path(td, "Data", "obs_fpar", "seasonal", "2006-2015", "z_year.tif"))
   ok(nlyr(zs) == 9 && names(zs)[1] == "2006", "spinup = 1 drops the first start year and labels the timeframe 2006-2015 like S3-S5")
+  ok(grepl("hazard_risk_DIAGNOSTIC", out) && !dir.exists(file.path(td, "Data", "hazard_risk")), "--no-thi bundles go to hazard_risk_DIAGNOSTIC/, never to the R/3 input dir")
+  mg <- rast(file.path(od, "deficit_magnitude.tif")); mo <- rast(file.path(od, "baseline_moments.tif"))
+  v1 <- values(mg)[1, ]; ok(all(c("worst_year_deficit", "deficit_q20") %in% names(mg)) && v1[["worst_year_deficit"]] <= v1[["deficit_q20"]] && v1[["worst_year_deficit"]] < 0,
+                            "magnitude layers: worst-year deficit <= 1-in-5 deficit, worst < 0 (Q20 may be > 0 when one bad year drags the mean down)")
+  ok(nlyr(mo) == 5 && values(mo)[1, "n_years"] == 10, "baseline_moments carries mean/sd per season and the year count")
   unlink(td, recursive = TRUE); cat("\nALL S6 SELFTEST ASSERTIONS PASSED\n")
 }
 

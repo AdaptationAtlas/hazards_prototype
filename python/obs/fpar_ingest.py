@@ -7,10 +7,12 @@ Source (anonymous HTTPS, checked 2026-10-27):
     global 80640x29346, 0.004464 deg, Byte 0-100 (FPAR x 100; 255 = nodata), DEFLATE, 256x256 tiles,
     dekads 2000-05-21 -> present. "Terra/Aqua MODIS, FPAR, Smoothed ~500m, Product-version=V062".
     It is a rolling NRT archive: a dekad is re-estimated until consolidated (~90 days), so only dekads
-    at least --min-age days old are ingested, and every file's Last-Modified / ETag / size go in the manifest.
+    at least --min-age days old are ingested (default 110: final CF rewrites were measured 102-129 d after the dekad
+    start; a dekad whose consolidation_period tag is not CF stops the run), and every file's Last-Modified / ETag /
+    size and the ASAP Product-version / consolidation_period / file_creation tags go in the manifest.
   https://agricultural-production-hotspots.ec.europa.eu/files/asap_mask_rangeland_v04.tif   Byte 0-100 = % rangeland
   https://agricultural-production-hotspots.ec.europa.eu/files/pheno{s1,e1,m1,s2,e2,m2}_v05.tif  season start/end/max
-    as dekad index 1..72 (37-72 = the following year), 255 = nodata;  phenonseasons_v05.tif 1|2, 0 = nodata.
+    as dekad index in a 1..108 three-year frame (37-72 = year 2, 73-108 = year 3), 255 = nodata;  phenonseasons_v05.tif 1|2, 0 = nodata.
 
 What is computed per dekad, per 0.25 deg cell (area-weighted over the fine cells, so the half-pixel offset
 between the ASAP grid and our lattice is handled by reproject-average, never by block means):
@@ -24,7 +26,7 @@ Outputs  <out_root>/Data/obs_fpar/dekads/fpar_rl_YYYYMMDD.tif            float32
             (phenology aggregated as the rangeland-weighted MODE of the fine dekad values; see pheno_mode)
          <out_root>/manifests/fpar_manifest_<stamp>.csv/.json
 
-Subcommands:  ingest --out-root DIR [--years 2005:2025] [--smoke] [--workers 4] [--min-age 90] [--force] [--rl-min 0]
+Subcommands:  ingest --out-root DIR [--years 2005:2025] [--smoke] [--workers 4] [--min-age 110] [--force] [--rl-min 0]
               validate --out-root DIR [--years ...] [--smoke]
               selftest
 """
@@ -32,6 +34,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import re
 import datetime as dt
 import hashlib
 import json
@@ -85,7 +88,21 @@ def read_window(url, b, pad=0.01):
         with rasterio.open("/vsicurl/" + url) as src:
             win = from_bounds(b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad, src.transform).round_offsets().round_lengths()
             a = src.read(1, window=win, boundless=True, fill_value=src.nodata if src.nodata is not None else FPAR_NODATA)
-            return a, src.window_transform(win), src.nodata
+            return a, src.window_transform(win), src.nodata, dict(src.tags())
+
+
+ASAP_TAGS = ("Product-version", "consolidation_period", "file_creation", "description")
+
+
+def asap_meta(tags):
+    """The ASAP TIFF tags the baseline depends on. The operational archive is two product versions spliced
+    (measured 2026-10-27: V062 Terra/Aqua MODIS to 2018-03-21, V070 MODIS/VIIRS from 2018-04-01; the phenology
+    and all dekads carry Product-version / consolidation_period / file_creation), so they go in every file and row."""
+    out = {k: str(tags.get(k, "")) for k in ASAP_TAGS}
+    if not out["Product-version"]:                       # measured 2026-10-27: the version is only inside description
+        m = re.search(r"Product-version=([A-Za-z0-9_.]+)", out["description"])
+        out["Product-version"] = m.group(1) if m else ""
+    return out
 
 
 def area_average(arr, wt, b):
@@ -105,7 +122,7 @@ def area_average(arr, wt, b):
 
 def rangeland_weighted(fpar_b, w_fine, wt, b, rl_min):
     """fpar_rl = avg(fpar*w) / avg(w) over the 0.25 cell, with w = rangeland fraction where FPAR is valid."""
-    valid = fpar_b != FPAR_NODATA
+    valid = fpar_b <= 100            # 251 = other land, 254 = water, 255 = nodata (Seguini et al. 2026 Table 3) are all invalid
     w = np.where(valid, w_fine, 0.0)
     num = area_average(np.where(valid, fpar_b.astype("float64") * w, 0.0), wt, b)
     den = area_average(w, wt, b)
@@ -115,19 +132,62 @@ def rangeland_weighted(fpar_b, w_fine, wt, b, rl_min):
     return out.astype("float32"), den.astype("float32")
 
 
-def pheno_mode(ph_fine, w_fine, wt, b, nodata):
-    """Rangeland-weighted mode of a dekad-index layer per 0.25 cell: for each candidate value v, the weighted
-    cover of cells == v; the argmax wins. Exact, if slow (<= 72 passes over the window)."""
-    vals = np.unique(ph_fine[(ph_fine != nodata) & (w_fine > 0)])
+def joint_mode(key_fine, w_fine, wt, b):
+    """Rangeland-weighted mode of an integer key per 0.25 cell. Each fine cell is assigned to the coarse cell holding
+    its centre (the ASAP grid is half a fine pixel off the lattice: at most one fine row/column per cell edge is
+    attributed to a neighbour, immaterial for a mode). key < 0 = invalid. Returns float64, NaN where no valid
+    rangeland cell. One sort over the rangeland pixels, no reprojection passes."""
     w, h, _ = S1.window_grid(b)
-    best = np.full((h, w), np.nan, dtype="float32"); bestc = np.zeros((h, w), dtype="float64")
-    for v in vals:
-        c = area_average(np.where(ph_fine == v, w_fine, 0.0), wt, b)
-        c = np.nan_to_num(c)
-        upd = c > bestc
-        best[upd] = v; bestc[upd] = c[upd]
-    best[bestc <= 0] = np.nan
-    return best
+    out = np.full((h, w), np.nan, dtype="float64")
+    sel = (w_fine > 0) & (key_fine >= 0)
+    ii, jj = np.nonzero(sel)
+    if ii.size == 0:
+        return out
+    xc = wt.c + (jj + 0.5) * wt.a; yc = wt.f + (ii + 0.5) * wt.e
+    col = np.floor((xc - b[0]) / S1.RES).astype("int64"); row = np.floor((b[3] - yc) / S1.RES).astype("int64")
+    inside = (col >= 0) & (col < w) & (row >= 0) & (row < h)
+    cell = (row * w + col)[inside]; key = key_fine[ii[inside], jj[inside]].astype("int64"); wgt = w_fine[ii[inside], jj[inside]]
+    ukey, kidx = np.unique(key, return_inverse=True)
+    comp = cell * len(ukey) + kidx
+    ucomp, cidx = np.unique(comp, return_inverse=True)
+    wsum = np.bincount(cidx, weights=wgt, minlength=len(ucomp))
+    ccell = ucomp // len(ukey); ckey = ukey[ucomp % len(ukey)]
+    order = np.lexsort((-wsum, ccell))                      # per cell, heaviest key first; ties -> smallest key
+    _, first = np.unique(ccell[order], return_index=True)
+    best_cell = ccell[order][first]; best_key = ckey[order][first]
+    out.flat[best_cell] = best_key
+    return out
+
+
+def pheno_mode(ph_fine, w_fine, wt, b, nodata):
+    """Rangeland-weighted mode of one layer (joint_mode of a single key)."""
+    k = ph_fine.astype("int64"); k[ph_fine == nodata] = -1
+    return joint_mode(k, w_fine, wt, b).astype("float32")
+
+
+PHENO_KEYS = ("pheno_s1", "pheno_e1", "pheno_s2", "pheno_e2", "pheno_n")
+
+
+def pheno_joint_mode(ph, w_fine, wt, b, nod):
+    """Joint rangeland-weighted mode of the phenology TUPLE (s1, e1, s2, e2, n): the winning tuple comes from one
+    pixel population, so s1/e1/s2/e2 are never paired across populations (independent per-layer modes can pair an
+    OND-first s1 with a MAM-first e1 in cells that mix the two encodings - the Kenya pastoral geography).
+    s2/e2 are 0 in the key where n == 1. Returns {name: float32 array}, NaN where no valid rangeland cell, and
+    s2/e2 NaN where n == 1."""
+    s1, e1, s2, e2, n = (ph[k] for k in PHENO_KEYS)
+    ok1 = (s1 != nod["pheno_s1"]) & (e1 != nod["pheno_e1"]) & (n != nod["pheno_n"]) & (n >= 1)
+    two = ok1 & (n >= 2)
+    ok = ok1 & (~two | ((s2 != nod["pheno_s2"]) & (e2 != nod["pheno_e2"])))
+    s2k = np.where(two, s2, 0).astype("int64"); e2k = np.where(two, e2, 0).astype("int64")
+    key = (((s1.astype("int64") * 128 + e1.astype("int64")) * 128 + s2k) * 128 + e2k) * 4 + n.astype("int64")   # fields < 128 (1-108 frame), n < 4
+    key = np.where(ok, key, -1)
+    mode = joint_mode(key, w_fine, wt, b)
+    out = {}
+    k = mode.copy(); nn = np.where(np.isnan(k), np.nan, k % 4); k = np.floor_divide(k, 4)
+    e2m = k % 128; k = np.floor_divide(k, 128); s2m = k % 128; k = np.floor_divide(k, 128); e1m = k % 128; s1m = np.floor_divide(k, 128)
+    out["pheno_s1"], out["pheno_e1"], out["pheno_n"] = s1m, e1m, nn
+    out["pheno_s2"] = np.where(nn >= 2, s2m, np.nan); out["pheno_e2"] = np.where(nn >= 2, e2m, np.nan)
+    return {k2: v.astype("float32") for k2, v in out.items()}
 
 
 # ---- files ----------------------------------------------------------------------------------------------------
@@ -178,7 +238,7 @@ def cmd_ingest(a):
     stamp = f"{dt.datetime.now():%Y%m%d_%H%M%S}_{os.getpid()}"
     mcsv = man_dir / f"fpar_manifest_{stamp}.csv"
     with open(mcsv, "w", newline="") as fh:
-        csv.writer(fh).writerow(["kind", "date", "file", "md5", "source", "last_modified", "etag", "size"])
+        csv.writer(fh).writerow(["kind", "date", "file", "md5", "source", "last_modified", "etag", "size", "version", "consolidation", "created"])
 
     def add(row):
         with S1._lock:
@@ -187,26 +247,36 @@ def cmd_ingest(a):
 
     # static layers first: rangeland mask (weights) and phenology
     log("static: rangeland mask")
-    m_fine, wt, _ = read_window(ASAP + "/" + STATIC["rl_frac"], b)
+    m_fine, wt, _, _ = read_window(ASAP + "/" + STATIC["rl_frac"], b)
     w_fine = np.clip(m_fine.astype("float64"), 0, 100) / 100.0
     sdir = root / "Data" / "obs_fpar" / "static"
     rl = area_average(w_fine, wt, b).astype("float32")
     f = sdir / "rl_frac.tif"; u = ASAP + "/" + STATIC["rl_frac"]; lm, et, sz = head_meta(u)
     if needs_write(f, src_tag(u, lm, et), a.force):
         write_full(f, rl, b, dict(units="fraction", source=src_tag(u, lm, et)))
-        add(["static", "", str(f.relative_to(root)), S1.md5(f), STATIC["rl_frac"], lm, et, sz])
-    for k in ("pheno_s1", "pheno_e1", "pheno_s2", "pheno_e2", "pheno_n"):
-        f = sdir / f"{k}.tif"; u = ASAP + "/" + STATIC[k]; lm, et, sz = head_meta(u)
-        if not needs_write(f, src_tag(u, lm, et), a.force):
-            continue
-        log(f"static: {k}")
-        ph, wt2, nd = read_window(u, b)
-        assert ph.shape == w_fine.shape and wt2 == wt, f"{k}: window shape/transform differs from the mask window"
-        nd = 0 if k == "pheno_n" else (nd if nd is not None else 255)
-        mode = pheno_mode(ph, w_fine, wt2, b, nd)
-        write_full(f, mode, b, dict(units="dekad index 1-72 (37-72 = following year)" if k != "pheno_n" else "seasons per year",
-                                    source=src_tag(u, lm, et), method="rangeland-weighted mode of fine cells"))
-        add(["static", "", str(f.relative_to(root)), S1.md5(f), STATIC[k], lm, et, sz])
+        add(["static", "", str(f.relative_to(root)), S1.md5(f), STATIC["rl_frac"], lm, et, sz, "", "", ""])
+    pmeta = {k: head_meta(ASAP + "/" + STATIC[k]) for k in PHENO_KEYS}
+    ptag = {k: src_tag(ASAP + "/" + STATIC[k], pmeta[k][0], pmeta[k][1]) for k in PHENO_KEYS}
+    if any(needs_write(sdir / f"{k}.tif", ptag[k], a.force) for k in PHENO_KEYS):
+        log("static: phenology (joint mode of the s1/e1/s2/e2/n tuple)")
+        ph, nod, ptags = {}, {}, {}
+        for k in PHENO_KEYS:
+            ph[k], wt2, nd, ptags[k] = read_window(ASAP + "/" + STATIC[k], b)
+            assert ph[k].shape == w_fine.shape and wt2 == wt, f"{k}: window shape/transform differs from the mask window"
+            nod[k] = 0 if k == "pheno_n" else (nd if nd is not None else 255)
+        modes = pheno_joint_mode(ph, w_fine, wt, b, nod)
+        # the v05 phenology is in a 1-108 three-year frame (dekad 37-72 = year 2, 73-108 = year 3); where season 2 starts
+        # in a later frame-year than season 1 ("OND-first" cells) S6 pairs it with the following calendar year
+        s1m, s2m = modes["pheno_s1"], modes["pheno_s2"]
+        cross = int(np.sum(~np.isnan(s2m) & (np.floor((s1m - 1) / 36) != np.floor((s2m - 1) / 36))))
+        log(f"phenology: {int(np.sum(~np.isnan(s1m)))} rangeland cells with a season; {int(np.sum(modes['pheno_n'] >= 2))} with two; "
+            f"s1 range {np.nanmin(s1m):.0f}-{np.nanmax(s1m):.0f}; OND-first cells (s2 in a later frame-year than s1; S6 pairs them with the next calendar year): {cross}")
+        for k in PHENO_KEYS:
+            f = sdir / f"{k}.tif"; lm, et, sz = pmeta[k]; am = asap_meta(ptags[k])
+            write_full(f, modes[k], b, dict(units="dekad index, 1-108 three-year frame (37-72 = year 2)" if k != "pheno_n" else "seasons per year",
+                                            source=ptag[k], method="rangeland-weighted joint mode of the (s1,e1,s2,e2,n) tuple over fine cells",
+                                            **{"asap_" + t: v for t, v in am.items()}))
+            add(["static", "", str(f.relative_to(root)), S1.md5(f), STATIC[k], lm, et, sz, am["Product-version"], am["consolidation_period"], am["file_creation"]])
 
     # HEAD every wanted dekad (cheap): the tag decides skip vs rewrite, so a reprocessed ASAP file is picked up on resume
     meta = {}
@@ -230,7 +300,7 @@ def cmd_ingest(a):
     if not todo:
         log("ingest done"); return 0
     d0 = todo[0]
-    fp, wt0, _ = read_window(FPAR_URL.format(d=d0), b)
+    fp, wt0, _, _ = read_window(FPAR_URL.format(d=d0), b)
     assert fp.shape == w_fine.shape and wt0 == wt, "FPAR window shape/transform differs from the mask window"
     a0, _ = rangeland_weighted(fp, w_fine, wt0, b, a.rl_min)
     ref_mask = np.isnan(a0)
@@ -239,9 +309,12 @@ def cmd_ingest(a):
 
     def one(d):
         url = FPAR_URL.format(d=d)
-        fp, wtd, _ = S1.retry(lambda: read_window(url, b), f"fpar {d}")
+        fp, wtd, _, tags = S1.retry(lambda: read_window(url, b), f"fpar {d}")
         if fp.shape != w_fine.shape or wtd != wt:
             raise Stop(f"{d}: window shape/transform differs from the mask window")
+        am = asap_meta(tags)
+        if am["consolidation_period"] and am["consolidation_period"] != "CF":
+            raise Stop(f"{d}: consolidation_period={am['consolidation_period']} (not final; CF lands 102-129 d after the dekad start - raise --min-age or wait)")
         arr, _ = rangeland_weighted(fp, w_fine, wtd, b, a.rl_min)
         v = arr[~np.isnan(arr)]
         if v.size and (v.min() < 0 or v.max() > 100):
@@ -250,8 +323,9 @@ def cmd_ingest(a):
             raise Stop(f"{d}: NaN mask differs from the reference dekad in {int((np.isnan(arr) != ref_mask).sum())} cell(s)")
         lm, et, sz = meta[d]
         p = out_dekad(root, d)
-        write_full(p, arr, b, dict(units="FPAR x 100, rangeland-weighted mean", source=src_tag(url, lm, et), dekad=str(d)))
-        return ["dekad", str(d), str(p.relative_to(root)), S1.md5(p), url, lm, et, sz]
+        write_full(p, arr, b, dict(units="FPAR x 100, rangeland-weighted mean", source=src_tag(url, lm, et), dekad=str(d),
+                                   **{"asap_" + t: v for t, v in am.items()}))
+        return ["dekad", str(d), str(p.relative_to(root)), S1.md5(p), url, lm, et, sz, am["Product-version"], am["consolidation_period"], am["file_creation"]]
 
     done = 0; stop = None; tb = time.time()
     ex = ThreadPoolExecutor(max_workers=a.workers)
@@ -310,6 +384,36 @@ def cmd_validate(a):
         with open(m) as fh:
             for r in csv.DictReader(fh):
                 fails[r["date"]] = r["reason"]
+    # product-version split and the CF gate, from the manifests (the baseline is two spliced ASAP versions)
+    vers = {}
+    for m in (root / "manifests").glob("fpar_manifest_*.csv"):
+        with open(m) as fh:
+            for r in csv.DictReader(fh):
+                if r["kind"] == "dekad" and r.get("version") is not None:
+                    vers[r["date"]] = (r.get("version", ""), r.get("consolidation", ""))
+    if vers:
+        from collections import Counter
+        cv = Counter(v for v, _ in vers.values()); dates = sorted(vers)
+        brk = [d for i, d in enumerate(dates) if i and vers[d][0] != vers[dates[i - 1]][0]]
+        notcf = [d for d in dates if vers[d][1] and vers[d][1] != "CF"]
+        log(f"product versions: {dict(cv)}; version break(s) at {brk or 'none'}; non-CF dekads: {len(notcf)}")
+        if notcf:
+            log(f"non-CF dekads in the manifest: {notcf[:5]}"); bad = True
+    if not a.no_head:
+        from concurrent.futures import ThreadPoolExecutor
+        ref = {}
+        for m in (root / "manifests").glob("fpar_manifest_*.csv"):
+            with open(m) as fh:
+                for r in csv.DictReader(fh):
+                    if r["kind"] == "dekad":
+                        ref[r["date"]] = (r["last_modified"], r["etag"])
+        chk = [d for d in pres if str(d) in ref]
+        with ThreadPoolExecutor(max_workers=8) as hx:
+            heads = list(hx.map(lambda d: head_meta(FPAR_URL.format(d=d)), chk))
+        drift = [d for d, (lm, et, _) in zip(chk, heads) if (lm, et) != ref[str(d)]]
+        log(f"server drift: {len(drift)} of {len(chk)} present dekads were modified upstream since ingest" + (f" (first {drift[0]}; re-run ingest to rewrite them)" if drift else ""))
+        if drift:
+            bad = True
     unman = [d for d in pres if str(out_dekad(root, d).relative_to(root)) not in rows]
     if unman:
         log(f"{len(unman)} present dekad(s) absent from every manifest (first {unman[0]})"); bad = True
@@ -365,6 +469,21 @@ def cmd_selftest(_a):
     ph = np.full((11, 11), 20, dtype="uint8"); ph[:, :3] = 7; ph[:, 3:6] = 9
     md = pheno_mode(ph, wf, wt, b, 255)
     ok(md[0, 0] in (7.0, 9.0) and np.isnan(md[0, 1]), "phenology mode is taken over rangeland cells only and NaN where none")
+    # joint mode: three pixel populations A (s1 30, e1 35) 40 %, B (45, 50) 35 %, C (30, 50) 25 % of the rangeland weight.
+    # Independent per-layer modes give s1 = 30 (65 %), e1 = 50 (60 %) = population C's tuple (a minority); the joint
+    # mode must return A's.
+    nr = int(wf.shape[0]); rows_a = slice(0, int(round(nr * 0.40))); rows_b = slice(rows_a.stop, rows_a.stop + int(round(nr * 0.35)))
+    s1 = np.full(wf.shape, 30, "uint8"); e1 = np.full(wf.shape, 50, "uint8"); e1[rows_a] = 35; s1[rows_b] = 45
+    n1 = np.ones(wf.shape, "uint8"); z = np.full(wf.shape, 255, "uint8")
+    jm = pheno_joint_mode(dict(pheno_s1=s1, pheno_e1=e1, pheno_s2=z, pheno_e2=z, pheno_n=n1), wf, wt, b,
+                          dict(pheno_s1=255, pheno_e1=255, pheno_s2=255, pheno_e2=255, pheno_n=0))
+    ok(jm["pheno_s1"][0, 0] == 30 and jm["pheno_e1"][0, 0] == 35 and jm["pheno_n"][0, 0] == 1 and np.isnan(jm["pheno_s2"][0, 0]),
+       "joint phenology mode returns one population's tuple (30, 35), not the per-layer modes' chimera (30, 50)")
+    fv = np.full((11, 11), 80, "uint8"); fv[:, :2] = 254                                      # water flag inside the rangeland strip
+    av, _ = rangeland_weighted(fv, wf, wt, b, 0.0)
+    ok(np.allclose(av[~np.isnan(av)], 80), "flag values 251/254 are excluded from the rangeland mean like 255")
+    am = asap_meta({"description": "Terra/Aqua MODIS, FPAR, Smoothed ~500m, Product-version=V062", "consolidation_period": "CF", "file_creation": "2023-09-09T03:44:35"})
+    ok(am["Product-version"] == "V062" and am["consolidation_period"] == "CF", "ASAP product version is parsed out of the description tag (it is not a tag of its own)")
     ok(len(dekads([2015])) == 36 and dekads([2015])[1] == dt.date(2015, 1, 11), "36 dekads per year on the 1/11/21 convention")
     print("ALL FPAR SELFTEST ASSERTIONS PASSED")
     return 0
@@ -376,9 +495,10 @@ def main():
     for n in ("ingest", "validate"):
         s = sub.add_parser(n)
         s.add_argument("--out-root", required=True); s.add_argument("--smoke", action="store_true")
-        s.add_argument("--years", default="2005:2025"); s.add_argument("--min-age", type=int, default=90)
+        s.add_argument("--years", default="2005:2025"); s.add_argument("--min-age", type=int, default=110)
         if n == "validate":
             s.add_argument("--cutoff", default=None, help="YYYY-MM-DD; default = the newest ingest manifest's cutoff")
+            s.add_argument("--no-head", action="store_true", help="skip the per-dekad HEAD drift check against the server")
         if n == "ingest":
             s.add_argument("--workers", type=int, default=4); s.add_argument("--force", action="store_true")
             s.add_argument("--rl-min", type=float, default=0.0, help="minimum rangeland fraction of a 0.25 cell to keep it (0 = any)")
