@@ -28,7 +28,9 @@
 #         <OBS_ROOT>/Data/hazard_risk/<period>/<species>_<token>_<sev>_FPARz+THI-max+NDWL0_int.tif
 #
 # Usage: Rscript R/obs/s6_rangeland_fpar.R --obs-root <abs> --years 2005:2025 [--token chirps-chirts-agera5]
-#          [--thi-token ...] [--period ggcmi-crop] [--rl-min 0.1] [--overwrite]      |   --selftest
+#          [--thi-token ...] [--period ggcmi-crop] [--rl-min 0.1] [--spinup 1] [--no-thi] [--overwrite]   |   --selftest
+#   --spinup: drop the first N start years so the seasons and the timeframe label match S3-S5 (default 1).
+#   --no-thi: allow a DIAGNOSTIC run without the S3 THI/NDWL0 stacks (heat/wet slots 0); never feed those bundles to R/3.
 suppressPackageStartupMessages({ library(terra); library(data.table) })
 .t0 <- Sys.time()
 lg <- function(...) cat(sprintf("[%s | +%7.1fs] [S6] %s\n", format(Sys.time(), "%Y-%m-%d %H:%M:%S"),
@@ -85,10 +87,16 @@ qthresholds <- function(z, probs = SEVS) {
 }
 
 # ---- driver -------------------------------------------------------------------------------------------------
-run <- function(obs_root, years, token, thi_token = token, period = "ggcmi-crop", rl_min = 0.1, overwrite = FALSE, scenario = "observed") {
+run <- function(obs_root, years, token, thi_token = token, period = "ggcmi-crop", rl_min = 0.1, overwrite = FALSE, scenario = "observed",
+                spinup = 1L, no_thi = FALSE) {
   overwrite <- overwrite || tolower(Sys.getenv("FORCE_OVERWRITE", "")) %in% c("1", "true", "t", "yes", "y", "on")
   fdir <- file.path(obs_root, "Data", "obs_fpar"); sdir <- file.path(fdir, "static")
-  timeframe <- sprintf("%d-%d", min(years), max(years)); start_years <- years[-length(years)]
+  # the same season set and timeframe label as S3-S5 (min(years)+spinup .. max(years); start years after the spin-up),
+  # so the THI/NDWL0 stacks line up and one parquet never carries two timeframes
+  timeframe <- sprintf("%d-%d", min(years) + spinup, max(years)); all_start <- years[-length(years)]
+  sea_keep <- seq_along(all_start); if (spinup > 0) sea_keep <- sea_keep[-seq_len(spinup)]   # x[-integer(0)] is empty, hence the guard
+  if (!length(sea_keep)) stopf("spinup=%d leaves no seasons", spinup)
+  start_years <- all_start[sea_keep]
   odir <- file.path(fdir, "seasonal", timeframe); dir.create(odir, FALSE, TRUE)
   lg(sprintf("obs_root=%s years=%d-%d start years=%d token=%s rl_min=%s", obs_root, min(years), max(years), length(start_years), token, rl_min))
   dek <- load_dekads(obs_root, years)
@@ -98,9 +106,9 @@ run <- function(obs_root, years, token, thi_token = token, period = "ggcmi-crop"
   dek <- mask(dek, keep, maskvalues = FALSE)
   ph <- lapply(c("s1", "e1", "s2", "e2", "n"), function(k) rast(file.path(sdir, sprintf("pheno_%s.tif", k)))); names(ph) <- c("s1", "e1", "s2", "e2", "n")
   # 1-2. cumulative FPAR per season
-  w1 <- season_windows(ph$s1, ph$e1); cum1 <- cum_season(dek, w1, years)
+  w1 <- season_windows(ph$s1, ph$e1); cum1 <- cum_season(dek, w1, years)[[sea_keep]]
   two <- ph$n >= 2
-  w2 <- season_windows(ifel(two, ph$s2, NA), ifel(two, ph$e2, NA)); cum2 <- cum_season(dek, w2, years)
+  w2 <- season_windows(ifel(two, ph$s2, NA), ifel(two, ph$e2, NA)); cum2 <- cum_season(dek, w2, years)[[sea_keep]]
   writeRaster(cum1, file.path(odir, "cum_s1.tif"), overwrite = TRUE); writeRaster(cum2, file.path(odir, "cum_s2.tif"), overwrite = TRUE)
   len1 <- values(w1$last - w1$first + 1)[, 1]; len2 <- values(w2$last - w2$first + 1)[, 1]
   lg(sprintf("season 1: length dekads %s..%s on %d cells; season 2 on %d cells (%s..%s)", min(len1, na.rm = TRUE), max(len1, na.rm = TRUE), sum(!is.na(len1)),
@@ -128,10 +136,13 @@ run <- function(obs_root, years, token, thi_token = token, period = "ggcmi-crop"
   hc <- s35$load_thresholds(file.path(repo, "metadata", "haz_classes.csv"))
   thi <- if (file.exists(file.path(sea, "THI_max_max.tif"))) rast(file.path(sea, "THI_max_max.tif")) else NULL
   ndwl <- if (file.exists(file.path(sea, "NDWL0_mean.tif"))) rast(file.path(sea, "NDWL0_mean.tif")) else NULL
-  if (is.null(thi)) lg("no THI_max annual12 stack found: heat slot is 0 in the FPAR bundles") else {
-    thi <- thi[[as.character(start_years)]]   # align on start years (S3 drops spin-up; FPAR keeps all)
+  if (is.null(thi) || is.null(ndwl)) {
+    if (!no_thi) stopf("S3 annual12 stacks not found under %s (THI_max_max.tif / NDWL0_mean.tif). Run S3-S5 first, or pass --no-thi for a DIAGNOSTIC run whose heat/wet slots are 0", sea)
+    lg("--no-thi: heat and wet slots are 0 in these bundles (DIAGNOSTIC ONLY, not for R/3/publish)")
+  } else {
+    if (!all(as.character(start_years) %in% names(thi))) stopf("THI stack seasons %s..%s do not cover %s..%s", names(thi)[1], tail(names(thi), 1), start_years[1], tail(start_years, 1))
+    thi <- thi[[as.character(start_years)]]; ndwl <- ndwl[[as.character(start_years)]]
   }
-  if (!is.null(ndwl)) ndwl <- ndwl[[as.character(start_years)]]
   codes_dir <- file.path(obs_root, "Data", "obs_codes", paste0(token, "_", timeframe)); dir.create(codes_dir, FALSE, TRUE)
   out_dir <- file.path(obs_root, "Data", "hazard_risk", period); dir.create(out_dir, FALSE, TRUE)
   prefix <- paste(scenario, token, timeframe, sep = "_"); n_out <- 0
@@ -175,7 +186,10 @@ selftest <- function() {
   writeRaster(s1, file.path(sd, "pheno_s1.tif"), overwrite = TRUE); writeRaster(e1, file.path(sd, "pheno_e1.tif"), overwrite = TRUE)
   writeRaster(setValues(base, NA), file.path(sd, "pheno_s2.tif"), overwrite = TRUE); writeRaster(setValues(base, NA), file.path(sd, "pheno_e2.tif"), overwrite = TRUE)
   writeRaster(n, file.path(sd, "pheno_n.tif"), overwrite = TRUE)
-  out <- run(td, years, "obstest", rl_min = 0.5, overwrite = TRUE)
+  # no S3 stacks here: must STOP without --no-thi, run with it (spinup = 0 so all 10 start years are kept, as the assertions expect)
+  r <- try(run(td, years, "obstest", rl_min = 0.5, overwrite = TRUE, spinup = 0L), silent = TRUE)
+  ok(inherits(r, "try-error") && grepl("annual12 stacks not found", r), "without the S3 THI/NDWL0 stacks S6 stops unless --no-thi")
+  out <- run(td, years, "obstest", rl_min = 0.5, overwrite = TRUE, spinup = 0L, no_thi = TRUE)
   od <- file.path(td, "Data", "obs_fpar", "seasonal", "2005-2015")
   cum <- rast(file.path(od, "cum_s1.tif"))
   ok(nlyr(cum) == 10 && identical(names(cum), as.character(2005:2014)), "10 start years, labelled")
@@ -194,6 +208,10 @@ selftest <- function() {
   cf <- rast(file.path(od, "consecutive_failure.tif"))
   ok(values(cf[["2012"]])[3, 1] == 1 && values(cf[["2012"]])[1, 1] == 0, "consecutive failure: cell (1,3) fails 2011 and 2012 -> 1 in 2012; cell (1,1) does not")
   ok(length(list.files(out, "FPARz.*_int\\.tif$")) == 30, "10 species-systems x 3 severities = 30 bundles")
+  # spinup = 1: timeframe and seasons as S3-S5 label them (2006-2015, start years 2006-2014)
+  run(td, years, "obstest", rl_min = 0.5, overwrite = TRUE, spinup = 1L, no_thi = TRUE)
+  zs <- rast(file.path(td, "Data", "obs_fpar", "seasonal", "2006-2015", "z_year.tif"))
+  ok(nlyr(zs) == 9 && names(zs)[1] == "2006", "spinup = 1 drops the first start year and labels the timeframe 2006-2015 like S3-S5")
   unlink(td, recursive = TRUE); cat("\nALL S6 SELFTEST ASSERTIONS PASSED\n")
 }
 
@@ -204,5 +222,6 @@ if (sys.nframe() == 0) {
   obs_root <- getopt("--obs-root"); if (is.null(obs_root) || !startsWith(obs_root, "/")) stopf("--obs-root must be absolute")
   tok <- getopt("--token", "chirps-chirts-agera5")
   run(obs_root, yrs, tok, thi_token = getopt("--thi-token", tok), period = getopt("--period", "ggcmi-crop"),
-      rl_min = as.numeric(getopt("--rl-min", "0.1")), overwrite = "--overwrite" %in% a)
+      rl_min = as.numeric(getopt("--rl-min", "0.1")), overwrite = "--overwrite" %in% a,
+      spinup = as.integer(getopt("--spinup", "1")), no_thi = "--no-thi" %in% a)
 }

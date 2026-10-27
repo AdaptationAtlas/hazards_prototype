@@ -59,6 +59,9 @@ def log(*m):
     print(f"[{dt.datetime.now():%Y-%m-%d %H:%M:%S} | +{time.time() - T0:8.1f}s] [FPAR] " + " ".join(str(x) for x in m), flush=True)
 
 
+S1.log = log   # S1's retry() logs through its module-level log; make those lines say [FPAR]
+
+
 class Stop(RuntimeError):
     pass
 
@@ -143,6 +146,17 @@ def write_full(path: Path, win_arr, b, tags):
     os.replace(tmp, path)
 
 
+def src_tag(url, lm, et):
+    return f"{url} lm={lm} etag={et}"
+
+
+def needs_write(path: Path, tag, force):
+    """Skip only when the file exists AND its source tag (url + Last-Modified + ETag) matches the server's now."""
+    if force or not path.exists():
+        return True
+    return S1.read_source_tag(path) != tag
+
+
 def head_meta(url):
     import requests
     r = S1.retry(lambda: requests.head(url, timeout=60, allow_redirects=True), f"HEAD {url[-24:]}")
@@ -177,61 +191,86 @@ def cmd_ingest(a):
     w_fine = np.clip(m_fine.astype("float64"), 0, 100) / 100.0
     sdir = root / "Data" / "obs_fpar" / "static"
     rl = area_average(w_fine, wt, b).astype("float32")
-    f = sdir / "rl_frac.tif"
-    if a.force or not f.exists():
-        write_full(f, rl, b, dict(units="fraction", source=ASAP + "/" + STATIC["rl_frac"]))
-        lm, et, sz = head_meta(ASAP + "/" + STATIC["rl_frac"]); add(["static", "", str(f.relative_to(root)), S1.md5(f), STATIC["rl_frac"], lm, et, sz])
+    f = sdir / "rl_frac.tif"; u = ASAP + "/" + STATIC["rl_frac"]; lm, et, sz = head_meta(u)
+    if needs_write(f, src_tag(u, lm, et), a.force):
+        write_full(f, rl, b, dict(units="fraction", source=src_tag(u, lm, et)))
+        add(["static", "", str(f.relative_to(root)), S1.md5(f), STATIC["rl_frac"], lm, et, sz])
     for k in ("pheno_s1", "pheno_e1", "pheno_s2", "pheno_e2", "pheno_n"):
-        f = sdir / f"{k}.tif"
-        if not (a.force or not f.exists()):
+        f = sdir / f"{k}.tif"; u = ASAP + "/" + STATIC[k]; lm, et, sz = head_meta(u)
+        if not needs_write(f, src_tag(u, lm, et), a.force):
             continue
         log(f"static: {k}")
-        ph, wt2, nd = read_window(ASAP + "/" + STATIC[k], b)
+        ph, wt2, nd = read_window(u, b)
+        assert ph.shape == w_fine.shape and wt2 == wt, f"{k}: window shape/transform differs from the mask window"
         nd = 0 if k == "pheno_n" else (nd if nd is not None else 255)
         mode = pheno_mode(ph, w_fine, wt2, b, nd)
         write_full(f, mode, b, dict(units="dekad index 1-72 (37-72 = following year)" if k != "pheno_n" else "seasons per year",
-                                    source=ASAP + "/" + STATIC[k], method="rangeland-weighted mode of fine cells"))
-        lm, et, sz = head_meta(ASAP + "/" + STATIC[k]); add(["static", "", str(f.relative_to(root)), S1.md5(f), STATIC[k], lm, et, sz])
+                                    source=src_tag(u, lm, et), method="rangeland-weighted mode of fine cells"))
+        add(["static", "", str(f.relative_to(root)), S1.md5(f), STATIC[k], lm, et, sz])
 
-    todo = [d for d in want if a.force or not out_dekad(root, d).exists()]
-    log(f"dekads to write: {len(todo)} of {len(want)}")
+    # HEAD every wanted dekad (cheap): the tag decides skip vs rewrite, so a reprocessed ASAP file is picked up on resume
+    meta = {}
+    with ThreadPoolExecutor(max_workers=8) as hx:
+        for d, m in zip(want, hx.map(lambda d: head_meta(FPAR_URL.format(d=d)), want)):
+            meta[d] = m
+    todo = [d for d in want if needs_write(out_dekad(root, d), src_tag(FPAR_URL.format(d=d), meta[d][0], meta[d][1]), a.force)]
+    log(f"dekads to write: {len(todo)} of {len(want)} (the rest exist with a matching source tag)")
+    failed = man_dir / f"fpar_failed_{stamp}.csv"
+
+    def fail(d, why):
+        with S1._lock:
+            new = not failed.exists()
+            with open(failed, "a", newline="") as fh:
+                wr = csv.writer(fh)
+                if new:
+                    wr.writerow(["date", "reason"])
+                wr.writerow([str(d), why])
+        log(f"FAIL {d}: {why}")
+
     if not todo:
         log("ingest done"); return 0
-    ref_mask = None
     d0 = todo[0]
-    fp, wt, _ = read_window(FPAR_URL.format(d=d0), b)
-    a0, _ = rangeland_weighted(fp, w_fine, wt, b, a.rl_min)
+    fp, wt0, _ = read_window(FPAR_URL.format(d=d0), b)
+    assert fp.shape == w_fine.shape and wt0 == wt, "FPAR window shape/transform differs from the mask window"
+    a0, _ = rangeland_weighted(fp, w_fine, wt0, b, a.rl_min)
     ref_mask = np.isnan(a0)
     if (~ref_mask).sum() == 0:
         raise Stop("no rangeland cell in the window (rl_min too high?)")
 
     def one(d):
         url = FPAR_URL.format(d=d)
-        fp, wt, _ = S1.retry(lambda: read_window(url, b), f"fpar {d}")
-        arr, _ = rangeland_weighted(fp, w_fine, wt, b, a.rl_min)
+        fp, wtd, _ = S1.retry(lambda: read_window(url, b), f"fpar {d}")
+        if fp.shape != w_fine.shape or wtd != wt:
+            raise Stop(f"{d}: window shape/transform differs from the mask window")
+        arr, _ = rangeland_weighted(fp, w_fine, wtd, b, a.rl_min)
         v = arr[~np.isnan(arr)]
         if v.size and (v.min() < 0 or v.max() > 100):
             raise Stop(f"{d}: FPAR x100 outside 0-100 ({v.min()}..{v.max()})")
         if not np.array_equal(np.isnan(arr), ref_mask):
             raise Stop(f"{d}: NaN mask differs from the reference dekad in {int((np.isnan(arr) != ref_mask).sum())} cell(s)")
+        lm, et, sz = meta[d]
         p = out_dekad(root, d)
-        write_full(p, arr, b, dict(units="FPAR x 100, rangeland-weighted mean", source=url, dekad=str(d)))
-        lm, et, sz = head_meta(url)
+        write_full(p, arr, b, dict(units="FPAR x 100, rangeland-weighted mean", source=src_tag(url, lm, et), dekad=str(d)))
         return ["dekad", str(d), str(p.relative_to(root)), S1.md5(p), url, lm, et, sz]
 
     done = 0; stop = None; tb = time.time()
     ex = ThreadPoolExecutor(max_workers=a.workers)
     futs = {ex.submit(one, d): d for d in todo}
     try:
-        for fu in as_completed(futs):
-            try:
-                add(fu.result()); done += 1
-            except Exception as e:
-                add(["FAIL", str(futs[fu]), "", "", FPAR_URL.format(d=futs[fu]), "", "", f"{type(e).__name__}: {e}"])
-                log(f"FAIL {futs[fu]}: {e}"); stop = stop or e
-                ex.shutdown(wait=False, cancel_futures=True)
-            if done % 36 == 0:
-                log(f"{done}/{len(todo)} dekads ({(time.time() - tb) / max(done, 1):.1f}s/dekad)")
+        pending = list(futs)
+        while pending:
+            for fu in as_completed(pending):       # see s1_ingest: never as_completed() over cancelled futures
+                try:
+                    add(fu.result()); done += 1
+                except Exception as e:
+                    fail(futs[fu], f"{type(e).__name__}: {e}"); stop = stop or e
+                    ex.shutdown(wait=False, cancel_futures=True)
+                    pending = [g for g in futs if not g.done() and not g.cancelled()]
+                    break
+                if done % 36 == 0:
+                    log(f"{done}/{len(todo)} dekads ({(time.time() - tb) / max(done, 1):.1f}s/dekad)")
+            else:
+                pending = []
     finally:
         ex.shutdown(wait=True)
     (man_dir / f"fpar_manifest_{stamp}.json").write_text(json.dumps(dict(
@@ -241,7 +280,7 @@ def cmd_ingest(a):
         libs=dict(python=sys.version.split()[0], numpy=np.__version__)), indent=1, default=str))
     log(f"{done}/{len(todo)} dekads written; manifest {mcsv.name}")
     if stop:
-        raise SystemExit(f"[FPAR] STOPPED: {stop}")
+        raise SystemExit(f"[FPAR] STOPPED: {stop} (see {failed.name})")
     log("ingest done"); return 0
 
 
@@ -249,11 +288,34 @@ def cmd_validate(a):
     import rasterio
     root = S1.check_root(a)
     b = S1.snap_bbox(S1.KENYA_SMOKE if a.smoke else S1.AFRICA)
-    years = S1.parse_years(a.years); cutoff = dt.date.today() - dt.timedelta(days=a.min_age)
+    years = S1.parse_years(a.years)
+    # the ingest's cutoff is in its manifest json; validating k days later must not expect dekads it never wrote
+    mj = sorted((root / "manifests").glob("fpar_manifest_*.json"))
+    cuts = [json.loads(m.read_text()).get("cutoff") for m in mj]
+    cutoff = dt.date.fromisoformat(a.cutoff) if a.cutoff else (dt.date.fromisoformat(max(c for c in cuts if c)) if any(cuts) else dt.date.today() - dt.timedelta(days=a.min_age))
     want = [d for d in dekads(years) if d <= cutoff]
+    later = [d for d in dekads(years) if cutoff < d <= dt.date.today() - dt.timedelta(days=a.min_age)]
     pres = [d for d in want if out_dekad(root, d).exists()]
-    log(f"dekads present {len(pres)}/{len(want)}" + (f" (first missing {next(d for d in want if d not in set(pres))})" if len(pres) < len(want) else ""))
+    log(f"cutoff {cutoff} (from {'--cutoff' if a.cutoff else 'the manifests' if any(cuts) else 'today'}); dekads present {len(pres)}/{len(want)}"
+        + (f" (first missing {next(d for d in want if d not in set(pres))})" if len(pres) < len(want) else "")
+        + (f"; {len(later)} newer dekad(s) now eligible, not expected" if later else ""))
     bad = len(pres) < len(want)
+    rows = set(); fails = {}
+    for m in (root / "manifests").glob("fpar_manifest_*.csv"):
+        with open(m) as fh:
+            for r in csv.DictReader(fh):
+                if r["kind"] == "dekad":
+                    rows.add(r["file"])
+    for m in (root / "manifests").glob("fpar_failed_*.csv"):
+        with open(m) as fh:
+            for r in csv.DictReader(fh):
+                fails[r["date"]] = r["reason"]
+    unman = [d for d in pres if str(out_dekad(root, d).relative_to(root)) not in rows]
+    if unman:
+        log(f"{len(unman)} present dekad(s) absent from every manifest (first {unman[0]})"); bad = True
+    open_fail = [d for d in fails if dt.date.fromisoformat(d) in set(want) and str(out_dekad(root, dt.date.fromisoformat(d)).relative_to(root)) not in rows]
+    if open_fail:
+        log(f"{len(open_fail)} failed dekad(s) never succeeded later: {open_fail[:5]}"); bad = True
     row0, col0 = S1.lattice_offsets(b); w, h, _ = S1.window_grid(b)
     ref = None; maskbad = 0; means = []
     for d in pres:
@@ -315,6 +377,8 @@ def main():
         s = sub.add_parser(n)
         s.add_argument("--out-root", required=True); s.add_argument("--smoke", action="store_true")
         s.add_argument("--years", default="2005:2025"); s.add_argument("--min-age", type=int, default=90)
+        if n == "validate":
+            s.add_argument("--cutoff", default=None, help="YYYY-MM-DD; default = the newest ingest manifest's cutoff")
         if n == "ingest":
             s.add_argument("--workers", type=int, default=4); s.add_argument("--force", action="store_true")
             s.add_argument("--rl-min", type=float, default=0.0, help="minimum rangeland fraction of a 0.25 cell to keep it (0 = any)")
