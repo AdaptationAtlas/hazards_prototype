@@ -17,6 +17,16 @@ NaN outside the Africa box, so R/1-R/3 and base_rast work unchanged. Layout = wh
 Run the upstream scripts with COMMON_DATA=<out_root> GCMS=<token> DAYS_CHECK=strict AVAIL_SEED_MONTHS=<first year>-01,
 after `s1_ingest.py link` has placed chirps_wrld/ and atlas_hazards/soils/ in <out_root>.
 
+Node findings folded in (DISPATCH_cglabs_obs_s1_ingest.md, 2026-10-27):
+  * the FAO AgERA5 COGs are georeferenced half a cell off the C3S grid (the C3S cell centred at (lon, lat) sits in
+    the pixel whose top-left CORNER is (lon, lat)); S1 shifts the window transform by (-0.05, +0.05) deg so the
+    area-average is on the true grid (AGERA5_COG_SHIFT);
+  * CHIRPS v3 carries real daily totals above 600 mm (TC Kenneth genesis over Cosmoledo atoll, 647 mm): the pr
+    ceiling is 1,500 mm/d, which still catches a x10 unit error;
+  * four AGERA5-RH06 objects (2009-10-05, 2014-12-25, 2019-08-13, 2021-11-09) are stale pre-rewrite copies with
+    extra NaN speckle: the daily-mean RH takes the mean of >= 4 of the 5 local times per cell, the listing reports
+    objects older than the 2025-09 rewrite, and the manifest flags any day that used fewer than all mapsets.
+
 Reader rules learned in the S0 probes (DISPATCH_obs_hf_probe.md, DISPATCH_pascal_obs_env.md):
   * read the cubes with xarray (real coordinates). GDAL's ZARR driver opens them with NO georeferencing;
   * xarray applies the int16 scale_factor 0.1: never scale again;
@@ -54,6 +64,12 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
 import numpy as np
+import warnings
+try:                                      # rasterio emits this from worker threads; catch_warnings() is not thread-safe
+    from rasterio.errors import NotGeoreferencedWarning
+    warnings.filterwarnings("ignore", category=NotGeoreferencedWarning)
+except Exception:
+    pass
 
 # ---- pinned sources -----------------------------------------------------------------------------
 HF = "https://huggingface.co/datasets/aaguilar90"
@@ -71,6 +87,9 @@ GCS_BUCKET = "fao-gismgr-c3s-data"
 GCS_OBJ = "DATA/C3S/MAPSET/{mapset}/C3S.{mapset}.{date}.tif"
 GCS_URL = "https://storage.googleapis.com/" + GCS_BUCKET + "/" + GCS_OBJ
 AGERA5_NODATA = -9999.0
+AGERA5_COG_SHIFT = (-0.05, 0.05)          # deg (lon, lat): corner-as-centre fix, measured against v1.0 netCDF (I4 gate)
+AGERA5_REWRITE_GEN = 1756684800000000     # GCS generation (us since epoch) of 2025-09-01: objects older are pre-rewrite
+RH_MIN_HOURS = 4                          # daily-mean RH needs at least this many of the 5 local-time mapsets per cell
 
 # ---- grids ----------------------------------------------------------------------------------------------
 RES = 0.25
@@ -80,7 +99,7 @@ BASE_SHAPE = (400, 1440)                 # rows, cols
 AFRICA = (-18.0, -35.0, 52.0, 38.0)      # xmin, ymin, xmax, ymax (on the lattice)
 KENYA_SMOKE = (33.5, -5.0, 42.5, 5.5)
 
-RANGES = {"pr": (0.0, 600.0), "tasmax": (-25.0, 62.0), "tasmin": (-45.0, 45.0), "rsds": (0.0, 40.0), "hurs": (0.0, 100.0)}
+RANGES = {"pr": (0.0, 1500.0), "tasmax": (-25.0, 62.0), "tasmin": (-45.0, 45.0), "rsds": (0.0, 40.0), "hurs": (0.0, 100.0)}
 UNITS = {"pr": "mm d-1", "tasmax": "degC", "tasmin": "degC", "rsds": "MJ m-2 d-1", "hurs": "%"}
 RETRIES = 5
 
@@ -358,19 +377,26 @@ def gcs_listing(mapset, years):
     return out
 
 
+def agera5_url(mapset, day):
+    return "/vsicurl/" + GCS_URL.format(mapset=mapset, date=f"{day:%Y-%m-%d}")
+
+
 def read_agera5_window(mapset, day, b, w, h, transform):
     import rasterio
+    from rasterio import Affine
     from rasterio.enums import Resampling
     from rasterio.warp import reproject
     from rasterio.windows import from_bounds
     pad = 0.2
-    url = "/vsicurl/" + GCS_URL.format(mapset=mapset, date=f"{day:%Y-%m-%d}")
+    url = agera5_url(mapset, day)
     with rasterio.Env(GDAL_DISABLE_READDIR_ON_OPEN="EMPTY_DIR", GDAL_HTTP_MAX_RETRY="5", GDAL_HTTP_RETRY_DELAY="2",
                       CPL_VSIL_CURL_ALLOWED_EXTENSIONS=".tif"):
         with rasterio.open(url) as src:
             win = from_bounds(b[0] - pad, b[1] - pad, b[2] + pad, b[3] + pad, src.transform).round_offsets().round_lengths()
             data = src.read(1, window=win, boundless=True, fill_value=AGERA5_NODATA).astype("float64")
             wt = src.window_transform(win)
+            # corner-as-centre fix: the COG's pixel (r, c) holds the C3S cell CENTRED at that pixel's top-left corner
+            wt = Affine(wt.a, wt.b, wt.c + AGERA5_COG_SHIFT[0], wt.d, wt.e, wt.f + AGERA5_COG_SHIFT[1])
             nod = src.nodata if src.nodata is not None else AGERA5_NODATA
     data[data == nod] = np.nan
     data[data <= AGERA5_NODATA + 1] = np.nan
@@ -384,58 +410,91 @@ def read_agera5_window(mapset, day, b, w, h, transform):
     return dst
 
 
+def mean_min_valid(stack, min_valid):
+    """Cell-wise mean over the first axis using only valid (non-NaN) members; NaN where fewer than min_valid."""
+    stack = np.asarray(stack, dtype="float64")
+    n = np.sum(~np.isnan(stack), axis=0)
+    with np.errstate(invalid="ignore"):
+        m = np.nansum(stack, axis=0) / n
+    m[n < min_valid] = np.nan
+    return m, n
+
+
 def ingest_agera5(var, mapsets, days, b, root, token, force, man, workers):
     w, h, transform = window_grid(b)
-    src_note = f"AgERA5 {AGERA5_VERSION} {'+'.join(mapsets)}" + (" daily mean of 5 local times" if len(mapsets) > 1 else "")
+    src_note = (f"AgERA5 {AGERA5_VERSION} {'+'.join(mapsets)}" + (f" daily mean of >= {RH_MIN_HOURS} of 5 local times" if len(mapsets) > 1 else "")
+                + f" cog-shift {AGERA5_COG_SHIFT[0]:+.2f},{AGERA5_COG_SHIFT[1]:+.2f}")   # in the tag, so files written before the shift are rewritten on resume
     todo = [d for d in days if needs_write(out_path(root, var, token, d), src_note, force)]
     log(f"{var}: {len(days)} days requested, {len(todo)} to write ({'+'.join(mapsets)}, FAO GCS mirror, token {token})")
     if not todo:
         return
     years = sorted({d.year for d in todo})
     listing = {m: gcs_listing(m, years) for m in mapsets}
+    stale = {}
     for m in mapsets:
         absent = [d for d in todo if f"{d:%Y-%m-%d}" not in listing[m]]
         if absent:
             raise S1Stop(f"{var}: {len(absent)} day(s) absent from {m} (first {absent[0]})")
+        stale[m] = sorted(k for k, (g, _, _) in listing[m].items() if int(g) < AGERA5_REWRITE_GEN)
+        if stale[m]:
+            log(f"{var}: {m} has {len(stale[m])} object(s) older than the 2025-09 rewrite: {', '.join(stale[m][:6])}{' ...' if len(stale[m]) > 6 else ''}")
+    min_valid = RH_MIN_HOURS if len(mapsets) > 1 else 1
 
     def one(day):
-        acc = None
-        for m in mapsets:
-            dst = retry(lambda: read_agera5_window(m, day, b, w, h, transform), f"{var} {m} {day}")
-            acc = dst if acc is None else acc + dst
-        dst = acc / len(mapsets)
+        arrs = [retry(lambda m=m: read_agera5_window(m, day, b, w, h, transform), f"{var} {m} {day}") for m in mapsets]
+        if len(mapsets) == 1:
+            dst, used = arrs[0], None
+        else:
+            dst, n = mean_min_valid(arrs, min_valid)
+            used = int(np.sum((n >= min_valid) & (n < len(mapsets))))      # cells that used fewer than all mapsets
         if var == "rsds":
             dst = dst / 1e6                     # J m-2 d-1 -> MJ m-2 d-1 (peest2 expects MJ, as NEX rsds after preprocessing)
-        return day, dst.astype("float32")
+        return day, dst.astype("float32"), used
 
     # reference mask from the first day, synchronously, before the pool
-    d0, a0 = one(todo[0]); ref_mask = check_day(var, a0, d0, None)
+    d0, a0, u0 = one(todo[0]); ref_mask = check_day(var, a0, d0, None)
 
-    def finish(day, a):
+    def finish(day, a, used):
         check_day(var, a, day, ref_mask)
         p = out_path(root, var, token, day)
         write_day(p, place(a, b), var, src_note)
-        g, mh, _ = listing[mapsets[0]][f"{day:%Y-%m-%d}"]
+        ds_ = f"{day:%Y-%m-%d}"
+        gens = ";".join(f"{m}:{listing[m][ds_][0]}" for m in mapsets)
+        flags = [m for m in mapsets if ds_ in stale[m]]
+        if used:
+            flags.append(f"cells-with-fewer-than-{len(mapsets)}-hours:{used}")
+        if flags:
+            log(f"{var} {day}: FLAG {' '.join(flags)}")
         man.add(dict(var=var, token=token, date=str(day), file=str(p.relative_to(root)), md5=md5(p),
-                     source=GCS_URL.format(mapset="+".join(mapsets), date=f"{day:%Y-%m-%d}"),
-                     source_version=f"gcs-generation:{g}", source_md5=mh))
+                     source=GCS_URL.format(mapset="+".join(mapsets), date=ds_),
+                     source_version=f"gcs-generation:{gens}" + (f";flags:{'|'.join(flags)}" if flags else ""),
+                     source_md5=";".join(listing[m][ds_][1] for m in mapsets)))
 
-    finish(d0, a0)
+    finish(d0, a0, u0)
     done = 1; tb = time.time(); stop = None
     ex = ThreadPoolExecutor(max_workers=workers)
     futs = {ex.submit(one, d): d for d in todo[1:]}
     try:
-        for f in as_completed(futs):
-            day = futs[f]
-            try:
-                finish(*f.result())
-                done += 1
-            except Exception as e:
-                man.fail(var, day, f"{type(e).__name__}: {e}")
-                stop = stop or e
-                ex.shutdown(wait=False, cancel_futures=True)   # nothing more starts; in-flight days finish and are recorded
-            if done % 200 == 0:
-                log(f"{var}: {done}/{len(todo)} days ({(time.time() - tb) / max(done - 1, 1):.2f}s/day)")
+        pending = list(futs)
+        while pending:
+            # as_completed() over a set that includes futures cancelled by shutdown(cancel_futures=True) blocks
+            # forever (nothing notifies its waiter), which deadlocked the node run on 2026-10-27. After a failure
+            # only the futures that actually started are awaited; the cancelled ones are dropped.
+            for f in as_completed(pending):
+                day = futs[f]
+                try:
+                    finish(*f.result())
+                    done += 1
+                except Exception as e:
+                    man.fail(var, day, f"{type(e).__name__}: {e}")
+                    stop = stop or e
+                    ex.shutdown(wait=False, cancel_futures=True)   # nothing more starts; in-flight days finish and are recorded
+                    pending = [g for g in futs if not g.done() and not g.cancelled()]
+                    break
+                if done % 200 == 0:
+                    log(f"{var}: {done}/{len(todo)} days ({(time.time() - tb) / max(done - 1, 1):.2f}s/day)")
+            else:
+                pending = []
     finally:
         ex.shutdown(wait=True)
     log(f"{var}: {done}/{len(todo)} days written")
@@ -605,6 +664,12 @@ def cmd_selftest(_args):
         if not c:
             raise AssertionError("SELFTEST FAIL: " + m)
         print(f"  ok   {m}")
+
+    def err(fn):
+        try:
+            fn(); return False
+        except S1Stop:
+            return True
     ok(snap_bbox(AFRICA) == AFRICA, "Africa bbox lies on the NEX-GDDP 0.25 lattice")
     ok(snap_bbox((33.6, -4.9, 42.4, 5.4)) == (33.5, -5.0, 42.5, 5.5), "off-grid bbox snaps outward to 0.25")
     w, h, t = window_grid(AFRICA)
@@ -643,8 +708,31 @@ def cmd_selftest(_args):
     reproject(s, dst, src_transform=from_origin(0, 0.5, 0.1, 0.1), src_crs="EPSG:4326", src_nodata=np.nan,
               dst_transform=from_origin(0, 0.5, 0.25, 0.25), dst_crs="EPSG:4326", dst_nodata=np.nan, resampling=Resampling.average)
     ok(np.nanmin(dst) > 19e6, "a -9999 cell is excluded from the 0.1->0.25 average (no ~-400 contamination)")
+    # mean over >= 4 of 5 hours; fewer -> NaN
+    st = np.full((5, 2, 2), 50.0); st[0, 0, 0] = np.nan; st[0, 1, 1] = np.nan; st[1, 1, 1] = np.nan
+    mm, nn = mean_min_valid(st, RH_MIN_HOURS)
+    ok(mm[0, 0] == 50 and nn[0, 0] == 4 and np.isnan(mm[1, 1]) and nn[1, 1] == 3, "daily-mean RH: 4 of 5 hours -> mean; 3 of 5 -> NaN (stale RH06 rule)")
+    # pr ceiling: a real cyclone extreme passes, a x10 unit error does not
+    ok(not err(lambda: check_day("pr", np.array([[647.7, 10.0]], "float32"), "d", None)), "pr 647.7 mm/d (TC Kenneth, Cosmoledo) passes the 1,500 ceiling")
+    ok(err(lambda: check_day("pr", np.array([[6477.0, 10.0]], "float32"), "d", None)), "pr x10 (6,477) still fails")
+    # corner-as-centre shift on a synthetic FAO-style COG: pixels with EDGE < 0.5 are 10e6 J, else 20e6 J. Shifted west by
+    # 0.05, the boundary sits at 0.45, so the 0.25 cell [0.25, 0.5) averages 0.2*10 + 0.05*20 = 12 MJ (unshifted: 10)
+    import tempfile, rasterio
+    from rasterio.transform import from_origin
+    with tempfile.TemporaryDirectory() as td:
+        g = np.full((20, 20), 20e6, "float32"); g[:, :5] = 10e6
+        gp = Path(td) / "C3S.AGERA5-SRF.2015-06-15.tif"
+        with rasterio.open(gp, "w", driver="GTiff", width=20, height=20, count=1, dtype="float32", crs="EPSG:4326",
+                           transform=from_origin(-0.5, 1.5, 0.1, 0.1), nodata=AGERA5_NODATA) as d:
+            d.write(g, 1)
+        _orig = globals()["agera5_url"]; globals()["agera5_url"] = lambda m, d: str(gp)
+        try:
+            bb = (0.0, 0.5, 0.5, 1.0); ww, hh, tt = window_grid(bb)
+            out = read_agera5_window("AGERA5-SRF", dt.date(2015, 6, 15), bb, ww, hh, tt) / 1e6
+        finally:
+            globals()["agera5_url"] = _orig
+        ok(abs(out[0, 0] - 10) < 1e-6 and abs(out[0, 1] - 12) < 1e-6, "AgERA5 COG half-cell shift applied: boundary cell averages 12 MJ, not 10")
     # revision-aware skip on a real temp file
-    import tempfile
     with tempfile.TemporaryDirectory() as td:
         p = Path(td) / "x.tif"; write_day(p, place(np.ones((h, w), "float32"), AFRICA), "tasmax", "pinned")
         ok(not needs_write(p, "pinned", False) and needs_write(p, "other-rev", False) and needs_write(p, "pinned", True),

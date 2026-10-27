@@ -2,6 +2,45 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-27 — all five decisions taken and coded (`python/obs/s1_ingest.py`); resume I3 after `git pull`
+
+Thank you — every one of the five was a real finding. What changed, in the order you listed them:
+
+1. **`pr` ceiling → 1,500 mm/d.** TC Kenneth over Cosmoledo (647.7 mm) is real CHIRPS v3 data and passes; a ×10 unit error
+   (6,477) still fails. Island cells are kept: the exposure chain already handles the Seychelles (#40). Resume continues
+   from 2019-04-23.
+2. **Stale RH06 objects.** The daily-mean RH (variant i) now takes the cell-wise mean of **≥ 4 of the 5** local-time
+   mapsets; cells with fewer are NaN (so the mask invariant still holds, and the 496-cell speckle is covered by the other
+   four hours). The GCS listing logs every object older than the 2025-09 rewrite per mapset, and any day that used fewer
+   than all mapsets is **flagged in the manifest** (`source_version` carries `flags:AGERA5-RH06|cells-with-fewer-than-5-hours:N`).
+   Variant (ii) `-rh15` unaffected, as you found.
+3. **Deadlock fixed.** Your diagnosis was right: `as_completed()` over a set containing futures cancelled by
+   `shutdown(cancel_futures=True)` never returns. After a failure only the futures that actually started are awaited;
+   cancelled ones are dropped; in-flight days are still recorded.
+4. **Half-cell COG shift corrected.** `read_agera5_window` shifts the window transform by **(−0.05° lon, +0.05° lat)**
+   (`AGERA5_COG_SHIFT`), i.e. the C3S cell centred at (lon, lat) is the pixel whose top-left corner is (lon, lat), exactly
+   your day-1 pairing. A synthetic selftest pins it. **The shift is part of the AgERA5 source tag, so the revision-aware
+   skip rewrites every unshifted file on resume** — your 7,670 `rsds` and the 1,747 `hurs` go again automatically, no
+   `--force`. Your I4 gate stands (it compared v1 vs v2 on the native grid, independent of S1).
+5. **NDWS 2-28 band:** agreed, too tight for an arid box; the S3 dispatch now asks for seasonality and no all-0/all-31
+   saturation instead. The obs-vs-NEX monthly table you built is exactly the §4 diagnostic; keep it for the full run.
+
+Also: the `NotGeoreferencedWarning` is now filtered at module import (thread-safe); and please add your `pyobs` wrapper
+(PROJ_DATA/GDAL_DATA from the env, `GDAL_DRIVER_PATH` unset) to `server-environment-cglabs.md` §9 — it is the kind of
+thing the next person will hit.
+
+**Resume I3** (same two processes, same roots; nothing to delete):
+```bash
+cd <repo> && git pull --ff-only && pyobs python/obs/s1_ingest.py selftest       # 21 ok
+nohup pyobs python/obs/s1_ingest.py ingest --out-root $OR --years 2005:2025 --vars pr,tasmax,tasmin --rh none > logs/obs_s1_cubes2_$STAMP.log 2>&1 &
+nohup pyobs python/obs/s1_ingest.py ingest --out-root $OR --years 2005:2025 --vars rsds --rh both --workers 8 > logs/obs_s1_agera52_$STAMP.log 2>&1 &
+```
+Expect: `pr` writes 2,445 days (resume), `tasmax`/`tasmin` 7,670 each, `rsds` 7,670 (rewritten), `hurs` 7,670 + 7,670.
+Then `validate` for both tokens (`--vars hurs --token chirps-chirts-agera5-rh15`), the digest lines, and the count of
+`FLAG` lines in the hurs log (expect 4). Then straight on to `DISPATCH_cglabs_obs_s3_r3.md` J0-J5.
+
+---
+
 ### RESPONSE — cglabs 2026-10-27 — I0, I1, I2, I4 done (I4 gate PASSED, smoke digests match PASCAL ×6); I3 STOPPED on two `s1_failed` rows (both source-data issues), plus a deadlock in the AgERA5 stop path
 
 **Summary.**
