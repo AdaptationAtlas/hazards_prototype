@@ -1,0 +1,44 @@
+crop,window,ggcmi_code,proxy,note
+arabica-coffee,annual12,,FALSE,perennial: 12 months from the maize planting month (NEX `annual` convention)
+banana,annual12,,FALSE,perennial
+barley,ggcmi,bar,FALSE,
+bean,ggcmi,bea,FALSE,GGCMI dry bean
+cassava,annual12,,FALSE,long_season in SpamCodes.csv; 12-month window (GGCMI cas exists; switch if preferred)
+chickpea,ggcmi,pea,TRUE,no GGCMI chickpea; field-pea calendar as proxy
+coconut,annual12,,FALSE,perennial
+cocoa,annual12,,FALSE,perennial
+cotton,ggcmi,cot,FALSE,
+cowpea,ggcmi,bea,TRUE,no GGCMI cowpea; dry-bean calendar as proxy
+groundnut,ggcmi,gro,FALSE,
+lentil,ggcmi,pea,TRUE,no GGCMI lentil; field-pea calendar as proxy
+maize,ggcmi,mai,FALSE,the NEX `jagermeyr` window
+oilpalm,annual12,,FALSE,perennial
+pigeonpea,ggcmi,pea,TRUE,no GGCMI pigeonpea; field-pea calendar as proxy (pigeonpea cycles are longer: review)
+plantain,annual12,,FALSE,perennial
+pearl-millet,ggcmi,mil,FALSE,
+potato,ggcmi,pot,FALSE,
+rapeseed,ggcmi,rap,FALSE,
+robusta-coffee,annual12,,FALSE,perennial
+rice,ggcmi,ri1,FALSE,first rice season only (ri2 ignored in v1)
+sesameseed,ggcmi,mai,TRUE,no GGCMI sesame; maize calendar as proxy
+small-millet,ggcmi,mil,FALSE,
+sorghum,ggcmi,sor,FALSE,
+soybean,ggcmi,soy,FALSE,
+sugarbeet,ggcmi,sgb,FALSE,
+sugarcane,annual12,,FALSE,long_season in SpamCodes.csv (GGCMI sgc exists; switch if preferred)
+sunflower,ggcmi,sun,FALSE,
+sweet-potato,ggcmi,mai,TRUE,no GGCMI sweet potato; maize calendar as proxy
+tea,annual12,,FALSE,perennial
+tobacco,ggcmi,mai,TRUE,no GGCMI tobacco; maize calendar as proxy
+wheat,ggcmi,swh,TRUE,spring-wheat calendar; SSA wheat is mostly rainfed highland (wwh where GGCMI's winter-wheat mask applies: review)
+yams,ggcmi,cas,TRUE,no GGCMI yams; cassava calendar as proxy
+cattle-highland,annual12,,FALSE,livestock: 12-month window
+cattle-tropical,annual12,,FALSE,livestock
+goats-highland,annual12,,FALSE,livestock
+goats-tropical,annual12,,FALSE,livestock
+pigs-highland,annual12,,FALSE,livestock
+pigs-tropical,annual12,,FALSE,livestock
+poultry-highland,annual12,,FALSE,livestock
+poultry-tropical,annual12,,FALSE,livestock
+sheep-highland,annual12,,FALSE,livestock
+sheep-tropical,annual12,,FALSE,livestock

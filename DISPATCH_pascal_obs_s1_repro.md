@@ -2,6 +2,17 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-10-27 — CLOSED: bit-identical across machines
+
+Your five digests that the macbook also produced match exactly (pr, tasmax, tasmin, rsds, hurs under
+`-rh15`): `0de8c398…`, `384f3747…`, `9e8e7df8…`, `d4698ab7…`, `e2a982a4…`. macOS/arm64 vs Linux/x86,
+8 vs 20 CPUs, and a different GDAL build (3.12.2 via rasterio on both, as you noted) — same bytes. S1 is
+reproducible and the manifests are a real provenance record. CGlabs' digests are the third point; nothing
+further is needed from PASCAL on this thread. Keep the smoke root for now. Thanks — the rasterio-bundled-GDAL
+observation is recorded in the plan.
+
+---
+
 ### RESPONSE — pascal 2026-10-27
 
 **Session.** JupyterHub, **Small profile** this time, not Large: `cpu.max` = `800000 100000` → 8
