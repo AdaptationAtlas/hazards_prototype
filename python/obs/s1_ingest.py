@@ -30,7 +30,7 @@ Invariants enforced while writing (a violation stops the run and is recorded in 
     zarr fills with NaN silently; one NaN day would blank a cell's water balance for the rest of the series).
 
 Subcommands:
-  link      --out-root DIR --common-data DIR            symlink chirps_wrld/ and atlas_hazards/soils/
+  link      --out-root DIR --common-data DIR [--nex-working-dir DIR]   symlink chirps_wrld/, atlas_hazards/soils/ (+ Data/{mapspam,GLW4_2020,boundaries} for R/3)
   ingest    --out-root DIR [--years 2005:2025] [--vars pr,tasmax,tasmin,rsds] [--rh none|mean|rh15|both] [--smoke] [--force]
   validate  --out-root DIR [--years ...] [--vars ...]   completeness, lattice, ranges, NaN mask, manifest coverage
   selftest                                              synthetic checks, no network
@@ -485,6 +485,19 @@ def cmd_link(args):
     for f in ("chirps_wrld/chirps-v2.0.1981.01.01.tif", "atlas_hazards/soils/sscp_world.tif", "atlas_hazards/soils/ssat_world.tif"):
         if not (root / f).exists():
             raise SystemExit(f"[S1] link: {root / f} missing after linking")
+    if args.nex_working_dir:
+        # R/3 under ATLAS_CLIMDAT_SOURCE=obs reads exposure rasters and boundaries from <OBS_ROOT>/Data/...;
+        # they live in the NEX working dir's Data/. Link the three directories, never copy.
+        nwd = Path(args.nex_working_dir)
+        for rel in ("Data/mapspam", "Data/GLW4_2020", "Data/boundaries"):
+            src = nwd / rel; dst = root / rel
+            if not src.exists():
+                raise SystemExit(f"[S1] link: {src} does not exist")
+            dst.parent.mkdir(parents=True, exist_ok=True)
+            if dst.is_symlink() or dst.exists():
+                log(f"link: {dst} already present")
+            else:
+                os.symlink(src, dst); log(f"link: {dst} -> {src}")
     log("link done")
 
 
@@ -658,6 +671,7 @@ def main():
             s.add_argument("--force", action="store_true")
         if name == "link":
             s.add_argument("--common-data", required=True, help="the node's common_data root holding chirps_wrld/ and atlas_hazards/soils/")
+            s.add_argument("--nex-working-dir", default=None, help="the NEX-GDDP working dir; links its Data/mapspam, Data/GLW4_2020, Data/boundaries into <out-root>/Data for R/3")
     sub.add_parser("selftest")
     a = p.parse_args()
     return {"ingest": cmd_ingest, "validate": cmd_validate, "link": cmd_link, "selftest": cmd_selftest}[a.cmd](a) or 0
