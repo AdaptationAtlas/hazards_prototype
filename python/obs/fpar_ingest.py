@@ -112,10 +112,10 @@ def area_average(arr, wt, b):
     from rasterio.errors import NotGeoreferencedWarning
     from rasterio.warp import reproject
     w, h, transform = S1.window_grid(b)
-    dst = np.full((h, w), np.nan, dtype="float64")
+    dst = np.full((h, w), np.nan, dtype="float32")        # float32 end to end: values are 0-100 means, and a full-Africa fine window is 257 M cells
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", NotGeoreferencedWarning)
-        reproject(arr.astype("float64"), dst, src_transform=wt, src_crs="EPSG:4326", src_nodata=np.nan,
+        reproject(np.ascontiguousarray(arr, dtype="float32"), dst, src_transform=wt, src_crs="EPSG:4326", src_nodata=np.nan,
                   dst_transform=transform, dst_crs="EPSG:4326", dst_nodata=np.nan, resampling=Resampling.average)
     return dst
 
@@ -123,8 +123,8 @@ def area_average(arr, wt, b):
 def rangeland_weighted(fpar_b, w_fine, wt, b, rl_min):
     """fpar_rl = avg(fpar*w) / avg(w) over the 0.25 cell, with w = rangeland fraction where FPAR is valid."""
     valid = fpar_b <= 100            # 251 = other land, 254 = water, 255 = nodata (Seguini et al. 2026 Table 3) are all invalid
-    w = np.where(valid, w_fine, 0.0)
-    num = area_average(np.where(valid, fpar_b.astype("float64") * w, 0.0), wt, b)
+    w = np.where(valid, w_fine, np.float32(0))
+    num = area_average(np.where(valid, fpar_b.astype("float32") * w, np.float32(0)), wt, b)
     den = area_average(w, wt, b)
     with np.errstate(invalid="ignore", divide="ignore"):
         out = num / den
@@ -132,30 +132,38 @@ def rangeland_weighted(fpar_b, w_fine, wt, b, rl_min):
     return out.astype("float32"), den.astype("float32")
 
 
-def joint_mode(key_fine, w_fine, wt, b):
+def joint_mode(key_fine, w_fine, wt, b, strip_rows=16):
     """Rangeland-weighted mode of an integer key per 0.25 cell. Each fine cell is assigned to the coarse cell holding
     its centre (the ASAP grid is half a fine pixel off the lattice: at most one fine row/column per cell edge is
     attributed to a neighbour, immaterial for a mode). key < 0 = invalid. Returns float64, NaN where no valid
-    rangeland cell. One sort over the rangeland pixels, no reprojection passes."""
+    rangeland cell. Works in strips of `strip_rows` coarse rows (every fine row belongs to exactly one strip, so a
+    cell is never split across two) to keep memory flat on a full-Africa window."""
     w, h, _ = S1.window_grid(b)
     out = np.full((h, w), np.nan, dtype="float64")
-    sel = (w_fine > 0) & (key_fine >= 0)
-    ii, jj = np.nonzero(sel)
-    if ii.size == 0:
-        return out
-    xc = wt.c + (jj + 0.5) * wt.a; yc = wt.f + (ii + 0.5) * wt.e
-    col = np.floor((xc - b[0]) / S1.RES).astype("int64"); row = np.floor((b[3] - yc) / S1.RES).astype("int64")
-    inside = (col >= 0) & (col < w) & (row >= 0) & (row < h)
-    cell = (row * w + col)[inside]; key = key_fine[ii[inside], jj[inside]].astype("int64"); wgt = w_fine[ii[inside], jj[inside]]
-    ukey, kidx = np.unique(key, return_inverse=True)
-    comp = cell * len(ukey) + kidx
-    ucomp, cidx = np.unique(comp, return_inverse=True)
-    wsum = np.bincount(cidx, weights=wgt, minlength=len(ucomp))
-    ccell = ucomp // len(ukey); ckey = ukey[ucomp % len(ukey)]
-    order = np.lexsort((-wsum, ccell))                      # per cell, heaviest key first; ties -> smallest key
-    _, first = np.unique(ccell[order], return_index=True)
-    best_cell = ccell[order][first]; best_key = ckey[order][first]
-    out.flat[best_cell] = best_key
+    H = key_fine.shape[0]
+    frow = np.floor((b[3] - (wt.f + (np.arange(H) + 0.5) * wt.e)) / S1.RES).astype("int64")   # coarse row of every fine row
+    for r0 in range(0, h, strip_rows):
+        rows = np.nonzero((frow >= r0) & (frow < r0 + strip_rows))[0]
+        if rows.size == 0:
+            continue
+        i0, i1 = int(rows[0]), int(rows[-1]) + 1
+        kf = key_fine[i0:i1]; wf = w_fine[i0:i1]
+        sel = (wf > 0) & (kf >= 0)
+        ii, jj = np.nonzero(sel)
+        if ii.size == 0:
+            continue
+        xc = wt.c + (jj + 0.5) * wt.a; yc = wt.f + (ii + i0 + 0.5) * wt.e
+        col = np.floor((xc - b[0]) / S1.RES).astype("int64"); row = np.floor((b[3] - yc) / S1.RES).astype("int64")
+        inside = (col >= 0) & (col < w) & (row >= 0) & (row < h)
+        cell = (row * w + col)[inside]; key = kf[ii[inside], jj[inside]].astype("int64"); wgt = wf[ii[inside], jj[inside]].astype("float64")
+        ukey, kidx = np.unique(key, return_inverse=True)
+        comp = cell * len(ukey) + kidx
+        ucomp, cidx = np.unique(comp, return_inverse=True)
+        wsum = np.bincount(cidx, weights=wgt, minlength=len(ucomp))
+        ccell = ucomp // len(ukey); ckey = ukey[ucomp % len(ukey)]
+        order = np.lexsort((-wsum, ccell))                  # per cell, heaviest key first; ties -> smallest key
+        _, first = np.unique(ccell[order], return_index=True)
+        out.flat[ccell[order][first]] = ckey[order][first]
     return out
 
 
@@ -248,7 +256,7 @@ def cmd_ingest(a):
     # static layers first: rangeland mask (weights) and phenology
     log("static: rangeland mask")
     m_fine, wt, _, _ = read_window(ASAP + "/" + STATIC["rl_frac"], b)
-    w_fine = np.clip(m_fine.astype("float64"), 0, 100) / 100.0
+    w_fine = (np.clip(m_fine.astype("float32"), 0, 100) / np.float32(100)).astype("float32")
     sdir = root / "Data" / "obs_fpar" / "static"
     rl = area_average(w_fine, wt, b).astype("float32")
     f = sdir / "rl_frac.tif"; u = ASAP + "/" + STATIC["rl_frac"]; lm, et, sz = head_meta(u)
@@ -479,6 +487,9 @@ def cmd_selftest(_a):
                           dict(pheno_s1=255, pheno_e1=255, pheno_s2=255, pheno_e2=255, pheno_n=0))
     ok(jm["pheno_s1"][0, 0] == 30 and jm["pheno_e1"][0, 0] == 35 and jm["pheno_n"][0, 0] == 1 and np.isnan(jm["pheno_s2"][0, 0]),
        "joint phenology mode returns one population's tuple (30, 35), not the per-layer modes' chimera (30, 50)")
+    k1 = ph.astype("int64"); k1[ph == 255] = -1
+    ok(np.array_equal(joint_mode(k1, wf, wt, b, strip_rows=1), joint_mode(k1, wf, wt, b, strip_rows=64), equal_nan=True),
+       "strip-wise joint mode (1 coarse row per strip) equals the single-pass result")
     fv = np.full((11, 11), 80, "uint8"); fv[:, :2] = 254                                      # water flag inside the rangeland strip
     av, _ = rangeland_weighted(fv, wf, wt, b, 0.0)
     ok(np.allclose(av[~np.isnan(av)], 80), "flag values 251/254 are excluded from the rangeland mean like 255")

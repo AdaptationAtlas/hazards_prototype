@@ -2,6 +2,48 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-10-28 — F0 answered: GO F1 now (Python only), GO per-user rebuild of `data.table` for F2; Small-profile memory fixed
+
+Thanks — the stop was right, and the diagnosis is complete. Three decisions, then the amended steps.
+
+**1. The R stack.** Per-user fix is authorised: S6 needs only `terra` (loads) and `data.table`, so rebuild
+`data.table` alone into `R_LIBS_USER` (account-scoped, reversible, nothing shared touched). Do **not** install into
+the site library. Pete will raise the node-wide breakage with IT separately — this is a workaround, not the fix.
+```bash
+mkdir -p ~/R/x86_64-pc-linux-gnu-library/4.6
+Rscript -e 'install.packages("data.table", lib = Sys.getenv("R_LIBS_USER"), repos = "https://cloud.r-project.org")'
+Rscript -e 'library(data.table); cat(as.character(packageVersion("data.table")), .libPaths()[1], "\n")'   # loads, from ~/R/...
+Rscript R/obs/s6_rangeland_fpar.R --selftest        # ALL S6 SELFTEST ASSERTIONS PASSED (16)
+```
+If `install.packages` fails (no compiler, no CRAN access), stop and paste the error — do not try alternatives.
+
+**2. F1 is GO now, independent of R.** Start it before the R step; the two do not interact.
+
+**3. Small profile (8 CPU / 32 GiB).** My F1 sizing assumed the Large profile. Pull first: `fpar_ingest.py` now runs
+float32 end to end and the phenology joint mode works in 16-coarse-row strips, so the per-dekad peak is ~2 GB per
+worker instead of ~7. On Small use **`--workers 3`**; on Large `--workers 4` as before. Report `cpu.max` and the
+profile you ran on. (Kenya smoke re-run on the macbook after the change: phenology and rangeland fraction
+bit-identical to the float64 run; dekad means differ at float32 precision only — figures in the commit.)
+
+**Corrections to the block below:** the FPAR selftest count is **10** at the commit this block ships with
+(9 at `ac16b0d`, as you measured — the dispatch was ahead of the code); the splice check is F3 **item 5**, the
+WRSI cross-check item 6; `$FR` = `<bulk>/atlas/atlas_obs_hazards_pascal` is fine, say so in the response.
+
+#### F1 — now
+```bash
+cd <repo> && git pull --ff-only && git log -1 --format='%h %s'
+PY=~/.conda/envs/obs/bin/python
+$PY python/obs/fpar_ingest.py selftest                                    # ALL FPAR SELFTEST ASSERTIONS PASSED (10)
+FR=<bulk>/atlas/atlas_obs_hazards_pascal; mkdir -p $FR logs; STAMP=$(date +%Y%m%d_%H%M%S)
+nohup ionice -c3 nice -n19 $PY python/obs/fpar_ingest.py ingest --out-root $FR --years 2005:2025 --workers 3 \
+      > logs/obs_fpar_ingest_$STAMP.log 2>&1 &
+echo $! > logs/obs_fpar_ingest_$STAMP.pid
+```
+Then the R step (1) while it runs. When the ingest finishes: `validate` as in F1 below, then F2 (with `--no-thi`)
+and F3 as written. Same stop rules. Prepend one `### RESPONSE — pascal` for the lot, with the delivery line.
+
+---
+
 ### RESPONSE — pascal 2026-10-28 — STOPPED AT F0: the node's R stack is broken by an R upgrade
 
 **Session.** JupyterHub, **Small profile**: `cpu.max` = `800000 100000` → 8 usable CPUs,
