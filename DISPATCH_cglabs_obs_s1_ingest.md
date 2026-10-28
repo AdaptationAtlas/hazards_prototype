@@ -2,6 +2,106 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-10-28 — I0 21/21; I3 resume: `pr`, `rsds`, `hurs` ×2 complete and validate PASS; cube process STOPPED on a CHIRTS-ERA5 Tmax artifact (68.4 °C, Moroccan coast, 2009-07-20); I4 PASS again
+
+Code: `d81b9e0`. `OBS_ROOT={common_data}/atlas_obs_hazards` (same root as before; nothing deleted).
+`FORCE_OVERWRITE`, `DAYS_CHECK` and `AVAIL_SEED` were empty at launch. Logs:
+- `logs/obs_s1_{selftest3,cubes2,agera52,validate2,gate2}_20261028_125*.log`
+- pid files `logs/obs_s1_{cubes2,agera52}_20261028_125605.pid`, holding the python pids (the first write held `setsid`'s pid; corrected).
+
+#### I0 — selftest
+`ALL S1 SELFTEST ASSERTIONS PASSED`, 21 ok.
+
+#### I3 — resume: two processes, launched 12:56
+
+**Cube process (`pr,tasmax,tasmin`) — STOPPED.**
+- `pr`: 2,445 days written (resume from 2019-04-23 as expected), in 4 min 17 s. 2019-04-23 (TC Kenneth, 647.7) now passes the 1,500 ceiling.
+- `tasmax`: started at 2005-01-01 and wrote 1,661 days to **2009-07-19**, then stopped:
+  ```
+  run,-,tasmax 2009-07-20: values 11.696..68.400 outside plausible -25.0..62.0 degC (unit or scale error?)
+  ```
+  (`manifests/s1_failed_20261028_125614_<pid>.csv`; the process exited cleanly.)
+- `tasmin`: not reached.
+
+**Diagnosis (read-only): CHIRTS-ERA5 artifact on one day, at one stretch of coast.**
+- Pinned cube rev `c44a0b5`, 2009-07-20: 16 native 0.05° pixels exceed 56 °C (8 exceed 60). All lie in **32.33–32.83 °N, 9.28–8.93 °W**, the Atlantic coast around Safi, Morocco. The native maximum is **68.7 °C** at 32.575 °N, −9.275 °E; the 0.25° cell centred at 32.625 °N, −9.375 °E averages 68.4.
+- The pixels are coastal edge cells (NaN to the west), and the next pixels inland drop to 50–54 °C.
+
+  | Day | Africa-wide native max |
+  |---|---|
+  | 2009-07-18 | 48.6 °C |
+  | 2009-07-19 | 49.1 °C |
+  | 2009-07-21 | 48.7 °C |
+  | 2009-07-22 | 48.4 °C |
+
+  No pixel exceeds 56 °C on those days.
+- There *was* a real heat event. CHIRTS v1.0 locally (`{common_data}/chirts/Tmax/2009/`), same box:
+
+  | Day | CHIRTS v1.0 Tmax |
+  |---|---|
+  | 2009-07-19 | 28.8–37.7 °C |
+  | 2009-07-20 | **38.3–48.2 °C** |
+  | 2009-07-21 | 29.5–37.0 °C |
+
+  So CHIRTS-ERA5 overshoots by about 20 °C on the coastal pixels, to values beyond the world record (about 57 °C). The 62 °C ceiling did its job.
+- **Decision needed:**
+  - (a) Clip or NaN Tmax pixels above, e.g., 60 °C. NaN would break the NaN-mask invariant, so clip, or replace with the median of the 3×3 inland neighbours.
+  - (b) Replace this day and box with CHIRTS v1.0, which ends in 2016, so only for ≤ 2016.
+  - (c) Raise the ceiling (not recommended: 68 °C is non-physical and would put 68 °C into NTx and THI).
+
+  It is worth scanning the whole cube for other days above 56 °C before choosing. That costs about 13 min per variable at the cube rate; I have not run it.
+
+**AgERA5 process (`rsds`, `--rh both`) — complete, 0 failures** (`manifest … 23010 rows, 0 failures`):
+
+| var / token | files | time | note |
+|---|---|---|---|
+| rsds | 7,670 (all rewritten: shift tag) | 8 min 44 s | 0.06 s/day |
+| hurs `chirps-chirts-agera5` | 7,670 | 42 min | 0.33 s/day |
+| hurs `chirps-chirts-agera5-rh15` | 7,670 | 7 min | — |
+
+- **Stale-object log line:** `hurs: AGERA5-RH06 has 4 object(s) older than the 2025-09 rewrite: 2009-10-05, 2014-12-25, 2019-08-13, 2021-11-09`.
+- **FLAG lines: 4** (as expected), each `FLAG AGERA5-RH06 cells-with-fewer-than-5-hours:504`. The 504 vs my earlier 496 is presumably the half-cell shift moving the speckle across 0.25° cells. All 4 days carry `flags:…` in the manifest's `source_version`.
+- The `NotGeoreferencedWarning` is gone from the log, and the stop-path fix was not exercised (no AgERA5 failure).
+
+**Validate** (`logs/obs_s1_validate2_*.log`). Every lattice equals `base_rast_nexgddp.tif`.
+
+| var / token | days present | domain-mean over days (min / median / max) | result |
+|---|---|---|---|
+| pr | 7,670/7,670 | 0.54 / 1.78 / 4.53 mm | **PASS** |
+| rsds | 7,670/7,670 | 17.03 / 21.42 / 24.12 MJ | **PASS** |
+| hurs (main) | 7,670/7,670 | 38.74 / 46.02 / 55.58 % | **PASS** |
+| hurs (`-rh15`) | 7,670/7,670 | 29.81 / 36.49 / 45.11 % | **PASS** |
+
+`tasmax` and `tasmin` were not validated (incomplete). The Tmax-domain-mean invariant (20–40 °C) is pending for the same reason. `du -sh nex-gddp-cmip6`: 6.8 GB.
+
+**Digests (full run;** latest manifest row per file, sorted by date, `md5` concatenated and hashed):
+```
+hurs    chirps-chirts-agera5         7670  5af44fa1bc3be95f178207ca6c1564ba
+hurs    chirps-chirts-agera5-rh15    7670  1ac4b86e13c7f15f9c5595cc4bea8d2c
+pr      chirps-chirts-agera5         7670  fa64e4167601d3ee0c828916292d7c08
+rsds    chirps-chirts-agera5         7670  542071f0497cdab868637b4e057d899c
+tasmax  chirps-chirts-agera5         1661  19b9a564631c4e761618552c88531e1f   (partial, to 2009-07-19)
+```
+`libs` is unchanged from 2026-10-27: python 3.12.16, numpy 2.5.4, xarray 2026.9.0, zarr 3.4.1, rasterio 1.5.2, GDAL 3.13.3.
+
+#### I4 — rerun on `d81b9e0`: GATE PASSED, identical to 2026-10-27
+All 204 days, yearly mean bias ±0.0000 MJ, p99 |diff| 0.0002 MJ, trend +0.00000 MJ/yr. The day-1 pairing is again di=0, dj=0 (mean |diff| 0.00007 MJ). Outliers are the same 2 days (3.31 and 3.53 MJ), and the mask difference is the same fixed 3,011 cells. CSVs: `logs/obs_s1_gate_{days,years}_20261028_125730.csv`.
+
+#### Not done
+- `pyobs` wrapper into `server-environment-cglabs.md` §9: not done, because this run's instruction was to commit only this dispatch file. The wrapper body:
+  ```bash
+  #!/bin/bash
+  E=~/.conda/envs/obs
+  export PROJ_DATA=$E/share/proj PROJ_LIB=$E/share/proj GDAL_DATA=$E/share/gdal
+  unset GDAL_DRIVER_PATH
+  exec $E/bin/python "$@"
+  ```
+- `DISPATCH_cglabs_obs_s3_r3.md`: not started (needs `tasmax`/`tasmin`).
+
+**State:** resumable. After the Tmax decision, the same cube command resumes at `tasmax` 2009-07-20, then does `tasmin` (about 13 min each at 12.9 s per 128 days). Nothing will be relaunched until told.
+
+---
+
 ### MACBOOK 2026-10-28 — I0 selftest fixture fixed; pull and resume I3 (option 1)
 
 Your diagnosis was exact: the synthetic COG put the 10/20 edge at x = 0.0 (`g[:, :5]`), the comment and the
