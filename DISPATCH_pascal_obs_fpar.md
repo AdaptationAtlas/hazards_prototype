@@ -2,6 +2,108 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal 2026-10-28 — STOPPED AT F0: the node's R stack is broken by an R upgrade
+
+**Session.** JupyterHub, **Small profile**: `cpu.max` = `800000 100000` → 8 usable CPUs,
+`memory.max` 32 GiB. No SSH or RStudio route. Repo at `ac16b0d` (both amendments present).
+
+**Outcome.** F0 selftest 1 (FPAR, Python) **passes**. F0 selftest 2 (S6, R) **fails before reaching
+a single assertion** — `data.table` will not load. Per the dispatch's "**Stop** on any failure" I did
+not run F1, F2 or F3, did not create `$FR`, and did not attempt a repair. Nothing was written
+anywhere.
+
+#### F0 — env + selftests
+
+**FPAR ingest selftest: PASS.**
+
+```
+ALL FPAR SELFTEST ASSERTIONS PASSED
+```
+
+It prints **9** assertions, not the 10 the dispatch states. This is the dispatch's count being stale,
+not a missing test: `python/obs/fpar_ingest.py` contains exactly nine `ok(...)` calls, at lines
+462-487, and all nine pass. The nine are the 0.25° window, the rangeland-weighted mean, the all-NaN
+case, the area-weighted rangeland fraction with the half-pixel offset, the rangeland-only phenology
+mode, the **joint** (s1,e1,s2,e2,n) mode returning one population's tuple rather than a per-layer
+chimera, the 251/254 flag exclusion, the `Product-version` parse out of the description tag, and the
+36-dekad 1/11/21 convention. So the science-review changes are all covered by a passing test.
+
+**S6 selftest: FAIL — environment, not code.**
+
+```
+Error: package or namespace load failed for 'data.table' in dyn.load(file, DLLpath = DLLpath, ...):
+ unable to load shared object '/usr/local/lib/R/site-library/data.table/libs/data_table.so':
+  /usr/local/lib/R/site-library/data.table/libs/data_table.so: undefined symbol: SETLENGTH
+Execution halted
+```
+
+`R/obs/s6_rangeland_fpar.R:38` is `library(terra); library(data.table)`, so this halts at load time —
+exit status 1, zero assertions reached. The S6 code is not implicated.
+
+**Root cause: the system R was upgraded underneath the installed packages.**
+
+| fact | value |
+|---|---|
+| R now | **4.6.1 (2026-06-24)** |
+| R on this node on 2026-10-24 (`server-environment.md` §4, my obs-env RESPONSE) | **4.5.1** |
+| R base library mtime | 2026-08-23 |
+| `data.table` 1.18.0 compiled object mtime | **2026-01-23** |
+
+`SETLENGTH` is an R internal; a `.so` compiled against the older R cannot resolve it after a
+major-version bump. Every package with compiled code built before the upgrade is affected.
+
+**Blast radius is wider than `data.table`.** Spot check:
+
+| package | result |
+|---|---|
+| `terra` 1.8.93 | loads (GDAL 3.4.3) |
+| `sf` 1.0.24 | loads |
+| `data.table` 1.18.0 | **fails** — `data_table.so: undefined symbol: SETLENGTH` |
+| `dplyr` | **fails** — via `rlang.so: undefined symbol: SETLENGTH` |
+| `arrow` | not installed on this node |
+
+So it is not one package: `rlang` is broken too, and `rlang` sits under most of the tidyverse. The
+site-library holds **1,653** packages. `terra` and `sf` happening to load is luck, not evidence the
+stack is healthy — any script touching `data.table` or the tidyverse will halt the same way. **This
+breaks far more than S6 on this node**, and I would expect the same failure from any R work here
+until it is addressed.
+
+#### What I did not do
+
+I did not try to repair it. `/usr/local/lib/R/site-library` is **not writable** without root, and
+`server-environment.md` §8.4 is explicit that the system R stack is to be left alone because
+rebuilding it would shadow the ~1,650 site-library packages other users depend on. Reinstalling into
+the system library is a root action on a host shared with ~69 accounts, which is outside both this
+dispatch's "read-only otherwise" rule and my remit.
+
+**The no-root remedy exists, if the macbook wants it.** `R_LIBS_USER` resolves to
+`~/R/x86_64-pc-linux-gnu-library/4.6` and **does not exist yet**; R searches it ahead of the system
+library. `install.packages("data.table")` into that path would rebuild it against R 4.6.1 for this
+account only, leaving every other user untouched and reversible with an `rm -rf`. That fixes S6's
+dependency without touching anything shared. It is still an environment change and F0 says stop, so
+it needs your word — and it is worth telling IT regardless, since the node-wide breakage is theirs
+to fix properly.
+
+#### F1-F3 — not run
+
+Not started, as the gate requires. Worth noting for whenever F0 is cleared:
+
+- **F1 is pure Python and does not depend on R at all.** The FPAR ingest, its `validate`, and the
+  static layers would run today on the passing Python selftest. Only **F2** (S6) and the parts of
+  **F3** that read S6's outputs are blocked. If you want the ~8 h of JRC range reads started while
+  the R stack is sorted out, say so and I will run F1 alone — the two are independent, and
+  sequencing them that way costs nothing.
+- `$FR` was not created. When F1 runs I expect to need
+  `<bulk>/atlas/atlas_obs_hazards_pascal` rather than `<bulk>/atlas_obs_hazards_pascal`, for the same
+  reason as the S1 repro: the top-level directory on the bulk mount is not writable by an ordinary
+  account. The dispatch already anticipates this.
+
+**One small inconsistency in the dispatch, for the next edit:** the second amendment says "F3 gains
+the splice check (item 6)", but in the F3 list the splice check is **item 5** and the FEWS WRSI
+cross-check is item 6. The list is what I will follow.
+
+---
+
 ### MACBOOK 2026-10-27 — run the rangeland track on PASCAL while CGlabs runs the crops chain
 
 **What this is.** PLAN_obs_hazard_pipeline.md §3 (decision D4): JRC ASAP FPAR dekads → 0.25° rangeland-weighted
