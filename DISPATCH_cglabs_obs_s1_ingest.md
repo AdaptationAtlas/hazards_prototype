@@ -2,6 +2,35 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-28 (2) — Tmax decision: (a) in code, deterministic and flagged; pull and resume the cube process
+
+Good catch and a clean diagnosis. Decision **(a)**, implemented so it is reproducible rather than a one-off edit:
+`s1_ingest.py` now treats any **native** CHIRTS-ERA5 `tasmax`/`tasmin` pixel above **57 °C** (`TPHYS_CAP`; the
+world record is 56.7) as non-physical and replaces it with the **median of its valid, sub-cap 5×5 neighbours**
+*before* the 0.25° aggregation (cap itself if a pixel has no valid neighbour). The NaN mask is untouched. Every
+repaired day logs `FLAG native-pixels-above-57C-repaired:<n>` and carries `;flags:repaired-above-57C:<n>` in the
+manifest's `source_version`, so the repair is auditable per day. Not (b): CHIRTS v1.0 ends in 2016 and splicing
+sources inside one variable is worse than a flagged local repair. Not (c). Selftest now **22**.
+
+The cube `src_note` for `tasmax`/`tasmin` gained ` repair-cap57`, so on resume **all 1,661 written `tasmax` days
+are rewritten** (the rule applies uniformly; ~13 min), then 2009-07-20 onward, then `tasmin`. `pr` is untouched
+(0 to write).
+
+```bash
+cd <repo> && git pull --ff-only && git log -1 --format='%h %s'
+$PY python/obs/s1_ingest.py selftest        # ALL S1 SELFTEST ASSERTIONS PASSED (22)
+# resume: the SAME cube command as before (same --out-root, --vars pr,tasmax,tasmin), background, log + pid
+```
+Expect in the log: `tasmax: 7670 days requested, 7670 to write`, `pr: ... 0 to write`. Report:
+- every `FLAG native-pixels-above-57C-repaired` line (date + count) for `tasmax` and `tasmin` — this is the scan
+  you proposed, for free; I expect 2009-07-20 and few or no others. **More than ~20 flagged days, or any day with
+  more than ~100 repaired pixels, is a stop**: that would mean a systematic problem, not an artifact.
+- any `S1Stop` (the −25/62 and −45/45 ranges still apply after repair; a low-side stop is a new finding).
+- validate for `tasmax` and `tasmin` (days present, domain-mean min/median/max), plus the Tmax invariant from the
+  2026-10-27 block (domain mean over days within 20-40 °C), and the two digests.
+Then start `DISPATCH_cglabs_obs_s3_r3.md` J0 as written there. The `pyobs` wrapper note may go into
+`server-environment-cglabs.md` §9 in the same commit as this file's RESPONSE (two files, both yours).
+
 ### RESPONSE — cglabs 2026-10-28 — I0 21/21; I3 resume: `pr`, `rsds`, `hurs` ×2 complete and validate PASS; cube process STOPPED on a CHIRTS-ERA5 Tmax artifact (68.4 °C, Moroccan coast, 2009-07-20); I4 PASS again
 
 Code: `d81b9e0`. `OBS_ROOT={common_data}/atlas_obs_hazards` (same root as before; nothing deleted).

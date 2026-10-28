@@ -100,6 +100,11 @@ AFRICA = (-18.0, -35.0, 52.0, 38.0)      # xmin, ymin, xmax, ymax (on the lattic
 KENYA_SMOKE = (33.5, -5.0, 42.5, 5.5)
 
 RANGES = {"pr": (0.0, 1500.0), "tasmax": (-25.0, 62.0), "tasmin": (-45.0, 45.0), "rsds": (0.0, 40.0), "hurs": (0.0, 100.0)}
+# CHIRTS-ERA5 carries isolated coastal-edge artifacts (measured 2026-10-28: 68.7 degC native on 2009-07-20 at Safi, Morocco,
+# ~20 degC above CHIRTS v1.0 on the same pixels; inland neighbours 50-54). The world record is 56.7 degC, so any native
+# pixel above TPHYS_CAP is non-physical: it is replaced by the median of its valid (non-NaN, <= cap) 5x5 neighbours
+# BEFORE the 0.25 aggregation, and the day is flagged in the manifest with the pixel count. NaN mask unchanged.
+TPHYS_CAP = {"tasmax": 57.0, "tasmin": 57.0}
 UNITS = {"pr": "mm d-1", "tasmax": "degC", "tasmin": "degC", "rsds": "MJ m-2 d-1", "hurs": "%"}
 RETRIES = 5
 
@@ -174,6 +179,23 @@ def cube_index(b, lat0, lon0):
     col0 = int(round((b[0] + half - lon0) / FINE)); col1 = int(round((b[2] - half - lon0) / FINE)) + 1
     row0 = int(round((lat0 - (b[3] - half)) / FINE)); row1 = int(round((lat0 - (b[1] + half)) / FINE)) + 1
     return row0, row1, col0, col1
+
+
+def repair_native(var, a, cap):
+    """a: (t, H, W) native float32. Returns (a, counts per t) with every pixel > cap replaced by the median of the valid
+    sub-cap pixels in its 5x5 neighbourhood (cap itself if there is none)."""
+    bad = np.argwhere(a > cap)
+    counts = np.zeros(a.shape[0], dtype="int64")
+    if bad.size == 0:
+        return a, counts
+    a = a.copy(); H, W = a.shape[1:]
+    orig = a > cap
+    for t, i, j in bad:
+        win = a[t, max(i - 2, 0):i + 3, max(j - 2, 0):j + 3]; ob = orig[t, max(i - 2, 0):i + 3, max(j - 2, 0):j + 3]
+        v = win[~np.isnan(win) & ~ob]
+        a[t, i, j] = np.median(v) if v.size else cap
+        counts[t] += 1
+    return a, counts
 
 
 def coarsen5(a):
@@ -303,7 +325,7 @@ def open_cube(key):
 def ingest_cube(var, days, b, root, token, force, man):
     key, name = CUBE_VARS[var]
     c = CUBES[key]
-    src_note = f"{key} {name} rev {c['revision']}"
+    src_note = f"{key} {name} rev {c['revision']}" + (f" repair-cap{TPHYS_CAP[var]:g}" if var in TPHYS_CAP else "")
     ds = open_cube(key)
     lat = ds["lat"].values; lon = ds["lon"].values
     assert abs(lat[0] - c["lat0"]) < 1e-6 and lat[1] < lat[0], f"{key}: unexpected lat axis"
@@ -330,14 +352,17 @@ def ingest_cube(var, days, b, root, token, force, man):
     def fetch(bi):
         members = blocks[bi]; t_a, t_b = members[0], members[-1] + 1
         arr = retry(lambda: ds[name].isel(time=slice(t_a, t_b), lat=slice(r0, r1), lon=slice(c0, c1)).values, f"{var} block {bi}")
-        return t_a, members, coarsen5(arr.astype("float32"))
+        arr = arr.astype("float32"); rep = np.zeros(arr.shape[0], dtype="int64")
+        if var in TPHYS_CAP:
+            arr, rep = repair_native(var, arr, TPHYS_CAP[var])
+        return t_a, members, coarsen5(arr), rep
 
     ref_mask = None
     with ThreadPoolExecutor(max_workers=1) as pre:            # prefetch the next block while this one is written
         nxt = pre.submit(fetch, order[0])
         for k, bi in enumerate(order):
             tb = time.time()
-            t_a, members, coarse = nxt.result()
+            t_a, members, coarse, rep = nxt.result()
             if k + 1 < len(order):
                 nxt = pre.submit(fetch, order[k + 1])
             assert coarse.shape[1:] == (h, w), f"coarse shape {coarse.shape[1:]} != window {(h, w)}"
@@ -347,8 +372,12 @@ def ingest_cube(var, days, b, root, token, force, man):
                 ref_mask = check_day(var, a, day, ref_mask)
                 p = out_path(root, var, token, day)
                 write_day(p, place(a, b), var, src_note)
+                n_rep = int(rep[i - t_a])
+                if n_rep:
+                    log(f"{var} {day}: FLAG native-pixels-above-{TPHYS_CAP[var]:g}C-repaired:{n_rep}")
                 man.add(dict(var=var, token=token, date=str(day), file=str(p.relative_to(root)), md5=md5(p),
-                             source=c["url"], source_version=c["revision"], source_md5=""))
+                             source=c["url"], source_version=c["revision"] + (f";flags:repaired-above-{TPHYS_CAP[var]:g}C:{n_rep}" if n_rep else ""),
+                             source_md5=""))
             log(f"{var}: block {bi} days {len(members)} ({times[t_a]}..{times[members[-1]]}) in {time.time() - tb:.1f}s")
 
 
@@ -732,6 +761,11 @@ def cmd_selftest(_args):
         finally:
             globals()["agera5_url"] = _orig
         ok(abs(out[0, 0] - 10) < 1e-6 and abs(out[0, 1] - 12) < 1e-6, "AgERA5 COG half-cell shift applied: boundary cell averages 12 MJ, not 10")
+    # native-pixel repair: one 70 degC artifact next to NaN sea -> median of its valid sub-cap neighbours; NaN untouched
+    na = np.full((2, 6, 6), 40.0, "float32"); na[:, :, 0] = np.nan; na[0, 2, 1] = 70.0; na[0, 2, 2] = 44.0
+    ra, cnt = repair_native("tasmax", na, TPHYS_CAP["tasmax"])
+    ok(cnt.tolist() == [1, 0] and abs(ra[0, 2, 1] - 40.0) < 1e-6 and np.isnan(ra[0, 2, 0]) and np.array_equal(ra[1], na[1], equal_nan=True) and na[0, 2, 1] == 70.0,
+       "native repair: the >57C pixel takes the median of its valid neighbours (40), NaN sea kept, other day untouched, input not mutated")
     # revision-aware skip on a real temp file
     with tempfile.TemporaryDirectory() as td:
         p = Path(td) / "x.tif"; write_day(p, place(np.ones((h, w), "float32"), AFRICA), "tasmax", "pinned")
