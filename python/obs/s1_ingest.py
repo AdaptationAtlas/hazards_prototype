@@ -720,7 +720,7 @@ def cmd_selftest(_args):
     import tempfile, rasterio
     from rasterio.transform import from_origin
     with tempfile.TemporaryDirectory() as td:
-        g = np.full((20, 20), 20e6, "float32"); g[:, :5] = 10e6
+        g = np.full((20, 20), 20e6, "float32"); g[:, :10] = 10e6     # origin -0.5, 0.1 deg cells: edge at 0.5 as the comment says
         gp = Path(td) / "C3S.AGERA5-SRF.2015-06-15.tif"
         with rasterio.open(gp, "w", driver="GTiff", width=20, height=20, count=1, dtype="float32", crs="EPSG:4326",
                            transform=from_origin(-0.5, 1.5, 0.1, 0.1), nodata=AGERA5_NODATA) as d:

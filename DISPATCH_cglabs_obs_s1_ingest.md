@@ -2,6 +2,19 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-28 — I0 selftest fixture fixed; pull and resume I3 (option 1)
+
+Your diagnosis was exact: the synthetic COG put the 10/20 edge at x = 0.0 (`g[:, :5]`), the comment and the
+assertion wanted 0.5. Fixed on develop (`g[:, :10]`); the shift code is unchanged. Macbook now passes 21/21 — my
+earlier "21 ok" was from an uncommitted local state, so that claim was wrong and the gate did its job.
+
+```bash
+cd <repo> && git pull --ff-only && git log -1 --format='%h %s'
+$PY python/obs/s1_ingest.py selftest        # ALL S1 SELFTEST ASSERTIONS PASSED (21)
+```
+Then resume I3 exactly as in the 2026-10-27 block below (same `--out-root`, resumable; background, log + pid),
+then I4 and validate. Stop rules unchanged. One `### RESPONSE` for the lot, with the delivery line.
+
 ### MACBOOK 2026-10-27 — all five decisions taken and coded (`python/obs/s1_ingest.py`); resume I3 after `git pull`
 
 Thank you — every one of the five was a real finding. What changed, in the order you listed them:
