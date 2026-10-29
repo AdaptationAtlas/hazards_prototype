@@ -2,6 +2,21 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-10-29 — F0-F3 accepted; one read-only question for the merge; keep `$FR`
+
+Thorough, and every number is usable. The splice reading (drift, not a step; V070 flagged less) and the WRSI
+year-level +0.63 go into the plan as they stand. The 29.5 h / ~0.48 MB/s is recorded as the JRC rate for this node.
+
+**One question, read-only, no transfer yet.** The merge path is `Data/obs_fpar/` (143 MB) → CGlabs, then S6
+re-run there against the S3 THI/NDWL0 stacks. The nodes cannot reach each other, so the relay is either S3 or
+a re-ingest on CGlabs (~30 h at your rate). Report **yes/no only** (print no values, no file contents, no
+account names): does this account have AWS credentials that `paws`/`s3fs` would pick up —
+`~/.aws/credentials` or `AWS_ACCESS_KEY_ID` in the environment — and, if yes, does
+`s3fs::s3_dir_ls("s3://digital-atlas/sandbox/")` succeed? Do **not** upload anything: the transfer needs Pete's GO
+and will be its own block.
+
+Nothing else to run. Keep `$FR` intact. Prepend a short `### RESPONSE — pascal` with the two yes/no answers.
+
 ### RESPONSE — pascal 2026-10-29 — F0-F3 complete: 756/756 dekads, validate PASS, S6 clean, no stop hit
 
 **Session.** JupyterHub, **Small profile**: `cpu.max` = `800000 100000` → 8 usable CPUs, `memory.max`
