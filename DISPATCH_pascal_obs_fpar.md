@@ -2,6 +2,222 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal 2026-10-29 — F0-F3 complete: 756/756 dekads, validate PASS, S6 clean, no stop hit
+
+**Session.** JupyterHub, **Small profile**: `cpu.max` = `800000 100000` → 8 usable CPUs, `memory.max`
+34359738368 (32 GiB). `--workers 3` as instructed. No SSH or RStudio route. Repo at `d81b9e0`.
+Root used: **`<bulk>/atlas/atlas_obs_hazards_pascal`** — the same one-level-deeper fallback as the S1
+repro, confirmed fine in your block.
+
+**Outcome.** Everything ran. No stop rule was hit: no selftest failure, no `FAIL` row (no
+`fpar_failed_*.csv` was ever created), validate PASS, S6 ran to completion without a WARN, and zero
+tied cells. Two things are worth your attention and neither is a gate: the ingest took **29.5 h, not
+the ~8 h the dispatch budgeted**, and the z series carries an upward drift across the record that
+F3 item 5 was written to look for.
+
+#### F0 — selftests
+
+**FPAR: ALL FPAR SELFTEST ASSERTIONS PASSED (10).** The count now matches the dispatch; the tenth is
+the new strip-wise joint mode assertion ("1 coarse row per strip equals the single-pass result"),
+which is exactly the change that made the Small profile viable.
+
+**S6: ALL S6 SELFTEST ASSERTIONS PASSED (16)**, after the authorised per-user rebuild.
+
+`install.packages("data.table", lib = Sys.getenv("R_LIBS_USER"))` compiled and installed cleanly —
+no compiler or CRAN problem on this node. It built **1.18.6.1** (newer than the broken site-library
+1.18.0) into `~/R/x86_64-pc-linux-gnu-library/4.6`, and `.libPaths()[1]` confirms that is where the
+load comes from. The site library was not touched and `/usr/local/lib/R/site-library/data.table`
+still holds the broken build for every other account — this is a workaround on one account, so the
+node-wide breakage (`rlang` and most of the tidyverse included) is still live for IT.
+
+#### F1 — full ingest
+
+**756/756 dekads written, 0 failures.** Wall-clock **106,390.4 s = 29 h 33 m**.
+
+| phase | wall | note |
+|---|---|---|
+| static: rangeland mask | 1,181.5 s | 393 MB source read at 0.1° |
+| static: phenology joint mode | 543.1 s | five layers, one sort per rangeland pixel |
+| dekad loop | 104,588 s | **138.1 s/dekad** over 756 dekads |
+
+**The throughput deviation.** The dispatch budgeted ~8 h from the S0 probe's ~1.75 MB/s. The run
+averaged 138.1 s/dekad and the rate was stable from the first progress line to the last (116.8 s at
+dekad 36, then 135-141 s for the rest), so this is the sustained rate, not a slow start. I did not
+capture a byte counter, so I will not quote a measured MB/s; against the dispatch's own ~50 GB
+estimate for the Africa window, 104,588 s implies roughly **0.48 MB/s**, about a quarter of the probe
+rate. Three workers rather than four accounts for part of it. The run is resumable and nothing was
+lost, so this is a scheduling fact for the next node rather than a problem with the data.
+
+`phenology: 31310 rangeland cells with a season; 3625 with two; s1 range 10-67; OND-first cells
+(s2 in a later frame-year than s1; S6 pairs them with the next calendar year): 110`
+
+**Five transient failures, all absorbed at retry 1/4** — `RasterioIOError: Read failed` on
+2019-03-01, 2019-03-11, 2020-08-01, 2020-08-11 and 2020-08-21. All five dekads are present in the
+manifest with a source tag, so the retry policy did its job; there is nothing to re-run.
+
+`du -sh $FR/Data/obs_fpar` = **143 MB** (756 dekads + six static layers).
+
+**validate: PASS.**
+
+```
+cutoff 2026-07-10 (from the manifests); dekads present 756/756
+product versions: {'V062': 477, 'V070': 279}; version break(s) at ['2018-04-01']; non-CF dekads: 0
+server drift: 0 of 756 present dekads were modified upstream since ingest
+rangeland FPAR x100 domain mean over dekads: min 36.5 median 40.0 max 45.5
+VALIDATE PASS
+```
+
+The splice is exactly as the science review described it: a single break, at 2018-04-01, 477 V062
+dekads and 279 V070, and no non-final dekad anywhere in the record.
+
+**Static layers.**
+
+| layer | result |
+|---|---|
+| `rl_frac` | min 0, max 0.99949, mean 0.1358, sd 0.2387 (1440×400) |
+| `pheno_s1` / `pheno_e1` | 10-67 (mean 42.09) / 40-92 (mean 61.96) |
+| `pheno_s2` / `pheno_e2` | 45-67 / 54-77, on 3,625 cells |
+| `pheno_n` | 27,685 one-season vs 3,625 two-season over all finite cells; over `rl_frac ≥ 0.1`: **21,396 vs 2,619 of 24,015** |
+
+#### F2 — S6 on the full window
+
+948.8 s wall, `--no-thi`, DIAGNOSTIC bundles. No WARN on any line.
+
+```
+season 1: length dekads 8..33 on 31310 cells; season 2 on 3625 cells (7..18)
+rangeland cells (rl >= 0.1): 24015; without a valid season-1 window (dropped silently from every layer): 0
+two-season cells whose season 2 falls in the following calendar year: 110
+relative deficit of a 1-in-5 year (deficit_q20): median -0.053 over rangeland cells; worst year: median -0.117
+baseline P(moderate) per cell: min 0.211 median 0.211 max 0.211 over 24015 rangeland cells (4/19 = 0.211);
+  cells with a tie at the quantile: moderate 0 severe 0 extreme 0; cells with fewer than 19 distinct z: 0
+consecutive-failure frequency: domain mean 0.052 (no-persistence expectation 0.035)
+done: 30 bundles (FPARz+THI-max+NDWL0) under .../Data/hazard_risk_DIAGNOSTIC/ggcmi-crop
+```
+
+Three numbers are better than the dispatch's expectations. **Zero** rangeland cells lack a valid
+season-1 window, against a "< 1 %" allowance. **Zero** cells tie at any class quantile and zero have
+fewer than 19 distinct z, so the tie warning the selftest exercises never fires on real data and the
+extreme tier does not double anywhere. `P(moderate)` is exactly 4/19 on every one of the 24,015
+cells, which is what a type-1 quantile on 19 clean years should give.
+
+Bundle count: **30** `*FPARz*_int.tif`, as expected.
+
+#### F3 — diagnostics (reported, not gating)
+
+**1. Per start year: domain-mean z and the share of cells at or below q20** (19 start years, rangeland
+cells only).
+
+| year | mean z | share ≤ q20 | flagged cells |
+|---|---|---|---|
+| 2006 | −0.244 | 0.2836 | 6,811 |
+| 2007 | −0.236 | 0.2326 | 5,585 |
+| 2008 | −0.151 | 0.2303 | 5,530 |
+| 2009 | −0.099 | 0.2424 | 5,821 |
+| 2010 | −0.063 | 0.2107 | 5,059 |
+| **2011** | **−0.445** | **0.3585** | **8,609** |
+| 2012 | −0.086 | 0.2077 | 4,988 |
+| 2013 | −0.065 | 0.1457 | 3,498 |
+| 2014 | −0.227 | 0.2113 | 5,075 |
+| **2015** | **−0.306** | **0.2738** | **6,575** |
+| 2016 | −0.043 | 0.1859 | 4,464 |
+| 2017 | −0.181 | 0.2232 | 5,360 |
+| 2018 | +0.017 | 0.1794 | 4,309 |
+| 2019 | +0.121 | 0.1569 | 3,769 |
+| 2020 | +0.318 | 0.1001 | 2,403 |
+| 2021 | −0.032 | 0.2112 | 5,071 |
+| 2022 | +0.024 | 0.2068 | 4,966 |
+| 2023 | +0.212 | 0.1950 | 4,682 |
+| 2024 | +0.415 | 0.1451 | 3,485 |
+
+**2011 is the worst year in the record on both measures** — the lowest mean z and 8,609 flagged cells,
+35.9 % of the continent's rangeland, half again the next worst. That is the Horn of Africa drought
+and it stands out exactly as you predicted. 2015 is second. The 2016-17 Horn event is visible but
+muted at this scale: 2017 is −0.181 with 22.3 % flagged, well inside the ordinary range. That is not
+surprising for a continent-wide mean — 2016-17 was geographically narrower than 2010-11.
+
+**2. `thresholds_z` medians over rangeland cells**, against the normal reference:
+
+| | median | mean | normal reference |
+|---|---|---|---|
+| q20 | **−0.933** | −0.940 | −0.84 |
+| q10 | **−1.417** | −1.436 | −1.28 |
+| q05 | **−1.872** | −1.918 | −1.64 |
+
+All three sit **below** the normal quantile, and the gap widens into the tail (−0.09, −0.14, −0.23).
+The z distribution is left-skewed: bad years are further from the mean than a normal would put them,
+which is the expected shape for a bounded-above vegetation index and an argument for keeping the
+empirical quantiles rather than assuming normality.
+
+**3. `consecutive_failure` domain mean per year** (18 years, 2007-2024): 0.0719, 0.0500, 0.0787,
+0.0619, **0.0959**, 0.0750, 0.0219, 0.0295, 0.0669, 0.0300, 0.0446, 0.0361, 0.0422, 0.0213, 0.0355,
+0.0728, 0.0468, 0.0622. Peak in 2011 (9.6 % of rangeland cells in a second consecutive failed year),
+trough in 2020 (2.1 %). The 18-year mean is 0.052 against a no-persistence expectation of 0.035, so
+back-to-back failures run about 1.5× what independence would give — real drought persistence, and
+2022 (0.0728) is the recent Horn multi-season event showing through.
+
+**4. Near-constant cells: none.** Computing the sd of the full 756-dekad series per cell,
+**0 of 24,015 rangeland cells have sd < 1** (FPAR ×100). There are no hyper-arid or constant-value tie
+candidates inside the `rl_frac ≥ 0.1` mask at all, so there is nothing to locate on the Sahara margin
+or in the Namib — the ASAP rangeland mask has already excluded them. This is the same fact S6 reports
+from the other side with zero tied cells and zero cells below 19 distinct z, so the two agree.
+
+**5. Splice check.** Of **96,060** flagged cell-years, the share with a start year ≥ 2018 (V070) is
+**0.2986**, against the no-shift expectation of 7/19 = **0.3684**. Mean flagged share is 0.2338 before
+2018 and 0.1706 after. So V070 years are flagged *less* often, not more.
+
+**This reads as drift, not a step.** The 2017→2018 change in mean z is +0.198, which ranks only
+**6th of the 18 adjacent year-to-year jumps** — the largest is 2010→2011 at −0.382. Fitting a line
+through the 19 mean-z values gives **+0.0273 per year, +0.492 over 2006-2024**, against an interannual
+sd of 0.213. The flagged share trends −0.0056/yr over the same window. A version offset would put a
+discontinuity at one boundary; what is here is a gradual climb spread across the record, with
+post-2018 years still swinging low (2021 at −0.032 and 21.1 % flagged) and pre-2018 years swinging
+high (2013 at 14.6 %).
+
+I would still flag it for the publish gate rather than wave it through: the pre/post difference in
+mean z is **+0.332, about 1.6 interannual sd**, so whatever its cause it is large enough to tilt a
+19-year baseline. Greening is the parsimonious reading and the shape supports it, but a slow sensor
+or compositing change spread over the MODIS→VIIRS transition would look similar. The `validate`
+evidence is clean on the mechanical side: one break at 2018-04-01, `non-CF dekads: 0`.
+
+**6. FEWS rangeland WRSI cross-check (Kenya, MAM).** Pulled the 19 `wrsi_rangeland_MAM_<year>.tif`
+for 2006-2024 from the published `eastafrica-wrsi-fews` prefix, area-averaged them from 0.1° onto the
+0.25° lattice, and paired against `z_year` over Kenya rangeland cells (`rl_frac ≥ 0.1`): **883 cells
+per year, 16,671 pairs**.
+
+- **Pooled correlation: Pearson +0.241, Spearman +0.267.**
+- **Year-level (the 19 domain means): Pearson +0.626.**
+- Monotone gradient across WRSI quintiles — mean z of **−0.731** in the driest fifth rising through
+  −0.502, −0.275, −0.220 to **−0.196** in the wettest.
+- Per-year r is positive in 15 of 19 years, best in 2011 (+0.378) and 2006 (+0.325), negative in 2008
+  (−0.204), 2016 (−0.104), 2018 (−0.121) and 2021 (−0.034).
+
+**A low per-cell correlation is the expected result here, and two structural mismatches explain most
+of it.** First, WRSI saturates: 34.4 % of the pooled values sit at exactly 100, so a third of the
+sample carries no gradient at all and cannot correlate with anything. Second, the comparison is not
+like-for-like in time — WRSI is MAM only, while `z_year` is the S6 pastoral-year score, which for the
+2,619 two-season cells in the mask combines both seasons and for the 110 OND-first cells deliberately
+pairs OND(Y−1) with MAM(Y). The year-level +0.626 is the more honest number, because aggregating
+removes the saturation problem: the two products agree well on *which years were bad in Kenya* and
+only weakly on *which cells*. The quintile gradient says the per-cell signal is real but shallow.
+I read this as corroboration, not as a discrepancy to chase.
+
+#### Housekeeping
+
+`$FR` = `<bulk>/atlas/atlas_obs_hazards_pascal` is kept intact: 756 dekads + six static layers
+(143 MB), `seasonal/2006-2025/` with eight rasters, 30 DIAGNOSTIC bundles, and
+`manifests/fpar_manifest_20261028_155655_107198.{csv,json}`.
+
+The WRSI rasters for item 6 were downloaded to a temporary directory on the bulk data root
+(176 KB, 19 files) and **deleted** after the comparison; nothing else was written outside `$FR`.
+Logs (gitignored): `logs/obs_fpar_ingest_20261028_155655.log`,
+`logs/obs_fpar_validate_20261029_213042.log`, `logs/obs_fpar_s6_20261029_213219.log`,
+`logs/obs_fpar_rinstall_20261028_155735.log`.
+
+One note for whoever runs the crops chain: `scipy` is not in the `obs` env, so the item 6 rank
+correlation is computed with a `numpy` `argsort`. Nothing was installed to work around it.
+
+---
+
 ### MACBOOK 2026-10-28 — F0 answered: GO F1 now (Python only), GO per-user rebuild of `data.table` for F2; Small-profile memory fixed
 
 Thanks — the stop was right, and the diagnosis is complete. Three decisions, then the amended steps.
