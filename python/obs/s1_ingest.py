@@ -101,10 +101,12 @@ KENYA_SMOKE = (33.5, -5.0, 42.5, 5.5)
 
 RANGES = {"pr": (0.0, 1500.0), "tasmax": (-25.0, 62.0), "tasmin": (-45.0, 45.0), "rsds": (0.0, 40.0), "hurs": (0.0, 100.0)}
 # CHIRTS-ERA5 carries isolated coastal-edge artifacts (measured 2026-10-28: 68.7 degC native on 2009-07-20 at Safi, Morocco,
-# ~20 degC above CHIRTS v1.0 on the same pixels; inland neighbours 50-54). The world record is 56.7 degC, so any native
-# pixel above TPHYS_CAP is non-physical: it is replaced by the median of its valid (non-NaN, <= cap) 5x5 neighbours
-# BEFORE the 0.25 aggregation, and the day is flagged in the manifest with the pixel count. NaN mask unchanged.
-TPHYS_CAP = {"tasmax": 57.0, "tasmin": 57.0}
+# ~20 degC above CHIRTS v1.0 on the same pixels; inland neighbours 50-54; and Tmin 45.1 degC on 2005-09-04 on the Red Sea
+# coast near Yanbu, ~10 degC above CHIRTS v1.0). The world records are 56.7 degC (Tmax) and 42.6 degC (highest daily
+# minimum, Oman 2018), so any native pixel above TPHYS_CAP is non-physical: it is replaced by the median of its valid
+# (non-NaN, <= cap) 5x5 neighbours BEFORE the 0.25 aggregation, and the day is flagged in the manifest with the pixel
+# count. NaN mask unchanged. The cap value is part of the source tag, so a cap change rewrites the variable.
+TPHYS_CAP = {"tasmax": 57.0, "tasmin": 43.0}
 UNITS = {"pr": "mm d-1", "tasmax": "degC", "tasmin": "degC", "rsds": "MJ m-2 d-1", "hurs": "%"}
 RETRIES = 5
 
@@ -766,6 +768,10 @@ def cmd_selftest(_args):
     ra, cnt = repair_native("tasmax", na, TPHYS_CAP["tasmax"])
     ok(cnt.tolist() == [1, 0] and abs(ra[0, 2, 1] - 40.0) < 1e-6 and np.isnan(ra[0, 2, 0]) and np.array_equal(ra[1], na[1], equal_nan=True) and na[0, 2, 1] == 70.0,
        "native repair: the >57C pixel takes the median of its valid neighbours (40), NaN sea kept, other day untouched, input not mutated")
+    nb = np.full((1, 6, 6), 38.0, "float32"); nb[0, 3, 3] = 45.1; nb[0, 3, 4] = 44.0
+    rb, cb = repair_native("tasmin", nb, TPHYS_CAP["tasmin"])
+    ok(cb.tolist() == [2] and abs(rb[0, 3, 3] - 38.0) < 1e-6 and abs(rb[0, 3, 4] - 38.0) < 1e-6 and TPHYS_CAP["tasmin"] < RANGES["tasmin"][1],
+       "tasmin cap 43C: both artifact pixels repaired from the sub-cap neighbours, neither feeds the other; cap sits below the 45C stop")
     # revision-aware skip on a real temp file
     with tempfile.TemporaryDirectory() as td:
         p = Path(td) / "x.tif"; write_day(p, place(np.ones((h, w), "float32"), AFRICA), "tasmax", "pinned")

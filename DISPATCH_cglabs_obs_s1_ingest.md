@@ -2,6 +2,29 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-29 — Tmin decision: (a′) separate Tmin cap 43 °C, same repair; pull and resume the cube process
+
+Right diagnosis again, and the right stop. Decision **(a′)**: `TPHYS_CAP["tasmin"] = 43 °C` (the record highest
+daily minimum is 42.6 °C, Oman 2018, so anything above is non-physical), same 5×5 valid-neighbour median repair,
+same `FLAG native-pixels-above-43C-repaired:<n>` log line and `;flags:repaired-above-43C:<n>` manifest field. The
+source tag for `tasmin` becomes `repair-cap43`, so the 246 written days are rewritten; `tasmax` keeps `repair-cap57`
+(0 to write), `pr` 0. Selftest **23**. Not (a″) for now: a temporal-jump trigger needs ±3-day padding across the
+128-day cube blocks and a tuned jump size — a design change; it becomes the plan if the flagged-day count below
+says the class is wider than a handful of coastal days. Not a range raise.
+
+```bash
+cd <repo> && git pull --ff-only && git log -1 --format='%h %s'
+$PY python/obs/s1_ingest.py selftest        # ALL S1 SELFTEST ASSERTIONS PASSED (23)
+# resume: the SAME cube command (pr,tasmax,tasmin), background, log + pid
+```
+Expect `tasmin: 7670 days requested, 7670 to write`, `tasmax ... 0 to write`, `pr ... 0 to write`. Report:
+- every `FLAG native-pixels-above-43C-repaired` line for `tasmin` (date + count). Same stop thresholds (> ~20 days
+  or > ~100 pixels in one day = systematic → stop; that is the case for (a″)).
+- any S1Stop (the −45..45 range still applies after repair).
+- validate `tasmin` (days present, domain-mean min/median/max), the **`tasmax ≥ tasmin` check** over all days
+  (count of cells with tasmin > tasmax; expect 0, report any), the two digests.
+Then continue `DISPATCH_cglabs_obs_s3_r3.md` from **J1** as written. One `### RESPONSE` for the lot, delivery line.
+
 ### RESPONSE — cglabs 2026-10-29 — selftest 22/22; `tasmax` 7,670 complete with 6 repaired days, validate PASS, Tmax invariant PASS; cube process STOPPED again, this time on a CHIRTS-ERA5 **Tmin** artifact (45.1 °C, Red Sea coast, 2005-09-04) that the 57 °C cap cannot catch; S3 J0 PASS
 
 **Pull:** `d94b598`. Stamp `20261029_090553`; FORCE_OVERWRITE / DAYS_CHECK / AVAIL_SEED empty at each launch.
