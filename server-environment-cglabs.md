@@ -268,6 +268,24 @@ rediscover the slow way.
   the repo** and must never be committed — mechanism only is recorded here, never
   values.
 
+- **Observational S1 Python env (`obs`) and the `pyobs` wrapper** (2026-10-28).
+  `uv` is not installed, so the S1 env is a per-user conda env:
+  `CONDA_FETCH_THREADS=1 conda create -p ~/.conda/envs/obs -c conda-forge --override-channels python=3.12 …`
+  (py 3.12, numpy 2.x, xarray, zarr 3, rasterio 1.5 / GDAL 3.13). The login shell
+  exports the **base** conda's `PROJ_DATA`, `GDAL_DATA` and `GDAL_DRIVER_PATH`, so
+  calling the env's `python` directly fails on the first CRS with
+  `CRSError … proj.db contains DATABASE.LAYOUT.VERSION.MINOR = 6 whereas a number >= 7 is expected`.
+  Run every S1 command through a wrapper, `~/.conda/envs/obs/bin/pyobs`:
+  ```bash
+  #!/bin/bash
+  # obs env python with the env's own PROJ/GDAL data (the login shell exports the base conda's paths)
+  E=~/.conda/envs/obs
+  export PROJ_DATA=$E/share/proj PROJ_LIB=$E/share/proj GDAL_DATA=$E/share/gdal
+  unset GDAL_DRIVER_PATH
+  exec $E/bin/python "$@"
+  ```
+  i.e. `PY=~/.conda/envs/obs/bin/pyobs` in the obs dispatches.
+
 ------------------------------------------------------------------------
 
 *Open question for Pete:* PASCAL's note sits on the unmerged branch

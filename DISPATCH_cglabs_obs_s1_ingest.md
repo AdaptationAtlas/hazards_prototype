@@ -2,6 +2,87 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-10-29 — selftest 22/22; `tasmax` 7,670 complete with 6 repaired days, validate PASS, Tmax invariant PASS; cube process STOPPED again, this time on a CHIRTS-ERA5 **Tmin** artifact (45.1 °C, Red Sea coast, 2005-09-04) that the 57 °C cap cannot catch; S3 J0 PASS
+
+**Pull:** `d94b598`. Stamp `20261029_090553`; FORCE_OVERWRITE / DAYS_CHECK / AVAIL_SEED empty at each launch.
+
+**Selftest:** `logs/obs_s1_selftest4_<stamp>.log`, 22 `ok` lines, `ALL S1 SELFTEST ASSERTIONS PASSED`.
+
+**Cube resume** (`logs/obs_s1_cubes3_<stamp>.log`, same command as before): `pr: 7670 days requested, 0 to write`,
+`tasmax: 7670 days requested, 7670 to write`, as expected.
+
+- **`tasmax`: complete, 7,670 written.** Every `FLAG native-pixels-above-57C-repaired` line:
+
+  | day | repaired native pixels |
+  |---|---|
+  | 2009-07-20 | 14 |
+  | 2011-07-01 | 6 |
+  | 2015-08-12 | 2 |
+  | 2015-08-20 | 4 |
+  | 2016-06-09 | 3 |
+  | 2017-08-24 | 20 |
+
+  6 days, max 20 pixels: inside both thresholds (≤ ~20 days, ≤ ~100 pixels). The manifest carries
+  `;flags:repaired-above-57C:<n>` on exactly these 6 rows. 2009-07-20 has 14, not the 16 I counted above 56 °C;
+  the difference is the 2 pixels between 56 and 57. No `tasmax` S1Stop.
+- **`tasmin`: STOPPED on day 247.** It wrote 2005-01-01..2005-09-03 (246 days), then
+  `FAIL run -: tasmin 2005-09-04: values 0.528..45.100 outside plausible -45.0..45.0 degC (unit or scale error?)`
+  (row in `manifests/s1_failed_20261029_090603_*.csv`). This is a **high-side** stop: a 0.25° cell mean of 45.1 °C.
+
+**Diagnosis: the same class of CHIRTS-ERA5 coastal artifact, in Tmin, and below the repair cap.**
+- Location: the coastal strip of the Saudi Red Sea coast near Yanbu, about 23.9–24.1 °N, 38.1–38.3 °E. That is
+  inside the Africa bbox but outside Africa. Its 0.25° cell holds only a few land pixels, so the cell mean equals
+  the hot pixels.
+- Native CHIRTS-ERA5 Tmin on 2005-09-04: max 45.1, with 9 pixels > 44 and 68 > 40 across the window. The days either
+  side peak at 40.2 (09-02), 39.6 (09-03), 43.1 (09-05) and 39.7 (09-06).
+- The same block's mean by day, 09-01..09-07: 32.7, 33.1, 38.2, **45.1**, 43.0, 36.8, 32.2. That is a +12 °C one-day jump in a
+  *minimum* temperature.
+- CHIRTS v1.0 (`{common_data}/chirts/Tmin/2005/`), box 23.8–24.2 °N, 38.0–38.4 °E: Tmin max 31.9 / **35.4** / 34.8
+  on 09-03 / 04 / 05. ERA5 overshoots v1.0 by about 10 °C. v1.0 Tmax for the same box is 45.6. So it was a hot day,
+  but ERA5's Tmin 45.1 is about v1.0's *Tmax* for that box, and above the world-record highest daily minimum (about 44 °C).
+- ERA5's Tmax that day: Africa-window max 52.8 (the days either side reach 47.7 and 50.5). I did not localise it. It is
+  probably the same strip and is below 57, so the cap leaves it unrepaired.
+- `TPHYS_CAP["tasmin"] = 57` cannot fire on a Tmin artifact: this one sits at 44–45 °C.
+
+**Decision needed (macbook). Not improvised here.** Options:
+- (a′) A separate, lower Tmin cap, e.g. `TPHYS_CAP["tasmin"] = 44` (about the record highest minimum). The same
+  neighbour-median repair and FLAG apply. The 5×5 neighbourhood here is mostly sea (NaN) or other hot coastal pixels,
+  so the median may still be about 44. Consider a larger window or "inland neighbours only".
+- (a″) A temporal-jump test (|Δ| vs the ±3-day median > ~8 °C) as a second repair trigger. It would catch both the
+  Safi and the Yanbu cases.
+- Raising the tasmin range to 46. **Not recommended:** the value is non-physical.
+
+A full-cube Tmin scan (days with any native pixel > 42 °C) would size the problem before choosing. About 13 min;
+I have not run it. On resume, `tasmin` restarts with whatever `src_note` the fix sets; `pr` and `tasmax` write 0
+unless the `tasmax` rule also changes.
+
+**Validate `tasmax`** (`logs/obs_s1_validate3_<stamp>.log`): lattice True, `tasmax: 7670/7670 days present`,
+domain-mean over days **min 24.36 median 32.77 max 35.74 °C**. **Tmax invariant (20–40 °C): PASS.** `VALIDATE PASS`.
+`tasmin` was not validated (246/7,670), and the `tasmax < tasmin` check is pending with it.
+
+**Digests** (latest manifest row per file, sorted by date):
+```
+hurs   chirps-chirts-agera5       7670 5af44fa1bc3be95f178207ca6c1564ba   (unchanged)
+hurs   chirps-chirts-agera5-rh15  7670 1ac4b86e13c7f15f9c5595cc4bea8d2c   (unchanged)
+pr     chirps-chirts-agera5       7670 fa64e4167601d3ee0c828916292d7c08   (unchanged)
+rsds   chirps-chirts-agera5       7670 542071f0497cdab868637b4e057d899c   (unchanged)
+tasmax chirps-chirts-agera5       7670 2af8fb25b20b4fcd395b53f5a223d8e4   (complete, repair-cap57)
+tasmin chirps-chirts-agera5        246 43c4d93c6841ea45998150f04bc952f7   (partial, 2005-01-01..2005-09-03)
+```
+
+**`DISPATCH_cglabs_obs_s3_r3.md` J0: PASS** (logs `logs/obs_s3_{fx_*,selftest}_<stamp>.log`):
+- `PASS R/checks/fixture_publish_tier_gates.R` (43 `ok`, `ALL PUBLISH-GATE FIXTURE ASSERTIONS PASSED`)
+- `PASS R/checks/fixture_upstream_run_params.R` (53 `ok`, `ALL UPSTREAM RUN-PARAMETER FIXTURE ASSERTIONS PASSED`)
+- `PASS selftest` (`R/obs/s3_s5_obs_hazards.R --selftest`: 23 `ok`, `ALL S3-S5 SELFTEST ASSERTIONS PASSED`; the
+  dispatch said 20/20, so it has grown since)
+
+J1 onward was not started: J1 only touches the smoke root and could run, but the dispatch says "as written, J0",
+and J6 needs a complete `tasmin`.
+
+**`server-environment-cglabs.md` §9:** added the `obs` conda env + `pyobs` wrapper note (same commit).
+
+Nothing is running. The cube process will not be relaunched until the Tmin decision.
+
 ### MACBOOK 2026-10-28 (2) — Tmax decision: (a) in code, deterministic and flagged; pull and resume the cube process
 
 Good catch and a clean diagnosis. Decision **(a)**, implemented so it is reproducible rather than a one-off edit:
