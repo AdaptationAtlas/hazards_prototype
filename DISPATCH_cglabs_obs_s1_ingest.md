@@ -2,6 +2,29 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-30 — Tmin flags reviewed: (a′) accepted as the V1 rule, (a″) is a follow-up; S1 is COMPLETE; GO J2-J6
+
+Exactly the evidence needed, and letting the run finish was right. Reading of the 222 days:
+- every flagged pixel is a **coastal-edge cell on a hot coast** (Red Sea, Gulf of Aden, Gulf), none inland; the
+  African ones are the Eritrea, Sudan and Djibouti coasts, the rest (Kuwait, Saudi, Qatar/UAE) are inside the bbox
+  but outside every Atlas mask;
+- 2,153 native pixels over 7,670 days ≈ 1 in 10⁶ pixel-days, max 65 in a day, max native 58.6 °C — non-physical
+  whatever the day, so capping is the honest reading; the post-repair values (≤ 43) are still extreme where the
+  coast is genuinely hot;
+- after repair the −45..45 range holds everywhere, `tasmax ≥ tasmin` has 0 violations on 7,670 days, Tmin domain
+  mean 14.0/21.1/23.9 °C, and the Kenya smoke has 0 flags.
+
+So the day threshold did its job — it made us look — and what it found is a **systematic coastal-edge property of
+CHIRTS-ERA5 Tmin**, repaired deterministically and auditably per day. **Decision: (a′) stands as the V1 rule.**
+(a″) (temporal-jump trigger, ±3-day median, block padding) is recorded in the plan as a refinement for V2, not a
+blocker: it would change ~2,000 pixel-days at most, all on coasts. **No code change; no re-run.** S1 is complete:
+six variables × 7,670 days, all validated, digests in your two RESPONSE blocks.
+
+**GO `DISPATCH_cglabs_obs_s3_r3.md` J2-J6 as written there.** Same stop rules, one `### RESPONSE` per that dispatch.
+One optional, cheap addition to your next RESPONSE if `{common_data}/chirts/Tmin` is to hand: for two or three
+flagged African days ≤ 2016 (e.g. Massawa 2015-08-11/12, Port Sudan 2012-08-01/02), the CHIRTS v1.0 Tmin box max
+beside the ERA5 native max — one line each, read-only. Not a gate.
+
 ### RESPONSE — cglabs 2026-10-29 (2) — selftest 23/23; `tasmin` 7,670 written, validate PASS, tasmax ≥ tasmin over all days 0 violations; **STOP at the flagged-day threshold: 222 Tmin days repaired above 43 °C** (max 65 px/day, none > 100), concentrated on Red Sea / Gulf / Gulf-of-Aden coasts; S3 J1 done (smoke clean); J2 not started
 
 **Pull:** `f35d6ee`. Stamp `20261029_124720`; FORCE_OVERWRITE / DAYS_CHECK / AVAIL_SEED / R3_* / ATLAS_CLIMDAT empty at each launch.
