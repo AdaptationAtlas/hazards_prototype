@@ -2,6 +2,120 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-10-29 (2) — selftest 23/23; `tasmin` 7,670 written, validate PASS, tasmax ≥ tasmin over all days 0 violations; **STOP at the flagged-day threshold: 222 Tmin days repaired above 43 °C** (max 65 px/day, none > 100), concentrated on Red Sea / Gulf / Gulf-of-Aden coasts; S3 J1 done (smoke clean); J2 not started
+
+**Pull:** `f35d6ee`. Stamp `20261029_124720`; FORCE_OVERWRITE / DAYS_CHECK / AVAIL_SEED / R3_* / ATLAS_CLIMDAT empty at each launch.
+
+**Selftest:** `logs/obs_s1_selftest5_<stamp>.log`, 23 `ok`, `ALL S1 SELFTEST ASSERTIONS PASSED`.
+
+**Cube resume** (`logs/obs_s1_cubes4_<stamp>.log`, same command): `pr ... 0 to write`, `tasmax ... 0 to write`,
+`tasmin: 7670 days requested, 7670 to write`, `ingest done` in 13.4 min. **No S1Stop**: the −45..45 range held on every day after repair.
+
+**Threshold: crossed on days, not on pixels.** 222 `FLAG native-pixels-above-43C-repaired` days (threshold ~20);
+max 65 px in one day (threshold ~100, none above). 2,153 pixels repaired in total. The manifest carries
+`;flags:repaired-above-43C:<n>` on exactly 222 `tasmin` rows (and still 6 `tasmax` rows). Per your rule this is the
+case for (a″). I let the ingest finish rather than kill it: writes are atomic and are rewritten on any `src_note`
+change, and the complete count is the scan you would otherwise ask for.
+
+- By month: Apr 16, May 21, Jun 50, Jul 77, Aug 49, Sep 9 (none Oct–Mar).
+- By year: rising. 2005–2016 2–11/yr; 2017 14, 2019 10, 2020 11, 2021 19, 2023 29, **2024 43**, 2025 10.
+- Per-day pixel count distribution top end: 32, 34, 44, 51, 65.
+
+Every FLAG line (`MM-DD:pixels`, by year):
+```
+  2005 (4): 04-09:6, 05-31:10, 09-04:24, 09-05:1
+  2006 (9): 05-27:10, 05-28:11, 05-29:4, 06-06:9, 06-07:10, 06-08:7, 07-27:4, 08-19:1, 08-20:9
+  2007 (2): 06-27:15, 06-28:23
+  2008 (6): 04-26:4, 06-26:6, 06-27:8, 06-28:1, 07-15:1, 07-27:5
+  2009 (2): 04-26:6, 07-20:11
+  2010 (11): 06-18:4, 06-19:4, 06-20:5, 06-21:20, 06-22:7, 06-23:2, 07-14:18, 07-15:1, 07-17:5, 07-18:6, 08-19:5
+  2011 (6): 04-20:6, 04-29:4, 07-01:5, 07-27:27, 07-28:29, 08-05:18
+  2012 (7): 05-14:3, 06-17:1, 06-18:3, 07-31:5, 08-01:24, 08-02:28, 08-03:6
+  2013 (3): 05-15:4, 06-05:15, 07-19:6
+  2014 (5): 05-07:6, 06-29:2, 06-30:3, 07-01:11, 07-07:19
+  2015 (9): 04-10:6, 05-29:6, 07-17:13, 08-11:29, 08-12:29, 08-20:28, 08-28:9, 08-29:17, 09-21:8
+  2016 (10): 05-20:6, 06-09:10, 06-13:7, 06-21:6, 07-17:4, 07-23:8, 08-02:28, 08-15:7, 08-16:12, 08-17:1
+  2017 (14): 04-06:1, 04-11:5, 04-12:5, 04-25:1, 07-11:13, 07-12:8, 07-20:10, 07-25:26, 07-26:14, 07-30:29, 08-19:15, 08-24:31, 09-09:2, 09-10:22
+  2018 (6): 05-05:3, 06-07:4, 06-08:5, 06-21:3, 06-22:10, 06-23:2
+  2019 (10): 04-26:3, 05-17:10, 06-07:1, 06-18:1, 06-27:10, 06-28:8, 07-01:4, 07-02:1, 07-20:1, 08-02:3
+  2020 (11): 05-18:1, 05-19:5, 07-11:3, 07-16:2, 07-20:27, 07-30:4, 07-31:10, 08-03:6, 08-04:5, 08-27:1, 09-18:9
+  2021 (19): 04-07:5, 04-08:3, 06-01:10, 06-02:1, 06-12:19, 06-23:2, 07-09:5, 07-13:5, 07-23:5, 07-25:4, 07-28:26, 08-08:5, 08-10:8, 08-13:5, 08-14:5, 08-27:2, 08-30:19, 09-08:15, 09-09:18
+  2022 (6): 04-20:1, 06-10:1, 06-11:2, 06-14:3, 08-09:32, 08-10:6
+  2023 (29): 04-10:2, 05-29:3, 05-30:10, 06-27:1, 06-29:3, 07-06:5, 07-09:11, 07-11:5, 07-12:21, 07-14:5, 07-21:29, 07-22:7, 07-23:4, 07-25:24, 07-27:28, 07-28:65, 07-29:10, 08-02:9, 08-03:5, 08-04:1, 08-05:24, 08-06:3, 08-08:5, 08-09:1, 08-24:15, 08-25:12, 08-26:6, 08-29:10, 09-07:29
+  2024 (43): 04-29:6, 05-11:7, 05-12:24, 05-13:6, 05-29:5, 05-30:20, 05-31:11, 06-12:5, 06-15:3, 06-16:1, 06-18:7, 06-20:3, 06-21:10, 06-23:2, 06-24:1, 06-27:2, 06-29:9, 07-01:3, 07-02:15, 07-03:8, 07-04:6, 07-06:3, 07-07:5, 07-08:1, 07-09:7, 07-10:30, 07-11:7, 07-12:51, 07-13:44, 07-14:17, 07-15:25, 07-16:1, 07-17:1, 07-18:5, 07-20:5, 07-21:6, 07-22:12, 07-23:27, 08-02:2, 08-11:30, 08-20:5, 08-27:34, 08-28:13
+  2025 (10): 07-15:3, 07-16:2, 07-18:3, 07-23:4, 07-24:10, 07-30:27, 07-31:3, 08-03:1, 08-04:5, 08-13:4
+```
+
+**Where (native pixels > 43 °C, 193 of the 222 days localised).** The script then hit HF `429 Too Many Requests`,
+and I did not retry it. All are hot coasts where the 0.05° grid meets the sea:
+
+| region | flagged days | repaired px |
+|---|---|---|
+| Eritrea Red Sea coast (Massawa, ~15.1 °N 40.3 °E) | ≥ 50 | ≥ 336 |
+| Kuwait / Shatt al-Arab coast (~29.4–30.1 °N 48.2–48.9 °E) | ≥ 42 | ≥ 415 |
+| Saudi Red Sea coast (Jeddah–Yanbu) | ≥ 27 | ≥ 448 |
+| Sudan Red Sea coast (Port Sudan, ~21.5 °N 37.0 °E) | ≥ 26 | ≥ 175 |
+| Djibouti / Gulf of Aden coast (~10.5–11.2 °N 43.5–44.2 °E) | ~20 | ~150 |
+| Gulf: Qatar / UAE coast (~24–26 °N 50.5–52 °E) | ~6 | ~35 |
+| singles: Safi (Morocco), W. Sahara coast (~22.2 °N −16.7 °E; 28.3 °N −16.6 °E), Libya coast (31.3 °N 16.0 °E), Dead Sea (31.5 °N 35.5 °E) | 1–2 each | small |
+
+23 days span more than one region. The max native Tmin among the 193 days is **58.6 °C**. More than half the
+repaired pixels are outside Africa (Kuwait, Saudi Arabia, Qatar/UAE) but inside the bbox. The African ones are the Red Sea
+and Gulf-of-Aden coasts (Eritrea, Sudan, Djibouti). These are real heat hot spots, but Tmin > 43 °C is above the
+record (42.6 °C), so the pixels are non-physical regardless. The pattern is systematic, recurrent, summer-only and
+growing in recent years, i.e. a coastal-edge property of CHIRTS-ERA5 Tmin, not an isolated glitch. I did not
+compare these to CHIRTS v1.0 beyond the 2005-09-04 Yanbu case (v1.0 35.4 vs ERA5 45.1).
+
+**Validate** (`logs/obs_s1_validate4_<stamp>.log`, `--vars tasmax,tasmin`): lattice True, `tasmax 7670/7670`
+(24.36 / 32.77 / 35.74 °C, unchanged), **`tasmin 7670/7670`, domain-mean min 14.03 median 21.14 max 23.85 °C**, sampled
+`tasmax < tasmin` 0 cells, `VALIDATE PASS`.
+
+**tasmax ≥ tasmin over all 7,670 days** (an ad-hoc read of every pair of files, not the sampled validate check):
+**0 cells with tasmin > tasmax on 0 days.**
+
+**Digests** (latest manifest row per file, sorted by date):
+```
+hurs   chirps-chirts-agera5       7670 5af44fa1bc3be95f178207ca6c1564ba   (unchanged)
+hurs   chirps-chirts-agera5-rh15  7670 1ac4b86e13c7f15f9c5595cc4bea8d2c   (unchanged)
+pr     chirps-chirts-agera5       7670 fa64e4167601d3ee0c828916292d7c08   (unchanged)
+rsds   chirps-chirts-agera5       7670 542071f0497cdab868637b4e057d899c   (unchanged)
+tasmax chirps-chirts-agera5       7670 2af8fb25b20b4fcd395b53f5a223d8e4   (unchanged, repair-cap57)
+tasmin chirps-chirts-agera5       7670 4239cad4efcdb91645479713c1808a4b   (complete, repair-cap43, 222 flagged days)
+```
+
+**`DISPATCH_cglabs_obs_s3_r3.md` J1: done** (ran in parallel with the cube resume, separate root):
+- `ingest --smoke --out-root $SM --years 2013:2016 --rh both` (`logs/obs_s3_s1smoke_<stamp>.log`): `ingest done`.
+  - `pr` 1,096 to write (2015 skipped as expected).
+  - `tasmax` / `tasmin` 1,461 each. 2015 was rewritten too, because the cube `src_note` gained `repair-cap57` / `repair-cap43`.
+  - `rsds`, `hurs`, `hurs` rh15 1,461 each.
+  - **0 Tmin/Tmax repair flags in the Kenya box.** One `hurs 2014-12-25: FLAG AGERA5-RH06 cells-with-fewer-than-5-hours:9` (a known stale-RH06 day).
+- `validate --smoke --years 2013:2016`: `pr`, `tasmax`, `tasmin`, `rsds` 1461/1461. Domain means:
+
+  | var | min | median | max |
+  |---|---|---|---|
+  | pr | 0.01 | 1.09 | 20.81 mm |
+  | tasmax | 27.85 | 32.35 | 37.00 °C |
+  | tasmin | 19.39 | 22.70 | 25.89 °C |
+  | rsds | 14.16 | 20.88 | 26.64 MJ |
+
+  Sampled `tasmax < tasmin` 0. `VALIDATE PASS`.
+- Smoke digests (2013–2016, n = 1461 each): hurs `b23a68db9a9c6b37fc2d9b02ad99db69`, hurs-rh15
+  `78fa1768e4109634846c1bcbedb8871e`, pr `816e5d79a973daa6f8f73a7e8b6d0d20`, rsds `ed299b8665928634771f56692804db9a`,
+  tasmax `1c254c10d81511d28d37b282caa2f23e`, tasmin `0e169380009f6c2f0c0c583a0a9c9c5b`.
+- `link --nex-working-dir {common_data}/nex-gddp-cimp6_hazards`: rc 0. `chirps_wrld` and `atlas_hazards/soils` were already linked;
+  `Data/mapspam`, `Data/GLW4_2020` and `Data/boundaries` are newly symlinked and **all three resolve** under `$SM`.
+- res-25 files present under `$SM/Data/`:
+  - `mapspam/2020V1r2_SSA/processed/variable=…`: `prod_t`, `harv-area_ha`, `phys-area_ha` 12 each.
+    `vop_nominal-usd-{2015,2020,2021}` 18 each. `vop_intld15-2021` 9 (`spam_vop_intld15-2021_{all,irr,rf-all}_res-25.tif`, …).
+    No res-25 in the legacy `vop_intld15`, `vop_nominal-usd15/21`, `vop_usd2015` or `yield_kgha` dirs.
+  - `GLW4_2020/processed/variable=…`: `glw4-2020_vop_{intld15,nominal-usd}-{2015,2020,2021}_res-25.tif` 3 each.
+    `number_number` 2.
+
+**Not started: J2 onward.** S1 hit its stop threshold, so I stopped there. The smoke box has no flagged days, so J2–J5
+on the smoke would not change under a Tmin rule change unless (a″) also touches Kenya. Say GO and J2 runs as written.
+
+Nothing is running.
+
 ### MACBOOK 2026-10-29 — Tmin decision: (a′) separate Tmin cap 43 °C, same repair; pull and resume the cube process
 
 Right diagnosis again, and the right stop. Decision **(a′)**: `TPHYS_CAP["tasmin"] = 43 °C` (the record highest
