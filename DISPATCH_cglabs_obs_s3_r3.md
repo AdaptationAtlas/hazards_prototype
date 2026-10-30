@@ -2,6 +2,92 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-10-30 — J0 PASS, J1 done, J2 PASS (all invariants); **J3 STOPPED: `R/obs/s3_s5_obs_hazards.R` cannot parse `metadata/obs_crop_windows.csv`** (its `#` comment line becomes the header under `fread`); J4-J6 not started
+
+Pull `ffe6697`. Stamp `20261030_185306`. `env | grep -E 'FORCE_OVERWRITE|DAYS_CHECK|AVAIL_SEED|R3_|ATLAS_CLIMDAT'` was empty before
+each launch, and each step's variables were set on its own command line. R 4.5.1, data.table 1.17.8.
+
+**J0 — PASS** (reported in the S1 dispatch RESPONSE 2026-10-29): `fixture_publish_tier_gates.R` PASS (43 ok),
+`fixture_upstream_run_params.R` PASS (53 ok), `s3_s5_obs_hazards.R --selftest` PASS (23 ok; the block says 20).
+
+**J1 — done** (details in the S1 dispatch RESPONSE 2026-10-29 (2)):
+- Smoke S1 2013-2016: validate PASS, 1461/1461 per var, 0 Tmin/Tmax repair flags in the Kenya box.
+- `link`: `Data/mapspam`, `Data/GLW4_2020`, `Data/boundaries` resolve under `$SM`.
+- res-25 present:
+  - SPAM `2020V1r2_SSA/processed/variable=`: `{prod_t, harv-area_ha, phys-area_ha}` 12 each;
+    `vop_nominal-usd-{2015,2020,2021}` 18 each; `vop_intld15-2021` 9.
+  - GLW4 `processed/variable=`: `vop_{intld15,nominal-usd}-{2015,2020,2021}` 3 each; `number_number` 2.
+
+**Before J2: stale 2015 S2 outputs moved aside, not deleted.** `$SM/nex-gddp-cmip6_indices/` still held the I2
+smoke (2026-10-27, 2015 only: NDWS/AVAIL, NTx20-50, PTOT, THI ×2 tokens).
+- Those files were built from AgERA5 before the half-cell COG shift.
+- That NDWS was seeded at 2015-01.
+- With FORCE_OVERWRITE empty, every S2 script skips existing months. J2 would have kept stale 2015 NDWS/THI and
+  carried AVAIL-2015-12 into 2016.
+
+I renamed the tree to `$SM/nex-gddp-cmip6_indices_i2_20261027/` (smoke root only, reversible) so J2 builds
+2013-2016 in one consistent pass. PTOT is not read by S3.
+
+**J2 — PASS**, run exactly as written: 5 scripts in parallel, about 25 min wall-clock (NDWL0 slowest).
+- **Logs:** `logs/obs_s3_s2_{ndws,ndwl0,ntx,thi,thi_rh15}_<stamp>.log`. 0 `WARN`, 0 `daily inputs missing`, 0 error/halt.
+  - NTx and both THI end `----Finish----`.
+  - NDWS and NDWL0 end on their `compute: 2016-12` line; they print no finish marker.
+  - The processes were `setsid`-detached, so rc is inferred: no error text, and outputs are complete.
+- **Counts:**
+  - NDWS 48, NDWL0 48 (plus AVAIL).
+  - NTx: 31 dirs × 48.
+  - THI: 48 `THI_max-` + 48 `THI_mean-` per token (plus the `daily` entry, as in I2).
+- **NDWS Kenya-box (33.5-42.5 E, 5 S-5.5 N) land mean by month:**
+  ```
+        Jan  Feb  Mar  Apr  May  Jun  Jul  Aug  Sep  Oct  Nov  Dec
+  2013 29.3 26.0 21.9  9.1 24.6 26.9 28.4 27.5 27.6 28.2 21.0 25.2
+  2014 28.9 23.2 23.4 23.1 24.5 26.4 28.6 27.4 26.7 24.8 20.7 25.9
+  2015 30.3 26.7 28.5 12.6 20.3 25.2 29.3 29.2 28.8 25.2 13.9 22.5
+  2016 26.3 27.1 28.5 15.7 20.1 27.9 28.7 28.9 29.0 29.5 24.6 28.9
+  ```
+  - Climatology Apr 15.1 and Nov 20.1 against 25.6-28.8 elsewhere: the April and November dips (long and short rains) are there.
+  - Months with every land cell = 0: **0**. Months with every land cell = days-in-month: **0**.
+- **THI, (ii) RH15 − (i) daily-mean RH, Kenya-box land mean:** `THI_max` 82.11 vs 84.44, so **−2.33**, with
+  (ii) < (i) in 48/48 months. `THI_mean` −2.30.
+
+**J3 — STOPPED at launch, both commands** (`logs/obs_s3_s35{,_rh15}_<stamp>.log`). Nothing was written; `$SM/Data/`
+has only the three links.
+```
+[S3-5] obs_root={cd}/atlas_obs_hazards_smoke token=chirps-chirts-agera5 ... seasons kept=2 (2014..2015) timeframe=2014-2016 period=ggcmi-crop crops=43 sets=crop,livestock
+Error in window == "ggcmi" : comparison (==) is possible only for atomic and list types
+Calls: run -> [ -> [.data.table -> eval -> eval -> fifelse
+In fread(windows_csv) : Detected 1 column names but the data has 5 columns (i.e. invalid file). Added 4 extra default column names at the end.
+```
+- **Cause:** line 2 of `metadata/obs_crop_windows.csv` is a `# window: ggcmi (...) | annual12 (...) | custom (...)` comment.
+  - `fread` (1.17.8) takes it as the header line: `names(fread(csv))` is that one comment string, followed by `V2..V5`.
+  - So the `crop`/`window`/`ggcmi_code`/`proxy` columns don't exist, and `window == "ggcmi"` fails.
+- **Why the selftest missed it:** the selftest passes because it `fwrite`s its own fixture `windows.csv` with no comment line, so the real file is never parsed in a fixture.
+- **Fix:** not improvised. Either drop the comment line from the CSV (move it to a `note` row or the header comment of
+  the R script), or read with comments stripped (e.g. `fread(cmd = paste("grep -v '^#'", shQuote(windows_csv)))` or
+  `read.csv(..., comment.char = "#")`). A selftest assertion that parses the shipped `metadata/obs_crop_windows.csv`
+  would catch a recurrence.
+- The GGCMI dir check passed: `ls $NWD/Data/ggcmi/*_rf_*.nc4 | wc -l` = 20.
+
+**J4-J6 not started.** After the fix, J3 resumes as written; J2 outputs stay in place.
+
+**Optional (S1 block 2026-10-30): CHIRTS v1.0 Tmin vs CHIRTS-ERA5 native, flagged African days ≤ 2016.** Read-only.
+Box = flagged-pixel extent ± 0.1°.
+
+The days you suggested (Massawa 2015-08-11/12, Port Sudan 2012-08-01/02) are not African. Per the localisation log:
+- 2015-08-11/12: Saudi coast, 23.6-24.1 N 38.0-38.5 E.
+- 2012-08-01: Kuwait. 2012-08-02: Kuwait + Saudi.
+
+I used African flagged days instead:
+- 2006-05-27 Massawa (15.03-15.22 N, 40.23-40.48 E): v1.0 Tmin max **41.2** (mean 40.1) | ERA5 native max **45.5**
+- 2007-06-27 Port Sudan (21.02-21.62 N, 36.88-37.23 E): v1.0 max **39.1** (mean 35.7) | ERA5 **46.5**
+- 2016-07-23 Djibouti (10.68-10.93 N, 43.73-43.98 E): v1.0 max **40.6** (mean 38.9) | ERA5 **44.6**
+- (for reference, 2005-09-04 Yanbu: v1.0 35.4 | ERA5 45.1)
+
+ERA5 is 4-7 °C above v1.0 on African coasts (10 °C at Yanbu). v1.0 itself reads ~40 °C at Massawa and Djibouti, so after
+repair the ≤ 43 °C values are in v1.0's range there.
+
+Nothing is running.
+
 ### MACBOOK 2026-10-27 — runs AFTER `DISPATCH_cglabs_obs_s1_ingest.md` I0-I3 are green. Smoke on the Kenya box, then the full Africa chain.
 
 **What landed since the S1 dispatch (`git pull`):** `R/obs/s3_s5_obs_hazards.R` (per-crop windows → per-season
