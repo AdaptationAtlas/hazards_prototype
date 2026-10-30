@@ -2,6 +2,25 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-10-30 (2) — J3 fix landed (comment-safe window loader + shipped-CSV selftest); pull and resume J3-J6
+
+Right diagnosis, and the right place to stop. `R/obs/s3_s5_obs_hazards.R` now reads `metadata/obs_crop_windows.csv`
+through `load_windows()`: `#` lines stripped before `fread`, then shape checks (five columns, window ∈
+ggcmi|annual12|custom, custom codes `<mai_plant|mai_maturity>:<months>`, ggcmi rows carry a code, no `_` in crop
+names). The selftest now parses the **shipped** file (24 assertions, was 23) — the fixture-only CSV is exactly the
+"declaration is not an output" gap the J3 stop exposed. Also guarded `spinup = 0` (`x[-integer(0)]` is empty in R;
+same bug S6 had). No change to any output of S2; the J2 tree stays.
+
+Your J2 handling (stale I2 smoke tree moved aside, not deleted; one consistent 2013-2016 pass) was correct — keep the
+renamed dir until J6 is clean. The v1.0 comparison is recorded: ERA5 Tmin 4-7 °C above v1.0 on the Eritrea/Sudan/Djibouti
+coasts, and v1.0 itself ~40-41 °C at Massawa/Djibouti, so the ≤ 43 °C repaired values sit inside v1.0's own range.
+
+```bash
+cd $REPO && git pull --ff-only && git log -1 --format='%h %s'
+Rscript R/obs/s3_s5_obs_hazards.R --selftest     # ALL S3-S5 SELFTEST ASSERTIONS PASSED (24; the last line names the shipped CSV, 43 crops)
+```
+Then **J3 as written** (both commands), J4, J5, then J6. Same stop rules. One `### RESPONSE` for J3-J5; J6 its own.
+
 ### RESPONSE — cglabs 2026-10-30 — J0 PASS, J1 done, J2 PASS (all invariants); **J3 STOPPED: `R/obs/s3_s5_obs_hazards.R` cannot parse `metadata/obs_crop_windows.csv`** (its `#` comment line becomes the header under `fread`); J4-J6 not started
 
 Pull `ffe6697`. Stamp `20261030_185306`. `env | grep -E 'FORCE_OVERWRITE|DAYS_CHECK|AVAIL_SEED|R3_|ATLAS_CLIMDAT'` was empty before

@@ -175,12 +175,11 @@ run <- function(obs_root, token, years, spinup, period, ggcmi_dir, crops_sel, se
   idx_dir_of <- function(idx) file.path(if (idx == "THI_max") thi_root else idx_root, IDX_DIR[[idx]])
   hc <- load_thresholds(hc_csv)
   hm <- unique(fread(hm_csv)[, .(variable.code, stat = `function`)])
-  win <- fread(windows_csv)
-  if (grepl("_", paste(win$crop, collapse = ""))) stopf("obs_crop_windows.csv: crop names must use '-' not '_'")
+  win <- load_windows(windows_csv)
   if (!is.null(crops_sel)) win <- win[crop %in% crops_sel]
   sets <- SETS[sets_sel]
   season_years <- years[-length(years)]                      # start years of the n-1 seasons
-  keep <- seq_len(length(season_years))[-seq_len(spinup)]
+  keep <- seq_len(length(season_years)); if (spinup > 0) keep <- keep[-seq_len(spinup)]   # x[-integer(0)] is empty
   if (!length(keep)) stopf("spinup=%d leaves no seasons", spinup)
   timeframe <- sprintf("%d-%d", min(years) + spinup, max(years))
   lg(sprintf("obs_root=%s token=%s thi_token=%s years=%d-%d seasons kept=%d (%s..%s) timeframe=%s period=%s crops=%d sets=%s",
@@ -258,6 +257,21 @@ run <- function(obs_root, token, years, spinup, period, ggcmi_dir, crops_sel, se
 }
 
 # ---- selftest ---------------------------------------------------------------------------------------------
+load_windows <- function(path) {
+  # the shipped CSV carries '#' comment lines (fread would take the first as the header); strip them, then check the shape
+  lines <- readLines(path, warn = FALSE); lines <- lines[!grepl("^\\s*#", lines) & nzchar(trimws(lines))]
+  win <- fread(text = paste(lines, collapse = "\n"))
+  need <- c("crop", "window", "ggcmi_code", "proxy", "note")
+  if (!all(need %in% names(win))) stopf("%s: columns %s expected, got %s", basename(path), paste(need, collapse = ","), paste(names(win), collapse = ","))
+  if (grepl("_", paste(win$crop, collapse = ""))) stopf("%s: crop names must use '-' not '_'", basename(path))
+  bad <- setdiff(unique(win$window), c("ggcmi", "annual12", "custom"))
+  if (length(bad)) stopf("%s: unknown window type(s) %s", basename(path), paste(bad, collapse = ","))
+  cu <- win[window == "custom" & !grepl("^(mai_plant|mai_maturity):[0-9]+$", ggcmi_code)]
+  if (nrow(cu)) stopf("%s: custom window code must be <mai_plant|mai_maturity>:<months> (%s)", basename(path), paste(cu$crop, collapse = ","))
+  if (any(win$window == "ggcmi" & !nzchar(win$ggcmi_code))) stopf("%s: ggcmi rows need a code", basename(path))
+  win
+}
+
 selftest <- function() {
   ok <- function(c, m) if (!isTRUE(c)) stop("SELFTEST FAIL: ", m) else cat("  ok  ", m, "\n")
   td <- file.path(tempdir(), "s35_selftest"); unlink(td, recursive = TRUE); dir.create(td, recursive = TRUE)
@@ -345,6 +359,11 @@ selftest <- function() {
   ok(abs(values(cw[[2]])[2, 1] - (22 + 99) / 4) < 1e-6, "S3: custom window mai_maturity:4 = Jul..Oct (includes the Aug 99)")
   Sys.unsetenv("FORCE_OVERWRITE")
   unlink(td, recursive = TRUE)
+  # the SHIPPED crop-window table must parse (the node found fread taking the '#' comment line as the header)
+  shipped <- load_windows(file.path(repo, "metadata", "obs_crop_windows.csv"))
+  ok(nrow(shipped) >= 40 && all(c("maize", "cattle-tropical") %in% shipped$crop) && shipped[crop == "maize", window] == "ggcmi" &&
+       shipped[crop == "chickpea", ggcmi_code] == "mai_maturity:4" && all(shipped$window %in% c("ggcmi", "annual12", "custom")),
+     sprintf("shipped metadata/obs_crop_windows.csv parses with its comment line: %d crops, maize = ggcmi, chickpea custom", nrow(shipped)))
   cat("\nALL S3-S5 SELFTEST ASSERTIONS PASSED\n")
 }
 
