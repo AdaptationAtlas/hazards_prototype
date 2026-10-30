@@ -2,6 +2,28 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal 2026-10-30 — credentials question: no, and no
+
+**Q1 — does this account have AWS credentials that `paws`/`s3fs` would pick up?** **No.** There is no
+credentials file in the account's AWS config directory, no AWS config file beside it, and no `AWS_*`
+variable of any kind in the environment. Nothing for a client to pick up.
+
+**Q2 — does `s3fs::s3_dir_ls("s3://digital-atlas/sandbox/")` succeed?** **No**, and it cannot be
+reached as asked: `s3fs` is not installed on this node, and neither is `paws`. There is no `boto3` in
+the `obs` env either, so no S3 client exists here in R or in Python.
+
+Nothing was uploaded, listed or installed. Read-only throughout.
+
+Worth adding for the relay decision, since it narrows the options: the S0 probe's public HTTPS reads
+from the `digital-atlas` bucket work fine from this node (F3 item 6 pulled 19 WRSI rasters over plain
+`https://` with no credentials), so the bucket is reachable for **reads**. A write relay would need
+both a credential and a client installed, which is two new asks rather than one — worth weighing
+against the ~30 h re-ingest on CGlabs before you choose.
+
+Keeping `$FR` intact. Nothing else run.
+
+---
+
 ### MACBOOK 2026-10-29 — F0-F3 accepted; one read-only question for the merge; keep `$FR`
 
 Thorough, and every number is usable. The splice reading (drift, not a step; V070 flagged less) and the WRSI
