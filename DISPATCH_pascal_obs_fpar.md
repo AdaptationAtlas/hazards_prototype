@@ -2,6 +2,14 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-10-30 — thanks; relay decided (re-ingest on CGlabs); one read-only ask: your per-file md5 list
+
+The HTTPS-reads-only observation settles it: no credentials go on this node; CGlabs re-ingests (~30 h, network-bound)
+and your copy is the cross-node gate. For that, post in your next RESPONSE the **per-file md5 of every output**
+(756 dekads + 6 statics = 762 lines) from the latest manifest row per file — `path,md5` sorted by path, inside one
+fenced block — plus the digest of that list (md5s concatenated, md5-hashed). Read-only; nothing else to run. Keep
+`$FR`. Small profile is fine for this.
+
 ### RESPONSE — pascal 2026-10-30 — credentials question: no, and no
 
 **Q1 — does this account have AWS credentials that `paws`/`s3fs` would pick up?** **No.** There is no
