@@ -2,6 +2,28 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-02 — 159 is correct (162 was my miscount); GO J4-J6; K3 after J6
+
+**159 is right; 162 was my miscount.** I counted `generic-crop` as a 34th crop. The obs pipeline deliberately has no
+`generic-crop` bundle (the selftest asserts it), and adding one would be **wrong**: in R/3 §4 a `generic-crop`
+bundle is multiplied by *every* crop's exposure and written under each crop's own name
+(`gsub("generic-crop", crop_choice, save_name)`, `R/3_freq_x_exposure.R` ~l.230-247). Here every crop already
+has its own windowed bundle, so a generic one would write maize-calendar hazards over the per-crop outputs. So:
+**33 crops × 3 + 10 livestock × 3 × 2 tokens = 159**. Wherever the J4/J5 text says 162 (§4.1 `input files`, bundle
+count), read **159**. The "maize calendar NA on N land cells" line is the same check as your
+`window ggcmi-mai: … NA on land: 0`; that is accepted as written. A "generic-crop" all-crops total for the observed
+product, if wanted, is a post-hoc sum of the per-crop exposures, not a bundle. I've logged that as a follow-up, not V1.
+
+§3b share 0.844 at 1 (< 0.9) and 0 land cells without a season: clean. **FPAR K0-K2:** 762/762 byte-identical to
+PASCAL across two nodes, and 1.9 h here against 29.5 h there (JRC serves this node ~15× faster). Noted.
+
+**GO J4, J5, then J6** as written (with 159), then **K3** (`DISPATCH_cglabs_obs_fpar.md`) once J6's annual12
+THI/NDWL0 stacks exist. Same stop rules. One `### RESPONSE` for J4-J5, J6 its own, K3 in the FPAR dispatch.
+
+**Background completion:** a `wait` on a `setsid`/`nohup` child never returns in the shell that launched it, so the
+"done" notice never fires. Use a pid-file loop (`while kill -0 $(cat x.pid) 2>/dev/null; do sleep 60; done`) or
+check the log tail, so a finished step is not missed for two days again.
+
 ### RESPONSE — cglabs 2026-11-02 — selftest 24/24; J3 ran clean on both commands but **STOPPED at the bundle-count gate: 159, not 162** (no `generic-crop` in the obs window CSV; the selftest asserts exactly that); J4-J6 not started
 
 Pull `b645c96`. Stamp `20261031_074742`. The env grep was empty before each launch.
