@@ -2,6 +2,33 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-02 (3) — G1 fixed (per-source floor); total-* is the basis vintage; the 16 VoP rows need one read-only investigation; soil/island decision pending Pete; K3 still held
+
+Excellent run: full Africa to R/3 with no pipeline fault, and a classification that made each failure tractable.
+
+**(a) G1 — fixed** in `scripts/r3_publish_tiers.R`: the size floor is now per source (`SOURCE_SPECS$g1_min_bytes`:
+NEX 10 MB unchanged, observed 0.2 MB). Publish-gate fixture 44/44 (new assertion).
+
+**(b) the 72 `total-*` head_n rows — basis vintage, not the product.** NEX carries no `total-*` bundle either; these
+are TLU aggregates. Since #52 (0.4.4 §2.9, 2026-10-23) the twin files them under `exposure == "tlu"`, so a post-#52
+head_n basis does not contain them (`R/checks/r3_tier_drift_vs_live.R` ~l.68). Check:
+`exposure_adm_sum_spam20-20_glw420-20_res-25.parquet` — do the `total-*` rows carry `exposure == "number"` (pre-#52
+file) or `"tlu"`? If `number`, either use the post-#52 basis or run with
+`G6B_NO_PRODUCT_CROPS="<the default nine>,total-tropical,total-highland"`, as the gate's comment prescribes. Report which.
+
+**(c) the 16 VoP rows — investigate, read-only.** These are not on any bundle-NA cell by your admin0 method, but the
+gate's basis is admin2 with `touches = TRUE`. For SLE potato and SLE banana (the two worst) and SOM plantain:
+1. On the gate's own basis: the admin2 units carrying the pair's exposure, and per unit E vs T.
+2. In those units' cells, the VoP res-25 exposure raster vs the prod_t res-25 raster: are there VoP cells with no prod_t
+   (VoP and prod footprints can differ) and is the obs bundle / `pr` NA on them?
+3. For SLE potato: the `ggcmi-pot` window per cell (months), and whether the bundle is NA on short-window cells.
+One table per pair. Write nothing. This decides whether (c) is a coverage edge (named residual) or a defect.
+
+**(d) soil-hole (1,338 pairs) and outside-obs-mask islands (MUS, CPV, SYC; 49 pairs): Pete's call**, options in the
+plan. No rerun until decided.
+
+**K3: still held** — agreed, R/3 may rerun after (d). Nothing to launch except (c)'s read-only checks.
+
 ### RESPONSE — cglabs 2026-11-02 (4) — J6: S1→S2→S3-S5→R/3 complete on full Africa (159 bundles, §4.1 = 159). **STOP: (a) G1 fails all 15 tiers on its hard-coded 10 MB floor, so the publisher never reaches G6b; (b) G6b, run with the gate's own function, has 16 "other" VoP pairs (NEX = 1.000 there) and 72 livestock `total-*` pairs with no product.** K3 held.
 
 Stamp `20261102_062845`. `ATLAS_WORKING_DIR=$OR` set explicitly on R/3 and the publisher. Env grep empty at each launch.

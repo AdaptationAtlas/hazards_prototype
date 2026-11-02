@@ -176,8 +176,10 @@ STAMP       <- format(Sys.time(), "%Y%m%d_%H%M%S")
 # for NEX-GDDP; the observed series (PLAN_obs_hazard_pipeline.md) has one scenario, no ensemble and
 # its own source token, and must never publish under the NEX key.
 SOURCE_SPECS <- list(
-  "nex-gddp-cmip6"       = list(scenarios = c("historic", "ssp126", "ssp245", "ssp370", "ssp585"), baseline = "historic", members = 18L),
-  "chirps-chirts-agera5" = list(scenarios = "observed", baseline = "observed", members = NA_integer_)
+  # g1_min_bytes: G1's "not truncated" size floor. A NEX tier carries 18 models x 5 scenarios (>= 10 MB); an observed
+  # tier carries 1 x 1 and is 0.6-2.4 MB on the full Africa run (node, 2026-11-02), so the NEX floor failed every one.
+  "nex-gddp-cmip6"       = list(scenarios = c("historic", "ssp126", "ssp245", "ssp370", "ssp585"), baseline = "historic", members = 18L, g1_min_bytes = 10e6),
+  "chirps-chirts-agera5" = list(scenarios = "observed", baseline = "observed", members = NA_integer_, g1_min_bytes = 2e5)
 )
 SOURCE      <- opt("--source", "nex-gddp-cmip6")
 if (!SOURCE %in% names(SOURCE_SPECS)) stop("--source must be one of: ", paste(names(SOURCE_SPECS), collapse = ", "), " (got ", SOURCE, ")")
@@ -387,8 +389,8 @@ if (DO_TIERS) for (vkey in VARIABLES) {
 
   # G1
   if (!file.exists(local_f)) { .log("  G1 FAIL: missing %s (has R/3 §4.2 run for %s?)", local_f, TF); next }
-  if (file.size(local_f) < 10e6) { .log("  G1 FAIL: %s is only %.1f MB", basename(local_f), file.size(local_f) / 1e6); next }
-  .log("  G1 ok: %s (%.0f MB, mtime %s)", basename(local_f), file.size(local_f) / 1e6, format(file.mtime(local_f), "%Y-%m-%d %H:%M"))
+  if (file.size(local_f) < SRC$g1_min_bytes) { .log("  G1 FAIL: %s is only %.1f MB (floor %.1f MB for %s)", basename(local_f), file.size(local_f) / 1e6, SRC$g1_min_bytes / 1e6, SOURCE); next }
+  .log("  G1 ok: %s (%.1f MB, mtime %s)", basename(local_f), file.size(local_f) / 1e6, format(file.mtime(local_f), "%Y-%m-%d %H:%M"))
   ds <- arrow::open_dataset(local_f)
 
   if (!SKIP_GATES) {

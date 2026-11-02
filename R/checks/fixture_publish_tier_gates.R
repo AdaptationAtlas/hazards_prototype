@@ -185,6 +185,9 @@ ok(identical(SOURCE_SPECS[["nex-gddp-cmip6"]]$scenarios, c("historic", "ssp126",
    "NEX spec = the five scenarios, baseline historic, 18 members (G3/G6b/sidecar unchanged)")
 ok(identical(SOURCE_SPECS[["chirps-chirts-agera5"]]$scenarios, "observed") && identical(SOURCE_SPECS[["chirps-chirts-agera5"]]$baseline, "observed") &&
    is.na(SOURCE_SPECS[["chirps-chirts-agera5"]]$members), "observed spec = one scenario, baseline observed, no member count")
+ok(identical(SOURCE_SPECS[["nex-gddp-cmip6"]]$g1_min_bytes, 10e6) && SOURCE_SPECS[["chirps-chirts-agera5"]]$g1_min_bytes > 0 &&
+     SOURCE_SPECS[["chirps-chirts-agera5"]]$g1_min_bytes <= 6e5,
+   "G1 size floor is per source: NEX 10 MB unchanged, observed below the smallest real observed tier (0.6 MB, node 2026-11-02)")
 .g_def <- tier_vs_exposure(prod_f, expo_f, "prod"); .g_obs <- tier_vs_exposure(prod_f, expo_f, "prod", scenarios = "observed")
 ok(identical(.g_def$pass, tier_vs_exposure(prod_f, expo_f, "prod", scenarios = DRIFT_NEX_SCENARIOS)$pass) && !.g_obs$pass,
    "scenario set is a real gate: the default equals the explicit NEX set, and the observed set fails on a NEX-shaped product")
