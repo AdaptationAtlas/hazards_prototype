@@ -131,6 +131,121 @@ Nothing running. Nothing written outside `logs/`. K3 still held.
 
 ---
 
+### RESPONSE — cglabs 2026-11-02 (6) — **L0-L3 complete, the publisher dry-run is CLEAN: all 15 tiers pass G1, G2, G3, G4 and G6b.** Soil fill took obs land cells without soil 2,494 → 49; every soil-hole breach is gone (max |ratio-1| 0.0078 against tol 0.02); MUS/CPV/SYC are ALLOWED; `total-*` gone on the post-#52 basis with no env var; KEN maize and cassava 0.976 / 0.948 → **1.0000**; the eight VoP pairs → **1.0000**. Nothing published. K3 ready.
+
+Stamp `20261102_192848`. HEAD at launch `017e5c4`. Env grep empty before R/3 and the publisher.
+
+#### L0 — selftests, both PASS
+
+`soil_fill.py selftest` **9/9**, `fixture_publish_tier_gates.R` **48/48**, both as the block states.
+
+**Node finding, environment only, no code touched.** Both python selftests fail out of the box on this node because the JupyterHub image exports geo paths that override the `obs` env:
+
+```
+PROJ_DATA=/opt/conda/share/proj        GDAL_DATA=/opt/conda/share/gdal
+GDAL_DRIVER_PATH=/opt/conda/lib/gdalplugins
+```
+
+Two failures follow. First `rasterio.errors.CRSError: ... /opt/conda/share/proj/proj.db contains DATABASE.LAYOUT.VERSION.MINOR = 6 whereas a number >= 7 is expected` — the env ships its own newer `proj.db`. Then, with PROJ fixed, `rasterio.errors.DriverCapabilityError: Writer does not exist for driver: LIBERTIFF` — the leaked plugin path makes GDAL open the TIFF with the read-only LIBERTIFF driver, and `soil_fill.py:58` copies `s.profile`, so the driver travels to the write. Running as
+
+```bash
+env -u GDAL_DRIVER_PATH PROJ_DATA=<env>/share/proj GDAL_DATA=<env>/share/gdal $PY python/obs/soil_fill.py ...
+```
+
+both selftests and the fill pass. Worth pinning in `server-environment-cglabs.md`, and `soil_fill.py` would be sturdier naming `driver="GTiff"` on write rather than inheriting the reader's — your call, I changed nothing.
+
+#### L1 — the fill. PASS, 8.7 s.
+
+The real `pr` path on this tree is **`$OR/nex-gddp-cmip6/pr/historical/chirps-chirts-agera5/pr_2015-06-15.tif`** — variable before scenario, not the order in the block.
+
+| layer | res | max px | valid | filled | still NA | filled range | source range |
+|---|---|---|---|---|---|---|---|
+| `sscp_world.tif` | 0.05000 deg | 10 | 3,712,662 | 638,524 | 10,044,814 | 7.392 .. 107.25 | 4.97 .. 111 |
+| `ssat_world.tif` | 0.05000 deg | 10 | 3,712,662 | 638,524 | 10,044,814 | 10.127 .. 183.05 | 6.78 .. 200 |
+
+Both filled ranges sit strictly inside their source ranges. `sroot_world.tif` is not in the source and was skipped; `africa_scp`, `africa_ssat`, `maize_soil_depth_{1,5}km` copied unchanged.
+
+**`--check-pr`, the gate:** obs land cells (pr finite) 48,576; soil NA on **2,494 → 49** after the fill, identically for both layers. That is **1.96 % of "before"**, well inside the ~10 % stop.
+
+**The shared soils are untouched:** all six md5 identical before and after
+(`logs/obs_soilfill_src_md5_{before,after}_20261102_192848.txt`). The script replaced the `$OR/atlas_hazards/soils` **symlink** with a directory of filled copies and logged that it was doing so; `{common_data}/atlas_hazards/soils` never opened for write.
+
+#### L2 — rerun
+
+**S2** (`logs/obs_s3_full_s2_{ndws,ndwl0}_fill_<stamp>.log`), NDWS 49.8 min, NDWL0 82.7 min, both rc 0:
+
+| index | index files | AVAIL files | rewritten in this run | WARN | error/halt | `daily inputs missing` |
+|---|---|---|---|---|---|---|
+| NDWS | **252** | 252 | 504 / 504 | 0 | 0 | 0 |
+| NDWL0 | **252** | 252 | 504 / 504 | 0 | 0 | 0 |
+
+(The directory holds 504 tifs per index: 252 `<IDX>-YYYY-MM.tif` plus 252 `AVAIL-YYYY-MM.tif` carry-over state. The J6 count of 252 is the index files; stating it so the next reader does not take 504 for a doubling.) NTx and THI were **not** rerun.
+
+**S3-S5**, `--overwrite`, both commands as in J6: 44 min and 18 min, 0 WARN, 0 error, `done: 129 bundles` + `done: 30 bundles` = **159** `*_int.tif`. The `annual12` stacks were rewritten 20:55-20:56, so K3's precondition holds on fresh files.
+
+**Two numbers moved, and the fill is why.** `maize calendar NA on land cells: 2 → 110`, and `window annual12 ... =12: 165,026 → 165,134` (+108). Land is defined as cells with an NDWS value, so filling the soil holes *added* about 108 land cells; some of them have no GGCMI maize calendar and fall to the January anchor. Every GGCMI window now reports `NA on land: 110` where J6 read 2. Expected, not a fault, but the J6 figure will not reproduce.
+
+**R/3** (`logs/obs_s3_full_r3_fill_<stamp>.log`, 21:40 → 21:51, 11 min, COMPLETE): §4.1 **`input files = 159`**, 0 errors, and the same expected skips as J6 — 60 livestock files for `ha` and for `prod_t`, 99 crop files for `head_n`.
+
+#### L3 — the publisher dry-run, exposure gate on. **Every gate passes on every tier.**
+
+`logs/obs_s3_pub_dry_full_fill_<stamp>.log`, 0.7 min, `[DRY RUN - nothing written]`.
+
+| gate | result |
+|---|---|
+| **G1** size, per-source floor | **15 / 15 ok** (0.6-2.4 MB against the new 0.2 MB observed floor; 0 FAIL) |
+| **G2** every `hazard_vars` has `none` rows, n(none) == n(any) | **15 / 15 ok** |
+| **G3** scenarios | **15 / 15 ok**, `scenarios = observed` |
+| **G4** severity column | **15 / 15 ok** (5 severe, 5 moderate, 5 extreme) |
+| **G6b** exposure identity | **15 / 15 ok** |
+
+G6b per variable (the three tiers of each agree except where noted):
+
+| variable | material | **breach** | missing_product | allowed (named) | max \|ratio-1\| | immaterial |
+|---|---|---|---|---|---|---|
+| prod_t | 601 | **0** | **0** | 3 | 0.0072 | reported |
+| ha | 539 | **0** | **0** | 2 | 0.0068 | reported |
+| head_n | 335 | **0** | **0** | 0 | 0.0025 (extreme 0.0030) | reported |
+| vop_usd | 1337 | **0** | **0** | 23 | 0.0078 | 394 |
+| vop_intld | 1332 | **0** | **0** | 21 | 0.0078 | 1046 for ha |
+
+Against J6: prod_t 604/240, ha 541/212-213, head_n 335/103-104 **+72 missing**, vop_usd 1360/391, vop_intld 1351/394. **Every breach is gone**; the worst pair in the whole publish is 0.78 % off, against a 2 % tolerance.
+
+- **soil-hole breaches: gone.** The 1,354 pairs (1,338 plus the 16 VoP rows my RESPONSE (5) reclassified) no longer breach.
+- **MUS / CPV / SYC: ALLOWED.** `G6b named residuals loaded: TZA:coconut, MUS:*, CPV:*, SYC:*`, and the breaching island pairs print under `NAMED residuals, breaching but allowed with a reason` with the bbox text, e.g. MUS sugarcane E 2,984,843 → T 0, CPV sugarcane E 21,938 → T 0.
+- **`total-*`: gone, and no env var was needed.** Gate 3 reads `0 pair(s)` on all 15 tiers. issue54 B rebuilt the res-25 twin post-#52, so `total-tropical` / `total-highland` now carry `exposure = tlu` and never enter the `head_n` basis. The `G6B_NO_PRODUCT_CROPS` workaround from RESPONSE (5) (b) is **not needed and should not be used**.
+- **"other" rows: none.** No breach of any kind survives, so there is nothing unexplained to stop on.
+
+**KEN maize and cassava**, the pair that opened this thread at 0.976 and 0.948:
+
+| variable | crop | E | T | ratio |
+|---|---|---|---|---|
+| prod_t | maize | 3,547,721 | 3,547,723 | **1.0000** |
+| prod_t | cassava | 801,382 | 801,389 | **1.0000** |
+| ha | maize | 2,189,423 | 2,189,424 | **1.0000** |
+| ha | cassava | 65,812 | 65,811 | **1.0000** |
+| vop_usd | maize | 1,145,567,268 | 1,145,567,275 | **1.0000** |
+| vop_usd | cassava | 385,025,016 | 385,025,016 | **1.0000** |
+
+**And the eight VoP pairs from RESPONSE (5) all close**, which is an independent confirmation that they were soil-hole rows:
+
+| pair | ratio before | ratio now |
+|---|---|---|
+| SLE banana | 0.1541 | **1.0000** |
+| SLE potato | 0.0000 | **1.0000** |
+| SLE yams | 0.7178 | **1.0000** |
+| SLE cotton | 0.7322 | **1.0000** |
+| SOM plantain | 0.0031 | **1.0000** |
+| SOM cowpea | 0.5396 | **1.0000** |
+| UGA lentil | 0.9505 | **1.0000** |
+| MOZ robusta-coffee | 0.9648 | **1.0000** |
+
+#### State
+
+**Nothing published** — dry run only, no S3 write of any kind. Nothing running. The filled soils live under `$OR/atlas_hazards/soils`; the shared copy is byte-identical to before. **K3 is now unblocked** on its own terms: L3 is clean and the `annual12` NDWL0 stack it reads was rewritten by this run at 20:56. Starting it next unless you say otherwise.
+
+---
+
 ### MACBOOK 2026-11-02 (4) — Pete's decisions: fill the soil gap for the observed tree (#56), islands documented (#57); rerun from S2 water balance; order after the VoP probe and issue54
 
 **Decisions (Pete, 2026-11-02).** (1) The 1,338 soil-hole pairs: **fill the observed tree's soil layers**. New
