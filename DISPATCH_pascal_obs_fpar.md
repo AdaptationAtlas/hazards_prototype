@@ -2,6 +2,126 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal 2026-11-02 — G0-G3 complete: all four variants ran, no stop hit; detrending is the consequential choice, `sum` vs `min` is not
+
+**Session.** JupyterHub, Small profile (8 CPUs, 32 GiB), two S6 runs at a time as instructed. Repo at
+`2efe9aa`. All writes under `$FR` = `<bulk>/atlas/atlas_obs_hazards_pascal`.
+
+**Outcome.** No gate was hit. Selftest 21/21; all four variants ended with their `done (no bundles)`
+line; nothing was written outside `seasonal/2006-2025_<variant>/`. Headline: **`sum` is nearly the
+same decision as V1 `min` (Jaccard 0.931), `annual12` and detrending are not (0.65 / 0.61 / 0.59).**
+Detrending is the only change that alters *which years* are bad rather than which cells.
+
+#### G0 — selftest
+
+**ALL S6 SELFTEST ASSERTIONS PASSED (21).** The three new ones are the variant-dir check, "variant
+runs write no bundles", and "detrend removes the linear slope, keeps the mean and the non-trend
+signal".
+
+#### G1 — four variants
+
+Two at a time, pid-file tracked. All four ended `variant <tag> done (no bundles)`.
+
+| variant | wall | dir |
+|---|---|---|
+| `sum` | 155.0 s | `seasonal/2006-2025_sum/` |
+| `annual12` | 164.2 s | `seasonal/2006-2025_annual12/` |
+| `min --detrend` | 148.1 s | `seasonal/2006-2025_min-detrend/` |
+| `sum --detrend` | 145.6 s | `seasonal/2006-2025_sum-detrend/` |
+
+Much faster than the 15-20 min you budgeted — the 756-dekad stack is already in page cache from the
+V1 run, and the variants stop before the bundle write that took 800 s of V1's 949 s.
+
+**The no-write check passes exactly.** `seasonal/2006-2025/z_year.tif` and
+`hazard_risk_DIAGNOSTIC/ggcmi-crop` both still carry their 2026-10-29 mtimes, to the nanosecond,
+before and after all four runs. Each variant dir holds nine rasters — the V1 eight plus
+`fail_moderate.tif`.
+
+#### G2 — comparison against V1
+
+The five lines verbatim:
+
+```
+[S6-cmp] sum          Jaccard 0.931 | keeps 0.964 of V1 | rho(mean z) 0.984 | trend +0.277 z/decade | splice 0.300 (expect 0.368) | worst 2011,2006,2015
+[S6-cmp] annual12     Jaccard 0.648 | keeps 0.786 of V1 | rho(mean z) 0.991 | trend +0.391 z/decade | splice 0.271 (expect 0.368) | worst 2011,2006,2015
+[S6-cmp] min-detrend  Jaccard 0.615 | keeps 0.761 of V1 | rho(mean z) 0.504 | trend +0.000 z/decade | splice 0.353 (expect 0.368) | worst 2011,2015,2017
+[S6-cmp] sum-detrend  Jaccard 0.593 | keeps 0.744 of V1 | rho(mean z) 0.563 | trend +0.000 z/decade | splice 0.354 (expect 0.368) | worst 2015,2017,2011
+[S6-cmp] min (V1)     (reference) trend +0.273 z/decade | splice 0.299 (expect 0.368) | worst 2011,2006,2015
+```
+
+`variant_compare_2006-2025.csv`:
+
+```csv
+"variant","jaccard_vs_v1","kept_of_v1","spearman_meanz_vs_v1","trend_meanz_per_decade","splice_share","splice_expect","worst3"
+"min (V1)",1,1,1,0.273081938962345,0.29861544867791,0.368421052631579,"2011,2006,2015"
+"sum",0.930931896759669,0.964230689152613,0.98421052631579,0.276892661458216,0.300041640641266,0.368421052631579,"2011,2006,2015"
+"annual12",0.648108432701381,0.786487611909223,0.991228070175439,0.390935386812969,0.271330418488445,0.368421052631579,"2011,2006,2015"
+"min-detrend",0.614562323517547,0.761274203622736,0.503508771929825,0.000269421422610307,0.353487403706017,0.368421052631579,"2011,2015,2017"
+"sum-detrend",0.59296878238879,0.744482615032272,0.563157894736842,1.95404115645267e-11,0.353737247553612,0.368421052631579,"2015,2017,2011"
+```
+
+**Reading, for decision (a) — the yearly dry score.** `sum` keeps 96.4 % of V1's flagged cell-years
+and ranks years almost identically (rho 0.984, same worst three). Choosing between `min` and the
+pastoral-year total is close to a free choice on this evidence; it should be made on physical
+grounds, not on how much it moves the map. `annual12` is different — it keeps only 78.6 % of V1's
+flags and has the steepest trend of any variant (+0.391 z/decade) — yet its *year ranking* is the
+closest of all to V1 (rho 0.991). So the 12-month window reshuffles which cells fail without
+disagreeing about which years were bad. If the hazard is "a failed growing season", the seasonal
+scores are the better match; `annual12` is really measuring something else.
+
+**Reading, for decision (b) — detrending.** This is the consequential one. Both detrended variants
+drop the trend to **zero by construction** and, unlike every other change here, **reorder the worst
+years**: 2017 enters the top three and 2006 leaves it, and `sum-detrend` promotes 2015 over 2011.
+Spearman against V1's yearly means falls to 0.50-0.56, far below the 0.98-0.99 of the undetrended
+variants. The splice share also moves toward its expectation (0.353-0.354 vs 0.368) from V1's 0.299,
+which is the strongest evidence yet that **my F3 item 5 drift was a real trend in the data and not a
+V070 offset** — removing a linear trend very nearly removes the post-2018 deficit in flags, which a
+step at one boundary would not do.
+
+That cuts both ways and the decision is yours: detrending makes the 19 years mutually comparable, but
+it also means a cell in a genuinely greening region stops being flagged for the dry years it still
+has. The 2011 Horn drought survives every variant as a top-three year, so the headline event is
+robust either way.
+
+#### G3 — Kenya WRSI per variant
+
+F3 item-6 method unchanged: 19 `wrsi_rangeland_MAM_<year>.tif` area-averaged from 0.1° to the 0.25°
+lattice, paired over Kenya rangeland cells (`rl_frac >= 0.1`), 883 cells/year, 16,671 pairs each.
+
+| variant | pooled Pearson | pooled Spearman | year-level Pearson | quintile mean z, driest to wettest |
+|---|---|---|---|---|
+| **min (V1)** | **+0.241** | **+0.267** | **+0.626** | −0.731 / −0.502 / −0.275 / −0.220 / −0.196 |
+| `sum` | +0.199 | +0.221 | +0.489 | −0.350 / −0.121 / +0.140 / +0.160 / +0.162 |
+| `annual12` | +0.168 | +0.196 | +0.407 | −0.300 / −0.104 / +0.126 / +0.128 / +0.132 |
+| `min-detrend` | +0.234 | +0.243 | +0.586 | −0.726 / −0.492 / −0.276 / −0.227 / −0.205 |
+| `sum-detrend` | +0.195 | +0.202 | +0.466 | −0.342 / −0.125 / +0.136 / +0.152 / +0.165 |
+
+**V1 `min` wins on every one of the four measures**, and the ordering is the same throughout:
+`min` > `min-detrend` > `sum` > `sum-detrend` > `annual12`. The year-level gap is the widest —
++0.626 for `min` against +0.407 for `annual12`.
+
+This is worth weighing against G2, because the two point in different directions. WRSI is a
+water-balance index for a single season, so `min(z1, z2)` — "the worse of the two seasons" — is its
+closest conceptual analogue, and `annual12` its most distant; some of this ranking is that
+definitional kinship rather than one score being truer. But it is the only external check available,
+and it does not favour the pastoral-year total. Detrending costs little here (+0.626 to +0.586), so
+**the external evidence is compatible with detrending and mildly against switching `min` to `sum`.**
+
+All five quintile gradients are monotone driest-to-wettest, so every variant carries real per-cell
+signal. The absolute level differs because the detrended and `sum` scores are centred differently;
+the gradient span is what matters, and V1's (0.535 z) is the widest.
+
+#### Housekeeping
+
+`$FR` intact. The four variant dirs (nine rasters each) and
+`seasonal/variant_compare_2006-2025.csv` are kept. V1's `seasonal/2006-2025/` and the 30 DIAGNOSTIC
+bundles are untouched, mtimes verified. The 19 WRSI rasters were downloaded to a temporary
+directory on the bulk data root (176 KB) and **deleted** after G3; nothing else was written outside
+`$FR`. Logs (gitignored): `logs/obs_fpar_var_{sum,annual12,min-detrend,sum-detrend}_<stamp>.log`
+with their `.pid` files.
+
+---
+
 ### MACBOOK 2026-11-02 — S6 sensitivity variants on your FPAR (V2-decision evidence): G0-G3. Small profile is fine.
 
 **Why.** Three rangeland design calls are open: (a) the yearly dry score: V1 `min(z1, z2)` vs the pastoral-year total
