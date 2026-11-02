@@ -2,6 +2,135 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-02 (5) — (b) the basis IS pre-#52 (`number`), and the env var clears it 74 → 0; (c) **all 16 VoP rows are soil-hole rows**: one bundle-NA cell per admin2 unit, four units in total, arithmetic closes exactly. No defect found. Read-only, nothing written outside `logs/`.
+
+Both answers are measurements on the J6 tree, stamp `20261102_062845`. Probe scripts kept at `logs/{b_total,b_verify,b_split,c1b_all8,c2a_vars,c2b,c3_pot}.R`.
+
+#### (b) `total-*` — the basis is pre-#52. Answer: `number`.
+
+`{NWD}/Data/exposure/exposure_adm_sum_spam20-20_glw420-20_res-25.parquet`, mtime **2026-10-21 17:00**, i.e. two days
+before #52 landed (2026-10-23):
+
+| crop | exposure | unit | rows |
+|---|---|---|---|
+| `total-highland` | `number` | `number` | 5,097 |
+| `total-tropical` | `number` | `number` | 5,097 |
+
+`exposure == "tlu"` matches **0 rows** in the file; the only values present are `vop`, `harv-area`, `phys-area`,
+`prod`, `number`. So it is the pre-#52 file, exactly as you predicted, and the `head_n` basis still contains the two
+TLU aggregates.
+
+**No post-#52 basis exists on the node** — nothing under `{NWD}/Data/exposure/` is newer than 2026-10-21. So the
+remedy is the env var, not a different file.
+
+**Verified**, `tier_vs_exposure` called directly, `baseline = scenarios = "observed"`, all three `head_n` tiers:
+
+| `no_product_crops` | material | breach | **missing_product** | unmodelled | G6b gate 3 |
+|---|---|---|---|---|---|
+| default nine | 357 | 111 / 111 / 113 | **74** | 0 | `74 pair(s)` **FAIL** |
+| nine + `total-tropical,total-highland` | 357 | 111 / 111 / 113 | **0** | 104 | `0 pair(s)` **PASS** |
+
+Identical on severe, moderate and extreme. The 74 rows are **only** `total-*` — `total-tropical` 51 countries
+(317.0 M head), `total-highland` 23 countries (58.3 M head), and **no other crop** is in that bucket. Gate 3 goes
+clean; the 104 rows move into `unmodelled`, which is reported and not gated.
+
+**Correction to my (4) block: the count is 74, not 72** (51 + 23, not 50 + 22). My earlier figure came off the cause
+CSV rather than the gate, and undercounted by two.
+
+So: run `head_n` with
+`G6B_NO_PRODUCT_CROPS="vegetables,tropical-fruit,rest-of-crops,other-roots,temperate-fruit,other-cereals,other-pulses,other-oil-crops,other-fibre-crops,total-tropical,total-highland"`
+until the exposure twin is re-baked post-#52. Gate 1 (`material pairs within tol`) still fails on its own account —
+that is the soil hole, item (d), not this.
+
+#### (c) the 16 VoP rows — **soil-hole, all of them.** Your border-cell lead was right.
+
+**1. On the gate's own admin2 basis, the shortfall is not spread — it sits in one unit per pair.**
+
+All eight pairs, E and T per admin2 unit (vop_usd, moderate; T is any+none, max over `hazard_vars`):
+
+| pair | E | T | ratio | units with E>0 | units short |
+|---|---|---|---|---|---|
+| SLE banana | 3,274,343 | 504,419 | 0.1541 | 5 | **1** |
+| SLE potato | 421,187 | 0 | 0.0000 | 1 | **1** |
+| SLE yams | 1,241,358 | 891,092 | 0.7178 | 5 | **1** |
+| SLE cotton | 51,928 | 38,023 | 0.7322 | 5 | **1** |
+| SOM plantain | 8,184 | 25 | 0.0031 | 1 | **1** |
+| SOM cowpea | 25,612 | 13,821 | 0.5396 | 2 | **1** |
+| UGA lentil | 3,963 | 3,767 | 0.9505 | 6 | **1** |
+| MOZ robusta-coffee | 47,272 | 45,609 | 0.9648 | 4 | **1** |
+
+Every other unit reproduces its exposure at **1.0000 exactly**. The eight pairs reduce to **four admin2 units**:
+
+| iso3 | admin2 | gaul2 | pairs | shortfall |
+|---|---|---|---|---|
+| SLE | **Kambia** | 105522 | 4 | 3,555,282 |
+| SOM | **Badhaadhe** | 105570 | 2 | 19,950 |
+| MOZ | **Lago** | 104396 | 1 | 1,663 |
+| UGA | **Namayingo** | 106299 | 1 | 196 |
+
+All four are edge units: Kambia on the Great Scarcies estuary at the Guinea border, Badhaadhe on the coast at the
+Kenya border, Lago on the Lake Niassa shore, Namayingo on the Lake Victoria shore. That is why my admin0 raster mask
+assigned their cells elsewhere and reported BNA = 0.
+
+**2. It is not VoP-specific — it is unit-wide. `min_exposure` is why only VoP surfaced.**
+
+Same units, same crops, all three physical variables:
+
+| unit | crop | ha | prod_t | vop_usd |
+|---|---|---|---|---|
+| Kambia | banana | 0.1271 | 0.0659 | 0.0716 |
+| Kambia | potato | 0.0000 | 0.0000 | 0.0000 |
+| Kambia | yams | 0.5868 | 0.5569 | 0.5564 |
+| Kambia | cotton | 0.1711 | 0.1938 | 0.1927 |
+| Badhaadhe | plantain | 0.0000 | 0.0000 | 0.0031 |
+| Badhaadhe | cowpea | 0.0000 | 0.0000 | 0.0002 |
+| Lago | robusta-coffee | 0.8658 | 0.8824 | 0.8777 |
+| Namayingo | lentil | 0.0000 | 0.0000 | 0.0798 |
+
+`ha` and `prod_t` are short by the same proportion. They never reached G6b's `material` bucket because in these units
+their exposure is below `min_exposure = 1e3` (hectares and tonnes), while the same cells in dollars clear it. **The
+"VoP-specific" shape was an artefact of the materiality threshold, not of the VoP route.**
+
+**3. On the raster, every pair's loss is one single cell, and that cell is soil-NA.**
+
+Per unit: admin2 rasterised with `touches = TRUE` on the res-25 grid; VoP res-25 exposure; the obs bundle
+`<crop>_chirps-chirts-agera5_moderate_NDWS+NTx35+NDWL0_int.tif`; `annual12/NDWS_mean.tif` and `NTx35_mean.tif`.
+
+| unit | crop | cells | VoP cells | **VoP on bundle-NA** | value there | = admin2 shortfall? | NTx ok & NDWS NA | NTx NA |
+|---|---|---|---|---|---|---|---|---|
+| Kambia | banana | 14 | 6 | **1** | 2,769,924 | **yes** | 1 | 0 |
+| Kambia | potato | 14 | 2 | **1** | 421,187 | **yes** | 1 | 0 |
+| Kambia | yams | 14 | 6 | **1** | 350,266 | **yes** | 1 | 0 |
+| Kambia | cotton | 14 | 4 | **1** | 13,905 | **yes** | 1 | 0 |
+| Badhaadhe | plantain | 26 | 4 | **1** | 8,159 | **yes** | 1 | 0 |
+| Badhaadhe | cowpea | 26 | 4 | **1** | 11,791 | **yes** | 1 | 0 |
+| Lago | robusta coffee | 19 | 3 | **1** | 1,663 | **yes** | 1 | 0 |
+| Namayingo | lentil | 6 | 2 | **1** | 196 | **yes** | 1 | 0 |
+
+Every row closes exactly: the VoP carried on the single bundle-NA cell **equals** E − T from the admin2 table, to the
+dollar. On that cell `NTx35_mean` is present and `NDWS_mean` is NA — the climate is there, the water balance is not.
+`bNA_ntx_NA = 0` everywhere, so none of this is the outside-obs-mask class.
+
+Your second sub-question, VoP cells with no `prod_t`: 0 for Kambia and Lago, 2 each for Badhaadhe and Namayingo, and
+none of those is the lost cell. Footprint differences are not the cause.
+
+**4. SLE potato and the `ggcmi-pot` short-window lead — ruled out.**
+
+Window length on every Kambia cell, from `pot_rf_ggcmi_crop_calendar_phase3_v1.01.nc4`: **5 months** on thirteen of
+the fourteen, 9 on the other. **No cell under 3 months.** The lost cell has a 5-month window, `NDWS_mean` NA in both
+`ggcmi-pot` and `annual12`, and `NTx35_mean` present. The 312 `< 3 months` cells that window reports are elsewhere.
+
+#### What this means
+
+The 16 VoP rows are **not a defect and not a separate class** — they are soil-hole rows that my admin0 method
+misclassified, exactly as you suspected. The honest total for item (d) is therefore **1,338 + 16 = 1,354 soil-hole
+pairs**, 49 outside-obs-mask, and 74 `total-*` no-product rows cleared by the env var. There is nothing here that a
+soil fill would not also fix.
+
+Nothing running. Nothing written outside `logs/`. K3 still held.
+
+---
+
 ### MACBOOK 2026-11-02 (4) — Pete's decisions: fill the soil gap for the observed tree (#56), islands documented (#57); rerun from S2 water balance; order after the VoP probe and issue54
 
 **Decisions (Pete, 2026-11-02).** (1) The 1,338 soil-hole pairs: **fill the observed tree's soil layers**. New
