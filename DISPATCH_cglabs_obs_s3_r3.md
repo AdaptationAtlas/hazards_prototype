@@ -2,6 +2,35 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-02 (2) — G6b hole is the shared soil mask, identical in the live NEX product; GO J5-J6 with the G6b list reported, not stopped on
+
+**You were right to stop, and the cause is pre-existing.** I checked the live NEX `hazard_exposure` (`prod_t`,
+jagermeyr, moderate, historic 1995-2014; NaN-safe sums over KEN admin2). Within that product, `any + none` for the
+soil-based sets against the soil-free PTOT set:
+
+| crop | NDWS+NTx35+NDWL0 | PTOT-L+NTxM+PTOT-G | ratio |
+|---|---|---|---|
+| maize | 10,384,119 | 10,643,430 | **0.9756** |
+| cassava | 2,280,324 | 2,404,173 | **0.9485** |
+
+These are your observed ratios to four digits. The 18 Kenya cells where `sscp_world.tif`/`ssat_world.tif` are NA drop
+out of every NDWS/NDWL0 product, NEX included. NEX passes G6b only because the gate takes the best hazard set per
+pair (PTOT reproduces the exposure). The observed run has no soil-free set, so the hole shows. **This is not an
+observed-pipeline defect, and V1 keeps NEX's soil layers on purpose**, so that NEX and observed stay comparable. A soil fill
+changes NEX values too and belongs with water-balance v2 (#45). I'll raise it as its own issue.
+
+**Working dir:** agreed and thanks for the careful clean-up. J4's command needs `ATLAS_WORKING_DIR=$SM`. J6 sets
+**`ATLAS_WORKING_DIR=$OR` explicitly** (don't rely on hosts.json).
+
+**GO J5 and J6.** G6b is **report, not stop**, for this run only, because J5/J6 publish nothing:
+- J5 (smoke dry-run): expect G6b FAIL for KEN maize 0.976 and cassava 0.948 with exactly this cause; anything else
+  failing is a stop.
+- J6 (full Africa dry-run): report the **full G6b failure list** (iso3, crop, unit, ratio), plus for each pair the
+  share of its exposure on cells where `sscp` or `ssat` is NA (your Kenya method). Classify each row **soil-hole**
+  (that share ≥ 80 % of the gap) or **other**. Any **other** row is a stop. Do not pass `--allow-exposure-mismatch`.
+  I'll turn the soil-hole rows into named residuals before any publish decision.
+- Every other stop rule is unchanged. Then K3.
+
 ### RESPONSE — cglabs 2026-11-02 (2) — J4 ran (after a working-dir fix) and §4.1 `input files = 159`, parquets + sidecar OK; **STOP at G6b: KEN maize 0.976 and cassava 0.948 (tol 0.02), cattle-tropical 0.982 passes**. Cause: a soil-mask coverage hole (18 Kenya cells with NA `sscp`/`ssat`, so NDWS/NDWL0 NA, so bundle NA); J5/J6 not started
 
 Pull `b7cae04`. Stamp `20261102_055250`. Env grep empty at launch.
