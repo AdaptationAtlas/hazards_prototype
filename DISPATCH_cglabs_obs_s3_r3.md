@@ -2,6 +2,72 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-02 (2) — J4 ran (after a working-dir fix) and §4.1 `input files = 159`, parquets + sidecar OK; **STOP at G6b: KEN maize 0.976 and cassava 0.948 (tol 0.02), cattle-tropical 0.982 passes**. Cause: a soil-mask coverage hole (18 Kenya cells with NA `sscp`/`ssat`, so NDWS/NDWL0 NA, so bundle NA); J5/J6 not started
+
+Pull `b7cae04`. Stamp `20261102_055250`. Env grep empty at launch.
+
+**J4 as written failed at once, on the wrong root.**
+- The first launch, verbatim (`ATLAS_CLIMDAT_SOURCE=obs R3_MODEL_ALLOW=… R3_TIMEFRAMES=ggcmi-crop EXPOSURE_RES=0.25`), died with:
+  `Error: IOError: Cannot list directory 'Data/boundaries/atlas_gaul24_a0_africa.parquet'`.
+- `metadata/hosts.json` resolves the obs `working_dir` to **`{common_data}/atlas_obs_hazards` (the full root)**, not
+  `$SM`. Setup therefore ran in `$OR` and created ~30 empty `Data/<subdir>` folders there, including real (non-link)
+  `Data/mapspam`, `Data/GLW4_2020` and `Data/boundaries`.
+- Those three would have made J6's `s1_ingest.py link` skip its symlinks (`already present`). I removed only the
+  dirs created by that launch, and only empty ones (0 files): `find $OR/Data -newer <pid> -type d -empty -delete`.
+  `$OR/Data` holds only `obs_fpar` again.
+- Relaunched with the resolver's documented override `ATLAS_WORKING_DIR=$SM` added. Everything else is as written.
+  **J6 needs the same `ATLAS_WORKING_DIR=$OR`** (or rely on hosts.json there), and the J4 text should carry
+  `ATLAS_WORKING_DIR=$SM`.
+
+**J4 run** (`logs/obs_s3_r3_smoke_<stamp>.log`, 05:52 → 06:04, `3_freq_x_exposure.R COMPLETE`):
+- §4.1 `input files = 159` ✓.
+- 5 variables × 159. The skips are the expected crop/livestock split: `harv-area_ha` / `prod_t`: 60 livestock files
+  skipped. `head_n`: 99 crop files skipped.
+- Parquets under `$SM/Data/hazard_risk_{vop,vop_usd,ha,prod,n}/ggcmi-crop/`:
+
+  | folder | parquets | tokens |
+  |---|---|---|
+  | vop | 6 | both |
+  | vop_usd | 6 | both |
+  | n | 6 | both |
+  | ha | 3 | `chirps-chirts-agera5` only (crops carry no `-rh15` bundle) |
+  | prod | 3 | `chirps-chirts-agera5` only |
+
+  File names are `haz-freq-exp_<var>_<token>_int_adm_<sev>.parquet`. Columns include `scenario = observed`,
+  `timeframe = 2014-2016`, `model = <token>`, `hazard_vars ∈ {NDWS+NTx35+NDWL0, NDWS+THI-max+NDWL0}`.
+- Sidecar `.parquet.json`: `ensemble.n_members = [0]`; `ensemble.provenance.source_tokens` = both tokens, with
+  inputs/period/seasons/severity/caveats text.
+
+**G6b (Kenya)** on the gate's own basis (`r3_tier_drift_vs_live.R` `tier_vs_exposure`: admin2 rows summed per iso3,
+`tech == all`). Exposure: SPAM `spam_prod_t_all_res-25_adm_sum.parquet` for crops; GLW4
+`livestock_number_number_res-25_adm_sum.parquet` × `head_n` for cattle (no prod_t for livestock).
+
+| crop | severity | Σ7 classes − any | any + none | exposure | ratio |
+|---|---|---|---|---|---|
+| maize | mod / sev / ext | +8 / −3 / −2 | 3,461,2xx | 3,547,721 | **0.9756** |
+| cassava | mod / sev / ext | +4 / −1 / −3 | 760,1xx | 801,382 | **0.9485** |
+| cattle-tropical (`head_n`), both tokens | all | ±9 | 13,108,2xx | 13,342,814 | 0.9824 |
+
+- The 7 classes sum to `any` exactly up to integer rounding in every case ✓. `any + none` is constant across severities ✓.
+- The `any + none` = exposure identity holds for cattle within 2%. It **fails for maize and cassava**.
+
+**Cause: a hazard-coverage hole, not the multiply.**
+- On the 0.25° grid, maize exposure on Kenya cells where the maize bundle is NA is 113,266 t (3.05%, 18 cells).
+  Cassava: 51,290 t (5.91%, 15 cells).
+- At those 18 cells all climate inputs are present (pr, tasmax, tasmin, rsds, hurs, NTx35: 0 NA). **`sscp_world.tif`
+  and `ssat_world.tif` are NA at all 18**, so NDWS and NDWL0 are NA and the bundle is NA.
+- Largest cells: 35.625 E 0.625 N (53.7 kt maize, inland: Kerio valley / Lake Baringo margin), 33.875 E 0.125 N (Lake
+  Victoria shore), 40.875 E −2.375 N and 39.875 E −3.6/−3.9 N (coast).
+- The soil layers are the shared NEX inputs (linked from `{common_data}/atlas_hazards/soils`), so the NEX product
+  probably carries the same hole. I did not check NEX G6b for KEN maize/cassava.
+- Options for macbook:
+  - a named G6b residual, the `metadata/g6b_expected_residuals.csv` mechanism (TZA coconut precedent);
+  - a soil-mask fill, e.g. nearest-neighbour `sscp`/`ssat` onto land cells that have exposure;
+  - or accept the hole as documented coverage.
+- Not decided here.
+
+**J5, J6 not started** (stop rule: G6b failing on the smoke for a test crop). K3 waits for J6.
+
 ### MACBOOK 2026-11-02 — 159 is correct (162 was my miscount); GO J4-J6; K3 after J6
 
 **159 is right; 162 was my miscount.** I counted `generic-crop` as a 34th crop. The obs pipeline deliberately has no
