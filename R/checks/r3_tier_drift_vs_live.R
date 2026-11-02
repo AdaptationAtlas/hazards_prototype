@@ -179,8 +179,16 @@ tier_vs_exposure <- function(local_f, exposure_f, exposure_var,
   if (!is.null(allow) && nrow(allow)) {
     stopifnot(all(c("iso3", "crop", "reason") %in% names(allow)))
     .brk <- mat[abs(ratio - 1) > tol_pair]
-    allowed <- merge(.brk, allow[, .(iso3, crop, reason)], by = c("iso3", "crop"))
+    # crop "*" = a whole-country coverage exclusion (e.g. islands outside a source's climate domain): it excuses
+    # every breaching pair of that iso3 AND its exposure pairs with no product row; a named crop excuses only itself
+    allowed <- rbind(merge(.brk, allow[crop != "*", .(iso3, crop, reason)], by = c("iso3", "crop")),
+                     merge(.brk, allow[crop == "*", .(iso3, reason)], by = "iso3"))
     if (nrow(allowed)) mat <- mat[!allowed, on = c("iso3", "crop")]
+    .wc <- allow[crop == "*"]
+    if (nrow(.wc)) {
+      .np <- merge(unmatched_no_prod, .wc[, .(iso3, reason)], by = "iso3")
+      if (nrow(.np)) { unmatched_no_prod <- unmatched_no_prod[!iso3 %in% .wc$iso3]; allowed <- rbind(allowed, .np, fill = TRUE) }
+    }
   }
   worst <- if (nrow(mat)) mat[which.max(abs(ratio - 1))] else mat
   gates <- data.table::data.table(

@@ -421,6 +421,9 @@ if (DO_TIERS) for (vkey in VARIABLES) {
       # that breaches is reported as ALLOWED with its reason; an unlisted breach still fails.
       .g6b_allow_f <- file.path(if (exists("project_dir")) project_dir else ".", "metadata", "g6b_expected_residuals.csv")
       .g6b_allow <- if (file.exists(.g6b_allow_f)) data.table::fread(.g6b_allow_f) else NULL
+      # optional `source` column: a row applies to that --source only ("*" or empty = every source)
+      if (!is.null(.g6b_allow) && "source" %in% names(.g6b_allow))
+        .g6b_allow <- .g6b_allow[is.na(source) | source %in% c("", "*", SOURCE)]
       if (!is.null(.g6b_allow) && nrow(.g6b_allow)) .log("  G6b named residuals loaded: %s", paste(.g6b_allow[, paste0(iso3, ":", crop)], collapse = ", "))
       .g6b_min <- as.numeric(opt("--exposure-min", spec$g6b_min))   # unit-aware floor; CLI overrides the spec
       .log("  G6b materiality floor for %s: %s (in the tier's unit)", vkey, format(.g6b_min, big.mark = ","))

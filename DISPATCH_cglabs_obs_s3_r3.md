@@ -2,6 +2,60 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-02 (4) — Pete's decisions: fill the soil gap for the observed tree (#56), islands documented (#57); rerun from S2 water balance; order after the VoP probe and issue54
+
+**Decisions (Pete, 2026-11-02).** (1) The 1,338 soil-hole pairs: **fill the observed tree's soil layers**. New
+`python/obs/soil_fill.py`: GDAL FillNodata, inverse-distance from the nearest valid soil, ≤ 0.5°. NEX soils are
+read-only and untouched; the investigation of better sources is #56. (2) MUS, CPV, SYC: **documented as outside V1
+coverage**. `metadata/g6b_expected_residuals.csv` now has whole-country rows (`crop = "*"`, `source =
+chirps-chirts-agera5`), and the gate (`tier_vs_exposure`) accepts them; the bbox extension is #57. Publish-gate
+fixture 48/48; soil-fill selftest 9/9.
+
+**Order on this node:** (1) the read-only VoP probe and `total-*` basis check (block (3) below); (2)
+`DISPATCH_cglabs_issue54_intld_placeholders.md` A + B, which rebuilds the exposure basis the dry-run reads (post-#52
+`tlu` slot); (3) this block.
+
+#### L0 — selftests
+```bash
+cd $REPO && git pull --ff-only && git log -1 --format='%h %s'
+$PY python/obs/soil_fill.py selftest                      # ALL SOIL-FILL SELFTEST ASSERTIONS PASSED (9)
+Rscript R/checks/fixture_publish_tier_gates.R | tail -1   # ALL PUBLISH-GATE FIXTURE ASSERTIONS PASSED (48)
+```
+
+#### L1 — fill (replaces the `$OR/atlas_hazards/soils` symlink with filled copies; the shared soils stay read-only)
+```bash
+$PY python/obs/soil_fill.py fill --src-dir {common_data}/atlas_hazards/soils --out-root $OR \
+    --check-pr $OR/nex-gddp-cmip6/historical/chirps-chirts-agera5/pr/pr_2015-06-15.tif > logs/obs_soilfill_$STAMP.log 2>&1
+```
+(Use the real `pr` daily path on this tree if it differs.) Report each layer's line: native resolution, filled
+cells, still-NA, filled range against the source range. Also report the `--check-pr` before/after counts of obs
+land cells without soil. **Expect "after" to be a small fraction of "before"; if more than ~10 % of "before"
+remains, stop:** that means 0.5° is too short or the holes are not edge cells. The shared `{common_data}` soils' md5
+must be unchanged (state it).
+
+#### L2 — rerun what reads the soils, nothing else
+```bash
+cd $REPO/hazards_upstream/R/04_indices
+export COMMON_DATA=$OR SCENARIO=historical YRS=2005:2025 DAYS_CHECK=strict AVAIL_SEED_MONTHS=2005-01 FORCE_OVERWRITE=1
+GCMS=chirps-chirts-agera5 nohup Rscript fast_calc_NDWS.R  > $REPO/logs/obs_s3_full_s2_ndws_fill_$STAMP.log 2>&1 &  echo $! > ...pid
+GCMS=chirps-chirts-agera5 nohup Rscript fast_calc_NDWL0.R > $REPO/logs/obs_s3_full_s2_ndwl0_fill_$STAMP.log 2>&1 & echo $! > ...pid
+unset COMMON_DATA SCENARIO YRS DAYS_CHECK AVAIL_SEED_MONTHS FORCE_OVERWRITE
+```
+**Not** NTx or THI (they don't read soils). Same invariants as J6 S2 (252 files each, 0 WARN). Then S3-S5, both
+commands as in J6 with `--overwrite` (the crop bundles and the livestock `NDWL0` wet slot change), then R/3 with
+`FORCE_OVERWRITE=1 ATLAS_WORKING_DIR=$OR` as in J6, then the publisher dry-run with the exposure gate as in J6.
+
+#### L3 — report
+- §4.1 `input files = 159`; R/3 COMPLETE.
+- G6b per tier `material / breach / missing_product / allowed`, and the breach list classified as in J6:
+  soil-hole / outside-obs-mask / other.
+- **Expect:** soil-hole breaches mostly gone; MUS/CPV/SYC shown as ALLOWED; `total-*` gone if issue54 B ran.
+  The 16 VoP rows are whatever the probe found. **Stop on any "other" row** not explained by the probe.
+- KEN maize / cassava ratios, which were 0.976 / 0.948 before the fill.
+
+K3 (rangeland S6, `DISPATCH_cglabs_obs_fpar.md`) runs **after** L3 is clean: S6 reads the NDWL0 annual12 stack
+this rerun rewrites.
+
 ### MACBOOK 2026-11-02 (3) — G1 fixed (per-source floor); total-* is the basis vintage; the 16 VoP rows need one read-only investigation; soil/island decision pending Pete; K3 still held
 
 Excellent run: full Africa to R/3 with no pipeline fault, and a classification that made each failure tractable.

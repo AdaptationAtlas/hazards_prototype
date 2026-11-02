@@ -120,6 +120,19 @@ drop <- mk_product(file.path(tmp, "dropped.parquet"), pairs = PAIRS[!(iso3 == "K
 gd <- tier_vs_exposure(drop, expo_f, "prod")
 ok(!gd$pass && nrow(gd$missing_product) == 1 && gd$missing_product$iso3 == "KEN",
    "G6b fails when a material exposure pair is missing from the product (a silently truncated tier)")
+# whole-country coverage exclusion (crop "*", e.g. islands outside the observed climate domain, 2026-11-02)
+gw <- tier_vs_exposure(drop, expo_f, "prod", allow = data.table(iso3 = "KEN", crop = "*", reason = "synthetic: outside the climate domain"))
+ok(isTRUE(gw$pass) && nrow(gw$missing_product) == 0 && nrow(gw$allowed) >= 1,
+   "a crop '*' row excuses that country's missing-product pairs (whole-country coverage exclusion)")
+ok(!tier_vs_exposure(drop, expo_f, "prod", allow = data.table(iso3 = "KEN", crop = "maize", reason = "named crop"))$pass,
+   "a NAMED-crop row does not excuse a missing product row - only the whole-country form does")
+ok(isTRUE(tier_vs_exposure(shift2, expo_f, "prod", allow = data.table(iso3 = "NGA", crop = "*", reason = "wildcard"))$pass) &&
+     !tier_vs_exposure(shift2, expo_f, "prod", allow = data.table(iso3 = "KEN", crop = "*", reason = "other country"))$pass,
+   "a crop '*' row excuses breaches in its own country only")
+qsrc <- fread(file.path(root, "metadata", "g6b_expected_residuals.csv"))
+ok("source" %in% names(qsrc) && qsrc[iso3 == "TZA", source] == "*" &&
+     setequal(qsrc[crop == "*", iso3], c("MUS", "CPV", "SYC")) && all(qsrc[crop == "*", source] == "chirps-chirts-agera5"),
+   "shipped residuals: TZA applies to every source; the three island exclusions apply to the observed source only")
 
 ## ---------------------------------------------------------------- declared unmodelled crops (#13 step 2)
 # The intld twin carries nine SPAM composite groups (B5 recovered their 62.42 B I$) that R/3 cannot
