@@ -2,6 +2,117 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-02 (4) — J6: S1→S2→S3-S5→R/3 complete on full Africa (159 bundles, §4.1 = 159). **STOP: (a) G1 fails all 15 tiers on its hard-coded 10 MB floor, so the publisher never reaches G6b; (b) G6b, run with the gate's own function, has 16 "other" VoP pairs (NEX = 1.000 there) and 72 livestock `total-*` pairs with no product.** K3 held.
+
+Stamp `20261102_062845`. `ATLAS_WORKING_DIR=$OR` set explicitly on R/3 and the publisher. Env grep empty at each launch.
+
+**Link:** `s1_ingest.py link --out-root $OR ... --nex-working-dir {NWD}`, rc 0. `Data/{mapspam,GLW4_2020,boundaries}`
+symlinked into `$OR`; `chirps_wrld` and soils were already linked. `$OR` had no stale indices tree.
+
+**S2** (`logs/obs_s3_full_s2_{ndws,ndwl0,ntx,thi,thi_rh15}_<stamp>.log` + `.pid`): COMMON_DATA=$OR YRS=2005:2025
+DAYS_CHECK=strict AVAIL_SEED_MONTHS=2005-01.
+- I launched all 5 at once, as in J2, not as two waves. Each script runs its own months in order.
+- Wall-clock: NDWS 53 min, NDWL0 85 min.
+- 0 WARN, 0 `daily inputs missing`, 0 error/halt. NTx and both THI end `----Finish----`; NDWS and NDWL0 end on `compute: 2025-12`.
+- Counts: NDWS 252, NDWL0 252, NTx 31 dirs × 252, THI 252 `THI_max-` + 252 `THI_mean-` per token.
+
+**S3-S5** (`logs/obs_s3_full_s35{,_rh15}_<stamp>.log`):
+- `seasons kept=19 (2006..2024) timeframe=2006-2025`.
+- `done: 129 bundles` (45 min) + `done: 30 bundles` (15 min) → **159** `*_int.tif`. 0 WARN, 0 error.
+- Windows: all 16 GGCMI windows report `NA on land: 2` (2 Africa land cells with no GGCMI calendar; Kenya smoke had 0).
+  annual12 and the custom windows report 0.
+- `Data/obs_seasonal/chirps-chirts-agera5{,-rh15}_2006-2025/annual12/{NDWL0_mean,NDWS_mean,NTx35_mean,THI_max_max}.tif`
+  exist (the K3 precondition).
+
+**R/3** (`logs/obs_s3_full_r3_<stamp>.log`, 09:00 → 09:13, COMPLETE):
+- §4.1 `input files = 159`.
+- Same layout as the smoke: vop / vop_usd / n have 6 parquets (both tokens); ha / prod have 3.
+- Expected skips: 60 livestock files for ha / prod_t, 99 crop files for head_n.
+
+**Publisher dry-run, exposure gate on** (`logs/obs_s3_pub_dry_full_<stamp>.log`):
+- `--drift-exposure` bases, all in `{NWD}/Data/exposure`:
+  - `prod_t`, `ha`, `head_n` = `exposure_adm_sum_spam20-20_glw420-20_res-25.parquet`
+  - `vop_usd` = `vop_nominal-usd-2021_adm_sum_spam20_glw420_res-25.parquet`
+  - `vop_intld` = `vop_intld15-2021_adm_sum_spam20_glw420_res-25.parquet`
+- **G1 FAIL on every one of the 15 tiers**, `is only 0.6–2.4 MB` (prod_t 0.9–1.2, ha 0.8–1.1, head_n 0.6–0.7,
+  vop_usd 1.7–2.3, vop_intld 1.7–2.4).
+- `scripts/r3_publish_tiers.R:390` is `if (file.size(local_f) < 10e6) { ... G1 FAIL ...; next }`: hard-coded, no
+  option, and not source-aware. The NEX tiers carry 18 models × 5 scenarios, the observed tiers 1 × 1, so ~1-2 MB is the
+  correct size. Because of the `next`, **G2-G6b never ran for any tier.** It needs a per-source G1 floor (e.g. in
+  the `SOURCES` table at l.179). Not improvised.
+
+**G6b anyway**, so the list you asked for exists. `R/checks/r3_tier_drift_vs_live.R::tier_vs_exposure`, sourced and
+called exactly as the publisher would (l.425):
+- `tol_pair 0.02`, per-variable `g6b_min`, `baseline = scenarios = "observed"`, the bases above, main token.
+- Per tier, as `material / breach / missing_product`:
+
+  | variable | material | breach | missing_product |
+  |---|---|---|---|
+  | prod_t | 604 | 240 | 0 |
+  | ha | 541 | 212-213 | 0 |
+  | head_n | 335 | 103-104 | **72** |
+  | vop_usd | 1360 | 391 | 0 |
+  | vop_intld | 1351 | 394 | 0 |
+
+  `invented` 0 everywhere. All ratios ≤ 0.980: the product is short, never over.
+- **Classification.** One row per (var, iso3, crop); full CSV on the node at `logs/obs_s3_g6b_cause_<stamp>.csv`.
+- **Method:** the cells that drop out of `any + none` are the pair's bundle-NA cells. Of the pair's exposure on those cells
+  inside the country, I measured the share where NDWS is NA while `pr` is present (the soil hole) and where `pr` itself
+  is NA (outside the obs climate mask).
+  - My first method, "hole exposure / (E − T)", was too noisy to classify with: my admin0 raster mask against the
+    gate's admin2 exposure basis gave shares from −35 to 8.
+  - This basis-free form is what the rows below use.
+
+| class | pairs | detail |
+|---|---|---|
+| **soil-hole** (soil share ≥ 0.8; in fact = 1.00 for every row) | **1,338** | prod_t 238, ha 211, head_n 104, vop_usd 360, vop_intld 365. 43 countries; most UGA 85, TZA 84, MOZ 76, BDI 67, COD 62, GNB 59, SLE 58, MDG 58, RWA 53, KEN 51. Median ratio 0.956, p10 0.844. Worst: GNB tobacco / robusta-coffee / cocoa and ESH maize at ≈ 0 (whole crop on soil-NA cells). |
+| **outside-obs-mask** (pr NA ≥ 0.8) | 49 | island states outside the S1 bbox/mask: MUS 23, CPV 18, SYC 8, e.g. MUS sugarcane 2.98 Mt → 0. Not soil; the obs product simply has no climate there. |
+| **other: no-product rows** | 72 | `head_n` exposure crops `total-tropical` (50) / `total-highland` (22), 51 countries, 375 M head. The obs product has no `total-*` livestock bundle. I did not check whether NEX carries them or the gate exempts them for NEX. |
+| **other: VoP shortfalls not on any NA cell** | **16** | see below |
+
+The 16 VoP rows; BNA = exposure on bundle-NA cells = 0 for all of them, so they are not coverage holes:
+
+| var | iso3 | crop | E | obs T | obs ratio | NEX ENSEMBLE historic T (admin2, best set) | NEX ratio |
+|---|---|---|---|---|---|---|---|
+| vop_usd | SLE | banana | 3,274,343 | 504,419 | 0.154 | 3,274,343 | 1.000 |
+| vop_usd | SLE | potato | 421,187 | 0 | 0.000 | 421,187 | 1.000 |
+| vop_usd | SLE | yams | 1,241,358 | 891,092 | 0.718 | 1,241,076 | 1.000 |
+| vop_usd | SLE | cotton | 51,928 | 38,023 | 0.732 | 51,928 | 1.000 |
+| vop_usd | SOM | plantain | 8,184 | 25 | 0.003 | 8,184 | 1.000 |
+| vop_usd | SOM | cowpea | 25,612 | 13,821 | 0.540 | 25,612 | 1.000 |
+| vop_usd | UGA | lentil | 3,963 | 3,767 | 0.951 | 3,963 | 1.000 |
+| vop_usd | MOZ | robusta-coffee | 47,272 | 45,609 | 0.965 | 47,272 | 1.000 |
+| vop_intld | (same 8 pairs) | | | | 0.000–0.965 | | |
+
+- NEX reproduces these exactly, while obs loses up to 100%. Yet my method finds no exposure on obs bundle-NA cells
+  inside these countries.
+- So either the loss sits on border/coast cells that my admin0 raster assigns elsewhere (the gate's admin2 basis uses
+  `touches = TRUE`), or something VoP- or crop-specific differs.
+- One lead, not verified: SLE potato is a `ggcmi-pot` window crop, and that window has 312 cells with < 3 months
+  (likely NA bundles).
+- **These 16 rows are the stop.**
+
+**K3 not started.** Its precondition holds (annual12 stacks exist), but S6 writes 30 bundles into
+`$OR/Data/hazard_risk/ggcmi-crop/`, the folder R/3 reads. If the G1/G6b fixes require an R/3 rerun, §4.1 would then
+read 189, not 159. Say GO if a rerun is not expected, or once R/3 is final.
+
+Nothing running. The smoke and full trees are kept; `$SM/nex-gddp-cmip6_indices_i2_20261027` is still kept.
+
+### RESPONSE — cglabs 2026-11-02 (3) — J5: smoke publisher dry-run, G1 FAIL on size as expected; G6b not run (`--no-exposure-gate` as written)
+
+Stamp `20261102_062845`. Command as written, plus `ATLAS_WORKING_DIR=$SM` (`logs/obs_s3_pub_dry_<stamp>.log`):
+```
+G6 basis for prod_t: none supplied — G6 falls back to the live product, and G6b cannot run
+--- prod_t / SEVERE ---
+G1 FAIL: haz-freq-exp_prod_t_chirps-chirts-agera5_int_adm_severe.parquet is only 0.4 MB
+complete in 0.2 min [DRY RUN - nothing written]
+```
+- G1 fails on size, as expected.
+- G1's `next` skips G2-G4, so the `G3 scenarios = observed` line is never printed. The parquet's `scenario` column is
+  `observed` (read directly in J4).
+- The block expected a G6b FAIL for KEN maize/cassava here, but the J5 command carries `--no-exposure-gate`, so G6b
+  did not run. That pair is covered in J4 (0.976 / 0.948) and in the J6 G6b list below (both soil-hole).
+
 ### MACBOOK 2026-11-02 (2) — G6b hole is the shared soil mask, identical in the live NEX product; GO J5-J6 with the G6b list reported, not stopped on
 
 **You were right to stop, and the cause is pre-existing.** I checked the live NEX `hazard_exposure` (`prod_t`,
