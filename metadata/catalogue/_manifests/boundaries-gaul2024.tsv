@@ -1,0 +1,4 @@
+src	dest	bytes	etag	md5	role
+s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=analysis-ready/level=adm0/atlas_gaul24_a0_africa.parquet	atlas_gaul24_a0_africa.parquet	28780999	bd74fdb348bcf9dcb1995ff6895b34d3-4		file
+s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=analysis-ready/level=adm1/atlas_gaul24_a1_africa.parquet	atlas_gaul24_a1_africa.parquet	49279069	385f9ea17759744dee8f02e41cef3cd7-10		file
+s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/region=africa/processing=analysis-ready/level=adm2/atlas_gaul24_a2_africa.parquet	atlas_gaul24_a2_africa.parquet	91208309	139d7c5aaf8bc1031005926a51fafe6a-18		file

@@ -1,0 +1,7 @@
+src	dest	bytes	etag	md5	role
+s3://digital-atlas/cattle_heatstress/cattle-mask-2000.asc	cattle-mask-2000.asc	432704	b820ae6f15fe195089e3c8d208dff337	b820ae6f15fe195089e3c8d208dff337	file
+s3://digital-atlas/cattle_heatstress/dmi_and_econ_loss.csv	dmi_and_econ_loss.csv	181280	8af4cff5d1bc05d8990d0eed522a7e19	8af4cff5d1bc05d8990d0eed522a7e19	file
+s3://digital-atlas/cattle_heatstress/heat_impact_full_results.parquet	heat_impact_full_results.parquet	676828	98146bd50d33682ead4d98cbfd350791	98146bd50d33682ead4d98cbfd350791	file
+s3://digital-atlas/cattle_heatstress/heat_impact_simple.parquet	heat_impact_simple.parquet	1230094	0ed7b70a6e17372b83aa9832ef418185	0ed7b70a6e17372b83aa9832ef418185	file
+s3://digital-atlas/cattle_heatstress/PIIS254251962200002X.pdf	PIIS254251962200002X.pdf	3622233	b2dd9b95bba4166aa40da6c5ce10457b	b2dd9b95bba4166aa40da6c5ce10457b	file
+s3://digital-atlas/cattle_heatstress/sandsv5-pnas-30min.asc	sandsv5-pnas-30min.asc	432713	11fe29c3b6efcec587b7ff41e37fcfb2	11fe29c3b6efcec587b7ff41e37fcfb2	file

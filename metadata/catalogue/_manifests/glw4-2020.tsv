@@ -1,0 +1,7 @@
+src	dest	bytes	etag	md5	role
+https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.BFL.tif	Bf_2020_Da.tif	6263918	b2b9ed7f2803145779936ee495713ad3	b2b9ed7f2803145779936ee495713ad3	file
+https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.CHK.tif	Ch_2020_Da.tif	12507723	fd895c55db28340f724fb4b5ef22f2c2	fd895c55db28340f724fb4b5ef22f2c2	file
+https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.CTL.tif	Ct_2020_Da.tif	12667017	7802a83cc72d764fff3815f9106e13c5	7802a83cc72d764fff3815f9106e13c5	file
+https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.GTS.tif	Gt_2020_Da.tif	12071177	7ce8978801b56d40d31397408a2646b6	7ce8978801b56d40d31397408a2646b6	file
+https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.PGS.tif	Pg_2020_Da.tif	11161334	55e99a3ce7f4c6e96f63a3761e35e11a	55e99a3ce7f4c6e96f63a3761e35e11a	file
+https://storage.googleapis.com/fao-gismgr-glw4-2020-data/DATA/GLW4-2020/MAPSET/D-DA/GLW4-2020.D-DA.SHP.tif	Sh_2020_Da.tif	12175665	9472a610d5d816df4a76c8efb80ce058	9472a610d5d816df4a76c8efb80ce058	file

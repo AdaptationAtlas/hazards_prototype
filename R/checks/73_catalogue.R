@@ -137,7 +137,10 @@ if (!is.null(val("--dataset"))) {
   if (!is.null(r$superseded_by)) cat(sprintf("  superseded by %s\n", r$superseded_by))
   cat(sprintf("  origin       %s  %s\n", r$origin$type %||% "-", r$origin$url %||% ""))
   if (!is.null(r$origin$checksum_manifest)) {
-    cat(sprintf("  checksums    %s\n", r$origin$checksum_manifest))
+    m <- r$origin$manifest
+    cat(sprintf("  checksums    %s%s\n", r$origin$checksum_manifest,
+                if (is.null(m)) "" else sprintf("  (%d obj, verify=%s%s, listed %s)", m$objects,
+                                                m$verify, if (isTRUE(m$mutable)) ", mutable" else "", m$listed)))
   }
   cat(sprintf("  transfer     %s - %s\n", r$transfer$strategy, r$transfer$rationale))
   if (!is.null(r$transfer$regenerate_with)) {
@@ -153,7 +156,7 @@ if (!is.null(val("--dataset"))) {
     sprintf("%s%s", r$atlas_s3$prefix, if (isTRUE(r$atlas_s3$complete)) "" else "  [PARTIAL]")))
   if (!is.null(r$atlas_s3$note)) cat(sprintf("               %s\n", r$atlas_s3$note))
   cat(sprintf("  CDH record   %s\n", if (is.null(r$cdh_record)) "none" else
-    sprintf("%s%s", r$cdh_record, if (isTRUE(cdh_exists(r$cdh_record))) "" else "  [FILE MISSING]")))
+    sprintf("%s  [%s]", r$cdh_record, cdh_state(r$cdh_record))))
   if (length(r$gaps)) {
     cat("\n  gaps\n")
     for (g in unlist(r$gaps)) cat(sprintf("    - %s\n", g))

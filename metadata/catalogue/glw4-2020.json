@@ -12,8 +12,15 @@
   "origin": {
     "type": "public-http",
     "url": "https://data.apps.fao.org/catalog//iso/9d1e149b-d63f-4213-978b-317a8eb42d02",
-    "checksum_manifest": null,
-    "license": "CC-BY-4.0"
+    "checksum_manifest": "metadata/catalogue/_manifests/glw4-2020.tsv",
+    "license": "CC-BY-4.0",
+    "manifest": {
+      "objects": 6,
+      "bytes": 66846834,
+      "verify": "hash",
+      "mutable": false,
+      "listed": "2026-11-02"
+    }
   },
   "transfer": {
     "strategy": "pull-from-origin",
@@ -53,6 +60,11 @@
       "date": "2026-09-18",
       "change": "Origin pinned to the FAO data catalogue (GLW4-2020, 10 km, CC-BY-4.0) and an acquire recipe added - this was the last dataset with no way to reproduce it on a new host. All six species endpoints verified reachable (HTTP 200). Verified end to end on the laptop: 6 files fetched through atlas_require(), all parse at 0.0833 deg global extent, the 0.4.1 first-token species mapping resolves with no NA, and cattle sums to 2.0384e7 as documented.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-11-02",
+      "change": "Added checksum manifest: 6 object(s), 66,846,834 bytes, verify=hash. Listed from the origin by R/checks/75_catalogue_manifest.R (headers only); R/00_acquire.R checks every download against it.",
+      "ref": "#58"
     }
   ],
   "schema_version": "1.0.0",

@@ -10,8 +10,15 @@
   "origin": {
     "type": "dataverse",
     "url": "https://dataverse.harvard.edu/api/access/datafile/<id> (8 species ids in 0_server_setup.R section 3.4)",
-    "checksum_manifest": null,
-    "license": null
+    "checksum_manifest": "metadata/catalogue/_manifests/glw4-2015.tsv",
+    "license": null,
+    "manifest": {
+      "objects": 8,
+      "bytes": 71437361,
+      "verify": "hash",
+      "mutable": false,
+      "listed": "2026-11-02"
+    }
   },
   "transfer": {
     "strategy": "pull-from-origin",
@@ -50,6 +57,11 @@
       "date": "2026-09-18",
       "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-11-02",
+      "change": "Added checksum manifest: 8 object(s), 71,437,361 bytes, verify=hash. Listed from the origin by R/checks/75_catalogue_manifest.R (headers only); R/00_acquire.R checks every download against it.",
+      "ref": "#58"
     }
   ],
   "schema_version": "1.0.0",

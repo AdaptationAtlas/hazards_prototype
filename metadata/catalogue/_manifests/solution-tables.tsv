@@ -1,0 +1,4 @@
+src	dest	bytes	etag	md5	role
+s3://digital-atlas/solution_tables/solutions_all_impacts.csv	solutions_all_impacts.csv	5563	c523288ff167af9f060c57bd92b0d8c1	c523288ff167af9f060c57bd92b0d8c1	file
+s3://digital-atlas/solution_tables/solutions_haz_impacts.csv	solutions_haz_impacts.csv	3035	4db5a09a3f5dfbb66c57a4e71eb878ae	4db5a09a3f5dfbb66c57a4e71eb878ae	file
+s3://digital-atlas/solution_tables/solutions_other_impacts.csv	solutions_other_impacts.csv	1556	699cbbc235f348423090fed312089bde	699cbbc235f348423090fed312089bde	file

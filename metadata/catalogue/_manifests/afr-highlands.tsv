@@ -1,0 +1,2 @@
+src	dest	bytes	etag	md5	role
+s3://digital-atlas/afr_highlands/afr-highlands.asc	afr-highlands.asc	387259	10ba9c5bf34a719ba48fd2dc57d17b56	10ba9c5bf34a719ba48fd2dc57d17b56	file

@@ -10,8 +10,15 @@
   "origin": {
     "type": "public-s3",
     "url": "s3://digital-atlas/sos",
-    "checksum_manifest": null,
-    "license": null
+    "checksum_manifest": "metadata/catalogue/_manifests/sos-season-start.tsv",
+    "license": null,
+    "manifest": {
+      "objects": 1,
+      "bytes": 4448277,
+      "verify": "hash",
+      "mutable": false,
+      "listed": "2026-11-02"
+    }
   },
   "transfer": {
     "strategy": "pull-from-origin",
@@ -52,6 +59,11 @@
       "date": "2026-09-18",
       "change": "Record created with its acquisition recipe, transcribed from 0_server_setup.R section 3.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-11-02",
+      "change": "Added checksum manifest: 1 object(s), 4,448,277 bytes, verify=hash. Listed from the origin by R/checks/75_catalogue_manifest.R (headers only); R/00_acquire.R checks every download against it.",
+      "ref": "#58"
     }
   ],
   "schema_version": "1.0.0"

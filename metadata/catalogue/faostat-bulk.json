@@ -10,8 +10,15 @@
   "origin": {
     "type": "public-http",
     "url": "https://bulks-faostat.fao.org/ and https://fenixservices.fao.org/faostat/static/bulkdownloads/",
-    "checksum_manifest": null,
-    "license": "CC-BY-4.0"
+    "checksum_manifest": "metadata/catalogue/_manifests/faostat-bulk.tsv",
+    "license": "CC-BY-4.0",
+    "manifest": {
+      "objects": 9,
+      "bytes": 84038684,
+      "verify": "size",
+      "mutable": true,
+      "listed": "2026-11-02"
+    }
   },
   "transfer": {
     "strategy": "pull-from-origin",
@@ -52,6 +59,11 @@
       "date": "2026-09-18",
       "change": "Acquisition recipe registered, transcribed from 0_server_setup.R section 3.5. Note the upstream spelling inconsistency: 'Crops_Livestock' for production but 'CropsLivestock' for trade.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-11-02",
+      "change": "Added checksum manifest: 9 object(s), 84,038,684 bytes, verify=size (origin changes in place, so a mismatch is drift, not failure). Listed from the origin by R/checks/75_catalogue_manifest.R (headers only); R/00_acquire.R checks every download against it.",
+      "ref": "#58"
     }
   ],
   "schema_version": "1.0.0",

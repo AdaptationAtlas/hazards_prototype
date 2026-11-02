@@ -10,8 +10,15 @@
   "origin": {
     "type": "public-s3",
     "url": "s3://digital-atlas/domain=boundaries/type=admin/source=gaul2024/",
-    "checksum_manifest": null,
-    "license": null
+    "checksum_manifest": "metadata/catalogue/_manifests/boundaries-gaul2024.tsv",
+    "license": null,
+    "manifest": {
+      "objects": 3,
+      "bytes": 169268377,
+      "verify": "hash",
+      "mutable": false,
+      "listed": "2026-11-02"
+    }
   },
   "transfer": {
     "strategy": "pull-from-origin",
@@ -58,6 +65,11 @@
       "date": "2026-09-18",
       "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-11-02",
+      "change": "Added checksum manifest: 3 object(s), 169,268,377 bytes, verify=hash. Listed from the origin by R/checks/75_catalogue_manifest.R (headers only); R/00_acquire.R checks every download against it.",
+      "ref": "#58"
     }
   ],
   "schema_version": "1.0.0",

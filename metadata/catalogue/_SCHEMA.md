@@ -38,8 +38,15 @@ are meant to be visible, not silently absent.
   "origin": {
     "type":  "public-s3 | public-http | dataverse | computed | restricted | unknown",
     "url":   "where it ultimately comes from",
-    "checksum_manifest": "URL of a published checksum list, or null",
-    "license": "SPDX id or short name, or null"
+    "checksum_manifest": "URL of a published checksum list, OR repo path metadata/catalogue/_manifests/<id>.tsv, or null",
+    "license": "SPDX id or short name, or null",
+    "manifest": {                 // present iff checksum_manifest is a repo manifest
+      "objects": 48,              // rows in the TSV
+      "bytes": 1332962700,        // their total
+      "verify": "hash | mixed | size",  // what a download can be checked against
+      "mutable": false,           // origin replaces files in place (FAOSTAT, GRDC): mismatch = drift
+      "listed": "YYYY-MM-DD"      // when 75_catalogue_manifest.R last listed the origin
+    }
   },
 
   // The answer to "how does this get onto another host".
@@ -75,6 +82,33 @@ are meant to be visible, not silently absent.
   inputs are already like this; `R/0_server_setup.R` §3 does it today.
 - **`must-transfer`** — genuinely irreproducible, or so expensive to recompute that
   copying wins. Keep this list short and justify every entry.
+
+## Checksum manifests (#58)
+
+For a record fetched by an `s3-*` or `http-*` recipe, `origin.checksum_manifest` names
+`metadata/catalogue/_manifests/<id>.tsv`. It has one row per object the recipe fetches:
+
+| column | meaning |
+|---|---|
+| `src` | what the recipe fetches (`s3://…` or `https://…`) |
+| `dest` | where it lands, relative to the acquire target dir |
+| `bytes` | origin size |
+| `etag` | S3 ETag (`<md5>` or multipart `<md5>-<parts>`), or an opaque HTTP ETag kept for reference |
+| `md5` | when known: an S3 single-part ETag, a GCS `x-goog-hash`, or Dataverse `dataFile.md5` |
+| `role` | `file` (lands as itself) or `archive` (zip, unpacked and dropped) |
+
+`R/checks/75_catalogue_manifest.R --build` writes the manifest from listings and HEAD requests,
+without downloading any data. `--check` re-lists the origin and fails on drift, and `--verify <id> [--hash]`
+audits this host's copy. With a manifest in place, `R/00_acquire.R` behaves as follows:
+
+- it fetches exactly the listed objects;
+- it re-fetches a local copy of the wrong size;
+- it hashes every download, retries once on a mismatch, then stops (a `mutable` record keeps the
+  new file and reports drift);
+- it writes through a `.part` file;
+- `atlas_require()` treats the dataset as present only when every listed object is present at the right size.
+
+`nexgddp-cmip6-raw` keeps its URL (the publisher's own MD5 index), which its own downloader uses.
 
 ## class values
 

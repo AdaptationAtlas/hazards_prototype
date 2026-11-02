@@ -1,0 +1,4 @@
+src	dest	bytes	etag	md5	role
+s3://digital-atlas/population/worldpop_2020/rural_pop.tif	rural_pop.tif	1134380	92da6dfa8a4e1d8fce6767d463ba1955	92da6dfa8a4e1d8fce6767d463ba1955	file
+s3://digital-atlas/population/worldpop_2020/total_pop.tif	total_pop.tif	1137794	de6d1de25299d6f7bfd9a3e0671b11d1	de6d1de25299d6f7bfd9a3e0671b11d1	file
+s3://digital-atlas/population/worldpop_2020/urban_pop.tif	urban_pop.tif	120057	29cf194d870cd31dfa89f8605baceb2f	29cf194d870cd31dfa89f8605baceb2f	file

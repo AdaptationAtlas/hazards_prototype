@@ -10,10 +10,17 @@
   "origin": {
     "type": "public-s3",
     "url": "s3://digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/",
-    "checksum_manifest": null,
+    "checksum_manifest": "metadata/catalogue/_manifests/mapspam-2020v1r2.tsv",
     "license": "CC-BY-4.0",
     "license_note": "CC-BY-4.0 verified 2026-10-08 from two independent sources: the CGSpace item 5736e3ff-aadc-4999-8922-8bac50b1c916 and the Harvard Dataverse API for doi:10.7910/DVN/Z0HK7R (license href creativecommons.org/licenses/by/4.0/, v1.0, published 2026-01-07). This is the Alliance's MapSPAM2020_AdaptationAtlas_SSA, a DIFFERENT dataset from IFPRI's global SPAM2020 v2r2 that the CDH record `spam2020` describes and licenses CC-BY-SA-4.0. Plain attribution, no share-alike, so nothing propagates into the derived exposure or hazard_exposure products (#37).",
-    "license_source": "https://doi.org/10.7910/DVN/Z0HK7R"
+    "license_source": "https://doi.org/10.7910/DVN/Z0HK7R",
+    "manifest": {
+      "objects": 48,
+      "bytes": 1332962700,
+      "verify": "hash",
+      "mutable": false,
+      "listed": "2026-11-02"
+    }
   },
   "transfer": {
     "strategy": "pull-from-origin",
@@ -44,7 +51,9 @@
   "completeness": {
     "min_files": 1
   },
-  "gaps": [],
+  "gaps": [
+    "The processed tree is also an OUTPUT directory: R/0.4.0 writes variable=vop_intld15-2021/ and R/0.4.0 + R/0.4.2 write fao_prices/ into it, and R/0.4.4 lists it recursively for *.tif. Per-host file counts therefore differ with stage history (72 CGlabs / 48 macbook / 36 PASCAL, 2026-10-09). atlas_verify(\"mapspam-2020v1r2\") separates the 48 origin objects from these extras (#58)."
+  ],
   "changelog": [
     {
       "date": "2026-09-18",
@@ -55,6 +64,11 @@
       "date": "2026-09-18",
       "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-11-02",
+      "change": "Added checksum manifest: 48 object(s), 1,332,962,700 bytes, verify=hash. Listed from the origin by R/checks/75_catalogue_manifest.R (headers only); R/00_acquire.R checks every download against it.",
+      "ref": "#58"
     }
   ],
   "schema_version": "1.0.0",

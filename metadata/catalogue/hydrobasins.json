@@ -10,8 +10,15 @@
   "origin": {
     "type": "public-http",
     "url": "https://grdc.bafg.de/downloads/wmobb_json.zip",
-    "checksum_manifest": null,
-    "license": null
+    "checksum_manifest": "metadata/catalogue/_manifests/hydrobasins.tsv",
+    "license": null,
+    "manifest": {
+      "objects": 1,
+      "bytes": 378728750,
+      "verify": "size",
+      "mutable": true,
+      "listed": "2026-11-02"
+    }
   },
   "transfer": {
     "strategy": "pull-from-origin",
@@ -51,6 +58,11 @@
       "date": "2026-09-18",
       "change": "Record created with its acquisition recipe, transcribed from 0_server_setup.R section 3.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-11-02",
+      "change": "Added checksum manifest: 1 object(s), 378,728,750 bytes, verify=size (origin changes in place, so a mismatch is drift, not failure). Listed from the origin by R/checks/75_catalogue_manifest.R (headers only); R/00_acquire.R checks every download against it.",
+      "ref": "#58"
     }
   ],
   "schema_version": "1.0.0"

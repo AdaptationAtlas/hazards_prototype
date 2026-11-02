@@ -1,0 +1,10 @@
+src	dest	bytes	etag	md5	role
+https://fenixservices.fao.org/faostat/static/bulkdownloads/Deflators_E_All_Data_(Normalized).zip	Deflators_E_All_Data_(Normalized).zip	1119241	506be684c20eb186254d5a3f17294930		archive
+https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip	Prices_E_Africa.zip	1461402	adaed7c88d2353025dd5cfcd904565e1		archive
+https://bulks-faostat.fao.org/production/Prices_E_All_Data_(Normalized).zip	Prices_E_All_Data_(Normalized).zip	11684078	fbc9a143487a2037f393d34e51450bf8-2		archive
+https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip	Production_Crops_Livestock_E_Africa.zip	4319333	c83315545372bc749ba1f514caaafb00		archive
+https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_All_Area_Groups.zip	Production_Crops_Livestock_E_All_Area_Groups.zip	7655099	0ab00fbb7550b0a93fe477d23e0ca853		archive
+https://fenixservices.fao.org/faostat/static/bulkdownloads/Trade_CropsLivestock_E_Africa.zip	Trade_CropsLivestock_E_Africa.zip	11868740	f0987efc9119e8b738799c4e2b9c4ac2-2		archive
+https://fenixservices.fao.org/faostat/static/bulkdownloads/Trade_CropsLivestock_E_All_Area_Groups.zip	Trade_CropsLivestock_E_All_Area_Groups.zip	36847992	0e5da634a2181ccac5884b402108d748-5		archive
+https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_Africa.zip	Value_of_Production_E_Africa.zip	4062622	2ee96703d3f2e4b8eb9120b8c8b17c7c		archive
+https://fenixservices.fao.org/faostat/static/bulkdownloads/Value_of_Production_E_All_Area_Groups.zip	Value_of_Production_E_All_Area_Groups.zip	5020177	90c874327eb299eb70562c9a8a1aa51e		archive

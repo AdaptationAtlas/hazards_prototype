@@ -1,0 +1,2 @@
+src	dest	bytes	etag	md5	role
+s3://digital-atlas/sos/sos.tif	sos.tif	4448277	26be04315de7df19e11b9ccfb0eaa2d7	26be04315de7df19e11b9ccfb0eaa2d7	file

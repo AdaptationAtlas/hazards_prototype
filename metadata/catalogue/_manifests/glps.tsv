@@ -1,0 +1,2 @@
+src	dest	bytes	etag	md5	role
+s3://digital-atlas/GLPS/glps_gleam_61113_10km.tif	glps_gleam_61113_10km.tif	401738	187e1f00908d7446d39da0bf604b26f7	187e1f00908d7446d39da0bf604b26f7	file

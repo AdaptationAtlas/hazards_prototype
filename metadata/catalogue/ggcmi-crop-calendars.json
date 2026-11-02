@@ -36,7 +36,8 @@
     "min_files": 40
   },
   "gaps": [
-    "Setup gates the download on a bare file count of 40, not on a manifest."
+    "Setup gates the download on a bare file count of 40, not on a manifest.",
+    "No checksum manifest (#58): the PIK index page timed out from the macbook on 2026-11-02, so the links could not be listed. Build it from a host that reaches the index: Rscript R/checks/75_catalogue_manifest.R --build --dataset ggcmi-crop-calendars."
   ],
   "changelog": [
     {

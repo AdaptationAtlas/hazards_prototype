@@ -11,10 +11,17 @@
   "origin": {
     "type": "public-s3",
     "url": "s3://digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=raw/",
-    "checksum_manifest": null,
+    "checksum_manifest": "metadata/catalogue/_manifests/mapspam-2020v1r2-raw.tsv",
     "license": "CC-BY-4.0",
     "license_note": "CC-BY-4.0 verified 2026-10-08 from two independent sources: the CGSpace item 5736e3ff-aadc-4999-8922-8bac50b1c916 and the Harvard Dataverse API for doi:10.7910/DVN/Z0HK7R (license href creativecommons.org/licenses/by/4.0/, v1.0, published 2026-01-07). This is the Alliance's MapSPAM2020_AdaptationAtlas_SSA, a DIFFERENT dataset from IFPRI's global SPAM2020 v2r2 that the CDH record `spam2020` describes and licenses CC-BY-SA-4.0. Plain attribution, no share-alike, so nothing propagates into the derived exposure or hazard_exposure products (#37).",
-    "license_source": "https://doi.org/10.7910/DVN/Z0HK7R"
+    "license_source": "https://doi.org/10.7910/DVN/Z0HK7R",
+    "manifest": {
+      "objects": 30,
+      "bytes": 1569648848,
+      "verify": "hash",
+      "mutable": false,
+      "listed": "2026-11-02"
+    }
   },
   "transfer": {
     "strategy": "pull-from-origin",
@@ -40,7 +47,9 @@
   "completeness": {
     "min_files": 1
   },
-  "gaps": [],
+  "gaps": [
+    "The macbook copy predates the recipe and is nested by subfolder (spam2020V1r2_SSA_HarvArea/...), while the recipe flattens, so atlas_verify there reports 30 missing + 30 extra (2026-11-02). No stage reads these CSVs (git grep 2026-11-02), so it is left as is (#58)."
+  ],
   "acquire": {
     "method": "s3-dir",
     "source": "s3://digital-atlas/domain=exposure/type=crop/source=spam2020v1r2_ssa/region=ssa/processing=raw/",
@@ -57,6 +66,11 @@
       "date": "2026-09-18",
       "change": "Record created with its acquisition recipe, transcribed from 0_server_setup.R section 3.2.2.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-11-02",
+      "change": "Added checksum manifest: 30 object(s), 1,569,648,848 bytes, verify=hash. Listed from the origin by R/checks/75_catalogue_manifest.R (headers only); R/00_acquire.R checks every download against it.",
+      "ref": "#58"
     }
   ]
 }
