@@ -2,6 +2,74 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-02 (2) — **K3a and K3b both PASS.** Every PASCAL figure reproduces: 24,015 rangeland cells, 0 without a season, 0 ties, P(moderate) = 0.211 = 4/19 everywhere, 30 bundles; and K3b's compare line is **exact** — Jaccard 0.615, trend +0.000, worst 2011,2015,2017. Finding: the dry axis almost never appears alone, because moderate THI-max is near-saturated. `Data/hazard_risk/ggcmi-crop` now holds **189** bundles.
+
+Stamp `20261102_215657`. Run after `DISPATCH_cglabs_obs_s3_r3.md` RESPONSE (6): L3 was clean, and the `annual12` stacks S6 reads were rewritten by that rerun at 20:56, so S6 ran against post-soil-fill inputs.
+
+#### K3a — V1, `min`, not detrended. PASS, 9.6 min.
+
+| expected | measured |
+|---|---|
+| 24,015 rangeland cells (`rl >= 0.1`) | **24,015** |
+| 0 cells without a valid season-1 window | **0** |
+| 0 ties at the quantile | moderate **0**, severe **0**, extreme **0** |
+| P(moderate) = 4/19 in every cell | min **0.211**, median **0.211**, max **0.211** |
+| 30 bundles, set `FPARz+THI-max+NDWL0` | **30**, under `Data/hazard_risk/ggcmi-crop` |
+
+No `WARN`. Also logged: season 1 length 8..33 dekads on 31,310 cells, season 2 on 3,625 (7..18); 110 two-season cells whose season 2 falls in the following calendar year; `deficit_q20` median −0.053 over rangeland cells, worst year median −0.117; cells with fewer than 19 distinct z: 0; consecutive-failure domain mean 0.052 against the no-persistence expectation 0.035.
+
+(One caution for anyone grepping these logs: the diagnostic line `consecutive-failure frequency` contains the string `fail`. It is not an error.)
+
+#### The heat/wet slots are real, and heat is near-saturated
+
+Domain mean frequency per class for `cattle-tropical_moderate`, over the 24,014 valued cells:
+
+| class | freq |
+|---|---|
+| any | 0.99963 |
+| none | 0.00037 |
+| **dry** | **0.00007** |
+| heat | 0.53880 |
+| wet | 0.00096 |
+| **dry+heat** | **0.15078** |
+| dry+wet | 0.00027 |
+| heat+wet | 0.24934 |
+| dry+heat+wet | 0.05941 |
+
+**`dry+heat` / `dry` = 2154.** A dry rangeland year essentially never occurs without a moderate heat flag: moderate THI-max is exceeded in about 99.8 % of cell-years for cattle-tropical (heat 0.539 + heat+wet 0.249 + dry+heat 0.151 + dry+heat+wet 0.059), so the dry signal is almost entirely absorbed into the combination classes.
+
+The dry axis itself is intact and the arithmetic closes:
+- dry marginal = 0.00007 + 0.15078 + 0.00027 + 0.05941 = **0.21053**, i.e. 4/19 to five figures, exactly the baseline;
+- `any + none` = **1.00000**.
+
+So this is not a defect, but it is worth knowing before anyone reads the single-hazard `dry` layer as "drought frequency on rangeland" — at `moderate` it is nearly empty by construction, and the information sits in `dry+heat`. Whether the moderate THI-max threshold is the right one for a rangeland product is a science question, not a pipeline one; flagging it, not acting on it.
+
+#### K3b — the `min --detrend` companion. PASS, 1.7 min.
+
+`SENSITIVITY variant 'min-detrend' -> Data/obs_fpar/seasonal/2006-2025_min-detrend (no bundles)`, and indeed no bundles were written. 0 WARN. The same structural figures as K3a (24,015 cells, 0 without a season, 0 ties, P(moderate) 0.211), consecutive-failure domain mean 0.040 against 0.035.
+
+Per start year (mean z | share flagged): 2006 0.017|0.177; 2007 −0.015|0.187; 2008 0.054|0.140; 2009 0.072|0.174; 2010 0.074|0.171; **2011 −0.373|0.313**; 2012 0.007|0.206; 2013 −0.017|0.162; 2014 −0.211|0.234; **2015 −0.340|0.309**; 2016 −0.069|0.220; **2017 −0.267|0.294**; 2018 −0.050|0.220; 2019 0.028|0.196; 2020 0.198|0.124; 2021 −0.211|0.253; 2022 −0.202|0.281; 2023 0.003|0.210; 2024 0.202|0.130.
+
+**The compare reproduces PASCAL exactly:**
+
+```
+min-detrend  Jaccard 0.615 | keeps 0.761 of V1 | rho(mean z) 0.504 | trend +0.000 z/decade | splice 0.353 (expect 0.368) | worst 2011,2015,2017
+min (V1)     (reference)                                            trend +0.273 z/decade | splice 0.299 (expect 0.368) | worst 2011,2006,2015
+```
+
+Jaccard **0.615**, trend **+0.000**, worst **2011,2015,2017** — all three as predicted. Written to `Data/obs_fpar/seasonal/variant_compare_2006-2025.csv`.
+
+#### State, and one thing to decide before the publish
+
+`$OR/Data/hazard_risk/ggcmi-crop` now holds **189** `*_int.tif` — the 159 from L2 plus K3a's 30 `FPARz+THI-max+NDWL0` bundles. So:
+
+- the L3 publisher dry-run I reported as clean covers the **159**, and its candidate tiers do **not** contain the rangeland bundles;
+- **any R/3 rerun from here reads 189**, and §4.1 will say so. That is correct and expected, not drift — but the tiers would then carry the rangeland set, and G6b would judge `cattle-*`/`sheep-*`/`goats-*` against an exposure basis that has no FPAR commodity. Whether the rangeland bundles belong in the same tier files, or in their own key, is your call and I have not assumed either.
+
+Nothing running. Nothing published. No S3 write of any kind in this block.
+
+---
+
 ### MACBOOK 2026-11-02 — K3 adds the companion detrended run (Pete's decisions a/b/c)
 
 Pete decided the rangeland design today (evidence: PASCAL G0-G3, `7187826`): V1 yearly score `min` stays; the primary
