@@ -51,6 +51,15 @@ Host documentation: `server-environment.md` (Afrilabs/PASCAL), `server-environme
 
 ## 3. Open follow-ups (none blocking; none started)
 
+> **2026-11-02: now tracked in [#58](https://github.com/AdaptationAtlas/hazards_prototype/issues/58),
+> which has the current status and the A/B/C phase plan.** Phase A results:
+> - **Item 1:** done. 13 manifests, verify-on-download, `R/checks/75_catalogue_manifest.R`.
+> - **Item 4:** dispatched (`DISPATCH_pascal_issue29_followups.md`).
+> - **Item 5:** fixed. The file is `scripts/run_hazard_pipeline.sh.txt`, and it was never at the repo root.
+> - **Item 7:** was already largely done on 2026-09-18.
+>
+> The text below is the 2026-10-09 snapshot.
+
 Ranked by value. None has a GitHub issue yet.
 
 1. **Catalogue checksums.** 42 of 43 records have `"checksum_manifest": null` (only NEX-GDDP has one).

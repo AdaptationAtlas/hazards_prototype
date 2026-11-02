@@ -16,23 +16,20 @@ ps aux | grep Rscript
 # Start a new screen (if clean)
 screen -S hazards_job
 
-# Define absolute paths to R scripts - AfriLabs
-SETUP_SCRIPT="$HOME/rprojects/hazards_prototype/R/0_server_setup.R"
-TIMESERIES_SCRIPT="$HOME/rprojects/hazards_prototype/R/1_make_timeseries.R"
-HAZFREQ_SCRIPT="$HOME/rprojects/hazards_prototype/R/2_calculate_haz_freq.R"
-EXTRACT_SCRIPT="$HOME/rprojects/hazards_prototype/R/3_freq_x_exposure.R"
-PATCH_SCRIPT="$HOME/rprojects/hazards_prototype/R/misc/patch_wet_ndws_issue.R"
-KILL_SCRIPT="$HOME/rprojects/hazards_prototype/scripts/kill.R"
-LOG_FILE="$HOME/rprojects/hazards_prototype/logs/combined_run_$(date +%Y%m%d_%H%M%S).log"
-
-# Define absolute paths to R scripts - CGlabs
-SETUP_SCRIPT="$HOME/atlas/hazards_prototype/R/0_server_setup.R"
-TIMESERIES_SCRIPT="$HOME/atlas/hazards_prototype/R/1_make_timeseries.R"
-HAZFREQ_SCRIPT="$HOME/atlas/hazards_prototype/R/2_calculate_haz_freq.R"
-EXTRACT_SCRIPT="$HOME/atlas/hazards_prototype/R/3_freq_x_exposure.R"
-PATCH_SCRIPT="$HOME/atlas/hazards_prototype/R/misc/patch_wet_ndws_issue.R"
-KILL_SCRIPT="$HOME/atlas/hazards_prototype/scripts/kill.R"
-LOG_FILE="$HOME/atlas/hazards_prototype/logs/combined_run_$(date +%Y%m%d_%H%M%S).log"
+# Define absolute paths to R scripts - any host.
+# This used to be two hardcoded blocks, Afrilabs then CGlabs, so the CGlabs block
+# always overwrote the Afrilabs one (issue #58 item 5). The repo root now comes
+# from ATLAS_PROJECT_DIR (the variable R/00_paths.R checks first), else from the
+# checkout you are standing in.
+REPO="${ATLAS_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null)}"
+[ -f "$REPO/R/0_server_setup.R" ] || echo "STOP: cd into the hazards_prototype checkout or set ATLAS_PROJECT_DIR (REPO='$REPO')"
+SETUP_SCRIPT="$REPO/R/0_server_setup.R"
+TIMESERIES_SCRIPT="$REPO/R/1_make_timeseries.R"
+HAZFREQ_SCRIPT="$REPO/R/2_calculate_haz_freq.R"
+EXTRACT_SCRIPT="$REPO/R/3_freq_x_exposure.R"
+PATCH_SCRIPT="$REPO/R/misc/patch_wet_ndws_issue.R"
+KILL_SCRIPT="$REPO/scripts/kill.R"
+LOG_FILE="$REPO/logs/combined_run_$(date +%Y%m%d_%H%M%S).log"
 
 # Create log directory if it doesn't exist
 mkdir -p "$(dirname "$LOG_FILE")"
@@ -40,6 +37,11 @@ mkdir -p "$(dirname "$LOG_FILE")"
 # Echo start
 echo "Running hazard pipeline... Logs will be saved to:"
 echo "$LOG_FILE"
+
+# NOTE: each nohup line below starts a background job IMMEDIATELY, and they all write
+# $LOG_FILE. Pasting them together runs them concurrently, not in sequence. Paste one,
+# then wait for it to finish (pid-file loop or log tail; a shell `wait` will not
+# fire) before pasting the next.
 
 # Run the scripts sequentially using Rscript + source - TIMESERIES_SCRIPT
 nohup Rscript -e "source('$SETUP_SCRIPT'); source('$TIMESERIES_SCRIPT')" > "$LOG_FILE" 2>&1 &
