@@ -69,7 +69,10 @@
         "bulk_free_tb": 123,
         "notes": "No swap. Hard OOM ceiling - a stage that overcommits is killed, not slowed, which is why at least one stage is pinned to a single worker here. Source: server-environment-cglabs.md (on develop).",
         "gpu": false,
-        "scheduler": "none"
+        "scheduler": "none",
+        "s3_read": "https or paws",
+        "s3_write": "paws via AtlasDataManageR (credentials present); the only publishing host",
+        "python_obs_env": "~/.conda/envs/obs/bin/pyobs wrapper (server-environment-cglabs.md section 9)"
       }
     },
     {
@@ -120,8 +123,41 @@
           "Paths verified on the node 2026-09-18. common_space is a root-owned symlink to /cluster01, not a second mount. Workspace and workspace are the same inode - the export is case-insensitive, so the old lowercase spelling was never the problem; common_data simply pointed at the wrong subtree (atlas, which holds only hazards_prototype, instead of common).",
           "Raw climate trees live under common/climate/ with node-local names (chirts_era5, chirps, cmip6/nex-gddp-cmip6_raw), hence the per-host raw overrides above. isimip, atlas_sos and atlas_cropSuite are genuinely absent - those stages cannot run here until staged.",
           "GOTCHA: ~/.Renviron on this node sets project_dir, and R applies .Renviron AFTER the shell environment, so `project_dir=... Rscript ...` is silently ignored. Use ATLAS_PROJECT_DIR (which the resolver checks first), Sys.setenv() inside the call, or R_ENVIRON_USER.",
-          "Source: server-environment.md (issue #27, now on develop via 7836677). Hardware figures from September 2025 and will drift."
-        ]
+          "Source: server-environment.md (issue #27, now on develop via 7836677). Hardware figures from September 2025 and will drift.",
+          "WRITE ROOT: the top of /cluster01/Workspace is not writable by an ordinary account (Permission denied, 2026-10-27). Put every new output root under writable_root; working_dir already sits there.",
+          "R 4.6.1 (found 2026-10-28) runs over a site library compiled for 4.5. data.table and rlang (so most of the tidyverse) fail with 'undefined symbol: SETLENGTH'. The fix is IT's (Pete owns the ticket). The authorised stop-gap is a per-user rebuild into R_LIBS_USER (~/R/x86_64-pc-linux-gnu-library/4.6); only data.table 1.18.6.1 is there so far. The September 2025 per-user installs (arrow, duckdb, duckdbfs, RPostgres) are in the 4.5 library, which R 4.6 does not search.",
+          "PROFILE: Pete starts the hub session, so every PASCAL dispatch states the profile it needs on its first line. Ask for Large up front when the work is heavy. Verify with cpu.max / memory.max; nproc lies.",
+          "S3: there is no s3fs, paws or boto3, and no credentials. Atlas S3 is read over anonymous HTTPS (R/00_acquire.R does this in base R), and publishing goes through CGlabs. Regenerating rather than transferring has been shown to work: an FPAR re-ingest on CGlabs was byte-identical to this host's copy (762/762, 2026-11-02).",
+          "Download rates: JRC ASAP served this host at ~0.48 MB/s (29.5 h for 756 dekads), about 15x slower than CGlabs. Hugging Face cubes run at ~2 MB/s on a single stream and return 429 on bulk pixel reads.",
+          "Background jobs: a shell `wait` on a nohup/setsid child never fires; track jobs with a pid-file loop or by tailing the log. Node sessions go idle after each RESPONSE.",
+          "Python: the conda env `obs` (python 3.12, GDAL 3.13, rasterio, xarray, zarr) also exists on CGlabs, where it is run through the `pyobs` wrapper. Facts updated 2026-11-02 (#58), with server-environment.md section 9 as source."
+        ],
+        "writable_root": "/cluster01/Workspace/atlas",
+        "r_version": "4.6.1",
+        "r_site_library": "built for R 4.5; compiled packages using SETLENGTH fail to load (data.table, rlang); terra and sf load; not writable",
+        "r_user_library_rebuilt": [
+          "data.table"
+        ],
+        "s3_read": "https",
+        "s3_client": false,
+        "aws_credentials": false,
+        "hub_profiles": {
+          "Small": {
+            "cpu": 8,
+            "ram_gib": 32,
+            "cpu_max": "800000 100000"
+          },
+          "Medium": {
+            "cpu": 16,
+            "ram_gib": 64,
+            "cpu_max": null
+          },
+          "Large": {
+            "cpu": 20,
+            "ram_gib": 96,
+            "cpu_max": "2000000 100000"
+          }
+        }
       },
       "raw": {
         "chirts_raw": "/cluster01/Workspace/common/climate/chirts_era5",

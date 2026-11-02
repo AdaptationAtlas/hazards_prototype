@@ -1,6 +1,6 @@
 # 🖥️ PASCAL Server – Environment and Capabilities
 
-*Last updated: September 2025*\
+*Last updated: September 2025; host facts from the 2026-10 observed-pipeline dispatches folded in 2026-11-02 (#58)*\
 *Project*: Africa Agriculture Adaptation Atlas (AAAA)\
 *Prepared by*: Pete Steward ([p.steward\@cgiar.org](mailto:p.steward@cgiar.org){.email})\
 *Host*: `PASCAL` (internal CGIAR network; address withheld — public repo)\
@@ -24,6 +24,7 @@ setup performed in [R/0_server_setup.R](R/0_server_setup.R).
 -   [6) Containers and other tooling](#6-containers-and-other-tooling)
 -   [7) Access](#7-access)
 -   [8) Known limitations](#8-known-limitations)
+-   [9) Operating facts for dispatches](#9-operating-facts-for-dispatches)
 
 ------------------------------------------------------------------------
 
@@ -60,9 +61,16 @@ tiled strategies can often be held entirely in RAM.
 | `/cluster01-bkp` | 20 T | 16 T | NFS (internal) | Backups, not user-readable |
 
 All volumes are rotational. `/cluster01` holds the shared `Data`, `Projects`
-and `Workspace` trees and is world-writable; this is where bulk hazard and
-exposure data belongs, not in `/home`. No disk quotas are enforced, so please
-be considerate — `/home` is already 71% full.
+and `Workspace` trees; this is where bulk hazard and exposure data belongs, not
+in `/home`. No disk quotas are enforced, so please be considerate — `/home` is
+already 71% full.
+
+**Write under `/cluster01/Workspace/atlas/`, not at the top of `Workspace`.**
+The top-level `Workspace` directory is not writable by an ordinary account
+(`Permission denied`, 2026-10-27). The account-writable area one level down is
+where `working_dir` already sits (`metadata/hosts.json`), and where the observed
+pipeline's smoke and FPAR roots were put. Any new output root on this host goes
+under it.
 
 ## 3) Shared use and thread etiquette {#3-shared-use-and-thread-etiquette}
 
@@ -74,11 +82,17 @@ sharing is by convention.
 runs inside a systemd cgroup and is capped by the profile chosen at spawn
 time, regardless of what `nproc` reports:
 
-| Profile | vCPU | RAM |
-|---------|------|-----|
-| Small | 8 | 32 GB |
-| Medium | 16 | 64 GB |
-| Large | 20 | 96 GB |
+| Profile | vCPU | RAM | `cpu.max` | `memory.max` |
+|---------|------|-----|-----------|--------------|
+| Small | 8 | 32 GiB | `800000 100000` | 34359738368 (verified 2026-10-27/29) |
+| Medium | 16 | 64 GiB | not yet observed | |
+| Large | 20 | 96 GiB | `2000000 100000` | 96 GiB (verified 2026-10-24) |
+
+**Pete starts the hub session, so the profile is fixed before a node agent sees
+the dispatch.** Every PASCAL dispatch therefore states the profile it needs on
+its first line, and asks the node to report `cpu.max` and `memory.max`. A
+heavy dispatch should ask for Large up front: Small (32 GiB) has already forced
+one ingest to be re-chunked, and caps parallel R jobs at about two.
 
 Inside such a session `nproc` still reports 80 and CPU affinity still shows
 0–79, but `cpu.max` throttles actual throughput to the profile value. Check
@@ -114,16 +128,42 @@ Judge per job.
 
 ## 4) R environment {#4-r-environment}
 
-R 4.5.1 is installed system-wide with roughly 1,680 packages in
-`/usr/local/lib/R/site-library`, including the full geospatial and modelling
-stack used by this workflow: `terra` 1.8-93, `sf` 1.0-24, `stars`, `gdalcubes`,
-`exactextractr`, `ncdf4`, `data.table` 1.18.0, `tidyverse`, `tidymodels`,
-`xgboost`, `ranger`, `brms`, `lme4`, `future`/`furrr` and `reticulate`.
+> **Found 2026-10-28 (R was 4.5.1 on 2026-10-24): the system R was upgraded 4.5.1 → 4.6.1 underneath the site
+> library, and much of the R stack no longer loads.** About 1,650 packages in
+> `/usr/local/lib/R/site-library` were compiled for 4.5. Any of them whose
+> compiled code uses the R internal `SETLENGTH` fails to load with
+> `undefined symbol: SETLENGTH`. Confirmed broken: `data.table` 1.18.0, and
+> `rlang`, which takes most of the tidyverse (`dplyr` …) with it. Confirmed
+> loading: `terra` 1.8-93 and `sf` 1.0-24. The site library is not writable
+> without root.
+>
+> - **IT ticket:** Pete owns it. The proper fix is a node-wide rebuild of
+>   the site library.
+> - **Authorised workaround:** a per-user rebuild into `R_LIBS_USER`
+>   (`~/R/x86_64-pc-linux-gnu-library/4.6`), which R searches before the site
+>   library. Install with
+>   `install.packages("<pkg>", lib = Sys.getenv("R_LIBS_USER"))`. It is
+>   account-scoped and reversible (`rm -rf` the directory).
+> - **Rebuilt so far:** `data.table` 1.18.6.1 only (2026-10-28). Nothing else.
+> - **Older per-user installs:** the September 2025 installs listed below sit in
+>   the **4.5** per-user library, which R 4.6 does not search. Treat them as
+>   absent until the issue #58 A3(a) audit reports otherwise.
+>
+> Until that audit (`DISPATCH_pascal_issue29_followups.md`) reports, assume that
+> any pipeline R script touching `data.table` or the tidyverse will halt here.
+
+The inventory below dates from September 2025 (R 4.5.1). R 4.6.1 is now
+installed system-wide with roughly 1,650 packages in
+`/usr/local/lib/R/site-library` built for 4.5, including the geospatial and
+modelling stack used by this workflow: `terra` 1.8-93, `sf` 1.0-24, `stars`,
+`gdalcubes`, `exactextractr`, `ncdf4`, `data.table` 1.18.0, `tidyverse`,
+`tidymodels`, `xgboost`, `ranger`, `brms`, `lme4`, `future`/`furrr` and
+`reticulate`. See the note above for which of these still load.
 
 **RStudio Server** is available on port **8787**.
 
 The following were added to the personal library at
-`~/R/x86_64-pc-linux-gnu-library/4.5` in September 2025, as they were missing
+`~/R/x86_64-pc-linux-gnu-library/4.5` in September 2025 (the 4.5 library, which R 4.6 no longer searches), as they were missing
 from the site library and are useful for the parquet-based outputs this
 workflow produces:
 
@@ -149,7 +189,7 @@ is not usable for analysis as shipped. The bare system interpreter is
 A working environment was therefore built at `~/.conda/envs/sci`:
 
 ``` bash
-conda activate /home/psteward/.conda/envs/sci
+conda activate ~/.conda/envs/sci
 ```
 
 | Package | Version | | Package | Version |
@@ -211,6 +251,10 @@ Three things to know before using it:
   exits 0 **having created no environment** — always check `test -x <env>/bin/python` afterwards. A
   single fetch thread completed the same build with zero resets, while a plain `curl` of the package
   that had just reset ran at 2 MB/s.
+
+Both nodes now carry an env named `obs` (python 3.12, GDAL 3.13, rasterio,
+xarray, zarr). On CGlabs it is run through the `pyobs` wrapper
+(`server-environment-cglabs.md` §9); here it is activated directly.
 
 This env overlaps `sci` heavily: `sci` already carries GDAL 3.13.3, zarr, xarray and `dask`, and
 lacks only `aiohttp`. Decide which of the two is the cube environment rather than growing both.
@@ -285,3 +329,45 @@ they become blocking:
     images. Normal `docker://` and SIF usage is unaffected.
 6.  **The default `/opt/conda` Python is unusable** for analysis, and its
     package directory is root-owned. Per-user environments are required.
+7.  **R 4.6.1 over a 4.5-built site library** (found 2026-10-28). See §4. IT's to fix;
+    per-user `R_LIBS_USER` rebuilds are the stop-gap.
+8.  **No AWS credentials and no S3 client.** There is no `s3fs`, `paws` or
+    `boto3`, and no credentials file or `AWS_*` variables (2026-10-30). Atlas S3
+    is readable over plain HTTPS. Nothing can be written to it from here.
+
+## 9) Operating facts for dispatches {#9-operating-facts-for-dispatches}
+
+Learned from the 2026-10 observed-pipeline dispatches
+(`DISPATCH_pascal_obs_*.md`, `DISPATCH_cglabs_obs_*.md`). They affect how
+dispatches to this node are written.
+
+-   **State the profile at the top** (§3). Ask for `git log --oneline -1`,
+    the branch, `cpu.max` and `memory.max` in every RESPONSE.
+-   **Reads from S3 go over HTTPS; publishing goes through CGlabs.** Public
+    `s3://digital-atlas/...` objects are fetched as
+    `https://digital-atlas.s3.amazonaws.com/<key>`. `R/00_acquire.R` does this
+    with base R since #58, so no S3 package is needed. Anonymous LIST works on
+    the `domain=…`, `GLPS/`, `sos/` and similar prefixes, but not on every
+    prefix.
+-   **"Sync = regenerate, not transfer" holds in practice.** CGlabs
+    re-ingested the ASAP FPAR record independently, and all 762 files were
+    byte-identical to PASCAL's copy (md5, 2026-11-02).
+-   **Download rates differ a lot by host and origin.** Plan wall time from the
+    origin, not from the core count:
+
+    | origin | PASCAL | CGlabs |
+    |---|---|---|
+    | JRC ASAP | ~0.48 MB/s (29.5 h for 756 dekads) | ~15× faster (1.9 h) |
+    | Hugging Face (Zarr cubes) | ~2 MB/s single stream | — |
+
+    Hugging Face returns HTTP 429 on bulk pixel reads (seen on CGlabs), so
+    keep concurrency low and retry with backoff.
+-   **Node sessions go idle after each RESPONSE.** Pete relays every prompt by
+    hand, so a dispatch must be complete in one read and say where to stop.
+-   **A shell `wait` on a `nohup`/`setsid` child never fires.** Long jobs are
+    launched with `nohup … &`, writing to `logs/<name>_<STAMP>.log` plus a
+    `.pid` file, and tracked with
+    `while kill -0 $(cat x.pid) 2>/dev/null; do sleep 60; done` or by tailing
+    the log.
+-   **`project_dir` in `~/.Renviron` overrides the shell.** Use
+    `ATLAS_PROJECT_DIR` (`metadata/hosts.json` notes).

@@ -21,6 +21,7 @@ afrilabs	atlas_delta	hazard_exposure	Data/hazard_exposure
 afrilabs	atlas_delta	hazard_risk	Data/hazard_risk
 afrilabs	atlas_delta	hazard_risk_ha	Data/hazard_risk_ha
 afrilabs	atlas_delta	hazard_risk_n	Data/hazard_risk_n
+afrilabs	atlas_delta	hazard_risk_prod	Data/hazard_risk_prod
 afrilabs	atlas_delta	hazard_risk_vop	Data/hazard_risk_vop
 afrilabs	atlas_delta	hazard_risk_vop_reduced	Data/hazard_risk_vop_reduced
 afrilabs	atlas_delta	hazard_risk_vop_usd	Data/hazard_risk_vop_usd
@@ -67,6 +68,7 @@ afrilabs	nexgddp	hazard_exposure	Data/hazard_exposure
 afrilabs	nexgddp	hazard_risk	Data/hazard_risk
 afrilabs	nexgddp	hazard_risk_ha	Data/hazard_risk_ha
 afrilabs	nexgddp	hazard_risk_n	Data/hazard_risk_n
+afrilabs	nexgddp	hazard_risk_prod	Data/hazard_risk_prod
 afrilabs	nexgddp	hazard_risk_vop	Data/hazard_risk_vop
 afrilabs	nexgddp	hazard_risk_vop_reduced	Data/hazard_risk_vop_reduced
 afrilabs	nexgddp	hazard_risk_vop_usd	Data/hazard_risk_vop_usd
@@ -113,6 +115,7 @@ cglabs	atlas_delta	hazard_exposure	Data/hazard_exposure
 cglabs	atlas_delta	hazard_risk	Data/hazard_risk
 cglabs	atlas_delta	hazard_risk_ha	Data/hazard_risk_ha
 cglabs	atlas_delta	hazard_risk_n	Data/hazard_risk_n
+cglabs	atlas_delta	hazard_risk_prod	Data/hazard_risk_prod
 cglabs	atlas_delta	hazard_risk_vop	Data/hazard_risk_vop
 cglabs	atlas_delta	hazard_risk_vop_reduced	Data/hazard_risk_vop_reduced
 cglabs	atlas_delta	hazard_risk_vop_usd	Data/hazard_risk_vop_usd
@@ -159,6 +162,7 @@ cglabs	nexgddp	hazard_exposure	Data/hazard_exposure
 cglabs	nexgddp	hazard_risk	Data/hazard_risk
 cglabs	nexgddp	hazard_risk_ha	Data/hazard_risk_ha
 cglabs	nexgddp	hazard_risk_n	Data/hazard_risk_n
+cglabs	nexgddp	hazard_risk_prod	Data/hazard_risk_prod
 cglabs	nexgddp	hazard_risk_vop	Data/hazard_risk_vop
 cglabs	nexgddp	hazard_risk_vop_reduced	Data/hazard_risk_vop_reduced
 cglabs	nexgddp	hazard_risk_vop_usd	Data/hazard_risk_vop_usd
@@ -205,6 +209,7 @@ mac-pstewarda	atlas_delta	hazard_exposure	Data/hazard_exposure
 mac-pstewarda	atlas_delta	hazard_risk	Data/hazard_risk
 mac-pstewarda	atlas_delta	hazard_risk_ha	Data/hazard_risk_ha
 mac-pstewarda	atlas_delta	hazard_risk_n	Data/hazard_risk_n
+mac-pstewarda	atlas_delta	hazard_risk_prod	Data/hazard_risk_prod
 mac-pstewarda	atlas_delta	hazard_risk_vop	Data/hazard_risk_vop
 mac-pstewarda	atlas_delta	hazard_risk_vop_reduced	Data/hazard_risk_vop_reduced
 mac-pstewarda	atlas_delta	hazard_risk_vop_usd	Data/hazard_risk_vop_usd
@@ -251,6 +256,7 @@ mac-pstewarda	nexgddp	hazard_exposure	Data/hazard_exposure
 mac-pstewarda	nexgddp	hazard_risk	Data/hazard_risk
 mac-pstewarda	nexgddp	hazard_risk_ha	Data/hazard_risk_ha
 mac-pstewarda	nexgddp	hazard_risk_n	Data/hazard_risk_n
+mac-pstewarda	nexgddp	hazard_risk_prod	Data/hazard_risk_prod
 mac-pstewarda	nexgddp	hazard_risk_vop	Data/hazard_risk_vop
 mac-pstewarda	nexgddp	hazard_risk_vop_reduced	Data/hazard_risk_vop_reduced
 mac-pstewarda	nexgddp	hazard_risk_vop_usd	Data/hazard_risk_vop_usd
@@ -297,6 +303,7 @@ win-c	atlas_delta	hazard_exposure	Data/hazard_exposure
 win-c	atlas_delta	hazard_risk	Data/hazard_risk
 win-c	atlas_delta	hazard_risk_ha	Data/hazard_risk_ha
 win-c	atlas_delta	hazard_risk_n	Data/hazard_risk_n
+win-c	atlas_delta	hazard_risk_prod	Data/hazard_risk_prod
 win-c	atlas_delta	hazard_risk_vop	Data/hazard_risk_vop
 win-c	atlas_delta	hazard_risk_vop_reduced	Data/hazard_risk_vop_reduced
 win-c	atlas_delta	hazard_risk_vop_usd	Data/hazard_risk_vop_usd
@@ -343,6 +350,7 @@ win-c	nexgddp	hazard_exposure	Data/hazard_exposure
 win-c	nexgddp	hazard_risk	Data/hazard_risk
 win-c	nexgddp	hazard_risk_ha	Data/hazard_risk_ha
 win-c	nexgddp	hazard_risk_n	Data/hazard_risk_n
+win-c	nexgddp	hazard_risk_prod	Data/hazard_risk_prod
 win-c	nexgddp	hazard_risk_vop	Data/hazard_risk_vop
 win-c	nexgddp	hazard_risk_vop_reduced	Data/hazard_risk_vop_reduced
 win-c	nexgddp	hazard_risk_vop_usd	Data/hazard_risk_vop_usd
@@ -389,6 +397,7 @@ win-d	atlas_delta	hazard_exposure	Data/hazard_exposure
 win-d	atlas_delta	hazard_risk	Data/hazard_risk
 win-d	atlas_delta	hazard_risk_ha	Data/hazard_risk_ha
 win-d	atlas_delta	hazard_risk_n	Data/hazard_risk_n
+win-d	atlas_delta	hazard_risk_prod	Data/hazard_risk_prod
 win-d	atlas_delta	hazard_risk_vop	Data/hazard_risk_vop
 win-d	atlas_delta	hazard_risk_vop_reduced	Data/hazard_risk_vop_reduced
 win-d	atlas_delta	hazard_risk_vop_usd	Data/hazard_risk_vop_usd
@@ -435,6 +444,7 @@ win-d	nexgddp	hazard_exposure	Data/hazard_exposure
 win-d	nexgddp	hazard_risk	Data/hazard_risk
 win-d	nexgddp	hazard_risk_ha	Data/hazard_risk_ha
 win-d	nexgddp	hazard_risk_n	Data/hazard_risk_n
+win-d	nexgddp	hazard_risk_prod	Data/hazard_risk_prod
 win-d	nexgddp	hazard_risk_vop	Data/hazard_risk_vop
 win-d	nexgddp	hazard_risk_vop_reduced	Data/hazard_risk_vop_reduced
 win-d	nexgddp	hazard_risk_vop_usd	Data/hazard_risk_vop_usd
