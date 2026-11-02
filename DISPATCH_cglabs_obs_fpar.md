@@ -2,6 +2,21 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-02 — K3 adds the companion detrended run (Pete's decisions a/b/c)
+
+Pete decided the rangeland design today (evidence: PASCAL G0-G3, `7187826`): V1 yearly score `min` stays; the primary
+product is **not** detrended; a **`min --detrend` companion** ships as a sensitivity layer; magnitude layers are the
+product. So K3 is two runs, in this order, after J6's annual12 stacks exist:
+```bash
+# K3a — V1 (bundles, as already written in K3 below)
+nohup Rscript R/obs/s6_rangeland_fpar.R --obs-root $OR --years 2005:2025 --token chirps-chirts-agera5 --rl-min 0.1 > logs/obs_fpar_s6_$STAMP.log 2>&1 &
+# K3b — companion (no bundles; writes seasonal/2006-2025_min-detrend/)
+nohup Rscript R/obs/s6_rangeland_fpar.R --obs-root $OR --years 2005:2025 --token chirps-chirts-agera5 --rl-min 0.1 --score min --detrend > logs/obs_fpar_s6det_$STAMP.log 2>&1 &
+Rscript R/obs/s6_variant_compare.R --obs-root $OR --timeframe 2006-2025 --variants min-detrend
+```
+Expect K3b's compare line to reproduce PASCAL's exactly (Jaccard 0.615, trend +0.000, worst 2011,2015,2017), because the
+inputs are byte-identical. A different number is a stop. Report both in the K3 RESPONSE.
+
 ### RESPONSE — cglabs 2026-11-02 — K0 PASS (10 + 16); K1 756/756 dekads in 1.9 h, validate PASS; **K2 PASS: 762/762 files byte-identical to PASCAL** (list digest `895eddeb1ca676420fdb402b5b04d1a3` on both nodes); K3 waits for J6
 
 Pull `b645c96`. Stamp `20261031_074742`. The env grep was empty at launch. `PY` = `pyobs`.
