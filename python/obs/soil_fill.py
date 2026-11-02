@@ -64,7 +64,7 @@ def fill_layer(src: Path, dst: Path, max_deg: float):
     res_arr = np.where(valid, a, np.where(newly, filled, out_nd)).astype(prof["dtype"] if np.dtype(prof["dtype"]).kind == "f" else "float32")
     if np.dtype(prof["dtype"]).kind != "f":
         prof.update(dtype="float32")
-    prof.update(nodata=out_nd, compress="lzw")
+    prof.update(driver="GTiff", nodata=out_nd, compress="lzw")   # name the writer: a leaked GDAL_DRIVER_PATH can open the source with a read-only driver (CGlabs, LIBERTIFF)
     tmp = dst.with_suffix(".tif.part")
     with rasterio.open(tmp, "w", **prof) as d:
         d.write(res_arr, 1)

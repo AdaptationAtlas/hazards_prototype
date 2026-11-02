@@ -28,7 +28,7 @@
 #         <OBS_ROOT>/Data/obs_fpar/seasonal/<timeframe>/thresholds_z.tif              (3 layers: q20, q10, q05)
 #         <OBS_ROOT>/Data/obs_fpar/seasonal/<timeframe>/consecutive_failure.tif         (layer per year, 0/1)
 #         <OBS_ROOT>/Data/obs_codes/<token>_<timeframe>/<species>_<token>_FPARz+THI-max+NDWL0_<sev>_codes.tif
-#         <OBS_ROOT>/Data/hazard_risk/<period>/<species>_<token>_<sev>_FPARz+THI-max+NDWL0_int.tif
+#         <OBS_ROOT>/Data/hazard_risk_rangeland/<period>/<species>_<token>_<sev>_FPARz+THI-max+NDWL0_int.tif  (never R/3's input dir)
 #
 # Usage: Rscript R/obs/s6_rangeland_fpar.R --obs-root <abs> --years 2005:2025 [--token chirps-chirts-agera5]
 #          [--thi-token ...] [--period ggcmi-crop] [--rl-min 0.1] [--spinup 1] [--no-thi] [--overwrite]   |   --selftest
@@ -205,7 +205,9 @@ run <- function(obs_root, years, token, thi_token = token, period = "ggcmi-crop"
   }
   codes_dir <- file.path(obs_root, "Data", "obs_codes", paste0(token, "_", timeframe)); dir.create(codes_dir, FALSE, TRUE)
   # --no-thi bundles never share the R/3 input directory with real ones (R/3 cannot tell them apart by name)
-  out_dir <- file.path(obs_root, "Data", if (is.null(thi)) "hazard_risk_DIAGNOSTIC" else "hazard_risk", period); dir.create(out_dir, FALSE, TRUE)
+  # Pete 2026-11-02 (c): the rangeland bundle is a relative-event layer, kept OUT of the R/3 crop/livestock tiers and
+  # every cross-commodity sum, so it never goes to Data/hazard_risk/ (R/3's input). --no-thi runs stay DIAGNOSTIC.
+  out_dir <- file.path(obs_root, "Data", if (is.null(thi)) "hazard_risk_DIAGNOSTIC" else "hazard_risk_rangeland", period); dir.create(out_dir, FALSE, TRUE)
   prefix <- paste(scenario, token, timeframe, sep = "_"); n_out <- 0
   for (sp in LIVESTOCK) for (sv in names(SEVS)) {
     bundle_f <- file.path(out_dir, sprintf("%s_%s_%s_%s_int.tif", sp, token, sv, SET_NAME))

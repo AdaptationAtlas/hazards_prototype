@@ -2,6 +2,42 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-03 — clean run accepted; M0-M3 finalise for publish (rangeland out of the tiers, sidecar caveats, env pin). Publishing remains Pete's GO
+
+**Accepted.** L3 is clean on all 15 tiers (worst pair 0.78 %), the soil fill took obs land cells without soil from
+2,494 to 49, and K3a/K3b reproduce PASCAL exactly. Thank you for the env diagnosis and the 504-vs-252 note.
+
+**Three code changes on develop (pull):**
+- **The rangeland bundles leave R/3's input dir.** Pete's decision (c): the FPAR bundle is a relative-event layer,
+  kept out of the crop/livestock tiers and every cross-commodity sum. S6 now writes
+  `Data/hazard_risk_rangeland/<period>/`. So the 189 you flagged goes back to **159**. Your question is answered:
+  the rangeland bundles get their **own key** (a later block), not the tier files.
+- **R/3 obs provenance caveats** now name the soil fill (#56), the island exclusion (#57), the CHIRTS-ERA5 repair,
+  and the separate rangeland product.
+- **`soil_fill.py` names `driver="GTiff"` on write**, so a leaked `GDAL_DRIVER_PATH` can no longer carry LIBERTIFF
+  into the write. Selftest 9/9.
+
+#### M0 — move, don't delete
+```bash
+mkdir -p $OR/Data/hazard_risk_rangeland/ggcmi-crop
+mv $OR/Data/hazard_risk/ggcmi-crop/*FPARz+THI-max+NDWL0*_int.tif $OR/Data/hazard_risk_rangeland/ggcmi-crop/
+ls $OR/Data/hazard_risk/ggcmi-crop/*_int.tif | wc -l          # 159
+ls $OR/Data/hazard_risk_rangeland/ggcmi-crop/*_int.tif | wc -l # 30
+```
+#### M1 — R/3 again, to rewrite the sidecars with the new caveats
+As in L2, with `FORCE_OVERWRITE=1 ATLAS_WORKING_DIR=$OR`. Expect §4.1 `input files = 159`. Then from one sidecar
+(`vop_usd`, moderate) quote `ensemble.provenance.caveats` and confirm the four new entries are present.
+#### M2 — publisher dry-run, exposure gate on, as in L3
+Expect the same clean result (15/15 on G1-G4 and G6b). Any change in the G6b numbers against RESPONSE (6) is a stop:
+the multiply did not change, only the caveat text.
+#### M3 — pin the env finding
+Add to `server-environment-cglabs.md` §9: the JupyterHub image exports `PROJ_DATA`, `GDAL_DATA` and
+`GDAL_DRIVER_PATH` from `/opt/conda`, and these override the `obs` env. Run obs python as
+`env -u GDAL_DRIVER_PATH PROJ_DATA=<env>/share/proj GDAL_DATA=<env>/share/gdal $PY ...`, or make the `pyobs`
+wrapper do it. Same commit as your RESPONSE (two files, both yours).
+
+Then stop. **No upload.** The publish is a separate block with Pete's GO.
+
 ### RESPONSE — cglabs 2026-11-02 (5) — (b) the basis IS pre-#52 (`number`), and the env var clears it 74 → 0; (c) **all 16 VoP rows are soil-hole rows**: one bundle-NA cell per admin2 unit, four units in total, arithmetic closes exactly. No defect found. Read-only, nothing written outside `logs/`.
 
 Both answers are measurements on the J6 tree, stamp `20261102_062845`. Probe scripts kept at `logs/{b_total,b_verify,b_split,c1b_all8,c2a_vars,c2b,c3_pot}.R`.

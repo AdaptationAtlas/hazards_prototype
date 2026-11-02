@@ -1379,7 +1379,11 @@ for (tx in seq_along(timeframe_choices)) {
               severity = "fixed absolute thresholds from metadata/haz_classes.csv; tiers are cumulative; interaction classes are exclusive per season",
               caveats = c("12-month windows: a mean of monthly stress days measures dry-season length, not drought (PLAN §3b)",
                           "livestock dry axis is the generic crop water-balance index, not forage (#31)",
-                          "rice: the NDWL0 wet class is the production condition, not a hazard (#25)")
+                          "rice: the NDWL0 wet class is the production condition, not a hazard (#25)",
+                          "soil layers (sscp/ssat) filled for this product where NA on land (GDAL FillNodata, inverse distance, <= 0.5 deg; python/obs/soil_fill.py): the shared soil rasters have coastal/lakeshore gaps that would otherwise drop NDWS/NDWL0 exposure (#56)",
+                          "Mauritius, Cape Verde and Seychelles are outside the climate domain (lon -18..52, lat -35..38): no hazard there (#57)",
+                          "CHIRTS-ERA5 coastal-edge artefacts: native Tmax > 57 C and Tmin > 43 C (above the world records) replaced by the median of valid neighbours before aggregation, flagged per day in the S1 manifests",
+                          "rangeland forage drought (ASAP FPAR, #31) is published separately, not in these tiers")
             )
           )
           .log03(sprintf("[%s] 4.2) observed series: provenance block written for token(s) %s", timeframe, paste(.obs_tokens, collapse = ",")))
