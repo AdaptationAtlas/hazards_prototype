@@ -2,6 +2,60 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-02 — selftest 24/24; J3 ran clean on both commands but **STOPPED at the bundle-count gate: 159, not 162** (no `generic-crop` in the obs window CSV; the selftest asserts exactly that); J4-J6 not started
+
+Pull `b645c96`. Stamp `20261031_074742`. The env grep was empty before each launch.
+
+**Selftest:** `logs/obs_s3_selftest2_<stamp>.log`, 24 `ok`, `ALL S3-S5 SELFTEST ASSERTIONS PASSED`. The last `ok` is
+`shipped metadata/obs_crop_windows.csv parses with its comment line: 43 crops, maize = ggcmi, chickpea custom`.
+
+**J3, both commands as written** (`logs/obs_s3_s35{,_rh15}_<stamp>.log`): no error, no WARN.
+- Command 1: `done: 129 bundles` in 7.2 min.
+- Command 2 (`--thi-token …-rh15 --sets livestock`): `done: 30 bundles` in 2.5 min.
+- GGCMI dir: 20 `*_rf_*.nc4`.
+
+**Gate: `ls $SM/Data/hazard_risk/ggcmi-crop/*_int.tif | wc -l` = 159, expected 162. Stop.**
+- 159 = 33 crops × 3 + 10 livestock × 3 × 2 tokens. Every crop/token group has exactly 3 severities (53 groups × 3).
+- The shipped `metadata/obs_crop_windows.csv` has **33 crop rows + 10 livestock = 43**. The NEX `jagermeyr` bundles
+  (`{NWD}/Data/hazard_risk/jagermeyr/*_ACCESS-CM2_severe_*_int.tif`) have 34 + 10. The one difference is `generic-crop`.
+- The obs selftest asserts `"S5: per-crop bundles exist for every crop x severity (no generic-crop)"`, so 159 looks
+  like the design and 162 like the dispatch's arithmetic. **But R/3 handles `generic-crop` specially**
+  (`R/3_freq_x_exposure.R:176,189`: the `generic` exposure is the sum of all crop layers).
+- Decide: either (a) 159 is right, so the J4 §4.1 invariant becomes `input files = 159`, or (b) obs needs a
+  `generic-crop` bundle for R/3, so add a window row and rerun J3 command 1.
+- Not decided here.
+
+**Other J3 items (read-only, for when it resumes):**
+- **Per-window lines** (identical in both logs): `NA on land: 0` in every window.
+
+  | window | months | cells < 3 months | cells = 12 |
+  |---|---|---|---|
+  | annual12 | 12..12 | 0 | 165,024 |
+  | ggcmi-mai | 2..10 | 156 | 0 |
+  | ggcmi-bar | 1..12 | 1,780 | 2,304 |
+  | ggcmi-pot | 1..12 | 312 | 140 |
+  | ggcmi-rap | 1..12 | 8 | 1,164 |
+  | ggcmi-swh | 1..12 | 16 | 508 |
+  | ggcmi-cot | 4..12 | 0 | 672 |
+  | ggcmi-mil | 1..9 | 72 | 0 |
+  | ggcmi-sor | 1..11 | 56 | 0 |
+  | ggcmi-sun | 2..9 | 88 | 0 |
+  | ggcmi-nut | 1..11 | 4 | 0 |
+
+  `bea`, `cas`, `pea`, `ri1`, `sgb`, `soy` and both custom windows (`mai_maturity-4`, `mai_plant-8`) have 0 and 0.
+- **`maize calendar NA on N land cells`:** no such line is printed. The script has no such log statement; the
+  equivalent is `window ggcmi-mai: … NA on land: 0`.
+- **Bundle check:** `maize_chirps-chirts-agera5_severe_NDWS+NTx35+NDWL0_int.tif` has 9 layers named
+  `observed_chirps-chirts-agera5_2014-2016_<class>_NDWS+NTx35+NDWL0_maize_severe`, with classes any, none, dry, heat, wet,
+  dry+heat, dry+wet, heat+wet, dry+heat+wet.
+- **§3b diagnostic:** Kenya-box land cells, 10 livestock severe bundles per token (13,440 cell-bundles). The severe dry
+  marginal is exactly 1 in **0.844** of them and exactly 0 in 0.083, for both tokens. That is below the 0.9 stop but
+  high: an arid box plus the 12-month NDWS mean.
+
+**J4, J5, J6: not started.** The J2 tree and the renamed `nex-gddp-cmip6_indices_i2_20261027` are kept.
+
+FPAR K0-K2 are reported in `DISPATCH_cglabs_obs_fpar.md`: the ingest is done and is identical to PASCAL's, 762/762.
+
 ### MACBOOK 2026-10-30 (2) — J3 fix landed (comment-safe window loader + shipped-CSV selftest); pull and resume J3-J6
 
 Right diagnosis, and the right place to stop. `R/obs/s3_s5_obs_hazards.R` now reads `metadata/obs_crop_windows.csv`

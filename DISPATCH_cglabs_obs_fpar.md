@@ -2,6 +2,43 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-02 — K0 PASS (10 + 16); K1 756/756 dekads in 1.9 h, validate PASS; **K2 PASS: 762/762 files byte-identical to PASCAL** (list digest `895eddeb1ca676420fdb402b5b04d1a3` on both nodes); K3 waits for J6
+
+Pull `b645c96`. Stamp `20261031_074742`. The env grep was empty at launch. `PY` = `pyobs`.
+
+**K0:**
+- `fpar_ingest.py selftest`: 10 `ok`, `ALL FPAR SELFTEST ASSERTIONS PASSED`.
+- `s6_rangeland_fpar.R --selftest`: 16 `ok`, `ALL S6 SELFTEST ASSERTIONS PASSED`.
+
+**K1** (`logs/obs_fpar_ingest_<stamp>.log` + `.pid`, `--workers 4`, default `--min-age 110`):
+- Start 2026-10-31 07:49:11, `756/756 dekads written` and `ingest done` at 09:45:20. **Wall-clock 1 h 56 min (6,969 s),
+  9.2 s/dekad**, about 15× faster than PASCAL's 29.5 h.
+- The manifest's source `size` column sums to 230.5 GB, i.e. 33 MB/s nominal. The reads are windowed, so the bytes
+  actually transferred are lower. I did not measure them.
+- 0 `FAIL`, 0 `RasterioIOError`/retry lines. No `fpar_failed_*.csv`.
+- Statics: rangeland mask 07:49:12 → phenology started 07:50:06; phenology done 07:51:36.
+- `phenology: 31310 rangeland cells with a season; 3625 with two; s1 range 10-67; OND-first cells (s2 in a later frame-year than s1; S6 pairs them with the next calendar year): 110`
+  - `rl_min=0.0` at ingest; S6 applies `--rl-min 0.1`, hence PASCAL's 24,015 there.
+- Manifest `fpar_manifest_20261031_074911_<pid>.csv`: 6 static + 756 dekad rows.
+
+**Validate** (`logs/obs_fpar_validate_<stamp>.log`):
+```
+cutoff 2026-07-13 (from the manifests); dekads present 756/756
+product versions: {'V062': 477, 'V070': 279}; version break(s) at ['2018-04-01']; non-CF dekads: 0
+server drift: 0 of 756 present dekads were modified upstream since ingest
+rangeland FPAR x100 domain mean over dekads: min 36.5 median 40.0 max 45.5
+VALIDATE PASS
+```
+`du -sh $OR/Data/obs_fpar`: 134M.
+
+**K2: cross-node gate against PASCAL's list** (`DISPATCH_pascal_obs_fpar.md`, RESPONSE 2026-10-31, `26b5577`):
+- Latest manifest row per file: 762 here, 762 in PASCAL's list. **762/762 md5 identical; 0 only-here, 0 only-PASCAL.**
+- My digest (md5s concatenated in path order, md5-hashed): `895eddeb1ca676420fdb402b5b04d1a3`, identical to PASCAL's.
+- All 762 files re-hashed on disk against the manifest: 0 mismatches.
+
+**K3:** waits for J6's `annual12/{THI_max_max,NDWL0_mean}.tif`. J6 is held behind the S3 J3 bundle-count stop (see
+`DISPATCH_cglabs_obs_s3_r3.md`).
+
 ### MACBOOK 2026-10-30 — K0-K2 now, in parallel with the J chain; K3 after J6's annual12 stacks exist
 
 **Why here.** PASCAL ran the full-Africa FPAR ingest + S6 cleanly (`DISPATCH_pascal_obs_fpar.md`, `dd892bb`), but it has
