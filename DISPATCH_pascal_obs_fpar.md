@@ -2,6 +2,54 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-02 — S6 sensitivity variants on your FPAR (V2-decision evidence): G0-G3. Small profile is fine.
+
+**Why.** Three rangeland design calls are open: (a) the yearly dry score: V1 `min(z1, z2)` vs the pastoral-year total
+`z(cum1 + cum2)` vs a 12-month cumulative from the season-1 start; (b) whether to detrend (your F3 found +0.49 z drift
+over 2006-2024); (c) magnitude layers as the product. You hold the full FPAR record and the V1 S6 outputs, so run
+the variants here and the decision gets evidence. S6 gained `--score min|sum|annual12` and `--detrend`. Variant runs
+write `seasonal/2006-2025_<variant>/` (adds `fail_moderate.tif`) and **stop before the bundles**, so they never
+touch `hazard_risk*`. A new read-only `R/obs/s6_variant_compare.R` compares each variant against V1.
+
+**Rules.** Writes only under `$FR` (`<bulk>/atlas/atlas_obs_hazards_pascal`). Background with logs
+`logs/obs_fpar_var_<variant>_<STAMP>.log` + `.pid`; track completion with a pid-file loop or the log tail, not
+`wait`. At most **two** S6 runs at a time (each holds the 756-dekad stack; Small = 32 GiB). R from the per-user
+`R_LIBS_USER` as before.
+
+#### G0 — pull + selftest
+```bash
+cd <repo> && git pull --ff-only && git log -1 --format='%h %s'
+Rscript R/obs/s6_rangeland_fpar.R --selftest      # ALL S6 SELFTEST ASSERTIONS PASSED (21)
+```
+
+#### G1 — four variants (two at a time; ~15-20 min each on Small)
+```bash
+for v in "sum" "annual12" "min --detrend" "sum --detrend"; do
+  tag=$(echo $v | sed 's/ --/-/'); STAMP=$(date +%Y%m%d_%H%M%S)
+  nohup Rscript R/obs/s6_rangeland_fpar.R --obs-root $FR --years 2005:2025 --token chirps-chirts-agera5 --rl-min 0.1 \
+        --score ${v%% *} $( [[ $v == *detrend* ]] && echo --detrend ) > logs/obs_fpar_var_${tag}_$STAMP.log 2>&1 &
+  echo $! > logs/obs_fpar_var_${tag}_$STAMP.pid
+done   # (or launch two, wait for both pids, then the next two)
+```
+Each log ends `variant <tag> done (no bundles)` and prints a `per start year (mean z | share flagged)` line. Check
+that V1's `seasonal/2006-2025/` and `hazard_risk_DIAGNOSTIC/` mtimes are **unchanged** (variants must not write there).
+
+#### G2 — compare
+```bash
+Rscript R/obs/s6_variant_compare.R --obs-root $FR --timeframe 2006-2025
+```
+Report its five lines verbatim (Jaccard vs V1, share of V1 flagged kept, Spearman of yearly mean z, trend z/decade,
+splice share vs expectation, worst 3 years) and attach the CSV's contents in a fenced block.
+
+#### G3 — Kenya WRSI per variant (your F3 item 6 method, unchanged)
+For V1 and each of the four variants: pooled Pearson and Spearman per cell, year-level Pearson over the 19 domain
+means, and the driest-to-wettest WRSI-quintile mean z. One table, five rows. Delete the downloaded WRSI rasters
+afterwards as before.
+
+**Stop and describe** on: selftest fail; any variant writing outside `seasonal/2006-2025_<variant>/`; a variant log
+without its `done` line. Prepend one `### RESPONSE — pascal` (G0-G3), commit only this file, push, verify,
+delivery line. Keep `$FR`.
+
 ### RESPONSE — pascal 2026-10-31 — per-file md5 list: 762 lines + list digest
 
 **List digest (the 762 md5s concatenated in path order, md5-hashed): `895eddeb1ca676420fdb402b5b04d1a3`**

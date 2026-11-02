@@ -33,6 +33,10 @@
 # Usage: Rscript R/obs/s6_rangeland_fpar.R --obs-root <abs> --years 2005:2025 [--token chirps-chirts-agera5]
 #          [--thi-token ...] [--period ggcmi-crop] [--rl-min 0.1] [--spinup 1] [--no-thi] [--overwrite]   |   --selftest
 #   --spinup: drop the first N start years so the seasons and the timeframe label match S3-S5 (default 1).
+#   --score min|sum|annual12, --detrend: SENSITIVITY variants of the yearly dry score (default min, no detrend = V1).
+#            min = worse of the two season z; sum = z of cum1 + cum2 (pastoral-year total); annual12 = z of 36 dekads
+#            from the season-1 start; --detrend removes a per-cell linear trend over start years before z. Variant
+#            runs write under seasonal/<timeframe>_<variant>/ (adds fail_moderate.tif) and STOP before the bundles.
 #   --no-thi: allow a DIAGNOSTIC run without the S3 THI/NDWL0 stacks (heat/wet slots 0); the bundles then go under
 #            Data/hazard_risk_DIAGNOSTIC/<period>/, which R/3 never reads.
 suppressPackageStartupMessages({ library(terra); library(data.table) })
@@ -85,6 +89,10 @@ zscore <- function(cum) {                      # per cell, over layers (start ye
   z <- (cum - m) / s
   ifel(s > 0, z, NA)
 }
+detrend <- function(x) {                       # per cell: remove the OLS slope over layers, keep the mean; NA if any layer NA
+  tc <- seq_len(nlyr(x)) - (nlyr(x) + 1) / 2
+  app(x, function(v) if (anyNA(v)) rep(NA_real_, length(v)) else v - sum(tc * v) / sum(tc^2) * tc)
+}
 qthresholds <- function(z, probs = SEVS) {
   # empirical quantiles per cell (type 1: an observed value, no interpolation), NA if any layer NA
   app(z, function(v) if (anyNA(v)) rep(NA_real_, length(probs)) else as.numeric(quantile(v, probs = probs, type = 1, names = FALSE)))
@@ -92,7 +100,9 @@ qthresholds <- function(z, probs = SEVS) {
 
 # ---- driver -------------------------------------------------------------------------------------------------
 run <- function(obs_root, years, token, thi_token = token, period = "ggcmi-crop", rl_min = 0.1, overwrite = FALSE, scenario = "observed",
-                spinup = 1L, no_thi = FALSE) {
+                spinup = 1L, no_thi = FALSE, score = "min", detrend_series = FALSE) {
+  score <- match.arg(score, c("min", "sum", "annual12"))
+  variant <- paste0(score, if (detrend_series) "-detrend" else "")
   overwrite <- overwrite || tolower(Sys.getenv("FORCE_OVERWRITE", "")) %in% c("1", "true", "t", "yes", "y", "on")
   fdir <- file.path(obs_root, "Data", "obs_fpar"); sdir <- file.path(fdir, "static")
   # the same season set and timeframe label as S3-S5 (min(years)+spinup .. max(years); start years after the spin-up),
@@ -101,7 +111,8 @@ run <- function(obs_root, years, token, thi_token = token, period = "ggcmi-crop"
   sea_keep <- seq_along(all_start); if (spinup > 0) sea_keep <- sea_keep[-seq_len(spinup)]   # x[-integer(0)] is empty, hence the guard
   if (!length(sea_keep)) stopf("spinup=%d leaves no seasons", spinup)
   start_years <- all_start[sea_keep]
-  odir <- file.path(fdir, "seasonal", timeframe); dir.create(odir, FALSE, TRUE)
+  odir <- file.path(fdir, "seasonal", if (variant == "min") timeframe else paste0(timeframe, "_", variant)); dir.create(odir, FALSE, TRUE)
+  if (variant != "min") lg(sprintf("SENSITIVITY variant '%s' -> %s (no bundles)", variant, odir))
   lg(sprintf("obs_root=%s years=%d-%d start years=%d token=%s rl_min=%s", obs_root, min(years), max(years), length(start_years), token, rl_min))
   dek <- load_dekads(obs_root, years)
   rl <- rast(file.path(sdir, "rl_frac.tif"))
@@ -127,9 +138,19 @@ run <- function(obs_root, years, token, thi_token = token, period = "ggcmi-crop"
   n_nxt <- sum(values(nxt)[, 1], na.rm = TRUE)
   lg(sprintf("two-season cells whose season 2 falls in the following calendar year (season-2 series shifted by one start year there): %d", n_nxt))
   shift_next <- function(x) { y <- c(x[[-1]], setValues(x[[1]], NA)); names(y) <- names(x); ifel(nxt, y, x) }
-  # 3. z per season, yearly score = worse season
-  z1 <- zscore(cum1); z2 <- shift_next(zscore(cum2))
-  zy <- ifel(is.na(z2), z1, min(z1, z2)); names(zy) <- start_years
+  # 3. yearly score. V1 (min) = worse of the two season z; sensitivity variants: sum / annual12, optionally detrended
+  dt <- if (detrend_series) detrend else identity
+  if (score == "min") {
+    z1 <- zscore(dt(cum1)); z2 <- shift_next(zscore(dt(cum2)))
+    zy <- ifel(is.na(z2), z1, min(z1, z2))
+  } else if (score == "sum") {
+    c2 <- shift_next(cum2); tot <- ifel(is.na(c2), cum1, cum1 + c2)
+    zy <- zscore(dt(tot))
+  } else {
+    w12 <- list(first = w1$first, last = ifel(is.na(w1$first), NA, w1$first + 35))
+    zy <- zscore(dt(cum_season(dek, w12, years)[[sea_keep]]))
+  }
+  names(zy) <- start_years
   writeRaster(zy, file.path(odir, "z_year.tif"), overwrite = TRUE)
   # baseline moments: what a later period needs to be classified against these frozen thresholds (mean/sd per season)
   mom <- c(mean(cum1, na.rm = TRUE), stdev(cum1, na.rm = TRUE, pop = FALSE), mean(cum2, na.rm = TRUE), stdev(cum2, na.rm = TRUE, pop = FALSE),
@@ -164,6 +185,12 @@ run <- function(obs_root, years, token, thi_token = token, period = "ggcmi-crop"
   k_m <- ceiling(n_y * SEVS[["moderate"]])
   lg(sprintf("consecutive-failure frequency: domain mean %.3f (no-persistence expectation with exactly %d of %d flagged: k(k-1)/(n(n-1)) = %.3f)",
              mean(values(mean(cf))[, 1], na.rm = TRUE), k_m, n_y, k_m * (k_m - 1) / (n_y * (n_y - 1))))
+  if (variant != "min") {
+    writeRaster(fail$moderate, file.path(odir, "fail_moderate.tif"), overwrite = TRUE)
+    mz <- global(zy, "mean", na.rm = TRUE)[, 1]; sh <- global(fail$moderate, "mean", na.rm = TRUE)[, 1]
+    lg(sprintf("variant %s per start year (mean z | share flagged): %s", variant, paste(sprintf("%s %.3f|%.3f", start_years, mz, sh), collapse = "; ")))
+    lg(sprintf("variant %s done (no bundles)", variant)); return(invisible(odir))
+  }
   # 6. R/3 bundles per livestock species-system
   sea <- file.path(obs_root, "Data", "obs_seasonal", paste0(thi_token, "_", timeframe), "annual12")
   hc <- s35$load_thresholds(file.path(repo, "metadata", "haz_classes.csv"))
@@ -198,7 +225,8 @@ run <- function(obs_root, years, token, thi_token = token, period = "ggcmi-crop"
 # ---- selftest ---------------------------------------------------------------------------------------------
 selftest <- function() {
   ok <- function(c, m) if (!isTRUE(c)) stop("SELFTEST FAIL: ", m) else cat("  ok  ", m, "\n")
-  td <- file.path(tempdir(), "s6_selftest"); unlink(td, recursive = TRUE)
+  keep_dir <- Sys.getenv("S6_SELFTEST_DIR")      # set it to keep the fixture (s6_variant_compare.R's check reads it)
+  td <- if (nzchar(keep_dir)) keep_dir else file.path(tempdir(), "s6_selftest"); unlink(td, recursive = TRUE)
   base <- rast(nrows = 3, ncols = 4, xmin = 30, xmax = 31, ymin = 0, ymax = 0.75, crs = "EPSG:4326")
   years <- 2005:2015                                  # 10 start years
   dd <- file.path(td, "Data", "obs_fpar", "dekads"); sd <- file.path(td, "Data", "obs_fpar", "static"); dir.create(dd, FALSE, TRUE); dir.create(sd, FALSE, TRUE)
@@ -257,7 +285,19 @@ selftest <- function() {
   v1 <- values(mg)[1, ]; ok(all(c("worst_year_deficit", "deficit_q20") %in% names(mg)) && v1[["worst_year_deficit"]] <= v1[["deficit_q20"]] && v1[["worst_year_deficit"]] < 0,
                             "magnitude layers: worst-year deficit <= 1-in-5 deficit, worst < 0 (Q20 may be > 0 when one bad year drags the mean down)")
   ok(nlyr(mo) == 5 && values(mo)[1, "n_years"] == 10, "baseline_moments carries mean/sd per season and the year count")
-  unlink(td, recursive = TRUE); cat("\nALL S6 SELFTEST ASSERTIONS PASSED\n")
+  # sensitivity variants: write under their own dir, stop before bundles, and see the same 2008 failure in cell (1,1)
+  nb <- length(list.files(file.path(td, "Data"), "_int\\.tif$", recursive = TRUE))
+  for (v in list(c("sum", FALSE), c("annual12", FALSE), c("min", TRUE))) {
+    od <- run(td, years, "obstest", rl_min = 0.5, overwrite = TRUE, spinup = 0L, no_thi = TRUE, score = v[1], detrend_series = as.logical(v[2]))
+    fm <- rast(file.path(od, "fail_moderate.tif"))
+    ok(grepl(paste0("2005-2015_", v[1]), od) && values(fm[["2008"]])[1, 1] == 1,
+       sprintf("variant %s%s: own dir, flags the 2008 failure in cell (1,1)", v[1], if (as.logical(v[2])) "-detrend" else ""))
+  }
+  ok(length(list.files(file.path(td, "Data"), "_int\\.tif$", recursive = TRUE)) == nb, "variant runs write no bundles")
+  x <- rast(nrows = 1, ncols = 1, nlyrs = 5, vals = c(1, 3, 5, 7, 9) + c(1, 0, -2, 0, 1))   # slope 2 + a bump orthogonal to the trend
+  ok(isTRUE(all.equal(as.numeric(values(detrend(x))), c(6, 5, 3, 5, 6))), "detrend removes the linear slope, keeps the mean and the non-trend signal")
+  if (!nzchar(keep_dir)) unlink(td, recursive = TRUE)
+  cat("\nALL S6 SELFTEST ASSERTIONS PASSED\n")
 }
 
 if (sys.nframe() == 0) {
@@ -268,5 +308,6 @@ if (sys.nframe() == 0) {
   tok <- getopt("--token", "chirps-chirts-agera5")
   run(obs_root, yrs, tok, thi_token = getopt("--thi-token", tok), period = getopt("--period", "ggcmi-crop"),
       rl_min = as.numeric(getopt("--rl-min", "0.1")), overwrite = "--overwrite" %in% a,
-      spinup = as.integer(getopt("--spinup", "1")), no_thi = "--no-thi" %in% a)
+      spinup = as.integer(getopt("--spinup", "1")), no_thi = "--no-thi" %in% a,
+      score = getopt("--score", "min"), detrend_series = "--detrend" %in% a)
 }
