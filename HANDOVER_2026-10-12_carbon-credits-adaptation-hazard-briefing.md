@@ -796,12 +796,12 @@ key has a `.json` sidecar with the 18-GCM membership and field descriptions.
 | `vop_intld15-21` | constant 2014-16 I$ | `annual` | moderate | 2026-10-19 13:58:50 | `k5JZLHz3XJ4YyTYv8M3K7eKh3ahgxsj0` |
 | `vop_intld15-21` | constant 2014-16 I$ | `annual` | severe | 2026-10-19 13:57:49 | `hYcuyAiVdKi1qqCAANps_O5YrdasZF1O` |
 | `vop_intld15-21` | constant 2014-16 I$ | `annual` | extreme | 2026-10-19 13:59:56 | `qoMFWGiDXeRH.kGFgCdzSdP7yHClXwQh` |
-| `vop_nominal-usd21` | nominal 2021 USD (livestock values: see #47) | `jagermeyr` | moderate | 2026-10-16 18:21:45 | `ld1GG43E1wKq0FHfqZs4ktLmI0MLbFpk` |
-| `vop_nominal-usd21` | nominal 2021 USD (livestock values: see #47) | `jagermeyr` | severe | 2026-10-16 18:20:55 | `8_meOziwKqxyFAXDPJKfPt2aHdfXxlqu` |
-| `vop_nominal-usd21` | nominal 2021 USD (livestock values: see #47) | `jagermeyr` | extreme | 2026-10-16 18:22:26 | `xZoS0ikV7lWUVcoZsKzoBj.MST96jBtD` |
-| `vop_nominal-usd21` | nominal 2021 USD (livestock values: see #47) | `annual` | moderate | 2026-10-19 13:55:04 | `pUIFuxCO0fQK7lAz3J1PiDjtG9JHFOpy` |
-| `vop_nominal-usd21` | nominal 2021 USD (livestock values: see #47) | `annual` | severe | 2026-10-19 13:54:30 | `wd1TtQcrxXphnkR6UXyGaLeJYoI5klzG` |
-| `vop_nominal-usd21` | nominal 2021 USD (livestock values: see #47) | `annual` | extreme | 2026-10-19 13:55:52 | `Gv82H4Cu2hHZbZ5zGTeF2n7M9tLXdlEt` |
+| `vop_nominal-usd21` | nominal 2021 USD (livestock at national prices since 2026-10-23, #47) | `jagermeyr` | moderate | 2026-10-23 12:31:50 | `2KRcKDQYvWz_BHLlp97tiL3mVy7T9nQf` |
+| `vop_nominal-usd21` | nominal 2021 USD (livestock at national prices since 2026-10-23, #47) | `jagermeyr` | severe | 2026-10-23 12:30:48 | `nG0a1qYmT61Kdtd86Sl3ky_uMRlelCUx` |
+| `vop_nominal-usd21` | nominal 2021 USD (livestock at national prices since 2026-10-23, #47) | `jagermeyr` | extreme | 2026-10-23 12:32:54 | `a4PhDzB9X0Qy0Svyf6zTHU9eMJhc3J45` |
+| `vop_nominal-usd21` | nominal 2021 USD (livestock at national prices since 2026-10-23, #47) | `annual` | moderate | 2026-10-23 12:36:41 | `IWcz1_yxFHjzE0rSezwwXjK7wHVEj1OR` |
+| `vop_nominal-usd21` | nominal 2021 USD (livestock at national prices since 2026-10-23, #47) | `annual` | severe | 2026-10-23 12:34:25 | `HzeWwA.krxaqYuD18YKqc9RFfgFblqUk` |
+| `vop_nominal-usd21` | nominal 2021 USD (livestock at national prices since 2026-10-23, #47) | `annual` | extreme | 2026-10-23 12:38:03 | `Vn00tD6asOFnBtTgWaRC.WpRobRyEGdv` |
 
 **Supporting data.**
 
@@ -817,7 +817,9 @@ key has a `.json` sidecar with the 18-GCM membership and field descriptions.
 - **Republished 2026-10-23:** the `vop_nominal-usd21` tiers, both periods (#47: livestock nominal
   prices moved from the world median to national prices). The denominator's livestock
   `nominal-usd-2021` rows were republished on 2026-10-21 (pin above). Crop rows and every other tier
-  are unaffected. Pins taken before 2026-10-23 on `vop_nominal-usd21` refer to the previous version.
+  are unaffected. Pins taken before 2026-10-23 on `vop_nominal-usd21` refer to the previous version;
+  **the six `vop_nominal-usd21` rows above were re-pinned to the 2026-10-23 versions on 2026-11-03.** The full
+  pin list for every live hazard object is `metadata/cdh/pins/atlas-hazards-2026.11_s3-versions.csv`.
 - History: the denominator's 2026-10-08 republication moved constant-dollar crop rows +20 % (FAOSTAT
   joins on item code).
 

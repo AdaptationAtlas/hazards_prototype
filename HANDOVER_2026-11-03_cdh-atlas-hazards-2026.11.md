@@ -11,7 +11,8 @@ We freeze the hazard products **as they are on S3 today** as one version, and th
 - **Version label `2026.11`.** This uses the core field `version`, which the v0.3.0 core schema already has. Its examples
   are `v1.0` and `2.0-release-2`, so use `v1.0` if you prefer a semantic label; it's your call. Later
   republishes become `2026.12`, …, linked by `previous_version`.
-- **Pinned bytes.** `s3://digital-atlas` is versioned. **`metadata/cdh/pins/atlas-hazards-2026.11_s3-versions.csv`**
+- **Pinned bytes** (this supersedes the partial pin table in `HANDOVER_2026-10-12_…` §7, whose six
+  `vop_nominal-usd21` rows were re-pinned to the 2026-10-23 versions today). `s3://digital-atlas` is versioned. **`metadata/cdh/pins/atlas-hazards-2026.11_s3-versions.csv`**
   records key, size, ETag and **S3 versionId** for all 107 objects in this version. Any object can be fetched exactly
   as frozen, even after a later republish: `GET https://digital-atlas.s3.amazonaws.com/<key>?versionId=<id>`.
   Noncurrent versions are kept for at least 270 days.
@@ -63,9 +64,11 @@ Only changes that reached S3 are listed, newest first. Each has a closed dispatc
 | 2026-09-30 | HE `vop_nominal-usd21` | rebake on native 0.25° exposure | yes | #30 follow-ups |
 | 2026-09-28 | denominator | corrected reference; family keys first live | yes | #23, #30 |
 | 2026-09-25 | denominator | livestock currency vintage fixed (livestock vs FAOSTAT 1.198 → 1.000); `unit` carries the vintage | yes | #30 |
-| 2026-09-20 | time series / trends / variability (19 keys) | rebake with the full 18-GCM ensemble (was mixed 18/13/5); both baselines | yes | #26 |
+| 2026-09-20 | time series / trends / variability (19 keys; the 5 `baseline=1981-2014` keys are new) | rebake with the full 18-GCM ensemble (was mixed 18/13/5); historic collapse and baseline mislabel fixed | yes | #26 |
 | 2026-09-16 | HE `vop_nominal-usd21` | explicit `hazard = none` on every combination; NDWS de-saturation | yes | #9, #12 |
-| 2026-06-24 | hazard-change tables | 100 mm/yr desert mask (NaN at zero precipitation) | yes | CR-093 |
+| 2026-06-24 | hazard-change tables (10 keys) | first publish (non-finite values cleaned to NA), then the same day: 100 mm/yr desert mask on PTOT % change | yes; new dataset | CR-093 |
+| 2026-06-15 | time series: `ensemble_season_variability` (5 keys) | interannual variability set first published | yes; new keys | CR-120 |
+| 2026-06-12 | time series: `ensemble_season_timeseries` (5) + `ensemble_season_trends` (4) | canonical series republished and pruned (iso3 restored; q17/q83/n_models added; max/min/q5/q50/q95 dropped); trends first published with slope and per-decade change only (significance withheld, CR-117) | yes | CR-119 |
 
 ## 4. Not in this version (coded or validated, publishes later)
 
