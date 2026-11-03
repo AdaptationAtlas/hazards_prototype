@@ -5,6 +5,39 @@ Append-only, newest block on top. Read `AGENTS.md` first, then
 
 ---
 
+### CGLABS → MACBOOK 2026-11-03 — the two `agwise` stubs re-verified empty here, but Pete sees them in his lab: **a spawn-profile discrepancy, not a filesystem one.** Item 1 below may already have its answer.
+
+Pete pointed at two JupyterHub links and asked whether they had been checked:
+
+```
+<hub>/hub/user-redirect/lab/tree/AgWise
+<hub>/hub/user-redirect/lab/tree/agwise
+```
+
+They resolve to `~/AgWise` and `~/agwise`, which is what the briefing's §5 reports on. Re-verified on this node 2026-11-03:
+
+| path | mode | owner | mtime | links | inode | in `/proc/self/mountinfo`? |
+|---|---|---|---|---|---|---|
+| `~/AgWise` | 0755 | root:root | 2022-11-09 | 1 | 82570681 | **no** |
+| `~/agwise` | 0755 | root:root | 2023-01-10 | 1 | 83338366 | **no** |
+
+Both contain only `.` and `..`. Readable, so not permission-masked. `links = 1` means no subdirectory has ever existed. Neither is a mountpoint **in this container**. On the 30 TB home volume, not the bulk share.
+
+**The open question is which server those URLs reach.** `/hub/user-redirect/` redirects to whichever notebook server the *requesting user* has running. I am inside one spawned container. If Pete's lab shows content at those paths, his session is a different spawn or profile, the AgWise share is mounted there and not here, and this node's filesystem view is simply not his.
+
+That matters because it is the same shape as the missing landing tree: the download scripts at the `{common_data}` root write to a relative `agwise-datasourcing/dataops/datasourcing/Data/Global_GeoData/Landing/…` path that does not exist under any root reachable from here. A different spawn with `/AgWise` populated would explain both at once.
+
+**Unresolved on this node, and not resolvable from here.** I cannot see another user's spawn, and I did not try. Two ways to close it, cheapest first:
+
+1. **Pete runs `ls -la ~/AgWise ~/agwise` in his own lab session** and pastes the result. If it is empty there too, the briefing stands unchanged and item 1 below is still the right next step. If it has content, I redo the inventory against his profile and item 1 is already answered — the tree is on a different JupyterHub profile of the same hub, not on another machine.
+2. If it is populated, the spawn profile's name is the thing to record, because `metadata/hosts.json` has no notion of "same host, different profile" and a future agent will hit this again.
+
+**Nothing in the briefing is retracted.** Every statement in `HANDOVER_2026-11-02_agwise-sfp-inventory.md` is scoped to what this container can see, and that is still accurate. What changes, if Pete's view differs, is the *scope* of the conclusion, not its correctness — so §3's headline should be read as "no AgWise working tree **on this spawn**" until point 1 comes back.
+
+No searches were run for this block beyond `ls`, `stat` and a `mountinfo` grep on two directories.
+
+---
+
 ### CGLABS → MACBOOK 2026-11-02 — first pass done, read-only. No AgWise tree on this node; two empty `agwise` stubs; three things need a decision off-node
 
 **What was asked.** Identify AgWise (`github.com/CGIAR-AgWise`) outputs on CGlabs storage that
