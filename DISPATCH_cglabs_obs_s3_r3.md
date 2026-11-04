@@ -2,6 +2,98 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-04 — **M0-M3 clean, P published, P-verify PASS.** 30/30 objects live under `source=chirps-chirts-agera5` (15 parquet + 15 sidecars), MD5 == ETag 30/30, public GET 200 30/30; M2's dry-run is **line-for-line identical** to RESPONSE (6); all 60 `source=nex-gddp-cmip6` keys unchanged
+
+Stamp `20261104_180725`. HEAD at launch `271a290`, branch `develop`. Env grep empty before R/3, the dry-run and each of the five publishes.
+
+#### M0 — move, not delete. PASS
+`Data/hazard_risk/ggcmi-crop/*_int.tif` **189 → 159**; `Data/hazard_risk_rangeland/ggcmi-crop/*_int.tif` **30** (all `*FPARz+THI-max+NDWL0*`). Nothing deleted; the only other entry left in `hazard_risk/ggcmi-crop` is the `intermediate/` dir.
+
+#### M1 — R/3. PASS
+`ATLAS_CLIMDAT_SOURCE=obs R3_MODEL_ALLOW=chirps-chirts-agera5 R3_TIMEFRAMES=ggcmi-crop EXPOSURE_RES=0.25 FORCE_OVERWRITE=1 ATLAS_WORKING_DIR=$OR`
+(`logs/obs_m1_r3_<stamp>.log`, 18:07 → 18:15, COMPLETE). §4.1 **`input files = 159`**, 0 errors, same expected skips as L2
+(60 livestock files for `ha` and `prod_t`, 99 crop files for `head_n`). All 30 parquets + sidecars (both tokens) rewritten 18:12-18:15.
+
+`ensemble.provenance.caveats` from `haz-freq-exp_vop_nominal-usd-2021_chirps-chirts-agera5_int_adm_moderate.parquet.json`, 7 entries, the last four new:
+```
+- 12-month windows: a mean of monthly stress days measures dry-season length, not drought (PLAN §3b)
+- livestock dry axis is the generic crop water-balance index, not forage (#31)
+- rice: the NDWL0 wet class is the production condition, not a hazard (#25)
+- soil layers (sscp/ssat) filled for this product where NA on land (GDAL FillNodata, inverse distance, <= 0.5 deg; python/obs/soil_fill.py): the shared soil rasters have coastal/lakeshore gaps that would otherwise drop NDWS/NDWL0 exposure (#56)
+- Mauritius, Cape Verde and Seychelles are outside the climate domain (lon -18..52, lat -35..38): no hazard there (#57)
+- CHIRTS-ERA5 coastal-edge artefacts: native Tmax > 57 C and Tmin > 43 C (above the world records) replaced by the median of valid neighbours before aggregation, flagged per day in the S1 manifests
+- rangeland forage drought (ASAP FPAR, #31) is published separately, not in these tiers
+```
+
+#### M2 — publisher dry-run, exposure gate on. **Identical to RESPONSE (6)**
+Same command and bases as L3 (`logs/obs_m2_pub_dry_<stamp>.log`, 0.6 min, `[DRY RUN - nothing written]`).
+G1 / G2 / G3 / G4 / G6b **15 / 15 ok each, 0 FAIL**. The check was a diff, not a reading: with the timestamp prefix, `mtime …` and
+elapsed-time fields stripped, the M2 log and the L3 log (`logs/obs_s3_pub_dry_full_fill_20261102_192848.log`) are both 1,248 lines
+and **`diff` is empty**, so every G6b number (material / breach / missing / allowed / max |ratio-1| per tier, the named island
+residuals, the KEN rows) and every byte size reproduces exactly. As expected: only the sidecar text changed.
+
+#### M3 — env finding pinned
+`server-environment-cglabs.md` §9: the existing `pyobs` note now also records the second failure (`GDAL_DRIVER_PATH` → read-only
+LIBERTIFF → `DriverCapabilityError` on write when a reader's profile is copied), the `/opt/conda` source of all three paths, the inline
+`env -u GDAL_DRIVER_PATH PROJ_DATA=… GDAL_DATA=… $PY` form for any call not going through `pyobs`, and a one-line check.
+
+#### P — publish, one variable per command. PASS
+`ATLAS_CLIMDAT_SOURCE=obs ATLAS_WORKING_DIR=$OR Rscript scripts/r3_publish_tiers.R --source chirps-chirts-agera5 --timeframe ggcmi-crop
+--model chirps-chirts-agera5 --variables <v> --tiers severe,moderate,extreme --drift-exposure <v>=<basis>`, bases as in L3
+(`vop_usd` = `vop_nominal-usd-2021_adm_sum_spam20_glw420_res-25.parquet`, `vop_intld` = `vop_intld15-2021_adm_sum_spam20_glw420_res-25.parquet`,
+`ha` / `prod_t` / `head_n` = `exposure_adm_sum_spam20-20_glw420-20_res-25.parquet`, all in the NEX `Data/exposure`). No `--allow-*`,
+`--skip-gates` or `--allow-schema-drift`. Launcher kept as `logs/obs_pub_driver_<stamp>.sh`; logs `logs/obs_pub_<var>_<stamp>.log` + `.pid`.
+
+| order | variable | G1-G4, G6b | FAIL | uploads (SIZE MATCH) | done |
+|---|---|---|---|---|---|
+| 1 | vop_usd | 3/3 each | 0 | 6/6 | 18:17:33 |
+| 2 | vop_intld | 3/3 each | 0 | 6/6 | 18:18:14 |
+| 3 | ha | 3/3 each | 0 | 6/6 | 18:18:56 |
+| 4 | prod_t | 3/3 each | 0 | 6/6 | 18:19:33 |
+| 5 | head_n | 3/3 each | 0 | 6/6 | 18:20:10 |
+
+No backups were taken or needed: every key was a first publish (the prefix listed **0 objects** before P). The `-rh15` parquets were not published.
+
+Key-name note: the variable token on S3 is **`vop_nominal-usd21`** (the dispatch text reads `vop_nominal-usd-21`). That is the
+publisher's `VAR_SPECS` token and the same one the 12 live NEX `vop_nominal-usd21` keys carry, so readers can share one key template.
+
+#### P-verify — read back from S3. PASS
+Independent of the publisher (paws `list_objects_v2` + `head_object`, local `tools::md5sum`, anonymous `curl`); table in
+`logs/obs_pverify_<stamp>.csv`.
+- **30 / 30 objects** under `domain=hazard_exposure/source=chirps-chirts-agera5/` (15 parquet + 15 `.json`).
+- **MD5 == ETag 30 / 30** (the parquets and the sidecars; all single-part).
+- **Public GET HTTP 200 30 / 30**, unauthenticated, `https://digital-atlas.s3.amazonaws.com/<key>`.
+- LastModified 18:17:20 → 18:20:10. The 15 parquet versionIds:
+```
+key,version_id
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=harv-area_ha/period=ggcmi-crop/model=chirps-chirts-agera5/severity=extreme/int=multi-hazard.parquet,Gx9Fh6Pxs2OeMjmvqVPc6zgdNOJ13umc
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=harv-area_ha/period=ggcmi-crop/model=chirps-chirts-agera5/severity=moderate/int=multi-hazard.parquet,TR3bwxm58LF0MEK7fSE1TvbPc5_rAaKq
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=harv-area_ha/period=ggcmi-crop/model=chirps-chirts-agera5/severity=severe/int=multi-hazard.parquet,iYziGWkKtgW.2y.5pxJHcsps2MlHED3V
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=head_n/period=ggcmi-crop/model=chirps-chirts-agera5/severity=extreme/int=multi-hazard.parquet,yGCr1BAwi_zjcz8ftY16U3TA2Fsd0TgT
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=head_n/period=ggcmi-crop/model=chirps-chirts-agera5/severity=moderate/int=multi-hazard.parquet,O5egCBkTNQ4BrSvZxWFBa5w5JElhMw9B
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=head_n/period=ggcmi-crop/model=chirps-chirts-agera5/severity=severe/int=multi-hazard.parquet,1jxfnwPB2IpVVHPoLKVseZUq1oeZ0Wvn
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=prod_t/period=ggcmi-crop/model=chirps-chirts-agera5/severity=extreme/int=multi-hazard.parquet,gopsLZV35_2oHM6cErnuWaIYYPXl.LcD
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=prod_t/period=ggcmi-crop/model=chirps-chirts-agera5/severity=moderate/int=multi-hazard.parquet,zAPlWUxm5rc8152bAMl1TT5JtXUbMHxx
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=prod_t/period=ggcmi-crop/model=chirps-chirts-agera5/severity=severe/int=multi-hazard.parquet,38WAU9bqU6R48IakhZM8bkxVT3sxIk5p
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=vop_intld15-21/period=ggcmi-crop/model=chirps-chirts-agera5/severity=extreme/int=multi-hazard.parquet,bdCE9qguZUqzQP7Bx5czA1vLhmJFpmxh
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=vop_intld15-21/period=ggcmi-crop/model=chirps-chirts-agera5/severity=moderate/int=multi-hazard.parquet,vITZm9SUQOr7aLRn5Nr8Qk6UkNf_r6fK
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=vop_intld15-21/period=ggcmi-crop/model=chirps-chirts-agera5/severity=severe/int=multi-hazard.parquet,rgpDOtktAqe2tGf_5G_db6MhBNO7YDGt
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=ggcmi-crop/model=chirps-chirts-agera5/severity=extreme/int=multi-hazard.parquet,gJS5Xe.3.fNa0QYHOy4Shm4ad_EIZ5dq
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=ggcmi-crop/model=chirps-chirts-agera5/severity=moderate/int=multi-hazard.parquet,XID8rbJm7RF6AB6mOM7cgS1Oz40YPDXb
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/period=ggcmi-crop/model=chirps-chirts-agera5/severity=severe/int=multi-hazard.parquet,YCYuS9XadUNsSHn2AbI.JhOrcjCY6dlO
+```
+- Sidecar read **from S3** (`variable=vop_nominal-usd21/…/severity=moderate/int=multi-hazard.parquet.json`, public GET): 7 caveats,
+  including the soil-fill (#56), islands (#57), CHIRTS-repair and rangeland entries, verbatim as M1.
+- **`source=nex-gddp-cmip6` unchanged:** full listing (key, size, ETag, LastModified) before P and after P-verify,
+  `logs/obs_p_nex_{before,after}_<stamp>.csv`: 60 objects, max LastModified 2026-10-23T12:38:10, the two files **byte-identical** (`cmp`).
+
+#### State
+Published: the 15 observed tiers + sidecars, as above. Nothing running. The 30 rangeland bundles sit in
+`$OR/Data/hazard_risk_rangeland/ggcmi-crop/`, unpublished, awaiting their own key block. The `-rh15` tiers stay local.
+No parked or backup dirs created by this block.
+
+---
+
 ### MACBOOK 2026-11-04 — **GO from Pete: publish the observed tiers** after M0-M3 are clean (block P). New keys only; nothing live is touched
 
 **Pete's decision (2026-11-04): publish to S3**, so the CC4A avoided-loss briefing (Jemal) can read the observed

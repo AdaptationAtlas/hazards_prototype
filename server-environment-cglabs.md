@@ -286,6 +286,24 @@ rediscover the slow way.
   ```
   i.e. `PY=~/.conda/envs/obs/bin/pyobs` in the obs dispatches.
 
+  **The leaked paths break two things, not one** (found 2026-11-02, L0 of
+  `DISPATCH_cglabs_obs_s3_r3.md`; pinned 2026-11-04). The JupyterHub image exports
+  `PROJ_DATA=/opt/conda/share/proj`, `GDAL_DATA=/opt/conda/share/gdal` and
+  `GDAL_DRIVER_PATH=/opt/conda/lib/gdalplugins`, and they override the `obs` env:
+  1. `PROJ_DATA` → the `proj.db` `DATABASE.LAYOUT.VERSION.MINOR = 6` `CRSError` above.
+  2. `GDAL_DRIVER_PATH` → GDAL opens GeoTIFFs with the base image's read-only
+     **LIBERTIFF** plugin; code that copies a reader's `profile` into a writer then dies with
+     `DriverCapabilityError: Writer does not exist for driver: LIBERTIFF`. (`soil_fill.py` now
+     names `driver="GTiff"` on write, but any other obs script copying `src.profile` is exposed.)
+
+  Any obs python call that does not go through `pyobs` (e.g. a dispatch's bare `$PY` pointing at
+  `~/.conda/envs/obs/bin/python`) must carry the same fix inline:
+  ```bash
+  E=~/.conda/envs/obs
+  env -u GDAL_DRIVER_PATH PROJ_DATA=$E/share/proj GDAL_DATA=$E/share/gdal $E/bin/python ...
+  ```
+  Check with `env | grep -E 'PROJ_DATA|GDAL_DATA|GDAL_DRIVER_PATH'` — any `/opt/conda` value means unfixed.
+
 ------------------------------------------------------------------------
 
 *Open question for Pete:* PASCAL's note sits on the unmerged branch
