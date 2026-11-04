@@ -2,6 +2,39 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-04 — **GO from Pete: publish the observed tiers** after M0-M3 are clean (block P). New keys only; nothing live is touched
+
+**Pete's decision (2026-11-04): publish to S3**, so the CC4A avoided-loss briefing (Jemal) can read the observed
+baseline in place, the same way it reads NEX. Order: **M0-M3 (block below) first**. Then P, **only if M2 is
+identical to RESPONSE (6)**. If anything in M deviates, stop there and do not run P.
+
+**What gets published:** 15 parquet tiers (+ `.json` sidecars) under the observed source key, main token only.
+The `-rh15` THI variant is a sensitivity run and is not published.
+```
+domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/
+  variable={vop_nominal-usd21, vop_intld15-21, prod_t, harv-area_ha, head_n}/period=ggcmi-crop/
+  model=chirps-chirts-agera5/severity={moderate,severe,extreme}/int=multi-hazard.parquet
+```
+All 30 objects are **first publishes**. No key under `source=nex-gddp-cmip6` is written, and no Atlas notebook
+reads this prefix yet. The rangeland layers are **not** in P; they get their own key later.
+
+#### P — one variable per command, exactly as M2's dry-run, without `--dry-run`, in the background
+Same environment as M2: `ATLAS_CLIMDAT_SOURCE=obs ATLAS_WORKING_DIR=$OR`, `--source chirps-chirts-agera5
+--timeframe ggcmi-crop --model chirps-chirts-agera5 --tiers severe,moderate,extreme`, exposure gate on, and each
+variable with its own `--drift-exposure` basis as in J6/L3 (post-#52 twin). Order: `vop_usd`, `vop_intld`, `ha`,
+`prod_t`, `head_n`. Log each to `logs/obs_pub_<var>_$STAMP.log` + `.pid`, and wait on the pid file (not `wait`).
+**Stop on any gate FAIL**: no `--allow-*`, `--skip-gates` or `--allow-schema-drift`.
+
+#### P-verify — read back, from S3
+- 30/30 objects present (15 parquet + 15 sidecars); for each parquet, local MD5 == ETag.
+- For each parquet: HTTP 200 on a public `GET` (ACL public-read), and the S3 `x-amz-version-id`. Paste the 15
+  versionIds in one fenced block, `key,version_id`.
+- One sidecar quoted: `ensemble.provenance.caveats` carries the soil-fill / islands / CHIRTS-repair / rangeland
+  entries.
+- Confirm by listing that nothing under `source=nex-gddp-cmip6` changed (LastModified unchanged from before P).
+
+Then one `### RESPONSE` covering M and P, push, verify, delivery line.
+
 ### MACBOOK 2026-11-03 — clean run accepted; M0-M3 finalise for publish (rangeland out of the tiers, sidecar caveats, env pin). Publishing remains Pete's GO
 
 **Accepted.** L3 is clean on all 15 tiers (worst pair 0.78 %), the soil fill took obs land cells without soil from
