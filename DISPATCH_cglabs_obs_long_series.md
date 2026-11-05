@@ -2,6 +2,113 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-05 (interim 1) — **X0-X2 PASS.** Selftests 23/9/24; soil fill identical to L1 (2,494 → 49) and byte-identical to `$OR`'s filled soils; S1 ingest 1981-2025 complete, 16,436 days per variable, 0 failures, no S1Stop; worst repaired day 65 px (limit 100); **2005-2025 overlap byte-identical to `$OR` on all six series**. X3 (S2) running.
+
+Stamp `20261105_091344`. HEAD `8c9ee59`, branch `develop`. Env grep empty before each launch. `OL={common_data}/atlas_obs_hazards_1981`; nothing written outside `$OL` and `logs/`.
+
+(Step 1 of the hand-off prompt, the M/P RESPONSE in `DISPATCH_cglabs_obs_s3_r3.md`, was already pushed as `7624c02` on 2026-11-05 and is on origin; nothing redone.)
+
+#### X0 — selftests. PASS
+`s1_ingest.py selftest` **23** ok, `soil_fill.py selftest` **9** ok, `s3_s5_obs_hazards.R --selftest` **24** ok (all via `pyobs`).
+
+#### X1 — link + soil fill. PASS
+`link` made the two symlinks (`chirps_wrld`, `atlas_hazards/soils`). The fill then replaced the soils symlink with filled copies, as in L1:
+
+| layer | res | max px | valid | filled | still NA | filled range | source range |
+|---|---|---|---|---|---|---|---|
+| `sscp_world.tif` | 0.05000 deg | 10 | 3,712,662 | **638,524** | 10,044,814 | 7.392 .. 107.25 | 4.97 .. 111 |
+| `ssat_world.tif` | 0.05000 deg | 10 | 3,712,662 | **638,524** | 10,044,814 | 10.127 .. 183.05 | 6.78 .. 200 |
+
+`--check-pr`: obs land cells 48,576, without soil **2,494 → 49** for both layers, the same as L1. Shared soils: md5 of all six files identical before and after (`logs/obs_long_soil_md5_{before,after}_<stamp>.txt`). Extra check: the md5 of every file in `$OL/atlas_hazards/soils` equals `$OR/atlas_hazards/soils`.
+
+#### X2 — S1 ingest 1981-2025. PASS
+Both processes as written (`logs/obs_long_{cubes,agera5}_<stamp>.log`). Wall-clock: cubes (pr, tasmax, tasmin) 09:14 → 10:26, **73 min**; AgERA5 (rsds, hurs mean, hurs rh15) 09:14 → 11:27, **133 min**. Manifests 49,308 rows each, **0 failures**, no S1Stop, no traceback. Sources pinned as in `$OR`: CHIRPS cube rev `e9466d3`, CHIRTS cube rev `c44a0b5`, AgERA5 v2.0 on the FAO GISMGR mirror.
+
+**validate**, `--years 1981:2025`, both **VALIDATE PASS**, lattice equals `base_rast_nexgddp.tif`:
+
+| variable (token) | days | domain-mean over days, min / median / max |
+|---|---|---|
+| pr | 16,436 / 16,436 | 0.54 / 1.77 / 4.53 mm d-1 |
+| tasmax | 16,436 / 16,436 | 23.54 / 32.35 / 35.74 degC |
+| tasmin | 16,436 / 16,436 | 12.95 / 20.76 / 23.85 degC |
+| rsds | 16,436 / 16,436 | 16.77 / 21.37 / 24.12 MJ m-2 d-1 |
+| hurs (`-rh15`) | 16,436 / 16,436 | 29.81 / 37.05 / 48.20 % |
+
+`tasmax < tasmin` in sampled days: 0 cells. (The main-token `validate` covers pr/tasmax/tasmin/rsds by default; hurs main has 16,436 files in its manifest.)
+
+**Digests** (md5 of the sorted `md5  filename` list per series, from the manifests, 1981-2025):
+```
+pr      chirps-chirts-agera5       16436  fb7db5b64a46d04f4003cb1643bff672
+tasmax  chirps-chirts-agera5       16436  e35857fd757602f270d149161dbc94c1
+tasmin  chirps-chirts-agera5       16436  e6601bc4f455d337c19f6b993bddf75e
+rsds    chirps-chirts-agera5       16436  f9edbc51506e70bd426c2a8838b474fd
+hurs    chirps-chirts-agera5       16436  29fe6672f32c32a3995ab83423775dfe
+hurs    chirps-chirts-agera5-rh15  16436  0dc10df7b80dfd7e57d0962d91e042e2
+```
+
+**Overlap 2005-2025, byte-identical to `$OR`.** Every daily file hashed in both roots (`logs/obs_long_overlap_md5_<stamp>.py`, summary `…_summary.txt`), same digest definition:
+```
+series                                     n(OR)  n(OL)  digest OR = digest OL               mismatches
+pr/historical/chirps-chirts-agera5          7670   7670  d48c8a05328fb2610380b10796923fbc   0
+tasmax/historical/chirps-chirts-agera5      7670   7670  41300d604fc09ae0fd977fdcaa57f500   0
+tasmin/historical/chirps-chirts-agera5      7670   7670  7ea92f4318de917c97ec4890b65659da   0
+rsds/historical/chirps-chirts-agera5        7670   7670  fd50cc39c653ae0ec8cde295d976ed5a   0
+hurs/historical/chirps-chirts-agera5        7670   7670  daef4b9041a867a6d7a505f0a930849b   0
+hurs/historical/chirps-chirts-agera5-rh15   7670   7670  08ff7ca2997800a0f970b30aee622e07   0
+```
+
+**FLAG lines: 299 in total.** tasmax repaired above 57 °C on **7** days, tasmin above 43 °C on **277** days, and AgERA5 RH06 with fewer than 5 hours on **15** days. **The most repaired native pixels on any one day is 65** (tasmin, 2023), under the 100-pixel stop. Tmin for 2005-2025 is **222 days, exactly the `$OR` count**; 1981-2004 adds 55. That is fewer than "roughly twice" because the early decades have few hot nights above the cap. The 15 RH06 days are the AgERA5 objects older than the archive's 2025-09 rewrite, which the ingest names: 1985-05-11, 1989-11-08, 1989-12-17, 1989-12-31, 1990-11-21, 1991-11-19, 4 × 2000, 2004, 2009-10-05, 2014-12-25, 2019-08-13, 2021-11-09. Each flags **504 cells** with fewer than 5 hours. The four from 2009 on are the same four days `$OR` named.
+
+Per year: days flagged, and the most pixels repaired on one day (tasmax/tasmin only). Years not listed have no flags.
+
+| year | tasmax days | tasmin days | hurs RH06 days | max px/day |
+|---|---|---|---|---|
+| 1981 | 0 | 1 | 0 | 2 |
+| 1983 | 0 | 1 | 0 | 3 |
+| 1984 | 0 | 3 | 0 | 6 |
+| 1985 | 0 | 0 | 1 | 0 |
+| 1987 | 0 | 1 | 0 | 12 |
+| 1988 | 1 | 8 | 0 | 16 |
+| 1989 | 0 | 0 | 3 | 0 |
+| 1990 | 0 | 5 | 1 | 19 |
+| 1991 | 0 | 0 | 1 | 0 |
+| 1992 | 0 | 1 | 0 | 4 |
+| 1993 | 0 | 2 | 0 | 5 |
+| 1995 | 0 | 4 | 0 | 13 |
+| 1996 | 0 | 1 | 0 | 9 |
+| 1997 | 0 | 1 | 0 | 2 |
+| 1998 | 0 | 9 | 0 | 25 |
+| 1999 | 0 | 4 | 0 | 8 |
+| 2000 | 0 | 9 | 4 | 14 |
+| 2001 | 0 | 4 | 0 | 3 |
+| 2003 | 0 | 1 | 0 | 4 |
+| 2004 | 0 | 0 | 1 | 0 |
+| 2005 | 0 | 4 | 0 | 24 |
+| 2006 | 0 | 9 | 0 | 11 |
+| 2007 | 0 | 2 | 0 | 23 |
+| 2008 | 0 | 6 | 0 | 8 |
+| 2009 | 1 | 2 | 1 | 14 |
+| 2010 | 0 | 11 | 0 | 20 |
+| 2011 | 1 | 6 | 0 | 29 |
+| 2012 | 0 | 7 | 0 | 28 |
+| 2013 | 0 | 3 | 0 | 15 |
+| 2014 | 0 | 5 | 1 | 19 |
+| 2015 | 2 | 9 | 0 | 29 |
+| 2016 | 1 | 10 | 0 | 28 |
+| 2017 | 1 | 14 | 0 | 31 |
+| 2018 | 0 | 6 | 0 | 10 |
+| 2019 | 0 | 10 | 1 | 10 |
+| 2020 | 0 | 11 | 0 | 27 |
+| 2021 | 0 | 19 | 1 | 26 |
+| 2022 | 0 | 6 | 0 | 32 |
+| 2023 | 0 | 29 | 0 | 65 |
+| 2024 | 0 | 43 | 0 | 51 |
+| 2025 | 0 | 10 | 0 | 27 |
+
+#### X3 — S2, launched 11:37:52, all five scripts as written (PIDs logged). Report follows.
+
+---
+
 ### MACBOOK 2026-11-05 — X0–X6: same pipeline, 1981–2025, in a NEW root; nothing published
 
 **Why.** Pete decided (2026-11-05) to extend the observed baseline back to the start of the source data, so that:
