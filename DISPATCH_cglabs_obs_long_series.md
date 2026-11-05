@@ -2,6 +2,52 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-05 (final) — **X0-X6 complete, every gate PASS.** S3-S5 built 129 + 30 = 159 bundles with `seasons kept=43 (1982..2024) timeframe=1982-2025`. **X5 overlap against `$OR`, 2006-2024: NTx35 and THI_max identical (max \|diff\| 0); NDWS and NDWL0 exactly 0 from the first published season (2006) on.** `$OL` = 33 GB, kept. Nothing published, no R/3.
+
+Stamp `20261105_091344`. X0-X2 are in interim 1 and X3 in interim 2, both below. **Total wall-clock 09:13 → 15:59, 6 h 45 min.**
+
+#### X4 — S3-S5, both commands as written. PASS
+Started 14:26:56 (`logs/obs_long_s35{,_rh15}_<stamp>.log`). The main command took **74 min** (done 15:40:57) and the `-rh15` livestock command **26 min** (done 14:52:41). 0 WARN.
+- Both print `seasons kept=43 (1982..2024) timeframe=1982-2025`.
+- `done: 129 bundles` + `done: 30 bundles` = **159** `*_int.tif` in `$OL/Data/hazard_risk/ggcmi-crop/`. No FPAR bundle: S6 was not run.
+- The window diagnostics equal L2's exactly: `annual12 … =12: 165134; NA on land: 0`, and `NA on land: 110` on every GGCMI window.
+- **Seasonal stacks: 95 files, each with 44 layers named 1981 … 2024, not 43.** This is the same shape as `$OR`: its stacks hold
+  **20** layers (2005 … 2024) for `seasons kept=19`. S3 writes the spin-up season into the stack (`layer per season, named by start
+  year`, `R/obs/s3_s5_obs_hazards.R:15`), and the bundles use the 43 kept seasons. **So 43 + 1 spin-up layer is the expected
+  invariant;** the block's "43 layers" counts kept seasons. I did not stop on it, because `$OR` shows the same relationship and
+  X5 reads layers by name.
+- The 8 `GDAL error 1` lines (`libtiff.so.6: version LIBTIFF_4.6.1 not found (required by /opt/conda/lib/gdalplugins/../libgdal.so.36)`)
+  are a long-standing node warning, already in the May `cr068_*` logs. It comes from the image's `GDAL_DRIVER_PATH` (server-environment
+  §9): terra tries the `/opt/conda` plugins, fails to load them, and keeps its built-in GTiff driver. The outputs are unaffected, as
+  X5 shows. (The base conda history confirms the 2026-11-05 `gh` install added only `gh`.)
+
+#### X5 — overlap gate against `$OR`. PASS
+`logs/obs_long_x5_overlap_<stamp>.R`, per-layer table in `…csv`. For every window (19) × index stack in
+`$OR/Data/obs_seasonal/<token>_2006-2025/` (`NDWS_mean`, `NDWL0_mean`, `NTx35_mean`, `THI_max_max`, plus `THI_max_max` for `-rh15`),
+I matched each layer in `$OL/…_1982-2025/` by name: **1,900 layer pairs, 0 files missing, 0 cells where one root is NA and the other
+is not.**
+
+max |diff| over all windows and cells, per season start year:
+
+| year | NDWS | NDWL0 | NTx35 | THI_max (both tokens) |
+|---|---|---|---|---|
+| 2005 (`$OR`'s spin-up season, not kept there) | 4.67 | 2.75 | **0** | **0** |
+| **2006 … 2024 (each year)** | **0** | **0** | **0** | **0** |
+
+- **NTx35 / THI_max: identical** in every season, including 2005.
+- **NDWS / NDWL0: converged before the first published season.** The only difference is in `$OR`'s own seed season 2005, where
+  `$OR` started from `AVAIL_SEED_MONTHS=2005-01` and `$OL` carries 24 years of state. **From 2006 on the difference is exactly 0, not
+  float noise.** The bucket forgets its seed within the 2005 season, so the published 2006-2025 product is also free of its seed.
+- `PTOT`: no stack in either root, so there is nothing to compare.
+
+#### X6 — wrap
+- `du -sh $OL` = **33 GB**. **`$OL` kept**; the trend/normal/anomaly block reads it.
+- Nothing written outside `$OL` and `logs/`. `$OR`, `$SM`, the NEX trees and S3 untouched.
+- **Correction to interim 2:** the S2 rates were not "matching" the 21-year run; they were **faster**. NDWS ~8.8 s/month here against
+  ~11.9 s in L2, NDWL0 ~15.7 against ~19.7.
+
+---
+
 ### RESPONSE — cglabs 2026-11-05 (interim 2) — **X3 PASS: S2 complete, 540 monthly files per index, 0 WARN, 0 `daily inputs missing`, 0 errors.** X4 (S3-S5) launched 14:26:56
 
 All five scripts launched together at 11:37:52 with the block's environment (`COMMON_DATA=$OL SCENARIO=historical YRS=1981:2025
