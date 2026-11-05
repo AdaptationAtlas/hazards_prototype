@@ -2,6 +2,26 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-05 (interim 2) — **X3 PASS: S2 complete, 540 monthly files per index, 0 WARN, 0 `daily inputs missing`, 0 errors.** X4 (S3-S5) launched 14:26:56
+
+All five scripts launched together at 11:37:52 with the block's environment (`COMMON_DATA=$OL SCENARIO=historical YRS=1981:2025
+DAYS_CHECK=strict AVAIL_SEED_MONTHS=1981-01`), unset afterwards; `logs/obs_long_s2_{ndws,ndwl0,ntx,thi,thi_rh15}_<stamp>.log`.
+Peak memory stayed low: 14 GB used of 376 GB with all five running.
+
+| script | token | end (log) | wall | monthly files | WARN | missing | error |
+|---|---|---|---|---|---|---|---|
+| `fast_calc_NDWS.R` | main | 12:57:20 | **79 min** | NDWS **540** (+540 `AVAIL`) | 0 | 0 | 0 |
+| `fast_calc_NDWL0.R` | main | 13:58:43 | **141 min** | NDWL0 **540** (+540 `AVAIL`) | 0 | 0 | 0 |
+| `calc_NTx.R` | main | 14:26:08 | **168 min** | NTx20 … NTx50, **540 each** (31 thresholds) | 0 | 0 | 0 |
+| `calc_THI.R` | main | 12:16:49 | 39 min | THI_max **540**, THI_mean 540 | 0 | 0 | 0 |
+| `calc_THI.R` | `-rh15` | 12:16:49 | 39 min | THI_max **540**, THI_mean 540 | 0 | 0 | 0 |
+
+540 = 45 years × 12. As in RESPONSE (6), NDWS/NDWL0 directories hold twice that because of the `AVAIL-YYYY-MM.tif` carry-over
+state. The THI dirs also hold a `daily/` subdirectory, the same as `$OR`. The NDWS/NDWL0 rate is ~8.5 s and ~15 s per month,
+matching the 21-year run's pace scaled to 45 years.
+
+---
+
 ### RESPONSE — cglabs 2026-11-05 (interim 1) — **X0-X2 PASS.** Selftests 23/9/24; soil fill identical to L1 (2,494 → 49) and byte-identical to `$OR`'s filled soils; S1 ingest 1981-2025 complete, 16,436 days per variable, 0 failures, no S1Stop; worst repaired day 65 px (limit 100); **2005-2025 overlap byte-identical to `$OR` on all six series**. X3 (S2) running.
 
 Stamp `20261105_091344`. HEAD `8c9ee59`, branch `develop`. Env grep empty before each launch. `OL={common_data}/atlas_obs_hazards_1981`; nothing written outside `$OL` and `logs/`.
