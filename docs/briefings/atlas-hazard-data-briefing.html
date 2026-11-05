@@ -41,11 +41,808 @@ hr{border:0;border-top:1px solid var(--rule);margin:36px 0}
 </style></head>
 <body>
 <header class="top"><div class="eyebrow">Africa Agriculture Adaptation Atlas · hazards pipeline briefing · generated from HANDOVER_2026-10-12_carbon-credits-adaptation-hazard-briefing.md</div>
-<h1>Atlas hazard data for avoided-loss estimation — a briefing</h1><dl class="meta"><div class="m"><dt>For</dt><dd>Jemal S. Ahmed, Activity 2, Gates Carbon Credits for Adaptation (INV-089367)</dd></div><div class="m"><dt>From</dt><dd>Africa Agriculture Adaptation Atlas hazards pipeline, <code>AdaptationAtlas/hazards_prototype</code></dd></div><div class="m"><dt>State described</dt><dd>branch <code>develop</code>, first written 2026-10-12 and <strong>updated 2026-10-22</strong>. Nothing described here is on <code>main</code>.</dd></div><div class="m"><dt>Live objects described</dt><dd>the hazard-exposure tiers published 2026-10-16/19 (issue #13: 5 exposure variables × 2 periods × 3 severities) and the exposure denominator republished 2026-10-21, read directly off S3 on 2026-10-22. All pins are in §7.</dd></div></dl></header>
-<div class="wrap"><nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#update-2026-10-22-what-we-have-and-what-we-don-3">Update 2026-10-22 — what we have, and what we don&#x27;t</a></li><li><a href="#0-what-you-need-to-know-first">0. What you need to know first</a></li><li><a href="#1-hazard-frequency">1. Hazard frequency</a></li><li><a href="#2-interactions-co-occurring-hazards">2. Interactions (co-occurring hazards)</a></li><li><a href="#3-crop-bundles">3. Crop bundles</a></li><li><a href="#4-livestock-bundles">4. Livestock bundles</a></li><li><a href="#5-not-covered-or-not-done-here">5. Not covered, or not done here</a></li><li><a href="#6-the-livestock-drought-problem">6. The livestock drought problem</a></li><li><a href="#7-products-to-use">7. Products to use</a></li><li><a href="#8-corrections-to-the-records-that-this-review-fo">8. Corrections to the records that this review found</a></li></ol></nav>
+<h1>Atlas hazard data for avoided-loss estimation — a briefing</h1><dl class="meta"><div class="m"><dt>For</dt><dd>Jemal S. Ahmed, Activity 2, Gates Carbon Credits for Adaptation (INV-089367)</dd></div><div class="m"><dt>From</dt><dd>Africa Agriculture Adaptation Atlas hazards pipeline, <code>AdaptationAtlas/hazards_prototype</code></dd></div><div class="m"><dt>State described</dt><dd>branch <code>develop</code>, first written 2026-10-12, updated 2026-10-22 and <strong>2026-11-05</strong> (observed baseline, first section). Nothing described here is on <code>main</code>.</dd></div><div class="m"><dt>Live objects described</dt><dd>the hazard-exposure tiers published 2026-10-16/19 (issue #13: 5 exposure variables × 2 periods × 3 severities) and the exposure denominator republished 2026-10-21, read directly off S3 on 2026-10-22. All pins are in §7.</dd></div></dl></header>
+<div class="wrap"><nav class="toc" aria-label="Contents"><h2>Contents</h2><ol><li><a href="#update-2026-11-05-the-observed-baseline-chirps-v">Update 2026-11-05 — the observed baseline (CHIRPS v3 / CHIRTS-ERA5 / AgERA5, 2006–2025)</a></li><li><a href="#update-2026-10-22-what-we-have-and-what-we-don-3">Update 2026-10-22 — what we have, and what we don&#x27;t</a></li><li><a href="#0-what-you-need-to-know-first">0. What you need to know first</a></li><li><a href="#1-hazard-frequency">1. Hazard frequency</a></li><li><a href="#2-interactions-co-occurring-hazards">2. Interactions (co-occurring hazards)</a></li><li><a href="#3-crop-bundles">3. Crop bundles</a></li><li><a href="#4-livestock-bundles">4. Livestock bundles</a></li><li><a href="#5-not-covered-or-not-done-here">5. Not covered, or not done here</a></li><li><a href="#6-the-livestock-drought-problem">6. The livestock drought problem</a></li><li><a href="#7-products-to-use">7. Products to use</a></li><li><a href="#8-corrections-to-the-records-that-this-review-fo">8. Corrections to the records that this review found</a></li></ol></nav>
 <main>
 <p>Every claim cites a file as <code>path:line</code> relative to the repository root on <code>develop</code>. Where the
 code and a metadata record disagree, this document follows the code and says so.</p>
+<hr>
+<h2 id="update-2026-11-05-the-observed-baseline-chirps-v">Update 2026-11-05 — the observed baseline (CHIRPS v3 / CHIRTS-ERA5 / AgERA5, 2006–2025)</h2>
+<p><strong>What it is.</strong> The same hazard × exposure product as the NEX tiers in §1–§4, computed from <strong>observed</strong> climate
+instead of a climate-model ensemble:</p>
+<ul>
+<li><strong>Inputs:</strong> CHIRPS v3 rainfall, CHIRTS-ERA5 temperature, AgERA5 radiation and humidity, all at 0.25°.</li>
+<li><strong>Seasons:</strong> 19 seasons, 2006–2024 (data 2005–2025; 2005 is a spin-up year for the soil water balance).</li>
+<li><strong>Calendar:</strong> each crop is assessed over <strong>its own</strong> GGCMI growing season. Perennials and livestock use 12 months
+from the maize planting month.</li>
+<li><strong>Same as NEX:</strong> hazard classes, thresholds, the 7 exclusive interaction classes plus <code>any</code>/<code>none</code>, and the
+exposure (SPAM 2020 / GLW4 2020, five units).</li>
+<li><strong>Hazard set:</strong> <strong>one</strong> set, <code>NDWS+NTx35+NDWL0</code> for crops and <code>NDWS+THI-max+NDWL0</code> for livestock. The rainfall-only
+(PTOT) set is not computed for the observed product.</li>
+</ul>
+<p><strong>Where.</strong> Live since 2026-11-04, publicly readable. Each object is pinned by S3 versionId in
+<code>metadata/cdh/pins/atlas-hazards-observed-2026.11_s3-versions.csv</code>.</p>
+<div class="cw"><pre><code>s3://digital-atlas/domain=hazard_exposure/source=chirps-chirts-agera5/region=ssa/processing=hazard-risk-exposure/
+  variable={vop_nominal-usd21, vop_intld15-21, prod_t, harv-area_ha, head_n}/period=ggcmi-crop/
+  model=chirps-chirts-agera5/severity={moderate,severe,extreme}/int=multi-hazard.parquet
+</code></pre></div>
+<p>Columns are the same as the NEX tiers. <code>scenario = &quot;observed&quot;</code>, <code>timeframe = &quot;2006-2025&quot;</code>. Read it the same way:
+the share of a class = Σ value(class) / Σ (value(any) + value(none)). Values are integers per pixel, so the 7
+classes add up to <code>any</code> only within rounding: up to 1.5 % on pairs with &gt; 10,000 t; the NEX historic tier shows up
+to 6.4 %.</p>
+<p><strong>Why it matters for avoided loss.</strong> It gives <strong>observed</strong> hazard frequencies for the recent past. That is a baseline
+to calibrate loss functions against, and a check on how far the NEX historical ensemble (1995–2014) sits from what
+actually happened.</p>
+<h3 id="how-observed-compares-with-nex-historic">How observed compares with NEX historic</h3>
+<p>Share of production (crops, <code>prod_t</code>) or head (livestock, <code>head_n</code>) under each class, moderate severity, in %.
+&quot;Observed&quot; is 2006–2025. &quot;NEX&quot; is the 18-GCM historical ensemble, 1995–2014, on the same hazard set and exposure.
+The SSA row is the whole of sub-Saharan Africa. Query: <code>docs/analyses/2026-11-05_cc4a-observed-baseline/class_shares.sql</code>
+(reruns from S3).</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>crop</th>
+<th>country</th>
+<th>source</th>
+<th>none</th>
+<th>dry</th>
+<th>heat</th>
+<th>wet</th>
+<th>dry+heat</th>
+<th>dry+wet</th>
+<th>heat+wet</th>
+<th>all three</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>maize</td>
+<td>SSA</td>
+<td>observed 2006–2025</td>
+<td>6.7</td>
+<td>24.6</td>
+<td>2.2</td>
+<td>38.6</td>
+<td>9.9</td>
+<td>11.9</td>
+<td>4.2</td>
+<td>1.9</td>
+</tr>
+<tr>
+<td>maize</td>
+<td>SSA</td>
+<td>NEX 1995–2014</td>
+<td>5.8</td>
+<td>30.5</td>
+<td>1.0</td>
+<td>29.9</td>
+<td>9.4</td>
+<td>15.8</td>
+<td>3.3</td>
+<td>4.4</td>
+</tr>
+<tr>
+<td>maize</td>
+<td>KEN</td>
+<td>observed 2006–2025</td>
+<td>6.0</td>
+<td>29.3</td>
+<td>0.0</td>
+<td>48.4</td>
+<td>4.9</td>
+<td>9.8</td>
+<td>0.4</td>
+<td>1.2</td>
+</tr>
+<tr>
+<td>maize</td>
+<td>KEN</td>
+<td>NEX 1995–2014</td>
+<td>5.3</td>
+<td>48.8</td>
+<td>0.0</td>
+<td>25.8</td>
+<td>0.7</td>
+<td>19.3</td>
+<td>0.0</td>
+<td>0.1</td>
+</tr>
+<tr>
+<td>maize</td>
+<td>ETH</td>
+<td>observed 2006–2025</td>
+<td>4.0</td>
+<td>8.3</td>
+<td>0.0</td>
+<td>79.7</td>
+<td>0.3</td>
+<td>7.3</td>
+<td>0.3</td>
+<td>0.1</td>
+</tr>
+<tr>
+<td>maize</td>
+<td>ETH</td>
+<td>NEX 1995–2014</td>
+<td>2.5</td>
+<td>14.9</td>
+<td>0.0</td>
+<td>57.5</td>
+<td>0.6</td>
+<td>24.2</td>
+<td>0.0</td>
+<td>0.3</td>
+</tr>
+<tr>
+<td>maize</td>
+<td>NGA</td>
+<td>observed 2006–2025</td>
+<td>6.0</td>
+<td>3.1</td>
+<td>7.9</td>
+<td>28.9</td>
+<td>37.4</td>
+<td>0.9</td>
+<td>10.5</td>
+<td>5.3</td>
+</tr>
+<tr>
+<td>maize</td>
+<td>NGA</td>
+<td>NEX 1995–2014</td>
+<td>3.4</td>
+<td>5.0</td>
+<td>3.2</td>
+<td>23.5</td>
+<td>35.4</td>
+<td>4.6</td>
+<td>9.6</td>
+<td>15.3</td>
+</tr>
+<tr>
+<td>maize</td>
+<td>TZA</td>
+<td>observed 2006–2025</td>
+<td>2.9</td>
+<td>24.8</td>
+<td>0.0</td>
+<td>41.5</td>
+<td>0.3</td>
+<td>30.5</td>
+<td>0.0</td>
+<td>0.1</td>
+</tr>
+<tr>
+<td>maize</td>
+<td>TZA</td>
+<td>NEX 1995–2014</td>
+<td>5.5</td>
+<td>42.0</td>
+<td>0.0</td>
+<td>28.4</td>
+<td>0.1</td>
+<td>23.8</td>
+<td>0.0</td>
+<td>0.1</td>
+</tr>
+<tr>
+<td>sorghum</td>
+<td>SSA</td>
+<td>observed 2006–2025</td>
+<td>3.1</td>
+<td>9.4</td>
+<td>2.5</td>
+<td>29.4</td>
+<td>30.2</td>
+<td>11.0</td>
+<td>6.7</td>
+<td>7.8</td>
+</tr>
+<tr>
+<td>sorghum</td>
+<td>SSA</td>
+<td>NEX 1995–2014</td>
+<td>2.8</td>
+<td>12.9</td>
+<td>2.5</td>
+<td>20.4</td>
+<td>27.7</td>
+<td>11.1</td>
+<td>8.5</td>
+<td>14.1</td>
+</tr>
+<tr>
+<td>sorghum</td>
+<td>KEN</td>
+<td>observed 2006–2025</td>
+<td>6.7</td>
+<td>26.9</td>
+<td>0.0</td>
+<td>37.3</td>
+<td>11.6</td>
+<td>16.0</td>
+<td>0.0</td>
+<td>1.5</td>
+</tr>
+<tr>
+<td>sorghum</td>
+<td>KEN</td>
+<td>NEX 1995–2014</td>
+<td>4.1</td>
+<td>53.8</td>
+<td>0.0</td>
+<td>15.9</td>
+<td>3.8</td>
+<td>22.3</td>
+<td>0.0</td>
+<td>0.2</td>
+</tr>
+<tr>
+<td>sorghum</td>
+<td>ETH</td>
+<td>observed 2006–2025</td>
+<td>1.5</td>
+<td>16.7</td>
+<td>0.1</td>
+<td>45.9</td>
+<td>1.4</td>
+<td>31.4</td>
+<td>0.7</td>
+<td>2.4</td>
+</tr>
+<tr>
+<td>sorghum</td>
+<td>ETH</td>
+<td>NEX 1995–2014</td>
+<td>1.1</td>
+<td>26.3</td>
+<td>0.0</td>
+<td>32.7</td>
+<td>3.6</td>
+<td>33.3</td>
+<td>0.1</td>
+<td>2.8</td>
+</tr>
+<tr>
+<td>sorghum</td>
+<td>NGA</td>
+<td>observed 2006–2025</td>
+<td>4.2</td>
+<td>3.2</td>
+<td>1.4</td>
+<td>44.1</td>
+<td>27.6</td>
+<td>3.3</td>
+<td>6.9</td>
+<td>9.3</td>
+</tr>
+<tr>
+<td>sorghum</td>
+<td>NGA</td>
+<td>NEX 1995–2014</td>
+<td>2.9</td>
+<td>4.6</td>
+<td>3.4</td>
+<td>10.1</td>
+<td>44.9</td>
+<td>3.9</td>
+<td>9.7</td>
+<td>20.5</td>
+</tr>
+<tr>
+<td>sorghum</td>
+<td>TZA</td>
+<td>observed 2006–2025</td>
+<td>0.8</td>
+<td>38.7</td>
+<td>0.0</td>
+<td>16.8</td>
+<td>0.0</td>
+<td>43.8</td>
+<td>0.0</td>
+<td>0.0</td>
+</tr>
+<tr>
+<td>sorghum</td>
+<td>TZA</td>
+<td>NEX 1995–2014</td>
+<td>4.6</td>
+<td>58.4</td>
+<td>0.0</td>
+<td>17.1</td>
+<td>0.0</td>
+<td>19.8</td>
+<td>0.0</td>
+<td>0.0</td>
+</tr>
+<tr>
+<td>bean</td>
+<td>SSA</td>
+<td>observed 2006–2025</td>
+<td>10.9</td>
+<td>26.9</td>
+<td>0.4</td>
+<td>41.6</td>
+<td>10.7</td>
+<td>7.9</td>
+<td>0.9</td>
+<td>0.7</td>
+</tr>
+<tr>
+<td>bean</td>
+<td>SSA</td>
+<td>NEX 1995–2014</td>
+<td>15.8</td>
+<td>26.7</td>
+<td>0.4</td>
+<td>32.6</td>
+<td>4.1</td>
+<td>16.9</td>
+<td>1.7</td>
+<td>1.8</td>
+</tr>
+<tr>
+<td>bean</td>
+<td>KEN</td>
+<td>observed 2006–2025</td>
+<td>5.5</td>
+<td>32.0</td>
+<td>0.0</td>
+<td>50.1</td>
+<td>1.0</td>
+<td>11.5</td>
+<td>0.0</td>
+<td>0.0</td>
+</tr>
+<tr>
+<td>bean</td>
+<td>KEN</td>
+<td>NEX 1995–2014</td>
+<td>5.0</td>
+<td>52.3</td>
+<td>0.0</td>
+<td>22.6</td>
+<td>0.9</td>
+<td>19.2</td>
+<td>0.0</td>
+<td>0.1</td>
+</tr>
+<tr>
+<td>bean</td>
+<td>ETH</td>
+<td>observed 2006–2025</td>
+<td>0.6</td>
+<td>89.4</td>
+<td>0.0</td>
+<td>4.5</td>
+<td>0.4</td>
+<td>5.1</td>
+<td>0.0</td>
+<td>0.0</td>
+</tr>
+<tr>
+<td>bean</td>
+<td>ETH</td>
+<td>NEX 1995–2014</td>
+<td>4.2</td>
+<td>29.8</td>
+<td>0.0</td>
+<td>37.4</td>
+<td>0.3</td>
+<td>28.4</td>
+<td>0.0</td>
+<td>0.1</td>
+</tr>
+<tr>
+<td>bean</td>
+<td>NGA</td>
+<td>observed 2006–2025</td>
+<td>2.6</td>
+<td>2.8</td>
+<td>1.9</td>
+<td>52.4</td>
+<td>25.1</td>
+<td>0.0</td>
+<td>10.7</td>
+<td>4.6</td>
+</tr>
+<tr>
+<td>bean</td>
+<td>NGA</td>
+<td>NEX 1995–2014</td>
+<td>4.2</td>
+<td>2.9</td>
+<td>1.7</td>
+<td>39.8</td>
+<td>24.8</td>
+<td>1.9</td>
+<td>7.6</td>
+<td>17.2</td>
+</tr>
+<tr>
+<td>bean</td>
+<td>TZA</td>
+<td>observed 2006–2025</td>
+<td>8.9</td>
+<td>20.1</td>
+<td>0.0</td>
+<td>54.7</td>
+<td>0.3</td>
+<td>15.9</td>
+<td>0.0</td>
+<td>0.0</td>
+</tr>
+<tr>
+<td>bean</td>
+<td>TZA</td>
+<td>NEX 1995–2014</td>
+<td>8.4</td>
+<td>40.4</td>
+<td>0.0</td>
+<td>31.6</td>
+<td>0.1</td>
+<td>19.5</td>
+<td>0.0</td>
+<td>0.0</td>
+</tr>
+<tr>
+<td>cassava</td>
+<td>SSA</td>
+<td>observed 2006–2025</td>
+<td>7.9</td>
+<td>15.5</td>
+<td>0.3</td>
+<td>38.9</td>
+<td>9.8</td>
+<td>19.7</td>
+<td>1.5</td>
+<td>6.4</td>
+</tr>
+<tr>
+<td>cassava</td>
+<td>SSA</td>
+<td>NEX 1995–2014</td>
+<td>12.1</td>
+<td>10.9</td>
+<td>1.4</td>
+<td>49.6</td>
+<td>7.0</td>
+<td>11.3</td>
+<td>4.1</td>
+<td>3.7</td>
+</tr>
+<tr>
+<td>cassava</td>
+<td>KEN</td>
+<td>observed 2006–2025</td>
+<td>3.2</td>
+<td>17.2</td>
+<td>0.0</td>
+<td>46.6</td>
+<td>19.9</td>
+<td>10.0</td>
+<td>0.2</td>
+<td>3.0</td>
+</tr>
+<tr>
+<td>cassava</td>
+<td>KEN</td>
+<td>NEX 1995–2014</td>
+<td>4.4</td>
+<td>55.4</td>
+<td>0.0</td>
+<td>19.2</td>
+<td>2.8</td>
+<td>17.8</td>
+<td>0.1</td>
+<td>0.3</td>
+</tr>
+<tr>
+<td>cassava</td>
+<td>ETH</td>
+<td>observed 2006–2025</td>
+<td>0.0</td>
+<td>95.7</td>
+<td>0.0</td>
+<td>0.8</td>
+<td>3.5</td>
+<td>0.0</td>
+<td>0.0</td>
+<td>0.0</td>
+</tr>
+<tr>
+<td>cassava</td>
+<td>ETH</td>
+<td>NEX 1995–2014</td>
+<td>0.4</td>
+<td>67.7</td>
+<td>0.0</td>
+<td>0.6</td>
+<td>27.3</td>
+<td>4.1</td>
+<td>0.0</td>
+<td>0.1</td>
+</tr>
+<tr>
+<td>cassava</td>
+<td>NGA</td>
+<td>observed 2006–2025</td>
+<td>0.5</td>
+<td>2.6</td>
+<td>0.3</td>
+<td>53.4</td>
+<td>17.8</td>
+<td>11.3</td>
+<td>2.8</td>
+<td>11.4</td>
+</tr>
+<tr>
+<td>cassava</td>
+<td>NGA</td>
+<td>NEX 1995–2014</td>
+<td>5.0</td>
+<td>5.5</td>
+<td>3.1</td>
+<td>44.6</td>
+<td>16.2</td>
+<td>4.8</td>
+<td>11.1</td>
+<td>9.8</td>
+</tr>
+<tr>
+<td>cassava</td>
+<td>TZA</td>
+<td>observed 2006–2025</td>
+<td>0.5</td>
+<td>41.1</td>
+<td>0.0</td>
+<td>6.0</td>
+<td>0.3</td>
+<td>52.0</td>
+<td>0.0</td>
+<td>0.1</td>
+</tr>
+<tr>
+<td>cassava</td>
+<td>TZA</td>
+<td>NEX 1995–2014</td>
+<td>6.9</td>
+<td>23.9</td>
+<td>0.0</td>
+<td>38.4</td>
+<td>0.1</td>
+<td>30.7</td>
+<td>0.0</td>
+<td>0.1</td>
+</tr>
+</tbody></table></div>
+<p>Livestock (the dry and wet slots are 0 in every row, so only the classes that carry weight are shown):</p>
+<div class="tw"><table>
+<thead>
+<tr>
+<th>crop</th>
+<th>country</th>
+<th>source</th>
+<th>heat</th>
+<th>dry+heat</th>
+<th>heat+wet</th>
+<th>all three</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>cattle-tropical</td>
+<td>SSA</td>
+<td>observed 2006–2025</td>
+<td>1.1</td>
+<td>75.5</td>
+<td>5.2</td>
+<td>18.2</td>
+</tr>
+<tr>
+<td>cattle-tropical</td>
+<td>SSA</td>
+<td>NEX 1995–2014</td>
+<td>4.8</td>
+<td>51.7</td>
+<td>24.7</td>
+<td>18.5</td>
+</tr>
+<tr>
+<td>cattle-tropical</td>
+<td>KEN</td>
+<td>observed 2006–2025</td>
+<td>0.7</td>
+<td>75.5</td>
+<td>11.3</td>
+<td>12.5</td>
+</tr>
+<tr>
+<td>cattle-tropical</td>
+<td>KEN</td>
+<td>NEX 1995–2014</td>
+<td>1.5</td>
+<td>76.3</td>
+<td>7.6</td>
+<td>14.6</td>
+</tr>
+<tr>
+<td>cattle-tropical</td>
+<td>ETH</td>
+<td>observed 2006–2025</td>
+<td>0.4</td>
+<td>61.1</td>
+<td>7.6</td>
+<td>31.0</td>
+</tr>
+<tr>
+<td>cattle-tropical</td>
+<td>ETH</td>
+<td>NEX 1995–2014</td>
+<td>1.2</td>
+<td>56.2</td>
+<td>11.9</td>
+<td>29.4</td>
+</tr>
+<tr>
+<td>cattle-tropical</td>
+<td>NGA</td>
+<td>observed 2006–2025</td>
+<td>0.2</td>
+<td>63.2</td>
+<td>6.6</td>
+<td>29.9</td>
+</tr>
+<tr>
+<td>cattle-tropical</td>
+<td>NGA</td>
+<td>NEX 1995–2014</td>
+<td>5.7</td>
+<td>49.5</td>
+<td>19.7</td>
+<td>25.1</td>
+</tr>
+<tr>
+<td>cattle-tropical</td>
+<td>TZA</td>
+<td>observed 2006–2025</td>
+<td>0.2</td>
+<td>59.6</td>
+<td>2.4</td>
+<td>37.8</td>
+</tr>
+<tr>
+<td>cattle-tropical</td>
+<td>TZA</td>
+<td>NEX 1995–2014</td>
+<td>5.2</td>
+<td>50.6</td>
+<td>22.2</td>
+<td>21.9</td>
+</tr>
+<tr>
+<td>goats-tropical</td>
+<td>SSA</td>
+<td>observed 2006–2025</td>
+<td>1.3</td>
+<td>74.7</td>
+<td>10.0</td>
+<td>14.0</td>
+</tr>
+<tr>
+<td>goats-tropical</td>
+<td>SSA</td>
+<td>NEX 1995–2014</td>
+<td>5.0</td>
+<td>54.5</td>
+<td>23.0</td>
+<td>17.2</td>
+</tr>
+<tr>
+<td>goats-tropical</td>
+<td>KEN</td>
+<td>observed 2006–2025</td>
+<td>0.1</td>
+<td>90.7</td>
+<td>1.8</td>
+<td>7.4</td>
+</tr>
+<tr>
+<td>goats-tropical</td>
+<td>KEN</td>
+<td>NEX 1995–2014</td>
+<td>0.6</td>
+<td>84.6</td>
+<td>2.9</td>
+<td>11.9</td>
+</tr>
+<tr>
+<td>goats-tropical</td>
+<td>ETH</td>
+<td>observed 2006–2025</td>
+<td>0.1</td>
+<td>82.9</td>
+<td>1.6</td>
+<td>15.3</td>
+</tr>
+<tr>
+<td>goats-tropical</td>
+<td>ETH</td>
+<td>NEX 1995–2014</td>
+<td>0.4</td>
+<td>76.4</td>
+<td>3.7</td>
+<td>18.8</td>
+</tr>
+<tr>
+<td>goats-tropical</td>
+<td>NGA</td>
+<td>observed 2006–2025</td>
+<td>0.6</td>
+<td>45.1</td>
+<td>34.0</td>
+<td>20.4</td>
+</tr>
+<tr>
+<td>goats-tropical</td>
+<td>NGA</td>
+<td>NEX 1995–2014</td>
+<td>6.6</td>
+<td>34.1</td>
+<td>38.7</td>
+<td>20.6</td>
+</tr>
+<tr>
+<td>goats-tropical</td>
+<td>TZA</td>
+<td>observed 2006–2025</td>
+<td>0.2</td>
+<td>54.5</td>
+<td>4.3</td>
+<td>41.0</td>
+</tr>
+<tr>
+<td>goats-tropical</td>
+<td>TZA</td>
+<td>NEX 1995–2014</td>
+<td>4.0</td>
+<td>44.1</td>
+<td>22.4</td>
+<td>29.5</td>
+</tr>
+</tbody></table></div>
+<p><strong>Reading the comparison.</strong></p>
+<ul>
+<li><strong>Continental shares broadly agree.</strong> SSA maize: dry 25 % observed vs 31 % NEX; wet 39 % vs 30 %; none 7 % vs 6 %.</li>
+<li><strong>Some countries differ strongly.</strong> Kenyan crops are much wetter in the observed record (maize wet 48 % vs
+26 %). Ethiopian beans and cassava are much drier (beans dry 89 % vs 30 %).</li>
+<li><strong>The two columns differ in period as well as in source.</strong> 2006–2025 includes the very wet East African years
+2019–2020 and 2023, and the 2010–11 and 2016–17 droughts. A like-for-like comparison is coming: observed
+1995–2014 vs NEX 1995–2014, from the long series below. <strong>Until then, treat a large country-level gap as
+unexplained, not as model bias.</strong></li>
+<li><strong>Livestock: the dry axis is always on, and moderate THI is nearly always exceeded.</strong> The dry axis is the 12-month
+NDWS, i.e. dry-season length, which every year has. Moderate THI-max is exceeded in about 99 % of cell-years for
+tropical cattle. So almost all livestock exposure sits in <code>dry+heat</code>, and the observed <code>heat</code>-only class is close
+to 0. This is the known caveat of §4 and §6. <strong>Do not read these livestock classes as drought or heat-stress
+frequencies.</strong> The rangeland forage layer (§6) is the intended livestock drought signal.</li>
+</ul>
+<p><strong>Caveats specific to the observed product.</strong></p>
+<ul>
+<li><strong>Soil gap filled (#56).</strong> The shared soil rasters have holes on coastal and lakeshore cells. They are filled for
+the observed product by inverse-distance interpolation (≤ 0.5°), so observed covers cells that NEX&#39;s NDWS sets
+miss (for example Kenya maize at 1.000 of exposure, vs 0.976 for NEX&#39;s NDWS set).</li>
+<li><strong>Islands (#57).</strong> Mauritius, Cape Verde and the Seychelles are outside the climate domain, so they have no hazard.</li>
+<li><strong>CHIRTS-ERA5 coastal artefacts.</strong> Pixels above the world records (Tmax &gt; 57 °C, Tmin &gt; 43 °C) are replaced by
+the median of valid neighbours: 6 days for Tmax and 222 for Tmin, all on hot coasts.</li>
+</ul>
+<p><strong>Coming next (not yet published).</strong></p>
+<ul>
+<li><strong>A long series, 1982–2024 (43 seasons).</strong> Same method, on CGlabs now. It gives:<ul>
+<li><strong>trends over the full series</strong>;</li>
+<li><strong>anomalies against the WMO 1991–2020 normal</strong>, including THI for livestock;</li>
+<li>the like-for-like 1995–2014 comparison with NEX.</li>
+</ul>
+</li>
+<li><strong>Rangeland forage drought</strong> from ASAP FPAR: deficit-size layers, 2005–2024.</li>
+</ul>
 <hr>
 <h2 id="update-2026-10-22-what-we-have-and-what-we-don-3">Update 2026-10-22 — what we have, and what we don&#39;t</h2>
 <p><strong>Have (public, CC-BY-4.0, pinned in §7):</strong></p>

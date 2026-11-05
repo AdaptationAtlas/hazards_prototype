@@ -1,0 +1,61 @@
+source,var,iso3,crop,none_pct,dry,heat,wet,dry_heat,dry_wet,heat_wet,dry_heat_wet,exposure_total
+observed 2006-2025,head_n,ETH,cattle-tropical,0.0,0.0,0.4,0.0,61.1,0.0,7.6,31.0,70893849.0
+NEX historic 1995-2014,head_n,ETH,cattle-tropical,0.0,0.7,1.2,0.1,56.2,0.6,11.9,29.4,70371747.0
+observed 2006-2025,head_n,KEN,cattle-tropical,0.0,0.0,0.7,0.0,75.5,0.0,11.3,12.5,40028406.0
+NEX historic 1995-2014,head_n,KEN,cattle-tropical,0.0,0.0,1.5,0.0,76.3,0.0,7.6,14.6,39324714.0
+observed 2006-2025,head_n,NGA,cattle-tropical,0.0,0.0,0.2,0.0,63.2,0.0,6.6,29.9,61171242.0
+NEX historic 1995-2014,head_n,NGA,cattle-tropical,0.0,0.0,5.7,0.0,49.5,0.0,19.7,25.1,60844725.0
+observed 2006-2025,head_n,SSA,cattle-tropical,0.0,0.0,1.1,0.0,75.5,0.0,5.2,18.2,902993766.0
+NEX historic 1995-2014,head_n,SSA,cattle-tropical,0.0,0.3,4.8,0.0,51.7,0.1,24.7,18.5,893303949.0
+observed 2006-2025,head_n,TZA,cattle-tropical,0.0,0.0,0.2,0.0,59.6,0.0,2.4,37.8,77315121.0
+NEX historic 1995-2014,head_n,TZA,cattle-tropical,0.0,0.0,5.2,0.0,50.6,0.0,22.2,21.9,75873846.0
+observed 2006-2025,head_n,ETH,goats-tropical,0.0,0.0,0.1,0.0,82.9,0.0,1.6,15.3,111213654.0
+NEX historic 1995-2014,head_n,ETH,goats-tropical,0.0,0.3,0.4,0.0,76.4,0.3,3.7,18.8,110419203.0
+observed 2006-2025,head_n,KEN,goats-tropical,0.0,0.0,0.1,0.0,90.7,0.0,1.8,7.4,92535411.0
+NEX historic 1995-2014,head_n,KEN,goats-tropical,0.0,0.0,0.6,0.0,84.6,0.0,2.9,11.9,91686333.0
+observed 2006-2025,head_n,NGA,goats-tropical,0.0,0.0,0.6,0.0,45.1,0.0,34.0,20.4,247391166.0
+NEX historic 1995-2014,head_n,NGA,goats-tropical,0.0,0.0,6.6,0.0,34.1,0.0,38.7,20.6,245972802.0
+observed 2006-2025,head_n,SSA,goats-tropical,0.0,0.0,1.3,0.0,74.7,0.0,10.0,14.0,1357122546.0
+NEX historic 1995-2014,head_n,SSA,goats-tropical,0.0,0.3,5.0,0.0,54.5,0.0,23.0,17.2,1340858907.0
+observed 2006-2025,head_n,TZA,goats-tropical,0.0,0.0,0.2,0.0,54.5,0.0,4.3,41.0,48705480.0
+NEX historic 1995-2014,head_n,TZA,goats-tropical,0.0,0.0,4.0,0.0,44.1,0.0,22.4,29.5,45440736.0
+observed 2006-2025,prod_t,ETH,bean,0.6,89.4,0.0,4.5,0.4,5.1,0.0,0.0,1647588.0
+NEX historic 1995-2014,prod_t,ETH,bean,4.2,29.8,0.0,37.4,0.3,28.4,0.0,0.1,1630206.0
+observed 2006-2025,prod_t,KEN,bean,5.5,32.0,0.0,50.1,1.0,11.5,0.0,0.0,2152893.0
+NEX historic 1995-2014,prod_t,KEN,bean,5.0,52.3,0.0,22.6,0.9,19.2,0.0,0.1,2100558.0
+observed 2006-2025,prod_t,NGA,bean,2.6,2.8,1.9,52.4,25.1,0.0,10.7,4.6,16737.0
+NEX historic 1995-2014,prod_t,NGA,bean,4.2,2.9,1.7,39.8,24.8,1.9,7.6,17.2,16698.0
+observed 2006-2025,prod_t,SSA,bean,10.9,26.9,0.4,41.6,10.7,7.9,0.9,0.7,21515361.0
+NEX historic 1995-2014,prod_t,SSA,bean,15.8,26.7,0.4,32.6,4.1,16.9,1.7,1.8,20876556.0
+observed 2006-2025,prod_t,TZA,bean,8.9,20.1,0.0,54.7,0.3,15.9,0.0,0.0,3862068.0
+NEX historic 1995-2014,prod_t,TZA,bean,8.4,40.4,0.0,31.6,0.1,19.5,0.0,0.0,3711957.0
+observed 2006-2025,prod_t,ETH,cassava,0.0,95.7,0.0,0.8,3.5,0.0,0.0,0.0,10383.0
+NEX historic 1995-2014,prod_t,ETH,cassava,0.4,67.7,0.0,0.6,27.3,4.1,0.0,0.1,10383.0
+observed 2006-2025,prod_t,KEN,cassava,3.2,17.2,0.0,46.6,19.9,10.0,0.2,3.0,2404167.0
+NEX historic 1995-2014,prod_t,KEN,cassava,4.4,55.4,0.0,19.2,2.8,17.8,0.1,0.3,2280324.0
+observed 2006-2025,prod_t,NGA,cassava,0.5,2.6,0.3,53.4,17.8,11.3,2.8,11.4,169972077.0
+NEX historic 1995-2014,prod_t,NGA,cassava,5.0,5.5,3.1,44.6,16.2,4.8,11.1,9.8,164814429.0
+observed 2006-2025,prod_t,SSA,cassava,7.9,15.5,0.3,38.9,9.8,19.7,1.5,6.4,585491067.0
+NEX historic 1995-2014,prod_t,SSA,cassava,12.1,10.9,1.4,49.6,7.0,11.3,4.1,3.7,565064358.0
+observed 2006-2025,prod_t,TZA,cassava,0.5,41.1,0.0,6.0,0.3,52.0,0.0,0.1,21227931.0
+NEX historic 1995-2014,prod_t,TZA,cassava,6.9,23.9,0.0,38.4,0.1,30.7,0.0,0.1,18766134.0
+observed 2006-2025,prod_t,ETH,maize,4.0,8.3,0.0,79.7,0.3,7.3,0.3,0.1,30254262.0
+NEX historic 1995-2014,prod_t,ETH,maize,2.5,14.9,0.0,57.5,0.6,24.2,0.0,0.3,29883921.0
+observed 2006-2025,prod_t,KEN,maize,6.0,29.3,0.0,48.4,4.9,9.8,0.4,1.2,10643169.0
+NEX historic 1995-2014,prod_t,KEN,maize,5.3,48.8,0.0,25.8,0.7,19.3,0.0,0.1,10384119.0
+observed 2006-2025,prod_t,NGA,maize,6.0,3.1,7.9,28.9,37.4,0.9,10.5,5.3,37356393.0
+NEX historic 1995-2014,prod_t,NGA,maize,3.4,5.0,3.2,23.5,35.4,4.6,9.6,15.3,36271971.0
+observed 2006-2025,prod_t,SSA,maize,6.7,24.6,2.2,38.6,9.9,11.9,4.2,1.9,254363658.0
+NEX historic 1995-2014,prod_t,SSA,maize,5.8,30.5,1.0,29.9,9.4,15.8,3.3,4.4,249491235.0
+observed 2006-2025,prod_t,TZA,maize,2.9,24.8,0.0,41.5,0.3,30.5,0.0,0.1,19458246.0
+NEX historic 1995-2014,prod_t,TZA,maize,5.5,42.0,0.0,28.4,0.1,23.8,0.0,0.1,18998904.0
+observed 2006-2025,prod_t,ETH,sorghum,1.5,16.7,0.1,45.9,1.4,31.4,0.7,2.4,14570535.0
+NEX historic 1995-2014,prod_t,ETH,sorghum,1.1,26.3,0.0,32.7,3.6,33.3,0.1,2.8,14518206.0
+observed 2006-2025,prod_t,KEN,sorghum,6.7,26.9,0.0,37.3,11.6,16.0,0.0,1.5,725928.0
+NEX historic 1995-2014,prod_t,KEN,sorghum,4.1,53.8,0.0,15.9,3.8,22.3,0.0,0.2,680232.0
+observed 2006-2025,prod_t,NGA,sorghum,4.2,3.2,1.4,44.1,27.6,3.3,6.9,9.3,19988271.0
+NEX historic 1995-2014,prod_t,NGA,sorghum,2.9,4.6,3.4,10.1,44.9,3.9,9.7,20.5,19811031.0
+observed 2006-2025,prod_t,SSA,sorghum,3.1,9.4,2.5,29.4,30.2,11.0,6.7,7.8,70016664.0
+NEX historic 1995-2014,prod_t,SSA,sorghum,2.8,12.9,2.5,20.4,27.7,11.1,8.5,14.1,69434445.0
+observed 2006-2025,prod_t,TZA,sorghum,0.8,38.7,0.0,16.8,0.0,43.8,0.0,0.0,2876964.0
+NEX historic 1995-2014,prod_t,TZA,sorghum,4.6,58.4,0.0,17.1,0.0,19.8,0.0,0.0,2840427.0
