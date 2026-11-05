@@ -2,6 +2,75 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-05 — P3: whole site-library sweep before the IT ticket (read-only). **Small profile is fine.**
+
+**Why.** Thank you for P0-P2. MapSPAM is fixed, and the new acquire layer has passed on its first node run. Before Pete
+asks IT for a site-library rebuild, the ticket has to say how much is actually broken **for every account**, not
+just for the 70 packages the pipeline uses. P1 tested those 70, with the per-user library first. P3 tests every
+package in the site library as a plain account sees it.
+
+**Rules.** Same as P0-P2:
+- read-only;
+- install nothing;
+- do not source `R/0_server_setup.R`;
+- writes go only to `logs/`;
+- background jobs with `nohup` and `.pid`, polled with `kill -0` or the log tail, never `wait`;
+- no usernames, hostnames or IPs in the RESPONSE.
+
+#### P3.1 — pull
+```bash
+cd <repo> && git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD   # develop
+```
+
+#### P3.2 — sweep the site library (a few minutes at 6 workers)
+`R/checks/77_r_lib_sweep.R` loads every package in the library, each in a fresh
+`Rscript --no-environ --no-init-file` with the per-user library hidden, so your `data.table` rebuild cannot mask
+the broken site build. It classifies each failure as:
+- `direct`: the package's own `.so` fails;
+- `via:<pkg>`: another package's `.so` fails while loading it;
+- `dep`: a dependency is missing;
+- `other`: anything else.
+
+It also tallies the library by the R version each package was built under.
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S)
+nohup Rscript R/checks/77_r_lib_sweep.R --lib /usr/local/lib/R/site-library --workers 6 \
+  --out logs/r_lib_sweep_$STAMP.tsv > logs/r_lib_sweep_$STAMP.log 2>&1 &
+echo $! > logs/r_lib_sweep_$STAMP.pid
+# poll: kill -0 $(cat logs/r_lib_sweep_$STAMP.pid) 2>/dev/null && echo running || tail -40 logs/r_lib_sweep_$STAMP.log
+```
+**What to expect:**
+- about 1,650 packages, nearly all built under R 4.5;
+- `rlang` and `data.table` among the `direct` roots, with `SETLENGTH`;
+- `terra`, `sf`, `exactextractr` and `stringi` load.
+
+The number to find out is how many **direct** roots there are, and which symbols they lack.
+
+**Report:**
+- the log from the `R 4.6.1; library has …` line to the end, verbatim. It holds the built-under tally, the counts,
+  every direct root with its symbol, the knock-on counts per root, and the dep/other rows;
+- not the full TSV. Keep it in `logs/`.
+
+#### P3.3 — when R was upgraded (read-only)
+```bash
+zgrep -h -E " (upgrade|install) r-base-core" /var/log/dpkg.log* 2>/dev/null | sort | tail -5
+ls -ld --time-style=long-iso /usr/lib/R/library/base
+```
+Report both outputs, with versions and dates. If `/var/log/dpkg.log*` is not readable, say so. That is an answer,
+not a failure.
+
+**Stop and describe** on any of:
+- not on `develop`;
+- the sweep dying before its summary;
+- anything written outside `logs/`.
+
+**To answer:**
+1. Prepend one `### RESPONSE — pascal` (P3) to this file.
+2. Run the IP grep.
+3. Commit only this file, then push.
+4. Verify it landed.
+5. End with a delivery line.
+
 ### RESPONSE — pascal 2026-11-05 — P0-P2 done. P1 audit: OK 37 / BROKEN 16 / MISSING 17. P2 re-fetch: **PASS, ok=48**, both truncated tiles now match the reference.
 
 All of P0, P1 and P2 ran to completion. No stop rule fired. Nothing was installed, `R/0_server_setup.R` was not sourced, and every write landed inside the three permitted places.
