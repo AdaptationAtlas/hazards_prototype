@@ -2,6 +2,188 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal 2026-11-05 (3) — P4: three install rounds, all binary, **`0.4-chain` BROKEN 0 MISSING 0** and **BROKEN 0 across all 70 packages**. Phase B is unblocked.
+
+Every gate passes, and the result is better than the dispatch allowed for: the final audit has **BROKEN 0** in all three scopes, not only in `0.4-chain`. `both` has MISSING 0 as well. The nine remaining MISSING rows are all `upstream`-only.
+
+No stop rule fired. Nothing was installed into the site or system library, nothing ran as root, and `R/0_server_setup.R` was not sourced.
+
+#### P4.0 — before-state
+
+Branch `develop`, `git log --oneline -1` = `bde991c`.
+
+```
+user lib first: TRUE
+data.table  1.18.6.1  R 4.6.1; x86_64-pc-linux-gnu; 2026-10-28 12:58:17 UTC; unix
+```
+
+One package in the user library, as expected.
+
+#### P4.1 — round 1
+
+**Binary, not source.** Posit Package Manager serves R 4.6 jammy binaries for every package requested, so the slow `arrow`-from-source path never came up.
+
+```
+binary: 11    source: 0
+```
+
+Eleven, because `install.packages` pulled in one dependency that was not present anywhere, `paws.common`. All ten requested packages installed:
+
+```
+rlang          1.3.0
+base64enc      0.1.6
+arrow          26.0.0
+geoarrow       0.4.4
+duckdb         2.0.0
+sfarrow        0.4.1
+MetBrewer      0.2.0
+miceadds       3.20.10
+s3fs           0.1.7
+paws.storage   0.11.0
+```
+
+**Round 1 wall time: about 20 s.** No errors, no warnings, nothing unavailable.
+
+#### P4.2 — second and third layers
+
+The dispatch allowed at most two extra rounds. Both were needed, and the third round cleared everything.
+
+**Audit after round 1** — `OK 46   BROKEN 15   MISSING 9   (of 70)`, `0.4-chain OK 23  BROKEN 5  MISSING 0`. Every MISSING row in the 0.4 chain was gone, but a second-layer root appeared:
+
+```
+      6 vctrs
+```
+
+**Round 2: `P4_PKGS=vctrs`.** One binary, about 7 s, `vctrs 0.7.3`.
+
+**Audit after round 2** — `OK 57   BROKEN 4   MISSING 9   (of 70)`, `0.4-chain OK 27  BROKEN 1  MISSING 0`. A third-layer root:
+
+```
+      2 dplyr
+```
+
+Four packages were still BROKEN and all four traced to that one root. `dplyr` and `tidyr` named `dplyr.so` directly; `tidyverse` failed in `.onAttach`; and `miceadds` reported `package 'mice' could not be loaded`, which is not a missing dependency. Loading `mice` on its own gave:
+
+```
+unable to load shared object '/usr/local/lib/R/site-library/dplyr/libs/dplyr.so':
+  /usr/local/lib/R/site-library/dplyr/libs/dplyr.so: undefined symbol: R_shallow_duplicate_attr
+```
+
+So the same root, one level further down, and a **third symbol**: `R_shallow_duplicate_attr`, alongside the `SETLENGTH` and `Rf_EncodeReal` found in P3.
+
+**Round 3: `P4_PKGS=dplyr`.** One binary, about 7 s, `dplyr 1.2.1`.
+
+Summary of the three rounds:
+
+| round | packages installed | binary / source | wall |
+|---|---|---|---|
+| 1 | `rlang`, `base64enc`, `arrow`, `geoarrow`, `duckdb`, `sfarrow`, `MetBrewer`, `miceadds`, `s3fs`, `paws.storage`, plus `paws.common` | 11 / 0 | about 20 s |
+| 2 | `vctrs` | 1 / 0 | about 7 s |
+| 3 | `dplyr` | 1 / 0 | about 7 s |
+
+**This is the layering P3 predicted.** P3 reported four direct roots and said the figure was a lower bound, because the classifier names only the first shared object that fails. Two more roots surfaced here once `rlang` loaded: `vctrs`, then `dplyr`. The same thing will happen to IT, so the node-wide fix is a rebuild-and-re-sweep loop, not a one-shot list of four.
+
+#### Final audit, verbatim
+
+`logs/r_env_audit_p4_20261105_151730.{tsv,log}`:
+
+```
+[2026-11-05 15:16:51] +   1.1s | scope: 76 file(s); 70 distinct package(s)
+[2026-11-05 15:17:53] +  62.8s | OK 61   BROKEN 0   MISSING 9   (of 70)
+[2026-11-05 15:17:53] +  62.8s |   0.4-chain OK 28  BROKEN 0  MISSING 0
+[2026-11-05 15:17:53] +  62.8s |   both      OK 13  BROKEN 0  MISSING 0
+[2026-11-05 15:17:53] +  62.8s |   upstream  OK 20  BROKEN 0  MISSING 9
+```
+
+No BROKEN row anywhere, so no site-library root is still failing for anything the pipeline touches. The nine MISSING rows are all `upstream`, all packages outside the 0.4 chain, and none was in P4's list:
+
+```
+aws.s3           upstream   1:upload_AWS.R
+climate4R.UDG    upstream   1:download_rawCMIP6.R
+downscaleR       upstream   1:download_rawCMIP6.R
+inborutils       upstream   1:download_cropCalendar.R
+loadeR           upstream   1:download_rawCMIP6.R
+transformeR      upstream   1:download_rawCMIP6.R
+tsbox            upstream   2:preprocess_nex-gddp-cmip6_daily_data_v2_0.R;preprocess_nex-gddp-cmip6_daily_data.R
+visualizeR       upstream   1:download_rawCMIP6.R
+wbkernel         upstream   2:fast_calc_NDWS.R;fast_calc_waterbalance.R
+```
+
+Six of the nine belong to `download_rawCMIP6.R` and `download_cropCalendar.R`, outside 01 to 04. **`wbkernel` is the one that matters for phase C**, needed by `fast_calc_NDWS.R` and `fast_calc_waterbalance.R`. It is not on CRAN, so it needs its own decision rather than another `install.packages` line. `tsbox` and `aws.s3` are CRAN packages, but neither is in 01 to 04.
+
+#### P4.3 — gates
+
+All twelve smoke-test packages load:
+
+```
+rlang       OK 1.3.0
+dplyr       OK 1.2.1
+tidyr       OK 1.3.2
+ggplot2     OK 4.0.1
+purrr       OK 1.2.1
+wbstats     OK 1.1
+arrow       OK 26.0.0
+geoarrow    OK 0.4.4
+duckdb      OK 2.0.0
+data.table  OK 1.18.6.1
+terra       OK 1.8.93
+sf          OK 1.0.24
+```
+
+```
+arrow parquet: TRUE
+```
+
+```
+14 packages in user lib
+146M	~/R/x86_64-pc-linux-gnu-library/4.6
+```
+
+Worth noting which library each gate package came from: only `rlang`, `dplyr`, `arrow`, `geoarrow`, `duckdb` and `data.table` are user-library copies. `tidyr`, `ggplot2`, `purrr`, `wbstats`, `terra` and `sf` are the original site builds, now loading because the roots beneath them are fixed. Fourteen user-library packages were enough to unbreak fifty-odd site ones.
+
+#### The user library, for the day IT rebuilds the site library
+
+Everything now in `R_LIBS_USER`. All fourteen are built under R 4.6.0 or 4.6.1, so all are ABI-compatible with the running 4.6.1. **When the site library is rebuilt, this whole directory should be deleted**, so that the node goes back to one copy of each package and these per-user versions stop shadowing the site ones.
+
+```
+package        version    built    build date
+arrow          26.0.0     R 4.6.0  2026-10-25
+base64enc      0.1-6      R 4.6.0  2026-08-12
+data.table     1.18.6.1   R 4.6.1  2026-10-28
+dplyr          1.2.1      R 4.6.0  2026-08-12
+duckdb         2.0.0      R 4.6.0  2026-10-24
+geoarrow       0.4.4      R 4.6.0  2026-09-17
+MetBrewer      0.2.0      R 4.6.0  2026-04-24
+miceadds       3.20-10    R 4.6.0  2026-10-18
+paws.common    0.9.0      R 4.6.0  2026-10-06
+paws.storage   0.11.0     R 4.6.0  2026-10-08
+rlang          1.3.0      R 4.6.0  2026-08-12
+s3fs           0.1.7      R 4.6.0  2026-04-24
+sfarrow        0.4.1      R 4.6.0  2026-04-24
+vctrs          0.7.3      R 4.6.0  2026-08-12
+```
+
+Two version changes are worth flagging before phase B runs, because they are not like-for-like replacements of the site builds:
+
+- **`dplyr` 1.2.1 in the user library against 1.1.4 in the site library.** A minor-version step, picked up because P3M's `latest` snapshot was used rather than a pin. Phase B compares values across hosts, so if cglabs or the macbook is on `dplyr` 1.1.4, that difference is now in the comparison. Flagging it rather than acting on it; say the word and the pin can be moved.
+- **`rlang` 1.3.0 against the site library's 1.1.7**, and **`vctrs` 0.7.3 against 0.7.1**, for the same reason. These are lower-level and less likely to move a number, but they are the same kind of difference.
+
+Everything else either did not exist here before, or matches what the site library held.
+
+#### Notes
+
+- **One write fell outside `R_LIBS_USER` and `logs/`**, and it is inherent to `install.packages`: R staged each downloaded tarball under its own session temporary directory before unpacking. Those directories are removed when the session ends and hold nothing of value. Nothing else outside the two permitted places was touched, and no S3 writes were made. Flagging it for completeness rather than as a problem.
+- **No prompt to install as root or into the site library appeared at any point.** The `lib =` argument was explicit on every call, and `R_LIBS_USER` is first in `.libPaths()`.
+- **Phase B is unblocked.** R/0.4.1 and the rest of the 0.4 chain now have every package they reference, and the 0.4 chain has no BROKEN and no MISSING row.
+- **Phase C still needs `wbkernel`**, which was deliberately outside P4.
+- **The IT ticket should gain one line from this**: the roots do not surface all at once. Four were visible in P3; fixing them exposed `vctrs`, and fixing that exposed `dplyr`, with a third missing symbol, `R_shallow_duplicate_attr`. The site-library rebuild needs the sweep re-run after each pass until it comes back clean.
+
+#### Logs kept
+
+`logs/p4_install.R`, `logs/p4_install_r1_20261105_151250.{log,pid}`, `logs/p4_install_r2_20261105_151500.{log,pid}`, `logs/p4_install_r3_20261105_151700.{log,pid}`, and the three audits `logs/r_env_audit_p4_20261105_{151330,151530,151730}.{tsv,log}`.
+
+---
+
 ### MACBOOK 2026-11-05 — P4: per-user rebuild so the 0.4 chain loads (installs, Pete's GO). **Small profile is fine.**
 
 **Why.** Your P3 sweep shrank the problem to four compiled roots. `data.table` is already rebuilt in your user
