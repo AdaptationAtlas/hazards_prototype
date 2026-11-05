@@ -2,6 +2,112 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal 2026-11-05 (2) — P3: 1,653 packages swept, **588 BROKEN, but only 4 direct roots**. R was upgraded on 2026-10-26.
+
+The ticket is smaller than the breakage looks. 588 of 1,653 site-library packages fail to load for a plain account, and 584 of those 588 fail only because one of **four** compiled packages fails underneath them. Nothing is a missing dependency, and nothing is unexplained.
+
+No stop rule fired. Read-only throughout: nothing installed, `R/0_server_setup.R` not sourced, and `logs/` was the only thing written.
+
+#### P3.1 — pull
+
+Branch `develop`, `git log --oneline -1` = `063feaa` (the commit that added the P3 block).
+
+#### P3.2 — site-library sweep
+
+`R/checks/77_r_lib_sweep.R --lib /usr/local/lib/R/site-library --workers 6`, run with `nohup` and a `.pid`, polled with `kill -0`. 581.9 s wall, about 9 min 42 s. Log `logs/r_lib_sweep_20261105_141328.log`, TSV `logs/r_lib_sweep_20261105_141328.tsv` (1,653 rows plus header), both kept.
+
+The log, from the `R 4.6.1; library has …` line to the end, verbatim:
+
+```
+[2026-11-05 14:14:05] +  36.0s | R 4.6.1; library has 1653 package(s); 6 worker(s)
+[2026-11-05 14:14:05] +  36.0s |   built under R 4.1   compiled   64  pure-R  253
+[2026-11-05 14:14:05] +  36.0s |   built under R 4.5   compiled  585  pure-R  751
+[2026-11-05 14:23:11] + 581.8s | loaded OK 1065   BROKEN 588   (of 1653)
+[2026-11-05 14:23:11] + 581.8s |   direct (own shared object fails): 4
+[2026-11-05 14:23:11] + 581.8s |   via another package's shared object: 584
+[2026-11-05 14:23:11] + 581.8s |   missing dependency: 0   other: 0
+[2026-11-05 14:23:11] + 581.8s | ROOTS (direct failures) and the symbol each lacks:
+[2026-11-05 14:23:11] + 581.8s |   base64enc              built R 4.1  undefined symbol: SETLENGTH
+[2026-11-05 14:23:11] + 581.8s |   data.table             built R 4.5  undefined symbol: SETLENGTH
+[2026-11-05 14:23:11] + 581.8s |   RGtk2                  built R 4.1  undefined symbol: Rf_EncodeReal
+[2026-11-05 14:23:11] + 581.8s |   rlang                  built R 4.5  undefined symbol: SETLENGTH
+[2026-11-05 14:23:11] + 581.9s | knock-on failures by root:
+[2026-11-05 14:23:11] + 581.9s |   rlang                  503 package(s)
+[2026-11-05 14:23:11] + 581.9s |   data.table             65 package(s)
+[2026-11-05 14:23:11] + 581.9s |   base64enc              14 package(s)
+[2026-11-05 14:23:11] + 581.9s |   RGtk2                  2 package(s)
+[2026-11-05 14:23:11] + 581.9s | undefined symbols among roots: Rf_EncodeReal=1  SETLENGTH=3
+[2026-11-05 14:23:11] + 581.9s | wrote logs/r_lib_sweep_20261105_141328.tsv
+```
+
+All three expectations from the dispatch hold. The library has 1,653 packages, close to the 1,650 predicted. `rlang` and `data.table` are both `direct` roots with `SETLENGTH`. `terra`, `sf`, `exactextractr` and `stringi` all load, each built under R 4.5:
+
+```
+exactextractr	4.5	yes	OK
+sf	4.5	yes	OK
+stringi	4.5	yes	OK
+terra	4.5	yes	OK
+```
+
+Four points for the ticket.
+
+**1. There are four direct roots, and two symbols between them.** `SETLENGTH` breaks `rlang`, `data.table` and `base64enc`; `Rf_EncodeReal` breaks `RGtk2`. Both are symbols R 4.6 no longer exports in the form these builds were compiled against. One root, `rlang`, accounts for 503 of the 584 knock-on failures on its own.
+
+**2. Nothing is a missing dependency, and nothing is unclassified.** `missing dependency: 0   other: 0`. Every one of the 588 failures is the 4.5.1 to 4.6.1 ABI break and nothing else. There is no second, unrelated problem hiding in the count.
+
+**3. Not one package in the library was built under R 4.6.** The tally is 1,336 built under R 4.5 and 317 under R 4.1; the running R is 4.6.1. The 1,065 that load do so because they do not touch the removed symbols, not because they are current. That is the real state of the library: it is entirely a 4.5-and-earlier library being run by 4.6.1.
+
+**4. The figure of 4 roots is a lower bound, and the ticket should say so.** The classifier reports the first shared object that fails. A package whose own `.so` is also broken, but which loads `rlang` before reaching it, is counted as `via:rlang`. 158 of the 588 broken packages need compilation themselves (142 built under R 4.5, 16 under R 4.1), so some of them may turn out to be roots once `rlang` is fixed. The honest ask is: rebuild these four first, then re-run this sweep, which takes ten minutes and will show whether a second layer exists.
+
+Full status tally, as `built / compiled / status`:
+
+```
+    443  4.5  yes  OK
+    417  4.5  no   OK
+    334  4.5  no   BROKEN
+    157  4.1  no   OK
+    142  4.5  yes  BROKEN
+     96  4.1  no   BROKEN
+     48  4.1  yes  OK
+     16  4.1  yes  BROKEN
+```
+
+430 of the 588 broken packages are pure R. They hold no compiled code of their own and would load the moment the four roots are rebuilt.
+
+#### P3.3 — when R was upgraded
+
+`/var/log/dpkg.log*` is readable by any account on this node, so both commands returned an answer.
+
+```
+2026-10-26 19:18:26 upgrade r-base-core:amd64 4.5.1-1.2204.0 4.6.1-6.2204.0
+```
+
+That is the only `upgrade` or `install` line for `r-base-core` in the retained dpkg logs. The site library was not touched at the same time, which is the whole cause.
+
+```
+drwxr-xr-x 7 root root 4096 2026-10-26 19:18 /usr/lib/R/library/base
+```
+
+The base library directory carries the same minute, so it confirms the dpkg entry rather than adding a date of its own.
+
+**The upgrade was ten days ago, on 2026-10-26.** It lines up with the first `SETLENGTH` failures seen in the FPAR thread, and it means nothing on this node has run against a consistent R since then.
+
+#### What this means for the IT ask
+
+The ticket can now be specific and small. The request is not "rebuild the site library"; it is:
+
+- rebuild four compiled packages against R 4.6.1 — `rlang`, `data.table`, `base64enc`, `RGtk2` — which should clear about 584 knock-on failures;
+- then re-run `R/checks/77_r_lib_sweep.R` to confirm, and to expose any second layer of roots that the first four are currently masking;
+- and, separately, decide whether the whole library, all 1,653 packages built under R 4.1 or R 4.5, should be rebuilt as a batch, since not one of them has been rebuilt for 4.6.
+
+The per-user workaround stays available but does not scale: it was enough to put `data.table` 1.18.6.1 into a per-user library for the FPAR work, but doing the same for every account on this node is not a fix.
+
+#### Logs kept
+
+`logs/r_lib_sweep_20261105_141328.log`, `logs/r_lib_sweep_20261105_141328.tsv`, `logs/r_lib_sweep_20261105_141328.pid`.
+
+---
+
 ### MACBOOK 2026-11-05 — P3: whole site-library sweep before the IT ticket (read-only). **Small profile is fine.**
 
 **Why.** Thank you for P0-P2. MapSPAM is fixed, and the new acquire layer has passed on its first node run. Before Pete
