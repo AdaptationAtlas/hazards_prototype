@@ -2,6 +2,120 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-05 — P4: per-user rebuild so the 0.4 chain loads (installs, Pete's GO). **Small profile is fine.**
+
+**Why.** Your P3 sweep shrank the problem to four compiled roots. `data.table` is already rebuilt in your user
+library, `RGtk2` is irrelevant, and the IT ticket is going in for the node-wide fix. Phase B (R/0.4.1 on this node)
+should not wait for IT, so P4 does the same per-user repair you did for `data.table` and goes no further:
+- rebuild `rlang` and `base64enc`;
+- install the eight packages the 0.4 chain needs that are MISSING here: `arrow`, `geoarrow`, `duckdb`, `sfarrow`,
+  `MetBrewer`, `miceadds`, `s3fs`, `paws.storage`;
+- go round again for any second-layer roots that only show once `rlang` loads.
+
+`wbkernel` (phase C) is **not** part of P4.
+
+**Rules.**
+- **Install only** into `R_LIBS_USER` (`~/R/x86_64-pc-linux-gnu-library/4.6`). Never into the site or system library,
+  and never as root.
+- Do not source `R/0_server_setup.R`.
+- Writes go only to `R_LIBS_USER` and `logs/`.
+- Installs run in the background with `nohup` and a `.pid` file, polled with `kill -0` or the log tail, never `wait`.
+- No usernames, hostnames or IPs in the RESPONSE.
+
+#### P4.0 — pull, and record the before-state
+```bash
+cd <repo> && export ATLAS_PROJECT_DIR=$PWD
+git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD    # develop
+Rscript -e 'l <- Sys.getenv("R_LIBS_USER"); cat("user lib first:", normalizePath(.libPaths()[1]) == normalizePath(l), "\n"); print(installed.packages(lib.loc = l)[, c("Version", "Built")])'
+```
+Expect `user lib first: TRUE` and one row, `data.table`.
+
+#### P4.1 — round 1 (Posit Package Manager binaries for Ubuntu 22.04)
+```bash
+cat > logs/p4_install.R <<'RS'
+lib <- Sys.getenv("R_LIBS_USER")
+options(repos = c(P3M = "https://packagemanager.posit.co/cran/__linux__/jammy/latest"),
+        HTTPUserAgent = sprintf("R/%s R (%s)", getRversion(),
+          paste(getRversion(), R.version$platform, R.version$arch, R.version$os)))
+pk <- strsplit(Sys.getenv("P4_PKGS"), ",")[[1]]
+cat("installing into user lib:", paste(pk, collapse = " "), "\n")
+install.packages(pk, lib = lib, Ncpus = 4)
+for (p in pk) cat(sprintf("%-14s %s\n", p, tryCatch(as.character(packageVersion(p, lib.loc = lib)), error = function(e) "NOT INSTALLED")))
+RS
+STAMP=$(date +%Y%m%d_%H%M%S)
+P4_PKGS=rlang,base64enc,arrow,geoarrow,duckdb,sfarrow,MetBrewer,miceadds,s3fs,paws.storage \
+  nohup Rscript logs/p4_install.R > logs/p4_install_r1_$STAMP.log 2>&1 &
+echo $! > logs/p4_install_r1_$STAMP.pid
+# poll: kill -0 $(cat logs/p4_install_r1_$STAMP.pid) 2>/dev/null && echo running || tail -15 logs/p4_install_r1_$STAMP.log
+```
+**Binary or source?** Count the two kinds of install line in the log:
+```bash
+grep -c "installing \*binary\* package" logs/p4_install_r1_$STAMP.log
+grep -c "installing \*source\* package" logs/p4_install_r1_$STAMP.log
+```
+If Posit Package Manager has no R 4.6 binaries for this platform, the install falls back to source. That is
+allowed, but slower, and `arrow` from source can take 30-60 min. Report which way it went.
+
+`install.packages` pulls in any dependency that is **not installed**. It does **not** rebuild dependencies that are
+installed but broken in the site library. P4.2 covers those.
+
+#### P4.2 — second layer, at most two more rounds
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S)
+Rscript R/checks/76_r_env_audit.R --out logs/r_env_audit_p4_$STAMP.tsv > logs/r_env_audit_p4_$STAMP.log 2>&1
+grep -E "OK [0-9]+ +BROKEN" logs/r_env_audit_p4_$STAMP.log
+# roots still failing: the package whose shared object fails, taken from each BROKEN row's error
+awk -F'\t' '$2=="BROKEN"' logs/r_env_audit_p4_$STAMP.tsv | grep -oE "site-library/[A-Za-z0-9.]+/libs" | cut -d/ -f2 | sort | uniq -c
+```
+The audit run takes a little over a minute; if your shell kills foreground commands sooner, run it with `nohup`.
+
+If any roots are listed, install exactly those with the same script: `P4_PKGS=<root1>,<root2> nohup Rscript logs/p4_install.R …`, with
+log `p4_install_r2_<STAMP>`. Then re-run the audit. At most **two** extra rounds. If BROKEN rows still name a
+site-library root after round 3, stop and report them.
+
+Packages that stay BROKEN through a **missing dependency** go into the report. Do not chase them beyond the list
+above.
+
+#### P4.3 — gates
+```bash
+Rscript -e 'for (p in c("rlang","dplyr","tidyr","ggplot2","purrr","wbstats","arrow","geoarrow","duckdb","data.table","terra","sf")) cat(sprintf("%-11s %s\n", p, tryCatch({suppressPackageStartupMessages(library(p, character.only = TRUE)); paste("OK", packageVersion(p))}, error = function(e) "FAIL")))'
+Rscript -e 'cat("arrow parquet:", arrow::arrow_info()$capabilities[["parquet"]], "\n")'
+Rscript -e 'l <- Sys.getenv("R_LIBS_USER"); ip <- installed.packages(lib.loc = l); cat(nrow(ip), "packages in user lib\n")'
+du -sh ~/R/x86_64-pc-linux-gnu-library/4.6
+```
+**What to expect** (invariants):
+- the final 76 audit shows **`0.4-chain` BROKEN 0 and MISSING 0**;
+- `both` shows BROKEN 0. Its only MISSING row may be `wbkernel`, which is phase C and not P4's job;
+- all twelve packages in the smoke test print `OK`;
+- `arrow parquet: TRUE`.
+
+`upstream`-only rows can stay BROKEN or MISSING; report the counts.
+
+**Report:**
+- binary vs source, with the install wall time per round;
+- the root list and install line for each round of P4.2;
+- the final 76 summary lines verbatim;
+- the P4.3 output;
+- the user-library package count and size;
+- a `package, version, built` list of everything now in the user library, in a fenced block. When IT rebuilds the
+  site library, that list says what to delete.
+
+**Stop and describe** on any of:
+- not on `develop`;
+- any write outside `R_LIBS_USER` or `logs/`;
+- any prompt to install as root or into the site library;
+- roots still failing after round 3;
+- a 0.4-chain gate failing for any reason other than a listed missing dependency.
+
+**To answer:**
+1. Prepend one `### RESPONSE — pascal` (P4) to this file.
+2. Run the IP grep.
+3. Commit only this file, then push.
+4. Verify it landed.
+5. End with a delivery line.
+
+Keep `logs/p4_*`.
+
 ### RESPONSE — pascal 2026-11-05 (2) — P3: 1,653 packages swept, **588 BROKEN, but only 4 direct roots**. R was upgraded on 2026-10-26.
 
 The ticket is smaller than the breakage looks. 588 of 1,653 site-library packages fail to load for a plain account, and 584 of those 588 fail only because one of **four** compiled packages fails underneath them. Nothing is a missing dependency, and nothing is unexplained.
