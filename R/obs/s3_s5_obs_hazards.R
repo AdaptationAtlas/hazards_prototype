@@ -30,6 +30,7 @@
 #   Rscript R/obs/s3_s5_obs_hazards.R --obs-root <abs> --token chirps-chirts-agera5 --years 2005:2025 \
 #           [--spinup 1] [--period ggcmi-crop] [--ggcmi-dir <dir>] [--crops maize,cassava] [--sets crop,livestock] [--overwrite]
 #           [--thi-token chirps-chirts-agera5-rh15]   # THI variant (ii): THI from that S2 token; livestock bundles carry it
+#           [--extra-indices PTOT]                    # extra seasonal stacks for S7 (trends/normals/anomalies); not classified
 #   Rscript R/obs/s3_s5_obs_hazards.R --selftest        # synthetic end-to-end, ~20 s, no data needed
 suppressPackageStartupMessages({ library(terra); library(data.table) })
 .t0 <- Sys.time()
@@ -49,8 +50,8 @@ SETS <- list(
 )
 SEVS <- c("moderate", "severe", "extreme")
 CLASS_CODES <- c(dry = 1, heat = 10, wet = 100, `dry+heat` = 11, `dry+wet` = 101, `heat+wet` = 110, `dry+heat+wet` = 111)
-IDX_FILE_PREFIX <- c(NDWS = "NDWS-", NTx35 = "NTx35-", NDWL0 = "NDWL0-", THI_max = "THI_max-")
-IDX_DIR <- c(NDWS = "NDWS", NTx35 = "NTx35", NDWL0 = "NDWL0", THI_max = "THI")
+IDX_FILE_PREFIX <- c(NDWS = "NDWS-", NTx35 = "NTx35-", NDWL0 = "NDWL0-", THI_max = "THI_max-", PTOT = "PTOT-")
+IDX_DIR <- c(NDWS = "NDWS", NTx35 = "NTx35", NDWL0 = "NDWL0", THI_max = "THI", PTOT = "PTOT")
 
 load_thresholds <- function(path) {
   hc <- fread(path)[, .(index_name, description = tolower(description), direction, crop, threshold)]
@@ -164,7 +165,7 @@ gate_bundle <- function(b, what) {
 run <- function(obs_root, token, years, spinup, period, ggcmi_dir, crops_sel, sets_sel, overwrite, thi_token = token,
                 base = NULL, windows_csv = file.path(repo, "metadata", "obs_crop_windows.csv"),
                 hc_csv = file.path(repo, "metadata", "haz_classes.csv"), hm_csv = file.path(repo, "metadata", "haz_metadata.csv"),
-                scenario = "observed") {
+                scenario = "observed", extra_indices = character(0)) {
   if (grepl("_", token)) stopf("token must not contain '_': %s", token)
   overwrite <- overwrite || tolower(Sys.getenv("FORCE_OVERWRITE", "")) %in% c("1", "true", "t", "yes", "y", "on")
   if (is.null(base)) base <- rast(file.path(repo, "metadata", "base_rast_nexgddp.tif"))
@@ -194,7 +195,9 @@ run <- function(obs_root, token, years, spinup, period, ggcmi_dir, crops_sel, se
   mz <- fallback_anchor(make_calendar("ggcmi", "mai", ggcmi_dir, base), base_land)
   # --- S3: one seasonal stack per (window, index)
   win[, wkey := fifelse(window == "ggcmi", paste0("ggcmi-", ggcmi_code), fifelse(window == "annual12", "annual12", paste0("custom-", gsub(":", "-", ggcmi_code))))]
-  idx_needed <- unique(unlist(lapply(sets, function(s) c(s$dry, s$heat, s$wet))))
+  # extra_indices (e.g. PTOT): seasonal stacks only, for the trend/normal/anomaly step (S7); never classified or bundled
+  bad_x <- setdiff(extra_indices, names(IDX_DIR)); if (length(bad_x)) stopf("unknown --extra-indices: %s", paste(bad_x, collapse = ","))
+  idx_needed <- unique(c(unlist(lapply(sets, function(s) c(s$dry, s$heat, s$wet))), extra_indices))
   s3 <- list()
   for (wk in unique(win$wkey)) {
     w0 <- win[wkey == wk][1]
@@ -289,7 +292,7 @@ selftest <- function() {
     if (y == 2008) return(0)                       # only reached by the 12-month window of season 2007
     if (y == 2007) return(0)
     switch(idx, NDWS = if (m %in% 3:7) 22 else if (m == 8) 99 else 0, NTx35 = if (m %in% 3:7) 15 else 0,
-           NDWL0 = 0, THI_max = if (m %in% 3:7) 85 else 60)
+           NDWL0 = 0, THI_max = if (m %in% 3:7) 85 else 60, PTOT = if (m %in% 3:7) 100 else 10)
   }
   for (idx in names(IDX_DIR)) for (y in years) for (m in 1:12) {
     d <- file.path(idx_root, IDX_DIR[[idx]]); dir.create(d, FALSE, TRUE)
@@ -304,7 +307,10 @@ selftest <- function() {
                     window = c("ggcmi", "ggcmi", "annual12", "annual12", "annual12"),
                     ggcmi_code = c("mai", "bea", "", "", ""), proxy = FALSE, note = ""), wcsv)
   out <- run(td, token, years, spinup = 1, period = "ggcmi-crop", ggcmi_dir = gg, crops_sel = NULL,
-             sets_sel = c("crop", "livestock"), overwrite = TRUE, base = base, windows_csv = wcsv)
+             sets_sel = c("crop", "livestock"), overwrite = TRUE, base = base, windows_csv = wcsv, extra_indices = "PTOT")
+  pt <- rast(file.path(td, "Data", "obs_seasonal", "obstest_2006-2008", "ggcmi-mai", "PTOT_sum.tif"))
+  ok(abs(values(pt[[2]])[2, 1] - 500) < 1e-6 && length(list.files(file.path(td, "Data", "hazard_risk"), "PTOT", recursive = TRUE)) == 0,
+     "S3 --extra-indices PTOT: seasonal SUM over Mar-Jul = 500 mm, stack only (no bundle carries PTOT)")
   # --- assertions
   s3 <- rast(file.path(td, "Data", "obs_seasonal", "obstest_2006-2008", "ggcmi-mai", "NDWS_mean.tif"))
   ok(nlyr(s3) == 3 && identical(names(s3), c("2005", "2006", "2007")), "S3: 3 seasons from 4 years, labelled by start year")
@@ -378,5 +384,6 @@ if (sys.nframe() == 0) {
   crops_sel <- getopt("--crops"); if (!is.null(crops_sel)) crops_sel <- strsplit(crops_sel, ",")[[1]]
   tok <- getopt("--token", "chirps-chirts-agera5")
   run(obs_root, tok, yrs, as.integer(getopt("--spinup", "1")), getopt("--period", "ggcmi-crop"),
-      ggcmi_dir, crops_sel, strsplit(getopt("--sets", "crop,livestock"), ",")[[1]], "--overwrite" %in% a, thi_token = getopt("--thi-token", tok))
+      ggcmi_dir, crops_sel, strsplit(getopt("--sets", "crop,livestock"), ",")[[1]], "--overwrite" %in% a, thi_token = getopt("--thi-token", tok),
+      extra_indices = { x <- getopt("--extra-indices", ""); if (nzchar(x)) strsplit(x, ",")[[1]] else character(0) })
 }

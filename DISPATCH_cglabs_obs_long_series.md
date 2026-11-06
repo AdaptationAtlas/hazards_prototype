@@ -2,6 +2,71 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-06 — long series accepted; Y0–Y4: rainfall stack + S7 trends, 1991–2020 normals, anomalies (nothing published)
+
+**Accepted.** X0–X6 passed every gate, and the overlap result is exact: NDWS/NDWL0 are identical from 2006, so the
+published product is free of its seed. Your note on 44 layers (43 seasons + the spin-up) is right; S7 selects seasons
+by name and drops 1981.
+
+**New on develop (pull):**
+- `R/obs/s3_s5_obs_hazards.R --extra-indices PTOT` builds seasonal **rainfall-total** stacks (`PTOT_sum.tif`, sum
+  over each window). These are stacks only: never classified, never in a bundle. Selftest 25.
+- **`R/obs/s7_trends_anomalies.R`** (selftest 15). Per window × index stack it computes:
+  - trend: Theil-Sen slope per decade; Mann-Kendall p with the Hamed-Rao autocorrelation correction; FDR
+    (Benjamini-Hochberg) significance across cells;
+  - the 1991–2020 normal: mean, sd, p10, p50, p90;
+  - per-season anomalies: difference and z.
+
+  With `--boundaries-dir` it also writes area-weighted admin0/1/2 series and trends, computed on each unit's own
+  mean series. Outputs go under `$OL/Data/obs_trends/<token>_1982-2024/`.
+
+#### Y0 — pull, selftests
+```bash
+cd $REPO && git pull --ff-only && git log -1 --format='%h %s'
+Rscript R/obs/s3_s5_obs_hazards.R --selftest   # 25
+Rscript R/obs/s7_trends_anomalies.R --selftest # 15
+```
+#### Y1 — S2 monthly PTOT, 1981–2025 (background)
+```bash
+cd $REPO/hazards_upstream/R/04_indices
+COMMON_DATA=$OL SCENARIO=historical YRS=1981:2025 DAYS_CHECK=strict GCMS=chirps-chirts-agera5 \
+  nohup Rscript calc_PTOT.R > $REPO/logs/obs_long_s2_ptot_$STAMP.log 2>&1 &   # + .pid
+```
+Expect 540 `PTOT-YYYY-MM.tif`, 0 WARN, 0 `daily inputs missing`. Sanity check: the Kenya-box land mean for each
+month shows the March–May and October–December rains.
+
+#### Y2 — S3 rainfall stacks only (no --overwrite: the existing stacks and bundles are reused)
+```bash
+nohup Rscript R/obs/s3_s5_obs_hazards.R --obs-root $OL --token chirps-chirts-agera5 --years 1981:2025 --spinup 1 \
+      --ggcmi-dir $NWD/Data/ggcmi --extra-indices PTOT > logs/obs_long_s35_ptot_$STAMP.log 2>&1 &
+```
+Expect new `PTOT_sum.tif` in every window dir (44 layers), and the log reusing the existing stacks and bundles.
+**Any other stack or bundle rewritten is a stop**: check mtimes before and after.
+
+#### Y3 — S7 (background)
+```bash
+nohup Rscript R/obs/s7_trends_anomalies.R --obs-root $OL --token chirps-chirts-agera5 --timeframe 1982-2025 \
+      --years 1982:2024 --normal 1991:2020 --boundaries-dir $NWD/Data/boundaries --cores 16 \
+      > logs/obs_long_s7_$STAMP.log 2>&1 &
+```
+This covers all windows and all stacks (NDWS, NDWL0, NTx35, THI_max, PTOT). Run it again with
+`--token chirps-chirts-agera5-rh15` for the RH15 THI stacks (livestock windows), as a sensitivity run. If the
+boundaries dir does not hold exactly one `*_a0_*`, `*_a1_*` and `*_a2_*` parquet, S7 stops; say what is there.
+
+#### Y4 — report
+- Wall-clock and peak memory for Y3.
+- Per index, the log's summary line: cells with a trend, % p < 0.05, % FDR-significant, median slope per decade.
+  Report it for `ggcmi-mai` (maize) and `annual12` (livestock THI).
+- The admin trend summary per level.
+- **Sanity checks (report, not gates):**
+  - the 1991–2020 normal of maize-window NDWS for KEN and ETH;
+  - the 2011 and 2015 anomaly-z of maize-window NDWS for KEN admin0. The 2010–11 Horn of Africa and 2015–16 El Niño
+    droughts should show as positive dry anomalies;
+  - the national THI_max trend in Nigeria, Kenya and Ethiopia.
+- `du -sh $OL/Data/obs_trends`.
+
+Then push one `### RESPONSE`. **Nothing is published**: the keys and the publish are a later block with Pete's GO.
+
 ### RESPONSE — cglabs 2026-11-05 (final) — **X0-X6 complete, every gate PASS.** S3-S5 built 129 + 30 = 159 bundles with `seasons kept=43 (1982..2024) timeframe=1982-2025`. **X5 overlap against `$OR`, 2006-2024: NTx35 and THI_max identical (max \|diff\| 0); NDWS and NDWL0 exactly 0 from the first published season (2006) on.** `$OL` = 33 GB, kept. Nothing published, no R/3.
 
 Stamp `20261105_091344`. X0-X2 are in interim 1 and X3 in interim 2, both below. **Total wall-clock 09:13 → 15:59, 6 h 45 min.**
