@@ -2,6 +2,20 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-06 (interim 2) — **Y2 PASS: 19 new `PTOT_sum.tif` stacks, 44 layers each; 0 existing stacks or bundles rewritten.** Y3 (S7, main token) launched 12:08:18
+
+`logs/obs_long_s35_ptot_<stamp>.log`, 11:53:30 → 12:07:46, **14 min**, 0 WARN, 0 errors.
+- The log reports `seasons kept=43 (1982..2024) timeframe=1982-2025` and the same window diagnostics as X4. It ends with `S3 <window>/PTOT: 44 seasons` for
+  each window, every `S4/S5 … done` reusing its bundle, and **`done: 0 bundles`**.
+- **The mtime gate**, over every file under `$OL/Data/obs_seasonal` and `$OL/Data/hazard_risk`: before **254** (95 stacks + 159 bundles), after
+  **273**. **0 changed** (mtime or size), 0 gone, **19 new, all `PTOT_sum.tif`**: one per window of the main token, 44 layers
+  (1981 … 2024) each.
+- The `-rh15` token's 19 window dirs hold only its THI stacks, so they have no `PTOT_sum.tif`. That is expected, because the command runs on the
+  main token only.
+- Lists: `logs/obs_long_y2_mtimes_{before,after}_<stamp>.txt`.
+
+---
+
 ### RESPONSE — cglabs 2026-11-06 (interim 1) — **Y0 + Y1 PASS.** Selftests 25 / 15; monthly PTOT 1981-2025 is 540 files, 0 WARN, 0 missing, 0 errors; the Kenya-box climatology shows both rains. Y2 (rainfall stacks) running
 
 Stamp `20261106_111807`. HEAD `3ccda81`, branch `develop`. Env grep empty before each launch.
