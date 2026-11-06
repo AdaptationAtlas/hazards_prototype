@@ -2,6 +2,43 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-06 (3) — **STOP at Y3: S7 halted on its admin-unit log line, after 36 min of building admin weights and before the first stack.** `vapply(units, nrow, 1L)`: `nrow()` of a terra `SpatVector` is a double. Nothing written under `obs_trends`; the `-rh15` run not started. Y0-Y2 stand. No fix improvised
+
+**What ran:** the Y3 command as written (`--token chirps-chirts-agera5 … --boundaries-dir $NWD/Data/boundaries --cores 16`), `logs/obs_long_s7_<stamp>.log`,
+12:08:18 → 12:44:30. Env grep empty.
+
+```
+[S7] src=…/obs_seasonal/chirps-chirts-agera5_1982-2025 windows=19 years=1982-2024 (43) normal=1991-2020 cores=16
+Error in vapply(units, nrow, 1L) : values must be type 'integer',
+ but FUN(X[[1]]) result is type 'double'
+Calls: run ... sprintf -> paste0 -> sprintf -> paste -> sprintf -> vapply
+Execution halted
+```
+(The eight `CPL_gdal_init` warnings with it are the known `/opt/conda/lib/gdalplugins` LIBTIFF notice, see the X4 final block.)
+
+**Where:** `R/obs/s7_trends_anomalies.R:155`, in `run()`:
+```r
+lg(sprintf("admin units: %s", paste(sprintf("%s %d", names(units), vapply(units, nrow, 1L)), collapse = ", ")))
+```
+`read_units()` (l.95-102) returns `terra::vect(...)` objects, and terra's `nrow()` method returns a double, so `vapply(…, 1L)` refuses it.
+The run had already spent **~36 min** in `unit_weights()` (l.103-108: `terra::extract(…, weights = TRUE)` over GAUL admin0/1/2, on one core)
+when it reached this line, so the cost is in time only. Suggested one-token fix: `vapply(units, nrow, numeric(1))`, or `as.integer(nrow(x))`.
+**Why the selftest passed:** its `run()` calls (l.201, l.214) never pass `boundaries_dir`, and the admin path is tested through
+`admin_stack()` with a data.frame directly. So the `run()` → `read_units()` → `vect` path has no test. One assertion that calls `run()`
+with a tiny boundaries dir of three `_a0_/_a1_/_a2_` parquets would cover it.
+
+**State:**
+- `$OL/Data/obs_trends` does not exist; nothing to clean up. The RH15 sensitivity run was not launched.
+- Peak memory over the 36 min: **1.6 GB**, total RSS of the R process and its children sampled every 5 s
+  (`logs/obs_long_s7_peakmem_<stamp>.txt`). `--cores 16` had not engaged yet, since `app()` is per stack.
+- Y0-Y2 stand as reported below. Nothing running.
+
+**Not done (waits on the fix):** the rest of Y3 and Y4. Already done for Y4: the Kenya PTOT sanity check (interim 1). **For the rerun, note** that
+`unit_weights()` costs ~36 min **per S7 invocation**, so the two token runs together cost ~72 min before any stack. Caching the weights
+(e.g. a `.rds` beside `dst`, keyed on the template grid) would halve that; your call.
+
+---
+
 ### RESPONSE — cglabs 2026-11-06 (interim 2) — **Y2 PASS: 19 new `PTOT_sum.tif` stacks, 44 layers each; 0 existing stacks or bundles rewritten.** Y3 (S7, main token) launched 12:08:18
 
 `logs/obs_long_s35_ptot_<stamp>.log`, 11:53:30 → 12:07:46, **14 min**, 0 WARN, 0 errors.
