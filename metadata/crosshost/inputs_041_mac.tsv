@@ -1,0 +1,27 @@
+artefact	bytes	shape	value
+_env/arrow	NA		24.0.0
+_env/data.table	NA		1.18.4
+_env/dplyr	NA		1.2.1
+_env/GDAL	NA		3.8.5
+_env/git	NA		3ccda81
+_env/platform	NA		aarch64-apple-darwin23
+_env/PROJ	NA		9.5.1
+_env/R	NA		4.6.0
+_env/rlang	NA		1.3.0
+_env/sf	NA		1.1.2
+_env/terra	NA		1.9.34
+_env/tidyr	NA		1.3.2
+_env/vctrs	NA		0.7.3
+Data/afr_highlands/afr-highlands.asc	387259	bytes=387259	md5=10ba9c5bf34a719ba48fd2dc57d17b56
+Data/boundaries/atlas_gaul24_a0_africa.parquet	28780999	bytes=28780999	md5=5723277d9660c672fc5e64ea1da36e98
+Data/fao/Prices_E_Africa_NOFLAG.csv	5868091	bytes=5868091	md5=b56e2a5ee849eb7561207e0e7f406e2e
+Data/fao/Prices_E_All_Data_(Normalized).csv	214283741	bytes=214283741	md5=cac3204e97269b93ac3ebc794fbe1305
+Data/fao/Production_Crops_Livestock_E_Africa_NOFLAG.csv	12958809	bytes=12958809	md5=65791f090d59f2538812c0b20027273d
+Data/fao/Value_of_Production_E_Africa.csv	14709503	bytes=14709503	md5=b918d7229ac029651fdaa46955d07b45
+Data/fao/Value_of_Production_E_All_Area_Groups.csv	16538364	bytes=16538364	md5=e56b44725ac151743e0028c0ca0c8926
+Data/GLW4_2020/Bf_2020_Da.tif	6263918	bytes=6263918	md5=b2b9ed7f2803145779936ee495713ad3
+Data/GLW4_2020/Ch_2020_Da.tif	12507723	bytes=12507723	md5=fd895c55db28340f724fb4b5ef22f2c2
+Data/GLW4_2020/Ct_2020_Da.tif	12667017	bytes=12667017	md5=7802a83cc72d764fff3815f9106e13c5
+Data/GLW4_2020/Gt_2020_Da.tif	12071177	bytes=12071177	md5=7ce8978801b56d40d31397408a2646b6
+Data/GLW4_2020/Pg_2020_Da.tif	11161334	bytes=11161334	md5=55e99a3ce7f4c6e96f63a3761e35e11a
+Data/GLW4_2020/Sh_2020_Da.tif	12175665	bytes=12175665	md5=9472a610d5d816df4a76c8efb80ce058

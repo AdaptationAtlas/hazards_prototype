@@ -2,6 +2,119 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-06 — P5 (phase B, PASCAL half): run R/0.4.1 at both resolutions, fingerprint inputs and outputs, value-compare against the macbook. **Small profile is fine.**
+
+**Why.** P4 made the 0.4 chain load here, so phase B can start. Phase B turns the 2026-09-23 cross-host gate, which
+compared shape only and only inputs, into a **value** gate on real outputs. R/0.4.1 is unchanged since CGlabs last ran
+it (`931e5a7`, 2026-11-02, both resolutions, for #54), and its run takes 1-3 min. `72_crosshost_fingerprint.R` gained
+three things:
+- `--stage 0.4.1` (only what 0.4.1 writes, for one grid);
+- `--stage 0.4.1-inputs` (md5 of every input 0.4.1 reads);
+- `--compare`, the gate: shape exact, `n_nonNA` exact, sums within `--rtol 1e-6`. Version rows (`_env/*`) are reported
+  but never gated.
+
+The macbook ran the same code and committed its reference fingerprints to `metadata/crosshost/`. The CGlabs half
+comes later; CGlabs is busy.
+
+**What the gate can and cannot say.** 0.4.1 has two kinds of output:
+- **Built from GLW, highlands and boundaries only:** `livestock_number_number`, `livestock_masks`, `shoat_prop`. Those
+  inputs are hash-pinned to their origin by the #58 manifests, so they are identical on every host by construction.
+  These outputs are the host gate. They must be `same` or `within-tol`.
+- **Built from FAOSTAT as well:** the six `glw4-2020_vop_*` rasters and the `-prices-used.csv` files. FAOSTAT is a
+  rolling release (its archives change in place); the macbook's CSVs date from 2026-05-14. If your FAOSTAT md5s match
+  the macbook's, these outputs must match too. If they differ, a VoP difference is an **input** difference, not a host
+  one: report it, and it is not a failure.
+
+**Rules.**
+- Writes go only to your own 0.4.1 output directories (`<working_dir>/Data/GLW4_2020/{processed,intermediate}`),
+  `logs/`, and three new files in `metadata/crosshost/`.
+- Installs: none. If the 0.4.1 log shows `pacman` installing anything, stop. P4 left nothing for it to install.
+- Background jobs with `nohup` and a `.pid` file, polled with `kill -0` or the log tail, never `wait`.
+- No S3 writes.
+- No usernames, hostnames or IPs in the RESPONSE or in the TSVs. The TSVs hold paths relative to `<working_dir>`
+  only; check them by eye before committing.
+
+#### P5.0 — pull, readiness, pinned inputs
+```bash
+cd <repo> && export ATLAS_PROJECT_DIR=$PWD
+git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD      # develop
+Rscript R/checks/71_stage_ready.R --stage 0.4.1 2>&1 | tail -5
+for id in glw4-2020 afr-highlands boundaries-gaul2024; do Rscript R/checks/75_catalogue_manifest.R --verify $id --hash 2>&1 | tail -2; done
+```
+**What to expect:**
+- 71 reports READY;
+- all three `--verify` lines end `PASS`. A `missing` or `size` row there means a local copy differs from the origin.
+  Fix it with `Rscript -e 'source("R/00_paths.R"); source("R/00_acquire.R"); atlas_require("<id>")'`, which is a
+  verified fetch, then verify again.
+
+If 71 is NOT READY, run `atlas_require_stage("0.4.1")` the same way (verified fetches only) and say what it fetched.
+If that includes `faostat-bulk`, you now hold the **current** FAOSTAT release. That is fine; just say so.
+
+#### P5.1 — run 0.4.1, res-25 then res-05 (about 2 + 3 min)
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S)
+nohup bash -c 'for RES in 0.25 0.05; do EXPOSURE_RES=$RES FORCE_OVERWRITE=1 Rscript -e "source(\"$PWD/R/0_server_setup.R\"); source(\"$PWD/R/0.4.1_create_livestock_exposure.R\")" > logs/phaseB_041_${RES}_'$STAMP'.log 2>&1 || exit 1; done' > logs/phaseB_041_$STAMP.log 2>&1 &
+echo $! > logs/phaseB_041_$STAMP.pid
+# poll: kill -0 $(cat logs/phaseB_041_$STAMP.pid) 2>/dev/null && echo running || grep -hE "COMPLETE|mass not conserved|rror" logs/phaseB_041_*_$STAMP.log
+grep -il "install" logs/phaseB_041_*_$STAMP.log      # expect no output
+```
+**What to expect:**
+- one `COMPLETE` line per resolution, and no `Error`;
+- **one `mass not conserved on GLW resample` warning per resolution. It is expected:** the warning compares global GLW
+  mass with what lands on the grid, and the res-25 grid is a 50°S-50°N band. Report its ratios verbatim; they are a
+  cross-host value too. For res-25 the macbook got
+  `poultry=0.9460, sheep=0.9513, pigs=0.8871, goats=0.9954, cattle=0.9520`. For res-05, an Africa-only grid, it got
+  `poultry=0.1579, sheep=0.4337, pigs=0.0588, goats=0.4799, cattle=0.2606`.
+
+#### P5.2 — fingerprint and commit
+```bash
+mkdir -p metadata/crosshost
+Rscript R/checks/72_crosshost_fingerprint.R --stage 0.4.1-inputs --out metadata/crosshost/inputs_041_pascal.tsv
+Rscript R/checks/72_crosshost_fingerprint.R --stage 0.4.1 --res res-25 --out metadata/crosshost/fp_041_pascal_res-25.tsv
+Rscript R/checks/72_crosshost_fingerprint.R --stage 0.4.1 --res res-05 --out metadata/crosshost/fp_041_pascal_res-05.tsv
+```
+Expect 15 artefact rows + 13 `_env` rows per output TSV, and 13 + 13 for the inputs. If the counts differ, list what
+is missing.
+
+#### P5.3 — compare against the macbook
+```bash
+C="Rscript R/checks/72_crosshost_fingerprint.R --compare"; M=metadata/crosshost
+$C $M/inputs_041_mac.tsv       $M/inputs_041_pascal.tsv       2>&1 | cut -c31-
+$C $M/fp_041_mac_res-25.tsv    $M/fp_041_pascal_res-25.tsv    2>&1 | cut -c31-
+$C $M/fp_041_mac_res-05.tsv    $M/fp_041_pascal_res-05.tsv    2>&1 | cut -c31-
+```
+**Read the result in this order:**
+1. **Inputs.** The 6 GLW tifs, the highlands file and the admin0 boundaries must be `same`. These are the pinned
+   inputs, and anything else is a stop. For the 5 FAOSTAT CSVs, report `same` or `VALUE-DIFF`. That decides step 3.
+2. **The host gate.** `livestock_number_number_res-*`, `livestock_masks_res-*` and `shoat_prop_res-*` must be `same`
+   or `within-tol` at both resolutions. Anything else is a **finding: report it, don't fix it.** Give the
+   `max_rel_diff` and the `_env` differences printed beside it.
+3. **VoP outputs.** If FAOSTAT was `same` in step 1, these must also be `same` or `within-tol`. If it was
+   `VALUE-DIFF`, list their statuses and largest relative differences as input-driven, not as a failure.
+
+Also report:
+- every `env-diff` line, i.e. which library versions differ from the macbook. The macbook runs terra 1.9.34 with
+  GDAL 3.8.5 on arm64; you run terra 1.8.93 with GDAL 3.4.3. A sub-tolerance difference is therefore plausible and
+  fine; a larger one is the finding phase B exists to make.
+- the two `mass not conserved` lines, set against the macbook's res-25 ratios above.
+
+**Stop and describe** on any of:
+- not on `develop`;
+- a pinned input that will not verify;
+- `pacman` installing anything;
+- a missing `COMPLETE`;
+- any write outside the places listed under Rules.
+
+A host-gate difference is a **finding** to report, not a stop.
+
+**To answer:**
+1. Prepend one `### RESPONSE — pascal` (P5) to this file.
+2. Run the IP grep over the response **and** the three TSVs.
+3. Commit this file plus `metadata/crosshost/{inputs_041_pascal,fp_041_pascal_res-25,fp_041_pascal_res-05}.tsv`, and
+   nothing else.
+4. Push, then verify it landed.
+5. End with a delivery line.
+
 ### RESPONSE — pascal 2026-11-05 (3) — P4: three install rounds, all binary, **`0.4-chain` BROKEN 0 MISSING 0** and **BROKEN 0 across all 70 packages**. Phase B is unblocked.
 
 Every gate passes, and the result is better than the dispatch allowed for: the final audit has **BROKEN 0** in all three scopes, not only in `0.4-chain`. `both` has MISSING 0 as well. The nine remaining MISSING rows are all `upstream`-only.
