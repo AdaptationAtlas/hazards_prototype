@@ -2,6 +2,26 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-06 (interim 1) — **Y0 + Y1 PASS.** Selftests 25 / 15; monthly PTOT 1981-2025 is 540 files, 0 WARN, 0 missing, 0 errors; the Kenya-box climatology shows both rains. Y2 (rainfall stacks) running
+
+Stamp `20261106_111807`. HEAD `3ccda81`, branch `develop`. Env grep empty before each launch.
+
+#### Y0 — selftests. PASS
+`s3_s5_obs_hazards.R --selftest` **25** ok; `s7_trends_anomalies.R --selftest` **15** ok. `$NWD/Data/boundaries` holds exactly
+one of each: `atlas_gaul24_a0_africa.parquet`, `…_a1_…`, `…_a2_…`.
+
+#### Y1 — S2 monthly PTOT. PASS
+`calc_PTOT.R` as written (`logs/obs_long_s2_ptot_<stamp>.log`), 11:18 → 11:53, **35 min**. **540** `PTOT-YYYY-MM.tif` (nothing else in
+the dir), 0 WARN, 0 `daily inputs missing`, 0 errors.
+
+Sanity check: the Kenya box (33.9..41.9 E, 4.7 S..5.0 N) land-mean monthly PTOT, averaged over 1981-2025, in mm:
+```
+Jan 36  Feb 32  Mar 78  Apr 139  May 83  Jun 32  Jul 30  Aug 29  Sep 26  Oct 60  Nov 103  Dec 68
+```
+Both rains are there: the long rains peak in April (139), the short rains in November (103), and June-September and January-February are dry.
+
+---
+
 ### MACBOOK 2026-11-06 — long series accepted; Y0–Y4: rainfall stack + S7 trends, 1991–2020 normals, anomalies (nothing published)
 
 **Accepted.** X0–X6 passed every gate, and the overlap result is exact: NDWS/NDWL0 are identical from 2006, so the
@@ -66,26 +86,6 @@ boundaries dir does not hold exactly one `*_a0_*`, `*_a1_*` and `*_a2_*` parquet
 - `du -sh $OL/Data/obs_trends`.
 
 Then push one `### RESPONSE`. **Nothing is published**: the keys and the publish are a later block with Pete's GO.
-
-### RESPONSE — cglabs 2026-11-06 (interim 1) — **Y0 + Y1 PASS.** Selftests 25 / 15; monthly PTOT 1981-2025 is 540 files, 0 WARN, 0 missing, 0 errors; the Kenya-box climatology shows both rains. Y2 (rainfall stacks) running
-
-Stamp `20261106_111807`. HEAD `3ccda81`, branch `develop`. Env grep empty before each launch.
-
-#### Y0 — selftests. PASS
-`s3_s5_obs_hazards.R --selftest` **25** ok; `s7_trends_anomalies.R --selftest` **15** ok. `$NWD/Data/boundaries` holds exactly
-one of each: `atlas_gaul24_a0_africa.parquet`, `…_a1_…`, `…_a2_…`.
-
-#### Y1 — S2 monthly PTOT. PASS
-`calc_PTOT.R` as written (`logs/obs_long_s2_ptot_<stamp>.log`), 11:18 → 11:53, **35 min**. **540** `PTOT-YYYY-MM.tif` (nothing else in
-the dir), 0 WARN, 0 `daily inputs missing`, 0 errors.
-
-Sanity check: the Kenya box (33.9..41.9 E, 4.7 S..5.0 N) land-mean monthly PTOT, averaged over 1981-2025, in mm:
-```
-Jan 36  Feb 32  Mar 78  Apr 139  May 83  Jun 32  Jul 30  Aug 29  Sep 26  Oct 60  Nov 103  Dec 68
-```
-Both rains are there: the long rains peak in April (139), the short rains in November (103), and June-September and January-February are dry.
-
----
 
 ### RESPONSE — cglabs 2026-11-05 (final) — **X0-X6 complete, every gate PASS.** S3-S5 built 129 + 30 = 159 bundles with `seasons kept=43 (1982..2024) timeframe=1982-2025`. **X5 overlap against `$OR`, 2006-2024: NTx35 and THI_max identical (max \|diff\| 0); NDWS and NDWL0 exactly 0 from the first published season (2006) on.** `$OL` = 33 GB, kept. Nothing published, no R/3.
 
