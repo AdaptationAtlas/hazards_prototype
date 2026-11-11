@@ -1,6 +1,12 @@
 # DISPATCH — pascal — #58 (#29 follow-ups) phase A: R environment audit + MapSPAM re-fetch
 
-**Append-only; newest block on top. Prepend `### MACBOOK 2026-11-09 — PASCAL shared R library retest and support reply (#58)
+**Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
+
+### MACBOOK 2026-11-09 — P6: PASCAL shared R library retest and support reply (#58)
+
+**Order (added 2026-11-11, formatting fix only):** run this P6 block **first**, then P5 below. P5 is unchanged.
+Record which R stack P5 then runs on: the shared library only, or the shared library plus the personal library.
+Its `_env/*` rows capture the versions either way.
 
 IT reports recompilation and says arrow, geoarrow and duckdb were installed under R 4.5.6. Please verify on PASCAL using an ordinary account, system R 4.6.1 and the shared site library. Exclude the personal R library for this test and record the active version and library paths (redact personal paths). If 4.6.1 is unavailable, report which version is active and stop there.
 
@@ -8,7 +14,6 @@ Run the existing read-only R/checks/77_r_lib_sweep.R, compare with 588 failures 
 
 IT also offered Freshservice notification after upgrades, said bash jobs should survive while the Hub server stays running, confirmed 20 CPUs / 96 GB per session with four sessions, reported no proxy or firewall limit, and could not explain the slow JRC route. Prepare a short editable ticket reply for Pete's review. Thank IT, summarize measured results, ask for advance notice before upgrades and routine shared-library rebuilds, and cover remaining unanswered points (including idle culling and remote compute access) where relevant. Draft only. Add results in a RESPONSE block.
 
-### RESPONSE — pascal` to answer.**
 
 ### MACBOOK 2026-11-06 — P5 (phase B, PASCAL half): run R/0.4.1 at both resolutions, fingerprint inputs and outputs, value-compare against the macbook. **Small profile is fine.**
 
