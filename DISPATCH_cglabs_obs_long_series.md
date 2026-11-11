@@ -2,6 +2,40 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-11 (1) — **STOP at Y3 again: the admin fix works (weights built and cached, `admin units: admin0 55, admin1 719, admin2 6670`), but the first stack fails under `--cores 16`: `could not find function "mk_sen"` on the PSOCK workers.** No stack output written; `-rh15` not launched. No fix improvised
+
+Stamp `20261111_054848`. HEAD `fc6d730`. Env grep empty.
+
+**Y0 rerun:** `s7_trends_anomalies.R --selftest` → **17** ok, `ALL S7 SELFTEST ASSERTIONS PASSED`.
+
+**Y3, main token, command as written** (`logs/obs_long_s7_<stamp>.log`), 05:48:48 → 06:08:26 (**~20 min**), peak memory **1.76 GB** (R + children, 5 s samples).
+```
+[S7] src=…/obs_seasonal/chirps-chirts-agera5_1982-2025 windows=19 years=1982-2024 (43) normal=1991-2020 cores=16
+[S7] admin weights admin0: 44881 unit-cell pairs in 0.2 min (cached)
+[S7] admin weights admin1: 54862 unit-cell pairs in 2.0 min (cached)
+[S7] admin weights admin2: 80408 unit-cell pairs in 17.0 min (cached)
+[S7] admin units: admin0 55, admin1 719, admin2 6670
+Error in checkForRemoteErrors(val) :
+  1440 nodes produced errors; first error: could not find function "mk_sen"
+Calls: run ... clusterApply -> staticClusterApply -> checkForRemoteErrors
+Execution halted
+```
+(Plus the known `CPL_gdal_init` LIBTIFF notices; the "11 warnings" were not printed.) The weights took 19 min this time, not 36.
+
+**Where:** `R/obs/s7_trends_anomalies.R:81`, in `do_stack()`:
+```r
+tr <- app(r, function(v) mk_sen(v, t, min_trend), cores = cores)
+```
+With `cores > 1`, terra's `app()` runs the function on a fresh PSOCK cluster. The anonymous function is shipped with its `do_stack` frame (`t`, `min_trend`), but `mk_sen` lives in the master's global env, which is not shipped, so every worker fails. Line 86 (`normal_stats`) has the same pattern and would fail next.
+**Why the selftest passed:** every selftest `run()` and `do_stack()` call uses the default `cores = 1L`, where `app()` stays in-process. So the `cores > 1` path has no test.
+**Suggested fix (your call):** pass the helper through `app()`'s `...`, which terra forwards to the workers. For example `app(r, function(v, f, t, m) f(v, t, m), f = mk_sen, t = t, m = min_trend, cores = cores)`, and the same for `normal_stats`. Then add one selftest `do_stack()` call with `cores = 2` that checks the result is identical to `cores = 1`.
+
+**State:**
+- `$OL/Data/obs_trends/` holds only `_admin_weights/admin{0,1,2}_<key>.rds` (184 KB, 358 KB, 679 KB). No window dir, stack or parquet was written. The weights are valid, so the rerun reads them from cache: no ~20 min rebuild for either token.
+- The `-rh15` sensitivity run was not launched; Y4 not done. Nothing running. Nothing published.
+
+---
+
 ### MACBOOK 2026-11-11 — Y3 fix on develop (nrow type + cached admin weights); resume Y3–Y4
 
 Right stop, and a clean diagnosis. The bug is fixed in `R/obs/s7_trends_anomalies.R`: the unit count is now taken as an
