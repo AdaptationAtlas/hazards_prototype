@@ -2,6 +2,313 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal 2026-11-11 — P6: IT's rebuild verified, **588 failures down to 7**. P5: **STOPPED at P5.1**, a FAOSTAT world-prices file 0.4.1 needs is absent and `71_stage_ready.R` does not check for it.
+
+Two results, in the order the 2026-11-11 note asks for.
+
+**P6 is good news.** The shared library, tested as an ordinary account with the personal library excluded, now loads 1,671 of 1,678 packages. `arrow`, `geoarrow` and `duckdb` are present, built under R 4.6.1, and all three load. A draft reply to IT is at the end of this block.
+
+**P5 stopped at a stop rule.** 0.4.1 failed partway through res-25 on a missing input, so there is no `COMPLETE` line, res-05 never started, and the two output fingerprints do not exist. The inputs fingerprint was produced and compared, because that is what describes the stop. The eight hash-pinned inputs are `same` as the macbook's. No fix was improvised.
+
+---
+
+## P6 — shared-library retest
+
+#### Account, R version and library paths
+
+Run as an ordinary account, not root. The active R is **4.6.1**, so the "if 4.6.1 is unavailable, stop there" branch does not apply.
+
+```
+R version 4.6.1 (2026-06-24) -- "Happy Hop"
+```
+
+Library paths with the personal library excluded (`R_LIBS_USER` pointed at a path that does not exist, plus `--no-environ --no-init-file`):
+
+```
+/usr/local/lib/R/site-library
+/usr/lib/R/site-library
+/usr/lib/R/library
+```
+
+The personal library normally sits first, ahead of those three. It was left in place and untouched; it was only hidden for the duration of these tests.
+
+#### The seven packages IT asked about
+
+Each loaded in its own fresh R with the personal library hidden, so every result below is the shared library's own:
+
+```
+rlang       1.3.0     built R 4.6.1   LOADS
+data.table  1.18.6.1  built R 4.6.1   LOADS
+base64enc   0.1-6     built R 4.6.1   LOADS
+RGtk2       2.20.36   built R 4.1.0   FAILS  undefined symbol: Rf_EncodeReal (in RGtk2)
+arrow       26.0.1    built R 4.6.1   LOADS
+geoarrow    0.4.4     built R 4.6.1   LOADS
+duckdb      2.0.0     built R 4.6.1   LOADS
+```
+
+**One correction for IT, in their favour.** The note said `arrow`, `geoarrow` and `duckdb` were installed under R 4.5.6. On disk their `DESCRIPTION` files record `Built: R 4.6.1`, and all three load under R 4.6.1. Whatever the build pipeline reported, the result in the shared library is correct and working. Nothing needs redoing for those three.
+
+`RGtk2` is the only one of the seven still failing, and it is unchanged from 2026-11-05: still built under R 4.1.0, still missing `Rf_EncodeReal`.
+
+#### Full sweep, against the 2026-11-05 baseline
+
+`R/checks/77_r_lib_sweep.R`, read-only, 6 workers, 632.9 s. Log and TSV kept in `logs/`.
+
+```
+[2026-11-11 08:51:36] +   3.1s | R 4.6.1; library has 1678 package(s); 6 worker(s)
+[2026-11-11 08:51:36] +   3.1s |   built under R 4.1   compiled   38  pure-R  103
+[2026-11-11 08:51:36] +   3.1s |   built under R 4.5   compiled   12  pure-R    8
+[2026-11-11 08:51:36] +   3.1s |   built under R 4.6   compiled  620  pure-R  897
+[2026-11-11 09:02:06] + 632.9s | loaded OK 1671   BROKEN 7   (of 1678)
+[2026-11-11 09:02:06] + 632.9s |   direct (own shared object fails): 2
+[2026-11-11 09:02:06] + 632.9s |   via another package's shared object: 2
+[2026-11-11 09:02:06] + 632.9s |   missing dependency: 2   other: 1
+[2026-11-11 09:02:06] + 632.9s | ROOTS (direct failures) and the symbol each lacks:
+[2026-11-11 09:02:06] + 632.9s |   pryr                   built R 4.5  undefined symbol: EXTPTR_PROT
+[2026-11-11 09:02:06] + 632.9s |   RGtk2                  built R 4.1  undefined symbol: Rf_EncodeReal
+[2026-11-11 09:02:06] + 632.9s | knock-on failures by root:
+[2026-11-11 09:02:06] + 633.0s |   RGtk2                  2 package(s)
+[2026-11-11 09:02:06] + 633.0s | undefined symbols among roots: EXTPTR_PROT=1  Rf_EncodeReal=1
+```
+
+Side by side:
+
+| | 2026-11-05 | 2026-11-11 |
+|---|---|---|
+| packages | 1,653 | 1,678 |
+| load OK | 1,065 | **1,671** |
+| BROKEN | 588 | **7** |
+| direct roots | 4 | **2** |
+| built under R 4.6 | **0** | **1,517** |
+
+1,517 of 1,678 packages are now built under R 4.6, against none a week ago. That is the whole of the fix, and it worked.
+
+#### The seven that still fail, split as requested
+
+**Genuine failures (4)** — these are compiled against an older R and were not rebuilt:
+
+```
+RGtk2          built 4.1  direct     undefined symbol: Rf_EncodeReal
+pryr           built 4.5  direct     undefined symbol: EXTPTR_PROT
+gWidgetsRGtk2  built 4.1  via:RGtk2  undefined symbol: Rf_EncodeReal
+rggobi         built 4.1  via:RGtk2  undefined symbol: Rf_EncodeReal
+```
+
+`RGtk2` is the root of three of the four. It binds to GTK2, which is long out of support, and it was already irrelevant to this pipeline in the P3 report. `pryr` is a developer convenience package. **Neither blocks any Atlas work**, and neither needs rebuilding on our account.
+
+**Absent dependencies, not failures (2)** — the package itself is fine; something it needs was never installed:
+
+```
+ANCOMBC     there is no package called 'CVXR'
+mlr3proba   there is no package called 'mlr3'
+```
+
+**Version skew, not an ABI problem (1)**:
+
+```
+climateR    object '%>%' is not exported by 'namespace:sf'
+```
+
+`climateR` expects an older `sf` that re-exported the pipe. The shared `sf` is now 1.1.3 and does not. This is a package-version mismatch, not a compilation problem, and it would be fixed by updating `climateR` rather than rebuilding anything.
+
+**None of the seven is used by this pipeline.** Everything the 0.4 chain and `hazards_upstream` 01 to 04 reference now loads from the shared library.
+
+#### What this means for the personal library
+
+The personal library holds 14 packages, installed on 2026-11-05 as a workaround. Comparing each against the rebuilt shared library:
+
+```
+arrow         user 26.0.0    site 26.0.1    site is newer; the personal copy now shadows it
+base64enc     user 0.1-6     site 0.1-6     same
+data.table    user 1.18.6.1  site 1.18.6.1  same
+dplyr         user 1.2.1     site 1.2.1     same
+duckdb        user 2.0.0     site 2.0.0     same
+geoarrow      user 0.4.4     site 0.4.4     same
+rlang         user 1.3.0     site 1.3.0     same
+vctrs         user 0.7.3     site 0.7.3     same
+MetBrewer     user 0.2.0     site ABSENT    still needed
+miceadds      user 3.20-10   site ABSENT    still needed
+paws.common   user 0.9.0     site ABSENT    still needed
+paws.storage  user 0.11.0    site ABSENT    still needed
+s3fs          user 0.1.7     site ABSENT    still needed
+sfarrow       user 0.4.1     site ABSENT    still needed
+```
+
+Seven are now redundant, one (`arrow`) actively shadows a newer shared copy, and six are still only in the personal library. **The personal library was left intact**, as instructed, pending this verification. The tidy-up, once Pete is happy, is to delete the eight redundant or shadowing entries and ask IT to add the remaining six to the shared library; they are all on CRAN.
+
+#### Draft reply to IT — for Pete's review, not sent
+
+> Subject: R 4.6.1 shared-library rebuild — verified on our side, with two leftovers
+>
+> Thank you for the rebuild, and for the detail in your reply. We have re-tested on an ordinary user account against system R 4.6.1 and the shared site library, with our personal R library excluded so that nothing of ours could mask the result. The improvement is clear and we are no longer blocked.
+>
+> **Measured results.** Before the rebuild, 588 of 1,653 packages in the shared library failed to load; none had been built under R 4.6. After it, 7 of 1,678 fail and 1,517 are built under R 4.6. The packages you asked us to check — `arrow`, `geoarrow` and `duckdb` — are present and all three load. One small correction, in your favour: their `DESCRIPTION` files record `Built: R 4.6.1`, not 4.5.6, so whatever the build log reported, what is installed is correct.
+>
+> **The seven that still fail**, for completeness, none of which blocks our work:
+> - `RGtk2`, `gWidgetsRGtk2`, `rggobi` — `RGtk2` is still built under R 4.1 and is missing the symbol `Rf_EncodeReal`; the other two fail only because they load it. `RGtk2` depends on GTK2, which is out of support, so we would suggest retiring it rather than rebuilding it.
+> - `pryr` — still built under R 4.5, missing `EXTPTR_PROT`. A developer convenience package; worth a rebuild only if someone asks for it.
+> - `ANCOMBC` and `mlr3proba` — not build problems. Each needs a package that is not installed: `CVXR` and `mlr3` respectively.
+> - `climateR` — not a build problem either. It expects an older `sf` that re-exported the `%>%` pipe; the current `sf` 1.1.3 does not. Updating `climateR` would fix it.
+>
+> **Two requests, both about notice rather than action.**
+> 1. Please do let us have advance notice of R upgrades, and of routine shared-library rebuilds as well. The upgrade on 2026-10-26 took our pipeline out for about ten days, and a day's warning would have let us pin our dependencies first. Freshservice notification would suit us well, thank you for offering it.
+> 2. When a rebuild happens, a one-line note of which R version the library was built against would let us check compatibility in minutes rather than re-running a full sweep.
+>
+> **A few points from your reply we would still value an answer on.**
+> - *Idle culling.* You confirmed that background jobs survive while the Hub server stays running. Could you tell us what makes the server stop — is there an idle timeout, and does an unattended long-running job count as activity? Some of our ingests run for many hours with no interactive session attached, and we need to know whether to expect them to be killed.
+> - *Session sizing.* Thank you for confirming 20 CPUs and 96 GB per session with four sessions available. Our current profile gives us 8 CPUs and 32 GB. Could you tell us how to select the larger profile, or whether it needs to be enabled for the account?
+> - *Remote compute access.* Is there a supported way to reach this environment other than through the browser — SSH, or a scheduled batch submission? Several of our jobs would be better run as scheduled work than in a notebook session.
+> - *The slow external route.* No action needed for now. We have since measured 2.5 MB/s from our object store on the same node, roughly twice what we get elsewhere, so the slowness we reported looks specific to that one external source rather than to the network here. We will come back with a concrete trace if it recurs.
+>
+> Thanks again — the rebuild has unblocked the work.
+
+---
+
+## P5 — phase B: STOPPED at P5.1
+
+**Which R stack P5 ran on:** the shared library **plus** the personal library, in the normal order with the personal library first. The `_env` rows in the inputs TSV record the versions that were actually used. Only `arrow` differs between the two libraries, where the personal 26.0.0 shadowed the shared 26.0.1; for every other `_env` package the two libraries now hold the same version, so the stack P5 ran on is effectively the rebuilt shared library.
+
+#### P5.0 — readiness and pinned inputs
+
+Branch `develop`, `git log --oneline -1` = `c3aa381`.
+
+`71_stage_ready.R --stage 0.4.1` reported **READY**.
+
+Pinned-input verification:
+
+```
+glw4-2020            ok=6   PASS
+afr-highlands        ok=1   PASS
+boundaries-gaul2024  FAIL - 1 object(s) missing or wrong
+```
+
+The boundaries failure was a size mismatch on one file, `atlas_gaul24_a0_africa.parquet`, local 31,935,988 bytes against a manifest 28,780,999. P5.0 names the remedy, so it was applied: `atlas_require("boundaries-gaul2024")`, a verified fetch, which re-fetched that one object and left the other two alone.
+
+```
+WARN  |   wrong size, re-fetching: …/atlas_gaul24_a0_africa.parquet (31,935,988 bytes, manifest 28,780,999)
+INFO  |   3 object(s): 1 fetched (1 re-fetched), 2 already present, 169,268,377 bytes
+INFO  |   verified: hash 1, size only 2, drift 0, no manifest 0
+```
+
+Re-verify: `ok=3`, `PASS`. **All three pinned records then verified clean**, so this was not a stop. Worth noting for the record that a local boundaries copy had drifted from the origin and nobody had spotted it; the manifest caught it.
+
+#### P5.1 — the stop
+
+0.4.1 was launched exactly as written, both resolutions in one background job with a `.pid`, polled with `kill -0`. **It did not reach `COMPLETE`.** res-25 failed partway through, and because the loop carries `|| exit 1`, res-05 never started.
+
+```
+[09:04:12] [0.4.1] loading FAOSTAT data (VoP, prices, production)
+Error in fread(fao_econ_file_world) : 
+  File 'Data/fao/Prices_E_All_Data_(Normalized).csv' does not exist or is non-readable.
+Execution halted
+```
+
+**A missing `COMPLETE` is a listed stop rule, so P5 stops here and nothing was improvised.** In particular no FAOSTAT bulk fetch was attempted: that would have pulled the current FAOSTAT release and changed the very inputs phase B is comparing, turning a clean finding into a muddled one.
+
+`grep -il install` over both run logs returned nothing. **`pacman` installed nothing**, as P4 intended.
+
+**The finding underneath the stop.** `R/0_server_setup.R:576` defines
+
+```r
+fao_econ_file_world <- file.path(fao_dir, "Prices_E_All_Data_(Normalized).csv")
+```
+
+That file is not in `Data/fao` on this node. What is there is `Prices_E_Africa_NOFLAG.csv`, `Prices_E_Africa.csv`, the deflators and the production files — the Africa cut, not the world file. And `71_stage_ready.R --stage 0.4.1` checks `Prices_E_Africa_NOFLAG.csv`, `Production_Crops_Livestock_E_Africa_NOFLAG.csv`, `Deflators_E_All_Data_(Normalized).csv` and the boundaries parquets, but **not** the world prices file. So 71 reports READY for a stage that cannot run.
+
+That is a gap in the readiness check rather than a problem with this node, and it is worth fixing centrally: 71 should check every file 0.4.1 actually opens. `72_crosshost_fingerprint.R:150` already lists `Prices_E_All_Data_(Normalized).csv` among the five FAOSTAT inputs it fingerprints, so the two checks already disagree about what 0.4.1 needs.
+
+**The one value that did come out before the stop**, reported because the dispatch asks for it as a cross-host number:
+
+```
+[0.4.1] mass not conserved on GLW resample:
+  poultry=1.8928  sheep=1.9041  pigs=1.7754  goats=1.9926  cattle=1.9048
+```
+
+Against the macbook's res-25 ratios of `poultry=0.9460, sheep=0.9513, pigs=0.8871, goats=0.9954, cattle=0.9520`, **every one of these is almost exactly twice the macbook's** — the five ratios of pascal to macbook are 2.0008, 2.0016, 2.0014, 2.0018 and 2.0008. A factor that constant across five independent species is not a numerical difference; it points at the denominator, meaning the global GLW source mass the warning divides by, rather than at the resampling. It is reported as a finding and left alone. It may well resolve once 0.4.1 runs to completion, but it should be looked at either way.
+
+#### What was written, and what was not
+
+Only one partial output exists, inside the permitted 0.4.1 output tree:
+
+```
+Data/GLW4_2020/intermediate/livestock_masks_res-25.tif   610,455 bytes
+Data/GLW4_2020/processed/                                empty
+```
+
+The run log records `livestock_masks.tif exists=FALSE` before writing, so nothing was overwritten. **These res-25 intermediates are incomplete and must not be used**; the next clean run with `FORCE_OVERWRITE=1` will replace them.
+
+Nothing was written outside the permitted places. No S3 writes. The personal R library is intact.
+
+#### P5.2 — fingerprints
+
+Only the inputs fingerprint could be produced, since the two output fingerprints need outputs that do not exist.
+
+```
+metadata/crosshost/inputs_041_pascal.tsv    25 rows  (12 artefact + 13 _env)
+metadata/crosshost/fp_041_pascal_res-25.tsv NOT PRODUCED - run stopped
+metadata/crosshost/fp_041_pascal_res-05.tsv NOT PRODUCED - run stopped
+```
+
+25 rather than the expected 26, and the missing row is exactly the missing file: `Data/fao/Prices_E_All_Data_(Normalized).csv`. The other 12 artefact rows and all 13 `_env` rows are present.
+
+#### P5.3 — inputs compare against the macbook
+
+```
+env-diff=9  env-same=4  ONLY-A=1  same=8  SHAPE-DIFF=4
+```
+
+**Step 1, the pinned inputs: PASS.** All eight are `same` — the six GLW tifs, the highlands file and the admin0 boundaries. These are the inputs the host gate depends on, and they are byte-identical to the macbook's. The #58 manifests did their job, including catching the drifted boundaries file first.
+
+**The five FAOSTAT CSVs all differ:**
+
+```
+SHAPE-DIFF Data/fao/Prices_E_Africa_NOFLAG.csv
+ONLY-A     Data/fao/Prices_E_All_Data_(Normalized).csv
+SHAPE-DIFF Data/fao/Production_Crops_Livestock_E_Africa_NOFLAG.csv
+SHAPE-DIFF Data/fao/Value_of_Production_E_Africa.csv
+SHAPE-DIFF Data/fao/Value_of_Production_E_All_Area_Groups.csv
+```
+
+So this node holds a **different FAOSTAT release** from the macbook's 2026-05-14 snapshot, not merely a different value here and there — the shapes differ, meaning different row counts. By the dispatch's own rule this is an input difference, not a host difference, and had 0.4.1 completed, the six `glw4-2020_vop_*` rasters and the `-prices-used.csv` files could not have matched the macbook. **Step 3 of the comparison was therefore never going to be a host test on this node as it stands.** Whoever runs phase B next should decide whether to pin FAOSTAT across hosts first; otherwise only the three GLW-derived outputs can carry the gate.
+
+**Step 2, the host gate, could not be evaluated**, since `livestock_number_number_res-*`, `livestock_masks_res-*` and `shoat_prop_res-*` were never produced.
+
+#### `env-diff` rows, all nine
+
+```
+arrow        mac 24.0.0                 pascal 26.0.0
+data.table   mac 1.18.4                 pascal 1.18.6.1
+GDAL         mac 3.8.5                  pascal 3.4.3
+git          mac 3ccda81                pascal c3aa381
+platform     mac aarch64-apple-darwin23 pascal x86_64-pc-linux-gnu
+PROJ         mac 9.5.1                  pascal 8.2.1
+R            mac 4.6.0                  pascal 4.6.1
+sf           mac 1.1.2                  pascal 1.1.3
+terra        mac 1.9.34                 pascal 1.9.50
+```
+
+Four `_env` rows match: `dplyr` 1.2.1, `rlang` 1.3.0, `tidyr` 1.3.2 and `vctrs` 0.7.3.
+
+**The `terra` and `sf` numbers have moved since the dispatch was written.** P5 anticipated terra 1.8.93 and sf 1.0.24 here; IT's rebuild has taken them to **terra 1.9.50** and **sf 1.1.3**, now *ahead* of the macbook's 1.9.34 and 1.1.2 rather than behind. GDAL 3.4.3 and PROJ 8.2.1 are system libraries and did not change. The raster stack is therefore closer across hosts than phase B assumed, which makes the eventual value comparison more meaningful, not less.
+
+#### To finish P5
+
+One thing is needed, and it is a decision rather than a command: how to obtain `Prices_E_All_Data_(Normalized).csv` on this node without changing the other four FAOSTAT files, since those four already differ from the macbook's and fetching the bulk record would move them again. Options, for the macbook to choose between:
+
+1. **Pin FAOSTAT.** Add the five CSVs to a `#58` manifest with hashes, as GLW and boundaries already are, and have every host fetch that pinned set. This makes the VoP outputs a real host gate instead of an input comparison, and it is the only option that makes phase B say what it was built to say.
+2. **Fetch the current bulk release here** and accept that all five FAOSTAT inputs differ from the macbook's, so only the three GLW-derived outputs carry the gate.
+3. **Copy the macbook's five CSVs** to this node, which would make the FAOSTAT inputs identical, at the cost of being a manual step outside the acquire layer.
+
+Option 1 is the one worth the effort. Say which you want and P5 can be re-run; the 0.4.1 run itself is 2 to 3 minutes.
+
+Separately, `71_stage_ready.R` should be taught about the world prices file so that READY means ready. That is a one-line change in the 0.4.1 stage definition, and it is not PASCAL's to make.
+
+#### Logs kept
+
+`logs/r_lib_sweep_20261111_p6.{log,tsv,pid}`, `logs/phaseB_041_20261111_090330.{log,pid}`, `logs/phaseB_041_0.25_20261111_090330.log`, `logs/p5_require_boundaries_20261111.log`.
+
+---
+
 ### MACBOOK 2026-11-09 — P6: PASCAL shared R library retest and support reply (#58)
 
 **Order (added 2026-11-11, formatting fix only):** run this P6 block **first**, then P5 below. P5 is unchanged.
