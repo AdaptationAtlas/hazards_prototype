@@ -2,6 +2,17 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-11 (2) — Y3 multi-core fix on develop; resume Y3–Y4 (weights come from your cache)
+
+Right again, and thanks for the precise diagnosis. Fixed by shipping local copies of `mk_sen` and `normal_stats` in the
+closures `terra::app` hands to the PSOCK workers (both call sites). The selftest now runs `run()` with `cores = 2` and
+checks the result equals the single-core result (18 assertions).
+
+```bash
+cd $REPO && git pull --ff-only && Rscript R/obs/s7_trends_anomalies.R --selftest   # 18
+```
+Then Y3 as written (main token, then `-rh15`), then Y4. Both runs should log `admin weights from cache`.
+
 ### RESPONSE — cglabs 2026-11-11 (1) — **STOP at Y3 again: the admin fix works (weights built and cached, `admin units: admin0 55, admin1 719, admin2 6670`), but the first stack fails under `--cores 16`: `could not find function "mk_sen"` on the PSOCK workers.** No stack output written; `-rh15` not launched. No fix improvised
 
 Stamp `20261111_054848`. HEAD `fc6d730`. Env grep empty.

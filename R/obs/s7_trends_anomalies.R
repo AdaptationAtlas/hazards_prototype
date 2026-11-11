@@ -78,12 +78,15 @@ do_stack <- function(f, out_dir, years, normal, min_normal, min_trend, cores, ov
   r <- r[[as.character(years)]]
   ni <- match(as.character(normal), names(r)); if (anyNA(ni)) stopf("normal period %d-%d not inside --years", min(normal), max(normal))
   t <- as.numeric(years)
-  tr <- app(r, function(v) mk_sen(v, t, min_trend), cores = cores)
+  # local copies: with cores > 1 terra::app ships the closure to PSOCK workers, which see its enclosing frame but not
+  # this script's global functions (CGlabs 2026-11-11: "could not find function mk_sen")
+  mk <- mk_sen; ns <- normal_stats
+  tr <- app(r, function(v) mk(v, t, min_trend), cores = cores)
   names(tr) <- c("slope_per_year", "p_mk", "n_years")
   slope_dec <- tr[["slope_per_year"]] * 10; names(slope_dec) <- "slope_per_decade"
   sig <- setValues(tr[["p_mk"]], bh_sig(values(tr[["p_mk"]])[, 1])); names(sig) <- "sig_fdr"
   trend <- c(slope_dec, tr[["p_mk"]], sig, tr[["n_years"]])
-  nrm <- app(r[[ni]], function(v) normal_stats(v, min_normal), cores = cores); names(nrm) <- c("mean", "sd", "p10", "p50", "p90")
+  nrm <- app(r[[ni]], function(v) ns(v, min_normal), cores = cores); names(nrm) <- c("mean", "sd", "p10", "p50", "p90")
   adiff <- r - nrm[["mean"]]; names(adiff) <- names(r)
   az <- ifel(nrm[["sd"]] > 0, adiff / nrm[["sd"]], NA); names(az) <- names(r)
   dir.create(out_dir, FALSE, TRUE)
@@ -255,8 +258,11 @@ selftest <- function() {
   st <- arrow::read_parquet(file.path(out2, "admin_series_admin0.parquet")); tt <- arrow::read_parquet(file.path(out2, "admin_trends_admin0.parquet"))
   cache <- list.files(file.path(td, "Data", "obs_trends", "_admin_weights"), "\\.rds$")
   ok(nrow(st) == 2 * 43 && nrow(tt) == 2 && length(cache) == 1, "run() with admin units writes the series and trend tables and caches the weights")
-  out3 <- capture.output(run(td, "obstest", "1982-2025", 1982:2024, normal = 1991:2020, units = units))
+  out3 <- capture.output(run(td, "obstest", "1982-2025", 1982:2024, normal = 1991:2020, units = units, cores = 2L, overwrite = TRUE))
   ok(any(grepl("admin weights from cache", out3)), "a second run reuses the cached admin weights")
+  tr2 <- rast(file.path(out2, "ggcmi-mai", "NDWS_mean_trend.tif"))
+  ok(isTRUE(all.equal(values(tr2), values(tr)[, names(tr2)], tolerance = 1e-9)),
+     "cores = 2 (PSOCK workers, as on the node with --cores 16) gives the same trend raster as cores = 1")
   unlink(td, recursive = TRUE)
   cat("\nALL S7 SELFTEST ASSERTIONS PASSED\n")
 }
