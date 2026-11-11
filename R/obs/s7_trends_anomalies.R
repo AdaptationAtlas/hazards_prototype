@@ -56,6 +56,11 @@ mk_sen <- function(x, t, min_n = 30L) {
   z <- if (S > 0) (S - 1) / sqrt(v) else if (S < 0) (S + 1) / sqrt(v) else 0
   c(slope, 2 * stats::pnorm(-abs(z)), n)
 }
+digest_key <- function(x) {                     # short stable key without extra packages
+  b <- utf8ToInt(paste(x, collapse = "|")); h <- 0
+  for (i in b) h <- (h * 31 + i) %% 2147483647
+  sprintf("%010.0f", h)
+}
 normal_stats <- function(x, min_n) {
   x <- x[!is.na(x)]
   if (length(x) < min_n) return(rep(NA_real_, 5))
@@ -138,7 +143,7 @@ admin_stack <- function(f, units, wts, window, years, normal, min_normal, min_tr
 
 # ---- driver ----------------------------------------------------------------------------------------------------
 run <- function(obs_root, token, timeframe, years, normal = 1991:2020, windows = NULL, indices = NULL,
-                boundaries_dir = NULL, cores = 1L, overwrite = FALSE, min_normal = 25L, min_trend = 30L) {
+                boundaries_dir = NULL, cores = 1L, overwrite = FALSE, min_normal = 25L, min_trend = 30L, units = NULL) {
   overwrite <- overwrite || tolower(Sys.getenv("FORCE_OVERWRITE", "")) %in% c("1", "true", "t", "yes", "y", "on")
   src <- file.path(obs_root, "Data", "obs_seasonal", paste0(token, "_", timeframe))
   if (!dir.exists(src)) stopf("no seasonal stacks at %s", src)
@@ -147,12 +152,22 @@ run <- function(obs_root, token, timeframe, years, normal = 1991:2020, windows =
   wins <- list.dirs(src, full.names = FALSE, recursive = FALSE); if (!is.null(windows)) wins <- intersect(wins, windows)
   if (!length(wins)) stopf("no windows selected under %s", src)
   lg(sprintf("src=%s windows=%d years=%d-%d (%d) normal=%d-%d cores=%d", src, length(wins), min(years), max(years), length(years), min(normal), max(normal), cores))
-  units <- wts <- NULL
-  if (!is.null(boundaries_dir)) {
-    units <- read_units(boundaries_dir)
+  wts <- NULL
+  if (is.null(units) && !is.null(boundaries_dir)) units <- read_units(boundaries_dir)
+  if (!is.null(units)) {
     tmpl <- rast(list.files(file.path(src, wins[1]), "\\.tif$", full.names = TRUE)[1])[[1]]
-    wts <- lapply(units, unit_weights, template = tmpl)
-    lg(sprintf("admin units: %s", paste(sprintf("%s %d", names(units), vapply(units, nrow, 1L)), collapse = ", ")))
+    # the cell x unit weights take ~36 min for GAUL admin2 on the Africa lattice; cache them per level, keyed by the
+    # grid and the unit geometry, so a second token / rerun reuses them (CGlabs 2026-11-06)
+    cache_dir <- file.path(obs_root, "Data", "obs_trends", "_admin_weights"); dir.create(cache_dir, FALSE, TRUE)
+    key_of <- function(v) digest_key(c(as.character(ext(tmpl)), res(tmpl), nrow(tmpl), ncol(tmpl), nrow(v), round(sum(expanse(v, unit = "km")), 3)))
+    wts <- lapply(names(units), function(lv) {
+      cf <- file.path(cache_dir, sprintf("%s_%s.rds", lv, key_of(units[[lv]])))
+      if (file.exists(cf)) { lg("admin weights from cache: ", basename(cf)); return(readRDS(cf)) }
+      t1 <- Sys.time(); w <- unit_weights(units[[lv]], tmpl); saveRDS(w, cf)
+      lg(sprintf("admin weights %s: %d unit-cell pairs in %.1f min (cached)", lv, nrow(w), as.numeric(difftime(Sys.time(), t1, units = "mins")))); w
+    })
+    names(wts) <- names(units)
+    lg(sprintf("admin units: %s", paste(sprintf("%s %d", names(units), vapply(units, function(v) as.integer(nrow(v)), integer(1))), collapse = ", ")))
   }
   ser <- list(); trn <- list()
   for (w in wins) {
@@ -235,6 +250,13 @@ selftest <- function() {
      "admin trend and normal are computed on the unit's own mean series")
   ok(abs(sa[iso3 == "AAA" & year == 2024, anomaly_z] - (serA["2024"] - mean(serA[as.character(1991:2020)])) / sd(serA[as.character(1991:2020)])) < 1e-6,
      "admin anomaly z against the unit's own 1991-2020 normal")
+  # 5. the FULL run() with admin units (the path that crashed on the node): tables written, weights cached and reused
+  out2 <- run(td, "obstest", "1982-2025", 1982:2024, normal = 1991:2020, units = units, overwrite = TRUE)
+  st <- arrow::read_parquet(file.path(out2, "admin_series_admin0.parquet")); tt <- arrow::read_parquet(file.path(out2, "admin_trends_admin0.parquet"))
+  cache <- list.files(file.path(td, "Data", "obs_trends", "_admin_weights"), "\\.rds$")
+  ok(nrow(st) == 2 * 43 && nrow(tt) == 2 && length(cache) == 1, "run() with admin units writes the series and trend tables and caches the weights")
+  out3 <- capture.output(run(td, "obstest", "1982-2025", 1982:2024, normal = 1991:2020, units = units))
+  ok(any(grepl("admin weights from cache", out3)), "a second run reuses the cached admin weights")
   unlink(td, recursive = TRUE)
   cat("\nALL S7 SELFTEST ASSERTIONS PASSED\n")
 }

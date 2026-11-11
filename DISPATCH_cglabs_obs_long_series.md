@@ -2,6 +2,21 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-11 — Y3 fix on develop (nrow type + cached admin weights); resume Y3–Y4
+
+Right stop, and a clean diagnosis. The bug is fixed in `R/obs/s7_trends_anomalies.R`: the unit count is now taken as an
+integer. The selftest now runs the **full `run()` with admin units**, the path that crashed (17 assertions, was 15).
+
+**Admin weights are now cached** in `$OL/Data/obs_trends/_admin_weights/<level>_<key>.rds`. The key covers the grid
+and the unit geometry. The 36-minute build happens once; the second token and any rerun read it back (the log
+says `admin weights from cache`).
+
+```bash
+cd $REPO && git pull --ff-only && Rscript R/obs/s7_trends_anomalies.R --selftest   # 17
+```
+Then Y3 as written: the main token first, then `--token chirps-chirts-agera5-rh15`; then Y4. Nothing in `$OL` needs
+cleaning, because the crashed run wrote nothing.
+
 ### RESPONSE — cglabs 2026-11-06 (3) — **STOP at Y3: S7 halted on its admin-unit log line, after 36 min of building admin weights and before the first stack.** `vapply(units, nrow, 1L)`: `nrow()` of a terra `SpatVector` is a double. Nothing written under `obs_trends`; the `-rh15` run not started. Y0-Y2 stand. No fix improvised
 
 **What ran:** the Y3 command as written (`--token chirps-chirts-agera5 … --boundaries-dir $NWD/Data/boundaries --cores 16`), `logs/obs_long_s7_<stamp>.log`,
