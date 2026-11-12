@@ -2,6 +2,53 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-12 — S7 speed fix (matrix + forked workers, admin parts on disk); kill the slow run, one equivalence check, then Y3–Y4
+
+Thank you for leaving it alive and measuring it properly. The workers sitting idle and the master pinned at 100 % was the clue.
+**Cause:** S7 ran every stack through `terra::app(cores = 16)`. With PSOCK workers that pass is master-bound: it chops the
+raster into blocks and serializes each one. On top of that, the admin tables were held in memory across stacks, so each stack
+paid for everything before it.
+
+**Fix (`R/obs/s7_trends_anomalies.R`, selftest 19):**
+- Per-cell statistics run on the cell × season **matrix** with forked workers (`parallel::mclapply`). Nothing is
+  serialized, and the workers see the script's functions.
+- Each stack's admin tables are written to `obs_trends/…/_admin_parts/<level>/` as soon as the stack is done. The
+  final `admin_*_<level>.parquet` files are assembled from **all** parts on disk at the end, so a resumed or split run
+  gives complete tables.
+- Macbook benchmark on a full Africa-window stack (81,760 cells × 44 seasons): **17 s on 1 core, 5 s on 4 cores**, against
+  28–207 min per stack on the node. Expect the 95 stacks in minutes.
+
+#### Z0 — stop the slow run (the 8 finished stacks are kept)
+```bash
+kill $(cat logs/obs_long_s7_20261111_111011.pid); sleep 5; pkill -f workRSOCK || true   # the 16 PSOCK workers
+ps aux | grep -E 's7_trends|workRSOCK' | grep -v grep || echo "none left"
+```
+#### Z1 — pull, selftest
+```bash
+cd $REPO && git pull --ff-only && Rscript R/obs/s7_trends_anomalies.R --selftest   # 19
+```
+#### Z2 — equivalence: the new code reproduces a stack the old code wrote
+```bash
+D=$OL/Data/obs_trends/chirps-chirts-agera5_1982-2024/annual12; mkdir -p logs/s7_old && cp $D/NDWS_mean_* logs/s7_old/
+nohup Rscript R/obs/s7_trends_anomalies.R --obs-root $OL --token chirps-chirts-agera5 --timeframe 1982-2025 --years 1982:2024 \
+      --windows annual12 --indices NDWS_mean --cores 16 --overwrite > logs/obs_long_s7_z2_$STAMP.log 2>&1 &
+```
+When it is done, compare the 4 rasters old vs new. Report max |diff| per file; it must be 0 or float noise (< 1e-9).
+**Anything larger is a stop.** Report the stack's minutes from its log line, which now ends with `…; N min`.
+
+#### Z3 — the full run, both tokens (no `--overwrite`: the 8 stacks are skipped; admin parts are built for every stack)
+```bash
+nohup Rscript R/obs/s7_trends_anomalies.R --obs-root $OL --token chirps-chirts-agera5 --timeframe 1982-2025 --years 1982:2024 \
+      --normal 1991:2020 --boundaries-dir $NWD/Data/boundaries --cores 16 > logs/obs_long_s7_full_$STAMP.log 2>&1 &
+# when done:
+nohup Rscript R/obs/s7_trends_anomalies.R --obs-root $OL --token chirps-chirts-agera5-rh15 --timeframe 1982-2025 --years 1982:2024 \
+      --normal 1991:2020 --boundaries-dir $NWD/Data/boundaries --cores 16 > logs/obs_long_s7_rh15_$STAMP.log 2>&1 &
+```
+Peak memory: forked workers share pages until they write. Report the system's peak used memory (e.g. `free -g`
+sampled), not only the master's RSS.
+
+#### Y4 — report, as written in the 2026-11-06 block (summary lines, admin summaries, the sanity checks, `du -sh`).
+
 ### RESPONSE — cglabs 2026-11-12 (interim) — **Y0 PASS (selftest 18) and the multi-core fix works, but Y3 is far too slow: 8 of 95 main-token stacks done in 18.7 h, and each stack takes ~20 min longer than the one before.** At that rate the main token needs about two months. Run left alive; your call: kill and fix, or let it run
 
 Stamp `20261111_111011`. HEAD `2a3e494`. Env grep empty. Launched 11:10:15 (`logs/obs_long_s7_<stamp>.log`, pid file beside it).

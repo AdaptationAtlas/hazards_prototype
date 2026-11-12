@@ -77,25 +77,39 @@ do_stack <- function(f, out_dir, years, normal, min_normal, min_trend, cores, ov
   miss <- setdiff(as.character(years), nm); if (length(miss)) stopf("%s lacks seasons %s", f, paste(head(miss, 5), collapse = ","))
   r <- r[[as.character(years)]]
   ni <- match(as.character(normal), names(r)); if (anyNA(ni)) stopf("normal period %d-%d not inside --years", min(normal), max(normal))
-  t <- as.numeric(years)
-  # local copies: with cores > 1 terra::app ships the closure to PSOCK workers, which see its enclosing frame but not
-  # this script's global functions (CGlabs 2026-11-11: "could not find function mk_sen")
-  mk <- mk_sen; ns <- normal_stats
-  tr <- app(r, function(v) mk(v, t, min_trend), cores = cores)
-  names(tr) <- c("slope_per_year", "p_mk", "n_years")
-  slope_dec <- tr[["slope_per_year"]] * 10; names(slope_dec) <- "slope_per_decade"
-  sig <- setValues(tr[["p_mk"]], bh_sig(values(tr[["p_mk"]])[, 1])); names(sig) <- "sig_fdr"
-  trend <- c(slope_dec, tr[["p_mk"]], sig, tr[["n_years"]])
-  nrm <- app(r[[ni]], function(v) ns(v, min_normal), cores = cores); names(nrm) <- c("mean", "sd", "p10", "p50", "p90")
-  adiff <- r - nrm[["mean"]]; names(adiff) <- names(r)
-  az <- ifel(nrm[["sd"]] > 0, adiff / nrm[["sd"]], NA); names(az) <- names(r)
+  t <- as.numeric(years); t0 <- Sys.time()
+  # Per-cell statistics on the cell x season MATRIX with forked workers (parallel::mclapply): no data is serialized
+  # and the workers share this process's functions. terra::app(cores = n) was master-bound on the node (workers ~6 %
+  # CPU, 28 -> 207 min per stack, 2026-11-12); the Africa window is ~48k land cells x 43 seasons, a few MB.
+  m <- values(r)                                                  # ncell x n_seasons
+  live <- which(rowSums(!is.na(m)) > 0)
+  per_cell <- function(mat, rows, fun, width) {
+    if (!length(rows)) return(matrix(NA_real_, 0, width))
+    ch <- split(rows, cut(seq_along(rows), max(1L, min(length(rows), cores * 4L)), labels = FALSE))
+    res <- parallel::mclapply(ch, function(ix) t(apply(mat[ix, , drop = FALSE], 1, fun)), mc.cores = max(1L, cores))
+    bad <- vapply(res, inherits, logical(1), "try-error"); if (any(bad)) stopf("worker error: %s", as.character(res[[which(bad)[1]]]))
+    do.call(rbind, res)
+  }
+  trm <- matrix(NA_real_, nrow(m), 3); trm[live, ] <- per_cell(m, live, function(v) mk_sen(v, t, min_trend), 3)
+  nm_ <- matrix(NA_real_, nrow(m), 5); nm_[live, ] <- per_cell(m[, ni, drop = FALSE], live, function(v) normal_stats(v, min_normal), 5)
+  tmpl <- r[[1]]
+  slope_dec <- setValues(tmpl, trm[, 1] * 10); names(slope_dec) <- "slope_per_decade"
+  pmk <- setValues(tmpl, trm[, 2]); names(pmk) <- "p_mk"
+  sig <- setValues(tmpl, bh_sig(trm[, 2])); names(sig) <- "sig_fdr"
+  ny <- setValues(tmpl, trm[, 3]); names(ny) <- "n_years"
+  trend <- c(slope_dec, pmk, sig, ny)
+  nrm <- rast(lapply(1:5, function(j) setValues(tmpl, nm_[, j]))); names(nrm) <- c("mean", "sd", "p10", "p50", "p90")
+  adm <- m - nm_[, 1]                                             # recycles the per-cell normal mean over seasons
+  azm <- adm / nm_[, 2]; azm[!(nm_[, 2] > 0) | is.na(nm_[, 2]), ] <- NA_real_   # keep the matrix shape (ifelse would not)
+  adiff <- setValues(r, adm); names(adiff) <- names(r)
+  az <- setValues(r, azm); names(az) <- names(r)
   dir.create(out_dir, FALSE, TRUE)
   wr <- function(x, p) writeRaster(x, p, overwrite = TRUE, filetype = "COG", gdal = c("COMPRESS=ZSTD", "OVERVIEWS=AUTO"))
   wr(trend, outs[1]); wr(nrm, outs[2]); wr(adiff, outs[3]); wr(az, outs[4])
-  vs <- values(sig)[, 1]; vp <- values(tr[["p_mk"]])[, 1]
-  lg(sprintf("%s/%s: %d seasons; trend on %d cells, %.1f %% p<0.05, %.1f %% FDR-significant; median slope %.3g per decade",
+  vs <- bh_sig(trm[, 2]); vp <- trm[, 2]
+  lg(sprintf("%s/%s: %d seasons; trend on %d cells, %.1f %% p<0.05, %.1f %% FDR-significant; median slope %.3g per decade; %.1f min",
              basename(out_dir), base, nlyr(r), sum(!is.na(vp)), 100 * mean(vp < 0.05, na.rm = TRUE), 100 * mean(vs == 1, na.rm = TRUE),
-             stats::median(values(slope_dec)[, 1], na.rm = TRUE)))
+             stats::median(trm[, 1] * 10, na.rm = TRUE), as.numeric(difftime(Sys.time(), t0, units = "mins"))))
   invisible(outs)
 }
 
@@ -172,21 +186,38 @@ run <- function(obs_root, token, timeframe, years, normal = 1991:2020, windows =
     names(wts) <- names(units)
     lg(sprintf("admin units: %s", paste(sprintf("%s %d", names(units), vapply(units, function(v) as.integer(nrow(v)), integer(1))), collapse = ", ")))
   }
-  ser <- list(); trn <- list()
+  # admin tables are written per stack as parts (never held in memory across stacks: the node's run grew ~20 min per
+  # stack while they accumulated), and the final per-level tables are assembled from ALL parts on disk, so a resumed
+  # or split run (--windows/--indices) still yields complete tables
+  parts <- file.path(dst, "_admin_parts")
   for (w in wins) {
     fl <- list.files(file.path(src, w), "\\.tif$", full.names = TRUE)
     if (!is.null(indices)) fl <- fl[sub("\\.tif$", "", basename(fl)) %in% indices]
     for (f in fl) {
       do_stack(f, file.path(dst, w), years, normal, min_normal, min_trend, cores, overwrite)
-      if (!is.null(units)) { a <- admin_stack(f, units, wts, w, years, normal, min_normal, min_trend); ser[[length(ser) + 1]] <- a$series; trn[[length(trn) + 1]] <- a$trends }
+      if (!is.null(units)) {
+        tag <- sprintf("%s__%s", w, sub("\\.tif$", "", basename(f)))
+        pf <- file.path(parts, names(units), sprintf("%s_%s.parquet", c("series"), tag))
+        if (all(file.exists(pf)) && !overwrite) next
+        a <- admin_stack(f, units, wts, w, years, normal, min_normal, min_trend)
+        for (lv in names(units)) {
+          dir.create(file.path(parts, lv), FALSE, TRUE)
+          arrow::write_parquet(a$series[[lv]], file.path(parts, lv, sprintf("series_%s.parquet", tag)))
+          arrow::write_parquet(a$trends[[lv]], file.path(parts, lv, sprintf("trends_%s.parquet", tag)))
+        }
+        rm(a); invisible(gc(verbose = FALSE))
+      }
     }
   }
   if (!is.null(units)) {
     for (lv in names(units)) {
-      s <- rbindlist(lapply(ser, `[[`, lv), fill = TRUE); tt <- rbindlist(lapply(trn, `[[`, lv), fill = TRUE)
+      sf_ <- list.files(file.path(parts, lv), "^series_.*\\.parquet$", full.names = TRUE)
+      tf_ <- list.files(file.path(parts, lv), "^trends_.*\\.parquet$", full.names = TRUE)
+      s <- rbindlist(lapply(sf_, arrow::read_parquet), fill = TRUE); tt <- rbindlist(lapply(tf_, arrow::read_parquet), fill = TRUE)
       arrow::write_parquet(s, file.path(dst, sprintf("admin_series_%s.parquet", lv)))
       arrow::write_parquet(tt, file.path(dst, sprintf("admin_trends_%s.parquet", lv)))
-      lg(sprintf("admin %s: %d series rows, %d trend rows; %.1f %% of units FDR-significant", lv, nrow(s), nrow(tt), 100 * mean(tt$sig_fdr == 1, na.rm = TRUE)))
+      lg(sprintf("admin %s: %d stacks, %d series rows, %d trend rows; %.1f %% of units FDR-significant", lv, length(tf_), nrow(s), nrow(tt), 100 * mean(tt$sig_fdr == 1, na.rm = TRUE)))
+      rm(s, tt); invisible(gc(verbose = FALSE))
     }
   }
   lg("done: ", dst); invisible(dst)
@@ -260,6 +291,12 @@ selftest <- function() {
   ok(nrow(st) == 2 * 43 && nrow(tt) == 2 && length(cache) == 1, "run() with admin units writes the series and trend tables and caches the weights")
   out3 <- capture.output(run(td, "obstest", "1982-2025", 1982:2024, normal = 1991:2020, units = units, cores = 2L, overwrite = TRUE))
   ok(any(grepl("admin weights from cache", out3)), "a second run reuses the cached admin weights")
+  # 6. split / resumed runs: admin parts persist per stack, so the final tables hold every stack ever processed
+  writeRaster(s, file.path(src, "NTx35_mean.tif"), overwrite = TRUE)
+  run(td, "obstest", "1982-2025", 1982:2024, units = units, indices = "NTx35_mean")
+  tt2 <- arrow::read_parquet(file.path(out2, "admin_trends_admin0.parquet"))
+  ok(setequal(unique(tt2$index), c("NDWS_mean", "NTx35_mean")) && nrow(tt2) == 4,
+     "a second invocation on another index adds to the admin tables instead of replacing them (parts on disk)")
   tr2 <- rast(file.path(out2, "ggcmi-mai", "NDWS_mean_trend.tif"))
   ok(isTRUE(all.equal(values(tr2), values(tr)[, names(tr2)], tolerance = 1e-9)),
      "cores = 2 (PSOCK workers, as on the node with --cores 16) gives the same trend raster as cores = 1")
