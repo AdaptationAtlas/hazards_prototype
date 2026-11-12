@@ -3,7 +3,7 @@ _env/arrow	NA		24.0.0
 _env/data.table	NA		1.18.4
 _env/dplyr	NA		1.2.1
 _env/GDAL	NA		3.8.5
-_env/git	NA		3ccda81
+_env/git	NA		6471ecd
 _env/platform	NA		aarch64-apple-darwin23
 _env/PROJ	NA		9.5.1
 _env/R	NA		4.6.0
@@ -14,8 +14,8 @@ _env/tidyr	NA		1.3.2
 _env/vctrs	NA		0.7.3
 Data/afr_highlands/afr-highlands.asc	387259	bytes=387259	md5=10ba9c5bf34a719ba48fd2dc57d17b56
 Data/boundaries/atlas_gaul24_a0_africa.parquet	28780999	bytes=28780999	md5=5723277d9660c672fc5e64ea1da36e98
-Data/fao/Prices_E_Africa_NOFLAG.csv	5868091	bytes=5868091	md5=b56e2a5ee849eb7561207e0e7f406e2e
-Data/fao/Prices_E_All_Data_(Normalized).csv	214283741	bytes=214283741	md5=cac3204e97269b93ac3ebc794fbe1305
+Data/fao/Prices_E_Africa_NOFLAG.csv	5868302	bytes=5868302	md5=ee7e63a7e47c5922448f5ed532034d0e
+Data/fao/Prices_E_All_Data_(Normalized).csv	214286652	bytes=214286652	md5=89bf3751160932244e1efedc93e7d115
 Data/fao/Production_Crops_Livestock_E_Africa_NOFLAG.csv	12958809	bytes=12958809	md5=65791f090d59f2538812c0b20027273d
 Data/fao/Value_of_Production_E_Africa.csv	14709503	bytes=14709503	md5=b918d7229ac029651fdaa46955d07b45
 Data/fao/Value_of_Production_E_All_Area_Groups.csv	16538364	bytes=16538364	md5=e56b44725ac151743e0028c0ca0c8926

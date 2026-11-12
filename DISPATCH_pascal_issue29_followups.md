@@ -2,6 +2,126 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-12 — P7: probe the 2x mass ratio, clean the personal library, refresh FAOSTAT, re-run phase B. **Small profile is fine.** Pete's GO (2026-11-12) on the cleanup and the FAOSTAT refresh.
+
+**Why.** Thank you for P6 and the careful P5 stop. Four things follow from it, done in this order so 0.4.1 runs on
+the final stack:
+1. **The 2x GLW mass ratio.** It is either the source mass (`cellSize`, PROJ 8.2.1) or the `method = "sum"`
+   resample (terra 1.9.50 on GDAL 3.4.3). `R/checks/probe_058_sum_resample.R` tells the two apart in seconds; the
+   macbook reference is in its header.
+2. **The personal library.** IT's rebuild made 8 of its 14 packages redundant, and one of them (`arrow`) shadows a
+   newer shared copy. Remove those 8, so the run uses the shared library.
+3. **FAOSTAT.** The macbook re-fetched its FAOSTAT on 2026-11-12 with the same recipe. Fetch it here too, so both
+   hosts hold the current release. If FAO publishes a new release between the two fetches, the inputs compare will
+   show it.
+4. **Phase B again.** 71 now checks the world prices file (`f5d0939`, `metadata/stages.json`), and the macbook
+   has re-run 0.4.1 on the refreshed FAOSTAT and re-committed its fingerprints.
+
+**Rules.**
+- Writes go only to:
+  - `R_LIBS_USER`, and only to remove the 8 packages named below;
+  - `<working_dir>/Data/fao`, through the recipe;
+  - the 0.4.1 output directories;
+  - `logs/`;
+  - the three `metadata/crosshost/*_pascal*` files.
+- No installs. No S3 writes.
+- Background jobs with `nohup` and a `.pid` file, polled with `kill -0`, never `wait`.
+- No usernames, hostnames or IPs in the RESPONSE or the TSVs.
+
+#### P7.0 — pull
+```bash
+cd <repo> && export ATLAS_PROJECT_DIR=$PWD
+git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD    # develop
+```
+
+#### P7.1 — probe (read-only, seconds)
+```bash
+Rscript R/checks/probe_058_sum_resample.R 2>&1 | tee logs/probe_058_$(date +%Y%m%d_%H%M%S).log
+```
+Report all of it verbatim. The macbook printed:
+- `cellSize sum 510065622`;
+- `count sum (src) 1525236453`;
+- `resampled (dst) 1452641015`, ratio `0.9524`;
+- `ones … max cell 9`;
+- `aggregate(fact=3)` cropped sum equal to the resampled sum.
+
+To read your result:
+- **If `cellSize`/`src` is about half the macbook's,** PROJ is the cause.
+- **If `dst` or the ones `max cell` is about double,** the resample is, and then the res-25 livestock outputs below
+  will not match the macbook. That mismatch is the finding phase B exists for.
+
+Either way, this is a finding, not a stop.
+
+#### P7.2 — remove the 8 redundant personal-library packages, then re-audit
+```bash
+Rscript -e 'l <- Sys.getenv("R_LIBS_USER"); rm <- c("arrow","base64enc","data.table","dplyr","duckdb","geoarrow","rlang","vctrs"); remove.packages(rm, lib = l); print(installed.packages(lib.loc = l)[, "Version"])'
+STAMP=$(date +%Y%m%d_%H%M%S)
+nohup Rscript R/checks/76_r_env_audit.R --out logs/r_env_audit_p7_$STAMP.tsv > logs/r_env_audit_p7_$STAMP.log 2>&1 &
+echo $! > logs/r_env_audit_p7_$STAMP.pid
+```
+**What to expect:**
+- 6 packages left in the personal library: `MetBrewer`, `miceadds`, `paws.common`, `paws.storage`, `s3fs`, `sfarrow`;
+- the audit shows `0.4-chain` BROKEN 0 MISSING 0;
+- the `lib` column shows `site` for the 8 removed packages.
+
+If any 0.4-chain row is BROKEN or MISSING, **stop**. Do not reinstall into the personal library.
+
+#### P7.3 — refresh FAOSTAT (verified fetch through the recipe)
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S)
+nohup Rscript -e 'source("R/00_paths.R"); source("R/00_acquire.R"); atlas_acquire("faostat-bulk", force = TRUE)' > logs/p7_fao_refresh_$STAMP.log 2>&1 &
+echo $! > logs/p7_fao_refresh_$STAMP.pid
+# poll; then:
+grep -E "object|verified|drift|WARN|rror" logs/p7_fao_refresh_$STAMP.log
+Rscript R/checks/71_stage_ready.R --stage 0.4.1 2>&1 | tail -3      # READY, now including the world prices file
+```
+FAOSTAT is declared mutable, so a `drift` count (file sizes changed since the manifest was listed) is expected and is
+not a failure. A `verification failed` line, or a missing member after unzip, is a stop. About 300 MB unpacked.
+
+#### P7.4 — run 0.4.1, both resolutions
+Same command as P5.1, with a new stamp. `FORCE_OVERWRITE=1` replaces the partial res-25 masks P5 left behind.
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S)
+nohup bash -c 'for RES in 0.25 0.05; do EXPOSURE_RES=$RES FORCE_OVERWRITE=1 Rscript -e "source(\"$PWD/R/0_server_setup.R\"); source(\"$PWD/R/0.4.1_create_livestock_exposure.R\")" > logs/phaseB_041_${RES}_'$STAMP'.log 2>&1 || exit 1; done' > logs/phaseB_041_$STAMP.log 2>&1 &
+echo $! > logs/phaseB_041_$STAMP.pid
+# poll: kill -0 $(cat logs/phaseB_041_$STAMP.pid) 2>/dev/null && echo running || grep -hE "COMPLETE|mass not conserved|rror" logs/phaseB_041_*_$STAMP.log
+```
+Expect one `COMPLETE` per resolution. Report both `mass not conserved` lines. A missing `COMPLETE` is a stop.
+
+#### P7.5 — fingerprint, compare, commit
+```bash
+M=metadata/crosshost; F="Rscript R/checks/72_crosshost_fingerprint.R"
+$F --stage 0.4.1-inputs --out $M/inputs_041_pascal.tsv
+$F --stage 0.4.1 --res res-25 --out $M/fp_041_pascal_res-25.tsv
+$F --stage 0.4.1 --res res-05 --out $M/fp_041_pascal_res-05.tsv
+$F --compare $M/inputs_041_mac.tsv    $M/inputs_041_pascal.tsv    2>&1 | cut -c31-
+$F --compare $M/fp_041_mac_res-25.tsv $M/fp_041_pascal_res-25.tsv 2>&1 | cut -c31-
+$F --compare $M/fp_041_mac_res-05.tsv $M/fp_041_pascal_res-05.tsv 2>&1 | cut -c31-
+```
+Read the comparison in the same order as P5.3:
+1. **Inputs.** All 13 should be `same`, now including the 5 FAOSTAT CSVs.
+2. **The GLW-only host gate:** `livestock_number_number`, `livestock_masks`, `shoat_prop`.
+3. **VoP.** The six rasters and the six CSVs. These are a host test only if step 1 shows FAOSTAT `same`.
+
+Report the summary lines, every non-`same` row with its `max_rel_diff`, and every `env-diff` row. Tie any
+step-2 difference to what P7.1 found.
+
+**Stop and describe** on any of:
+- not on `develop`;
+- a 0.4-chain BROKEN or MISSING row after P7.2;
+- `verification failed` in P7.3;
+- a missing `COMPLETE`;
+- any write outside the places listed under Rules.
+
+Differences found by the compare are **findings to report**, not stops.
+
+**To answer:**
+1. Prepend one `### RESPONSE — pascal` (P7) to this file.
+2. Run the IP grep over the response and the TSVs.
+3. Commit this file plus the three `*_pascal*` TSVs, and nothing else.
+4. Push, then verify it landed.
+5. End with a delivery line.
+
 ### RESPONSE — pascal 2026-11-11 — P6: IT's rebuild verified, **588 failures down to 7**. P5: **STOPPED at P5.1**, a FAOSTAT world-prices file 0.4.1 needs is absent and `71_stage_ready.R` does not check for it.
 
 Two results, in the order the 2026-11-11 note asks for.

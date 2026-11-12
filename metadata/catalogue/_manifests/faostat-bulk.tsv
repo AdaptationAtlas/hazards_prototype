@@ -1,5 +1,5 @@
 src	dest	bytes	etag	md5	role
-https://fenixservices.fao.org/faostat/static/bulkdownloads/Deflators_E_All_Data_(Normalized).zip	Deflators_E_All_Data_(Normalized).zip	1119241	506be684c20eb186254d5a3f17294930		archive
+https://fenixservices.fao.org/faostat/static/bulkdownloads/Deflators_E_All_Data_(Normalized).zip	Deflators_E_All_Data_(Normalized).zip	1134289	147f16c92bc68ec10b7bc1583f8b0c07		archive
 https://fenixservices.fao.org/faostat/static/bulkdownloads/Prices_E_Africa.zip	Prices_E_Africa.zip	1461402	adaed7c88d2353025dd5cfcd904565e1		archive
 https://bulks-faostat.fao.org/production/Prices_E_All_Data_(Normalized).zip	Prices_E_All_Data_(Normalized).zip	11684078	fbc9a143487a2037f393d34e51450bf8-2		archive
 https://fenixservices.fao.org/faostat/static/bulkdownloads/Production_Crops_Livestock_E_Africa.zip	Production_Crops_Livestock_E_Africa.zip	4319333	c83315545372bc749ba1f514caaafb00		archive

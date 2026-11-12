@@ -187,7 +187,7 @@ for (id in ids) {
                 sprintf("DRIFT +%d -%d ~%d%s", length(d$added), length(d$removed),
                         length(d$changed), if (mutable) " (mutable)" else "")))
   if (n_diff && !is.null(old)) {
-    for (x in head(c(paste("+", d$added), paste("-", d$removed), paste("~", d$changed)), 20)) cat("      ", x, "\n")
+    for (x in head(c(if (length(d$added)) paste("+", d$added), if (length(d$removed)) paste("-", d$removed), if (length(d$changed)) paste("~", d$changed)), 20)) cat("      ", x, "\n")
   }
 
   if (has("--check")) {

@@ -14,10 +14,10 @@
     "license": "CC-BY-4.0",
     "manifest": {
       "objects": 9,
-      "bytes": 84038684,
+      "bytes": 84053732,
       "verify": "size",
       "mutable": true,
-      "listed": "2026-11-02"
+      "listed": "2026-11-12"
     }
   },
   "transfer": {
@@ -63,6 +63,11 @@
     {
       "date": "2026-11-02",
       "change": "Added checksum manifest: 9 object(s), 84,038,684 bytes, verify=size (origin changes in place, so a mismatch is drift, not failure). Listed from the origin by R/checks/75_catalogue_manifest.R (headers only); R/00_acquire.R checks every download against it.",
+      "ref": "#58"
+    },
+    {
+      "date": "2026-11-12",
+      "change": "Rebuilt checksum manifest: 9 object(s), 84,053,732 bytes, verify=size (origin changes in place, so a mismatch is drift, not failure). Listed from the origin by R/checks/75_catalogue_manifest.R (headers only); R/00_acquire.R checks every download against it.",
       "ref": "#58"
     }
   ],
