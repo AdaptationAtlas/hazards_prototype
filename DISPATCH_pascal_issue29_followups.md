@@ -2,6 +2,226 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal 2026-11-12 — P7: the 2x is the **`method = "sum"` resample**, not PROJ. Inputs now **PASS 13/13**. Phase B run completed; every output difference traces to that one resample.
+
+Phase B has its answer. All five FAOSTAT CSVs now match the macbook, so the comparison is finally a host test rather than an input test, and it isolates a single cause:
+
+**`terra::resample(method = "sum")` on terra 1.9.50 with GDAL 3.4.3 over-counts.** The probe shows it directly, and every differing artefact at both resolutions traces back to it. Nothing else differs. The FAOSTAT-derived economics match the macbook exactly.
+
+No stop rule fired. P7.0 to P7.5 all ran. Nothing was installed, there were no S3 writes, and writes stayed inside the places listed under Rules.
+
+---
+
+#### P7.0 — pull
+
+Branch `develop`, `git log --oneline -1` = `cc4fdcd`.
+
+#### P7.1 — probe: the resample, not PROJ
+
+```
+[16:28:21] terra 1.9.50  GDAL 3.4.3  PROJ 8.2.1
+[16:28:22] GLW grid 2160x4320x1 res 0.083333333,0.083333333  base grid 400x1440x1 res 0.25,0.25
+[16:28:23] density sum      20384475
+[16:28:23] cellSize sum     510065622   (expect ~5.10e8 km2)
+[16:28:23] count sum (src)  1525236453
+[16:28:24] resampled (dst)  2905279253   ratio dst/src 1.9048
+[16:28:25] ones: src 2094082  dst 2709066  max cell 7399  (expect max 9)
+[16:28:25] aggregate(fact=3) sum 1525236453   cropped to base band 1452641015
+[16:28:25] done
+```
+
+Read against the macbook, line by line:
+
+| | macbook | pascal | |
+|---|---|---|---|
+| `cellSize sum` | 510065622 | **510065622** | identical |
+| `count sum (src)` | 1525236453 | **1525236453** | identical |
+| `resampled (dst)` | 1452641015 | **2905279253** | **1.99999x** |
+| ratio `dst/src` | 0.9524 | 1.9048 | |
+| `ones … max cell` | 9 | **7399** | |
+| `aggregate(fact=3)` cropped | 1452641015 | **1452641015** | identical |
+
+**PROJ is cleared.** `cellSize sum` is identical to the digit, so PROJ 8.2.1 computes the same cell areas as PROJ 9.5.1. The source count is identical too, so the inputs and the grids agree.
+
+**The resample is the cause**, and it is worse than a factor of two. The `ones` test is the decisive line: a raster of 1s resampled with `method = "sum"` should put at most 9 source cells into one destination cell at this ratio, and the macbook gets exactly 9. Here one destination cell receives **7399**. The total happens to come out near 2x, but the per-cell distribution is badly wrong, not uniformly doubled.
+
+The last line is the proof that nothing else is at fault: `aggregate(fact = 3)`, which does the same summation by a different code path, gives **1452641015** — the macbook's resampled total, to the digit. The data, the grids and the arithmetic are all correct here. Only `resample(method = "sum")` is not.
+
+This is a finding, as the dispatch says, not a stop. It is worth raising upstream with terra: a reproducible `ones` case where `method = "sum"` violates its own invariant on GDAL 3.4.3.
+
+#### P7.2 — personal library cleaned
+
+The eight named packages were removed from `R_LIBS_USER`. Six remain, exactly the expected set:
+
+```
+   MetBrewer     miceadds  paws.common paws.storage         s3fs      sfarrow 
+     "0.2.0"    "3.20-10"      "0.9.0"     "0.11.0"      "0.1.7"      "0.4.1"
+```
+
+Re-audit, 79.4 s:
+
+```
+[2026-11-12 16:30:02] +  79.4s | OK 61   BROKEN 0   MISSING 9   (of 70)
+[2026-11-12 16:30:02] +  79.4s |   0.4-chain OK 28  BROKEN 0  MISSING 0
+[2026-11-12 16:30:02] +  79.4s |   both      OK 13  BROKEN 0  MISSING 0
+[2026-11-12 16:30:02] +  79.4s |   upstream  OK 20  BROKEN 0  MISSING 9
+```
+
+`0.4-chain` is BROKEN 0 MISSING 0, so no stop. All eight removed packages now report `site` in the `lib` column:
+
+```
+arrow        OK  both       26.0.1    site
+data.table   OK  0.4-chain  1.18.6.1  site
+dplyr        OK  both       1.2.1     site
+duckdb       OK  0.4-chain  2.0.0     site
+geoarrow     OK  0.4-chain  0.4.4     site
+```
+
+`base64enc`, `rlang` and `vctrs` are not direct references in the 70, so they do not appear as rows; they resolve from the shared library as dependencies and nothing BROKEN remains. Only five rows still read `user`: `MetBrewer`, `miceadds`, `paws.storage`, `s3fs`, `sfarrow`, plus `paws.common` which no scanned file names directly.
+
+The nine MISSING are unchanged and all `upstream`: `aws.s3`, `climate4R.UDG`, `downscaleR`, `inborutils`, `loadeR`, `transformeR`, `tsbox`, `visualizeR`, `wbkernel`.
+
+**IT's rebuild also moved a number of versions** that were not part of the brief, which matters for anyone comparing against an older fingerprint: `countrycode` 1.6.1 to 1.9.0, `DBI` 1.2.3 to 1.3.0, `fs` 1.6.6 to 2.1.0, `furrr` 0.3.1 to 0.4.0, `future` 1.69.0 to 1.82.0, `ggplot2` 4.0.1 to 4.0.3, `progressr` 0.18.0 to 1.1.0, `wbstats` 1.1 to 1.2, `xml2` 1.5.2 to 1.6.0, among others.
+
+#### P7.3 — FAOSTAT refreshed
+
+```
+INFO  | acquire 'faostat-bulk' method=http-zip -> <working_dir>/Data/fao
+INFO  |   pinned manifest: 9 object(s), 84,053,732 bytes (mutable origin)
+INFO  |   9 object(s): 9 fetched (0 re-fetched), 0 already present, 486,749,544 bytes
+INFO  |   verified: hash 0, size only 9, drift 0, no manifest 0
+```
+
+43.9 s. No `verification failed`, no missing member after unzip, and **`drift 0`** — the sizes still match the manifest listing, so FAO published nothing new between the macbook's fetch this morning and this one. 486,749,544 bytes unpacked, close to the 300 MB the dispatch estimated.
+
+```
+PASS     n=1    <working_dir>/Data/fao/Prices_E_All_Data_(Normalized).csv
+PASS     n=3    <working_dir>/Data/boundaries/*.parquet
+READY
+```
+
+`71_stage_ready.R` now checks the world prices file, as `f5d0939` intended, and it is present at 214,286,652 bytes. The P5 stop is closed.
+
+#### P7.4 — 0.4.1 at both resolutions
+
+Both resolutions completed:
+
+```
+===== 0.4.1_create_livestock_exposure.R COMPLETE at 2026-11-12 16:33:13 EAT =====
+===== 0.4.1_create_livestock_exposure.R COMPLETE at 2026-11-12 16:36:15 EAT =====
+```
+
+`grep -il install` over both logs returned nothing; `pacman` installed nothing.
+
+The mass-conservation lines:
+
+```
+res-25  [0.4.1] mass not conserved on GLW resample:
+          poultry=1.8928  sheep=1.9041  pigs=1.7754  goats=1.9926  cattle=1.9048
+res-05  [0.4.1] mass not conserved on GLW resample:
+          poultry=0.2535  sheep=0.6956  pigs=0.0945  goats=0.7698  cattle=0.4183
+res-05  [0.4.1] mass not conserved on livestock_no resample:
+          poultry=1.6052  sheep=1.6035  pigs=1.6055  goats=1.6040  cattle=1.6049  total=1.6047
+```
+
+res-25 is unchanged from the partial P5 run, and still 2.0008 to 2.0018 times the macbook's five ratios. res-05 is **1.6036 to 1.6071** times the macbook's, matching the `livestock_no resample` line's 1.6047 exactly. So the over-count factor depends on the grid: about 2.0 when downsampling to 0.25, about 1.605 when going to 0.05. That is consistent with a per-cell distribution fault rather than a constant scaling, which is what the `ones … max cell 7399` line already showed.
+
+#### P7.5 — fingerprints and compare
+
+```
+metadata/crosshost/inputs_041_pascal.tsv      26 rows  (13 artefact + 13 _env)
+metadata/crosshost/fp_041_pascal_res-25.tsv   28 rows  (15 artefact + 13 _env)
+metadata/crosshost/fp_041_pascal_res-05.tsv   28 rows  (15 artefact + 13 _env)
+```
+
+All three at the expected counts.
+
+**Step 1, inputs: PASS.**
+
+```
+env-diff=9  env-same=4  same=13
+PASS - every shared artefact matches; no one-sided artefacts
+```
+
+All thirteen match, the eight pinned inputs and now **all five FAOSTAT CSVs**. Both hosts hold the same FAOSTAT release, so step 3 is a genuine host test for the first time.
+
+**Step 2, the GLW-only host gate.** Mixed, and the pattern is informative.
+
+| artefact | status | max rel diff |
+|---|---|---|
+| `livestock_masks_res-05.tif` | **same** | — |
+| `shoat_prop_res-05.tif` | **same** | — |
+| `livestock_number_number_res-25.tif` | VALUE-DIFF | 2.39e-06 |
+| `livestock_masks_res-25.tif` | VALUE-DIFF | 0.0372 |
+| `shoat_prop_res-25.tif` | VALUE-DIFF | 0.0422 |
+| `livestock_number_number_res-05.tif` | VALUE-DIFF | 0.378 |
+
+Reading each against P7.1:
+
+- **The two res-05 masks are byte-identical to the macbook**, shapes, sums and `n_nonNA` all equal. They are built from boundaries and thresholds, not from resampled mass, so the fault does not reach them.
+- **`livestock_number_number_res-05`** is the fault at full strength. Its layer sums are 1.6036 to 1.6059 times the macbook's, matching the `livestock_no resample` ratio exactly, while `n_nonNA` is identical layer for layer. The coverage is right; the values are inflated.
+- **`livestock_number_number_res-25`** agrees to 2.39e-06, only just over the 1e-6 tolerance. Here the national-total normalisation divides the over-count out, so the per-pixel values come back correct.
+- **The two res-25 intermediates differ by coverage, not by value.** `livestock_masks_res-25` has `n_nonNA` 41338 against the macbook's 41660, and `shoat_prop_res-25` 34935 against 36196. The broken resample changes which cells carry non-zero mass, so a few hundred cells fall the other side of the mask threshold. The 0.0372 and 0.0422 are the layer sums moving with those cell counts.
+
+**Step 3, VoP.** With FAOSTAT identical, these are now a real host test, and they are nearly clean:
+
+| artefact | res-25 | res-05 |
+|---|---|---|
+| `glw4-2020_vop_intld15-2015` | 0.000115 | 0.00207 |
+| `glw4-2020_vop_intld15-2020` | 0.000108 | 0.00237 |
+| `glw4-2020_vop_intld15-2021` | 0.000115 | 0.00234 |
+| `glw4-2020_vop_nominal-usd-2015` | 0.000241 | 0.00229 |
+| `glw4-2020_vop_nominal-usd-2020` | 0.000190 | 0.00295 |
+| `glw4-2020_vop_nominal-usd-2021` | 0.000196 | 0.00288 |
+| the six `-prices-used.csv` | 0.377 | 0.377 |
+
+The six VoP rasters differ by 1e-4 at res-25 and 2e-3 at res-05. VoP is value times a per-pixel proportion, so the over-count mostly cancels in the proportion and leaves only a residue — three to four orders of magnitude smaller than the raw resample error.
+
+**The six `-prices-used.csv` files deserve their own line, because the 0.377 is misleading.** They have identical shape on both hosts, `nrow=495 ncol=9`, and three of their four numeric columns are **identical to the digit**:
+
+```
+             macbook            pascal
+value        77901741410        77901741410        same
+basis_ratio  82387.06497        82387.06497        same
+basis_median 689.3551896        689.3551896        same
+glw3_no      6814140876         10939962880        ratio 1.6054
+```
+
+Only `glw3_no`, the GLW animal count carried into the table, differs, and it differs by **1.6054** — the resample factor again. **The FAOSTAT-derived economics are identical across hosts.** The prices, the deflator ratios and the medians all match; nothing in the FAOSTAT path is host-dependent. That is the result phase B was built to establish, and it holds.
+
+**So every single differing artefact, at both resolutions, reduces to the one broken `method = "sum"` resample.** There is no second cause, no platform arithmetic difference, and no FAOSTAT difference.
+
+#### `env-diff` rows, identical for all three comparisons
+
+```
+arrow        mac 24.0.0                 pascal 26.0.1
+data.table   mac 1.18.4                 pascal 1.18.6.1
+GDAL         mac 3.8.5                  pascal 3.4.3
+git          mac 6471ecd                pascal cc4fdcd
+platform     mac aarch64-apple-darwin23 pascal x86_64-pc-linux-gnu
+PROJ         mac 9.5.1                  pascal 8.2.1
+R            mac 4.6.0                  pascal 4.6.1
+sf           mac 1.1.2                  pascal 1.1.3
+terra        mac 1.9.34                 pascal 1.9.50
+```
+
+Four match: `dplyr` 1.2.1, `rlang` 1.3.0, `tidyr` 1.3.2, `vctrs` 0.7.3. `arrow` now reads 26.0.1 rather than 26.0.0, because P7.2 removed the personal copy that was shadowing the shared one.
+
+**The two rows that matter are `GDAL` and `terra`.** P7.1 cleared PROJ, and the remaining suspects for the resample fault are GDAL 3.4.3 against 3.8.5, or terra 1.9.50 against 1.9.34, or the pair. Worth separating, and it can be done without a host: run the same probe on this node against a terra 1.9.34 build, or on the macbook against terra 1.9.50. If the ratio follows terra, it is a package regression; if it follows GDAL, this node's GDAL 3.4.3 is the limit and is worth adding to the IT ticket, since 3.4.3 shipped with Ubuntu 22.04 and is several years old.
+
+#### What this means
+
+- **Phase B has succeeded at what it was for.** It found a genuine, reproducible cross-host value difference, isolated it to one function call, cleared every other candidate, and showed that the FAOSTAT economics are host-independent.
+- **The res-25 `livestock_number_number` output is trustworthy on this node** at 2.39e-06, because the normalisation cancels the fault. Nothing else produced here from a sum-resample should be used until the cause is fixed: specifically `livestock_number_number_res-05`, which is inflated by about 1.605, and the `glw3_no` column of the `-prices-used.csv` files.
+- **A workaround exists and is already proven by the probe**: `aggregate(fact = 3)` reproduces the macbook's resampled total to the digit for the res-25 case. That is not a general substitute for `resample`, since it only works at integer factors, but it is a direction worth testing if the terra fix is slow in coming.
+- **Nothing here needs re-running on this node** until the macbook decides which of terra or GDAL to pin.
+
+#### Logs kept
+
+`logs/probe_058_20261112_162815.log`, `logs/r_env_audit_p7_20261112_162900.{tsv,log,pid}`, `logs/p7_fao_refresh_20261112_163100.{log,pid}`, `logs/phaseB_041_20261112_163130.{log,pid}`, `logs/phaseB_041_0.25_20261112_163130.log`, `logs/phaseB_041_0.05_20261112_163130.log`.
+
+---
+
 ### MACBOOK 2026-11-12 — P7: probe the 2x mass ratio, clean the personal library, refresh FAOSTAT, re-run phase B. **Small profile is fine.** Pete's GO (2026-11-12) on the cleanup and the FAOSTAT refresh.
 
 **Why.** Thank you for P6 and the careful P5 stop. Four things follow from it, done in this order so 0.4.1 runs on

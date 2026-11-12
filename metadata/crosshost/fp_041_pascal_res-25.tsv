@@ -1,0 +1,29 @@
+artefact	bytes	shape	value
+_env/arrow	NA		26.0.1
+_env/data.table	NA		1.18.6.1
+_env/dplyr	NA		1.2.1
+_env/GDAL	NA		3.4.3
+_env/git	NA		cc4fdcd
+_env/platform	NA		x86_64-pc-linux-gnu
+_env/PROJ	NA		8.2.1
+_env/R	NA		4.6.1
+_env/rlang	NA		1.3.0
+_env/sf	NA		1.1.3
+_env/terra	NA		1.9.50
+_env/tidyr	NA		1.3.2
+_env/vctrs	NA		0.7.3
+Data/GLW4_2020/intermediate/livestock_masks_res-25.tif	610455	dim=400x1440x12 ext=-180,180,-50,50 res=0.25,0.25 crs=4326 nlyr=12	sum=1369|1367|1353|1282|1366|1369|32993|33276|33411|25719|33387|33732 n_nonNA=41338|40934|41336|40956|41336|41345|41338|40934|41336|40956|41336|41345
+Data/GLW4_2020/intermediate/shoat_prop_res-25.tif	462422	dim=400x1440x2 ext=-180,180,-50,50 res=0.25,0.25 crs=4326 nlyr=2	sum=13769.04595|21165.95405 n_nonNA=34935|34935
+Data/GLW4_2020/processed/fao_vop/glw4-2020_vop_intld15-2015-prices-used.csv	61283	nrow=495 ncol=9 cols=iso3:character,glw3_name:character,atlas_name:character,value:numeric,intld_source:character,basis_ratio:numeric,basis_median:numeric,glw3_no:numeric,variable:character	value=77901741410|basis_ratio=82387.06497|basis_median=689.3551896|glw3_no=10939962880
+Data/GLW4_2020/processed/fao_vop/glw4-2020_vop_intld15-2020-prices-used.csv	61206	nrow=495 ncol=9 cols=iso3:character,glw3_name:character,atlas_name:character,value:numeric,intld_source:character,basis_ratio:numeric,basis_median:numeric,glw3_no:numeric,variable:character	value=86695299620|basis_ratio=66726.20607|basis_median=636.5611869|glw3_no=10939962880
+Data/GLW4_2020/processed/fao_vop/glw4-2020_vop_intld15-2021-prices-used.csv	60935	nrow=495 ncol=9 cols=iso3:character,glw3_name:character,atlas_name:character,value:numeric,intld_source:character,basis_ratio:numeric,basis_median:numeric,glw3_no:numeric,variable:character	value=89111542260|basis_ratio=71848.74069|basis_median=682.2769795|glw3_no=10939962880
+Data/GLW4_2020/processed/fao_vop/glw4-2020_vop_nominal-usd-2015-prices-used.csv	60547	nrow=495 ncol=10 cols=iso3:character,glw3_name:character,atlas_name:character,value:numeric,production_t:numeric,price_usd_global:numeric,price_usd_final:numeric,price_source:character,glw3_no:numeric,variable:character	value=95475307170|production_t=60976283.44|price_usd_global=1211322.75|price_usd_final=1375704.5|glw3_no=10939962880
+Data/GLW4_2020/processed/fao_vop/glw4-2020_vop_nominal-usd-2020-prices-used.csv	62439	nrow=495 ncol=10 cols=iso3:character,glw3_name:character,atlas_name:character,value:numeric,production_t:numeric,price_usd_global:numeric,price_usd_final:numeric,price_source:character,glw3_no:numeric,variable:character	value=101537729500|production_t=69198706.58|price_usd_global=1235731.75|price_usd_final=1262060.375|glw3_no=10939962880
+Data/GLW4_2020/processed/fao_vop/glw4-2020_vop_nominal-usd-2021-prices-used.csv	61740	nrow=495 ncol=10 cols=iso3:character,glw3_name:character,atlas_name:character,value:numeric,production_t:numeric,price_usd_global:numeric,price_usd_final:numeric,price_source:character,glw3_no:numeric,variable:character	value=109069975700|production_t=71778814.6|price_usd_global=1334212|price_usd_final=1315409.25|glw3_no=10939962880
+Data/GLW4_2020/processed/livestock_number_number_res-25.tif	1558437	dim=400x1440x12 ext=-180,180,-50,50 res=0.25,0.25 crs=4326 nlyr=12	sum=1931262653|344490344.6|38221588.15|452276043.3|300911625.1|316898317.1|210687332.2|41853872.26|5458873.284|34053711.05|67904203.15|58321761.42 n_nonNA=40934|41336|40956|41336|41338|40926|40934|41336|40956|41336|41338|40926
+Data/GLW4_2020/processed/variable=vop_intld15-2015/glw4-2020_vop_intld15-2015_res-25.tif	1062404	dim=400x1440x10 ext=-180,180,-50,50 res=0.25,0.25 crs=4326 nlyr=10	sum=11730149790|9061690636|2696503121|8549948403|35019264580|2624209850|651204336|476122350|531166378|6543697797 n_nonNA=40283|40306|32993|40306|40306|40283|40306|32993|40306|40306
+Data/GLW4_2020/processed/variable=vop_intld15-2020/glw4-2020_vop_intld15-2020_res-25.tif	1065239	dim=400x1440x10 ext=-180,180,-50,50 res=0.25,0.25 crs=4326 nlyr=10	sum=14987057290|9633529053|3261186006|9315771571|37794564640|2940968477|775594962|555820967|616072481|6795930457 n_nonNA=40283|40306|32993|40306|40306|40283|40306|32993|40306|40306
+Data/GLW4_2020/processed/variable=vop_intld15-2021/glw4-2020_vop_intld15-2021_res-25.tif	1066580	dim=400x1440x10 ext=-180,180,-50,50 res=0.25,0.25 crs=4326 nlyr=10	sum=15796139240|9835082403|3401524307|9503042576|38809808200|2988312419|744916575|646431873|589102323|6778761404 n_nonNA=40283|40306|32993|40306|40306|40283|40306|32993|40306|40306
+Data/GLW4_2020/processed/variable=vop_nominal-usd-2015/glw4-2020_vop_nominal-usd-2015_res-25.tif	1069347	dim=400x1440x10 ext=-180,180,-50,50 res=0.25,0.25 crs=4326 nlyr=10	sum=19661470600|14324577120|3564959514|8920283043|38452041840|2943624023|716303565|511643979|462393713|5893577861 n_nonNA=40283|40306|32993|40306|40306|40283|40306|32993|40306|40306
+Data/GLW4_2020/processed/variable=vop_nominal-usd-2020/glw4-2020_vop_nominal-usd-2020_res-25.tif	1070487	dim=400x1440x10 ext=-180,180,-50,50 res=0.25,0.25 crs=4326 nlyr=10	sum=21323289960|13195119590|4349765830|9440510210|41689361110|3023191384|837360158|609674469|508874311|6535126581 n_nonNA=40283|40306|32993|40306|40306|40283|40306|32993|40306|40306
+Data/GLW4_2020/processed/variable=vop_nominal-usd-2021/glw4-2020_vop_nominal-usd-2021_res-25.tif	1073435	dim=400x1440x10 ext=-180,180,-50,50 res=0.25,0.25 crs=4326 nlyr=10	sum=25716484100|13246781200|4665657924|10026965700|43222542440|3250796873|813678929|725901359|535264231|6841328989 n_nonNA=40283|40306|32993|40306|40306|40283|40306|32993|40306|40306
