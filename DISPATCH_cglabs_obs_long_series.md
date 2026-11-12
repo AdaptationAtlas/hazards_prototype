@@ -2,6 +2,100 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-12 (final) — **Z0-Z3 + Y4 done. The speed fix is exact: Z2 max |diff| = 0 on all 4 rasters, 12 s per stack against 83 min before. The full S7 ran both tokens in 37 + 8 min: 95 + 19 stacks, admin tables at 3 levels, peak system memory +9 GB.** Two sanity checks do not show the expected signal (report, not gates; see Y4). Nothing published
+
+Stamp `20261112_132931`. HEAD `cc4fdcd` (fix `6471ecd`). Env grep empty before each launch.
+
+#### Z0 — slow run stopped. PASS
+I killed the master pid from the pid file, then its 16 `.workRSOCK` workers by PID. (`pkill -f workRSOCK` also matches the shell that runs it.) The `ps` check shows `none left`. By then the run had finished **10** stacks, two more than the interim's 8: `annual12/` ×5 and `custom-mai_maturity-4/` ×5, 40 COGs, all complete.
+
+#### Z1 — selftest. PASS
+`s7_trends_anomalies.R --selftest` → **19** ok, `ALL S7 SELFTEST ASSERTIONS PASSED`.
+
+#### Z2 — equivalence on `annual12/NDWS_mean`. PASS
+The old outputs are copied to `logs/s7_old/`, and the rerun with `--overwrite` took **0.2 min** (log line `…; 0.2 min`; the old code took 83 min).
+```
+NDWS_mean_anomaly_diff.tif      43/43 layers, names equal, NA mask equal,   max|diff| = 0
+NDWS_mean_anomaly_z.tif         43/43 layers, names equal, NA mask equal,   max|diff| = 0
+NDWS_mean_normal_1991-2020.tif   5/5  layers, names equal, NA mask equal,   max|diff| = 0
+NDWS_mean_trend.tif              4/4  layers, names equal, NA mask DIFFERS, max|diff| = 0
+```
+**One coding change, which I did not treat as a stop:** in the trend raster's `n_years` layer, the **528,127** no-data cells changed from `0` (old) to `NA` (new). These are the off-land cells where `slope_per_decade`, `p_mk` and `sig_fdr` are NA in both versions. The other three layers have identical NA masks, and the values agree exactly everywhere. **Consequence:** the 9 stacks Z3 skipped, the old-code stacks other than this one, still carry `n_years = 0` on those cells; the 85 new stacks carry NA. Rerunning those 9 with `--overwrite --windows annual12,custom-mai_maturity-4` takes about 2 min, if you want the coding consistent.
+
+#### Z3 — the full run, both tokens. PASS
+| | main token | `-rh15` |
+|---|---|---|
+| wall-clock | 13:30:38 → 14:07:29, **37 min** | 14:07:54 → 14:16:09, **8 min** |
+| stacks | 95 (**85 new**, 10 `skip (exists)`) | 19 (all THI_max) |
+| per-stack S7 | 0.2 min each | 0.2 min each |
+| admin weights | `admin weights from cache` ×3 | `admin weights from cache` ×3 |
+| system used memory (`free -m`, 5 s) | baseline 8.3 GB → **peak 17.3 GB** | baseline 8.2 GB → peak 13.9 GB |
+| errors / non-LIBTIFF warnings | 0 / 0 | 0 / 0 |
+
+Most of the 37 min goes to the admin step, about 20 s per stack across 6,670 admin2 units. The per-cell statistics take 12 s per stack. The pid-tree RSS sampler read 28.7 GB, but it double-counts the pages shared by the forked workers, so the `free` figure is the one to use. The "50 or more warnings" are all the known `CPL_gdal_init` LIBTIFF notice: 0 lines in the warning list are anything else.
+
+Outputs: the main token has 380 COGs (95 × 4) and 570 admin parts; `-rh15` has 76 COGs (19 × 4) and 114 parts. Admin log lines:
+```
+main  admin0: 95 stacks,   224,675 series rows,   5,225 trend rows; 38.6 % of units FDR-significant
+main  admin1: 95 stacks, 2,937,115 series rows,  68,305 trend rows; 33.9 %
+main  admin2: 95 stacks, 27,246,950 series rows, 633,650 trend rows; 29.9 %
+rh15  admin0: 19 stacks,    44,935 series rows,   1,045 trend rows; 67.6 %
+rh15  admin1: 19 stacks,   587,423 series rows,  13,661 trend rows; 63.5 %
+rh15  admin2: 19 stacks, 5,449,390 series rows, 126,730 trend rows; 63.1 %
+```
+The tables hold 715 of 719 admin1 units and 6,666 of 6,670 admin2 units. The 4 + 4 missing are units with no cell centre or overlap on the 0.05° grid. The NA trend rows (247 / 2,432 / 4,142) are units with fewer than 30 valid seasons, mostly zero-variance or desert units.
+
+#### Y4 — report
+**Per-index summary lines (cells).** `annual12` (livestock, main token):
+```
+NDWL0_mean   trend on 47873 cells, 19.1 % p<0.05, 10.5 % FDR; median slope -0 /decade
+NDWS_mean    trend on 47873 cells, 21.1 % p<0.05,  9.4 % FDR; median slope -0
+NTx35_mean   trend on 47924 cells, 75.1 % p<0.05, 73.0 % FDR; median slope 0.404
+PTOT_sum     trend on 48321 cells, 33.4 % p<0.05, 24.1 % FDR; median slope 0.513
+THI_max_max  trend on 47885 cells, 60.9 % p<0.05, 54.6 % FDR; median slope 0.247
+THI_max_max (-rh15)          56.5 % p<0.05, 50.5 % FDR; median slope 0.225
+```
+`ggcmi-mai` (maize):
+```
+NDWL0_mean   trend on 47763 cells, 15.6 % p<0.05,  6.6 % FDR; median slope -0
+NDWS_mean    trend on 47763 cells, 18.3 % p<0.05,  6.6 % FDR; median slope -0
+NTx35_mean   trend on 47814 cells, 55.5 % p<0.05, 49.8 % FDR; median slope 0.267
+PTOT_sum     trend on 48211 cells, 31.6 % p<0.05, 21.4 % FDR; median slope 0.394
+THI_max_max  trend on 47775 cells, 61.3 % p<0.05, 54.8 % FDR; median slope 0.246
+```
+(`-0` is the `%.3g` of a median that is exactly 0: on most cells the count indices have a zero Sen slope.)
+
+**Admin trend summary per level** (main token, all 19 windows; % of units FDR-significant / median slope per decade):
+```
+            admin0 (55)        admin1 (715)       admin2 (6666)
+NDWL0_mean  19.3 %  0          12.5 %  0           6.3 %  0
+NDWS_mean   11.0 % -0.0027      9.1 % -0.0001      5.7 %  0
+NTx35_mean  66.5 %  0.304      60.1 %  0.209      55.6 %  0.206
+PTOT_sum    21.3 %  2.68       18.1 %  2.98       11.8 %  0.775
+THI_max_max 74.5 %  0.257      69.6 %  0.276      70.0 %  0.332
+```
+**Sanity checks.** These are reports, not gates. They come from the admin0 parquets, and the script is `logs/obs_long_y4_sanity_<stamp>.R`.
+- **1991-2020 normal of maize-window NDWS** (admin0, days):
+  - **KEN 24.1** (sd 2.35), slope -0.08/decade, p 0.68, not significant.
+  - **ETH 18.9** (sd 1.11), slope -0.19/decade, p 0.16, not significant.
+- **KEN admin0 maize-window NDWS anomaly-z.** This **does not show the expected positive (dry) anomaly**: **2011 = -0.44, 2015 = -0.69**.
+  - The neighbouring years are 2009 +0.28, 2010 +0.60, 2012 -0.13, 2014 +0.60, 2016 **+0.96**, 2017 +0.46.
+  - ETH reads 2011 -0.17 and 2015 +0.08, with 2009 +2.16 as its driest year.
+  - Possible reasons, not checked:
+    - **Season labels.** Seasons are named by start year. If the KEN GGCMI maize window is the March-planted long rains, then "2011" is MAM 2011 and "2010" is MAM 2010; the failed OND 2010 short rains fall outside both.
+    - **2015-16 El Niño.** It brought wet OND 2015 to East Africa; the drought hit Ethiopia's kiremt and southern Africa.
+    - **National-mean dilution.** The KEN admin0 mean is area-weighted over the arid north, where maize is not grown.
+  - A cropland-weighted mean or an admin1 view (e.g. Eastern/Rift Valley) would separate these. Not done, as it is not in the block.
+- **THI_max national trend, `annual12`, per decade:** all positive and FDR-significant.
+  - **ETH +0.31** (p 8e-18), **NGA +0.22** (p 2e-4), **KEN +0.18** (p 3e-4). Normals 84.4 / 89.3 / 87.9.
+  - `-rh15`: ETH +0.25, NGA +0.15, KEN +0.17, all FDR-significant.
+
+**`du -sh $OL/Data/obs_trends` = 3.6 GB:** main 2.9 GB, `-rh15` 721 MB, `_admin_weights` 1.2 MB.
+
+**State:** nothing running and nothing published. The old outputs of `annual12/NDWS_mean` are kept in `logs/s7_old/` (4 files, untracked, not committed). `$OL` is kept.
+
+---
+
 ### MACBOOK 2026-11-12 — S7 speed fix (matrix + forked workers, admin parts on disk); kill the slow run, one equivalence check, then Y3–Y4
 
 Thank you for leaving it alive and measuring it properly. The workers sitting idle and the master pinned at 100 % was the clue.
