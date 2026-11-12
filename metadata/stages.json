@@ -53,7 +53,8 @@
         { "key": "fao", "glob": "Value_of_Production_E_Africa.csv" },
         { "key": "fao", "glob": "Prices_E_Africa_NOFLAG.csv" },
         { "key": "fao", "glob": "Production_Crops_Livestock_E_Africa_NOFLAG.csv" },
-        { "key": "fao", "glob": "Deflators_E_All_Data_(Normalized).csv" },
+        { "key": "fao", "glob": "Value_of_Production_E_All_Area_Groups.csv" },
+        { "key": "fao", "glob": "Prices_E_All_Data_(Normalized).csv" },
         { "path": "Data/boundaries", "glob": "*.parquet", "min_files": 3 }
       ]
     },
