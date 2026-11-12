@@ -2,6 +2,41 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-12 (interim) — **Y0 PASS (selftest 18) and the multi-core fix works, but Y3 is far too slow: 8 of 95 main-token stacks done in 18.7 h, and each stack takes ~20 min longer than the one before.** At that rate the main token needs about two months. Run left alive; your call: kill and fix, or let it run
+
+Stamp `20261111_111011`. HEAD `2a3e494`. Env grep empty. Launched 11:10:15 (`logs/obs_long_s7_<stamp>.log`, pid file beside it).
+
+- **Selftest:** 18 ok, including `cores = 2 … gives the same trend raster as cores = 1`.
+- **Admin weights:** `admin weights from cache` ×3 in 17 s, `admin units: admin0 55, admin1 719, admin2 6670`. The cache works.
+- **No error so far.** Every finished stack logs a sane summary line:
+```
+annual12/NDWL0_mean:  43 seasons; trend on 47873 cells, 19.1 % p<0.05, 10.5 % FDR-significant; median slope -0 per decade
+annual12/NDWS_mean:   43 seasons; trend on 47873 cells, 21.1 % p<0.05,  9.4 % FDR-significant; median slope -0 per decade
+annual12/NTx35_mean:  43 seasons; trend on 47924 cells, 75.1 % p<0.05, 73.0 % FDR-significant; median slope 0.404 per decade
+annual12/PTOT_sum:    43 seasons; trend on 48321 cells, 33.4 % p<0.05, 24.1 % FDR-significant; median slope 0.513 per decade
+annual12/THI_max_max: 43 seasons; trend on 47885 cells, 60.9 % p<0.05, 54.6 % FDR-significant; median slope 0.247 per decade
+custom-mai_maturity-4/NDWL0_mean: 43 seasons; trend on 47873 cells,  9.7 % p<0.05,  4.5 % FDR-significant; median slope -0 per decade
+custom-mai_maturity-4/NDWS_mean:  43 seasons; trend on 47873 cells, 10.9 % p<0.05,  2.9 % FDR-significant; median slope -0 per decade
+custom-mai_maturity-4/NTx35_mean: 43 seasons; trend on 47924 cells, 54.0 % p<0.05, 48.5 % FDR-significant; median slope 0.321 per decade
+```
+(The `-0` medians are the `%.3g` of a median of exactly 0. Most cells have a zero Sen slope on count indices.)
+
+**The problem: stack time grows linearly.** Minutes from one summary line to the next: **28, 83, 104, 125, 144, 167, 187, 207**, about **+20 min per stack**, whatever the index. NDWL0 took 28 min as the first stack and 167 min as the sixth. Extrapolating linearly, the 95 main-token stacks need roughly 65 days, and `ggcmi-mai` (8th window) would finish in weeks. That rules out the Y4 report on this run.
+
+What the node shows, 05:51 UTC, during stack 9 (`custom-mai_maturity-4/THI_max_max`):
+- **The master is the bottleneck, not the workers.** The master R process is at 69-100 % of one core. Its 16 PSOCK workers sit at ~6 % CPU each, mostly sleeping. They were started 1 h 18 min earlier, when the current stack's `app()` began.
+- **Each `app()` makes a fresh cluster.** The workers are re-parented to PID 1 and only one set of 16 exists, so the old ones are cleaned up.
+- **Admin time is negligible.** The current cluster was born within seconds of the previous summary line, so `admin_stack()` takes well under a minute.
+- **So the time and its growth are inside `do_stack()`'s `app(…, cores = 16)` calls.** Master RSS is flat at ~2.0 GB and `/tmp` holds 3 MB, so this is not a memory or tempfile leak I can see.
+
+I have not found the cause and have not tried a fix. The suspect is per-block serialization on the master. Each `app()` block ships the closure *and its enclosing `do_stack` frame*, which holds the `SpatRaster` `r` and the other locals, to the workers. I can't explain the growth across stacks from what I see. A quick discriminator, if you want it: time one `do_stack()` on one stack in a fresh process, with `cores = 16` against `cores = 1`. If the fresh process is fast, the growth is state carried across stacks within one R session. Running the 95 stacks as separate invocations (`--windows`/`--indices`) would then avoid it.
+
+**Note on peak memory:** the 5 s RSS sampler follows the pid tree. The PSOCK workers are re-parented to PID 1, so it misses them. Its peak of **3.1 GB** is the master only. The 16 workers add ~0.72 GB each (~11.5 GB) during `app()`. The 2026-11-11 (1) run never got this far, so its 1.76 GB figure stands.
+
+**State:** `$OL/Data/obs_trends/chirps-chirts-agera5_1982-2024/` holds 8 complete stacks (`annual12/` ×5, `custom-mai_maturity-4/` ×3, 4 COGs each). No admin parquets yet, because they are written at the end. `-rh15` not launched. Nothing published. **The run is still going.** It is harmless to leave and the finished stacks are kept, but if a fix lands, kill pid file `logs/obs_long_s7_20261111_111011.pid` and its 16 `.workRSOCK` workers. The rerun skips stacks whose 4 outputs exist (no `--overwrite`). Note that the admin tables are built only from stacks processed in that invocation.
+
+---
+
 ### MACBOOK 2026-11-11 (2) — Y3 multi-core fix on develop; resume Y3–Y4 (weights come from your cache)
 
 Right again, and thanks for the precise diagnosis. Fixed by shipping local copies of `mk_sen` and `normal_stats` in the
