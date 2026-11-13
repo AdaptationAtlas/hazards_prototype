@@ -2,6 +2,58 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-13 — P8: confirm on this host that GDAL 3.4.3 is the sum-resample fault (read-only, minutes). **Small profile is fine.**
+
+**Why.** P7 was excellent. It ruled out PROJ and the inputs. On the macbook, terra **1.9.50**, the same version you
+run, gives the correct result on GDAL 3.8.5 (max 9 per cell, ratio 0.9524). So the fault follows **GDAL 3.4.3**.
+P8 confirms that on this host alone: run the same `gdalwarp -r sum` with the system GDAL and with the `obs`
+env's GDAL 3.13, on the same machine and the same file. If only the system GDAL is wrong, the IT ask is a GDAL
+upgrade. (The `R/obs` and `python/obs` code has no sum-resample, so #31 is not affected.)
+
+**Rules.**
+- Read-only. Scratch files go in a `mktemp -d` directory, deleted at the end; logs go in `logs/`.
+- No installs. No `apt` actions beyond the read-only `apt-cache policy`.
+- No usernames, hostnames or IPs in the RESPONSE.
+
+#### P8.1 — versions
+```bash
+cd <repo> && git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD   # develop
+gdalinfo --version; gdal-config --version 2>/dev/null
+~/.conda/envs/obs/bin/gdalinfo --version
+dpkg -l | grep -E "^ii +(libgdal[0-9]+|gdal-bin|libproj[0-9]+) " | awk '{print $2, $3}'
+apt-cache policy libgdal-dev | head -8          # which GDAL versions the configured apt sources offer
+```
+
+#### P8.2 — the same warp, two GDALs, one host
+```bash
+T=$(mktemp -d)
+Rscript -e "library(terra); r <- rast(nrows=2160, ncols=4320, xmin=-180, xmax=180, ymin=-90, ymax=90, vals=1); writeRaster(r, '$T/ones.tif', datatype='FLT4S')"
+for G in /usr/bin ~/.conda/envs/obs/bin; do
+  $G/gdalwarp -q -r sum -te -180 -50 180 50 -tr 0.25 0.25 -ot Float32 $T/ones.tif $T/out_$(basename $(dirname $G)).tif
+  echo "== $G: $($G/gdalinfo --version)"
+  $G/gdalinfo -stats $T/out_$(basename $(dirname $G)).tif | grep -E "STATISTICS_(MAXIMUM|MEAN|MINIMUM)"
+done
+rm -rf "$T"
+```
+**What to expect:** the correct answer is MIN = MEAN = MAX = **9**. One raster cell at 1/12° feeds each 0.25° cell
+3 × 3. The macbook (GDAL 3.11) prints 9 / 9 / 9.
+- If `/usr/bin` (3.4.3) is wrong and the `obs` env (3.13) prints 9, the fault is GDAL 3.4.3's warper, proven on this
+  host.
+- If both are right, the fault is in how terra uses GDAL 3.4.3. Say so; the next step is then different.
+
+Either result is a finding, not a stop.
+
+**Stop and describe** on any of:
+- not on `develop`;
+- anything written outside the temp dir or `logs/`.
+
+**To answer:**
+1. Prepend one `### RESPONSE — pascal` (P8) to this file.
+2. Run the IP grep.
+3. Commit only this file, then push.
+4. Verify it landed.
+5. End with a delivery line.
+
 ### RESPONSE — pascal 2026-11-12 — P7: the 2x is the **`method = "sum"` resample**, not PROJ. Inputs now **PASS 13/13**. Phase B run completed; every output difference traces to that one resample.
 
 Phase B has its answer. All five FAOSTAT CSVs now match the macbook, so the comparison is finally a host test rather than an input test, and it isolates a single cause:
