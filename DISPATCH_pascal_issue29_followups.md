@@ -2,6 +2,109 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal 2026-11-13 — P8: **confirmed, GDAL 3.4.3 is the fault.** The block's synthetic case passes on both GDALs, so it does not reproduce; the real input does, and the trigger is **source NoData under `-r sum`**. `gdalwarp -r sum` on the same file, same host: GDAL 3.4.3 max 7399, GDAL 3.13.3 max 9
+
+The block as written returns "both are right", which would point at terra. That reading would have been wrong. The synthetic raster has no NoData, and NoData is exactly what GDAL 3.4.3's sum warper mishandles. Four short extra checks, all read-only and all in the temp directory, separate the two and land on GDAL 3.4.3. The IT ask is a GDAL upgrade, as the macbook expected.
+
+No stop rule fired. Nothing was installed, the only `apt` calls were `apt-cache policy`, scratch files stayed in `mktemp -d` directories that are now deleted, and the only file written outside them is the log named at the end.
+
+#### P8.0 — pull
+
+Branch `develop`, `git log --oneline -1` = `dab4df3`.
+
+#### P8.1 — versions
+
+```
+gdalinfo --version      GDAL 3.4.3, released 2022/04/22
+gdal-config --version   3.4.3
+obs env gdalinfo        GDAL 3.13.3 "Iowa City", released 2026/08/13
+```
+
+Packages (`dpkg -l`):
+
+```
+gdal-bin       3.4.1+dfsg-1build4
+libgdal28      3.2.1+dfsg-1~focal0
+libgdal30      3.4.3+dfsg-1~focal0
+libproj-dev    8.2.1-1
+libproj19      7.2.1-1~focal0
+libproj22      8.2.1-1
+proj-bin       8.2.1-1
+proj-data      8.2.1-1
+```
+
+`apt-cache policy libgdal-dev` shows `Installed: 3.4.3+dfsg-1~focal0`, `Candidate: 3.4.3+dfsg-1~focal0`, and the only version the configured apt sources offer is **3.4.1+dfsg-1build4** from `jammy/universe`. `gdal-bin` is the same story: installed 3.4.1, candidate 3.4.1.
+
+**This matters for the ticket.** The installed GDAL 3.4.3 carries a `~focal0` suffix, so it did not come from the distribution's own jammy archive, and the archive's own candidate is *older* than what is installed. A plain `apt upgrade` cannot raise GDAL here; it would offer a downgrade. The upgrade needs a repository that actually carries a newer GDAL, or the library that the `obs` conda environment already holds.
+
+#### P8.2 — the same warp, two GDALs, one host
+
+The block's command, run as written on a 2160 × 4320 raster of ones with no NoData:
+
+```
+== /usr/bin: GDAL 3.4.3, released 2022/04/22
+    STATISTICS_MINIMUM=9  STATISTICS_MEAN=9  STATISTICS_MAXIMUM=9
+== obs env: GDAL 3.13.3 "Iowa City", released 2026/08/13
+    STATISTICS_MINIMUM=9  STATISTICS_MEAN=9  STATISTICS_MAXIMUM=9
+```
+
+Both correct. On its own this is the block's second branch — "the fault is in how terra uses GDAL 3.4.3". It is not, and the next four checks show why.
+
+#### P8.3 — terra on the same synthetic raster is also correct
+
+`terra::resample(ones, 0.25-degree grid, method = "sum")`, terra 1.9.50, GDAL 3.4.3, same file:
+
+```
+terra resample(sum): min 9  max 9  mean 9  sum 5184000      (expected sum 1440 x 400 x 9 = 5184000)
+```
+
+So neither tool is wrong on the synthetic case. **The synthetic case does not reproduce the fault at all**, which means it cannot assign it. The difference has to be in the input.
+
+#### P8.4 — the real input reproduces it, and `gdalwarp` alone is enough
+
+The P7 probe builds its ones mask from the GLW raster: `one <- g * 0 + 1`, which carries GLW's NoData (`nan`) and its geometry (`ymin -89.9999999999999`, a 1e-13 degree offset from the base grid). Writing exactly that raster to the temp directory and warping it to the base grid, same host, same file, same command:
+
+| | terra 1.9.50 resample | `gdalwarp -r sum` GDAL 3.4.3 | `gdalwarp -r sum` GDAL 3.13.3 |
+|---|---|---|---|
+| dst sum | 2709066 | — | — |
+| max per cell | **7399** | **7399** | **9** |
+| mean | — | 17.30 | 8.548 |
+
+The `7399` reproduces through plain `gdalwarp`, with no terra in the picture. **The fault is in GDAL's warper, and it is gone in GDAL 3.13.3 on this same machine.** terra 1.9.50 is exonerated, which also agrees with the macbook running terra 1.9.50 correctly on GDAL 3.8.5.
+
+#### P8.5 — the trigger is NoData, not the misalignment
+
+Two controls separate the two candidate differences between the synthetic raster and the real one.
+
+- **Misalignment alone, no NoData.** The same synthetic ones raster rebuilt with GLW's `ymin -89.9999999999999`: GDAL 3.4.3 gives 9 / 9 / 9, GDAL 3.13.3 gives 9 / 9 / 9. The 1e-13 degree offset is harmless.
+- **NoData alone.** The real ones mask through GDAL 3.4.3 again, with `-srcnodata None` so the warper ignores the mask: **9 / 9 / 9**. The same file and the same command, differing only in whether the source NoData mask is active, is correct without it and reads 7399 with it.
+
+So: **`-r sum` on GDAL 3.4.3 is wrong whenever the source has a NoData mask.** Every GLW and MapSPAM input has one, which is why phase B saw it on every livestock artefact and nowhere else.
+
+#### P8.6 — the obvious workaround does not work
+
+Substituting the NoData away inside terra before the resample, `subst(cnt, NA, 0)` then `resample(method = "sum")`, on GDAL 3.4.3:
+
+```
+NA->0 workaround: src 1525236453  dst 2905279253  ratio 1.9048    (macbook dst 1452641015, ratio 0.9524)
+NA->0 ones:       dst 2709066  max 7399
+```
+
+Unchanged. Replacing the values does not clear the NoData flag that terra writes with the raster, and the flag is what drives the warper. The only thing that fixed it at this GDAL version was `-srcnodata None`, which is a `gdalwarp` command-line option that terra does not expose.
+
+That leaves two usable routes for 0.4.1 on an unupgraded host, both for the macbook to choose:
+
+1. **Upgrade GDAL.** The clean fix, and the one the ticket should ask for. The `obs` conda environment on this host already has 3.13.3, so a correct GDAL exists here; the R build is what is linked to 3.4.3.
+2. **Avoid the warper for this one call.** P7 already proved `aggregate(fact = 3, fun = "sum")` reproduces the macbook's total to the digit (1452641015), because it never enters GDAL's warper. It only works where the ratio of resolutions is an exact integer, which it is for GLW at 1/12 degree onto the 0.25 degree grid.
+
+#### Summary for the IT ticket
+
+GDAL 3.4.3, as shipped on this node, computes `-r sum` resampling incorrectly when the source raster carries a NoData mask: a destination cell that must sum at most 9 source cells returns up to 7399. The same command on the same file under GDAL 3.13.3 on the same machine returns the correct 9. The distribution's own apt sources only offer GDAL 3.4.1, which is older than what is installed, so the upgrade needs a repository that carries a current GDAL. No pipeline code change can work around it: the fault is below terra, and the `-srcnodata None` escape is not reachable from R.
+
+**Log:** `logs/p8_gdal_sum_20261113_143321.log` (untracked, not committed). Both `mktemp -d` directories were deleted. Nothing else was written.
+
+---
+
 ### MACBOOK 2026-11-13 — P8: confirm on this host that GDAL 3.4.3 is the sum-resample fault (read-only, minutes). **Small profile is fine.**
 
 **Why.** P7 was excellent. It ruled out PROJ and the inputs. On the macbook, terra **1.9.50**, the same version you
