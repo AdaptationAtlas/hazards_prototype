@@ -19,7 +19,8 @@
 # Admin statistics are computed on the unit's own mean series (not averaged pixel statistics).
 # Weightings (column `weighting`): `area` always; with --weights-crop <tif> also `crop_production` (each crop window
 # weighted by the summed exposure of the crops that use it, per metadata/obs_crop_windows.csv), and with
-# --weights-livestock <tif> also `livestock_head` for the livestock window (annual12). Multi-layer rasters, one layer
+# --weights-livestock <tif> also `livestock_tlu` for the livestock window (annual12): head counts converted to Tropical
+# Livestock Units (cattle 0.7, sheep/goats 0.1, pigs 0.2, poultry 0.01), so the weight is not dominated by poultry. Multi-layer rasters, one layer
 # per crop / species (the R/3 exposure rasters, e.g. SPAM prod_t and GLW4 head at res-25). Area-weighted national means
 # are dominated by non-producing land (the 2026-11-12 Kenya check), so exposure weighting is the one to read for crops
 # and livestock. --admin-only recomputes the admin tables from existing stacks without touching the rasters.
@@ -143,7 +144,10 @@ admin_means <- function(r, w) {
 }
 exposure_weights <- function(wts_area, E, tmpl) {
   # turn area weights (coverage fraction x cell km2) into exposure weights (coverage fraction x exposure in the cell)
-  if (!compareGeom(E, tmpl, stopOnError = FALSE)) E <- terra::resample(E, tmpl, method = "average")
+  if (!compareGeom(E, tmpl, stopOnError = FALSE)) {
+    lg(sprintf("exposure weights: resampling %s (res %.4g) to the %.4g lattice by average (weights are relative within a unit)", names(E)[1], res(E)[1], res(tmpl)[1]))
+    E <- terra::resample(E, tmpl, method = "average")
+  }
   ev <- values(E)[, 1]; ar <- values(terra::cellSize(tmpl, unit = "km"))[, 1]
   lapply(wts_area, function(w) { w <- copy(w); w[, weight := weight / ar[cell] * ev[cell]]; w[!is.na(weight) & weight > 0] })
 }
@@ -154,7 +158,17 @@ window_exposure <- function(win_key, wtab, Ec, El) {
   norm <- function(x) tolower(gsub("_| ", "-", x))
   out <- list()
   if (!is.null(Ec)) { hit <- names(Ec)[norm(names(Ec)) %in% norm(cr)]; if (length(hit)) out$crop_production <- sum(Ec[[hit]], na.rm = TRUE) }
-  if (!is.null(El)) { hit <- names(El)[norm(names(El)) %in% norm(cr)]; if (length(hit)) out$livestock_head <- sum(El[[hit]], na.rm = TRUE) }
+  if (!is.null(El)) {
+    hit <- names(El)[norm(names(El)) %in% norm(cr)]
+    if (length(hit)) {
+      # Tropical Livestock Units, not raw heads: raw heads made the livestock weighting 62 % poultry (CGlabs 2026-11-13).
+      # FAO TLU factors (as the Atlas total-* layers): cattle 0.7, sheep 0.1, goats 0.1, pigs 0.2, poultry 0.01
+      tlu <- c(cattle = 0.7, sheep = 0.1, goats = 0.1, pigs = 0.2, poultry = 0.01)
+      sp <- sub("-.*$", "", norm(hit)); f <- tlu[sp]
+      if (anyNA(f)) stopf("no TLU factor for species %s", paste(unique(sp[is.na(f)]), collapse = ","))
+      out$livestock_tlu <- sum(El[[hit]] * as.numeric(f), na.rm = TRUE)
+    }
+  }
   out
 }
 admin_stack <- function(f, units, wts, window, years, normal, min_normal, min_trend, weighting = "area") {
@@ -271,6 +285,12 @@ run <- function(obs_root, token, timeframe, years, normal = 1991:2020, windows =
 }
 
 # ---- selftest --------------------------------------------------------------------------------------------------
+load_windows_s35 <- function(csv) {
+  sys.source(file.path(repo_dir(), "R", "obs", "s3_s5_obs_hazards.R"), envir = (e <- new.env()))
+  w <- e$load_windows(csv)
+  w[, wkey := fifelse(window == "ggcmi", paste0("ggcmi-", ggcmi_code), fifelse(window == "annual12", "annual12", paste0("custom-", gsub(":", "-", ggcmi_code))))]
+  w
+}
 repo_dir <- function() {
   if (nzchar(Sys.getenv("project_dir"))) return(Sys.getenv("project_dir"))
   fa <- grep("^--file=", commandArgs(FALSE), value = TRUE)
@@ -356,6 +376,11 @@ selftest <- function() {
        abs(ste[iso3 == "AAA" & weighting == "crop_production" & year == 2000 & index == "NDWS_mean", value] - values(s)[1, "2000"]) < 1e-6 &&
        abs(ste[iso3 == "AAA" & weighting == "area" & year == 2000 & index == "NDWS_mean", value] - serA["2000"]) < 1e-6,
      "crop_production weighting = the producing cell's value; area weighting unchanged; other crops' layers ignored")
+  El <- c(setValues(s[[1]], c(0, 0, 0, 10, 0, 0, 0, 0, 0)), setValues(s[[1]], c(0, 0, 0, 0, 0, 0, 1000, 0, 0))); names(El) <- c("cattle_tropical", "poultry_tropical")
+  fwrite(data.table(crop = c("maize", "cattle-tropical", "poultry-tropical"), window = c("ggcmi", "annual12", "annual12"), ggcmi_code = c("mai", "", ""), proxy = FALSE, note = ""), wcsv)
+  ex <- window_exposure("annual12", { w <- load_windows_s35(wcsv) }, NULL, El)
+  ok(names(ex) == "livestock_tlu" && abs(values(ex$livestock_tlu)[4, 1] - 7) < 1e-9 && abs(values(ex$livestock_tlu)[7, 1] - 10) < 1e-9,
+     "livestock weighting is in TLU: 10 cattle = 7 TLU, 1000 poultry = 10 TLU (raw heads would make poultry 100x cattle)")
   ok(nrow(ste[iso3 == "BBB" & weighting == "crop_production" & !is.na(value)]) == 0,
      "a unit with no production of the window's crops has no crop_production value (NA, not an area mean)")
   # 6. split / resumed runs: admin parts persist per stack, so the final tables hold every stack ever processed

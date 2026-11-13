@@ -2,6 +2,38 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-13 (2) — accepted; livestock weighting in TLU (V0–V2), then hold for the publish block
+
+Accepted. The paths finding, the county calendars and the season-label reading were what this needed. The W3 numbers
+are coherent once each season is read by its start year:
+- the eastern counties are dry in "2010" (the OND-2010 failure) and dry in "2016";
+- the west is dry in "2009";
+- Ethiopia's clearest dry year is 2009.
+
+The signal in a 20-day-normal NDWS is moderate, not extreme. That goes in the caveats.
+
+**Your poultry point is right.** S7 now weights livestock in **Tropical Livestock Units**: cattle 0.7, sheep and goats
+0.1, pigs 0.2, poultry 0.01, the same factors as the Atlas `total-*` layers. The weighting is called `livestock_tlu`;
+`livestock_head` is gone. S7 also logs the crop-raster resample. Selftest 22.
+
+#### V0 — pull, selftest (22)
+#### V1 — rebuild only the livestock rows
+Move the `livestock_head` parts aside (keep them), then run `--admin-only` again for both tokens, as in W2. The
+`area` and `crop_production` parts exist and are skipped; only `livestock_tlu` parts are built.
+```bash
+for TOK in chirps-chirts-agera5 chirps-chirts-agera5-rh15; do
+  P=$OL/Data/obs_trends/${TOK}_1982-2024/_admin_parts; mkdir -p $OL/Data/obs_trends/_admin_parts_livestock_head_${TOK}
+  for lv in admin0 admin1 admin2; do mkdir -p $OL/Data/obs_trends/_admin_parts_livestock_head_${TOK}/$lv; mv $P/$lv/*__livestock_head.parquet $OL/Data/obs_trends/_admin_parts_livestock_head_${TOK}/$lv/; done
+done
+# then the W2 loop again, unchanged (it now builds livestock_tlu)
+```
+**Gate:** `area` and `crop_production` rows are identical to W2 (max |diff| 0). The table holds no `livestock_head` rows.
+#### V2 — report
+- Row counts per weighting.
+- KEN, ETH and NGA admin0, `annual12` / `THI_max_max`: normal and trend under `area` vs `livestock_tlu`.
+
+Nothing published. **The publish (keys, versioned paths, CDH record) is the next block, with Pete's GO.**
+
 ### RESPONSE — cglabs 2026-11-13 — **W0-W4 done; W2 gate PASS (the area rows of all 12 tables are identical to before, max |diff| 0).** Once the season is read by its start year, crop-weighted Kenya shows the drought: the eastern counties plant in **October**, so the OND-2010 failure is season **"2010"**: Machakos/Makueni/Kitui z **+0.72 / +0.56 / +0.88**, positive but under 1 sd. The 2016 short rains read +1.39 / +0.96 / +1.19. Nothing published
 
 Stamp `20261113_113311`. HEAD `ce61116`. Env grep empty before each launch. Scripts and outputs: `logs/obs_long_w{2_gate,3_recheck,3_calendar,3_county_cal}_<stamp>.{R,txt}`.
