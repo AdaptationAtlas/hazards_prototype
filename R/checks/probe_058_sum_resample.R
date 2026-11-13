@@ -15,6 +15,13 @@
 #   count sum (src)    1525236453
 #   resampled (dst)    1452641015       ratio 0.9524 (the 50S-50N band of base_rast_nexgddp)
 #   ones: dst sum      1354539, max cell 9   (1/12 deg -> 0.25 deg is a clean 3x3 aggregation)
+#
+# Results so far (#58 phase B):
+#   PASCAL   terra 1.9.50 / GDAL 3.4.3 / PROJ 8.2.1  (2026-11-12): cellSize and src identical to the
+#            macbook; dst 2905279253 (x1.99999), ones max cell 7399. aggregate(fact=3) is correct.
+#   macbook  terra 1.9.50 / GDAL 3.8.5 / PROJ 9.5.1  (2026-11-13, terra 1.9.50 binary in a temp
+#            library): identical to the reference above, max cell 9.
+#   => the fault follows GDAL 3.4.3, not terra 1.9.50 and not PROJ.
 suppressPackageStartupMessages(library(terra))
 root <- if (nzchar(Sys.getenv("ATLAS_PROJECT_DIR"))) Sys.getenv("ATLAS_PROJECT_DIR") else {
   fa <- grep("^--file=", commandArgs(FALSE), value = TRUE)
