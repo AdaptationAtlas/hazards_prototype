@@ -59,6 +59,7 @@ pacman::p_load(terra, data.table, httr, countrycode, wbstats, arrow, geoarrow, g
 
 # Load functions & wrappers
 source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "mass_check.R"))      # #58: every method = "sum" resample below is checked
 options(scipen = 999)
 
 # v9: bump GDAL block-cache budget so the resample / mask / aggregate
@@ -146,17 +147,14 @@ if (FALSE) {
 # density / bilinear-resample / density-back pattern leaked ~3.6% mass
 # at country totals (probe in R/checks/9_mass_conservation_check.R,
 # issue #9) because bilinear smears values across destination cells.
-.log041("computing GLW source mass + resampling to base_rast (method=sum)")
-.glw_src_mass <- terra::global(glw, "sum", na.rm = TRUE)[, 1]
+# #58: the old check compared the GLOBAL source with a grid that covers only part of the
+# globe, so it warned on every host and missed GDAL 3.4.3 doubling the mass. mass_check()
+# compares like with like (source cropped to the grid) and stops.
+.log041("resampling GLW to base_rast (method=sum) + mass check")
+.glw_src <- glw
 glw <- terra::resample(glw, base_rast, method = "sum")
-.glw_dst_mass <- terra::global(glw, "sum", na.rm = TRUE)[, 1]
-.glw_ratio <- .glw_dst_mass / .glw_src_mass
-if (any(abs(.glw_ratio - 1) > 0.005, na.rm = TRUE)) {
-  warning(sprintf(
-    "[0.4.1] mass not conserved on GLW resample: %s",
-    paste(sprintf("%s=%.4f", names(glw), .glw_ratio), collapse = ", ")
-  ))
-}
+mass_check(.glw_src, glw, "0.4.1 GLW resample")
+rm(.glw_src)
 # mask to focal countries
 .log041("masking GLW to focal countries")
 glw <- terra::mask(glw, geoboundaries)
@@ -207,6 +205,7 @@ if (!file.exists(mask_ls_file) || overwrite_glw == TRUE) {
   # originally empty, so the > 0 binary mask was overly generous spatially.
   # See issue #9 + R/checks/9_mass_conservation_check.R).
   lu_resampled <- terra::resample(lus, base_rast, method = "sum")
+  mass_check(lus, lu_resampled, "0.4.1 livestock-unit mask resample")
 
   # Classify into binary mask
   livestock_mask <- terra::ifel(lu_resampled > 0, 1, 0)
@@ -257,7 +256,10 @@ names(glw_rast) <- unique(glw2atlas$glw3_name)
 # The mask block above may have reloaded glw at native GLW4 extent.
 # Re-align to base_rast (mass-conserving) so the per-pixel ratio works.
 if (!terra::compareGeom(glw, base_rast, stopOnError = FALSE)) {
+  .glw_src <- glw
   glw <- terra::resample(glw, base_rast, method = "sum")
+  mass_check(.glw_src, glw, "0.4.1 GLW re-align resample")
+  rm(.glw_src)
   glw <- terra::mask(glw, geoboundaries)
 }
 
@@ -611,17 +613,11 @@ if (!file.exists(livestock_no_file) || overwrite_glw == TRUE) {
 
   # resample to base_rast (v9: mass-conserving via method="sum"; see issue #9
   # + R/checks/9_mass_conservation_check.R).
-  .log041("  resampling livestock_no to base_rast (method=sum)")
-  .lvno_src_mass <- terra::global(livestock_no, "sum", na.rm = TRUE)[, 1]
+  .log041("  resampling livestock_no to base_rast (method=sum) + mass check")
+  .lvno_src <- livestock_no
   livestock_no <- terra::resample(livestock_no, base_rast, method = "sum")
-  .lvno_dst_mass <- terra::global(livestock_no, "sum", na.rm = TRUE)[, 1]
-  .lvno_ratio <- .lvno_dst_mass / .lvno_src_mass
-  if (any(abs(.lvno_ratio - 1) > 0.005, na.rm = TRUE)) {
-    warning(sprintf(
-      "[0.4.1] mass not conserved on livestock_no resample: %s",
-      paste(sprintf("%s=%.4f", names(livestock_no), .lvno_ratio), collapse = ", ")
-    ))
-  }
+  mass_check(.lvno_src, livestock_no, "0.4.1 livestock_no resample")
+  rm(.lvno_src)
 
   # Pull out sheep and goat proportions for use in vop calculations before highland/tropical splitting
   sheep_prop <- livestock_no$sheep / (livestock_no$goats + livestock_no$sheep)
