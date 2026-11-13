@@ -2,6 +2,136 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-13 — **W0-W4 done; W2 gate PASS (the area rows of all 12 tables are identical to before, max |diff| 0).** Once the season is read by its start year, crop-weighted Kenya shows the drought: the eastern counties plant in **October**, so the OND-2010 failure is season **"2010"**: Machakos/Makueni/Kitui z **+0.72 / +0.56 / +0.88**, positive but under 1 sd. The 2016 short rains read +1.39 / +0.96 / +1.19. Nothing published
+
+Stamp `20261113_113311`. HEAD `ce61116`. Env grep empty before each launch. Scripts and outputs: `logs/obs_long_w{2_gate,3_recheck,3_calendar,3_county_cal}_<stamp>.{R,txt}`.
+
+#### W0 — selftest and exposure rasters. Selftest PASS; **the two paths in the block do not exist**
+`s7_trends_anomalies.R --selftest` → **21** ok. Neither `ls` glob matches anything: there is no `*res-25*.tif` under either `variable=` dir. What is there:
+- **Crops:** `$NWD/Data/mapspam/2020V1r2_SSA/processed/variable=prod_t/spam_prod_t_all.tif` is the file R/3 reads (`R/3_freq_x_exposure.R:428`).
+  - **42 layers, 0.05°**, extent -25.35..57.8 E, -46.95..40 N.
+  - Layer names: `wheat, rice, maize, barley, pearl millet, small millet, sorghum, other cereals, potato, sweet potato, yams, cassava, …`. These are crop names, so they normalise to the CSV's `pearl-millet` etc.
+  - The dir holds only `_adm_sum` parquets at res-25. **S7 resamples it to 0.25° by `average`, as designed. It does not log that it does** (0 `resampl` lines). Check: KEN maize is 3.64 Mt at 0.05° against 3.76 Mt as 25 × the 0.25° average, 3 % apart at the coast and border cells. The weights are relative within a unit, so the scale does not matter.
+- **Livestock:** `$NWD/Data/GLW4_2020/processed/livestock_number_number_res-25.tif`, one level up from the `variable=number_number/` dir in the block, which holds only parquets. R/3 reads it as `livestock_number_number_<res tag>.tif`.
+  - **12 layers, already on the 0.25° S7 lattice** (-180..180, -50..50).
+  - Names: `poultry_tropical, sheep_tropical, pigs_tropical, goats_tropical, cattle_tropical, total_tropical, poultry_highland, sheep_highland, pigs_highland, goats_highland, cattle_highland, total_highland`.
+  - `total_*` is not in `obs_crop_windows.csv`, so it is ignored. That is right, because it is TLU-weighted.
+  - **Note:** the 10 matched layers are summed as raw heads, and **poultry is 2.14 of 3.43 billion heads (62 %)**. So `livestock_head` weighting is mostly a chicken map. A TLU-weighted sum is the usual choice for THI; your call.
+
+#### W1 — recode the 10 old-code stacks. PASS
+Ran as written, 2 min, 10 stacks at 0.2 min each. Each summary line is identical to its earlier one. Across **all 114** `_trend.tif` (both tokens), **0** still carry `n_years = 0` off land.
+
+#### W2 — admin tables, 3 weightings, both tokens. **Gate PASS**
+- **Setup:** the previous final tables were copied to `$OL/Data/obs_trends/_admin_tables_area_only_{main,rh15}/` (762 + 165 MB) for the gate. The old parts were moved to `_admin_parts_area_only_{main,rh15}/` (833 + 184 MB). All four are kept.
+- **Run:** the loop under nohup took 11:36 → 12:13, **37 min** (main 30 min, `-rh15` 7 min), exit 0 for both.
+  - `admin weights from cache` ×3 each, and `exposure weights: crop spam_prod_t_all.tif (42 layers), livestock livestock_number_number_res-25.tif (12 layers)`.
+  - 0 errors. System memory peaked at **21.7 GB** (baseline 8.4).
+- **`area weighting only`: 0 windows.** Every one of the 19 windows has at least one crop in SPAM.
+- **Stack counts:**
+  - Main: **195** = 95 area + 95 `crop_production` + 5 `livestock_head` (annual12).
+  - `-rh15`: **39** = 19 + 19 + 1.
+
+**Gate:** for each token × level × table, I merged the old table with the new `area` rows on (unit keys, window, index[, year]):
+```
+main admin0 trends   5,225 = 5,225   max|diff| 0, NA-mask equal | area 5,225      crop_production 3,055      livestock_head 260
+main admin0 series 224,675 = 224,675 max|diff| 0, NA-mask equal | area 224,675    crop_production 131,365    livestock_head 11,180
+main admin1 trends  68,305 = 68,305  max|diff| 0, NA-mask equal | area 68,305     crop_production 30,790     livestock_head 3,465
+main admin1 series  2,937,115 equal  max|diff| 0, NA-mask equal | area 2,937,115  crop_production 1,323,970  livestock_head 148,995
+main admin2 trends  633,650 equal    max|diff| 0, NA-mask equal | area 633,650    crop_production 204,050    livestock_head 33,105
+main admin2 series 27,246,950 equal  max|diff| 0, NA-mask equal | area 27,246,950 crop_production 8,774,150  livestock_head 1,423,515
+rh15 admin0 trends   1,045 equal     max|diff| 0, NA-mask equal | area 1,045      crop_production 611        livestock_head 52
+rh15 admin0 series  44,935 equal     max|diff| 0, NA-mask equal | area 44,935     crop_production 26,273     livestock_head 2,236
+rh15 admin1 trends  13,661 equal     max|diff| 0, NA-mask equal | area 13,661     crop_production 6,158      livestock_head 693
+rh15 admin1 series 587,423 equal     max|diff| 0, NA-mask equal | area 587,423    crop_production 264,794    livestock_head 29,799
+rh15 admin2 trends 126,730 equal     max|diff| 0, NA-mask equal | area 126,730    crop_production 40,810     livestock_head 6,621
+rh15 admin2 series 5,449,390 equal   max|diff| 0, NA-mask equal | area 5,449,390  crop_production 1,754,830  livestock_head 284,703
+```
+There are fewer exposure rows than area rows because units with no production or heads of that window's crops or species drop out.
+
+#### W3 — Kenya and Ethiopia, `ggcmi-mai` / `NDWS_mean`, main token
+**The maize window in Kenya.** These are the GGCMI `mai_rf` months on the S7 grid, as S3 derives them, weighted by SPAM maize production:
+- **53 % is planted in April**, maturing Nov-Jan (the western highlands, a long single season).
+- **37 % is planted in October**, maturing in January (the short rains).
+- 9 % is planted in March, maturing in June.
+
+Per county:
+```
+Uasin Gishu / Trans Nzoia / Bungoma / Narok / Kakamega   plant Apr -> maturity Nov-Dec (Trans Nzoia also 28 % Mar -> Jun)
+Machakos / Makueni / Kitui                               plant Oct -> maturity Jan (100 %)
+```
+**So in the east, season "2010" is Oct 2010 - Jan 2011, the failed OND-2010 short rains.** "2011" there is OND 2011, which was wet. In the west, "2011" is Apr-Dec 2011. Ethiopia is 82 % April-planted, maturing in November (kiremt).
+
+**Admin0, normal 1991-2020 (days of water stress per season) and trend:**
+```
+KEN area            24.1 (sd 2.35)   slope -0.08/dec  p 0.68
+KEN crop_production 15.6 (sd 2.74)   slope -0.47/dec  p 0.075
+ETH area            18.9 (sd 1.11)   slope -0.19/dec  p 0.16
+ETH crop_production 11.6 (sd 1.56)   slope -0.30/dec  p 0.098
+```
+Under `crop_production` the normal falls by about 9 days in Kenya and 7 in Ethiopia. The area mean was carrying the dry north and east, as you suspected. No trend is FDR-significant.
+
+**Admin0 anomaly-z, 2008-2019:**
+```
+                     2008  2009  2010  2011  2012  2013  2014  2015  2016  2017  2018  2019
+KEN area             0.74  0.28  0.60 -0.44 -0.13 -0.03  0.60 -0.69  0.96  0.46 -0.35 -2.22
+KEN crop_production  0.57  0.50  0.12 -0.97 -1.20 -0.26  0.43 -1.21  1.57  0.29 -0.18 -2.25
+ETH area             0.17  2.16 -0.16 -0.17 -0.29 -1.33 -0.27  0.08  0.43 -0.14 -0.83 -2.04
+ETH crop_production -0.54  1.99  0.00 -0.08  0.22 -1.00 -0.86  0.60  0.23 -0.32 -0.42 -1.82
+```
+**KEN admin1.** The five largest maize counties by SPAM 2020 production (sum of 0.05° cells within GAUL admin1; national 3.54 Mt) are Uasin Gishu 383 kt, Trans Nzoia 380 kt, Bungoma 312 kt, Narok 242 kt and Kakamega 227 kt. The table adds the semi-arid east:
+```
+                              2009   2010   2011   2015   2016   2017   normal (crop_prod.)
+Uasin Gishu  area             1.47  -0.56  -1.17  -0.12   0.41  -0.40
+             crop_production  1.47  -0.61  -1.22  -0.11   0.36  -0.41   13.5 (sd 2.92)
+Trans Nzoia  area             1.20  -1.59  -0.50  -0.81   0.56  -0.04
+             crop_production  1.12  -1.59  -0.52  -0.93   0.52   0.00   12.4 (2.85)
+Bungoma      area             0.71  -0.96  -0.97  -1.02   1.92  -0.05
+             crop_production  0.63  -0.82  -1.10  -1.08   1.92  -0.07    8.2 (2.44)
+Narok        area             0.66   0.15  -1.03  -2.56   0.31   0.26
+             crop_production  0.32   0.17  -1.54  -2.40   0.60   0.12   20.6 (2.34)
+Kakamega     area             0.22  -0.42  -0.98  -1.06   2.35   0.21
+             crop_production  0.26  -0.48  -1.03  -1.03   2.21   0.18    9.9 (2.64)
+Machakos     area            -0.27   0.72  -0.55  -0.93   1.31   0.40
+             crop_production -0.28   0.72  -0.56  -0.88   1.39   0.44   20.5 (4.21)
+Makueni      area            -0.15   0.54  -0.07  -0.33   0.87   0.39
+             crop_production  0.02   0.56  -0.05  -0.43   0.96   0.35   21.1 (4.73)
+Kitui        area            -0.05   0.81  -0.15  -0.67   0.93   0.83
+             crop_production  0.01   0.88  -0.32  -0.81   1.19   0.80   21.9 (4.25)
+```
+**ETH admin1.** GAUL 2024 splits SNNP into `Snnp`, `Sidama` and `South West Ethiopia`, so all three are shown:
+```
+                                   2009   2010   2011   2015   2016   2017   normal (crop_prod.)
+Amhara              area           2.11   0.36  -0.05   0.89  -0.30  -0.89
+                    crop_production 2.01   0.57   0.01  -0.32  -0.31  -0.86   11.4 (1.75)
+Oromia              area           1.57   0.07  -0.24   0.20   0.55  -0.17
+                    crop_production 1.44  -0.08   0.16   0.93   0.11  -0.18   11.7 (1.62)
+Snnp                area           2.04  -0.10  -1.17  -0.32   1.13  -0.27
+                    crop_production 2.31  -0.38  -0.76   0.66   0.84   0.11   11.3 (2.23)
+Sidama              area           2.25  -0.18  -0.55   0.51   1.04  -0.38
+                    crop_production 2.30  -0.28  -0.74   0.76   1.02  -0.40    9.0 (2.51)
+South West Ethiopia area           1.61   0.22  -1.06  -0.53   1.89  -0.48
+                    crop_production 1.71   0.15  -0.04  -0.68   1.67  -0.37    6.1 (1.37)
+```
+
+#### W4 — findings (report only; nothing fixed)
+1. **The national "2011 / 2015" expectation was a season-labelling issue more than a weighting one.**
+   - The OND-2010 failure falls in season **"2010"** for the October-planted east. There it reads **dry, but weakly**: z +0.56 to +0.88 under `crop_production`, all under 1 sd.
+   - "2011" in the east is OND 2011, which was wet, and reads z -0.05 to -0.56. That is consistent.
+   - **So the eastern counties do show a dry 2010/11 signal, but it is small** in a 20-day-normal NDWS with sd 4.2-4.7. This is reported as a finding, as the block asks.
+   - The same counties read **+0.96 to +1.39 for 2016** (the OND-2016 failure). The western long-season counties read **+0.6 to +1.5 for 2009** (the 2009 long-rains failure). Both fit the record.
+2. **2015.** In Kenya it is negative almost everywhere: Narok -2.4, the west about -1. That fits a wet El Niño OND 2015, which also falls inside the April-December western window.
+   - In Ethiopia, `crop_production` moves 2015 towards dry: Oromia +0.93, Sidama +0.76, Snnp +0.66, admin0 +0.60 (area +0.08). But the kiremt-2015 drought is not strong in these units: Amhara reads -0.32.
+   - **2009 is the clearest Ethiopian dry year** (z +1.4 to +2.3 in every region). 2019 is the wettest in both countries (z about -2).
+3. **Weighting moves the levels more than the anomalies.** The normals drop by 7-9 days at admin0. At admin1 the z-scores barely change, because units like the western counties are fairly uniform; the admin0 z-scores move more (KEN 2016 +0.96 → +1.57).
+4. **To note before a publish:**
+   - `livestock_head` is 62 % poultry (raw heads; see W0).
+   - S7 does not log that it resampled the crop raster.
+   - `metadata/obs_crop_windows.csv` is matched on SPAM's spaced names, which works (e.g. `pearl millet` → `pearl-millet`).
+
+**Size:** `du -sh $OL/Data/obs_trends` = **6.3 GB**, up from 3.6 GB: the exposure rows, plus about 1.9 GB of kept area-only tables and parts. Nothing is running and nothing was published.
+
+---
+
 ### MACBOOK 2026-11-13 — exposure-weighted admin tables (crop production, livestock head) + Kenya/Ethiopia recheck (W0–W4)
 
 Excellent run, and the Kenya sanity check was exactly the right thing to report. The likely cause is **area weighting**:
