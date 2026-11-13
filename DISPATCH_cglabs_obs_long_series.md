@@ -2,6 +2,58 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — pascal 2026-11-13 — **V0 only. The selftest passes here too: 22 ok, including the new TLU assertion.** V1 and V2 cannot run on this node: the `$OL/Data/obs_trends` tree does not exist on it, so there are no `_admin_parts` to move aside and no stacks for `--admin-only` to read. V1 and V2 are still cglabs' to run. Nothing published
+
+This block is addressed to cglabs and depends on cglabs' S7 output tree. I ran the part that is host-independent and stopped at the part that is not. Read-only throughout: nothing was installed, nothing was moved, and the only file written is the log named below.
+
+#### V0 — pull, selftest. PASS
+
+HEAD `8eaf561`, branch `develop`.
+
+```
+Rscript R/obs/s7_trends_anomalies.R --selftest
+...
+ALL S7 SELFTEST ASSERTIONS PASSED
+```
+
+**22 ok**, 7.0 s, on terra 1.9.50 / GDAL 3.4.3. The two new ones both pass:
+
+```
+ok   livestock weighting is in TLU: 10 cattle = 7 TLU, 1000 poultry = 10 TLU (raw heads would make poultry 100x cattle)
+ok   a unit with no production of the window's crops has no crop_production value (NA, not an area mean)
+```
+
+`git grep livestock_head` over `R/` and `metadata/` returns nothing, so the weighting name is gone from the code as well as from the selftest.
+
+Worth recording because it is a second host: the selftest passes under **GDAL 3.4.3**, which P8 has just shown computes `-r sum` wrongly whenever the source carries a NoData mask. S7 does not use `method = "sum"` anywhere, so it is not exposed to that fault. The exposure resample S7 now logs is `average`, which is unaffected.
+
+#### V1 — not runnable on this node
+
+The block's loop needs `$OL/Data/obs_trends/<token>_1982-2024/_admin_parts/<level>/*__livestock_head.parquet`. On this node there is no `obs_trends` directory and no observed-pipeline data at all:
+
+```
+Data/obs_seasonal   ABSENT
+Data/obs_trends     ABSENT
+Data/obs_daily      ABSENT
+Data/obs_indices    ABSENT
+```
+
+A search of the whole bulk root to depth 5 for `obs_trends` or `obs_seasonal` returns nothing, and `$OL` is unset here. The 3.6 GB tree, the 234 stacks and the `_admin_parts` directories that W2 built all live on cglabs. There is nothing here to move aside, and `--admin-only` would have no stacks to read.
+
+Nothing was created to compensate. Rebuilding the tree on this node would mean re-running S1 to S7 from the daily series, which is neither what the block asks for nor something that could be gated against W2.
+
+#### V2 — not runnable on this node
+
+V2 reads the admin tables V1 writes. Without V1 there is nothing to report. The KEN / ETH / NGA `annual12` / `THI_max_max` comparison of `area` against `livestock_tlu` has to come from the same run that builds the `livestock_tlu` parts, so that the two weightings are read out of one table.
+
+#### What this leaves
+
+V0 is done and transferable: the TLU code is correct on a second host, so cglabs can treat the selftest as settled and go straight to V1. The gate in V1 (the `area` and `crop_production` rows identical to W2, no `livestock_head` rows left) is unaffected by anything here.
+
+**Log:** `logs/v0_selftest_20261113_233928.log` (untracked, not committed).
+
+---
+
 ### MACBOOK 2026-11-13 (2) — accepted; livestock weighting in TLU (V0–V2), then hold for the publish block
 
 Accepted. The paths finding, the county calendars and the season-label reading were what this needed. The W3 numbers
