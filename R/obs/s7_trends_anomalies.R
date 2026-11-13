@@ -17,6 +17,12 @@
 #   admin_series_<level>.parquet  one row per unit x window x index x season: value, anomaly_diff, anomaly_z
 #   admin_trends_<level>.parquet  one row per unit x window x index: slope_per_decade, p_mk, sig_fdr, normal mean/sd
 # Admin statistics are computed on the unit's own mean series (not averaged pixel statistics).
+# Weightings (column `weighting`): `area` always; with --weights-crop <tif> also `crop_production` (each crop window
+# weighted by the summed exposure of the crops that use it, per metadata/obs_crop_windows.csv), and with
+# --weights-livestock <tif> also `livestock_head` for the livestock window (annual12). Multi-layer rasters, one layer
+# per crop / species (the R/3 exposure rasters, e.g. SPAM prod_t and GLW4 head at res-25). Area-weighted national means
+# are dominated by non-producing land (the 2026-11-12 Kenya check), so exposure weighting is the one to read for crops
+# and livestock. --admin-only recomputes the admin tables from existing stacks without touching the rasters.
 #
 # Normal and anomaly cells need >= --min-normal-years valid seasons in the normal period (default 25 of 30);
 # trend cells need >= --min-trend-years valid seasons (default 30). Otherwise NA.
@@ -25,6 +31,7 @@
 #   Rscript R/obs/s7_trends_anomalies.R --obs-root <abs> --token chirps-chirts-agera5 --timeframe 1982-2025 \
 #           --years 1982:2024 [--normal 1991:2020] [--windows ggcmi-mai,annual12] [--indices NDWS_mean,THI_max_max]
 #           [--boundaries-dir <dir with *a0*/*a1*/*a2* GAUL parquets>] [--cores 8] [--overwrite]
+#           [--weights-crop <crop exposure tif>] [--weights-livestock <livestock exposure tif>] [--admin-only]
 #   Rscript R/obs/s7_trends_anomalies.R --selftest
 suppressPackageStartupMessages({ library(terra); library(data.table) })
 .t0 <- Sys.time()
@@ -134,7 +141,23 @@ admin_means <- function(r, w) {
   vc <- setdiff(names(dt), c("ID", "weight"))
   dt[, lapply(.SD, function(x) { ok <- !is.na(x); if (!any(ok)) NA_real_ else sum(x[ok] * weight[ok]) / sum(weight[ok]) }), by = ID, .SDcols = vc]
 }
-admin_stack <- function(f, units, wts, window, years, normal, min_normal, min_trend) {
+exposure_weights <- function(wts_area, E, tmpl) {
+  # turn area weights (coverage fraction x cell km2) into exposure weights (coverage fraction x exposure in the cell)
+  if (!compareGeom(E, tmpl, stopOnError = FALSE)) E <- terra::resample(E, tmpl, method = "average")
+  ev <- values(E)[, 1]; ar <- values(terra::cellSize(tmpl, unit = "km"))[, 1]
+  lapply(wts_area, function(w) { w <- copy(w); w[, weight := weight / ar[cell] * ev[cell]]; w[!is.na(weight) & weight > 0] })
+}
+window_exposure <- function(win_key, wtab, Ec, El) {
+  # the summed exposure layer(s) for the crops / species that use this window; empty list when none is available
+  # (the argument is not called `window`: inside wtab[...] that name is the table's own column)
+  cr <- wtab[wkey == win_key, crop]
+  norm <- function(x) tolower(gsub("_| ", "-", x))
+  out <- list()
+  if (!is.null(Ec)) { hit <- names(Ec)[norm(names(Ec)) %in% norm(cr)]; if (length(hit)) out$crop_production <- sum(Ec[[hit]], na.rm = TRUE) }
+  if (!is.null(El)) { hit <- names(El)[norm(names(El)) %in% norm(cr)]; if (length(hit)) out$livestock_head <- sum(El[[hit]], na.rm = TRUE) }
+  out
+}
+admin_stack <- function(f, units, wts, window, years, normal, min_normal, min_trend, weighting = "area") {
   r <- rast(f)[[as.character(years)]]; idx <- sub("\\.tif$", "", basename(f))
   res <- list(series = list(), trends = list())
   for (lv in names(units)) {
@@ -144,7 +167,7 @@ admin_stack <- function(f, units, wts, window, years, normal, min_normal, min_tr
     mat <- as.matrix(a[, -1]); ni <- match(as.character(normal), colnames(mat))
     nrm <- t(apply(mat[, ni, drop = FALSE], 1, normal_stats, min_n = min_normal))
     tr <- t(apply(mat, 1, mk_sen, t = as.numeric(years), min_n = min_trend))
-    trends <- data.table(level = lv, meta[, ..keep], window = window, index = idx,
+    trends <- data.table(level = lv, meta[, ..keep], window = window, index = idx, weighting = weighting,
                          slope_per_decade = tr[, 1] * 10, p_mk = tr[, 2], n_years = tr[, 3],
                          normal_mean = nrm[, 1], normal_sd = nrm[, 2])
     trends[, sig_fdr := bh_sig(p_mk)]
@@ -152,7 +175,7 @@ admin_stack <- function(f, units, wts, window, years, normal, min_normal, min_tr
     long <- melt(long, id.vars = "rid", variable.name = "year", value.name = "value", variable.factor = FALSE)
     long[, `:=`(year = as.integer(year), anomaly_diff = value - nrm[rid, 1])]
     long[, anomaly_z := fifelse(nrm[rid, 2] > 0, anomaly_diff / nrm[rid, 2], NA_real_)]
-    series <- cbind(data.table(level = lv), meta[long$rid, ..keep], data.table(window = window, index = idx), long[, .(year, value, anomaly_diff, anomaly_z)])
+    series <- cbind(data.table(level = lv), meta[long$rid, ..keep], data.table(window = window, index = idx, weighting = weighting), long[, .(year, value, anomaly_diff, anomaly_z)])
     res$series[[lv]] <- series; res$trends[[lv]] <- trends
   }
   res
@@ -160,7 +183,9 @@ admin_stack <- function(f, units, wts, window, years, normal, min_normal, min_tr
 
 # ---- driver ----------------------------------------------------------------------------------------------------
 run <- function(obs_root, token, timeframe, years, normal = 1991:2020, windows = NULL, indices = NULL,
-                boundaries_dir = NULL, cores = 1L, overwrite = FALSE, min_normal = 25L, min_trend = 30L, units = NULL) {
+                boundaries_dir = NULL, cores = 1L, overwrite = FALSE, min_normal = 25L, min_trend = 30L, units = NULL,
+                weights_crop = NULL, weights_livestock = NULL, admin_only = FALSE,
+                windows_csv = file.path(repo_dir(), "metadata", "obs_crop_windows.csv")) {
   overwrite <- overwrite || tolower(Sys.getenv("FORCE_OVERWRITE", "")) %in% c("1", "true", "t", "yes", "y", "on")
   src <- file.path(obs_root, "Data", "obs_seasonal", paste0(token, "_", timeframe))
   if (!dir.exists(src)) stopf("no seasonal stacks at %s", src)
@@ -190,16 +215,34 @@ run <- function(obs_root, token, timeframe, years, normal = 1991:2020, windows =
   # stack while they accumulated), and the final per-level tables are assembled from ALL parts on disk, so a resumed
   # or split run (--windows/--indices) still yields complete tables
   parts <- file.path(dst, "_admin_parts")
+  Ec <- if (!is.null(weights_crop)) rast(weights_crop) else NULL
+  El <- if (!is.null(weights_livestock)) rast(weights_livestock) else NULL
+  wtab <- NULL
+  if (!is.null(units) && (!is.null(Ec) || !is.null(El))) {
+    sys.source(file.path(repo_dir(), "R", "obs", "s3_s5_obs_hazards.R"), envir = (s35e <- new.env()))
+    wtab <- s35e$load_windows(windows_csv)
+    wtab[, wkey := fifelse(window == "ggcmi", paste0("ggcmi-", ggcmi_code), fifelse(window == "annual12", "annual12", paste0("custom-", gsub(":", "-", ggcmi_code))))]
+    lg(sprintf("exposure weights: crop %s (%d layers), livestock %s (%d layers)", if (is.null(Ec)) "-" else basename(weights_crop), if (is.null(Ec)) 0L else nlyr(Ec),
+               if (is.null(El)) "-" else basename(weights_livestock), if (is.null(El)) 0L else nlyr(El)))
+  }
   for (w in wins) {
     fl <- list.files(file.path(src, w), "\\.tif$", full.names = TRUE)
     if (!is.null(indices)) fl <- fl[sub("\\.tif$", "", basename(fl)) %in% indices]
+    schemes <- list(area = wts)
+    if (!is.null(wtab)) {
+      ex <- window_exposure(w, wtab, Ec, El)
+      tmpl_w <- rast(fl[1])[[1]]
+      for (sc in names(ex)) schemes[[sc]] <- exposure_weights(wts, ex[[sc]], tmpl_w)
+      if (!length(ex)) lg(sprintf("window %s: no crop/species of this window in the exposure rasters; area weighting only", w))
+    }
     for (f in fl) {
-      do_stack(f, file.path(dst, w), years, normal, min_normal, min_trend, cores, overwrite)
-      if (!is.null(units)) {
-        tag <- sprintf("%s__%s", w, sub("\\.tif$", "", basename(f)))
-        pf <- file.path(parts, names(units), sprintf("%s_%s.parquet", c("series"), tag))
+      if (!admin_only) do_stack(f, file.path(dst, w), years, normal, min_normal, min_trend, cores, overwrite)
+      if (is.null(units)) next
+      for (sc in names(schemes)) {
+        tag <- sprintf("%s__%s__%s", w, sub("\\.tif$", "", basename(f)), sc)
+        pf <- file.path(parts, names(units), sprintf("series_%s.parquet", tag))
         if (all(file.exists(pf)) && !overwrite) next
-        a <- admin_stack(f, units, wts, w, years, normal, min_normal, min_trend)
+        a <- admin_stack(f, units, schemes[[sc]], w, years, normal, min_normal, min_trend, weighting = sc)
         for (lv in names(units)) {
           dir.create(file.path(parts, lv), FALSE, TRUE)
           arrow::write_parquet(a$series[[lv]], file.path(parts, lv, sprintf("series_%s.parquet", tag)))
@@ -214,6 +257,10 @@ run <- function(obs_root, token, timeframe, years, normal = 1991:2020, windows =
       sf_ <- list.files(file.path(parts, lv), "^series_.*\\.parquet$", full.names = TRUE)
       tf_ <- list.files(file.path(parts, lv), "^trends_.*\\.parquet$", full.names = TRUE)
       s <- rbindlist(lapply(sf_, arrow::read_parquet), fill = TRUE); tt <- rbindlist(lapply(tf_, arrow::read_parquet), fill = TRUE)
+      # parts written before the weighting column existed are area-weighted; drop them if an explicit area part exists too
+      for (d in list(s, tt)) if (!"weighting" %in% names(d)) d[, weighting := "area"] else d[is.na(weighting), weighting := "area"]
+      if (!"weighting" %in% names(s)) s[, weighting := "area"]; if (!"weighting" %in% names(tt)) tt[, weighting := "area"]
+      s <- unique(s, by = setdiff(names(s), c("value", "anomaly_diff", "anomaly_z"))); tt <- unique(tt, by = intersect(names(tt), c("level", "iso3", "admin1_name", "admin2_name", "gaul0_code", "gaul1_code", "gaul2_code", "window", "index", "weighting")))
       arrow::write_parquet(s, file.path(dst, sprintf("admin_series_%s.parquet", lv)))
       arrow::write_parquet(tt, file.path(dst, sprintf("admin_trends_%s.parquet", lv)))
       lg(sprintf("admin %s: %d stacks, %d series rows, %d trend rows; %.1f %% of units FDR-significant", lv, length(tf_), nrow(s), nrow(tt), 100 * mean(tt$sig_fdr == 1, na.rm = TRUE)))
@@ -224,6 +271,12 @@ run <- function(obs_root, token, timeframe, years, normal = 1991:2020, windows =
 }
 
 # ---- selftest --------------------------------------------------------------------------------------------------
+repo_dir <- function() {
+  if (nzchar(Sys.getenv("project_dir"))) return(Sys.getenv("project_dir"))
+  fa <- grep("^--file=", commandArgs(FALSE), value = TRUE)
+  if (length(fa)) dirname(dirname(dirname(normalizePath(sub("^--file=", "", fa[1]))))) else getwd()
+}
+
 selftest <- function() {
   ok <- function(c, m) if (!isTRUE(c)) stop("SELFTEST FAIL: ", m) else cat("  ok  ", m, "\n")
   # 1. MK on a textbook case: x = 1..10 -> S = 45, var = 125, Z = 44/sqrt(125) = 3.935, p = 8.3e-5; Sen slope 1
@@ -291,10 +344,24 @@ selftest <- function() {
   ok(nrow(st) == 2 * 43 && nrow(tt) == 2 && length(cache) == 1, "run() with admin units writes the series and trend tables and caches the weights")
   out3 <- capture.output(run(td, "obstest", "1982-2025", 1982:2024, normal = 1991:2020, units = units, cores = 2L, overwrite = TRUE))
   ok(any(grepl("admin weights from cache", out3)), "a second run reuses the cached admin weights")
+  # 5b. exposure weighting: maize production only in cell 1 -> unit A's crop_production series = cell 1 exactly
+  wcsv <- file.path(td, "windows.csv")
+  fwrite(data.table(crop = c("maize", "cattle-tropical"), window = c("ggcmi", "annual12"), ggcmi_code = c("mai", ""), proxy = FALSE, note = ""), wcsv)
+  Ec <- setValues(s[[1]], c(500, 0, 0, 0, 0, 0, 0, 0, 0)); names(Ec) <- "maize"
+  Ec2 <- c(Ec, setValues(s[[1]], 7)); names(Ec2) <- c("maize", "wheat")       # wheat does not use ggcmi-mai: ignored
+  ecf <- file.path(td, "spam_prod_t.tif"); writeRaster(Ec2, ecf, overwrite = TRUE)
+  run(td, "obstest", "1982-2025", 1982:2024, units = units, weights_crop = ecf, windows_csv = wcsv, admin_only = TRUE, indices = "NDWS_mean")
+  ste <- as.data.table(arrow::read_parquet(file.path(out2, "admin_series_admin0.parquet")))
+  ok(setequal(unique(ste$weighting), c("area", "crop_production")) &&
+       abs(ste[iso3 == "AAA" & weighting == "crop_production" & year == 2000 & index == "NDWS_mean", value] - values(s)[1, "2000"]) < 1e-6 &&
+       abs(ste[iso3 == "AAA" & weighting == "area" & year == 2000 & index == "NDWS_mean", value] - serA["2000"]) < 1e-6,
+     "crop_production weighting = the producing cell's value; area weighting unchanged; other crops' layers ignored")
+  ok(nrow(ste[iso3 == "BBB" & weighting == "crop_production" & !is.na(value)]) == 0,
+     "a unit with no production of the window's crops has no crop_production value (NA, not an area mean)")
   # 6. split / resumed runs: admin parts persist per stack, so the final tables hold every stack ever processed
   writeRaster(s, file.path(src, "NTx35_mean.tif"), overwrite = TRUE)
   run(td, "obstest", "1982-2025", 1982:2024, units = units, indices = "NTx35_mean")
-  tt2 <- arrow::read_parquet(file.path(out2, "admin_trends_admin0.parquet"))
+  tt2 <- as.data.table(arrow::read_parquet(file.path(out2, "admin_trends_admin0.parquet")))[weighting == "area"]
   ok(setequal(unique(tt2$index), c("NDWS_mean", "NTx35_mean")) && nrow(tt2) == 4,
      "a second invocation on another index adds to the admin tables instead of replacing them (parts on disk)")
   tr2 <- rast(file.path(out2, "ggcmi-mai", "NDWS_mean_trend.tif"))
@@ -313,5 +380,6 @@ if (sys.nframe() == 0) {
   obs_root <- getopt("--obs-root"); if (is.null(obs_root) || !startsWith(obs_root, "/")) stopf("--obs-root must be absolute")
   run(obs_root, getopt("--token", "chirps-chirts-agera5"), getopt("--timeframe", "1982-2025"), rng(getopt("--years", "1982:2024")),
       normal = rng(getopt("--normal", "1991:2020")), windows = lst("--windows"), indices = lst("--indices"),
-      boundaries_dir = getopt("--boundaries-dir"), cores = as.integer(getopt("--cores", "1")), overwrite = "--overwrite" %in% a)
+      boundaries_dir = getopt("--boundaries-dir"), cores = as.integer(getopt("--cores", "1")), overwrite = "--overwrite" %in% a,
+      weights_crop = getopt("--weights-crop"), weights_livestock = getopt("--weights-livestock"), admin_only = "--admin-only" %in% a)
 }

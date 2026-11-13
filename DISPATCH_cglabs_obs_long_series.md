@@ -2,6 +2,71 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-13 — exposure-weighted admin tables (crop production, livestock head) + Kenya/Ethiopia recheck (W0–W4)
+
+Excellent run, and the Kenya sanity check was exactly the right thing to report. The likely cause is **area weighting**:
+Kenya's national mean is dominated by the arid north, where no maize grows and NDWS is near its ceiling every season.
+S7 now also writes **exposure-weighted** admin tables (selftest 21):
+- `crop_production`: each crop window weighted by the summed exposure of the crops that use it (`metadata/obs_crop_windows.csv`);
+- `livestock_head`: the livestock window (`annual12`) weighted by head counts.
+
+The tables gain a `weighting` column (`area` | `crop_production` | `livestock_head`). `--admin-only` rebuilds the admin
+tables from the existing stacks without touching any raster.
+
+#### W0 — pull, selftest, find the exposure rasters
+```bash
+cd $REPO && git pull --ff-only && Rscript R/obs/s7_trends_anomalies.R --selftest   # 21
+ls $NWD/Data/mapspam/2020V1r2_SSA/processed/variable=prod_t/*res-25*.tif
+ls $NWD/Data/GLW4_2020/processed/variable=number_number/*res-25*.tif
+```
+- **Crops:** pick the all-technologies production raster (one layer per crop, as R/3 reads it). **Livestock:** the head-count
+  raster (one layer per species-system).
+- Report the paths, `nlyr`, and the first ~10 layer names of each. S7 matches layer names to the crops in
+  `obs_crop_windows.csv` after lower-casing and turning `_`/space into `-`, so the names must be crop or species names.
+- If either raster is not on the 0.25° lattice, S7 resamples it by average and says so.
+
+#### W1 — recode the 10 old-code stacks (n_years NA, as the new code writes) — ~2 min
+```bash
+nohup Rscript R/obs/s7_trends_anomalies.R --obs-root $OL --token chirps-chirts-agera5 --timeframe 1982-2025 --years 1982:2024 \
+      --windows annual12,custom-mai_maturity-4 --cores 16 --overwrite > logs/obs_long_s7_w1_$STAMP.log 2>&1 &
+```
+(No `--boundaries-dir` here; W2 rebuilds every admin table.)
+
+#### W2 — admin tables, all three weightings, both tokens (rasters untouched)
+Move the old parts aside first; they predate the `weighting` tag. Keep them.
+```bash
+T=$OL/Data/obs_trends; mv $T/chirps-chirts-agera5_1982-2024/_admin_parts $T/_admin_parts_area_only_main
+mv $T/chirps-chirts-agera5-rh15_1982-2024/_admin_parts $T/_admin_parts_area_only_rh15
+for TOK in chirps-chirts-agera5 chirps-chirts-agera5-rh15; do
+  Rscript R/obs/s7_trends_anomalies.R --obs-root $OL --token $TOK --timeframe 1982-2025 --years 1982:2024 --normal 1991:2020 \
+     --boundaries-dir $NWD/Data/boundaries --weights-crop <W0 crop tif> --weights-livestock <W0 livestock tif> --admin-only \
+     > logs/obs_long_s7_w2_${TOK}_$STAMP.log 2>&1
+done   # run the loop itself under nohup
+```
+- **Gate:** for every (unit, window, index), the `area` rows must equal the previous area-only tables (max |diff| 0). Any
+  difference is a stop.
+- Report row counts per weighting, and the windows that logged `area weighting only` (no crop of that window found in
+  the raster).
+
+#### W3 — Kenya and Ethiopia, the recheck the area tables could not answer
+From `admin_series_admin0/1.parquet`, `ggcmi-mai` / `NDWS_mean`, **`crop_production`** weighting, main token:
+- **KEN and ETH admin0:** anomaly-z for 2008–2019, and the 1991–2020 normal.
+- **KEN admin1:**
+  - the five largest maize counties by production, likely in the west, which is long-rains maize;
+  - Machakos, Makueni and Kitui, the semi-arid east where the short rains matter.
+
+  Anomaly-z for 2009, 2010, 2011, 2015, 2016, 2017.
+- **ETH admin1:** Oromia, Amhara, SNNP: the same years.
+- For reference, the same rows with `area` weighting.
+
+A season is named by its **start year** in the maize window. State the window's planting and harvest months in
+Kenya (the modal months over KEN maize cells from the GGCMI calendar), so "2010" vs "2011" reads correctly against the
+OND-2010 / MAM-2011 failure.
+
+#### W4 — report
+Prepend one `### RESPONSE`. Nothing published. If W3 still shows no dry signal in 2010/11 for the eastern counties
+under `crop_production` weighting, report that as a finding with the numbers. Do not try to fix it.
+
 ### RESPONSE — cglabs 2026-11-12 (final) — **Z0-Z3 + Y4 done. The speed fix is exact: Z2 max |diff| = 0 on all 4 rasters, 12 s per stack against 83 min before. The full S7 ran both tokens in 37 + 8 min: 95 + 19 stacks, admin tables at 3 levels, peak system memory +9 GB.** Two sanity checks do not show the expected signal (report, not gates; see Y4). Nothing published
 
 Stamp `20261112_132931`. HEAD `cc4fdcd` (fix `6471ecd`). Env grep empty before each launch.
