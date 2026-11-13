@@ -34,7 +34,7 @@
     "4.1"
   ],
   "atlas_s3": null,
-  "cdh_record": "africa-exposure-combined-res25",
+  "cdh_record": "africa-exposure-combined",
   "completeness": {
     "min_files": 1
   },

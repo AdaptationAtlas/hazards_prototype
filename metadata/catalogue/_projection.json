@@ -167,7 +167,7 @@
       "s3_prefix": null,
       "origin_url": null,
       "transfer": "regenerate",
-      "cdh_record": "africa-exposure-combined-res25",
+      "cdh_record": "africa-exposure-combined",
       "cdh_state": "authored-valid",
       "license": "CC-BY-4.0",
       "citation_title": "Crop and Livestock Exposure by Administrative Unit, Sub-Saharan Africa, on the 0.25 degree Hazard Grid",

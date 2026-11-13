@@ -1,0 +1,728 @@
+# yaml-language-server: $schema=https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/schemas/profiles/cdh.schema.bundled.json
+# How often drought, waterlogging and heat thresholds are crossed, and how annual rainfall changes,
+# per 20-year window, by administrative unit across Africa, per NEX-GDDP-CMIP6 model and as an
+# 18-model ensemble (Adaptation Atlas).
+cdh_schema_version: v0.5.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/climate/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/agriculture/schema.json
+
+id: africa-hazard-change-nexgddp
+title: Hazard Frequency, Heat-Affected Area and Rainfall Change by Administrative Unit, Africa (NEX-GDDP-CMIP6)
+version: v2026.11
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  Five summary tables of how agro-climatic hazards change between the 1995-2014 historical period
+  and four future 20-year windows (2021-2040 to 2081-2100) under four emissions scenarios, for every
+  country, first-level and second-level administrative unit in Africa: how often soil water stress
+  (drought) and waterlogging pass severe and extreme thresholds; the share of land where crop heat
+  stress (days above 35 °C and 40 °C) and cattle heat stress (temperature-humidity index) pass those
+  thresholds; the share of land where annual rainfall rises or falls by 5 % or more; and the average
+  change in annual rainfall in millimetres. Each table comes once per climate model (18
+  NEX-GDDP-CMIP6 models) and once as an ensemble summary (mean, minimum, maximum and standard
+  deviation across the models). Use it to compare how hazard exposure shifts by place, scenario and
+  window, and how much the models agree.
+resource_type: dataset
+license: CC-BY-4.0 # Atlas-derived aggregate; NEX-GDDP-CMIP6 input is openly licensed
+attribution: >
+  Climate scenarios used were from the NEX-GDDP-CMIP6 dataset, prepared by the Climate Analytics
+  Group and NASA Ames Research Center using the NASA Earth Exchange, and distributed by the NASA
+  Center for Climate Simulation (NCCS).
+keywords:
+  - climate hazards
+  - hazard frequency
+  - drought
+  - waterlogging
+  - heat stress
+  - livestock heat stress
+  - temperature-humidity index
+  - rainfall change
+  - climate projections
+  - multi-model ensemble
+  - NEX-GDDP
+  - administrative units
+
+note: >
+  This record describes the rebuilt tables, which replace the files published on 2026-06-24 before
+  the 2026.11 release; columns and keys are unchanged, and the earlier files hold duplicate rows.
+  Read the files with hive partitioning turned off (in DuckDB, hive_partitioning = false): the
+  storage path contains timeframe=annual, which otherwise replaces the timeframe column. Where no
+  model has a value, an ensemble mean is missing and its minimum and maximum can read as plus or
+  minus infinity. Country rows for Egypt, Kenya, Sudan and South Sudan may include disputed border
+  areas these countries claim; prefer their first- and second-level units. Changes to these files
+  are listed in the linked version history.
+
+contact:
+  - organization: Alliance of Bioversity International and CIAT
+    url: https://alliancebioversityciat.org/
+    roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact, maintainer]
+
+citation:
+  title: Africa Agriculture Adaptation Atlas hazard change tables (NEX-GDDP-CMIP6)
+  authors:
+    - organization: Alliance of Bioversity International and CIAT
+  date: "2026"
+  publisher: Alliance of Bioversity International and CIAT
+  url: https://adaptationatlas.cgiar.org/
+related_publications:
+  - doi: 10.1038/s41597-022-01393-4
+    citation:
+      title: NASA Global Daily Downscaled Projections, CMIP6
+      authors:
+        - family: Thrasher
+          given: B.
+        - family: Wang
+          given: W.
+        - family: Michaelis
+          given: A.
+        - family: Melton
+          given: F.
+        - family: Lee
+          given: T.
+        - family: Nemani
+          given: R.
+      date: "2022"
+      publisher: Scientific Data
+
+created: "2026-11-13"
+updated: "2026-11-13"
+
+spatial:
+  bbox: [-25.5, -47.0, 63.6, 37.6] # Africa including island states, 55 countries
+  crs: EPSG:4326
+  geography: [africa]
+  # No horizontal axes: each table's reporting unit is its admin*_name location dimensions.
+
+temporal:
+  start_date: "1995"
+  end_date: "2100"
+
+# Ten files, each with its own column set, so ten structures. Shared column definitions are
+# written once with YAML anchors.
+structures:
+  - name: hazard-frequency-by-model
+    dimensions:
+      - &iso3
+        name: iso3
+        type: location
+        description: ISO 3166-1 alpha-3 country code. 55 countries. Files are sorted on it.
+        data_type: string
+      - &admin0
+        name: admin0_name
+        type: location
+        description: Country name, as in FAO GAUL 2024.
+        data_type: string
+      - &admin1
+        name: admin1_name
+        type: location
+        description: >
+          First-level administrative unit name, as in FAO GAUL 2024. Null on country rows.
+        data_type: string
+      - &admin2
+        name: admin2_name
+        type: location
+        description: >
+          Second-level administrative unit name, as in FAO GAUL 2024 (boundaries catalogued as
+          africa-admin-boundaries-gaul2024). Null on country and first-level rows. Each table holds
+          all three levels, each computed directly from the 0.25° grid cells that touch the unit.
+        data_type: string
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+      - &scenario5
+        name: scenario
+        type: scenario
+        description: >
+          historic is the models' historical run (1995-2014); the others are CMIP6 Shared
+          Socioeconomic Pathways, from low (ssp126) to very high (ssp585) emissions.
+        values: [historic, ssp126, ssp245, ssp370, ssp585]
+        data_type: string
+      - &model
+        name: model
+        type: model
+        description: NEX-GDDP-CMIP6 climate model (CMIP6 source id).
+        values:
+          - ACCESS-CM2
+          - ACCESS-ESM1-5
+          - CanESM5
+          - CMCC-ESM2
+          - EC-Earth3
+          - EC-Earth3-Veg-LR
+          - GFDL-ESM4
+          - INM-CM4-8
+          - INM-CM5-0
+          - IPSL-CM6A-LR
+          - KACE-1-0-G
+          - MIROC6
+          - MPI-ESM1-2-HR
+          - MPI-ESM1-2-LR
+          - MRI-ESM2-0
+          - NorESM2-LM
+          - NorESM2-MM
+          - TaiESM1
+        data_type: string
+      - &timeframe5
+        name: timeframe
+        type: temporal
+        description: >
+          20-year window, labelled here by its first year; the column stores it as text (1995-2014,
+          2021-2040, 2041-2060, 2061-2080, 2081-2100). 1995-2014 is the historical period.
+        values: ["1995", "2021", "2041", "2061", "2081"]
+        data_type: string
+      - &severity
+        name: severity
+        type: severity
+        description: Severity threshold the hazard is measured against (thresholds under hazard).
+        values: [severe, extreme]
+        data_type: string
+      - &hazard-water
+        name: hazard
+        type: hazard
+        description: >
+          Water-balance hazard index, judged on its yearly value (the average monthly count of days).
+        categories:
+          - value: NDWS
+            label: Soil water-stress days (drought)
+            description: >
+              Days on which a simple soil water balance meets less than half of crop water demand.
+              Severe above 20 days per month, extreme above 25.
+          - value: NDWL0
+            label: Waterlogging days
+            description: >
+              Days on which soil moisture is above field capacity. Severe above 5 days per month,
+              extreme above 8.
+        data_type: string
+      - &hazard-user
+        name: hazard_user
+        type: hazard
+        description: Plain-language name of the hazard.
+        categories:
+          - value: drought
+            label: Drought (NDWS)
+          - value: wet
+            label: Waterlogging (NDWL0)
+        data_type: string
+      - &crop-generic
+        name: crop
+        type: commodity
+        description: >
+          generic: thresholds that are not specific to one crop.
+        values: [generic]
+        data_type: string
+    variables:
+      - &variable-freq
+        name: variable
+        description: >
+          Which measure the row's value holds. Although stored as a column called variable, it is
+          part of the row key: filter on it.
+        data_type: string
+        categories:
+          - value: frequency
+            label: Hazard frequency (0 to 1)
+            description: >
+              Share of years in the window in which the hazard passed the severity threshold,
+              averaged over the unit's grid cells.
+          - value: frequency_n
+            label: Number of hazard years
+            description: Frequency multiplied by the number of years in the window, rounded.
+      - name: value
+        description: >
+          The measure named in variable, for one model: a fraction from 0 to 1 (frequency) or a
+          count of years (frequency_n).
+        data_type: float64
+        unit: "1"
+
+  - name: hazard-frequency-ensemble
+    dimensions:
+      - *iso3
+      - *admin0
+      - *admin1
+      - *admin2
+      - *scenario5
+      - *timeframe5
+      - *severity
+      - *hazard-water
+      - *hazard-user
+      - *crop-generic
+    variables:
+      - *variable-freq
+      - &ens-mean
+        name: mean
+        description: Mean of the measure across the 18 models; models without a value are skipped.
+        data_type: float64
+        unit: "1"
+      - &ens-min
+        name: min
+        description: Lowest value across the models. Null on historic rows.
+        data_type: float64
+        unit: "1"
+      - &ens-max
+        name: max
+        description: Highest value across the models. Null on historic rows.
+        data_type: float64
+        unit: "1"
+      - &ens-sd
+        name: sd
+        description: Standard deviation across the models (model disagreement). Null on historic rows.
+        data_type: float64
+        unit: "1"
+
+  - name: crop-heat-area-by-model
+    dimensions:
+      - *iso3
+      - *admin0
+      - *admin1
+      - *admin2
+      - *scenario5
+      - *model
+      - *timeframe5
+      - *severity
+      - &hazard-ntx
+        name: hazard
+        type: hazard
+        description: >
+          Crop heat-stress index, judged on its yearly value (the average monthly count of days with
+          maximum temperature above the index temperature).
+        categories:
+          - value: NTx35
+            label: Days above 35 °C
+            description: Severe above 14 days per month, extreme above 21.
+          - value: NTx40
+            label: Days above 40 °C
+            description: Severe above 5 days per month, extreme above 10.
+        data_type: string
+      - *crop-generic
+    variables:
+      - name: variable
+        description: >
+          Name of the source map layer (scenario_model_window_index-threshold_severity). Repeats
+          information held in the other columns.
+        data_type: string
+      - name: area
+        description: >
+          Expected area under heat stress in a year: the sum, over the unit's grid cells, of cell
+          area times the share of years in the window passing the threshold.
+        data_type: float64
+        unit: km2
+      - name: total_area
+        description: Area of the unit's grid cells.
+        data_type: float64
+        unit: km2
+      - name: value
+        description: area as a percentage of total_area.
+        data_type: float64
+        unit: "%"
+
+  - name: crop-heat-area-ensemble
+    dimensions:
+      - *iso3
+      - *admin0
+      - *admin1
+      - *admin2
+      - *scenario5
+      - *timeframe5
+      - *severity
+      - *hazard-ntx
+      - *crop-generic
+    variables:
+      - &variable-perc-area
+        name: variable
+        description: Name of the measure; always perc_area.
+        data_type: string
+        categories:
+          - value: perc_area
+            label: Percentage of the unit's area under the hazard in a typical year
+      - &ens-mean-pct
+        <<: *ens-mean
+        description: >
+          Mean across the 18 models of the percentage of area under the hazard; models without a value
+          are skipped.
+        unit: "%"
+      - &ens-min-pct
+        <<: *ens-min
+        unit: "%"
+      - &ens-max-pct
+        <<: *ens-max
+        unit: "%"
+      - &ens-sd-pct
+        <<: *ens-sd
+        unit: "%"
+
+  - name: rainfall-change-area-by-model
+    dimensions:
+      - *iso3
+      - *admin0
+      - *admin1
+      - *admin2
+      - &scenario4
+        name: scenario
+        type: scenario
+        description: >
+          CMIP6 Shared Socioeconomic Pathway, from low (ssp126) to very high (ssp585) emissions. The
+          change is measured against the same model's 1995-2014 historical run.
+        values: [ssp126, ssp245, ssp370, ssp585]
+        data_type: string
+      - *model
+      - &timeframe4
+        name: timeframe
+        type: temporal
+        description: >
+          Future 20-year window, labelled here by its first year; the column stores it as text
+          (2021-2040, 2041-2060, 2061-2080, 2081-2100).
+        values: ["2021", "2041", "2061", "2081"]
+        step: P20Y
+        data_type: string
+      - &direction
+        name: direction
+        type: direction
+        description: Direction of the rainfall change counted.
+        categories:
+          - value: increase_5
+            label: Rainfall up by 5 % or more
+          - value: decrease_5
+            label: Rainfall down by 5 % or more
+        data_type: string
+      - &stat-perc-change
+        name: stat
+        type: statistic
+        description: Name of the measure; always perc_change.
+        values: [perc_change]
+        data_type: string
+    variables:
+      - &variable-ptot
+        name: variable
+        description: Index the measure is based on; always PTOT (annual total precipitation).
+        data_type: string
+        categories:
+          - value: PTOT
+            label: Annual total precipitation
+      - name: value
+        description: >
+          Percentage of the unit's area where the window's average annual rainfall differs from the
+          same model's 1995-2014 average by at least 5 % in the stated direction. Grid cells whose
+          1995-2014 rainfall is below 100 mm a year are never counted, because a percentage of a
+          near-zero amount is meaningless; they stay in the area total.
+        data_type: float64
+        unit: "%"
+
+  - name: rainfall-change-area-ensemble
+    dimensions:
+      - *iso3
+      - *admin0
+      - *admin1
+      - *admin2
+      - *scenario4
+      - *timeframe4
+      - *direction
+      - *stat-perc-change
+    variables:
+      - *variable-ptot
+      - <<: *ens-mean
+        description: >
+          Mean across the 18 models of the percentage of area with a rainfall change of 5 % or more;
+          models without a value are skipped.
+        unit: "%"
+      - <<: *ens-min
+        description: Lowest value across the models.
+        unit: "%"
+      - <<: *ens-max
+        description: Highest value across the models.
+        unit: "%"
+      - <<: *ens-sd
+        description: Standard deviation across the models (model disagreement).
+        unit: "%"
+
+  - name: rainfall-difference-by-model
+    dimensions:
+      - *iso3
+      - *admin0
+      - *admin1
+      - *admin2
+      - *scenario4
+      - *model
+      - *timeframe4
+      - &stat-diff
+        name: stat
+        type: statistic
+        description: Name of the measure; always diff.
+        values: [diff]
+        data_type: string
+    variables:
+      - *variable-ptot
+      - name: value
+        description: >
+          Change in average annual rainfall, the window minus the same model's 1995-2014 average,
+          averaged over the unit's grid cells. Covers all land, deserts included.
+        data_type: float64
+        unit: mm
+        note: Annual totals, so the unit is millimetres per year.
+
+  - name: rainfall-difference-ensemble
+    dimensions:
+      - *iso3
+      - *admin0
+      - *admin1
+      - *admin2
+      - *scenario4
+      - *timeframe4
+      - *stat-diff
+    variables:
+      - *variable-ptot
+      - <<: *ens-mean
+        description: >
+          Mean across the 18 models of the change in average annual rainfall; models without a value
+          are skipped.
+        unit: mm
+      - <<: *ens-min
+        description: Lowest value across the models.
+        unit: mm
+      - <<: *ens-max
+        description: Highest value across the models.
+        unit: mm
+      - <<: *ens-sd
+        description: Standard deviation across the models (model disagreement).
+        unit: mm
+
+  - name: cattle-heat-area-by-model
+    dimensions:
+      - *iso3
+      - *admin0
+      - *admin1
+      - *admin2
+      - *scenario5
+      - *model
+      - *timeframe5
+      - *severity
+      - name: hazard
+        type: hazard
+        description: >
+          THI: the yearly maximum of the livestock temperature-humidity index, against cattle
+          thresholds that differ between tropical lowland (severe above 82, extreme above 94) and
+          highland areas (severe above 79, extreme above 89).
+        values: [THI]
+        data_type: string
+      - &crop-cattle
+        name: crop
+        type: commodity
+        description: Livestock the thresholds apply to; always cattle.
+        values: [cattle]
+        data_type: string
+    variables:
+      - *variable-perc-area
+      - name: value
+        description: >
+          Percentage of the unit's area under cattle heat stress in a typical year: cell area times
+          the share of years in the window passing the threshold, summed over the unit and divided by
+          its area.
+        data_type: float64
+        unit: "%"
+
+  - name: cattle-heat-area-ensemble
+    dimensions:
+      - *iso3
+      - *admin0
+      - *admin1
+      - *admin2
+      - *scenario5
+      - *timeframe5
+      - *severity
+      - *crop-cattle
+    variables:
+      - *variable-perc-area
+      - *ens-mean-pct
+      - <<: *ens-min-pct
+        description: Lowest value across the models.
+      - <<: *ens-max-pct
+        description: Highest value across the models.
+      - <<: *ens-sd-pct
+        description: Standard deviation across the models (model disagreement).
+
+processing:
+  - id: source
+    description: >
+      NASA NEX-GDDP-CMIP6: daily CMIP6 climate model output, bias-corrected and downscaled to a 0.25°
+      grid. 18 models, historical run and four future scenarios.
+    derived_from:
+      - title: NEX-GDDP-CMIP6 (NASA Center for Climate Simulation)
+        url: https://www.nccs.nasa.gov/services/data-collections/land-based-products/nex-gddp-cmip6
+  - id: indices
+    description: >
+      Agro-climatic hazard indices computed per model from the daily fields and summarised to yearly
+      values, including a simple soil water balance for the water-stress and waterlogging indices.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards
+  - id: frequency
+    description: >
+      For each grid cell, model, scenario and 20-year window, the share of years in which an index
+      passes each severity threshold; and the 20-year average of annual rainfall.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2_calculate_haz_freq.R
+  - id: admin-change
+    description: >
+      Grid values summarised over GAUL 2024 country, first- and second-level units per model:
+      averaged for hazard frequency and rainfall difference, area-weighted for the heat and
+      rainfall-change percentages (cattle heat split by a highland mask). Rainfall percentage change
+      is left out where 1995-2014 rainfall is below 100 mm a year. Ensemble tables give the mean,
+      minimum, maximum and standard deviation across the 18 models.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2.2_haz_change.R
+
+data:
+  - &data-entry
+    name: hazard-frequency-by-model
+    structures: [hazard-frequency-by-model]
+    description: Drought and waterlogging frequency, one row per model.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=haz_freq.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=haz_freq.parquet
+        title: S3
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, indices, frequency, admin-change]
+  - <<: *data-entry
+    name: hazard-frequency-ensemble
+    structures: [hazard-frequency-ensemble]
+    description: Drought and waterlogging frequency, summarised across the 18 models.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=haz_freq_ensemble.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=haz_freq_ensemble.parquet
+        title: S3
+  - <<: *data-entry
+    name: crop-heat-area-by-model
+    structures: [crop-heat-area-by-model]
+    description: Share of area under crop heat stress (days above 35 °C and 40 °C), one row per model.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ntx_perc_area_by_model.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ntx_perc_area_by_model.parquet
+        title: S3
+  - <<: *data-entry
+    name: crop-heat-area-ensemble
+    structures: [crop-heat-area-ensemble]
+    description: Share of area under crop heat stress, summarised across the 18 models.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ntx_perc_area_ensemble.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ntx_perc_area_ensemble.parquet
+        title: S3
+  - <<: *data-entry
+    name: rainfall-change-area-by-model
+    structures: [rainfall-change-area-by-model]
+    description: Share of area where annual rainfall rises or falls by 5 % or more, one row per model.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_change_by_model.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_change_by_model.parquet
+        title: S3
+  - <<: *data-entry
+    name: rainfall-change-area-ensemble
+    structures: [rainfall-change-area-ensemble]
+    description: Share of area where annual rainfall changes by 5 % or more, summarised across the 18 models.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_change_ensemble.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_change_ensemble.parquet
+        title: S3
+  - <<: *data-entry
+    name: rainfall-difference-by-model
+    structures: [rainfall-difference-by-model]
+    description: Change in average annual rainfall in millimetres, one row per model.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_diff_by_model.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_diff_by_model.parquet
+        title: S3
+  - <<: *data-entry
+    name: rainfall-difference-ensemble
+    structures: [rainfall-difference-ensemble]
+    description: Change in average annual rainfall in millimetres, summarised across the 18 models.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_diff_ensemble.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_diff_ensemble.parquet
+        title: S3
+  - <<: *data-entry
+    name: cattle-heat-area-by-model
+    structures: [cattle-heat-area-by-model]
+    description: Share of area under cattle heat stress, one row per model.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=thi_perc_area_by_model.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=thi_perc_area_by_model.parquet
+        title: S3
+  - <<: *data-entry
+    name: cattle-heat-area-ensemble
+    structures: [cattle-heat-area-ensemble]
+    description: Share of area under cattle heat stress, summarised across the 18 models.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=thi_perc_area_ensemble.parquet
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=thi_perc_area_ensemble.parquet
+        title: S3
+
+additional_links:
+  - title: Version history
+    rel: version-history
+    url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/metadata/cdh/changelogs/africa-hazard-change-nexgddp.md
+    description: Public changes to these files, dated.
+  - title: NEX-GDDP-CMIP6
+    rel: via
+    url: https://www.nccs.nasa.gov/services/data-collections/land-based-products/nex-gddp-cmip6
+
+climate:
+  mip_era: CMIP6
+  scenarios: [historical, ssp126, ssp245, ssp370, ssp585]
+  models:
+    - ensemble
+    - ACCESS-CM2
+    - ACCESS-ESM1-5
+    - CanESM5
+    - CMCC-ESM2
+    - EC-Earth3
+    - EC-Earth3-Veg-LR
+    - GFDL-ESM4
+    - INM-CM4-8
+    - INM-CM5-0
+    - IPSL-CM6A-LR
+    - KACE-1-0-G
+    - MIROC6
+    - MPI-ESM1-2-HR
+    - MPI-ESM1-2-LR
+    - MRI-ESM2-0
+    - NorESM2-LM
+    - NorESM2-MM
+    - TaiESM1
+  baseline:
+    start_date: "1995-01-01"
+    end_date: "2014-12-31"
+  bias_adjustment:
+    method: BCSD
+    reference_dataset: GMFD
+  downscaling:
+    method: statistical
+    resolution: 0.25
+
+commodities: [cattle]
+
+cdh:
+  domain: [climate]
+  usage:
+    intended_uses:
+      - Comparing how often drought, waterlogging and heat thresholds are crossed now and in future windows, by district.
+      - Mapping where annual rainfall is projected to rise or fall, as a share of land and in millimetres.
+      - Showing model agreement with the per-model tables or the ensemble minimum, maximum and spread.
+    not_recommended_for:
+      - use: Reading rainfall percentage change in deserts.
+        reason: >
+          Cells with less than 100 mm of rain a year are never counted as an increase or decrease, so
+          a desert unit can show 0 % on both.
+        use_instead: Use the change in millimetres (rainfall-difference tables), which covers all land.
+      - use: Crop-specific heat stress.
+        reason: The crop heat tables use generic 35 °C and 40 °C day counts, not each crop's own limits.
+        use_instead: The crop-specific heat sets in the hazard-exposure records (africa-hazard-exposure-nexgddp).

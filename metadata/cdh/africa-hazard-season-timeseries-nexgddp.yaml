@@ -1,0 +1,368 @@
+# yaml-language-server: $schema=https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/schemas/profiles/cdh.schema.bundled.json
+# Year-by-year seasonal climate-hazard values for Africa, averaged over administrative units and
+# summarised across an 18-model NEX-GDDP-CMIP6 ensemble (Adaptation Atlas).
+cdh_schema_version: v0.5.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/climate/schema.json
+
+id: africa-hazard-season-timeseries-nexgddp
+title: Seasonal Climate Hazard Time Series by Administrative Unit, Africa (NEX-GDDP-CMIP6 18-model ensemble)
+version: v2026.11
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  Year-by-year values of nine agro-climatic hazard indices (rainfall, temperature, heat-stress days,
+  dry days, soil water stress, waterlogging, and human and livestock heat stress) for every country
+  and first-level administrative unit in Africa, for each rolling three-month season and for the
+  whole year. Each row summarises 18 bias-corrected, downscaled climate models from NASA's
+  NEX-GDDP-CMIP6: the ensemble mean, the spread between models (standard deviation and 17th-83rd
+  percentile range, the IPCC "likely" range), and the same statistics for the anomaly from a
+  historical baseline average. Historical years (1981-2014) come from the models' historical runs;
+  future years cover 2021-2100 under four emissions scenarios. Use it to chart how a hazard is
+  projected to evolve in a region and season, and how much the models disagree.
+resource_type: dataset
+license: CC-BY-4.0 # Atlas-derived aggregate; NEX-GDDP-CMIP6 input is openly licensed
+attribution: >
+  Climate scenarios used were from the NEX-GDDP-CMIP6 dataset, prepared by the Climate Analytics
+  Group and NASA Ames Research Center using the NASA Earth Exchange, and distributed by the NASA
+  Center for Climate Simulation (NCCS).
+keywords:
+  - climate hazards
+  - agro-climatic indices
+  - seasonal time series
+  - climate projections
+  - multi-model ensemble
+  - anomaly
+  - NEX-GDDP
+  - heat stress
+  - drought
+  - waterlogging
+  - administrative units
+
+note: >
+  Country-level rows (admin1_name empty) are not usable for Egypt, Kenya, Sudan and South Sudan, the
+  four countries that claim disputed border areas: each holds a single malformed year instead of a
+  series. Use their first-level units. Read the files with hive partitioning turned off (in DuckDB,
+  hive_partitioning = false): the storage path contains timeframe=3months, which otherwise replaces
+  the timeframe column. The human heat-stress index (HSH-max) will be recalculated in a later
+  version; the correction raises it by about 7 °C. Changes to these files before and since this
+  first Hub version are listed in the linked version history.
+
+contact:
+  - organization: Alliance of Bioversity International and CIAT
+    url: https://alliancebioversityciat.org/
+    roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact, maintainer]
+
+citation:
+  title: Africa Agriculture Adaptation Atlas seasonal climate hazard time series (NEX-GDDP-CMIP6 ensemble)
+  authors:
+    - organization: Alliance of Bioversity International and CIAT
+  date: "2026"
+  publisher: Alliance of Bioversity International and CIAT
+  url: https://adaptationatlas.cgiar.org/
+related_publications:
+  - doi: 10.1038/s41597-022-01393-4
+    citation:
+      title: NASA Global Daily Downscaled Projections, CMIP6
+      authors:
+        - family: Thrasher
+          given: B.
+        - family: Wang
+          given: W.
+        - family: Michaelis
+          given: A.
+        - family: Melton
+          given: F.
+        - family: Lee
+          given: T.
+        - family: Nemani
+          given: R.
+      date: "2022"
+      publisher: Scientific Data
+
+created: "2026-11-13"
+updated: "2026-11-13"
+
+spatial:
+  bbox: [-25.5, -47.0, 63.6, 37.6] # Africa including island states, 55 countries
+  crs: EPSG:4326
+  geography: [africa]
+  # No horizontal axes: the table's reporting unit is the admin1_name location dimension.
+
+temporal:
+  start_date: "1981"
+  end_date: "2100"
+
+structures:
+  - name: season-timeseries
+    dimensions:
+      - name: iso3
+        type: location
+        description: ISO 3166-1 alpha-3 country code. 55 countries. Files are sorted on it.
+        data_type: string
+      - name: admin0_name
+        type: location
+        description: Country name, as in FAO GAUL 2024.
+        data_type: string
+      - name: admin1_name
+        type: location
+        description: >
+          First-level administrative unit name (province, region, county), as in FAO GAUL 2024; the
+          boundaries are catalogued as africa-admin-boundaries-gaul2024. Empty (null) on the
+          country-level rows. Values are the average over the 0.25° model grid cells that touch the
+          unit.
+        data_type: string
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+      - &scenario
+        name: scenario
+        type: scenario
+        description: >
+          Emissions scenario. historical is the models' historical run; the others are CMIP6 Shared
+          Socioeconomic Pathways, from low (ssp126) to very high (ssp585) emissions.
+        values: [historical, ssp126, ssp245, ssp370, ssp585]
+        data_type: string
+      - name: timeframe
+        type: temporal
+        description: >
+          The window a file covers, labelled here by its first year; the column stores the window as
+          text (1981-2014, 1995-2014, 2021-2040, 2041-2060, 2061-2080, 2081-2100). The two
+          historical windows are 34 and 20 years long, the future windows 20 years. One file per
+          timeframe and baseline.
+        values: ["1981", "1995", "2021", "2041", "2061", "2081"]
+        data_type: string
+      - name: year
+        type: temporal
+        description: >
+          Calendar year in which the season starts. A November-January (NDJ) or December-February
+          (DJF) value labelled 2041 runs from late 2041 into 2042, so those two seasons have one
+          year fewer per window. Years 2015-2020 are not covered.
+        extent: ["1981", "2100"]
+        step: P1Y
+        data_type: float64
+      - &hazard
+        name: hazard
+        type: hazard
+        description: >
+          Agro-climatic hazard index, computed per model from daily data, summarised by month and
+          then over the season. Its unit applies to every value column except n_models.
+        categories:
+          - value: PTOT
+            label: Total precipitation (mm)
+            description: Rainfall summed over the season (or the year).
+          - value: TAVG
+            label: Mean temperature (°C)
+            description: Average daily mean temperature over the season.
+          - value: TMAX
+            label: Maximum temperature (°C)
+            description: Highest monthly average of daily maximum temperature in the season.
+          - value: NTx35
+            label: Heat-stress days above 35 °C (days per month)
+            description: Days with maximum temperature above 35 °C, averaged per month over the season.
+          - value: NDD
+            label: Dry days (days per month)
+            description: Days with less than 1 mm of rain, averaged per month over the season.
+          - value: NDWS
+            label: Soil water-stress days (days per month)
+            description: >
+              Days on which a simple soil water balance meets less than half of crop water demand
+              (actual over potential evapotranspiration below 0.5), averaged per month.
+          - value: NDWL0
+            label: Waterlogging days (days per month)
+            description: >
+              Days on which soil moisture in the water balance is above field capacity, averaged per
+              month.
+          - value: THI-max
+            label: Livestock temperature-humidity index, maximum (index)
+            description: >
+              Highest monthly maximum of the daily temperature-humidity index used for livestock heat
+              stress. Unitless; on a Fahrenheit-based scale.
+          - value: HSH-max
+            label: Human heat index, maximum (°C)
+            description: Highest monthly maximum of the daily heat index (apparent temperature).
+        data_type: string
+      - &season
+        name: season
+        type: season
+        description: >
+          Rolling three-month season, named by the initials of its months (JFM = January-March, DJF
+          = December-February), or annual for the full calendar year.
+        values:
+          [JFM, FMA, MAM, AMJ, MJJ, JJA, JAS, ASO, SON, OND, NDJ, DJF, annual]
+        data_type: string
+      - name: baseline_name
+        type: baseline
+        description: >
+          Historical window the anomaly columns are measured against. Both baselines come from the
+          same models' historical runs; 1981-2014 is offered because it starts with the satellite
+          rainfall record. One file per timeframe and baseline.
+        values: [1981-2014, 1995-2014]
+        data_type: string
+    variables:
+      - name: mean
+        description: >
+          Ensemble mean of the hazard value for that unit, season and year: the average across the
+          18 models. Unit as given for the hazard.
+        data_type: float64
+        nodata: "NaN"
+      - name: sd
+        description: Standard deviation of the hazard value across the 18 models (model disagreement).
+        data_type: float64
+        nodata: "NaN"
+      - name: q17
+        description: >
+          17th percentile of the hazard value across the 18 models. With q83 it brackets the IPCC
+          "likely" range.
+        data_type: float64
+        nodata: "NaN"
+      - name: q83
+        description: 83rd percentile of the hazard value across the 18 models.
+        data_type: float64
+        nodata: "NaN"
+      - name: n_models
+        description: >
+          Number of models with a value. 18 throughout, or 0 where no model has a value for that
+          unit and hazard (a few small units, mostly for the soil water-balance indices); every other
+          value column is then missing too.
+        data_type: float64
+        unit: "1"
+      - name: mean_anomaly
+        description: >
+          Ensemble mean of the difference between the hazard value and its historical average for the
+          same unit and season over the baseline window (all 18 models pooled). Positive means
+          higher than the baseline.
+        data_type: float64
+        nodata: "NaN"
+      - name: sd_anomaly
+        description: Standard deviation of the anomaly across the 18 models.
+        data_type: float64
+        nodata: "NaN"
+      - name: q17_anomaly
+        description: 17th percentile of the anomaly across the 18 models.
+        data_type: float64
+        nodata: "NaN"
+      - name: q83_anomaly
+        description: 83rd percentile of the anomaly across the 18 models.
+        data_type: float64
+        nodata: "NaN"
+
+processing:
+  - id: source
+    description: >
+      NASA NEX-GDDP-CMIP6: daily CMIP6 climate model output, bias-corrected and downscaled to a 0.25°
+      grid. 18 models, historical run and four future scenarios.
+    derived_from:
+      - title: NEX-GDDP-CMIP6 (NASA Center for Climate Simulation)
+        url: https://www.nccs.nasa.gov/services/data-collections/land-based-products/nex-gddp-cmip6
+  - id: indices
+    description: >
+      Monthly agro-climatic hazard indices computed per model from the daily fields, including a
+      simple soil water balance for the water-stress and waterlogging indices.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards
+  - id: admin-seasons
+    description: >
+      Each monthly index averaged over GAUL 2024 country and first-level units per model, then
+      combined into three-month seasons and the year (summed for rainfall, maximum for TMAX, THI and
+      the heat index, averaged for the rest).
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2.1_create_monthly_haz_tables.R
+  - id: ensemble
+    description: >
+      Anomaly computed for each model against the baseline average of all 18 models, then mean,
+      standard deviation, 17th and 83rd percentiles and model count taken across the 18 models for
+      every unit, season and year.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2.1_create_monthly_haz_tables.R
+    date: "2026-09-20"
+
+data:
+  - name: season-timeseries
+    description: >
+      One Parquet table per timeframe and baseline: 10 files, 35 to 140 MB, about 1.7 to 7 million
+      rows each. Sorted by country so a query filtered on iso3 reads only that country's part.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/
+        title: S3
+    file_index:
+      - format: cdh-inventory
+        title: File inventory
+        locations:
+          - url: ./africa-hazard-season-timeseries-nexgddp-files.csv
+        media_type: text/csv
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, indices, admin-seasons, ensemble]
+
+additional_links:
+  - title: Version history
+    rel: version-history
+    url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/metadata/cdh/changelogs/africa-hazard-season-timeseries-nexgddp.md
+    description: Public changes to these files before and since the first Hub version, dated.
+  - title: NEX-GDDP-CMIP6
+    rel: via
+    url: https://www.nccs.nasa.gov/services/data-collections/land-based-products/nex-gddp-cmip6
+  - title: Seasonal hazard trends derived from the same models
+    rel: related
+    id: africa-hazard-season-trends-nexgddp
+  - title: Seasonal hazard year-to-year variability derived from the same models
+    rel: related
+    id: africa-hazard-season-variability-nexgddp
+
+climate:
+  mip_era: CMIP6
+  scenarios: [historical, ssp126, ssp245, ssp370, ssp585]
+  models:
+    - ensemble
+    - ACCESS-CM2
+    - ACCESS-ESM1-5
+    - CanESM5
+    - CMCC-ESM2
+    - EC-Earth3
+    - EC-Earth3-Veg-LR
+    - GFDL-ESM4
+    - INM-CM4-8
+    - INM-CM5-0
+    - IPSL-CM6A-LR
+    - KACE-1-0-G
+    - MIROC6
+    - MPI-ESM1-2-HR
+    - MPI-ESM1-2-LR
+    - MRI-ESM2-0
+    - NorESM2-LM
+    - NorESM2-MM
+    - TaiESM1
+  baseline:
+    start_date: "1995-01-01"
+    end_date: "2014-12-31"
+  bias_adjustment:
+    method: BCSD
+    reference_dataset: GMFD
+  downscaling:
+    method: statistical
+    resolution: 0.25
+
+cdh:
+  domain: [climate]
+  usage:
+    intended_uses:
+      - Charting how a seasonal hazard is projected to change in a country or province, year by year.
+      - Comparing emissions scenarios and showing model disagreement with the 17th-83rd percentile band.
+      - Seasonal climate context for adaptation planning in agriculture.
+    not_recommended_for:
+      - use: Reading a single future year as a forecast for that year.
+        reason: >
+          Climate models do not reproduce the timing of individual wet or dry years. A future year is
+          one plausible year from that climate, not a prediction.
+        use_instead: Average over the 20-year window, or use the trends record africa-hazard-season-trends-nexgddp.
+      - use: Comparing against observations averaged over 1991-2020.
+        reason: The model historical runs end in 2014, so no 1991-2020 baseline can be built from them.
+        use_instead: Use the 1995-2014 or 1981-2014 baseline and state it.
+      - use: Point or field-scale analysis.
+        reason: Values are averages over administrative units of a 0.25° (about 28 km) model grid.

@@ -3,7 +3,7 @@
 CGIAR Climate Data Hub (CDH) **v0.3.0** metadata records for the datasets the Adaptation Atlas
 publishes, reads or cites. **27 records validate against the strict profile; 3 are drafts.**
 
-Last updated 2026-10-07.
+Last updated 2026-11-13 (Atlas hazards records moved to v0.5.0).
 
 ```
 metadata/cdh/*.yaml         strict — pass the full profile, submittable to cdh-catalog
@@ -62,13 +62,16 @@ cross-field checks.
 | `mapspam2020-adaptation-atlas-ssa` | CC-BY-4.0 | not submitted |
 | `africa-admin-boundaries-gaul2024` | CC-BY-4.0 | not submitted |
 | `africa-population-worldpop-aggregated` | CC-BY-4.0 | not submitted |
-| `africa-hazard-exposure-nexgddp` | CC-BY-4.0 | not submitted — `vop_nominal-usd21`, both periods; last republished 2026-10-23 (#47: livestock at national prices), consistent with the denominator |
-| `africa-hazard-exposure-intld` | CC-BY-4.0 | not submitted — `vop_intld15-21`, both periods; first published 2026-10-16/19 (#13). LBY/SLE cattle meat missing on this basis (#54) |
-| `africa-hazard-exposure-harvested-area` | CC-BY-4.0 | not submitted — `harv-area_ha`, both periods; first published 2026-10-16/19 (#13, #41) |
-| `africa-hazard-exposure-production` | CC-BY-4.0 | not submitted — `prod_t`, both periods; first published 2026-10-16/19 (#13, #41) |
-| `africa-hazard-exposure-livestock-numbers` | CC-BY-4.0 | not submitted — `head_n`, both periods; first published 2026-10-16/19 (#13, #41) |
-| `africa-exposure-combined-res25` | CC-BY-4.0 | not submitted — the denominator for the hazard product (0.25° grid); republished 2026-10-06 (#38/#39/#40), 2026-10-08 (B5, FAOSTAT item-code joins) and 2026-10-21 (#47, livestock nominal at national prices) |
-| `africa-exposure-combined-res05` | CC-BY-4.0 | not submitted — 0.05° Atlas grid, aliases the unsuffixed `crop-livestock_all` key; same republish dates and caveats |
+| `africa-hazard-exposure-nexgddp` | CC-BY-4.0 | **v0.5.0**, `v2026.11` — not submitted. Nominal US$ 2021, both periods |
+| `africa-hazard-exposure-intld` | CC-BY-4.0 | **v0.5.0**, `v2026.11` — not submitted. Constant international $, both periods |
+| `africa-hazard-exposure-harvested-area` | CC-BY-4.0 | **v0.5.0**, `v2026.11` — not submitted |
+| `africa-hazard-exposure-production` | CC-BY-4.0 | **v0.5.0**, `v2026.11` — not submitted |
+| `africa-hazard-exposure-livestock-numbers` | CC-BY-4.0 | **v0.5.0**, `v2026.11` — not submitted |
+| `africa-exposure-combined` | CC-BY-4.0 | **v0.5.0**, `v2026.11` — not submitted. Replaces `-res05` + `-res25` (one record, a structure per resolution) |
+| `africa-hazard-season-timeseries-nexgddp` | CC-BY-4.0 | **v0.5.0**, `v2026.11`, new 2026-11-13 — not submitted. File list in `*-files.csv` beside it |
+| `africa-hazard-season-trends-nexgddp` | CC-BY-4.0 | **v0.5.0**, `v2026.11`, new 2026-11-13 — not submitted. Replaces the v0.0.1 `ensemble_season_trends.cdh.yaml` |
+| `africa-hazard-season-variability-nexgddp` | CC-BY-4.0 | **v0.5.0**, `v2026.11`, new 2026-11-13 — not submitted |
+| `africa-hazard-change-nexgddp` | CC-BY-4.0 | **v0.5.0**, `v2026.11`, new 2026-11-13 — not submitted. Describes the rebuilt files (republish pending) |
 | `kenya-population-knbs-projections` | LicenseRef-KNBS-All-Rights-Reserved | **must not be submitted** — see below |
 | `kenya-population-grid3` | CC-BY-4.0 | **retired** — PR #39 closed, kept local |
 
@@ -85,8 +88,10 @@ Drafts, each blocked on one fact:
 | `kenya-market-prices-ndma` | nothing ingests it; kept as a candidate source |
 | `nexgddp-indices-monthly` | publication pending — the monthly rasters are not on cloud storage |
 
-`ensemble_season_trends.cdh.yaml` is a separate **v0.0.1 draft** for the CR-119 trends dataset. Not
-part of this set, not upgraded, still carries `license: ""` and `citation: ""` TODOs. Do not surface it.
+**Atlas hazards `v2026.11` (2026-11-13).** The ten `v0.5.0` records above describe the hazard set frozen as
+`v2026.11` (pins in `pins/atlas-hazards-2026.11_s3-versions.csv`). Each links its version history in
+`changelogs/<id>.md` with `rel: version-history`; see `HANDOVER_2026-11-13_catalog-map.md`. They validate against
+the **v0.5.0** tooling (clone `--branch v0.5.0` in the commands above); the other records here are still v0.3.0.
 
 ## Conventions established here
 

@@ -1,0 +1,310 @@
+# yaml-language-server: $schema=https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/schemas/profiles/cdh.schema.bundled.json
+# Projected trend (change per year and per decade) in seasonal climate-hazard values for Africa, by
+# administrative unit, from an 18-model NEX-GDDP-CMIP6 ensemble (Adaptation Atlas). Supersedes the
+# pre-standard draft ensemble_season_trends.cdh.yaml.
+cdh_schema_version: v0.5.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/climate/schema.json
+
+id: africa-hazard-season-trends-nexgddp
+title: Projected Trends in Seasonal Climate Hazards by Administrative Unit, Africa (NEX-GDDP-CMIP6 18-model ensemble)
+version: v2026.11
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  How fast nine agro-climatic hazard indices (rainfall, temperature, heat-stress days, dry days, soil
+  water stress, waterlogging, and human and livestock heat stress) are projected to change within
+  each 20-year window from 2021 to 2100, for every country and first-level administrative unit in
+  Africa, by rolling three-month season and for the whole year, under four emissions scenarios. A
+  trend line is fitted to each of 18 NEX-GDDP-CMIP6 climate models separately, using a method that
+  resists outlier years; each row gives the average trend across the models and how much the models
+  disagree. Use it to map where and in which season a hazard is getting worse fastest, and how
+  consistent the models are about it.
+resource_type: dataset
+license: CC-BY-4.0 # Atlas-derived aggregate; NEX-GDDP-CMIP6 input is openly licensed
+attribution: >
+  Climate scenarios used were from the NEX-GDDP-CMIP6 dataset, prepared by the Climate Analytics
+  Group and NASA Ames Research Center using the NASA Earth Exchange, and distributed by the NASA
+  Center for Climate Simulation (NCCS).
+keywords:
+  - climate hazards
+  - agro-climatic indices
+  - trend
+  - change per decade
+  - Theil-Sen slope
+  - Sen's slope
+  - trend-free pre-whitening
+  - climate projections
+  - multi-model ensemble
+  - NEX-GDDP
+  - administrative units
+
+note: >
+  Only the size and direction of the trend are published. Whether a trend is statistically
+  significant is not: averaging significance tests across models has no clear meaning, and a measure
+  of model agreement is planned instead. Trends are fitted within each 20-year window separately and
+  are not a trend over the whole century. Country-level rows (admin1_name empty) for Egypt, Kenya,
+  Sudan and South Sudan, the four countries that claim disputed border areas, are missing values;
+  use their first-level units. Read the files with hive partitioning turned off (in DuckDB,
+  hive_partitioning = false): the storage path contains timeframe=3months, which otherwise replaces
+  the timeframe column. Changes to these files before and since this first Hub version are listed in
+  the linked version history.
+
+contact:
+  - organization: Alliance of Bioversity International and CIAT
+    url: https://alliancebioversityciat.org/
+    roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact, maintainer]
+
+citation:
+  title: Africa Agriculture Adaptation Atlas projected trends in seasonal climate hazards (NEX-GDDP-CMIP6 ensemble)
+  authors:
+    - organization: Alliance of Bioversity International and CIAT
+  date: "2026"
+  publisher: Alliance of Bioversity International and CIAT
+  url: https://adaptationatlas.cgiar.org/
+related_publications:
+  - doi: 10.1038/s41597-022-01393-4
+    citation:
+      title: NASA Global Daily Downscaled Projections, CMIP6
+      authors:
+        - family: Thrasher
+          given: B.
+        - family: Wang
+          given: W.
+        - family: Michaelis
+          given: A.
+        - family: Melton
+          given: F.
+        - family: Lee
+          given: T.
+        - family: Nemani
+          given: R.
+      date: "2022"
+      publisher: Scientific Data
+  - doi: 10.1080/01621459.1968.10480934
+    citation:
+      title: Estimates of the regression coefficient based on Kendall's tau
+      authors:
+        - family: Sen
+          given: P. K.
+      date: "1968"
+      publisher: Journal of the American Statistical Association
+  - doi: 10.1002/hyp.1095
+    citation:
+      title: The influence of autocorrelation on the ability to detect trend in hydrological series
+      authors:
+        - family: Yue
+          given: S.
+        - family: Pilon
+          given: P.
+        - family: Phinney
+          given: B.
+        - family: Cavadias
+          given: G.
+      date: "2002"
+      publisher: Hydrological Processes
+
+created: "2026-11-13"
+updated: "2026-11-13"
+
+spatial:
+  bbox: [-25.5, -47.0, 63.6, 37.6] # Africa including island states, 55 countries
+  crs: EPSG:4326
+  geography: [africa]
+  # No horizontal axes: the table's reporting unit is the admin1_name location dimension.
+
+temporal:
+  start_date: "2021"
+  end_date: "2100"
+
+structures:
+  - name: season-trends
+    dimensions:
+      - name: iso3
+        type: location
+        description: ISO 3166-1 alpha-3 country code. 55 countries. Files are sorted on it.
+        data_type: string
+      - name: admin0_name
+        type: location
+        description: Country name, as in FAO GAUL 2024.
+        data_type: string
+      - name: admin1_name
+        type: location
+        description: >
+          First-level administrative unit name (province, region, county), as in FAO GAUL 2024; the
+          boundaries are catalogued as africa-admin-boundaries-gaul2024. Empty (null) on the
+          country-level rows.
+        data_type: string
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+      - name: scenario
+        type: scenario
+        description: >
+          CMIP6 emissions scenario (Shared Socioeconomic Pathway), from low (ssp126) to very high
+          (ssp585) emissions.
+        values: [ssp126, ssp245, ssp370, ssp585]
+        data_type: string
+      - name: timeframe
+        type: temporal
+        description: >
+          The 20-year window the trend is fitted over, labelled here by its first year; the column
+          stores the window as text (2021-2040, 2041-2060, 2061-2080, 2081-2100). One file per
+          timeframe.
+        values: ["2021", "2041", "2061", "2081"]
+        step: P20Y
+        data_type: string
+      - name: season
+        type: season
+        description: >
+          Rolling three-month season, named by the initials of its months (JFM = January-March, DJF
+          = December-February), or annual for the full calendar year.
+        values:
+          [JFM, FMA, MAM, AMJ, MJJ, JJA, JAS, ASO, SON, OND, NDJ, DJF, annual]
+        data_type: string
+      - name: hazard
+        type: hazard
+        description: >
+          Agro-climatic hazard index whose seasonal value the trend is fitted to. Units of the
+          seasonal value, which the trend is expressed in per year or per decade: PTOT total
+          precipitation (mm); TAVG mean temperature (°C); TMAX maximum temperature (°C); NTx35 days
+          above 35 °C, NDD dry days, NDWS soil water-stress days and NDWL0 waterlogging days (each as
+          days per month, averaged over the season); THI-max livestock temperature-humidity index
+          (unitless); HSH-max human heat index (°C). Definitions are in the time-series record
+          africa-hazard-season-timeseries-nexgddp.
+        values: [PTOT, TAVG, TMAX, NTx35, NDD, NDWS, NDWL0, THI-max, HSH-max]
+        data_type: string
+      - name: stat
+        type: statistic
+        description: Which trend measure the row holds.
+        categories:
+          - value: value_slope
+            label: Change per year
+            description: >
+              Theil-Sen (Sen's) slope of the seasonal value against year, in the hazard's unit per
+              year.
+          - value: value_decade
+            label: Change per decade
+            description: The slope multiplied by 10, in the hazard's unit per decade.
+        data_type: string
+    variables:
+      - name: mean
+        description: >
+          Average across the 18 models of the trend measure named in stat. Positive means the hazard
+          value rises over the window. Missing where the unit has no model data for that hazard.
+        data_type: float64
+        nodata: "NaN"
+      - name: sd
+        description: >
+          Standard deviation of the trend measure across the 18 models. A large value relative to
+          mean means the models disagree on the size or even the direction of the trend. Null where
+          mean is missing.
+        data_type: float64
+
+processing:
+  - id: source
+    description: >
+      The per-model seasonal hazard series behind the time-series record (18 NEX-GDDP-CMIP6 models,
+      four scenarios, one value per unit, season and year). That record publishes their ensemble
+      statistics; the trends are fitted to each model before any averaging.
+    derived_from:
+      - id: africa-hazard-season-timeseries-nexgddp
+        title: Seasonal climate hazard time series by administrative unit (NEX-GDDP-CMIP6 ensemble)
+        version: v2026.11
+  - id: trend
+    description: >
+      For each model, unit, season, hazard, scenario and 20-year window, a Theil-Sen slope is fitted
+      to the yearly values after trend-free pre-whitening (Yue et al. 2002), which stops year-to-year
+      persistence from distorting the fit. The slope is the same whichever baseline the values are
+      expressed against, so one set is published.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2.1_create_monthly_haz_tables.R
+  - id: ensemble
+    description: >
+      Mean and standard deviation of each model's slope and change per decade taken across the 18
+      models. Significance measures are computed but not published.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/publish_B.R
+    date: "2026-09-20"
+
+data:
+  - name: season-trends
+    description: >
+      One Parquet table per 20-year window: 4 files of about 7 MB and 700,000 rows each. Sorted by
+      country so a query filtered on iso3 reads only that country's part.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/
+        title: S3
+    file_index:
+      - format: cdh-inventory
+        title: File inventory
+        locations:
+          - url: ./africa-hazard-season-trends-nexgddp-files.csv
+        media_type: text/csv
+    media_type: application/vnd.apache.parquet
+    file_size: 7 MB
+    processing_steps: [source, trend, ensemble]
+
+additional_links:
+  - title: Version history
+    rel: version-history
+    url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/metadata/cdh/changelogs/africa-hazard-season-trends-nexgddp.md
+    description: Public changes to these files before and since the first Hub version, dated.
+  - title: NEX-GDDP-CMIP6
+    rel: via
+    url: https://www.nccs.nasa.gov/services/data-collections/land-based-products/nex-gddp-cmip6
+
+climate:
+  mip_era: CMIP6
+  scenarios: [ssp126, ssp245, ssp370, ssp585]
+  models:
+    - ensemble
+    - ACCESS-CM2
+    - ACCESS-ESM1-5
+    - CanESM5
+    - CMCC-ESM2
+    - EC-Earth3
+    - EC-Earth3-Veg-LR
+    - GFDL-ESM4
+    - INM-CM4-8
+    - INM-CM5-0
+    - IPSL-CM6A-LR
+    - KACE-1-0-G
+    - MIROC6
+    - MPI-ESM1-2-HR
+    - MPI-ESM1-2-LR
+    - MRI-ESM2-0
+    - NorESM2-LM
+    - NorESM2-MM
+    - TaiESM1
+  bias_adjustment:
+    method: BCSD
+    reference_dataset: GMFD
+  downscaling:
+    method: statistical
+    resolution: 0.25
+
+cdh:
+  domain: [climate]
+  usage:
+    intended_uses:
+      - Mapping the projected rate of change of a seasonal hazard by country or province.
+      - Comparing how fast hazards change under different emissions scenarios and in different windows.
+      - Judging model agreement on a trend from the spread across models.
+    not_recommended_for:
+      - use: Deciding whether a trend is statistically significant.
+        reason: Significance is not published in this version.
+        use_instead: >
+          Compare mean with sd: where sd is large relative to mean, the models do not agree on the
+          trend.
+      - use: Extrapolating one window's trend across the century.
+        reason: >
+          Each trend covers one 20-year window only, so a short window's slope is sensitive to natural
+          year-to-year variation.
+        use_instead: Compare windows, or use the anomalies in africa-hazard-season-timeseries-nexgddp.

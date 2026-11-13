@@ -1,0 +1,282 @@
+# yaml-language-server: $schema=https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/schemas/profiles/cdh.schema.bundled.json
+# Year-to-year variability of seasonal climate-hazard values for Africa, by administrative unit, now
+# and projected, from an 18-model NEX-GDDP-CMIP6 ensemble (Adaptation Atlas).
+cdh_schema_version: v0.5.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/cdh/schema.json
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/climate/schema.json
+
+id: africa-hazard-season-variability-nexgddp
+title: Year-to-Year Variability of Seasonal Climate Hazards by Administrative Unit, Africa (NEX-GDDP-CMIP6 18-model ensemble)
+version: v2026.11
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  How much nine agro-climatic hazard indices (rainfall, temperature, heat-stress days, dry days, soil
+  water stress, waterlogging, and human and livestock heat stress) swing from one year to the next,
+  for every country and first-level administrative unit in Africa, by rolling three-month season and
+  for the whole year. Variability is measured for 1995-2014 and for each 20-year window from 2021 to
+  2100 under four emissions scenarios, as the standard deviation of yearly values after removing the
+  window's trend. Each of 18 NEX-GDDP-CMIP6 climate models is measured separately; rows give the
+  average across models, the spread between them, and for future windows the change from 1995-2014
+  and the share of models that project more variability. Use it to see where seasons are projected
+  to become more erratic, not just wetter, drier or hotter on average.
+resource_type: dataset
+license: CC-BY-4.0 # Atlas-derived aggregate; NEX-GDDP-CMIP6 input is openly licensed
+attribution: >
+  Climate scenarios used were from the NEX-GDDP-CMIP6 dataset, prepared by the Climate Analytics
+  Group and NASA Ames Research Center using the NASA Earth Exchange, and distributed by the NASA
+  Center for Climate Simulation (NCCS).
+keywords:
+  - climate hazards
+  - agro-climatic indices
+  - interannual variability
+  - year-to-year variability
+  - detrended standard deviation
+  - model agreement
+  - climate projections
+  - multi-model ensemble
+  - NEX-GDDP
+  - administrative units
+
+note: >
+  The column pct_gcms_increase holds a fraction from 0 to 1, not a percentage. Country-level rows
+  (admin1_name empty) for Egypt, Kenya, Sudan and South Sudan, the four countries that claim
+  disputed border areas, are missing values; use their first-level units. Read the files with hive
+  partitioning turned off (in DuckDB, hive_partitioning = false): the storage path contains
+  timeframe=3months, which otherwise replaces the timeframe column. Changes to these files before
+  and since this first Hub version are listed in the linked version history.
+
+contact:
+  - organization: Alliance of Bioversity International and CIAT
+    url: https://alliancebioversityciat.org/
+    roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact, maintainer]
+
+citation:
+  title: Africa Agriculture Adaptation Atlas year-to-year variability of seasonal climate hazards (NEX-GDDP-CMIP6 ensemble)
+  authors:
+    - organization: Alliance of Bioversity International and CIAT
+  date: "2026"
+  publisher: Alliance of Bioversity International and CIAT
+  url: https://adaptationatlas.cgiar.org/
+related_publications:
+  - doi: 10.1038/s41597-022-01393-4
+    citation:
+      title: NASA Global Daily Downscaled Projections, CMIP6
+      authors:
+        - family: Thrasher
+          given: B.
+        - family: Wang
+          given: W.
+        - family: Michaelis
+          given: A.
+        - family: Melton
+          given: F.
+        - family: Lee
+          given: T.
+        - family: Nemani
+          given: R.
+      date: "2022"
+      publisher: Scientific Data
+
+created: "2026-11-13"
+updated: "2026-11-13"
+
+spatial:
+  bbox: [-25.5, -47.0, 63.6, 37.6] # Africa including island states, 55 countries
+  crs: EPSG:4326
+  geography: [africa]
+  # No horizontal axes: the table's reporting unit is the admin1_name location dimension.
+
+temporal:
+  start_date: "1995"
+  end_date: "2100"
+
+structures:
+  - name: season-variability
+    dimensions:
+      - name: iso3
+        type: location
+        description: ISO 3166-1 alpha-3 country code. 55 countries. Files are sorted on it.
+        data_type: string
+      - name: admin0_name
+        type: location
+        description: Country name, as in FAO GAUL 2024.
+        data_type: string
+      - name: admin1_name
+        type: location
+        description: >
+          First-level administrative unit name (province, region, county), as in FAO GAUL 2024; the
+          boundaries are catalogued as africa-admin-boundaries-gaul2024. Empty (null) on the
+          country-level rows.
+        data_type: string
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+      - name: scenario
+        type: scenario
+        description: >
+          Emissions scenario. historical is the models' historical run (1995-2014 file only); the
+          others are CMIP6 Shared Socioeconomic Pathways, from low (ssp126) to very high (ssp585)
+          emissions.
+        values: [historical, ssp126, ssp245, ssp370, ssp585]
+        data_type: string
+      - name: timeframe
+        type: temporal
+        description: >
+          The 20-year window variability is measured over, labelled here by its first year; the
+          column stores the window as text (1995-2014, 2021-2040, 2041-2060, 2061-2080, 2081-2100).
+          1995-2014 is the historical reference. One file per timeframe.
+        values: ["1995", "2021", "2041", "2061", "2081"]
+        data_type: string
+      - name: season
+        type: season
+        description: >
+          Rolling three-month season, named by the initials of its months (JFM = January-March, DJF
+          = December-February), or annual for the full calendar year.
+        values:
+          [JFM, FMA, MAM, AMJ, MJJ, JJA, JAS, ASO, SON, OND, NDJ, DJF, annual]
+        data_type: string
+      - name: hazard
+        type: hazard
+        description: >
+          Agro-climatic hazard index whose seasonal value is measured. Variability is in the unit of
+          the seasonal value: PTOT total precipitation (mm); TAVG mean temperature (°C); TMAX maximum
+          temperature (°C); NTx35 days above 35 °C, NDD dry days, NDWS soil water-stress days and
+          NDWL0 waterlogging days (each as days per month, averaged over the season); THI-max
+          livestock temperature-humidity index (unitless); HSH-max human heat index (°C).
+          Definitions are in the time-series record africa-hazard-season-timeseries-nexgddp.
+        values: [PTOT, TAVG, TMAX, NTx35, NDD, NDWS, NDWL0, THI-max, HSH-max]
+        data_type: string
+      - name: stat
+        type: statistic
+        description: Which variability measure the row holds.
+        categories:
+          - value: iav_sd
+            label: Year-to-year variability
+            description: >
+              Standard deviation of the yearly seasonal values within the window after removing the
+              window's trend, in the hazard's unit. Present in every file.
+          - value: iav_delta
+            label: Change in year-to-year variability
+            description: >
+              Future variability minus the same model's 1995-2014 variability, in the hazard's unit.
+              Positive means more erratic. Future files only.
+        data_type: string
+    variables:
+      - name: mean
+        description: >
+          Average across the 18 models of the measure named in stat. Null where the unit has no model
+          data for that hazard.
+        data_type: float64
+      - name: sd
+        description: Standard deviation of the measure across the 18 models (model disagreement).
+        data_type: float64
+      - name: pct_gcms_increase
+        description: >
+          On iav_delta rows: the fraction of models (0 to 1, despite the name) whose variability is
+          higher than in 1995-2014. Values near 1 or 0 mean the models agree on the direction. Null
+          on iav_sd rows.
+        data_type: float64
+        unit: "1"
+
+processing:
+  - id: source
+    description: >
+      The per-model seasonal hazard series behind the time-series record (18 NEX-GDDP-CMIP6 models,
+      one value per unit, season and year). That record publishes their ensemble statistics;
+      variability is measured on each model before any averaging.
+    derived_from:
+      - id: africa-hazard-season-timeseries-nexgddp
+        title: Seasonal climate hazard time series by administrative unit (NEX-GDDP-CMIP6 ensemble)
+        version: v2026.11
+  - id: variability
+    description: >
+      For each model, unit, season, hazard, scenario and window, the window's Theil-Sen trend (the
+      same per-model fit that the trends record africa-hazard-season-trends-nexgddp averages) is
+      removed from the yearly values and the standard deviation of what remains is taken. For
+      future windows each model is compared with its own 1995-2014 value. Mean and standard deviation
+      across the 18 models are then taken, with the fraction of models showing an increase.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/build_publish_C.R
+    date: "2026-09-20"
+
+data:
+  - name: season-variability
+    description: >
+      One Parquet table per window: the 1995-2014 file (about 1 MB, iav_sd only) and four future
+      files (about 11 MB and 700,000 rows each). Sorted by country so a query filtered on iso3 reads
+      only that country's part.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/
+        title: S3
+    file_index:
+      - format: cdh-inventory
+        title: File inventory
+        locations:
+          - url: ./africa-hazard-season-variability-nexgddp-files.csv
+        media_type: text/csv
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, variability]
+
+additional_links:
+  - title: Version history
+    rel: version-history
+    url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/metadata/cdh/changelogs/africa-hazard-season-variability-nexgddp.md
+    description: Public changes to these files before and since the first Hub version, dated.
+  - title: NEX-GDDP-CMIP6
+    rel: via
+    url: https://www.nccs.nasa.gov/services/data-collections/land-based-products/nex-gddp-cmip6
+
+climate:
+  mip_era: CMIP6
+  scenarios: [historical, ssp126, ssp245, ssp370, ssp585]
+  models:
+    - ensemble
+    - ACCESS-CM2
+    - ACCESS-ESM1-5
+    - CanESM5
+    - CMCC-ESM2
+    - EC-Earth3
+    - EC-Earth3-Veg-LR
+    - GFDL-ESM4
+    - INM-CM4-8
+    - INM-CM5-0
+    - IPSL-CM6A-LR
+    - KACE-1-0-G
+    - MIROC6
+    - MPI-ESM1-2-HR
+    - MPI-ESM1-2-LR
+    - MRI-ESM2-0
+    - NorESM2-LM
+    - NorESM2-MM
+    - TaiESM1
+  baseline:
+    start_date: "1995-01-01"
+    end_date: "2014-12-31"
+  bias_adjustment:
+    method: BCSD
+    reference_dataset: GMFD
+  downscaling:
+    method: statistical
+    resolution: 0.25
+
+cdh:
+  domain: [climate]
+  usage:
+    intended_uses:
+      - Mapping where seasonal rainfall, heat or water stress is projected to become more or less erratic.
+      - Showing how many models agree that variability increases.
+      - Context for risk and insurance planning, where year-to-year swings matter as much as the average.
+    not_recommended_for:
+      - use: Reading pct_gcms_increase as a percentage.
+        reason: It is stored as a fraction from 0 to 1.
+        use_instead: Multiply by 100 for a percentage of models.
+      - use: Comparing variability between hazards directly.
+        reason: Each hazard's variability is in its own unit.
+        use_instead: Compare iav_delta relative to the 1995-2014 iav_sd of the same hazard.
