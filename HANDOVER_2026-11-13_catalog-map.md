@@ -43,10 +43,11 @@ entry, because so few catalogue entries exist.
 4. **Side STAC trees.** `stac/AtlasV3/` has two hazard × exposure items, and both point at the superseded
    `source=atlas_cmip6` tables. Its exposure item points at a table we have overwritten five times since. Can these
    items be retired?
-5. **One change to the 2026.11 version.** The 03 November briefing said nothing mid-change would go into
-   2026.11. Pete has now agreed to **republish the hazard-change tables before the freeze**. The live ones date from
-   24 June and miss four months of fixes. A rebuilt set has existed since 15 October. Once it is published, the
-   ten pinned rows in the pin file change. Is that fine with you?
+5. **One change to the 2026.11 version — done on 16 November.** The 03 November briefing said nothing mid-change
+   would go into 2026.11. Pete agreed to republish the hazard-change tables before the freeze, and that happened on
+   2026-11-16: the rebuilt set is live, verified, and the ten pinned rows in the pin file are updated. The country
+   values that changed were checked against an independent recomputation from the rasters; the old inflated values
+   came from duplicated country rows (the disputed-areas issue in question 7), which the rebuild removes.
 6. **Dataset DOIs.** Do you want a Zenodo dataset deposit (DOI) for the 2026.11 version, or is the CDH record
    enough? Also, the Zenodo text for the hazards NEX-GDDP code release (record 18164335) still describes the
    delta method. That can be fixed at the next release.
@@ -79,7 +80,7 @@ is either recent or was never announced.
 | Seasonal hazard time series, 18-model ensemble | `domain=climate/…/region=africa/processing=timeseries_mean_month/…/variable=ensemble_season_timeseries.parquet` | 10 | No | **Updated.** Public since at least May 2026 | **Yes**, A3 |
 | Seasonal hazard trends | `…/variable=ensemble_season_trends.parquet` | 4 | No | New in June; rebuilt in September | Short, A3 |
 | Seasonal hazard year-to-year variability | `…/variable=ensemble_season_variability.parquet` | 5 | No | New in June; rebuilt in September | Short, A3 |
-| Hazard change tables (frequency, heat % area, rainfall change) | `domain=climate/…/region=africa/processing=hazard-change/` | 10 | No | New in June. **Republish pending** (item 5) | Yes, once republished, A4 |
+| Hazard change tables (frequency, heat % area, rainfall change) | `domain=climate/…/region=africa/processing=hazard-change/` | 10 | No | New in June; rebuilt set published 2026-11-16 (item 5) | Yes, A4 |
 
 **Not to be catalogued (superseded, still on the bucket):**
 - the two `source=atlas_cmip6` trees: about 7,500 objects, 75 GB;

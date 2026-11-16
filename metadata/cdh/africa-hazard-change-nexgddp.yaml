@@ -46,8 +46,8 @@ keywords:
   - administrative units
 
 note: >
-  This record describes the rebuilt tables, which replace the files published on 2026-06-24 before
-  the 2026.11 release; columns and keys are unchanged, and the earlier files hold duplicate rows.
+  These tables were published on 2026-11-16, replacing the 2026-06-24 files; columns and keys are
+  unchanged, and the earlier files held duplicate rows, since removed.
   Read the files with hive partitioning turned off (in DuckDB, hive_partitioning = false): the
   storage path contains timeframe=annual, which otherwise replaces the timeframe column. Where no
   model has a value, an ensemble mean is missing and its minimum and maximum can read as plus or
@@ -92,7 +92,7 @@ related_publications:
       publisher: Scientific Data
 
 created: "2026-11-13"
-updated: "2026-11-13"
+updated: "2026-11-16"
 
 spatial:
   bbox: [-25.5, -47.0, 63.6, 37.6] # Africa including island states, 55 countries

@@ -71,7 +71,7 @@ cross-field checks.
 | `africa-hazard-season-timeseries-nexgddp` | CC-BY-4.0 | **v0.5.0**, `v2026.11`, new 2026-11-13 — not submitted. File list in `*-files.csv` beside it |
 | `africa-hazard-season-trends-nexgddp` | CC-BY-4.0 | **v0.5.0**, `v2026.11`, new 2026-11-13 — not submitted. Replaces the v0.0.1 `ensemble_season_trends.cdh.yaml` |
 | `africa-hazard-season-variability-nexgddp` | CC-BY-4.0 | **v0.5.0**, `v2026.11`, new 2026-11-13 — not submitted |
-| `africa-hazard-change-nexgddp` | CC-BY-4.0 | **v0.5.0**, `v2026.11`, new 2026-11-13 — not submitted. Describes the rebuilt files (republish pending) |
+| `africa-hazard-change-nexgddp` | CC-BY-4.0 | **v0.5.0**, `v2026.11`, new 2026-11-13 — not submitted. Rebuilt files published 2026-11-16 |
 | `kenya-population-knbs-projections` | LicenseRef-KNBS-All-Rights-Reserved | **must not be submitted** — see below |
 | `kenya-population-grid3` | CC-BY-4.0 | **retired** — PR #39 closed, kept local |
 
