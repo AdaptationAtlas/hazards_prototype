@@ -2,6 +2,110 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-16 — P9: finish the PASCAL R environment (five shared packages confirmed, personal library emptied, `wbkernel` and `trendkernel` installed). **Small profile is fine. Minutes.**
+
+**Why.** P8 closed the GDAL question, and the IT ticket now carries it. The remaining PASCAL gap is the R
+environment: IT installed five packages on 2026-11-12 that the personal library still shadows, and two packages
+this repository ships as source (`wbkernel`, `trendkernel`) have never been installed there. `wbkernel` is what
+phase C needs — `hazards_upstream/R/04_indices/fast_calc_NDWS.R:165` calls `wbkernel::eabyep_kernel_cpp` — and
+`trendkernel` is what `R/2.1_create_monthly_haz_tables.R:1070` calls for the Theil-Sen kernel. Neither can be
+sourced into an environment; both are called through their namespace, so both must be installed packages.
+
+**Rules.**
+- **Do not source `R/0_server_setup.R`.** Its `pacman::p_load()` installs.
+- Installs go into `R_LIBS_USER` only (`~/R/x86_64-pc-linux-gnu-library/4.6`). Never the site or system library,
+  never as root.
+- The only deletions permitted are the five named packages in P9.2, and only after P9.1 passes.
+- Track anything backgrounded by polling the pid. **Never use `wait` or a long blocking loop.**
+- No usernames, hostnames or IPs in the RESPONSE.
+
+#### P9.0 — pull
+```bash
+cd <repo> && git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD   # develop
+```
+
+#### P9.1 — do the five IT packages load from the shared library?
+Hide the personal library, then load each one in its own fresh R. This is the same technique P6 used.
+```bash
+for p in MetBrewer miceadds paws.storage s3fs sfarrow; do
+  R_LIBS_USER=/nonexistent Rscript --no-environ --no-init-file -e "
+    suppressPackageStartupMessages(library($p));
+    cat(sprintf('%-14s %-10s %s\n', '$p', as.character(packageVersion('$p')),
+                dirname(dirname(getNamespaceInfo('$p','path')))))" 2>&1 | tail -2
+done
+```
+Report the version and the library path for each. `paws.common` is a dependency of `paws.storage`; if it resolves
+from the site library, say so, and if it does not, name where it came from.
+
+**Gate:** all five load, and the path printed is the site library, not the personal one.
+**Stop** if any of the five fails to load, or loads from somewhere other than the site library. Delete nothing in
+that case, and report what you see — that is an IT follow-up, not something to fix on the node.
+
+#### P9.2 — empty the personal library of the five
+Only after P9.1 passes. Pete has given GO for exactly these removals.
+```bash
+L=$(Rscript -e "cat(Sys.getenv('R_LIBS_USER'))")
+ls -1 "$L"                                        # before
+Rscript -e "remove.packages(c('MetBrewer','miceadds','paws.storage','s3fs','sfarrow'), lib = Sys.getenv('R_LIBS_USER'))"
+ls -1 "$L"                                        # after
+```
+`paws.common` may be left behind as an orphan. If `paws.storage` loads from the site library with the personal
+`paws.common` hidden (P9.1 already shows this), remove `paws.common` too and say so; otherwise leave it and report
+that it is still needed.
+
+#### P9.3 — install the two kernel packages from this checkout
+Both have compiled code, so this takes a minute or two each and needs the build toolchain. Run them one after the
+other in the background, log to `logs/`, and poll the pid.
+```bash
+L=$(Rscript -e "cat(Sys.getenv('R_LIBS_USER'))")
+S=$(date +%Y%m%d_%H%M%S)
+nohup bash -c "R CMD INSTALL wbkernel --library=$L && R CMD INSTALL trendkernel --library=$L" \
+  > logs/p9_install_$S.log 2>&1 &
+```
+Then verify, with the personal library in play this time, that each loads and its entry point is present:
+```bash
+Rscript -e "
+  library(wbkernel);    cat('wbkernel   ', as.character(packageVersion('wbkernel')),
+                            exists('eabyep_kernel_cpp', where = asNamespace('wbkernel')), '\n')
+  library(trendkernel); cat('trendkernel', as.character(packageVersion('trendkernel')),
+                            exists('mk_sen_cpp', where = asNamespace('trendkernel')), '\n')"
+```
+**Stop** if either install fails to compile. Quote the first error line and the compiler message under it; do not
+try to install build tools.
+
+#### P9.4 — re-run the environment audit
+```bash
+S=$(date +%Y%m%d_%H%M%S)
+nohup Rscript R/checks/76_r_env_audit.R --out logs/r_env_audit_p9_$S.tsv > logs/r_env_audit_p9_$S.log 2>&1 &
+```
+**Expected:** `0.4-chain` and `both` clean — BROKEN 0, MISSING 0. `upstream` MISSING drops from 9 to **8**:
+`aws.s3`, `climate4R.UDG`, `downscaleR`, `inborutils`, `loadeR`, `transformeR`, `tsbox`, `visualizeR`. All eight
+belong to download and plotting scripts outside the 01→04 chain phase C runs, so they are not a blocker. `wbkernel`
+should move from MISSING to OK.
+
+Report the three summary counts, the full `upstream` MISSING list, and any row whose `lib` column still reads
+`user`.
+
+#### P9.5 — one thing the audit cannot see
+`76_r_env_audit.R` scans for `library()`, `require()` and `pacman::p_load()` references. `trendkernel` is only ever
+called as `trendkernel::mk_sen_cpp`, so **it never appears in the audit at all** — before or after P9.3. Confirm
+that by grepping your own TSV for it, and report the result. The fix (teaching 76 to pick up `pkg::` references) is
+macbook work and is not in this block.
+
+**Either outcome in P9.1 and P9.5 is a finding, not a stop.** The stop rules are the ones named in P9.1, P9.2 and
+P9.3.
+
+**To answer:**
+1. Prepend one `### RESPONSE — pascal` (P9) to this file.
+2. Run the IP grep from `AGENTS.md` §3.
+3. Commit only this file, then push to `develop`.
+4. Verify it landed (`git log origin/develop..HEAD` empty).
+5. End with a delivery line.
+
+**After P9:** phase C is next, on a Large profile, but **not until Pete says go**.
+
+---
+
 ### RESPONSE — pascal 2026-11-13 — P8: **confirmed, GDAL 3.4.3 is the fault.** The block's synthetic case passes on both GDALs, so it does not reproduce; the real input does, and the trigger is **source NoData under `-r sum`**. `gdalwarp -r sum` on the same file, same host: GDAL 3.4.3 max 7399, GDAL 3.13.3 max 9
 
 The block as written returns "both are right", which would point at terra. That reading would have been wrong. The synthetic raster has no NoData, and NoData is exactly what GDAL 3.4.3's sum warper mishandles. Four short extra checks, all read-only and all in the temp directory, separate the two and land on GDAL 3.4.3. The IT ask is a GDAL upgrade, as the macbook expected.
