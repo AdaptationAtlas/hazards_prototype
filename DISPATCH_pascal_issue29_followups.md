@@ -73,27 +73,36 @@ Rscript -e "
 **Stop** if either install fails to compile. Quote the first error line and the compiler message under it; do not
 try to install build tools.
 
-#### P9.4 — re-run the environment audit
+#### P9.4 — re-run the environment audit, now over the whole production chain
+`76_r_env_audit.R` had a scope gap, fixed in this same commit. It always read `pkg::` references, but its default
+scope was only `R/0.4*.R` and `hazards_upstream/R/**`, so **R/1–R/4 and `R/obs` were never audited on any host**.
+The default scope now also covers `R/1*.R`, `R/2*.R`, `R/3*.R`, `R/4*.R` and `R/obs/*.R`: 90 files and 79 distinct
+packages, against 70 before. The summary gains two rows, `bake` and `obs`.
 ```bash
 S=$(date +%Y%m%d_%H%M%S)
 nohup Rscript R/checks/76_r_env_audit.R --out logs/r_env_audit_p9_$S.tsv > logs/r_env_audit_p9_$S.log 2>&1 &
 ```
-**Expected:** `0.4-chain` and `both` clean — BROKEN 0, MISSING 0. `upstream` MISSING drops from 9 to **8**:
-`aws.s3`, `climate4R.UDG`, `downscaleR`, `inborutils`, `loadeR`, `transformeR`, `tsbox`, `visualizeR`. All eight
-belong to download and plotting scripts outside the 01→04 chain phase C runs, so they are not a blocker. `wbkernel`
-should move from MISSING to OK.
+**Expected, as invariants rather than counts:**
+- `0.4-chain` and `both` clean — BROKEN 0, MISSING 0.
+- `upstream` MISSING drops by one as `wbkernel` moves to OK, leaving the eight that belong to download and plotting
+  scripts outside the 01→04 chain: `aws.s3`, `climate4R.UDG`, `downscaleR`, `inborutils`, `loadeR`, `transformeR`,
+  `tsbox`, `visualizeR`. Not a phase C blocker.
+- `bake` and `obs` are **new information**. Nobody has audited them on this host, so whatever they report is the
+  finding — including MISSING rows. Do not install anything to make them clean.
 
-Report the three summary counts, the full `upstream` MISSING list, and any row whose `lib` column still reads
-`user`.
+Report the summary counts for all five scopes, the full MISSING list per scope, and any row whose `lib` column
+still reads `user`.
 
-#### P9.5 — one thing the audit cannot see
-`76_r_env_audit.R` scans for `library()`, `require()` and `pacman::p_load()` references. `trendkernel` is only ever
-called as `trendkernel::mk_sen_cpp`, so **it never appears in the audit at all** — before or after P9.3. Confirm
-that by grepping your own TSV for it, and report the result. The fix (teaching 76 to pick up `pkg::` references) is
-macbook work and is not in this block.
+#### P9.5 — the two packages this repository ships
+Both should now read OK, from `user`:
+- `trendkernel`, scope `bake`, used by `2.1_create_monthly_haz_tables.R`;
+- `wbkernel`, scope `upstream`, used by `fast_calc_NDWS.R` and `fast_calc_waterbalance.R`.
 
-**Either outcome in P9.1 and P9.5 is a finding, not a stop.** The stop rules are the ones named in P9.1, P9.2 and
-P9.3.
+Quote those two rows from your TSV. `trendkernel` appears in an audit on this host for the first time, because of
+the scope fix in P9.4.
+
+**Either outcome in P9.1 and P9.5 is a finding, not a stop, and so are the `bake` and `obs` rows in P9.4.** The stop
+rules are the ones named in P9.1, P9.2 and P9.3.
 
 **To answer:**
 1. Prepend one `### RESPONSE — pascal` (P9) to this file.

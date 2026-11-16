@@ -36,7 +36,7 @@ Disposition is one of **move** (copy the bytes or the credential; nothing else w
 | 1 | Fetches pinned source data via `R/00_acquire.R` with per-object manifests (size + multipart ETag) | **regenerate** | none | Already proven on PASCAL: MapSPAM 48/48 verified, FAOSTAT re-fetched with `drift 0` (P2, P7). 14 of 43 records carry a manifest. |
 | 2 | Holds MapSPAM, GLW4 2020, GAUL boundaries, soils | **regenerate** | none | PASCAL holds these and they are byte-verified against the manifests. |
 | 3 | Holds the FAOSTAT bulk CSVs | **move or snapshot** | blocker 4 | FAO rewrites bulk files in place. See §4. |
-| 4 | Holds the GGCMI crop calendars | **move or snapshot** | PIK reachability | A manifest was never built because no host in the thread reaches PIK reliably. See §4. |
+| 4 | Holds the GGCMI crop calendars | **unknown — test first** | PIK reachability, untested from PASCAL | No manifest exists. The reachability failure is proven only for the macbook; PASCAL has never tried. A read-only manifest build from PASCAL decides whether this is a regenerate or a snapshot. See §4. |
 | 5 | Holds CHIRPS / CHIRTS-ERA5 / AgERA5 via the CDH Hugging Face Zarr cubes | **regenerate** | none | Public, versioned, re-readable. PASCAL's `obs` conda env has GDAL 3.13.3 and zarr 3.4.1, which is what the reader needs. |
 
 ### 2.2 The NEX-GDDP climate and index trees
@@ -100,30 +100,34 @@ running on it, and what can be measured cheaply before committing to a long run.
 1. **P9 — finish the PASCAL R environment.** Confirm the five IT-installed packages load from the
    shared library, drop them from the personal library, install `wbkernel` and `trendkernel` from the
    checkout, re-audit. Unblocks items 7, 14 and 18. Minutes, mostly read-only.
-2. **FAOSTAT snapshot.** The only item with an external clock (§4). Needs a CGlabs run and a publish
-   GO, so it should be requested early even though CGlabs is busy.
-3. **Phase C measurement.** One GCM × one scenario through `hazards_upstream` 01→04 on a Large
+2. **FAOSTAT snapshot.** The only item with a proven external clock (§4). Needs a CGlabs run and a
+   publish GO, so it should be requested early even though CGlabs is busy.
+3. **GGCMI reachability probe from PASCAL.** Read-only, minutes, no dependencies: build the `ggcmi`
+   manifest with `75_catalogue_manifest.R` and see whether PIK answers from that network. It decides
+   whether item 4 is a regenerate or a second snapshot, and it is cheap enough that assuming the answer is
+   the wrong call. Fold into the block after P9.
+4. **Phase C measurement.** One GCM × one scenario through `hazards_upstream` 01→04 on a Large
    profile, recording wall time, peak RSS and output bytes per stage. This is the evidence behind
    every "regenerate" in §2.2 and §2.5, and the input to the §5 estimate. **Awaiting Pete's GO.**
-4. **GDAL upgrade on PASCAL** (IT, SR-167702, requested 2026-11-14). Unblocks items 10, 11 and the
+5. **GDAL upgrade on PASCAL** (IT, SR-167702, requested 2026-11-14). Unblocks items 10, 11 and the
    second half of phase B. Until it lands, nothing in R/0.4.x can be trusted on PASCAL — and with
    `mass_check()` in place, 0.4.1 will stop rather than produce wrong numbers.
-5. **Extend `mass_check()`** to the 15 unguarded sum-resamples in 0.4.0 / 0.4.2 / 0.4.4. Macbook
+6. **Extend `mass_check()`** to the 15 unguarded sum-resamples in 0.4.0 / 0.4.2 / 0.4.4. Macbook
    work, no node time, and it converts blocker 1 from a silent risk into a loud one everywhere.
-6. **Phase B, both halves.** CGlabs half (~2 min, read-only) when CGlabs is free; PASCAL half re-run
+7. **Phase B, both halves.** CGlabs half (~2 min, read-only) when CGlabs is free; PASCAL half re-run
    after the GDAL upgrade, expecting a clean value match.
-7. **Regenerate the index trees** (item 7, then 8) at full scale, once phase C has sized it.
-8. **Regenerate the bakes** R/1 → R/4 (items 13–16), with R/3 §4.1 profiled against the 96 GiB cap
+8. **Regenerate the index trees** (item 7, then 8) at full scale, once phase C has sized it.
+9. **Regenerate the bakes** R/1 → R/4 (items 13–16), with R/3 §4.1 profiled against the 96 GiB cap
    before the full run.
-9. **Regenerate the observed pipeline** S1 → S7 (items 17–22). Independent of the NEX trees, so it
+10. **Regenerate the observed pipeline** S1 → S7 (items 17–22). Independent of the NEX trees, so it
    can run in a second hub session alongside step 7 or 8, subject to the four-session cap.
-10. **Publishing decision and first PASCAL publish** (items 23, 24). This is the last gate, because
+11. **Publishing decision and first PASCAL publish** (items 23, 24). This is the last gate, because
     until it is resolved PASCAL can produce everything and still not ship it.
-11. **Release CGlabs storage** (items 9, 25) only after a full PASCAL product has been published and
+12. **Release CGlabs storage** (items 9, 25) only after a full PASCAL product has been published and
     verified.
 
-Steps 1, 2, 4 and 5 are all in flight or ready now and do not contend for the same resources.
-Step 3 is the one that needs a decision.
+Steps 1, 2, 3, 5 and 6 are in flight or ready now and do not contend for the same resources.
+Step 4, phase C, is the one that needs a decision.
 
 ## 4. What cannot be regenerated
 
@@ -134,9 +138,12 @@ Three things, and they are the reason the move is not purely a compute exercise.
   worked around this by re-fetching on both hosts on the same day (P7), which is a coincidence, not a
   method. **Fix:** a hashed snapshot of the five CSVs on Atlas S3, added to the `#58` manifest set, so
   every host fetches the pinned release. Needs a CGlabs run and a publish GO.
-- **GGCMI crop calendars.** No host in this thread reaches PIK reliably, so no manifest exists. The
-  bytes on CGlabs may be the only copy we control. **Fix:** snapshot them the same way, from whichever
-  host can read them.
+- **GGCMI crop calendars — not yet established.** No manifest exists, and the thread has been writing
+  "no host reaches PIK" when what was actually measured is that **the macbook does not**. PASCAL sits on a
+  different network and has never been asked. **Before this is called unregenerable**, a later PASCAL block
+  should run `R/checks/75_catalogue_manifest.R` against the `ggcmi` record, read-only, and report whether
+  PIK answers. If it does, GGCMI becomes a regenerate with a manifest like every other pinned input. If it
+  does not, it joins FAOSTAT as a snapshot-to-S3 item and the CGlabs bytes may be the only copy we control.
 - **S3 write credentials.** Not data, but equally unregenerable from PASCAL's side: they are issued,
   not computed. Blocker 2.
 
@@ -144,6 +151,7 @@ Everything else in §2 is a function of pinned inputs and code in this repositor
 
 ## 5. What this plan does not yet know
 
+- **Whether PIK answers from PASCAL** (step 3). Unmeasured, and it changes the disposition of item 4.
 - **The size of phase C.** Wall time, peak RSS and output bytes per stage for one GCM × one scenario
   are unmeasured. Without them, steps 7–9 cannot be scheduled and the four-session cap cannot be
   turned into a calendar.

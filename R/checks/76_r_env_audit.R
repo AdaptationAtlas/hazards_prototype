@@ -22,8 +22,15 @@
 # would run pacman::p_load, which INSTALLS what is missing), and writes only the
 # optional --out file.
 #
-# Default scope: R/0.4*.R, plus what they need sourced first (R/0_server_setup.R,
-# R/haz_functions.R, R/00_paths.R, R/00_acquire.R), and hazards_upstream/R/**.
+# Default scope: the whole production chain -
+#   R/0.4*.R and what they need sourced first (R/0_server_setup.R,
+#   R/haz_functions.R, R/00_paths.R, R/00_acquire.R);
+#   the bakes R/1*.R, R/2*.R, R/3*.R, R/4*.R;
+#   the observed pipeline R/obs/*.R;
+#   and hazards_upstream/R/**.
+# Widened 2026-11-16 (#58): R/1-R/4 and R/obs were outside the default scope, so
+# packages only those stages need - trendkernel, called as trendkernel::mk_sen_cpp
+# in R/2.1 - never appeared in an audit of this host.
 # =============================================================================
 
 args <- commandArgs(TRUE)
@@ -51,7 +58,8 @@ logm <- function(...) cat(sprintf("[%s] +%6.1fs | %s\n", ts(),
 
 # ---- scope ------------------------------------------------------------------
 globs <- if (!is.null(val("--files"))) strsplit(val("--files"), ",")[[1]] else
-  c("R/0.4*.R", "R/0_server_setup.R", "R/haz_functions.R", "R/00_paths.R", "R/00_acquire.R")
+  c("R/0.4*.R", "R/0_server_setup.R", "R/haz_functions.R", "R/00_paths.R", "R/00_acquire.R",
+    "R/1*.R", "R/2*.R", "R/3*.R", "R/4*.R", "R/obs/*.R")
 files <- unique(unlist(lapply(globs, function(g) Sys.glob(file.path(repo_root, g)))))
 if (is.null(val("--files"))) {
   files <- c(files, list.files(file.path(repo_root, "hazards_upstream", "R"), pattern = "\\.[Rr]$",
@@ -116,11 +124,16 @@ used_by <- vapply(pk, function(p) {
   paste0(length(f), ":", paste(head(basename(f), 3), collapse = ";"), if (length(f) > 3) ";..." else "")
 }, character(1))
 
-# phase B needs the 0.4 chain; phase C needs hazards_upstream
+# phase B needs the 0.4 chain; phase C needs hazards_upstream; the bakes and the
+# observed pipeline are the rest of what a production host must run.
 scope <- vapply(pk, function(p) {
   f <- unique(use$file[use$package == p])
   up <- startsWith(f, "hazards_upstream/")
-  if (all(up)) "upstream" else if (any(up)) "both" else "0.4-chain"
+  if (all(up)) return("upstream")
+  if (any(up)) return("both")
+  if (any(grepl("^R/(0\\.4|0_server_setup|haz_functions|00_paths|00_acquire)", f))) "0.4-chain"
+  else if (any(grepl("^R/obs/", f))) "obs"
+  else "bake"
 }, character(1))
 
 if (has("--scan-only")) {
@@ -169,7 +182,7 @@ tab$lib <- lib_label(tab$lib)
 cnt <- table(factor(tab$status, levels = c("OK", "BROKEN", "MISSING")))
 logm("OK ", cnt[["OK"]], "   BROKEN ", cnt[["BROKEN"]], "   MISSING ", cnt[["MISSING"]],
      "   (of ", nrow(tab), ")")
-for (sc in c("0.4-chain", "both", "upstream")) {
+for (sc in c("0.4-chain", "bake", "obs", "both", "upstream")) {
   x <- tab[tab$scope == sc, ]
   logm(sprintf("  %-9s OK %d  BROKEN %d  MISSING %d", sc, sum(x$status == "OK"),
                sum(x$status == "BROKEN"), sum(x$status == "MISSING")))
