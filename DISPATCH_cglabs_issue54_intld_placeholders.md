@@ -4,6 +4,65 @@ Append-only, newest block on top. Read `AGENTS.md` first, then `HANDOVER_2026-10
 
 ---
 
+### RESPONSE — cglabs 2026-11-16 — **STOPPED at C1. Nothing published, R/3 not run.** C0 PASS. The reference dry-runs abort on the post-#52 `tlu` exposure/unit: `FAIL distinct(exposure)` and `FAIL distinct(unit)` at both resolutions. No allow-flag can clear this gate, and none was passed. The family dry-runs are clean, but I held them back so the denominator does not go out half-published.
+
+Stamp `20261116_222408` (`logs/issue54c_stamp.txt`). HEAD `e6111c7` (`Pete Steward`, block C GO). Log: `logs/issue54_C1_dry_20261116_222408.log`.
+
+**C0 — PASS.**
+- **Node quiet:** no R process running. The newest log was the R/2.2 publish, which finished at 19:34. Memory: 368 GiB available.
+- **The six rebuilt 0.4.4 parquets are untouched since B3** (mtimes 2026-11-02):
+
+  | table | res-25 | res-05 |
+  |---|---|---|
+  | `exposure_adm_sum_spam20-20_glw420-20` | 19:10:10 | 19:14:19 |
+  | `vop_nominal-usd-2021_adm_sum_spam20_glw420` | 19:10:15 | 19:14:27 |
+  | `vop_intld15-2021_adm_sum_spam20_glw420` | 19:10:20 | 19:14:32 |
+
+  Nothing newer. The W0-W4 obs work did not rewrite them.
+- **`$PARK` intact:** `Data/_parked_issue54_20261102_185857` holds `exposure/` (the six pre-#54 parquets, 2026-10-21 vintage) and `glw_processed/` (`fao_vop` plus `variable=vop_intld15-{2015,2020,2021}`).
+
+**C1 — dry-runs. All four exit 0, but both reference runs ABORT.**
+
+```
+--reference-only --res 0.05:
+  ok: 14 columns identical
+  FAIL distinct(exposure): live=[harv-area,number,phys-area,prod,vop] local=[harv-area,number,phys-area,prod,tlu,vop]
+  FAIL distinct(unit): live=[ha,intld15-2021,nominal-usd-2021,number,t] local=[ha,intld15-2021,nominal-usd-2021,number,t,tlu]
+  ok: distinct(stat) identical = sum
+  ok: rows local 8065336 vs live 8065336 (identical)
+  ABORT exposure reference (crop-livestock_all): gate failure, nothing uploaded
+--reference-only --res 0.25:  same two FAILs; rows 5667864 = 5667864; ABORT
+--family-only --res 0.05:     ok x5 for vop_nominal-usd-2021 (1508624 = 1508624) and vop_intld15-2021 (986408 = 986408); would upload + refresh aliases
+--family-only --res 0.25:     ok x5 for usd (1060176 = 1060176) and intld (693192 = 693192)
+```
+
+**Why it stops.**
+- The rebuilt reference is post-#52: the `total-tropical` and `total-highland` rows are relabelled `exposure=number/unit=number` to `exposure=tlu/unit=tlu`.
+- That adds a sixth distinct value to both columns. Row counts are identical; the rows were relabelled, not added.
+- C1's gate expects the TLU slot to read back from S3, so you meant this move to publish. The publisher's distinct gate (`scripts/r3_publish_tiers.R:541-558`) has no way to declare it:
+  - `distinct(exposure)` has no allow-flag at all.
+  - `--allow-unit-vintage-change` only accepts an equal-cardinality swap (5 to 6 is refused at :554-556 as "a unit is being lost or invented").
+  - The only remaining route is `--skip-gates`, which is forbidden.
+- So this is a stop the block did not foresee, not one I can clear inside it.
+
+**Why I did not publish the family alone.** Its gates are clean, but C1 is one denominator. Publishing the family twins without `crop-livestock_all` would leave S3's reference and family split across #54. Everything comes from the same B3 rebuild, so the family can wait for the reference.
+
+**Side finding, reported not fixed: a gate ABORT still exits 0.** Both reference dry-runs printed `ABORT ... gate failure` and returned exit 0. The #47 D live loop (`rc=$?; [ $rc -eq 0 ] || break`) would therefore **not** break: run live as written, it would abort the reference and go on to publish the family. Worth a non-zero exit on ABORT before block C re-runs.
+
+**State.**
+- **No S3 writes:** dry-runs only, and the publisher logged "backup upload skipped".
+- R/3 not run; no parking done for C2.
+- No code, gate, fixture or tolerance touched. `$PARK` and the six tables untouched. Nothing running.
+
+**Needs from macbook, one of:**
+- (a) a declared-move flag in the publisher for the #52 TLU slot (e.g. allow exactly `+tlu` in `exposure` and `unit`, with total-* row counts conserved), plus a fixture;
+- (b) a call to publish the reference without the #52 relabel. That needs a different local table, so it is a B3 question.
+
+Then re-issue C1.
+
+---
+
+
 ### MACBOOK 2026-11-16 — **block C: Pete GO.** Publish the rebuilt denominator, rebuild and publish the R/3 intld tier
 
 Pete's GO (2026-11-16) for block C exactly as the A/B RESPONSE left it: the reference publish and
