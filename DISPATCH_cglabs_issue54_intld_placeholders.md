@@ -4,6 +4,50 @@ Append-only, newest block on top. Read `AGENTS.md` first, then `HANDOVER_2026-10
 
 ---
 
+### MACBOOK 2026-11-16 — **block C: Pete GO.** Publish the rebuilt denominator, rebuild and publish the R/3 intld tier
+
+Pete's GO (2026-11-16) for block C exactly as the A/B RESPONSE left it: the reference publish and
+the R/3 intld tier. Scope is the intld chain only — do **not** rebuild or publish the nominal,
+head_n, prod or harv-area tiers (the post-#52 TLU rows in head_n go with a later version). Follow
+the #47 block D+E runbook (`archive/dispatches/DISPATCH_cglabs_issue47_livestock_price.md`,
+MACBOOK 2026-10-21 and the E3 restart lessons above it) with the intld substitutions below. This
+block authorises `scripts/r3_publish_tiers.R`, including `--reference-only` / `--family-only`.
+Standing rules: node quiet first; background every upload and the R/3 run; `R3_CHECK_WORKERS=4`;
+watch pid-files, not `pgrep` self-matches; check §4.1 minutes + `failed_*.txt` + mtimes before
+trusting exit 0; stop at any gate that deviates.
+
+**C0 — the B artifacts are still the gated ones.** The B3 rebuild is 14 days old and the obs
+W0-W4 work (2026-11-13/14) touched exposure-adjacent code since. Verify the six rebuilt 0.4.4
+parquets (both res) still carry mtimes 2026-11-02 19:08-19:15 and that `$PARK =
+Data/_parked_issue54_20261102_185857` is intact. **If any table is newer: STOP** — report what
+rewrote it; the fix is to re-run B3's gates, not to publish.
+
+**C1 — publish the denominator** (same loop as #47 D): dry-run first, then
+`--reference-only` / `--family-only` at `--res 0.05` and `0.25`, backgrounded, one log.
+Gate C1 (invariants): the publish touches only `domain=exposure/type=combined/...` keys; per key,
+S3 size = local; the four #54 pairs and the TLU slot read back from S3 exactly as gate 054-REF
+measured them; livestock intld total on S3 = 89.1075 B (res-25) / 89.1110 B (res-05).
+
+**C2 — R/3 intld tier.** Park the existing local intld R/3 outputs by move (rollback), leave
+`FORCE_OVERWRITE` unset, run R/3 restricted to the intld variable for both timeframes as #47 E ran
+the usd one (`R3_TIMEFRAMES`, absolute-path sourcing, nohup). Gate C2: §4.1 clean (no
+`failed_*.txt`, fresh mtimes on every intld output, plausible section minutes in the log).
+
+**C3 — tier gates, then publish.** Run the intld equivalents of #47 E's checks (tier total vs the
+new reference; drift vs the live tier declared, not silent). Gate C3 (invariants): crop rows
+unchanged vs live; livestock changes confined to the four (iso3, class) pairs, each within 2 % of
+the probe's NEW values; continental tier intld total moves by a factor > 1 and < 1.01. Then publish
+the six `variable=vop_intld15-21` keys (+ sidecars) via `scripts/r3_publish_tiers.R` with the
+`--variables`/`--drift-exposure` form the #47 E block used, dry-run first, backgrounded.
+
+**C4 — verify and report.** Per key (denominator 18 + tier 6 + sidecars): size = local, ETag vs
+local MD5 (recompute multipart where needed), anonymous HTTPS 200. RESPONSE carries the gate
+outcomes and a pin table (key, size, ETag, LastModified, x-amz-version-id) for every touched key —
+macbook updates `metadata/cdh/pins/atlas-hazards-2026.11_s3-versions.csv` and dates the
+changelogs from it. Commit, push, verify it landed on `origin/develop`.
+
+---
+
 ### RESPONSE — cglabs 2026-11-02 — **A and B complete, every gate PASS.** GATE 0 PASS; the four flagged rows are exactly LBY/SLE cattle_meat, LSO poultry_meat, SWZ sheep_meat; GATE 054-REF PASS 3/3 at both resolutions. Two findings: A2 shows the **raster** already disagrees for DJI and ESH, and the rebuilt res-25 twin is now **post-#52**, which supersedes the `G6B_NO_PRODUCT_CROPS` workaround in `DISPATCH_cglabs_obs_s3_r3.md`. No S3 writes, R/3 not run, parked copies kept.
 
 Stamp `20261102_185857`. `$PARK = {NWD}/Data/_parked_issue54_20261102_185857` (68 MB, six parquets + `fao_vop` + three `variable=vop_intld15-*` dirs). Logs `logs/issue54_*_20261102_185857.log`.
