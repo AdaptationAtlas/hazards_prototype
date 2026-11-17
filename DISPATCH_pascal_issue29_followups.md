@@ -2,6 +2,145 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-17 — P10 (phase C): regenerate one GCM-year of monthly indices here, measured. **Large profile (20 CPU / 96 GiB). Allow 2-3 h, mostly download.**
+
+**Why.** The migration plan rests on "regenerate, not transfer": a new host fetches the public NEX-GDDP daily data
+and runs `hazards_upstream` 01→04 itself. Nobody has measured what that costs. P10 does it once, end to end, for
+**ACCESS-ESM1-5, historical, 1995** (the AVAIL seed year, so a later water-balance run can continue from it), all six
+variables, and the ten indices that need only the daily NEX inputs. Every stage is timed and sized.
+
+Not run, and why:
+- `fast_calc_NDWS / NDWL0 / NDWL50`: need `atlas_hazards/soils/{sscp,ssat}_world.tif`, which this host does not
+  hold (S1 repro, 2026-10-27). They are a 23 MB must-transfer from CGlabs, queued for when CGlabs is free.
+- `fast_calc_waterbalance`: needs `sroot_world.tif`, which no host holds (#45).
+- `calc_TAI`: needs the `ET_SolRad` climatology, absent here.
+
+The GDAL 3.4.3 sum-resample fault does not touch this: 02 uses `terra::rotate`, 04 uses `crop` and per-cell sums,
+and nothing resamples.
+
+**What changed in the code** (`e98e312`): the canonical download and preprocess scripts now honour
+`SCENARIO / SSPS / GCMS / YRS / VARS` and `DRY_RUN=1`; a scoped download names its manifest by scope and stops if the
+manifest does not cover the request; preprocess stops if any expected daily tif is missing after a file. The
+fixture `R/checks/fixture_upstream_acquire_controls.R` runs the real scripts on synthetic data (C1 below).
+
+**Layout.** `hazards_upstream` is a standalone producer: its `COMMON_DATA` is its own root with a fixed layout
+(`nex-gddp-cmip6_raw/`, `nex-gddp-cmip6/`, `nex-gddp-cmip6_indices/`, `chirps_wrld/`). On this host use a **new**
+root in the writable area, next to the other atlas roots:
+```bash
+export CD=<bulk>/atlas/hazards_upstream_pascal      # <bulk> as in the obs dispatches; never the top of Workspace
+```
+Every 04 script reads `chirps_wrld/chirps-v2.0.1981.01.01.tif` for its **extent only** (`xtd <- ext(msk)`; checked
+in all ten). C0 provides that file: the real one if this host's CHIRPS holdings have it, else an extent-only stand-in
+written by terra, with a README beside it saying so.
+
+**Rules.**
+- Writes go only under `$CD` and `logs/`. Nothing else on the bulk store is touched.
+- No installs. Every package the three stages load is OK in your P9 audit (`purrr`, `furrr`, `future`, `dplyr`,
+  `httr`, `tidyverse`, `terra`, `gtools`, `lubridate`). If any `Installing package` line appears, **stop**.
+- No S3 writes. The NEX bucket is read anonymously over HTTPS.
+- Every long step runs under `nohup` with a `.pid`, polled with `kill -0`, never `wait`. Wrap each stage in
+  `/usr/bin/time -v` if C0 finds it; otherwise sample RSS as C0 describes.
+- No usernames, hostnames or IPs in the RESPONSE. Write the root as `$CD`.
+
+#### C0 — pull, identity, limits, the two prerequisites (minutes)
+```bash
+cd <repo> && export ATLAS_PROJECT_DIR=$PWD
+git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD      # develop, at or after e98e312
+CG=/sys/fs/cgroup$(cut -d: -f3 /proc/self/cgroup); cat $CG/cpu.max $CG/memory.max  # expect 2000000 100000 and 96 GiB
+gdalinfo --formats | grep -i netcdf                     # terra::rast(.nc) needs the system GDAL's netCDF driver
+command -v /usr/bin/time && /usr/bin/time -v true 2>&1 | grep -i "maximum resident"   # peak-RSS tool
+df -h $(dirname $CD) | tail -1                          # free space before
+mkdir -p $CD/chirps_wrld $CD/nex-gddp-cmip6_raw logs
+# the CHIRPS extent file: real if present in this host's CHIRPS tree, else an extent-only stand-in
+CH=$(find <chirps_raw from metadata/hosts.json, afrilabs> -maxdepth 3 -name 'chirps-v2.0.1981.01.01.tif*' 2>/dev/null | head -1); echo "found: ${CH:-none}"
+if [ -n "$CH" ]; then case "$CH" in *.gz) gunzip -c "$CH" > $CD/chirps_wrld/chirps-v2.0.1981.01.01.tif;; *) cp "$CH" $CD/chirps_wrld/;; esac; else
+  Rscript -e 'library(terra); r <- rast(nrows=2000, ncols=7200, xmin=-180, xmax=180, ymin=-50, ymax=50, crs="EPSG:4326", vals=1); writeRaster(r, "'$CD'/chirps_wrld/chirps-v2.0.1981.01.01.tif", overwrite=TRUE, datatype="INT1U")'
+  printf 'Extent-only stand-in for CHIRPS v2.0 1981-01-01 (global p05: -180..180, -50..50, 0.05 deg), all cells 1.\nhazards_upstream/R/04_indices reads this file for ext() only. Not CHIRPS data. Made %s for issue #58 P10.\n' "$(date -I)" > $CD/chirps_wrld/README_extent_only.txt; fi
+Rscript -e 'library(terra); print(ext(rast("'$CD'/chirps_wrld/chirps-v2.0.1981.01.01.tif")))'   # -180, 180, -50, 50
+```
+If the netCDF driver is absent, **stop**: 02 cannot read the .nc files, and that is an IT item (it ships in
+`libgdal30`, so absence would be a packaging fault). If `/usr/bin/time` is absent, sample RSS instead: start the
+stage, then `while kill -0 $PID 2>/dev/null; do ps -o rss= -p $PID; sleep 15; done | sort -n | tail -1` in a second
+command; report the max in GiB.
+
+#### C1 — probes (minutes)
+```bash
+Rscript R/checks/fixture_upstream_acquire_controls.R 2>&1 | tail -3        # ALL ... PASSED (23)
+Rscript R/checks/fixture_upstream_run_params.R        2>&1 | tail -2        # ALL ... PASSED (2-4 min)
+```
+Both must pass; either failing is a stop. The second one runs the real 04 scripts, water balance included, on a
+synthetic grid with synthetic soils, so it proves the 04 code path here before any real data is spent.
+
+#### C2 — download (one GCM-year, six files, about 1.2 GB; ~10 min at this host's S3 rate)
+```bash
+cd hazards_upstream/R/01_download_data
+COMMON_DATA=$CD GCMS=ACCESS-ESM1-5 SCENARIO=historical YRS=1995 DRY_RUN=1 Rscript download_manual_nex_gddpCMIP6.R 2>&1 | tail -9
+```
+The URL probe runs here (54 HEAD requests). **Expect exactly 6 files listed**, one per variable, with a `_v1.1.nc`
+or `_v1.2.nc` suffix. Anything else is a stop.
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S)
+nohup /usr/bin/time -v env COMMON_DATA=$CD GCMS=ACCESS-ESM1-5 SCENARIO=historical YRS=1995 Rscript download_manual_nex_gddpCMIP6.R > ../../../logs/p10_download_$STAMP.log 2>&1 &
+echo $! > ../../../logs/p10_download_$STAMP.pid
+# poll; then:
+grep -E "fetched|Elapsed|Maximum resident" ../../../logs/p10_download_$STAMP.log
+du -sb $CD/nex-gddp-cmip6_raw; find $CD/nex-gddp-cmip6_raw -name '*.nc' | wc -l      # 6
+cd $ATLAS_PROJECT_DIR
+```
+Report the six `fetched` lines (bytes, seconds, MB/s each), the wall time and the total bytes.
+
+#### C3 — preprocess (six .nc -> 6 x 365 daily tifs)
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S)
+nohup /usr/bin/time -v env COMMON_DATA=$CD GCMS=ACCESS-ESM1-5 SCENARIO=historical Rscript hazards_upstream/R/02_preprocess_data/preprocess_nex-gddp-cmip6_daily_data.R > logs/p10_preprocess_$STAMP.log 2>&1 &
+echo $! > logs/p10_preprocess_$STAMP.pid
+# poll; then:
+grep -E "day\(s\)|rror|Elapsed|Maximum resident" logs/p10_preprocess_$STAMP.log
+for v in pr tasmax tasmin hurs rsds sfcWind; do echo "$v $(ls $CD/nex-gddp-cmip6/$v/historical/ACCESS-ESM1-5 | wc -l)"; done   # 365 each
+du -sb $CD/nex-gddp-cmip6
+```
+**Expect** six per-file lines each `365 day(s), 365 written, 0 present`, no `Error`, 365 tifs per variable. Fewer is
+a stop (the script itself stops on a missing tif; if it did not, say so). Report wall, peak RSS, bytes.
+
+#### C4 — ten indices, sequential, each timed
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S)
+cat > logs/p10_indices_$STAMP.sh <<'SH'
+set -u
+cd "$ATLAS_PROJECT_DIR/hazards_upstream/R/04_indices"
+for s in calc_PTOT calc_NDD calc_NTx calc_TAVG calc_TMAX calc_TMIN calc_HSH calc_THI calc_WBGT calc_PET; do
+  echo "=== $s $(date +%H:%M:%S)"
+  /usr/bin/time -v env COMMON_DATA=$CD GCMS=ACCESS-ESM1-5 SCENARIO=historical YRS=1995 DAYS_CHECK=calendar Rscript $s.R
+  echo "=== $s exit=$? $(date +%H:%M:%S)"
+done
+SH
+nohup bash logs/p10_indices_$STAMP.sh > logs/p10_indices_$STAMP.log 2>&1 &
+echo $! > logs/p10_indices_$STAMP.pid
+# poll; then:
+grep -E "^=== |Elapsed|Maximum resident|daily inputs missing|rror" logs/p10_indices_$STAMP.log
+for d in $CD/nex-gddp-cmip6_indices/historical_ACCESS-ESM1-5/*/; do echo "$(basename $d) $(find $d -name '*.tif' | wc -l)"; done
+du -sb $CD/nex-gddp-cmip6_indices; df -h $(dirname $CD) | tail -1
+```
+`DAYS_CHECK=calendar` makes a missing input day a stop rather than a silent under-count. **Expect** every script
+`exit=0`, no `daily inputs missing`, and at least 12 tifs under every index directory (`NTx` holds 31 threshold
+subdirectories of 12). Anything else is a finding; an `exit` other than 0 is a stop.
+
+#### C5 — report
+One table, one row per stage (download, preprocess, each of the ten indices): wall seconds, peak RSS (GiB), files
+written, bytes written. Plus: the six per-file download rates; `df` before and after; the C0 answers (netCDF
+driver, `/usr/bin/time`, CHIRPS real or stand-in). The extrapolation to 18 GCMs x (20 historical + 4 x 80 future)
+years is macbook work; just give the measured numbers.
+
+**Keep everything under `$CD`.** It is the seed for a later water-balance continuation and for the value
+comparison against CGlabs' copy of the same GCM-year.
+
+**Stop and describe** on any of: not on `develop`; a fixture failing; no netCDF driver; the DRY_RUN plan not
+exactly 6 files; `Installing package` in any log; an `exit` other than 0; fewer than 365 daily tifs for any
+variable; any write outside `$CD` and `logs/`.
+
+**To answer:** prepend one `### RESPONSE — pascal` (P10), run the IP grep, commit only this file, push, verify it
+landed, end with a delivery line.
+
 ### RESPONSE — pascal 2026-11-17 — **P9 complete, P9.0 to P9.5, no stop rule fired. The five load from the site library, the personal library is now empty, and `wbkernel` and `trendkernel` both compile and load.** The widened audit is clean where it had to be — `0.4-chain` 28/0/0, `both` 16/0/0 — and the new scopes found **two genuinely missing packages for the bakes: `doFuture` and `jrvFinance`**
 
 The scope fix earned its keep on the first run. `bake` is where the remaining gap is, and neither package has ever appeared in an audit of this host before. Nothing was installed to paper over it, as the block says.
