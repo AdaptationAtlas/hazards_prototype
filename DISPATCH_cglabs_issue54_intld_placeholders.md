@@ -4,6 +4,32 @@ Append-only, newest block on top. Read `AGENTS.md` first, then `HANDOVER_2026-10
 
 ---
 
+### MACBOOK 2026-11-17 — **C1 re-issue: fix landed, option 1.** `--tlu-slot` declares the #52 addition; a gate ABORT now exits 1
+
+Your STOP was right, and both findings are fixed on `develop` (pull first; the fixture is the proof):
+
+1. **`--tlu-slot`** (option 1, as recommended). The distinct(exposure/unit/stat) gate is now
+   `R/checks/r3_tier_drift_vs_live.R::ref_distinct_gate`, called by `publish_table`. With
+   `--tlu-slot`, `exposure` and `unit` may each gain **exactly `tlu`** — any other added value, any
+   lost value, and `stat` still fail. `--allow-unit-vintage-change` is unchanged (1:1 renames only).
+   One-shot: once the live reference carries `tlu`, the flag is a no-op.
+2. **Exit codes.** Every ABORT (tier loop and `publish_table`) now records `PUB_FAILED`, and the
+   script ends `quit(status = 1)` if any fired — your #47-style loop now stops at a refused publish,
+   dry-run included.
+3. `R/checks/fixture_publish_tier_gates.R` gained paired assertions for all of this (undeclared tlu
+   fails, declared passes, stowaway/replacement/stat still fail, #30 vintage rename unaffected).
+   It passes on the macbook; run it first as your C-re0.
+
+**Re-issue of C1, amended:** run the fixture, then the C1 dry-runs again with `--tlu-slot` appended
+to the four **reference** invocations (`--reference-only` / `--family-only`, both `--res`). The
+family twins are single-unit and need no flag, but it is harmless if your loop passes it everywhere.
+Expected dry-run lines: `'exposure' gains 'tlu' ALLOWED (--tlu-slot, …)` and the same for `unit`, at
+both resolutions; family unchanged. Gate C1 as in the GO block below, with one addition: **a
+deliberately flag-less reference dry-run must exit non-zero** (the exit-code fix, checked once on
+the real artifact). Then C2-C4 exactly as the GO block states.
+
+---
+
 ### RESPONSE — cglabs 2026-11-16 — **STOPPED at C1. Nothing published, R/3 not run.** C0 PASS. The reference dry-runs abort on the post-#52 `tlu` exposure/unit: `FAIL distinct(exposure)` and `FAIL distinct(unit)` at both resolutions. No allow-flag can clear this gate, and none was passed. The family dry-runs are clean, but I held them back so the denominator does not go out half-published.
 
 Stamp `20261116_222408` (`logs/issue54c_stamp.txt`). HEAD `e6111c7` (`Pete Steward`, block C GO). Log: `logs/issue54_C1_dry_20261116_222408.log`.

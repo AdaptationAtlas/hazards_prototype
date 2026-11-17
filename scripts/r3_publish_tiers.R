@@ -79,9 +79,11 @@
 #                                                                # intld15 -> intld15-2021 migration (#30)
 #   Rscript scripts/r3_publish_tiers.R --family-only --res 0.05 --allow-unit-vintage-change      # vop_nominal-usd-2021 + vop_intld15-2021 -> _res-05 + alias
 #   Rscript scripts/r3_publish_tiers.R --family-only --res 0.25 --allow-unit-vintage-change --allow-res-change   # -> _res-25 (first publish gates vs legacy)
+#   Rscript scripts/r3_publish_tiers.R --reference-only --res 0.25 --tlu-slot   # #52: exposure/unit gain exactly "tlu" (one-shot, 2026-11)
 #   flags: --timeframe jagermeyr (default) | --allow-schema-drift (G5 -> warn) | --skip-gates
 #          --variables vop_usd,vop_intld,ha,prod_t,head_n | --model ENSEMBLEmean|ENSEMBLE|<GCM>
-#          --no-exposure-gate | --allow-exposure-mismatch | --exposure-tol 0.02
+#          --no-exposure-gate | --allow-exposure-mismatch | --exposure-tol 0.02 | --tlu-slot
+#   exit: 0 only if every requested publish passed its gates; any ABORT -> exit 1 (2026-11-17)
 #          --allow-value-drift (G6 -> warn) | --drift-tol-pair 0.25 | --drift-tol-median 0.03
 #          --drift-tol-total 0.05 | --drift-tol-small 0.5 | --drift-tol-control 0.02
 #          --drift-min-live 1e6 | --drift-small-iso3 GMB,SWZ,...   (see the check's header for why)
@@ -137,6 +139,20 @@ SIDECAR_ONLY <- flag("--sidecar-only")
 # too. The flag still refuses to lose or invent a unit: cardinality must match,
 # because a vanishing unit is exactly how #30 stayed hidden.
 ALLOW_UNIT_VINTAGE <- flag("--allow-unit-vintage-change")
+# Issue #52 / #54 block C (2026-11-17): the rebuilt reference relabels the crop
+# total_tropical / total_highland rows to exposure=tlu / unit=tlu, so
+# distinct(exposure) and distinct(unit) each GAIN one value. That is an intended,
+# gated change (gate 054-REF checked the rows 1:1), but neither existing flag can
+# declare it: --allow-unit-vintage-change requires equal cardinality and exposure
+# has no flag at all. --tlu-slot allows exactly "tlu" to be ADDED to those two
+# columns and nothing else - no other value, no removal. One-shot: once the live
+# reference carries tlu the sets match again and the flag is a no-op. The gate
+# logic lives in R/checks/r3_tier_drift_vs_live.R::ref_distinct_gate (fixtured).
+TLU_SLOT    <- flag("--tlu-slot")
+# Node finding 2026-11-16 (#54 block C): a gate ABORT used to print and fall
+# through to exit 0, so a #47-style shell loop kept going past a refused publish.
+# Every ABORT now records itself here, and the script ends with exit 1 if any fired.
+PUB_FAILED  <- FALSE
 DO_REF      <- flag("--reference") || flag("--reference-only")
 # p.steward 2026-09-23 (issue #30): the reference exists at two zonal resolutions,
 # res-05 (Atlas exposure grid, what the live object was built on) and res-25
@@ -408,7 +424,7 @@ if (DO_TIERS) for (vkey in VARIABLES) {
     sv <- ds |> dplyr::distinct(severity) |> dplyr::collect()
     g4 <- identical(sort(sv$severity), tier)
     .log("  G4 %s: severity column = %s", if (g4) "ok" else "FAIL", paste(sv$severity, collapse = ","))
-    if (!(g2 && g3 && g4)) { .log("  ABORT %s/%s: gate failure, nothing uploaded", vkey, tier); next }
+    if (!(g2 && g3 && g4)) { .log("  ABORT %s/%s: gate failure, nothing uploaded", vkey, tier); PUB_FAILED <- TRUE; next }
 
     # G6b product vs the exposure input it was built from. Runs BEFORE the upload and without
     # needing a live object, which is the whole point: G6 compares against whatever is at the key,
@@ -431,11 +447,11 @@ if (DO_TIERS) for (vkey in VARIABLES) {
                               min_exposure = .g6b_min, baseline = SRC$baseline, scenarios = SRC$scenarios)
       print_tier_vs_exposure(g6b, label = sprintf("%s/%s", vkey, tier), log = function(fmt, ...) .log(paste0("  ", fmt), ...))
       .log("  G6b %s in %s", if (g6b$pass) "ok" else if (ALLOW_G6B) "WARN (allowed)" else "FAIL", .elapsed(t6b))
-      if (!g6b$pass && !ALLOW_G6B) { .log("  ABORT %s/%s: the product does not reproduce the exposure it was multiplied by (--allow-exposure-mismatch only once the cause is understood)", vkey, tier); next }
+      if (!g6b$pass && !ALLOW_G6B) { .log("  ABORT %s/%s: the product does not reproduce the exposure it was multiplied by (--allow-exposure-mismatch only once the cause is understood)", vkey, tier); PUB_FAILED <- TRUE; next }
     } else if (REQUIRE_G6B) {
       .log("  G6b FAIL: no --drift-exposure basis for %s, so the product cannot be checked against its own input. Pass --drift-exposure %s=<0.4.4 %s table on this grid>, or --no-exposure-gate to publish without it.",
            vkey, vkey, if (identical(spec$twin, "family")) sprintf("%s twin", spec$twin_file) else "combined reference")
-      .log("  ABORT %s/%s: no exposure basis", vkey, tier); next
+      .log("  ABORT %s/%s: no exposure basis", vkey, tier); PUB_FAILED <- TRUE; next
     } else {
       .log("  G6b SKIPPED by --no-exposure-gate for %s", vkey)
     }
@@ -449,7 +465,7 @@ if (DO_TIERS) for (vkey in VARIABLES) {
     else {
       .log("  G5 %s: local-only = [%s] live-only = [%s]", if (ALLOW_DRIFT) "WARN (allowed)" else "FAIL",
            paste(setdiff(loc_cols, live_cols), collapse = ","), paste(setdiff(live_cols, loc_cols), collapse = ","))
-      if (!ALLOW_DRIFT) { .log("  ABORT %s/%s: schema drift (use --allow-schema-drift after checking the notebook SQL)", vkey, tier); next }
+      if (!ALLOW_DRIFT) { .log("  ABORT %s/%s: schema drift (use --allow-schema-drift after checking the notebook SQL)", vkey, tier); PUB_FAILED <- TRUE; next }
     }
     live_n <- arrow::open_dataset(bu$live_tmp) |> dplyr::count(hazard_vars, hazard) |> dplyr::collect()
     .log("  info: live has none rows? %s | live hazard_vars = %s", "none" %in% live_n$hazard,
@@ -466,7 +482,7 @@ if (DO_TIERS) for (vkey in VARIABLES) {
                      scenarios = SRC$scenarios, baseline = SRC$baseline)
     print_drift(g6, label = sprintf("%s/%s", vkey, tier), log = function(fmt, ...) .log(paste0("  ", fmt), ...))
     .log("  G6 %s in %s", if (g6$pass) "ok" else if (ALLOW_VALUE_DRIFT) "WARN (allowed)" else "FAIL", .elapsed(t6))
-    if (!g6$pass && !ALLOW_VALUE_DRIFT) { .log("  ABORT %s/%s: value drift outside the stated bounds (read the populations above; --allow-value-drift only after the cause is understood)", vkey, tier); next }
+    if (!g6$pass && !ALLOW_VALUE_DRIFT) { .log("  ABORT %s/%s: value drift outside the stated bounds (read the populations above; --allow-value-drift only after the cause is understood)", vkey, tier); PUB_FAILED <- TRUE; next }
   }
   finish_upload(local_f, bu$s3_url)
 
@@ -542,21 +558,10 @@ publish_table <- function(local_f, key_legacy, label) {
       for (col in c("exposure", "unit", "stat")) if (col %in% oc) {
         a <- sort((dl |> dplyr::distinct(!!rlang::sym(col)) |> dplyr::collect())[[col]])
         b <- sort((dr |> dplyr::distinct(!!rlang::sym(col)) |> dplyr::collect())[[col]])
-        if (setequal(a, b)) .log("  ok: distinct(%s) identical = %s", col, paste(a, collapse = ","))
-        else if (col == "unit" && ALLOW_UNIT_VINTAGE && length(a) == length(b)) {
-          .log("  unit vintage change ALLOWED (--allow-unit-vintage-change), %d -> %d units:", length(a), length(b))
-          .log("    live  = [%s]", paste(a, collapse = ","))
-          .log("    local = [%s]", paste(b, collapse = ","))
-          .log("    gone  = [%s]  new = [%s]", paste(setdiff(a, b), collapse = ","), paste(setdiff(b, a), collapse = ","))
-        }
-        else {
-          .log("  FAIL distinct(%s): live=[%s] local=[%s]", col, paste(a, collapse = ","), paste(b, collapse = ","))
-          if (col == "unit" && ALLOW_UNIT_VINTAGE) {
-            .log("    --allow-unit-vintage-change given but cardinality differs (%d live vs %d local) - a unit is being lost or invented, which is the #30 failure mode. Refusing.",
-                 length(a), length(b))
-          }
-          ok <- FALSE
-        }
+        # the set logic is R/checks/r3_tier_drift_vs_live.R::ref_distinct_gate, fixtured
+        g <- ref_distinct_gate(a, b, col, allow_unit_vintage = ALLOW_UNIT_VINTAGE, tlu_slot = TLU_SLOT)
+        for (ln in g$lines) .log("  %s", ln)
+        if (!g$ok) ok <- FALSE
       }
       nl <- nrow(dl); nr <- nrow(dr)
       if (abs(nr - nl) / nl <= 0.25) .log("  ok: rows local %d vs live %d%s", nr, nl, if (nr == nl) " (identical)" else "")
@@ -584,7 +589,8 @@ publish_table <- function(local_f, key_legacy, label) {
   invisible(TRUE)
 }
 
-if (DO_REF) publish_table(local_ref, REF_KEY_LEGACY, "exposure reference (crop-livestock_all)")
-if (DO_FAMILY) for (f in FAMILY) publish_table(family_local(f), family_key_legacy(f), paste("family", f))
+if (DO_REF) if (!isTRUE(publish_table(local_ref, REF_KEY_LEGACY, "exposure reference (crop-livestock_all)"))) PUB_FAILED <- TRUE
+if (DO_FAMILY) for (f in FAMILY) if (!isTRUE(publish_table(family_local(f), family_key_legacy(f), paste("family", f)))) PUB_FAILED <- TRUE
 
 .log("complete in %s%s", .elapsed(t0), if (DRY_RUN) " [DRY RUN - nothing written]" else "")
+if (PUB_FAILED) { .log("one or more gates FAILED - exiting 1 so a calling loop stops here"); quit(save = "no", status = 1) }

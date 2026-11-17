@@ -276,4 +276,27 @@ ok(lc(r_lvbad)$result == "FAIL", "declared: a livestock pair 20 % off its NEW in
 ok(inherits(try(tier_drift(lv_local, lv_live, min_live = 1, livestock_moved = TRUE), silent = TRUE), "try-error"),
    "the declaration without an exposure basis is refused")
 
+# --- the reference distinct(exposure/unit/stat) gate (ref_distinct_gate) -------------------------
+# #54 block C stopped here on 2026-11-16: the #52 relabel adds "tlu" to exposure AND unit, and no
+# flag could declare it. --tlu-slot now can - and these assertions pin down exactly what it may and
+# may not wave through. Paired as above: the honest change passes, every near-miss fails.
+U5 <- c("ha", "intld15-2021", "nominal-usd-2021", "number", "t")      # live unit set
+E5 <- c("harv-area", "number", "prod", "vop", "vop-intld")            # live exposure set (shape, not exact labels)
+g <- function(...) ref_distinct_gate(...)
+ok(g(U5, U5, "unit")$ok, "distinct: identical sets pass with no flag")
+ok(!g(U5, c(U5, "tlu"), "unit")$ok, "#52 undeclared: unit gaining tlu FAILs with no flag")
+ok(!g(U5, c(U5, "tlu"), "unit", allow_unit_vintage = TRUE)$ok,
+   "#52 undeclared: --allow-unit-vintage-change does NOT cover an added unit (cardinality differs)")
+ok(g(U5, c(U5, "tlu"), "unit", tlu_slot = TRUE)$ok, "--tlu-slot: unit gaining exactly tlu passes")
+ok(g(E5, c(E5, "tlu"), "exposure", tlu_slot = TRUE)$ok, "--tlu-slot: exposure gaining exactly tlu passes")
+ok(!g(E5, c(E5, "flu"), "exposure", tlu_slot = TRUE)$ok, "--tlu-slot: any OTHER added value still FAILs")
+ok(!g(E5, c(E5, "tlu", "flu"), "exposure", tlu_slot = TRUE)$ok, "--tlu-slot: tlu plus a stowaway still FAILs")
+ok(!g(U5, c(setdiff(U5, "number"), "tlu"), "unit", tlu_slot = TRUE)$ok,
+   "--tlu-slot: tlu REPLACING a live unit FAILs - the slot adds, never replaces")
+ok(!g(c("mean"), c("mean", "tlu"), "stat", tlu_slot = TRUE)$ok, "--tlu-slot: does not apply to stat")
+ok(g(c("intld15", "usd"), c("intld15-2021", "nominal-usd-2021"), "unit", allow_unit_vintage = TRUE)$ok,
+   "#30 regression: a 1:1 vintage rename still passes with --allow-unit-vintage-change")
+ok(!g(c("intld15", "usd"), c("intld15-2021", "nominal-usd-2021"), "unit")$ok,
+   "#30 regression: and still FAILs without it")
+
 cat("\nALL PUBLISH-GATE FIXTURE ASSERTIONS PASSED\n")

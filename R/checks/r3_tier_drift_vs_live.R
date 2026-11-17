@@ -399,6 +399,53 @@ print_drift <- function(res, label = "", n_worst = 10, log = .drift_log) {
   invisible(res$pass)
 }
 
+# ------------------------------------------- reference category-set gate -----
+# The distinct(exposure/unit/stat) gate scripts/r3_publish_tiers.R::publish_table
+# runs on the type=combined tables, extracted here so the fixture can exercise the
+# shipped code path. `a` = live values, `b` = local values (any order).
+# Two declared exemptions, nothing else:
+#   allow_unit_vintage (--allow-unit-vintage-change, #30): `unit` labels may be
+#     RENAMED 1:1 - cardinality must match, a lost or invented unit still fails.
+#   tlu_slot (--tlu-slot, #52, one-shot for the 2026-11 reference publish):
+#     `exposure` and `unit` may each GAIN exactly "tlu" (the total-tropical /
+#     total-highland relabel). Nothing may be lost, and no other value may appear.
+# Returns list(ok = logical, lines = character()) - the caller logs the lines.
+ref_distinct_gate <- function(a, b, col, allow_unit_vintage = FALSE, tlu_slot = FALSE) {
+  a <- sort(a); b <- sort(b); L <- character(0)
+  say <- function(...) L <<- c(L, sprintf(...))
+  ok <- TRUE
+  if (setequal(a, b)) say("ok: distinct(%s) identical = %s", col, paste(a, collapse = ","))
+  else if (col %in% c("exposure", "unit") && tlu_slot &&
+           length(setdiff(a, b)) == 0 && identical(setdiff(b, a), "tlu")) {
+    say("'%s' gains 'tlu' ALLOWED (--tlu-slot, the #52 total-TLU relabel), %d -> %d values:", col, length(a), length(b))
+    say("  live  = [%s]", paste(a, collapse = ","))
+    say("  local = [%s]", paste(b, collapse = ","))
+  }
+  else if (col == "unit" && allow_unit_vintage && length(a) == length(b)) {
+    say("unit vintage change ALLOWED (--allow-unit-vintage-change), %d -> %d units:", length(a), length(b))
+    say("  live  = [%s]", paste(a, collapse = ","))
+    say("  local = [%s]", paste(b, collapse = ","))
+    say("  gone  = [%s]  new = [%s]", paste(setdiff(a, b), collapse = ","), paste(setdiff(b, a), collapse = ","))
+  }
+  else {
+    say("FAIL distinct(%s): live=[%s] local=[%s]", col, paste(a, collapse = ","), paste(b, collapse = ","))
+    if (col == "unit" && allow_unit_vintage) {
+      say("  --allow-unit-vintage-change given but cardinality differs (%d live vs %d local) - a unit is being lost or invented, which is the #30 failure mode. Refusing.",
+          length(a), length(b))
+    }
+    if (tlu_slot && length(setdiff(b, a)) > 0 && !identical(setdiff(b, a), "tlu")) {
+      say("  --tlu-slot given but the added value is not exactly 'tlu' (new = [%s]). Refusing.",
+          paste(setdiff(b, a), collapse = ","))
+    }
+    if (tlu_slot && length(setdiff(a, b)) > 0) {
+      say("  --tlu-slot given but a live value is MISSING locally (gone = [%s]) - the slot only adds, never replaces. Refusing.",
+          paste(setdiff(a, b), collapse = ","))
+    }
+    ok <- FALSE
+  }
+  list(ok = ok, lines = L)
+}
+
 # ---------------------------------------------------------------- CLI --------
 if (sys.nframe() == 0L || nzchar(Sys.getenv("DRIFT_CLI"))) {
   args <- commandArgs(trailingOnly = TRUE)
