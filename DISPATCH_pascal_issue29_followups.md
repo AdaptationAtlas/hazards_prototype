@@ -2,6 +2,127 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal 2026-11-17 — **P9 complete, P9.0 to P9.5, no stop rule fired. The five load from the site library, the personal library is now empty, and `wbkernel` and `trendkernel` both compile and load.** The widened audit is clean where it had to be — `0.4-chain` 28/0/0, `both` 16/0/0 — and the new scopes found **two genuinely missing packages for the bakes: `doFuture` and `jrvFinance`**
+
+The scope fix earned its keep on the first run. `bake` is where the remaining gap is, and neither package has ever appeared in an audit of this host before. Nothing was installed to paper over it, as the block says.
+
+Nothing was installed except the two kernel packages the block names, nothing went anywhere but `R_LIBS_USER`, nothing ran as root, and `R/0_server_setup.R` was not sourced.
+
+#### P9.0 — pull
+
+Branch `develop`, `git log --oneline -1` = `8a31a3f`.
+
+#### P9.1 — the five load from the shared library. Gate PASS
+
+```
+MetBrewer      0.2.0      /usr/local/lib/R/site-library/MetBrewer
+miceadds       3.20.10    /usr/local/lib/R/site-library/miceadds
+paws.storage   0.11.0     /usr/local/lib/R/site-library/paws.storage
+s3fs           0.1.7      /usr/local/lib/R/site-library/s3fs
+sfarrow        0.4.1      /usr/local/lib/R/site-library/sfarrow
+```
+
+All five load with `R_LIBS_USER` pointed at a path that does not exist, and all five come from the site library. The versions are identical to the personal copies they were shadowing, so nothing changes behaviour by removing them.
+
+**`paws.common` also resolves from the site library**, version 0.9.0, so the personal copy was an orphan rather than a dependency the site build needed.
+
+#### P9.2 — personal library emptied. PASS
+
+Before, six directories:
+
+```
+MetBrewer  miceadds  paws.common  paws.storage  s3fs  sfarrow
+```
+
+`remove.packages()` on the five named packages left `paws.common` alone, as the block anticipated. Since P9.1 had already shown `paws.storage` loading from the site library with the personal library hidden, and `paws.common` itself resolving from site, I removed it too.
+
+After: **the personal library is empty** — `ls -1A` prints nothing. Re-checking all six with the personal library back in play, every one resolves from `/usr/local/lib/R/site-library`. The 2026-10-28 ABI break that forced the per-user rebuild is now fully unwound on this node.
+
+#### P9.3 — `wbkernel` and `trendkernel` installed. PASS
+
+Both compiled from this checkout into `R_LIBS_USER`, in one background job, about 50 s in total.
+
+```
+* DONE (wbkernel)
+* DONE (trendkernel)
+```
+
+Compiler `g++ (Ubuntu 11.4.0-1ubuntu1~22.04.3) 11.4.0`, `-std=gnu++20`, against the site `Rcpp` headers. No errors, no warnings. The only notice is `No man pages found in package 'trendkernel'`, which is a packaging nicety, not a fault.
+
+Entry points present:
+
+```
+wbkernel    0.2.0 TRUE /home/.../R/x86_64-pc-linux-gnu-library/4.6/wbkernel
+trendkernel 0.1.0 TRUE /home/.../R/x86_64-pc-linux-gnu-library/4.6/trendkernel
+```
+
+`TRUE` is `exists()` on `eabyep_kernel_cpp` and `mk_sen_cpp` in each namespace. So the personal library is no longer a workaround holding shadow copies; it now holds exactly the two packages that only exist in this repository, which is what it is for.
+
+#### P9.4 — the widened audit
+
+90 files, **79 distinct packages**, 83.2 s. `.libPaths()` is personal, then `/usr/local/lib/R/site-library`, then `/usr/lib/R/site-library`, then the base library.
+
+```
+OK 69   BROKEN 0   MISSING 10   (of 79)
+  0.4-chain OK 28  BROKEN 0  MISSING 0
+  bake      OK 7   BROKEN 0  MISSING 2
+  obs       OK 0   BROKEN 0  MISSING 0
+  both      OK 16  BROKEN 0  MISSING 0
+  upstream  OK 18  BROKEN 0  MISSING 8
+```
+
+**BROKEN 0 across the whole chain.** The invariants hold: `0.4-chain` and `both` are clean, and `upstream` MISSING is exactly the predicted eight, `wbkernel` having moved to OK.
+
+MISSING, in full:
+
+```
+aws.s3           upstream   1:upload_AWS.R
+climate4R.UDG    upstream   1:download_rawCMIP6.R
+doFuture         bake       2:1.2_create_isimip_timeseries.R;1_make_timeseries.R
+downscaleR       upstream   1:download_rawCMIP6.R
+inborutils       upstream   1:download_cropCalendar.R
+jrvFinance       bake       1:4.1_roi_econ_ind.R
+loadeR           upstream   1:download_rawCMIP6.R
+transformeR      upstream   1:download_rawCMIP6.R
+tsbox            upstream   2:preprocess_nex-gddp-cmip6_daily_data_v2_0.R;preprocess_nex-gddp-cmip6_daily_data.R
+visualizeR       upstream   1:download_rawCMIP6.R
+```
+
+**The two new ones are the finding.** Neither has been visible to any audit of this host until now:
+
+- **`doFuture`** — `R/1_make_timeseries.R` and `R/1.2_create_isimip_timeseries.R`. That is the parallel backend for the R/1 timeseries build, so it blocks the first bake, not a download script.
+- **`jrvFinance`** — `R/4.1_roi_econ_ind.R`. Financial functions for the ROI indicators, so it blocks R/4.1.
+
+Both are ordinary CRAN packages. I installed neither, per the block. Whoever schedules the bakes will need them, and they belong in the same `R_LIBS_USER` install as the kernels, or in a request to IT for the shared library if several users will run the bakes.
+
+The other seven `bake` rows are fine and all from site: `Hmisc` 5.3.0, `RColorBrewer` 1.1.3, `Rcpp` 1.1.2, `reshape2` 1.4.5, `treemap` 2.4.4, `trend` 1.1.10, plus `trendkernel` from `user`.
+
+**`obs` reads 0/0/0, and that is a real result, not an empty scan.** Scanning `R/obs/*.R` on its own finds six packages — `arrow`, `data.table`, `parallel`, `sf`, `stats`, `terra` — and every one of them is already required by the 0.4 chain or by `hazards_upstream`, so the classifier files them under the earlier scope. **The observed pipeline introduces no package that the rest of the chain does not already need.** For the migration that is the best possible answer: S1 to S7 adds nothing to the R environment it has to carry, and the Python side is the `obs` conda env, which the audit does not cover.
+
+Rows still reading `lib = user`: exactly two, both expected.
+
+```
+trendkernel      OK   bake       0.1.0   1:2.1_create_monthly_haz_tables.R
+wbkernel         OK   upstream   0.2.0   2:fast_calc_NDWS.R;fast_calc_waterbalance.R
+```
+
+#### P9.5 — the two packages this repository ships
+
+```
+trendkernel  OK  bake      0.1.0  user  1:2.1_create_monthly_haz_tables.R
+wbkernel     OK  upstream  0.2.0  user  2:fast_calc_NDWS.R;fast_calc_waterbalance.R
+```
+
+`trendkernel` appears in an audit on this node for the first time, exactly as the scope fix predicted. Phase C's water-balance kernel and R/2.1's Theil-Sen kernel are both resolvable here now.
+
+#### What this leaves for the migration
+
+The R environment is no longer a blocker for phase C: `0.4-chain`, `both` and `upstream` carry no BROKEN rows, and the only `upstream` gaps are download and plotting scripts outside 01→04. The bakes are a different matter — `doFuture` and `jrvFinance` have to be installed before R/1 or R/4.1 can run here, and that was invisible until the audit's scope was widened. Worth noting in the migration plan against items 13 and 16.
+
+**Logs** (untracked, not committed): `logs/p9_install_20261117_142546.log`, `logs/r_env_audit_p9_20261117_142612.{log,tsv}`.
+
+---
+
 ### MACBOOK 2026-11-16 — P9: finish the PASCAL R environment (five shared packages confirmed, personal library emptied, `wbkernel` and `trendkernel` installed). **Small profile is fine. Minutes.**
 
 **Why.** P8 closed the GDAL question, and the IT ticket now carries it. The remaining PASCAL gap is the R
