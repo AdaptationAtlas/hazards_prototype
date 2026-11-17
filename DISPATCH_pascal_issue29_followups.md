@@ -2,6 +2,139 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal 2026-11-17 — **P10 stopped at C3.** C0, C1 and C2 all pass, and the download is cheap: **six files, 1.56 GB, 169 s wall, 0.11 GiB peak RSS**. **Preprocess fails for every variable**: `terra::time()` on these `.nc` files returns a POSIXct with a time of day here, so `02` builds filenames like `pr_1995-01-01 12:00:00.tif`, and GDAL cannot create a file whose name contains colons — `[writeRaster] cannot write file`, exit 1, zero daily tifs. C4 and C5 were not run
+
+The fault is in the daily filename, not in the data, the host or the environment: the same raster writes without complaint the moment the name is `pr_1995-01-01.tif`. It is also not merely a naming nicety — `04` composes its inputs as `paste0(pr_pth,'/pr_',dts,'.tif')` from `seq(as.Date(...), by = 'day')`, so a date-with-time name would miss every lookup in `04` even on a filesystem that accepted it. A one-line change in `02` fixes it, but the block says never improvise, so nothing was changed.
+
+Everything written stays under `$CD`: the six raw `.nc` files and the CHIRPS extent file, 1,620,106,528 bytes in total. Nothing was installed (`Installing package` count 0 in every log), nothing was written to S3, and nothing outside `$CD` and `logs/`.
+
+#### C0 — pull, limits, prerequisites. PASS
+
+Branch `develop`, `git log --oneline -1` = `aef5a4e`, which is after `e98e312`.
+
+| Check | Result |
+|---|---|
+| `cpu.max` | `2000000 100000` — 20 CPU, the Large profile as asked |
+| `memory.max` | `103079215104` — 96 GiB |
+| netCDF driver | present: `netCDF -raster,multidimensional raster,vector- (rw+vs)` |
+| `/usr/bin/time` | present, `-v` reports `Maximum resident set size` |
+| free space before | 50 T total, 26 T used, 24 T available, 53 % used |
+
+**The CHIRPS file is the real one, but the block's `find` would have missed it.** `-maxdepth 3` returns nothing; the file is five levels down, under `global_daily/tifs/p05/1981/`. Searching without the depth limit finds it at once, both as a `.tif` and as a `.tif.gz`. I copied the real `.tif`. Had I run the command exactly as written I would have silently written the extent-only stand-in while the real file sat on the same disk, so **raise the `-maxdepth` in any later block that reuses this recipe**.
+
+```
+SpatExtent : -180, 180.00000536441803, -50.000001490116119, 50 (xmin, xmax, ymin, ymax)
+dim 2000 x 7200   res 0.05
+```
+
+That is the expected global p05 extent, so `ext(msk)` in the ten `04` scripts gets the genuine CHIRPS extent, not an approximation.
+
+#### C1 — both fixtures pass
+
+| Fixture | Assertions | Wall | Result |
+|---|---|---|---|
+| `fixture_upstream_acquire_controls.R` | 25 | seconds | `ALL UPSTREAM ACQUIRE-CONTROLS FIXTURE ASSERTIONS PASSED` |
+| `fixture_upstream_run_params.R` | 53 | 340 s | `ALL UPSTREAM RUN-PARAMETER FIXTURE ASSERTIONS PASSED` |
+
+The block predicted 23 assertions for the first; it carries 25. Every one passes, so this is a count drift in the block, not a failure.
+
+Worth noting for what follows: `fixture_upstream_run_params.R` proves the `04` code path on a **synthetic** grid, and it passes here. The `04` scripts are therefore not implicated in the C3 failure — they were never reached.
+
+#### C2 — download. PASS
+
+The dry run plans exactly six files, one per variable, into `$CD/nex-gddp-cmip6_raw`.
+
+**Finding on the suffix.** The block expects every file to carry `_v1.1.nc` or `_v1.2.nc`. Three do and three do not:
+
+```
+pr       pr_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_1995_v1.1.nc
+tasmax   tasmax_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_1995.nc
+tasmin   tasmin_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_1995.nc
+hurs     hurs_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_1995_v1.1.nc
+rsds     rsds_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_1995.nc
+sfcWind  sfcWind_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_1995.nc
+```
+
+I treated this as a finding and continued, because the enumerated stop list names only "the DRY_RUN plan not exactly 6 files", and the plan is exactly six, one per variable. The mixed suffix is what the bucket actually holds: NEX-GDDP-CMIP6 re-issues only the corrected variables with a version suffix, and the probe's 54 HEAD requests resolved each variable to the name that exists. All six then downloaded with no 404 and no retry, which confirms the resolution was right. If you intended the suffix itself as a gate, say so and I will stop on it next time.
+
+Six `fetched` lines, bytes / seconds / rate:
+
+| Variable | Bytes | s | MB/s |
+|---|---:|---:|---:|
+| pr | 222,298,070 | 39 | 5.70 |
+| tasmax | 244,583,799 | 25 | 9.75 |
+| tasmin | 246,232,669 | 24 | 10.28 |
+| hurs | 277,190,299 | 28 | 9.79 |
+| rsds | 270,314,540 | 26 | 10.49 |
+| sfcWind | 301,834,906 | 26 | 11.78 |
+
+Total 1,562,489,486 bytes, 6 `.nc` files, **169 s wall, 0.11 GiB peak RSS**. The block allowed "2-3 h, mostly download"; the download took under three minutes. The first file is slower than the rest, which is the usual connection warm-up, and the sustained rate is about 10 MB/s.
+
+**Second finding, cheap to fix.** The download script sets up 30 local workers and `parallelly` objects:
+
+```
+Careful, you are setting up 30 localhost parallel workers with only 20 CPU cores available for this R
+process (per 'cgroups2.cpu.max'), which could result in a 150% load.
+```
+
+The job is IO-bound, so the oversubscription costs little here, but the worker count is hard-wired rather than derived from the cgroup. On a shared box that is the same class of problem as `detectCores()`.
+
+#### C3 — preprocess. FAIL, exit 1, zero tifs written. **Stop**
+
+```
+Error in `purrr::map()`:
+i In index: 1.
+Caused by error:
+! [writeRaster] cannot write file
+```
+
+Index 1 is `pr`. Wall 118.7 s, **peak RSS 20.8 GiB**, exit status 1. Output per variable:
+
+```
+pr 0   tasmax 0   tasmin 0   hurs 0   rsds 0   sfcWind 0
+```
+
+The output directory tree is created, and it is empty. Nothing partial was left behind.
+
+**Diagnosis.** Read-only probing against the downloaded `pr` file, in the same output directory:
+
+- `nlyr` 365, `time()` has no NA, and `timeInfo()` reports step `seconds`, not `days`.
+- `as.character(time(r))` yields `"1995-01-01 12:00:00"`, so line 67 builds `pr_1995-01-01 12:00:00.tif`.
+- Writing a 4x4 raster to that exact name fails with the identical message; writing the same raster to `pr_1995-01-01.tif` in the same directory succeeds.
+- A full single-layer slice of the real file — `rotate(r[[1]] * 86400)` — also writes without error to a colon-free name.
+
+So the filesystem, the netCDF driver, the rotate, the unit conversion and the write path are all sound. The only thing GDAL refuses is the colon: a name of the form `pr_1995-01-01 12:00:00.tif` collides with GDAL's connection-string parsing, which reads `prefix:...:...` as a driver spec.
+
+Both probe files were deleted afterwards; the output tree is empty again.
+
+**Why this has not bitten CGlabs.** `02` has always used `as.character(terra::time(r))` — the v2_0 variant does the same at its lines 55 and 64. Whether that string carries a time of day depends on how the GDAL netCDF driver reports the time axis, and this host's GDAL 3.4.3 reports it in seconds. A host whose driver reports it as a date gets `1995-01-01` and never notices. This is a **second cross-host fault in GDAL 3.4.3**, independent of the sum-resample fault, and unlike that one it is not a wrong number — it is a hard stop, which is the better failure.
+
+**Why a filesystem that accepted colons would not save it.** `04` builds its input names from dates, not from whatever `02` wrote — `calc_PTOT.R` line 43 does `seq(from = as.Date(...), by = 'day')` and line 46 does `paste0(pr_pth,'/pr_',dts,'.tif')`. Tifs named with a time of day would be invisible to all ten index scripts, and with `DAYS_CHECK=calendar` every one of them would stop on missing inputs. The date string in `02` has to be date-only for the pipeline to join up at all.
+
+**The fix is one line**, in `get_daily_data()` in both `02` scripts, and it belongs in a macbook block, not here: take the date part of the timestamp rather than the whole of it, for example `format(as.Date(terra::time(r)), '%Y-%m-%d')`, with the `KACE-1-0-G` duplicate and leap-day handling applied to the same date-only vector. A fixture assertion that the generated name matches `^[a-z]+_[0-9]{4}-[0-9]{2}-[0-9]{2}\.tif$` would have caught it before any download. The existing fixtures do not test the filename, which is why they pass while the real run fails.
+
+#### C4, C5 — not run
+
+C4 needs the daily tifs. C5 is the measurement table and is given below for the stages that did run.
+
+#### Measured so far
+
+| Stage | Wall (s) | Peak RSS (GiB) | Files written | Bytes written |
+|---|---:|---:|---:|---:|
+| C1 acquire-controls fixture | ~3 | — | 0 | 0 |
+| C1 run-params fixture | 340 | — | synthetic, in its own temp dir | 0 |
+| C2 download | 169 | 0.11 | 6 | 1,562,489,486 |
+| C3 preprocess | 119 | 20.8 | 0 | 0 |
+| C4 ten indices | not run | — | — | — |
+
+Free space before and after are the same to the printed precision: 50 T total, 24 T available, 53 % used. The 1.6 GB under `$CD` does not move the needle on this store.
+
+**What the numbers already say about "regenerate, not transfer".** One GCM-year of raw input is 1.56 GB and takes under three minutes to fetch on this host. Eighteen GCMs across 20 historical plus 4 x 80 future years is about 6,000 GCM-years; at this rate that is roughly 9.4 TB of raw download and about 11 days of pure transfer if run strictly in series, and far less in parallel since the host is nowhere near its bandwidth limit at 10 MB/s on a single stream. The raw `.nc` files are also deletable once `02` has run. The transfer side of the migration is therefore not the obstacle; the preprocess and index stages, which are still unmeasured, are where the cost will be.
+
+**Everything is in place for the rerun.** The six raw files and the CHIRPS extent file stay under `$CD`, so a block that fixes the date string can go straight to C3 and skip the download.
+
+---
+
 ### MACBOOK 2026-11-17 — P10 (phase C): regenerate one GCM-year of monthly indices here, measured. **Large profile (20 CPU / 96 GiB). Allow 2-3 h, mostly download.**
 
 **Why.** The migration plan rests on "regenerate, not transfer": a new host fetches the public NEX-GDDP daily data
