@@ -15,7 +15,7 @@ local({
   source(normalizePath(hit), local = FALSE)
 })
 if (!require(pacman)) {install.packages('pacman'); library(pacman)} else {library(pacman)}
-pacman::p_load(tidyverse, terra, furrr, future, xts, tsbox)
+pacman::p_load(tidyverse, terra)   # xts/tsbox were loaded and never used; furrr/future dropped (see below)
 
 grep2 <- Vectorize(grep, 'pattern')
 
@@ -40,11 +40,11 @@ get_daily_data <- function (vr, ssp, gcm) {
   # Files in input directory
   fls <- list.files(path = indir, pattern = '.nc$', full.names = T)
   
-  # Process files in parallel
-  # Set up parallel processing
-  future::plan(future::multisession, workers = 6) # parallel::detectCores() - 1
-  furrr::future_map(.x = fls, .f = function(fl) {
-    
+  # One process, plain lapply. The v2_0 variant found furrr::future_map writing 0 tifs on cglabs
+  # (worker lost the enclosing gcm/vr/outdir, error swallowed, exit 0). The download dominates wall
+  # time, so nothing meaningful is lost; what is gained is that a failure here is an error.
+  lapply(fls, function(fl) {
+    t0 <- Sys.time()
     # Read annual raster
     r <- terra::rast(fl)
     # Get daily dates
@@ -89,26 +89,28 @@ get_daily_data <- function (vr, ssp, gcm) {
       # Write only the files that don't exist
       terra::writeRaster(x = r_unwrapped[[to_process]], filename = out_files[to_process], overwrite = T)
     }
-    
-  }, .progress = T)
-  future::plan(future::sequential)
+    .log(sprintf('%s: %d day(s), %d written, %d present, %.0f s', basename(fl), length(dts), sum(to_process),
+                 sum(!to_process), as.numeric(difftime(Sys.time(), t0, units = 'secs'))))
+    # The gate: every expected daily tif exists after this file. A silent partial write is a stop.
+    missing <- out_files[!file.exists(out_files)]
+    if (length(missing)) stop(sprintf('%s: %d expected daily tif(s) not written (first: %s)',
+                                      basename(fl), length(missing), basename(missing[1])), call. = FALSE)
+    invisible(NULL)
+  })
   gc(F, T, T)
   
   return(cat('Done.\n'))
   
 }
 
-scenario <- 'historical'
-
-if (scenario == 'future'){
-  ssps <- c('ssp126','ssp245','ssp370','ssp585')
-} else {
-  if (scenario == 'historical') {
-    ssps <- 'historical'
-  }
-}
-vrs <- c('pr','tasmax','tasmin','rsds','hurs','sfcWind')  # sfcWind added for FAO-56 PM ET0 (PET); no unit conversion (passes through like hurs)
-gcms <- c('ACCESS-CM2','ACCESS-ESM1-5','CanESM5','CMCC-ESM2','EC-Earth3','EC-Earth3-Veg-LR','GFDL-ESM4','INM-CM4-8','INM-CM5-0','IPSL-CM6A-LR','KACE-1-0-G','MIROC6','MPI-ESM1-2-HR','MPI-ESM1-2-LR','MRI-ESM2-0','NorESM2-LM','NorESM2-MM','TaiESM1')
+# Run config, env-overridable via 00_setup.R (issue #58 phase C): SCENARIO / SSPS / VARS / GCMS.
+# Defaults reproduce the legacy literals (historical, 6 vars, 18 GCMs).
+scenario <- cfg_scenario('historical')
+ssps <- cfg_ssps(scenario)
+vrs  <- cfg_vars()
+gcms <- cfg_gcms()
+.log('Run config: scenario=', scenario, ' | ssps=', paste(ssps, collapse = ','), ' | vars=', paste(vrs, collapse = ','),
+     ' | gcms=', length(gcms))
 
 stp <- base::expand.grid(gcm = gcms, ssp = ssps, vr = vrs, stringsAsFactors = F) |>
   base::as.data.frame(); rm(vrs, ssps, gcms)

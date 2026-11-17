@@ -26,7 +26,7 @@ urlFileExist <- function(url){
   list(exists = status == HTTP_STATUS_OK)
 }
 
-scenario <- 'historical' # historical, future
+scenario <- cfg_scenario('historical')   # SCENARIO env: historical (default) | future
 
 # # Available files to download
 # fls <- readLines('https://nex-gddp-cmip6.s3-us-west-2.amazonaws.com/index_v1.1_md5.txt')
@@ -36,30 +36,30 @@ scenario <- 'historical' # historical, future
 root <- 'https://nex-gddp-cmip6.s3.us-west-2.amazonaws.com/NEX-GDDP-CMIP6'
 
 # Filters to apply
-gcms <- c('ACCESS-CM2','ACCESS-ESM1-5','CanESM5','CMCC-ESM2','EC-Earth3','EC-Earth3-Veg-LR','GFDL-ESM4','INM-CM4-8','INM-CM5-0','IPSL-CM6A-LR','KACE-1-0-G','MIROC6','MPI-ESM1-2-HR','MPI-ESM1-2-LR','MRI-ESM2-0','NorESM2-LM','NorESM2-MM','TaiESM1')
-vars <- c('pr','tasmax','tasmin','hurs','rsds','sfcWind')  # sfcWind added for FAO-56 PM ET0 (PET)
-if (scenario == 'future') {
-  ssps <- c('ssp126','ssp245','ssp370','ssp585')
-  yrs <- 2021:2100
-} else {
-  if (scenario == 'historical') {
-    ssps <- 'historical'
-    yrs <- 1975:1980 # 1981:1994, 1995:2014
-  }
-}
+# Run config, env-overridable via 00_setup.R (issue #58 phase C): GCMS / VARS / YRS / SSPS.
+# Defaults reproduce the legacy literals (18 GCMs, 6 vars, historical 1975:1980 top-up window).
+gcms <- cfg_gcms()
+vars <- cfg_vars()
+ssps <- cfg_ssps(scenario)
+yrs  <- cfg_yrs(scenario, historical = 1975:1980, future = 2021:2100)
+scoped <- any(nzchar(Sys.getenv(c("GCMS", "VARS", "YRS", "SSPS"))))
+.log('Run config: scenario=', scenario, ' | gcms=', length(gcms), ' | vars=', paste(vars, collapse = ','),
+     ' | yrs=', min(yrs), ':', max(yrs), ' | ssps=', paste(ssps, collapse = ','),
+     if (scoped) ' | scoped by env' else ' | legacy defaults')
 
 # Setup table
 stp <- base::expand.grid(gcm = gcms, ssp = ssps, var = vars, yr = yrs, stringsAsFactors = F) |>
-  base::as.data.frame(); rm(gcms, ssps, vars, yrs)
+  base::as.data.frame()   # gcms/ssps/vars/yrs stay in scope: the manifest filter below needs them
 # Available files to download
 wd <- file.path(common_data_root(), "nex-gddp-cmip6_raw")
 dir.create(wd, F, T)
-if (scenario == 'future') {
-  outfile <- file.path(wd,'cmip6_future_files_to_download.csv')
+# The cached URL-probe manifest. A scoped run gets its own file, named by its scope, so a manifest
+# probed for one slice is never reused for another (the legacy names are kept for unscoped runs).
+scope_tag <- if (scoped) sprintf('_%dgcm_%dvar_%d-%d', length(gcms), length(vars), min(yrs), max(yrs)) else ''
+outfile <- if (scenario == 'future') {
+  file.path(wd, paste0('cmip6_future_files_to_download', scope_tag, '.csv'))
 } else {
-  if (scenario == 'historical') {
-    outfile <- file.path(wd,'cmip6_short-baseline_files_to_download.csv')
-  }
+  file.path(wd, paste0('cmip6_short-baseline_files_to_download', scope_tag, '.csv'))
 }
 if(!file.exists(outfile)) {
   plan(multisession, workers = 30)
@@ -100,23 +100,36 @@ if(!file.exists(outfile)) {
   
 } else {
   stp <- utils::read.csv(outfile)
+  .log('Manifest read from ', basename(outfile), ': ', nrow(stp), ' row(s)')
+}
+# A manifest must cover exactly the requested slice; a stale or foreign one is a stop, not a guess.
+stp <- stp[stp$gcm %in% gcms & stp$ssp %in% ssps & stp$var %in% vars & stp$yr %in% yrs, , drop = FALSE]
+want <- length(gcms) * length(ssps) * length(vars) * length(yrs)
+if (nrow(stp) != want) stop(sprintf("manifest %s holds %d row(s) for this scope but %d are expected; delete it and re-run so the URL probe repeats",
+                                    basename(outfile), nrow(stp), want), call. = FALSE)
+
+# DRY_RUN=1: list what would be fetched and exit before any download (fixture + sizing use).
+if (env_flag('DRY_RUN', FALSE)) {
+  .log('DRY_RUN: would fetch ', nrow(stp), ' file(s) into ', wd)
+  for (i in seq_len(nrow(stp))) cat('  ', stp$var[i], '/', stp$ssp[i], '/', stp$gcm[i], '/', stp$file[i], '\n', sep = '')
+  quit(save = 'no', status = 0L)
 }
 
-# Download files (serial)
-1:nrow(stp) |>
-  purrr::map(.f = function(i) {
-    
-    outd <- paste0(wd,'/',stp$var[i],'/',stp$ssp[i],'/',stp$gcm[i])
-    dir.create(outd,F,T)
-    outfile <- file.path(outd,stp$file[i])
-    
-    if (!file.exists(outfile) || file.size(outfile) < 1e8) {
-      download.file(url = file.path(stp$pth_dir[i], stp$file[i]), destfile = outfile, method = 'curl')
-    } else {
-      cat(stp$file[i],'downloaded!\n')
-    }
-    return('Done.\n')
-  })
+# Download files (serial). Each file is logged with its wall time and bytes.
+for (i in seq_len(nrow(stp))) {
+  outd <- paste0(wd,'/',stp$var[i],'/',stp$ssp[i],'/',stp$gcm[i])
+  dir.create(outd,F,T)
+  outfile <- file.path(outd,stp$file[i])
+  if (!file.exists(outfile) || file.size(outfile) < 1e8) {
+    t0 <- Sys.time()
+    download.file(url = file.path(stp$pth_dir[i], stp$file[i]), destfile = outfile, method = 'curl')
+    el <- as.numeric(difftime(Sys.time(), t0, units = 'secs'))
+    .log(sprintf('fetched %s  %s bytes  %.0f s  %.2f MB/s', stp$file[i], format(file.size(outfile), big.mark = ','),
+                 el, file.size(outfile) / 1e6 / max(el, 1e-3)))
+  } else {
+    .log('present, skipped: ', stp$file[i])
+  }
+}
 gc(F, T, T)
 
 # # Download files (parallel)

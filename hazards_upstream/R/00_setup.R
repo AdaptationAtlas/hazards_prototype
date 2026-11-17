@@ -154,6 +154,18 @@ cfg_yrs <- function(scenario = cfg_scenario(), historical = 1995:2014, future = 
   if (scenario == "historical") historical else future
 }
 
+# NEX-GDDP daily variables. Override with VARS="pr,tasmax" (csv) to fetch / convert a subset.
+ATLAS_NEX_VARS <- c('pr','tasmax','tasmin','hurs','rsds','sfcWind')
+cfg_vars <- function(default = ATLAS_NEX_VARS) {
+  v <- Sys.getenv("VARS", unset = NA_character_)
+  if (is.na(v) || v == "") return(default)
+  out <- trimws(strsplit(v, ",", fixed = TRUE)[[1]])
+  bad <- setdiff(out, ATLAS_NEX_VARS)
+  if (length(bad)) stop("VARS: unknown variable(s) ", paste(bad, collapse = ", "),
+                        "; known: ", paste(ATLAS_NEX_VARS, collapse = ", "), call. = FALSE)
+  out
+}
+
 cfg_prds <- function() {
   v <- Sys.getenv("PRDS", unset = NA_character_)
   if (is.na(v) || v == "") ATLAS_PRDS else trimws(strsplit(v, ",", fixed = TRUE)[[1]])
