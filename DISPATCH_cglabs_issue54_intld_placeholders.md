@@ -4,6 +4,96 @@ Append-only, newest block on top. Read `AGENTS.md` first, then `HANDOVER_2026-10
 
 ---
 
+### RESPONSE — cglabs 2026-11-17 (interim) — **C-re0 + C1 done, every gate PASS; the denominator is live (18/18 keys verified). C2 (R/3 intld) is running.** C3/C4 to follow in the final RESPONSE.
+
+HEAD `d098557` (`Pete Steward`, `--tlu-slot` + exit 1 on ABORT). Stamp `20261116_222408`.
+
+**C-re0 — fixture.**
+- `Rscript R/checks/fixture_publish_tier_gates.R`: exit 0, **59 `ok`**, `ALL PUBLISH-GATE FIXTURE ASSERTIONS PASSED`.
+- That includes the `--tlu-slot` stat case and both #30 regression assertions.
+- Log: `logs/issue54_Cre0_fixture_20261116_222408.log`.
+
+**C1 — dry-runs** (`logs/issue54_C1r_dry_20261116_222408.log`):
+```
+CONTROL --reference-only --res 0.25 --dry-run (no flag): FAIL distinct(exposure) + FAIL distinct(unit), ABORT,
+        "one or more gates FAILED - exiting 1 so a calling loop stops here"   -> exit 1   (exit-code fix confirmed on the real artifact)
+--reference-only --res 0.05 --tlu-slot: 'exposure' gains 'tlu' ALLOWED (--tlu-slot, the #52 total-TLU relabel), 5 -> 6; same for 'unit'; rows 8065336 = 8065336 -> exit 0
+--reference-only --res 0.25 --tlu-slot: same two ALLOWED lines; rows 5667864 = 5667864 -> exit 0
+--family-only --res 0.05 --tlu-slot:    usd 1508624 = 1508624, intld 986408 = 986408, all ok -> exit 0
+--family-only --res 0.25 --tlu-slot:    usd 1060176 = 1060176, intld 693192 = 693192, all ok -> exit 0
+```
+- The dry-run upload plan lists **18 keys, every one under `domain=exposure/type=combined/`**.
+- No other flag was passed.
+
+**C1 — live** (`logs/issue54_C1_publish_20261116_222408.log`): the #47 loop with `--tlu-slot`. All four runs exit 0, in 0.4 / 0.3 / 0.5 / 0.3 min.
+
+The publisher backed up each live key first. Backup prefixes:
+- `sandbox/backup/issue9_20261117_163638/` — reference res-05 + alias
+- `sandbox/backup/issue9_20261117_163702/` — reference res-25
+- `sandbox/backup/issue9_20261117_163719/` — family res-05 + aliases
+- `sandbox/backup/issue9_20261117_163749/` — family res-25
+
+The pre-publish S3 state is in `logs/issue54_C1_s3_before_20261116_222408.txt`.
+
+**Gate C1 — PASS on every invariant.**
+- **Only `domain=exposure/type=combined/...` keys were touched:** 18 of 18.
+- **Size and content match the local files on all 18.** No multipart ETags, so every ETag equals the local MD5.
+- **Anonymous HTTPS:** 18 × 200.
+- **Read-back from S3.**
+  - **What I ran:** downloaded the six suffixed parquets back from S3 into a scratch dir under their local filenames. Ran the B3 gate `R/checks/gate_054_reference_diff.R --new-dir <that dir>` against the old side `$PARK/exposure` and the 11-02 probe CSV. Log: `logs/issue54_C1_readback_gate*_20261116_222408.log`.
+  - **Gate result:** `GATE 054-REF PASS (res-25): 3/3` and `GATE 054-REF PASS (res-05): 3/3`.
+  - **#52 TLU slot:** 10194 → 10194 tlu rows (res-25) and 14506 → 14506 (res-05), values identical.
+  - **Rows outside the #54 pairs:** 0 differ.
+  - **The four #54 pairs:** within 2 % of the probe's NEW values.
+  - **Livestock intld total on S3:** **89.1075 B (res-25) / 89.1110 B (res-05)**, which is exactly the expected figure.
+  - **Nominal twin:** `#54 pairs present but unchanged: ok`.
+  - **Nominal parquets are byte-identical to #47's:** `d6f14d3e…` and `502ef758…`. Only their `.json` sidecars changed.
+  - **One harness slip, not a gate result:** my first res-05 pass was killed at 50 s by my own `timeout`. I re-ran it unbounded and it is the PASS above.
+
+**Denominator pin table** (prefix `domain=exposure/type=combined/source=glw4-2020_spam2020AA/region=ssa/processing=atlas-harmonized/variable=`):
+
+| key | size | ETag | LastModified | VersionId |
+|---|---|---|---|---|
+| `crop-livestock_all.parquet` | 9172420 | `8bd43fa0ce9c6baa1141a0288d86bb37` | 2026-11-17T16:37:00+00:00 | `W7GT0Yhb1cfIEG555TzVbnpA76FVfcP.` |
+| `crop-livestock_all.parquet.json` | 4253 | `97eb6d48f1cfc92b60ac9a8a1a997067` | 2026-11-17T16:37:02+00:00 | `iZx7W2OCDIpHxBU7.ZxErNtt9CyJhDSh` |
+| `crop-livestock_all_res-05.parquet` | 9172420 | `8bd43fa0ce9c6baa1141a0288d86bb37` | 2026-11-17T16:36:53+00:00 | `zSvMOFkise.EJpsuKQwJEoCUPO5FI3f1` |
+| `crop-livestock_all_res-05.parquet.json` | 4253 | `97eb6d48f1cfc92b60ac9a8a1a997067` | 2026-11-17T16:36:54+00:00 | `09EunkehfagEFTp7uWSLIIo8fbOAZdb7` |
+| `crop-livestock_all_res-25.parquet` | 7295873 | `87af763d3a32b73b50a7664a58235c4f` | 2026-11-17T16:37:17+00:00 | `Ws14cqe_Omkn7U2kX.IYBkdrypHxcalw` |
+| `crop-livestock_all_res-25.parquet.json` | 4259 | `4920a3aec0410f5f2f99b9e718b502a9` | 2026-11-17T16:37:18+00:00 | `ndFuR4TBwtKlwv2J6_8yHwpbxYmZUdrB` |
+| `vop_intld15-2021.parquet` | 1397844 | `24d738a4e71407f584b93c08ab689ea0` | 2026-11-17T16:37:47+00:00 | `GxDZ6ShQ_xad7k9.Hmh.hBcbYD.bL3qh` |
+| `vop_intld15-2021.parquet.json` | 4155 | `1c5f128ac9360df660f010e3e629ae84` | 2026-11-17T16:37:48+00:00 | `5DadCsJ2U6B1CTUCxDKvT5THJ1IvV9_k` |
+| `vop_intld15-2021_res-05.parquet` | 1397844 | `24d738a4e71407f584b93c08ab689ea0` | 2026-11-17T16:37:42+00:00 | `su4Kf.VMOopMEjWs5XfafDeHeQxM4Zix` |
+| `vop_intld15-2021_res-05.parquet.json` | 4155 | `1c5f128ac9360df660f010e3e629ae84` | 2026-11-17T16:37:43+00:00 | `6M5OnbYJVscjENMCs238GkIsxLH_SyNl` |
+| `vop_intld15-2021_res-25.parquet` | 1121126 | `03d95946d7433d55c4df111980c474cb` | 2026-11-17T16:38:07+00:00 | `8RTICM87jZtFOAa1G26rbuv1BeupyT6c` |
+| `vop_intld15-2021_res-25.parquet.json` | 4161 | `c5d65b130a609980fe078fb46a66add5` | 2026-11-17T16:38:09+00:00 | `kl2L43TxhX58X9FQ8CTS.beOJyq7uWOI` |
+| `vop_nominal-usd-2021.parquet` | 1735243 | `d6f14d3ef7da421c767b193a9eb4d302` | 2026-11-17T16:37:37+00:00 | `bvlSephxxuJT_c.14gffBDEQcAlRonz0` |
+| `vop_nominal-usd-2021.parquet.json` | 3850 | `01760cff46c75c4fd91454b774dc74d9` | 2026-11-17T16:37:38+00:00 | `pQMycScxfNhMqXSRhikCJZ7ho9oSzmjz` |
+| `vop_nominal-usd-2021_res-05.parquet` | 1735243 | `d6f14d3ef7da421c767b193a9eb4d302` | 2026-11-17T16:37:31+00:00 | `Rkp4eF8LHlv5tO1JnmwkkG92GWJ2inHV` |
+| `vop_nominal-usd-2021_res-05.parquet.json` | 3850 | `01760cff46c75c4fd91454b774dc74d9` | 2026-11-17T16:37:33+00:00 | `CkEvaOKrqelhd25fboGG9DHCyEfR8bZi` |
+| `vop_nominal-usd-2021_res-25.parquet` | 1407996 | `502ef758713afe7717dd0ae081c68111` | 2026-11-17T16:38:01+00:00 | `gemXpf_wyKRjfyi5E5YNii5y79iIiFX2` |
+| `vop_nominal-usd-2021_res-25.parquet.json` | 3856 | `cd56acd184a0ee91048d04a6ed12bbfa` | 2026-11-17T16:38:03+00:00 | `_jRcqSBjmGim1buapRHtvaE90efCEArW` |
+
+**C2 — running.**
+- **Parked by move:**
+  - Destination: `Data/_parked_issue54_20261116_222408/r3_vop_intld/{annual,jagermeyr}`.
+  - Source: `atlas_dirs$data_dir$hazard_risk_vop`.
+  - 1002 of 1002 files moved per timeframe, **0 left behind**.
+  - The file lists are in `logs/issue54_C2_parked_{annual,jagermeyr}_20261116_222408.txt`.
+- **Launched** 16:42, pid in `logs/issue54_r3_20261116_222408.pid`, `since` = `2026-11-17 16:42`. Settings:
+  - `R3_TIMEFRAMES=annual,jagermeyr`
+  - `R3_CHECK_WORKERS=4`
+  - `FORCE_OVERWRITE`, `R3_ALLOW_41_FAILURES` and `SKIP_R3_4_1` unset
+  - 368 GiB available at launch
+- **Header as expected:**
+  - `FORCE_OVERWRITE=<unset> -> overwrite=FALSE`, `overwrite4= FALSE`
+  - `R3_TIMEFRAMES active - running only: annual, jagermeyr`
+  - crop intld `spam_vop_intld15-2021_all_res-25.tif`
+  - livestock intld `glw4-2020_vop_intld15-2021_res-25.tif`, mtime 2026-11-02 19:03 (the B1 rebuild)
+- §4.1 intld started at 16:43. Expect several hours, mostly §4.2 at `worker_n4.2 <- 1`.
+
+---
+
+
 ### MACBOOK 2026-11-17 — **C1 re-issue: fix landed, option 1.** `--tlu-slot` declares the #52 addition; a gate ABORT now exits 1
 
 Your STOP was right, and both findings are fixed on `develop` (pull first; the fixture is the proof):
