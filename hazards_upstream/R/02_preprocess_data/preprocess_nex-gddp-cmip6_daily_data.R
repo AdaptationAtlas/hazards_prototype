@@ -47,20 +47,18 @@ get_daily_data <- function (vr, ssp, gcm) {
     t0 <- Sys.time()
     # Read annual raster
     r <- terra::rast(fl)
-    # Get daily dates
+    # Daily dates, DATE ONLY (#58 P10). terra::time() returns a Date on some GDAL builds and a POSIXct
+    # with a time of day on others (PASCAL, GDAL 3.4.3: "1995-01-01 12:00:00"). The old
+    # as.character(time(r)) then produced names with a colon, which GDAL cannot create, and which
+    # 04 (names built from seq(as.Date(), by='day')) could never find anyway.
+    all_dts <- format(terra::time(r), '%Y-%m-%d')
     if (gcm == 'KACE-1-0-G') {
-      
-      dts <- as.character(terra::time(r))
-      dts <- dts[-which(duplicated(dts))] # Remove duplicated dates
+      dts <- all_dts[!duplicated(all_dts)]                     # Remove duplicated dates
       yr  <- unique(lubridate::year(dts))
-      leap_yr <- grep(pattern = paste0(yr,'-02-29'), x = dts)
-      if (length(leap_yr) > 0) {dts <- dts[-leap_yr]} # Remove Feb 29 if leap year
-      r <- r[[match(x = dts, table = as.character(time(r)))]]
-      
+      dts <- dts[!dts %in% paste0(yr, '-02-29')]                # Remove Feb 29 if leap year
+      r <- r[[match(x = dts, table = all_dts)]]
     } else {
-      
-      dts <- as.character(terra::time(r))
-      
+      dts <- all_dts
     }
     
     # Create output filenames

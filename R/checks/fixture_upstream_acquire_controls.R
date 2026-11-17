@@ -71,14 +71,18 @@ ok(r$status != 0 && any(grepl("VARS: unknown variable", r$log)), "VARS with an u
 ## ---- C. preprocess script, end to end on a synthetic .nc ---------------------------------------
 cat("C. preprocess_nex-gddp-cmip6_daily_data.R (real script, synthetic .nc)\n")
 days <- as.Date("1995-01-01") + 0:4
-mk_nc <- function(var, scale) {
+mk_nc <- function(var, scale, noon = FALSE) {
   r <- rast(nrows = 4, ncols = 8, xmin = 0, xmax = 360, ymin = -90, ymax = 90, nlyrs = length(days))
   values(r) <- rep(scale * seq_along(days), each = 32)        # layer i holds scale*i everywhere
-  time(r) <- days
+  # noon = TRUE stores a POSIXct axis at 12:00, which terra reads back as POSIXct: what PASCAL's GDAL
+  # 3.4.3 returns for the real NEX files (P10, 2026-11-17). The daily names must still be date-only.
+  time(r) <- if (noon) as.POSIXct(paste(days, "12:00:00"), tz = "UTC") else days
   d <- file.path(wd, var, "historical", "FXGCM"); dir.create(d, FALSE, TRUE)
   writeCDF(r, file.path(d, sprintf("%s_day_FXGCM_historical_r1i1p1f1_gn_1995_v1.1.nc", var)), varname = var, overwrite = TRUE)
 }
-mk_nc("pr", 1e-5); mk_nc("tasmax", 300); mk_nc("rsds", 100); mk_nc("hurs", 50)
+mk_nc("pr", 1e-5); mk_nc("tasmax", 300); mk_nc("rsds", 100); mk_nc("hurs", 50, noon = TRUE)
+ok(inherits(time(rast(list.files(file.path(wd, "hurs", "historical", "FXGCM"), full.names = TRUE))), "POSIXct"),
+   "the hurs .nc reads back with a POSIXct (time-of-day) axis, the PASCAL case")
 mk_nc("tasmin", 290)                                          # present on disk, excluded by VARS below
 out <- function(var) file.path(CD, "nex-gddp-cmip6", var, "historical", "FXGCM", paste0(var, "_", days, ".tif"))
 r <- run(PP, c(COMMON_DATA = CD, GCMS = "FXGCM", VARS = "pr,tasmax,rsds,hurs"))
@@ -86,6 +90,9 @@ ok(r$status == 0, paste("preprocess exits 0", if (r$status != 0) paste(tail(r$lo
 ok(all(file.exists(out("pr"))) && all(file.exists(out("tasmax"))) && all(file.exists(out("rsds"))) && all(file.exists(out("hurs"))),
    "5 daily tifs per requested variable, named <var>_<date>.tif from the .nc time axis")
 ok(!any(file.exists(out("tasmin"))), "tasmin, on disk but outside VARS, is not converted")
+written <- list.files(file.path(CD, "nex-gddp-cmip6"), "\\.tif$", recursive = TRUE)
+ok(length(written) == 20 && all(grepl("^[a-zA-Z]+_[0-9]{4}-[0-9]{2}-[0-9]{2}\\.tif$", basename(written))),
+   "every written name is <var>_YYYY-MM-DD.tif, including from the POSIXct axis (no time of day, no colon)")
 v <- function(var, i) values(rast(out(var)[i]))[1, 1]
 near <- function(a, b) { r <- isTRUE(all.equal(as.numeric(a), as.numeric(b), tolerance = 1e-5)); if (!r) cat("    got", format(a, digits = 10), "expected", format(b, digits = 10), "\n"); r }   # .nc stores float32
 ok(near(v("pr", 3), 3e-5 * 86400), "pr: kg m-2 s-1 x 86400 -> mm/day")
@@ -110,8 +117,14 @@ for (f in c(DL, PP)) {
 }
 ppc <- sub("#.*$", "", readLines(PP, warn = FALSE))
 ok(!any(grepl("furrr|future_map|tsbox|xts", ppc)), "preprocess: no furrr/future_map (silent-zero-output path) and no unused xts/tsbox")
+for (f in c(PP, file.path(UP, "02_preprocess_data", "preprocess_nex-gddp-cmip6_daily_data_v2_0.R"))) {
+  code <- sub("#.*$", "", readLines(f, warn = FALSE))
+  ok(!any(grepl("as.character\\(terra::time\\(r\\)\\)|as.character\\(time\\(r\\)\\)", code)) && any(grepl("format\\(terra::time\\(r\\), '%Y-%m-%d'\\)", code)),
+     paste(basename(f), ": daily names come from format(time, '%Y-%m-%d'), never as.character(time)"))
+}
 dlc <- sub("#.*$", "", readLines(DL, warn = FALSE))
 ok(any(grepl("env_flag\\('DRY_RUN'", dlc)), "download: DRY_RUN gate present")
+ok(any(grepl("parallelly::availableCores\\(\\)", dlc)), "download: URL-probe workers are capped by the cgroup (parallelly::availableCores)")
 
 unlink(CD, recursive = TRUE)
 cat("\nALL UPSTREAM ACQUIRE-CONTROLS FIXTURE ASSERTIONS PASSED\n")

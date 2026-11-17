@@ -2,6 +2,60 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-17 — P11: phase C resumes at C3 with the date-only fix. **Large profile. Under an hour.**
+
+**Why.** Your P10 diagnosis was exact and is now fixed on `develop`: both `02` scripts build the daily names with
+`format(terra::time(r), '%Y-%m-%d')`, so a POSIXct axis gives `pr_1995-01-01.tif` and never a colon. The
+`KACE-1-0-G` duplicate/leap-day handling works on the same date-only vector. The fixture now writes one synthetic
+`.nc` with a noon POSIXct axis (what your GDAL returns for the real files) and asserts every written name matches
+`<var>_YYYY-MM-DD.tif`; it also checks statically that `as.character(time(r))` is gone from both scripts. Two
+smaller P10 findings are also taken: the URL-probe worker count is now capped by `parallelly::availableCores()`
+(`PROBE_WORKERS` overrides), and the CHIRPS `find` is no longer depth-limited in any later block. The mixed
+`_v1.1` / no-suffix file names are what the bucket holds and are not a gate.
+
+The six raw `.nc` files and the CHIRPS file stay under `$CD` from P10, so this block skips C0-C2 and runs C3-C5.
+
+**Rules.** As P10: writes only under `$CD` and `logs/`; no installs (stop on `Installing package`); no S3; `nohup` +
+`.pid` + `/usr/bin/time -v`; no usernames, hostnames or IPs; the root is written as `$CD`.
+
+#### C3.0 — pull, probe
+```bash
+cd <repo> && export ATLAS_PROJECT_DIR=$PWD && export CD=<the P10 root>
+git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD      # develop, at or after the P11 commit
+find $CD/nex-gddp-cmip6_raw -name '*.nc' | wc -l                                  # 6, from P10
+Rscript R/checks/fixture_upstream_acquire_controls.R 2>&1 | tail -2               # ALL ... PASSED
+```
+The 04 fixture passed in P10 on this host and nothing under 04 changed; do not rerun it.
+
+#### C3 — preprocess (six .nc -> 6 x 365 daily tifs)
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S)
+nohup /usr/bin/time -v env COMMON_DATA=$CD GCMS=ACCESS-ESM1-5 SCENARIO=historical Rscript hazards_upstream/R/02_preprocess_data/preprocess_nex-gddp-cmip6_daily_data.R > logs/p11_preprocess_$STAMP.log 2>&1 &
+echo $! > logs/p11_preprocess_$STAMP.pid
+# poll; then:
+grep -E "day\(s\)|rror|Elapsed|Maximum resident" logs/p11_preprocess_$STAMP.log
+for v in pr tasmax tasmin hurs rsds sfcWind; do echo "$v $(ls $CD/nex-gddp-cmip6/$v/historical/ACCESS-ESM1-5 | wc -l) $(ls $CD/nex-gddp-cmip6/$v/historical/ACCESS-ESM1-5 | head -1)"; done
+du -sb $CD/nex-gddp-cmip6
+```
+**Expect** six lines `365 day(s), 365 written, 0 present`, 365 tifs per variable, first name `<var>_1995-01-01.tif`,
+no `Error`. Report wall, peak RSS (P10 saw 20.8 GiB before the stop, so the number is of interest), bytes, and the
+per-file seconds.
+
+#### C4 — ten indices, sequential, each timed
+Exactly P10's C4 (the `logs/p10_indices_*.sh` recipe with a new stamp, `DAYS_CHECK=calendar`, the ten scripts in the
+same order). Expect every `exit=0`, no `daily inputs missing`, at least 12 tifs under every index directory.
+
+#### C5 — report
+P10's table, now with C3 and the ten C4 rows filled in: wall seconds, peak RSS (GiB), files, bytes per stage; `du`
+of `nex-gddp-cmip6` and `nex-gddp-cmip6_indices`; `df` after. Keep everything under `$CD`.
+
+**Stop and describe** on any of: not on `develop`; the fixture failing; a raw `.nc` count other than 6;
+`Installing package`; an `exit` other than 0; fewer than 365 daily tifs for any variable; any write outside `$CD`
+and `logs/`.
+
+**To answer:** prepend one `### RESPONSE — pascal` (P11), run the IP grep, commit only this file, push, verify it
+landed, end with a delivery line.
+
 ### RESPONSE — pascal 2026-11-17 — **P10 stopped at C3.** C0, C1 and C2 all pass, and the download is cheap: **six files, 1.56 GB, 169 s wall, 0.11 GiB peak RSS**. **Preprocess fails for every variable**: `terra::time()` on these `.nc` files returns a POSIXct with a time of day here, so `02` builds filenames like `pr_1995-01-01 12:00:00.tif`, and GDAL cannot create a file whose name contains colons — `[writeRaster] cannot write file`, exit 1, zero daily tifs. C4 and C5 were not run
 
 The fault is in the daily filename, not in the data, the host or the environment: the same raster writes without complaint the moment the name is `pr_1995-01-01.tif`. It is also not merely a naming nicety — `04` composes its inputs as `paste0(pr_pth,'/pr_',dts,'.tif')` from `seq(as.Date(...), by = 'day')`, so a date-with-time name would miss every lookup in `04` even on a filesystem that accepted it. A one-line change in `02` fixes it, but the block says never improvise, so nothing was changed.

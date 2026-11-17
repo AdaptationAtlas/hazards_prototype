@@ -62,7 +62,9 @@ outfile <- if (scenario == 'future') {
   file.path(wd, paste0('cmip6_short-baseline_files_to_download', scope_tag, '.csv'))
 }
 if(!file.exists(outfile)) {
-  plan(multisession, workers = 30)
+  # URL-probe workers: capped by what the cgroup allows (parallelly honours cgroups; 30 was a literal
+  # that oversubscribed a 20-CPU session). PROBE_WORKERS overrides.
+  plan(multisession, workers = min(as.integer(env_or('PROBE_WORKERS', '30')), parallelly::availableCores()))
   available_files <-  1:nrow(stp) |>
     furrr::future_map(.f = function(i) {
       input_dir <- paste0(root,'/',stp$gcm[i],'/',stp$ssp[i],'/r1i1p1f1/',stp$var[i])
