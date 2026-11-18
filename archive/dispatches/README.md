@@ -8,6 +8,16 @@ Anything still in flight lives at the repository root.
 
 | File | Thread | Outcome |
 |---|---|---|
+| `HANDOVER_2026-10-23.md` | Session handover after #13/#47 (2026-10-23 → 11-18): #14 HSH scoping, #54/#52 plan, publish-gate and R/3 run rules | Superseded by `HANDOVER_2026-11-19.md` at the root (archived 2026-11-19). Its §2 gate and R/3 run rules and §3 #14 scope are still the reference |
+| `DISPATCH_cglabs_obs_s3_r3.md` | Observed hazards S3–S5 + R/3 + publish, 2006–2025 (Oct–Nov 2026) | Published 2026-11-04: 30/30 objects under `source=chirps-chirts-agera5`, P-verify PASS. Soil fill (#56) and island caveat (#57) in the product text |
+| `DISPATCH_cglabs_obs_s1_ingest.md` | Observed S1 ingest: CDH Zarr → daily 0.25° GeoTIFFs (Oct 2026) | Complete 2026-10-30; CHIRTS coastal-edge repair (caps 57/43 °C) accepted as V1 |
+| `DISPATCH_cglabs_obs_s2_equivalence.md` | S2: hazards_upstream index scripts on the observed tree, old vs new code | All invariants hold, bit-identical (2026-10-24) |
+| `DISPATCH_pascal_obs_s1_repro.md` | S1 smoke reproduced on PASCAL | Closed 2026-10-27: bit-identical across machines |
+| `DISPATCH_obs_s0_probe.md` · `DISPATCH_obs_hf_probe.md` | S0: where observed ingest runs and from where (CHC vs Hugging Face Zarr) | Closed 2026-10-24: read the CDH Zarr cubes in place |
+| `DISPATCH_obs_find_local_copies.md` | Search both nodes for usable local CHIRPS/CHIRTS/AgERA5 copies | None usable (2026-10-26); §F1/F2 inventories still cited by the AgWise thread |
+| `DISPATCH_pascal_obs_env.md` | Per-user `obs` conda env on PASCAL for the Zarr cubes | Delivered 2026-10-24; documented in `server-environment.md` |
+| `DISPATCH_pascal_obs_fpar.md` | Rangeland FPAR (#31) full-Africa ingest + S6 on PASCAL, then sensitivity G0–G3 | Complete 2026-11-02; Pete's design decision taken; CGlabs re-ingest K0–K3 PASS (`DISPATCH_cglabs_obs_fpar.md`, still at root for the publish) |
+| `DISPATCH_cglabs_pipeline_map_paths.md` | Read-only node inventory for the pipeline map (`HANDOVER_2026-10-22_…`) | Done 2026-10-22, three invariants pass |
 | `HANDOVER_2026-11-03_cdh-atlas-hazards-2026.11.md` | Topic briefing for Brayden: freeze the live hazard products as `v2026.11` for CDH ingest (Nov 2026) | Answered 2026-11-05 (publish as is; v0.5.0; one record per dataset; one PR each). Superseded by `HANDOVER_2026-11-13_catalog-map.md`; the frozen set was completed on S3 2026-11-18 and its records are in `metadata/cdh/` |
 | `DISPATCH_cglabs_issue54_intld_placeholders.md` | #54 constant-I$ placeholders + #52 TLU slot (Oct–Nov 2026) | Closed 2026-11-18. Denominator (18 keys) published 2026-11-17 with the new `--tlu-slot` flag; R/3 intld tier (12 keys) published 2026-11-18. Only LBY/SLE cattle, LSO poultry, SWZ sheep moved, each by the probe factor; crop rows bit-identical; continental ×1.000259. Block C first STOPPED at C1 (no flag could declare the `tlu` addition; ABORT exited 0) — both fixed in `d098557`. head_n TLU tier deferred to a later version |
 | `DISPATCH_cglabs_r22_hazard_change_publish.md` | R/2.2 hazard-change rebuild into `v2026.11` (Nov 2026) | Published 2026-11-16, G0–G4 PASS, 10/10 keys verified. G2 independent raster recompute settled the adm0 THI shift: the old inflated values (SDN 100.0) were duplicate disputed-claimant adm0 rows, removed by the rebuild |

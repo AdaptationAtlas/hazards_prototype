@@ -69,7 +69,7 @@ Disposition is one of **move** (copy the bytes or the credential; nothing else w
 
 | # | What CGlabs does today | Disposition | Blocker | Notes |
 |---|---|---|---|---|
-| 17 | S1 ingest (`python/obs/s1_ingest.py`): CDH Zarr → daily 0.25° GeoTIFFs, ~38k files, ~18 GB | **regenerate** | none | Must run in the `obs` conda env (GDAL 3.13.3). PASCAL and the macbook already produced byte-identical S1 smoke outputs (`DISPATCH_pascal_obs_s1_repro.md`). |
+| 17 | S1 ingest (`python/obs/s1_ingest.py`): CDH Zarr → daily 0.25° GeoTIFFs, ~38k files, ~18 GB | **regenerate** | none | Must run in the `obs` conda env (GDAL 3.13.3). PASCAL and the macbook already produced byte-identical S1 smoke outputs (`archive/dispatches/DISPATCH_pascal_obs_s1_repro.md`). |
 | 18 | S2 monthly indices for the observed token (upstream `fast_calc_*`) | **regenerate** | follows item 17 | Same code path as item 7. |
 | 19 | S3–S5 observed hazards (`R/obs/s3_s5_obs_hazards.R`) | **regenerate** | follows item 18 | |
 | 20 | S6 rangeland FPAR (`R/obs/s6_rangeland_fpar.R`) | **regenerate** | none | PASCAL has already run the S6 variant comparison (2026-11-02), so the code path is exercised there. |

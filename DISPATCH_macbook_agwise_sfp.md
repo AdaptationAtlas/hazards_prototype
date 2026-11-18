@@ -47,7 +47,7 @@ selection before drilling deeper.
 **What was done.** Immediate children of candidate roots, bounded output, short timeouts. No
 storage-wide recursive search, no recursive listing, no `du`, no file counts, no content scans.
 Nothing downloaded, modified or published. The one name search that was needed was **reused, not
-repeated** — the `-maxdepth 8` sweep in `DISPATCH_obs_find_local_copies.md` §F1 (2026-10-26)
+repeated** — the `-maxdepth 8` sweep in `archive/dispatches/DISPATCH_obs_find_local_copies.md` §F1 (2026-10-26)
 already covered all four mount paths of the bulk share plus the home volume, rc 0 on all 95
 top-level directories.
 
@@ -113,7 +113,7 @@ this is picked.
 
 No recursive or storage-wide search; no `du`; no file counts; no content scans; no downloads, no
 modifications, no publication; no drilling below the first level of any candidate root. The climate
-NetCDF holdings were **not** re-measured — `DISPATCH_obs_find_local_copies.md` §F2 already carries
+NetCDF holdings were **not** re-measured — `archive/dispatches/DISPATCH_obs_find_local_copies.md` §F2 already carries
 products, versions, date ranges and completeness.
 
 #### The one narrow inspection queued behind this

@@ -236,7 +236,7 @@ Python side is substantially more capable.
 ### The `obs` environment — reading the CDH Zarr cubes
 
 A second, deliberately small environment was built at `~/.conda/envs/obs` so the node can read the
-CDH Hugging Face Zarr v3 cubes of CHIRTS-ERA5 and CHIRPS v3 (`DISPATCH_pascal_obs_env.md`). The
+CDH Hugging Face Zarr v3 cubes of CHIRTS-ERA5 and CHIRPS v3 (`archive/dispatches/DISPATCH_pascal_obs_env.md`). The
 system GDAL that R's `terra` links to is 3.4.3 and cannot open them, and the `python3` on `PATH`
 from `/opt/conda` carries no scientific packages at all.
 

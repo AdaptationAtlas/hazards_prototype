@@ -4,7 +4,7 @@
 
 ### RESPONSE — cglabs 2026-11-02 (2) — **K3a and K3b both PASS.** Every PASCAL figure reproduces: 24,015 rangeland cells, 0 without a season, 0 ties, P(moderate) = 0.211 = 4/19 everywhere, 30 bundles; and K3b's compare line is **exact** — Jaccard 0.615, trend +0.000, worst 2011,2015,2017. Finding: the dry axis almost never appears alone, because moderate THI-max is near-saturated. `Data/hazard_risk/ggcmi-crop` now holds **189** bundles.
 
-Stamp `20261102_215657`. Run after `DISPATCH_cglabs_obs_s3_r3.md` RESPONSE (6): L3 was clean, and the `annual12` stacks S6 reads were rewritten by that rerun at 20:56, so S6 ran against post-soil-fill inputs.
+Stamp `20261102_215657`. Run after `archive/dispatches/DISPATCH_cglabs_obs_s3_r3.md` RESPONSE (6): L3 was clean, and the `annual12` stacks S6 reads were rewritten by that rerun at 20:56, so S6 ran against post-soil-fill inputs.
 
 #### K3a — V1, `min`, not detrended. PASS, 9.6 min.
 
@@ -114,17 +114,17 @@ VALIDATE PASS
 ```
 `du -sh $OR/Data/obs_fpar`: 134M.
 
-**K2: cross-node gate against PASCAL's list** (`DISPATCH_pascal_obs_fpar.md`, RESPONSE 2026-10-31, `26b5577`):
+**K2: cross-node gate against PASCAL's list** (`archive/dispatches/DISPATCH_pascal_obs_fpar.md`, RESPONSE 2026-10-31, `26b5577`):
 - Latest manifest row per file: 762 here, 762 in PASCAL's list. **762/762 md5 identical; 0 only-here, 0 only-PASCAL.**
 - My digest (md5s concatenated in path order, md5-hashed): `895eddeb1ca676420fdb402b5b04d1a3`, identical to PASCAL's.
 - All 762 files re-hashed on disk against the manifest: 0 mismatches.
 
 **K3:** waits for J6's `annual12/{THI_max_max,NDWL0_mean}.tif`. J6 is held behind the S3 J3 bundle-count stop (see
-`DISPATCH_cglabs_obs_s3_r3.md`).
+`archive/dispatches/DISPATCH_cglabs_obs_s3_r3.md`).
 
 ### MACBOOK 2026-10-30 — K0-K2 now, in parallel with the J chain; K3 after J6's annual12 stacks exist
 
-**Why here.** PASCAL ran the full-Africa FPAR ingest + S6 cleanly (`DISPATCH_pascal_obs_fpar.md`, `dd892bb`), but it has
+**Why here.** PASCAL ran the full-Africa FPAR ingest + S6 cleanly (`archive/dispatches/DISPATCH_pascal_obs_fpar.md`, `dd892bb`), but it has
 no AWS credentials and no S3 client, so its 143 MB cannot be relayed without putting bucket credentials on a shared
 box. Re-ingest here instead: the run is **network-bound** (JRC served PASCAL at ~0.48 MB/s → 29.5 h for 756 dekads),
 not CPU-bound, so it coexists with J2-J6. PASCAL's copy becomes the cross-node gate (K2).

@@ -1,7 +1,7 @@
 #!/usr/bin/env Rscript
 # scripts/obs_agera5_v1_v2_gate.R
 # ===============================
-# PLAN_obs_hazard_pipeline.md §4 gate (DISPATCH_cglabs_obs_s1_ingest.md, I4): is AgERA5 v1.0 solar radiation the
+# PLAN_obs_hazard_pipeline.md §4 gate (archive/dispatches/DISPATCH_cglabs_obs_s1_ingest.md, I4): is AgERA5 v1.0 solar radiation the
 # same series as the AgERA5 v2.0 SRF that S1 ingests? Read-only; writes two CSVs under logs/.
 #
 #   v1.0  {common_data}/ecmwf_agera5/solar_radiation_flux/Solar-Radiation-Flux_C3S-glob-agric_AgERA5_<yyyymmdd>_final-v1.0.nc

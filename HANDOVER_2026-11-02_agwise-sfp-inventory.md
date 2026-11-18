@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-02 · **Node:** CGlabs · **Mode:** read-only, first pass
 **Consumer:** whoever scopes the SFP data hub's AgWise holdings.
-**Not a session handover.** Entry point stays `HANDOVER_2026-10-23.md`.
+**Not a session handover.** Entry point is the newest session handover (`HANDOVER_2026-11-19.md`).
 
 Companion thread: `DISPATCH_macbook_agwise_sfp.md`.
 
@@ -22,7 +22,7 @@ no content scans** — the bulk share holds billions of files, and truncating ou
 the cost of producing it. Nothing was downloaded, modified or published.
 
 Where a name search was needed, the existing one was reused rather than repeated: the
-`-maxdepth 8` sweep recorded in `DISPATCH_obs_find_local_copies.md` §F1 (2026-10-26) covered all
+`-maxdepth 8` sweep recorded in `archive/dispatches/DISPATCH_obs_find_local_copies.md` §F1 (2026-10-26) covered all
 four mount paths of the bulk share and the separate home volume, finishing rc 0 on all 95
 top-level directories.
 
@@ -93,7 +93,7 @@ Ranked by apparent value to the hub.
 | `{common_data}/rhomis_v3/` | household survey, EiA-adjacent; `raw`, `download_rhomis.R`, `rhomis_vs_mapspam.R` | source + analysis |
 | `{common_data}/soilgrids/` | `raw`, `intermediate`, 2024-06-26, owned by another uid | source + intermediate |
 | `{common_data}/atlas_yield/` | `daily_gcm_extract` — yield-named, but a GCM extract | intermediate |
-| climate NetCDFs: `{common_data}/ecmwf_agera5/`, `chirps_af/`, `chirps_wrld/`, `chirts/` | already inventoried with products, versions, date ranges and completeness in `DISPATCH_obs_find_local_copies.md` §F2 — do not re-measure | source |
+| climate NetCDFs: `{common_data}/ecmwf_agera5/`, `chirps_af/`, `chirps_wrld/`, `chirts/` | already inventoried with products, versions, date ranges and completeness in `archive/dispatches/DISPATCH_obs_find_local_copies.md` §F2 — do not re-measure | source |
 
 **DSSAT: nothing found.** The soil holdings are gridded property rasters, not DSSAT profiles — no
 `.SOL`, no profile-keyed table at depth 1. They are the ingredients an AgWise DSSAT workflow builds
@@ -115,7 +115,7 @@ Thin on the volume. **No README and no manifest at the `common_data` root** — 
 `fcc_attributes.tab`, ERA's `MASTER CODES`). The usable manifests live in this repo, not on the
 share:
 
-- `DISPATCH_obs_find_local_copies.md` §F2 — climate product inventory, versions and completeness
+- `archive/dispatches/DISPATCH_obs_find_local_copies.md` §F2 — climate product inventory, versions and completeness
 - `metadata/hosts.json` — path registry
 - `HANDOVER_2026-10-22_hazard-pipeline-map-and-obs-baseline.md` — pipeline map
 

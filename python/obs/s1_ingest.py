@@ -17,7 +17,7 @@ NaN outside the Africa box, so R/1-R/3 and base_rast work unchanged. Layout = wh
 Run the upstream scripts with COMMON_DATA=<out_root> GCMS=<token> DAYS_CHECK=strict AVAIL_SEED_MONTHS=<first year>-01,
 after `s1_ingest.py link` has placed chirps_wrld/ and atlas_hazards/soils/ in <out_root>.
 
-Node findings folded in (DISPATCH_cglabs_obs_s1_ingest.md, 2026-10-27):
+Node findings folded in (archive/dispatches/DISPATCH_cglabs_obs_s1_ingest.md, 2026-10-27):
   * the FAO AgERA5 COGs are georeferenced half a cell off the C3S grid (the C3S cell centred at (lon, lat) sits in
     the pixel whose top-left CORNER is (lon, lat)); S1 shifts the window transform by (-0.05, +0.05) deg so the
     area-average is on the true grid (AGERA5_COG_SHIFT);
@@ -27,7 +27,7 @@ Node findings folded in (DISPATCH_cglabs_obs_s1_ingest.md, 2026-10-27):
     extra NaN speckle: the daily-mean RH takes the mean of >= 4 of the 5 local times per cell, the listing reports
     objects older than the 2025-09 rewrite, and the manifest flags any day that used fewer than all mapsets.
 
-Reader rules learned in the S0 probes (DISPATCH_obs_hf_probe.md, DISPATCH_pascal_obs_env.md):
+Reader rules learned in the S0 probes (archive/dispatches/DISPATCH_obs_hf_probe.md, archive/dispatches/DISPATCH_pascal_obs_env.md):
   * read the cubes with xarray (real coordinates). GDAL's ZARR driver opens them with NO georeferencing;
   * xarray applies the int16 scale_factor 0.1: never scale again;
   * index by computed integer positions and assert the coordinates (CHIRPS lon carries float noise);

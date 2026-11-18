@@ -287,7 +287,7 @@ rediscover the slow way.
   i.e. `PY=~/.conda/envs/obs/bin/pyobs` in the obs dispatches.
 
   **The leaked paths break two things, not one** (found 2026-11-02, L0 of
-  `DISPATCH_cglabs_obs_s3_r3.md`; pinned 2026-11-04). The JupyterHub image exports
+  `archive/dispatches/DISPATCH_cglabs_obs_s3_r3.md`; pinned 2026-11-04). The JupyterHub image exports
   `PROJ_DATA=/opt/conda/share/proj`, `GDAL_DATA=/opt/conda/share/gdal` and
   `GDAL_DRIVER_PATH=/opt/conda/lib/gdalplugins`, and they override the `obs` env:
   1. `PROJ_DATA` → the `proj.db` `DATABASE.LAYOUT.VERSION.MINOR = 6` `CRSError` above.

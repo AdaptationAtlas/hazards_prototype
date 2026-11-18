@@ -191,7 +191,7 @@ should_skip <- function(outfile, force = env_flag("FORCE_OVERWRITE", FALSE)) {
 # gap does:
 #   warn     (default) legacy behaviour - continue on the days present - plus a WARN line per month
 #            that names the gap. NEX-GDDP runs are unchanged by default: the on-disk calendar layout
-#            of the 360-day / no-leap GCMs has not been censused yet (DISPATCH_obs_s0_probe.md).
+#            of the 360-day / no-leap GCMs has not been censused yet (archive/dispatches/DISPATCH_obs_s0_probe.md).
 #   calendar stop on any gap the series' own calendar does not explain. The calendar is inferred
 #            from the files in that directory: a missing 31st is a calendar gap only if the
 #            directory holds no 31st-of-month file at all (360-day GCM); a missing 29-Feb only if

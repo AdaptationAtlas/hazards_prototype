@@ -3,7 +3,7 @@
 # =======================
 # Read-only bandwidth probe for the Hugging Face Zarr cubes of CHIRTS-ERA5 daily and CHIRPS v3 daily
 # (CDH redistributions, 2026-10-08), the alternative to data.chc.ucsb.edu that the S0 probe found
-# throttled to 8-10 kB/s (DISPATCH_obs_s0_probe.md, 2026-10-24).
+# throttled to 8-10 kB/s (archive/dispatches/DISPATCH_obs_s0_probe.md, 2026-10-24).
 #
 # Stores (Zarr v3, int16, Zstd-5, chunks 128 days x 300 lat x 300 lon, chunk keys c/<t>/<lat>/<lon>):
 #   https://huggingface.co/datasets/aaguilar90/chirts-era5-daily/resolve/main/chirts-era5-daily.zarr  (Tmax, Tmin; 70N..60S)
