@@ -2,7 +2,7 @@
 
 **Date:** 2026-11-16
 **Shape:** topic briefing (`HANDOVER_<date>_<topic>.md`). Companion to
-`HANDOVER_2026-11-16_issue58-pascal-migration.md`, which holds the thread state, the ranked blockers
+`HANDOVER_2026-11-19_issue58-pascal-migration.md`, which holds the thread state, the ranked blockers
 and the next steps. This file is the inventory: every piece of work CGlabs performs today, what
 happens to it, what stands in the way, and in what order.
 **For:** the macbook session running #58, and anyone deciding sequencing or budget.
@@ -168,7 +168,7 @@ Everything else in §2 is a function of pinned inputs and code in this repositor
 
 `server-environment-cglabs.md` §3, §4, §9 (CGlabs hardware, storage, gotchas);
 `server-environment.md` §1–§5 and `metadata/hosts.json` (PASCAL hardware, profiles, R and Python
-environments, GDAL versions); `HANDOVER_2026-11-16_issue58-pascal-migration.md` (thread state and
+environments, GDAL versions); `HANDOVER_2026-11-19_issue58-pascal-migration.md` (thread state and
 ranked blockers); `DISPATCH_pascal_issue29_followups.md` P0–P8 (acquire-layer and R-environment
 evidence, the GDAL sum bug); `PLAN_obs_hazard_pipeline.md` (observed pipeline stages and sizes);
 `DISPATCH_cglabs_obs_long_series.md` (S7 timings and output sizes).

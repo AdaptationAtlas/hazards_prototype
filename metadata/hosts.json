@@ -130,13 +130,15 @@
           "S3: there is no s3fs, paws or boto3, and no credentials. Atlas S3 is read over anonymous HTTPS (R/00_acquire.R does this in base R), and publishing goes through CGlabs. Regenerating rather than transferring has been shown to work: an FPAR re-ingest on CGlabs was byte-identical to this host's copy (762/762, 2026-11-02).",
           "Download rates: JRC ASAP served this host at ~0.48 MB/s (29.5 h for 756 dekads), about 15x slower than CGlabs. Hugging Face cubes run at ~2 MB/s on a single stream and return 429 on bulk pixel reads.",
           "Background jobs: a shell `wait` on a nohup/setsid child never fires; track jobs with a pid-file loop or by tailing the log. Node sessions go idle after each RESPONSE.",
-          "Python: the conda env `obs` (python 3.12, GDAL 3.13, rasterio, xarray, zarr) also exists on CGlabs, where it is run through the `pyobs` wrapper. Facts updated 2026-11-02 (#58), with server-environment.md section 9 as source."
+          "Python: the conda env `obs` (python 3.12, GDAL 3.13, rasterio, xarray, zarr) also exists on CGlabs, where it is run through the `pyobs` wrapper. Facts updated 2026-11-02 (#58), with server-environment.md section 9 as source.",
+          "GDAL 3.4.3 is wrong twice over (sum-resample with NoData; netCDF time axis as POSIXct) - see server-environment.md section 8 item 9. Four hub sessions max (4 x 20 CPU = the box). Profile change = stop + start the server. Facts updated 2026-11-19 (#58 P8-P10)."
         ],
         "writable_root": "/cluster01/Workspace/atlas",
         "r_version": "4.6.1",
-        "r_site_library": "built for R 4.5; compiled packages using SETLENGTH fail to load (data.table, rlang); terra and sf load; not writable",
+        "r_site_library": "rebuilt by IT against R 4.6.1 on 2026-11-09 (SR-167702); 1,671 of 1,678 load as a plain account; the 7 failures (RGtk2 +2, pryr, ANCOMBC, mlr3proba, climateR) are unused here",
         "r_user_library_rebuilt": [
-          "data.table"
+          "wbkernel",
+          "trendkernel"
         ],
         "s3_read": "https",
         "s3_client": false,
@@ -155,8 +157,32 @@
           "Large": {
             "cpu": 20,
             "ram_gib": 96,
-            "cpu_max": "2000000 100000"
+            "cpu_max": "2000000 100000",
+            "memory_max": "103079215104"
           }
+        },
+        "r_missing_for_bakes": [
+          "doFuture",
+          "jrvFinance"
+        ],
+        "hub_sessions_max": 4,
+        "profile_change": "Hub Control Panel: Stop My Server, then Start My Server and pick the profile; logging out does not change it; stopping kills nohup jobs",
+        "gdal_r_faults": [
+          "gdalwarp -r sum / terra::resample(method=\"sum\") over-counts when the source has a NoData mask (max 7399 where 9 is correct); GDAL 3.13 correct on the same file. R/mass_check.R guards 0.4.1. IT upgrade requested 2026-11-14.",
+          "netCDF driver reports the NEX-GDDP time axis in seconds: terra::time() is POSIXct with a time of day, not a Date. hazards_upstream 02 fixed to date-only names (d5c9e9d)."
+        ],
+        "gdal_apt_candidate": "3.4.1 (installed 3.4.3+dfsg-1~focal0 is a 20.04 build); upgrade needs another package source",
+        "time_v": true,
+        "netcdf_driver_r": true,
+        "absent_inputs": [
+          "atlas_hazards/soils/sscp_world.tif",
+          "atlas_hazards/soils/ssat_world.tif",
+          "atlas_hazards/soils/sroot_world.tif",
+          "ET_SolRad"
+        ],
+        "s3_rates_mb_s": {
+          "digital-atlas https": 2.5,
+          "nex-gddp-cmip6 us-west-2": 10
         }
       },
       "raw": {

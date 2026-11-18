@@ -86,7 +86,14 @@ time, regardless of what `nproc` reports:
 |---------|------|-----|-----------|--------------|
 | Small | 8 | 32 GiB | `800000 100000` | 34359738368 (verified 2026-10-27/29) |
 | Medium | 16 | 64 GiB | not yet observed | |
-| Large | 20 | 96 GiB | `2000000 100000` | 96 GiB (verified 2026-10-24) |
+| Large | 20 | 96 GiB | `2000000 100000` | 103079215104 (verified 2026-11-17) |
+
+**At most four hub sessions run at once, 4 × 20 CPUs being the whole machine
+(IT, 2026-11-09), so a profile larger than Large is not possible.** To change
+profile: Hub Control Panel → *Stop My Server* → *Start My Server* and pick the
+profile. Logging out leaves the server running on its current profile. Stopping
+the server kills every process it started: IT confirmed (2026-11-12) that a
+`nohup` job dies only when the hub session itself is killed.
 
 **Pete starts the hub session, so the profile is fixed before a node agent sees
 the dispatch.** Every PASCAL dispatch therefore states the profile it needs on
@@ -137,14 +144,21 @@ Judge per job.
 > loading: `terra` 1.8-93 and `sf` 1.0-24. The site library is not writable
 > without root.
 >
-> - **IT ticket:** Pete owns it. The proper fix is a node-wide rebuild of
->   the site library.
+> - **Fixed by IT on 2026-11-09 (ticket SR-167702).** Re-tested 2026-11-11 as
+>   an ordinary account with the personal library hidden: 1,671 of 1,678
+>   packages load; the 7 that still fail (`RGtk2` and two dependants, `pryr`,
+>   two with missing dependencies, `climateR`) are not used here. `arrow`,
+>   `geoarrow`, `duckdb`, `MetBrewer`, `miceadds`, `sfarrow`, `s3fs` and
+>   `paws.storage` were added to the shared library at our request.
 > - **Authorised workaround:** a per-user rebuild into `R_LIBS_USER`
 >   (`~/R/x86_64-pc-linux-gnu-library/4.6`), which R searches before the site
 >   library. Install with
 >   `install.packages("<pkg>", lib = Sys.getenv("R_LIBS_USER"))`. It is
 >   account-scoped and reversible (`rm -rf` the directory).
-> - **Rebuilt so far:** `data.table` 1.18.6.1 only (2026-10-28). Nothing else.
+> - **Personal library now (2026-11-17):** only the two packages this repository
+>   ships, `wbkernel` and `trendkernel`, built from the checkout with
+>   `R CMD INSTALL`. Every workaround copy was removed once the shared library
+>   was rebuilt. Still missing for the R/1–R/4 bakes: `doFuture`, `jrvFinance`.
 > - **Older per-user installs:** the September 2025 installs listed below sit in
 >   the **4.5** per-user library, which R 4.6 does not search. Treat them as
 >   absent until the issue #58 A3(a) audit reports otherwise.
@@ -329,8 +343,24 @@ they become blocking:
     images. Normal `docker://` and SIF usage is unaffected.
 6.  **The default `/opt/conda` Python is unusable** for analysis, and its
     package directory is root-owned. Per-user environments are required.
-7.  **R 4.6.1 over a 4.5-built site library** (found 2026-10-28). See §4. IT's to fix;
-    per-user `R_LIBS_USER` rebuilds are the stop-gap.
+7.  **R 4.6.1 over a 4.5-built site library** (found 2026-10-28, fixed by IT
+    2026-11-09). See §4. Kept here because the next R upgrade can do it again.
+9.  **The system GDAL 3.4.3 is wrong in two ways that R's `terra`/`sf` inherit**
+    (both proven on this host, 2026-11-13 and 2026-11-17, issue #58):
+    - `gdalwarp -r sum`, and so `terra::resample(method = "sum")`, over-counts
+      whenever the source has a NoData mask: a cell that holds at most 9 source
+      cells returns up to 7,399. GDAL 3.13 in the `obs` conda env gives 9 on the
+      same file. Livestock rasters came out ×2.0 at 0.25° and ×1.6 at 0.05°.
+      No R-side workaround (`-srcnodata None` is not reachable from terra;
+      `aggregate(fact = n)` works only at integer resolution ratios).
+      `R/mass_check.R` now stops any 0.4.1 sum-resample that loses or gains mass.
+    - the netCDF driver reports the NEX-GDDP time axis in seconds, so
+      `terra::time()` returns a POSIXct with a time of day where other builds
+      return a Date. Code that pastes `as.character(time(r))` into a filename
+      breaks here (fixed in `hazards_upstream` 02, `d5c9e9d`).
+    The installed package is an Ubuntu 20.04 build (`3.4.3+dfsg-1~focal0`); the
+    configured apt sources offer only 3.4.1, so the upgrade needs another
+    package source. Requested from IT on SR-167702, 2026-11-14.
 8.  **No AWS credentials and no S3 client.** There is no `s3fs`, `paws` or
     `boto3`, and no credentials file or `AWS_*` variables (2026-10-30). Atlas S3
     is readable over plain HTTPS. Nothing can be written to it from here.
@@ -359,6 +389,8 @@ dispatches to this node are written.
     |---|---|---|
     | JRC ASAP | ~0.48 MB/s (29.5 h for 756 dekads) | ~15× faster (1.9 h) |
     | Hugging Face (Zarr cubes) | ~2 MB/s single stream | — |
+    | Atlas S3 (`digital-atlas`, HTTPS) | ~2.5 MB/s (1.33 GB in 8.9 min) | — |
+    | NEX-GDDP-CMIP6 on AWS Open Data (us-west-2) | ~10 MB/s single stream (1.56 GB in 169 s) | — |
 
     Hugging Face returns HTTP 429 on bulk pixel reads (seen on CGlabs), so
     keep concurrency low and retry with backoff.
@@ -371,3 +403,11 @@ dispatches to this node are written.
     the log.
 -   **`project_dir` in `~/.Renviron` overrides the shell.** Use
     `ATLAS_PROJECT_DIR` (`metadata/hosts.json` notes).
+-   **Do not source `R/0_server_setup.R` in a read-only dispatch:** its
+    `pacman::p_load()` installs whatever is missing.
+-   **`/usr/bin/time -v` is present** (peak RSS per stage), and the system GDAL
+    has the netCDF driver (2026-11-17).
+-   **Not on this host:** the soils rasters `atlas_hazards/soils/{sscp,ssat}_world.tif`
+    (23 MB, must-transfer from CGlabs), `sroot_world.tif` (#45), the `ET_SolRad`
+    climatology. The CHIRPS 1981-01-01 file used by `hazards_upstream` 04 for its
+    extent is under `chirps_raw` five levels down (`global_daily/tifs/p05/1981/`).
