@@ -2,6 +2,88 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-18 [M-20261113-s7-2] — **V0-V2 done; V1 gate PASS on all 12 tables (`area` + `crop_production` rows identical to W2, max |diff| 0; 0 `livestock_head` rows left).** `livestock_tlu` has exactly as many rows as `livestock_head` had. TLU weighting moves the THI_max normal by under 1 unit against raw heads in KEN/ETH/NGA. Nothing published
+
+Stamp `20261118_232649`. HEAD `f8cd434`. Env grep (`S7_`, `OBS_`) empty before launch. Scripts and outputs: `logs/obs_long_{v0_selftest,s7_v1,v1_gate,v2_report}_<stamp>.*` (untracked).
+
+#### V0 — pull, selftest. PASS
+`git pull origin develop`: already up to date. `s7_trends_anomalies.R --selftest` → **22 ok**, `ALL S7 SELFTEST ASSERTIONS PASSED`, including `livestock weighting is in TLU: 10 cattle = 7 TLU, 1000 poultry = 10 TLU`.
+
+#### V1 — rebuild only the livestock rows. **Gate PASS**
+- **Gate reference:** before anything moved, the W2 final tables were copied to `$OL/Data/obs_trends/_admin_tables_w2_{main,rh15}/` (6 files each). The block did not ask for this; the run overwrites the final tables, so without the copy the gate would have had nothing independent to compare against. Kept.
+- **Move:** as written. `livestock_head` parts moved to `_admin_parts_livestock_head_<token>/<level>/`: 10 per level (main), 2 per level (`-rh15`); 0 left in `_admin_parts`. Kept.
+- **Run:** the W2 loop, unchanged, under nohup with a pid file. 23:27 → 23:34 UTC, **7 min** (main 4.4 min, `-rh15` 2 min), exit 0 for both, 0 errors.
+  - It logs the resample now: `exposure weights: resampling sum (res 0.05) to the 0.25 lattice by average (weights are relative within a unit)`.
+  - Parts after the run: 390 per level (main) and 78 (`-rh15`), of which 10 / 2 are `livestock_tlu` and 0 are `livestock_head`. **No `area` or `crop_production` part file was rewritten** (0 with an mtime after launch).
+  - The stack and row totals in the log equal W2's (main admin0: 195 stacks, 367,220 series rows, 8,540 trend rows).
+
+**Gate:** per token × level × table, the W2 copy and the new table, both cut to `area` + `crop_production`, merged on (unit keys, window, index, weighting[, year]) with `all = TRUE`; every value column compared, NA masks included.
+```
+main admin0 trends PASS | area+crop      8,280 = 8,280      max|diff| 0 | livestock_head 0 (W2 260)       | area 5,225      crop_production 3,055     livestock_tlu 260
+main admin0 series PASS | area+crop    356,040 = 356,040    max|diff| 0 | livestock_head 0 (W2 11,180)    | area 224,675    crop_production 131,365   livestock_tlu 11,180
+main admin1 trends PASS | area+crop     99,095 = 99,095     max|diff| 0 | livestock_head 0 (W2 3,465)     | area 68,305     crop_production 30,790    livestock_tlu 3,465
+main admin1 series PASS | area+crop  4,261,085 = 4,261,085  max|diff| 0 | livestock_head 0 (W2 148,995)   | area 2,937,115  crop_production 1,323,970 livestock_tlu 148,995
+main admin2 trends PASS | area+crop    837,700 = 837,700    max|diff| 0 | livestock_head 0 (W2 33,105)    | area 633,650    crop_production 204,050   livestock_tlu 33,105
+main admin2 series PASS | area+crop 36,021,100 = 36,021,100 max|diff| 0 | livestock_head 0 (W2 1,423,515) | area 27,246,950 crop_production 8,774,150 livestock_tlu 1,423,515
+rh15 admin0 trends PASS | area+crop      1,656 = 1,656      max|diff| 0 | livestock_head 0 (W2 52)        | area 1,045      crop_production 611       livestock_tlu 52
+rh15 admin0 series PASS | area+crop     71,208 = 71,208     max|diff| 0 | livestock_head 0 (W2 2,236)     | area 44,935     crop_production 26,273    livestock_tlu 2,236
+rh15 admin1 trends PASS | area+crop     19,819 = 19,819     max|diff| 0 | livestock_head 0 (W2 693)       | area 13,661     crop_production 6,158     livestock_tlu 693
+rh15 admin1 series PASS | area+crop    852,217 = 852,217    max|diff| 0 | livestock_head 0 (W2 29,799)    | area 587,423    crop_production 264,794   livestock_tlu 29,799
+rh15 admin2 trends PASS | area+crop    167,540 = 167,540    max|diff| 0 | livestock_head 0 (W2 6,621)     | area 126,730    crop_production 40,810    livestock_tlu 6,621
+rh15 admin2 series PASS | area+crop  7,204,220 = 7,204,220  max|diff| 0 | livestock_head 0 (W2 284,703)   | area 5,449,390  crop_production 1,754,830 livestock_tlu 284,703
+GATE PASS: 12/12 tables
+```
+The merged row count equals both sides in every table, so no key appears on one side only. The only weightings present are `area`, `crop_production` and `livestock_tlu`.
+
+#### V2 — report
+**Row counts per weighting:** the last three columns above. `livestock_tlu` equals W2's `livestock_head` count in all 12 tables, so the same units carry a livestock value under either weighting.
+
+`livestock_tlu` covers `annual12` only: `NDWL0_mean, NDWS_mean, NTx35_mean, PTOT_sum, THI_max_max` on the main token, `THI_max_max` on `-rh15`.
+
+**Admin0, `annual12` / `THI_max_max`, normal 1991-2020 and trend.** The `livestock_head` rows are W2's, from the kept copy, for reference. All rows have `n_years` 43 and `sig_fdr` 1.
+```
+main                  normal (sd)     slope/dec  p_mk
+ETH area              84.45 (0.563)   0.310      7.8e-18
+ETH crop_production   81.68 (0.969)   0.563      1.9e-12
+ETH livestock_head    81.38 (0.623)   0.370      2.2e-29
+ETH livestock_tlu     80.61 (0.666)   0.406      3.9e-42
+KEN area              87.86 (0.464)   0.180      3.2e-04
+KEN crop_production   83.60 (0.449)   0.148      2.0e-03
+KEN livestock_head    85.23 (0.464)   0.181      1.4e-04
+KEN livestock_tlu     85.60 (0.431)   0.182      2.1e-04
+NGA area              89.30 (0.361)   0.219      1.7e-04
+NGA crop_production   89.37 (0.423)   0.305      2.3e-07
+NGA livestock_head    89.33 (0.392)   0.230      1.1e-04
+NGA livestock_tlu     89.32 (0.378)   0.199      7.0e-05
+
+-rh15                 normal (sd)     slope/dec  p_mk
+ETH area              82.33 (0.472)   0.249      1.8e-07
+ETH crop_production   79.54 (0.807)   0.475      1.7e-20
+ETH livestock_head    79.45 (0.522)   0.309      9.6e-12
+ETH livestock_tlu     78.71 (0.560)   0.330      5.0e-11
+KEN area              85.44 (0.435)   0.172      1.5e-04
+KEN crop_production   81.70 (0.433)   0.101      0
+KEN livestock_head    82.86 (0.422)   0.145      1.8e-03
+KEN livestock_tlu     83.31 (0.408)   0.141      4.4e-04
+NGA area              87.98 (0.351)   0.147      4.1e-03
+NGA crop_production   88.19 (0.402)   0.272      3.7e-07
+NGA livestock_head    87.89 (0.373)   0.175      8.8e-04
+NGA livestock_tlu     87.88 (0.381)   0.117      1.9e-02
+```
+Reading, main token, `area` → `livestock_tlu`:
+- **ETH: the normal drops 3.8** (84.45 → 80.61) and the trend steepens (0.31 → 0.41 per decade). The herd is in the cooler highlands, which are warming faster than the lowland area mean. TLU moves it 0.8 further than raw heads did.
+- **KEN: the normal drops 2.3** (87.86 → 85.60); the trend is unchanged (0.18). TLU sits 0.4 **above** raw heads: taking the weight off poultry moves it towards the cattle of the warmer rangelands.
+- **NGA: no change in the normal** (89.30 → 89.32); the trend is slightly lower (0.22 → 0.20).
+- Over all 52 admin0 units with a value, `livestock_tlu` minus `area` normal: median -0.16, range -3.83 to +1.33 (main); median -0.10, range -3.62 to +2.29 (`-rh15`).
+
+**One thing to look at before the publish (report only, nothing changed):** some `p_mk` values are smaller than a Mann-Kendall test on one 43-year series can return. A perfectly monotonic 43-point series gives about 1e-21, and the table holds 3.9e-42 (ETH `livestock_tlu`), 2.2e-29, and an exact 0 (KEN `-rh15` `crop_production`). This is not new with TLU: the W2 `livestock_head` and `crop_production` rows show it too, and those are bit-identical to W2. So the admin `p_mk` is evidently not a plain MK p on the unit's series; whatever it is should be stated in the column description, and the exact 0 probably wants a floor.
+
+**Size:** `du -sh $OL/Data/obs_trends` = **7.6 GB** (6.3 before): about 1.3 GB is the kept W2 table copy. Kept dirs now: `_admin_parts_area_only_{main,rh15}`, `_admin_tables_area_only_{main,rh15}`, `_admin_tables_w2_{main,rh15}`, `_admin_parts_livestock_head_<token>`. Nothing is running. Nothing published; holding for the publish block.
+
+Answers: M-20261113-s7-2 (complete)
+
+---
+
 ### RESPONSE — pascal 2026-11-13 — **V0 only. The selftest passes here too: 22 ok, including the new TLU assertion.** V1 and V2 cannot run on this node: the `$OL/Data/obs_trends` tree does not exist on it, so there are no `_admin_parts` to move aside and no stacks for `--admin-only` to read. V1 and V2 are still cglabs' to run. Nothing published
 
 This block is addressed to cglabs and depends on cglabs' S7 output tree. I ran the part that is host-independent and stopped at the part that is not. Read-only throughout: nothing was installed, nothing was moved, and the only file written is the log named below.
