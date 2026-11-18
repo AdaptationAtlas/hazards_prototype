@@ -8,6 +8,7 @@ Anything still in flight lives at the repository root.
 
 | File | Thread | Outcome |
 |---|---|---|
+| `HANDOVER_2026-11-03_cdh-atlas-hazards-2026.11.md` | Topic briefing for Brayden: freeze the live hazard products as `v2026.11` for CDH ingest (Nov 2026) | Answered 2026-11-05 (publish as is; v0.5.0; one record per dataset; one PR each). Superseded by `HANDOVER_2026-11-13_catalog-map.md`; the frozen set was completed on S3 2026-11-18 and its records are in `metadata/cdh/` |
 | `DISPATCH_cglabs_issue54_intld_placeholders.md` | #54 constant-I$ placeholders + #52 TLU slot (Oct–Nov 2026) | Closed 2026-11-18. Denominator (18 keys) published 2026-11-17 with the new `--tlu-slot` flag; R/3 intld tier (12 keys) published 2026-11-18. Only LBY/SLE cattle, LSO poultry, SWZ sheep moved, each by the probe factor; crop rows bit-identical; continental ×1.000259. Block C first STOPPED at C1 (no flag could declare the `tlu` addition; ABORT exited 0) — both fixed in `d098557`. head_n TLU tier deferred to a later version |
 | `DISPATCH_cglabs_r22_hazard_change_publish.md` | R/2.2 hazard-change rebuild into `v2026.11` (Nov 2026) | Published 2026-11-16, G0–G4 PASS, 10/10 keys verified. G2 independent raster recompute settled the adm0 THI shift: the old inflated values (SDN 100.0) were duplicate disputed-claimant adm0 rows, removed by the rebuild |
 | `DISPATCH_cglabs_avail_fix.md` | Track-1 NDWS de-saturation → live Atlas (Jun–Jul 2026) | Pipeline recovery complete; its publish half was superseded by the issue-9 dispatch, which shipped 2026-09-16 |

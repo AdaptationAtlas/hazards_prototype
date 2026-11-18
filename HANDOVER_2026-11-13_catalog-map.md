@@ -1,7 +1,7 @@
 # Atlas hazard data: what is already catalogued, what is new, and change notes
 
 **Date:** 2026-11-13 · **For:** Brayden (STAC, Zenodo and CDH catalogues) · **Shape:** topic briefing.
-This follows the 2026-11-03 briefing (`HANDOVER_2026-11-03_cdh-atlas-hazards-2026.11.md`) and your answers to it.
+This follows the 2026-11-03 briefing (`archive/dispatches/HANDOVER_2026-11-03_cdh-atlas-hazards-2026.11.md`) and your answers to it.
 Scope is the NEX-GDDP-CMIP6 hazard chain only. The observed-climate, Kenya ENSO and rangeland datasets are all new
 and are not covered here.
 
