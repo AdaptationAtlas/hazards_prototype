@@ -2,6 +2,70 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-19 [M-20261119-s7-1] — accepted; the p_mk you flagged is a bug, fixed: rerun S7 trends (U0–U4), then hold for the publish block
+
+V0–V2 accepted: gate PASS 12/12, TLU rows as specified, and the gate-reference copy you made unasked was the right call.
+
+**Your `p_mk` finding was a real defect, and it reaches the rasters, not only the admin tables.** `mk_sen()` applies
+the Hamed-Rao autocorrelation factor to the Mann-Kendall variance. Negative lag correlations push that factor below
+1, or below 0, and the code floored it at `1e-6`, so the variance could shrink a million-fold. Reproduced on the
+macbook: a 43-year trend with alternating residuals gets factor 0.11 and p = 1e-73. A perfectly monotonic 43-year
+series gets p = 5.1e-17, so nothing should go below that. **Fix:** the factor is now floored at **1**. The
+correction only ever widens the variance, so a series is never judged more significant than its plain MK p.
+Selftest **23** (new: "negative autocorrelation never makes p smaller than a perfectly monotonic series").
+
+**What changes:** `p_mk` and `sig_fdr` only, in the per-cell `*_trend.tif` and the admin `trends` tables. Slope,
+`n_years`, normals, anomalies and the admin `series` tables do not depend on `p` and must not move.
+
+#### U0 — pull, selftest
+```bash
+cd $REPO && git pull --ff-only && Rscript R/obs/s7_trends_anomalies.R --selftest   # 23
+```
+
+#### U1 — keep the references (before anything is rewritten)
+```bash
+T=$OL/Data/obs_trends
+for TOK in chirps-chirts-agera5 chirps-chirts-agera5-rh15; do
+  D=$T/${TOK}_1982-2024; R=$T/_pre_mkfix_${TOK}
+  mkdir -p $R/_tables
+  (cd $D && find . \( -name '*_trend.tif' -o -name '*_normal_1991-2020.tif' \) -exec cp --parents {} $R/ \;)   # GNU cp
+  cp $D/admin_*.parquet $R/_tables/
+done
+```
+Report the file counts copied per token (trend = normal = number of stacks: 95 main, 19 `-rh15`).
+
+#### U2 — rasters, both tokens, `--overwrite`, no `--boundaries-dir` (as W1, all windows)
+```bash
+nohup bash -c 'for TOK in chirps-chirts-agera5 chirps-chirts-agera5-rh15; do
+  Rscript R/obs/s7_trends_anomalies.R --obs-root $OL --token $TOK --timeframe 1982-2025 --years 1982:2024 \
+     --normal 1991:2020 --cores 16 --overwrite > logs/obs_long_s7_u2_${TOK}_'$STAMP'.log 2>&1 || exit 1; done' &
+echo $! > logs/obs_long_s7_u2_$STAMP.pid
+```
+About 45 min (37 + 8 at Z3).
+
+#### U3 — admin tables, as V1 (all three weightings, rasters untouched)
+Move `_admin_parts` aside for both tokens (keep: `$T/_admin_parts_pre_mkfix_<token>`), then the W2 loop unchanged,
+same `--weights-crop` / `--weights-livestock` as W2 and V1. It builds `area`, `crop_production`, `livestock_tlu`.
+
+#### U4 — gates (each is a stop), then report
+Compare against the U1 copies, per token:
+1. **Rasters, every stack:** band `slope_per_decade` and `n_years` of `*_trend.tif` identical (max |diff| 0, NA masks
+   equal), and `*_normal_1991-2020.tif` identical. Band `p_mk`: new ≥ old − 1e-12 on every cell, and **no cell
+   below 5e-17**. `sig_fdr`: report how many cells go 1 → 0; **any 0 → 1 is a stop**.
+2. **Admin `series` tables** (3 levels): identical to the U1 copy (merge on all keys, all value columns, `all = TRUE`).
+3. **Admin `trends` tables** (3 levels): same row keys; `slope_per_decade`, `n_years` identical; `p_mk` new ≥ old, none
+   below 5e-17, none exactly 0; `sig_fdr` 1 → 0 counts per weighting, never 0 → 1.
+4. **Report:**
+   - per token, the share of FDR-significant cells before and after, for `annual12`: `NTx35_mean`, `THI_max_max`,
+     `PTOT_sum`, `NDWS_mean`;
+   - the KEN/ETH/NGA `annual12` / `THI_max_max` rows of the V2 table, re-read (normal unchanged, new `p_mk`, `sig_fdr`);
+   - `du -sh $T`.
+
+Nothing published. The `_pre_mkfix_*`, `_admin_parts_*`, `_admin_tables_*` directories are all kept until the publish
+block says otherwise. `### RESPONSE` with the code, push, verify, and end with `Answers: M-20261119-s7-1 (...)`.
+
+---
+
 ### RESPONSE — cglabs 2026-11-18 [M-20261113-s7-2] — **V0-V2 done; V1 gate PASS on all 12 tables (`area` + `crop_production` rows identical to W2, max |diff| 0; 0 `livestock_head` rows left).** `livestock_tlu` has exactly as many rows as `livestock_head` had. TLU weighting moves the THI_max normal by under 1 unit against raw heads in KEN/ETH/NGA. Nothing published
 
 Stamp `20261118_232649`. HEAD `f8cd434`. Env grep (`S7_`, `OBS_`) empty before launch. Scripts and outputs: `logs/obs_long_{v0_selftest,s7_v1,v1_gate,v2_report}_<stamp>.*` (untracked).
@@ -805,7 +869,7 @@ matching the 21-year run's pace scaled to 45 years.
 
 Stamp `20261105_091344`. HEAD `8c9ee59`, branch `develop`. Env grep empty before each launch. `OL={common_data}/atlas_obs_hazards_1981`; nothing written outside `$OL` and `logs/`.
 
-(Step 1 of the hand-off prompt, the M/P RESPONSE in `DISPATCH_cglabs_obs_s3_r3.md`, was already pushed as `7624c02` on 2026-11-05 and is on origin; nothing redone.)
+(Step 1 of the hand-off prompt, the M/P RESPONSE in `archive/dispatches/DISPATCH_cglabs_obs_s3_r3.md`, was already pushed as `7624c02` on 2026-11-05 and is on origin; nothing redone.)
 
 #### X0 — selftests. PASS
 `s1_ingest.py selftest` **23** ok, `soil_fill.py selftest` **9** ok, `s3_s5_obs_hazards.R --selftest` **24** ok (all via `pyobs`).

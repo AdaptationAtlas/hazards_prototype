@@ -8,7 +8,7 @@
 #         named by start year; the first layer is the spin-up season and is dropped by --years)
 # Per (window, index) stack it writes, under <OBS_ROOT>/Data/obs_trends/<token>_<first>-<last>/<window>/:
 #   <IDX>_<stat>_trend.tif        slope_per_decade (Theil-Sen), p_mk (Mann-Kendall, Hamed-Rao autocorrelation
-#                                 correction), sig_fdr (1 = significant at FDR 0.05, Benjamini-Hochberg over the
+#                                 correction, inflate-only), sig_fdr (1 = significant at FDR 0.05, Benjamini-Hochberg over the
 #                                 valid cells of this stack), n_years
 #   <IDX>_<stat>_normal_<N1>-<N2>.tif   mean, sd, p10, p50, p90 over the normal period (default WMO 1991-2020)
 #   <IDX>_<stat>_anomaly_diff.tif one layer per season: value - normal mean (index units)
@@ -44,6 +44,10 @@ stopf <- function(...) stop("[S7] STOP: ", sprintf(...), call. = FALSE)
 # Theil-Sen slope (per year) and Mann-Kendall p with the Hamed & Rao (1998) variance correction for serial
 # correlation, using only the significant lags (|r_k| > 1.96/sqrt(n)) of the rank autocorrelation of the
 # Sen-detrended series. Returns c(slope, p, n); NA where fewer than min_n valid values.
+# The correction only ever INFLATES the variance (factor floored at 1). Negative lag correlations can push the
+# Hamed-Rao factor below 1, or below 0; flooring it at 1e-6 shrank the variance up to a million-fold and gave
+# p values no 43-year series can reach (3.9e-42, exact 0; CGlabs V2, 2026-11-18). Deflating for negative
+# autocorrelation is not done: it only ever makes a trend look more significant.
 mk_sen <- function(x, t, min_n = 30L) {
   ok <- !is.na(x); x <- x[ok]; t <- t[ok]; n <- length(x)
   if (n < min_n) return(c(NA_real_, NA_real_, n))
@@ -60,7 +64,7 @@ mk_sen <- function(x, t, min_n = 30L) {
     k <- seq_along(ac); sigk <- abs(ac) > 1.96 / sqrt(n)
     if (any(sigk)) fac <- 1 + 2 / (n * (n - 1) * (n - 2)) * sum(((n - k) * (n - k - 1) * (n - k - 2) * ac)[sigk])
   }
-  v <- v0 * max(fac, 1e-6)
+  v <- v0 * max(fac, 1)
   z <- if (S > 0) (S - 1) / sqrt(v) else if (S < 0) (S + 1) / sqrt(v) else 0
   c(slope, 2 * stats::pnorm(-abs(z)), n)
 }
@@ -305,6 +309,9 @@ selftest <- function() {
   set.seed(1); xn <- rnorm(43)
   ok(mk_sen(xn, 1982:2024)[2] > 0.05, "MK: white noise is not significant")
   ok(is.na(mk_sen(c(1:20, rep(NA, 23)), 1982:2024)[1]), "MK: fewer than 30 valid seasons gives NA")
+  xa <- 80 + 0.03 * (0:42) + rep(c(-0.3, 0.3), length.out = 43)   # trend + alternating residuals: Hamed-Rao factor ~0.11
+  ok(mk_sen(xa, 1982:2024)[2] >= mk_sen(80 + 0.03 * (0:42), 1982:2024)[2],
+     "MK: negative autocorrelation never makes p smaller than a perfectly monotonic series of the same length")
   # 2. end-to-end on a synthetic root: 3x3 cells, layers 1981..2024 (1981 = spin-up, dropped)
   td <- file.path(tempdir(), "s7_selftest"); unlink(td, recursive = TRUE)
   src <- file.path(td, "Data", "obs_seasonal", "obstest_1982-2025", "ggcmi-mai"); dir.create(src, recursive = TRUE)
