@@ -4,6 +4,102 @@ Append-only, newest block on top. Read `AGENTS.md` first, then `HANDOVER_2026-10
 
 ---
 
+### RESPONSE — cglabs 2026-11-18 — **Block C complete. C2-C4 every gate PASS; the R/3 intld tier is published and verified (12/12 keys), on top of the denominator (18/18) from the interim below.** Only the four #54 pairs moved, and each by exactly the probe's factor. Crop rows are bit-identical. Continental ×1.000259 (livestock ×1.00103).
+
+Stamp `20261116_222408`. C-re0/C1 are in the interim RESPONSE below (published 2026-11-17 16:36-16:38). Since C1 the denominator's version IDs have not changed (re-checked at C4).
+
+**C2 — R/3 intld. PASS.**
+
+R/3 exit 0, `3_freq_x_exposure.R COMPLETE at 2026-11-18 01:46:22 UTC`. The run was scoped by moving the intld outputs aside, so intld rebuilt and the other variables skipped:
+
+| timeframe | §4.1 intld | §4.2 intld | other four variables |
+|---|---|---|---|
+| annual | 71.5 min | 141.5 min | 0.0-0.1 min each |
+| jagermeyr | 74.6 min | 147.6 min | 0.0-0.6 min each |
+
+The single-digit-minute signature that marks a skipped §4.1 is absent for intld.
+
+- **Integrity check:**
+  - annual: 804 files, 0 failed;
+  - jagermeyr: 984 / 984 / 804 / 180 / 804, 0 failed.
+- **No error files:** no `failed_*.txt` anywhere, and no `errors/*read-errors.csv` after `since`.
+- **intld outputs: 1002 per timeframe, every one with a fresh mtime.** `comm` against the parked list shows 0 missing and 0 extra.
+- **Other variables:** counts unchanged (usd 1002, ha 823, n 199, prod 823), no data mtime moved. The only newer files are the `skipped_not_in_exposure_*.txt` manifests, which §4.1 rewrites on every pass (same as #47 E3r).
+- Log: `logs/issue54_r3_20261116_222408.log`.
+
+**C3 — tier gates. PASS.**
+
+- **`usd_total_vs_reference.R --iso3 all`, both timeframes:** `intld: PASS`, `GATE PASS`. 1200 material pairs, median ratio **1.000**, range [0.9759, 1.001], against the republished reference (res-25, 11-02 19:10).
+- **`stamp_ensemble_membership.R`:** `VERDICT: PASS`, 18 members, 9 sidecars per folder, all four roots.
+- **Tier vs live, all 6 files** (`logs/issue54_C3_compare_20261116_222408.R` / `.log`). The "live" side is the parked pre-run tier, which is byte-identical to live S3 (ETag `8a12d1ed…` = parked MD5). Rows are joined on every non-value column, key unique, 0 unmatched. On every file:
+
+  | invariant | result |
+  |---|---|
+  | crop rows unchanged | **0 of 78,106,500 differ** |
+  | livestock changes confined to the four pairs | exactly LBY cattle, SLE cattle, LSO poultry, SWZ sheep; 0 outside, 0 missing |
+  | each pair within 2 % of probe NEW (admin0, any+none, historic) | ok: worst **0.9810** (LBY, NDWS+THI). The PTOT combos read 1.0000. |
+  | continental factor in (1, 1.01) | **1.000259** over all hazard_vars; livestock ×1.00103 (177.168 B → 177.350 B annual severe) |
+
+  Per-pair new/old **equals the probe ratio to 4 dp**: LBY 1.8030, SLE 1.6838, LSO 1.3500, SWZ 0 → 772,262.
+  - The 0.981 (LBY) and 0.990 (SLE) on the NDWS+THI combos are not movement. The old tier already sat at that fraction of the probe's OLD figure (59.05 M vs 60.20 M): it is admin coverage of the NDWS family, and #54 scaled it by the same factor.
+  - Crop-only hazard_vars read factor 1.000000 exactly.
+- **Harness slips, mine and not data:**
+  1. My first compare reused a key without gaul codes and `timeframe`. `timeframe` holds the 20-year period, so the key was not unique and the merge refused. I added both columns and an explicit uniqueness stop.
+  2. I self-tested the script parked vs parked: it fails on identical inputs as it should, so it can fail.
+
+**C3 — publish.**
+
+- **Dry-runs** (`--variables vop_intld --drift-exposure vop_intld=<vop_intld15-2021_adm_sum_spam20_glw420_res-25.parquet, 11-02 19:10> --livestock-moved [--timeframe annual] --dry-run`): both exit 0.
+  - All 6 tiers: G1-G5 ok, `G6 declared livestock exposure move`, the livestock control `ok`, G6 ok.
+  - G6b ok, max |ratio-1| = **0.0059** over 1352 pairs, with only TZA:coconut as the named residual.
+  - `sidecar ok: membership identical to live (18 GCMs)`.
+- No other flag was passed.
+- **Live**, same commands: jagermeyr then annual, both exit 0 (1.8 and 1.5 min).
+  - Backups: `sandbox/backup/issue9_20261118_023833/` (jagermeyr) and `sandbox/backup/issue9_20261118_024020/` (annual).
+  - Every upload reported `SIZE MATCH`, plus the HTTPS range probe.
+  - Pre-publish state: `logs/issue54_C3_s3_before_20261116_222408.txt`.
+
+**C4 — verify. PASS.**
+
+| key set | size = local | ETag = local MD5 | anonymous HTTPS 200 |
+|---|---|---|---|
+| tier (12) | 12/12 | 12/12 (no multipart ETag) | 12/12 |
+| denominator (18) | 18/18 | 18/18 | 18/18 |
+
+All six tier sidecars on S3 carry `ensemble.n_members = 18` with 18 members. The denominator pin table is in the interim RESPONSE below and still current.
+
+**Tier pin table** (prefix `domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_intld15-21/period=`):
+
+| key | size | ETag | LastModified | VersionId |
+|---|---|---|---|---|
+| `jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet` | 84831144 | `9c2a41172149fcd234bfa1ea5105ccc2` | 2026-11-18T02:39:07+00:00 | `8ycI0iUQ4eMCrsDFqq0itWepQ9oqM9mp` |
+| `jagermeyr/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet.json` | 16632 | `362a1b2752c78ab572eee695f18b5246` | 2026-11-18T02:39:14+00:00 | `bVxTsaOryjaVP90oo6tmfY1WgFQWjHYO` |
+| `jagermeyr/model=ENSEMBLEmean/severity=moderate/int=multi-hazard.parquet` | 85350086 | `67c717e2a6ee6ae10e7b1d946ce20a4b` | 2026-11-18T02:39:38+00:00 | `4s1HJQpRcWAI9cco6yTNtTtiLiOK_jkg` |
+| `jagermeyr/model=ENSEMBLEmean/severity=moderate/int=multi-hazard.parquet.json` | 16874 | `2d215826a53a15d222847f5528c1edf7` | 2026-11-18T02:39:45+00:00 | `l35fTNNiMq56A9htvldJBJKaLuz4zn7j` |
+| `jagermeyr/model=ENSEMBLEmean/severity=extreme/int=multi-hazard.parquet` | 82776814 | `38995c950bc659245c0bd80718d4aaf1` | 2026-11-18T02:40:09+00:00 | `iSK6YIttSafpq_utwU8SSY4n_A9MD9zH` |
+| `jagermeyr/model=ENSEMBLEmean/severity=extreme/int=multi-hazard.parquet.json` | 16753 | `9d619cc391ca6308a547ddca81e00b95` | 2026-11-18T02:40:19+00:00 | `a0PLrlffNsLlRCQlnyHqte9s7FwNcSsv` |
+| `annual/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet` | 80328304 | `f7714a2fd8d0956a48cc9501af32b5c4` | 2026-11-18T02:40:50+00:00 | `heiqPNZXhWjG2K.uHIsTENgC88EIw.g8` |
+| `annual/model=ENSEMBLEmean/severity=severe/int=multi-hazard.parquet.json` | 16266 | `09f5492f26eb45c563ad712eac84ccdb` | 2026-11-18T02:40:56+00:00 | `.fWVVvkzja3nHCwoAKhfRbjq1Gpb7ixQ` |
+| `annual/model=ENSEMBLEmean/severity=moderate/int=multi-hazard.parquet` | 78188584 | `9d0d84708517ccd72ca4f53a36931cde` | 2026-11-18T02:41:18+00:00 | `YGeqar4_WqNUi7t2iaNfIl.c7I71duKE` |
+| `annual/model=ENSEMBLEmean/severity=moderate/int=multi-hazard.parquet.json` | 16508 | `87d58948a34e04f26437d77d2c9da7a4` | 2026-11-18T02:41:24+00:00 | `zqhpNRaEKXgPJuYlNmceuZBBkrpgrifV` |
+| `annual/model=ENSEMBLEmean/severity=extreme/int=multi-hazard.parquet` | 75731671 | `f774eb47874685e883e6b50c10d480d5` | 2026-11-18T02:41:45+00:00 | `F9vTRBQdt3svrBgtl6S0.Ye3OXokjeWZ` |
+| `annual/model=ENSEMBLEmean/severity=extreme/int=multi-hazard.parquet.json` | 16387 | `e370d57f21dab1b8db6001639656779b` | 2026-11-18T02:41:51+00:00 | `Q7EuoIODR7LA5V.hzzNkUMKYbwvtS5EA` |
+
+**State.**
+- **Parked and kept:**
+  - `Data/_parked_issue54_20261102_185857` (B-era exposure + GLW).
+  - `Data/_parked_issue54_20261116_222408/r3_vop_intld/{annual,jagermeyr}` (1002 each, the pre-#54 intld tier = the previous live).
+- **S3 backups:** six `sandbox/backup/issue9_2026111{7,8}_*` prefixes.
+- **Untouched, as scoped:** nominal, head_n, prod and harv-area tiers.
+- Nothing deleted. No allow-flag, `--skip-gates` or tolerance change. No code, gate or fixture edited.
+- Nothing running.
+- **Open for macbook:**
+  - update `metadata/cdh/pins/atlas-hazards-2026.11_s3-versions.csv` from both pin tables and date the changelogs;
+  - the post-#52 TLU rows in head_n remain for a later version, as the GO block says.
+
+---
+
+
 ### RESPONSE — cglabs 2026-11-17 (interim) — **C-re0 + C1 done, every gate PASS; the denominator is live (18/18 keys verified). C2 (R/3 intld) is running.** C3/C4 to follow in the final RESPONSE.
 
 HEAD `d098557` (`Pete Steward`, `--tlu-slot` + exit 1 on ABORT). Stamp `20261116_222408`.
