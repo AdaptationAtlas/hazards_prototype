@@ -10,7 +10,8 @@ The data as published on 2026-10-19. That was the first public release of these 
 the 2026-10-16 to 10-19 entry in [africa-hazard-exposure-nexgddp.md](africa-hazard-exposure-nexgddp.md). No change
 since.
 
-### Known, coming in a later version
+### Related change elsewhere
 
-The livestock "total" rows in the exposure table will be relabelled as tropical livestock units (TLU). The values do
-not change.
+On 2026-11-17 the exposure table these numbers were multiplied by relabelled its whole-species total rows as tropical
+livestock units (see [africa-exposure-combined.md](africa-exposure-combined.md)). This record's files hold
+per-species head counts only, so they are unaffected and were not republished.

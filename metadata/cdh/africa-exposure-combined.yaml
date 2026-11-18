@@ -82,9 +82,9 @@ note: >
   for a country and crop, the constant-dollar value is left empty instead of being placed on a
   sliver of cells (every crop in Sudan, plus a few small pairs elsewhere); North Africa lies outside
   the MapSPAM release and has no constant-dollar crop rows. FAOSTAT is matched on item code, not
-  item name. Four livestock rows use placeholder constant-dollar prices (Libya and Sierra Leone
-  cattle, Lesotho poultry, Eswatini sheep; hazards_prototype issue 54); a correction that raises the
-  livestock constant-dollar total by 0.1 per cent is validated but not yet published.
+  item name. Four livestock rows used placeholder constant-dollar prices until 2026-11-17 (Libya and
+  Sierra Leone cattle, Lesotho poultry, Eswatini sheep; hazards_prototype issue 54); the published
+  correction raised the livestock constant-dollar total by 0.1 per cent.
   BOTH BASES. Values are allocated and priced on the 0.05 degree grid for both tables and
   sum-resampled, so the Seychelles carry value on res-25 too.
   KNOWN LIMITATIONS. FAOSTAT coffee tonnage for the Central African Republic (about 300 thousand
@@ -98,7 +98,8 @@ note: >
   assigns them to the neighbour (hazards_prototype issue 18): Kenya robusta coffee (one Lake
   Victoria cell holds most of it), Sierra Leone robusta coffee and coconut.
   VERSION HISTORY. This is the first Climate Data Hub release (v2026.11, the files as published on
-  2026-10-21). The public changes before it are in the version history linked below, with dates:
+  2026-11-17: the 2026-10-21 table plus the placeholder-price correction and the tropical-livestock-
+  unit relabel). The public changes before it are in the version history linked below, with dates:
   among them the 2026-09-25 livestock currency-year fix (hazards_prototype issue 30; until then the
   0.05 degree table was the only one published and its livestock constant-dollar rows held nominal
   values, reconciling to FAOSTAT at 1.198; after it livestock reconciled at 1.000, 240 of 240
@@ -129,7 +130,7 @@ citation:
   url: https://adaptationatlas.cgiar.org/
 
 created: "2026-09-26"
-updated: "2026-11-13"
+updated: "2026-11-18"
 
 spatial:
   bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present
@@ -149,15 +150,18 @@ structures:
       - &exposure
         name: exposure
         type: variable
-        description: What is being counted.
-        values: [prod, harv-area, phys-area, vop, number]
+        description: >
+          What is being counted. tlu marks the two whole-species aggregate rows per country
+          (crop total-tropical and total-highland), counted in tropical livestock units since
+          2026-11-17; the per-species rows stay under number.
+        values: [prod, harv-area, phys-area, vop, number, tlu]
       - &unit
         name: unit
         type: unit
         description: >
           Unit of `value`, and for vop the currency basis. Select on this column; the constant-dollar
           and nominal-dollar rows must not be combined.
-        values: [t, ha, intld15-2021, nominal-usd-2021, number]
+        values: [t, ha, intld15-2021, nominal-usd-2021, number, tlu]
       - &tech
         name: tech
         type: technology

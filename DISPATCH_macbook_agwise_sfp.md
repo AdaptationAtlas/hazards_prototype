@@ -124,6 +124,6 @@ schemas only** — column names and types, no row scans — separating `data/dat
 
 #### Also open on this node, unrelated to AgWise
 
-`DISPATCH_cglabs_issue54_intld_placeholders.md` still has **no RESPONSE** — the macbook block of
+`archive/dispatches/DISPATCH_cglabs_issue54_intld_placeholders.md` still has **no RESPONSE** — the macbook block of
 2026-10-23 (#54 + #52, parts A and B) has not been run here. Flagging it because it is the only
 unanswered inbound dispatch at the repo root.

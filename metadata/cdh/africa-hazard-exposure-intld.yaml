@@ -50,13 +50,14 @@ note: >
   hazard layer cannot see. One named residual: Tanzania coconut undershoots its exposure by 2.4 per
   cent because Wete district (Pemba Island) carries exposure and no hazard coverage at 0.25 degrees
   (hazards_prototype issue 50; metadata/g6b_expected_residuals.csv). Every other material (country,
-  crop) pair reproduces its exposure within the publish gate's bounds. FOUR LIVESTOCK ROWS USE
-  PLACEHOLDER CONSTANT-DOLLAR PRICES: Libya and Sierra Leone cattle, Lesotho poultry and Eswatini
-  sheep (hazards_prototype issue 54). A correction that raises the livestock constant-dollar total by
-  0.1 per cent has been validated but not yet published.
+  crop) pair reproduces its exposure within the publish gate's bounds. Four livestock rows used
+  placeholder constant-dollar prices until 2026-11-18: Libya and Sierra Leone cattle, Lesotho poultry
+  and Eswatini sheep (hazards_prototype issue 54). The published correction moved only those four
+  country-species pairs and raised the livestock constant-dollar total by 0.1 per cent.
   VERSION HISTORY. This is the first Climate Data Hub release (v2026.11): the files as first
-  published on 2026-10-19, unchanged since, built from the exposure table as of 2026-10-08. The
-  version history linked below records this and will list later changes.
+  published on 2026-10-19 and corrected on 2026-11-18 (the four placeholder prices), built from the
+  exposure table as of 2026-11-17. The version history linked below records this and will list later
+  changes.
 
 contact:
   - organization: Alliance of Bioversity International and CIAT
@@ -76,7 +77,7 @@ citation:
   url: https://adaptationatlas.cgiar.org/
 
 created: "2026-10-19"
-updated: "2026-11-13"
+updated: "2026-11-18"
 
 spatial:
   bbox: [-26.0, -35.0, 58.0, 28.0] # Sub-Saharan Africa, 55 countries present
@@ -162,10 +163,10 @@ processing:
       - title: MapSPAM2020_AdaptationAtlas_SSA (record mapspam2020-adaptation-atlas-ssa)
         url: https://doi.org/10.7910/DVN/Z0HK7R
       - id: africa-exposure-combined
+        version: v2026.11
         title: >-
           Combined crop and livestock exposure, 0.25 degree structure
-          (variable=crop-livestock_all_res-25), the gate basis; built from the table as of
-          2026-10-08, before the first Hub release
+          (variable=crop-livestock_all_res-25), the gate basis; the 2026-11-17 table
   - id: frequency
     description: >
       Convert hazard indices to the frequency with which each severity threshold is exceeded, per

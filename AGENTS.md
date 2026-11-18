@@ -32,6 +32,19 @@ Work is split across two machines and coordinated through `DISPATCH_cglabs_*.md`
   the cglabs session.
 - **CGlabs** (this node; `R/0_server_setup.R` sets `Cglabs <- TRUE`) — owns the live data under `/home/jovyan/common_data/nex-gddp-cimp6_hazards`, runs and validates the pipeline, publishes to `s3://digital-atlas`, and reports back by prepending a `### RESPONSE` block to the dispatch it answers.
 
+**Prompt codes (Pete, 2026-11-18).** Every macbook dispatch block carries a code, so Pete can see at
+a glance which prompt a reply answers when several are in flight:
+
+- **Format:** `M-YYYYMMDD-<topic>-<n>` — the date the block was written, a short topic slug, and a
+  sequence number for that topic on that day. Example: `M-20261118-i54-1`.
+- **macbook:** put the code in the block heading (`### MACBOOK 2026-11-18 [M-20261118-i54-1] — …`),
+  in the copy-paste prompt's first line, and in the commit subject.
+- **CGlabs:** put the code in the `### RESPONSE` heading, and **end every RESPONSE — and every
+  final chat message to Pete — with one line**, exactly:
+  `Answers: M-20261118-i54-1 (complete)` — or `(interim)`, `(stopped at <gate>)`. If a reply covers
+  more than one block, list every code. If it answers no dispatch, say `Answers: none`.
+- Codes are never reused. A re-issue after a STOP gets a new code and names the one it replaces.
+
 Operating rules that have proven load-bearing:
 - **State expectations as invariants, not exact figures**, wherever the value is data-dependent. A
   gate that expects a slightly wrong number turns a correct run into a false failure — that happened

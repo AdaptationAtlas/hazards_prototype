@@ -417,7 +417,7 @@ chirps-chirts-agera5`), and the gate (`tier_vs_exposure`) accepts them; the bbox
 fixture 48/48; soil-fill selftest 9/9.
 
 **Order on this node:** (1) the read-only VoP probe and `total-*` basis check (block (3) below); (2)
-`DISPATCH_cglabs_issue54_intld_placeholders.md` A + B, which rebuilds the exposure basis the dry-run reads (post-#52
+`archive/dispatches/DISPATCH_cglabs_issue54_intld_placeholders.md` A + B, which rebuilds the exposure basis the dry-run reads (post-#52
 `tlu` slot); (3) this block.
 
 #### L0 — selftests
