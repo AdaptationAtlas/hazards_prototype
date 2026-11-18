@@ -24,7 +24,8 @@ entry, because so few catalogue entries exist.
 
 ## 2. What I need from you
 
-1. **Where should the change-note file be hosted?** The v0.5.0 standard (section 4.7) already says how to
+1. **Where should the change-note file be hosted? — ANSWERED 2026-11-17 (Teams): keep them in
+   hazards_prototype, "with the data".** No change needed. The v0.5.0 standard (section 4.7) already says how to
    attach one: a link in `additional_links[]` with `rel: version-history`. None of these datasets has an earlier
    Hub record, so per the same section each first record is `version: v2026.11` with no `previous_version`, and the
    history before it goes in the linked file. What I am doing now, unless you prefer otherwise:
