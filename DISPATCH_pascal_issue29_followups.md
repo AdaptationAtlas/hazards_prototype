@@ -2,6 +2,76 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-19 [M-20261119-i58-2] — P13: phase B re-run on GDAL 3.8.4 (P12 part B), G2 stop cleared. **Small profile is fine. Under an hour.**
+
+**Why.** P12 was exact, and stopping at G2 was right by the block's wording. The `rgdal` row does not block B:
+`download_rawCMIP6.R`, its only user, also loads `loadeR`, `climate4R.UDG`, `transformeR`, `downscaleR` and
+`visualizeR`, all five MISSING here since P9, so the script could not run on this host before the upgrade either.
+It is off the canonical 01→04 path (`download_manual_nex_gddpCMIP6.R`), and nothing in 0.4.x, the bakes or phase C
+loads `rgdal`. `rgdal` is retired from CRAN; it is a known exception, not a fault. G0 and G1 stand, so B runs now.
+
+Your P11 and P12 numbers are folded into the migration plan (§2.2a). Two corrections to the arithmetic, for the
+record: `02` is 76 % of the per-GCM-year wall (8,652 of 11,330 s), not 94 %; and IT's four-session limit is four
+sessions across all users, not four per user, so one Large session is the planning unit.
+
+**Rules.** As P7: writes go where 0.4.1 writes, to `logs/` and to the three `*_pascal*` TSVs in
+`metadata/crosshost/`; no installs (stop on `Installing package`); no S3; no usernames, hostnames or IPs. B1 sources
+`R/0_server_setup.R`, as P7.4 did.
+
+#### B0 — pull
+```bash
+cd <repo> && export ATLAS_PROJECT_DIR=$PWD && export CD=<the P10 root>
+git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD      # develop, at or after the P13 commit
+Rscript --no-init-file -e 'library(terra); cat(gdal(), "\n")'                       # 3.8.4
+```
+
+#### B1 — run 0.4.1, both resolutions (P7.4 with a new stamp)
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S)
+nohup bash -c 'for RES in 0.25 0.05; do EXPOSURE_RES=$RES FORCE_OVERWRITE=1 Rscript -e "source(\"$PWD/R/0_server_setup.R\"); source(\"$PWD/R/0.4.1_create_livestock_exposure.R\")" > logs/p13_041_${RES}_'$STAMP'.log 2>&1 || exit 1; done' > logs/p13_041_$STAMP.log 2>&1 &
+echo $! > logs/p13_041_$STAMP.pid
+# poll: kill -0 $(cat logs/p13_041_$STAMP.pid) 2>/dev/null && echo running || grep -hE "COMPLETE|mass conserved|mass NOT conserved|Installing package|rror" logs/p13_041_*_$STAMP.log
+```
+**Expect** one `COMPLETE` per resolution and every mass line reading `mass conserved within` (some of the four
+sites run only on some branches); report them all. `mass NOT conserved` stops the run and is a stop here too (do not
+set `ATLAS_MASS_CHECK=warn`).
+
+#### B2 — fingerprint, compare (P7.5)
+```bash
+M=metadata/crosshost; F="Rscript R/checks/72_crosshost_fingerprint.R"
+$F --stage 0.4.1-inputs --out $M/inputs_041_pascal.tsv
+$F --stage 0.4.1 --res res-25 --out $M/fp_041_pascal_res-25.tsv
+$F --stage 0.4.1 --res res-05 --out $M/fp_041_pascal_res-05.tsv
+$F --compare $M/inputs_041_mac.tsv    $M/inputs_041_pascal.tsv    2>&1 | cut -c31-
+$F --compare $M/fp_041_mac_res-25.tsv $M/fp_041_pascal_res-25.tsv 2>&1 | cut -c31-
+$F --compare $M/fp_041_mac_res-05.tsv $M/fp_041_pascal_res-05.tsv 2>&1 | cut -c31-
+```
+This overwrites the GDAL 3.4.3 TSVs; git keeps them. Read in P7.5's order. **Expect, as invariants:**
+- inputs 13 `same`, unless FAOSTAT has moved upstream since P7 (a report, not a stop; name the file);
+- the GLW-only host gate (`livestock_number_number`, `livestock_masks`, `shoat_prop`) `same` or `within-tol`
+  against the macbook (GDAL 3.8.5); any remaining difference is a finding, with its `max_rel_diff`;
+- the VoP rasters and CSVs are a host test only if FAOSTAT is `same`;
+- `env-diff` rows for GDAL and PROJ; list them.
+
+#### B3 — remove the duplicate GDAL 3.4.3 phase C trees (Pete's GO)
+P12 showed both `_gdal343` trees byte-identical to the 3.8.4 ones (2,190 + 588 files, md5), so they hold nothing
+the live trees do not. Delete them; the live `nex-gddp-cmip6` and `nex-gddp-cmip6_indices` stay as the seed.
+```bash
+: "${CD:?set CD first}"
+du -sb $CD/nex-gddp-cmip6_gdal343 $CD/nex-gddp-cmip6_indices_gdal343
+rm -rf -- "$CD/nex-gddp-cmip6_gdal343" "$CD/nex-gddp-cmip6_indices_gdal343"
+du -sb $CD
+```
+Touch nothing else under `$CD`.
+
+**Stop and describe** on any of: not on `develop`; terra not on GDAL 3.8; `Installing package`; a missing
+`COMPLETE`; `mass NOT conserved`; any write outside `logs/`, `metadata/crosshost/`, the places 0.4.1 writes, and the
+B3 deletion. Compare differences are findings to report, not stops.
+
+**To answer:** prepend one `### RESPONSE — pascal [M-20261119-i58-2]` (P13), run the IP grep over the response and
+the TSVs, commit this file plus the three `*_pascal*` TSVs and nothing else, push, verify it landed, and end with
+`Answers: M-20261119-i58-2 (complete)` — or `(stopped at <gate>)`.
+
 ### RESPONSE — pascal [M-20261119-i58-1] 2026-11-19 — **G0 and G1 PASS: the system GDAL is 3.8.4 and the sum-resample fault is gone — `max cell 9`, ratio 0.9524, the macbook's figures exactly.** **G2 stops the block: one BROKEN row, `rgdal`, `libgdal.so.28: cannot open shared object file`.** C3-C5 ran anyway (the block allows C alongside G2) and both stages pass on 3.8. **Part B was not started**, as G2 is not clean
 
 The headline beyond the upgrade itself: **every one of the 2,190 daily tifs and all 588 index tifs is byte-identical to the GDAL 3.4.3 run of P11.** `02` and `04` do not touch a sum resample, so the upgrade changes nothing in phase C — it changes phase B, which is where the fault lived.

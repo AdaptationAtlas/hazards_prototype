@@ -223,7 +223,8 @@ Python 3.12 was chosen rather than the 3.14 that conda defaults to, because
 several geospatial packages do not yet build against 3.14.
 
 Notably this environment carries **GDAL 3.13.3 and PROJ 9.8.1**, against the
-system GDAL 3.4.3 and PROJ 8.2.1 that R's `terra` and `sf` are linked to. For
+system GDAL 3.8.4 and PROJ 9.3.1 that R's `terra` and `sf` are linked to (3.4.3 / 8.2.1 until IT's
+upgrade on 2026-11-18). For
 work involving cloud-optimised GeoTIFFs, Zarr or remote raster access, the
 Python side is substantially more capable.
 
@@ -237,7 +238,7 @@ Python side is substantially more capable.
 
 A second, deliberately small environment was built at `~/.conda/envs/obs` so the node can read the
 CDH Hugging Face Zarr v3 cubes of CHIRTS-ERA5 and CHIRPS v3 (`archive/dispatches/DISPATCH_pascal_obs_env.md`). The
-system GDAL that R's `terra` links to is 3.4.3 and cannot open them, and the `python3` on `PATH`
+system GDAL that R's `terra` linked to was 3.4.3 (3.8.4 since 2026-11-18, untested on the cubes) and could not open them, and the `python3` on `PATH`
 from `/opt/conda` carries no scientific packages at all.
 
 ``` bash
@@ -335,8 +336,8 @@ they become blocking:
 1.  **No GPU**, and no CUDA toolkit.
 2.  **No Docker daemon**; `apptainer` is the workaround.
 3.  **No batch scheduler**, so no queuing or fair-share enforcement.
-4.  **System GDAL 3.4.3 / PROJ 8.2.1** are old, and R's `terra` and `sf` are
-    linked against them. Rebuilding the R geospatial stack in conda would
+4.  **System GDAL 3.8.4 / PROJ 9.3.1** since 2026-11-18 (`~jammy0` builds; were 3.4.3 / 8.2.1,
+    `~focal0`), and R's `terra` and `sf` are linked against them (verified P12). Rebuilding the R geospatial stack in conda would
     shadow the ~1,680 packages already in the site library, so this has been
     left alone. Use the Python environment where a newer GDAL matters.
 5.  **`fuse2fs` is absent**, so `apptainer` cannot mount EXT3-format SIF
@@ -345,8 +346,12 @@ they become blocking:
     package directory is root-owned. Per-user environments are required.
 7.  **R 4.6.1 over a 4.5-built site library** (found 2026-10-28, fixed by IT
     2026-11-09). See §4. Kept here because the next R upgrade can do it again.
-9.  **The system GDAL 3.4.3 is wrong in two ways that R's `terra`/`sf` inherit**
-    (both proven on this host, 2026-11-13 and 2026-11-17, issue #58):
+9.  **The system GDAL 3.4.3 was wrong in two ways that R's `terra`/`sf` inherited**
+    (both proven on this host, 2026-11-13 and 2026-11-17, issue #58). **Fixed by IT's upgrade to
+    3.8.4 on 2026-11-18**: the sum-resample probe now gives max 9 and ratio 0.9524, the macbook's
+    figures to the digit (P12 G1). The time axis is still a noon POSIXct on 3.8.4, so the date-only
+    fix stays. The upgrade removed `libgdal.so.28`, so the retired `rgdal` no longer loads (used only
+    by the legacy `download_rawCMIP6.R`). Kept for the record:
     - `gdalwarp -r sum`, and so `terra::resample(method = "sum")`, over-counts
       whenever the source has a NoData mask: a cell that holds at most 9 source
       cells returns up to 7,399. GDAL 3.13 in the `obs` conda env gives 9 on the
@@ -358,9 +363,8 @@ they become blocking:
       `terra::time()` returns a POSIXct with a time of day where other builds
       return a Date. Code that pastes `as.character(time(r))` into a filename
       breaks here (fixed in `hazards_upstream` 02, `d5c9e9d`).
-    The installed package is an Ubuntu 20.04 build (`3.4.3+dfsg-1~focal0`); the
-    configured apt sources offer only 3.4.1, so the upgrade needs another
-    package source. Requested from IT on SR-167702, 2026-11-14.
+    The old package was an Ubuntu 20.04 build (`3.4.3+dfsg-1~focal0`). Requested from IT on
+    SR-167702, 2026-11-14; done 2026-11-18 (`3.8.4+dfsg-1~jammy0`).
 8.  **No AWS credentials and no S3 client.** There is no `s3fs`, `paws` or
     `boto3`, and no credentials file or `AWS_*` variables (2026-10-30). Atlas S3
     is readable over plain HTTPS. Nothing can be written to it from here.

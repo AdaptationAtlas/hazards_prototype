@@ -109,8 +109,8 @@
         "scheduler": "none",
         "shared_users": 69,
         "recommended_threads": 8,
-        "gdal_r": "3.4.3",
-        "proj_r": "8.2.1",
+        "gdal_r": "3.8.4",
+        "proj_r": "9.3.1",
         "gdal_python": "3.13.3",
         "container_runtime": "apptainer",
         "notes": [
@@ -118,7 +118,7 @@
           "RStudio Server and plain SSH are NOT capped; those are the routes to the full 80 cores and 397 GiB.",
           "No batch scheduler (no Slurm, no PBS) and ~69 accounts, so nothing stops one job saturating the machine. Sharing is by convention: pick a worker count deliberately, check uptime first, and export OMP_NUM_THREADS/OPENBLAS_NUM_THREADS/MKL_NUM_THREADS.",
           "No GPU and no CUDA. A sibling host 'ampere' may be GPU-equipped but is unconfirmed and needs separate IT access.",
-          "R's terra and sf link against the old system GDAL 3.4.3 / PROJ 8.2.1, while the python env carries GDAL 3.13.3. Relevant to COG and Zarr work.",
+          "R's terra and sf link against the system GDAL 3.8.4 / PROJ 9.3.1 (upgraded by IT 2026-11-18 from 3.4.3 / 8.2.1, verified #58 P12), while the python env carries GDAL 3.13.3.",
           "Bulk store is roughly a quarter of CGlabs' free space, so a full mirror is not viable - stage per-shard working sets.",
           "Paths verified on the node 2026-09-18. common_space is a root-owned symlink to /cluster01, not a second mount. Workspace and workspace are the same inode - the export is case-insensitive, so the old lowercase spelling was never the problem; common_data simply pointed at the wrong subtree (atlas, which holds only hazards_prototype, instead of common).",
           "Raw climate trees live under common/climate/ with node-local names (chirts_era5, chirps, cmip6/nex-gddp-cmip6_raw), hence the per-host raw overrides above. isimip, atlas_sos and atlas_cropSuite are genuinely absent - those stages cannot run here until staged.",
@@ -131,7 +131,7 @@
           "Download rates: JRC ASAP served this host at ~0.48 MB/s (29.5 h for 756 dekads), about 15x slower than CGlabs. Hugging Face cubes run at ~2 MB/s on a single stream and return 429 on bulk pixel reads.",
           "Background jobs: a shell `wait` on a nohup/setsid child never fires; track jobs with a pid-file loop or by tailing the log. Node sessions go idle after each RESPONSE.",
           "Python: the conda env `obs` (python 3.12, GDAL 3.13, rasterio, xarray, zarr) also exists on CGlabs, where it is run through the `pyobs` wrapper. Facts updated 2026-11-02 (#58), with server-environment.md section 9 as source.",
-          "GDAL 3.4.3 is wrong twice over (sum-resample with NoData; netCDF time axis as POSIXct) - see server-environment.md section 8 item 9. Four hub sessions max (4 x 20 CPU = the box). Profile change = stop + start the server. Facts updated 2026-11-19 (#58 P8-P10)."
+          "GDAL 3.4.3 was wrong twice over (sum-resample with NoData; netCDF time axis as POSIXct) - see server-environment.md section 8 item 9. The sum fault is gone on 3.8.4; the POSIXct axis remains, handled in code. Four hub sessions max across all users (4 x 20 CPU = the box). Profile change = stop + start the server. Facts updated 2026-11-19 (#58 P8-P12)."
         ],
         "writable_root": "/cluster01/Workspace/atlas",
         "r_version": "4.6.1",

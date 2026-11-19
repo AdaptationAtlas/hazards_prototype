@@ -44,16 +44,51 @@ Disposition is one of **move** (copy the bytes or the credential; nothing else w
 | # | What CGlabs does today | Disposition | Blocker | Notes |
 |---|---|---|---|---|
 | 6 | Holds the NEX-GDDP-CMIP6 daily inputs | **regenerate** | download time | Public. Re-downloading is bandwidth, not risk. |
-| 7 | Runs `hazards_upstream` 01→04 to produce the monthly index trees | **regenerate** | blocker 3 (unmeasured), compute cap | This is phase C. **Not blocked by the GDAL bug** — `hazards_upstream` contains no sum-resample. Needs `wbkernel` installed (P9). |
-| 8 | Holds the monthly index trees themselves | **regenerate** | follows item 7 | The bulk of the 637 G. |
+| 7 | Runs `hazards_upstream` 01→04 to produce the monthly index trees | **regenerate — under review (§2.2a)** | compute time (measured) | Phase C runs end to end on PASCAL (P11, P12): ten indices, every script exit 0, output byte-identical on GDAL 3.4.3 and 3.8.4. Water-balance indices and TAI not yet run (soils, `sroot`, `ET_SolRad` absent). |
+| 8 | Holds the monthly index trees themselves | **move? — under review (§2.2a)** | CGlabs time to export | The bulk of the 637 G. At the measured cost, transferring these is days and regenerating them is months. |
 | 9 | Holds the legacy `common_data/hazards_prototype` tree (759 G) | **drop** | none | Superseded working directory. Confirm with Pete before anything is deleted on CGlabs; nothing on PASCAL needs it. |
+
+#### 2.2a Regenerate vs transfer, measured (P11 2026-11-19 on GDAL 3.4.3; P12 the same day on 3.8.4)
+
+One GCM-year (ACCESS-ESM1-5, historical, 1995), six variables, ten indices, Large profile, GDAL 3.8.4:
+
+| Stage | Wall | Peak RSS | Bytes | Note |
+|---|---:|---:|---:|---|
+| 01 download | 169 s | 0.1 GiB | 1.56 GB | ~9 MB/s from the NEX-GDDP bucket |
+| 02 preprocess | 8,652 s | 19.7 GiB | 2.62 GB (2,190 daily tifs) | **76 % of the wall; one core** (plain `lapply`, by design) |
+| 04 ten indices | 2,509 s | 7.8 GiB | 0.98 GB (0.17 GB monthly; 0.80 GB the `daily/` stacks of HSH, THI, WBGT) | `calc_HSH` + `calc_WBGT` are 67 % of it |
+| **Total** | **11,330 s (3 h 9 m)** | 19.7 GiB | 5.16 GB | P11 on 3.4.3: 11,641 s, same bytes |
+
+Scaled to the full matrix, 18 GCMs × (20 historical + 4 SSPs × 80 future) = **6,120 GCM-years**:
+
+| | Figure | Basis |
+|---|---:|---|
+| Compute, one stream | 19,300 h ≈ 800 days | 6,120 × 11,330 s |
+| One Large hub session (96 GiB) | **≈ 200 days** | 4 streams; `02`'s 19.7 GiB peak is the limit, not the 20 CPUs |
+| Uncapped route (RStudio Server or SSH, 397 GiB, office-only, shared with ~69 accounts) | ≈ 50 days | 16 streams; disk I/O at that concurrency untested |
+| Disk, everything kept | 31.6 TB | does **not** fit the 24 TB free |
+| Disk, daily tifs deleted after 04 | 15.5 TB raw + indices; 6.0 TB indices only; 1.1 TB monthly only | |
+| Download alone | 9.6 TB, ≈ 12 days single-stream | not the obstacle |
+| **Transfer the 637 G CGlabs tree instead** | **≈ 19 h at 9 MB/s; ≈ 3 days at 2.5 MB/s** | needs CGlabs time to export it, and S3 write from CGlabs |
+
+Read with three caveats. The figures are a **lower bound**: water balance (NDWS, NDWL0, NDWL50) and
+TAI are not in them. One GCM-year is one sample; leap years and other GCMs' grids are not measured.
+And the 637 G figure does not reconcile with 1.1–6.0 TB for a full index matrix, so what CGlabs
+actually holds per GCM-year is unknown until a read-only `du` there.
+
+**What it means for §1's rule.** "Regenerate, not transfer" assumed regeneration was affordable. It is
+not, at present: about seven months of one Large session, against days to transfer. Recommendation,
+for Pete's decision: **move** the index trees (item 8) as the main route; keep **regenerate** as the
+proof, via the producer-side value gate on sample GCM-years (PASCAL's 1995 against CGlabs' copy,
+`72_crosshost_fingerprint.R --stage upstream-04`); and treat any later full regeneration as needing
+two code changes first: `02` per variable in separate processes, and a lower `02` memory peak.
 
 ### 2.3 The exposure and economics chain (R/0.4.x)
 
 | # | What CGlabs does today | Disposition | Blocker | Notes |
 |---|---|---|---|---|
-| 10 | `0.4.0` crop VoP intld15, `0.4.2` VoP nominal USD, `0.4.3` FAO production CV, `0.4.4` process exposure, `0.4.5` FAOSTAT long | **regenerate** | **blocker 1 (GDAL)** | These four carry 15 sum-resamples with no mass check (next step 4 in the thread briefing). |
-| 11 | `0.4.1` livestock exposure | **regenerate** | **blocker 1 (GDAL)** | Guarded since `03a5705`: `R/mass_check.R` stops if mass drifts >0.5 %. On today's PASCAL it would stop, correctly. |
+| 10 | `0.4.0` crop VoP intld15, `0.4.2` VoP nominal USD, `0.4.3` FAO production CV, `0.4.4` process exposure, `0.4.5` FAOSTAT long | **regenerate** | none known (GDAL 3.8.4 since 2026-11-18) | Seven `resample(method = "sum")` calls with no mass check: 0.4.0 (1), 0.4.4 (3), `haz_functions.R` (3). |
+| 11 | `0.4.1` livestock exposure | **regenerate** | none known | Guarded since `03a5705`. On GDAL 3.8.4 the sum-resample probe matches the macbook to the digit (P12 G1); the 0.4.1 re-run is P13. |
 | 12 | Phase B value gate (`72_crosshost_fingerprint.R`) | **regenerate** | CGlabs half not run | PASCAL half done, inputs 13/13 identical. CGlabs half is ~2 min read-only, waiting on CGlabs being free. |
 
 ### 2.4 The bakes (R/1 – R/4)
@@ -109,14 +144,14 @@ running on it, and what can be measured cheaply before committing to a long run.
 4. **Phase C measurement.** One GCM × one scenario through `hazards_upstream` 01→04 on a Large
    profile, recording wall time, peak RSS and output bytes per stage. This is the evidence behind
    every "regenerate" in §2.2 and §2.5, and the input to the §5 estimate. **Awaiting Pete's GO.**
-5. **GDAL upgrade on PASCAL** (IT, SR-167702, requested 2026-11-14). Unblocks items 10, 11 and the
+5. **GDAL upgrade on PASCAL** — **done** (3.8.4, IT 2026-11-18; verified P12 G0–G1). Unblocks items 10, 11 and the
    second half of phase B. Until it lands, nothing in R/0.4.x can be trusted on PASCAL — and with
    `mass_check()` in place, 0.4.1 will stop rather than produce wrong numbers.
-6. **Extend `mass_check()`** to the 15 unguarded sum-resamples in 0.4.0 / 0.4.2 / 0.4.4. Macbook
+6. **Extend `mass_check()`** to the seven unguarded sum-resamples in 0.4.0 / 0.4.4 / `haz_functions.R`. Macbook
    work, no node time, and it converts blocker 1 from a silent risk into a loud one everywhere.
 7. **Phase B, both halves.** CGlabs half (~2 min, read-only) when CGlabs is free; PASCAL half re-run
    after the GDAL upgrade, expecting a clean value match.
-8. **Regenerate the index trees** (item 7, then 8) at full scale, once phase C has sized it.
+8. **Index trees** (items 7, 8): sized in §2.2a. Transfer, or regenerate after the `02` changes; Pete's call.
 9. **Regenerate the bakes** R/1 → R/4 (items 13–16), with R/3 §4.1 profiled against the 96 GiB cap
    before the full run.
 10. **Regenerate the observed pipeline** S1 → S7 (items 17–22). Independent of the NEX trees, so it
@@ -152,14 +187,11 @@ Everything else in §2 is a function of pinned inputs and code in this repositor
 ## 5. What this plan does not yet know
 
 - **Whether PIK answers from PASCAL** (step 3). Unmeasured, and it changes the disposition of item 4.
-- **The size of phase C.** Wall time, peak RSS and output bytes per stage for one GCM × one scenario
-  are unmeasured. Without them, steps 7–9 cannot be scheduled and the four-session cap cannot be
-  turned into a calendar.
+- **The size of phase C** — measured for the ten indices (§2.2a). Still unknown: water balance and TAI,
+  and what CGlabs' 637 G holds per GCM-year.
 - **Whether R/3 §4.1 fits in 96 GiB.** It was tuned against 376 GiB on CGlabs, where §4.2 is already
   pinned to a single worker for memory reasons.
-- **Whether the GDAL upgrade lands.** If IT cannot upgrade, the fallback is `aggregate(fact = n)`,
-  which is only valid at integer resolution ratios, and a review of all 19 sum-resample call sites to
-  see how many qualify. That would be a code change of real size, so it is worth knowing early.
+- **Whether the GDAL upgrade lands** — it did (3.8.4, 2026-11-18; P12).
 - **Whether PASCAL becomes the publisher or only the producer.** A split where PASCAL computes and
   CGlabs publishes is viable for a while and removes blocker 2 from the critical path, at the cost of
   keeping a CGlabs dependency alive.
