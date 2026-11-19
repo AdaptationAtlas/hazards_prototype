@@ -2,6 +2,90 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-19 [M-20261119-i58-4] — P15: server-wide storage and duplicate census (metadata only). Replaces P14 [M-20261119-i58-3]. **Small profile. A few hours, mostly one `find`.**
+
+**Why.** P13 closed phase B on PASCAL. Its one VALUE-DIFF, `shoat_prop` at 3.95e-06, is accepted as you read it: rounding
+order in a ratio whose two layers still sum to the cell count. Pete now wants duplicates found across the whole shared store, not only in our folders, so owners can be
+contacted and the space recovered before anyone pays for more storage. P14 looked at our area only; P15 replaces it
+(P14 gets no RESPONSE; if you started it, stop it and say how far it got). P14's two checks on the shared NEX-GDDP
+raw tree are kept as E3.
+
+How it works, and why this way:
+- **Metadata only.** One `find` lists size, owner, folder and name for every file on the store. **No other user's
+  file is opened or hashed.** Contents are compared later, only for groups worth acting on, and for other people's
+  data by IT or the owner.
+- `scripts/storage_census.py` (new; standard library only) turns the listing into **probable** duplicates: whole
+  folder trees whose file names and sizes match all the way down (each duplicated tree counted once, at its outermost
+  copy), and large files with the same name and size in two or more places outside those trees.
+- **Usernames and real paths never leave the node.** The script writes two things: a private folder (usernames,
+  real paths; for Pete, to contact owners) and a public markdown summary in which owners are `owner-NN`, our own
+  account is `self`, the store root is `$B`, and any path part containing a username is replaced by its tag. **Only
+  the public summary goes in the RESPONSE.** `logs/p15_*` is git-ignored as of this commit; never force-add it.
+
+**Rules.**
+- **Read-only.** No `rm`, `mv`, `cp`, `chmod`, and no contact with any other user. Writes only under `logs/`.
+- **No file contents read outside `$W`**, except the shared NEX-GDDP copies that E3 compares with our six files.
+- Run the listing at idle I/O priority (`ionice -c3 nice -n 19`), so other users do not feel it.
+- `Permission denied` is a finding: count it, do not work around it.
+- No usernames, hostnames or IPs anywhere in the RESPONSE; paths as `$B/…`, `$W/…`, `$CL/…`, `$CD/…`.
+
+#### E0 — pull, roots
+```bash
+cd <repo> && export ATLAS_PROJECT_DIR=$PWD
+export B=<the bulk store root: the common parent of writable_root and of the shared climate root in metadata/hosts.json>
+export W=<writable_root in metadata/hosts.json, the atlas root>
+export CL=<the shared climate root: the parent of the chirps / chirts_era5 raw overrides in hosts.json>
+export CD=<the P10 root>
+git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD      # develop, at or after the P15 commit
+git check-ignore -q logs/p15_test && echo "logs/p15_* ignored"                    # must print; else stop
+df -h $B $W | tail -2                                                              # one filesystem expected
+ls $B | wc -l; python3 --version
+```
+
+#### E1 — list the store (background, idle I/O)
+```bash
+S=$(date +%Y%m%d_%H%M%S); export B S
+cat > logs/p15_list_$S.sh <<'SH'
+ionice -c3 nice -n 19 find "$B" -xdev -type f -printf '%s\t%u\t%h\t%f\n' > logs/p15_files_$S.tsv 2> logs/p15_list_$S.err
+echo "find exit=$?"
+SH
+nohup /usr/bin/time -v bash logs/p15_list_$S.sh > logs/p15_list_$S.log 2>&1 &
+echo $! > logs/p15_list_$S.pid
+# afterwards:
+grep -E "find exit|Elapsed" logs/p15_list_$S.log; wc -l < logs/p15_files_$S.tsv; grep -c 'Permission denied' logs/p15_list_$S.err
+```
+`find` exits 1 when some folders are unreadable; that is expected here, not a stop. Report wall time, file count and
+the denied count.
+
+#### E2 — the census
+```bash
+python3 -I scripts/storage_census.py --list logs/p15_files_$S.tsv --root "$B" --self "$(id -un)" \
+  --private logs/p15_private_$S --public logs/p15_public_$S.md --min-tree-gb 1 --min-file-mb 100 --top 40
+# privacy check: no username from the private owner table may appear in the public summary
+cut -f1 logs/p15_private_$S/owner_usage.tsv | tail -n +2 | awk 'length($0) >= 3' > logs/p15_names_$S.txt
+grep -c -F -f logs/p15_names_$S.txt logs/p15_public_$S.md                           # must be 0
+```
+**If that count is not 0, stop** and do not paste anything; say only the count. Otherwise paste the whole public
+summary into the RESPONSE. Then add, in your own words: the three largest groups and what they look like (same
+dataset in two places? a scratch copy? folders of same-sized files that only look alike?), and anything that
+looks like a false match.
+
+#### E3 — the shared NEX-GDDP raw tree, and our six files (P14's D2 and D3)
+Run P14's D2 and D3 as written, with `$S` from E1 and `R=$CL/cmip6/nex-gddp-cmip6_raw`. Report the GCM × scenario
+coverage table and the six-file comparison.
+
+#### E4 — report
+At the top: total listed, owners, probable duplicate bytes (trees + files) as a share of used space, the largest
+single group, the denied count, `df` for `$B`, and the shared NEX raw coverage as a fraction of the 18 GCMs × 5
+scenarios.
+
+**Stop and describe** on any of: not on `develop`; `logs/p15_*` not ignored; a non-zero privacy count; any write
+outside `logs/`; anything that would need reading another user's file contents, a deletion or a move.
+
+**To answer:** prepend one `### RESPONSE — pascal [M-20261119-i58-4]` (P15), run the IP grep over the response,
+commit only this file (never `logs/`), push, verify it landed, and end with
+`Answers: M-20261119-i58-4 (complete)` — or `(stopped at <gate>)`.
+
 ### RESPONSE — pascal [M-20261119-i58-2] 2026-11-19 — **B0-B3 complete. Phase B closes on GDAL 3.8.4.** Inputs 13/13 `same`. **res-05 PASS outright**; res-25 has **one** value difference left, `shoat_prop`, at `max rel diff 3.95e-06` — against a factor of two on GDAL 3.4.3. All four `mass_check` sites report `mass conserved within 0.005` at both resolutions. The two `_gdal343` trees are deleted
 
 The host gate is effectively closed. Of the three GLW-only artefacts the sum-resample fault was corrupting, **`livestock_number_number` and `livestock_masks` are now `same` to the digit**, and `shoat_prop` is a rounding-order difference, not a mass error — see below. Everything else that P7 flagged on 3.4.3 has gone.

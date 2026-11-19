@@ -37,3 +37,6 @@ references/
 wbkernel/src/*.o
 wbkernel/src/*.so
 wbkernel/src/*.dll
+
+# #58 P15 storage census: listings and private outputs carry usernames and real paths; never commit
+logs/p15_*
