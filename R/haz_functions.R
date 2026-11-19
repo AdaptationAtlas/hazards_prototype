@@ -30,7 +30,22 @@
 # "sum") in 0.4.1, 0.4.4, and read_spam() below. The pattern is no longer
 # mass-leaking. Wrappers added a ±0.005 ratio assertion that warns if any
 # future caller reintroduces a non-conservative resample.
+# Issue #58 (Nov 2026): that assertion is now R/mass_check.R, which compares
+# against the source cropped to the destination and STOPS; ExtractHaz() and
+# read_spam() reach it through .mass_check_fn() so this file keeps no
+# top-level side effects.
 # =============================================================================
+
+# R/mass_check.R's mass_check(), loaded on first use into a private
+# environment (not the caller's), so sourcing this file stays side-effect free.
+.mass_check_fn <- function() {
+  if (exists("mass_check", mode = "function")) return(get("mass_check", mode = "function"))
+  p <- file.path(Sys.getenv("project_dir", getwd()), "R", "mass_check.R")
+  if (!file.exists(p)) stop("R/mass_check.R not found at ", p, " (issue #58); set project_dir to the checkout")
+  e <- new.env(parent = baseenv())
+  sys.source(p, envir = e)
+  e$mass_check
+}
 
 #' Threshold Function
 #'
@@ -482,8 +497,11 @@ ExtractHaz<-function(Regions,Reg.Field,Hazard,HazTab,Exposure,Cropland,TotalPop)
   
   Hazard<-terra::resample(Hazard,Exposure,method="near")
   
+  .src_pop <- TotalPop; .src_crop <- Cropland
   TotalPop<-terra::resample(TotalPop,Exposure,method="sum")
+  .mass_check_fn()(.src_pop, TotalPop, "ExtractHaz TotalPop resample")
   Cropland<-terra::resample(Cropland,Exposure,method="sum")
+  .mass_check_fn()(.src_crop, Cropland, "ExtractHaz Cropland resample")
   
   # Create hazard mask
   HazardMask<-Hazard
@@ -1526,16 +1544,10 @@ read_spam <- function(variable, technology, mapspam_dir, save_dir, base_rast, fi
     # v9: mass-conserving resample via method="sum". The prior
     # density-divide / bilinear / density-back pattern leaked country-level
     # mass (see R/checks/9_mass_conservation_check.R and issue #9).
-    .spam_src_mass <- terra::global(data, "sum", na.rm = TRUE)[, 1]
+    # #58: the warning that stood here compared against the global total; it is now a stop.
+    .spam_src <- data
     data <- terra::resample(data, base_rast, method = "sum")
-    .spam_dst_mass <- terra::global(data, "sum", na.rm = TRUE)[, 1]
-    .spam_ratio <- .spam_dst_mass / .spam_src_mass
-    if (any(abs(.spam_ratio - 1) > 0.005, na.rm = TRUE)) {
-      warning(sprintf(
-        "[read_spam] mass not conserved on resample: %s",
-        paste(sprintf("%s=%.4f", names(data), .spam_ratio), collapse = ", ")
-      ))
-    }
+    .mass_check_fn()(.spam_src, data, "read_spam resample")
     
     # Save the processed raster data to a file.
     terra::writeRaster(data, filename=ms_file, overwrite=T, filetype = "COG",gdal = c("OVERVIEWS"="NONE")) 

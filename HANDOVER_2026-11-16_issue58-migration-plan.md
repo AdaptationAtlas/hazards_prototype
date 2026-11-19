@@ -93,7 +93,7 @@ tree so PASCAL's copy is checked file by file. All three need CGlabs time.
 
 | # | What CGlabs does today | Disposition | Blocker | Notes |
 |---|---|---|---|---|
-| 10 | `0.4.0` crop VoP intld15, `0.4.2` VoP nominal USD, `0.4.3` FAO production CV, `0.4.4` process exposure, `0.4.5` FAOSTAT long | **regenerate** | none known (GDAL 3.8.4 since 2026-11-18) | Seven `resample(method = "sum")` calls with no mass check: 0.4.0 (1), 0.4.4 (3), `haz_functions.R` (3). |
+| 10 | `0.4.0` crop VoP intld15, `0.4.2` VoP nominal USD, `0.4.3` FAO production CV, `0.4.4` process exposure, `0.4.5` FAOSTAT long | **regenerate** | none known (GDAL 3.8.4 since 2026-11-18) | All seven `resample(method = "sum")` calls in 0.4.0 (1), 0.4.4 (3) and `haz_functions.R` (3) are guarded by `mass_check()` since 2026-11-20. |
 | 11 | `0.4.1` livestock exposure | **regenerate** | none known | Guarded since `03a5705`. On GDAL 3.8.4 the sum-resample probe matches the macbook to the digit (P12 G1); the 0.4.1 re-run is P13. |
 | 12 | Phase B value gate (`72_crosshost_fingerprint.R`) | **regenerate** | CGlabs half not run | PASCAL half done, inputs 13/13 identical. CGlabs half is ~2 min read-only, waiting on CGlabs being free. |
 
@@ -151,8 +151,8 @@ running on it, and what can be measured cheaply before committing to a long run.
 5. **GDAL upgrade on PASCAL** — **done** (3.8.4, IT 2026-11-18; verified P12 G0–G1). Unblocks items 10, 11 and the
    second half of phase B. Until it lands, nothing in R/0.4.x can be trusted on PASCAL — and with
    `mass_check()` in place, 0.4.1 will stop rather than produce wrong numbers.
-6. **Extend `mass_check()`** to the seven unguarded sum-resamples in 0.4.0 / 0.4.4 / `haz_functions.R`. Macbook
-   work, no node time, and it converts blocker 1 from a silent risk into a loud one everywhere.
+6. ~~**Extend `mass_check()`**~~ **Done 2026-11-20:** the seven sum-resamples in 0.4.0 / 0.4.4 /
+   `haz_functions.R` now stop on a mass error, like 0.4.1.
 7. **Phase B, both halves.** CGlabs half (~2 min, read-only) when CGlabs is free; PASCAL half re-run
    after the GDAL upgrade, expecting a clean value match.
 8. **Index trees** (items 7, 8): **transfer** (decided 2026-11-19, §2.2a). Size the CGlabs tree read-only, pick the route, manifest it, copy, verify on PASCAL. Regeneration stays as the proof on sample GCM-years.

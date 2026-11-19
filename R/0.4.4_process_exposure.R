@@ -2,6 +2,7 @@
 # To generate crop & livestock vop you will need to run scripts 0.4.1 & 0.4.2
 # a) Load R functions & packages ####
 source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "mass_check.R"))      # #58: every method = "sum" resample below is checked
 
 # List of packages to be loaded
 packages <- c("terra",
@@ -207,7 +208,9 @@ spam_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
   # totals are mass-conserved (issue #9 pattern).
   zone_rast_geom <- terra::rast(boundaries_zonal[[1]])
   if (!terra::compareGeom(data, zone_rast_geom, stopOnError = FALSE)) {
+    .src <- data
     data <- terra::resample(data, zone_rast_geom, method = "sum")
+    mass_check(.src, data, sprintf("0.4.4 SPAM zonal-grid resample (%s)", basename(file)))
   }
 
   result <- admin_extract_wrap(data = data,
@@ -331,7 +334,9 @@ glw_extracted <- rbindlist(furrr::future_map(seq_along(files), function(i) {
     # to base_rast so this should be a no-op, but cheap to verify.
     .zone_geom <- terra::rast(boundaries_zonal[[1]])
     if (!terra::compareGeom(data, .zone_geom, stopOnError = FALSE)) {
+      .src <- data
       data <- terra::resample(data, .zone_geom, method = "sum")
+      mass_check(.src, data, sprintf("0.4.4 GLW zonal-grid resample (%s)", basename(file)))
     }
 
     result <- admin_extract_wrap(data = data,
@@ -700,16 +705,10 @@ if(!file.exists(hpop_file)|overwrite_pop==T){
   # density / bilinear / density-back pattern leaked ~7.9% mass at country
   # totals for hpop (AGO probe; see R/checks/9_mass_conservation_check.R
   # and issue #9).
-  .hpop_src_mass <- terra::global(hpop, "sum", na.rm = TRUE)[, 1]
+  # #58: the warning that stood here becomes a stop (R/mass_check.R).
+  .hpop_src <- hpop
   hpop <- terra::resample(hpop, rast(boundaries_zonal[[1]]), method = "sum")
-  .hpop_dst_mass <- terra::global(hpop, "sum", na.rm = TRUE)[, 1]
-  .hpop_ratio <- .hpop_dst_mass / .hpop_src_mass
-  if (any(abs(.hpop_ratio - 1) > 0.005, na.rm = TRUE)) {
-    warning(sprintf(
-      "[0.4.4] mass not conserved on hpop resample: %s",
-      paste(sprintf("%s=%.4f", names(hpop), .hpop_ratio), collapse = ", ")
-    ))
-  }
+  mass_check(.hpop_src, hpop, "0.4.4 hpop resample")
   
   terra::writeRaster(hpop,filename =hpop_file,overwrite=T)
 }

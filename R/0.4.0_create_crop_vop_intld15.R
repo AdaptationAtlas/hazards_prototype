@@ -21,6 +21,7 @@
 
 pacman::p_load(terra, data.table, httr, countrycode, wbstats, arrow, geoarrow, dplyr, tidyr, pbapply)
 source(file.path(Sys.getenv("project_dir", getwd()), "R", "haz_functions.R"))   # local copy: a develop fix must reach the node run (was GitHub main)
+source(file.path(Sys.getenv("project_dir", getwd()), "R", "mass_check.R"))      # #58: every method = "sum" resample below is checked
 options(scipen = 999)
 terra::gdalCache(60000)
 
@@ -79,14 +80,12 @@ spam_dat <- pblapply(seq_along(files_raw), function(i) {
   # base (method="sum", mass-conserving) BEFORE the admin zonal + proportion, or
   # zonal/`raw_dat/spam_tot` hit "[zonal] extents do not match". Mirrors 0.4.1's
   # glw resample (L144). method="sum" conserves production totals (issue #9).
+  # #58: mass_check() compares against the source cropped to the grid (the old check used the
+  # global total, so it could not tell a partial grid from a GDAL fault) and STOPS on failure.
   if (!terra::compareGeom(dat, alloc_grid, stopOnError = FALSE)) {
-    .src <- terra::global(dat, "sum", na.rm = TRUE)[, 1]
+    .src <- dat
     dat <- terra::resample(dat, alloc_grid, method = "sum")
-    .dst <- terra::global(dat, "sum", na.rm = TRUE)[, 1]
-    if (any(abs(.dst / .src - 1) > 0.005, na.rm = TRUE)) {
-      warning(sprintf("[0.4.0] SPAM prod mass not conserved on resample (tech %d): max dev %.3f%%",
-                      i, 100 * max(abs(.dst / .src - 1), na.rm = TRUE)))
-    }
+    mass_check(.src, dat, sprintf("0.4.0 SPAM prod resample (%s)", basename(files_raw[i])))
   }
   dat
 })
