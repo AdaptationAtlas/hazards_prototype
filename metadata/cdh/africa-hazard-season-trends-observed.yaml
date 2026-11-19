@@ -1,0 +1,581 @@
+# yaml-language-server: $schema=https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/schemas/profiles/cdh.schema.bundled.json
+# Observed trends, WMO 1991-2020 normals and seasonal anomalies of agro-climatic hazard indices for Africa,
+# 1982-2024, per 0.25-degree cell and by administrative unit (CHIRPS v3 / CHIRTS-ERA5 / AgERA5; Adaptation
+# Atlas). Built by R/obs/s7_trends_anomalies.R, published by scripts/s7_publish_obs_trends.R
+# (DISPATCH_cglabs_obs_long_series.md, M-20261119-s7-2). The three file inventories next to this record list
+# every COG; the publisher's gate P1 stops if the files on disk and these inventories differ.
+cdh_schema_version: v0.5.0
+extensions:
+  - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/cdh/schema.json
+
+id: africa-hazard-season-trends-observed
+title:
+  Observed Trends, Normals and Anomalies of Seasonal Climate Hazards, Africa 1982-2024 (CHIRPS, CHIRTS-ERA5,
+  AgERA5)
+version: v1.0
+series:
+  name: Africa Agriculture Adaptation Atlas
+  url: https://adaptationatlas.cgiar.org/
+description: >
+  How five agro-climatic hazard indices (soil water-stress days, waterlogging days, days above 35 °C,
+  seasonal rainfall and the livestock temperature-humidity index) have changed over the 43 growing
+  seasons 1982-2024 across Africa, computed from observation-based daily data over each crop's own
+  growing season and over a 12-month livestock window. For every 0.25-degree cell it gives the trend
+  (change per decade and whether it is statistically significant), the 1991-2020 normal (mean,
+  spread and percentiles), and each season's anomaly against that normal. The same statistics are
+  given for every country and first- and second-level administrative unit, averaged over cropland
+  or livestock (by production) as well as over all land. Use it to see where a hazard has already
+  been rising, and how unusual a given season was.
+resource_type: dataset
+license: CC-BY-4.0 # Atlas-derived; CHIRPS / CHIRTS are public domain, AgERA5 is under the Copernicus licence
+attribution: >
+  Rainfall from CHIRPS v3 and temperature from CHIRTS-ERA5, Climate Hazards Center, UC Santa Barbara.
+  Humidity and radiation from AgERA5: contains modified Copernicus Climate Change Service information
+  (2026); neither the European Commission nor ECMWF is responsible for any use of the information.
+keywords:
+  - climate hazards
+  - agro-climatic indices
+  - observed trends
+  - Theil-Sen slope
+  - Mann-Kendall test
+  - false discovery rate
+  - climate normal
+  - anomaly
+  - CHIRPS
+  - CHIRTS-ERA5
+  - AgERA5
+  - administrative units
+
+note: >
+  Seasons are labelled by their start year: a season that starts in one year and ends in the next
+  carries the first year, so in eastern Kenya, which plants in October, season 2010 is the OND-2010
+  failure. The trend significance (p_mk) is a Mann-Kendall test with the Hamed-Rao autocorrelation
+  correction applied inflate-only, so a trend is never judged more significant than the plain test
+  would judge it; sig_fdr controls the false discovery rate (Benjamini-Hochberg, 0.05) within one
+  stack only (one window x index for the grids; one admin level x window x index x weighting for the
+  tables). CHIRPS blends a station network whose density changes over time, so part of a rainfall
+  trend, and of the soil-water indices that use rainfall, may come from the network rather than the
+  climate. CHIRTS-ERA5 temperatures were repaired at coastal-edge pixels above physical caps (57 °C
+  maximum, 43 °C minimum), mostly on the Red Sea, Gulf of Aden and Gulf coasts. The soil layers
+  behind NDWS and NDWL0 had coverage gaps filled by interpolation within 0.5 degrees. Mauritius,
+  Cabo Verde and Seychelles lie outside the processed area and have no values. The admin tables
+  carry three weightings; read crop windows by crop_production and the livestock window (annual12)
+  by livestock_tlu, since the area weighting is dominated by land that produces nothing. The
+  -rh15 source is a sensitivity variant of THI_max_max only, using relative humidity at 15:00.
+  Read the tables with hive partitioning turned off, or the version= path segment becomes a column.
+  Every object has a JSON sidecar (key + .json) with its checksums, code commit and field notes.
+
+contact:
+  - organization: Alliance of Bioversity International and CIAT
+    url: https://alliancebioversityciat.org/
+    roles: [licensor, producer]
+  - name: Peter Steward
+    organization: Alliance of Bioversity International and CIAT
+    email: p.steward@cgiar.org
+    roles: [processor, point-of-contact, maintainer]
+
+citation:
+  title:
+    Africa Agriculture Adaptation Atlas observed trends, normals and anomalies of seasonal climate
+    hazards, 1982-2024
+  authors:
+    - organization: Alliance of Bioversity International and CIAT
+  date: "2026"
+  publisher: Alliance of Bioversity International and CIAT
+  url: https://adaptationatlas.cgiar.org/
+related_publications:
+  - doi: 10.1038/sdata.2015.66
+    citation:
+      title: The climate hazards infrared precipitation with stations - a new environmental record for monitoring extremes
+      authors:
+        - family: Funk
+          given: C.
+      date: "2015"
+      publisher: Scientific Data
+  - doi: 10.1080/01621459.1968.10480934
+    citation:
+      title: Estimates of the regression coefficient based on Kendall's tau
+      authors:
+        - family: Sen
+          given: P. K.
+      date: "1968"
+      publisher: Journal of the American Statistical Association
+  - doi: 10.1016/S0022-1694(97)00125-X
+    citation:
+      title: A modified Mann-Kendall trend test for autocorrelated data
+      authors:
+        - family: Hamed
+          given: K. H.
+        - family: Rao
+          given: A. R.
+      date: "1998"
+      publisher: Journal of Hydrology
+  - doi: 10.1111/j.2517-6161.1995.tb02031.x
+    citation:
+      title: "Controlling the false discovery rate: a practical and powerful approach to multiple testing"
+      authors:
+        - family: Benjamini
+          given: Y.
+        - family: Hochberg
+          given: Y.
+      date: "1995"
+      publisher: Journal of the Royal Statistical Society, Series B
+
+created: "2026-11-19"
+updated: "2026-11-19"
+
+spatial:
+  bbox: [-25.5, -47.0, 63.6, 37.6] # Africa including island states
+  crs: EPSG:4326
+  geography: [africa]
+
+temporal:
+  start_date: "1982"
+  end_date: "2024"
+
+structures:
+  - name: cell-trend
+    dimensions: &cell-dims
+      - name: cell
+        type: xy
+        description: >
+          0.25-degree cell on the NEX-GDDP-CMIP6 lattice, so the grids line up with the projected
+          Atlas hazard products. Cells outside Africa, and land cells without a season, are NaN.
+        step: 0.25
+        unit: degree
+      - &source-dim
+        name: source
+        type: source
+        description: >
+          Input combination. chirps-chirts-agera5: CHIRPS v3 rainfall, CHIRTS-ERA5 temperature and
+          AgERA5 humidity and radiation. chirps-chirts-agera5-rh15: the same, with the
+          temperature-humidity index computed from relative humidity at 15:00 (THI_max_max only; a
+          sensitivity layer).
+        values: [chirps-chirts-agera5, chirps-chirts-agera5-rh15]
+        data_type: string
+      - &window-dim
+        name: window
+        type: season
+        description: >
+          Season window, per cell. ggcmi-<crop> is that crop's GGCMI rainfed growing season (bar barley,
+          bea bean, cas cassava, cot cotton, mai maize, mil millet, nut groundnut, pea field pea, pot
+          potato, rap rapeseed, ri1 rice, sgb sugar beet, sor sorghum, soy soybean,
+          sun sunflower, swh spring wheat). annual12 is the 12 months from the cell's maize planting
+          month, used for livestock and for crops without a GGCMI calendar. custom-mai_plant-8 is the
+          8 months from maize planting, custom-mai_maturity-4 the 4 months up to maize maturity.
+        values:
+          [
+            annual12,
+            custom-mai_maturity-4,
+            custom-mai_plant-8,
+            ggcmi-bar,
+            ggcmi-bea,
+            ggcmi-cas,
+            ggcmi-cot,
+            ggcmi-mai,
+            ggcmi-mil,
+            ggcmi-nut,
+            ggcmi-pea,
+            ggcmi-pot,
+            ggcmi-rap,
+            ggcmi-ri1,
+            ggcmi-sgb,
+            ggcmi-sor,
+            ggcmi-soy,
+            ggcmi-sun,
+            ggcmi-swh,
+          ]
+        data_type: string
+      - &index-dim
+        name: index
+        type: hazard
+        description: >
+          Hazard index and the statistic taken over the window's months. NDWS_mean soil water-stress
+          days, NDWL0_mean waterlogging days and NTx35_mean days above 35 °C, each per month and
+          averaged over the window; PTOT_sum total precipitation over the window (mm); THI_max_max the
+          highest monthly maximum livestock temperature-humidity index (unitless).
+        values: [NDWL0_mean, NDWS_mean, NTx35_mean, PTOT_sum, THI_max_max]
+        data_type: string
+    variables:
+      - name: slope_per_decade
+        description: >
+          Theil-Sen (Sen's) slope of the seasonal index value over the seasons 1982-2024, in the
+          index's unit per decade. NaN where fewer than 30 seasons are valid.
+        data_type: float32
+        nodata: "NaN"
+      - name: p_mk
+        description: >
+          Two-sided Mann-Kendall p-value of the trend, with the Hamed-Rao (1998) autocorrelation
+          correction applied inflate-only: the variance is widened for positive serial correlation and
+          never narrowed, so p is never smaller than the uncorrected Mann-Kendall p.
+        data_type: float32
+        nodata: "NaN"
+        unit: "1"
+      - name: sig_fdr
+        description: >
+          1 where the trend is significant at a false discovery rate of 0.05 (Benjamini-Hochberg over
+          the valid cells of this one window x index grid), 0 where it is not. The control holds
+          within one grid only.
+        data_type: float32
+        nodata: "NaN"
+        categories:
+          - value: 0
+            label: Not significant
+          - value: 1
+            label: Significant at FDR 0.05
+      - name: n_years
+        description: Valid seasons in the trend, of 43; slope and p are NaN below 30.
+        data_type: float32
+        nodata: "NaN"
+        unit: "1"
+  - name: cell-normal
+    dimensions: *cell-dims
+    variables:
+      - name: mean
+        description: >
+          Mean of the seasonal index value over the WMO 1991-2020 normal, in the index's unit. NaN
+          where fewer than 25 of the 30 seasons are valid (as for every band of this structure).
+        data_type: float32
+        nodata: "NaN"
+      - name: sd
+        description: Standard deviation over the 1991-2020 normal.
+        data_type: float32
+        nodata: "NaN"
+      - name: p10
+        description: 10th percentile over the 1991-2020 normal.
+        data_type: float32
+        nodata: "NaN"
+      - name: p50
+        description: Median over the 1991-2020 normal.
+        data_type: float32
+        nodata: "NaN"
+      - name: p90
+        description: 90th percentile over the 1991-2020 normal.
+        data_type: float32
+        nodata: "NaN"
+  - name: cell-anomaly
+    dimensions:
+      - name: cell
+        type: xy
+        description: 0.25-degree cell on the NEX-GDDP-CMIP6 lattice; outside Africa NaN.
+        step: 0.25
+        unit: degree
+      - *source-dim
+      - *window-dim
+      - *index-dim
+      - name: season
+        type: temporal
+        description: >
+          Season, labelled by its start year; one band per season, named by that year.
+        extent: ["1982", "2024"]
+        step: P1Y
+    variables:
+      - name: anomaly_diff
+        description: >
+          The season's value minus the 1991-2020 normal mean, in the index's unit (days per month, mm
+          or THI units).
+        data_type: float32
+        nodata: "NaN"
+      - name: anomaly_z
+        description: >
+          The season's anomaly divided by the 1991-2020 standard deviation (a standardised anomaly).
+          NaN where the standard deviation is not above 0.
+        data_type: float32
+        nodata: "NaN"
+        unit: "1"
+  - name: admin-trends
+    dimensions: &admin-dims
+      - *source-dim
+      - name: level
+        type: location
+        description: >
+          Administrative level of the file and of its rows: admin0 country, admin1 and admin2 as in FAO
+          GAUL 2024 (catalogued as africa-admin-boundaries-gaul2024). One file per level.
+        values: [admin0, admin1, admin2]
+        data_type: string
+      - name: iso3
+        type: location
+        description: ISO 3166-1 alpha-3 country code.
+        reference_system: https://www.iso.org/iso-3166-country-codes.html
+        data_type: string
+      - name: admin0_name
+        type: location
+        description: Country name, as in FAO GAUL 2024.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: string
+      - name: admin1_name
+        type: location
+        description: First-level unit name (GAUL 2024); in the admin1 and admin2 files only.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: string
+      - name: admin2_name
+        type: location
+        description: Second-level unit name (GAUL 2024); in the admin2 file only.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: string
+      - *window-dim
+      - *index-dim
+      - name: weighting
+        type: statistic
+        description: >
+          How the cell values are averaged into the unit. Read crop windows by crop_production and the
+          livestock window (annual12) by livestock_tlu; use area only for a land-area view.
+        categories:
+          - value: area
+            label: Land area
+            description: >
+              Cell area times boundary coverage: every land cell counts, so land that produces
+              nothing dominates large units.
+          - value: crop_production
+            label: Crop production
+            description: >
+              MapSPAM 2020 production (t) of the crops that use this window, summed per cell.
+          - value: livestock_tlu
+            label: Livestock (TLU)
+            description: >
+              GLW4 2020 head counts in Tropical Livestock Units (cattle 0.7, sheep and goats 0.1, pigs
+              0.2, poultry 0.01), so poultry numbers do not swamp the weight. annual12 window only.
+        data_type: string
+    variables:
+      - name: slope_per_decade
+        description: >
+          Theil-Sen slope of the unit's own seasonal series (the weighted mean of its cells) over
+          1982-2024, in the index's unit per decade. The admin statistics are computed on the unit's
+          series, not by averaging cell statistics.
+        data_type: float64
+      - name: p_mk
+        description: >
+          Two-sided Mann-Kendall p-value of the unit's trend, Hamed-Rao correction applied inflate-only
+          (as for the grids).
+        data_type: float64
+        unit: "1"
+      - name: sig_fdr
+        description: >
+          1 where the trend is significant at a false discovery rate of 0.05 (Benjamini-Hochberg over
+          all units of one admin level x window x index x weighting), 0 where it is not.
+        data_type: float64
+      - name: n_years
+        description: Valid seasons in the unit's trend, of 43; slope and p are missing below 30.
+        data_type: float64
+        unit: "1"
+      - name: normal_mean
+        description: Mean of the unit's seasonal values over the WMO 1991-2020 normal (missing below 25 valid seasons).
+        data_type: float64
+      - name: normal_sd
+        description: Standard deviation of the unit's seasonal values over the 1991-2020 normal.
+        data_type: float64
+  - name: admin-series
+    dimensions:
+      - *source-dim
+      - name: level
+        type: location
+        description: Administrative level of the file and of its rows (admin0, admin1, admin2; GAUL 2024).
+        values: [admin0, admin1, admin2]
+        data_type: string
+      - name: iso3
+        type: location
+        description: ISO 3166-1 alpha-3 country code.
+        reference_system: https://www.iso.org/iso-3166-country-codes.html
+        data_type: string
+      - name: admin0_name
+        type: location
+        description: Country name, as in FAO GAUL 2024.
+        data_type: string
+      - name: admin1_name
+        type: location
+        description: First-level unit name (GAUL 2024); in the admin1 and admin2 files only.
+        data_type: string
+      - name: admin2_name
+        type: location
+        description: Second-level unit name (GAUL 2024); in the admin2 file only.
+        data_type: string
+      - *window-dim
+      - *index-dim
+      - name: weighting
+        type: statistic
+        description: >
+          How the cell values are averaged into the unit: area, crop_production or livestock_tlu, as in
+          the admin-trends structure. Read crop windows by crop_production and the livestock window
+          (annual12) by livestock_tlu.
+        values: [area, crop_production, livestock_tlu]
+        data_type: string
+      - name: year
+        type: temporal
+        description: Season, labelled by its start year.
+        extent: ["1982", "2024"]
+        step: P1Y
+        data_type: int32
+    variables:
+      - name: value
+        description: The unit's seasonal index value (weighted mean of its cells), in the index's unit.
+        data_type: float64
+      - name: anomaly_diff
+        description: value minus the unit's 1991-2020 normal mean (normal_mean in the trends table).
+        data_type: float64
+      - name: anomaly_z
+        description: anomaly_diff divided by the unit's 1991-2020 standard deviation; missing where it is not above 0.
+        data_type: float64
+        unit: "1"
+
+processing:
+  - id: source
+    description: >
+      Daily CHIRPS v3 rainfall, CHIRTS-ERA5 maximum and minimum temperature and AgERA5 humidity and
+      radiation, 1981-2025, read from the Climate Data Hub cubes and aggregated to the 0.25-degree
+      NEX-GDDP-CMIP6 lattice; coastal CHIRTS-ERA5 values above 57 °C (maximum) or 43 °C (minimum)
+      replaced by the median of the valid neighbours.
+    derived_from:
+      - title: CHIRPS-3.0 (Climate Hazards Center)
+        url: https://data.chc.ucsb.edu/products/CHIRPS-3.0/
+      - title: CHIRTS-ERA5 (Climate Hazards Center)
+        url: https://www.chc.ucsb.edu/data/chirts
+      - title: AgERA5 (Copernicus Climate Change Service)
+        url: https://cds.climate.copernicus.eu/datasets/sis-agrometeorological-indicators
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/python/obs/s1_ingest.py
+      version: develop
+  - id: seasonal
+    description: >
+      Monthly hazard indices (the same definitions as the projected Atlas hazards; soil water from a
+      bucket model on gap-filled soil layers), then one value per cell, season window and season
+      start year: the mean, sum or maximum of the window's months.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/obs/s3_s5_obs_hazards.R
+      version: develop
+  - id: statistics
+    description: >
+      Per cell and per admin unit, over the 43 seasons 1982-2024: Theil-Sen slope; Mann-Kendall
+      test with an inflate-only Hamed-Rao correction (only significant lags of the rank
+      autocorrelation of the Sen-detrended series); Benjamini-Hochberg at 0.05 within each grid or
+      table group; WMO 1991-2020 normal (mean, sd, p10, p50, p90; 25 of 30 seasons needed); and each
+      season's anomaly. Admin units average their cells by area, crop production or livestock TLU
+      first, then take the statistics of that series.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/obs/s7_trends_anomalies.R
+      version: develop
+  - id: publish
+    description: >
+      Gated publish: the anomalies are re-derived from the input stacks and the table anomalies from
+      the trends table before upload; every object gets a JSON sidecar with MD5 and SHA-256 and the
+      code commit; a version is never overwritten.
+    code:
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/scripts/s7_publish_obs_trends.R
+      version: develop
+
+data:
+  - name: cell-trends
+    description: >
+      Trend grids, one Cloud Optimized GeoTIFF (ZSTD, internal overviews) per source x window x
+      index, four bands. 114 files.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/
+        title: S3
+    file_index:
+      - format: cdh-inventory
+        title: File inventory, trend grids
+        locations:
+          - url: ./africa-hazard-season-trends-observed-files-trends.csv
+        media_type: text/csv
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    processing_steps: [source, seasonal, statistics, publish]
+    structures: [cell-trend]
+  - name: cell-normals
+    description: Normal grids, one COG per source x window x index, five bands. 114 files.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/
+        title: S3
+    file_index:
+      - format: cdh-inventory
+        title: File inventory, normal grids
+        locations:
+          - url: ./africa-hazard-season-trends-observed-files-normals.csv
+        media_type: text/csv
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    processing_steps: [source, seasonal, statistics, publish]
+    structures: [cell-normal]
+  - name: cell-anomalies
+    description: >
+      Anomaly grids, one COG per source x window x index x anomaly type (difference, standardised),
+      one band per season 1982-2024. 228 files.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/
+        title: S3
+    file_index:
+      - format: cdh-inventory
+        title: File inventory, anomaly grids
+        locations:
+          - url: ./africa-hazard-season-trends-observed-files-anomalies.csv
+        media_type: text/csv
+    media_type: image/tiff; application=geotiff; profile=cloud-optimized
+    processing_steps: [source, seasonal, statistics, publish]
+    structures: [cell-anomaly]
+  - name: admin-trends
+    description: >
+      Trend and normal per admin unit, window, index and weighting; one Parquet table per source and
+      admin level.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/
+        title: S3
+    href_template: source={source}/region=africa/processing=trends/version=v1.0/admin_trends_{level}_1982-2024_v1.0.parquet
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, seasonal, statistics, publish]
+    structures: [admin-trends]
+  - name: admin-series
+    description: >
+      Seasonal value and anomaly per admin unit, window, index, weighting and season; one Parquet
+      table per source and admin level (the admin2 table of the main source has about 37 million
+      rows).
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/
+        title: HTTPS
+      - url: s3://digital-atlas/domain=climate/type=hazard-indices/
+        title: S3
+    href_template: source={source}/region=africa/processing=anomalies/version=v1.0/admin_series_{level}_1982-2024_v1.0.parquet
+    media_type: application/vnd.apache.parquet
+    processing_steps: [source, seasonal, statistics, publish]
+    structures: [admin-series]
+
+additional_assets:
+  - name: manifest
+    description: >
+      Every object of this version with its size, MD5, SHA-256, source, product and code commit.
+      Uploaded last; its presence means the version is complete.
+    locations:
+      - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=chirps-chirts-agera5/region=africa/manifest_trends-normals-anomalies_1982-2024_v1.0.csv
+        title: HTTPS
+    media_type: text/csv
+    roles: [metadata]
+
+additional_links:
+  - title: Projected trends in seasonal climate hazards (NEX-GDDP-CMIP6)
+    rel: related
+    url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/metadata/cdh/africa-hazard-season-trends-nexgddp.yaml
+    description: The projected counterpart, by administrative unit and 20-year window.
+
+cdh:
+  domain: [climate]
+  usage:
+    intended_uses:
+      - Mapping where a hazard has risen or fallen since 1982, per cell or per admin unit.
+      - Judging how unusual a past season was against the 1991-2020 normal.
+      - Comparing observed 1995-2014 conditions with the NEX-GDDP-CMIP6 baseline of the projected Atlas products.
+    not_recommended_for:
+      - use: Treating a rainfall trend as a climate signal without checking the station record.
+        reason: >
+          CHIRPS station density changes over time, so part of a rainfall trend may come from the
+          network rather than the climate.
+        use_instead: Corroborate with station records or a second rainfall product where it matters.
+      - use: Reading crop or livestock exposure from the area weighting.
+        reason: Area-weighted means are dominated by land that produces nothing.
+        use_instead: The crop_production or livestock_tlu weighting.
+      - use: Testing many grids or tables jointly with sig_fdr.
+        reason: The false discovery rate is controlled within one grid or table group only.
+        use_instead: Re-run a false discovery rate procedure on p_mk over the set you are testing.

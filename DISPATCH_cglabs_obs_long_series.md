@@ -2,6 +2,97 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### MACBOOK 2026-11-19 [M-20261119-s7-2] — U0–U4 accepted; GO from Pete: publish S7 v1.0 (X0–X4), gated, new keys only
+
+**U0–U4 accepted.** Read in full. The 18 per-weighting 1 → 0 counts add up to your 44,343, and the cell counts to
+232,046. No 0 → 1 is what Benjamini-Hochberg must give when no p gets smaller. The report was exactly what was asked.
+
+**Two corrections on my side, both now covered by gates:**
+- **The 5e-17 floor in U4 was wrong.** For a perfectly monotonic 43-season series the plain Mann-Kendall p is
+  **3.7e-21**; the 5.1e-17 I quoted came from a test series whose float residuals picked up a Hamed-Rao factor above 1.
+  It did not matter for U4 (your minimum was 5.8e-13), but the publisher now gates each cell and row against the exact
+  floor for its own `n_years` (`mk_floor()`), not against a constant.
+- **U4 did not gate the 228 `anomaly_diff` / `anomaly_z` COGs** that U2 rewrote (U1 kept no copy of them). Gate P4
+  below re-derives them from the S7 **input** stacks and the (U4-gated) normal.
+
+**GO (Pete, 2026-11-19, chat, quoted):** "go on the publish". This block publishes once its gates pass; there is no
+second GO between X1 and X2.
+
+**Keys** (new; nothing live is touched; layout of 2026-11-14, `version=` segment as Brayden approved for `domain=soil`):
+```
+s3://digital-atlas/domain=climate/type=hazard-indices/source=<token>/region=africa/processing=<p>/version=v1.0/
+  window=<w>/variable=<IDX>_<stat>/<IDX>_<stat>_<w>_<product>_<period>_v1.0.tif      (p = trends | normals | anomalies)
+  admin_trends_<level>_1982-2024_v1.0.parquet   (processing=trends)
+  admin_series_<level>_1982-2024_v1.0.parquet   (processing=anomalies)
+  + <key>.json sidecar for every object
+s3://digital-atlas/domain=climate/type=hazard-indices/source=chirps-chirts-agera5/region=africa/
+  manifest_trends-normals-anomalies_1982-2024_v1.0.csv      (uploaded LAST: its presence = the version is complete)
+```
+`<token>` is the S7 token, so the RH-15:00 THI sensitivity layer goes under `source=chirps-chirts-agera5-rh15`.
+
+**Publisher:** `scripts/s7_publish_obs_trends.R` (new; selftest **21**). Dry run is the default; `--publish` uploads
+public-read; `--verify` reads every key back. Gates, all run before any upload, any FAIL is a stop:
+- **P1** 95 / 19 stacks × 4 COGs + 6 tables per token. **P1b** the COG keys equal the 456 rows of the three CDH
+  inventories `metadata/cdh/africa-hazard-season-trends-observed-files-{trends,normals,anomalies}.csv` exactly.
+- **P2** every COG: `LAYOUT=COG`, overviews on band 1, EPSG:4326, band names, the stack's 4 files on the input grid.
+- **P3** `p_mk` in (0, 1] and ≥ `mk_floor(n_years)`, `sig_fdr` ∈ {0,1}, one NA mask; normals sd ≥ 0, p10 ≤ p50 ≤ p90.
+  (BH recomputed from float32 `p_mk` is a report only.)
+- **P4** `anomaly_diff = input − normal mean`, `anomaly_z = anomaly_diff / sd` (NA where sd ≤ 0), NA masks equal,
+  within float32 tolerance; reported as worst error / tolerance (must be ≤ 1).
+- **P5** the 12 tables: columns; unique keys; `p_mk` ≥ floor, never 0; `sig_fdr` == BH(`p_mk`) within (level, window,
+  index, weighting), exactly; `livestock_tlu` only on `annual12`; 43 seasons per series; series `anomaly_diff` =
+  `value − normal_mean` of the trends table and `anomaly_z` = that / `normal_sd` (cross-table, 1e-9).
+- **P6** S3 is readable (a live 2026-11-04 observed key must HEAD) and **no target key exists**. A version is never
+  overwritten; only `--resume` skips a key, and only when its size and MD5 match the local file.
+
+#### X0 — pull, both selftests
+```bash
+cd $REPO && git pull --ff-only
+Rscript R/obs/s7_trends_anomalies.R --selftest        # 23
+Rscript scripts/s7_publish_obs_trends.R --selftest    # 21
+```
+
+#### X1 — dry run (background), stop unless `GATES PASS`
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S)
+nohup Rscript scripts/s7_publish_obs_trends.R --obs-root $OL > logs/obs_long_s7_x1_$STAMP.log 2>&1 &
+echo $! > logs/obs_long_s7_x1_$STAMP.pid
+```
+Writes only the staging dir `$OL/Data/obs_trends/_publish_v1.0/` (sidecars + `manifest.csv`). Expect `P1`–`P6 PASS`,
+`GATES PASS`, a `DRY RUN` line with 468 objects, and P3/P5 minimum `p_mk` as at U4 (5.78e-13 / 1.29e-12 main). Report
+every gate line, the `DRY RUN` line and the run time. **If any gate FAILs, stop and report; do not go on to X2.**
+
+#### X2 — publish (background), only after X1 printed `GATES PASS`
+```bash
+nohup Rscript scripts/s7_publish_obs_trends.R --obs-root $OL --publish > logs/obs_long_s7_x2_$STAMP.log 2>&1 &
+echo $! > logs/obs_long_s7_x2_$STAMP.pid
+```
+The gates run again first. If the very first upload errors on an argument (`ContentType` / `CacheControl` through
+`s3fs::s3_file_upload`), stop and report: nothing is up yet. If the run dies part-way, rerun **with `--resume`**
+(never without it once anything is up) and report that you did.
+
+#### X3 — verify (background)
+```bash
+nohup Rscript scripts/s7_publish_obs_trends.R --obs-root $OL --verify > logs/obs_long_s7_x3_$STAMP.log 2>&1 &
+echo $! > logs/obs_long_s7_x3_$STAMP.pid
+```
+Every object, sidecar and the manifest: HEAD found, size = local, MD5 = ETag (multipart tables: downloaded and hashed),
+public `GET` 200/206. Expect `VERIFY PASS`. It writes `metadata/cdh/pins/atlas-hazards-observed-trends-v1.0_s3-versions.csv`
+and rewrites the three inventories with a `checksum` column (same rows). Then one independent read over HTTPS:
+```bash
+Rscript -e 'r <- terra::rast("/vsicurl/https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=chirps-chirts-agera5/region=africa/processing=trends/version=v1.0/window=annual12/variable=THI_max_max/THI_max_max_annual12_trend_1982-2024_v1.0.tif"); print(names(r)); print(terra::global(r, c("min","max"), na.rm=TRUE))'
+```
+
+#### X4 — report, commit
+- The gate lines, `DRY RUN`, `PUBLISHED` and `VERIFY` lines; run times; total GB uploaded; the `/vsicurl/` output.
+- Anything that needed `--resume`.
+- Commit **only** the dispatch, the pin CSV and the three inventory CSVs. Run the AGENTS.md §3 IP grep first.
+
+Nothing is deleted: `_pre_mkfix_*`, `_admin_parts_*`, `_admin_tables_*` and `_publish_v1.0` all stay until Pete says.
+`### RESPONSE` with the code, push, verify it landed, and end with `Answers: M-20261119-s7-2 (...)`.
+
+---
+
 ### RESPONSE — cglabs 2026-11-19 [M-20261119-s7-1] — **U0-U4 done; every gate PASS.** In the rasters (114 stacks) and admin tables (12), the slope, `n_years`, normals and `series` tables are unchanged, max |diff| 0. `p_mk` never went down; the smallest is now 5.8e-13 per cell and 1.3e-12 in the admin tables (it was 0 before). No `sig_fdr` went 0 → 1: 232,046 cells and 44,343 admin rows went 1 → 0. Nothing published
 
 Stamp `20261118_235934`. HEAD `3ff8477` at launch. Env grep (`S7_`, `OBS_`) was empty. Every long step ran under nohup with a pid file. Scripts and outputs are in `logs/obs_long_{u0_selftest,u1,s7_u2,s7_u3,u4_rasters,u4_admin,u4_report}_<stamp>.*` (untracked). `T = $OL/Data/obs_trends`.
