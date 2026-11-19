@@ -29,14 +29,14 @@ assured" is the most that goes in an issue or commit, and only with Pete's OK.
 
 1. ~~GDAL 3.4.3 on PASCAL~~ — **cleared**: 3.8.4 since 2026-11-18, sum-resample probe correct (P12 G1). Phase B re-run (P13) confirms it on real products. The noon POSIXct time axis persists on 3.8.4, so the date-only fix in `02` is permanent.
 2. **No S3 write credentials on PASCAL.** Publishing is CGlabs-only. The 2026-10-30 decision has to be revisited if PASCAL publishes.
-3. **Regenerating the index trees costs months** (migration plan §2.2a): ≈ 200 days on one Large session, bound by `02`'s single thread and 19.7 GiB peak. Transfer is days. Disposition of items 7–8 is Pete's decision.
+3. **Regenerating the index trees costs months** (migration plan §2.2a): ≈ 200 days on one Large session, bound by `02`'s single thread and 19.7 GiB peak. Transfer is days. **Decided 2026-11-19: transfer** (migration plan §2.2a); regeneration kept as the proof on sample GCM-years.
 4. **Inputs that cannot be regenerated:** FAOSTAT (rewritten in place upstream; hashed snapshot on Atlas S3 needed), soils rasters (23 MB from CGlabs), `ET_SolRad`. GGCMI is off this list: PIK answers from PASCAL and the manifest is built (P16).
 5. **Compute cap.** 20 CPU / 96 GiB per session; four sessions across all users, so plan on one. CGlabs gives one job 40 cores / 376 GiB; R/3 §4.1 is the known OOM risk.
 
 ## 4. Next steps, in order
 
 1. **P15 duplicate census** `[M-20261119-i58-4]` is now run from a separate macbook session (codes `M-YYYYMMDD-i58dup-n`): a metadata-only census of the whole shared store (`scripts/storage_census.py`; P14 superseded). Owners appear as `owner-NN`; the username mapping stays on the node under `logs/p15_*` (git-ignored) for Pete to contact owners. Its numbers feed the IT storage-cost question on SR-167702.
-2. **Pete's decision on items 7–8** (migration plan §2.2a): transfer the index trees from CGlabs, or regenerate after parallelising `02`. Then comment on #58 with the measured figures (Pete sees the comment first).
+2. **Items 7–8 decided: transfer** (2026-11-19, migration plan §2.2a). Comment on #58 with the measured figures and the decision (Pete sees the comment first). The transfer itself needs CGlabs time: a read-only `du` and manifest of the index tree, then the route (S3 or direct), then copy and verify on PASCAL.
 3. **Compare PASCAL's 1995 indices with CGlabs' copy of the same GCM-year** once CGlabs is free: `72_crosshost_fingerprint.R --stage upstream-04 --root <common_data> --out fp_up04_cglabs_ACCESS-ESM1-5_historical_1995.tsv` read-only there, then `--compare` against the PASCAL TSV. The first producer-side value gate. Add a read-only `du` of CGlabs' index tree per GCM-year, to reconcile 637 G with §2.2a.
 4. **Soils to PASCAL** (23 MB): when CGlabs is free, a one-line copy of `sscp_world.tif` and `ssat_world.tif` to a sandbox S3 key, then `atlas_require` on PASCAL. Then the water-balance indices run on the P10 root (AVAIL seed 1995-01 is in place).
 5. **IT follow-ups**, in-line on SR-167702, drafts to Pete first: thank for GDAL 3.8.4 and confirm the test passes; ask for `doFuture` and `jrvFinance`.

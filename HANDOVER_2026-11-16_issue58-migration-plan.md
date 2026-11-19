@@ -44,8 +44,8 @@ Disposition is one of **move** (copy the bytes or the credential; nothing else w
 | # | What CGlabs does today | Disposition | Blocker | Notes |
 |---|---|---|---|---|
 | 6 | Holds the NEX-GDDP-CMIP6 daily inputs | **regenerate** | download time | Public. Re-downloading is bandwidth, not risk. |
-| 7 | Runs `hazards_upstream` 01→04 to produce the monthly index trees | **regenerate — under review (§2.2a)** | compute time (measured) | Phase C runs end to end on PASCAL (P11, P12): ten indices, every script exit 0, output byte-identical on GDAL 3.4.3 and 3.8.4. Water-balance indices and TAI not yet run (soils, `sroot`, `ET_SolRad` absent). |
-| 8 | Holds the monthly index trees themselves | **move? — under review (§2.2a)** | CGlabs time to export | The bulk of the 637 G. At the measured cost, transferring these is days and regenerating them is months. |
+| 7 | Runs `hazards_upstream` 01→04 to produce the monthly index trees | **regenerate as proof only** (decided 2026-11-19, §2.2a) | compute time (measured) | Sample GCM-years, value-gated against CGlabs' copy; a full regeneration waits for the two `02` changes. Phase C runs end to end on PASCAL (P11, P12): ten indices, every script exit 0, output byte-identical on GDAL 3.4.3 and 3.8.4. Water-balance indices and TAI not yet run (soils, `sroot`, `ET_SolRad` absent). |
+| 8 | Holds the monthly index trees themselves | **move** (decided 2026-11-19, §2.2a) | CGlabs time to export; transfer route not yet chosen | The bulk of the 637 G. At the measured cost, transferring these is days and regenerating them is months. |
 | 9 | Holds the legacy `common_data/hazards_prototype` tree (759 G) | **drop** | none | Superseded working directory. Confirm with Pete before anything is deleted on CGlabs; nothing on PASCAL needs it. |
 
 #### 2.2a Regenerate vs transfer, measured (P11 2026-11-19 on GDAL 3.4.3; P12 the same day on 3.8.4)
@@ -82,6 +82,12 @@ for Pete's decision: **move** the index trees (item 8) as the main route; keep *
 proof, via the producer-side value gate on sample GCM-years (PASCAL's 1995 against CGlabs' copy,
 `72_crosshost_fingerprint.R --stage upstream-04`); and treat any later full regeneration as needing
 two code changes first: `02` per variable in separate processes, and a lower `02` memory peak.
+
+**Decided 2026-11-19 (Pete): transfer.** The index trees move from CGlabs; regeneration on PASCAL is
+kept as the proof on sample GCM-years. Before the move: a read-only `du` of CGlabs' index tree (what the
+637 G holds, and whether it fits beside PASCAL's 24 TB free with room for the rest), the transfer route
+(CGlabs → Atlas S3 → PASCAL over HTTPS, or a direct copy if IT allows one), and a manifest of the CGlabs
+tree so PASCAL's copy is checked file by file. All three need CGlabs time.
 
 ### 2.3 The exposure and economics chain (R/0.4.x)
 
@@ -149,7 +155,7 @@ running on it, and what can be measured cheaply before committing to a long run.
    work, no node time, and it converts blocker 1 from a silent risk into a loud one everywhere.
 7. **Phase B, both halves.** CGlabs half (~2 min, read-only) when CGlabs is free; PASCAL half re-run
    after the GDAL upgrade, expecting a clean value match.
-8. **Index trees** (items 7, 8): sized in §2.2a. Transfer, or regenerate after the `02` changes; Pete's call.
+8. **Index trees** (items 7, 8): **transfer** (decided 2026-11-19, §2.2a). Size the CGlabs tree read-only, pick the route, manifest it, copy, verify on PASCAL. Regeneration stays as the proof on sample GCM-years.
 9. **Regenerate the bakes** R/1 → R/4 (items 13–16), with R/3 §4.1 profiled against the 96 GiB cap
    before the full run.
 10. **Regenerate the observed pipeline** S1 → S7 (items 17–22). Independent of the NEX trees, so it
