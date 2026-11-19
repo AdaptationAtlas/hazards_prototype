@@ -95,10 +95,10 @@ two code changes first: `02` per variable in separate processes, and a lower `02
 
 | # | What CGlabs does today | Disposition | Blocker | Notes |
 |---|---|---|---|---|
-| 13 | `R/1` hazard timeseries (+ `1.2` ISIMIP, `1.3` CropSuite) | **regenerate** | follows item 7 | Consumes the index trees. |
-| 14 | `R/2` hazard frequency, `2.1` monthly tables, `2.2` hazard change | **regenerate** | needs `trendkernel` on PASCAL (P9); compute cap | `2.1` calls `trendkernel::mk_sen_cpp` through the namespace, so it must be an installed package, not sourced C++. |
+| 13 | `R/1` hazard timeseries (+ `1.2` ISIMIP, `1.3` CropSuite) | **regenerate** | follows item 7; `doFuture` missing on PASCAL | Consumes the index trees. `R/1`, `1.2` and `1.3` load `doFuture`, absent from PASCAL's library (P9, P12); asked of IT on SR-167702. |
+| 14 | `R/2` hazard frequency, `2.1` monthly tables, `2.2` hazard change | **regenerate** | `doFuture` missing on PASCAL (`R/2`, `2.2`); compute cap | `trendkernel` installed and loading (P9, P12). `2.1` calls `trendkernel::mk_sen_cpp` through the namespace, so it must be an installed package, not sourced C++. |
 | 15 | `R/3` frequency × exposure (+ `3.1` season weightings) | **regenerate** | **blocker 5 (compute cap)** | R/3 §4.1 is the known OOM risk. CGlabs gives one job 40 cores / 376 GiB; a PASCAL hub session caps at 20 CPU / 96 GiB. Needs a memory profile before it is trusted. |
-| 16 | `R/4` ROI and `4.1` economic indicators | **regenerate** | none known | Small relative to R/3. |
+| 16 | `R/4` ROI and `4.1` economic indicators | **regenerate** | `jrvFinance` missing on PASCAL (`4.1`) | Small relative to R/3. `jrvFinance` asked of IT on SR-167702. |
 
 ### 2.5 The observed pipeline
 

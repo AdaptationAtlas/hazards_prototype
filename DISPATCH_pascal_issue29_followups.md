@@ -2,6 +2,60 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-19 [M-20261119-i58-5] — P16: does PIK answer from PASCAL? GGCMI crop-calendar manifest (headers only). **Small profile. Minutes.**
+
+**Why.** Migration plan item 4 and §4: the GGCMI Phase 3 crop calendars (`ggcmi-crop-calendars`, consumed by `R/1`)
+have no checksum manifest, because the PIK index page timed out from the macbook on 2026-11-02. That proves nothing
+about PASCAL, which sits on a different network and has never been asked. If PIK answers here, GGCMI becomes a
+regenerate with a manifest like every other pinned input. If it does not, it joins FAOSTAT as a snapshot-to-S3 item,
+and CGlabs' copy may be the only one we control. Your P15 hand-off is noted: the deduplication work now runs in its
+own PASCAL session, and the shared NEX raw tree's 0.6 % coverage leaves migration plan §2.2a unchanged.
+
+**Rules.** No data downloaded: `curl` reads headers, and `75_catalogue_manifest.R` lists the index page and sends
+HEAD requests only. No installs; do not source `R/0_server_setup.R`. Writes: `logs/`, and only if G2 passes, the
+manifest TSV and the record JSON that `--build` writes. No usernames, hostnames or IPs.
+
+#### G0 — pull
+```bash
+cd <repo> && export ATLAS_PROJECT_DIR=$PWD
+git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD      # develop, at or after the P16 commit
+```
+
+#### G1 — reachability (seconds; a timeout is a finding, not a stop)
+```bash
+U=https://www.pik-potsdam.de/~jonasjae/GGCMI_Phase3_crop_calendar
+for i in 1 2 3; do curl -sS -o /dev/null -L --max-time 60 -w "try $i: http=%{http_code} dns=%{time_namelookup}s connect=%{time_connect}s total=%{time_total}s\n" "$U/" 2>&1; done
+curl -sS -L --max-time 60 "$U/" 2>/dev/null | grep -o 'href="[^"]*\.nc4"' | wc -l      # links on the index page
+```
+**Expect** either `http=200` with 40 or more `.nc4` links, or a clear failure (timeout, refused, 4xx/5xx). Report all
+three tries as printed. A mix (one try works, one times out) is worth saying plainly: it means flaky, not blocked.
+
+#### G2 — the manifest, read-only first
+```bash
+S=$(date +%Y%m%d_%H%M%S)
+Rscript R/checks/75_catalogue_manifest.R --check --dataset ggcmi-crop-calendars 2>&1 | tee logs/p16_ggcmi_check_$S.log | tail -15
+```
+`--check` lists the origin and compares it with the (absent) manifest. Two possible lines:
+`ggcmi-crop-calendars  <n> obj  <bytes> bytes  verify=<level> NEW` then `FAIL - 1 record(s) missing a manifest`, exit
+1: **expected**, the origin answered; or `SKIP  origin not listable from here: <reason>`: PIK did not answer; report
+the reason. Either is a finding, not a stop.
+
+#### G3 — build it (only if G2 printed `NEW` with 40 or more objects)
+```bash
+Rscript R/checks/75_catalogue_manifest.R --build --dataset ggcmi-crop-calendars 2>&1 | tee logs/p16_ggcmi_build_$S.log | tail -8
+git status --short metadata/catalogue                                               # the TSV and the record JSON, nothing else
+head -3 metadata/catalogue/_manifests/ggcmi-crop-calendars.tsv; wc -l < metadata/catalogue/_manifests/ggcmi-crop-calendars.tsv
+```
+Report the object count, total bytes and the `verify=` level the changelog line states (md5, etag or size).
+
+**Stop and describe** on any of: not on `develop`; `Installing package`; G3 changing any file other than
+`metadata/catalogue/_manifests/ggcmi-crop-calendars.tsv` and `metadata/catalogue/ggcmi-crop-calendars.json`.
+
+**To answer:** prepend one `### RESPONSE — pascal [M-20261119-i58-5]` (P16), run the IP grep, commit this file plus,
+if G3 ran, the two catalogue files and nothing else. `git pull --rebase` before pushing: the deduplication session
+writes to this file too; keep its blocks as they are, yours on top. Push, verify it landed, and end with
+`Answers: M-20261119-i58-5 (complete)` — or `(stopped at <gate>)`.
+
 ### MACBOOK 2026-11-19 [M-20261119-i58-4] — P15: server-wide storage and duplicate census (metadata only). Replaces P14 [M-20261119-i58-3]. **Small profile. A few hours, mostly one `find`.**
 
 **Why.** P13 closed phase B on PASCAL. Its one VALUE-DIFF, `shoat_prop` at 3.95e-06, is accepted as you read it: rounding
