@@ -17,6 +17,7 @@
 #   Rscript R/publish_cr093_r22.R            # dry-run: checks + prints plan, no upload
 #   CONFIRM=1 Rscript R/publish_cr093_r22.R  # back up + upload
 #   R22_TIMEFRAME=jagermeyr Rscript R/publish_cr093_r22.R   # other axis
+#   R22_PUBLISH_ONLY=haz_freq,haz_freq_ensemble Rscript R/publish_cr093_r22.R  # subset
 suppressMessages({ library(arrow); library(duckdb); library(DBI) })
 ts <- function(...) cat(sprintf("[%s] ", format(Sys.time(), "%H:%M:%S")), ..., "\n", sep = "")
 
@@ -47,6 +48,21 @@ LOCAL <- c(
   file.path(stats_dir,                 "haz_freq.parquet"),
   file.path(stats_dir,                 "haz_freq_ensemble.parquet")
 )
+
+# Optional subset (M-20261119-r22n-1): R22_PUBLISH_ONLY=haz_freq,haz_freq_ensemble
+# limits the plan to those stems (exact match). Unset/empty = all 10. An unknown
+# stem is a hard stop, so a typo cannot silently shrink the plan.
+only <- trimws(strsplit(Sys.getenv("R22_PUBLISH_ONLY", unset = ""), ",", fixed = TRUE)[[1]])
+only <- only[nzchar(only)]
+if (length(only)) {
+  stems_all <- sub("\\.parquet$", "", basename(LOCAL))
+  bad <- setdiff(only, stems_all)
+  if (length(bad)) stop("R22_PUBLISH_ONLY names unknown stem(s): ", paste(bad, collapse = ", "),
+                        " — valid: ", paste(stems_all, collapse = ", "))
+  LOCAL <- LOCAL[stems_all %in% only]
+  ts("R22_PUBLISH_ONLY set — plan limited to ", length(LOCAL), " of ", length(stems_all),
+     " files: ", paste(sub("\\.parquet$", "", basename(LOCAL)), collapse = ", "))
+}
 
 # aws binary: cglabs keeps it off PATH
 AWS <- Sys.getenv("AWS_BIN", "")

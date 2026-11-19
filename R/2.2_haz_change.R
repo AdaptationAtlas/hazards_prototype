@@ -682,8 +682,18 @@ data <- rbindlist(lapply(seq_len(nrow(choices)), FUN = function(j) {
   data
 }))
 
-years_hist <- terra::nlyr(terra::rast(list.files(haz_timeseries_dir, "hist", full.names = TRUE)[1]))
+# M-20261119-r22n-1: skip the Track-2 trends window (historical_<GCM>_1981_2014_*,
+# 33 layers), which sorts before _1995_2014_ and made historic frequency_n = freq x 33.
+# Same exclusion as R/2_calculate_haz_freq.R.
+hist_files <- list.files(haz_timeseries_dir, "hist", full.names = TRUE)
+hist_files <- hist_files[!grepl("_1981_2014", hist_files)]
+years_hist <- terra::nlyr(terra::rast(hist_files[1]))
 years_scen <- terra::nlyr(terra::rast(list.files(haz_timeseries_dir, "ssp245", full.names = TRUE)[1]))
+if (years_hist != years_scen) {
+  stop(sprintf("R/2.2 SEC4: historic timeseries has %d layers but ssp245 has %d (expected equal, 19); file: %s",
+               years_hist, years_scen, basename(hist_files[1])))
+}
+.log22(sprintf("SEC4 frequency_n multiplier: %d years (hist file %s)", years_hist, basename(hist_files[1])))
 
 data2 <- data.table::copy(data)
 # CR-093: historic scenario token is "historic" (risk-dir prefix), not "historical".
@@ -708,6 +718,11 @@ by = list(iso3, admin0_name, admin1_name, admin2_name, scenario, timeframe, haza
 ]
 
 data_ens[scenario == "historic", c("min", "max", "sd") := NA]
+# M-20261119-r22n-1: a zone where every model is NA aggregates to mean NaN and
+# min/max +/-Inf; write those as NA, as `data` already is above.
+for (.col in c("mean", "min", "max", "sd")) {
+  data.table::set(data_ens, which(!is.finite(data_ens[[.col]])), .col, NA_real_)
+}
 
 haz_time_risk_stats_dir <- file.path(haz_time_risk_dir, "stats")
 if (!dir.exists(haz_time_risk_stats_dir)) {
