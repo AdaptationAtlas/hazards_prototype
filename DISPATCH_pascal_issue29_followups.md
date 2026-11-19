@@ -2,6 +2,166 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal [M-20261119-i58-1] 2026-11-19 — **G0 and G1 PASS: the system GDAL is 3.8.4 and the sum-resample fault is gone — `max cell 9`, ratio 0.9524, the macbook's figures exactly.** **G2 stops the block: one BROKEN row, `rgdal`, `libgdal.so.28: cannot open shared object file`.** C3-C5 ran anyway (the block allows C alongside G2) and both stages pass on 3.8. **Part B was not started**, as G2 is not clean
+
+The headline beyond the upgrade itself: **every one of the 2,190 daily tifs and all 588 index tifs is byte-identical to the GDAL 3.4.3 run of P11.** `02` and `04` do not touch a sum resample, so the upgrade changes nothing in phase C — it changes phase B, which is where the fault lived.
+
+Nothing was installed (`Installing package` count 0 in every log), nothing went to S3, and writes stayed under `$CD`, `logs/` and `metadata/crosshost/`.
+
+#### A note on P11, and on how C3 was made to re-run
+
+P11 did not go unanswered: it ran to completion on 2026-11-19 before P12 reached this checkout, and its RESPONSE is the block below this one. That is why the GDAL 3.4.3 comparison in this block exists.
+
+Running C3 again needed one decision the block does not cover. P11's outputs were already in place, so `02`'s `to_process <- !file.exists(out_files)` would have reported `0 written, 365 present` and written nothing — the rerun would have measured nothing and produced no 3.8 output. I therefore **moved P11's two output trees aside inside `$CD`** rather than deleting them:
+
+```
+$CD/nex-gddp-cmip6          -> $CD/nex-gddp-cmip6_gdal343
+$CD/nex-gddp-cmip6_indices  -> $CD/nex-gddp-cmip6_indices_gdal343
+```
+
+Both are renames within `$CD`, so no write left the allowed area and nothing was lost. C3 then genuinely regenerated (`365 written, 0 present` on every file), and keeping the 3.4.3 trees is what made the byte-level comparison below possible. `$CD` now holds both generations, 8,805,836,536 bytes in total; say the word and I will delete the `_gdal343` pair.
+
+#### G0 — versions. PASS
+
+```
+gdalinfo --version   GDAL 3.8.4, released 2024/02/08
+gdal-config          3.8.4
+gdal-bin             3.8.4+dfsg-1~jammy0
+libgdal-dev          3.8.4+dfsg-1~jammy0
+libgdal34:amd64      3.8.4+dfsg-1~jammy0
+libgeos-c1v5:amd64   3.12.1-1~jammy0
+libproj25:amd64      9.3.1-1~jammy0
+libproj-dev:amd64    9.3.1-1~jammy0
+terra 1.9.50  GDAL 3.8.4  PROJ 9.3.1
+sf    1.1.3   GDAL 3.8.4  (GEOS 3.12.1, PROJ 9.3.1)
+wbkernel OK   trendkernel OK
+```
+
+Shell, terra and sf all report **3.8.4**, so the R modules really were rebuilt against the new library. PROJ moved 8.2.1 to 9.3.1 at the same time. Both repository-shipped kernel packages still load from `R_LIBS_USER`. The package suffixes are now `~jammy0` where they were `~focal0`, so this was a distribution-level move, not a single-package upgrade — worth recording on the ticket.
+
+#### G1 — the sum-resample probe. PASS. **The fault is gone**
+
+```
+terra 1.9.50  GDAL 3.8.4  PROJ 9.3.1
+density sum      20384475
+cellSize sum     510065622   (expect ~5.10e8 km2)
+count sum (src)  1525236453
+resampled (dst)  1452641015   ratio dst/src 0.9524
+ones: src 2094082  dst 1354539  max cell 9  (expect max 9)
+aggregate(fact=3) sum 1525236453   cropped to base band 1452641015
+```
+
+`max cell 9` against 7399 on 3.4.3, and ratio 0.9524 against 1.905. Every figure matches the macbook reference in the probe's header **to the digit**, including `dst 1452641015`. `resample(method = "sum")` and `aggregate(fact = 3)` now agree exactly, which they never did on 3.4.3. This is the 30-second test promised to IT, and it passes.
+
+#### G2 — the rebuilt library. **STOP: BROKEN 1**
+
+```
+0.4-chain OK 28  BROKEN 0  MISSING 0
+bake      OK 7   BROKEN 0  MISSING 2
+obs       OK 0   BROKEN 0  MISSING 0
+both      OK 16  BROKEN 0  MISSING 0
+upstream  OK 18  BROKEN 1  MISSING 8
+```
+
+`0.4-chain` and `both` are clean, as predicted. `bake` MISSING is still exactly `doFuture` and `jrvFinance`. `upstream` MISSING is the same eight as P9 (`aws.s3`, `climate4R.UDG`, `downscaleR`, `inborutils`, `loadeR`, `transformeR`, `tsbox`, `visualizeR`).
+
+**The new row is `rgdal` 1.5-32, site library, scope `upstream`, used by one file, `download_rawCMIP6.R`:**
+
+```
+unable to load shared object '/usr/local/lib/R/site-library/rgdal/libs/rgdal.so':
+  libgdal.so.28: cannot open shared object file: No such file or directory
+```
+
+This is exactly the failure mode the block predicted, with one wrinkle worth stating plainly: the missing library is **`libgdal.so.28`**, which is the GDAL 3.2 ABI — older than the 3.4.3 this host ran until yesterday, and three majors behind the 3.8.4 it runs now (`libgdal.so.34`). So `rgdal` was built against a GDAL older than either, and it loaded in P9 only because a stale `libgdal.so.28` was still present on the host. The upgrade removed it. The package has been **retired from CRAN since October 2023** and cannot be rebuilt from CRAN sources against a current GDAL; its functionality lives in `sf` and `terra`.
+
+By the block's rule this is a stop, so **part B was not started**. My reading, for the macbook to accept or overrule: `rgdal` is reachable from exactly one upstream download script that is not on the 01-04 path, and nothing in phase B, phase C or the 0.4 chain touches it, so B is very likely safe to run. But the block's wording is unambiguous and B is the expensive half, so I stopped rather than decide that for you. Two ways forward, both cheap: port `download_rawCMIP6.R` off `rgdal`, or declare it out of scope and have 76 treat it as such.
+
+#### C3 — preprocess on GDAL 3.8. PASS
+
+Six lines, each `365 day(s), 365 written, 0 present`, no `Error`, `Exit status: 0`, first name `pr_1995-01-01.tif`.
+
+| Variable | s on 3.8.4 | s on 3.4.3 (P11) |
+|---|---:|---:|
+| pr | 1411 | 1432 |
+| tasmax | 1447 | 1480 |
+| tasmin | 1474 | 1514 |
+| hurs | 1425 | 1494 |
+| rsds | 1453 | 1473 |
+| sfcWind | 1429 | 1443 |
+
+**Wall 2:24:12 (8,652 s), peak RSS 19.71 GiB, 2,190 tifs, 2,617,691,988 bytes.** Against P11's 8,846 s and 19.73 GiB — 2.2 % faster, same memory. The upgrade neither helps nor hurts `02`.
+
+`terra::time()` on one raw `.nc`, for the record the block asks for:
+
+```
+[1] "POSIXct" "POSIXt"
+[1] "1995-01-01 12:00:00 UTC" "1995-01-02 12:00:00 UTC"
+```
+
+**Unchanged on 3.8.4.** The noon POSIXct axis is how the netCDF driver reads these files at every GDAL version tested, not a 3.4.3 quirk, so the date-only fix in `02` is permanent and not a workaround for an old library.
+
+#### C4 — ten indices on GDAL 3.8. PASS, every script exit 0
+
+No `daily inputs missing` under `DAYS_CHECK=calendar`. Total C4 wall 2,509 s (15:09:42 to 15:51:31), against P11's 2,626 s. Counts as before: `NTx20`-`NTx50`, 31 directories of 12; `HSH`, `THI`, `WBGT` each 12 monthly plus a `daily/` of 12 (`WBGT` carries five families).
+
+#### The byte-level comparison, 3.4.3 against 3.8.4
+
+```
+pr      all 365 identical      tasmax  all 365 identical     tasmin  all 365 identical
+hurs    all 365 identical      rsds    all 365 identical     sfcWind all 365 identical
+index tifs (588 files)         0 differing lines
+```
+
+`md5sum` over every file in both trees. **All 2,190 daily tifs and all 588 index tifs are byte-identical across the two GDAL versions.** That is the clean result the fingerprint was meant to approximate, and it says two things: phase C output does not depend on the GDAL version, as expected since nothing in 01-04 resamples; and P11's measurements remain valid as data, not only as a baseline.
+
+#### C5 — the measured table, GDAL 3.8.4
+
+| Stage | Wall (s) | Peak RSS (GiB) | Files | Bytes |
+|---|---:|---:|---:|---:|
+| C2 download (P10, not re-run) | 169 | 0.11 | 6 | 1,562,489,486 |
+| C3 preprocess | 8,652 | 19.71 | 2,190 | 2,617,691,988 |
+| `calc_PTOT` | 34.0 | 0.60 | 12 | 9,867,575 |
+| `calc_NDD` | 30.1 | 0.73 | 12 | 3,192,248 |
+| `calc_NTx` | 247.1 | 2.20 | 372 | 63,050,161 |
+| `calc_TAVG` | 50.9 | 1.13 | 12 | 9,554,420 |
+| `calc_TMAX` | 24.2 | 0.60 | 12 | 9,500,238 |
+| `calc_TMIN` | 21.2 | 0.60 | 12 | 9,699,114 |
+| `calc_HSH` | 844.6 | 7.79 | 36 | 289,220,645 |
+| `calc_THI` | 89.4 | 2.07 | 36 | 276,941,441 |
+| `calc_WBGT` | 828.6 | 7.79 | 72 | 294,527,481 |
+| `calc_PET` | 337.8 | 2.32 | 12 | 9,570,637 |
+| **C4 total** | **2,509** | 7.79 | **588** | **975,123,960** |
+| **C2+C3+C4** | **11,330** | 19.71 | **2,784** | **5,155,305,434** |
+
+`du -sb`:
+
+```
+$CD/nex-gddp-cmip6_raw              1,562,489,486
+$CD/nex-gddp-cmip6                  2,617,691,988
+$CD/nex-gddp-cmip6_indices            975,156,792
+$CD/nex-gddp-cmip6_gdal343          2,617,691,988   (P11, kept for the compare)
+$CD/nex-gddp-cmip6_indices_gdal343    975,156,792   (P11, kept for the compare)
+$CD total                           8,805,836,536
+```
+
+`df` after: 50 T total, 24 T available, 53 % used — unchanged to the printed precision.
+
+The conclusions from P11 stand unaltered, because the numbers barely moved: one GCM-year costs about 3 h 9 m, `02` is 94 % of it, `02` is single-threaded, and `calc_HSH` plus `calc_WBGT` are two thirds of the index time. Parallelising `02` at the variable level remains the one change that matters for regenerating the full matrix.
+
+#### Fingerprint
+
+```
+wrote 565 artefact rows to metadata/crosshost/fp_up04_pascal_ACCESS-ESM1-5_historical_1995.tsv
+```
+
+**552 artefact rows** excluding the `_env` rows, no `UNREADABLE`. That is 588 index tifs less the 36 under the three `daily/` subdirectories, which `--stage upstream-04` does not descend into — flagging it in case you expected 588. One family per `NTx` threshold, as the block says.
+
+#### Part B — not started
+
+G2 is not clean, and the block is explicit that B waits for it. Nothing in `metadata/crosshost/` was overwritten: the three `*_pascal*` phase B TSVs still hold their GDAL 3.4.3 values, so the comparison you want is still there to be made once B runs. Given G1, I expect the GLW-only host gate to close completely — the probe reproduces the macbook's numbers to the digit, and that gate's three artefacts are exactly the ones the sum resample was corrupting.
+
+---
+
 ### RESPONSE — pascal 2026-11-19 — **P11 complete, C3.0 to C5. Phase C runs end to end on this host.** The date-only fix works: 6 x 365 daily tifs written, first name `pr_1995-01-01.tif`, exit 0. All ten index scripts **exit 0** with no missing inputs. **The cost is not where the block expected it: preprocess is 2 h 27 m of the 3 h 11 m total, and the ten indices together are 44 m**
 
 **P12 landed on `develop` while this ran, and says P11 gets no RESPONSE.** It was not on my checkout when the run started, and the run had already finished when the push hit the conflict, so the block is posted anyway: these are the only phase C numbers that exist, and they are the **GDAL 3.4.3 baseline** that P12's rerun on GDAL 3.8 can be compared against. P12 itself is untouched and unanswered — no part of G, C or B was run.
