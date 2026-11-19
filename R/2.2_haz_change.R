@@ -84,6 +84,16 @@ write_chg_parquet <- function(tbl, path) {
                  length(unique(tbl[["iso3"]]))))
 }
 
+# Helper (M-20261119-r22n-1/-2): an ensemble group where every model is NA
+# aggregates to mean NaN and min/max +/-Inf. Write those as NA (a clean NULL),
+# as the by-model tables already are. Modifies `tbl` by reference.
+na_nonfinite_ens <- function(tbl, cols = c("mean", "min", "max", "sd")) {
+  for (.col in intersect(cols, names(tbl))) {
+    data.table::set(tbl, which(!is.finite(tbl[[.col]])), .col, NA_real_)
+  }
+  invisible(tbl)
+}
+
 merge_admin_extract <- function(data_ex) {
   # CR-093: pass-through retained for call-site compatibility. The new
   # admin_extract(boundaries_zonal, boundaries_index) API (R/haz_functions.R)
@@ -405,6 +415,8 @@ diff_ens <- diff[!grepl("ENSEMBLE", model)]
 diff_ens <- diff_ens[, list(mean = mean(value, na.rm = TRUE), min = min(value, na.rm = TRUE), max = max(value, na.rm = TRUE), sd = sd(value, na.rm = TRUE)),
   by = list(iso3, admin0_name, admin1_name, admin2_name, scenario, timeframe, variable, stat)
 ]
+na_nonfinite_ens(change_ens)
+na_nonfinite_ens(diff_ens)
 
 # save results — CR-093: iso3-first pruning + row-count log via write_chg_parquet.
 write_chg_parquet(change, file.path(haz_mean_ptot_dir, "ptot_change_by_model.parquet"))
@@ -511,6 +523,7 @@ data_ens <- data[, list(
 ),
 by = list(iso3, admin0_name, admin1_name, admin2_name, scenario, timeframe, variable, severity, crop)
 ]
+na_nonfinite_ens(data_ens)
 
 write_chg_parquet(data, file.path(haz_mean_thi_dir, "thi_perc_area_by_model.parquet"))
 write_chg_parquet(data_ens, file.path(haz_mean_thi_dir, "thi_perc_area_ensemble.parquet"))
@@ -617,6 +630,7 @@ by = list(iso3, admin0_name, admin1_name, admin2_name, scenario, timeframe, haza
 
 # CR-093: historic scenario token is "historic" (risk-dir prefix), not "historical".
 data_ens[scenario == "historic", c("min", "max", "sd") := NA]
+na_nonfinite_ens(data_ens)
 
 write_chg_parquet(data, file.path(haz_mean_ntx_dir, "ntx_perc_area_by_model.parquet"))
 write_chg_parquet(data_ens, file.path(haz_mean_ntx_dir, "ntx_perc_area_ensemble.parquet"))
@@ -718,11 +732,7 @@ by = list(iso3, admin0_name, admin1_name, admin2_name, scenario, timeframe, haza
 ]
 
 data_ens[scenario == "historic", c("min", "max", "sd") := NA]
-# M-20261119-r22n-1: a zone where every model is NA aggregates to mean NaN and
-# min/max +/-Inf; write those as NA, as `data` already is above.
-for (.col in c("mean", "min", "max", "sd")) {
-  data.table::set(data_ens, which(!is.finite(data_ens[[.col]])), .col, NA_real_)
-}
+na_nonfinite_ens(data_ens)  # M-20261119-r22n-1
 
 haz_time_risk_stats_dir <- file.path(haz_time_risk_dir, "stats")
 if (!dir.exists(haz_time_risk_stats_dir)) {

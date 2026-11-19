@@ -4,6 +4,106 @@ Append-only. Newest block on top. Respond by prepending a `### RESPONSE` block.
 
 ---
 
+### MACBOOK 2026-11-19 [M-20261119-r22n-2] — rerun R/2.2 SEC1–3, gate, publish the 4 other ensembles (NaN/±Inf → NULL)
+
+**Context.** The r22n-1 RESPONSE below is accepted: `haz_freq` and `haz_freq_ensemble` are fixed and
+live. The NaN/±Inf fault that r22n-1 fixed in `haz_freq_ensemble` is also in the other four live
+ensembles. A zone where every model is NA aggregated to `mean` = NaN, and in THI and NTx to
+`min` = +Inf / `max` = −Inf. Measured on the live keys (2026-11-19):
+
+| ensemble | rows | `mean` NaN | `min`+`max` ±Inf |
+|---|---|---|---|
+| ptot_change_ensemble | 162,848 | 5,920 | 0 (min/max already NULL there) |
+| ptot_diff_ensemble | 81,424 | 192 | 0 (likewise) |
+| thi_perc_area_ensemble | 173,026 | 1,700 | 3,400 |
+| ntx_perc_area_ensemble | 346,052 | 816 (48 historic) | 1,536 |
+
+**Fix (this commit).** R/2.2 gains one helper, `na_nonfinite_ens()`, which writes non-finite
+`mean`/`min`/`max`/`sd` as NA. It is called on all five ensembles: SEC1 (`change_ens`, `diff_ens`),
+SEC2, SEC3, and SEC4, where it replaces the r22n-1 inline loop with no change in behaviour. The by-model
+tables are not touched by the helper; they were already NA-cleaned.
+
+**Why SEC1–3 rerun in full.** Each ensemble is built in-section from that section's extraction, so
+the section must rerun, and it rewrites its by-model file(s) too. Those **by-model files must come
+out content-identical to what is live** (same inputs, same code path; the helper never touches them).
+They are **not published**.
+
+**Scope.** Rerun SEC1, SEC2, SEC3 (`SKIP_R22_SEC4=1`). Publish **only** the 4 ensembles:
+`ptot_change_ensemble`, `ptot_diff_ensemble`, `thi_perc_area_ensemble`, `ntx_perc_area_ensemble`.
+Do not touch the other 6 keys (4 by-model, `haz_freq`, `haz_freq_ensemble`), the `.preFix*.bak`
+clutter (#59), the adm0 claimant rows (#11), any other prefix or stage. Macbook updates the pins CSV
+and changelog from your RESPONSE.
+
+**Rules that bite here:** as in r22n-1. `git pull` first; absolute-path sourcing; R/2.2 and the
+publish go in the background (`nohup … &`, `logs/`); keep the new `_parked_r22e_*` dir and every
+existing `_parked_*` / `sandbox/backup/` dir; verify the RESPONSE landed on `origin/develop`.
+SEC1–3 peaked near 27 GiB RSS in B3 (all four sections, 738 s), well inside the node.
+**At any deviation from a gate: STOP, describe, publish nothing. Do not improvise a fix.**
+
+Paths: `MEAN = <hazard_timeseries_mean>/annual`; the 8 files are `MEAN/ptot_perc/ptot_{change,diff}_{by_model,ensemble}.parquet`,
+`MEAN/thi_perc/thi_perc_area_{by_model,ensemble}.parquet`, `MEAN/ntx_perc/ntx_perc_area_{by_model,ensemble}.parquet`.
+
+---
+
+**Step 0 — node quiet. G0 (invariant):** as r22n-1 G0.
+
+**Step 1 — code is current.** `git pull`; `grep -c 'na_nonfinite_ens' R/2.2_haz_change.R` → 6
+(1 definition + 5 calls). Report HEAD.
+
+**Step 2 — park, then rerun SEC1–3.**
+- Record md5, size and row count of the 8 files. **Check:** each equals the live key as pinned on
+  11-16 (`archive/dispatches/DISPATCH_cglabs_r22_hazard_change_publish.md`, step-6 table): md5 = ETag
+  for the 7 single-part files; for `ntx_perc_area_by_model` recompute the multipart ETag from 8 MiB
+  parts as you did on 11-16. Any mismatch: STOP (the parked files would be the wrong reference).
+- **Move** all 8 to `Data/_parked_r22e_<STAMP>/` and re-check md5 there.
+- Run, from the repo root:
+  ```bash
+  STAMP=$(date +%Y%m%d_%H%M%S); nohup env SKIP_R22_SEC4=1 Rscript -e 'source("/home/jovyan/atlas/hazards_prototype/R/0_server_setup.R"); source("/home/jovyan/atlas/hazards_prototype/R/2.2_haz_change.R")' > logs/r22e_sec123_${STAMP}.log 2>&1 & echo $! > logs/r22e_sec123_${STAMP}.pid
+  ```
+**G1 (invariants):** exit 0; `run controls: SEC1=TRUE SEC2=TRUE SEC3=TRUE SEC4=FALSE`; exactly the 8
+files written (8 `wrote … (… rows, 55 iso3)` lines). List any other file under `Data/` newer than the
+run start: zonal/boundary cache rewrites are a report; any other `.parquet` or risk/mean/indices `.tif`
+is a STOP. `STATS/haz_freq*` must keep their r22n-1 mtimes. The 18 benign
+`SEC1: WARN no future match for historic GCM` lines (B3) are expected.
+
+**Step 3 — G2, the fix took (new files alone).**
+**G2 (invariant):** in all 4 new ensembles, 0 NaN and 0 ±Inf in `mean`, `min`, `max`, `sd`.
+
+**Step 4 — G3, product vs input (new against parked, joined on every non-value column).**
+**G3 (invariants):**
+- **4 by-model files:** row count = parked; key sets identical; every `value` identical, NULLs in the
+  same places. 0 differing rows. (Byte-identical md5 is a bonus, not required.) Any difference: STOP;
+  it means an input moved since 10-15.
+- **4 ensembles:** row count = parked; key sets identical. Every cell that was finite in parked is
+  identical in new. Every cell that was NaN/±Inf in parked is NULL in new. NULL count per column in new
+  = parked NULL + parked non-finite. Report per file: cells converted per column, and finite cells that
+  differ (must be 0).
+
+**Step 5 — G4, validator.** `Rscript R/validate_cr093_real.R`. **G4 (invariant):** 10 PASS / 0 FAIL.
+
+**Step 6 — G5, filtered dry-run.** Env clean of `CONFIRM|R22_|FORCE_OVERWRITE|AWS_BIN`, then
+`R22_PUBLISH_ONLY=ptot_change_ensemble,ptot_diff_ensemble,thi_perc_area_ensemble,ntx_perc_area_ensemble Rscript R/publish_cr093_r22.R`.
+**G5 (invariants):** `mode: DRY-RUN`; `plan limited to 4 of 10 files`; exactly those 4 keys; all
+pre-flight `OK`; `pre-flight PASS for all 4 files`.
+
+**Step 7 — publish the 4 keys.** `head-object` for **all 10** → `logs/r22e_s3_before_<STAMP>.txt`, then:
+```bash
+STAMP=$(date +%Y%m%d_%H%M%S); nohup env CONFIRM=1 R22_PUBLISH_ONLY=ptot_change_ensemble,ptot_diff_ensemble,thi_perc_area_ensemble,ntx_perc_area_ensemble Rscript R/publish_cr093_r22.R > logs/r22e_publish_${STAMP}.log 2>&1 &
+```
+
+**Step 8 — verify.** `head-object` for all 10 → `logs/r22e_s3_after_<STAMP>.txt`.
+**Invariants:**
+- The 4 published keys: S3 size = local; ETag = local MD5 (all four are under 8 MiB, so single-part;
+  if one comes back multipart, recompute and match); 4 `.bak` objects with the 11-16 sizes;
+  `null-stat=0` in the verify lines; public HTTPS HEAD → 200. Re-read each over HTTPS: 0 NaN/±Inf.
+- **The other 6 keys: ETag, size, LastModified, VersionId identical before and after.** Any change: STOP.
+
+**Step 9 — RESPONSE.** G0–G5 with the numbers asked for, the 4-row pin table (variable, size, ETag,
+LastModified UTC, x-amz-version-id), log paths, parked dir. Commit, push, verify on `origin/develop`.
+End with `Answers: M-20261119-r22n-2 (complete)` or `(stopped at <gate>)`.
+
+---
+
 ### RESPONSE 2026-11-19 [M-20261119-r22n-1] — cglabs: SEC4 rerun, G0–G5 PASS, `haz_freq` + `haz_freq_ensemble` published
 
 **Outcome: complete.** All gates passed with no deviation. Only the 2 named keys changed on S3; the
