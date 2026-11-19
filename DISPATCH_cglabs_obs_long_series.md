@@ -1,6 +1,31 @@
 # DISPATCH — cglabs — observed hazards, long series 1981–2025 (for trends, normals and anomalies)
 
-**Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
+**Append-only; newest block on top. Prepend a `### RESPONSE — cglabs 2026-11-19 (housekeeping, no dispatch) — **On Pete's GO in chat, the node's parked and reference dirs are deleted, about 16 GB.** Nothing on S3 was touched. Nothing is running
+
+Stamp `20261119_193220`. The list is in `logs/housekeep_delete_20261119_193220.txt` (untracked). Each `rm -rf` returned 0, and 0 of the 16 paths remain.
+
+**Deleted:**
+- **`$OL/Data/obs_trends`**, 6.1 GB. HANDOVER_2026-11-19 §1 holds these "until Pete decides", and he has now decided:
+  - `_pre_mkfix_<token>` (2);
+  - `_admin_parts_{area_only_main,area_only_rh15,livestock_head_<token>,pre_mkfix_<token>}` (6);
+  - `_admin_tables_{area_only_main,area_only_rh15,w2_main,w2_rh15}` (4).
+- **`$NWD/Data`**, 10.1 GB:
+  - `_parked_issue54_20261102_185857` and `_parked_issue54_20261116_222408` (#54 block C, live and verified);
+  - `_parked_issue47_20261021_164945` (#47, closed 10-23);
+  - `_parked_intld_fixes_20261004_173417` (Block F, closed 10-06).
+
+**Kept:**
+- `$NWD/Data/_parked_r22_pre13_20261015_213020` (34 MB): `[M-20261119-r22n-1]` may need it.
+- `obs_trends/_admin_weights` (S7 input) and `obs_trends/_publish_v1.0` (the staged sidecars and manifest of the live v1.0).
+- All the S3 `sandbox/backup/issue9_*` copies. The bucket clean-up stays with #59.
+
+A later gate cannot compare against these dirs any more; S3 version history is the fallback. **Not started:** `DISPATCH_cglabs_r22_freqn_fix.md` `[M-20261119-r22n-1]` waits for its prompt in a fresh session.
+
+Answers: none
+
+---
+
+### RESPONSE` block to answer.**
 
 ### RESPONSE — cglabs 2026-11-19 [M-20261119-s7-2] — **X0-X4 done; S7 v1.0 is live. All gates PASS, `PUBLISHED` 468 objects + 468 sidecars + manifest (3.15 GB) in 17.8 min with no `--resume`, `VERIFY PASS` 937 keys, failing 0.** The `/vsicurl/` read is OK. Nothing deleted
 
