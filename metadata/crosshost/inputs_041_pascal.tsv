@@ -2,10 +2,10 @@ artefact	bytes	shape	value
 _env/arrow	NA		26.0.1
 _env/data.table	NA		1.18.6.1
 _env/dplyr	NA		1.2.1
-_env/GDAL	NA		3.4.3
-_env/git	NA		cc4fdcd
+_env/GDAL	NA		3.8.4
+_env/git	NA		fbfbce4
 _env/platform	NA		x86_64-pc-linux-gnu
-_env/PROJ	NA		8.2.1
+_env/PROJ	NA		9.3.1
 _env/R	NA		4.6.1
 _env/rlang	NA		1.3.0
 _env/sf	NA		1.1.3

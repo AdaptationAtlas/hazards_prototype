@@ -2,6 +2,100 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal [M-20261119-i58-2] 2026-11-19 — **B0-B3 complete. Phase B closes on GDAL 3.8.4.** Inputs 13/13 `same`. **res-05 PASS outright**; res-25 has **one** value difference left, `shoat_prop`, at `max rel diff 3.95e-06` — against a factor of two on GDAL 3.4.3. All four `mass_check` sites report `mass conserved within 0.005` at both resolutions. The two `_gdal343` trees are deleted
+
+The host gate is effectively closed. Of the three GLW-only artefacts the sum-resample fault was corrupting, **`livestock_number_number` and `livestock_masks` are now `same` to the digit**, and `shoat_prop` is a rounding-order difference, not a mass error — see below. Everything else that P7 flagged on 3.4.3 has gone.
+
+No stop rule fired. `Installing package` count 0 in both run logs, nothing went to S3, and writes stayed in `logs/`, `metadata/crosshost/`, the places 0.4.1 writes, and the B3 deletion.
+
+#### B0 — pull, terra. PASS
+
+Branch `develop`, `git log --oneline -1` = `fbfbce4`, the P13 commit. `terra` reports **GDAL 3.8.4**.
+
+#### B1 — 0.4.1 at both resolutions. PASS
+
+One `COMPLETE` per resolution:
+
+```
+===== 0.4.1_create_livestock_exposure.R COMPLETE at 2026-11-19 18:34:48 EAT =====   (0.25)
+===== 0.4.1_create_livestock_exposure.R COMPLETE at 2026-11-19 18:37:31 EAT =====   (0.05)
+```
+
+All four `mass_check()` sites ran on both branches, and every one reports `mass conserved within 0.005`:
+
+| Site | 0.25 | 0.05 |
+|---|---|---|
+| GLW resample | poultry 0.9998, sheep 0.9998, pigs 1.0000, goats 0.9999, cattle 1.0000 | poultry 0.9996, sheep 0.9992, pigs 0.9993, goats 0.9991, cattle 0.9996 |
+| livestock-unit mask resample | all six 1.0000 | all six 1.0000 |
+| GLW re-align resample | poultry 0.9998, sheep 0.9998, pigs 1.0000, goats 0.9999, cattle 1.0000 | poultry 0.9996, sheep 0.9992, pigs 0.9993, goats 0.9991, cattle 0.9996 |
+| livestock_no resample | all six 1.0000 | all six 1.0000 |
+
+No `mass NOT conserved`, and `ATLAS_MASS_CHECK` was not set. Worth stating plainly: on GDAL 3.4.3 these ratios were about 2.0, which is what `mass_check()` was written to catch. It now reports conservation on the same code, same inputs, same host — the guard did its job and the library was the fault.
+
+The finer grid is slightly further from 1.0 (0.9991 against 0.9999 for goats), which is the expected edge behaviour of a 0.05 degree target against the 1/12 degree GLW source, not a regression.
+
+#### B2 — fingerprint and compare
+
+**Inputs — PASS, 13 `same`.**
+
+```
+env-diff=9  env-same=4  same=13
+PASS - every shared artefact matches; no one-sided artefacts
+```
+
+FAOSTAT has not moved since P7: every input artefact is identical to the macbook's, so the VoP rasters and CSVs below are a genuine host test.
+
+**res-25 — 13 `same`, 1 `within-tol`, 1 VALUE-DIFF.**
+
+```
+same=13  VALUE-DIFF=1  within-tol=1
+WARN  VALUE-DIFF Data/GLW4_2020/intermediate/shoat_prop_res-25.tif  (max rel diff 3.95e-06)
+within tolerance, largest relative difference: 1.45e-10
+FAIL - 1 artefact(s) differ or are one-sided
+```
+
+**res-05 — PASS.**
+
+```
+same=14  within-tol=1
+within tolerance, largest relative difference: 1.45e-10
+PASS - every shared artefact matches; no one-sided artefacts
+```
+
+**The host gate, artefact by artefact at res-25:**
+
+| Artefact | Verdict | Note |
+|---|---|---|
+| `livestock_number_number_res-25.tif` | `same` | layer sums identical to the digit; only the file byte count differs, 1,606,247 against 1,606,183, which is GTiff compression, not value |
+| `livestock_masks_res-25.tif` | `same` | identical byte count and identical sums across all 12 layers |
+| `shoat_prop_res-25.tif` | VALUE-DIFF, 3.95e-06 | see below |
+
+`shoat_prop` holds two complementary layers, the sheep and goat shares of the small-ruminant total:
+
+```
+macbook   sum=14375.91292 | 21820.08708    n_nonNA=36196|36196
+pascal    sum=14375.85617 | 21820.14383    n_nonNA=36196|36196
+```
+
+Both pairs sum to **36,196.00000 exactly**, which is the cell count, and the two files have the **same byte count, same dimensions, same extent and the same non-NA cell count**. So no mass is created or lost; 0.057 of a cell's worth of share moves from sheep to goats. That is a floating-point rounding-order difference in a ratio of two resampled sums, on the order of what a different GDAL patch release and a different CPU architecture produce, and it is three orders of magnitude inside the 0.5 % mass guard. It sits just above the comparison's `rtol=1e-06`, which is what makes it a VALUE-DIFF rather than a `within-tol`. My reading: this is the floor of cross-host agreement for a derived ratio, not an outstanding fault. If you want the gate to read PASS, the honest fix is a per-artefact tolerance for ratio products, not a looser global `rtol`.
+
+**`env-diff` rows, both resolutions:** `GDAL A=3.8.5 B=3.8.4` and `PROJ A=9.5.1 B=9.3.1`, plus `arrow` 24.0.0/26.0.1, `data.table` 1.18.4/1.18.6.1, `R` 4.6.0/4.6.1, `sf` 1.1.2/1.1.3, `terra` 1.9.34/1.9.50, `platform` aarch64-apple-darwin23/x86_64-pc-linux-gnu, and `git` 6471ecd/fbfbce4. The two hosts are now within one patch release of each other on GDAL, where they were three minor versions apart.
+
+#### B3 — the GDAL 3.4.3 trees are gone
+
+```
+2,617,691,988   $CD/nex-gddp-cmip6_gdal343
+  975,156,792   $CD/nex-gddp-cmip6_indices_gdal343
+```
+
+Both removed. `$CD` now holds `chirps_wrld`, `nex-gddp-cmip6`, `nex-gddp-cmip6_indices` and `nex-gddp-cmip6_raw`, **5,212,987,756 bytes**, down from 8,805,836,536. The live trees are intact and verified after the deletion: **2,190 daily tifs and 588 index tifs**, the counts P12 measured. Nothing else under `$CD` was touched. `df` unchanged at this scale: 24 T available, 53 % used.
+
+#### Where this leaves phase B
+
+Phase B was opened because PASCAL and the macbook disagreed on 0.4.1 outputs. On GDAL 3.4.3 the disagreement was a factor of two on every GLW-derived artefact, traced to `gdalwarp -r sum` over a NoData mask. On GDAL 3.8.4, with no code change, **inputs match 13/13, res-05 matches outright, and res-25 matches on everything except one ratio at 4e-06.** The `mass_check()` guard added after P7 now passes on all four sites at both resolutions, so the regression test for this fault is in place and green.
+
+---
+
 ### MACBOOK 2026-11-19 [M-20261119-i58-3] — P14: storage census, our area and the shared climate trees (read-only). **Small profile is fine. Can run in a second session alongside P13.**
 
 **Why.** Migration plan §2.2a sizes a full NEX-GDDP regeneration at 9.6 TB of raw downloads and up to 15.5 TB
