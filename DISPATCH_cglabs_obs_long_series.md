@@ -2,6 +2,125 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-19 [M-20261119-s7-1] — **U0-U4 done; every gate PASS.** In the rasters (114 stacks) and admin tables (12), the slope, `n_years`, normals and `series` tables are unchanged, max |diff| 0. `p_mk` never went down; the smallest is now 5.8e-13 per cell and 1.3e-12 in the admin tables (it was 0 before). No `sig_fdr` went 0 → 1: 232,046 cells and 44,343 admin rows went 1 → 0. Nothing published
+
+Stamp `20261118_235934`. HEAD `3ff8477` at launch. Env grep (`S7_`, `OBS_`) was empty. Every long step ran under nohup with a pid file. Scripts and outputs are in `logs/obs_long_{u0_selftest,u1,s7_u2,s7_u3,u4_rasters,u4_admin,u4_report}_<stamp>.*` (untracked). `T = $OL/Data/obs_trends`.
+
+#### U0 — pull, selftest. PASS
+**23 ok**, `ALL S7 SELFTEST ASSERTIONS PASSED`. That includes `MK: negative autocorrelation never makes p smaller than a perfectly monotonic series of the same length`.
+
+#### U1 — references. Done
+Copied as written to `$T/_pre_mkfix_<token>/`:
+
+| token | trend.tif | normal.tif | `_tables` |
+|---|---|---|---|
+| main | 95 | 95 | 6 |
+| `-rh15` | 19 | 19 | 6 |
+
+Each count equals the source count.
+
+#### U2 — rasters, `--overwrite`, all windows, no `--boundaries-dir`. Done
+- 00:00 → 00:22 UTC, both tokens exit 0: main 18.4 min, `-rh15` 3.8 min.
+- The only warnings are the usual GDAL plugin `LIBTIFF_4.6.1` lines.
+
+#### U3 — admin tables as V1. Done
+- `_admin_parts` moved, not copied, to `$T/_admin_parts_pre_mkfix_<token>`: 1,170 files (main) and 234 (`-rh15`), which is 390 / 78 per level. Kept.
+- Then the V1 loop, unchanged: same `--boundaries-dir`, `--weights-crop`, `--weights-livestock` and `--admin-only`.
+- 00:23 → 01:02 UTC, both tokens exit 0: main 31 min, `-rh15` 7 min. It took longer than V1 because all three weightings were rebuilt, not livestock only.
+- Parts after the run: 390 per level (main) and 78 (`-rh15`).
+
+#### U4.1 — raster gate. PASS
+For every stack in the U1 copy against the rewritten file:
+- `slope_per_decade` and `n_years` compared with NA masks;
+- `normal_1991-2020` compared on all bands;
+- every trend and normal file rewritten after the launch.
+
+```
+main PASS | stacks trend 95 normal 95 | not rewritten 0 | slope differ 0 | n_years differ 0 | normal differ 0 | NA-mask differ 0 | p_mk decreased 0 | p_mk<5e-17 0 | min p_mk 5.78e-13 | max p increase 0.992 | cells 4548844 | sig_fdr 1->0 189901, 0->1 0
+rh15 PASS | stacks trend 19 normal 19 | not rewritten 0 | slope differ 0 | n_years differ 0 | normal differ 0 | NA-mask differ 0 | p_mk decreased 0 | p_mk<5e-17 0 | min p_mk 8.67e-11 | max p increase 0.983 | cells 908055  | sig_fdr 1->0 42145,  0->1 0
+```
+- The `p_mk` decrease test uses tolerance 1e-12.
+- The NA masks of `p_mk` and `sig_fdr` are equal too.
+- "max p increase" is near 1. This is the expected case: cells whose old p was crushed by a sub-1 factor now read as plain non-significant.
+
+#### U4.2 / U4.3 — admin gate. PASS 12/12
+For each table, the U1 copy is merged with the new one on (unit keys, window, index, weighting[, year]) with `all = TRUE`.
+- **`series`:** all value columns are compared.
+- **`trends`:** every column except `p_mk` and `sig_fdr` must be identical. For `p_mk`: NA mask equal, never decreased, never below 5e-17, never exactly 0.
+
+```
+main admin0 series PASS | rows    367,220 = merged | max|diff| 0
+main admin1 series PASS | rows  4,410,080 = merged | max|diff| 0
+main admin2 series PASS | rows 37,444,615 = merged | max|diff| 0
+rh15 admin0 series PASS | rows     73,444 = merged | max|diff| 0
+rh15 admin1 series PASS | rows    882,016 = merged | max|diff| 0
+rh15 admin2 series PASS | rows  7,488,923 = merged | max|diff| 0
+                         rows     other|diff| p_mk dec/<5e-17/==0  min new (old) | sig_fdr 1->0 / 0->1 [sig before -> after]
+main admin0 trends PASS    8,540   0          0/0/0   1.29e-12 (0) | area   227/0 [1920->1693]       crop_production  135/0 [1120->985]     livestock_tlu   9/0 [106->97]
+main admin1 trends PASS  102,560   0          0/0/0   1.29e-12 (0) | area  2702/0 [22325->19623]     crop_production 1320/0 [9863->8543]    livestock_tlu 141/0 [1338->1197]
+main admin2 trends PASS  870,805   0          0/0/0   2.35e-12 (0) | area 21605/0 [188026->166421]   crop_production 9318/0 [57507->48189]  livestock_tlu 994/0 [11709->10715]
+rh15 admin0 trends PASS    1,708   0          0/0/0   1.5e-12  (0) | area    18/0 [668->650]         crop_production   18/0 [384->366]      livestock_tlu   5/0 [34->29]
+rh15 admin1 trends PASS   20,512   0          0/0/0   4.3e-11  (0) | area   336/0 [8358->8022]       crop_production  237/0 [3653->3416]    livestock_tlu  18/0 [427->409]
+rh15 admin2 trends PASS  174,161   0          0/0/0   3.74e-11 (0) | area  5016/0 [79501->74485]     crop_production 1941/0 [23349->21408]  livestock_tlu 303/0 [3959->3656]
+ADMIN GATE PASS: 12/12 tables
+```
+The exact zeros are gone from every table. On each side, the merged row count equals the row count, so no key exists on one side only.
+
+#### U4.4 — report
+**FDR-significant share of cells, `annual12`, before → after:**
+```
+main NDWL0_mean   10.52% ->  7.59%   (47,873 cells)
+main NDWS_mean     9.39% ->  5.16%   (47,873)
+main NTx35_mean   73.05% -> 72.13%   (47,924)
+main PTOT_sum     24.12% -> 19.40%   (48,321)
+main THI_max_max  54.58% -> 50.47%   (47,885)
+rh15 THI_max_max  50.50% -> 45.97%   (47,885)
+```
+- The two drought indices lose the most, about half of their significant cells. They have the noisiest, most anti-persistent series.
+- NTx35 barely moves, because its trend is strong and monotonic.
+
+**V2 rows re-read: KEN/ETH/NGA, admin0 `annual12` / `THI_max_max`.**
+- Normals are identical to the U1 copy (`normal_same` TRUE on all 18 rows).
+- Slope is unchanged; `n_years` 43.
+- `sig_fdr` stays 1 on all 18 rows.
+
+```
+main                    normal  slope/dec  p_mk old -> new
+ETH area                84.45   0.310      7.8e-18 -> 2.2e-06
+ETH crop_production     81.68   0.563      1.9e-12 -> 2.5e-06
+ETH livestock_tlu       80.61   0.406      3.9e-42 -> 9.4e-08
+KEN area                87.86   0.180      3.2e-04 -> 3.2e-04
+KEN crop_production     83.60   0.148      2.0e-03 -> 6.9e-03
+KEN livestock_tlu       85.60   0.182      2.1e-04 -> 2.1e-04
+NGA area                89.30   0.219      1.7e-04 -> 1.7e-04
+NGA crop_production     89.37   0.305      2.3e-07 -> 2.3e-07
+NGA livestock_tlu       89.32   0.199      7.0e-05 -> 7.0e-05
+-rh15
+ETH area                82.33   0.249      1.8e-07 -> 4.6e-06
+ETH crop_production     79.54   0.475      1.7e-20 -> 1.5e-07
+ETH livestock_tlu       78.71   0.330      5.0e-11 -> 1.7e-07
+KEN area                85.44   0.172      1.5e-04 -> 1.5e-04
+KEN crop_production     81.70   0.101      0       -> 2.4e-02
+KEN livestock_tlu       83.31   0.141      4.4e-04 -> 4.4e-04
+NGA area                87.98   0.147      4.1e-03 -> 4.1e-03
+NGA crop_production     88.19   0.272      3.7e-07 -> 3.7e-07
+NGA livestock_tlu       87.88   0.117      1.9e-02 -> 1.9e-02
+```
+- Only the rows whose factor had been below 1 moved; the others read the same at 2 significant figures. All ETH rows moved, as did KEN `crop_production` on both tokens.
+- The impossible values from V2 (3.9e-42, 1.7e-20, exact 0) now sit in a plausible MK range.
+
+**Size:** `du -sh $T` = **11 GB** (7.6 GB after V1). The growth is the U1 reference copy plus a second full set of admin parts, because the old set was moved aside, not overwritten.
+
+**Kept:**
+- `_pre_mkfix_<token>` (rasters and `_tables`) and `_admin_parts_pre_mkfix_<token>`;
+- every earlier `_admin_parts_*` and `_admin_tables_*` dir.
+
+Nothing is running. Nothing published; holding for the publish block.
+
+Answers: M-20261119-s7-1 (complete)
+
+---
+
 ### MACBOOK 2026-11-19 [M-20261119-s7-1] — accepted; the p_mk you flagged is a bug, fixed: rerun S7 trends (U0–U4), then hold for the publish block
 
 V0–V2 accepted: gate PASS 12/12, TLU rows as specified, and the gate-reference copy you made unasked was the right call.
