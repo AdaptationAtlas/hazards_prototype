@@ -2,6 +2,79 @@
 
 **Append-only; newest block on top. Prepend a `### RESPONSE` block to answer.**
 
+### RESPONSE — cglabs 2026-11-19 [M-20261119-s7-2] — **X0-X4 done; S7 v1.0 is live. All gates PASS, `PUBLISHED` 468 objects + 468 sidecars + manifest (3.15 GB) in 17.8 min with no `--resume`, `VERIFY PASS` 937 keys, failing 0.** The `/vsicurl/` read is OK. Nothing deleted
+
+Stamp `20261119_124829`. HEAD `aee7b8c` (the publisher stamps `code aee7b8c` in the sidecars). Env grep (`S7_`, `OBS_`) was empty. X1-X3 each ran under nohup with a pid file. Logs are in `logs/obs_long_{x0_s7,x0_pub,s7_x1,s7_x2,s7_x3,x3_vsicurl}_<stamp>.*` (untracked).
+
+#### X0 — selftests. PASS
+- `s7_trends_anomalies.R --selftest`: **23 ok**, `ALL S7 SELFTEST ASSERTIONS PASSED`.
+- `s7_publish_obs_trends.R --selftest`: **21 ok**, `ALL S7 PUBLISH SELFTEST ASSERTIONS PASSED`.
+
+#### X1 — dry run. GATES PASS
+12:49:28 → 13:05:31 UTC, **16.0 min** (P4 takes 11.8 of them).
+```
+P1 chirps-chirts-agera5 PASS | stacks 95 (expected 95) | files missing 0 | tables 6 of 6
+P1 chirps-chirts-agera5-rh15 PASS | stacks 19 (expected 19) | files missing 0 | tables 6 of 6
+P1 stray .tif in window dirs (not published): 0
+P1b PASS | CDH inventories list 456 COGs; on disk 456 | in record not on disk 0 | on disk not in record 0
+P2 PASS | 456 COGs checked, 0 failing
+P3 PASS | stacks failing 0 | min p_mk 5.78e-13 | report: sig_fdr vs BH recomputed from float32 p_mk differs on 0 cells
+P4 PASS | 114 stacks (228 anomaly COGs) against their input stacks | failing 0 | worst error / tolerance: diff 0.0108, z 0.0131
+P5 chirps-chirts-agera5 admin0 PASS | trends 8,540 rows, series 367,220 rows | min p_mk 1.29e-12 | sig_fdr 1: 2775
+P5 chirps-chirts-agera5 admin1 PASS | trends 102,560 rows, series 4,410,080 rows | min p_mk 1.29e-12 | sig_fdr 1: 29363
+P5 chirps-chirts-agera5 admin2 PASS | trends 870,805 rows, series 37,444,615 rows | min p_mk 2.35e-12 | sig_fdr 1: 225325
+P5 chirps-chirts-agera5-rh15 admin0 PASS | trends 1,708 rows, series 73,444 rows | min p_mk 1.5e-12 | sig_fdr 1: 1045
+P5 chirps-chirts-agera5-rh15 admin1 PASS | trends 20,512 rows, series 882,016 rows | min p_mk 4.3e-11 | sig_fdr 1: 11847
+P5 chirps-chirts-agera5-rh15 admin2 PASS | trends 174,161 rows, series 7,488,923 rows | min p_mk 3.74e-11 | sig_fdr 1: 99549
+P6 PASS | target keys already on S3: 0 (identical to local: 0)
+GATES PASS P1 P2 P3 P4 P5 P6
+DRY RUN | would upload 468 objects + 468 sidecars + manifest (3.15 GB) | first key domain=climate/type=hazard-indices/source=chirps-chirts-agera5/region=africa/processing=trends/version=v1.0/window=annual12/variable=NDWL0_mean/NDWL0_mean_annual12_trend_1982-2024_v1.0.tif | manifest domain=climate/type=hazard-indices/source=chirps-chirts-agera5/region=africa/manifest_trends-normals-anomalies_1982-2024_v1.0.csv
+```
+- The minimum `p_mk` matches U4: 5.78e-13 per cell, 1.29e-12 in main admin0/1, and the same row counts.
+- The `sig_fdr` sums in the admin trends tables equal the U4 "after" counts (main admin0 1693 + 985 + 97 = 2775).
+
+#### X2 — publish. PUBLISHED
+- 13:06:01 → 13:39:55 UTC, 33.9 min in total: the gates reran identically and passed in 15.6 min, and the upload took **17.8 min**.
+- The first upload raised no `ContentType` / `CacheControl` argument error. Progress was even, at about 50 objects per 1.7 min.
+```
+PUBLISHED | 468 objects uploaded now, 0 skipped (resume) | + 468 sidecars | manifest domain=climate/type=hazard-indices/source=chirps-chirts-agera5/region=africa/manifest_trends-normals-anomalies_1982-2024_v1.0.csv | 17.8 min
+```
+**`--resume` was not needed**: the run did not die, and 0 keys were skipped. Total uploaded: **3.15 GB** of objects (the pin CSV's `size_bytes` sums to 3.15 GB over 937 keys), plus the small JSON sidecars.
+
+#### X3 — verify. VERIFY PASS
+13:40:10 → 13:47:39 UTC, **7.5 min**.
+```
+VERIFY PASS | 937 keys (468 objects + sidecars + manifest), failing 0 | pins metadata/cdh/pins/atlas-hazards-observed-trends-v1.0_s3-versions.csv | file index africa-hazard-season-trends-observed-files-{trends,normals,anomalies}.csv
+```
+- **Pin CSV:** 937 rows plus header, with columns `family,key,size_bytes,last_modified,etag,version_id`.
+  - Families: main trends 196 / normals 190 / anomalies 386, `-rh15` 44 / 38 / 82, manifest 1.
+  - Cosmetic: the manifest's family reads `chirps-chirts-agera5_`, with an empty processing part.
+- **Inventories:** the same rows as before (115 / 115 / 229 lines with header), with `href` byte-identical per row. The only change is a new `checksum` column, filled on every row (0 empty).
+
+**Independent read over HTTPS (`/vsicurl/`, the annual12 THI_max_max trend COG):**
+```
+[1] "slope_per_decade" "p_mk"             "sig_fdr"          "n_years"
+                           min       max
+slope_per_decade -5.424546e-01  1.736601
+p_mk              3.243341e-11  1.000000
+sig_fdr           0.000000e+00  1.000000
+n_years           4.300000e+01 43.000000
+```
+All four bands are present, `n_years` is 43 everywhere, and `p_mk` is well above the MK floor (3.7e-21) and within (0, 1].
+
+#### X4 — commit
+Only the dispatch, the pin CSV and the three inventory CSVs are committed. I ran the AGENTS.md §3 IP grep over those five files first: no hits.
+
+**Kept, nothing deleted:**
+- `_pre_mkfix_*`, `_admin_parts_*`, `_admin_tables_*`, and `_publish_v1.0` (468 sidecars + `manifest.csv`);
+- all earlier dirs.
+
+Nothing is running.
+
+Answers: M-20261119-s7-2 (complete)
+
+---
+
 ### MACBOOK 2026-11-19 [M-20261119-s7-2] — U0–U4 accepted; GO from Pete: publish S7 v1.0 (X0–X4), gated, new keys only
 
 **U0–U4 accepted.** Read in full. The 18 per-weighting 1 → 0 counts add up to your 44,343, and the cell counts to
