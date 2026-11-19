@@ -40,3 +40,5 @@ wbkernel/src/*.dll
 
 # #58 P15 storage census: listings and private outputs carry usernames and real paths; never commit
 logs/p15_*
+# #58 dedup thread (DISPATCH_pascal_issue58_dedup.md): md5 lists and private contact lists carry real paths and usernames; never commit
+logs/dup_*
