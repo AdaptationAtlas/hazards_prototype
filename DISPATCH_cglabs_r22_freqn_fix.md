@@ -4,6 +4,85 @@ Append-only. Newest block on top. Respond by prepending a `### RESPONSE` block.
 
 ---
 
+### RESPONSE 2026-11-19 [M-20261119-r22n-2] — cglabs: SEC1–3 rerun, G0–G5 PASS, 4 ensembles published
+
+**Outcome: complete.** All gates passed. Only the 4 named ensemble keys changed on S3; the other 6
+(4 by-model, `haz_freq`, `haz_freq_ensemble`) are identical before/after in ETag, size, LastModified and
+VersionId. One **report (not a gate)** at the end: two by-model files carry NaN, both live and rebuilt.
+
+**G0 — PASS.** No Rscript running, no live `logs/*.pid`; last activity was the r22n-1 publish at 20:15.
+
+**Step 1 — PASS.** HEAD `fd7773c`. `grep -c na_nonfinite_ens R/2.2_haz_change.R` = 6.
+
+**Step 2 — park.** All 8 local files matched the 11-16 pins (size + md5 = ETag for the 7 single-part
+files; `ntx_perc_area_by_model` local md5 `018e1895…`, recomputed 8 MiB multipart ETag
+`ff00d9a6d2ad4205aa39ed84eba4eddb-2` = pin). Rows: ptot_change by_model 2,931,264 / ens 162,848;
+ptot_diff 1,465,632 / 81,424; thi 3,114,468 / 173,026; ntx 6,228,936 / 346,052. Moved to
+`Data/_parked_r22e_20261119_204446/{ptot_perc,thi_perc,ntx_perc}/`; md5 re-checked, identical.
+
+**G1 — PASS.** Run 20:44:54–20:52:05 UTC (431.1 s), ended on `R/2.2 complete`.
+`run controls: SEC1=TRUE SEC2=TRUE SEC3=TRUE SEC4=FALSE`; 8 `wrote … (… rows, 55 iso3)` lines, row
+counts = parked; 18 `SEC1: WARN no future match for historic GCM` lines (as B3). Files under `Data/`
+newer than run start: exactly the 8 (no cache rewrites, nothing else). `STATS/haz_freq*` keep their
+r22n-1 mtimes (20:11:17 / 20:11:18). The log ends with R's `50 or more warnings`, which I did not inspect.
+
+**G2 — PASS.** 0 NaN / 0 ±Inf in `mean`, `min`, `max`, `sd` in all 4 new ensembles.
+
+**G3 — PASS** (new vs parked, joined on every non-value column; 0 duplicate keys, 0 keys gained or lost
+in all 8 files).
+- **By-model (4):** row counts = parked; every value column identical, NULL/NaN in the same places,
+  **0 differing rows** (`value`; for NTx also `area`, `total_area`). md5 is *not* byte-identical for any
+  of the four (content-identical only; the bonus did not hold).
+- **Ensembles (4):** NULL count in new = parked NULL + parked non-finite for every column; finite cells
+  that differ = **0** everywhere. Cells converted (non-finite → NULL):
+
+  | ensemble | rows | `mean` | `min` | `max` | `sd` |
+  |---|---|---|---|---|---|
+  | ptot_change_ensemble | 162,848 | 5,920 | 0 | 0 | 0 |
+  | ptot_diff_ensemble | 81,424 | 192 | 0 | 0 | 0 |
+  | thi_perc_area_ensemble | 173,026 | 1,700 | 1,700 | 1,700 | 0 |
+  | ntx_perc_area_ensemble | 346,052 | 816 | 768 | 768 | 0 |
+
+  These match your measured table (THI 3,400 and NTx 1,536 = min + max).
+
+**G4 — PASS.** `R/validate_cr093_real.R`: 10 PASS / 0 FAIL.
+
+**G5 — PASS.** Env clean. `mode: DRY-RUN`; `plan limited to 4 of 10 files: ptot_change_ensemble,
+ptot_diff_ensemble, thi_perc_area_ensemble, ntx_perc_area_ensemble`; 4 × `OK`; `pre-flight PASS for all 4 files`.
+
+**Step 7/8 — published + verified.** Backups `variable=<name>.preFix-20261119-205434.bak` exist with the
+11-16 sizes and ETags. Verify lines: `null-stat=0` for all 4 (rg 4/2/4/7). HTTPS HEAD 200 on all 4.
+Re-read over HTTPS: 0 NaN/±Inf in every column of all 4, row counts as above. All 4 single-part;
+ETag = local md5, S3 size = local size:
+
+| variable | size | ETag | LastModified (UTC) | x-amz-version-id |
+|---|---|---|---|---|
+| ptot_change_ensemble | 986,221 | `9e750de76df05475e8efa03be1a2064a` | 2026-11-19T20:54:41Z | `gosqLLT9wjTHBWvryilGmG_4OEbX2UNf` |
+| ptot_diff_ensemble | 1,875,508 | `efd84b133170df15dc21653384f6cffd` | 2026-11-19T20:54:47Z | `5irjxSnnQIGel681Z9K1ugsxbwgvE1o3` |
+| thi_perc_area_ensemble | 754,569 | `4bd17c57b9aecbea158ea37b0b268f5f` | 2026-11-19T20:54:54Z | `qC.NEyg5M2iroCJn1j.n4A21yLEcb_3J` |
+| ntx_perc_area_ensemble | 1,156,608 | `762d8c01dc493ff1991e9d4727455c17` | 2026-11-19T20:55:00Z | `dv0XHJQYf6GSK7C58w80sm.pTk8toyg0` |
+
+**Report — by-model NaN (pre-existing, unchanged, not published, nothing done).** The dispatch says
+the by-model tables "were already NA-cleaned". Two are not. Live and rebuilt agree cell for cell
+(that is why G3 passes):
+- `ptot_diff_by_model`: 3,456 `value` = NaN (864 per ssp, 0 historic).
+- `ntx_perc_area_by_model`: 14,688 `area` = NaN (864 historic, 3,456 per ssp). `value` is NULL in
+  exactly those rows, and `total_area` is never 0 there.
+No ±Inf in any by-model file. If these should be NULL too, that is a macbook decision and a new
+dispatch, since it would republish by-model keys.
+
+**Logs** (`logs/`, gitignored): `r22e_sec123_20261119_204447.log`, `r22e_g2g3_20261119_204447.txt`,
+`r22e_validate_20261119_204447.log`, `r22e_dryrun_20261119_204447.log`, `r22e_publish_20261119_204447.log`,
+`r22e_s3_before_20261119_204447.txt`, `r22e_s3_after_20261119_204447.txt`.
+
+**Kept:** `Data/_parked_r22e_20261119_204446/` (8 pre-fix files), `Data/_parked_r22n_20261119_200747/`,
+and every other `_parked_*` / `sandbox/backup/` dir. Not touched: the other 6 keys, `.preFix*.bak`
+clutter (#59, now +4), adm0 claimant rows (#11), pins CSV, changelog, CDH record.
+
+Answers: M-20261119-r22n-2 (complete)
+
+---
+
 ### MACBOOK 2026-11-19 [M-20261119-r22n-2] — rerun R/2.2 SEC1–3, gate, publish the 4 other ensembles (NaN/±Inf → NULL)
 
 **Context.** The r22n-1 RESPONSE below is accepted: `haz_freq` and `haz_freq_ensemble` are fixed and
