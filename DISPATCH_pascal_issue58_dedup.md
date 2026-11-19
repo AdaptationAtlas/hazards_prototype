@@ -18,6 +18,156 @@ Standing rules for every block in this file:
 
 ---
 
+### RESPONSE — pascal [M-20261119-i58dup-1] 2026-11-20 — DUP1: **complete, no stop rule fired.** **Compression is the large saving, not duplicates.** Our 1.95 TB of `hazard_risk` rasters are all uncompressed. A lossless ZSTD rewrite took three test files to **1.2-4.5 %** of their size, with values bit-identical. That points to about **1.9 TB recoverable** from our own area. By contrast, the `$CL` duplicate groups are **36 of 36 identical by md5, 35.85 GB**, and **we hold no duplicates of our own** once annual vs jagermeyr is excluded.
+
+| | |
+|---|---|
+| Our area (`$W`) by owner | **owner-02 2,401.43 GB** (144,744 files); **self 2,239.76 GB** (33,728 files) |
+| Confirmed duplicates in `$CL` | **36 groups, 72 files, all identical; 35.85 GB recoverable** (one copy of each kept) |
+| Confirmed duplicates in our own data | **0 groups.** All 298 `self` groups were annual vs jagermeyr, already a false match. |
+| Our GeoTIFFs >= 100 MB | **1,848 files, 1.953 TB, all `NONE`** (uncompressed) |
+| Lossless ZSTD on 3 test files | 4.5 %, 1.2 %, 1.2 % of original size; `max|diff|=0`, `NA-same=TRUE` |
+| Other owners' probable groups (K5) | owner-01 95, owner-03 36, owner-04 6, owner-07 1, owner-06 1 (GB below) |
+| Privacy count (`grep -c -F -f logs/p15_names_$S.txt`) over this RESPONSE | **0** |
+
+#### K0
+On `develop` at the DUP1 commit. `logs/dup_*` is ignored. `S=20261119_192126`. The P15 private folder is present. The listing is in this checkout's
+own `logs/` (the migration session works in the same checkout); it has **1,096,294** lines. The session ran under a 20-CPU cgroup, not Small.
+Everything here is single-stream or single-threaded, so that made no difference.
+
+#### K1 — who owns our area
+
+| Owner | Files | GB |
+|---|---:|---:|
+| owner-02 | 144,744 | 2,401.43 |
+| self | 33,728 | 2,239.76 |
+
+| Owner | `$W/…` (two levels) | GB |
+|---|---|---:|
+| owner-02 | `$W/hazards_prototype/Data` | 2,401.43 |
+| self | `$W/hazards_prototype/Data` | 2,234.24 |
+| self | `$W/hazards_upstream_pascal/nex-gddp-cmip6` | 2.62 |
+| self | `$W/hazards_upstream_pascal/nex-gddp-cmip6_raw` | 1.56 |
+| self | `$W/hazards_upstream_pascal/nex-gddp-cmip6_indices` | 0.97 |
+| self | `$W/atlas_obs_hazards_pascal/Data` | 0.21 |
+| self | `$W/atlas_obs_hazards_smoke_pascal/nex-gddp-cmip6` | 0.10 |
+| self | `$W/hazards_upstream_pascal/chirps_wrld` | 0.06 |
+| self | `$W/atlas_obs_hazards_pascal/manifests`, `$W/atlas_obs_hazards_smoke_pascal/manifests` | 0.00 |
+
+This answers P15's question. **The other 2.40 TB of `$W/hazards_prototype` belongs to one other account, owner-02**, and it is all
+under `Data`. One level further down:
+
+| Owner | `$W/hazards_prototype/Data/…` | GB |
+|---|---|---:|
+| owner-02 | `indices_seasonal` | 2,114.88 |
+| self | `hazard_risk` | 1,970.76 |
+| self | `hazard_timeseries_risk` | 257.92 |
+| owner-02 | `hazard_timeseries_class` | 138.08 |
+| owner-02 | `hazard_timeseries_int` | 132.34 |
+| owner-02 | `hazard_timeseries_risk` | 16.13 |
+| self | `mapspam`, `hydrobasins`, `fao`, `GLW4_2020`, `boundaries`, `GLW4`, and 9 smaller | 5.6 together |
+
+owner-02's whole P15 total (2,401.43 GB) sits in this one folder. It is probably an earlier pipeline account that wrote
+`indices_seasonal` and the `class`/`int` timeseries. None of it was opened.
+
+#### K2 — md5 of the `$CL` groups and our own groups
+The selection gave **72 files in 36 groups, all `CL`; 0 `self`**. Every `self` group in P15 is annual vs jagermeyr, which the block excludes.
+Read volume was **71.70 GB**, under the 100 GB bound. One `md5sum` stream at idle I/O priority: `md5 exit=0`, wall **17:16**, 72 hashes, no
+`Permission denied`.
+
+**All 36 groups are `identical`: 35.85 GB confirmed recoverable in `$CL`, 0 in our own data.** Largest first, each 2 copies:
+
+| Size each | Verdict | Copies |
+|---:|---|---|
+| 3.15 GB | identical | `$CL/cmip6/daily/pr_day_MRI-ESM2-0_ssp585_r1i1p1f1_gn_22510101-23001231.nc`<br>`$CL/cmip6/mme_cmip/precip/…same name` |
+| 3.15 GB | identical | `$CL/cmip6/daily/pr_day_MRI-ESM2-0_ssp585_r1i1p1f1_gn_22010101-22501231.nc`<br>`$CL/cmip6/mme_cmip/precip/…` |
+| 3.14 GB | identical | `$CL/cmip6/daily/pr_day_MRI-ESM2-0_ssp585_r1i1p1f1_gn_20150101-20641231.nc`<br>`$CL/cmip6/mme_cmip/precip/…` |
+| 2.26 GB | identical | `$CL/cmip6/daily/pr_day_MRI-ESM2-0_ssp585_r1i1p1f1_gn_20650101-21001231.nc`<br>`$CL/cmip6/mme_cmip/precip/…` |
+| 1.82 GB | identical | `$CL/cmip6/daily/pr_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_19000101-19491231.nc`<br>`$CL/cmip6/raw/daily/…` |
+| 1.82 GB | identical | `$CL/cmip6/daily/pr_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_19500101-19991231.nc`<br>`$CL/cmip6/raw/daily/…` |
+| 1.57 GB | identical | `$CL/cmip6/daily/tasmax_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_19500101-19991231.nc`<br>`$CL/cmip6/raw/daily/…` |
+| 1.48 GB | identical | `$CL/cmip6/daily/pr_day_INM-CM5-0_ssp585_r1i1p1f1_gr1_20150101-20641231.nc`<br>`$CL/cmip6/mme_cmip/precip/…` |
+| 1.24 GB | identical | `$CL/cmip6/daily/tasmin_day_INM-CM5-0_ssp585_r1i1p1f1_gr1_20150101-20641231.nc`<br>`$CL/cmip6/mme_cmip/temp/temp/…` |
+| 1.20 GB | identical | `$CL/worldclim/wc2.1_30s_bio_4.tif`<br>`$CL/worldclim/wc2.1_30s/wc2.1_30s_bio_4.tif` |
+| 1.07 GB | identical | `$CL/cmip6/daily/pr_day_INM-CM5-0_ssp585_r1i1p1f1_gr1_20650101-21001231.nc`<br>`$CL/cmip6/mme_cmip/precip/…` |
+| 1.07 GB | identical | `$CL/worldclim/wc2.1_30s_bio_3.tif`<br>`$CL/worldclim/wc2.1_30s/…` |
+| 1.01 GB | identical | `$CL/worldclim/wc2.1_30s_bio_15.tif`<br>`$CL/worldclim/wc2.1_30s/…` |
+| 0.96 GB | identical | `$CL/cmip6/daily/tasmin_day_INM-CM5-0_historical_r1i1p1f1_gr1_19500101-19991231.nc`<br>`$CL/cmip6/mme_cmip/temp/temp/…` |
+| 0.95 GB | identical | `$CL/cmip6/daily/tasmax_day_INM-CM5-0_historical_r1i1p1f1_gr1_19500101-19991231.nc`<br>`$CL/cmip6/mme_cmip/temp/temp/…` |
+| 0.89 GB | identical | `$CL/cmip6/daily/tasmin_day_INM-CM5-0_ssp585_r1i1p1f1_gr1_20650101-21001231.nc`<br>`$CL/cmip6/mme_cmip/temp/temp/…` |
+| 0.55 GB | identical | `$CL/cmip6/daily/pr_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_20000101-20141231.nc`<br>`$CL/cmip6/raw/daily/…` |
+| 0.47 GB | identical | `$CL/cmip6/daily/tasmax_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_20000101-20141231.nc`<br>`$CL/cmip6/raw/daily/…` |
+| 0.29 GB | identical | `$CL/cmip6/daily/tasmin_day_INM-CM5-0_historical_r1i1p1f1_gr1_20000101-20141231.nc`<br>`$CL/cmip6/mme_cmip/temp/temp/…` |
+| 0.28 GB | identical | `$CL/cmip6/daily/tasmax_day_INM-CM5-0_historical_r1i1p1f1_gr1_20000101-20141231.nc`<br>`$CL/cmip6/mme_cmip/temp/temp/…` |
+| 0.18-0.75 GB | identical | the other 16 WorldClim `wc2.1_30s_bio_{1,2,5-14,16-19}.tif`: `$CL/worldclim/<name>` and `$CL/worldclim/wc2.1_30s/<name>` |
+
+Per family:
+
+| Family | Groups | GB |
+|---|---:|---:|
+| `$CL/cmip6/daily` vs `$CL/cmip6/mme_cmip/precip` | 6 | 14.24 |
+| `$CL/worldclim` vs `$CL/worldclim/wc2.1_30s` | 19 | 10.77 |
+| `$CL/cmip6/daily` vs `$CL/cmip6/raw/daily` | 5 | 6.22 |
+| `$CL/cmip6/daily` vs `$CL/cmip6/mme_cmip/temp/temp` | 6 | 4.61 |
+| **Total** | **36** | **35.85** |
+
+Each `$CL` pair is a flat copy next to an organised one. Which copy to keep depends on which path scripts read: WorldClim root vs
+`wc2.1_30s/`, `cmip6/daily` vs `mme_cmip/…`/`raw/daily`. `$CL` belongs to owner-01, so that decision is theirs or IT's.
+
+#### K3 — how much of our own data is uncompressed
+Our `.tif` files of 100 MB or more under `$W`: **1,848 files, 1.953 TB.** Header scan (`terra::describe`, 4:55 wall, exit 0):
+
+| Compression | Files | TB |
+|---|---:|---:|
+| NONE | 1,848 | 1.953 |
+
+**Every one is uncompressed**, and they are all in two folders:
+
+| Folder | Files | GB `NONE` |
+|---|---:|---:|
+| `$W/hazards_prototype/Data/hazard_risk/annual` | 924 | 976.65 |
+| `$W/hazards_prototype/Data/hazard_risk/jagermeyr` | 924 | 976.65 |
+
+Our other `self` data, mainly `hazard_timeseries_risk` (258 GB), has no `.tif` of 100 MB or more, so this scan does not cover it.
+Its compression is not measured here.
+
+#### K4 — lossless ZSTD on three of our files
+GDAL 3.8.4 has ZSTD, so the DEFLATE fallback was not needed. Files: the largest, the smallest and the 100th by name in `annual`:
+
+| File | Type | Bands | Codec | Size | `max\|diff\|` | NA same |
+|---|---|---:|---|---|---:|---|
+| `poultry-highland_ENSEMBLEsd_moderate.tif` | FLT4S | 48 | ZSTD | 1057 MB -> 48 MB (**4.5 %**) | 0 | TRUE |
+| `tea_historic_severe.tif` | FLT4S | 3 | ZSTD | 66 MB -> 1 MB (**1.2 %**) | 0 | TRUE |
+| `cassava_EC-Earth3_extreme.tif` | FLT4S | 48 | ZSTD | 1057 MB -> 13 MB (**1.2 %**) | 0 | TRUE |
+
+The settings were `COMPRESS=ZSTD`, `ZSTD_LEVEL=9`, `PREDICTOR=3`, `TILED=YES`. Wall 2:11, peak RSS 8.7 GiB. terra's temporary files went to `logs/dup_k4_tmp`.
+After the run, `ls logs/dup_k4_*` held only the block's `.R`/`.log`/`.pid` and an **empty** `dup_k4_tmp/`. **0** test rasters remained.
+
+**What it implies (estimate, 3 samples):** the two folders would shrink from 1.953 TB to roughly 25-90 GB, so **about 1.86-1.93 TB recoverable**.
+That is about 50 times the confirmed `$CL` duplicates. The ratios are so small because these rasters are mostly NA (land cells for one crop), stored
+as full float32 grids. The ratio will vary by crop; a dry run over all 1,848 files would firm up the number. The same check would be worth doing
+on owner-02's `indices_seasonal` (2.11 TB), but that is another user's data, so it is not opened here.
+
+#### K5 — private contact list for the groups we do not hash
+`logs/dup_k5_private_contacts_$S.tsv` has 217 rows (kind, name, size, recoverable, path, owner, tag). It stays on the node.
+Per tag (a group shared by two owners counts under both):
+
+```
+owner-01	95 groups	356.47 GB
+owner-03	36 groups	78.10 GB
+owner-04	6 groups	2.57 GB
+owner-07	1 groups	1.00 GB
+owner-06	1 groups	0.62 GB
+```
+
+owner-01's 356 GB includes the two llama base-vs-chat trees (151.45 GB), which P15 judged almost certainly false matches. It also includes the 29
+AICCRA-vs-CCI `rotated_*` groups (65.72 GB), which are shared with owner-03 and so appear under both tags. Neither owner-02 nor self appears.
+
+**Writes:** only under `logs/` (`dup_k1*`, `dup_k2*`, `dup_k3*`, `dup_k4*`, `dup_k5*`). The only deletes were the block's own three test rasters,
+done by the script itself. No other user's files were opened outside `$CL`.
+
+Answers: M-20261119-i58dup-1 (complete)
+
 ### MACBOOK 2026-11-19 [M-20261119-i58dup-1] — DUP1: confirm by content what we may hash; measure what compression would save; private contact list for the rest. **Small profile. Mostly one `md5sum` stream over about 40 GB, plus three test rewrites.**
 
 **Why.** P15 (`[M-20261119-i58-4]`, RESPONSE in `DISPATCH_pascal_issue29_followups.md`) listed 711 GB of
