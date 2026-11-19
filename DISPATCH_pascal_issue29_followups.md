@@ -2,6 +2,261 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal [M-20261119-i58-4] 2026-11-19 — P15: server-wide storage and duplicate census. **Complete, no stop rule fired.** The listing has 1,096,294 files and 24.57 TB from 9 owners. **Probable duplicates total 711 GB, 2.9 % of listed bytes, but most of that is false matches.** About 245 GB (1.0 %) still looks like real copies after removing the groups shown to be, or almost certainly, different files. **The shared NEX-GDDP raw tree is almost empty for our purposes**: 206 files, 2021-2022 only, `tasmax`/`tasmin` only, no `historical`. None of P10's six raw files are in it.
+
+| | |
+|---|---|
+| Total listed under `$B` | 1,096,294 files, 24.57 TB, 9 owners (of about 69 accounts) |
+| `df` for `$B` (same filesystem as `$W`) | 50 T size, 26 T used, 24 T available, 53 % |
+| Probable duplicates, as listed | trees 151.45 GB + files 559.64 GB = **711.09 GB, 2.89 %** of listed bytes |
+| After known false matches are removed | **about 244.5 GB, 1.0 %** (see "False matches" below) |
+| Largest single group | tree `$B/common/llama-main/llama-2-70b` vs `…-70b-chat`, 137.97 GB. **Almost certainly a false match.** |
+| Largest group that is plausibly a real copy | `ls_vop_00.tif`, 4 copies of 3.73 GB, 11.20 GB recoverable |
+| Permission denied | **2**, both top-level folders under `$B`. Neither is inside `$W` or `$CL`. |
+| Shared NEX raw coverage | **54 of 90** GCM × scenario cells hold any file. **0 of 90 are complete.** 206 of the 36,720 files the full matrix needs (0.56 %). |
+| P10 raw files already in the shared tree | **0 of 6**. P10's CHIRPS extent file **is** in `$CL`, byte-identical. |
+
+**P14.** Stopped as instructed, with no RESPONSE written for it. Its D2 and D3 had finished, and E3 reuses them. Its D1 (`du`) and
+D4 (large-file `find` + `md5sum`) ran for about 2.5 h over `$W` on the network store. Neither had finished or written any output when I
+stopped them, so they contribute nothing. For about 2 h they shared I/O with E1, which probably made E1's wall time longer.
+
+#### E0
+On `develop`. `logs/p15_*` is ignored (`git check-ignore` printed). `$B` and `$W` are one filesystem.
+`$B` = the common parent of `$W` and `$CL`; `$CD` = `$W/hazards_upstream_pascal`.
+
+#### E1 — the listing
+Run in the migration session's checkout with `S=20261119_192126` (confirmed from the `p15_list_*.log` name). I did not start a second `find`.
+
+- `find exit=1`, as expected with unreadable folders. Wrapper `Exit status: 0`.
+- **Wall 4:06:32**, max RSS 19 MB, at `ionice -c3 nice -n 19`.
+- **1,096,294 lines**, all with 4 fields. Unparsed lines 0.
+- **2 `Permission denied`** lines and nothing else in the `.err`. Both are top-level folders under `$B`, outside `$W` and `$CL`. They are not named here because one name looks like a username.
+- Listed bytes (24.57 TB) are about 1.4 TB below `df`'s 26 T used. The listing cannot account for the gap. The two unreadable folders are one candidate, and filesystem overhead may be another; neither is measured.
+
+#### E2 — the census
+`storage_census.py` took 2.6 s at 0.24 GB RSS. **Privacy check: 9 names, count 0.** A further grep for the store's mount
+path and home paths also returned 0. The public summary follows as written, with **one change**: one top-level folder
+is named after a person (a personal name, not one of the 9 usernames). I replaced that name and its sub-folder names with
+`personal-folder-A` / `sub-N`.
+
+#### Summary
+
+| | |
+|---|---:|
+| Files listed | 1,096,294 |
+| Bytes listed | 24.57 TB |
+| Unparsed lines | 0 |
+| Owners | 9 |
+| Probable duplicate trees (>= 1 GB, maximal) | 2 groups, 151.45 GB recoverable |
+| Probable duplicate large files outside those trees (>= 100 MB) | 438 groups, 559.64 GB recoverable |
+
+#### Usage by owner (top 40)
+
+| Owner | Files | Size | Share |
+|---|---:|---:|---:|
+| owner-01 | 705,468 | 18.34 TB | 74.6 % |
+| owner-02 | 144,744 | 2.40 TB | 9.8 % |
+| self | 33,750 | 2.24 TB | 9.1 % |
+| owner-03 | 106,047 | 882.43 GB | 3.6 % |
+| owner-04 | 8,425 | 687.40 GB | 2.8 % |
+| owner-05 | 95,600 | 15.05 GB | 0.1 % |
+| owner-06 | 2,253 | 2.80 GB | 0.0 % |
+| owner-07 | 5 | 1.08 GB | 0.0 % |
+| owner-08 | 2 | 6954 B | 0.0 % |
+
+#### Usage by location, two levels (top 40)
+
+| Location | Size |
+|---|---:|
+| $B/common/climate | 16.01 TB |
+| $B/atlas/hazards_prototype | 4.64 TB |
+| $B/CCI/Data | 1.14 TB |
+| $B/WS18_Afrca_K_N_ACO/WS18_Afrca_K_N_ACO | 684.77 GB |
+| $B/common/fao | 612.76 GB |
+| $B/AICCRA/Data | 406.28 GB |
+| $B/common/llama-main | 354.97 GB |
+| $B/ONECGIAR/Atlas_MVP | 185.65 GB |
+| $B/ONECGIAR/Data | 167.37 GB |
+| $B/common/vector | 133.39 GB |
+| $B/ONECGIAR/ClimBer | 54.83 GB |
+| $B/common/google | 49.80 GB |
+| $B/AICCRA/CSAIPs | 37.22 GB |
+| $B/ONECGIAR/LACResiliente | 21.85 GB |
+| $B/common/soil | 16.24 GB |
+| $B/ANGOLARISKFINANCING/Data | 15.05 GB |
+| $B/common/mapspam | 9.41 GB |
+| $B/ONECGIAR/ANIMALS | 9.18 GB |
+| $B/common/population | 6.25 GB |
+| $B/atlas/hazards_upstream_pascal | 5.21 GB |
+| $B/common/livestock | 3.78 GB |
+| $B/common/water | 3.61 GB |
+| $B/FREEZER/repositories.old.1516745355 | 2.62 GB |
+| $B/era/geodata | 1.75 GB |
+| $B/personal-folder-A/sub-1 | 1.32 GB |
+| $B/personal-folder-A | 1.20 GB |
+| $B/common/ihme | 1.08 GB |
+| $B/ACO/1.Data | 1.01 GB |
+| $B/atlas/atlas_obs_hazards_pascal | 206.00 MB |
+| $B/personal-folder-A/sub-2 | 158.46 MB |
+| $B/atlas/atlas_obs_hazards_smoke_pascal | 105.52 MB |
+| $B/ACO | 63.07 MB |
+| $B/common/wfp | 47.17 MB |
+| $B/common | 41.92 MB |
+| $B/common/conflict | 40.04 MB |
+| $B/personal-folder-A/sub-3 | 35.89 MB |
+| $B/personal-folder-A/sub-4 | 32.25 MB |
+| $B/ONECGIAR/GCA-digital-adaptation | 29.68 MB |
+| $B/personal-folder-A/sub-5 | 25.25 MB |
+| $B/common/access | 22.84 MB |
+
+#### Probable duplicate trees, largest first (top 40)
+
+| # | Recoverable | Copies | Each | Files each | Copies at (owner) |
+|---:|---:|---:|---:|---:|---|
+| 1 | 137.97 GB | 2 | 137.97 GB | 10 | `$B/common/llama-main/llama-2-70b` (owner-01)<br>`$B/common/llama-main/llama-2-70b-chat` (owner-01) |
+| 2 | 13.48 GB | 2 | 13.48 GB | 3 | `$B/common/llama-main/llama-2-7b` (owner-01)<br>`$B/common/llama-main/llama-2-7b-chat` (owner-01) |
+
+#### Probable duplicate large files outside those trees (top 40)
+
+| # | Recoverable | Copies | Size | Name | Copies at (owner) |
+|---:|---:|---:|---:|---|---|
+| 1 | 11.20 GB | 4 | 3.73 GB | `ls_vop_00.tif` | `$B/AICCRA/CSAIPs/data/livestock` (owner-03)<br>`$B/ONECGIAR/ClimBer/Data` (owner-03)<br>`$B/ONECGIAR/Data/livestock` (owner-03)<br>`$B/common/livestock` (owner-01) |
+| 2 | 3.96 GB | 2 | 3.96 GB | `rotated_pr_day_EC-Earth3-Veg_ssp585_r1i1p1f1-2041-01-01_2060-12-31.tif` | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` (owner-03)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (owner-01) |
+| 3 | 3.96 GB | 2 | 3.96 GB | `rotated_pr_day_EC-Earth3-Veg_ssp585_r1i1p1f1-2021-01-01_2040-12-31.tif` | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` (owner-03)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (owner-01) |
+| 4 | 3.95 GB | 2 | 3.95 GB | `rotated_pr_day_EC-Earth3-Veg_historical_r1i1p1f1-1995-01-01_2014-12-31.tif` | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` (owner-03)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (owner-01) |
+| 5 | 3.58 GB | 2 | 3.58 GB | `rotated_tas_day_EC-Earth3-Veg_ssp585_r1i1p1f1-2041-01-01_2060-12-31.tif` | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` (owner-03)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (owner-01) |
+| 6 | 3.58 GB | 2 | 3.58 GB | `rotated_tas_day_EC-Earth3-Veg_historical_r1i1p1f1-1995-01-01_2014-12-31.tif` | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` (owner-03)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (owner-01) |
+| 7 | 3.57 GB | 2 | 3.57 GB | `rotated_tas_day_EC-Earth3-Veg_ssp585_r1i1p1f1-2021-01-01_2040-12-31.tif` | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` (owner-03)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (owner-01) |
+| 8 | 3.55 GB | 2 | 3.55 GB | `rotated_tasmin_day_EC-Earth3-Veg_historical_r1i1p1f1-1995-01-01_2014-12-31.tif` | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` (owner-03)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (owner-01) |
+| 9 | 3.55 GB | 2 | 3.55 GB | `rotated_tasmin_day_EC-Earth3-Veg_ssp585_r1i1p1f1-2041-01-01_2060-12-31.tif` | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` (owner-03)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (owner-01) |
+| 10 | 3.55 GB | 2 | 3.55 GB | `rotated_tasmin_day_EC-Earth3-Veg_ssp585_r1i1p1f1-2021-01-01_2040-12-31.tif` | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` (owner-03)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (owner-01) |
+| 11 | 3.54 GB | 2 | 3.54 GB | `rotated_tasmax_day_EC-Earth3-Veg_ssp585_r1i1p1f1-2041-01-01_2060-12-31.tif` | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` (owner-03)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (owner-01) |
+| 12 | 3.54 GB | 2 | 3.54 GB | `rotated_tasmax_day_EC-Earth3-Veg_historical_r1i1p1f1-1995-01-01_2014-12-31.tif` | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` (owner-03)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (owner-01) |
+| 13 | 3.54 GB | 2 | 3.54 GB | `rotated_tasmax_day_EC-Earth3-Veg_ssp585_r1i1p1f1-2021-01-01_2040-12-31.tif` | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` (owner-03)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (owner-01) |
+| 14 | 3.19 GB | 2 | 3.19 GB | `PAK_rotated_tas_day_EC-Earth3-Veg_historical_r1i1p1f1-1995-01-01_2014-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 15 | 3.15 GB | 2 | 3.15 GB | `pr_day_MRI-ESM2-0_ssp585_r1i1p1f1_gn_22510101-23001231.nc` | `$B/common/climate/cmip6/daily` (owner-01)<br>`$B/common/climate/cmip6/mme_cmip/precip` (owner-01) |
+| 16 | 3.15 GB | 2 | 3.15 GB | `pr_day_MRI-ESM2-0_ssp585_r1i1p1f1_gn_22010101-22501231.nc` | `$B/common/climate/cmip6/daily` (owner-01)<br>`$B/common/climate/cmip6/mme_cmip/precip` (owner-01) |
+| 17 | 3.14 GB | 2 | 3.14 GB | `pr_day_MRI-ESM2-0_ssp585_r1i1p1f1_gn_20150101-20641231.nc` | `$B/common/climate/cmip6/daily` (owner-01)<br>`$B/common/climate/cmip6/mme_cmip/precip` (owner-01) |
+| 18 | 3.07 GB | 2 | 3.07 GB | `PAK_rotated_tasmin_day_EC-Earth3-Veg_historical_r1i1p1f1-1995-01-01_2014-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 19 | 3.07 GB | 2 | 3.07 GB | `PAK_rotated_tasmin_day_EC-Earth3-Veg_ssp585_r1i1p1f1-2021-01-01_2040-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 20 | 3.07 GB | 2 | 3.07 GB | `PAK_rotated_tasmin_day_EC-Earth3-Veg_ssp585_r1i1p1f1-2041-01-01_2060-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 21 | 3.06 GB | 2 | 3.06 GB | `PAK_rotated_tasmax_day_EC-Earth3-Veg_historical_r1i1p1f1-1995-01-01_2014-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 22 | 3.02 GB | 2 | 3.02 GB | `PAK_rotated_pr_day_MRI-ESM2-0_ssp585_r1i1p1f1-2041-01-01_2060-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 23 | 2.92 GB | 2 | 2.92 GB | `PAK_rotated_tasmax_day_MRI-ESM2-0_ssp585_r1i1p1f1-2021-01-01_2040-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 24 | 2.92 GB | 2 | 2.92 GB | `PAK_rotated_tasmax_day_MRI-ESM2-0_ssp585_r1i1p1f1-2041-01-01_2060-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 25 | 2.92 GB | 2 | 2.92 GB | `PAK_rotated_tasmin_day_MRI-ESM2-0_ssp585_r1i1p1f1-2041-01-01_2060-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 26 | 2.92 GB | 2 | 2.92 GB | `PAK_rotated_tas_day_MRI-ESM2-0_ssp585_r1i1p1f1-2041-01-01_2060-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 27 | 2.86 GB | 2 | 2.86 GB | `PAK_rotated_pr_day_INM-CM5-0_ssp585_r1i1p1f1-2041-01-01_2060-12-30.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 28 | 2.84 GB | 2 | 2.84 GB | `PAK_rotated_pr_day_EC-Earth3-Veg_historical_r1i1p1f1-1995-01-01_2014-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 29 | 2.82 GB | 2 | 2.82 GB | `PAK_rotated_tasmax_day_INM-CM5-0_ssp585_r1i1p1f1-2041-01-01_2060-12-30.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 30 | 2.82 GB | 2 | 2.82 GB | `PAK_rotated_tasmax_day_INM-CM5-0_historical_r1i1p1f1-1995-01-01_2014-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 31 | 2.81 GB | 2 | 2.81 GB | `PAK_rotated_tasmin_day_INM-CM5-0_ssp585_r1i1p1f1-2021-01-01_2040-12-30.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 32 | 2.81 GB | 2 | 2.81 GB | `PAK_rotated_tasmin_day_INM-CM5-0_historical_r1i1p1f1-1995-01-01_2014-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 33 | 2.81 GB | 2 | 2.81 GB | `PAK_rotated_tasmin_day_INM-CM5-0_ssp585_r1i1p1f1-2041-01-01_2060-12-30.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 34 | 2.81 GB | 2 | 2.81 GB | `PAK_rotated_tas_day_INM-CM5-0_ssp585_r1i1p1f1-2041-01-01_2060-12-30.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 35 | 2.75 GB | 2 | 2.75 GB | `PAK_rotated_tasmax_day_ACCESS-ESM1-5_ssp585_r1i1p1f1-2041-01-01_2060-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 36 | 2.74 GB | 2 | 2.74 GB | `PAK_rotated_tas_day_ACCESS-ESM1-5_ssp585_r1i1p1f1-2041-01-01_2060-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 37 | 2.74 GB | 2 | 2.74 GB | `PAK_rotated_tasmin_day_ACCESS-ESM1-5_ssp585_r1i1p1f1-2041-01-01_2060-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 38 | 2.74 GB | 2 | 2.74 GB | `PAK_rotated_tasmin_day_ACCESS-ESM1-5_historical_r1i1p1f1-1995-01-01_2014-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 39 | 2.68 GB | 2 | 2.68 GB | `PAK_rotated_tasmin_day_MPI-ESM1-2-HR_ssp585_r1i1p1f1-2041-01-01_2060-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+| 40 | 2.67 GB | 2 | 2.67 GB | `PAK_rotated_tas_day_MPI-ESM1-2-HR_ssp585_r1i1p1f1-2041-01-01_2060-12-31.fst` | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` (owner-01)<br>`$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK` (owner-01) |
+
+#### E2 — reading the groups
+
+**Where the 438 duplicate-file groups are**, by location (one line per set of locations; GB recoverable):
+
+| Recoverable | Groups | Locations |
+|---:|---:|---|
+| 314.98 GB | 298 | `$W/hazards_prototype/Data/hazard_risk/annual` vs `…/hazard_risk/jagermeyr` (self) |
+| 127.65 GB | 60 | `$B/CCI/Data/WFP_ClimateRiskPr/1.Data/Climate/CMIP6/downscaled/PAK` vs `…/input/CMIP6/downscaled/PAK` (one owner) |
+| 65.72 GB | 29 | `$B/AICCRA/Data/climate/interim/rotated/CMIP6/daily` vs `$B/CCI/Data/WFP_ClimateRiskPr/input/CMIP6/downscaled/PAK/interim` (two owners) |
+| 14.24 GB | 6 | `$CL/cmip6/daily` vs `$CL/cmip6/mme_cmip/precip` |
+| 10.77 GB | 19 | `$CL/worldclim` vs `$CL/worldclim/wc2.1_30s` |
+| 11.20 GB | 1 | `ls_vop_00.tif` in `$B/AICCRA/CSAIPs`, `$B/ONECGIAR/ClimBer`, `$B/ONECGIAR/Data`, `$B/common/livestock` |
+| 6.22 GB | 5 | `$CL/cmip6/daily` vs `$CL/cmip6/raw/daily` |
+| 4.61 GB | 6 | `$CL/cmip6/daily` vs `$CL/cmip6/mme_cmip/temp/temp` |
+| about 4.3 GB | 14 | the rest, mostly between `$B/WS18_…`, `$B/ACO`, `$B/ONECGIAR/*`, each under 1.1 GB |
+
+**The three largest groups:**
+1. **llama-2-70b vs llama-2-70b-chat (137.97 GB), and llama-2-7b vs -7b-chat (13.48 GB): almost certainly false matches.**
+   A base model and its chat fine-tune have the same tensor shapes, so their checkpoint shards match in name and size but
+   hold different weights. These are another owner's files and were not hashed, so this is a reasoned judgement, not a measurement.
+   Both tree groups (151.45 GB) should be treated as not duplicates.
+2. **`$W/…/hazard_risk/annual` vs `…/jagermeyr` (298 file groups, 314.98 GB, our own): false matches, sampled.** Both folders
+   hold 2,112 files and about 985 GB. Their totals differ by only 35 KB because the rasters are uncompressed and all 1663 × 1739,
+   so a file's size depends almost only on its band count, not on its values. These are our own files, so I hashed three pairs
+   (the largest, the smallest, and the 100th by name). **All three are DIFFERENT.** The jagermeyr tree is the same risk product
+   built on a different crop calendar, not a copy.
+3. **CCI `1.Data/…/PAK` vs `input/…/PAK` (60 groups, 127.65 GB, one owner): looks like a real scratch copy.** It holds `.fst` files
+   with long, specific names (`PAK_rotated_<var>_day_<GCM>_<scen>_…_<dates>.fst`), in two sibling folders of one project.
+   Of all the candidates, this one is the most worth the owner's own md5 check.
+
+**Other groups that look like real copies:** the 29 `rotated_*_EC-Earth3-Veg_*.tif` files shared between an AICCRA and a CCI project
+(65.72 GB). Also the `$CL/cmip6/daily` raw CMIP6 `.nc` files that reappear under `mme_cmip/precip`, `mme_cmip/temp/temp` and
+`raw/daily` (25 GB together). These have long, specific CMIP6 names, which makes a coincidental match unlikely. The same holds for
+`ls_vop_00.tif` in four project folders.
+
+**False matches, or likely ones:** besides 1 and 2 above, one CCI CMIP5 group pairs `bcc_csm1_1_…_tmin` with `nimr_hadgem2_ao_…_tmin`
+(0.17 GB). These are two different GCMs whose fixed-size ASCII grids share a file name. The `$CL/worldclim` vs `wc2.1_30s` groups
+(10.77 GB) are probably real (one release copied to a sub-folder), but WorldClim tiles are also fixed-size, so hash these before acting.
+
+**Adjusted estimate:** 711.09 GB listed − 151.45 (llama trees) − 314.98 (annual/jagermeyr) − 0.17 (CMIP5) = **about 244.5 GB,
+1.0 % of listed bytes**. Nothing in `$W` is a confirmed duplicate.
+
+#### E3 — the shared NEX-GDDP raw tree (`$CL/cmip6/nex-gddp-cmip6_raw`)
+
+D2 was reused from `S=20261119_192126`, as instructed; it is byte-identical to the copy I had made for P14 before the switch. Names parse cleanly. Layout is
+`<var>/<scenario>/<GCM>/<name>.nc`; 48 names carry `_v1.1`/`_v1.2`; there are no other file types and no duplicate keys.
+**206 files, 50.58 GB.** Files / variables / GB per GCM × scenario, **all years 2021-2022**:
+
+| GCM | ssp126 | ssp245 | ssp585 |
+|---|---|---|---|
+| ACCESS-CM2 | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| ACCESS-ESM1-5 | 2 f / 1 v · 0.5 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| CanESM5 | 2 f / 1 v · 0.5 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| CMCC-ESM2 | 2 f / 1 v · 0.5 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| EC-Earth3 | 2 f / 1 v · 0.5 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| EC-Earth3-Veg-LR | 2 f / 1 v · 0.5 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| GFDL-ESM4 | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| INM-CM4-8 | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| INM-CM5-0 | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| IPSL-CM6A-LR | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| KACE-1-0-G | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| MIROC6 | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| MPI-ESM1-2-HR | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| MPI-ESM1-2-LR | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| MRI-ESM2-0 | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| NorESM2-LM | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| NorESM2-MM | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+| TaiESM1 | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB | 4 f / 2 v · 1.0 GB |
+
+The variables are `tasmax` and `tasmin`. There are 2 `hurs` files, both ACCESS-CM2 ssp126; that cell has `hurs` + `tasmin` and no `tasmax`.
+The six ssp126 cells with 1 variable have `tasmin` only. **Absent:** `historical`, `ssp370`, and the variables `pr`, `rsds` and `sfcWind`.
+So the tree covers 18 GCMs × 3 of the 5 scenarios, at most 2 of 6 variables and 2 of 80 years. **A regeneration would still download
+almost all of its inputs.** This tree does not shrink the 9.6 TB estimate in any useful way.
+
+**D3 — P10's six raw files vs the shared tree:**
+
+| File | Bytes in `$CD` | Shared tree |
+|---|---:|---|
+| `hurs_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_1995_v1.1.nc` | 277,190,299 | absent; 0 matches under any suffix |
+| `pr_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_1995_v1.1.nc` | 222,298,070 | absent; 0 matches under any suffix |
+| `rsds_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_1995.nc` | 270,314,540 | absent; 0 matches under any suffix |
+| `sfcWind_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_1995.nc` | 301,834,906 | absent; 0 matches under any suffix |
+| `tasmax_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_1995.nc` | 244,583,799 | absent; 0 matches under any suffix |
+| `tasmin_day_ACCESS-ESM1-5_historical_r1i1p1f1_gn_1995.nc` | 246,232,669 | absent; 0 matches under any suffix |
+
+The shared tree holds **no** `historical` file at all, so no shared file was opened or hashed. **CHIRPS extent check:**
+`$CD/chirps_wrld/chirps-v2.0.1981.01.01.tif` is **byte-identical** (`cmp`) to
+`$CL/chirps/global_daily/tifs/p05/1981/chirps-v2.0.1981.01.01.tif` (57,616,658 bytes). `$CL` also has a `.tif.gz` of that day,
+which differs as expected. A run could therefore point `chirps_raw` at `$CL/chirps/global_daily/tifs/p05` instead of keeping its own copy.
+
+**Writes:** only under this checkout's `logs/`: `p15_private_$S/`, `p15_public_$S.md`, `p15_names_$S.txt`, `p15_d3_$S.txt`, plus P14's
+`p14_*` files. I deleted, moved and chmod-ed nothing. The only file contents read were our own files (P10's six, the CHIRPS file, and 3 sampled
+pairs in `$W`), plus the one shared CHIRPS file that the D3 check names. No shared NEX file was read, because none matched.
+
+Answers: M-20261119-i58-4 (complete)
+
 ### RESPONSE — pascal [M-20261119-i58-5] — P16: PIK answers from PASCAL; GGCMI crop-calendar manifest built
 
 **Complete.** All three gates ran, nothing stopped. PIK is reachable from this host, the index page lists
