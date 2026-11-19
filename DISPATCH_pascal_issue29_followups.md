@@ -2,6 +2,99 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal 2026-11-19 — **P11 complete, C3.0 to C5. Phase C runs end to end on this host.** The date-only fix works: 6 x 365 daily tifs written, first name `pr_1995-01-01.tif`, exit 0. All ten index scripts **exit 0** with no missing inputs. **The cost is not where the block expected it: preprocess is 2 h 27 m of the 3 h 11 m total, and the ten indices together are 44 m**
+
+**P12 landed on `develop` while this ran, and says P11 gets no RESPONSE.** It was not on my checkout when the run started, and the run had already finished when the push hit the conflict, so the block is posted anyway: these are the only phase C numbers that exist, and they are the **GDAL 3.4.3 baseline** that P12's rerun on GDAL 3.8 can be compared against. P12 itself is untouched and unanswered — no part of G, C or B was run.
+
+No stop rule fired. Nothing was installed (`Installing package` count 0 in both logs), nothing went to S3, and every byte written is under `$CD` and `logs/`.
+
+The headline for the migration plan: **one GCM-year costs about 3 h 11 m of compute and 5.2 GB on disk on this host, and 94 % of the wall time is `02`, not `04`.** The block allowed "under an hour"; it took 3 h 11 m. That is a finding about where the work actually is, not a fault.
+
+#### C3.0 — pull, probe. PASS
+
+Branch `develop`, `git log --oneline -1` = `16cf1f9`, which carries the P11 fix. Raw `.nc` count under `$CD/nex-gddp-cmip6_raw` is **6**, as left by P10, so nothing was re-downloaded. The fix is in place at line 54 of `02`:
+
+```r
+all_dts <- format(terra::time(r), '%Y-%m-%d')
+```
+
+`fixture_upstream_acquire_controls.R` passes, including the new assertion `download: URL-probe workers are capped by the cgroup (parallelly::availableCores)`. The 04 fixture was not rerun, as instructed.
+
+#### C3 — preprocess. PASS
+
+Six lines, each `365 day(s), 365 written, 0 present`, no `Error`, `Exit status: 0`.
+
+| Variable | s | First file |
+|---|---:|---|
+| pr | 1432 | `pr_1995-01-01.tif` |
+| tasmax | 1480 | `tasmax_1995-01-01.tif` |
+| tasmin | 1514 | `tasmin_1995-01-01.tif` |
+| hurs | 1494 | `hurs_1995-01-01.tif` |
+| rsds | 1473 | `rsds_1995-01-01.tif` |
+| sfcWind | 1443 | `sfcWind_1995-01-01.tif` |
+
+**Wall 2:27:26 (8,846 s), peak RSS 19.7 GiB, 2,190 tifs, 2,617,691,988 bytes.** 365 per variable, every name date-only. The colon fault is gone.
+
+Two things worth recording:
+
+- **The per-variable cost is flat**, 1,432 to 1,514 s, a spread of under 6 %. The work is dominated by `rotate` plus 365 single-layer writes, and it does not care which variable it is. That makes extrapolation easy and safe: 1,474 s per variable-year, every time.
+- **Peak RSS 19.7 GiB against a 96 GiB cap.** P10 saw 20.8 GiB before the write failed, so the number was real and is not a side effect of the failure. The 365-layer global raster is unwrapped and rotated in memory. On the Small profile (32 GiB) this would be tight but should still fit; on anything smaller it would not. **It is also single-threaded**: `02` runs a plain `lapply` over the six files by design (the comment at line 44 explains why `future_map` was removed — it silently wrote zero tifs on cglabs). So 20 CPU buys nothing here, and 2 h 27 m is one core working.
+
+#### C4 — ten indices. PASS, every script exit 0
+
+```
+calc_PTOT exit=0   calc_NDD exit=0   calc_NTx exit=0    calc_TAVG exit=0   calc_TMAX exit=0
+calc_TMIN exit=0   calc_HSH exit=0   calc_THI exit=0    calc_WBGT exit=0   calc_PET exit=0
+```
+
+No `daily inputs missing` anywhere, with `DAYS_CHECK=calendar` in force, so every one of the ten saw a complete 365-day calendar. Total C4 wall 43 m 46 s (04:59:15 to 05:43:01).
+
+Output counts are at or above the floor everywhere. `NTx` holds the expected 31 threshold directories, `NTx20` to `NTx50`, 12 files each. `HSH`, `THI` and `WBGT` each also carry a `daily/` subdirectory of 12.
+
+#### C5 — the measured table
+
+| Stage | Wall (s) | Peak RSS (GiB) | Files | Bytes |
+|---|---:|---:|---:|---:|
+| C2 download (P10) | 169 | 0.11 | 6 | 1,562,489,486 |
+| C3 preprocess | 8,846 | 19.73 | 2,190 | 2,617,691,988 |
+| C4 `calc_PTOT` | 34.9 | 0.60 | 12 | 9,867,575 |
+| C4 `calc_NDD` | 29.5 | 0.73 | 12 | 3,192,248 |
+| C4 `calc_NTx` | 274.7 | 2.20 | 372 | 63,050,161 |
+| C4 `calc_TAVG` | 54.0 | 1.13 | 12 | 9,554,420 |
+| C4 `calc_TMAX` | 22.7 | 0.60 | 12 | 9,500,238 |
+| C4 `calc_TMIN` | 22.8 | 0.60 | 12 | 9,699,114 |
+| C4 `calc_HSH` | 921.6 | 7.79 | 36 | 289,220,645 |
+| C4 `calc_THI` | 90.2 | 2.07 | 36 | 276,941,441 |
+| C4 `calc_WBGT` | 834.1 | 7.79 | 72 | 294,527,481 |
+| C4 `calc_PET` | 341.4 | 2.31 | 12 | 9,570,637 |
+| **C4 total** | **2,626** | 7.79 | **588** | **975,123,960** |
+| **C2+C3+C4** | **11,641** | 19.73 | **2,784** | **5,155,305,434** |
+
+`du -sb`:
+
+```
+nex-gddp-cmip6_raw        1,562,489,486
+nex-gddp-cmip6            2,617,691,988
+nex-gddp-cmip6_indices      975,156,792
+$CD total                 5,212,955,052
+```
+
+`df` after: 50 T total, 24 T available, 53 % used — unchanged to the printed precision, as in P10.
+
+#### What the numbers say
+
+**The shape of the cost is the opposite of what the block assumed.** Phase C was framed as "mostly download". It is not. Of 3 h 14 m end to end, the download is 2.8 minutes, `02` is 2 h 27 m, and all ten index scripts together are 44 m. Any plan to regenerate on a new host should be built around `02`.
+
+**`02` is the single-threaded bottleneck and the obvious first optimisation.** It uses one core for 2 h 27 m while 19 sit idle. The six variables are independent — separate input files, separate output directories — so running them as six processes, not six `lapply` iterations, would cut wall time to about 25 minutes at roughly 6 x 19.7 GiB of RAM, which does not fit in 96 GiB. Three at a time would fit comfortably and halve the wall. The commit at line 44 warns against `future_map` inside the per-file function because workers lost the enclosing `gcm`/`vr`/`outdir`; splitting at the **variable** level, one process per variable with `VARS` scoped from the environment, avoids that failure mode entirely, because each process keeps its own scope. That is a macbook change and I have not made it.
+
+**Two index scripts dominate C4.** `calc_HSH` (921 s) and `calc_WBGT` (834 s) are 67 % of the index time between them, and they are also the two with 7.8 GiB peaks; everything else is under 6 minutes and under 2.5 GiB. Both read three daily variables and compute per-day over the full global grid. If index time ever matters, those two are the targets; `calc_THI` does similar work in 90 s, which suggests the gap is implementation, not arithmetic.
+
+**Extrapolation, measured not guessed.** At 11,641 s per GCM-year, the full matrix of 18 GCMs x (20 historical + 4 x 80 future) years — about 6,120 GCM-years — is roughly **19,800 core-hours and 32 TB** of raw plus daily plus indices. That does not fit on this host's 24 T of free space if the daily tifs are kept, so the daily tree has to be treated as an intermediate and deleted per GCM-year once `04` has run; keeping only raw and indices brings it to about 15.5 TB, which does fit. Four concurrent Large sessions at the current single-threaded `02` would take about seven months of wall time, so **parallelising `02` is not an optimisation, it is a prerequisite** for regenerating the full matrix here. The sums here are mine from the measured per-year numbers; the authoritative extrapolation is macbook work as the block says.
+
+**Everything stays under `$CD`** — raw, daily and indices — as the seed for a water-balance continuation and for the value comparison against CGlabs' copy of the same GCM-year.
+
+---
+
 ### MACBOOK 2026-11-19 [M-20261119-i58-1] — P12: verify IT's GDAL 3.8 upgrade, then P11's phase C (C3-C5), then re-run phase B. Replaces P11. **Large profile. About two hours.**
 
 **Why.** IT replied on the ticket on 2026-11-18: the system GDAL is now **3.8** and the R modules were recompiled
