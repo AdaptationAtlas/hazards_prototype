@@ -4,6 +4,96 @@ Append-only. Newest block on top. Respond by prepending a `### RESPONSE` block.
 
 ---
 
+### RESPONSE 2026-11-19 [M-20261119-r22n-1] — cglabs: SEC4 rerun, G0–G5 PASS, `haz_freq` + `haz_freq_ensemble` published
+
+**Outcome: complete.** All gates passed with no deviation. Only the 2 named keys changed on S3; the
+other 8 are byte-identical (ETag, size, LastModified, VersionId) before and after.
+
+**G0 — PASS.** No Rscript processes running, no `logs/*.pid` pointing at a live process; newest log
+before the run was the 19:32 housekeeping pass.
+
+**Step 1 — PASS.** HEAD `e5d896d` (carries `beb97a2`). `grep -c M-20261119-r22n-1`: `R/2.2_haz_change.R` 2,
+`R/publish_cr093_r22.R` 1.
+
+**Step 2 — park.** Pre-run local files matched the 11-16 pins exactly:
+
+| file | md5 | size | rows |
+|---|---|---|---|
+| haz_freq.parquet | `37bbc85a427d021a89b6b19c00f4c11b` | 5,325,673 | 12,457,872 |
+| haz_freq_ensemble.parquet | `547be71660c1e11e48c41c5213b76690` | 1,576,579 | 692,104 |
+
+Moved (not copied) to `Data/_parked_r22n_20261119_200747/`; md5 re-checked there, identical. `STATS` was
+empty before the run.
+
+**G1 — PASS.** Run 20:07:58–20:11:19 UTC (200.6 s), process ended after `R/2.2 complete`.
+- `run controls: SEC1=FALSE SEC2=FALSE SEC3=FALSE SEC4=TRUE`
+- `SEC4 frequency_n multiplier: 19 years (hist file historical_ACCESS-CM2_1995_2014_HSH_max_max.tif)`;
+  the `stop()` did not fire. Note: the file it names is an HSH file, not NDWS/NDWL0. Only its layer count
+  is used, and that is 19, so the result is right. But the `"hist"` pattern is not hazard-specific. That
+  is worth a look macbook-side, though it is not a fault here.
+- Files under `Data/` newer than run start: exactly the two `STATS/haz_freq*.parquet`. No zonal or
+  boundary cache rewrites, no other parquet or tif.
+- The log ends with R's `There were 50 or more warnings`. I did not inspect them; they are most likely
+  the expected `min`/`max` on all-NA groups that the new NULL-ing handles.
+
+**G2 — PASS** (new files alone).
+- `haz_freq` `max(frequency_n)` by scenario: historic 19, ssp126/245/370/585 19 each. Historic = ssp max.
+- `|frequency_n − 19·frequency|`: 5,924,160 paired rows, max 0.59 (every scenario incl. historic),
+  rows > 0.6 = 0. The NA pattern of `frequency` and `frequency_n` agrees in every row; 0 non-finite values.
+- `haz_freq_ensemble`: historic `frequency_n` max `mean` = 19 (and 19 for every ssp); NaN/±Inf count in
+  `mean`/`min`/`max`/`sd` = 0/0/0/0.
+
+**G3 — PASS** (new vs parked, joined on all non-value columns).
+- Rows: `haz_freq` 12,457,872 = parked; `haz_freq_ensemble` 692,104 = parked. 0 duplicate keys either
+  side; keys only-new 0, only-parked 0.
+- `haz_freq`: `frequency` 0 rows differ (historic 366,408, ssp 5,862,528; NULLs in the same places);
+  ssp `frequency_n` 0 differ. **Historic `frequency_n`: 145,726 of 366,408 rows differ**, the only
+  differences in the file. 0 parked zeros changed. Median new/parked (parked ≥ 1) = **0.5758** (19/33 = 0.5758).
+- `haz_freq_ensemble`, parked non-finite → now NULL (all converted; NULL count = parked non-finite count):
+
+  | group | rows | `mean` NaN→NULL | `min` −/+Inf→NULL | `max` →NULL | finite cells that differ |
+  |---|---|---|---|---|---|
+  | historic frequency | 20,356 | 772 | — (NULL by design) | — | 0 |
+  | historic frequency_n | 20,356 | 772 | — | — | 10,751 (`mean`, allowed) |
+  | ssp frequency | 325,696 | 12,352 | 12,352 | 12,352 | 0 |
+  | ssp frequency_n | 325,696 | 12,352 | 12,352 | 12,352 | 0 |
+
+  12,352 = 4 × 3,088 per ssp, and 772 per variable in historic, matching the dispatch. `sd` had no
+  non-finite values; it was already NULL in those 12,352 ssp cells and stays NULL. Historic
+  `min`/`max`/`sd` are NULL in all 20,356 rows on both sides.
+  Report: historic `frequency_n` ensemble `mean` median new/parked (parked ≥ 1) = **0.5758**.
+
+**G4 — PASS.** `R/validate_cr093_real.R`: 10 PASS / 0 FAIL (haz_freq rg=244, haz_freq_ensemble rg=14, iso3=55).
+
+**G5 — PASS.** Env clean of `CONFIRM|R22_|FORCE_OVERWRITE|AWS_BIN`. `mode: DRY-RUN`;
+`plan limited to 2 of 10 files: haz_freq, haz_freq_ensemble`; both pre-flight `OK`; `pre-flight PASS for all 2 files`.
+
+**Step 7/8 — published + verified.** The script backed up both live keys to
+`variable=<name>.preFix-20261119-201437.bak`; the `.bak` objects carry the 11-16 sizes and ETags
+(5,325,673 / `37bbc85a…`, 1,576,579 / `547be716…`). The verify lines show `rg=244 null-stat=0` and
+`rg=14 null-stat=0`. HTTPS HEAD returns 200 on both. Live `haz_freq` re-read over HTTPS gives
+`frequency_n` max 19 for historic and every ssp. The other 8 keys show no diff between the before and
+after `head-object` files.
+
+Pin table (local md5 = ETag, local size = S3 size; both single-part):
+
+| variable | size | ETag | LastModified (UTC) | x-amz-version-id |
+|---|---|---|---|---|
+| haz_freq | 5,641,357 | `4965fa146b3cfdd81a3054235c278d57` | 2026-11-19T20:14:44Z | `TtTYLZagDzDiV71Ud8tqewvdZLtzA3yC` |
+| haz_freq_ensemble | 1,556,674 | `7d4a157d60f65904a37a27b499e8d8b1` | 2026-11-19T20:14:51Z | `R9wklWmlSskgbIHiUK0NRPfuqOD2eI6a` |
+
+**Logs** (`logs/`, gitignored): `r22n_sec4_20261119_200751.log`, `r22n_g2g3_20261119_200751.txt`,
+`r22n_validate_20261119_200751.log`, `r22n_dryrun_20261119_200751.log`, `r22n_publish_20261119_200751.log`,
+`r22n_s3_before_20261119_200751.txt`, `r22n_s3_after_20261119_200751.txt`.
+
+**Kept:** `Data/_parked_r22n_20261119_200747/` (the two 11-16 files) and every existing `_parked_*` /
+`sandbox/backup/` dir. Not touched: the other 8 keys, the `.preFix*.bak` clutter (#59, now +2), the adm0
+claimant rows (#11), NaN/Inf in other ensemble files, the pins CSV, the changelog, the CDH record.
+
+Answers: M-20261119-r22n-1 (complete)
+
+---
+
 ### MACBOOK 2026-11-19 [M-20261119-r22n-1] — rerun R/2.2 SEC4 only, gate, publish `haz_freq` + `haz_freq_ensemble`
 
 **Context.** A review on 2026-11-19 found that the live `variable=haz_freq.parquet` (published
