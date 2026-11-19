@@ -36,7 +36,7 @@ Disposition is one of **move** (copy the bytes or the credential; nothing else w
 | 1 | Fetches pinned source data via `R/00_acquire.R` with per-object manifests (size + multipart ETag) | **regenerate** | none | Already proven on PASCAL: MapSPAM 48/48 verified, FAOSTAT re-fetched with `drift 0` (P2, P7). 14 of 43 records carry a manifest. |
 | 2 | Holds MapSPAM, GLW4 2020, GAUL boundaries, soils | **regenerate** | none | PASCAL holds these and they are byte-verified against the manifests. |
 | 3 | Holds the FAOSTAT bulk CSVs | **move or snapshot** | blocker 4 | FAO rewrites bulk files in place. See §4. |
-| 4 | Holds the GGCMI crop calendars | **unknown — test first** | PIK reachability, untested from PASCAL | No manifest exists. The reachability failure is proven only for the macbook; PASCAL has never tried. A read-only manifest build from PASCAL decides whether this is a regenerate or a snapshot. See §4. |
+| 4 | Holds the GGCMI crop calendars | **regenerate** | none (PIK answers from PASCAL) | Settled by P16 (2026-11-19): three clean 200s from PASCAL, 40 `.nc4` objects, manifest built (`_manifests/ggcmi-crop-calendars.tsv`, 3,153,182 bytes, `verify=size`). The 2026-11-02 failure was the macbook's network only. Size-level verification catches truncated or missing files, not same-length content drift; the served ETags are Apache size-mtime, not hashes. See §4. |
 | 5 | Holds CHIRPS / CHIRTS-ERA5 / AgERA5 via the CDH Hugging Face Zarr cubes | **regenerate** | none | Public, versioned, re-readable. PASCAL's `obs` conda env has GDAL 3.13.3 and zarr 3.4.1, which is what the reader needs. |
 
 ### 2.2 The NEX-GDDP climate and index trees
@@ -137,10 +137,8 @@ running on it, and what can be measured cheaply before committing to a long run.
    checkout, re-audit. Unblocks items 7, 14 and 18. Minutes, mostly read-only.
 2. **FAOSTAT snapshot.** The only item with a proven external clock (§4). Needs a CGlabs run and a
    publish GO, so it should be requested early even though CGlabs is busy.
-3. **GGCMI reachability probe from PASCAL.** Read-only, minutes, no dependencies: build the `ggcmi`
-   manifest with `75_catalogue_manifest.R` and see whether PIK answers from that network. It decides
-   whether item 4 is a regenerate or a second snapshot, and it is cheap enough that assuming the answer is
-   the wrong call. Fold into the block after P9.
+3. ~~**GGCMI reachability probe from PASCAL.**~~ **Done, P16 (2026-11-19):** PIK answers from PASCAL and
+   the manifest is built, so item 4 is a regenerate.
 4. **Phase C measurement.** One GCM × one scenario through `hazards_upstream` 01→04 on a Large
    profile, recording wall time, peak RSS and output bytes per stage. This is the evidence behind
    every "regenerate" in §2.2 and §2.5, and the input to the §5 estimate. **Awaiting Pete's GO.**
@@ -173,12 +171,12 @@ Three things, and they are the reason the move is not purely a compute exercise.
   worked around this by re-fetching on both hosts on the same day (P7), which is a coincidence, not a
   method. **Fix:** a hashed snapshot of the five CSVs on Atlas S3, added to the `#58` manifest set, so
   every host fetches the pinned release. Needs a CGlabs run and a publish GO.
-- **GGCMI crop calendars — not yet established.** No manifest exists, and the thread has been writing
-  "no host reaches PIK" when what was actually measured is that **the macbook does not**. PASCAL sits on a
-  different network and has never been asked. **Before this is called unregenerable**, a later PASCAL block
-  should run `R/checks/75_catalogue_manifest.R` against the `ggcmi` record, read-only, and report whether
-  PIK answers. If it does, GGCMI becomes a regenerate with a manifest like every other pinned input. If it
-  does not, it joins FAOSTAT as a snapshot-to-S3 item and the CGlabs bytes may be the only copy we control.
+- ~~**GGCMI crop calendars.**~~ **Resolved by P16 (2026-11-19): a regenerate, not a snapshot.** PIK
+  answers from PASCAL (three 200s, under 1.7 s); only the macbook's network fails. The manifest lists 40
+  objects, 3,153,182 bytes, at `verify=size`: PIK serves no `Content-MD5`, and its ETags are Apache's
+  `<size-hex>-<mtime-hex>`, so a regenerate is checked for count and per-file size but not for
+  same-length content drift. One hashed fetch on PASCAL would fill the `md5` column if that matters later
+  (a download, so a separate GO). Fetch anything from `pik-potsdam.de` on PASCAL, not the macbook.
 - **S3 write credentials.** Not data, but equally unregenerable from PASCAL's side: they are issued,
   not computed. Blocker 2.
 
@@ -186,7 +184,6 @@ Everything else in §2 is a function of pinned inputs and code in this repositor
 
 ## 5. What this plan does not yet know
 
-- **Whether PIK answers from PASCAL** (step 3). Unmeasured, and it changes the disposition of item 4.
 - **The size of phase C** — measured for the ten indices (§2.2a). Still unknown: water balance and TAI,
   and what CGlabs' 637 G holds per GCM-year.
 - **Whether R/3 §4.1 fits in 96 GiB.** It was tuned against 376 GiB on CGlabs, where §4.2 is already

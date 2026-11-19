@@ -395,6 +395,10 @@ dispatches to this node are written.
     | Hugging Face (Zarr cubes) | ~2 MB/s single stream | — |
     | Atlas S3 (`digital-atlas`, HTTPS) | ~2.5 MB/s (1.33 GB in 8.9 min) | — |
     | NEX-GDDP-CMIP6 on AWS Open Data (us-west-2) | ~10 MB/s single stream (1.56 GB in 169 s) | — |
+    | PIK (`pik-potsdam.de`, GGCMI crop calendars) | reachable: three HTTP 200s, under 1.7 s each (#58 P16, 2026-11-19) | — |
+
+    PIK does not answer from the macbook's network (timeout, 2026-11-02), so
+    recipes that pull from `pik-potsdam.de` run on this node.
 
     Hugging Face returns HTTP 429 on bulk pixel reads (seen on CGlabs), so
     keep concurrency low and retry with backoff.

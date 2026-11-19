@@ -131,7 +131,8 @@
           "Download rates: JRC ASAP served this host at ~0.48 MB/s (29.5 h for 756 dekads), about 15x slower than CGlabs. Hugging Face cubes run at ~2 MB/s on a single stream and return 429 on bulk pixel reads.",
           "Background jobs: a shell `wait` on a nohup/setsid child never fires; track jobs with a pid-file loop or by tailing the log. Node sessions go idle after each RESPONSE.",
           "Python: the conda env `obs` (python 3.12, GDAL 3.13, rasterio, xarray, zarr) also exists on CGlabs, where it is run through the `pyobs` wrapper. Facts updated 2026-11-02 (#58), with server-environment.md section 9 as source.",
-          "GDAL 3.4.3 was wrong twice over (sum-resample with NoData; netCDF time axis as POSIXct) - see server-environment.md section 8 item 9. The sum fault is gone on 3.8.4; the POSIXct axis remains, handled in code. Four hub sessions max across all users (4 x 20 CPU = the box). Profile change = stop + start the server. Facts updated 2026-11-19 (#58 P8-P12)."
+          "GDAL 3.4.3 was wrong twice over (sum-resample with NoData; netCDF time axis as POSIXct) - see server-environment.md section 8 item 9. The sum fault is gone on 3.8.4; the POSIXct axis remains, handled in code. Four hub sessions max across all users (4 x 20 CPU = the box). Profile change = stop + start the server. Facts updated 2026-11-19 (#58 P8-P12).",
+          "PIK (pik-potsdam.de) answers from this host - three HTTP 200s under 1.7 s, GGCMI manifest built (#58 P16, 2026-11-19). It does not answer from the macbook, so PIK fetches run here."
         ],
         "writable_root": "/cluster01/Workspace/atlas",
         "r_version": "4.6.1",
