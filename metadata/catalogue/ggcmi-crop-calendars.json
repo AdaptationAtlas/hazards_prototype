@@ -10,8 +10,15 @@
   "origin": {
     "type": "public-http",
     "url": "https://www.pik-potsdam.de/~jonasjae/GGCMI_Phase3_crop_calendar",
-    "checksum_manifest": null,
-    "license": null
+    "checksum_manifest": "metadata/catalogue/_manifests/ggcmi-crop-calendars.tsv",
+    "license": null,
+    "manifest": {
+      "objects": 40,
+      "bytes": 3153182,
+      "verify": "size",
+      "mutable": false,
+      "listed": "2026-11-19"
+    }
   },
   "transfer": {
     "strategy": "pull-from-origin",
@@ -49,6 +56,11 @@
       "date": "2026-09-18",
       "change": "Acquisition recipe registered; this is now the only supported way to fetch it.",
       "ref": "#29"
+    },
+    {
+      "date": "2026-11-19",
+      "change": "Added checksum manifest: 40 object(s), 3,153,182 bytes, verify=size. Listed from the origin by R/checks/75_catalogue_manifest.R (headers only); R/00_acquire.R checks every download against it.",
+      "ref": "#58"
     }
   ],
   "schema_version": "1.0.0",

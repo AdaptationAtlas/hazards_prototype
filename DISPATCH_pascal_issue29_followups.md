@@ -2,6 +2,104 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal [M-20261119-i58-5] — P16: PIK answers from PASCAL; GGCMI crop-calendar manifest built
+
+**Complete.** All three gates ran, nothing stopped. PIK is reachable from this host, the index page lists
+40 `.nc4` objects, and the manifest is built and committed. GGCMI is a regenerate with a manifest like every
+other pinned input; it does not join FAOSTAT as a snapshot-to-S3 item.
+
+#### G1 — reachability: PIK answers, and it is not flaky
+
+Three tries at `https://www.pik-potsdam.de/~jonasjae/GGCMI_Phase3_crop_calendar/`, as printed:
+
+```
+try 1: http=200 dns=0.929807s connect=1.098397s total=1.659253s
+try 2: http=200 dns=0.002803s connect=0.175798s total=0.574039s
+try 3: http=200 dns=0.002713s connect=0.178450s total=0.585688s
+```
+
+Three clean 200s, no timeout and no retry. The first try carries a 0.93 s DNS lookup and the next two
+resolve from cache in under 3 ms; connect time is steady at about 0.18 s after that. Total time for a
+full page fetch is well under a second. The index page carries **40** `href="….nc4"` links.
+
+This is the opposite of the macbook's 2026-11-02 result, and the difference is the network, not the
+server: the macbook timed out on the same URL on the same path. Nothing here suggests the origin was
+ever down. So PASCAL is the host to fetch GGCMI from, and the macbook should not be used to judge PIK
+reachability again.
+
+#### G2 — `--check`: the origin is listable, the manifest was simply absent
+
+```
+ggcmi-crop-calendars        40 obj        3,153,182 bytes  verify=size  NEW
+
+FAIL - 1 record(s) missing a manifest or drifted
+```
+
+Exit 1, which is the expected branch the block names: the origin answered, listed 40 objects, and the
+record has no manifest to compare them with. No `SKIP  origin not listable from here` line. The run is in
+`logs/p16_ggcmi_check_20261119_212502.log`.
+
+#### G3 — `--build`: 40 objects, 3,153,182 bytes, verify=size
+
+| field | value |
+|---|---|
+| objects | 40 |
+| total bytes | 3,153,182 |
+| `verify=` level | `size` |
+| manifest rows | 41 (header + 40) |
+| listed | 2026-11-19 |
+| `mutable` | false |
+
+The changelog line the build wrote into the record:
+
+> Added checksum manifest: 40 object(s), 3,153,182 bytes, verify=size. Listed from the origin by
+> `R/checks/75_catalogue_manifest.R` (headers only); `R/00_acquire.R` checks every download against it.
+
+**Why `verify=size` and not md5 or etag.** The HEAD responses do carry an `ETag`, and it is recorded in the
+manifest's `etag` column — first two rows:
+
+```
+src	dest	bytes	etag	md5	role
+…/bar_ir_ggcmi_crop_calendar_phase3_v1.01.nc4	bar_ir_…nc4	70083	111c3-5d94e4c99df03		file
+…/bar_rf_ggcmi_crop_calendar_phase3_v1.01.nc4	bar_rf_…nc4	78411	1324b-5d94e4c9a2d1c		file
+```
+
+Those etags are Apache's default `<size-hex>-<mtime-hex>` form — `111c3` is 70083 and `1324b` is 78411, the
+byte counts in the same row — so they are a restatement of size and mtime, not a content hash. They would
+change if the file were merely touched, and would not change if the contents were edited in place at the
+same length. The script was right to settle on `verify=size`; treat the `etag` column as provenance, not as
+an integrity check. No `Content-MD5` is served, so size is the strongest honest level available without
+downloading the files, and the block forbids downloading them.
+
+Practical consequence for migration plan item 4: a GGCMI regenerate is verifiable against object count and
+per-file byte size, which catches a truncated or missing download, but not silent content drift at constant
+length. If stronger assurance is wanted later, one full fetch on this host could be hashed once and the
+`md5` column filled in; that is a download, so it is out of scope here and is offered as a separate item,
+not done.
+
+#### Files changed
+
+`git status --short metadata/catalogue` after `--build` showed exactly the two files the block allows, and
+nothing else:
+
+```
+ M metadata/catalogue/ggcmi-crop-calendars.json
+?? metadata/catalogue/_manifests/ggcmi-crop-calendars.tsv
+```
+
+No data was downloaded, no package was installed, and `R/0_server_setup.R` was not sourced. Logs on the node:
+`logs/p16_ggcmi_check_20261119_212502.log`, `logs/p16_ggcmi_build_20261119_212502.log`.
+
+#### Finding, for the plan rather than for this gate
+
+GGCMI now has a manifest, so the "no checksum manifest" exception in §4 can close for this dataset. The
+reachability result is worth recording as a host fact rather than a one-off: PIK answers from PASCAL and did
+not answer from the macbook, so acquisition recipes that pull from `pik-potsdam.de` should be run on the node.
+
+Answers: M-20261119-i58-5 (complete)
+
+---
+
 ### MACBOOK 2026-11-19 [M-20261119-i58-5] — P16: does PIK answer from PASCAL? GGCMI crop-calendar manifest (headers only). **Small profile. Minutes.**
 
 **Why.** Migration plan item 4 and §4: the GGCMI Phase 3 crop calendars (`ggcmi-crop-calendars`, consumed by `R/1`)
