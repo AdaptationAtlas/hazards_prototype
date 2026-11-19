@@ -11,6 +11,14 @@
 #   Rscript R/checks/72_crosshost_fingerprint.R --stage 0.4.1 --res res-25 --out fp_pascal.tsv
 #   Rscript R/checks/72_crosshost_fingerprint.R --compare fp_cglabs.tsv fp_pascal.tsv [--rtol 1e-6]
 #
+#   Rscript R/checks/72_crosshost_fingerprint.R --stage upstream-04 --root $CD \
+#     --gcm ACCESS-ESM1-5 --scenario historical --year 1995 --out fp_up04_pascal.tsv
+#
+# --stage upstream-04 fingerprints the monthly index tifs hazards_upstream 04
+# writes for one GCM-scenario-year under a COMMON_DATA root (#58 phase C, the
+# first producer-side value gate). Keys are relative to --root. Daily stacks
+# are left out unless --with-daily.
+#
 # --stage 0.4.1 fingerprints only what R/0.4.1 writes for one grid (--res
 # res-25 | res-05): the six VoP rasters, livestock numbers, the masks, the
 # shoat proportions and the fao_vop prices-used CSVs. Older products in the
@@ -134,6 +142,40 @@ out <- val("--out")
 if (is.null(out)) stop("usage: 72_crosshost_fingerprint.R --stage <id> --out <file>  |  --compare <a.tsv> <b.tsv>")
 tag <- val("--res", "res-25")
 
+# --stage upstream-04: the monthly indices hazards_upstream/R/04_indices writes for
+# ONE GCM-scenario-year, under a COMMON_DATA root that is not atlas_working_dir()
+# (PASCAL's phase C root; CGlabs' common_data). Artefact keys are relative to that
+# root, so the same GCM-year on two hosts lines up row for row in --compare.
+#   --root <dir>      default $COMMON_DATA
+#   --gcm <name>      default ACCESS-ESM1-5
+#   --scenario <s>    default historical (the <ssp> in <ssp>_<gcm>)
+#   --year <yyyy>     default 1995
+#   --indices a,b,..  default the ten P10/P11 indices (TAI and water balance excluded)
+#   --with-daily      also fingerprint the daily/ stacks of HSH, THI and WBGT
+up_root <- val("--root", Sys.getenv("COMMON_DATA", ""))
+up_gcm <- val("--gcm", "ACCESS-ESM1-5")
+up_scen <- val("--scenario", "historical")
+up_year <- val("--year", "1995")
+up_idx <- strsplit(val("--indices", "PTOT,NDD,NTx,TAVG,TMAX,TMIN,HSH,THI,WBGT,PET"), ",", fixed = TRUE)[[1]]
+if (identical(stage, "upstream-04")) {
+  if (!nzchar(up_root) || !dir.exists(up_root)) stop("--stage upstream-04 needs --root <COMMON_DATA root> (or COMMON_DATA set) that exists")
+  if (!grepl("^[0-9]{4}$", up_year)) stop("--year must be a four-digit year")
+  up_root <- normalizePath(up_root, mustWork = TRUE)
+}
+# One target per index directory. NTx writes NTx<thr>/ subdirectories under the
+# GCM directory itself, so its target is the GCM directory filtered to NTx<thr>/.
+up_target <- function(ix) {
+  base <- file.path("nex-gddp-cmip6_indices", paste0(up_scen, "_", up_gcm))
+  yr <- paste0("-", up_year, "-[0-9]{2}\\.tif$")
+  if (ix == "NTx") {
+    return(list(abs = file.path(up_root, base), rel_to = up_root, glob = "NTx*.tif", recursive = TRUE,
+                re_path = paste0("/NTx[0-9]+/NTx[0-9]+", yr)))
+  }
+  list(abs = file.path(up_root, base, ix), rel_to = up_root, glob = "*.tif",
+       recursive = "--with-daily" %in% args,
+       re_path = paste0("/", ix, "(_[a-z0-9]+)?", yr))
+}
+
 # Which artefacts define "this stage produced the right thing". Deliberately
 # the FINAL products, not intermediates - an intermediate can match while the
 # artefact a consumer reads does not.
@@ -160,10 +202,12 @@ targets <- switch(
     list(path = "Data/mapspam/2020V1r2_SSA/processed", glob = "*.tif", recursive = TRUE),
     list(key = "GLW4_2020", subpath = "processed", glob = "*.tif", recursive = TRUE)
   ),
+  "upstream-04" = lapply(up_idx, up_target),
   stop("no fingerprint target set defined for stage '", stage, "'")
 )
 
 resolve <- function(t) {
+  if (!is.null(t$abs)) return(t$abs)
   if (!is.null(t$dataset)) {                      # where the catalogue record says it lives
     if (!exists("atlas_dataset_dir")) source(file.path(repo_root, "R", "00_acquire.R"))
     return(atlas_dataset_dir(atlas_catalogue(t$dataset)))
@@ -255,10 +299,12 @@ for (t in targets) {
   fs <- list.files(dir, pattern = utils::glob2rx(t$glob),
                    recursive = isTRUE(t$recursive), full.names = TRUE)
   if (!is.null(t$keep)) fs <- fs[grepl(t$keep, basename(fs))]
+  if (!is.null(t$re_path)) fs <- fs[grepl(t$re_path, fs)]
   fs <- sort(fs)
   say("fingerprinting ", length(fs), " file(s) under ", dir)
+  rel_base <- t$rel_to %||% atlas_working_dir()
   for (f in fs) {
-    rel <- sub(paste0("^", gsub("([.|()\\^{}+$*?\\[\\]])", "\\\\\\1", atlas_working_dir()), "/"), "", f)
+    rel <- sub(paste0("^", gsub("([.|()\\^{}+$*?\\[\\]])", "\\\\\\1", rel_base), "/"), "", f)
     fpr <- if (isTRUE(t$md5)) list(shape = sprintf("bytes=%.0f", file.size(f)), value = paste0("md5=", unname(tools::md5sum(f))), bad = FALSE)
     else if (grepl("\\.parquet$", f)) fp_parquet(f) else if (grepl("\\.csv$", f)) fp_csv(f) else fp_raster(f)
     if (isTRUE(fpr$bad)) say("  UNREADABLE: ", rel, level = "WARN")

@@ -2,6 +2,92 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-19 [M-20261119-i58-1] — P12: verify IT's GDAL 3.8 upgrade, then P11's phase C (C3-C5), then re-run phase B. Replaces P11. **Large profile. About two hours.**
+
+**Why.** IT replied on the ticket on 2026-11-18: the system GDAL is now **3.8** and the R modules were recompiled
+against it. P11 was written for GDAL 3.4.3 and has not answered, so P12 replaces it (P11 gets no RESPONSE). Three
+parts, in order:
+- **G — verify the upgrade.** GDAL version from the shell, terra and sf; every package the 0.4 chain and
+  `hazards_upstream` need still loads after the rebuild; the sum-resample probe now gives max 9 per cell. This is
+  the 30-second test we promised IT.
+- **C — P11 unchanged** (preprocess, ten indices, cost table), now on GDAL 3.8, plus a fingerprint of the 1995
+  indices for the later cross-host compare (new `--stage upstream-04` in `72_crosshost_fingerprint.R`).
+- **B — phase B re-run.** 0.4.1 at both resolutions and the macbook compare, as P7.4-P7.5. On 3.4.3 every output
+  difference traced to the sum resample; on 3.8 the GLW-only host gate should close.
+
+If you already started P11, stop it, say what it reached in G0, and start C3 again under a new stamp.
+
+**Rules.** As P11 for G and C: writes only under `$CD`, `logs/` and `metadata/crosshost/`; no installs (stop on
+`Installing package`); no S3; `nohup` + `.pid` + `/usr/bin/time -v`; no usernames, hostnames or IPs; the root is
+written as `$CD`. Part B writes where 0.4.1 writes, as in P7. Do not source `R/0_server_setup.R` in G (it
+installs); B sources it, as P7.4 did.
+
+#### G0 — pull, versions
+```bash
+cd <repo> && export ATLAS_PROJECT_DIR=$PWD && export CD=<the P10 root>
+git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD      # develop, at or after the P12 commit
+gdalinfo --version; gdal-config --version 2>/dev/null
+dpkg -l | grep -E "^ii +(libgdal[0-9]+|gdal-bin|libproj[0-9]+) " | awk '{print $2, $3}'
+Rscript --no-init-file -e 'library(terra); library(sf); cat("terra", as.character(packageVersion("terra")), "GDAL", gdal(), "PROJ", gdal(lib = "proj"), "\nsf", as.character(packageVersion("sf")), "GDAL", sf::sf_extSoftVersion()[["GDAL"]], "\n")'
+for p in wbkernel trendkernel; do Rscript --no-init-file -e "library($p); cat('$p OK\n')"; done
+```
+**Expect** GDAL 3.8 or later from the shell, terra and sf all reporting the **same** version, and both kernel
+packages loading. If terra or sf still report 3.4.3, or terra and sf disagree with the shell, that is a stop: the
+modules were not rebuilt against the new library.
+
+#### G1 — the sum-resample probe (seconds)
+```bash
+Rscript R/checks/probe_058_sum_resample.R 2>&1 | tee logs/p12_probe_058_$(date +%Y%m%d_%H%M%S).log
+```
+**Expect** `ones: ... max cell 9` and a resample ratio of about 0.952, as on the macbook (the reference figures are
+in the script's header). On 3.4.3 this host gave max 7399 and a ratio of about 1.905. Max other than 9 is a stop.
+
+#### G2 — the rebuilt library still loads (background, about 10 minutes)
+```bash
+S=$(date +%Y%m%d_%H%M%S)
+nohup Rscript R/checks/76_r_env_audit.R --out logs/r_env_audit_p12_$S.tsv > logs/r_env_audit_p12_$S.log 2>&1 &
+echo $! > logs/r_env_audit_p12_$S.pid
+```
+**Expect** `0.4-chain` and `both` BROKEN 0 / MISSING 0, as in P9. `bake` should still list only `doFuture` and
+`jrvFinance` as MISSING (not yet requested). Any BROKEN row in any scope is new and is a stop: a package compiled
+against GDAL 3.4.3 and not rebuilt would show here. Report the summary for all five scopes. C3 may start while G2
+runs; B must not.
+
+#### C3-C5 — exactly P11's C3, C4 and C5
+Use P11's commands with `p12_` in place of `p11_`/`p10_` in log names; the expectations and stop rules are P11's.
+Add one item to P11's C0 answers: **what class `terra::time()` now returns on one raw `.nc`** (P10 saw POSIXct with a
+time of day on 3.4.3). The date-only fix handles both; this is for the record.
+```bash
+Rscript --no-init-file -e 'library(terra); f <- list.files(Sys.getenv("CD"), "^pr_.*\\.nc$", recursive = TRUE, full.names = TRUE)[1]; t <- time(rast(f)); print(class(t)); print(head(t, 2))'
+```
+Then, after C4, fingerprint the 1995 indices (read-only, minutes):
+```bash
+Rscript R/checks/72_crosshost_fingerprint.R --stage upstream-04 --root $CD --gcm ACCESS-ESM1-5 --scenario historical --year 1995 \
+  --out metadata/crosshost/fp_up04_pascal_ACCESS-ESM1-5_historical_1995.tsv 2>&1 | tail -4
+cut -f1 metadata/crosshost/fp_up04_pascal_ACCESS-ESM1-5_historical_1995.tsv | grep -vc '^_env\|^artefact'
+```
+**Expect** no `UNREADABLE`. Report the artefact count (12 per index file family; NTx has one family per threshold).
+
+#### B — phase B re-run on GDAL 3.8 (after G2 is clean)
+P7.4 and P7.5 exactly, with a new stamp. P7.5 overwrites the three `*_pascal*` TSVs in `metadata/crosshost/`; git
+keeps the 3.4.3 versions. Read the comparison in P7.5's order. **What to expect, as invariants:**
+- inputs: 13 `same`, unless FAOSTAT has moved upstream since P7 (a report, not a stop; say which file);
+- one `COMPLETE` per resolution. 0.4.1 now runs `R/mass_check.R` on its four sum-resamples (added after P7), so
+  poll with `grep -hE "COMPLETE|mass conserved|mass NOT conserved|rror" logs/phaseB_041_*_$STAMP.log`. Expect every
+  mass line to read `mass conserved within` (some of the four sites run only on some branches) and report them; `mass NOT conserved` stops the run, and that is a
+  stop here too (do not set `ATLAS_MASS_CHECK=warn`);
+- the GLW-only host gate (`livestock_number_number`, `livestock_masks`, `shoat_prop`) `same` or `within-tol`
+  against the macbook (GDAL 3.8.5). A remaining difference is a finding: report its `max_rel_diff`;
+- `env-diff` rows for GDAL and PROJ are expected; list them.
+
+**Stop and describe** on any of: not on `develop`; a G0, G1 or G2 stop above; any of P11's stop rules in C3-C5;
+`Installing package`; a missing `COMPLETE` in B; any write outside `$CD`, `logs/`, `metadata/crosshost/` and the
+places 0.4.1 writes.
+
+**To answer:** prepend one `### RESPONSE — pascal [M-20261119-i58-1]` (P12), run the IP grep over the response and
+the TSVs, commit this file plus the `*_pascal*` TSVs in `metadata/crosshost/` and nothing else, push, verify it
+landed, and end with `Answers: M-20261119-i58-1 (complete)` — or `(stopped at <gate>)`.
+
 ### MACBOOK 2026-11-17 — P11: phase C resumes at C3 with the date-only fix. **Large profile. Under an hour.**
 
 **Why.** Your P10 diagnosis was exact and is now fixed on `develop`: both `02` scripts build the daily names with
