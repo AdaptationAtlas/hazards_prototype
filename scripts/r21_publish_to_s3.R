@@ -25,6 +25,7 @@ suppressPackageStartupMessages({ pacman::p_load(s3fs) })
 
 args   <- commandArgs(trailingOnly = TRUE)
 DRY_RUN <- "--dry-run" %in% args
+stamp   <- format(Sys.time(), "%Y%m%d-%H%M%S")
 
 BUCKET   <- "digital-atlas"
 PREFIX   <- paste0(
@@ -73,13 +74,26 @@ for (b in BASELINES) {
 
     cat(sprintf("period=%s baseline=%s\n  local : %s\n  s3    : %s\n", p, b, fname, s3_url))
 
+    # M-20261119-r21a0-1: back up the live key before overwriting it, as
+    # publish_B.R / build_publish_C.R / publish_cr093_r22.R do (download+upload
+    # keeps public-read; s3_file_copy would strip the ACL).
+    bak_url <- sub("\\.parquet$", sprintf(".preFix-%s.bak", stamp), s3_url)
     if (!DRY_RUN) {
+      if (s3fs::s3_file_exists(s3_url)) {
+        tmp_bak <- tempfile(fileext = ".parquet")
+        s3fs::s3_file_download(s3_url, tmp_bak, overwrite = TRUE)
+        s3fs::s3_file_upload(tmp_bak, bak_url, ACL = "public-read", overwrite = FALSE)
+        unlink(tmp_bak)
+        cat(sprintf("  backup: %s\n", basename(bak_url)))
+      } else {
+        cat("  no existing object to back up\n")
+      }
       s3fs::s3_file_upload(local_f, s3_url, ACL = "public-read", overwrite = TRUE)
       # Verify
       info <- s3fs::s3_file_info(s3_url)
       cat(sprintf("  -> uploaded %s bytes (mtime %s)\n", info$size, info$modification_time))
     } else {
-      cat("  -> [dry run] skipped upload\n")
+      cat(sprintf("  -> [dry run] skipped upload (would back up to %s)\n", basename(bak_url)))
     }
     cat("\n")
   }

@@ -406,6 +406,28 @@ problem_data <- lapply(seq_along(timeframes), FUN = function(i) {
 
     data <- rbindlist(pblapply(files_ss, arrow::read_parquet))
 
+    # M-20261119-r21a0-1: one national (admin0) row per country per layer. The
+    # GAUL 2024 disputed areas (metadata/disputed_areas.csv: Abyei, Bir Tawil,
+    # Hala'ib, Ilemi) reach the admin0 extraction as extra rows labelled with a
+    # claimant's iso3/admin0_name (or as exact copies of its row). §3.1 groups
+    # by name, so EGY/KEN/SDN/SSD national groups held 2-4 rows per (year, month);
+    # the season pattern never matched and each collapsed to one summed "year".
+    # Keep the country's own zone: drop admin0 rows coded as a disputed area
+    # (the areas stay as admin1 rows under both claimants), then exact duplicates.
+    disputed_gaul0 <- unique(data.table::fread(
+      file.path(Sys.getenv("project_dir"), "metadata", "disputed_areas.csv"))$disputed_gaul0)
+    is_adm0 <- is.na(data$admin1_name)
+    n_before <- nrow(data)
+    data <- rbind(data[!is_adm0], unique(data[is_adm0][!gaul0_code %in% disputed_gaul0]))
+    cat(sprintf("2.4) %s: dropped %d disputed/duplicate admin0 rows\n", timeframe_choice, n_before - nrow(data)))
+    dup_keys <- c("iso3", "admin0_name", "admin1_name", "admin2_name", "scenario", "model",
+                  "timeframe", "hazard", "year", "month")
+    n_dup <- data[, .N, by = dup_keys][N > 1, .N]
+    if (n_dup > 0) {
+      stop(sprintf("2.4) %s: %d (admin x model x hazard x year x month) keys still carry >1 row — §3.1 would collapse them. Inspect the boundaries index.",
+                   timeframe_choice, n_dup))
+    }
+
     # Check for any weird results
     check <- data[value > max_rain | value < (min_haz)] # Highest monthly recorded rainfall in africa is <3000mm
     if (nrow(check) > 0) {
@@ -547,7 +569,10 @@ lapply(monthly_files, FUN = function(month_file) {
         by = .(admin0_name, admin1_name, model, scenario, timeframe, hazard)
       ]
 
-      dt <- dt[!is.na(seq)]
+      # M-20261119-r21a0-1: find_consecutive_pattern() marks unmatched months 0,
+      # not NA. Keeping them lumped every edge month of a cross-year season (the
+      # window's first Jan-Feb and last Dec for DJF) into the first year's value.
+      dt <- dt[seq > 0]
       dt[, year := year[1], by = .(admin0_name, admin1_name, model, scenario, timeframe, hazard, seq)]
       dt[, seq := NULL]
 
