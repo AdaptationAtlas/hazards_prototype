@@ -2,6 +2,118 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-19 [M-20261119-i58-3] — P14: storage census, our area and the shared climate trees (read-only). **Small profile is fine. Can run in a second session alongside P13.**
+
+**Why.** Migration plan §2.2a sizes a full NEX-GDDP regeneration at 9.6 TB of raw downloads and up to 15.5 TB
+kept, against about 24 TB free on a store shared by about 69 accounts. Before asking IT about more storage we need to
+know three things this repository does not record:
+1. **What the shared NEX-GDDP raw tree already holds** (`common/climate/cmip6/nex-gddp-cmip6_raw`, the `raw` overrides
+   in `metadata/hosts.json`): which GCMs, scenarios, variables and years. If it covers much of the matrix, a
+   regeneration reads from it instead of downloading a second copy into `$CD`.
+2. **Whether P10's six raw `.nc` in `$CD` duplicate files already in that shared tree**, byte for byte.
+3. **What our own atlas area holds, and where it repeats itself**: sizes per tree, and any large files that are
+   byte-identical copies of each other.
+This block finds and measures. It deletes nothing; what to remove is decided on the macbook from your report.
+
+**Rules.**
+- **Read-only.** No `rm`, `mv`, `cp` or `chmod` anywhere. The only writes are logs and TSVs under `logs/`.
+- **Scope is two roots and nothing else:** `$W`, our writable atlas root, and `$CL`, the shared climate root. Do not
+  list, size or hash anything outside them, and in particular no other user's directories.
+- A `Permission denied` inside either root is a finding: count it and carry on. It is not a stop.
+- Long `du` / `find` / `md5sum` runs go under `nohup` with a `.pid`, as before.
+- No usernames, hostnames or IPs in the RESPONSE. Write paths as `$W/…`, `$CL/…`, `$CD/…`.
+- **P13 may be running in another session on the same checkout.** Leave its logs (`logs/p13_*`), the `*_pascal*`
+  TSVs and the 0.4.1 outputs alone. Its B3 deletes `$CD/nex-gddp-cmip6_gdal343` and `$CD/nex-gddp-cmip6_indices_gdal343`,
+  so D4 skips both; if D1 sizes them before they go, say so. Both sessions share one hub server's CPU and memory;
+  `du`/`find`/`md5sum` are mostly disk, but keep to one `md5sum` stream.
+
+#### D0 — pull, roots
+```bash
+cd <repo> && export ATLAS_PROJECT_DIR=$PWD
+export W=<writable_root in metadata/hosts.json, the atlas root>   # $CD sits inside it
+export CL=<the shared climate root: the parent of the chirps / chirts_era5 raw overrides in hosts.json>
+export CD=<the P10 root>
+git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD      # develop, at or after the P14 commit
+ls $CL; ls $CL/cmip6 2>&1 | head; df -h $W | tail -1
+```
+
+#### D1 — sizes (background; may take a while on a large tree)
+```bash
+S=$(date +%Y%m%d_%H%M%S); export W CL S
+cat > logs/p14_du_$S.sh <<'SH'
+du -x -b -d 2 "$W"  2> logs/p14_du_W_$S.err  | sort -n > logs/p14_du_W_$S.tsv
+du -x -b -d 2 "$CL" 2> logs/p14_du_CL_$S.err | sort -n > logs/p14_du_CL_$S.tsv
+SH
+nohup bash logs/p14_du_$S.sh > logs/p14_du_$S.log 2>&1 &
+echo $! > logs/p14_du_$S.pid
+# afterwards: tail -25 logs/p14_du_W_$S.tsv logs/p14_du_CL_$S.tsv; grep -c 'Permission denied' logs/p14_du_*_$S.err
+```
+Report the 25 largest entries under each root, in GB, as `$W/…` / `$CL/…`, and the denied counts.
+
+#### D2 — what the shared NEX-GDDP raw tree covers
+File names follow `<var>_day_<GCM>_<scenario>_<member>_<grid>_<year>[_vX.Y].nc`.
+```bash
+R=$CL/cmip6/nex-gddp-cmip6_raw
+find $R -name '*.nc' -printf '%s %f\n' 2>/dev/null | awk '{n=split($2,a,"_"); print a[1], a[3], a[4], a[7]+0, $1}' > logs/p14_nexraw_$S.txt
+wc -l < logs/p14_nexraw_$S.txt
+# GCM x scenario: file count, variables, year range, GB
+awk '{k=$2" "$3; n[k]++; b[k]+=$5; v[k" "$1]=1; if(!(k in lo)||$4<lo[k])lo[k]=$4; if($4>hi[k])hi[k]=$4}
+     END{for(x in v){split(x,p," "); nv[p[1]" "p[2]]++} for(k in n) printf "%s %d %d %d-%d %.1f\n", k, n[k], nv[k], lo[k], hi[k], b[k]/1e9}' \
+  logs/p14_nexraw_$S.txt | sort > logs/p14_nexraw_cover_$S.tsv
+cat logs/p14_nexraw_cover_$S.tsv
+```
+Report that table as it stands (GCM, scenario, files, variables, years, GB) and the total. If the tree is laid out
+differently or the names do not parse, show `find $R -maxdepth 4 | head -30` and five example names instead; that is
+a finding, not a stop. For reference, a complete GCM × scenario is 6 variables × 20 years (historical, 1995-2014) or
+× 80 years (each SSP, 2021-2100); the matrix is 18 GCMs × historical + 4 SSPs.
+
+#### D3 — are P10's six raw files already in the shared tree?
+```bash
+for f in $CD/nex-gddp-cmip6_raw/*.nc; do
+  b=$(basename $f); m=$(find $R -name "$b" 2>/dev/null | head -1)
+  if [ -z "$m" ]; then echo "$b absent-in-shared"; else
+    echo "$b $(stat -c %s $f) $(stat -c %s $m) $( [ "$(md5sum < $f)" = "$(md5sum < $m)" ] && echo identical || echo DIFFERENT )"; fi
+done
+c=$(find $CL -name 'chirps-v2.0.1981.01.01.tif' 2>/dev/null | head -1); [ -n "$c" ] && cmp -s $c $CD/chirps_wrld/chirps-v2.0.1981.01.01.tif && echo "chirps extent file identical" || echo "chirps extent file: no identical shared copy"
+```
+If a basename is absent, also look for the same variable/GCM/scenario/year under another version suffix
+(`_v1.1`, `_v1.2`, none) and say what you find.
+
+#### D4 — byte-identical large files inside `$W` (background)
+Hash only files of 100 MB or more that share an exact size with another file, so the cost stays bounded.
+```bash
+cat > logs/p14_big_$S.sh <<'SH'
+find "$W" -xdev -type f -size +100M -not -path '*_gdal343/*' -printf '%s\t%p\n' 2>/dev/null | sort -n > logs/p14_big_$S.tsv
+cut -f1 logs/p14_big_$S.tsv | uniq -d > logs/p14_bigdup_sizes_$S.txt
+awk -F'\t' 'NR==FNR {d[$1]; next} ($1 in d) {print $2}' logs/p14_bigdup_sizes_$S.txt logs/p14_big_$S.tsv \
+  | tr '\n' '\0' | xargs -0 -r md5sum > logs/p14_bigdup_md5_$S.txt
+SH
+nohup bash logs/p14_big_$S.sh > logs/p14_big_$S.log 2>&1 &
+echo $! > logs/p14_big_$S.pid
+# afterwards:
+wc -l < logs/p14_big_$S.tsv
+awk '{print $1}' logs/p14_bigdup_md5_$S.txt | sort | uniq -c | awk '$1>1' | wc -l      # duplicate groups
+```
+Report: how many files of 100 MB or more `$W` holds and their total size, then every duplicate group (md5 prefix,
+copy count, size each, the paths as `$W/…`), largest first, and the bytes recoverable if one copy of each were kept.
+If there are more than 40 groups, give the 40 largest and summarise the rest by top-level directory.
+
+#### D5 — report
+One short summary table at the top of the RESPONSE: total under `$W`; total under `$CL` (and the NEX raw tree
+within it); GCM × scenario coverage of the shared raw tree as a fraction of the 18 × 5 matrix; P10 raw files
+duplicated in the shared tree (n of 6); duplicate bytes inside `$W`; `df` for `$W`'s filesystem.
+
+D1 and D4 can run at the same time; D2 and D3 are quick and can run while they do.
+
+**Stop and describe** on any of: not on `develop`; any write outside `logs/`; anything that would need a deletion
+or a move to continue.
+
+**To answer:** prepend one `### RESPONSE — pascal [M-20261119-i58-3]` (P14), run the IP grep over the response,
+commit only this file (the `logs/` files stay on the node). Before pushing, `git pull --rebase`: if P13's RESPONSE
+landed meanwhile, the conflict is two blocks at the top of this file; keep both, with yours above P13's, and never
+drop or edit P13's text. Then push, verify it landed, and end with
+`Answers: M-20261119-i58-3 (complete)` — or `(stopped at <gate>)`.
+
 ### MACBOOK 2026-11-19 [M-20261119-i58-2] — P13: phase B re-run on GDAL 3.8.4 (P12 part B), G2 stop cleared. **Small profile is fine. Under an hour.**
 
 **Why.** P12 was exact, and stopping at G2 was right by the block's wording. The `rgdal` row does not block B:
