@@ -10,54 +10,36 @@ extensions:
   - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/agriculture/schema.json
 
 id: africa-hazard-exposure-intld
-title: Hazard Frequency crossed with Crop and Livestock Value of Production (constant 2014-2016 international dollars), Sub-Saharan Africa
+title:
+  Hazard Frequency crossed with Crop and Livestock Value of Production (constant 2014-2016 international
+  dollars), Sub-Saharan Africa
 version: v2026.11
 series:
   name: Africa Agriculture Adaptation Atlas
   url: https://adaptationatlas.cgiar.org/
 description: >
-  The constant-dollar companion of the Atlas hazard-exposure product: hazard frequency crossed with
-  the value of crop and livestock production in constant 2014-2016 international dollars (FAOSTAT
-  GPV, 2019-2023 window, labelled intld15-2021), by administrative unit, commodity, hazard,
-  scenario, period and timeframe. Unlike the nominal-USD tier this basis is deflated, so changes
-  between timeframes are real-terms. First published 2026-10-19; supersedes the retired legacy
-  source=atlas_cmip6 vop_intld15 route, whose objects predate every 2026 correction.
+  Value of crop and livestock production exposed to each agro-climatic hazard, in constant 2014-2016 international
+  dollars (FAOSTAT gross production value, 2019-2023 window, labelled intld15-2021), by administrative
+  unit, commodity, hazard, severity, scenario, period and timeframe, for Sub-Saharan Africa. Unlike the
+  nominal-dollar version (africa-hazard-exposure-nexgddp) this basis is deflated, so changes between timeframes
+  are in real terms.
 resource_type: dataset
 license: CC-BY-4.0 # derived product; principal inputs (MapSPAM2020_AdaptationAtlas_SSA doi:10.7910/DVN/Z0HK7R, GLW4-2020, GAUL 2024) are all CC-BY-4.0; share-alike does NOT apply (hazards_prototype issue 37, resolved 2026-10-08)
 keywords:
-  [
-    hazard exposure,
-    value of production,
-    constant international dollars,
-    climate risk,
-    CMIP6,
-    NEX-GDDP,
-    sub-saharan africa,
-  ]
+  - hazard exposure
+  - value of production
+  - constant international dollars
+  - climate risk
+  - CMIP6
+  - NEX-GDDP
 
 note: >
-  THE BASIS MOVED +20 PER CENT ON 2026-10-08, DELIBERATELY, BEFORE THIS TIER WAS FIRST PUBLISHED.
-  The exposure this tier is built from was republished with FAOSTAT joins keyed on item code rather
-  than item name: 55.12 billion international dollars over 57 FAOSTAT-renamed item codes had been
-  silently dropped, and the continental constant-dollar reference moved 200.28 to 240.24 billion
-  (hazards_prototype B5 dispatch, archived). Two FAOSTAT quantity pins apply (CAF and GIN coffee, a
-  reporting break; metadata/fao_quantity_pins.csv). WHAT THIS TIER CAN AND CANNOT SUM TO. The tier
-  total is about 266.8 billion international dollars: the reference's 240.24 billion crop side,
-  MINUS 62.42 billion in nine SPAM composite groups (vegetables, tropical fruit, rest-of-crops, other
-  roots and six more) that carry exposure but have no hazard frequency and therefore NO rows here,
-  PLUS about 89.0 billion of livestock. Do not expect this tier to reconcile to the reference
-  headline: about 19 per cent of the recovered constant-dollar exposure is in composite groups the
-  hazard layer cannot see. One named residual: Tanzania coconut undershoots its exposure by 2.4 per
-  cent because Wete district (Pemba Island) carries exposure and no hazard coverage at 0.25 degrees
-  (hazards_prototype issue 50; metadata/g6b_expected_residuals.csv). Every other material (country,
-  crop) pair reproduces its exposure within the publish gate's bounds. Four livestock rows used
-  placeholder constant-dollar prices until 2026-11-18: Libya and Sierra Leone cattle, Lesotho poultry
-  and Eswatini sheep (hazards_prototype issue 54). The published correction moved only those four
-  country-species pairs and raised the livestock constant-dollar total by 0.1 per cent.
-  VERSION HISTORY. This is the first Climate Data Hub release (v2026.11): the files as first
-  published on 2026-10-19 and corrected on 2026-11-18 (the four placeholder prices), built from the
-  exposure table as of 2026-11-17. The version history linked below records this and will list later
-  changes.
+  The total (about 266.8 billion international dollars) does not reconcile to the exposure table's constant-dollar
+  crop total (240.24 billion): nine MapSPAM composite crop groups (vegetables, tropical fruit, rest of
+  crops, other roots and five more) carry 62.42 billion of exposure but have no hazard frequency and so
+  no rows here, while livestock add about 89.0 billion. FAOSTAT coffee quantities for the Central African
+  Republic and Guinea are pinned because of a reporting break. Tanzania coconut undershoots its exposure
+  by 2.4 per cent because part of Pemba Island has no hazard coverage at 0.25 degrees.
 
 contact:
   - organization: Alliance of Bioversity International and CIAT
@@ -132,10 +114,63 @@ structures:
       - name: gaul2_code
         type: location
         description: >
-          Second-level administrative unit, as the GAUL 2024 code and the join key to the boundaries
-          (record africa-admin-boundaries-gaul2024). Rows also carry iso3, admin0_name, admin1_name,
+          Second-level administrative unit, as the GAUL 2024 code and the join key to the GAUL 2024 boundary file named in foreign_keys. Rows also carry iso3, admin0_name, admin1_name,
           admin2_name and the adm0 and adm1 GAUL codes. 55 countries present.
         reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: float64
+      - name: iso3
+        type: location
+        description: ISO 3166-1 alpha-3 country code.
+        reference_system: https://www.iso.org/iso-3166-country-codes.html
+        data_type: string
+      - name: admin0_name
+        type: location
+        description: Country name, as in FAO GAUL 2024.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: string
+      - name: admin1_name
+        type: location
+        description: First-level administrative unit name, as in FAO GAUL 2024. Null on country rows.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: string
+      - name: admin2_name
+        type: location
+        description: >
+          Second-level administrative unit name, as in FAO GAUL 2024. Null on country and first-level
+          rows.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: string
+      - name: gaul0_code
+        type: location
+        description: Country as the GAUL 2024 code; present on every row.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: float64
+      - name: gaul1_code
+        type: location
+        description: First-level unit as the GAUL 2024 code; null on country rows.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: float64
+      - name: model
+        type: model
+        description: Always ENSEMBLEmean, the mean across the climate models (also in the file path).
+        values: [ENSEMBLEmean]
+        data_type: string
+      - name: hazard_vars
+        type: hazard
+        description: >
+          The hazard set the row belongs to, as the three hazard indices joined by + (dry, heat, wet);
+          see `hazard` for the sets present.
+        data_type: string
+      - name: exposure_var
+        type: variable
+        description: What is exposed; one per tier.
+        values: [vop]
+        data_type: string
+      - name: exposure_unit
+        type: unit
+        description: Unit of `value`, carried on every row; one per tier.
+        values: [intld15-2021]
+        data_type: string
     variables:
       - name: value
         description: >
@@ -158,10 +193,12 @@ processing:
       international dollars distributed from FAOSTAT GPV across MapSPAM production and GLW4-2020
       density shares.
     derived_from:
-      - title: Monthly hazard indices from NEX-GDDP-CMIP6 (record nexgddp-indices-monthly)
+      - title: Monthly hazard indices from NEX-GDDP-CMIP6
         url: https://github.com/AdaptationAtlas/hazards
-      - title: MapSPAM2020_AdaptationAtlas_SSA (record mapspam2020-adaptation-atlas-ssa)
+        version: v0.1.0-nexgddp
+      - title: MapSPAM2020_AdaptationAtlas_SSA
         url: https://doi.org/10.7910/DVN/Z0HK7R
+        version: "1.0"
       - id: africa-exposure-combined
         version: v2026.11
         title: >-
@@ -176,14 +213,14 @@ processing:
       Cross hazard frequency with crop and livestock constant-dollar value of production, and
       aggregate onto GAUL 2024 administrative units.
     code:
-      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/3_freq_x_exposure.R
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/a927f32/R/3_freq_x_exposure.R
+      version: a927f32
 
 data:
   - name: hazard-exposure-intld-by-period-severity
     description: >
-      One parquet per period x severity tier, 76 to 86 MB each. Published by
-      scripts/r3_publish_tiers.R behind gates G1-G6b; every key carries a .json sidecar recording
-      the 18-member ensemble.
+      One parquet per period x severity tier, 76 to 86 MB each. Published by scripts/r3_publish_tiers.R;
+      every key carries a .json sidecar recording the 18-member ensemble.
     locations:
       - url: https://digital-atlas.s3.amazonaws.com/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_intld15-21/
         title: HTTPS
@@ -211,25 +248,19 @@ cdh:
   domain: [agricultural-production, climate]
   usage:
     intended_uses:
-      - Real-terms comparison of exposed production value between scenarios and timeframes.
-      - Crop and livestock exposure on one deflated basis, jointly.
+      - real-terms comparison of exposed production value between scenarios and timeframes
+      - crop and livestock exposure jointly on one deflated basis
     not_recommended_for:
       - use: Reconciling this tier's total to the published exposure reference headline.
         reason: >
           The reference's constant-dollar crop side is 240.24 billion; this tier reads about 266.8
           billion because it adds livestock and cannot carry the nine composite crop groups (62.42
           billion of exposure with no hazard rows).
-        use_instead: Compare modelled crops only (about 177.8 billion) against the reference filtered to the same crop set, or use the gate outputs in the source dispatch.
+        use_instead:
+          Compare modelled crops only (about 177.8 billion) against the reference filtered
+          to the same crop set.
       - use: Mixing with the nominal-USD tier without converting.
         reason: >
           Different currency basis; the two sit under one exposure value in the reference, separated
           only by unit.
-        use_instead: Filter unit explicitly on both sides (hazards_prototype issue 52).
-      - use: Reading Libya or Sierra Leone cattle value from this tier.
-        reason: >
-          FAOSTAT's constant-dollar gross production value for indigenous cattle meat is about 1,000
-          international dollars for both countries (expected tens of millions), so cattle meat is
-          effectively absent and their cattle rows carry milk only (hazards_prototype issue 54; the
-          correction, which also covers Lesotho poultry and Eswatini sheep, is validated but not yet
-          published).
-        use_instead: Use the head-count tier or the nominal-USD tier for cattle in these two countries until issue 54 resolves.
+        use_instead: Filter unit explicitly on both sides.

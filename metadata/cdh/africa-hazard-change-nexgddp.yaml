@@ -37,23 +37,14 @@ keywords:
   - drought
   - waterlogging
   - heat stress
-  - livestock heat stress
-  - temperature-humidity index
-  - rainfall change
   - climate projections
   - multi-model ensemble
   - NEX-GDDP
   - administrative units
-
 note: >
-  These tables were published on 2026-11-16, replacing the 2026-06-24 files; columns and keys are
-  unchanged, and the earlier files held duplicate rows, since removed.
-  Read the files with hive partitioning turned off (in DuckDB, hive_partitioning = false): the
-  storage path contains timeframe=annual, which otherwise replaces the timeframe column. Where no
-  model has a value, an ensemble mean is missing and its minimum and maximum can read as plus or
-  minus infinity. Country rows for Egypt, Kenya, Sudan and South Sudan may include disputed border
-  areas these countries claim; prefer their first- and second-level units. Changes to these files
-  are listed in the linked version history.
+  Where no model has a value, the ensemble mean is missing and the minimum and maximum can read as plus
+  or minus infinity. Country rows for Egypt, Kenya, Sudan and South Sudan may include disputed border
+  areas these countries claim; prefer their first- and second-level units.
 
 contact:
   - organization: Alliance of Bioversity International and CIAT
@@ -113,24 +104,26 @@ structures:
         name: iso3
         type: location
         description: ISO 3166-1 alpha-3 country code. 55 countries. Files are sorted on it.
+        reference_system: https://www.iso.org/iso-3166-country-codes.html
         data_type: string
       - &admin0
         name: admin0_name
         type: location
         description: Country name, as in FAO GAUL 2024.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
         data_type: string
       - &admin1
         name: admin1_name
         type: location
         description: >
           First-level administrative unit name, as in FAO GAUL 2024. Null on country rows.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
         data_type: string
       - &admin2
         name: admin2_name
         type: location
         description: >
-          Second-level administrative unit name, as in FAO GAUL 2024 (boundaries catalogued as
-          africa-admin-boundaries-gaul2024). Null on country and first-level rows. Each table holds
+          Second-level administrative unit name, as in FAO GAUL 2024. Null on country and first-level rows. Each table holds
           all three levels, each computed directly from the 0.25° grid cells that touch the unit.
         data_type: string
         reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
@@ -548,20 +541,26 @@ processing:
       NASA NEX-GDDP-CMIP6: daily CMIP6 climate model output, bias-corrected and downscaled to a 0.25°
       grid. 18 models, historical run and four future scenarios.
     derived_from:
-      - title: NEX-GDDP-CMIP6 (NASA Center for Climate Simulation)
+      - title: >-
+          NEX-GDDP-CMIP6 (NASA Center for Climate Simulation), version 1 files: for each variable, model
+          and year the newest of v1.2, v1.1 and the unsuffixed v1.0; the v2.0 files added in 2025 were not
+          used
         url: https://www.nccs.nasa.gov/services/data-collections/land-based-products/nex-gddp-cmip6
+        version: 1.0-1.2
   - id: indices
     description: >
       Agro-climatic hazard indices computed per model from the daily fields and summarised to yearly
       values, including a simple soil water balance for the water-stress and waterlogging indices.
     code:
       url: https://github.com/AdaptationAtlas/hazards
+      version: v0.1.0-nexgddp
   - id: frequency
     description: >
       For each grid cell, model, scenario and 20-year window, the share of years in which an index
       passes each severity threshold; and the 20-year average of annual rainfall.
     code:
-      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2_calculate_haz_freq.R
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/c62beee/R/2_calculate_haz_freq.R
+      version: c62beee
   - id: admin-change
     description: >
       Grid values summarised over GAUL 2024 country, first- and second-level units per model:
@@ -570,19 +569,24 @@ processing:
       is left out where 1995-2014 rainfall is below 100 mm a year. Ensemble tables give the mean,
       minimum, maximum and standard deviation across the 18 models.
     code:
-      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2.2_haz_change.R
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/7dbf72f/R/2.2_haz_change.R
+      version: 7dbf72f
 
 data:
   - &data-entry
     name: hazard-frequency-by-model
     structures: [hazard-frequency-by-model]
-    description: Drought and waterlogging frequency, one row per model.
+    description: >
+      Drought and waterlogging frequency, one row per model. Every file in this record: read with hive
+      partitioning turned off (in DuckDB, hive_partitioning = false): the storage path contains timeframe=annual,
+      which otherwise replaces the timeframe column.
     locations:
       - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=haz_freq.parquet
         title: HTTPS
       - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=haz_freq.parquet
         title: S3
     media_type: application/vnd.apache.parquet
+    file_size: 5325673
     processing_steps: [source, indices, frequency, admin-change]
   - <<: *data-entry
     name: hazard-frequency-ensemble
@@ -593,6 +597,7 @@ data:
         title: HTTPS
       - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=haz_freq_ensemble.parquet
         title: S3
+    file_size: 1576579
   - <<: *data-entry
     name: crop-heat-area-by-model
     structures: [crop-heat-area-by-model]
@@ -602,6 +607,7 @@ data:
         title: HTTPS
       - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ntx_perc_area_by_model.parquet
         title: S3
+    file_size: 12752542
   - <<: *data-entry
     name: crop-heat-area-ensemble
     structures: [crop-heat-area-ensemble]
@@ -611,6 +617,7 @@ data:
         title: HTTPS
       - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ntx_perc_area_ensemble.parquet
         title: S3
+    file_size: 1156460
   - <<: *data-entry
     name: rainfall-change-area-by-model
     structures: [rainfall-change-area-by-model]
@@ -620,15 +627,19 @@ data:
         title: HTTPS
       - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_change_by_model.parquet
         title: S3
+    file_size: 1391186
   - <<: *data-entry
     name: rainfall-change-area-ensemble
     structures: [rainfall-change-area-ensemble]
-    description: Share of area where annual rainfall changes by 5 % or more, summarised across the 18 models.
+    description:
+      Share of area where annual rainfall changes by 5 % or more, summarised across the 18
+      models.
     locations:
       - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_change_ensemble.parquet
         title: HTTPS
       - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_change_ensemble.parquet
         title: S3
+    file_size: 986292
   - <<: *data-entry
     name: rainfall-difference-by-model
     structures: [rainfall-difference-by-model]
@@ -638,6 +649,7 @@ data:
         title: HTTPS
       - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_diff_by_model.parquet
         title: S3
+    file_size: 6924089
   - <<: *data-entry
     name: rainfall-difference-ensemble
     structures: [rainfall-difference-ensemble]
@@ -647,6 +659,7 @@ data:
         title: HTTPS
       - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=ptot_diff_ensemble.parquet
         title: S3
+    file_size: 1875473
   - <<: *data-entry
     name: cattle-heat-area-by-model
     structures: [cattle-heat-area-by-model]
@@ -656,6 +669,7 @@ data:
         title: HTTPS
       - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=thi_perc_area_by_model.parquet
         title: S3
+    file_size: 1956735
   - <<: *data-entry
     name: cattle-heat-area-ensemble
     structures: [cattle-heat-area-ensemble]
@@ -665,6 +679,7 @@ data:
         title: HTTPS
       - url: s3://digital-atlas/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=hazard-change/timeframe=annual/variable=thi_perc_area_ensemble.parquet
         title: S3
+    file_size: 754664
 
 additional_links:
   - title: Version history
@@ -714,9 +729,10 @@ cdh:
   domain: [climate]
   usage:
     intended_uses:
-      - Comparing how often drought, waterlogging and heat thresholds are crossed now and in future windows, by district.
-      - Mapping where annual rainfall is projected to rise or fall, as a share of land and in millimetres.
-      - Showing model agreement with the per-model tables or the ensemble minimum, maximum and spread.
+      - comparing how often drought, waterlogging and heat thresholds are crossed now and in future windows,
+        by district
+      - mapping where annual rainfall is projected to rise or fall, as share of land and in millimetres
+      - showing model agreement from the per-model tables or the ensemble spread
     not_recommended_for:
       - use: Reading rainfall percentage change in deserts.
         reason: >

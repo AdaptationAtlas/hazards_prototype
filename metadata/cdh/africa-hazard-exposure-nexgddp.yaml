@@ -8,87 +8,39 @@ extensions:
   - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/agriculture/schema.json
 
 id: africa-hazard-exposure-nexgddp
-title: Hazard Frequency crossed with Crop and Livestock Value of Production (nominal 2021 US dollars), Sub-Saharan Africa
+title:
+  Hazard Frequency crossed with Crop and Livestock Value of Production (nominal 2021 US dollars),
+  Sub-Saharan Africa
 version: v2026.11
 series:
   name: Africa Agriculture Adaptation Atlas
   url: https://adaptationatlas.cgiar.org/
 description: >
-  The Atlas hazard-exposure product: the frequency of each agro-climatic hazard crossed with the
-  value of crop and livestock production exposed to it, in nominal 2021 US dollars, by
-  administrative unit, commodity, hazard, scenario, period and timeframe, for Sub-Saharan Africa.
-  Built from NEX-GDDP-CMIP6 hazard indices, MapSPAM-derived crop value of production and GLW4-derived
-  livestock value. This is the layer the Atlas notebooks read to answer "how much production is
-  exposed to this hazard, where, and how does that change under future scenarios".
+  Value of crop and livestock production exposed to each agro-climatic hazard, in nominal 2021 US dollars,
+  by administrative unit, commodity, hazard, severity, scenario, period and timeframe, for Sub-Saharan
+  Africa. Hazard frequencies from NEX-GDDP-CMIP6 hazard indices are crossed with MapSPAM-derived crop
+  value and GLW4-derived livestock value. It shows how much production value is exposed to a hazard, where,
+  and how that changes under future scenarios. A constant-dollar version is a separate record (africa-hazard-exposure-intld).
 resource_type: dataset
 license: CC-BY-4.0 # derived product; principal inputs (MapSPAM Adaptation Atlas SSA, GAUL 2024) are CC-BY-4.0
 keywords:
-  [
-    hazard exposure,
-    climate risk,
-    value of production,
-    crop exposure,
-    CMIP6,
-    NEX-GDDP,
-    sub-saharan africa,
-  ]
+  - hazard exposure
+  - climate risk
+  - value of production
+  - CMIP6
+  - NEX-GDDP
 
 note: >
-  CURRENCY BASIS - THE MOST IMPORTANT THING TO KNOW. What is published is
-  variable=vop_nominal-usd21, value of production in NOMINAL 2021 US dollars. That is NOT the Atlas
-  standard basis, constant 2015 international dollars, which is the sibling record
-  africa-hazard-exposure-intld (variable=vop_intld15-21). Nominal values are not deflated, so a
-  change between timeframes mixes price change with production change, and figures are not
-  comparable with any Atlas product quoted in constant international dollars. Crops are priced with
-  FAOSTAT's implied farm-gate price, a basis guard and cited evidence pins
-  (docs/methods/nominal_price_method.md in the repository). Livestock are priced at each country's
-  own FAOSTAT producer price (clipped to a band around the world median, 2019-2023 median, longer
-  series as fallback), gap-filled with medians of neighbouring, regional and continental own prices;
-  goat and sheep milk keep the world median by decision. Own producer prices exist for only about a
-  quarter of country-livestock-product rows; the rest are fills, some of them a single neighbour's
-  price. Sudan and Nigeria-banana rows are sound on this nominal basis.
-  THE DENOMINATOR. Consumers divide this product by the exposure table africa-exposure-combined
-  (domain=exposure/type=combined/.../variable=crop-livestock_all*.parquet). Use its 0.25 degree
-  structure, variable=crop-livestock_all_res-25, which is extracted on the 0.25 degree NEX-GDDP
-  hazard grid - THE SAME GRID AS THIS PRODUCT. The 0.05 degree structure,
-  variable=crop-livestock_all_res-05 (and its deprecated unsuffixed alias
-  variable=crop-livestock_all), resolves roughly 2,100 more second-level units than this product can
-  populate, so dividing by it yields exposure fractions above 100 per cent in small units. The
-  denominator is MULTI-UNIT: its nominal-usd-2021 rows share this product's basis, its intld15-2021
-  rows are constant international dollars and do not. Select on `unit`. Per country and crop this
-  product's total exposed value equals the denominator's nominal-usd-2021 rows to within a few per
-  cent; the publish gate measures that, plus 18 ensemble members. Known exceptions: 31 border cells
-  that the denominator assigns at admin0 and this product, aggregated from second-level units,
-  assigns to the neighbour (hazards_prototype issue 18) - visible nationally only for Kenya robusta
-  coffee and Sierra Leone robusta coffee and coconut; and Tanzania coconut, which undershoots its
-  exposure by 2.4 per cent from a hazard-coverage hole on Pemba Island (issue 50).
-  HAZARD SETS. The crop-specific interaction set PTOT-L+NTxS+PTOT-G is retired and replaced by
-  PTOT-L+NTxM+PTOT-G (the per-crop ecocrop-optimum heat threshold; the old NTxS averaged the optimum
-  with the survival limit and reported zero heat-exposed maize value), and NDWS+NTxM+NDWL0 gives
-  crop-specific heat with the water-balance framing. PTOT-L+NTxS+PTOT-G readers must move to the
-  NTxM name. The poultry_highland THI extreme threshold is 89 (was 79).
-  FIVE TIERS, ONE RECORD EACH. Under source=nex-gddp-cmip6 this nominal-dollar tier sits beside
-  constant international dollars (africa-hazard-exposure-intld), harvested area
-  (africa-hazard-exposure-harvested-area), production tonnes (africa-hazard-exposure-production) and
-  livestock head counts (africa-hazard-exposure-livestock-numbers). There is no population exposure
-  tier under this source.
-  ONLY THE ENSEMBLE MEAN IS PUBLISHED. model = ENSEMBLEmean throughout; no per-model files exist
-  here. Ensemble membership has previously varied between 18, 13 and 5 members across products
-  without being recorded, which is why membership is now stamped into the .json sidecar beside each
-  file - check it rather than assuming 18. Tracked as hazards_prototype issue 26.
-  BOTH PERIODS ARE PUBLISHED. period = jagermeyr (crop-calendar growing season) and period = annual
-  (full calendar year, published since 2026-10-19).
-  SCALE. A jagermeyr file holds roughly 94 million rows at 77 to 87 MB compressed. Query it with
-  predicate pushdown - reading it whole into memory is not the intended access pattern.
-  BASELINE. The historic window is 1995-2014, which is the end of the CMIP6 historical run, not a
-  WMO 1991-2020 normal. Comparisons against a 1991-2020 baseline are not possible from this source.
-  VERSION HISTORY. This is the first Climate Data Hub release (v2026.11, the files as published on
-  2026-10-23). The public changes before it, with dates and how far values moved, are in the version
-  history linked below: among them the 2026-09-25 denominator fix (issue 30), the 2026-09-30 re-bake
-  on the 0.25 degree grid, the 2026-10-06 crop price revision, the 2026-10-16 to 10-19 hazard rebuild,
-  and the 2026-10-23 livestock repricing (issue 47), which moved country-species values 0.43 to 2.2
-  times (South Africa poultry -32 per cent, Egypt cattle +39, Mozambique poultry +92) while leaving
-  crop values unchanged.
+  Values are nominal 2021 US dollars and are not deflated, so a change between timeframes mixes price
+  change with production change. Own FAOSTAT producer prices exist for only about a quarter of country-livestock-product
+  rows; the rest are gap fills from neighbouring, regional or continental medians, some from a single
+  neighbour, and goat and sheep milk use the world median. Only the 18-model ensemble mean is published;
+  the JSON sidecar beside each file records the ensemble membership. The historical window is 1995-2014,
+  the end of the CMIP6 historical runs, not a 1991-2020 normal. The interaction PTOT-L+NTxS+PTOT-G no
+  longer exists; its replacement is PTOT-L+NTxM+PTOT-G. Thirty-one border cells are assigned to a different
+  country than in the exposure denominator, which shows at country level for Kenya robusta coffee and
+  Sierra Leone robusta coffee and coconut. Tanzania coconut undershoots its exposure by 2.4 per cent because
+  part of Pemba Island has no hazard coverage at 0.25 degrees.
 
 contact:
   - organization: Alliance of Bioversity International and CIAT
@@ -163,11 +115,59 @@ structures:
       - name: gaul2_code
         type: location
         description: >
-          Second-level administrative unit, as the GAUL 2024 code and the join key to the boundaries
-          (record africa-admin-boundaries-gaul2024). Rows also carry iso3, admin0_name, admin1_name,
+          Second-level administrative unit, as the GAUL 2024 code and the join key to the GAUL 2024 boundary file named in foreign_keys. Rows also carry iso3, admin0_name, admin1_name,
           admin2_name and the adm0 and adm1 GAUL codes. 55 countries present. Each file holds admin0,
           admin1 and admin2 rows; the higher levels are sums of admin2.
         reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: float64
+      - name: iso3
+        type: location
+        description: ISO 3166-1 alpha-3 country code.
+        reference_system: https://www.iso.org/iso-3166-country-codes.html
+        data_type: string
+      - name: admin0_name
+        type: location
+        description: Country name, as in FAO GAUL 2024.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: string
+      - name: admin1_name
+        type: location
+        description: First-level administrative unit name, as in FAO GAUL 2024. Null on country rows.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: string
+      - name: admin2_name
+        type: location
+        description: >
+          Second-level administrative unit name, as in FAO GAUL 2024. Null on country and first-level
+          rows.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: string
+      - name: gaul0_code
+        type: location
+        description: Country as the GAUL 2024 code; present on every row.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: float64
+      - name: gaul1_code
+        type: location
+        description: First-level unit as the GAUL 2024 code; null on country rows.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: float64
+      - name: model
+        type: model
+        description: Always ENSEMBLEmean, the mean across the climate models (also in the file path).
+        values: [ENSEMBLEmean]
+        data_type: string
+      - name: hazard_vars
+        type: hazard
+        description: >
+          The hazard set the row belongs to, as the three hazard indices joined by + (dry, heat, wet);
+          see `hazard` for the sets present.
+        data_type: string
+      - name: exposure_var
+        type: variable
+        description: What is exposed; one per tier.
+        values: [vop]
+        data_type: string
     variables:
       - name: value
         description: >
@@ -198,12 +198,16 @@ processing:
       on every key records membership), and crop and livestock value of production in nominal 2021 US
       dollars from the combined exposure table on the 0.25 degree hazard grid.
     derived_from:
-      - title: Monthly hazard indices from NEX-GDDP-CMIP6 (record nexgddp-indices-monthly)
+      - title: Monthly hazard indices from NEX-GDDP-CMIP6
         url: https://github.com/AdaptationAtlas/hazards
-      - title: MapSPAM2020_AdaptationAtlas_SSA (record mapspam2020-adaptation-atlas-ssa)
+        version: v0.1.0-nexgddp
+      - title: MapSPAM2020_AdaptationAtlas_SSA
         url: https://doi.org/10.7910/DVN/Z0HK7R
+        version: "1.0"
       - id: africa-exposure-combined
-        title: Combined crop and livestock exposure, 0.25 degree structure (variable=crop-livestock_all_res-25), the denominator
+        title:
+          Combined crop and livestock exposure, 0.25 degree structure (variable=crop-livestock_all_res-25),
+          the denominator
         version: v2026.11
   - id: frequency
     description: >
@@ -214,13 +218,15 @@ processing:
       Cross hazard frequency with value of production to give exposed value, and aggregate onto GAUL
       2024 administrative units.
     code:
-      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/3_freq_x_exposure.R
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/f434359/R/3_freq_x_exposure.R
+      version: f434359
 
 data:
   - name: hazard-exposure-by-period-severity
     description: >
-      One parquet per period x severity tier, 77 to 87 MB each, with a .json sidecar beside each
-      recording the ensemble membership. Published by scripts/r3_publish_tiers.R.
+      One parquet per period x severity tier, 77 to 87 MB each, with a .json sidecar beside each recording
+      the ensemble membership. Published by scripts/r3_publish_tiers.R. Query with filters on iso3 and
+      the other keys (predicate pushdown): a crop-calendar (jagermeyr) file holds about 94 million rows.
     locations:
       - url: https://digital-atlas.s3.amazonaws.com/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=vop_nominal-usd21/
         title: HTTPS
@@ -248,26 +254,30 @@ cdh:
   domain: [agricultural-production, climate]
   usage:
     intended_uses:
-      - Quantifying how much crop and livestock production value is exposed to a given hazard, by admin unit and scenario.
-      - Comparing exposure between emissions pathways and future timeframes.
+      - value of crop and livestock production exposed to a hazard, by administrative unit and scenario
+      - comparing exposure between emissions scenarios and future timeframes
     not_recommended_for:
       - use: Comparing exposed value between timeframes as though it were a real-terms change.
         reason: >
           Values are NOMINAL 2021 US dollars and are not deflated, so a difference between timeframes
           mixes price change with production and hazard change.
-        use_instead: Use the constant-dollar sibling tier (record africa-hazard-exposure-intld, variable=vop_intld15-21), published 2026-10-19.
+        use_instead: Use the constant-dollar sibling tier (africa-hazard-exposure-intld, variable=vop_intld15-21).
       - use: Combining these figures with any Atlas product quoted in constant international dollars.
         reason: >
           Different currency basis. A previous crop-versus-livestock mismatch of exactly this kind,
           in the upstream livestock chain, produced roughly a sevenfold error in cattle exposure
           (corrected upstream 2026-09-25).
         use_instead: Check exposure_unit on both sides and convert, or use products on one basis throughout.
-      - use: Treating a livestock value in a country without its own FAOSTAT producer price as that country's price.
+      - use:
+          Treating a livestock value in a country without its own FAOSTAT producer price as that country's
+          price.
         reason: >
           About three quarters of country-livestock-product rows carry a gap-filled price (median of
           neighbouring, regional or continental own prices; world median for goat and sheep milk).
           The price used and its source per row are in the processing audit, not in this table.
-        use_instead: For a country-level livestock comparison, use the head-count tier or the constant-dollar tier alongside this one.
+        use_instead:
+          For a country-level livestock comparison, use the head-count tier or the constant-dollar
+          tier alongside this one.
       - use: Reading this as covering population exposure.
         reason: >
           This tier is crop and livestock value of production. Livestock exposure is also published
@@ -277,3 +287,10 @@ cdh:
       - use: Benchmarking against a WMO 1991-2020 normal.
         reason: The historical window is 1995-2014, the end of the CMIP6 historical run.
         use_instead: Use 1995-2014 as the stated baseline and say so.
+      - use: Dividing by the 0.05 degree exposure table.
+        reason:
+          It resolves about 2,100 more second-level units than this product populates, so shares
+          come out above 100 per cent in small units.
+        use_instead:
+          The 0.25 degree structure of africa-exposure-combined (variable=crop-livestock_all_res-25),
+          rows with unit nominal-usd-2021.

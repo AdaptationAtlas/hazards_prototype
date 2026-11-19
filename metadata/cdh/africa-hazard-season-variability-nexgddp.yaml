@@ -7,7 +7,9 @@ extensions:
   - https://cgiar-climate-data-hub.github.io/cdh-metadata-standard/v0.5.0/extensions/climate/schema.json
 
 id: africa-hazard-season-variability-nexgddp
-title: Year-to-Year Variability of Seasonal Climate Hazards by Administrative Unit, Africa (NEX-GDDP-CMIP6 18-model ensemble)
+title:
+  Year-to-Year Variability of Seasonal Climate Hazards by Administrative Unit, Africa (NEX-GDDP-CMIP6
+  18-model ensemble)
 version: v2026.11
 series:
   name: Africa Agriculture Adaptation Atlas
@@ -41,12 +43,9 @@ keywords:
   - administrative units
 
 note: >
-  The column pct_gcms_increase holds a fraction from 0 to 1, not a percentage. Country-level rows
-  (admin1_name empty) for Egypt, Kenya, Sudan and South Sudan, the four countries that claim
-  disputed border areas, are missing values; use their first-level units. Read the files with hive
-  partitioning turned off (in DuckDB, hive_partitioning = false): the storage path contains
-  timeframe=3months, which otherwise replaces the timeframe column. Changes to these files before
-  and since this first Hub version are listed in the linked version history.
+  The column pct_gcms_increase is a fraction from 0 to 1, not a percentage. Country-level rows (admin1_name
+  empty) for Egypt, Kenya, Sudan and South Sudan, the four countries that claim disputed border areas,
+  have missing values; use their first-level units.
 
 contact:
   - organization: Alliance of Bioversity International and CIAT
@@ -58,7 +57,9 @@ contact:
     roles: [processor, point-of-contact, maintainer]
 
 citation:
-  title: Africa Agriculture Adaptation Atlas year-to-year variability of seasonal climate hazards (NEX-GDDP-CMIP6 ensemble)
+  title:
+    Africa Agriculture Adaptation Atlas year-to-year variability of seasonal climate hazards (NEX-GDDP-CMIP6
+    ensemble)
   authors:
     - organization: Alliance of Bioversity International and CIAT
   date: "2026"
@@ -103,16 +104,17 @@ structures:
       - name: iso3
         type: location
         description: ISO 3166-1 alpha-3 country code. 55 countries. Files are sorted on it.
+        reference_system: https://www.iso.org/iso-3166-country-codes.html
         data_type: string
       - name: admin0_name
         type: location
         description: Country name, as in FAO GAUL 2024.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
         data_type: string
       - name: admin1_name
         type: location
         description: >
-          First-level administrative unit name (province, region, county), as in FAO GAUL 2024; the
-          boundaries are catalogued as africa-admin-boundaries-gaul2024. Empty (null) on the
+          First-level administrative unit name (province, region, county), as in FAO GAUL 2024. Empty (null) on the
           country-level rows.
         data_type: string
         reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
@@ -201,15 +203,17 @@ processing:
       future windows each model is compared with its own 1995-2014 value. Mean and standard deviation
       across the 18 models are then taken, with the fraction of models showing an increase.
     code:
-      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/build_publish_C.R
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/2ab28a4/R/build_publish_C.R
+      version: 2ab28a4
     date: "2026-09-20"
 
 data:
   - name: season-variability
     description: >
-      One Parquet table per window: the 1995-2014 file (about 1 MB, iav_sd only) and four future
-      files (about 11 MB and 700,000 rows each). Sorted by country so a query filtered on iso3 reads
-      only that country's part.
+      One Parquet table per window: the 1995-2014 file (about 1 MB, iav_sd only) and four future files
+      (about 11 MB and 700,000 rows each). Sorted by country so a query filtered on iso3 reads only that
+      country's part. Read with hive partitioning turned off (in DuckDB, hive_partitioning = false): the
+      storage path contains timeframe=3months, which otherwise replaces the timeframe column.
     locations:
       - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/
         title: HTTPS
@@ -270,9 +274,9 @@ cdh:
   domain: [climate]
   usage:
     intended_uses:
-      - Mapping where seasonal rainfall, heat or water stress is projected to become more or less erratic.
-      - Showing how many models agree that variability increases.
-      - Context for risk and insurance planning, where year-to-year swings matter as much as the average.
+      - mapping where seasonal rainfall, heat or water stress becomes more or less erratic
+      - showing how many models agree that variability increases
+      - year-to-year risk context for agricultural insurance and planning
     not_recommended_for:
       - use: Reading pct_gcms_increase as a percentage.
         reason: It is stored as a fraction from 0 to 1.

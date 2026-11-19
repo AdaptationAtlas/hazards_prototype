@@ -1,0 +1,1480 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>v2026.11 Record Review</title>
+<style>
+:root {
+  --bg:#f7f7f5; --card:#ffffff; --ink:#1d1d1b; --muted:#6b6b66; --line:#e2e1dc;
+  --accent:#1f6f5c; --accent-soft:#e3f1ec; --warn:#9a5b00; --warn-soft:#fbf0dd; --old:#f1f0ec;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg:#161615; --card:#1f1f1d; --ink:#ecebe6; --muted:#9e9d97; --line:#33322f;
+    --accent:#5cc2a4; --accent-soft:#1d3a31; --warn:#e3a44a; --warn-soft:#3a2c17; --old:#262624;
+  }
+}
+:root[data-theme="dark"] {
+  --bg:#161615; --card:#1f1f1d; --ink:#ecebe6; --muted:#9e9d97; --line:#33322f;
+  --accent:#5cc2a4; --accent-soft:#1d3a31; --warn:#e3a44a; --warn-soft:#3a2c17; --old:#262624;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:15px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif; }
+main { max-width:920px; margin:0 auto; padding:28px 16px 120px; }
+h1 { font-size:24px; margin:0 0 6px; }
+h2 { font-size:18px; margin:32px 0 10px; }
+h3 { font-size:14px; text-transform:uppercase; letter-spacing:.04em; color:var(--muted); margin:26px 0 8px; }
+p { margin:6px 0; }
+code { font:13px/1.4 ui-monospace,SFMono-Regular,Menlo,monospace; overflow-wrap:anywhere; }
+a { color:var(--accent); }
+.lede { color:var(--muted); max-width:70ch; }
+.stats { display:flex; flex-wrap:wrap; gap:8px; margin:16px 0; }
+.stat { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 12px; }
+.stat b { font-size:18px; display:block; }
+.pass { background:var(--accent-soft); border-color:transparent; }
+.field, .flag { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 14px; margin:10px 0; }
+.fhead { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; }
+.flabel { font-weight:600; }
+.badge { font-size:12px; background:var(--warn-soft); color:var(--warn); border-radius:999px; padding:1px 8px; }
+.hint { color:var(--muted); font-size:13px; }
+.cur ul, .cur dl { margin:6px 0; padding-left:20px; }
+.cur dt { font-weight:600; font-size:13px; } .cur dd { margin:0 0 6px 0; }
+details.old { background:var(--old); border-radius:6px; padding:4px 10px; margin:6px 0; font-size:13px; color:var(--muted); }
+details.old summary { cursor:pointer; }
+.ctl { display:flex; flex-wrap:wrap; gap:14px; margin:8px 0 4px; }
+.ctl label { cursor:pointer; }
+textarea { width:100%; min-height:38px; margin-top:6px; padding:8px; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--ink); font:inherit; resize:vertical; }
+details.rec { background:var(--card); border:1px solid var(--line); border-radius:12px; margin:10px 0; }
+details.rec > summary { list-style:none; cursor:pointer; padding:12px 14px; display:grid; grid-template-columns:auto 1fr auto; gap:2px 10px; align-items:center; }
+details.rec > summary::-webkit-details-marker { display:none; }
+.num { grid-row:span 2; width:26px; height:26px; border-radius:50%; background:var(--old); display:grid; place-items:center; font-size:13px; font-weight:600; }
+.rid { font:600 14px ui-monospace,Menlo,monospace; overflow-wrap:anywhere; }
+.rtitle { grid-column:2; color:var(--muted); font-size:13px; }
+.state { grid-row:1 / span 2; grid-column:3; font-size:12px; border-radius:999px; padding:2px 10px; background:var(--old); color:var(--muted); white-space:nowrap; }
+.state.done { background:var(--accent-soft); color:var(--accent); }
+.state.fix { background:var(--warn-soft); color:var(--warn); }
+.recbody { padding:0 14px 16px; }
+.recbody .field, .recbody .flag { background:var(--bg); }
+.path { font-size:13px; color:var(--muted); }
+.signoff, .okall { display:block; margin:16px 0 4px; font-weight:600; }
+.muted { color:var(--muted); }
+.bar { position:fixed; left:0; right:0; bottom:0; background:var(--card); border-top:1px solid var(--line); padding:10px 16px; }
+.bar .in { max-width:920px; margin:0 auto; display:flex; gap:10px; align-items:center; flex-wrap:wrap; }
+button { font:inherit; border:0; border-radius:8px; padding:8px 14px; cursor:pointer; background:var(--accent); color:#fff; }
+button.sec { background:var(--old); color:var(--ink); }
+#progress { color:var(--muted); font-size:13px; margin-right:auto; }
+#out { display:none; width:100%; min-height:160px; max-height:40vh; font:13px/1.45 ui-monospace,Menlo,monospace; }
+</style>
+</head>
+<body>
+<main>
+  <h1>v2026.11 record review</h1>
+  <p class="lede">The ten Atlas hazard records for the Climate Data Hub, after the fixes drafted on 19 November 2026. The Hub needs a person to sign off the fields below before the pull requests open. Mark each field, answer the questions, then press <b>Copy corrections</b> and paste the result back into the Claude session. Your marks are kept in this browser until you clear them.</p>
+  <div class="stats">
+    <div class="stat pass"><b>10 / 10</b>pass schema v0.5.0 (strict) and prettier</div>
+    <div class="stat pass"><b>All links</b>resolve under the catalog's link-check rules</div>
+    <div class="stat"><b>54</b>wording changes</div>
+    <div class="stat"><b>76</b>structural fixes</div>
+    <div class="stat"><b>18</b>questions for you</div>
+  </div>
+  <p class="hint">Not run: the Hub's own verify script, which opens each file and compares it with the record. Auto mode blocked it as downloaded code.</p>
+
+  <h2>Decisions for all ten</h2>
+  
+    <div class="field" data-rid="global" data-key="ai-use">
+      <div class="fhead"><span class="flabel">AI-use line for the ten PRs (catalog template, agreed in cdh-catalog issue #74)</span></div>
+      <div class="ctl"><label><input type="radio" name="global|ai-use" value="written by AI"> written by AI</label><label><input type="radio" name="global|ai-use" value="written with the help of AI"> written with the help of AI</label><label><input type="radio" name="global|ai-use" value="none"> none</label></div>
+      <textarea placeholder="Comment (optional)" data-for="global|ai-use"></textarea>
+    </div>
+    <div class="field" data-rid="global" data-key="pins">
+      <div class="fhead"><span class="flabel"><b>Accepted by Pete 2026-11-19 (checked by search):</b> each <code>code.version</code> commit holds a copy of the script identical to the one the processing server ran, checked against the server commit in each build/publish log (Sept 20 time series at 4010c8b; Oct 19-23 tiers at a308129; Nov 16 hazard change at 30fca5e; Nov 17-18 exposure table and constant-dollar tier at d098557, where only check scripts differ from the pinned tree). Accept these pins?</span></div>
+      <div class="ctl"><label><input type="radio" name="global|pins" value="accept"> accept</label><label><input type="radio" name="global|pins" value="no, pin the server commits instead"> no, pin the server commits instead</label></div>
+      <textarea placeholder="Comment (optional)" data-for="global|pins"></textarea>
+    </div>
+    <div class="field" data-rid="global" data-key="updated">
+      <div class="fhead"><span class="flabel"><code>updated</code> dates still show when the data last changed, not today's metadata edits. Keep that meaning?</span></div>
+      <div class="ctl"><label><input type="radio" name="global|updated" value="keep"> keep</label><label><input type="radio" name="global|updated" value="set to 2026-11-19"> set to 2026-11-19</label></div>
+      <textarea placeholder="Comment (optional)" data-for="global|updated"></textarea>
+    </div>
+    <div class="field" data-rid="global" data-key="gaul-record">
+      <div class="fhead"><span class="flabel">The GAUL 2024 boundary record is not in the catalog, so the exposure records point their join keys at the boundary file by URL. Submit the boundary record too (it is on schema v0.3.0 and needs upgrading first)?</span></div>
+      <div class="ctl"><label><input type="radio" name="global|gaul-record" value="yes, add it to this batch"> yes, add it to this batch</label><label><input type="radio" name="global|gaul-record" value="later"> later</label><label><input type="radio" name="global|gaul-record" value="no"> no</label></div>
+      <textarea placeholder="Comment (optional)" data-for="global|gaul-record"></textarea>
+    </div>
+
+  <h2>Records, in merge order</h2>
+  
+  <details class="rec" id="africa-exposure-combined" data-rid="africa-exposure-combined">
+    <summary><span class="num">1</span><span class="rid">africa-exposure-combined</span><span class="rtitle">Crop and Livestock Exposure by Administrative Unit, Sub-Saharan Africa</span><span class="state" data-state="africa-exposure-combined">not reviewed</span></summary>
+    <div class="recbody">
+      <p class="path">Record file: <a href="../../africa-exposure-combined.yaml"><code>metadata/cdh/africa-exposure-combined.yaml</code></a> &middot; PR text: <a href="africa-exposure-combined.md"><code>africa-exposure-combined.md</code></a></p>
+      <h3>Fields you sign off</h3>
+      
+    <div class="field" data-rid="africa-exposure-combined" data-key="title">
+      <div class="fhead"><span class="flabel">Title</span></div>
+      <div class="hint">Says what the data is; no product or project name.</div>
+      <div class="cur"><p>Crop and Livestock Exposure by Administrative Unit, Sub-Saharan Africa</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-exposure-combined|title" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-exposure-combined|title" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-exposure-combined|title"></textarea>
+    </div>
+    <div class="field" data-rid="africa-exposure-combined" data-key="description">
+      <div class="fhead"><span class="flabel">Description</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><p>Crop and livestock exposure totals per administrative unit for Sub-Saharan Africa: MapSPAM 2020 crop production, harvested area, physical area and value of production, and GLW4 2020 livestock numbers and value of production, summed onto GAUL 2024 country, first- and second-level units. The table comes in two structures, from zonal statistics on two grids. The 0.05 degree structure (res-05) resolves nearly every second-level unit and is the complete per-unit table. The 0.25 degree structure (res-25) is on the NEX-GDDP-CMIP6 grid used by the hazard-exposure tables and is the denominator for exposed shares. Value of production is carried on two bases, constant 2015 international dollars and nominal 2021 US dollars, distinguished by the unit column; single-basis extracts are published beside each table.</p></div>
+      <details class="old"><summary>Show before</summary><p>One table of what is exposed, per administrative unit: MapSPAM 2020 crop production, harvested area, physical area and value of production, and GLW4 2020 livestock numbers and value of production, summed onto GAUL 2024 country, first- and second-level units for Sub-Saharan Africa. The table is published from zonal statistics on two grids. On the 0.05 degree Atlas exposure grid (res-05) it resolves nearly every second-level unit, so it is the complete per-unit table of exposure totals and the denominator the Atlas notebooks use for country and first-level &quot;Key Facts&quot;. On the 0.25 degree NEX-GDDP-CMIP6 grid (res-25), the grid the Atlas hazard product is built on, it is the denominator that turns hazard-exposed value into a share of total value. Value of production is carried on two bases in one table, constant 2015 international dollars and nominal 2021 US dollars, distinguished by the unit column; single-basis extracts of the value rows are published beside each table.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-exposure-combined|description" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-exposure-combined|description" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-exposure-combined|description"></textarea>
+    </div>
+    <div class="field" data-rid="africa-exposure-combined" data-key="note">
+      <div class="fhead"><span class="flabel">Note (caveats only)</span><span class="badge">changed</span></div>
+      <div class="hint">Hub rule: real caveats only. Reading tips moved to data descriptions; release history is in the linked changelog.</div>
+      <div class="cur"><p>The res-05 structure holds about 2,100 second-level units (6,478 against 4,338) that the 0.25 degree hazard-exposure tables cannot populate, so dividing those tables by res-05 gives shares above 100 per cent in small units. On res-25 a second-level unit that owns no grid cell has no row, and a small country&#x27;s border units can show value of a crop it does not grow (Chad yams, Benin beans), because each cell is assigned to one unit. The total-highland and total-tropical livestock number rows are Tropical Livestock Units (cattle 0.7, sheep 0.1, goats 0.1, pigs 0.2, poultry 0.01), not head sums; a later version relabels them without changing values. Poultry is GLW4 chickens. Constant-dollar crop value is left empty where MapSPAM holds under 10 per cent of FAOSTAT&#x27;s tonnage for a country and crop (every crop in Sudan, and a few small pairs elsewhere); North Africa lies outside the MapSPAM release and has no constant-dollar crop rows. Nominal crop prices are each country&#x27;s own FAOSTAT prices for about 80 per cent of production and gap fills elsewhere. FAOSTAT coffee tonnage for the Central African Republic and Guinea is far above International Coffee Organization figures, so coffee value there is overstated on both bases. Ethiopia tea, Togo oil palm and Guinea-Bissau maize disagree between the two currency bases by more than the expected margin, for documented tonnage or price reasons. Thirty-one border cells are assigned to one country here and to its neighbour in the hazard-exposure tables, which shows at country level for Kenya robusta coffee and Sierra Leone robusta coffee and coconut.</p></div>
+      <details class="old"><summary>Show before</summary><p>PICK THE GRID BY WHAT YOU DIVIDE. Divide the hazard-exposure tiers (africa-hazard-exposure-nexgddp and its siblings) by the res-25 table (variable=crop-livestock_all_res-25), never by res-05: both products rasterise administrative zones on the same 0.25 degree grid, so a second-level unit that owns no cell is absent from both, and the ratio stays at or below one. The res-05 table resolves roughly 2,100 more second-level units than the hazard product can populate (6,478 against 4,338); dividing by it yields exposure shares above 100 per cent in small units. Use res-05 where completeness of small units matters and the hazard product is not involved. On res-25 a small country&#x27;s border units can show value of a crop it does not grow in FAOSTAT (Chad yams, Benin bean): that is the neighbour&#x27;s value in grid cells assigned to the unit under the one-cell-one-zone allocation (hazards_prototype issue 18). THE UNSUFFIXED KEYS ARE DEPRECATED ALIASES OF RES-05. variable=crop-livestock_all.parquet, variable=vop_nominal-usd-2021.parquet and variable=vop_intld15-2021.parquet are rewritten with the same bytes as their _res-05 twins whenever those are published; readers should move to the resolution-explicit keys. THE TABLE IS MULTI-UNIT. SELECT ON `unit`. Rows with unit intld15-2021 are value of production in constant 2015 international dollars, the Atlas standard basis; rows with unit nominal-usd-2021 are nominal 2021 US dollars and share the basis of the published nominal hazard product. The two must not be summed or compared. unit_full is an identical copy of unit kept for older readers; unit carries the vintage since 2026-09-25 (before that it read intld15 and usd). ROW POPULATION. Crop rows exist per technology (all, irr, rf-all, rf-highinput, rf-lowinput, rf-subsistence); the whole-crop figure is tech = all. Livestock rows (cattle, sheep, goats, pigs, poultry, each split highland / tropical, plus total-highland and total-tropical) have no technology and carry number and vop only. The total-* number rows are TROPICAL LIVESTOCK UNITS (cattle 0.7, sheep 0.1, goats 0.1, pigs 0.2, poultry 0.01), not head sums (hazards_prototype issue 52); a later version will relabel them, without changing values. Poultry is GLW4 chickens. Every row is a sum (stat = sum). NOMINAL-USD-2021 ROWS. The crop price per country and crop is FAOSTAT&#x27;s implied price (gross production value in current US dollars divided by production), with the producer price as fallback, a test that rejects frozen local-currency imputations, a clip to five times the world value, median fills from neighbours, region and continent, a within-crop basis guard, and four cited evidence pins (Angola banana; coffee in Ethiopia, Uganda and Guinea, per tonne of green bean); method text docs/methods/nominal_price_method.md in the repository. Own prices cover about 80 per cent of FAOSTAT production. Livestock are priced at each country&#x27;s own FAOSTAT producer price (clipped, 2019-2023 median) with median gap fills, the crop method (hazards_prototype issue 47). INTLD15-2021 ROWS. A FAOSTAT item shared by several MapSPAM crops is split by production share (small-millet has values and pearl-millet does not carry all millet value); bananas and plantains are pooled and split the same way; where MapSPAM holds less than 10 per cent of FAOSTAT&#x27;s tonnage for a country and crop, the constant-dollar value is left empty instead of being placed on a sliver of cells (every crop in Sudan, plus a few small pairs elsewhere); North Africa lies outside the MapSPAM release and has no constant-dollar crop rows. FAOSTAT is matched on item code, not item name. Four livestock rows used placeholder constant-dollar prices until 2026-11-17 (Libya and Sierra Leone cattle, Lesotho poultry, Eswatini sheep; hazards_prototype issue 54); the published correction raised the livestock constant-dollar total by 0.1 per cent. BOTH BASES. Values are allocated and priced on the 0.05 degree grid for both tables and sum-resampled, so the Seychelles carry value on res-25 too. KNOWN LIMITATIONS. FAOSTAT coffee tonnage for the Central African Republic (about 300 thousand tonnes) and Guinea (about 240) is far above International Coffee Organization figures (2-6 and about 9), and MapSPAM is calibrated to FAOSTAT, so coffee value there is overstated on both bases. Three pairs remain outside the cross-basis band for documented tonnage or price reasons: Ethiopia tea, Togo oil palm, Guinea-Bissau maize. The nominal hazard product divided by the res-25 nominal-usd-2021 rows is consistent: for the crops whose price moved most in 2026-10, 158 of 163 country pairs sit within 5 per cent of one. The exceptions are 31 border cells that this table assigns to one country at admin0 while the hazard product, aggregated from second-level units, assigns them to the neighbour (hazards_prototype issue 18): Kenya robusta coffee (one Lake Victoria cell holds most of it), Sierra Leone robusta coffee and coconut. VERSION HISTORY. This is the first Climate Data Hub release (v2026.11, the files as published on 2026-11-17: the 2026-10-21 table plus the placeholder-price correction and the tropical-livestock- unit relabel). The public changes before it are in the version history linked below, with dates: among them the 2026-09-25 livestock currency-year fix (hazards_prototype issue 30; until then the 0.05 degree table was the only one published and its livestock constant-dollar rows held nominal values, reconciling to FAOSTAT at 1.198; after it livestock reconciled at 1.000, 240 of 240 species-country pairs within 0.90-1.10, and crop at 1.003); the 2026-10-06 nominal price method (continental nominal crop value about 0.82 times the previous publication; cowpea 0.33, plantain 0.41, coffee 0.57, where FAO&#x27;s own country valuations replaced fills that had carried a few high prices across whole regions; own-price coverage up from about 56 to about 80 per cent of production); the 2026-10-08 item-code match (constant-dollar total 200.3 to 240.2 billion); and the 2026-10-21 livestock repricing (104.2 to 109.1 billion US dollars, +4.6 per cent; country-species values move 0.43 to 2.2 times; every other row value-identical, verified row by row).</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-exposure-combined|note" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-exposure-combined|note" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-exposure-combined|note"></textarea>
+    </div>
+    <div class="field" data-rid="africa-exposure-combined" data-key="keywords">
+      <div class="fhead"><span class="flabel">Keywords</span><span class="badge">changed</span></div>
+      <div class="hint">Must not repeat places, periods, crops or variables already in structured fields.</div>
+      <div class="cur"><ul><li>exposure</li><li>value of production</li><li>MapSPAM</li><li>GLW4</li><li>administrative units</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>exposure</li><li>value of production</li><li>crop production</li><li>livestock</li><li>MapSPAM</li><li>GLW4</li><li>administrative units</li><li>sub-saharan africa</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-exposure-combined|keywords" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-exposure-combined|keywords" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-exposure-combined|keywords"></textarea>
+    </div>
+    <div class="field" data-rid="africa-exposure-combined" data-key="intended_uses">
+      <div class="fhead"><span class="flabel">Intended uses</span><span class="badge">changed</span></div>
+      <div class="hint">Short lowercase phrases, concrete tasks.</div>
+      <div class="cur"><ul><li>denominator for exposed shares from the hazard-exposure tables (res-25)</li><li>crop and livestock value, production, area and head totals per administrative unit, to second level (res-05)</li><li>country and first-level summaries of agricultural exposure (res-05)</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>Denominator for the hazard-exposure tiers (res-25), turning exposed value into a share of total value per unit.</li><li>Total crop and livestock value, production, area and head per administrative unit, complete to second level (res-05).</li><li>The country and first-level &quot;Key Facts&quot; denominator in the Atlas notebooks (res-05).</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-exposure-combined|intended_uses" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-exposure-combined|intended_uses" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-exposure-combined|intended_uses"></textarea>
+    </div>
+    <div class="field" data-rid="africa-exposure-combined" data-key="not_recommended_for">
+      <div class="fhead"><span class="flabel">Not recommended for</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><dl><dt>use</dt><dd>Dividing the hazard-exposure tiers by the res-05 table.</dd><dt>reason</dt><dd>The 0.05 degree table resolves about 2,100 more second-level units than the 0.25 degree hazard product populates; shares come out above 100 per cent in small units.</dd><dt>use_instead</dt><dd>The res-25 table (variable=crop-livestock_all_res-25) for anything divided into the hazard product.</dd></dl></li><li><dl><dt>use</dt><dd>Reading the res-25 table as a map of second-level units for a small country.</dd><dt>reason</dt><dd>A second-level unit that owns no 0.25 degree cell has no row there.</dd><dt>use_instead</dt><dd>The res-05 table, where completeness of small units matters and the hazard product is not involved.</dd></dl></li><li><dl><dt>use</dt><dd>Summing or comparing rows across the two vop units.</dd><dt>reason</dt><dd>intld15-2021 is constant 2015 international dollars; nominal-usd-2021 is nominal 2021 US dollars.</dd><dt>use_instead</dt><dd>Filter on `unit` and stay on one basis.</dd></dl></li><li><dl><dt>use</dt><dd>Exposed shares for Kenya robusta coffee or Sierra Leone robusta coffee and coconut.</dd><dt>reason</dt><dd>A border cell is assigned to a different country here (admin0) than in the hazard product (aggregated from second-level units).</dd><dt>use_instead</dt><dd>Treat those three national shares as indicative; sub-national units away from the border are unaffected.</dd></dl></li><li><dl><dt>use</dt><dd>Coffee value for the Central African Republic or Guinea.</dd><dt>reason</dt><dd>FAOSTAT and MapSPAM coffee tonnage there is far above International Coffee Organization figures.</dd><dt>use_instead</dt><dd>No substitute in this table; treat as an upper bound.</dd></dl></li><li><dl><dt>use</dt><dd>Reading the unsuffixed keys as distinct datasets.</dd><dt>reason</dt><dd>They are byte-identical aliases of the res-05 files and will not be maintained separately.</dd><dt>use_instead</dt><dd>The _res-05 keys.</dd></dl></li></ul></div>
+      <details class="old"><summary>Show before</summary><p>not_recommended_for[Exposed shares for Kenya robusta coffee ].reason: A border cell is assigned to a different country here (admin0) than in the hazard product (aggregated from second-level units); hazards_prototype issue 18. → A border cell is assigned to a different country here (admin0) than in the hazard product (aggregated from second-level units).</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-exposure-combined|not_recommended_for" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-exposure-combined|not_recommended_for" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-exposure-combined|not_recommended_for"></textarea>
+    </div>
+    <div class="field" data-rid="africa-exposure-combined" data-key="license">
+      <div class="fhead"><span class="flabel">Licence and attribution</span></div>
+      
+      <div class="cur"><dl><dt>license</dt><dd>CC-BY-4.0</dd><dt>attribution</dt><dd>(none)</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-exposure-combined|license" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-exposure-combined|license" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-exposure-combined|license"></textarea>
+    </div>
+    <div class="field" data-rid="africa-exposure-combined" data-key="contacts">
+      <div class="fhead"><span class="flabel">Contacts and roles</span></div>
+      <div class="hint">Licensor must be the organisation holding the rights.</div>
+      <div class="cur"><ul><li>Alliance of Bioversity International and CIAT: licensor, producer</li><li>Peter Steward (Alliance of Bioversity International and CIAT): processor, point-of-contact, maintainer &middot; p.steward@cgiar.org</li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-exposure-combined|contacts" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-exposure-combined|contacts" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-exposure-combined|contacts"></textarea>
+    </div>
+    <div class="field" data-rid="africa-exposure-combined" data-key="citation">
+      <div class="fhead"><span class="flabel">Citation</span></div>
+      
+      <div class="cur"><dl><dt>title</dt><dd>Africa Agriculture Adaptation Atlas combined crop and livestock exposure table</dd><dt>authors</dt><dd>[{&#x27;organization&#x27;: &#x27;Alliance of Bioversity International and CIAT&#x27;}]</dd><dt>date</dt><dd>2026</dd><dt>publisher</dt><dd>Alliance of Bioversity International and CIAT</dd><dt>url</dt><dd>https://adaptationatlas.cgiar.org/</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-exposure-combined|citation" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-exposure-combined|citation" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-exposure-combined|citation"></textarea>
+    </div>
+    <div class="field" data-rid="africa-exposure-combined" data-key="data_processing_text">
+      <div class="fhead"><span class="flabel">Data and processing descriptions (edited)</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><b>processing[value].description</b>: Crop value in constant 2015 international dollars distributes FAOSTAT gross production value across pixels by the production share of the MapSPAM crops that share a FAOSTAT item, left empty where MapSPAM holds under 10 per cent of FAOSTAT&#x27;s tonnage; crop nominal 2021 US dollars multiply SPAM production by a national price (FAOSTAT implied price, producer-price fallback, stale-price test, world clip, median fills, basis guard, cited pins; docs/methods/nominal_price_method.md); both computed on the 0.05 degree grid and sum-resampled; livestock values distribute FAOSTAT national values by GLW4 head share. Scripts R/0.4.0_create_crop_vop_intld15.R, R/0.4.1_create_livestock_exposure.R and R/0.4.2_create_crop_vop_nominal_usd.R. Nominal livestock values use each country&#x27;s own FAOSTAT producer price (2019-2023 median, clipped) with median gap fills. FAOSTAT is matched on item code; bananas and plantains are pooled and split by production share.</li><li><b>data[crop-livestock-all-res-05].description</b>: The full table on the 0.05 degree grid: one parquet, about 7.8 million rows and 9 MB, sorted for predicate pushdown. A JSON sidecar beside it records the zonal grid, source versions and per-column descriptions. Published by scripts/r3_publish_tiers.R --reference-only --res 0.05, which also refreshes the deprecated alias. Rows carry both currency bases: select on unit before summing (unit_full is an identical copy kept for older readers).</li><li><b>data[crop-livestock-all-res-25].description</b>: The full table on the 0.25 degree grid, the denominator of the hazard-exposure tiers: one parquet, about 5.5 million rows and 7 MB, sorted for predicate pushdown, with a JSON sidecar. Published by scripts/r3_publish_tiers.R --reference-only --res 0.25. Rows carry both currency bases: select on unit before summing (unit_full is an identical copy kept for older readers).</li></ul></div>
+      <details class="old"><summary>Show before</summary><p>processing[value].description: Crop value in constant 2015 international dollars distributes FAOSTAT gross production value across pixels by the production share of the MapSPAM crops that share a FAOSTAT item, left empty where MapSPAM holds under 10 per cent of FAOSTAT&#x27;s tonnage; crop nominal 2021 US dollars multiply SPAM production by a national price (FAOSTAT implied price, producer-price fallback, stale-price test, world clip, median fills, basis guard, cited pins; docs/methods/nominal_price_method.md); both computed on the 0.05 degree grid and sum-resampled; livestock values distribute FAOSTAT national values by GLW4 head share. Scripts R/0.4.0_create_crop_vop_intld15.R, R/0.4.1_create_livestock_exposure.R and R/0.4.2_create_crop_vop_nominal_usd.R.; data[crop-livestock-all-res-05].description: The full table on the 0.05 degree grid: one parquet, about 7.8 million rows and 9 MB, sorted for predicate pushdown. A JSON sidecar beside it records the zonal grid, source versions and per-column descriptions. Published by scripts/r3_publish_tiers.R --reference-only --res 0.05, which also refreshes the deprecated alias.; data[crop-livestock-all-res-25].description: The full table on the 0.25 degree grid, the denominator of the hazard-exposure tiers: one parquet, about 5.5 million rows and 7 MB, sorted for predicate pushdown, with a JSON sidecar. Published by scripts/r3_publish_tiers.R --reference-only --res 0.25.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-exposure-combined|data_processing_text" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-exposure-combined|data_processing_text" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-exposure-combined|data_processing_text"></textarea>
+    </div>
+      <h3>Structural fixes I made</h3>
+      <p class="hint">Mechanical, checked against the files or git history. Untick only if one looks wrong.</p>
+      <label class="okall"><input type="checkbox" data-struct="africa-exposure-combined" checked> These look right</label>
+      <ul><li><code>processing[source].derived_from https://doi.org/10.7910/DVN/Z0HK7R: version 1.0; title now &quot;MapSPAM2020_AdaptationAtlas_SSA&quot;</code></li><li><code>processing[source].derived_from glw4-2020: version 1</code></li><li><code>processing[value].code: https://github.com/AdaptationAtlas/hazards_prototype/tree/develop/R → https://github.com/AdaptationAtlas/hazards_prototype/tree/03a5705/R (version 03a5705)</code></li><li><code>processing[zonal].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/0.4.4_process_exposure.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/1825d3a/R/0.4.4_process_exposure.R (version 1825d3a)</code></li><li><code>dimension gaul2_code.data_type: float64</code></li><li><code>dimension gaul2_code.description: reworded (no longer names an uncatalogued boundary record)</code></li><li><code>processing[source].derived_from FAOSTAT: title now records the bulk download of 2026-05-14</code></li><li><code>structures: four new structures vop-nominal-usd-2021-res-05/-res-25 and vop-intld15-2021-res-05/-res-25 (one exposure, one unit, the tech values each file holds); the six VoP files and their two aliases now point at them (Hub verify script)</code></li><li><code>structures res-05/res-25: iso3, admin0_name, admin1_name, admin2_name, gaul0_code, gaul1_code and stat declared (Hub verify script)</code></li></ul>
+      <h3>Questions on this record</h3>
+      <div class="flag" data-rid="africa-exposure-combined" data-key="flag:fx-basis">
+        <p>The description and note say <b>constant 2015 international dollars</b>; the constant-dollar hazard record's title says <b>constant 2014-2016 international dollars</b>. Which wording is right for both?</p>
+        <textarea placeholder="Your answer" data-for="africa-exposure-combined|flag:fx-basis"></textarea>
+      </div>
+      <div class="flag" data-rid="africa-exposure-combined" data-key="flag:alias">
+        <p>Three data entries are deprecated aliases, byte-identical to the res-05 files. Brayden's new convention (catalog PR #84) moves duplicate copies to links. Keep them as data entries, or move them to additional links?</p>
+        <textarea placeholder="Your answer" data-for="africa-exposure-combined|flag:alias"></textarea>
+      </div>
+      <div class="flag" data-rid="africa-exposure-combined" data-key="flag:faostat">
+        <p><b>Accepted by Pete 2026-11-19 (resolved by search):</b> the FAOSTAT title now says "bulk files downloaded 2026-05-14". That is the set every value build used: the processing server's copy was checked md5-identical to it on 2026-10-04, and the 2026-10-21 build log still shows the same files. No <code>version</code>, as FAOSTAT publishes none. Correct?</p>
+        <textarea placeholder="Your answer" data-for="africa-exposure-combined|flag:faostat"></textarea>
+      </div>
+      <label class="signoff"><input type="checkbox" data-signoff="africa-exposure-combined"> I have reviewed the full record and approve it for submission</label>
+    </div>
+  </details>
+  <details class="rec" id="africa-hazard-season-timeseries-nexgddp" data-rid="africa-hazard-season-timeseries-nexgddp">
+    <summary><span class="num">2</span><span class="rid">africa-hazard-season-timeseries-nexgddp</span><span class="rtitle">Seasonal Climate Hazard Time Series by Administrative Unit, Africa (NEX-GDDP-CMIP6 18-model ensemble)</span><span class="state" data-state="africa-hazard-season-timeseries-nexgddp">not reviewed</span></summary>
+    <div class="recbody">
+      <p class="path">Record file: <a href="../../africa-hazard-season-timeseries-nexgddp.yaml"><code>metadata/cdh/africa-hazard-season-timeseries-nexgddp.yaml</code></a> &middot; PR text: <a href="africa-hazard-season-timeseries-nexgddp.md"><code>africa-hazard-season-timeseries-nexgddp.md</code></a></p>
+      <h3>Fields you sign off</h3>
+      
+    <div class="field" data-rid="africa-hazard-season-timeseries-nexgddp" data-key="title">
+      <div class="fhead"><span class="flabel">Title</span></div>
+      <div class="hint">Says what the data is; no product or project name.</div>
+      <div class="cur"><p>Seasonal Climate Hazard Time Series by Administrative Unit, Africa (NEX-GDDP-CMIP6 18-model ensemble)</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|title" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|title" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-timeseries-nexgddp|title"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-timeseries-nexgddp" data-key="description">
+      <div class="fhead"><span class="flabel">Description</span></div>
+      
+      <div class="cur"><p>Year-by-year values of nine agro-climatic hazard indices (rainfall, temperature, heat-stress days, dry days, soil water stress, waterlogging, and human and livestock heat stress) for every country and first-level administrative unit in Africa, for each rolling three-month season and for the whole year. Each row summarises 18 bias-corrected, downscaled climate models from NASA&#x27;s NEX-GDDP-CMIP6: the ensemble mean, the spread between models (standard deviation and 17th-83rd percentile range, the IPCC &quot;likely&quot; range), and the same statistics for the anomaly from a historical baseline average. Historical years (1981-2014) come from the models&#x27; historical runs; future years cover 2021-2100 under four emissions scenarios. Use it to chart how a hazard is projected to evolve in a region and season, and how much the models disagree.</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|description" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|description" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-timeseries-nexgddp|description"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-timeseries-nexgddp" data-key="note">
+      <div class="fhead"><span class="flabel">Note (caveats only)</span><span class="badge">changed</span></div>
+      <div class="hint">Hub rule: real caveats only. Reading tips moved to data descriptions; release history is in the linked changelog.</div>
+      <div class="cur"><p>Country-level rows (admin1_name empty) for Egypt, Kenya, Sudan and South Sudan, the four countries that claim disputed border areas, hold a single malformed year instead of a series; use their first-level units. The human heat-stress index (HSH-max) will be recalculated in a later version; the correction raises it by about 7 °C.</p></div>
+      <details class="old"><summary>Show before</summary><p>Country-level rows (admin1_name empty) are not usable for Egypt, Kenya, Sudan and South Sudan, the four countries that claim disputed border areas: each holds a single malformed year instead of a series. Use their first-level units. Read the files with hive partitioning turned off (in DuckDB, hive_partitioning = false): the storage path contains timeframe=3months, which otherwise replaces the timeframe column. The human heat-stress index (HSH-max) will be recalculated in a later version; the correction raises it by about 7 °C. Changes to these files before and since this first Hub version are listed in the linked version history.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|note" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|note" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-timeseries-nexgddp|note"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-timeseries-nexgddp" data-key="keywords">
+      <div class="fhead"><span class="flabel">Keywords</span><span class="badge">changed</span></div>
+      <div class="hint">Must not repeat places, periods, crops or variables already in structured fields.</div>
+      <div class="cur"><ul><li>climate hazards</li><li>agro-climatic indices</li><li>climate projections</li><li>multi-model ensemble</li><li>anomaly</li><li>NEX-GDDP</li><li>heat stress</li><li>drought</li><li>waterlogging</li><li>administrative units</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>climate hazards</li><li>agro-climatic indices</li><li>seasonal time series</li><li>climate projections</li><li>multi-model ensemble</li><li>anomaly</li><li>NEX-GDDP</li><li>heat stress</li><li>drought</li><li>waterlogging</li><li>administrative units</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|keywords" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|keywords" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-timeseries-nexgddp|keywords"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-timeseries-nexgddp" data-key="intended_uses">
+      <div class="fhead"><span class="flabel">Intended uses</span><span class="badge">changed</span></div>
+      <div class="hint">Short lowercase phrases, concrete tasks.</div>
+      <div class="cur"><ul><li>year-by-year projected change of a seasonal hazard in a country or province</li><li>comparing emissions scenarios, with model disagreement as the 17th-83rd percentile band</li><li>seasonal climate context for agricultural adaptation planning</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>Charting how a seasonal hazard is projected to change in a country or province, year by year.</li><li>Comparing emissions scenarios and showing model disagreement with the 17th-83rd percentile band.</li><li>Seasonal climate context for adaptation planning in agriculture.</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|intended_uses" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|intended_uses" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-timeseries-nexgddp|intended_uses"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-timeseries-nexgddp" data-key="not_recommended_for">
+      <div class="fhead"><span class="flabel">Not recommended for</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><dl><dt>use</dt><dd>Reading a single future year as a forecast for that year.</dd><dt>reason</dt><dd>Climate models do not reproduce the timing of individual wet or dry years. A future year is one plausible year from that climate, not a prediction.</dd><dt>use_instead</dt><dd>Average over the 20-year window, or use the trends record africa-hazard-season-trends-nexgddp.</dd></dl></li><li><dl><dt>use</dt><dd>Comparing against observations averaged over 1991-2020.</dd><dt>reason</dt><dd>The model historical runs end in 2014, so no 1991-2020 baseline can be built from them.</dd><dt>use_instead</dt><dd>Use the 1995-2014 or 1981-2014 baseline and state it.</dd></dl></li><li><dl><dt>use</dt><dd>Point or field-scale analysis.</dd><dt>reason</dt><dd>Values are averages over administrative units of a 0.25° (about 28 km) model grid.</dd><dt>use_instead</dt><dd>Station records or a finer-resolution downscaled product.</dd></dl></li></ul></div>
+      <details class="old"><summary>Show before</summary><p>not_recommended_for[Point or field-scale analysis.].use_instead: (none) → Station records or a finer-resolution downscaled product.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|not_recommended_for" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|not_recommended_for" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-timeseries-nexgddp|not_recommended_for"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-timeseries-nexgddp" data-key="license">
+      <div class="fhead"><span class="flabel">Licence and attribution</span></div>
+      
+      <div class="cur"><dl><dt>license</dt><dd>CC-BY-4.0</dd><dt>attribution</dt><dd>Climate scenarios used were from the NEX-GDDP-CMIP6 dataset, prepared by the Climate Analytics Group and NASA Ames Research Center using the NASA Earth Exchange, and distributed by the NASA Center for Climate Simulation (NCCS).</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|license" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|license" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-timeseries-nexgddp|license"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-timeseries-nexgddp" data-key="contacts">
+      <div class="fhead"><span class="flabel">Contacts and roles</span></div>
+      <div class="hint">Licensor must be the organisation holding the rights.</div>
+      <div class="cur"><ul><li>Alliance of Bioversity International and CIAT: licensor, producer</li><li>Peter Steward (Alliance of Bioversity International and CIAT): processor, point-of-contact, maintainer &middot; p.steward@cgiar.org</li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|contacts" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|contacts" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-timeseries-nexgddp|contacts"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-timeseries-nexgddp" data-key="citation">
+      <div class="fhead"><span class="flabel">Citation</span></div>
+      
+      <div class="cur"><dl><dt>title</dt><dd>Africa Agriculture Adaptation Atlas seasonal climate hazard time series (NEX-GDDP-CMIP6 ensemble)</dd><dt>authors</dt><dd>[{&#x27;organization&#x27;: &#x27;Alliance of Bioversity International and CIAT&#x27;}]</dd><dt>date</dt><dd>2026</dd><dt>publisher</dt><dd>Alliance of Bioversity International and CIAT</dd><dt>url</dt><dd>https://adaptationatlas.cgiar.org/</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|citation" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|citation" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-timeseries-nexgddp|citation"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-timeseries-nexgddp" data-key="data_processing_text">
+      <div class="fhead"><span class="flabel">Data and processing descriptions (edited)</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><b>data[season-timeseries].description</b>: One Parquet table per timeframe and baseline: 10 files, 35 to 140 MB, about 1.7 to 7 million rows each. Sorted by country so a query filtered on iso3 reads only that country&#x27;s part. Read with hive partitioning turned off (in DuckDB, hive_partitioning = false): the storage path contains timeframe=3months, which otherwise replaces the timeframe column.</li></ul></div>
+      <details class="old"><summary>Show before</summary><p>data[season-timeseries].description: One Parquet table per timeframe and baseline: 10 files, 35 to 140 MB, about 1.7 to 7 million rows each. Sorted by country so a query filtered on iso3 reads only that country&#x27;s part.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|data_processing_text" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-timeseries-nexgddp|data_processing_text" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-timeseries-nexgddp|data_processing_text"></textarea>
+    </div>
+      <h3>Structural fixes I made</h3>
+      <p class="hint">Mechanical, checked against the files or git history. Untick only if one looks wrong.</p>
+      <label class="okall"><input type="checkbox" data-struct="africa-hazard-season-timeseries-nexgddp" checked> These look right</label>
+      <ul><li><code>processing[indices].code: https://github.com/AdaptationAtlas/hazards → https://github.com/AdaptationAtlas/hazards (version v0.1.0-nexgddp)</code></li><li><code>processing[admin-seasons].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2.1_create_monthly_haz_tables.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/212c95f/R/2.1_create_monthly_haz_tables.R (version 212c95f)</code></li><li><code>processing[ensemble].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2.1_create_monthly_haz_tables.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/212c95f/R/2.1_create_monthly_haz_tables.R (version 212c95f)</code></li><li><code>dimension iso3.reference_system: https://www.iso.org/iso-3166-country-codes.html</code></li><li><code>dimension admin0_name.reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024</code></li><li><code>dimension admin1_name.description: reworded (no longer names an uncatalogued boundary record)</code></li><li><code>processing[source].derived_from NEX-GDDP-CMIP6: version 1.0-1.2; title says newest v1 revision per file, v2.0 not used</code></li></ul>
+      <h3>Questions on this record</h3>
+      <div class="flag" data-rid="africa-hazard-season-timeseries-nexgddp" data-key="flag:ai-use-instead">
+        <p>I added a "use instead" to the point/field-scale not-recommended use: <i>Station records or a finer-resolution downscaled product.</i> It was missing. Keep or rewrite?</p>
+        <textarea placeholder="Your answer" data-for="africa-hazard-season-timeseries-nexgddp|flag:ai-use-instead"></textarea>
+      </div>
+      <div class="flag" data-rid="africa-hazard-season-timeseries-nexgddp" data-key="flag:q7">
+        <p>Country rows for Egypt, Kenya, Sudan and South Sudan are still broken (briefing question 7, Brayden's call). The note carries the caveat.</p>
+        <textarea placeholder="Your answer" data-for="africa-hazard-season-timeseries-nexgddp|flag:q7"></textarea>
+      </div>
+      <label class="signoff"><input type="checkbox" data-signoff="africa-hazard-season-timeseries-nexgddp"> I have reviewed the full record and approve it for submission</label>
+    </div>
+  </details>
+  <details class="rec" id="africa-hazard-exposure-nexgddp" data-rid="africa-hazard-exposure-nexgddp">
+    <summary><span class="num">3</span><span class="rid">africa-hazard-exposure-nexgddp</span><span class="rtitle">Hazard Frequency crossed with Crop and Livestock Value of Production (nominal 2021 US dollars), Sub-Saharan Africa</span><span class="state" data-state="africa-hazard-exposure-nexgddp">not reviewed</span></summary>
+    <div class="recbody">
+      <p class="path">Record file: <a href="../../africa-hazard-exposure-nexgddp.yaml"><code>metadata/cdh/africa-hazard-exposure-nexgddp.yaml</code></a> &middot; PR text: <a href="africa-hazard-exposure-nexgddp.md"><code>africa-hazard-exposure-nexgddp.md</code></a></p>
+      <h3>Fields you sign off</h3>
+      
+    <div class="field" data-rid="africa-hazard-exposure-nexgddp" data-key="title">
+      <div class="fhead"><span class="flabel">Title</span></div>
+      <div class="hint">Says what the data is; no product or project name.</div>
+      <div class="cur"><p>Hazard Frequency crossed with Crop and Livestock Value of Production (nominal 2021 US dollars), Sub-Saharan Africa</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|title" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|title" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-nexgddp|title"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-nexgddp" data-key="description">
+      <div class="fhead"><span class="flabel">Description</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><p>Value of crop and livestock production exposed to each agro-climatic hazard, in nominal 2021 US dollars, by administrative unit, commodity, hazard, severity, scenario, period and timeframe, for Sub-Saharan Africa. Hazard frequencies from NEX-GDDP-CMIP6 hazard indices are crossed with MapSPAM-derived crop value and GLW4-derived livestock value. It shows how much production value is exposed to a hazard, where, and how that changes under future scenarios. A constant-dollar version is a separate record (africa-hazard-exposure-intld).</p></div>
+      <details class="old"><summary>Show before</summary><p>The Atlas hazard-exposure product: the frequency of each agro-climatic hazard crossed with the value of crop and livestock production exposed to it, in nominal 2021 US dollars, by administrative unit, commodity, hazard, scenario, period and timeframe, for Sub-Saharan Africa. Built from NEX-GDDP-CMIP6 hazard indices, MapSPAM-derived crop value of production and GLW4-derived livestock value. This is the layer the Atlas notebooks read to answer &quot;how much production is exposed to this hazard, where, and how does that change under future scenarios&quot;.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|description" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|description" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-nexgddp|description"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-nexgddp" data-key="note">
+      <div class="fhead"><span class="flabel">Note (caveats only)</span><span class="badge">changed</span></div>
+      <div class="hint">Hub rule: real caveats only. Reading tips moved to data descriptions; release history is in the linked changelog.</div>
+      <div class="cur"><p>Values are nominal 2021 US dollars and are not deflated, so a change between timeframes mixes price change with production change. Own FAOSTAT producer prices exist for only about a quarter of country-livestock-product rows; the rest are gap fills from neighbouring, regional or continental medians, some from a single neighbour, and goat and sheep milk use the world median. Only the 18-model ensemble mean is published; the JSON sidecar beside each file records the ensemble membership. The historical window is 1995-2014, the end of the CMIP6 historical runs, not a 1991-2020 normal. The interaction PTOT-L+NTxS+PTOT-G no longer exists; its replacement is PTOT-L+NTxM+PTOT-G. Thirty-one border cells are assigned to a different country than in the exposure denominator, which shows at country level for Kenya robusta coffee and Sierra Leone robusta coffee and coconut. Tanzania coconut undershoots its exposure by 2.4 per cent because part of Pemba Island has no hazard coverage at 0.25 degrees.</p></div>
+      <details class="old"><summary>Show before</summary><p>CURRENCY BASIS - THE MOST IMPORTANT THING TO KNOW. What is published is variable=vop_nominal-usd21, value of production in NOMINAL 2021 US dollars. That is NOT the Atlas standard basis, constant 2015 international dollars, which is the sibling record africa-hazard-exposure-intld (variable=vop_intld15-21). Nominal values are not deflated, so a change between timeframes mixes price change with production change, and figures are not comparable with any Atlas product quoted in constant international dollars. Crops are priced with FAOSTAT&#x27;s implied farm-gate price, a basis guard and cited evidence pins (docs/methods/nominal_price_method.md in the repository). Livestock are priced at each country&#x27;s own FAOSTAT producer price (clipped to a band around the world median, 2019-2023 median, longer series as fallback), gap-filled with medians of neighbouring, regional and continental own prices; goat and sheep milk keep the world median by decision. Own producer prices exist for only about a quarter of country-livestock-product rows; the rest are fills, some of them a single neighbour&#x27;s price. Sudan and Nigeria-banana rows are sound on this nominal basis. THE DENOMINATOR. Consumers divide this product by the exposure table africa-exposure-combined (domain=exposure/type=combined/.../variable=crop-livestock_all*.parquet). Use its 0.25 degree structure, variable=crop-livestock_all_res-25, which is extracted on the 0.25 degree NEX-GDDP hazard grid - THE SAME GRID AS THIS PRODUCT. The 0.05 degree structure, variable=crop-livestock_all_res-05 (and its deprecated unsuffixed alias variable=crop-livestock_all), resolves roughly 2,100 more second-level units than this product can populate, so dividing by it yields exposure fractions above 100 per cent in small units. The denominator is MULTI-UNIT: its nominal-usd-2021 rows share this product&#x27;s basis, its intld15-2021 rows are constant international dollars and do not. Select on `unit`. Per country and crop this product&#x27;s total exposed value equals the denominator&#x27;s nominal-usd-2021 rows to within a few per cent; the publish gate measures that, plus 18 ensemble members. Known exceptions: 31 border cells that the denominator assigns at admin0 and this product, aggregated from second-level units, assigns to the neighbour (hazards_prototype issue 18) - visible nationally only for Kenya robusta coffee and Sierra Leone robusta coffee and coconut; and Tanzania coconut, which undershoots its exposure by 2.4 per cent from a hazard-coverage hole on Pemba Island (issue 50). HAZARD SETS. The crop-specific interaction set PTOT-L+NTxS+PTOT-G is retired and replaced by PTOT-L+NTxM+PTOT-G (the per-crop ecocrop-optimum heat threshold; the old NTxS averaged the optimum with the survival limit and reported zero heat-exposed maize value), and NDWS+NTxM+NDWL0 gives crop-specific heat with the water-balance framing. PTOT-L+NTxS+PTOT-G readers must move to the NTxM name. The poultry_highland THI extreme threshold is 89 (was 79). FIVE TIERS, ONE RECORD EACH. Under source=nex-gddp-cmip6 this nominal-dollar tier sits beside constant international dollars (africa-hazard-exposure-intld), harvested area (africa-hazard-exposure-harvested-area), production tonnes (africa-hazard-exposure-production) and livestock head counts (africa-hazard-exposure-livestock-numbers). There is no population exposure tier under this source. ONLY THE ENSEMBLE MEAN IS PUBLISHED. model = ENSEMBLEmean throughout; no per-model files exist here. Ensemble membership has previously varied between 18, 13 and 5 members across products without being recorded, which is why membership is now stamped into the .json sidecar beside each file - check it rather than assuming 18. Tracked as hazards_prototype issue 26. BOTH PERIODS ARE PUBLISHED. period = jagermeyr (crop-calendar growing season) and period = annual (full calendar year, published since 2026-10-19). SCALE. A jagermeyr file holds roughly 94 million rows at 77 to 87 MB compressed. Query it with predicate pushdown - reading it whole into memory is not the intended access pattern. BASELINE. The historic window is 1995-2014, which is the end of the CMIP6 historical run, not a WMO 1991-2020 normal. Comparisons against a 1991-2020 baseline are not possible from this source. VERSION HISTORY. This is the first Climate Data Hub release (v2026.11, the files as published on 2026-10-23). The public changes before it, with dates and how far values moved, are in the version history linked below: among them the 2026-09-25 denominator fix (issue 30), the 2026-09-30 re-bake on the 0.25 degree grid, the 2026-10-06 crop price revision, the 2026-10-16 to 10-19 hazard rebuild, and the 2026-10-23 livestock repricing (issue 47), which moved country-species values 0.43 to 2.2 times (South Africa poultry -32 per cent, Egypt cattle +39, Mozambique poultry +92) while leaving crop values unchanged.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|note" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|note" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-nexgddp|note"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-nexgddp" data-key="keywords">
+      <div class="fhead"><span class="flabel">Keywords</span><span class="badge">changed</span></div>
+      <div class="hint">Must not repeat places, periods, crops or variables already in structured fields.</div>
+      <div class="cur"><ul><li>hazard exposure</li><li>climate risk</li><li>value of production</li><li>CMIP6</li><li>NEX-GDDP</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>hazard exposure</li><li>climate risk</li><li>value of production</li><li>crop exposure</li><li>CMIP6</li><li>NEX-GDDP</li><li>sub-saharan africa</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|keywords" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|keywords" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-nexgddp|keywords"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-nexgddp" data-key="intended_uses">
+      <div class="fhead"><span class="flabel">Intended uses</span><span class="badge">changed</span></div>
+      <div class="hint">Short lowercase phrases, concrete tasks.</div>
+      <div class="cur"><ul><li>value of crop and livestock production exposed to a hazard, by administrative unit and scenario</li><li>comparing exposure between emissions scenarios and future timeframes</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>Quantifying how much crop and livestock production value is exposed to a given hazard, by admin unit and scenario.</li><li>Comparing exposure between emissions pathways and future timeframes.</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|intended_uses" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|intended_uses" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-nexgddp|intended_uses"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-nexgddp" data-key="not_recommended_for">
+      <div class="fhead"><span class="flabel">Not recommended for</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><dl><dt>use</dt><dd>Comparing exposed value between timeframes as though it were a real-terms change.</dd><dt>reason</dt><dd>Values are NOMINAL 2021 US dollars and are not deflated, so a difference between timeframes mixes price change with production and hazard change.</dd><dt>use_instead</dt><dd>Use the constant-dollar sibling tier (africa-hazard-exposure-intld, variable=vop_intld15-21).</dd></dl></li><li><dl><dt>use</dt><dd>Combining these figures with any Atlas product quoted in constant international dollars.</dd><dt>reason</dt><dd>Different currency basis. A previous crop-versus-livestock mismatch of exactly this kind, in the upstream livestock chain, produced roughly a sevenfold error in cattle exposure (corrected upstream 2026-09-25).</dd><dt>use_instead</dt><dd>Check exposure_unit on both sides and convert, or use products on one basis throughout.</dd></dl></li><li><dl><dt>use</dt><dd>Treating a livestock value in a country without its own FAOSTAT producer price as that country&#x27;s price.</dd><dt>reason</dt><dd>About three quarters of country-livestock-product rows carry a gap-filled price (median of neighbouring, regional or continental own prices; world median for goat and sheep milk). The price used and its source per row are in the processing audit, not in this table.</dd><dt>use_instead</dt><dd>For a country-level livestock comparison, use the head-count tier or the constant-dollar tier alongside this one.</dd></dl></li><li><dl><dt>use</dt><dd>Reading this as covering population exposure.</dd><dt>reason</dt><dd>This tier is crop and livestock value of production. Livestock exposure is also published as head counts (record africa-hazard-exposure-livestock-numbers) and in the constant-dollar tier; no population tier exists under this source.</dd><dt>use_instead</dt><dd>The observational exposure products for population.</dd></dl></li><li><dl><dt>use</dt><dd>Benchmarking against a WMO 1991-2020 normal.</dd><dt>reason</dt><dd>The historical window is 1995-2014, the end of the CMIP6 historical run.</dd><dt>use_instead</dt><dd>Use 1995-2014 as the stated baseline and say so.</dd></dl></li><li><dl><dt>use</dt><dd>Dividing by the 0.05 degree exposure table.</dd><dt>reason</dt><dd>It resolves about 2,100 more second-level units than this product populates, so shares come out above 100 per cent in small units.</dd><dt>use_instead</dt><dd>The 0.25 degree structure of africa-exposure-combined (variable=crop-livestock_all_res-25), rows with unit nominal-usd-2021.</dd></dl></li></ul></div>
+      <details class="old"><summary>Show before</summary><p>not_recommended_for[Comparing exposed value between timefram].use_instead: Use the constant-dollar sibling tier (record africa-hazard-exposure-intld, variable=vop_intld15-21), published 2026-10-19. → Use the constant-dollar sibling tier (africa-hazard-exposure-intld, variable=vop_intld15-21).; not_recommended_for (added): (none) → {&#x27;use&#x27;: &#x27;Dividing by the 0.05 degree exposure table.&#x27;, &#x27;reason&#x27;: &#x27;It resolves about 2,100 more second-level units than this product populates, so shares come out above 100 per cent in small units.&#x27;, &#x27;use_instead&#x27;: &#x27;The 0.25 degree structure of africa-exposure-combined (variable=crop-livestock_all_res-25), rows with unit nominal-usd-2021.&#x27;}</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|not_recommended_for" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|not_recommended_for" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-nexgddp|not_recommended_for"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-nexgddp" data-key="license">
+      <div class="fhead"><span class="flabel">Licence and attribution</span></div>
+      
+      <div class="cur"><dl><dt>license</dt><dd>CC-BY-4.0</dd><dt>attribution</dt><dd>(none)</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|license" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|license" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-nexgddp|license"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-nexgddp" data-key="contacts">
+      <div class="fhead"><span class="flabel">Contacts and roles</span></div>
+      <div class="hint">Licensor must be the organisation holding the rights.</div>
+      <div class="cur"><ul><li>Alliance of Bioversity International and CIAT: licensor, producer</li><li>Peter Steward (Alliance of Bioversity International and CIAT): processor, point-of-contact, maintainer &middot; p.steward@cgiar.org</li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|contacts" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|contacts" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-nexgddp|contacts"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-nexgddp" data-key="citation">
+      <div class="fhead"><span class="flabel">Citation</span></div>
+      
+      <div class="cur"><dl><dt>title</dt><dd>Africa Agriculture Adaptation Atlas hazard-exposure product</dd><dt>authors</dt><dd>[{&#x27;organization&#x27;: &#x27;Alliance of Bioversity International and CIAT&#x27;}]</dd><dt>date</dt><dd>2026</dd><dt>publisher</dt><dd>Alliance of Bioversity International and CIAT</dd><dt>url</dt><dd>https://adaptationatlas.cgiar.org/</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|citation" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|citation" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-nexgddp|citation"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-nexgddp" data-key="data_processing_text">
+      <div class="fhead"><span class="flabel">Data and processing descriptions (edited)</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><b>data[hazard-exposure-by-period-severity].description</b>: One parquet per period x severity tier, 77 to 87 MB each, with a .json sidecar beside each recording the ensemble membership. Published by scripts/r3_publish_tiers.R. Query with filters on iso3 and the other keys (predicate pushdown): a crop-calendar (jagermeyr) file holds about 94 million rows.</li></ul></div>
+      <details class="old"><summary>Show before</summary><p>data[hazard-exposure-by-period-severity].description: One parquet per period x severity tier, 77 to 87 MB each, with a .json sidecar beside each recording the ensemble membership. Published by scripts/r3_publish_tiers.R.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|data_processing_text" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-nexgddp|data_processing_text" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-nexgddp|data_processing_text"></textarea>
+    </div>
+      <h3>Structural fixes I made</h3>
+      <p class="hint">Mechanical, checked against the files or git history. Untick only if one looks wrong.</p>
+      <label class="okall"><input type="checkbox" data-struct="africa-hazard-exposure-nexgddp" checked> These look right</label>
+      <ul><li><code>processing[source].derived_from https://github.com/AdaptationAtlas/hazards: version v0.1.0-nexgddp; title now &quot;Monthly hazard indices from NEX-GDDP-CMIP6&quot;</code></li><li><code>processing[source].derived_from https://doi.org/10.7910/DVN/Z0HK7R: version 1.0; title now &quot;MapSPAM2020_AdaptationAtlas_SSA&quot;</code></li><li><code>processing[exposure].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/3_freq_x_exposure.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/f434359/R/3_freq_x_exposure.R (version f434359)</code></li><li><code>dimension gaul2_code.data_type: float64</code></li><li><code>dimension gaul2_code.description: reworded (no longer names an uncatalogued boundary record)</code></li><li><code>structure hazard-exposure: iso3, admin names, gaul0_code, gaul1_code, model, hazard_vars, exposure_var declared from the published files (Hub verify script)</code></li></ul>
+      <h3>Questions on this record</h3>
+      <div class="flag" data-rid="africa-hazard-exposure-nexgddp" data-key="flag:pop">
+        <p>One not-recommended use sends population questions to "the observational exposure products for population". No such record is in the catalog. Keep, rewrite, or drop that "use instead"?</p>
+        <textarea placeholder="Your answer" data-for="africa-hazard-exposure-nexgddp|flag:pop"></textarea>
+      </div>
+      <div class="flag" data-rid="africa-hazard-exposure-nexgddp" data-key="flag:nex">
+        <p><b>Accepted by Pete 2026-11-19 (resolved by search):</b> the hazard side comes from NEX-GDDP-CMIP6 version-1 files. Every download script used in 2025 (AdaptationAtlas/hazards, Feb-Sep) took the newest of v1.2, v1.1 and unsuffixed v1.0 per file and never asked for the v2.0 files NASA added in July 2025. The time-series and hazard-change records now say <code>version: 1.0-1.2</code> with that in the title; the PR text for this record says the same. Which revision each single file was is not logged. Correct?</p>
+        <textarea placeholder="Your answer" data-for="africa-hazard-exposure-nexgddp|flag:nex"></textarea>
+      </div>
+      <label class="signoff"><input type="checkbox" data-signoff="africa-hazard-exposure-nexgddp"> I have reviewed the full record and approve it for submission</label>
+    </div>
+  </details>
+  <details class="rec" id="africa-hazard-exposure-intld" data-rid="africa-hazard-exposure-intld">
+    <summary><span class="num">4</span><span class="rid">africa-hazard-exposure-intld</span><span class="rtitle">Hazard Frequency crossed with Crop and Livestock Value of Production (constant 2014-2016 international dollars), Sub-Saharan Africa</span><span class="state" data-state="africa-hazard-exposure-intld">not reviewed</span></summary>
+    <div class="recbody">
+      <p class="path">Record file: <a href="../../africa-hazard-exposure-intld.yaml"><code>metadata/cdh/africa-hazard-exposure-intld.yaml</code></a> &middot; PR text: <a href="africa-hazard-exposure-intld.md"><code>africa-hazard-exposure-intld.md</code></a></p>
+      <h3>Fields you sign off</h3>
+      
+    <div class="field" data-rid="africa-hazard-exposure-intld" data-key="title">
+      <div class="fhead"><span class="flabel">Title</span></div>
+      <div class="hint">Says what the data is; no product or project name.</div>
+      <div class="cur"><p>Hazard Frequency crossed with Crop and Livestock Value of Production (constant 2014-2016 international dollars), Sub-Saharan Africa</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-intld|title" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-intld|title" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-intld|title"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-intld" data-key="description">
+      <div class="fhead"><span class="flabel">Description</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><p>Value of crop and livestock production exposed to each agro-climatic hazard, in constant 2014-2016 international dollars (FAOSTAT gross production value, 2019-2023 window, labelled intld15-2021), by administrative unit, commodity, hazard, severity, scenario, period and timeframe, for Sub-Saharan Africa. Unlike the nominal-dollar version (africa-hazard-exposure-nexgddp) this basis is deflated, so changes between timeframes are in real terms.</p></div>
+      <details class="old"><summary>Show before</summary><p>The constant-dollar companion of the Atlas hazard-exposure product: hazard frequency crossed with the value of crop and livestock production in constant 2014-2016 international dollars (FAOSTAT GPV, 2019-2023 window, labelled intld15-2021), by administrative unit, commodity, hazard, scenario, period and timeframe. Unlike the nominal-USD tier this basis is deflated, so changes between timeframes are real-terms. First published 2026-10-19; supersedes the retired legacy source=atlas_cmip6 vop_intld15 route, whose objects predate every 2026 correction.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-intld|description" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-intld|description" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-intld|description"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-intld" data-key="note">
+      <div class="fhead"><span class="flabel">Note (caveats only)</span><span class="badge">changed</span></div>
+      <div class="hint">Hub rule: real caveats only. Reading tips moved to data descriptions; release history is in the linked changelog.</div>
+      <div class="cur"><p>The total (about 266.8 billion international dollars) does not reconcile to the exposure table&#x27;s constant-dollar crop total (240.24 billion): nine MapSPAM composite crop groups (vegetables, tropical fruit, rest of crops, other roots and five more) carry 62.42 billion of exposure but have no hazard frequency and so no rows here, while livestock add about 89.0 billion. FAOSTAT coffee quantities for the Central African Republic and Guinea are pinned because of a reporting break. Tanzania coconut undershoots its exposure by 2.4 per cent because part of Pemba Island has no hazard coverage at 0.25 degrees.</p></div>
+      <details class="old"><summary>Show before</summary><p>THE BASIS MOVED +20 PER CENT ON 2026-10-08, DELIBERATELY, BEFORE THIS TIER WAS FIRST PUBLISHED. The exposure this tier is built from was republished with FAOSTAT joins keyed on item code rather than item name: 55.12 billion international dollars over 57 FAOSTAT-renamed item codes had been silently dropped, and the continental constant-dollar reference moved 200.28 to 240.24 billion (hazards_prototype B5 dispatch, archived). Two FAOSTAT quantity pins apply (CAF and GIN coffee, a reporting break; metadata/fao_quantity_pins.csv). WHAT THIS TIER CAN AND CANNOT SUM TO. The tier total is about 266.8 billion international dollars: the reference&#x27;s 240.24 billion crop side, MINUS 62.42 billion in nine SPAM composite groups (vegetables, tropical fruit, rest-of-crops, other roots and six more) that carry exposure but have no hazard frequency and therefore NO rows here, PLUS about 89.0 billion of livestock. Do not expect this tier to reconcile to the reference headline: about 19 per cent of the recovered constant-dollar exposure is in composite groups the hazard layer cannot see. One named residual: Tanzania coconut undershoots its exposure by 2.4 per cent because Wete district (Pemba Island) carries exposure and no hazard coverage at 0.25 degrees (hazards_prototype issue 50; metadata/g6b_expected_residuals.csv). Every other material (country, crop) pair reproduces its exposure within the publish gate&#x27;s bounds. Four livestock rows used placeholder constant-dollar prices until 2026-11-18: Libya and Sierra Leone cattle, Lesotho poultry and Eswatini sheep (hazards_prototype issue 54). The published correction moved only those four country-species pairs and raised the livestock constant-dollar total by 0.1 per cent. VERSION HISTORY. This is the first Climate Data Hub release (v2026.11): the files as first published on 2026-10-19 and corrected on 2026-11-18 (the four placeholder prices), built from the exposure table as of 2026-11-17. The version history linked below records this and will list later changes.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-intld|note" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-intld|note" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-intld|note"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-intld" data-key="keywords">
+      <div class="fhead"><span class="flabel">Keywords</span><span class="badge">changed</span></div>
+      <div class="hint">Must not repeat places, periods, crops or variables already in structured fields.</div>
+      <div class="cur"><ul><li>hazard exposure</li><li>value of production</li><li>constant international dollars</li><li>climate risk</li><li>CMIP6</li><li>NEX-GDDP</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>hazard exposure</li><li>value of production</li><li>constant international dollars</li><li>climate risk</li><li>CMIP6</li><li>NEX-GDDP</li><li>sub-saharan africa</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-intld|keywords" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-intld|keywords" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-intld|keywords"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-intld" data-key="intended_uses">
+      <div class="fhead"><span class="flabel">Intended uses</span><span class="badge">changed</span></div>
+      <div class="hint">Short lowercase phrases, concrete tasks.</div>
+      <div class="cur"><ul><li>real-terms comparison of exposed production value between scenarios and timeframes</li><li>crop and livestock exposure jointly on one deflated basis</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>Real-terms comparison of exposed production value between scenarios and timeframes.</li><li>Crop and livestock exposure on one deflated basis, jointly.</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-intld|intended_uses" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-intld|intended_uses" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-intld|intended_uses"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-intld" data-key="not_recommended_for">
+      <div class="fhead"><span class="flabel">Not recommended for</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><dl><dt>use</dt><dd>Reconciling this tier&#x27;s total to the published exposure reference headline.</dd><dt>reason</dt><dd>The reference&#x27;s constant-dollar crop side is 240.24 billion; this tier reads about 266.8 billion because it adds livestock and cannot carry the nine composite crop groups (62.42 billion of exposure with no hazard rows).</dd><dt>use_instead</dt><dd>Compare modelled crops only (about 177.8 billion) against the reference filtered to the same crop set.</dd></dl></li><li><dl><dt>use</dt><dd>Mixing with the nominal-USD tier without converting.</dd><dt>reason</dt><dd>Different currency basis; the two sit under one exposure value in the reference, separated only by unit.</dd><dt>use_instead</dt><dd>Filter unit explicitly on both sides.</dd></dl></li></ul></div>
+      <details class="old"><summary>Show before</summary><p>not_recommended_for[Reconciling this tier&#x27;s total to the pub].use_instead: Compare modelled crops only (about 177.8 billion) against the reference filtered to the same crop set, or use the gate outputs in the source dispatch. → Compare modelled crops only (about 177.8 billion) against the reference filtered to the same crop set.; not_recommended_for[Mixing with the nominal-USD tier without].use_instead: Filter unit explicitly on both sides (hazards_prototype issue 52). → Filter unit explicitly on both sides.; not_recommended_for (removed): {&#x27;use&#x27;: &#x27;Reading Libya or Sierra Leone cattle value from this tier.&#x27;, &#x27;reason&#x27;: &quot;FAOSTAT&#x27;s constant-dollar gross production value for indigenous cattle meat is about 1,000 international dollars for both countries (expected tens of millions), so cattle meat is effectively absent and their cattle rows carry milk only (hazards_prototype issue 54; the correction, which also covers Lesotho poultry and Eswatini sheep, is validated but not yet published).\n&quot;, &#x27;use_instead&#x27;: &#x27;Use the head-count tier or the nominal-USD tier for cattle in these two countries until issue 54 resolves.&#x27;} → (removed)</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-intld|not_recommended_for" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-intld|not_recommended_for" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-intld|not_recommended_for"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-intld" data-key="license">
+      <div class="fhead"><span class="flabel">Licence and attribution</span></div>
+      
+      <div class="cur"><dl><dt>license</dt><dd>CC-BY-4.0</dd><dt>attribution</dt><dd>(none)</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-intld|license" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-intld|license" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-intld|license"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-intld" data-key="contacts">
+      <div class="fhead"><span class="flabel">Contacts and roles</span></div>
+      <div class="hint">Licensor must be the organisation holding the rights.</div>
+      <div class="cur"><ul><li>Alliance of Bioversity International and CIAT: licensor, producer</li><li>Peter Steward (Alliance of Bioversity International and CIAT): processor, point-of-contact, maintainer &middot; p.steward@cgiar.org</li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-intld|contacts" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-intld|contacts" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-intld|contacts"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-intld" data-key="citation">
+      <div class="fhead"><span class="flabel">Citation</span></div>
+      
+      <div class="cur"><dl><dt>title</dt><dd>Africa Agriculture Adaptation Atlas hazard-exposure product (constant international dollars)</dd><dt>authors</dt><dd>[{&#x27;organization&#x27;: &#x27;Alliance of Bioversity International and CIAT&#x27;}]</dd><dt>date</dt><dd>2026</dd><dt>publisher</dt><dd>Alliance of Bioversity International and CIAT</dd><dt>url</dt><dd>https://adaptationatlas.cgiar.org/</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-intld|citation" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-intld|citation" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-intld|citation"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-intld" data-key="data_processing_text">
+      <div class="fhead"><span class="flabel">Data and processing descriptions (edited)</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><b>data[hazard-exposure-intld-by-period-severity].description</b>: One parquet per period x severity tier, 76 to 86 MB each. Published by scripts/r3_publish_tiers.R; every key carries a .json sidecar recording the 18-member ensemble.</li></ul></div>
+      <details class="old"><summary>Show before</summary><p>data[hazard-exposure-intld-by-period-severity].description: One parquet per period x severity tier, 76 to 86 MB each. Published by scripts/r3_publish_tiers.R behind gates G1-G6b; every key carries a .json sidecar recording the 18-member ensemble.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-intld|data_processing_text" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-intld|data_processing_text" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-intld|data_processing_text"></textarea>
+    </div>
+      <h3>Structural fixes I made</h3>
+      <p class="hint">Mechanical, checked against the files or git history. Untick only if one looks wrong.</p>
+      <label class="okall"><input type="checkbox" data-struct="africa-hazard-exposure-intld" checked> These look right</label>
+      <ul><li><code>processing[source].derived_from https://github.com/AdaptationAtlas/hazards: version v0.1.0-nexgddp; title now &quot;Monthly hazard indices from NEX-GDDP-CMIP6&quot;</code></li><li><code>processing[source].derived_from https://doi.org/10.7910/DVN/Z0HK7R: version 1.0; title now &quot;MapSPAM2020_AdaptationAtlas_SSA&quot;</code></li><li><code>processing[exposure].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/3_freq_x_exposure.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/a927f32/R/3_freq_x_exposure.R (version a927f32)</code></li><li><code>dimension gaul2_code.data_type: float64</code></li><li><code>dimension gaul2_code.description: reworded (no longer names an uncatalogued boundary record)</code></li><li><code>structure hazard-exposure: iso3, admin names, gaul0_code, gaul1_code, model, hazard_vars, exposure_var, exposure_unit declared from the published files (Hub verify script)</code></li></ul>
+      <h3>Questions on this record</h3>
+      <div class="flag" data-rid="africa-hazard-exposure-intld" data-key="flag:libya">
+        <p>I removed the not-recommended use about Libya and Sierra Leone cattle: it said the fix was "not yet published", and it was published on 2026-11-18. Confirm cattle values in those two countries are now usable.</p>
+        <textarea placeholder="Your answer" data-for="africa-hazard-exposure-intld|flag:libya"></textarea>
+      </div>
+      <label class="signoff"><input type="checkbox" data-signoff="africa-hazard-exposure-intld"> I have reviewed the full record and approve it for submission</label>
+    </div>
+  </details>
+  <details class="rec" id="africa-hazard-exposure-harvested-area" data-rid="africa-hazard-exposure-harvested-area">
+    <summary><span class="num">5</span><span class="rid">africa-hazard-exposure-harvested-area</span><span class="rtitle">Hazard Frequency crossed with Crop Harvested Area, Sub-Saharan Africa</span><span class="state" data-state="africa-hazard-exposure-harvested-area">not reviewed</span></summary>
+    <div class="recbody">
+      <p class="path">Record file: <a href="../../africa-hazard-exposure-harvested-area.yaml"><code>metadata/cdh/africa-hazard-exposure-harvested-area.yaml</code></a> &middot; PR text: <a href="africa-hazard-exposure-harvested-area.md"><code>africa-hazard-exposure-harvested-area.md</code></a></p>
+      <h3>Fields you sign off</h3>
+      
+    <div class="field" data-rid="africa-hazard-exposure-harvested-area" data-key="title">
+      <div class="fhead"><span class="flabel">Title</span></div>
+      <div class="hint">Says what the data is; no product or project name.</div>
+      <div class="cur"><p>Hazard Frequency crossed with Crop Harvested Area, Sub-Saharan Africa</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|title" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|title" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-harvested-area|title"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-harvested-area" data-key="description">
+      <div class="fhead"><span class="flabel">Description</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><p>Crop harvested area in hectares (MapSPAM 2020) exposed to each agro-climatic hazard, by administrative unit, crop, hazard, severity, scenario, period and timeframe, for Sub-Saharan Africa. No valuation enters it, so it is unaffected by currency and price choices.</p></div>
+      <details class="old"><summary>Show before</summary><p>Hazard frequency crossed with crop harvested area in hectares (MapSPAM2020_AdaptationAtlas_SSA), by administrative unit, crop, hazard, scenario, period and timeframe. A physical tier: no valuation enters it, so it is immune to every currency and price question that affects the value tiers. First published 2026-10-19.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|description" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|description" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-harvested-area|description"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-harvested-area" data-key="note">
+      <div class="fhead"><span class="flabel">Note (caveats only)</span><span class="badge">changed</span></div>
+      <div class="hint">Hub rule: real caveats only. Reading tips moved to data descriptions; release history is in the linked changelog.</div>
+      <div class="cur"><p>Crops only (33 crops plus a generic-crop row); livestock have no harvested area. Values are integer hectares rounded per pixel before aggregation, so totals under about 10,000 ha carry relative rounding error of up to a few per cent. Tanzania coconut undershoots its exposure by 2.4 per cent because part of Pemba Island has no hazard coverage at 0.25 degrees.</p></div>
+      <details class="old"><summary>Show before</summary><p>CROPS ONLY: livestock have no harvested area and are deliberately absent (34 commodities: 33 crops plus generic-crop). Values are INTEGER HECTARES - the pipeline rounds per pixel before zonal aggregation, so totals under about 10,000 ha carry relative rounding error up to a few per cent (two-sided; the publish gate&#x27;s materiality floor for this tier is 10,000 ha for exactly this reason). One named residual: Tanzania coconut undershoots its exposure by 2.4 per cent because Wete district (Pemba Island) carries exposure and no hazard coverage at 0.25 degrees (hazards_prototype issue 50; metadata/g6b_expected_residuals.csv). Every other material (country, crop) pair reproduces its exposure within the publish gate&#x27;s bounds. VERSION HISTORY. This is the first Climate Data Hub release (v2026.11): the files as first published on 2026-10-19, unchanged since. The version history linked below records this and will list later changes.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|note" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|note" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-harvested-area|note"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-harvested-area" data-key="keywords">
+      <div class="fhead"><span class="flabel">Keywords</span><span class="badge">changed</span></div>
+      <div class="hint">Must not repeat places, periods, crops or variables already in structured fields.</div>
+      <div class="cur"><ul><li>hazard exposure</li><li>harvested area</li><li>climate risk</li><li>CMIP6</li><li>NEX-GDDP</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>hazard exposure</li><li>harvested area</li><li>crop area</li><li>climate risk</li><li>CMIP6</li><li>NEX-GDDP</li><li>sub-saharan africa</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|keywords" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|keywords" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-harvested-area|keywords"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-harvested-area" data-key="intended_uses">
+      <div class="fhead"><span class="flabel">Intended uses</span><span class="badge">changed</span></div>
+      <div class="hint">Short lowercase phrases, concrete tasks.</div>
+      <div class="cur"><ul><li>physical exposure of cropland to hazards, independent of price or currency</li><li>comparing hazard footprints between crops and regions</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>Physical exposure of cropland to hazards, independent of any price or currency decision.</li><li>Denominator-free comparison of hazard footprints between crops and regions.</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|intended_uses" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|intended_uses" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-harvested-area|intended_uses"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-harvested-area" data-key="not_recommended_for">
+      <div class="fhead"><span class="flabel">Not recommended for</span></div>
+      
+      <div class="cur"><ul><li><dl><dt>use</dt><dd>Reading totals below about 10,000 ha as precise.</dd><dt>reason</dt><dd>Per-pixel integer rounding accumulates: relative error grows as area shrinks (measured up to 7 per cent at about 1,500 ha).</dd><dt>use_instead</dt><dd>Treat small-area pairs as indicative; the value tiers carry the same effect in their units.</dd></dl></li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|not_recommended_for" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|not_recommended_for" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-harvested-area|not_recommended_for"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-harvested-area" data-key="license">
+      <div class="fhead"><span class="flabel">Licence and attribution</span></div>
+      
+      <div class="cur"><dl><dt>license</dt><dd>CC-BY-4.0</dd><dt>attribution</dt><dd>(none)</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|license" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|license" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-harvested-area|license"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-harvested-area" data-key="contacts">
+      <div class="fhead"><span class="flabel">Contacts and roles</span></div>
+      <div class="hint">Licensor must be the organisation holding the rights.</div>
+      <div class="cur"><ul><li>Alliance of Bioversity International and CIAT: licensor, producer</li><li>Peter Steward (Alliance of Bioversity International and CIAT): processor, point-of-contact, maintainer &middot; p.steward@cgiar.org</li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|contacts" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|contacts" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-harvested-area|contacts"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-harvested-area" data-key="citation">
+      <div class="fhead"><span class="flabel">Citation</span></div>
+      
+      <div class="cur"><dl><dt>title</dt><dd>Africa Agriculture Adaptation Atlas hazard-exposure product (harvested area)</dd><dt>authors</dt><dd>[{&#x27;organization&#x27;: &#x27;Alliance of Bioversity International and CIAT&#x27;}]</dd><dt>date</dt><dd>2026</dd><dt>publisher</dt><dd>Alliance of Bioversity International and CIAT</dd><dt>url</dt><dd>https://adaptationatlas.cgiar.org/</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|citation" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|citation" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-harvested-area|citation"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-harvested-area" data-key="data_processing_text">
+      <div class="fhead"><span class="flabel">Data and processing descriptions (edited)</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><b>data[hazard-exposure-ha-by-period-severity].description</b>: One parquet per period x severity tier, 30 to 42 MB each. Published by scripts/r3_publish_tiers.R; every key carries a .json sidecar recording the 18-member ensemble.</li></ul></div>
+      <details class="old"><summary>Show before</summary><p>data[hazard-exposure-ha-by-period-severity].description: One parquet per period x severity tier, 30 to 42 MB each. Published by scripts/r3_publish_tiers.R behind gates G1-G6b; every key carries a .json sidecar recording the 18-member ensemble.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|data_processing_text" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-harvested-area|data_processing_text" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-harvested-area|data_processing_text"></textarea>
+    </div>
+      <h3>Structural fixes I made</h3>
+      <p class="hint">Mechanical, checked against the files or git history. Untick only if one looks wrong.</p>
+      <label class="okall"><input type="checkbox" data-struct="africa-hazard-exposure-harvested-area" checked> These look right</label>
+      <ul><li><code>processing[source].derived_from https://github.com/AdaptationAtlas/hazards: version v0.1.0-nexgddp; title now &quot;Monthly hazard indices from NEX-GDDP-CMIP6&quot;</code></li><li><code>processing[source].derived_from https://doi.org/10.7910/DVN/Z0HK7R: version 1.0; title now &quot;MapSPAM2020_AdaptationAtlas_SSA&quot;</code></li><li><code>processing[exposure].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/3_freq_x_exposure.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/f434359/R/3_freq_x_exposure.R (version f434359)</code></li><li><code>dimension gaul2_code.data_type: float64</code></li><li><code>dimension gaul2_code.description: reworded (no longer names an uncatalogued boundary record)</code></li><li><code>processing[source].derived_from africa-exposure-combined: version v2026.11; title says built from the 2026-10-08 table whose rows used are unchanged</code></li><li><code>structure hazard-exposure: iso3, admin names, gaul0_code, gaul1_code, model, hazard_vars, exposure_var, exposure_unit declared from the published files (Hub verify script)</code></li></ul>
+      <h3>Questions on this record</h3>
+      <div class="flag" data-rid="africa-hazard-exposure-harvested-area" data-key="flag:prerelease">
+        <p><b>Accepted by Pete 2026-11-19 (resolved by search):</b> built on 2026-10-19 from the exposure table as of 2026-10-08. Its changelog shows every later change touched only livestock prices and the labels of the TLU total rows, so the area rows used here are the same in v2026.11. <code>derived_from</code> now cites <code>africa-exposure-combined</code> v2026.11 and says it was built from the 2026-10-08 table. OK?</p>
+        <textarea placeholder="Your answer" data-for="africa-hazard-exposure-harvested-area|flag:prerelease"></textarea>
+      </div>
+      <label class="signoff"><input type="checkbox" data-signoff="africa-hazard-exposure-harvested-area"> I have reviewed the full record and approve it for submission</label>
+    </div>
+  </details>
+  <details class="rec" id="africa-hazard-exposure-production" data-rid="africa-hazard-exposure-production">
+    <summary><span class="num">6</span><span class="rid">africa-hazard-exposure-production</span><span class="rtitle">Hazard Frequency crossed with Crop Production, Sub-Saharan Africa</span><span class="state" data-state="africa-hazard-exposure-production">not reviewed</span></summary>
+    <div class="recbody">
+      <p class="path">Record file: <a href="../../africa-hazard-exposure-production.yaml"><code>metadata/cdh/africa-hazard-exposure-production.yaml</code></a> &middot; PR text: <a href="africa-hazard-exposure-production.md"><code>africa-hazard-exposure-production.md</code></a></p>
+      <h3>Fields you sign off</h3>
+      
+    <div class="field" data-rid="africa-hazard-exposure-production" data-key="title">
+      <div class="fhead"><span class="flabel">Title</span></div>
+      <div class="hint">Says what the data is; no product or project name.</div>
+      <div class="cur"><p>Hazard Frequency crossed with Crop Production, Sub-Saharan Africa</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-production|title" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-production|title" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-production|title"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-production" data-key="description">
+      <div class="fhead"><span class="flabel">Description</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><p>Crop production in tonnes (MapSPAM 2020) exposed to each agro-climatic hazard, by administrative unit, crop, hazard, severity, scenario, period and timeframe, for Sub-Saharan Africa. Prices are national and the aggregation is linear, so exposed tonnes times a national price reproduce the value tables: a different price set can be applied to this table without rebuilding them.</p></div>
+      <details class="old"><summary>Show before</summary><p>Hazard frequency crossed with crop production in tonnes (MapSPAM2020_AdaptationAtlas_SSA), by administrative unit, crop, hazard, scenario, period and timeframe. The physical tier that lets money be applied AFTER aggregation (issue 41): prices are national and the exposure pipeline is linear, so exposed tonnes times a national price equals the value tiers - meaning a future price revision is a table join against this tier rather than a full pipeline re-run. A matching constant-dollar price-factor raster (fao_prices/crop_factor_intld15-2021-t_res-05.tif, reproducing the value allocation cell-for-cell) is produced alongside the exposure inputs. First published 2026-10-19.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-production|description" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-production|description" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-production|description"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-production" data-key="note">
+      <div class="fhead"><span class="flabel">Note (caveats only)</span><span class="badge">changed</span></div>
+      <div class="hint">Hub rule: real caveats only. Reading tips moved to data descriptions; release history is in the linked changelog.</div>
+      <div class="cur"><p>Crops only; livestock exposure in physical units is published as head counts (africa-hazard-exposure-livestock-numbers). Values are integer tonnes rounded per pixel before aggregation, so totals under about 10,000 t carry relative rounding error of up to a few per cent. Nine MapSPAM composite crop groups have production but no hazard rows. Tanzania coconut undershoots its exposure by 2.4 per cent because part of Pemba Island has no hazard coverage at 0.25 degrees.</p></div>
+      <details class="old"><summary>Show before</summary><p>CROPS ONLY: the livestock physical tier is head counts (record africa-hazard-exposure-livestock-numbers). Values are INTEGER TONNES, rounded per pixel before zonal aggregation; totals under about 10,000 t carry relative rounding error up to a few per cent, and the publish gate&#x27;s materiality floor is 10,000 t for this reason. The nine SPAM composite groups carry production in the exposure reference but have no hazard rows here, as in the constant-dollar tier. One named residual: Tanzania coconut undershoots its exposure by 2.4 per cent because Wete district (Pemba Island) carries exposure and no hazard coverage at 0.25 degrees (hazards_prototype issue 50; metadata/g6b_expected_residuals.csv). Every other material (country, crop) pair reproduces its exposure within the publish gate&#x27;s bounds. VERSION HISTORY. This is the first Climate Data Hub release (v2026.11): the files as first published on 2026-10-19, unchanged since. The version history linked below records this and will list later changes.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-production|note" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-production|note" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-production|note"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-production" data-key="keywords">
+      <div class="fhead"><span class="flabel">Keywords</span><span class="badge">changed</span></div>
+      <div class="hint">Must not repeat places, periods, crops or variables already in structured fields.</div>
+      <div class="cur"><ul><li>hazard exposure</li><li>physical exposure</li><li>climate risk</li><li>CMIP6</li><li>NEX-GDDP</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>hazard exposure</li><li>crop production</li><li>tonnes</li><li>physical exposure</li><li>climate risk</li><li>CMIP6</li><li>NEX-GDDP</li><li>sub-saharan africa</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-production|keywords" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-production|keywords" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-production|keywords"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-production" data-key="intended_uses">
+      <div class="fhead"><span class="flabel">Intended uses</span><span class="badge">changed</span></div>
+      <div class="hint">Short lowercase phrases, concrete tasks.</div>
+      <div class="cur"><ul><li>applying a national price table to hazard-exposed production after aggregation</li><li>physical exposure of crop production to hazards, free of currency questions</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>Applying any price table to hazard-exposed production after aggregation, instead of re-running the pipeline per price decision.</li><li>Physical exposure of production to hazards, free of currency basis questions.</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-production|intended_uses" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-production|intended_uses" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-production|intended_uses"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-production" data-key="not_recommended_for">
+      <div class="fhead"><span class="flabel">Not recommended for</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><dl><dt>use</dt><dd>Multiplying by a sub-national price surface at the published resolution.</dd><dt>reason</dt><dd>Pricing must happen on the fine (0.05 degree) grid or per admin unit: a 0.25 degree border cell carries both countries&#x27; production but takes one country&#x27;s price.</dd><dt>use_instead</dt><dd>Use national prices per country and crop.</dd></dl></li></ul></div>
+      <details class="old"><summary>Show before</summary><p>not_recommended_for[Multiplying by a sub-national price surf].use_instead: Use national prices per (iso3, crop), or the 0.05 degree factor raster upstream. → Use national prices per country and crop.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-production|not_recommended_for" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-production|not_recommended_for" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-production|not_recommended_for"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-production" data-key="license">
+      <div class="fhead"><span class="flabel">Licence and attribution</span></div>
+      
+      <div class="cur"><dl><dt>license</dt><dd>CC-BY-4.0</dd><dt>attribution</dt><dd>(none)</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-production|license" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-production|license" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-production|license"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-production" data-key="contacts">
+      <div class="fhead"><span class="flabel">Contacts and roles</span></div>
+      <div class="hint">Licensor must be the organisation holding the rights.</div>
+      <div class="cur"><ul><li>Alliance of Bioversity International and CIAT: licensor, producer</li><li>Peter Steward (Alliance of Bioversity International and CIAT): processor, point-of-contact, maintainer &middot; p.steward@cgiar.org</li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-production|contacts" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-production|contacts" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-production|contacts"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-production" data-key="citation">
+      <div class="fhead"><span class="flabel">Citation</span></div>
+      
+      <div class="cur"><dl><dt>title</dt><dd>Africa Agriculture Adaptation Atlas hazard-exposure product (production tonnes)</dd><dt>authors</dt><dd>[{&#x27;organization&#x27;: &#x27;Alliance of Bioversity International and CIAT&#x27;}]</dd><dt>date</dt><dd>2026</dd><dt>publisher</dt><dd>Alliance of Bioversity International and CIAT</dd><dt>url</dt><dd>https://adaptationatlas.cgiar.org/</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-production|citation" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-production|citation" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-production|citation"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-production" data-key="data_processing_text">
+      <div class="fhead"><span class="flabel">Data and processing descriptions (edited)</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><b>data[hazard-exposure-prod-by-period-severity].description</b>: One parquet per period x severity tier, 33 to 47 MB each. Published by scripts/r3_publish_tiers.R; every key carries a .json sidecar recording the 18-member ensemble.</li></ul></div>
+      <details class="old"><summary>Show before</summary><p>data[hazard-exposure-prod-by-period-severity].description: One parquet per period x severity tier, 33 to 47 MB each. Published by scripts/r3_publish_tiers.R behind gates G1-G6b; every key carries a .json sidecar recording the 18-member ensemble.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-production|data_processing_text" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-production|data_processing_text" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-production|data_processing_text"></textarea>
+    </div>
+      <h3>Structural fixes I made</h3>
+      <p class="hint">Mechanical, checked against the files or git history. Untick only if one looks wrong.</p>
+      <label class="okall"><input type="checkbox" data-struct="africa-hazard-exposure-production" checked> These look right</label>
+      <ul><li><code>processing[source].derived_from https://github.com/AdaptationAtlas/hazards: version v0.1.0-nexgddp; title now &quot;Monthly hazard indices from NEX-GDDP-CMIP6&quot;</code></li><li><code>processing[source].derived_from https://doi.org/10.7910/DVN/Z0HK7R: version 1.0; title now &quot;MapSPAM2020_AdaptationAtlas_SSA&quot;</code></li><li><code>processing[exposure].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/3_freq_x_exposure.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/f434359/R/3_freq_x_exposure.R (version f434359)</code></li><li><code>dimension gaul2_code.data_type: float64</code></li><li><code>dimension gaul2_code.description: reworded (no longer names an uncatalogued boundary record)</code></li><li><code>processing[source].derived_from africa-exposure-combined: version v2026.11; title says built from the 2026-10-08 table whose rows used are unchanged</code></li><li><code>structure hazard-exposure: iso3, admin names, gaul0_code, gaul1_code, model, hazard_vars, exposure_var, exposure_unit declared from the published files (Hub verify script)</code></li></ul>
+      <h3>Questions on this record</h3>
+      <div class="flag" data-rid="africa-hazard-exposure-production" data-key="flag:prerelease">
+        <p>Same as harvested area: built from the 2026-10-08 table; the rows used here are unchanged in v2026.11, so the input now cites v2026.11. OK?</p>
+        <textarea placeholder="Your answer" data-for="africa-hazard-exposure-production|flag:prerelease"></textarea>
+      </div>
+      <label class="signoff"><input type="checkbox" data-signoff="africa-hazard-exposure-production"> I have reviewed the full record and approve it for submission</label>
+    </div>
+  </details>
+  <details class="rec" id="africa-hazard-exposure-livestock-numbers" data-rid="africa-hazard-exposure-livestock-numbers">
+    <summary><span class="num">7</span><span class="rid">africa-hazard-exposure-livestock-numbers</span><span class="rtitle">Hazard Frequency crossed with Livestock Numbers, Sub-Saharan Africa</span><span class="state" data-state="africa-hazard-exposure-livestock-numbers">not reviewed</span></summary>
+    <div class="recbody">
+      <p class="path">Record file: <a href="../../africa-hazard-exposure-livestock-numbers.yaml"><code>metadata/cdh/africa-hazard-exposure-livestock-numbers.yaml</code></a> &middot; PR text: <a href="africa-hazard-exposure-livestock-numbers.md"><code>africa-hazard-exposure-livestock-numbers.md</code></a></p>
+      <h3>Fields you sign off</h3>
+      
+    <div class="field" data-rid="africa-hazard-exposure-livestock-numbers" data-key="title">
+      <div class="fhead"><span class="flabel">Title</span></div>
+      <div class="hint">Says what the data is; no product or project name.</div>
+      <div class="cur"><p>Hazard Frequency crossed with Livestock Numbers, Sub-Saharan Africa</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|title" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|title" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-livestock-numbers|title"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-livestock-numbers" data-key="description">
+      <div class="fhead"><span class="flabel">Description</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><p>Livestock head counts (GLW4 2020) exposed to each agro-climatic hazard, by administrative unit, species and production system, hazard, severity, scenario, period and timeframe, for Sub-Saharan Africa: cattle, goats, pigs, poultry and sheep, each split into tropical and highland systems.</p></div>
+      <details class="old"><summary>Show before</summary><p>Hazard frequency crossed with livestock head counts (GLW4 2020), by administrative unit, species-system, hazard, scenario, period and timeframe. The livestock physical tier: ten species-system commodities (cattle, goats, pigs, poultry, sheep, each split tropical/highland). First published 2026-10-19.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|description" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|description" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-livestock-numbers|description"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-livestock-numbers" data-key="note">
+      <div class="fhead"><span class="flabel">Note (caveats only)</span><span class="badge">changed</span></div>
+      <div class="hint">Hub rule: real caveats only. Reading tips moved to data descriptions; release history is in the linked changelog.</div>
+      <div class="cur"><p>Head counts for ten species-system combinations only; there are no total rows. The total-tropical and total-highland rows in the exposure table (africa-exposure-combined) are Tropical Livestock Units, a weighted index, and have no counterpart here. Values are integer heads rounded per pixel before aggregation. Poultry is GLW4 chickens.</p></div>
+      <details class="old"><summary>Show before</summary><p>HEAD COUNTS ONLY, TEN SPECIES-SYSTEMS. The exposure reference (record africa-exposure-combined) also carries total-tropical and total-highland rows under the same exposure value: those are TROPICAL LIVESTOCK UNITS - a weighted index (cattle 0.7, sheep 0.1, goats 0.1, pigs 0.2, poultry 0.01), a different unit in the same slot - and they have NO rows in this tier (hazards_prototype issue 52). A later version of the reference will relabel those rows as tropical livestock units; their values do not change. Do not sum this tier across species expecting the reference&#x27;s total-* figures. Values are integer heads, rounded per pixel; the publish gate&#x27;s materiality floor is 10,000 head. The tightest-gated tier of the bake: every material pair reproduces its exposure within 0.5 per cent. Poultry is GLW4 chickens. VERSION HISTORY. This is the first Climate Data Hub release (v2026.11): the files as first published on 2026-10-19, unchanged since. The version history linked below records this and will list later changes.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|note" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|note" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-livestock-numbers|note"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-livestock-numbers" data-key="keywords">
+      <div class="fhead"><span class="flabel">Keywords</span><span class="badge">changed</span></div>
+      <div class="hint">Must not repeat places, periods, crops or variables already in structured fields.</div>
+      <div class="cur"><ul><li>hazard exposure</li><li>head counts</li><li>GLW4</li><li>climate risk</li><li>CMIP6</li><li>NEX-GDDP</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>hazard exposure</li><li>livestock</li><li>head counts</li><li>GLW4</li><li>climate risk</li><li>CMIP6</li><li>NEX-GDDP</li><li>sub-saharan africa</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|keywords" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|keywords" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-livestock-numbers|keywords"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-livestock-numbers" data-key="intended_uses">
+      <div class="fhead"><span class="flabel">Intended uses</span><span class="badge">changed</span></div>
+      <div class="hint">Short lowercase phrases, concrete tasks.</div>
+      <div class="cur"><ul><li>physical exposure of livestock to heat and water hazards, by species and system</li><li>livestock exposure without any valuation</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>Physical exposure of livestock populations to heat and water hazards, by species-system.</li><li>The denominator-free livestock complement of the value tiers.</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|intended_uses" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|intended_uses" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-livestock-numbers|intended_uses"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-livestock-numbers" data-key="not_recommended_for">
+      <div class="fhead"><span class="flabel">Not recommended for</span></div>
+      
+      <div class="cur"><ul><li><dl><dt>use</dt><dd>Summing species head counts to reproduce the reference&#x27;s total-tropical / total-highland rows.</dd><dt>reason</dt><dd>Those rows are Tropical Livestock Units, a weighted index roughly a tenth of the plain head sum, filed under the same exposure value in the reference.</dd><dt>use_instead</dt><dd>Reconstruct TLU with the standard weights, or filter the reference by species.</dd></dl></li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|not_recommended_for" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|not_recommended_for" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-livestock-numbers|not_recommended_for"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-livestock-numbers" data-key="license">
+      <div class="fhead"><span class="flabel">Licence and attribution</span></div>
+      
+      <div class="cur"><dl><dt>license</dt><dd>CC-BY-4.0</dd><dt>attribution</dt><dd>(none)</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|license" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|license" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-livestock-numbers|license"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-livestock-numbers" data-key="contacts">
+      <div class="fhead"><span class="flabel">Contacts and roles</span></div>
+      <div class="hint">Licensor must be the organisation holding the rights.</div>
+      <div class="cur"><ul><li>Alliance of Bioversity International and CIAT: licensor, producer</li><li>Peter Steward (Alliance of Bioversity International and CIAT): processor, point-of-contact, maintainer &middot; p.steward@cgiar.org</li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|contacts" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|contacts" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-livestock-numbers|contacts"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-livestock-numbers" data-key="citation">
+      <div class="fhead"><span class="flabel">Citation</span></div>
+      
+      <div class="cur"><dl><dt>title</dt><dd>Africa Agriculture Adaptation Atlas hazard-exposure product (livestock numbers)</dd><dt>authors</dt><dd>[{&#x27;organization&#x27;: &#x27;Alliance of Bioversity International and CIAT&#x27;}]</dd><dt>date</dt><dd>2026</dd><dt>publisher</dt><dd>Alliance of Bioversity International and CIAT</dd><dt>url</dt><dd>https://adaptationatlas.cgiar.org/</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|citation" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|citation" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-livestock-numbers|citation"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-exposure-livestock-numbers" data-key="data_processing_text">
+      <div class="fhead"><span class="flabel">Data and processing descriptions (edited)</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><b>data[hazard-exposure-head-by-period-severity].description</b>: One parquet per period x severity tier, 13 to 17 MB each. Published by scripts/r3_publish_tiers.R; every key carries a .json sidecar recording the 18-member ensemble.</li></ul></div>
+      <details class="old"><summary>Show before</summary><p>data[hazard-exposure-head-by-period-severity].description: One parquet per period x severity tier, 13 to 17 MB each. Published by scripts/r3_publish_tiers.R behind gates G1-G6b; every key carries a .json sidecar recording the 18-member ensemble.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|data_processing_text" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-exposure-livestock-numbers|data_processing_text" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-exposure-livestock-numbers|data_processing_text"></textarea>
+    </div>
+      <h3>Structural fixes I made</h3>
+      <p class="hint">Mechanical, checked against the files or git history. Untick only if one looks wrong.</p>
+      <label class="okall"><input type="checkbox" data-struct="africa-hazard-exposure-livestock-numbers" checked> These look right</label>
+      <ul><li><code>processing[source].derived_from https://github.com/AdaptationAtlas/hazards: version v0.1.0-nexgddp; title now &quot;Monthly hazard indices from NEX-GDDP-CMIP6&quot;</code></li><li><code>processing[source].derived_from https://doi.org/10.7910/DVN/Z0HK7R: version 1.0; title now &quot;MapSPAM2020_AdaptationAtlas_SSA&quot;</code></li><li><code>processing[exposure].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/3_freq_x_exposure.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/f434359/R/3_freq_x_exposure.R (version f434359)</code></li><li><code>dimension gaul2_code.data_type: float64</code></li><li><code>dimension gaul2_code.description: reworded (no longer names an uncatalogued boundary record)</code></li><li><code>processing[source].derived_from africa-exposure-combined: version v2026.11; title says built from the 2026-10-08 table whose rows used are unchanged</code></li><li><code>structure hazard-exposure: iso3, admin names, gaul0_code, gaul1_code, model, hazard_vars, exposure_var, exposure_unit declared from the published files (Hub verify script)</code></li></ul>
+      <h3>Questions on this record</h3>
+      <div class="flag" data-rid="africa-hazard-exposure-livestock-numbers" data-key="flag:prerelease">
+        <p>Same as harvested area: built from the 2026-10-08 table; the rows used here are unchanged in v2026.11, so the input now cites v2026.11. OK?</p>
+        <textarea placeholder="Your answer" data-for="africa-hazard-exposure-livestock-numbers|flag:prerelease"></textarea>
+      </div>
+      <label class="signoff"><input type="checkbox" data-signoff="africa-hazard-exposure-livestock-numbers"> I have reviewed the full record and approve it for submission</label>
+    </div>
+  </details>
+  <details class="rec" id="africa-hazard-season-trends-nexgddp" data-rid="africa-hazard-season-trends-nexgddp">
+    <summary><span class="num">8</span><span class="rid">africa-hazard-season-trends-nexgddp</span><span class="rtitle">Projected Trends in Seasonal Climate Hazards by Administrative Unit, Africa (NEX-GDDP-CMIP6 18-model ensemble)</span><span class="state" data-state="africa-hazard-season-trends-nexgddp">not reviewed</span></summary>
+    <div class="recbody">
+      <p class="path">Record file: <a href="../../africa-hazard-season-trends-nexgddp.yaml"><code>metadata/cdh/africa-hazard-season-trends-nexgddp.yaml</code></a> &middot; PR text: <a href="africa-hazard-season-trends-nexgddp.md"><code>africa-hazard-season-trends-nexgddp.md</code></a></p>
+      <h3>Fields you sign off</h3>
+      
+    <div class="field" data-rid="africa-hazard-season-trends-nexgddp" data-key="title">
+      <div class="fhead"><span class="flabel">Title</span></div>
+      <div class="hint">Says what the data is; no product or project name.</div>
+      <div class="cur"><p>Projected Trends in Seasonal Climate Hazards by Administrative Unit, Africa (NEX-GDDP-CMIP6 18-model ensemble)</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|title" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|title" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-trends-nexgddp|title"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-trends-nexgddp" data-key="description">
+      <div class="fhead"><span class="flabel">Description</span></div>
+      
+      <div class="cur"><p>How fast nine agro-climatic hazard indices (rainfall, temperature, heat-stress days, dry days, soil water stress, waterlogging, and human and livestock heat stress) are projected to change within each 20-year window from 2021 to 2100, for every country and first-level administrative unit in Africa, by rolling three-month season and for the whole year, under four emissions scenarios. A trend line is fitted to each of 18 NEX-GDDP-CMIP6 climate models separately, using a method that resists outlier years; each row gives the average trend across the models and how much the models disagree. Use it to map where and in which season a hazard is getting worse fastest, and how consistent the models are about it.</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|description" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|description" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-trends-nexgddp|description"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-trends-nexgddp" data-key="note">
+      <div class="fhead"><span class="flabel">Note (caveats only)</span><span class="badge">changed</span></div>
+      <div class="hint">Hub rule: real caveats only. Reading tips moved to data descriptions; release history is in the linked changelog.</div>
+      <div class="cur"><p>Only the size and direction of each trend are published, not its statistical significance. Trends are fitted within each 20-year window and are not century-long trends. Country-level rows (admin1_name empty) for Egypt, Kenya, Sudan and South Sudan, the four countries that claim disputed border areas, have missing values; use their first-level units.</p></div>
+      <details class="old"><summary>Show before</summary><p>Only the size and direction of the trend are published. Whether a trend is statistically significant is not: averaging significance tests across models has no clear meaning, and a measure of model agreement is planned instead. Trends are fitted within each 20-year window separately and are not a trend over the whole century. Country-level rows (admin1_name empty) for Egypt, Kenya, Sudan and South Sudan, the four countries that claim disputed border areas, are missing values; use their first-level units. Read the files with hive partitioning turned off (in DuckDB, hive_partitioning = false): the storage path contains timeframe=3months, which otherwise replaces the timeframe column. Changes to these files before and since this first Hub version are listed in the linked version history.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|note" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|note" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-trends-nexgddp|note"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-trends-nexgddp" data-key="keywords">
+      <div class="fhead"><span class="flabel">Keywords</span></div>
+      <div class="hint">Must not repeat places, periods, crops or variables already in structured fields.</div>
+      <div class="cur"><ul><li>climate hazards</li><li>agro-climatic indices</li><li>trend</li><li>change per decade</li><li>Theil-Sen slope</li><li>Sen&#x27;s slope</li><li>trend-free pre-whitening</li><li>climate projections</li><li>multi-model ensemble</li><li>NEX-GDDP</li><li>administrative units</li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|keywords" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|keywords" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-trends-nexgddp|keywords"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-trends-nexgddp" data-key="intended_uses">
+      <div class="fhead"><span class="flabel">Intended uses</span><span class="badge">changed</span></div>
+      <div class="hint">Short lowercase phrases, concrete tasks.</div>
+      <div class="cur"><ul><li>mapping the projected rate of change of a seasonal hazard by country or province</li><li>comparing rates of change across emissions scenarios and windows</li><li>judging model agreement on a trend from the spread across models</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>Mapping the projected rate of change of a seasonal hazard by country or province.</li><li>Comparing how fast hazards change under different emissions scenarios and in different windows.</li><li>Judging model agreement on a trend from the spread across models.</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|intended_uses" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|intended_uses" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-trends-nexgddp|intended_uses"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-trends-nexgddp" data-key="not_recommended_for">
+      <div class="fhead"><span class="flabel">Not recommended for</span></div>
+      
+      <div class="cur"><ul><li><dl><dt>use</dt><dd>Deciding whether a trend is statistically significant.</dd><dt>reason</dt><dd>Significance is not published in this version.</dd><dt>use_instead</dt><dd>Compare mean with sd: where sd is large relative to mean, the models do not agree on the trend.</dd></dl></li><li><dl><dt>use</dt><dd>Extrapolating one window&#x27;s trend across the century.</dd><dt>reason</dt><dd>Each trend covers one 20-year window only, so a short window&#x27;s slope is sensitive to natural year-to-year variation.</dd><dt>use_instead</dt><dd>Compare windows, or use the anomalies in africa-hazard-season-timeseries-nexgddp.</dd></dl></li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|not_recommended_for" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|not_recommended_for" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-trends-nexgddp|not_recommended_for"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-trends-nexgddp" data-key="license">
+      <div class="fhead"><span class="flabel">Licence and attribution</span></div>
+      
+      <div class="cur"><dl><dt>license</dt><dd>CC-BY-4.0</dd><dt>attribution</dt><dd>Climate scenarios used were from the NEX-GDDP-CMIP6 dataset, prepared by the Climate Analytics Group and NASA Ames Research Center using the NASA Earth Exchange, and distributed by the NASA Center for Climate Simulation (NCCS).</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|license" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|license" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-trends-nexgddp|license"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-trends-nexgddp" data-key="contacts">
+      <div class="fhead"><span class="flabel">Contacts and roles</span></div>
+      <div class="hint">Licensor must be the organisation holding the rights.</div>
+      <div class="cur"><ul><li>Alliance of Bioversity International and CIAT: licensor, producer</li><li>Peter Steward (Alliance of Bioversity International and CIAT): processor, point-of-contact, maintainer &middot; p.steward@cgiar.org</li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|contacts" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|contacts" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-trends-nexgddp|contacts"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-trends-nexgddp" data-key="citation">
+      <div class="fhead"><span class="flabel">Citation</span></div>
+      
+      <div class="cur"><dl><dt>title</dt><dd>Africa Agriculture Adaptation Atlas projected trends in seasonal climate hazards (NEX-GDDP-CMIP6 ensemble)</dd><dt>authors</dt><dd>[{&#x27;organization&#x27;: &#x27;Alliance of Bioversity International and CIAT&#x27;}]</dd><dt>date</dt><dd>2026</dd><dt>publisher</dt><dd>Alliance of Bioversity International and CIAT</dd><dt>url</dt><dd>https://adaptationatlas.cgiar.org/</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|citation" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|citation" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-trends-nexgddp|citation"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-trends-nexgddp" data-key="data_processing_text">
+      <div class="fhead"><span class="flabel">Data and processing descriptions (edited)</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><b>data[season-trends].description</b>: One Parquet table per 20-year window: 4 files of about 7 MB and 700,000 rows each. Sorted by country so a query filtered on iso3 reads only that country&#x27;s part. Read with hive partitioning turned off (in DuckDB, hive_partitioning = false): the storage path contains timeframe=3months, which otherwise replaces the timeframe column.</li></ul></div>
+      <details class="old"><summary>Show before</summary><p>data[season-trends].description: One Parquet table per 20-year window: 4 files of about 7 MB and 700,000 rows each. Sorted by country so a query filtered on iso3 reads only that country&#x27;s part.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|data_processing_text" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-trends-nexgddp|data_processing_text" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-trends-nexgddp|data_processing_text"></textarea>
+    </div>
+      <h3>Structural fixes I made</h3>
+      <p class="hint">Mechanical, checked against the files or git history. Untick only if one looks wrong.</p>
+      <label class="okall"><input type="checkbox" data-struct="africa-hazard-season-trends-nexgddp" checked> These look right</label>
+      <ul><li><code>processing[trend].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2.1_create_monthly_haz_tables.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/212c95f/R/2.1_create_monthly_haz_tables.R (version 212c95f)</code></li><li><code>processing[ensemble].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/publish_B.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/2ab28a4/R/publish_B.R (version 2ab28a4)</code></li><li><code>dimension iso3.reference_system: https://www.iso.org/iso-3166-country-codes.html</code></li><li><code>dimension admin0_name.reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024</code></li><li><code>dimension admin1_name.description: reworded (no longer names an uncatalogued boundary record)</code></li></ul>
+      <h3>Questions on this record</h3>
+      <div class="flag" data-rid="africa-hazard-season-trends-nexgddp" data-key="flag:q7">
+        <p>Same disputed-country caveat as the time series (briefing question 7).</p>
+        <textarea placeholder="Your answer" data-for="africa-hazard-season-trends-nexgddp|flag:q7"></textarea>
+      </div>
+      <label class="signoff"><input type="checkbox" data-signoff="africa-hazard-season-trends-nexgddp"> I have reviewed the full record and approve it for submission</label>
+    </div>
+  </details>
+  <details class="rec" id="africa-hazard-season-variability-nexgddp" data-rid="africa-hazard-season-variability-nexgddp">
+    <summary><span class="num">9</span><span class="rid">africa-hazard-season-variability-nexgddp</span><span class="rtitle">Year-to-Year Variability of Seasonal Climate Hazards by Administrative Unit, Africa (NEX-GDDP-CMIP6 18-model ensemble)</span><span class="state" data-state="africa-hazard-season-variability-nexgddp">not reviewed</span></summary>
+    <div class="recbody">
+      <p class="path">Record file: <a href="../../africa-hazard-season-variability-nexgddp.yaml"><code>metadata/cdh/africa-hazard-season-variability-nexgddp.yaml</code></a> &middot; PR text: <a href="africa-hazard-season-variability-nexgddp.md"><code>africa-hazard-season-variability-nexgddp.md</code></a></p>
+      <h3>Fields you sign off</h3>
+      
+    <div class="field" data-rid="africa-hazard-season-variability-nexgddp" data-key="title">
+      <div class="fhead"><span class="flabel">Title</span></div>
+      <div class="hint">Says what the data is; no product or project name.</div>
+      <div class="cur"><p>Year-to-Year Variability of Seasonal Climate Hazards by Administrative Unit, Africa (NEX-GDDP-CMIP6 18-model ensemble)</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|title" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|title" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-variability-nexgddp|title"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-variability-nexgddp" data-key="description">
+      <div class="fhead"><span class="flabel">Description</span></div>
+      
+      <div class="cur"><p>How much nine agro-climatic hazard indices (rainfall, temperature, heat-stress days, dry days, soil water stress, waterlogging, and human and livestock heat stress) swing from one year to the next, for every country and first-level administrative unit in Africa, by rolling three-month season and for the whole year. Variability is measured for 1995-2014 and for each 20-year window from 2021 to 2100 under four emissions scenarios, as the standard deviation of yearly values after removing the window&#x27;s trend. Each of 18 NEX-GDDP-CMIP6 climate models is measured separately; rows give the average across models, the spread between them, and for future windows the change from 1995-2014 and the share of models that project more variability. Use it to see where seasons are projected to become more erratic, not just wetter, drier or hotter on average.</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|description" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|description" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-variability-nexgddp|description"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-variability-nexgddp" data-key="note">
+      <div class="fhead"><span class="flabel">Note (caveats only)</span><span class="badge">changed</span></div>
+      <div class="hint">Hub rule: real caveats only. Reading tips moved to data descriptions; release history is in the linked changelog.</div>
+      <div class="cur"><p>The column pct_gcms_increase is a fraction from 0 to 1, not a percentage. Country-level rows (admin1_name empty) for Egypt, Kenya, Sudan and South Sudan, the four countries that claim disputed border areas, have missing values; use their first-level units.</p></div>
+      <details class="old"><summary>Show before</summary><p>The column pct_gcms_increase holds a fraction from 0 to 1, not a percentage. Country-level rows (admin1_name empty) for Egypt, Kenya, Sudan and South Sudan, the four countries that claim disputed border areas, are missing values; use their first-level units. Read the files with hive partitioning turned off (in DuckDB, hive_partitioning = false): the storage path contains timeframe=3months, which otherwise replaces the timeframe column. Changes to these files before and since this first Hub version are listed in the linked version history.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|note" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|note" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-variability-nexgddp|note"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-variability-nexgddp" data-key="keywords">
+      <div class="fhead"><span class="flabel">Keywords</span></div>
+      <div class="hint">Must not repeat places, periods, crops or variables already in structured fields.</div>
+      <div class="cur"><ul><li>climate hazards</li><li>agro-climatic indices</li><li>interannual variability</li><li>year-to-year variability</li><li>detrended standard deviation</li><li>model agreement</li><li>climate projections</li><li>multi-model ensemble</li><li>NEX-GDDP</li><li>administrative units</li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|keywords" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|keywords" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-variability-nexgddp|keywords"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-variability-nexgddp" data-key="intended_uses">
+      <div class="fhead"><span class="flabel">Intended uses</span><span class="badge">changed</span></div>
+      <div class="hint">Short lowercase phrases, concrete tasks.</div>
+      <div class="cur"><ul><li>mapping where seasonal rainfall, heat or water stress becomes more or less erratic</li><li>showing how many models agree that variability increases</li><li>year-to-year risk context for agricultural insurance and planning</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>Mapping where seasonal rainfall, heat or water stress is projected to become more or less erratic.</li><li>Showing how many models agree that variability increases.</li><li>Context for risk and insurance planning, where year-to-year swings matter as much as the average.</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|intended_uses" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|intended_uses" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-variability-nexgddp|intended_uses"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-variability-nexgddp" data-key="not_recommended_for">
+      <div class="fhead"><span class="flabel">Not recommended for</span></div>
+      
+      <div class="cur"><ul><li><dl><dt>use</dt><dd>Reading pct_gcms_increase as a percentage.</dd><dt>reason</dt><dd>It is stored as a fraction from 0 to 1.</dd><dt>use_instead</dt><dd>Multiply by 100 for a percentage of models.</dd></dl></li><li><dl><dt>use</dt><dd>Comparing variability between hazards directly.</dd><dt>reason</dt><dd>Each hazard&#x27;s variability is in its own unit.</dd><dt>use_instead</dt><dd>Compare iav_delta relative to the 1995-2014 iav_sd of the same hazard.</dd></dl></li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|not_recommended_for" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|not_recommended_for" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-variability-nexgddp|not_recommended_for"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-variability-nexgddp" data-key="license">
+      <div class="fhead"><span class="flabel">Licence and attribution</span></div>
+      
+      <div class="cur"><dl><dt>license</dt><dd>CC-BY-4.0</dd><dt>attribution</dt><dd>Climate scenarios used were from the NEX-GDDP-CMIP6 dataset, prepared by the Climate Analytics Group and NASA Ames Research Center using the NASA Earth Exchange, and distributed by the NASA Center for Climate Simulation (NCCS).</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|license" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|license" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-variability-nexgddp|license"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-variability-nexgddp" data-key="contacts">
+      <div class="fhead"><span class="flabel">Contacts and roles</span></div>
+      <div class="hint">Licensor must be the organisation holding the rights.</div>
+      <div class="cur"><ul><li>Alliance of Bioversity International and CIAT: licensor, producer</li><li>Peter Steward (Alliance of Bioversity International and CIAT): processor, point-of-contact, maintainer &middot; p.steward@cgiar.org</li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|contacts" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|contacts" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-variability-nexgddp|contacts"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-variability-nexgddp" data-key="citation">
+      <div class="fhead"><span class="flabel">Citation</span></div>
+      
+      <div class="cur"><dl><dt>title</dt><dd>Africa Agriculture Adaptation Atlas year-to-year variability of seasonal climate hazards (NEX-GDDP-CMIP6 ensemble)</dd><dt>authors</dt><dd>[{&#x27;organization&#x27;: &#x27;Alliance of Bioversity International and CIAT&#x27;}]</dd><dt>date</dt><dd>2026</dd><dt>publisher</dt><dd>Alliance of Bioversity International and CIAT</dd><dt>url</dt><dd>https://adaptationatlas.cgiar.org/</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|citation" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|citation" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-variability-nexgddp|citation"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-season-variability-nexgddp" data-key="data_processing_text">
+      <div class="fhead"><span class="flabel">Data and processing descriptions (edited)</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><b>data[season-variability].description</b>: One Parquet table per window: the 1995-2014 file (about 1 MB, iav_sd only) and four future files (about 11 MB and 700,000 rows each). Sorted by country so a query filtered on iso3 reads only that country&#x27;s part. Read with hive partitioning turned off (in DuckDB, hive_partitioning = false): the storage path contains timeframe=3months, which otherwise replaces the timeframe column.</li></ul></div>
+      <details class="old"><summary>Show before</summary><p>data[season-variability].description: One Parquet table per window: the 1995-2014 file (about 1 MB, iav_sd only) and four future files (about 11 MB and 700,000 rows each). Sorted by country so a query filtered on iso3 reads only that country&#x27;s part.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|data_processing_text" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-season-variability-nexgddp|data_processing_text" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-season-variability-nexgddp|data_processing_text"></textarea>
+    </div>
+      <h3>Structural fixes I made</h3>
+      <p class="hint">Mechanical, checked against the files or git history. Untick only if one looks wrong.</p>
+      <label class="okall"><input type="checkbox" data-struct="africa-hazard-season-variability-nexgddp" checked> These look right</label>
+      <ul><li><code>processing[variability].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/build_publish_C.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/2ab28a4/R/build_publish_C.R (version 2ab28a4)</code></li><li><code>dimension iso3.reference_system: https://www.iso.org/iso-3166-country-codes.html</code></li><li><code>dimension admin0_name.reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024</code></li><li><code>dimension admin1_name.description: reworded (no longer names an uncatalogued boundary record)</code></li></ul>
+      <h3>Questions on this record</h3>
+      <div class="flag" data-rid="africa-hazard-season-variability-nexgddp" data-key="flag:q7">
+        <p>Same disputed-country caveat as the time series (briefing question 7).</p>
+        <textarea placeholder="Your answer" data-for="africa-hazard-season-variability-nexgddp|flag:q7"></textarea>
+      </div>
+      <label class="signoff"><input type="checkbox" data-signoff="africa-hazard-season-variability-nexgddp"> I have reviewed the full record and approve it for submission</label>
+    </div>
+  </details>
+  <details class="rec" id="africa-hazard-change-nexgddp" data-rid="africa-hazard-change-nexgddp">
+    <summary><span class="num">10</span><span class="rid">africa-hazard-change-nexgddp</span><span class="rtitle">Hazard Frequency, Heat-Affected Area and Rainfall Change by Administrative Unit, Africa (NEX-GDDP-CMIP6)</span><span class="state" data-state="africa-hazard-change-nexgddp">not reviewed</span></summary>
+    <div class="recbody">
+      <p class="path">Record file: <a href="../../africa-hazard-change-nexgddp.yaml"><code>metadata/cdh/africa-hazard-change-nexgddp.yaml</code></a> &middot; PR text: <a href="africa-hazard-change-nexgddp.md"><code>africa-hazard-change-nexgddp.md</code></a></p>
+      <h3>Fields you sign off</h3>
+      
+    <div class="field" data-rid="africa-hazard-change-nexgddp" data-key="title">
+      <div class="fhead"><span class="flabel">Title</span></div>
+      <div class="hint">Says what the data is; no product or project name.</div>
+      <div class="cur"><p>Hazard Frequency, Heat-Affected Area and Rainfall Change by Administrative Unit, Africa (NEX-GDDP-CMIP6)</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-change-nexgddp|title" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-change-nexgddp|title" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-change-nexgddp|title"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-change-nexgddp" data-key="description">
+      <div class="fhead"><span class="flabel">Description</span></div>
+      
+      <div class="cur"><p>Five summary tables of how agro-climatic hazards change between the 1995-2014 historical period and four future 20-year windows (2021-2040 to 2081-2100) under four emissions scenarios, for every country, first-level and second-level administrative unit in Africa: how often soil water stress (drought) and waterlogging pass severe and extreme thresholds; the share of land where crop heat stress (days above 35 °C and 40 °C) and cattle heat stress (temperature-humidity index) pass those thresholds; the share of land where annual rainfall rises or falls by 5 % or more; and the average change in annual rainfall in millimetres. Each table comes once per climate model (18 NEX-GDDP-CMIP6 models) and once as an ensemble summary (mean, minimum, maximum and standard deviation across the models). Use it to compare how hazard exposure shifts by place, scenario and window, and how much the models agree.</p></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-change-nexgddp|description" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-change-nexgddp|description" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-change-nexgddp|description"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-change-nexgddp" data-key="note">
+      <div class="fhead"><span class="flabel">Note (caveats only)</span><span class="badge">changed</span></div>
+      <div class="hint">Hub rule: real caveats only. Reading tips moved to data descriptions; release history is in the linked changelog.</div>
+      <div class="cur"><p>Where no model has a value, the ensemble mean is missing and the minimum and maximum can read as plus or minus infinity. Country rows for Egypt, Kenya, Sudan and South Sudan may include disputed border areas these countries claim; prefer their first- and second-level units.</p></div>
+      <details class="old"><summary>Show before</summary><p>These tables were published on 2026-11-16, replacing the 2026-06-24 files; columns and keys are unchanged, and the earlier files held duplicate rows, since removed. Read the files with hive partitioning turned off (in DuckDB, hive_partitioning = false): the storage path contains timeframe=annual, which otherwise replaces the timeframe column. Where no model has a value, an ensemble mean is missing and its minimum and maximum can read as plus or minus infinity. Country rows for Egypt, Kenya, Sudan and South Sudan may include disputed border areas these countries claim; prefer their first- and second-level units. Changes to these files are listed in the linked version history.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-change-nexgddp|note" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-change-nexgddp|note" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-change-nexgddp|note"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-change-nexgddp" data-key="keywords">
+      <div class="fhead"><span class="flabel">Keywords</span><span class="badge">changed</span></div>
+      <div class="hint">Must not repeat places, periods, crops or variables already in structured fields.</div>
+      <div class="cur"><ul><li>climate hazards</li><li>hazard frequency</li><li>drought</li><li>waterlogging</li><li>heat stress</li><li>climate projections</li><li>multi-model ensemble</li><li>NEX-GDDP</li><li>administrative units</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>climate hazards</li><li>hazard frequency</li><li>drought</li><li>waterlogging</li><li>heat stress</li><li>livestock heat stress</li><li>temperature-humidity index</li><li>rainfall change</li><li>climate projections</li><li>multi-model ensemble</li><li>NEX-GDDP</li><li>administrative units</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-change-nexgddp|keywords" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-change-nexgddp|keywords" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-change-nexgddp|keywords"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-change-nexgddp" data-key="intended_uses">
+      <div class="fhead"><span class="flabel">Intended uses</span><span class="badge">changed</span></div>
+      <div class="hint">Short lowercase phrases, concrete tasks.</div>
+      <div class="cur"><ul><li>comparing how often drought, waterlogging and heat thresholds are crossed now and in future windows, by district</li><li>mapping where annual rainfall is projected to rise or fall, as share of land and in millimetres</li><li>showing model agreement from the per-model tables or the ensemble spread</li></ul></div>
+      <details class="old"><summary>Show before</summary><ul><li>Comparing how often drought, waterlogging and heat thresholds are crossed now and in future windows, by district.</li><li>Mapping where annual rainfall is projected to rise or fall, as a share of land and in millimetres.</li><li>Showing model agreement with the per-model tables or the ensemble minimum, maximum and spread.</li></ul></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-change-nexgddp|intended_uses" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-change-nexgddp|intended_uses" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-change-nexgddp|intended_uses"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-change-nexgddp" data-key="not_recommended_for">
+      <div class="fhead"><span class="flabel">Not recommended for</span></div>
+      
+      <div class="cur"><ul><li><dl><dt>use</dt><dd>Reading rainfall percentage change in deserts.</dd><dt>reason</dt><dd>Cells with less than 100 mm of rain a year are never counted as an increase or decrease, so a desert unit can show 0 % on both.</dd><dt>use_instead</dt><dd>Use the change in millimetres (rainfall-difference tables), which covers all land.</dd></dl></li><li><dl><dt>use</dt><dd>Crop-specific heat stress.</dd><dt>reason</dt><dd>The crop heat tables use generic 35 °C and 40 °C day counts, not each crop&#x27;s own limits.</dd><dt>use_instead</dt><dd>The crop-specific heat sets in the hazard-exposure records (africa-hazard-exposure-nexgddp).</dd></dl></li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-change-nexgddp|not_recommended_for" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-change-nexgddp|not_recommended_for" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-change-nexgddp|not_recommended_for"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-change-nexgddp" data-key="license">
+      <div class="fhead"><span class="flabel">Licence and attribution</span></div>
+      
+      <div class="cur"><dl><dt>license</dt><dd>CC-BY-4.0</dd><dt>attribution</dt><dd>Climate scenarios used were from the NEX-GDDP-CMIP6 dataset, prepared by the Climate Analytics Group and NASA Ames Research Center using the NASA Earth Exchange, and distributed by the NASA Center for Climate Simulation (NCCS).</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-change-nexgddp|license" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-change-nexgddp|license" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-change-nexgddp|license"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-change-nexgddp" data-key="contacts">
+      <div class="fhead"><span class="flabel">Contacts and roles</span></div>
+      <div class="hint">Licensor must be the organisation holding the rights.</div>
+      <div class="cur"><ul><li>Alliance of Bioversity International and CIAT: licensor, producer</li><li>Peter Steward (Alliance of Bioversity International and CIAT): processor, point-of-contact, maintainer &middot; p.steward@cgiar.org</li></ul></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-change-nexgddp|contacts" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-change-nexgddp|contacts" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-change-nexgddp|contacts"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-change-nexgddp" data-key="citation">
+      <div class="fhead"><span class="flabel">Citation</span></div>
+      
+      <div class="cur"><dl><dt>title</dt><dd>Africa Agriculture Adaptation Atlas hazard change tables (NEX-GDDP-CMIP6)</dd><dt>authors</dt><dd>[{&#x27;organization&#x27;: &#x27;Alliance of Bioversity International and CIAT&#x27;}]</dd><dt>date</dt><dd>2026</dd><dt>publisher</dt><dd>Alliance of Bioversity International and CIAT</dd><dt>url</dt><dd>https://adaptationatlas.cgiar.org/</dd></dl></div>
+      
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-change-nexgddp|citation" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-change-nexgddp|citation" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-change-nexgddp|citation"></textarea>
+    </div>
+    <div class="field" data-rid="africa-hazard-change-nexgddp" data-key="data_processing_text">
+      <div class="fhead"><span class="flabel">Data and processing descriptions (edited)</span><span class="badge">changed</span></div>
+      
+      <div class="cur"><ul><li><b>data[hazard-frequency-by-model].description</b>: Drought and waterlogging frequency, one row per model. Every file in this record: read with hive partitioning turned off (in DuckDB, hive_partitioning = false): the storage path contains timeframe=annual, which otherwise replaces the timeframe column.</li></ul></div>
+      <details class="old"><summary>Show before</summary><p>data[hazard-frequency-by-model].description: Drought and waterlogging frequency, one row per model.</p></details>
+      <div class="ctl">
+        <label><input type="radio" name="africa-hazard-change-nexgddp|data_processing_text" value="ok"> Fine</label>
+        <label><input type="radio" name="africa-hazard-change-nexgddp|data_processing_text" value="fix"> Needs a change</label>
+      </div>
+      <textarea placeholder="What should it say instead? (only if it needs a change)" data-for="africa-hazard-change-nexgddp|data_processing_text"></textarea>
+    </div>
+      <h3>Structural fixes I made</h3>
+      <p class="hint">Mechanical, checked against the files or git history. Untick only if one looks wrong.</p>
+      <label class="okall"><input type="checkbox" data-struct="africa-hazard-change-nexgddp" checked> These look right</label>
+      <ul><li><code>processing[indices].code: https://github.com/AdaptationAtlas/hazards → https://github.com/AdaptationAtlas/hazards (version v0.1.0-nexgddp)</code></li><li><code>processing[frequency].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2_calculate_haz_freq.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/c62beee/R/2_calculate_haz_freq.R (version c62beee)</code></li><li><code>processing[admin-change].code: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2.2_haz_change.R → https://github.com/AdaptationAtlas/hazards_prototype/blob/7dbf72f/R/2.2_haz_change.R (version 7dbf72f)</code></li><li><code>dimension iso3.reference_system: https://www.iso.org/iso-3166-country-codes.html</code></li><li><code>dimension admin0_name.reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024</code></li><li><code>dimension admin1_name.reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024</code></li><li><code>dimension admin2_name.description: reworded (no longer names an uncatalogued boundary record)</code></li><li><code>data[hazard-frequency-by-model].file_size: 5325673 bytes (from the pin file)</code></li><li><code>data[hazard-frequency-ensemble].file_size: 1576579 bytes (from the pin file)</code></li><li><code>data[crop-heat-area-by-model].file_size: 12752542 bytes (from the pin file)</code></li><li><code>data[crop-heat-area-ensemble].file_size: 1156460 bytes (from the pin file)</code></li><li><code>data[rainfall-change-area-by-model].file_size: 1391186 bytes (from the pin file)</code></li><li><code>data[rainfall-change-area-ensemble].file_size: 986292 bytes (from the pin file)</code></li><li><code>data[rainfall-difference-by-model].file_size: 6924089 bytes (from the pin file)</code></li><li><code>data[rainfall-difference-ensemble].file_size: 1875473 bytes (from the pin file)</code></li><li><code>data[cattle-heat-area-by-model].file_size: 1956735 bytes (from the pin file)</code></li><li><code>data[cattle-heat-area-ensemble].file_size: 754664 bytes (from the pin file)</code></li><li><code>processing[source].derived_from NEX-GDDP-CMIP6: version 1.0-1.2; title says newest v1 revision per file, v2.0 not used</code></li></ul>
+      <h3>Questions on this record</h3>
+      <div class="flag" data-rid="africa-hazard-change-nexgddp" data-key="flag:hive">
+        <p>The "turn hive partitioning off" reading tip moved from the note into the first data entry's description, worded to cover all ten files (the other nine entries have their own descriptions). OK?</p>
+        <textarea placeholder="Your answer" data-for="africa-hazard-change-nexgddp|flag:hive"></textarea>
+      </div>
+      <label class="signoff"><input type="checkbox" data-signoff="africa-hazard-change-nexgddp"> I have reviewed the full record and approve it for submission</label>
+    </div>
+  </details>
+</main>
+<div class="bar"><div class="in">
+  <span id="progress"></span>
+  <button class="sec" id="clear" type="button">Clear marks</button>
+  <button id="copy" type="button">Copy corrections</button>
+  <textarea id="out" readonly></textarea>
+</div></div>
+<script>
+(function () {
+  var KEY = 'cdh-v2026.11-review';
+  var IDS = ["africa-exposure-combined", "africa-hazard-season-timeseries-nexgddp", "africa-hazard-exposure-nexgddp", "africa-hazard-exposure-intld", "africa-hazard-exposure-harvested-area", "africa-hazard-exposure-production", "africa-hazard-exposure-livestock-numbers", "africa-hazard-season-trends-nexgddp", "africa-hazard-season-variability-nexgddp", "africa-hazard-change-nexgddp"];
+  function load() { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { return {}; } }
+  function save(s) { try { localStorage.setItem(KEY, JSON.stringify(s)); } catch (e) {} }
+  var st = load();
+  document.querySelectorAll('input[type=radio]').forEach(function (r) {
+    if (st['r:' + r.name] === r.value) r.checked = true;
+    r.addEventListener('change', function () { st['r:' + r.name] = r.value; save(st); refresh(); });
+  });
+  document.querySelectorAll('textarea[data-for]').forEach(function (t) {
+    t.value = st['t:' + t.dataset.for] || '';
+    t.addEventListener('input', function () { st['t:' + t.dataset.for] = t.value; save(st); refresh(); });
+  });
+  document.querySelectorAll('input[type=checkbox]').forEach(function (c) {
+    var k = 'c:' + (c.dataset.signoff ? 'signoff:' + c.dataset.signoff : 'struct:' + c.dataset.struct);
+    if (k in st) c.checked = st[k];
+    c.addEventListener('change', function () { st[k] = c.checked; save(st); refresh(); });
+  });
+  function radio(name) { var r = document.querySelector('input[name="' + name + '"]:checked'); return r ? r.value : ''; }
+  function text(key) { var t = document.querySelector('textarea[data-for="' + key + '"]'); return t ? t.value.trim() : ''; }
+  function refresh() {
+    var done = 0;
+    IDS.forEach(function (id) {
+      var signed = (document.querySelector('[data-signoff="' + id + '"]') || {}).checked;
+      var fixes = document.querySelectorAll('#' + CSS.escape(id) + ' input[value=fix]:checked').length;
+      var el = document.querySelector('[data-state="' + id + '"]');
+      el.className = 'state' + (fixes ? ' fix' : signed ? ' done' : '');
+      el.textContent = fixes ? fixes + ' to change' : signed ? 'approved' : 'not reviewed';
+      if (signed && !fixes) done++;
+    });
+    document.getElementById('progress').textContent = done + ' of 10 approved';
+  }
+  document.getElementById('copy').addEventListener('click', function () {
+    var L = ['Review of the v2026.11 records', ''];
+    L.push('Decisions for all ten:');
+    document.querySelectorAll('.field[data-rid=global]').forEach(function (f) {
+      var k = f.dataset.key, v = radio('global|' + k), c = text('global|' + k);
+      L.push('- ' + k + ': ' + (v || '(no answer)') + (c ? ' (' + c + ')' : ''));
+    });
+    IDS.forEach(function (id) {
+      L.push('', id + ':');
+      var signed = (document.querySelector('[data-signoff="' + id + '"]') || {}).checked;
+      var struct = (document.querySelector('[data-struct="' + id + '"]') || {}).checked;
+      L.push('- signed off: ' + (signed ? 'yes' : 'no'));
+      if (!struct) L.push('- structural fixes: NOT accepted, see comments');
+      document.querySelectorAll('#' + CSS.escape(id) + ' .field').forEach(function (f) {
+        var k = f.dataset.key, v = radio(id + '|' + k), c = text(id + '|' + k);
+        if (v === 'fix' || c) L.push('- ' + k + ': ' + (v === 'fix' ? 'CHANGE' : 'note') + (c ? ': ' + c : ''));
+      });
+      document.querySelectorAll('#' + CSS.escape(id) + ' .flag').forEach(function (f) {
+        var k = f.dataset.key, c = text(id + '|' + k);
+        L.push('- ' + k + ': ' + (c || '(no answer)'));
+      });
+    });
+    var out = document.getElementById('out');
+    out.value = L.join('\n'); out.style.display = 'block'; out.select();
+    try { navigator.clipboard.writeText(out.value); document.getElementById('copy').textContent = 'Copied'; } catch (e) {}
+  });
+  document.getElementById('clear').addEventListener('click', function () {
+    if (!confirm('Clear all marks on this page?')) return;
+    try { localStorage.removeItem(KEY); } catch (e) {}
+    location.reload();
+  });
+  refresh();
+})();
+</script>
+</body>
+</html>

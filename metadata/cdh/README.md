@@ -36,9 +36,27 @@ Schema errors short-circuit: cross-field rules only run once the schema passes, 
 nearly clean and then fail again. `uvx check-jsonschema` alone is **not** enough — it misses the
 cross-field checks.
 
+## Submission log
+
+[`submission-log.csv`](submission-log.csv) is the one place to see where every record from this
+work stands in the Hub: one row per record, covering this directory and the KE-ENSO explorer records
+in `AdaptationAtlas/atlas_notebooks`. The live columns (schema version, PR and its state, whether the
+record is on catalog `main`, and which schema version the catalog copy is on) are rebuilt from the
+record files and from GitHub. The `group`, `catalog_id`, `hold` and `note` columns are kept by hand
+and survive a rebuild. Rebuild it after opening, merging or closing a PR:
+
+```bash
+python3 scripts/cdh_submission_log.py                      # read-only gh calls; nothing is posted
+CDH_LOG_ATLAS_NOTEBOOKS=/path/to/atlas_notebooks python3 scripts/cdh_submission_log.py   # include unpushed KE-ENSO records
+```
+
+Set `catalog_id` when the catalog renames a record (`eastafrica-flood-jrc` was merged as `jrc-glofas`).
+
 ## Records
 
-| record | licence | status |
+The status column below is the hand-kept history up to 2026-11-13. It is no longer updated: use the log.
+
+| record | licence | status (to 2026-11-13) |
 |---|---|---|
 | `africa-precipitation-monthly-seasonal` | CC-BY-4.0 | **merged** (#30) |
 | `africa-spei-drought` | CC-BY-4.0 | PR #31 |

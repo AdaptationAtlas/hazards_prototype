@@ -16,37 +16,24 @@ series:
   name: Africa Agriculture Adaptation Atlas
   url: https://adaptationatlas.cgiar.org/
 description: >
-  Hazard frequency crossed with livestock head counts (GLW4 2020), by administrative unit,
-  species-system, hazard, scenario, period and timeframe. The livestock physical tier: ten
-  species-system commodities (cattle, goats, pigs, poultry, sheep, each split tropical/highland).
-  First published 2026-10-19.
+  Livestock head counts (GLW4 2020) exposed to each agro-climatic hazard, by administrative unit, species
+  and production system, hazard, severity, scenario, period and timeframe, for Sub-Saharan Africa: cattle,
+  goats, pigs, poultry and sheep, each split into tropical and highland systems.
 resource_type: dataset
 license: CC-BY-4.0 # derived product; principal inputs (MapSPAM2020_AdaptationAtlas_SSA doi:10.7910/DVN/Z0HK7R, GLW4-2020, GAUL 2024) are all CC-BY-4.0; share-alike does NOT apply (hazards_prototype issue 37, resolved 2026-10-08)
 keywords:
-  [
-    hazard exposure,
-    livestock,
-    head counts,
-    GLW4,
-    climate risk,
-    CMIP6,
-    NEX-GDDP,
-    sub-saharan africa,
-  ]
+  - hazard exposure
+  - head counts
+  - GLW4
+  - climate risk
+  - CMIP6
+  - NEX-GDDP
 
 note: >
-  HEAD COUNTS ONLY, TEN SPECIES-SYSTEMS. The exposure reference (record africa-exposure-combined)
-  also carries total-tropical and total-highland rows under the same exposure value: those are
-  TROPICAL LIVESTOCK UNITS - a weighted index (cattle 0.7, sheep 0.1, goats 0.1, pigs 0.2, poultry
-  0.01), a different unit in the same slot - and they have NO rows in this tier (hazards_prototype
-  issue 52). A later version of the reference will relabel those rows as tropical livestock units;
-  their values do not change. Do not sum this tier across species expecting the reference's total-*
-  figures. Values are integer heads, rounded per pixel; the publish gate's materiality floor is
-  10,000 head. The tightest-gated tier of the bake: every material pair reproduces its exposure
-  within 0.5 per cent. Poultry is GLW4 chickens.
-  VERSION HISTORY. This is the first Climate Data Hub release (v2026.11): the files as first
-  published on 2026-10-19, unchanged since. The version history linked below records this and will
-  list later changes.
+  Head counts for ten species-system combinations only; there are no total rows. The total-tropical and
+  total-highland rows in the exposure table (africa-exposure-combined) are Tropical Livestock Units, a
+  weighted index, and have no counterpart here. Values are integer heads rounded per pixel before aggregation.
+  Poultry is GLW4 chickens.
 
 contact:
   - organization: Alliance of Bioversity International and CIAT
@@ -120,10 +107,63 @@ structures:
       - name: gaul2_code
         type: location
         description: >
-          Second-level administrative unit, as the GAUL 2024 code and the join key to the boundaries
-          (record africa-admin-boundaries-gaul2024). Rows also carry iso3, admin0_name, admin1_name,
+          Second-level administrative unit, as the GAUL 2024 code and the join key to the GAUL 2024 boundary file named in foreign_keys. Rows also carry iso3, admin0_name, admin1_name,
           admin2_name and the adm0 and adm1 GAUL codes. 55 countries present.
         reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: float64
+      - name: iso3
+        type: location
+        description: ISO 3166-1 alpha-3 country code.
+        reference_system: https://www.iso.org/iso-3166-country-codes.html
+        data_type: string
+      - name: admin0_name
+        type: location
+        description: Country name, as in FAO GAUL 2024.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: string
+      - name: admin1_name
+        type: location
+        description: First-level administrative unit name, as in FAO GAUL 2024. Null on country rows.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: string
+      - name: admin2_name
+        type: location
+        description: >
+          Second-level administrative unit name, as in FAO GAUL 2024. Null on country and first-level
+          rows.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: string
+      - name: gaul0_code
+        type: location
+        description: Country as the GAUL 2024 code; present on every row.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: float64
+      - name: gaul1_code
+        type: location
+        description: First-level unit as the GAUL 2024 code; null on country rows.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
+        data_type: float64
+      - name: model
+        type: model
+        description: Always ENSEMBLEmean, the mean across the climate models (also in the file path).
+        values: [ENSEMBLEmean]
+        data_type: string
+      - name: hazard_vars
+        type: hazard
+        description: >
+          The hazard set the row belongs to, as the three hazard indices joined by + (dry, heat, wet);
+          see `hazard` for the sets present.
+        data_type: string
+      - name: exposure_var
+        type: variable
+        description: What is exposed; one per tier.
+        values: [head]
+        data_type: string
+      - name: exposure_unit
+        type: unit
+        description: Unit of `value`, carried on every row; one per tier.
+        values: [n]
+        data_type: string
     variables:
       - name: value
         description: >
@@ -143,15 +183,18 @@ processing:
       on every key records membership), and livestock numbers from GLW4 2020 on the 0.25 degree
       hazard grid.
     derived_from:
-      - title: Monthly hazard indices from NEX-GDDP-CMIP6 (record nexgddp-indices-monthly)
+      - title: Monthly hazard indices from NEX-GDDP-CMIP6
         url: https://github.com/AdaptationAtlas/hazards
-      - title: MapSPAM2020_AdaptationAtlas_SSA (record mapspam2020-adaptation-atlas-ssa)
+        version: v0.1.0-nexgddp
+      - title: MapSPAM2020_AdaptationAtlas_SSA
         url: https://doi.org/10.7910/DVN/Z0HK7R
+        version: "1.0"
       - id: africa-exposure-combined
         title: >-
           Combined crop and livestock exposure, 0.25 degree structure
           (variable=crop-livestock_all_res-25), the gate basis; built from the table as of
-          2026-10-08, before the first Hub release
+          2026-10-08, whose area, production and head-count rows are unchanged in v2026.11
+        version: v2026.11
   - id: frequency
     description: >
       Convert hazard indices to the frequency with which each severity threshold is exceeded, per
@@ -161,14 +204,14 @@ processing:
       Cross hazard frequency with livestock head counts, and aggregate onto GAUL 2024 administrative
       units.
     code:
-      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/3_freq_x_exposure.R
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/f434359/R/3_freq_x_exposure.R
+      version: f434359
 
 data:
   - name: hazard-exposure-head-by-period-severity
     description: >
-      One parquet per period x severity tier, 13 to 17 MB each. Published by
-      scripts/r3_publish_tiers.R behind gates G1-G6b; every key carries a .json sidecar recording
-      the 18-member ensemble.
+      One parquet per period x severity tier, 13 to 17 MB each. Published by scripts/r3_publish_tiers.R;
+      every key carries a .json sidecar recording the 18-member ensemble.
     locations:
       - url: https://digital-atlas.s3.amazonaws.com/domain=hazard_exposure/source=nex-gddp-cmip6/region=ssa/processing=hazard-risk-exposure/variable=head_n/
         title: HTTPS
@@ -196,10 +239,12 @@ cdh:
   domain: [agricultural-production, climate]
   usage:
     intended_uses:
-      - Physical exposure of livestock populations to heat and water hazards, by species-system.
-      - The denominator-free livestock complement of the value tiers.
+      - physical exposure of livestock to heat and water hazards, by species and system
+      - livestock exposure without any valuation
     not_recommended_for:
-      - use: Summing species head counts to reproduce the reference's total-tropical / total-highland rows.
+      - use:
+          Summing species head counts to reproduce the reference's total-tropical / total-highland
+          rows.
         reason: >
           Those rows are Tropical Livestock Units, a weighted index roughly a tenth of the plain head
           sum, filed under the same exposure value in the reference.

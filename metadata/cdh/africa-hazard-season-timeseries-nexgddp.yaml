@@ -31,7 +31,6 @@ attribution: >
 keywords:
   - climate hazards
   - agro-climatic indices
-  - seasonal time series
   - climate projections
   - multi-model ensemble
   - anomaly
@@ -40,15 +39,11 @@ keywords:
   - drought
   - waterlogging
   - administrative units
-
 note: >
-  Country-level rows (admin1_name empty) are not usable for Egypt, Kenya, Sudan and South Sudan, the
-  four countries that claim disputed border areas: each holds a single malformed year instead of a
-  series. Use their first-level units. Read the files with hive partitioning turned off (in DuckDB,
-  hive_partitioning = false): the storage path contains timeframe=3months, which otherwise replaces
-  the timeframe column. The human heat-stress index (HSH-max) will be recalculated in a later
-  version; the correction raises it by about 7 °C. Changes to these files before and since this
-  first Hub version are listed in the linked version history.
+  Country-level rows (admin1_name empty) for Egypt, Kenya, Sudan and South Sudan, the four countries that
+  claim disputed border areas, hold a single malformed year instead of a series; use their first-level
+  units. The human heat-stress index (HSH-max) will be recalculated in a later version; the correction
+  raises it by about 7 °C.
 
 contact:
   - organization: Alliance of Bioversity International and CIAT
@@ -105,22 +100,22 @@ structures:
       - name: iso3
         type: location
         description: ISO 3166-1 alpha-3 country code. 55 countries. Files are sorted on it.
+        reference_system: https://www.iso.org/iso-3166-country-codes.html
         data_type: string
       - name: admin0_name
         type: location
         description: Country name, as in FAO GAUL 2024.
+        reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
         data_type: string
       - name: admin1_name
         type: location
         description: >
-          First-level administrative unit name (province, region, county), as in FAO GAUL 2024; the
-          boundaries are catalogued as africa-admin-boundaries-gaul2024. Empty (null) on the
+          First-level administrative unit name (province, region, county), as in FAO GAUL 2024. Empty (null) on the
           country-level rows. Values are the average over the 0.25° model grid cells that touch the
           unit.
         data_type: string
         reference_system: https://data.apps.fao.org/catalog/dataset/global-administrative-unit-layers-gaul-2024
-      - &scenario
-        name: scenario
+      - name: scenario
         type: scenario
         description: >
           Emissions scenario. historical is the models' historical run; the others are CMIP6 Shared
@@ -145,8 +140,7 @@ structures:
         extent: ["1981", "2100"]
         step: P1Y
         data_type: float64
-      - &hazard
-        name: hazard
+      - name: hazard
         type: hazard
         description: >
           Agro-climatic hazard index, computed per model from daily data, summarised by month and
@@ -186,8 +180,7 @@ structures:
             label: Human heat index, maximum (°C)
             description: Highest monthly maximum of the daily heat index (apparent temperature).
         data_type: string
-      - &season
-        name: season
+      - name: season
         type: season
         description: >
           Rolling three-month season, named by the initials of its months (JFM = January-March, DJF
@@ -257,35 +250,44 @@ processing:
       NASA NEX-GDDP-CMIP6: daily CMIP6 climate model output, bias-corrected and downscaled to a 0.25°
       grid. 18 models, historical run and four future scenarios.
     derived_from:
-      - title: NEX-GDDP-CMIP6 (NASA Center for Climate Simulation)
+      - title: >-
+          NEX-GDDP-CMIP6 (NASA Center for Climate Simulation), version 1 files: for each variable, model
+          and year the newest of v1.2, v1.1 and the unsuffixed v1.0; the v2.0 files added in 2025 were not
+          used
         url: https://www.nccs.nasa.gov/services/data-collections/land-based-products/nex-gddp-cmip6
+        version: 1.0-1.2
   - id: indices
     description: >
       Monthly agro-climatic hazard indices computed per model from the daily fields, including a
       simple soil water balance for the water-stress and waterlogging indices.
     code:
       url: https://github.com/AdaptationAtlas/hazards
+      version: v0.1.0-nexgddp
   - id: admin-seasons
     description: >
       Each monthly index averaged over GAUL 2024 country and first-level units per model, then
       combined into three-month seasons and the year (summed for rainfall, maximum for TMAX, THI and
       the heat index, averaged for the rest).
     code:
-      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2.1_create_monthly_haz_tables.R
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/212c95f/R/2.1_create_monthly_haz_tables.R
+      version: 212c95f
   - id: ensemble
     description: >
       Anomaly computed for each model against the baseline average of all 18 models, then mean,
       standard deviation, 17th and 83rd percentiles and model count taken across the 18 models for
       every unit, season and year.
     code:
-      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/develop/R/2.1_create_monthly_haz_tables.R
+      url: https://github.com/AdaptationAtlas/hazards_prototype/blob/212c95f/R/2.1_create_monthly_haz_tables.R
+      version: 212c95f
     date: "2026-09-20"
 
 data:
   - name: season-timeseries
     description: >
-      One Parquet table per timeframe and baseline: 10 files, 35 to 140 MB, about 1.7 to 7 million
-      rows each. Sorted by country so a query filtered on iso3 reads only that country's part.
+      One Parquet table per timeframe and baseline: 10 files, 35 to 140 MB, about 1.7 to 7 million rows
+      each. Sorted by country so a query filtered on iso3 reads only that country's part. Read with hive
+      partitioning turned off (in DuckDB, hive_partitioning = false): the storage path contains timeframe=3months,
+      which otherwise replaces the timeframe column.
     locations:
       - url: https://digital-atlas.s3.amazonaws.com/domain=climate/type=hazard-indices/source=nex-gddp-cmip6/region=africa/processing=timeseries_mean_month/timeframe=3months/
         title: HTTPS
@@ -352,9 +354,9 @@ cdh:
   domain: [climate]
   usage:
     intended_uses:
-      - Charting how a seasonal hazard is projected to change in a country or province, year by year.
-      - Comparing emissions scenarios and showing model disagreement with the 17th-83rd percentile band.
-      - Seasonal climate context for adaptation planning in agriculture.
+      - year-by-year projected change of a seasonal hazard in a country or province
+      - comparing emissions scenarios, with model disagreement as the 17th-83rd percentile band
+      - seasonal climate context for agricultural adaptation planning
     not_recommended_for:
       - use: Reading a single future year as a forecast for that year.
         reason: >
@@ -366,3 +368,4 @@ cdh:
         use_instead: Use the 1995-2014 or 1981-2014 baseline and state it.
       - use: Point or field-scale analysis.
         reason: Values are averages over administrative units of a 0.25° (about 28 km) model grid.
+        use_instead: Station records or a finer-resolution downscaled product.
