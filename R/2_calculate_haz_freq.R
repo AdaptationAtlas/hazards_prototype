@@ -882,7 +882,7 @@ for (tx in seq_along(timeframes)) {
               minval = -999999,
               maxval = 999999
             )
-            terra::writeRaster(data_class, filename = file_name, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
+            terra::writeRaster(data_class, filename = file_name, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
             rm(data, data_class)
             gc()
           }
@@ -940,7 +940,7 @@ for (tx in seq_along(timeframes)) {
             if (!is.null(round2)) {
               data <- round(data, round2)
             }
-            terra::writeRaster(data, filename = file, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
+            terra::writeRaster(data, filename = file, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
             rm(data)
             gc()
           }
@@ -1025,8 +1025,8 @@ for (tx in seq_along(timeframes)) {
             names(ensemble_mean) <- ensemble_names_mean
             names(ensemble_sd) <- ensemble_names_sd
 
-            terra::writeRaster(ensemble_mean, filename = save_file_mean, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
-            terra::writeRaster(ensemble_sd, filename = save_file_sd, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
+            terra::writeRaster(ensemble_mean, filename = save_file_mean, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
+            terra::writeRaster(ensemble_sd, filename = save_file_sd, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
 
             rm(ensemble_stack, ensemble_mean, ensemble_sd)
             gc()
@@ -1193,7 +1193,7 @@ for (tx in seq_along(timeframes)) {
                 file = save_name,
                 overwrite = TRUE,
                 filetype = "COG",
-                gdal = c("OVERVIEWS" = "NONE", COMPRESS = "ZSTD")
+                gdal = c("OVERVIEWS=NONE", "COMPRESS=ZSTD")
               )
               rm(data)
               gc()
@@ -1298,8 +1298,8 @@ for (tx in seq_along(timeframes)) {
             data_sd <- round(data_sd, round4)
           }
 
-          terra::writeRaster(data_mean, filename = file_mean, overwrite = TRUE, filetype = "COG", gdal = c("COMPRESS=LZW", of = "COG", "OVERVIEWS" = "NONE"))
-          terra::writeRaster(data_sd, filename = file_sd, overwrite = TRUE, filetype = "COG", gdal = c("COMPRESS=LZW", of = "COG", "OVERVIEWS" = "NONE"))
+          terra::writeRaster(data_mean, filename = file_mean, overwrite = TRUE, filetype = "COG", gdal = c("COMPRESS=LZW", "OVERVIEWS=NONE"))
+          terra::writeRaster(data_sd, filename = file_sd, overwrite = TRUE, filetype = "COG", gdal = c("COMPRESS=LZW", "OVERVIEWS=NONE"))
 
           rm(data_mean, data_sd, data)
           gc()
@@ -1377,8 +1377,8 @@ for (tx in seq_along(timeframes)) {
             names(ensemble_mean) <- gsub(".tif", "", basename(save_file_mean))
             names(ensemble_sd) <- gsub(".tif", "", basename(save_file_sd))
 
-            terra::writeRaster(ensemble_mean, filename = save_file_mean, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
-            terra::writeRaster(ensemble_sd, filename = save_file_sd, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
+            terra::writeRaster(ensemble_mean, filename = save_file_mean, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
+            terra::writeRaster(ensemble_sd, filename = save_file_sd, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
 
             rm(ensemble_stack, ensemble_mean, ensemble_sd)
             gc()
@@ -1448,7 +1448,7 @@ for (tx in seq_along(timeframes)) {
 
         change <- terra::rast(change)
 
-        terra::writeRaster(change, filename = change_file, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
+        terra::writeRaster(change, filename = change_file, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
       }
     }
   }
@@ -1636,7 +1636,7 @@ for (tx in seq_along(timeframes)) {
                 int_any <- round(int_any, round5.2)
               }
 
-              terra::writeRaster(int_any, filename = save_file, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
+              terra::writeRaster(int_any, filename = save_file, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
 
               rm(haz, haz_sum, int, any_haz, any_haz_mean, none_haz_mean, int_any)
               gc()
@@ -1708,8 +1708,8 @@ for (tx in seq_along(timeframes)) {
               names(ensemble_mean) <- ensemble_names_mean
               names(ensemble_sd) <- ensemble_names_sd
 
-              terra::writeRaster(ensemble_mean, filename = save_file_mean, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
-              terra::writeRaster(ensemble_sd, filename = save_file_sd, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
+              terra::writeRaster(ensemble_mean, filename = save_file_mean, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
+              terra::writeRaster(ensemble_sd, filename = save_file_sd, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
 
               rm(ensemble_stack, ensemble_mean, ensemble_sd)
               gc()
@@ -1864,7 +1864,7 @@ for (tx in seq_along(timeframes)) {
                   stop("5.3) Duplicate layers present in result", " | i = ", i, "/", crop_choice, " | j  = ", j, "/", sev_choice, " | m = ", m, "/", model_choice)
                 }
 
-                terra::writeRaster(data, filename = save_file, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS" = "NONE"))
+                terra::writeRaster(data, filename = save_file, overwrite = TRUE, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
               }
             }))
           }

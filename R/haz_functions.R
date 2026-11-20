@@ -370,7 +370,7 @@ HazardWrapper<-function(Thresholds,SaveDir,PropThreshold,PropTDir,hazard_dir,Sce
                        Direction=Threshold_focal$Direction,
                        PropThreshold=PropThreshold,
                        PropTDir=PropTDir)
-        terra::writeRaster(X,filename=save_file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS"="NONE"))
+        terra::writeRaster(X,filename=save_file,overwrite=T, filetype = "COG", gdal = c("OVERVIEWS=NONE"))
       }else{
         X<-terra::rast(save_file)
       }
@@ -428,7 +428,7 @@ HazCombWrapper<-function(Hazards,SaveDir,Scenarios,FileName,SelectedHaz){
     names(HazCombMean)<-scenario_names
     
     for(i in 1:length(scenario_names)){
-      terra::writeRaster(HazCombMean[[scenario_names[i]]][["RastReclass"]],filename=paste0(SaveDir,"/CombMean-",scenario_names[i],"-",FileName,".tif"),overwrite=T,filetype = "COG",gdal = c("OVERVIEWS"="NONE"))
+      terra::writeRaster(HazCombMean[[scenario_names[i]]][["RastReclass"]],filename=paste0(SaveDir,"/CombMean-",scenario_names[i],"-",FileName,".tif"),overwrite=T,filetype = "COG",gdal = c("OVERVIEWS=NONE"))
       fwrite(HazCombMean[[scenario_names[i]]][["Classes"]],file=paste0(SaveDir,"/CombMean-",scenario_names[i],"-",FileName,".csv"))
     }
     
@@ -455,7 +455,7 @@ HazCombWrapper<-function(Hazards,SaveDir,Scenarios,FileName,SelectedHaz){
     names(HazCombProp)<-scenario_names
     
     for(i in 1:length(scenario_names)){
-      terra::writeRaster(HazCombProp[[scenario_names[i]]][["RastReclass"]],filename=paste0(SaveDir,"/CombProp-",scenario_names[i],"-",FileName,".tif"),overwrite=T, filetype = "COG",gdal = c("OVERVIEWS"="NONE"))
+      terra::writeRaster(HazCombProp[[scenario_names[i]]][["RastReclass"]],filename=paste0(SaveDir,"/CombProp-",scenario_names[i],"-",FileName,".tif"),overwrite=T, filetype = "COG",gdal = c("OVERVIEWS=NONE"))
       fwrite(HazCombProp[[scenario_names[i]]][["Classes"]],file=paste0(SaveDir,"/CombProp-",scenario_names[i],"-",FileName,".csv"))
     }
     
@@ -1033,7 +1033,7 @@ hazard_index<-function(Data,hazards,verbose=T,SaveDir,crop_choice,severity_class
         
       }))
       
-      terra::writeRaster(haz_index,file=haz_index_filename, filetype = "COG",gdal = c("OVERVIEWS"="NONE"))
+      terra::writeRaster(haz_index,file=haz_index_filename, filetype = "COG",gdal = c("OVERVIEWS=NONE"))
       
       haz_index
       
@@ -1129,7 +1129,7 @@ hazard_severity<-function(Hazards,verbose=T,SaveDir,crop_choice,severity_classes
         sev
       }))
       
-      terra::writeRaster(data,file=filename,filetype = "COG",gdal = c("OVERVIEWS"="NONE"))
+      terra::writeRaster(data,file=filename,filetype = "COG",gdal = c("OVERVIEWS=NONE"))
       
       data
       
@@ -1460,7 +1460,7 @@ hazard_stacker <- function(i,
                          savename,
                          overwrite = T, 
                          filetype = "COG",
-                         gdal = c("OVERVIEWS"="NONE"))
+                         gdal = c("OVERVIEWS=NONE"))
       
       # Clean up memory
       rm(haz_rast_years, haz_rast)
@@ -1550,7 +1550,7 @@ read_spam <- function(variable, technology, mapspam_dir, save_dir, base_rast, fi
     .mass_check_fn()(.spam_src, data, "read_spam resample")
     
     # Save the processed raster data to a file.
-    terra::writeRaster(data, filename=ms_file, overwrite=T, filetype = "COG",gdal = c("OVERVIEWS"="NONE")) 
+    terra::writeRaster(data, filename=ms_file, overwrite=T, filetype = "COG",gdal = c("OVERVIEWS=NONE")) 
   } else {
     # If the file exists and should not be overwritten, simply read the existing raster file.
     data <- terra::rast(ms_file)
@@ -2685,7 +2685,7 @@ convert_to_cog <- function(file,progress="none") {
       data,
       filename = file,
       filetype = 'COG',
-      gdal = c("COMPRESS=LZW", of = "COG"),
+      gdal = c("COMPRESS=LZW"),
       overwrite = TRUE,
       progress=progress
     )

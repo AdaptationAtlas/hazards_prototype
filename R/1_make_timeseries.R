@@ -707,7 +707,7 @@ for (ii in seq_len(nrow(parameters))) {
                 savename_ensemble_mean,
                 overwrite = TRUE,
                 filetype = "COG",
-                gdal = c("OVERVIEWS" = "NONE")
+                gdal = c("OVERVIEWS=NONE")
               )
 
               # Calculate the per-layer standard deviation
@@ -728,7 +728,7 @@ for (ii in seq_len(nrow(parameters))) {
                 savename_ensemble_sd,
                 overwrite = TRUE,
                 filetype = "COG",
-                gdal = c("OVERVIEWS" = "NONE")
+                gdal = c("OVERVIEWS=NONE")
               )
 
               # Housekeeping
