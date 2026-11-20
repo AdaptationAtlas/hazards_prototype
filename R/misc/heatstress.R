@@ -78,7 +78,7 @@ calc_ntx <- function(tx_pth,
       ntxval <- sum(classify(tmx, matrix(c(-Inf, thr[j], 0, thr[j], Inf, 1), ncol = 3, byrow = TRUE)), na.rm = TRUE)
       terra::writeRaster(ntxval, filename = outfile[j], overwrite = TRUE,
                          filetype = 'COG',
-                         gdal = c("COMPRESS=ZSTD", "of=COG"))
+                         gdal = c("COMPRESS=ZSTD"))
     }
     
     # Clean up memory
