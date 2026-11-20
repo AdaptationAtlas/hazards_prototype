@@ -19,6 +19,53 @@ Standing rules for every block in this file:
 
 ---
 
+### RESPONSE — pascal [M-20261120-i58dup-2] 2026-11-20 (interim) — DUP2: **L0 clean, L1 pilot 10/10 `ok`, L2 running since 20:03 EAT.** The pilot saved 10.35 GB on 10 files, each shrunk to 0.85-3.41 % of its size with every check passing. **Peak RSS was 25.2 GiB, about twice the block's 12 GiB figure.** This session's cgroup allows 96 GiB, so the run is safe here, but a Small (32 GiB) profile would have little margin. **Projected finish: about 40 h, around midday EAT on 2026-11-22.**
+
+#### L0
+- On `develop`, at the DUP2 commit and after it.
+- `logs/dup2_all_$S.txt`: **1,848** paths. **0** fall outside `$W/hazards_prototype/Data/hazard_risk/{annual,jagermeyr}/`.
+- `*.dup2tmp*` under `hazard_risk` before the run: **0**.
+- `pgrep` for `Rscript|R --|R_HOME|rsession`: nothing of ours. The only match was the `pgrep` shell itself. Pete confirms the migration session is not running R/2, R/3 or a publish on this tree.
+- `df` for `$W` before: **50T size, 26T used, 24T available, 53 %**.
+- The session has a 96 GiB memory cap (`memory.max`), which is more than this block needs.
+- Each `.tif` in these folders has a `.tif.aux.xml` sidecar holding only per-band `Description` and `NoDataValue`. `gdal_translate` writes both into the new GTiff. I checked for a sidecar beside the temporary copy as well as the copy itself (`*dup2tmp*`), and found none. The originals' `.aux.xml` files are left as they were. Their content matches what the compressed file now carries.
+
+#### L1 — pilot
+The "smallest five" are also 1057 MB, because every file of 100 MB or more in these folders is a 48-band 1663 × 1739 float32 grid. The pilot is therefore ten files of one size: the 5 largest are in `jagermeyr`, and the 5 smallest are in `annual`.
+
+| File | Before → after | % | Seconds |
+|---|---|---:|---:|
+| `jagermeyr/cattle-tropical_ENSEMBLEsd_moderate.tif` | 1057.0 MB → 36.0 MB | 3.41 | 86.6 |
+| `jagermeyr/poultry-highland_ENSEMBLEsd_extreme.tif` | 1057.0 MB → 22.8 MB | 2.16 | 71.3 |
+| `jagermeyr/poultry-tropical_ENSEMBLEsd_extreme.tif` | 1057.0 MB → 27.4 MB | 2.60 | 80.8 |
+| `jagermeyr/poultry-highland_ENSEMBLEsd_moderate.tif` | 1057.0 MB → 35.6 MB | 3.37 | 90.5 |
+| `jagermeyr/poultry-tropical_ENSEMBLEsd_moderate.tif` | 1057.0 MB → 36.0 MB | 3.41 | 69.5 |
+| `annual/tea_EC-Earth3_severe.tif` | 1057.0 MB → 15.7 MB | 1.48 | 82.5 |
+| `annual/tea_INM-CM5-0_severe.tif` | 1057.0 MB → 13.3 MB | 1.25 | 81.4 |
+| `annual/bean_EC-Earth3_severe.tif` | 1057.0 MB → 10.9 MB | 1.03 | 86.7 |
+| `annual/bean_INM-CM5-0_severe.tif` | 1057.0 MB → 9.0 MB | 0.85 | 59.2 |
+| `annual/rice_EC-Earth3_severe.tif` | 1057.0 MB → 16.0 MB | 1.51 | 81.7 |
+
+- `done: 10 compressed, 0 already compressed, 10.35 GB saved`. Wall **13:16**; peak RSS **25.2 GiB**; exit 0. Status counts: **10 `ok`**, 0 `FAIL`.
+- `*dup2tmp*` left under `hazard_risk`: **0**. `logs/dup2_tmp/` is empty.
+- Mode and mtime are unchanged on **10 of 10**, compared by `ls -l` before and after.
+- **Opened as a reader would** (`terra::rast`, `global(r, "notNA")`):
+  - `jagermeyr/cattle-tropical_ENSEMBLEsd_moderate.tif`: 48 layers, first name `ssp126_ENSEMBLEsd_2021-2040_wet_PTOT-G_cattle-tropical_Moderate`, 58,217,728 non-NA cells, `COMPRESSION=ZSTD`.
+  - `annual/rice_EC-Earth3_severe.tif`: 48 layers, 59,643,551 non-NA cells, `ZSTD`.
+  - Both load and hold data.
+
+#### L2 — running
+- `logs/dup2_run_$S.sh` started at 20:03:13 EAT, at `ionice -c3 nice -n 19`.
+- After 2 minutes it had **skipped the pilot files as `skip-compressed`** and logged 2 new `ok` rows, at 1.27 % / 66.8 s and 1.31 % / 57.6 s. The next file's `.dup2tmp.tif` is being written, as expected.
+- At the pilot's rate of about 79 s per file, the remaining 1,836 files take **about 40 h**.
+- If the run stops (a `FAIL`, or the hub session is culled), I will report where it stopped and will not restart it until Pete answers.
+
+**L4** (read-only header scan of our 17,896 smaller `.tif` files, 280.93 GB) is running alongside. Its result goes in the final RESPONSE.
+
+**Writes so far outside `logs/`:** the files compressed so far (listed in `logs/dup2_log_$S.tsv`) and their transient `.dup2tmp.tif` copies, all in the two listed folders. No other writes.
+
+Answers: M-20261120-i58dup-2 (interim)
+
 ### MACBOOK 2026-11-20 [M-20261120-i58dup-2] — DUP2: compress our own `hazard_risk` rasters in place, losslessly (about 1.9 TB back). **Any profile with 12 GiB RAM or more (DUP1 K4 peaked at 8.7 GiB). A pilot of 10 files, then about a day and a half in the background. The first block in this thread that changes data outside `logs/`.**
 
 **Why.** DUP1 found our 1,848 rasters in `$W/hazards_prototype/Data/hazard_risk/{annual,jagermeyr}` (1.953 TB) are all
