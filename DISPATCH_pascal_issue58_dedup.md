@@ -13,8 +13,98 @@ Standing rules for every block in this file:
 - **Usernames and real paths stay on the node**, in git-ignored `logs/p15_*` and `logs/dup_*`. The RESPONSE uses
   the census tags (`owner-NN`, `self`) and paths as `$B/…`, `$W/…`, `$CL/…`, `$CD/…`. No hostnames or IPs.
 - Read-only outside `logs/`: no `rm`, `mv`, `cp` or `chmod` of anything there. The only deletes allowed are of
-  temporary files the block itself created under `logs/`.
+  temporary files the block itself created under `logs/`. A block may name an exception: specific files of ours to
+  rewrite, and how (DUP2 is the first).
 - Long reads at idle I/O priority (`ionice -c3 nice -n 19`), one hashing stream at a time.
+
+---
+
+### MACBOOK 2026-11-20 [M-20261120-i58dup-2] — DUP2: compress our own `hazard_risk` rasters in place, losslessly (about 1.9 TB back). **Any profile with 12 GiB RAM or more (DUP1 K4 peaked at 8.7 GiB). A pilot of 10 files, then about a day and a half in the background. The first block in this thread that changes data outside `logs/`.**
+
+**Why.** DUP1 found our 1,848 rasters in `$W/hazards_prototype/Data/hazard_risk/{annual,jagermeyr}` (1.953 TB) are all
+uncompressed. ZSTD shrank three of them to 1.2-4.5 % with every value identical. Removing duplicates gives back far less: 36 GB,
+in `$CL`, which is not ours. Pete asked for this block on 2026-11-20; pushing it is his go-ahead. Keeping both `annual` and `jagermeyr` is a separate
+question. This block compresses both and deletes neither.
+
+**What it changes, exactly.** Only the files listed as `NONE` in DUP1's `logs/dup_k3_compression_$S.tsv`, all of them ours,
+all under those two folders. Each one is rewritten by `scripts/compress_rasters_lossless.R` (new; read its header). It writes a ZSTD copy beside the
+original, checks the copy against the original, and only then renames it over the original. The checks are: same dimensions, extent, CRS, layer names, type, NA flag
+and tags; every cell equal; the same NA pattern. The original's permissions and modification time are kept. On the first failed check, the script
+deletes that copy, logs `FAIL` and stops, leaving the original untouched. It skips files that are already compressed, so a stopped run
+can simply be started again. Nothing is uploaded: the `s3://digital-atlas` copies are untouched.
+
+**Exception to this file's read-only rule:** for this block only, the script may create `<file>.dup2tmp.tif` beside each listed
+file and rename it over that file. Nothing else outside `logs/` is written, deleted, moved or chmod-ed.
+
+#### L0 — pull, roots, nothing else using the rasters
+```bash
+cd <repo> && export ATLAS_PROJECT_DIR=$PWD
+export W=<as in DUP1>  S=20261119_192126
+git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD      # develop, at or after the DUP2 commit
+H=$W/hazards_prototype/Data/hazard_risk
+awk -F'\t' 'NR>1 && $3=="NONE" {print $2}' logs/dup_k3_compression_$S.tsv > logs/dup2_all_$S.txt
+wc -l < logs/dup2_all_$S.txt                                                      # 1,848 expected
+grep -v -c -e "^$H/annual/" -e "^$H/jagermeyr/" logs/dup2_all_$S.txt              # must be 0
+find $H -name '*.dup2tmp.tif' | wc -l                                             # 0 expected on a first run
+pgrep -u "$(id -un)" -af 'Rscript|R --|R_HOME' || echo "no R processes of ours"      # list them; see below
+df -h $W | tail -1
+```
+**Stop and describe** if the count is not 1,848, if any path falls outside the two folders, or if another job of ours is
+running anything that reads or writes `Data/hazard_risk` (R/2, R/3, R/3.1, a publish). An idle notebook kernel is fine;
+report what `pgrep` lists. The migration session shares this account and checkout, so Pete must also confirm it is not
+running R/2 or R/3 on this tree.
+
+#### L1 — pilot: 10 files, largest five and smallest five
+```bash
+awk -F'\t' 'NR>1 && $3=="NONE" {print $1"\t"$2}' logs/dup_k3_compression_$S.tsv | sort -n | cut -f2 > logs/dup2_bysize_$S.txt
+{ tail -5 logs/dup2_bysize_$S.txt; head -5 logs/dup2_bysize_$S.txt; } > logs/dup2_pilot_$S.txt
+mkdir -p logs/dup2_tmp
+ionice -c3 nice -n 19 /usr/bin/time -v Rscript scripts/compress_rasters_lossless.R --list logs/dup2_pilot_$S.txt \
+  --log logs/dup2_log_$S.tsv --tmpdir $PWD/logs/dup2_tmp > logs/dup2_pilot_$S.log 2>&1
+tail -3 logs/dup2_pilot_$S.log; grep -E "Elapsed|Maximum resident" logs/dup2_pilot_$S.log
+cut -f2 logs/dup2_log_$S.tsv | sort | uniq -c                                      # 10 ok expected
+find $H -name '*.dup2tmp.tif' | wc -l                                             # must be 0
+```
+Then open two of the pilot files from the R prompt as a reader would (`terra::rast(f)`; `global(r, "notNA")`) and
+check they load and hold data. **Stop and describe** on any `FAIL`, a leftover `.dup2tmp.tif`, or a file that will
+not open. Otherwise report the 10 rows (file name only, size before → after, %, seconds) and go on.
+
+#### L2 — the rest, in the background
+```bash
+cat > logs/dup2_run_$S.sh <<SH
+ionice -c3 nice -n 19 Rscript scripts/compress_rasters_lossless.R --list logs/dup2_bysize_$S.txt \
+  --log logs/dup2_log_$S.tsv --tmpdir $PWD/logs/dup2_tmp
+echo "compress exit=\$?"
+SH
+nohup /usr/bin/time -v bash logs/dup2_run_$S.sh > logs/dup2_run_$S.log 2>&1 &
+echo $! > logs/dup2_run_$S.pid
+```
+The pilot files are skipped as already compressed. Expect about a day and a half at idle priority (DUP1 K4 ran at about 60 s per GB). **After launching,
+prepend an interim RESPONSE**: L0, the pilot table, the projected finish time. End it `Answers: M-20261120-i58dup-2 (interim)`.
+If the run stops (a `FAIL`, or the hub session is culled), say where it stopped and do not restart it until Pete answers.
+
+#### L3 — finish
+```bash
+grep -E "compress exit|Elapsed" logs/dup2_run_$S.log; tail -1 logs/dup2_run_$S.log
+cut -f2 logs/dup2_log_$S.tsv | sort | uniq -c
+find $H -name '*.dup2tmp.tif' | wc -l                                             # must be 0
+du -s -B1 $H/annual $H/jagermeyr; df -h $W | tail -1
+```
+Report: files `ok` / `skip-compressed` / `FAIL`; bytes before and after for each folder; the smallest and largest
+ratio; wall time; `df` before (L0) and after. Then prepend the final RESPONSE.
+
+#### L4 — read-only: the rest of our GeoTIFFs (can run alongside L2)
+DUP1 K3 only looked at files of 100 MB or more. Do the same header scan for our smaller `.tif` under `$W`, e.g.
+`hazard_timeseries_risk` (258 GB). Use K3's commands with `$1<1e8` in place of `$1>=1e8`, writing to `logs/dup2_small_*`.
+Report compression × files × GB, and the top folders holding `NONE` bytes. **Do not compress them**: that would be a later block.
+
+**Stop and describe** on any of: not on `develop`; the L0 checks; any `FAIL`; a leftover `.dup2tmp.tif`; a file that
+will not open; any write outside `logs/` other than the listed files and their `.dup2tmp.tif`; anything touching another
+user's files.
+
+**To answer:** prepend `### RESPONSE — pascal [M-20261120-i58dup-2]` to **this file** (interim after L2 starts, final after
+L3), run the IP grep over the response, commit only this file (never `logs/`), `git pull --rebase`, push, verify it
+landed, and end with `Answers: M-20261120-i58dup-2 (interim)` or `(complete)`, or `(stopped at <gate>)`.
 
 ---
 
