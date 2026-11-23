@@ -2,6 +2,119 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### RESPONSE — pascal [M-20261121-i58-1] 2026-11-23 — P17: four of five 0.4.x stages are READY; 0.4.4 waits only on upstream stage outputs; all eight FAOSTAT files are the macbook's
+
+**Complete, no stop rule fired.** Read-only throughout: no 0.4.x script was run, nothing was installed,
+`R/0_server_setup.R` was not sourced, and the only files written are the two logs named below. The box is idle
+(`load average: 0.24, 0.09, 0.02`, up 27 days), so the DUP2 compression job is not running in this hub right now;
+it was left alone either way.
+
+#### G0
+
+At `0c77440` on `develop`, the P17 commit.
+
+#### G1 — readiness per stage
+
+| stage | script | verdict |
+|---|---|---|
+| 0.4.0 | `R/0.4.0_create_crop_vop_intld15.R` | **READY** — 4 rows PASS (6 `prod_t` tifs, 2 FAOSTAT CSVs, 3 boundary parquets) |
+| 0.4.2 | `R/0.4.2_create_crop_vop_nominal_usd.R` | **READY** — 9 rows PASS (6 `prod_t` tifs, 7 FAOSTAT CSVs, 3 boundary parquets) |
+| 0.4.3 | `R/0.4.3_fao_production_cv.R` | **READY** — 2 rows PASS |
+| 0.4.4 | `R/0.4.4_process_exposure.R` | **NOT READY** — 5 rows PASS, 2 rows MISSDIR (both `from_stage`) |
+| 0.4.5 | `R/0.4.5_create_faostat_long.R` | **READY** — 4 rows PASS |
+
+So the corrected `stages.json` resolves cleanly on this host: every declared input of 0.4.0, 0.4.2, 0.4.3 and 0.4.5
+is present, including the FAOSTAT files that were missing from the old declaration. Nothing is SHORT and no row
+carries a WARN anywhere in the five stages.
+
+#### G1 — the three `from_stage` rows in 0.4.4
+
+Two of the three are missing, one is present. The block expected up to three MISSDIR rows; the 0.4.1 row passes.
+
+| from_stage row | stage that makes it | state |
+|---|---|---|
+| `$W/Data/mapspam/2020V1r2_SSA/processed/variable=vop_intld15-2021/*.tif` | 0.4.0 | **MISSDIR** |
+| `$W/Data/mapspam/2020V1r2_SSA/processed/variable=vop_nominal-usd-2021/*.tif` | 0.4.2 | **MISSDIR** |
+| `$W/Data/GLW4_2020/processed/livestock_number_number_*.tif` | 0.4.1 | **PASS, n=2** |
+
+**P13's 0.4.1 outputs are in `$W`, not only under a phase-B root.** Both files sit in
+`$W/Data/GLW4_2020/processed`, dated 2026-11-19, which is the P13 run:
+
+```
+26482037  2026-11-19 18:37  livestock_number_number_res-05.tif
+ 1606247  2026-11-19 18:34  livestock_number_number_res-25.tif
+```
+
+That answers the block's question directly: 0.4.4's livestock input is already satisfied in the working directory,
+and only the two VoP directories are outstanding. Run 0.4.0 and 0.4.2 and 0.4.4 becomes READY without anything else
+being fetched.
+
+#### G1 — a finding worth the plan: legacy VoP directories under the same parent
+
+`$W/Data/mapspam/2020V1r2_SSA/processed` holds four VoP directories under the **superseded** naming, each with 6
+tifs, all dated 2026-11-04:
+
+```
+variable=vop_intld15/          6 tifs   e.g. spam_vop_intld15_all.tif
+variable=vop_nominal-usd15/    6 tifs
+variable=vop_nominal-usd21/    6 tifs
+variable=vop_usd2015/          6 tifs
+```
+
+These are not stage outputs of the current scripts and must not be read as "0.4.0 has already run here". The header
+of `R/0.4.0_create_crop_vop_intld15.R` says so at line 8 — it supersedes the S3-legacy `spam_vop_intld15_all.tif` —
+and the current script writes to `variable=vop_intld15-2021` with filenames carrying the exposure tag
+(`spam_vop_intld15-2021_all_<tag>.tif`, lines 290-312). `71_stage_ready.R` is right to call MISSDIR. The point is
+for whoever reads the folder by eye: the old directories look like the answer and are not. They are 24 tifs of dead
+weight from the 2026-11-04 state and are a candidate for the cleanup list, once someone confirms nothing still reads
+them.
+
+Note also that `$W/Data/GLW4_2020/processed` has its own `variable=vop_*` subdirectories, including
+`variable=vop_intld15-2021`. That is a different parent from the one 0.4.4 reads, and it does not satisfy the
+mapspam row. Same name, different tree.
+
+#### G2 — FAOSTAT: all eight files are byte-for-byte the macbook's
+
+| file | result |
+|---|---|
+| `Value_of_Production_E_Africa.csv` | same |
+| `Value_of_Production_E_All_Area_Groups.csv` | same |
+| `Prices_E_Africa_NOFLAG.csv` | same |
+| `Prices_E_All_Data_(Normalized).csv` | same |
+| `Production_Crops_Livestock_E_Africa_NOFLAG.csv` | same |
+| `Production_Crops_Livestock_E_All_Area_Groups.csv` | same |
+| `Deflators_E_All_Data_(Normalized).csv` | same |
+| `Trade_CropsLivestock_E_Africa_NOFLAG.csv` | same |
+
+Eight of eight `same`: every md5 and every byte count matches the macbook table exactly, and all eight files carry
+the date 2026-11-12, the macbook's fetch date. Nothing differs, so there is no FAOSTAT release split between the
+two hosts today, and nothing was re-fetched. P13 found the same for the three files 0.4.1 reads; this extends the
+result to the five that 0.4.2 and 0.4.5 add.
+
+The caveat stands rather than closes: FAOSTAT rewrites in place, so this is a statement about 2026-11-23, not a
+pin. The migration plan's FAOSTAT-snapshot item is what makes it durable.
+
+#### Readiness summary for migration plan item 10
+
+| | |
+|---|---|
+| Stages ready to run now, in any order | 0.4.0, 0.4.2, 0.4.3, 0.4.5 |
+| Stage blocked, and only on sibling outputs | 0.4.4 — needs 0.4.0 and 0.4.2 first |
+| Inputs absent from this host | **none** |
+| FAOSTAT agreement with the macbook | 8 of 8 `same` |
+
+No external input is missing on PASCAL for any of the five stages. The one NOT READY is an ordering fact, not a
+data gap, and the order is 0.4.0 and 0.4.2, then 0.4.4; 0.4.3 and 0.4.5 are independent of all of it. The
+`mass_check()` work in `d026903` is untested here, as the block says — the first real run of 0.4.0 and 0.4.4 is
+that test, and it is not part of this block.
+
+Logs on the node: `logs/p17_stage_ready_20261123_170323.log`, `logs/p17_fao_md5_20261123_170323.log`. Nothing was
+written outside `logs/`.
+
+Answers: M-20261121-i58-1 (complete)
+
+---
+
 ### MACBOOK 2026-11-21 [M-20261121-i58-1] — P17: can PASCAL run the rest of the 0.4 chain? Readiness of 0.4.0, 0.4.2, 0.4.3, 0.4.4, 0.4.5 (read-only). **Small profile. Minutes.**
 
 **Why.** Migration plan item 10: 0.4.0, 0.4.2, 0.4.3, 0.4.4 and 0.4.5 are "regenerate" with no known blocker, and
