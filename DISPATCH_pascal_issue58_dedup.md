@@ -19,6 +19,67 @@ Standing rules for every block in this file:
 
 ---
 
+### RESPONSE — pascal [M-20261120-i58dup-2] 2026-11-23 — DUP2: **stopped at L2, on the script's first `FAIL`, after 1,107 of 1,848 files were compressed.** The failure is in `gdal_translate`, before any check or rename. **The original file is untouched and reads cleanly**, and no `.dup2tmp.tif` is left behind. So far **1,152 GB is recovered**: 1,170.08 GB went to 18.05 GB, with every compressed file passing every lossless check. 741 files remain. **Not restarted; waiting for Pete.** L4 (read-only) is done: our smaller GeoTIFFs hold **275 GB uncompressed**, almost all in `hazard_timeseries_risk`.
+
+#### Where it stopped
+- The run started at 2026-11-20 20:03 EAT and stopped at 2026-11-21 20:19:56 EAT, wall **24:16:45**, `compress exit=1`.
+- Failing file: `$W/hazards_prototype/Data/hazard_risk/jagermeyr/arabica-coffee_EC-Earth3_moderate.tif` (1,056,983,578 bytes).
+- Log `detail`: `translate: gdal_utils translate: an error occured`. R also printed a warning from `CPL_gdaltranslate`, but its text is cut off in the log. GDAL's own message is not captured, so **the cause is not known**.
+- The script behaved as designed. It deleted the partial copy, logged `FAIL` and stopped. `*dup2tmp*` under `hazard_risk` is **0**, and `logs/dup2_tmp/` is empty.
+- **The original is intact.** It is still 1,056,983,578 bytes and `NONE`.
+  - A read-only `gdalinfo -checksum` over all 48 bands completes with 48 checksums and **no error or warning**.
+  - That check created no file in the folder: 2,112 entries before and after.
+  - So the source file is readable, which points to a transient failure on the write side, not a damaged input. That is an inference, not proven.
+- **Peak RSS over the run was 50.7 GiB**, against 25.2 GiB in the pilot. The cgroup cap is 96 GiB, so this was not an out-of-memory kill. Memory does appear to grow over a long run, though. If the restart goes ahead, a run in fresh batches (`--limit`, or restarting every few hundred files) would keep it bounded.
+
+#### Progress (`logs/dup2_log_$S.tsv`)
+
+| Status | Files |
+|---|---:|
+| `ok` (incl. the 10 pilot files) | 1,107 |
+| `skip-compressed` (the 5 pilot files met again at the start of L2) | 5 |
+| `FAIL` | 1 |
+| not yet reached | 740 |
+
+| Folder | `ok` | Before | After |
+|---|---:|---:|---:|
+| `$W/…/hazard_risk/annual` | 584 of 924 | 617.28 GB | 9.49 GB |
+| `$W/…/hazard_risk/jagermeyr` | 523 of 924 | 552.80 GB | 8.56 GB |
+| **Total** | **1,107 of 1,848** | **1,170.08 GB** | **18.05 GB** |
+
+- Ratios range from **0.42 % to 4.32 %**. The mean time is 79.7 s per file, and 82 s over the last 400.
+- `df` for `$W`: **50T size, 25T used, 25T available, 51 %**, compared with 26T used and 53 % at L0.
+- At about 80 s per file, the remaining 741 files would take about 16.5 h.
+
+**To resume:** start the same `logs/dup2_run_$S.sh` again. Every file already done is skipped as `skip-compressed`, and the failed file is retried first in its turn.
+If it fails again on the same file, that file is the problem, not the run. If it passes, the first failure was transient.
+
+#### L4 — our smaller GeoTIFFs (read-only, not compressed)
+These are our `.tif` files under `$W` below 100 MB: **17,896 files, 280.93 GB**. The `terra::describe` header scan took 20:02 wall and exited 0.
+
+| Compression | Files | GB |
+|---|---:|---:|
+| NONE | 11,977 | 275.42 |
+| LZW | 5,889 | 5.51 |
+| ZSTD | 30 | 0.0004 |
+
+Folders holding the `NONE` bytes:
+
+| Folder | Files | GB |
+|---|---:|---:|
+| `$W/hazards_prototype/Data/hazard_timeseries_risk/annual` | 5,856 | 128.96 |
+| `$W/hazards_prototype/Data/hazard_timeseries_risk/jagermeyr` | 5,856 | 128.96 |
+| `$W/hazards_prototype/Data/hazard_risk/annual` (files below 100 MB, outside DUP2) | 132 | 8.72 |
+| `$W/hazards_prototype/Data/hazard_risk/jagermeyr` (files below 100 MB, outside DUP2) | 132 | 8.72 |
+| `$CD/chirps_wrld` (P10's CHIRPS extent file) | 1 | 0.06 |
+
+The `LZW` files are mostly the P10-P12 NEX-GDDP daily tifs and indices in `$CD`, plus `mapspam/2020V1r2_SSA`. If `hazard_timeseries_risk` compresses like `hazard_risk`,
+a later block could recover about 250 GB more.
+
+**Writes outside `logs/`:** only the 1,107 listed files that were compressed, and their transient `.dup2tmp.tif` copies, in the two listed folders. No other writes.
+
+Answers: M-20261120-i58dup-2 (stopped at L2)
+
 ### RESPONSE — pascal [M-20261120-i58dup-2] 2026-11-20 (interim) — DUP2: **L0 clean, L1 pilot 10/10 `ok`, L2 running since 20:03 EAT.** The pilot saved 10.35 GB on 10 files, each shrunk to 0.85-3.41 % of its size with every check passing. **Peak RSS was 25.2 GiB, about twice the block's 12 GiB figure.** This session's cgroup allows 96 GiB, so the run is safe here, but a Small (32 GiB) profile would have little margin. **Projected finish: about 40 h, around midday EAT on 2026-11-22.**
 
 #### L0
