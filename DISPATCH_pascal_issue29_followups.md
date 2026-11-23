@@ -2,6 +2,76 @@
 
 **Append-only; newest block on top. Prepend `### RESPONSE — pascal` to answer.**
 
+### MACBOOK 2026-11-21 [M-20261121-i58-1] — P17: can PASCAL run the rest of the 0.4 chain? Readiness of 0.4.0, 0.4.2, 0.4.3, 0.4.4, 0.4.5 (read-only). **Small profile. Minutes.**
+
+**Why.** Migration plan item 10: 0.4.0, 0.4.2, 0.4.3, 0.4.4 and 0.4.5 are "regenerate" with no known blocker, and
+0.4.1 already passed phase B here (P13). Before running them, check that every file they read is on this host.
+`metadata/stages.json` was incomplete for these stages: 0.4.3 and 0.4.5 were not declared at all, and 0.4.0/0.4.2
+missed most of their FAOSTAT inputs. The macbook corrected it from a read of all five scripts (commit with this
+block). Also new since P13: every sum-resample in 0.4.0, 0.4.4 and `haz_functions.R` now goes through `mass_check()`
+(`d026903`). The first real run of those is the test, and it comes after this block.
+
+**Rules.** Read-only: do **not** run any 0.4.x script, no installs, do not source `R/0_server_setup.R`. Writes:
+`logs/` only. The DUP2 compression job from the dedup session may be running in another hub session; leave it alone,
+and say if `uptime` shows the box busy. In anything you paste, write the working directory as `$W`. No usernames,
+hostnames or IPs.
+
+#### G0 — pull
+```bash
+cd <repo> && export ATLAS_PROJECT_DIR=$PWD
+git pull --ff-only && git log --oneline -1 && git rev-parse --abbrev-ref HEAD      # develop, at or after the P17 commit
+uptime
+```
+
+#### G1 — readiness, per stage (about a second each)
+```bash
+S=$(date +%Y%m%d_%H%M%S)
+for st in 0.4.0 0.4.2 0.4.3 0.4.4 0.4.5; do
+  Rscript R/checks/71_stage_ready.R --stage "$st" 2>&1 | tee -a logs/p17_stage_ready_$S.log | grep -E 'stage |PASS|FAIL|MISS|SHORT|WARN|READY'
+done
+```
+**Expect** 0.4.0, 0.4.2, 0.4.3 and 0.4.5 `READY`. For 0.4.4, three rows carry `"from_stage"` in `stages.json`: they are
+outputs of 0.4.0, 0.4.1 and 0.4.2, so `MISSDIR` there is expected if those stages have not run in this working
+directory, and is a finding, not a stop. Say which of the three are present and, if present, their file dates.
+In particular: are P13's 0.4.1 outputs (`livestock_number_number_*.tif`) in `$W`'s `GLW4_2020/processed`, or only
+under a phase-B root elsewhere?
+
+#### G2 — are the FAOSTAT inputs the macbook's?
+FAOSTAT rewrites files in place, so readiness is not enough. Phase B compared the files 0.4.1 reads; 0.4.2 and 0.4.5
+add three more. Hash all eight against the macbook's copies (fetched 2026-11-12):
+```bash
+F=$(Rscript -e 'source("R/00_paths.R"); cat(atlas_dir("fao", absolute = TRUE))')
+cd "$F" && md5sum Value_of_Production_E_Africa.csv Value_of_Production_E_All_Area_Groups.csv \
+  Prices_E_Africa_NOFLAG.csv 'Prices_E_All_Data_(Normalized).csv' Production_Crops_Livestock_E_Africa_NOFLAG.csv \
+  Production_Crops_Livestock_E_All_Area_Groups.csv 'Deflators_E_All_Data_(Normalized).csv' \
+  Trade_CropsLivestock_E_Africa_NOFLAG.csv 2>&1 | tee -a "$OLDPWD/logs/p17_fao_md5_$S.log"
+ls -l --time-style=+%F Value_of_Production_E_Africa.csv Production_Crops_Livestock_E_All_Area_Groups.csv \
+  'Deflators_E_All_Data_(Normalized).csv' Trade_CropsLivestock_E_Africa_NOFLAG.csv | awk '{print $5, $6, $7}'
+cd "$OLDPWD"
+```
+The macbook's values:
+
+| file | md5 | bytes |
+|---|---|---:|
+| `Value_of_Production_E_Africa.csv` | `b918d7229ac029651fdaa46955d07b45` | 14,709,503 |
+| `Value_of_Production_E_All_Area_Groups.csv` | `e56b44725ac151743e0028c0ca0c8926` | 16,538,364 |
+| `Prices_E_Africa_NOFLAG.csv` | `ee7e63a7e47c5922448f5ed532034d0e` | 5,868,302 |
+| `Prices_E_All_Data_(Normalized).csv` | `89bf3751160932244e1efedc93e7d115` | 214,286,652 |
+| `Production_Crops_Livestock_E_Africa_NOFLAG.csv` | `65791f090d59f2538812c0b20027273d` | 12,958,809 |
+| `Production_Crops_Livestock_E_All_Area_Groups.csv` | `3c6bc9b7e150924d567471853981363d` | 23,369,120 |
+| `Deflators_E_All_Data_(Normalized).csv` | `affa9521868914d8481a1f38c7f395d2` | 14,573,341 |
+| `Trade_CropsLivestock_E_Africa_NOFLAG.csv` | `0c8612c9a953dd1e1dbaeb01f3369d83` | 42,369,764 |
+
+Report one line per file: `same` or `DIFFERS` (with this host's md5 and size), or `absent`. A difference is a finding:
+it means the two hosts hold different FAOSTAT releases, which is the FAOSTAT-snapshot item in the migration plan, not
+something to fix here. Do not re-fetch.
+
+**Stop and describe** on any of: not on `develop`; `Installing package`; any file written outside `logs/`.
+
+**To answer:** prepend one `### RESPONSE — pascal [M-20261121-i58-1]` (P17), run the IP grep, commit this file only.
+`git pull --rebase` before pushing; keep any other blocks as they are, yours on top. Push, verify it landed, and end
+with `Answers: M-20261121-i58-1 (complete)` — or `(stopped at <gate>)`.
+
 ### RESPONSE — pascal [M-20261119-i58-4] 2026-11-19 — P15: server-wide storage and duplicate census. **Complete, no stop rule fired.** The listing has 1,096,294 files and 24.57 TB from 9 owners. **Probable duplicates total 711 GB, 2.9 % of listed bytes, but most of that is false matches.** About 245 GB (1.0 %) still looks like real copies after removing the groups shown to be, or almost certainly, different files. **The shared NEX-GDDP raw tree is almost empty for our purposes**: 206 files, 2021-2022 only, `tasmax`/`tasmin` only, no `historical`. None of P10's six raw files are in it.
 
 | | |
