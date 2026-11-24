@@ -19,6 +19,54 @@ Standing rules for every block in this file:
 
 ---
 
+### RESPONSE — pascal [M-20261120-i58dup-2] 2026-11-24 — DUP2: **complete. All 1,848 rasters are now lossless ZSTD, and every one passed every check.** On Pete's go, I restarted the run in fresh batches of 100. The file that failed before passed on its first retry, so that failure was transient. **1,953.30 GB went to 35.35 GB, so 1,917.95 GB is recovered.** `df` for `$W` now shows 25T used and 26T available (49 %), down from 26T used (53 %) at L0. No `.dup2tmp.tif` is left.
+
+#### The batched resume (L2 continued)
+- `logs/dup2_remaining_$S.txt` holds the 741 files not yet `ok`, in the original size order, with the failed file first. I split it into 8 lists of up to 100 (`logs/dup2_batches/b_00`–`b_07`).
+- A driver ran one fresh `Rscript` per list, at `ionice -c3 nice -n 19`. It was set to stop on the first non-zero exit.
+- The driver started at 2026-11-23 17:08:50 EAT and ended at 2026-11-24 09:22:09 EAT, wall **16:13:19**. The final line was `compress exit=0`.
+- The failed file, `$W/hazards_prototype/Data/hazard_risk/jagermeyr/arabica-coffee_EC-Earth3_moderate.tif`, came back **`ok` at 0.94 %, in 65.1 s**. That fits a transient write-side failure. The cause is still not known.
+
+| Batch | Files | Wall | Peak RSS | Exit |
+|---|---:|---:|---:|---:|
+| `b_00` | 100 | 2:10:45 | 37.5 GiB | 0 |
+| `b_01` | 100 | 2:19:38 | 37.5 GiB | 0 |
+| `b_02` | 100 | 2:13:26 | 37.2 GiB | 0 |
+| `b_03` | 100 | 2:08:38 | 39.7 GiB | 0 |
+| `b_04` | 100 | 2:06:38 | 37.8 GiB | 0 |
+| `b_05` | 100 | 2:05:52 | 36.6 GiB | 0 |
+| `b_06` | 100 | 2:15:14 | 37.4 GiB | 0 |
+| `b_07` | 41 | 0:53:04 | 32.5 GiB | 0 |
+
+- Batching kept the peak RSS below **39.7 GiB**, against 50.7 GiB in the single 24-hour run. It is still above the pilot's 25.2 GiB. So a batch of 100 needs about 40 GiB, not the 12 GiB in the block. Smaller batches would probably lower that further, but I did not test it.
+
+#### L3 — final state (`logs/dup2_log_$S.tsv`)
+
+| Status | Rows |
+|---|---:|
+| `ok` | **1,848** (each of the 1,848 paths exactly once) |
+| `skip-compressed` | 5 (the pilot files met again at the start of the first run) |
+| `FAIL` | 1 (the transient failure of 2026-11-21, kept in the log; the same file is `ok` later) |
+
+| Folder | Files | Before | After |
+|---|---:|---:|---:|
+| `$W/…/hazard_risk/annual` | 924 | 976.65 GB | 17.97 GB |
+| `$W/…/hazard_risk/jagermeyr` | 924 | 976.65 GB | 17.38 GB |
+| **Total** | **1,848** | **1,953.30 GB** | **35.35 GB** |
+
+- Ratios range from **0.42 % to 5.84 %**. The mean is 79.3 s per file.
+- The resume alone did 741 files, 783.23 GB to 17.29 GB, at 78.7 s per file.
+- `*dup2tmp*` under `hazard_risk`: **0**. `logs/dup2_tmp/` is empty.
+- `du` after the run: `annual` 26.73 GB, `jagermeyr` 26.14 GB. Both totals include each folder's 132 files below 100 MB (8.72 GB per folder, still uncompressed) and the `.aux.xml` sidecars.
+- `df` for `$W`: **50T size, 25T used, 26T available, 49 %**. At L0 it read 26T used, 24T available, 53 %. Other users write to the same store, so the `df` change is not a measurement of this block alone.
+- Total compute wall: pilot 13:16, then the first run 24:16:45, then the batches 16:13:19, which is **about 40:43**.
+
+**L4** is unchanged from the stopped RESPONSE below. Our smaller GeoTIFFs hold 275.42 GB as `NONE`. Most of it, 257.92 GB, is in `$W/hazards_prototype/Data/hazard_timeseries_risk/{annual,jagermeyr}`. If those files compress like `hazard_risk`, a later block could recover about 250 GB. The same script would do it with a new list, in batches of 100.
+
+**Writes outside `logs/`:** only the 1,848 listed files and their transient `.dup2tmp.tif` copies, in the two listed folders. Mode and mtime are carried over from each original. No other file was written, deleted, moved or chmod-ed. Nothing of another user's was touched, and nothing was uploaded.
+
+Answers: M-20261120-i58dup-2 (complete)
+
 ### RESPONSE — pascal [M-20261120-i58dup-2] 2026-11-23 — DUP2: **stopped at L2, on the script's first `FAIL`, after 1,107 of 1,848 files were compressed.** The failure is in `gdal_translate`, before any check or rename. **The original file is untouched and reads cleanly**, and no `.dup2tmp.tif` is left behind. So far **1,152 GB is recovered**: 1,170.08 GB went to 18.05 GB, with every compressed file passing every lossless check. 741 files remain. **Not restarted; waiting for Pete.** L4 (read-only) is done: our smaller GeoTIFFs hold **275 GB uncompressed**, almost all in `hazard_timeseries_risk`.
 
 #### Where it stopped
